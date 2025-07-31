@@ -6,8 +6,6 @@ import { msgid, ngettext, t } from "ttag";
 import { useGetDatabaseQuery } from "metabase/api";
 import { GenericError } from "metabase/common/components/ErrorPages";
 import { useCloseNavbarOnMount } from "metabase/common/hooks/use-close-navbar-on-mount";
-import { useSelector } from "metabase/lib/redux";
-import { getUserIsAdmin } from "metabase/selectors/user";
 import { Box, Flex, Stack, Text } from "metabase/ui";
 import { extractRemappedColumns } from "metabase/visualizations";
 
@@ -149,26 +147,24 @@ export const EditTableDataContainer = ({
     deleteBulkModalController,
   ]);
 
-  const isAdmin = useSelector(getUserIsAdmin);
-  if (!isAdmin) {
-    return (
-      <EditTablePermissionError
-        databaseId={databaseId}
-        tableId={tableId}
-        title={t`You are not allowed to edit this table`}
-        message={t`Only admin users are authorized to edit tables`}
-      />
-    );
-  }
-
   if (database && !isDatabaseTableEditingEnabled(database)) {
     return (
-      <EditTablePermissionError
-        databaseId={databaseId}
-        tableId={tableId}
-        title={t`Table editing is not enabled for this database`}
-        message={t`Please ask your admin to enable table editing`}
-      />
+      <Stack
+        gap={0}
+        data-testid="edit-table-data-restricted"
+        className={S.container}
+      >
+        <TableHeader
+          databaseId={databaseId}
+          tableId={tableId}
+          showEditBreadcrumb
+        />
+        <GenericError
+          title={t`Table editing is not enabled for this database`}
+          message={t`Please ask your admin to enable table editing`}
+          details={undefined}
+        />
+      </Stack>
     );
   }
 
@@ -244,32 +240,3 @@ export const EditTableDataContainer = ({
     </Stack>
   );
 };
-
-type EditTablePermissionErrorProps = {
-  databaseId: number;
-  tableId: number;
-  title: string;
-  message: string;
-};
-
-function EditTablePermissionError({
-  databaseId,
-  tableId,
-  title,
-  message,
-}: EditTablePermissionErrorProps) {
-  return (
-    <Stack
-      gap={0}
-      data-testid="edit-table-data-restricted"
-      className={S.container}
-    >
-      <TableHeader
-        databaseId={databaseId}
-        tableId={tableId}
-        showEditBreadcrumb
-      />
-      <GenericError title={title} message={message} details={undefined} />
-    </Stack>
-  );
-}
