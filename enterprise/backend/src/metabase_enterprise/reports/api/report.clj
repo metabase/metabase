@@ -1,13 +1,14 @@
 (ns metabase-enterprise.reports.api.report
   (:require
    [clojure.set :as set]
+   [metabase-enterprise.reports.models.report :as m.report]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.collections.models.collection :as collection]
    [metabase.models.interface :as mi]
+   [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
-
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -76,24 +77,25 @@
        [:collection_id {:optional true} [:maybe ms/PositiveInt]]
        [:card-ids {:optional true} [:vector ms/PositiveInt]]]]
   (api/check-superuser)
-  (get-report (t2/with-transaction [conn]
+  (collection/check-write-perms-for-collection collection_id)
+  (get-report (t2/with-transaction [_conn]
                 ;; Validate cards first if provided
                 (let [validated-cards (validate-cards-for-report card-ids)
-                      report-id (t2/insert-returning-pk! :conn conn :model/Report {:name name
-                                                                                   :collection_id collection_id})
-                      report-version-id (t2/insert-returning-pk! :conn conn :model/ReportVersion
+                      report-id (t2/insert-returning-pk! :model/Report {:name name
+                                                                        :collection_id collection_id})
+                      report-version-id (t2/insert-returning-pk! :model/ReportVersion
                                                                  {:report_id          report-id
                                                                   :document           document
                                                                   :content_type       "text/markdown"
                                                                   :version_identifier 1
                                                                   :user_id            api/*current-user-id*})
-                      _ (t2/select-one :conn conn :model/Report :id report-id)
-                      _ (t2/select-one :conn conn :model/ReportVersion :report_id report-id)
-                      _ (t2/update! :conn conn :model/Report report-id {:current_version_id report-version-id})]
+                      _ (t2/select-one :model/Report :id report-id)
+                      _ (t2/select-one :model/ReportVersion :report_id report-id)
+                      _ (t2/update! :model/Report report-id {:current_version_id report-version-id})]
                   ;; Update cards with the new report-id if cards were validated
-                  (when validated-cards
-                    (doseq [card validated-cards]
-                      (t2/update! :conn conn :model/Card (:id card) {:report_document_id report-id})))
+                  (when (seq validated-cards)
+                    (t2/update! :model/Card :id [:in (map u/the-id validated-cards)] {:report_document_id report-id})
+                    (m.report/sync-report-cards-collection! report-id collection_id))
                   report-id)) nil))
 
 (api.macros/defendpoint :get "/:report-id"
@@ -113,35 +115,33 @@
             [:collection_id {:optional true} [:maybe ms/PositiveInt]]
             [:card-ids {:optional true} [:vector ms/PositiveInt]]]]
   (api/check-superuser)
-  (let [existing-report (get-report report-id nil)]
+  (let [existing-report (api/check-404 (get-report report-id nil))]
+    (when (api/column-will-change? :collection_id existing-report body)
+      (m.report/validate-collection-move-permissions (:collection_id existing-report) (:collection_id body)))
     (get-report
-     (t2/with-transaction [conn]
+     (t2/with-transaction [_conn]
        ;; Validate cards first if provided
        (let [validated-cards (when (:card-ids body)
                                (validate-cards-for-report (:card-ids body)))
              new-report-version-id (when (:document body)
-                                     (t2/insert-returning-pk! :conn conn :model/ReportVersion
+                                     (t2/insert-returning-pk! :model/ReportVersion
                                                               {:report_id          report-id
                                                                :document           (:document body)
                                                                :content_type       "text/markdown"
                                                                :version_identifier (inc (:version existing-report))
                                                                :user_id            api/*current-user-id*}))
-             _ (t2/update! :conn conn :model/Report report-id {:name               (if (contains? body :name)
-                                                                                     (:name body)
-                                                                                     :name)
-                                                               :collection_id      (if (contains? body :collection_id)
-                                                                                     (:collection_id body)
-                                                                                     :collection_id)
-                                                               :current_version_id (or new-report-version-id
-                                                                                       :current_version_id)
-                                                               :updated_at         (mi/now)})]
+             _ (t2/update! :model/Report report-id {:name               (if (contains? body :name)
+                                                                          (:name body)
+                                                                          :name)
+                                                    :collection_id      (if (contains? body :collection_id)
+                                                                          (:collection_id body)
+                                                                          :collection_id)
+                                                    :current_version_id (or new-report-version-id
+                                                                            :current_version_id)
+                                                    :updated_at         (mi/now)})]
          ;; Update cards with the report-id if cards were validated
-         (when validated-cards
-           ;; Clear existing card associations for this report
-           (t2/update! :conn conn :model/Card {:report_document_id report-id} {:report_document_id nil})
-           ;; Set new card associations
-           (doseq [card validated-cards]
-             (t2/update! :conn conn :model/Card (:id card) {:report_document_id report-id})))
+         (when (seq validated-cards)
+           (t2/update! :model/Card :id [:in (map u/the-id validated-cards)] {:report_document_id report-id}))
          report-id)) nil)))
 
 (api.macros/defendpoint :get "/:report-id/versions"
