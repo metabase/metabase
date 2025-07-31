@@ -20,6 +20,7 @@ import { useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import CollapseSection from "metabase/common/components/CollapseSection/CollapseSection";
 import {
   Box,
   Button,
@@ -307,31 +308,37 @@ export function DetailViewSidebar({
 
         <Divider mt="lg" mb="sm" />
 
-        <Box>
-          <SortableContext
-            id={HIDDEN_COLUMNS_ID}
-            items={hiddenColumns.map((column) => column.id as number)}
-            strategy={verticalListSortingStrategy}
-          >
-            <Text fw={600}>{t`Hidden columns`}</Text>
-            {hiddenColumns.length === 0 ? (
-              <EmptyDropZone
-                sectionId={HIDDEN_COLUMNS_ID}
-                message={t`Drop columns here to hide them`}
-              />
-            ) : (
-              <ul style={{ width: "100%" }}>
-                {hiddenColumns.map((column) => (
-                  <ColumnListItem
-                    key={column.id}
-                    column={column}
-                    onUnhideField={() => handleUnhideField(column.id as number)}
-                  />
-                ))}
-              </ul>
-            )}
-          </SortableContext>
-        </Box>
+        <CollapseSection
+          header={<Text fw={600}>{t`Hidden columns`}</Text>}
+          initialState="collapsed"
+        >
+          <Box>
+            <SortableContext
+              id={HIDDEN_COLUMNS_ID}
+              items={hiddenColumns.map((column) => column.id as number)}
+              strategy={verticalListSortingStrategy}
+            >
+              {hiddenColumns.length === 0 ? (
+                <EmptyDropZone
+                  sectionId={HIDDEN_COLUMNS_ID}
+                  message={t`Drop columns here to hide them`}
+                />
+              ) : (
+                <ul style={{ width: "100%" }}>
+                  {hiddenColumns.map((column) => (
+                    <ColumnListItem
+                      key={column.id}
+                      column={column}
+                      onUnhideField={() =>
+                        handleUnhideField(column.id as number)
+                      }
+                    />
+                  ))}
+                </ul>
+              )}
+            </SortableContext>
+          </Box>
+        </CollapseSection>
       </Box>
 
       <Portal>
