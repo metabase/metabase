@@ -103,7 +103,7 @@ const configs = {
     const { browser } = await parseArguments(args);
 
     const snapshotConfig = {
-      browser: process.env.CYPRESS_BROWSER ?? browser ?? "chrome",
+      browser: browser ?? process.env.CYPRESS_BROWSER ?? "chrome",
       configFile: "e2e/support/cypress-snapshots.config.js",
       config: {
         baseUrl: getHost(),
@@ -118,7 +118,7 @@ const configs = {
     const { browser } = await parseArguments(args);
 
     const sdkComponentConfig = {
-      browser: process.env.CYPRESS_BROWSER ?? browser ?? "chrome",
+      browser: browser ?? process.env.CYPRESS_BROWSER ?? "chrome",
       configFile: "e2e/support/cypress-embedding-sdk-component-test.config.js",
       config: {
         baseUrl: getHost(),
