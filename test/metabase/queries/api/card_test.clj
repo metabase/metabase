@@ -4113,7 +4113,7 @@
   (testing "nonexistent card"
     (mt/user-http-request :rasta :get 404 "card/invalid-id/dashboards")))
 
-(deftest ^:parallel we-can-get-a-list-of-dashboards-a-card-appears-in-7
+(deftest we-can-get-a-list-of-dashboards-a-card-appears-in-7
   (testing "Don't have permissions on all the dashboards involved"
     (mt/with-temp [:model/Collection {allowed-coll-id :id} {:name "The allowed collection"}
                    :model/Collection {forbidden-coll-id :id} {:name "The forbidden collection"}
