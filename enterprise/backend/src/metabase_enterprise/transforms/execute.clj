@@ -23,7 +23,7 @@
    [:transform-type [:enum {:decode/normalize schema.common/normalize-keyword} :view :table]]
    [:connection-details :any]
    [:query :string]
-   [:output-table :keyword]])
+   [:output-table [:keyword {:decode/normalize schema.common/normalize-keyword}]]])
 
 (mr/def ::transform-opts
   [:map

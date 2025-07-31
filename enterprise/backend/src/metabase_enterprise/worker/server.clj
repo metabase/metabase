@@ -4,14 +4,18 @@
    [clojure.string :as str]
    [compojure.core :as compojure]
    [compojure.route :as route]
+   [malli.core :as mc]
+   [malli.transform :as mtx]
    [metabase-enterprise.transforms.core :as transforms]
    [metabase-enterprise.worker.tracking :as tracking]
    [metabase.api.util.handlers :as handlers]
    [metabase.driver :as driver]
+   [metabase.lib.schema.common :as schema.common]
    [metabase.server.core :as server]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.yaml :as yaml]
    [ring.adapter.jetty :as ring-jetty]
    [ring.middleware.keyword-params :refer [wrap-keyword-params]]
@@ -26,18 +30,27 @@
 
 (defonce ^:private ^ExecutorService executor (Executors/newVirtualThreadPerTaskExecutor))
 
+(mr/def ::transform-api-request
+  [:map
+   [:driver [:keyword {:decode/normalize schema.common/normalize-keyword}]]
+   [:transform-details :metabase-enterprise.transforms.execute/transform-details]
+   [:opts :metabase-enterprise.transforms.execute/transform-opts]
+   [:mb-source :string]])
+
 (defn- handle-transform-put
   [{:keys [params body]}]
   (log/trace "Handling transform POST request")
   (if (.tryAcquire semaphore)
     (let [{:keys [run-id]} params
-          {:keys [driver transform-details opts mb-source]} body]
-      ;; TODO (eric): Add validation for body
+          {:keys [driver transform-details opts mb-source]} (mc/coerce
+                                                             ::transform-api-request
+                                                             body
+                                                             (mtx/transformer {:name :normalize}))]
       (when (tracking/track-start! run-id mb-source)
         (.submit executor
                  ^Runnable #(try
-                              (driver/execute-transform! (keyword driver)
-                                                         (update transform-details :transform-type keyword)
+                              (driver/execute-transform! driver
+                                                         transform-details
                                                          opts)
                               (tracking/track-finish! run-id)
                               (catch Throwable t
