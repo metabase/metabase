@@ -282,6 +282,10 @@ export const ReportPage = ({
     })();
   }, [cardEmbeds, editorInstance]);
 
+  const handlePrintReport = useCallback(() => {
+    window.print();
+  }, []);
+
   return (
     <Box className={styles.reportPage}>
       <Box className={styles.contentArea}>
@@ -314,6 +318,7 @@ export const ReportPage = ({
                         : handleSave();
                     }}
                     variant="filled"
+                    data-hide-on-print
                   >
                     {t`Save`}
                   </Button>
@@ -324,6 +329,7 @@ export const ReportPage = ({
                       variant="subtle"
                       size="md"
                       aria-label={t`More options`}
+                      data-hide-on-print
                     >
                       <Icon name="ellipsis" />
                     </ActionIcon>
@@ -341,6 +347,12 @@ export const ReportPage = ({
                       disabled={isDownloading}
                     >
                       {isDownloading ? t`Downloading...` : t`Download`}
+                    </Menu.Item>
+                    <Menu.Item
+                      leftSection={<Icon name="document" />}
+                      onClick={handlePrintReport}
+                    >
+                      {t`Print Report`}
                     </Menu.Item>
                   </Menu.Dropdown>
                 </Menu>
