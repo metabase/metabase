@@ -55,7 +55,14 @@
 
 (api.macros/defendpoint :post "/connection/:database-id"
   "Create a new PG replication connection for the specified database."
-  [{:keys [database-id]} :- [:map [:database-id ms/PositiveInt]]]
+  ;; FIXME: First arg is route params, 2nd arg is query params, 3rd arg is body params:
+  [{:keys [database-id]} :- [:map [:database-id ms/PositiveInt]]
+   _query-params
+   {:keys [schemas]} :- [:map
+                         [:schemas {:optional true} [:sequential
+                                                     [:map
+                                                      [:type [:enum "include" "exclude"]]
+                                                      [:pattern :string]]]]]]
   (api/check-400 (database-replication.settings/database-replication-enabled) "PG replication integration is not enabled.")
   (let [database (t2/select-one :model/Database :id database-id)]
     (api/check-404 database)
@@ -66,12 +73,13 @@
                             (select-keys [:dbname :host :user :password :port])
                             (update :port #(or % 5432))) ;; port is required in the API, but optional in MB
             {:keys [schema-filters-type schema-filters-patterns]} (:details database)
-            schemas      (when-some [k ({"inclusion" :include, "exclusion" :exclude} schema-filters-type)]
-                           (when schema-filters-patterns
-                             {:schemas {k schema-filters-patterns}}))
-
-            secret       (merge {:credentials (merge {:dbtype "postgresql"} credentials)}
-                                schemas)]
+            schemas     (-> (when-some [k ({"inclusion" :include, "exclusion" :exclude} schema-filters-type)]
+                              (for [pattern schema-filters-patterns]
+                                {:type k :pattern pattern}))
+                            (concat (map #(select-keys % [:type :pattern]) schemas))
+                            not-empty)
+            secret      {:credentials (merge {:dbtype "postgresql"} credentials)
+                         :schemas     schemas}]
         (if (can-set-replication? database)
           (let [{:keys [id]} (hm.client/call :create-connection, :type "pg_replication", :secret secret)
                 conn         {:connection-id id}]

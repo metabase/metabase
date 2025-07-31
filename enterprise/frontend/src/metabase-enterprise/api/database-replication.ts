@@ -5,10 +5,17 @@ import { EnterpriseApi } from "./api";
 
 export const DatabaseReplicationApi = EnterpriseApi.injectEndpoints({
   endpoints: (builder) => ({
-    createDatabaseReplication: builder.mutation<void, DatabaseId>({
-      query: (databaseId) => ({
+    createDatabaseReplication: builder.mutation<
+      void,
+      {
+        databaseId: DatabaseId;
+        schemas?: { type: "include" | "exclude"; pattern: string }[];
+      }
+    >({
+      query: ({ databaseId, ...body }) => ({
         method: "POST",
         url: `/api/ee/database-replication/connection/${databaseId}`,
+        body,
       }),
       invalidatesTags: (_, error) =>
         invalidateTags(error, [tag("session-properties")]),
