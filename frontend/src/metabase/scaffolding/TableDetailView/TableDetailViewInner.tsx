@@ -365,7 +365,7 @@ export function TableDetailViewInner({
 
       {isEdit && (
         <Flex align="center" justify="center" w="100%" my="md">
-          <Tooltip label={t`Add section`}>
+          <Tooltip label={t`Add group`}>
             <Button leftSection={<Icon name="add" />} onClick={createSection} />
           </Tooltip>
         </Flex>

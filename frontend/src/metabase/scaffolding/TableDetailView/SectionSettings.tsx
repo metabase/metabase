@@ -84,7 +84,7 @@ export function SectionSettings({
           />
         </Group>
         <Group gap="sm" className={S.ObjectViewSidebarSectionActions}>
-          <Tooltip label={t`Change section direction`}>
+          <Tooltip label={t`Flow direction`}>
             <ActionIcon
               color="text-medium"
               variant="transparent"
@@ -115,7 +115,7 @@ export function SectionSettings({
           </Tooltip>
 
           {onRemoveSection && (
-            <Tooltip label={t`Remove section`}>
+            <Tooltip label={t`Remove group`}>
               <ActionIcon
                 color="text-medium"
                 variant="transparent"

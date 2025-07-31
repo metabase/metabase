@@ -286,7 +286,7 @@ export function DetailViewSidebar({
             leftSection={<Icon name="add" />}
             mt="md"
             onClick={onCreateSection}
-          >{t`Add section`}</Button>
+          >{t`Add group`}</Button>
         )}
 
         <Divider mt="lg" mb="sm" />
