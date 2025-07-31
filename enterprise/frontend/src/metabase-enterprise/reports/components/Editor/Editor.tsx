@@ -76,7 +76,7 @@ export const Editor: React.FC<EditorProps> = ({
       MetabotNode,
       DisableMetabotSidebar,
     ],
-    autofocus: true,
+    autofocus: false,
     immediatelyRender: false,
   });
 
