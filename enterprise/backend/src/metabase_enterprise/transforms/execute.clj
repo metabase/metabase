@@ -5,31 +5,35 @@
    [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
+   [metabase.lib.schema.common :as schema.common]
    [metabase.sync.core :as sync]
+   [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
 (def ^:private mb-id "mb-1")
 
+(mr/def ::transform-details
+  [:map
+   [:transform-type [:enum {:decode/normalize schema.common/normalize-keyword} :view :table]]
+   [:connection-details :any]
+   [:query :string]
+   [:output-table :keyword]])
+
+(mr/def ::transform-opts
+  [:map
+   [:overwrite? :boolean]])
+
 (defn- sync-table!
   [database target]
   (let [table (or (transforms.util/target-table (:id database) target)
                   (sync/create-table! database (select-keys target [:schema :name])))]
     (sync/sync-table! table)))
-
-(defn execute-transform!
-  "Executes a query transform. "
-  [{:keys [driver connection-details query primary-key output-table overwrite?] :as _data}]
-  (let [driver (keyword driver)
-        queries (cond->> [(driver/compile-transform driver
-                                                    {:query query
-                                                     :output-table output-table
-                                                     :primary-key primary-key})]
-                  overwrite? (cons (driver/compile-drop-table driver output-table)))]
-    {:rows-affected (last (driver/execute-raw-queries! driver connection-details queries))}))
 
 (defn- worker-uri []
   (config/config-str :mb-transform-worker-uri))
@@ -46,49 +50,50 @@
 
 (defn execute-mbql-transform-remote!
   "Execute a transform on a remote worker."
-  [data]
-  (log/info "executing remote transform" (pr-str (:work-id data)))
-  (let [{:keys [run-id]} (json-body (http/put (worker-route (str "/transform/"))
-                                              {:form-params data
+  [driver transform-details opts]
+  (log/info "executing remote transform")
+  (let [mb-source mb-id
+        {:keys [run-id]} (json-body (http/put (worker-route "/transform")
+                                              {:form-params {:driver driver
+                                                             :transform-details transform-details
+                                                             :opts opts
+                                                             :mb-source mb-source}
                                                :content-type :json}))
         ;; timeout after 4 hours
         timeout-limit (+ (System/currentTimeMillis) (* 4 60 60 1000))
         wait 2000]
+    (log/info "started transform execution" (pr-str run-id))
     (loop []
       (Thread/sleep (long (* wait (inc (- (/ (rand) 5) 0.1)))))
-      (log/trace "polling for remote transform" (pr-str (:work-id data)) "after wait" wait)
+      (log/trace "polling for remote transform" (pr-str run-id) "after wait" wait)
       (let [{:keys [status]} (json-body (http/get (worker-route (str "/status/" run-id))))]
         (case status
           "running"
           (if (> (System/currentTimeMillis) timeout-limit)
             (throw (ex-info "Remote execution of transform timed out"
-                            {:transform data}))
+                            {:transform-details transform-details}))
             (recur))
 
           "success"
-          (do (log/info "remote transform execution" (pr-str (:work-id data)) "succeeded")
+          (do (log/info "remote transform execution" (pr-str run-id) "succeeded")
               nil)
 
           "error"
-          (throw (ex-info (str "Remote execution of" (pr-str (:work-id data)) " failed.")
-                          {:transform data}))
+          (throw (ex-info (str "Remote execution of" (pr-str run-id) " failed.")
+                          {:transform-details transform-details}))
 
           (throw (ex-info (str "Unrecognized status response from remote worker: " status)
-                          {:transform data})))))))
+                          {:transform-details transform-details})))))))
 
-(defn execute-mbql-transform-local!
-  "Execute a transform on locally."
-  [data]
-  (execute-transform! data))
-
-(defn execute-mbql-transform-inner!
+(mu/defn execute-mbql-transform-inner!
   "Execute locally or remotely."
-  [data]
-  (let [worker-uri (worker-uri)
-        sourced-data (assoc data :mb-source mb-id)]
+  [driver :- :keyword
+   transform-details :- ::transform-details
+   opts :- ::transform-opts]
+  (let [worker-uri (worker-uri)]
     (if worker-uri
-      (execute-mbql-transform-remote! sourced-data)
-      (execute-mbql-transform-local! sourced-data))))
+      (execute-mbql-transform-remote! driver transform-details opts)
+      (driver/execute-transform! driver transform-details opts))))
 
 (defn execute-mbql-transform!
   "Execute `transform` and sync its target table.
@@ -116,14 +121,14 @@
        ;; start the execution for real
        (try
          (log/info "Executing transform" id "with target" (pr-str target))
+         (println (u/pprint-to-str transform))
          (execute-mbql-transform-inner!
-          {:work-id id
-           :driver driver
+          driver
+          {:transform-type (keyword (:type target))
            :connection-details (driver/connection-details driver database)
            :query (transforms.util/compile-source source)
-           :primary-key nil ;; fixme
-           :output-table (transforms.util/qualified-table-name driver target)
-           :overwrite? true})
+           :output-table (transforms.util/qualified-table-name driver target)}
+          {:overwrite? true})
          (t2/update! :model/Transform id {:execution_status :exec-succeeded
                                           :last_ended_at :%now})
          (catch Throwable t

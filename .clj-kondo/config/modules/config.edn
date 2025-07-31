@@ -1860,6 +1860,7 @@
            models
            permissions
            query-processor
+           settings
            sync
            task
            task-history

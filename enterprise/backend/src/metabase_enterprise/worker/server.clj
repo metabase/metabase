@@ -7,6 +7,7 @@
    [metabase-enterprise.transforms.core :as transforms]
    [metabase-enterprise.worker.tracking :as tracking]
    [metabase.api.util.handlers :as handlers]
+   [metabase.driver :as driver]
    [metabase.server.core :as server]
    [metabase.util :as u]
    [metabase.util.json :as json]
@@ -30,12 +31,14 @@
   (log/trace "Handling transform POST request")
   (if (.tryAcquire semaphore)
     (let [{:keys [run-id]} params
-          {:keys [mb-source] :as body} (assoc body :run-id run-id)]
+          {:keys [driver transform-details opts mb-source]} body]
       ;; TODO (eric): Add validation for body
       (when (tracking/track-start! run-id mb-source)
         (.submit executor
                  ^Runnable #(try
-                              (transforms/execute-transform! body)
+                              (driver/execute-transform! (keyword driver)
+                                                         (update transform-details :transform-type keyword)
+                                                         opts)
                               (tracking/track-finish! run-id)
                               (catch Throwable t
                                 (log/error t "Error executing transform")
