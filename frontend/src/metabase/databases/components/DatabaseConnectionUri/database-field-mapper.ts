@@ -28,7 +28,7 @@ function mapRedshiftValues(parsedValues: RegexFields) {
     ["details.db", parsedValues.database],
     ["details.user", parsedValues.params?.UID],
     ["details.password", parsedValues.params?.PWD],
-    ["details.additional-options", objectToString(parsedValues.params ?? {})],
+    ["details.additional-options", objectToString(parsedValues.params)],
   ]);
 
   if (fieldsMap.get("details.additional-options")) {
@@ -42,10 +42,17 @@ function mapClickhouseValues(parsedValues: RegexFields) {
   const fieldsMap = new Map<string, string | boolean | undefined>([
     ["details.host", parsedValues?.host],
     ["details.port", parsedValues?.port],
-    ["details.user", parsedValues?.username],
-    ["details.password", parsedValues?.password],
+    ["details.user", parsedValues?.username ?? parsedValues?.params?.user],
+    [
+      "details.password",
+      parsedValues?.password ?? parsedValues?.params?.password,
+    ],
     ["details.dbname", parsedValues?.database],
-    ["details.additional-options", objectToString(parsedValues?.params ?? {})],
+    ["details.ssl", parsedValues?.params?.ssl],
+    [
+      "details.additional-options",
+      objectToString(parsedValues?.params ?? {}, ["user", "password"]),
+    ],
   ]);
 
   // if there are additional options, we need to open the advanced options section
@@ -75,7 +82,7 @@ function mapDatabricksValues(parsedValues: RegexFields) {
 
   fieldsMap.set(
     "details.additional-options",
-    objectToString(parsedValues.params ?? {}, [
+    objectToString(parsedValues.params, [
       "httpPath",
       "OAuthSecret",
       "OAuth2ClientId",
@@ -104,7 +111,7 @@ function mapMysqlValues(parsedValues: RegexFields) {
     ["details.ssl", parsedValues.params?.ssl],
     [
       "details.additional-options",
-      objectToString(parsedValues.params ?? {}, ["ssl"]),
+      objectToString(parsedValues.params, ["ssl"]),
     ],
   ]);
   return fieldsMap;
@@ -132,7 +139,7 @@ function mapPostgresValues(parsedValues: RegexFields) {
     ["details.ssl", parsedValues.params?.ssl],
     [
       "details.additional-options",
-      objectToString(parsedValues.params ?? {}, ["ssl"]),
+      objectToString(parsedValues.params, ["ssl"]),
     ],
   ]);
   return fieldsMap;
@@ -147,7 +154,7 @@ function mapPrestoValues(parsedValues: RegexFields) {
     ["details.ssl", parsedValues.params?.SSL],
     [
       "details.additional-options",
-      objectToString(parsedValues.params ?? {}, ["SSL"]),
+      objectToString(parsedValues.params, ["SSL"]),
     ],
   ]);
 
@@ -159,7 +166,7 @@ function mapPrestoValues(parsedValues: RegexFields) {
 }
 
 export function mapSnowflakeValues(parsedValues: RegexFields) {
-  const { db, warehouse } = parsedValues.params ?? {};
+  const { db, warehouse } = parsedValues.params;
   const fieldsMap = new Map<string, string | boolean | undefined>([
     ["details.account", parsedValues.host],
     ["details.db", db],
@@ -167,7 +174,7 @@ export function mapSnowflakeValues(parsedValues: RegexFields) {
     ["details.user", parsedValues.username],
     [
       "details.additional-options",
-      objectToString(parsedValues.params ?? {}, ["db", "warehouse"]),
+      objectToString(parsedValues.params, ["db", "warehouse"]),
     ],
   ]);
 
@@ -188,10 +195,7 @@ function mapSparkSqlValues(parsedValues: RegexFields) {
     ["details.host", parsedValues.host ?? parsedValues.params?.Server],
     ["details.port", parsedValues.port],
     ["details.dbname", parsedValues.database],
-    [
-      "details.jdbc-flags",
-      objectToString(parsedValues.params ?? {}, ["Server"]),
-    ],
+    ["details.jdbc-flags", objectToString(parsedValues.params, ["Server"])],
   ]);
 
   if (fieldsMap.get("details.jdbc-flags")) {
@@ -220,7 +224,7 @@ function mapSqlServerValues(parsedValues: RegexFields) {
     ["details.ssl", parsedValues.params?.encrypt],
     [
       "details.additional-options",
-      objectToString(parsedValues.params ?? {}, [
+      objectToString(parsedValues.params, [
         "databaseName",
         "instanceName",
         "username",
@@ -249,12 +253,7 @@ function mapStarburstTrinoValues(parsedValues: RegexFields) {
     ["details.roles", parsedValues.params?.roles],
     [
       "details.additional-options",
-      objectToString(parsedValues.params ?? {}, [
-        "SSL",
-        "roles",
-        "user",
-        "password",
-      ]),
+      objectToString(parsedValues.params, ["SSL", "roles", "user", "password"]),
     ],
   ]);
 
@@ -274,7 +273,7 @@ function mapVerticaValues(parsedValues: RegexFields) {
     ["details.password", parsedValues.params?.password],
     [
       "details.additional-options",
-      objectToString(parsedValues.params ?? {}, ["user", "password"]),
+      objectToString(parsedValues.params, ["user", "password"]),
     ],
   ]);
 
@@ -326,9 +325,13 @@ export function mapDatabaseValues(
  * @returns The semicolon-separated string.
  */
 function objectToString(
-  obj: Record<string, string>,
+  obj: Record<string, string> | undefined,
   filterProperties: Array<string> = [],
 ) {
+  if (!obj) {
+    return "";
+  }
+
   return Object.entries(obj)
     .filter(([key]) => !filterProperties.includes(key))
     .map(([key, value]) => `${key}=${value}`)
