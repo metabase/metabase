@@ -6,6 +6,7 @@
    [compojure.route :as route]
    [metabase-enterprise.transforms.core :as transforms]
    [metabase.api.util.handlers :as handlers]
+   [metabase.driver :as driver]
    [metabase.server.core :as server]
    [metabase.util :as u]
    [metabase.util.json :as json]
@@ -39,12 +40,14 @@
   (prn "handling transform post")
   (let [success? (.tryAcquire semaphore)]
     (if success?
-      (let [{:keys [work-id mb-source] :as body} (:body request)
+      (let [{:keys [driver transform-details opts mb-source] :as body} (:body request)
+            work-id -1
             run-id (transforms/track-start! work-id "transform" mb-source)]
         (.submit executor
                  ^Runnable #(try
-                              (-> (assoc body :run-id run-id)
-                                  transforms/execute-transform!)
+                              (driver/execute-transform! (keyword driver)
+                                                         (update transform-details :transform-type keyword)
+                                                         opts)
                               (transforms/track-finish! run-id)
                               (catch Throwable t
                                 (log/error t "Error executing transform")

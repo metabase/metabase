@@ -1112,8 +1112,21 @@
   drivers.
 
   Drivers that support any of the `:transforms/...` features must implement this method."
-  {:added "0.56.0", :arglists '([driver connection-details queries])}
+  {:added "0.57.0", :arglists '([driver connection-details queries])}
   dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmulti execute-transform!
+  "Executes a transform.
+
+  Drivers that support any of the `:transforms/...` features must implement this method for the appropriate transform
+  types."
+  {:added "0.57.0",
+   :arglists '([driver
+                {:keys [transform-type connection-details query output-table] :as _transform-details}
+                {:keys [overwrite?] :as _opts}])}
+  (fn [driver transform-details _opts]
+    [(dispatch-on-initialized-driver driver) (:transform-type transform-details)])
   :hierarchy #'hierarchy)
 
 (defmulti connection-details

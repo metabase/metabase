@@ -109,6 +109,19 @@
   nil)
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                              Transforms                                                        |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defmethod driver/execute-transform! [:sql :table]
+  [driver {:keys [connection-details query output-table]} {:keys [overwrite?]}]
+  (let [driver (keyword driver)
+        queries (cond->> [(driver/compile-transform driver
+                                                    {:query query
+                                                     :output-table output-table})]
+                  overwrite? (cons (driver/compile-drop-table driver output-table)))]
+    {:rows-affected (last (driver/execute-raw-queries! driver connection-details queries))}))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Convenience Imports                                               |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
