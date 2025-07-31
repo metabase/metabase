@@ -6,12 +6,7 @@ export const SDK_BUNDLE_SCRIPT_DATA_ATTRIBUTE_PASCAL_CASED =
 export const SDK_BUNDLE_SCRIPT_LOADING_EVENT_NAME = "sdk-bundle-script-loading";
 
 export const SDK_BUNDLE_NOT_STARTED_LOADING_MESSAGE =
-  // eslint-disable-next-line no-literal-metabase-strings -- error message
-  "Error loading Metabase Embedding SDK. Please verify that all SDK components are wrapped in the `MetabaseProvider` component.";
+  "Error loading the Embedding Analytics SDK. Ensure all SDK components are wrapped in the Provider component.";
 
 export const SDK_BUNDLE_LOADING_ERROR_MESSAGE =
-  // eslint-disable-next-line no-literal-metabase-strings -- error message
-  "Error loading Metabase Embedding SDK. Please verify that\n" +
-  // eslint-disable-next-line no-literal-metabase-strings -- error message
-  "        `authConfig.metabaseInstanceUrl` is correct and that the Metabase\n" +
-  "        instance is reachable.";
+  "Error loading the Embedding Analytics SDK. Verify the instance URL is correct and reachable.";
