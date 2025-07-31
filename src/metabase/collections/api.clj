@@ -1392,6 +1392,34 @@
   ;; finally, return the updated object
   (collection-detail (t2/select-one :model/Collection :id id)))
 
+(api.macros/defendpoint :delete "/:id"
+  "Deletes a collection permanently"
+  [{:keys [id]} :- [:map
+                    [:id ms/PositiveInt]]]
+  (api/check-403 api/*is-superuser?*)
+  (let [collection (t2/select-one :model/Collection id)
+        parent-id   (:parent_id (t2/hydrate collection :parent_id))
+        parent (if parent-id
+                 (t2/select-one :model/Collection parent-id)
+                 collection/root-collection)
+        old-children-location (collection/children-location collection)
+        new-children-location (collection/children-location parent)]
+    (api/check-400 (:archived collection)
+                   "Collection must be trashed before deletion.")
+    (api/check-400 (nil? (:namespace collection))
+                   "Collections in non-nil namespaces cannot be deleted.")
+    ;; Shouldn't happen, because they can't be archived either... but juuuuust in case.
+    (api/check-400 (nil? (:personal_owner_id collection))
+                   "Personal collections cannot be deleted.")
+    (t2/with-transaction [_tx]
+      ;; First, move all children (along with their children) that were archived directly OUT of this collection
+      (doseq [child (t2/select :model/Collection
+                               :location [:like (str old-children-location "%")]
+                               :archived_directly true)]
+        (collection/move-collection! child new-children-location))
+      ;; Now we can safely delete this collection and anything left under it.
+      (t2/delete! :model/Collection :id id))))
+
 (api.macros/defendpoint :get "/:id/items"
   "Fetch a specific Collection's items with the following options:
 
