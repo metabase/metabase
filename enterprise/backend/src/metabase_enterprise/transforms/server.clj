@@ -81,13 +81,13 @@
 
 (defonce ^:private instance (atom nil))
 
-(defn- stop! []
+(defn stop! []
   (when @instance
     (prn "stopping transforms server")
     (.stop ^QueuedThreadPool @instance)
     (reset! instance nil)))
 
-(defn- start!
+(defn start!
   ([] (start! {}))
   ([opts]
    (stop!)

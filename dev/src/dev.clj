@@ -194,6 +194,16 @@
   (stop!)
   (start!))
 
+(defn start-worker!
+  "Start metabase worker"
+  []
+  ((requiring-resolve 'metabase-enterprise.transforms.server/start!) {:dev true}))
+
+(defn stop-worker!
+  "Stop metabase worker"
+  []
+  ((requiring-resolve 'metabase-enterprise.transforms.server/stop!)))
+
 (defn ns-unmap-all
   "Unmap all interned vars in a namespace. Reset the namespace to a blank slate! Perfect for when you rename everything
   and want to make sure you didn't miss a reference or when you redefine a multimethod.
