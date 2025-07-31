@@ -1,6 +1,6 @@
 import type { WithRouterProps } from "react-router";
 
-import { DashCardQuestionDownloadButton } from "metabase/dashboard/components/DashCard/DashCardQuestionDownloadButton";
+import { PublicOrEmbeddedDashCardMenu } from "metabase/dashboard/components/DashCard/PublicOrEmbeddedDashCardMenu";
 import { DASHBOARD_DISPLAY_ACTIONS } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/constants";
 import { useDashboardLocationSync } from "metabase/dashboard/containers/DashboardApp/use-dashboard-location-sync";
 import { DashboardContextProvider } from "metabase/dashboard/context";
@@ -74,10 +74,7 @@ export const PublicOrEmbeddedDashboardPage = (props: WithRouterProps) => {
           isQuestionCard(dashcard.card) &&
           !!result?.data &&
           !result?.error && (
-            <DashCardQuestionDownloadButton
-              result={result}
-              dashcard={dashcard}
-            />
+            <PublicOrEmbeddedDashCardMenu result={result} dashcard={dashcard} />
           )
         }
         dashboardActions={DASHBOARD_DISPLAY_ACTIONS}
