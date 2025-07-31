@@ -262,6 +262,7 @@
     peridot/peridot              {:git/url "https://github.com/piranha/peridot.git"
                                   :sha "db627c627db3b527a63caf472f0422e4cbfdf574"} ; mocking Ring requests; waiting for upstream release of commit 0fc7c01 (explicit charset)
     pjstadig/humane-test-output  {:mvn/version "0.11.0"}
+    refactor-nrepl/refactor-nrepl {:mvn/version "3.11.0"}                   ; refactoring helpers for cider
     reifyhealth/specmonstah      {:mvn/version "2.1.0"
                                   :exclusions  [org.clojure/clojure
                                                 org.clojure/clojurescript]} ; lets you write test fixtures that are clear, concise, and easy to maintain (clojure.spec)

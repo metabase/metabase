@@ -8,13 +8,15 @@
    [metabase.classloader.core :as classloader]
    [metabase.core.bootstrap]
    [metabase.util :as u]
-   [nrepl.server :as nrepl-server]))
+   [nrepl.server :as nrepl-server]
+   [refactor-nrepl.middleware]))
 
 (set! *warn-on-reflection* true)
 
 (comment
   metabase.core.bootstrap/keep-me
-  hashp.preload/keep-me)
+  hashp.preload/keep-me
+  refactor-nrepl.middleware/keep-me)
 
 ;; Load all user.clj files (including the system-wide one).
 (when *file* ; Ensure we don't load ourselves recursively, just in case.
@@ -94,6 +96,7 @@
        :port port
        :bind "0.0.0.0"
        ;; this handler has cider middlewares installed:
-       :handler cider-nrepl/cider-nrepl-handler)))
+       :handler (apply nrepl-server/default-handler
+                       (conj cider-nrepl/cider-middleware 'refactor-nrepl.middleware/wrap-refactor)))))
   ((requiring-resolve 'dev/start!))
   (deref (promise)))
