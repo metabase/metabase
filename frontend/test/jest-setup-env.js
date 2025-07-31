@@ -1,7 +1,7 @@
 import "@testing-library/jest-dom";
 import fetchMock from "fetch-mock";
 
-fetchMock.config.fallbackToNetwork = false;
+// fetchMock.config.fallbackToNetwork = false;
 
 afterEach(() => {
   fetchMock.restore();
