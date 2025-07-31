@@ -77,14 +77,6 @@
   [_search-ctx]
   search.config/all-models)
 
-;; NOTE if you remove this you need to also modify filter-read-permitted to handle indexed-entity docs.
-;; See the corresponding note in metabase-enterprise.semantic-search.index/filter-read-permitted.
-(defn- remove-indexed-entities
-  "Remove indexed-entities from `document-reducible`"
-  [document-reducible]
-  (eduction (remove (comp #{"indexed-entity"} :model))
-            document-reducible))
-
 (defmethod search.engine/update! :search.engine/semantic
   [_ document-reducible]
   (try
