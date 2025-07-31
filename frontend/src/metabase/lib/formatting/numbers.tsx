@@ -1,4 +1,3 @@
-import Humanize from "humanize-plus";
 import type { ReactNode } from "react";
 
 import { COMPACT_CURRENCY_OPTIONS, getCurrencySymbol } from "./currency";
@@ -263,15 +262,17 @@ function _formatNumberCompact(
       }
     }
   } else if (typeof value === "number") {
-    // 1 => 1
-    // 1000 => 1K
     const isDefaultDecimalCount =
       options.maximumFractionDigits ===
       DEFAULT_NUMBER_OPTIONS.maximumFractionDigits;
-    formatted = Humanize.compactInteger(
-      Math.round(value),
-      isDefaultDecimalCount ? 1 : options.maximumFractionDigits,
-    );
+    const decimals =
+      options.maximumFractionDigits == null
+        ? 1
+        : isDefaultDecimalCount
+          ? 1
+          : options.maximumFractionDigits;
+
+    formatted = compactNumber(value, decimals);
   } else {
     formatted = PRECISION_NUMBER_FORMATTER.format(value);
   }
@@ -346,4 +347,19 @@ function multiply(a: number | bigint, b: number) {
   } else {
     return Number(a) * b;
   }
+}
+
+function compactNumber(value: number, decimals: number): string {
+  const numberFormat = new Intl.NumberFormat("en", {
+    notation: "compact",
+    useGrouping: false,
+    maximumFractionDigits: decimals,
+    minimumFractionDigits: decimals,
+  });
+  let formatted = numberFormat.format(value);
+  // Match legacy casing for thousands
+  if (formatted.endsWith("K")) {
+    formatted = formatted.replace("K", "k");
+  }
+  return formatted;
 }
