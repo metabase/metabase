@@ -4,14 +4,9 @@
    [clojure.test :refer :all]
    [metabase-enterprise.semantic-search.index :as semantic.index]
    [metabase-enterprise.semantic-search.test-util :as semantic.tu]
-<<<<<<< HEAD
-   [metabase.test :as mt]))
-=======
    [metabase.collections.models.collection :as collection]
    [metabase.test :as mt]
-   [metabase.util :as u]
-   [next.jdbc :as jdbc]))
->>>>>>> 07a878edc19 (Fix collection filter impl)
+   [metabase.util :as u]))
 
 (use-fixtures :once #'semantic.tu/once-fixture)
 
