@@ -33,12 +33,11 @@ import {
 } from "metabase/api/table";
 import EditableText from "metabase/common/components/EditableText";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/LoadingAndErrorWrapper";
-import { POST } from "metabase/lib/api";
 import { formatValue } from "metabase/lib/formatting/value";
 import { useDispatch } from "metabase/lib/redux";
 import { question } from "metabase/lib/urls";
 import { Box, Flex, Group, Stack, Text, Tooltip } from "metabase/ui/components";
-import { ActionIcon, Button } from "metabase/ui/components/buttons";
+import { Button } from "metabase/ui/components/buttons";
 import { Icon } from "metabase/ui/components/icons";
 import { Relationships } from "metabase/visualizations/components/ObjectDetail/ObjectRelationships";
 import type ForeignKey from "metabase-lib/v1/metadata/ForeignKey";
@@ -166,7 +165,6 @@ export function TableDetailViewInner({
     updateSection,
     removeSection,
     handleDragEnd,
-    replaceAllSections,
   } = useDetailViewSections(initialSections);
 
   const sectionsOrOverride = isListView
@@ -291,26 +289,6 @@ export function TableDetailViewInner({
     });
   }, [dispatch, rows, tableId, isEdit]);
 
-  const [isGenerating, setIsGenerating] = useState(false);
-  const handleGenerateConfiguration = async () => {
-    setIsGenerating(true);
-    try {
-      const response = await POST("/api/ee/metabot-tools/table-view-config")({
-        table_id: tableId,
-        view_type: "detail",
-      });
-
-      if (response.success && response.config?.object_view?.sections) {
-        replaceAllSections(response.config.object_view.sections);
-      } else {
-        console.error("Failed to generate configuration:", response.error);
-      }
-    } catch (error) {
-      console.error("Error generating configuration:", error);
-    } finally {
-      setIsGenerating(false);
-    }
-  };
 
   const nameIndex = columns.findIndex(isEntityName);
   // const nameColumn = columns[nameIndex];
@@ -406,23 +384,7 @@ export function TableDetailViewInner({
               overflowY: "auto",
             }}
           >
-            <Flex justify="space-between" align="center" mb="xs" pb="sm">
-              <Text fw={600} size="lg">{t`Detail view settings`}</Text>
-              <ActionIcon
-                variant="filled"
-                color="brand"
-                size="md"
-                loading={isGenerating}
-                onClick={handleGenerateConfiguration}
-                aria-label={t`Generate with AI`}
-                style={{
-                  background:
-                    "linear-gradient(135deg, var(--mb-color-brand) 0%, var(--mb-color-brand-light) 100%)",
-                }}
-              >
-                <Icon name="ai" size={18} />
-              </ActionIcon>
-            </Flex>
+            <Text fw={600} size="lg" mb="xs" pb="sm">{t`Detail view settings`}</Text>
 
             <DetailViewSidebar
               columns={columns}

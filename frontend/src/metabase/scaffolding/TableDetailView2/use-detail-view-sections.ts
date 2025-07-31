@@ -60,16 +60,11 @@ export function useDetailViewSections(
     }
   };
 
-  const replaceAllSections = (newSections: ObjectViewSectionSettings[]) => {
-    setSections(newSections);
-  };
-
   return {
     sections,
     createSection,
     removeSection,
     updateSection,
     handleDragEnd,
-    replaceAllSections,
   };
 }

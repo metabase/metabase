@@ -13,7 +13,6 @@ import {
 } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PaginationControls } from "metabase/common/components/PaginationControls";
-// import { POST } from "metabase/lib/api";
 import { useDispatch } from "metabase/lib/redux";
 import { isSyncInProgress } from "metabase/lib/syncing";
 import { Label } from "metabase/metadata/components/FieldOrderPicker/Label";
@@ -119,7 +118,6 @@ export const TableListView = ({ location, params }: Props) => {
   );
   const [searchQuery, setSearchQuery] = useState("");
   const [isFilterPickerOpen, setIsFilterPickerOpen] = useState(false);
-  // const [isGeneratingAI, setIsGeneratingAI] = useState(false);
 
   const handleViewChange = (view: "table" | "list" | "gallery") => {
     setSettings((settings) => ({
@@ -195,60 +193,6 @@ export const TableListView = ({ location, params }: Props) => {
     setDataQuery(newQuery);
   };
 
-  // const handleGenerateAIConfig = async () => {
-  //   if (!table) {
-  //     return;
-  //   }
-
-  //   setIsGeneratingAI(true);
-  //   try {
-  //     const viewType =
-  //       settings.list_view.view === "table"
-  //         ? "table"
-  //         : settings.list_view.view === "list"
-  //           ? "list"
-  //           : "gallery";
-  //     const response = await POST("/api/ee/metabot-tools/table-view-config")({
-  //       table_id: table.id,
-  //       view_type: viewType,
-  //     });
-
-  //     if (response.success && response.config) {
-  //       if (viewType === "table" && response.config.list_view) {
-  //         setSettings((settings) => ({
-  //           ...settings,
-  //           list_view: {
-  //             ...settings.list_view,
-  //             table: {
-  //               ...settings.list_view.table,
-  //               ...response.config.list_view,
-  //             },
-  //           },
-  //         }));
-  //       } else if (
-  //         (viewType === "list" || viewType === "gallery") &&
-  //         response.config.object_view?.sections
-  //       ) {
-  //         const key = viewType as "list" | "gallery";
-  //         setSettings((settings) => ({
-  //           ...settings,
-  //           list_view: {
-  //             ...settings.list_view,
-  //             [key]: {
-  //               sections: response.config.object_view.sections,
-  //             },
-  //           },
-  //         }));
-  //       }
-  //     } else {
-  //       console.error("Failed to generate configuration:", response.error);
-  //     }
-  //   } catch (error) {
-  //     console.error("Error generating configuration:", error);
-  //   } finally {
-  //     setIsGeneratingAI(false);
-  //   }
-  // };
 
   useMount(() => {
     dispatch(closeNavbar());
