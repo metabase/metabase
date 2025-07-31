@@ -60,13 +60,13 @@ Permission levels include:
 
 View data permission settings apply to different levels in your database:
 
-| View data permission | Database | Schema | Table |
-| -------------------- | -------- | ------ | ----- |
-| Can view             | ✅       | ✅     | ✅    |
-| Granular\*           | ✅       | ✅     | ❌    |
-| Sandboxed            | ❌       | ❌     | ✅    |
-| Impersonated         | ✅       | ❌     | ❌    |
-| Blocked              | ✅       | ✅     | ✅    |
+| View data permission    | Database | Schema | Table |
+| ----------------------- | -------- | ------ | ----- |
+| Can view                | ✅       | ✅     | ✅    |
+| Granular\*              | ✅       | ✅     | ❌    |
+| Row and column security | ❌       | ❌     | ✅    |
+| Impersonated            | ✅       | ❌     | ❌    |
+| Blocked                 | ✅       | ✅     | ✅    |
 
 \* The "Granular" setting is not itself a type of permission; it just signals that permissions are set at a level below the current level. For example, you can select "Granular" at a schema level to set permissions per table for tables in that schema.
 

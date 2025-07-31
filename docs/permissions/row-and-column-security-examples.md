@@ -10,8 +10,8 @@ redirect_from:
 
 [Row and column security](./row-and-column-security.md) let you:
 
-- Restrict **rows** using a [basic sandbox](./row-and-column-security.md#row-level-security-filter-by-a-column-in-the-table).
-- Restrict **columns** (and rows) using a [custom sandbox](./row-and-column-security.md#custom-row-and-column-security-use-a-saved-question-to-create-a-custom-view-of-a-table).
+- [Restrict **rows**](./row-and-column-security.md#row-level-security-filter-by-a-column-in-the-table).
+- [Restrict **columns** (and rows)](./row-and-column-security.md#custom-row-and-column-security-use-a-saved-question-to-create-a-custom-view-of-a-table).
 
 ## Setup for all examples below
 
@@ -29,42 +29,42 @@ The examples below use the Sample database included with Metabase. Here's the ba
 
 5. **Add Mr. Beer to the Customers group**: See [adding people to groups](../people-and-groups/managing.md#adding-people-to-groups).
 
-6. **Create a collection that is only viewable by Admins.**. Call it "Admin collection". We'll use this collection to store SQL questions that we use to sandbox tables in examples 2 and 3. See [Collection permissions](./collections.md).
+6. **Create a collection that is only viewable by Admins.**. Call it "Admin collection". We'll use this collection to store SQL questions that we use to secure tables in examples 2 and 3. See [Collection permissions](./collections.md).
 
-## Basic sandbox setup - filtering rows based on user attributes
+## Filtering rows based on user attributes
 
-In this example, we’ll sandbox our `Orders` table so that anyone in our Customers group will only be able to see rows in the Orders table where the `User ID` column matches the person's `user_id` attribute.
+In this example, we’ll secure our `Orders` table so that anyone in our Customers group will only be able to see rows in the Orders table where the `User ID` column matches the person's `user_id` attribute.
 
 1. **Go to the Admin settings > Permissions > data**. Click on the "Customers" group.
 
 2. **Set View data to Granular**. For the Sample Database, set the Customer group's [View data](./data.md#view-data-permissions) to "Granular". Setting to "Granular" will allow us to set up permissions on individual tables for the Customer group.
 
-3. **Sandbox the Orders and People tables**. Here, we'll set the View data permissions on the `Orders` and `People` tables to "Sandboxed". And since we want people to self-serve their data (by asking questions, creating dashboards, etc.), we'll also set their [Create queries](../permissions/data.md#create-queries-permissions) permission to "Query builder only."
+3. **Add row and column security to the Orders and People tables**. Here, we'll set the View data permissions on the `Orders` and `People` tables to "Row and column security". And since we want people to self-serve their data (by asking questions, creating dashboards, etc.), we'll also set their [Create queries](../permissions/data.md#create-queries-permissions) permission to "Query builder only."
 
-![Grant sandboxed access](images/grant-sandboxed-access.png)
+![Set row and column security](./images/apply-row-and-column-security.png)
 
 4. **Filter by a column for each table.** For each table, Metabase will ask us "How do you want to filter this table for users in this group?". In each case, we'll keep the default selection: "Filter by a column on this table." For the `Orders` table, we'll filter by the `User ID` column, which we'll set equal to the `user_id` attribute for people in the Customers group.
 
-![Sandbox settings](images/select-user-attribute.png)
+![Select user attribute](images/select-user-attribute.png)
 
 For the `People` table, we'll filter by the `ID` column, which we'll set equal to that same `user_id` attribute.
 
 5. **Save your changes**. Otherwise, all is for naught.
 
-### Testing out the basic sandbox
+### Testing out the row security
 
-To test out Mr. Beer's sandbox, we’ll open up a new incognito/private browser window and log in using Mr. Beer's account.
+To test out Mr. Beer's view of the world, we’ll open up a new incognito/private browser window and log in using Mr. Beer's account.
 
 1. Log in as Cloyd Beer.
 2. Click **Browse** > **Databases**.
 3. Click on the **Orders** table.
 4. Confirm that Metabase displays only the orders that Mr. Beer placed, that is, orders associated with the User ID of `2499`.
 
-If Mr. Beer views any charts, dashboards, or even automated [X-ray explorations](../exploration-and-organization/x-rays.md) that include the sandboxed `Orders` data, Metabase will also filter those results to show only the data Mr. Beer is permitted to see. When Mr. Beer uses the query builder to ask new questions, his results will be limited to the sandboxed data.
+If Mr. Beer views any charts, dashboards, or even automated [X-ray explorations](../exploration-and-organization/x-rays.md) that include the secured `Orders` data, Metabase will also filter those results to show only the data Mr. Beer is permitted to see. When Mr. Beer uses the query builder to ask new questions, his results will be limited to the filtered data.
 
-## Custom sandbox setups
+## Using a question to define a custom view of a table
 
-The second way you can create a sandbox is by using a saved question to define a customized view of a table to display. When someone with sandboxed access to a table queries that table, behind the scenes Metabase will instead use the saved question you created as the source data for their query.
+You can set up row and column security so that when someone in that group queries the table, behind the scenes Metabase will instead use the question you created as the source data for their query.
 
 You can:
 
@@ -80,39 +80,38 @@ In this example, we have a table called `People` that we want to trim down so th
 1. **Create a query that limits the columns in the People table.** Using the native/SQL editor, we'll write a query that only returns the columns in that table that we _do_ want our Customers group to see, like this:
 
 ```sql
-  ID,
-  Name,
-  'Created At',
-  State
+SELECT
+  id AS "ID",
+  name AS "Name",
+  created_at AS "Created At",
+  state AS "State"
 FROM
   People
 ```
 
 Here are the results:
 
-![Filtering question](images/advanced-example-1-filtering-question.png)
+![Filtering question](images/filtering-question.png)
 
 We'll call this question "Filtered people table". Save it to the "Admins collection" you created in the setup (or any collection that only Admins have access to).
 
-2. **Use a saved question to create a custom view for this table**: We'll go to the Permissions section and grant this group sandboxed access to this table. This time we'll select the second option, "Use a saved question to create a custom view for this table", and select the saved question we just created ("Filtered people table"), like so:
+2. **Use a SQL question to create a custom view for this table**: We'll go to the Permissions section and grant this group row and column secuity to this table. This time we'll select the second option, "Use a saved question to create a custom view for this table", and select the question we just created ("Filtered people table"), like so:
 
-![Sandbox options](images/advanced-example-1-sandbox-modal.png)
+![Using a question to create a custom view](images/question-modal.png)
 
 3. **Save changes**, lest our toil matter not.
 
 4. **Verify things are working correctly**. We can log in as Mr. Beer, and when we go to open up the `People` table, we should see that Mr. Beer can instead see the results of the filtering question.
 
-When Mr. Beer views a chart that uses data from this sandboxed table, Metabase will also apply the filtering. **If the chart uses any columns excluded by the sandboxed table, the chart will NOT load for Mr. Beer.**
+When Mr. Beer views a chart that uses data from this secured table, Metabase will also apply the filtering. **If the chart uses any columns excluded by the secured table, the chart will NOT load for Mr. Beer.**
 
 ## Custom example 2: Filtering rows and columns
 
-If we want to specify which columns _and_ rows people can view, we can sandbox a table based on a SQL question with a variable, and associate that variable with a user attribute. To do that, we'll give our Customers group a custom view of the `Orders` table, but only let each person see rows based on their `user_id` user attribute.
+If we want to specify which columns _and_ rows people can view, we can apply row and column security to a table based on a SQL question with a variable, and associate that variable with a user attribute. To do that, we'll give our Customers group a custom view of the `Orders` table, but only let each person see rows based on their `user_id` user attribute.
 
 1. **Create a SQL question with a variable**. We'll create a query that selects only some of the columns from the `Orders` table, and then add a `WHERE` clause with a variable that we can associate with Cloyd Beer's `user_id` user attribute.
 
-![Filtering question](images/advanced-example-2-filtering-question.png)
-
-And here's the code:
+Here's the code:
 
 ```sql
 {% raw %}
@@ -132,18 +131,16 @@ WHERE
 
 Save it to the "Admins collection" you created in the setup (or any collection that only Admins have access to).
 
-2. **Set up the sandbox**: Return to the **Permissions** tab. Select Cloyd Beer's Customer group, and set the **View data** access for the `Orders` table to **Sandboxed**. Select **Use a saved question to create a custom view for this table**. Open up the sandboxed access modal and select the second option and select my filtering question, we'll see an additional section which allows me to map the variable we defined in our question with a user attribute:
-
-![Sandboxing options](images/advanced-example-2-sandboxing-options.png)
+2. **Create the custom view**: Return to the **Permissions** tab. Select Cloyd Beer's Customer group, and set the **View data** access for the `Orders` table to **Row and column security**. Select **Use a saved question to create a custom view for this table**. Open up the row and column security modal and select the second option. Select the filtering question, we'll see an additional section which allows us to map the variable we defined in our question with a user attribute:
 
 3. **Save your changes**. Or abandon all hope.
 
-4. **Verify the sandbox**: Now, when we log in as Mr. Beer and look at the `Orders` table, Mr. Beer will only see the columns we included in the filtering question, and the rows are filtered as specified by the variable in the question's `WHERE` clause:
+4. **Verify the permissions are working**: Now, when we log in as Mr. Beer and look at the `Orders` table, Mr. Beer will only see the columns we included in the filtering question, and the rows are filtered as specified by the variable in the question's `WHERE` clause:
 
 ![Results](images/advanced-example-2-results.png)
 
 ## Further reading
 
-- [Basic sandboxes: setting row-level permissions](https://www.metabase.com/learn/metabase-basics/administration/permissions/data-sandboxing-row-permissions)
-- [Custom sandboxes: limiting access to columns](https://www.metabase.com/learn/metabase-basics/administration/permissions/data-sandboxing-column-permissions)
+- [Setting row-level permissions](https://www.metabase.com/learn/metabase-basics/administration/permissions/data-sandboxing-row-permissions)
+- [Custom views: limiting access to columns](https://www.metabase.com/learn/metabase-basics/administration/permissions/data-sandboxing-column-permissions)
 - [Configuring permissions for embedding](../permissions/embedding.md)

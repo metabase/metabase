@@ -9,7 +9,7 @@ redirect_from:
 
 {% include plans-blockquote.html feature="Row and column security" %}
 
-Row and column security lets you give granular permissions to rows and columns for different groups of people. You can sandbox what data a group [can view](./data.md#can-view-data-permission), as well as what data a group [can query](./data.md#create-queries-permissions) with the query builder.
+Row and column security lets you give granular permissions to rows and columns for different groups of people. You can change what data a group [can view](./data.md#can-view-data-permission), as well as what data a group [can query](./data.md#create-queries-permissions) with the query builder.
 
 You can use row and column security to set up [self-service analytics](https://www.metabase.com/learn/metabase-basics/embedding/multi-tenant-self-service-analytics), so that each of your customers can only view the rows that match their customer ID. For example, if you have an Accounts table with information about your customers, you can add permissions to the table so that each customer only sees the data relevant to them.
 
@@ -66,9 +66,9 @@ You can use a question to filter tables to:
 - A [group](../people-and-groups/managing.md#groups) of people to add row security.
 - [User attributes](../people-and-groups/managing.md#adding-a-user-attribute) for each person in the group.
 
-A basic sandbox displays a filtered table, in place of an original table, to a specific group. How Metabase filters that table depends on the value in each person's user attribute.
+Row security displays a filtered table, in place of an original table, to a specific group. How Metabase filters that table depends on the value in each person's user attribute.
 
-For example, you can set up a basic sandbox so that:
+For example, you can set up a row security so that:
 
 - Someone with the user attribute with key of "plan" and a value of "Basic" will see a version of the Accounts table with a filter for `Plan = "Basic"` (that is, only the rows where the Plan column matches the value "Basic").
 - Someone with a "plan" user attribute set to "Premium" will see a different version of the Accounts table with the filter `Plan = "Premium"` applied.
@@ -79,28 +79,28 @@ For example, you can set up a basic sandbox so that:
 
 Metabase uses the user attribute key to look up the user attribute value for a specific person. User attribute keys can be mapped to parameters in Metabase.
 
-The **user attribute value** must be an exact, case-sensitive match for the filter value of a sandboxed table. For example, if you're creating a [basic sandbox](#row-level-security-filter-by-a-column-in-the-table) on the Accounts table with the filter `Plan = "Basic"`, make sure that you enter "Basic" as the user attribute value. If you set the user attribute value to lowercase "basic" (a value which doesn't exist in the Plan column of the Accounts table), the sandboxed person will get an empty result instead of the sandboxed table.
+The **user attribute value** must be an exact, case-sensitive match for the filter value. For example, if you add row security to the Accounts table with the filter `Plan = "Basic"`, make sure that you enter "Basic" as the user attribute value. If you set the user attribute value to lowercase "basic" (a value which doesn't exist in the Plan column of the Accounts table), the person will get an empty result instead of the table.
 
 Examples of user attributes in play:
 
-- [Restricting rows in basic sandboxes](./row-and-column-security-examples.md#basic-sandbox-setup---filtering-rows-based-on-user-attributes)
-- [Restricting rows in custom sandboxes](./row-and-column-security-examples.md#custom-example-2-filtering-rows-and-columns)
+- [Row security](./row-and-column-security-examples.md#filtering-rows-based-on-user-attributes)
+- [Restricting rows and columns](./row-and-column-security-examples.md#custom-example-2-filtering-rows-and-columns)
 - [Displaying custom text in Markdown dashboard cards](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/dashboards/markdown#custom-url-with-a-sandboxing-attribute)
 
 ## Adding row-level security
 
 1. Make sure to do the [prerequisites for row security](#prerequisites-for-row-security) first.
 2. Go to **Admin settings** > **Permissions**.
-3. Select the database and table that you want to sandbox.
-4. Find the group that you want to put in the sandbox.
+3. Select the database and table that you want to secure.
+4. Find the group that you want to put in the secure.
 5. Click on the dropdown under **View data** for that group.
-6. Select "Sandboxed".
+6. Select "Row and column security".
 7. Click the dropdown under **Column** and enter the column to filter the table on, such as "Plan".
 8. Click the dropdown under **User attribute** and enter the user attribute **key**, such as "Plan".
 
 > If you have SQL questions that query data with row-level security, make sure to move all of those questions to admin-only collections. For more info, see [You cannot secure the rows or columns of SQL results](#you-cannot-secure-the-rows-or-columns-of-sql-results).
 
-You can find a sample basic sandbox setup in the [Row and column security examples](./row-and-column-security-examples.md).
+Check out [row and column security examples](./row-and-column-security-examples.md).
 
 ## Prerequisites for column-level security
 
@@ -113,7 +113,7 @@ You can find a sample basic sandbox setup in the [Row and column security exampl
 
 Metabase will display the results of the question in place of an original table to a particular group.
 
-**Use a SQL question** to define the exact rows and columns to be included in the sandbox. Avoid using a query builder (GUI) question, as you might accidentally expose extra data, since GUI questions can include data from other questions or models.
+**Use a SQL question** to define the exact rows and columns to be included in the custom view. Avoid using a query builder (GUI) question, as you might accidentally expose extra data, since GUI questions can include data from other questions or models.
 
 > Make sure to save the SQL question in an admin-only collection ([collection permissions](../permissions/collections.md) set to **No access** for all groups except Administrators). For more info, see [You cannot secure the rows or columns of SQL results](#you-cannot-secure-the-rows-or-columns-of-sql-results).
 
@@ -173,16 +173,18 @@ In step 2 of the [row restriction setup](#restricting-rows-with-user-attributes-
 WHERE plan = {%raw%}{{ plan_variable }}{%endraw%}
 ```
 
-In steps 9-10 of the [row restriction setup](#restricting-rows-with-user-attributes-using-a-sql-variable) above, you're telling Metabase to map the SQL variable `plan_variable` to a **user attribute key** (such as "User's Plan"). Metabase will use the key to look up the specific **user attribute value** (such as "Basic") associated with a person's Metabase account. When that person logs into Metabase and uses the sandboxed table, they'll see the query result that is filtered on:
+In steps 9-10 of the [row restriction setup](#restricting-rows-with-user-attributes-using-a-sql-variable) above, you're telling Metabase to map the SQL variable `plan_variable` to a **user attribute key** (such as "User's Plan"). Metabase will use the key to look up the specific **user attribute value** (such as "Basic") associated with a person's Metabase account. When that person logs into Metabase and uses the secured table, they'll see the query result that is filtered on:
 
 ```sql
 WHERE plan = "Basic"
 ```
 
-Note that the parameters must be required for SQL questions used to create a custom sandbox. E.g., you cannot use an optional parameter; the following won't work:
+Note that the parameters must be required for SQL questions used to create a custom views. E.g., you cannot use an optional parameter; the following won't work:
 
 ```sql
-[[WHERE plan = {%raw%}{{ plan_variable }}{%endraw%}]]
+{%raw%}
+[[WHERE plan = {{ plan_variable }}]]
+{%endraw%}
 ```
 
 Learn more about [SQL parameters](../questions/native-editor/sql-parameters.md)
@@ -229,7 +231,7 @@ Say that you've set up column security on the Accounts table to hide the Email c
 To prevent the Email column from being exposed via a SQL question:
 
 - Put any SQL questions that include the Email column in a separate collection.
-- Set the [collection permissions](../permissions/collections.md) to **No access** for sandboxed groups that should not see the Email column.
+- Set the [collection permissions](../permissions/collections.md) to **No access** for groups with row and column security set up to hide the Email column.
 
 [Collection permissions](../permissions/collections.md) must be used to prevent secured groups from viewing SQL questions that reference secured tables. 
 

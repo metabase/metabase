@@ -22,7 +22,7 @@ Impersonation operates at the database level. In a database engine, setting the 
 
 ### Row and column security only sets permissions for query builder questions
 
-Sandboxing operates at the Metabase level. Since Metabase can't parse SQL queries to find out what data people are allowed to view, row and column security only applies to questions composed in the query builder (where Metabase can interpret the queries).
+Row and column security operates at the Metabase level. Since Metabase can't parse SQL queries to find out what data people are allowed to view, row and column security only applies to questions composed in the query builder (where Metabase can interpret the queries).
 
 ## Example use case for impersonation
 
