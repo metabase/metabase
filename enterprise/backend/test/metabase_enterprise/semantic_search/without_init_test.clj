@@ -3,9 +3,10 @@
    [clojure.test :refer :all]
    [metabase-enterprise.semantic-search.core :as semantic]
    [metabase-enterprise.semantic-search.db :as semantic.db]
-   [metabase-enterprise.semantic-search.index :as semantic.index]
    [metabase-enterprise.semantic-search.test-util :as semantic.tu]
    [metabase.test :as mt]))
+
+(use-fixtures :once #'semantic.tu/once-fixture)
 
 ;; When booting a new install from a fresh app db, we can wind up getting calls into the search backend from things
 ;; like loading the sample or audit db content before search has been initialized, and therefore before receiving an
@@ -14,12 +15,13 @@
 (defn- without-init! [test-func]
   (mt/with-premium-features #{:semantic-search}
     (try
+      (semantic.tu/cleanup-index-metadata! semantic.tu/db semantic.tu/mock-index-metadata)
       (with-redefs [semantic.db/data-source (atom nil)
                     semantic/get-index-metadata (constantly semantic.tu/mock-index-metadata)
                     semantic/get-configured-embedding-model (constantly semantic.tu/mock-embedding-model)]
         (test-func))
       (finally
-        (semantic.index/drop-index-table! semantic.tu/db semantic.tu/mock-index)))))
+        (semantic.tu/cleanup-index-metadata! semantic.tu/db semantic.tu/mock-index-metadata)))))
 
 (deftest reindex!-without-init!-test
   (without-init!
@@ -30,10 +32,9 @@
 
 (deftest update-index!-without-init!-test
   (without-init!
-   #(testing "update-index! works without init!"
-      (is (= {"card" 1, "dashboard" 1}
-             (semantic/update-index! (semantic.tu/mock-documents))))
-      (semantic.tu/check-index-has-mock-docs))))
+   #(testing "update-index! is a no-op without init!"
+      (is (nil? (semantic/update-index! (semantic.tu/mock-documents))))
+      (is (not (semantic.tu/table-exists-in-db? (:table-name semantic.tu/mock-index)))))))
 
 (deftest delete-from-index!-without-init!-test
   (without-init!
