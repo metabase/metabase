@@ -591,6 +591,7 @@
           metabase.lib.metadata.result-metadata
           metabase.lib.normalize
           metabase.lib.options
+          metabase.lib.parse
           metabase.lib.query
           metabase.lib.schema
           metabase.lib.schema.actions

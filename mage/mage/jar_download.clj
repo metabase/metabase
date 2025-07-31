@@ -124,13 +124,17 @@
   "Returns the latest version for a given version string, or a map with {:branch branch-name}."
   [version]
   (cond
-    (re-matches #"\d+\.\d+\.\d+" version) version
+    (re-matches #"(v?)\d+\.\d+\.\d+.+" version) (str/replace version #"^v" "")
     (re-matches #"\d+" version) (str "1." (latest-patch-version version))
     (branch-exists? version) {:branch version}
     :else (throw (ex-info (str "Invalid version format + branch not found:" version)
                           {:version version}))))
 
 (comment
+  (find-latest-version "1.56.0-beta")
+  ;; => "1.56.0-beta"
+  (find-latest-version "v1.56.0-beta")
+  ;; => "1.56.0-beta"
   (find-latest-version "50")
   ;; => "1.50.36"
   (find-latest-version "1.50.35")

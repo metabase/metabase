@@ -5,6 +5,7 @@
    [clojure.test :refer :all]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+   [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
    [metabase.driver.util :as driver.u]
@@ -271,3 +272,46 @@
                   all-tables-sans-one (table-names (driver/do-with-resilient-connection driver/*driver* (mt/id) driver/describe-database))]
               ;; there is at maximum one missing table
               (is (>= 1 (count (set/difference all-tables all-tables-sans-one)))))))))))
+
+(defn- run-retry-have-select-privilege!
+  [probe-errors query-canceled probe-error-fn]
+  (let [{schema :schema, table-name :name} (t2/select-one :model/Table (mt/id :checkins))]
+    (sql-jdbc.execute/do-with-connection-with-options
+     driver/*driver* (mt/db) nil
+     (fn [^Connection conn]
+       (let [select-probes (atom 0)]
+         (with-redefs [sql-jdbc.describe-database/execute-select-probe-query
+                       (fn [_driver conn' [sql]]
+                         (let [n (swap! select-probes inc)]
+                           (when (< n probe-errors)
+                             (probe-error-fn conn' sql))))
+                       driver/query-canceled? (constantly query-canceled)]
+           [(sql-jdbc.sync/have-select-privilege? driver/*driver* conn schema table-name)
+            @select-probes]))))))
+
+(deftest retry-have-select-privilege-test
+  (mt/test-drivers (mt/normal-driver-select
+                    {:+parent :sql-jdbc
+                     :+fns [#(identical? (get-method sql-jdbc.sync/have-select-privilege? :sql-jdbc)
+                                         (get-method sql-jdbc.sync/have-select-privilege? %))]
+                     :-features [:table-privileges]})
+    (letfn [(probe-error-fn [conn sql]
+              (.close conn)
+              (.prepareStatement conn sql))]
+      (testing "we will retry syncing a table once if the connection is closed"
+        (let [[result probes] (run-retry-have-select-privilege! 2 false probe-error-fn)]
+          (is (true? result))
+          (is (= 2 probes))))
+      (testing "we will only retry syncing a table if the connection is closed"
+        (let [[result probes] (run-retry-have-select-privilege! 2 false (fn [_conn _sql]
+                                                                          (throw (ex-info "not connection closed error" {}))))]
+          (is (false? result))
+          (is (= 1 probes))))
+      (testing "we won't retry syncing a table more than once if the connection is closed"
+        (let [[result probes] (run-retry-have-select-privilege! 3 false probe-error-fn)]
+          (is (false? result))
+          (is (= 2 probes))))
+      (testing "we won't retry syncing a table if the probe query was canceled"
+        (let [[result probes] (run-retry-have-select-privilege! 3 true probe-error-fn)]
+          (is (true? result))
+          (is (= 1 probes)))))))
