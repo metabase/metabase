@@ -1,8 +1,9 @@
-import { SdkQuestion } from "embedding-sdk/components/public/SdkQuestion/SdkQuestion";
 import { Center, Icon, Popover, type PopoverProps } from "metabase/ui";
 
 import { useSdkQuestionContext } from "../../context";
 import { ToolbarButton } from "../util/ToolbarButton";
+
+import { DownloadWidget } from "./DownloadWidget";
 
 /**
  * @expand
@@ -43,7 +44,7 @@ export const DownloadWidgetDropdown = ({
         />
       </Popover.Target>
       <Popover.Dropdown>
-        <SdkQuestion.DownloadWidget w="18rem" />
+        <DownloadWidget w="18rem" />
       </Popover.Dropdown>
     </Popover>
   );
