@@ -124,13 +124,13 @@ describe("EditableDashboard", () => {
     const dataPickerDataCalls = fetchMock.calls("path:/api/search");
     expect(dataPickerDataCalls).toHaveLength(2);
 
-    // Should make a call to counts the data sources (tables and models)
+    // Should make a call to count the data sources (tables and models)
     const countDataSourceCall = dataPickerDataCalls.filter(([url]) =>
       url.includes("models=dataset&models=table"),
     );
     expect(countDataSourceCall).toHaveLength(1);
 
-    // Should make a call to counts models
+    // Should make a call to count models
     const countModelCall = dataPickerDataCalls.filter(
       ([url]) =>
         url.includes("models=dataset") && !url.includes("models=table"),
@@ -197,17 +197,10 @@ describe("EditableDashboard", () => {
     ).toBeInTheDocument();
 
     const dataPickerDataCalls = fetchMock.calls("path:/api/search");
-    expect(dataPickerDataCalls).toHaveLength(2);
-
-    // Find the call that fetches only models (should be the filtered data sources call)
-    const modelOnlyCall = dataPickerDataCalls.find(
-      ([url]) =>
-        url.includes("models=dataset") && !url.includes("models=table"),
-    );
-    expect(modelOnlyCall).toBeDefined();
-    const [modelOnlyCallUrl] = modelOnlyCall;
-    expect(modelOnlyCallUrl).toContain("models=dataset");
-    expect(modelOnlyCallUrl).not.toContain("models=table");
+    expect(dataPickerDataCalls).toHaveLength(1);
+    const [[dataPickerDataCallUrl]] = dataPickerDataCalls;
+    expect(dataPickerDataCallUrl).toContain("models=dataset");
+    expect(dataPickerDataCallUrl).not.toContain("models=table");
   });
 });
 

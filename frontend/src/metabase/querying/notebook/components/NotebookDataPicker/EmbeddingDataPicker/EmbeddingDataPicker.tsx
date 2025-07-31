@@ -76,7 +76,7 @@ export function EmbeddingDataPicker({
     isFetching: isSourceModelFetching,
   } = useSourceEntityCollectionId(query);
 
-  const effectiveEntityTypes = useMemo(() => {
+  const entityTypes = useMemo(() => {
     if (userDefinedEntityTypes.length > 0) {
       return userDefinedEntityTypes;
     }
@@ -100,13 +100,11 @@ export function EmbeddingDataPicker({
     dataSourceCountData.total < USE_SIMPLE_DATA_PICKER_IF_LESS_THAN_N_ITEMS;
 
   if (shouldUseSimpleDataPicker) {
-    const filteredEntityTypes = effectiveEntityTypes.filter((entityType) =>
+    const filteredEntityTypes = entityTypes.filter((entityType) =>
       ALLOWED_SIMPLE_DATA_PICKER_ENTITY_TYPES.includes(entityType),
     );
     const simpleDataPickerEntityTypes =
-      filteredEntityTypes.length > 0
-        ? filteredEntityTypes
-        : effectiveEntityTypes;
+      filteredEntityTypes.length > 0 ? filteredEntityTypes : entityTypes;
     return (
       <PLUGIN_EMBEDDING.SimpleDataPicker
         filterByDatabaseId={canChangeDatabase ? null : databaseId}
@@ -147,9 +145,9 @@ export function EmbeddingDataPicker({
       selectedCollectionId={
         normalizedCard?.collection_id ?? sourceModelCollectionId
       }
-      canSelectModel={effectiveEntityTypes.includes("model")}
-      canSelectTable={effectiveEntityTypes.includes("table")}
-      canSelectQuestion={effectiveEntityTypes.includes("question")}
+      canSelectModel={entityTypes.includes("model")}
+      canSelectTable={entityTypes.includes("table")}
+      canSelectQuestion={entityTypes.includes("question")}
       triggerElement={
         <DataPickerTarget
           tableInfo={tableInfo}
