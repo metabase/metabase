@@ -23,7 +23,7 @@ export const EmojiExtension = Emoji.configure({
     allowSpaces: false,
 
     render: () => {
-      let component;
+      let component: ReactRenderer | undefined;
 
       function repositionComponent(clientRect) {
         if (!component || !component.element) {
@@ -36,10 +36,10 @@ export const EmojiExtension = Emoji.configure({
           },
         };
 
-        computePosition(virtualElement, component.element, {
+        computePosition(virtualElement, component.element as HTMLElement, {
           placement: "bottom-start",
         }).then((pos) => {
-          Object.assign(component.element.style, {
+          Object.assign((component?.element as HTMLElement).style, {
             left: `${pos.x}px`,
             top: `${pos.y}px`,
             position: pos.strategy === "fixed" ? "fixed" : "absolute",

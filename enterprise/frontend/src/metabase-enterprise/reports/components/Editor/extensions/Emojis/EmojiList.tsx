@@ -1,38 +1,46 @@
-import React, {
+import cx from "classnames";
+import {
   forwardRef,
+  useCallback,
   useEffect,
   useImperativeHandle,
   useState,
 } from "react";
 
+import { Button, Card } from "metabase/ui";
+
 import Styles from "./EmojiList.module.css";
 
-export const EmojiList = forwardRef(function InnerEmojiList(props, ref) {
+export const EmojiList = forwardRef(function InnerEmojiList(
+  { items, command },
+  ref,
+) {
   const [selectedIndex, setSelectedIndex] = useState(0);
 
-  const selectItem = (index) => {
-    const item = props.items[index];
+  const selectItem = useCallback(
+    (index) => {
+      const item = items[index];
 
-    if (item) {
-      props.command({ name: item.name });
-    }
-  };
+      if (item) {
+        command({ name: item.name });
+      }
+    },
+    [items, command],
+  );
 
-  const upHandler = () => {
-    setSelectedIndex(
-      (selectedIndex + props.items.length - 1) % props.items.length,
-    );
-  };
+  const upHandler = useCallback(() => {
+    setSelectedIndex((index) => (index + items.length - 1) % items.length);
+  }, [setSelectedIndex, items]);
 
-  const downHandler = () => {
-    setSelectedIndex((selectedIndex + 1) % props.items.length);
-  };
+  const downHandler = useCallback(() => {
+    setSelectedIndex((index) => (index + 1) % items.length);
+  }, [setSelectedIndex, items]);
 
-  const enterHandler = () => {
+  const enterHandler = useCallback(() => {
     selectItem(selectedIndex);
-  };
+  }, [selectItem, selectedIndex]);
 
-  useEffect(() => setSelectedIndex(0), [props.items]);
+  useEffect(() => setSelectedIndex(0), [items]);
 
   useImperativeHandle(ref, () => {
     return {
@@ -58,21 +66,24 @@ export const EmojiList = forwardRef(function InnerEmojiList(props, ref) {
   }, [upHandler, downHandler, enterHandler]);
 
   return (
-    <div className={Styles.dropdownMenu}>
-      {props.items.map((item, index) => (
-        <button
-          className={index === selectedIndex ? "is-selected" : ""}
+    <Card withBorder p="sm">
+      {items.map((item, index) => (
+        <Button
+          className={cx({ [Styles.isSelected]: index === selectedIndex })}
+          classNames={{
+            root: Styles.buttonRoot,
+          }}
+          justify="start"
           key={index}
           onClick={() => selectItem(index)}
+          variant="subtle"
+          leftSection={
+            item.fallbackImage ? <img src={item.fallbackImage} /> : item.emoji
+          }
         >
-          {item.fallbackImage ? (
-            <img src={item.fallbackImage} align="absmiddle" />
-          ) : (
-            item.emoji
-          )}
-          :{item.name}:
-        </button>
+          {`:${item.name}:`}
+        </Button>
       ))}
-    </div>
+    </Card>
   );
 });
