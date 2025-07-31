@@ -48,14 +48,18 @@
  {actions
   {:team "Workflows"
    :api  #{metabase.actions.api
+           metabase.actions.args
            metabase.actions.core
-           metabase.actions.init}
+           metabase.actions.init
+           metabase.actions.types}
    :uses #{analytics
            api
            collections
            driver
+           events
            legacy-mbql
            lib
+           lib-be
            model-persistence
            models
            permissions
@@ -1433,6 +1437,19 @@
            query-permissions
            query-processor
            settings
+           util
+           warehouse-schema}}
+
+  enterprise/action-v2
+  {:team "Workflows"
+   :api  #{metabase-enterprise.action-v2.api
+           metabase-enterprise.action-v2.core
+           metabase-enterprise.action-v2.init}
+   :uses #{actions
+           api
+           driver
+           lib
+           query-processor
            util
            warehouse-schema}}
 
