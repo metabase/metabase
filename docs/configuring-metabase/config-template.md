@@ -122,20 +122,27 @@ config:
     ee-openai-api-key: null
     ee-openai-model: gpt-4-turbo-preview
     email-from-address: notifications@metabase.com
+    email-from-address-override: notifications@metabase.com
     email-from-name: null
     email-max-recipients-per-second: null
     email-reply-to: null
     email-smtp-host: null
+    email-smtp-host-override: null
     email-smtp-password: null
+    email-smtp-password-override: null
     email-smtp-port: null
+    email-smtp-port-override: null
     email-smtp-security: none
+    email-smtp-security-override: ssl
     email-smtp-username: null
+    email-smtp-username-override: null
     embedding-app-origins-interactive: null
     embedding-app-origins-sdk: localhost:*
     embedding-homepage: hidden
     embedding-secret-key: null
     enable-embedding-interactive: false
     enable-embedding-sdk: false
+    enable-embedding-simple: false
     enable-embedding-static: false
     enable-password-login: true
     enable-pivoted-exports: true
@@ -251,6 +258,7 @@ config:
     site-url: null
     slack-app-token: null
     slack-bug-report-channel: metabase-bugs
+    smtp-override-enabled: false
     source-address-header: X-Forwarded-For
     sql-jdbc-fetch-size: 500
     ssh-heartbeat-interval-sec: 180
