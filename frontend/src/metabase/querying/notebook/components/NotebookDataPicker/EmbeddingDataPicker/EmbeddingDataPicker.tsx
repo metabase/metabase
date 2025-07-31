@@ -104,7 +104,9 @@ export function EmbeddingDataPicker({
       ALLOWED_SIMPLE_DATA_PICKER_ENTITY_TYPES.includes(entityType),
     );
     const simpleDataPickerEntityTypes =
-      filteredEntityTypes.length > 0 ? filteredEntityTypes : entityTypes;
+      filteredEntityTypes.length > 0
+        ? filteredEntityTypes
+        : DEFAULT_EMBEDDING_ENTITY_TYPES;
     return (
       <PLUGIN_EMBEDDING.SimpleDataPicker
         filterByDatabaseId={canChangeDatabase ? null : databaseId}
