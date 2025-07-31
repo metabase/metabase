@@ -4,13 +4,6 @@ import type { EngineKey } from "metabase-types/api/settings";
 
 import type { RegexFields } from "./parseConnectionRegex";
 
-function mapBigQueryValues(parsedValues: RegexFields) {
-  const fieldsMap = new Map<string, string | boolean | undefined>([
-    ["details.project-id", parsedValues.params?.ProjectId],
-  ]);
-  return fieldsMap;
-}
-
 function mapAthenaValues(parsedValues: RegexFields) {
   const region = parsedValues.host?.match(/athena\.(.*)\.amazonaws\.com/)?.[1];
   const fieldsMap = new Map<string, string | boolean | undefined>([
@@ -22,12 +15,16 @@ function mapAthenaValues(parsedValues: RegexFields) {
 }
 
 function mapRedshiftValues(parsedValues: RegexFields) {
+  const { database, host, port } = parsedValues;
+  const { UID, PWD } = parsedValues.params ?? {};
+
   const fieldsMap = new Map<string, string | boolean | undefined>([
-    ["details.host", parsedValues.host],
-    ["details.port", parsedValues.port],
-    ["details.db", parsedValues.database],
-    ["details.user", parsedValues.params?.UID],
-    ["details.password", parsedValues.params?.PWD],
+    ["name", database],
+    ["details.db", database],
+    ["details.host", host],
+    ["details.port", port],
+    ["details.user", UID],
+    ["details.password", PWD],
     ["details.additional-options", objectToString(parsedValues.params)],
   ]);
 
@@ -38,17 +35,27 @@ function mapRedshiftValues(parsedValues: RegexFields) {
   return fieldsMap;
 }
 
-function mapClickhouseValues(parsedValues: RegexFields) {
+function mapBigQueryValues(parsedValues: RegexFields) {
+  const { ProjectId } = parsedValues.params ?? {};
   const fieldsMap = new Map<string, string | boolean | undefined>([
-    ["details.host", parsedValues?.host],
-    ["details.port", parsedValues?.port],
-    ["details.user", parsedValues?.username ?? parsedValues?.params?.user],
-    [
-      "details.password",
-      parsedValues?.password ?? parsedValues?.params?.password,
-    ],
-    ["details.dbname", parsedValues?.database],
-    ["details.ssl", parsedValues?.params?.ssl],
+    ["name", ProjectId],
+    ["details.project-id", ProjectId],
+  ]);
+  return fieldsMap;
+}
+
+function mapClickhouseValues(parsedValues: RegexFields) {
+  const { host, port, database, username } = parsedValues;
+  const { user, password, ssl } = parsedValues.params ?? {};
+
+  const fieldsMap = new Map<string, string | boolean | undefined>([
+    ["name", database],
+    ["details.host", host],
+    ["details.port", port],
+    ["details.user", username ?? user],
+    ["details.password", password],
+    ["details.dbname", database],
+    ["details.ssl", ssl],
     [
       "details.additional-options",
       objectToString(parsedValues?.params ?? {}, ["user", "password"]),
@@ -64,13 +71,16 @@ function mapClickhouseValues(parsedValues: RegexFields) {
 }
 
 function mapDatabricksValues(parsedValues: RegexFields) {
+  const { host, port } = parsedValues;
+  const { httpPath, OAuthSecret, OAuth2ClientId, PWD } =
+    parsedValues.params ?? {};
   const fieldsMap = new Map<string, string | boolean | undefined>([
-    ["details.host", parsedValues.host],
-    ["details.port", parsedValues.port],
-    ["details.http-path", parsedValues.params?.httpPath],
-    ["details.oauth-secret", parsedValues.params?.OAuthSecret],
-    ["details.client-id", parsedValues.params?.OAuth2ClientId],
-    ["details.token", parsedValues.params?.PWD],
+    ["details.host", host],
+    ["details.port", port],
+    ["details.http-path", httpPath],
+    ["details.oauth-secret", OAuthSecret],
+    ["details.client-id", OAuth2ClientId],
+    ["details.token", PWD],
   ]);
 
   if (
@@ -94,20 +104,23 @@ function mapDatabricksValues(parsedValues: RegexFields) {
 }
 
 function mapDruidValues(parsedValues: RegexFields) {
+  const { host, port } = parsedValues;
   const fieldsMap = new Map<string, string | boolean | undefined>([
-    ["details.host", parsedValues.host],
-    ["details.port", parsedValues.port],
+    ["details.host", host],
+    ["details.port", port],
   ]);
   return fieldsMap;
 }
 
 function mapMysqlValues(parsedValues: RegexFields) {
+  const { host, port, database, username, password } = parsedValues;
   const fieldsMap = new Map<string, string | boolean | undefined>([
-    ["details.host", parsedValues.host],
-    ["details.port", parsedValues.port],
-    ["details.dbname", parsedValues.database],
-    ["details.user", parsedValues.username],
-    ["details.password", parsedValues.password],
+    ["details.host", host],
+    ["details.port", port],
+    ["details.dbname", database],
+    ["name", database],
+    ["details.user", username],
+    ["details.password", password],
     ["details.ssl", parsedValues.params?.ssl],
     [
       "details.additional-options",
@@ -134,6 +147,7 @@ function mapPostgresValues(parsedValues: RegexFields) {
     ["details.host", parsedValues.host],
     ["details.port", parsedValues.port],
     ["details.dbname", parsedValues.database],
+    ["name", parsedValues.database],
     ["details.user", parsedValues.username],
     ["details.password", parsedValues.password],
     ["details.ssl", parsedValues.params?.ssl],
@@ -149,6 +163,7 @@ function mapPrestoValues(parsedValues: RegexFields) {
   const fieldsMap = new Map<string, string | boolean | undefined>([
     ["details.host", parsedValues.host],
     ["details.port", parsedValues.port],
+    ["name", parsedValues.catalog],
     ["details.catalog", parsedValues.catalog],
     ["details.schema", parsedValues.schema],
     ["details.ssl", parsedValues.params?.SSL],
@@ -166,12 +181,14 @@ function mapPrestoValues(parsedValues: RegexFields) {
 }
 
 export function mapSnowflakeValues(parsedValues: RegexFields) {
-  const { db, warehouse } = parsedValues.params;
+  const { host, database, username } = parsedValues;
+  const { db, warehouse } = parsedValues.params ?? {};
   const fieldsMap = new Map<string, string | boolean | undefined>([
-    ["details.account", parsedValues.host],
-    ["details.db", db],
+    ["details.account", host],
+    ["details.db", database ?? db],
+    ["name", database ?? db],
     ["details.warehouse", warehouse],
-    ["details.user", parsedValues.username],
+    ["details.user", username],
     [
       "details.additional-options",
       objectToString(parsedValues.params, ["db", "warehouse"]),
@@ -191,10 +208,12 @@ export function mapSnowflakeValues(parsedValues: RegexFields) {
 }
 
 function mapSparkSqlValues(parsedValues: RegexFields) {
+  const { host, port, database } = parsedValues;
   const fieldsMap = new Map<string, string | boolean | undefined>([
-    ["details.host", parsedValues.host ?? parsedValues.params?.Server],
-    ["details.port", parsedValues.port],
-    ["details.dbname", parsedValues.database],
+    ["details.host", host ?? parsedValues.params?.Server],
+    ["details.port", port],
+    ["details.dbname", database],
+    ["name", database],
     ["details.jdbc-flags", objectToString(parsedValues.params, ["Server"])],
   ]);
 
@@ -214,14 +233,18 @@ function mapSqliteValues(parsedValues: RegexFields) {
 }
 
 function mapSqlServerValues(parsedValues: RegexFields) {
+  const { host, port, database } = parsedValues;
+  const { databaseName, instanceName, username, password, encrypt } =
+    parsedValues.params ?? {};
   const fieldsMap = new Map<string, string | boolean | undefined>([
-    ["details.host", parsedValues.host],
-    ["details.port", parsedValues.port],
-    ["details.db", parsedValues.database ?? parsedValues.params?.databaseName],
-    ["details.instance", parsedValues.params?.instanceName],
-    ["details.user", parsedValues.params?.username],
-    ["details.password", parsedValues.params?.password],
-    ["details.ssl", parsedValues.params?.encrypt],
+    ["details.host", host],
+    ["details.port", port],
+    ["details.db", database ?? databaseName],
+    ["name", database ?? databaseName],
+    ["details.instance", instanceName],
+    ["details.user", username],
+    ["details.password", password],
+    ["details.ssl", encrypt],
     [
       "details.additional-options",
       objectToString(parsedValues.params, [
@@ -242,15 +265,18 @@ function mapSqlServerValues(parsedValues: RegexFields) {
 }
 
 function mapStarburstTrinoValues(parsedValues: RegexFields) {
+  const { host, port, catalog, schema } = parsedValues;
+  const { user, password, SSL, roles } = parsedValues.params ?? {};
   const fieldsMap = new Map<string, string | boolean | undefined>([
-    ["details.host", parsedValues.host],
-    ["details.user", parsedValues.params?.user],
-    ["details.password", parsedValues.params?.password],
-    ["details.port", parsedValues.port],
-    ["details.catalog", parsedValues.catalog],
-    ["details.schema", parsedValues.schema],
-    ["details.ssl", parsedValues.params?.SSL],
-    ["details.roles", parsedValues.params?.roles],
+    ["details.host", host],
+    ["details.port", port],
+    ["details.catalog", catalog],
+    ["name", catalog],
+    ["details.schema", schema],
+    ["details.user", user],
+    ["details.password", password],
+    ["details.ssl", SSL],
+    ["details.roles", roles],
     [
       "details.additional-options",
       objectToString(parsedValues.params, ["SSL", "roles", "user", "password"]),
@@ -265,12 +291,16 @@ function mapStarburstTrinoValues(parsedValues: RegexFields) {
 }
 
 function mapVerticaValues(parsedValues: RegexFields) {
+  const { host, port, database } = parsedValues;
+  const { user, password } = parsedValues.params ?? {};
+
   const fieldsMap = new Map<string, string | boolean | undefined>([
-    ["details.host", parsedValues.host],
-    ["details.port", parsedValues.port],
-    ["details.dbname", parsedValues.database],
-    ["details.user", parsedValues.params?.user],
-    ["details.password", parsedValues.params?.password],
+    ["details.host", host],
+    ["details.port", port],
+    ["details.dbname", database],
+    ["name", database],
+    ["details.user", user],
+    ["details.password", password],
     [
       "details.additional-options",
       objectToString(parsedValues.params, ["user", "password"]),
