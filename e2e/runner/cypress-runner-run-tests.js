@@ -24,7 +24,7 @@ const getEmbeddingSdkAppE2eConfig = async ({
   };
 
   const defaultConfig = {
-    browser: "chrome",
+    browser: process.env.CYPRESS_BROWSER ?? "chrome",
     project,
     configFile: "e2e/support/cypress.config.js",
     config: {
@@ -75,7 +75,7 @@ const getHostAppE2eConfig = (suite) => ({
 const configs = {
   e2e: async () => {
     const defaultConfig = {
-      browser: "chrome",
+      browser: process.env.CYPRESS_BROWSER ?? "chrome",
       configFile: "e2e/support/cypress.config.js",
       config: {
         baseUrl: getHost(),
@@ -103,7 +103,7 @@ const configs = {
     const { browser } = await parseArguments(args);
 
     const snapshotConfig = {
-      browser: browser ?? "chrome",
+      browser: process.env.CYPRESS_BROWSER ?? browser ?? "chrome",
       configFile: "e2e/support/cypress-snapshots.config.js",
       config: {
         baseUrl: getHost(),
@@ -118,7 +118,7 @@ const configs = {
     const { browser } = await parseArguments(args);
 
     const sdkComponentConfig = {
-      browser: browser ?? "chrome",
+      browser: process.env.CYPRESS_BROWSER ?? browser ?? "chrome",
       configFile: "e2e/support/cypress-embedding-sdk-component-test.config.js",
       config: {
         baseUrl: getHost(),
