@@ -8,7 +8,7 @@ import * as Urls from "metabase/lib/urls";
 import { PLUGIN_EMBEDDING_IFRAME_SDK_SETUP } from "metabase/plugins";
 import { setOpenModal } from "metabase/redux/ui";
 import { getSetting } from "metabase/selectors/settings";
-import { Box, Icon, Menu } from "metabase/ui";
+import { Badge, Box, Icon, Menu } from "metabase/ui";
 import type { CollectionId } from "metabase-types/api";
 
 import { trackNewMenuItemClicked } from "./analytics";
@@ -98,6 +98,7 @@ const NewItemMenuView = ({
           component={ForwardRefLink}
           to="/embed-iframe"
           leftSection={<Icon name="embed" />}
+          rightSection={<Badge size="xs">{t`Beta`}</Badge>}
         >
           {t`Embed`}
         </Menu.Item>,
