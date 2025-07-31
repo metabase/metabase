@@ -12,4 +12,5 @@
 (t2/deftransforms :model/Transform
   {:source mi/transform-json
    :target mi/transform-json
-   :execution_status mi/transform-keyword})
+   :execution_status mi/transform-keyword
+   :execution_trigger mi/transform-keyword})

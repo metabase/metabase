@@ -27,6 +27,9 @@
    [:schema {:optional true} :string]
    [:name :string]])
 
+(mr/def ::execution-trigger
+  [:enum "none" "global-schedule"])
+
 (comment
   ;; Examples
   [{:id 1
@@ -68,13 +71,13 @@
             [:description {:optional true} [:maybe :string]]
             [:source ::transform-source]
             [:target ::transform-target]
-            [:schedule {:optional true} [:maybe :string]]]]
+            [:execution_trigger {:optional true} ::execution-trigger]]]
   (api/check-superuser)
   (check-database-feature body)
   (when (transforms.util/target-table-exists? body)
     (api/throw-403))
   (t2/insert-returning-instance!
-   :model/Transform (select-keys body [:name :description :source :target :schedule])))
+   :model/Transform (select-keys body [:name :description :source :target :execution_trigger])))
 
 (api.macros/defendpoint :get "/:id"
   [{:keys [id]} :- [:map
@@ -94,7 +97,7 @@
             [:description {:optional true} [:maybe :string]]
             [:source {:optional true} ::transform-source]
             [:target {:optional true} ::transform-target]
-            [:schedule {:optional true} [:maybe :string]]]]
+            [:execution_trigger {:optional true} ::execution-trigger]]]
   (log/info "put transform" id)
   (api/check-superuser)
   (let [old (t2/select-one :model/Transform id)

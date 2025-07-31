@@ -113,6 +113,8 @@
                            :name table-name}}
             resp (mt/user-http-request :crowberto :post 200 "ee/transform" body)]
         (is (=? (assoc body
+                       :execution_trigger "none"
+                       :execution_status "never-executed"
                        :last_started_at nil
                        :last_ended_at nil)
                 (mt/user-http-request :crowberto :get 200 (format "ee/transform/%s" (:id resp)))))))))
@@ -139,7 +141,11 @@
                                   :native {:query query2
                                            :template-tags {}}}}
                  :target {:type "table"
-                          :name table-name}}
+                          :name table-name}
+                 :execution_trigger "global-schedule"
+                 :execution_status "never-executed"
+                 :last_started_at nil
+                 :last_ended_at nil}
                 (mt/user-http-request :crowberto :put 200 (format "ee/transform/%s" (:id resp))
                                       {:name "Gadget Products 2"
                                        :description "Desc"
@@ -147,7 +153,8 @@
                                                 :query {:database (mt/id)
                                                         :type "native"
                                                         :native {:query query2
-                                                                 :template-tags {}}}}})))))))
+                                                                 :template-tags {}}}}
+                                       :execution_trigger "global-schedule"})))))))
 
 (deftest change-target-table-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
@@ -254,7 +261,11 @@
                                                :template-tags {}}}}
                      :target {:type "table"
                               :name table2-name}}]
-        (is (=? updated
+        (is (=? (assoc updated
+                       :execution_trigger "none"
+                       :execution_status "sync-succeeded"
+                       :last_started_at string?
+                       :last_ended_at string?)
                 (mt/user-http-request :crowberto :put 200 (format "ee/transform/%s" transform-id) updated)))
         (test-execution transform-id)
         (is (true? (transforms.util/target-table-exists? original)))

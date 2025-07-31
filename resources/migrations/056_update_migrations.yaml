@@ -285,6 +285,13 @@ databaseChangeLog:
                   constraints:
                     nullable: false
               - column:
+                  name: execution_trigger
+                  type: varchar(32)
+                  remarks: The type of automatic trigger (e.g., 'global-schedule') or 'none'
+                  defaultValue: none
+                  constraints:
+                    nullable:  false
+              - column:
                   name: execution_status
                   type: varchar(32)
                   remarks: The status of the transform's current or last execution
