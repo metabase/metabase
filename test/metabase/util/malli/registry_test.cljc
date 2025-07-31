@@ -76,10 +76,18 @@
     (is (= 1 (count misses))))
 
   (let [misses (with-returning-cache-misses
-                 (is (identical? (mr/explainer (mr/with-key [:fn #(even? %)]))
-                                 (mr/explainer (mr/with-key [:fn #(even? %)]))))
-                 (is (nil? (mr/explain (mr/with-key [:fn #(even? %)]) 2))))]
+                 (is (identical? (mr/explainer (mr/with-key [:fn {:actually :odd?} #(even? (inc %))]))
+                                 (mr/explainer (mr/with-key [:fn {:actually :odd?} #(even? (inc %))]))))
+                 (is (nil? (mr/explain (mr/with-key [:fn {:actually :odd?} #(even? (inc %))]) 3))))]
     (is (= 1 (count misses)))))
+
+(deftest ^:parallel with-key-idempotency-test
+  (is (= (#'mr/schema-cache-key (mr/with-key [:fn (constantly true)]))
+         (#'mr/schema-cache-key (mr/with-key (mr/with-key [:fn (constantly true)])))))
+  (is (= (#'mr/schema-cache-key (mr/with-key [:fn #(even? (inc %))]))
+         (#'mr/schema-cache-key (-> [:fn #(even? (inc %))]
+                                    mr/with-key mr/with-key mr/with-key mr/with-key
+                                    mr/with-key mr/with-key mr/with-key mr/with-key)))))
 
 (deftest ^:parallel resolve-test
   (is (mc/schema? (mr/resolve-schema :int)))

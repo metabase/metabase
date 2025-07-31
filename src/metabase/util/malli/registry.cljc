@@ -73,6 +73,17 @@
                frm))
    form))
 
+(defn- enforce-key-idempotency
+  "Wrapping a schema with [[with-key]] multiple times should be idempotent, so this function
+  removes extra wrapping(s) from a schema form, so that it can be used as a cache key."
+  [form]
+  (let [wrapping-forms #{'with-key 'mr/with-key 'metabase.util.malli.registry/with-key}]
+    (loop [frm form]
+      (if (and (coll? frm)
+               (wrapping-forms (first frm)))
+        (recur (second frm))
+        frm))))
+
 (defmacro with-key
   "Adds `::mr/key` metadata, which is a pr-str'd string of body, to body. Be careful not to call this
   on functions taking parameters, since it uses the shape of the literal body passed to it as a key.
@@ -82,7 +93,10 @@
     If you change `my-schema` to return `:keyword` here, the cache will not invalidate properly."
   [body]
   `(try (with-meta ~body
-                   (assoc (meta ~body) ::key ~(pr-str (stabilize-schema-fn-args body))))
+                   (assoc (meta ~body) ::key ~(-> body
+                                                  enforce-key-idempotency
+                                                  stabilize-schema-fn-args
+                                                  pr-str)))
         (catch Exception _# ~body)))
 
 (def ^:dynamic *cache-miss-hook*
