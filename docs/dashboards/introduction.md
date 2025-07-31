@@ -229,7 +229,7 @@ You can change the width of a dashboard by going into the three dots menu in the
 - **Fixed width** (default). Metabase will restrict the layout to a fixed width in the center of the screen. This fixed width can keep dashboard layouts consistent between smaller laptop screens and larger desktop screens.
 - **Full width**. The layout and cards will expand to take up the full width of the screen.
 
-## Editing dashboard cards 
+## Editing dashboard cards
 
 To edit a card's:
 
@@ -267,7 +267,7 @@ If you want to revert a dashboard card to its original visualization settings (i
 
 1. Go to your dashboard and click the **pencil icon** to go into edit mode.
 2. Hover over the card (question) that you want to edit.
-3. Click the **palette icon** to bring up the visualization settings for that card. 
+3. Click the **palette icon** to bring up the visualization settings for that card.
 4. Click **Reset to defaults** (bottom right).
 5. Click **Done** to save the card's visualization settings.
 6. Click **Save** to save the dashboard.

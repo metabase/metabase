@@ -34,11 +34,11 @@ Row and column security show specific data to each person based on their [user a
 - [Restrict **columns**](#custom-row-and-column-security-use-a-saved-question-to-create-a-custom-view-of-a-table) (as well as rows) for specific people.
 
 | Goal                                           | Row (filter by a column in the table) | Custom (use a saved SQL question) |
-| ---------------------------------------------- | ------------------------------------- | ----------------------------------------- |
-| Restrict rows by filtering on a single column  | ✅                                    | ✅                                        |
-| Restrict rows by filtering on multiple columns | ❌                                    | ✅                                        |
-| Restrict columns                               | ❌                                    | ✅                                        |
-| Edit columns                                   | ❌                                    | ✅                                        |
+| ---------------------------------------------- | ------------------------------------- | --------------------------------- |
+| Restrict rows by filtering on a single column  | ✅                                    | ✅                                |
+| Restrict rows by filtering on multiple columns | ❌                                    | ✅                                |
+| Restrict columns                               | ❌                                    | ✅                                |
+| Edit columns                                   | ❌                                    | ✅                                |
 
 ### Row-level security: filter by a column in the table
 
@@ -53,7 +53,7 @@ For example, you can filter the Accounts table for a group so that:
 
 To **restrict rows _and_ columns**, you can use a saved question to filter the table. When someone views that table, they'll instead see the question's results, not the raw table.
 
-For example, say your original Accounts table includes the columns: `ID`, `Email`, `Plan`, and `Created At`. If you want to hide the Email column, you can create a "Restricted Accounts" SQL question with the columns: `ID`, `Plan`, and `Created At`. 
+For example, say your original Accounts table includes the columns: `ID`, `Email`, `Plan`, and `Created At`. If you want to hide the Email column, you can create a "Restricted Accounts" SQL question with the columns: `ID`, `Plan`, and `Created At`.
 
 You can use a question to filter tables to:
 
@@ -117,7 +117,7 @@ Metabase will display the results of the question in place of an original table 
 
 > Make sure to save the SQL question in an admin-only collection ([collection permissions](../permissions/collections.md) set to **No access** for all groups except Administrators). For more info, see [You cannot secure the rows or columns of SQL results](#you-cannot-secure-the-rows-or-columns-of-sql-results).
 
-### Displaying edited columns 
+### Displaying edited columns
 
 Aside from excluding rows and columns, you can also **display edited columns** (without changing the columns in your database).
 
@@ -127,7 +127,7 @@ If you edit a column, the schema of the SQL question (the question you want to d
 
 You cannot add columns.
 
-## Setting up column security 
+## Setting up column security
 
 1. Make sure to do the [prerequisites](#prerequisites-for-column-level-security) first.
 2. Go to **Admin settings** > **Permissions**.
@@ -233,7 +233,7 @@ To prevent the Email column from being exposed via a SQL question:
 - Put any SQL questions that include the Email column in a separate collection.
 - Set the [collection permissions](../permissions/collections.md) to **No access** for groups with row and column security set up to hide the Email column.
 
-[Collection permissions](../permissions/collections.md) must be used to prevent secured groups from viewing SQL questions that reference secured tables. 
+[Collection permissions](../permissions/collections.md) must be used to prevent secured groups from viewing SQL questions that reference secured tables.
 
 ### Public sharing
 

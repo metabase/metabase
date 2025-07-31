@@ -222,7 +222,7 @@ To change an embedding URL, send a "location" message from your app to Metabase:
 }
 ```
 
-## Group strategies for row and column security 
+## Group strategies for row and column security
 
 If you want multiple people from a single customer account to collaborate on questions and dashboards, you'll need to set up one [group](../people-and-groups/managing.md#groups) per customer account.
 
