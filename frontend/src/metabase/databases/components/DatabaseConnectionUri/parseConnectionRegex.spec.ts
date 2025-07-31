@@ -418,8 +418,7 @@ describe("parseConnectionUriRegex - Starburst", () => {
 
 describe("parseConnectionUriRegex - Vertica", () => {
   it("should parse a Vertica connection strin", () => {
-    const connectionString =
-      "jdbc:vertica://vertica.example.com:1234/databaseName";
+    const connectionString = enginesConfig.get("vertica")?.placeholder;
     const result = parseConnectionUriRegex(connectionString);
     expect(result).toEqual(
       expect.objectContaining({

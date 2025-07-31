@@ -31,6 +31,7 @@ const databaseTestCases = [
       "jdbc:bigquery://https://www.googleapis.com/bigquery/v2:443;ProjectId=MyBigQueryProject;OAuthType=1;",
     expectedFields: [
       { label: "Project ID (override)", value: "MyBigQueryProject" },
+      { label: "Display name", value: "MyBigQueryProject" },
     ],
   },
   {
@@ -41,6 +42,7 @@ const databaseTestCases = [
       { label: "Host", value: "localhost" },
       { label: "Port", value: "8443" },
       { label: "Databases", value: "testdb" },
+      { label: "Display name", value: "testdb" },
       { label: "Username", value: "testuser" },
       { label: "Additional JDBC connection string options", value: "ssl=true" },
       { label: "Use a secure connection (SSL)", value: "on", isChecked: true },
@@ -74,6 +76,7 @@ const databaseTestCases = [
       { label: "Host", value: "host" },
       { label: "Port", value: "3306" },
       { label: "Database name", value: "dbname" },
+      { label: "Display name", value: "dbname" },
       { label: "Username", value: "testuser" },
       { label: "Password", value: "testpass" },
       { label: "Use a secure connection (SSL)", value: "on", isChecked: true },
@@ -98,6 +101,7 @@ const databaseTestCases = [
       { label: "Host", value: "localhost" },
       { label: "Port", value: "5432" },
       { label: "Database name", value: "mydb" },
+      { label: "Display name", value: "mydb" },
       { label: "Username", value: "testuser" },
       { label: "Password", value: "testpass" },
     ],
@@ -110,6 +114,7 @@ const databaseTestCases = [
       { label: "Host", value: "host" },
       { label: "Port", value: "1234" },
       { label: "Catalog", value: "sample-catalog" },
+      { label: "Display name", value: "sample-catalog" },
       { label: "Schema (optional)", value: "sample-schema" },
       { label: "Use a secure connection (SSL)", value: "on", isChecked: true },
       { label: "Additional JDBC options", value: "SSLTrustStorePassword=1234" },
@@ -126,6 +131,7 @@ const databaseTestCases = [
       },
       { label: "Port", value: "5439" },
       { label: "Database name", value: "dev" },
+      { label: "Display name", value: "dev" },
     ],
   },
   {
@@ -138,6 +144,7 @@ const databaseTestCases = [
         value: "example.snowflakecomputing.com",
       },
       { label: "Database name (case sensitive)", value: "maindb" },
+      { label: "Display name", value: "maindb" },
       { label: "Warehouse", value: "mainwarehouse" },
       { label: "Username", value: "testuser" },
       { label: "Password", value: "testpass" },
@@ -171,7 +178,20 @@ const databaseTestCases = [
       { label: "Host", value: "starburst.example.com" },
       { label: "Port", value: "43011" },
       { label: "Catalog", value: "hive" },
+      { label: "Display name", value: "hive" },
       { label: "Schema (optional)", value: "sales" },
+    ],
+  },
+  {
+    engine: "Vertica",
+    connectionString:
+      "jdbc:vertica://vertica.example.com:1234/databaseName?user=jane",
+    expectedFields: [
+      { label: "Host", value: "vertica.example.com" },
+      { label: "Port", value: "1234" },
+      { label: "Database name", value: "databaseName" },
+      { label: "Display name", value: "databaseName" },
+      { label: "Username", value: "jane" },
     ],
   },
 ];

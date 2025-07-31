@@ -110,7 +110,7 @@ export const enginesConfig = new Map<EngineKey, { placeholder: string }>([
     "vertica",
     {
       placeholder:
-        "jdbc:trino://starburst.example.com:43011/hive/sales?user=test&password=secret&SSL=true&roles=system:myrole",
+        "jdbc:vertica://vertica.example.com:1234/databaseName?user=jane",
     },
   ],
 ]);
