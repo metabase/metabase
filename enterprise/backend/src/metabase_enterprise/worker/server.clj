@@ -39,7 +39,7 @@
 
 (defn- handle-transform-put
   [{:keys [params body]}]
-  (log/trace "Handling transform POST request")
+  (log/trace "Handling transform PUT request")
   (if (.tryAcquire semaphore)
     (let [{:keys [run-id]} params
           {:keys [driver transform-details opts mb-source]} (mc/coerce
@@ -67,13 +67,13 @@
 (defn- handle-status-get
   [run-id]
   (log/info "Handling status GET request")
-  (if-let [resp (tracking/get-status (Integer/parseInt run-id) "mb-1")]
+  (if-let [resp (tracking/get-status run-id "mb-1")]
     (response/response resp)
     (-> (response/response "Not found")
         (response/status 404))))
 
 (def ^:private routes
-  (handlers/routes
+  (compojure/routes
    (compojure/GET "/health-check" [] "healthy")
    (compojure/PUT "/transform/:run-id" request (handle-transform-put request))
    (compojure/GET "/status/:run-id" [run-id] (handle-status-get run-id))

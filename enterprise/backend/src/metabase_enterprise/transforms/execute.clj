@@ -51,18 +51,18 @@
 (defn execute-mbql-transform-remote!
   "Execute a transform on a remote worker."
   [driver transform-details opts]
-  (log/info "executing remote transform")
   (let [mb-source mb-id
-        {:keys [run-id]} (json-body (http/put (worker-route "/transform")
-                                              {:form-params {:driver driver
-                                                             :transform-details transform-details
-                                                             :opts opts
-                                                             :mb-source mb-source}
-                                               :content-type :json}))
+        run-id (str (random-uuid))
         ;; timeout after 4 hours
         timeout-limit (+ (System/currentTimeMillis) (* 4 60 60 1000))
         wait 2000]
-    (log/info "started transform execution" (pr-str run-id))
+    (log/info "executing remote transform" (pr-str run-id))
+    (json-body (http/put (worker-route (str "/transform/" run-id))
+                         {:form-params {:driver driver
+                                        :transform-details transform-details
+                                        :opts opts
+                                        :mb-source mb-source}
+                          :content-type :json}))
     (loop []
       (Thread/sleep (long (* wait (inc (- (/ (rand) 5) 0.1)))))
       (log/trace "polling for remote transform" (pr-str run-id) "after wait" wait)
@@ -121,7 +121,6 @@
        ;; start the execution for real
        (try
          (log/info "Executing transform" id "with target" (pr-str target))
-         (println (u/pprint-to-str transform))
          (execute-mbql-transform-inner!
           driver
           {:transform-type (keyword (:type target))
