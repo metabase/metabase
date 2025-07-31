@@ -16,7 +16,11 @@
     color: var(--mb-color-text-light);
   }
 
-  &:hover {
+  &.ignoreHover {
+    cursor: default;
+  }
+
+  &:hover:not(.ignoreHover) {
     color: var(--mb-color-text-hover);
     background-color: var(--mb-color-background-hover);
 
