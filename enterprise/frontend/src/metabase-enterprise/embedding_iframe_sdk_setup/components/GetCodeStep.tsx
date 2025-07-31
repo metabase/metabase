@@ -69,7 +69,7 @@ export const GetCodeStep = () => {
           {authType === "user-session" && (
             <Text size="sm" c="text-medium">
               {/* eslint-disable-next-line no-literal-metabase-strings -- this string is only shown for admins. */}
-              {t`This option lets you test iframe embedding locally using your existing Metabase session cookie. This only works for testing locally, using your admin account and on this browser.`}
+              {t`This option lets you test iframe embedding locally using your existing Metabase session cookie. This only works for testing locally, using your admin account and on this browser. This may not work on Safari and Firefox.`}
             </Text>
           )}
 
