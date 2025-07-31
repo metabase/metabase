@@ -1,3 +1,7 @@
+// This convoluted way of emulating paste is necessary due to how React and Cypress are not
+//  using native events. We're triggering here React onChange events to let know React and Formik of
+//  the new value.
+
 Cypress.Commands.add(
   "paste",
   { prevSubject: "element" },
