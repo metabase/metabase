@@ -13,6 +13,8 @@ export interface SQLPivotSettings {
   "sqlpivot.column_dimension"?: string;
   "sqlpivot.value_columns"?: string | string[];
   "sqlpivot.transpose"?: boolean;
+  "sqlpivot.show_row_aggregation"?: boolean;
+  "sqlpivot.show_column_aggregation"?: boolean;
 }
 
 export function isSQLPivotSensible(data: DatasetData): boolean {
@@ -82,7 +84,16 @@ export function transformSQLDataToPivot(
 
   // If column dimension is selected, create matrix pivot
   if (columnDimensionIndex !== -1) {
-    return transformToMatrixPivot(data, rowColumnIndex, columnDimensionIndex, valueColumnIndexes);
+    const showRowAggregation = settings["sqlpivot.show_row_aggregation"] || false;
+    const showColumnAggregation = settings["sqlpivot.show_column_aggregation"] || false;
+    return transformToMatrixPivot(
+      data, 
+      rowColumnIndex, 
+      columnDimensionIndex, 
+      valueColumnIndexes,
+      showRowAggregation,
+      showColumnAggregation
+    );
   }
 
   // Otherwise use the original pivot logic
@@ -194,6 +205,8 @@ function transformToMatrixPivot(
   rowColumnIndex: number,
   columnDimensionIndex: number,
   valueColumnIndexes: number[],
+  showRowAggregation: boolean = false,
+  showColumnAggregation: boolean = false,
 ) {
   // Matrix pivot: Create traditional pivot table with rows and columns from dimensions
   // Row dimension values become rows, column dimension values become columns
@@ -231,9 +244,19 @@ function transformToMatrixPivot(
     }))
   ];
 
+  // Add row aggregation column if requested
+  if (showRowAggregation) {
+    newCols.push({
+      ...valueColumn,
+      name: "row_aggregation",
+      display_name: "Row Avg",
+    });
+  }
+
   // Create matrix rows
   const matrixRows = uniqueRowValues.map(rowValue => {
     const row = [rowValue]; // Start with row dimension value
+    const rowValues: number[] = []; // Collect values for row aggregation
     
     // Fill in values for each column dimension
     uniqueColumnValues.forEach(columnValue => {
@@ -244,8 +267,22 @@ function transformToMatrixPivot(
       );
       
       // Add the value or null if no match found
-      row.push(dataRow ? dataRow[valueColumnIndexes[0]] : null);
+      const cellValue = dataRow ? dataRow[valueColumnIndexes[0]] : null;
+      row.push(cellValue);
+      
+      // Collect non-null values for aggregation
+      if (cellValue !== null && cellValue !== undefined && !isNaN(Number(cellValue))) {
+        rowValues.push(Number(cellValue));
+      }
     });
+
+    // Add row aggregation if requested
+    if (showRowAggregation) {
+      const rowAverage = rowValues.length > 0 
+        ? rowValues.reduce((sum, val) => sum + val, 0) / rowValues.length 
+        : null;
+      row.push(rowAverage);
+    }
 
     // Add dimension info for click handling
     (row as any)._dimension = {
@@ -256,10 +293,54 @@ function transformToMatrixPivot(
     return row;
   });
 
+  // Add column aggregation row if requested
+  if (showColumnAggregation) {
+    const columnAggregationRow: any[] = ["Column Avg"]; // Start with label
+    
+    // Calculate averages for each column
+    uniqueColumnValues.forEach((_, columnIndex) => {
+      const columnValues: number[] = [];
+      
+      matrixRows.forEach(row => {
+        const cellValue = row[columnIndex + 1]; // +1 to skip row dimension column
+        if (cellValue !== null && cellValue !== undefined && !isNaN(Number(cellValue))) {
+          columnValues.push(Number(cellValue));
+        }
+      });
+      
+      const columnAverage = columnValues.length > 0 
+        ? columnValues.reduce((sum, val) => sum + val, 0) / columnValues.length 
+        : null;
+      columnAggregationRow.push(columnAverage);
+    });
+
+    // Add overall average if row aggregation is also shown
+    if (showRowAggregation) {
+      const allValues: number[] = [];
+      matrixRows.forEach(row => {
+        for (let i = 1; i < row.length - (showRowAggregation ? 1 : 0); i++) {
+          const cellValue = row[i];
+          if (cellValue !== null && cellValue !== undefined && !isNaN(Number(cellValue))) {
+            allValues.push(Number(cellValue));
+          }
+        }
+      });
+      
+      const overallAverage = allValues.length > 0 
+        ? allValues.reduce((sum, val) => sum + val, 0) / allValues.length 
+        : null;
+      columnAggregationRow.push(overallAverage);
+    }
+
+    matrixRows.push(columnAggregationRow as any);
+  }
+
   console.log("Matrix result:", {
     colCount: newCols.length,
     rowCount: matrixRows.length,
-    sampleRow: matrixRows[0]
+    sampleRow: matrixRows[0],
+    showRowAggregation,
+    showColumnAggregation
   });
 
   return {

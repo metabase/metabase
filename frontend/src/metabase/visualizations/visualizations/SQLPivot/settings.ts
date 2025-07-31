@@ -93,4 +93,40 @@ export const SQL_PIVOT_SETTINGS = {
     inline: true,
     default: false,
   },
+
+  "sqlpivot.show_row_aggregation": {
+    get section() {
+      return t`Display`;
+    },
+    get title() {
+      return t`Show row aggregation`;
+    },
+    get description() {
+      return t`Add a column showing the average score for each row`;
+    },
+    widget: "toggle",
+    inline: true,
+    default: false,
+    getHidden: (series: any, settings: any) => {
+      return !settings["sqlpivot.column_dimension"];
+    },
+  },
+
+  "sqlpivot.show_column_aggregation": {
+    get section() {
+      return t`Display`;
+    },
+    get title() {
+      return t`Show column aggregation`;
+    },
+    get description() {
+      return t`Add a row showing the average score for each column`;
+    },
+    widget: "toggle",
+    inline: true,
+    default: false,
+    getHidden: (series: any, settings: any) => {
+      return !settings["sqlpivot.column_dimension"];
+    },
+  },
 }; 
