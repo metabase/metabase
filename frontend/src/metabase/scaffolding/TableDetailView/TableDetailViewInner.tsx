@@ -103,6 +103,7 @@ export function TableDetailViewInner({
     sections,
     createSection,
     updateSection,
+    updateSections,
     removeSection,
     handleDragEnd,
   } = useDetailViewSections(initialSections);
@@ -341,6 +342,7 @@ export function TableDetailViewInner({
               onUpdateRelationshipsDirection={setRelationshipsDirection}
               onCreateSection={createSection}
               onUpdateSection={updateSection}
+              onUpdateSections={updateSections}
               onRemoveSection={removeSection}
               onDragEnd={handleDragEnd}
             />

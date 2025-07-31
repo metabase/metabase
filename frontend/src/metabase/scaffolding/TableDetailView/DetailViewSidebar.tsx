@@ -56,6 +56,7 @@ interface DetailViewSidebarProps {
     id: number,
     update: Partial<ObjectViewSectionSettings>,
   ) => void;
+  onUpdateSections: (sections: ObjectViewSectionSettings[]) => void;
   onRemoveSection: (id: number) => void;
   onDragEnd: (event: any) => void;
 }
@@ -70,6 +71,7 @@ export function DetailViewSidebar({
   onUpdateRelationshipsDirection,
   onCreateSection,
   onUpdateSection,
+  onUpdateSections,
   onRemoveSection,
   onDragEnd,
 }: DetailViewSidebarProps) {
@@ -266,7 +268,9 @@ export function DetailViewSidebar({
     <Dnd
       columns={columns}
       sections={sections}
+      onCreateSection={onCreateSection}
       onUpdateSection={onUpdateSection}
+      onUpdateSections={onUpdateSections}
       onRemoveSection={onRemoveSection}
     />
   );

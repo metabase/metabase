@@ -85,6 +85,7 @@ export function useDetailViewSections(
     createSection,
     removeSection,
     updateSection,
+    updateSections: setSections,
     handleDragEnd,
   };
 }

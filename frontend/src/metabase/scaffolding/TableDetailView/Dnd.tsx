@@ -32,7 +32,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import type React from "react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal, unstable_batchedUpdates } from "react-dom";
 import { t } from "ttag";
 
@@ -44,6 +44,7 @@ import type {
 import { Container, type Props as ContainerProps } from "./Container";
 import { Item } from "./Item";
 import { coordinateGetter as multipleContainersCoordinateGetter } from "./multipleContainersKeyboardCoordinates";
+import { Button, Icon } from "metabase/ui";
 const defaultInitializer = (index: number) => index;
 
 export function createRange<T = number>(
@@ -154,10 +155,12 @@ interface Props {
 
   columns: DatasetColumn[];
   sections: ObjectViewSectionSettings[];
+  onCreateSection: () => void;
   onUpdateSection: (
     id: ObjectViewSectionSettings["id"],
     section: Partial<ObjectViewSectionSettings>,
   ) => void;
+  onUpdateSections: (sections: ObjectViewSectionSettings[]) => void;
   onRemoveSection: (id: ObjectViewSectionSettings["id"]) => void;
 }
 
@@ -185,7 +188,9 @@ export function Dnd({
 
   columns,
   sections,
+  onCreateSection,
   onUpdateSection,
+  onUpdateSections,
   onRemoveSection,
 }: Props) {
   function getSection(id: UniqueIdentifier) {
@@ -218,8 +223,9 @@ export function Dnd({
   }
 
   const [items, setItems] = useState<Items>(() => initialItems ?? getItems());
-  const [containers, setContainers] = useState(
-    Object.keys(items) as UniqueIdentifier[],
+  const containers = useMemo(
+    () => Object.keys(items) as UniqueIdentifier[],
+    [items],
   );
   const [activeId, setActiveId] = useState<UniqueIdentifier | null>(null);
   const lastOverId = useRef<UniqueIdentifier | null>(null);
@@ -235,7 +241,6 @@ export function Dnd({
       ]),
     );
     setItems(items);
-    setContainers(Object.keys(items) as UniqueIdentifier[]);
   }, [sections]);
 
   /**
@@ -425,12 +430,13 @@ export function Dnd({
       }}
       onDragEnd={({ active, over }) => {
         if (active.id in items && over?.id) {
-          setContainers((containers) => {
-            const activeIndex = containers.indexOf(active.id);
-            const overIndex = containers.indexOf(over.id);
+          // setContainers((containers) => {
+          const activeIndex = containers.indexOf(active.id);
+          const overIndex = containers.indexOf(over.id);
 
-            return arrayMove(containers, activeIndex, overIndex);
-          });
+          const newSections = arrayMove(sections, activeIndex, overIndex);
+          onUpdateSections(newSections);
+          // });
         }
 
         const activeContainer = findContainer(active.id);
@@ -459,6 +465,7 @@ export function Dnd({
         }
 
         if (overId === PLACEHOLDER_ID) {
+          debugger;
           const newContainerId = getNextContainerId();
 
           unstable_batchedUpdates(() => {
@@ -520,13 +527,11 @@ export function Dnd({
               columns={columns}
               section={getSection(containerId)}
               onUpdateSection={(update) => {
-                debugger;
                 onUpdateSection(containerId, update);
               }}
               onRemoveSection={
                 sections.length > 1
                   ? () => {
-                      handleRemove(containerId);
                       return onRemoveSection(containerId);
                     }
                   : undefined
@@ -557,6 +562,15 @@ export function Dnd({
           ))}
         </SortableContext>
       </div>
+
+      <Button
+        variant="subtle"
+        size="compact-sm"
+        leftSection={<Icon name="add" />}
+        mt="md"
+        onClick={onCreateSection}
+      >{t`Add group`}</Button>
+
       {createPortal(
         <DragOverlay adjustScale={adjustScale} dropAnimation={dropAnimation}>
           {activeId
@@ -643,12 +657,6 @@ export function Dnd({
           />
         ))}
       </Container>
-    );
-  }
-
-  function handleRemove(containerID: UniqueIdentifier) {
-    setContainers((containers) =>
-      containers.filter((id) => id !== containerID),
     );
   }
 
