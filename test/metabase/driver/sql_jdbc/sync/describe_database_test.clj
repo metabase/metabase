@@ -252,14 +252,6 @@
           (is (= (get-in field-name->field ["humanraceid" :id])
                  (get-in field-name->field ["race\\id" :fk_target_field_id]))))))))
 
-(comment
-
-  (mt/normal-driver-select)
-
-  (mt/set-test-drivers! #{:postgres})
-
-  (tap> 1))
-
 (deftest resilient-to-conn-close?-test
   (testing "checking sync is resilient to connections being closed during [have-select-privilege?]"
     (let [jdbc-describe-database #(identical? (get-method driver/describe-database :sql-jdbc)
