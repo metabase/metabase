@@ -17,7 +17,6 @@ import type {
 import {
   Divider,
   RequiredToggleLabel,
-  SectionLabel,
   SettingsPopoverBody,
   SettingsTriggerIcon,
   ToggleContainer,
@@ -199,11 +198,10 @@ function RequiredInput({
       </ToggleContainer>
       {required && (
         <>
-          <SectionLabel htmlFor={`${id}-default`}>
-            {t`Default value`}
-          </SectionLabel>
           <TextInput
             id={`${id}-default`}
+            label={t`Default value`}
+            data-testid="default-value-input"
             type={getDefaultValueInputType(inputType)}
             w="100%"
             value={defaultValue ?? ""}
