@@ -133,13 +133,8 @@ describe("scenarios > visualizations > maps", () => {
   });
 
   it("should display a pins when a breakout column sets a base-type (metabase#59984)", () => {
-    cy.intercept("/app/tiles/**").as("tiles");
-    
-    // this should not create a 400 error
-    cy.wait("@tiles").then((xhr) => {
-      expect(xhr.response.statusCode).to.equal(200);
-    });
-    
+    cy.intercept("/api/tiles/**").as("tiles");
+
     H.visitQuestionAdhoc({
       display: "map",
       dataset_query: {
@@ -153,25 +148,29 @@ describe("scenarios > visualizations > maps", () => {
               "field",
               PEOPLE.LONGITUDE,
               {
-                "base-type": "text/Float",
+                "base-type": "type/Float",
               },
             ],
             [
               "field",
               PEOPLE.LATITUDE,
               {
-                "base-type": "text/Float",
+                "base-type": "type/Float",
               },
             ],
           ],
-          limit: 1,
         },
       },
       visualization_settings: {
         "map.type": "pin",
-        "table.pivot_column": "LATITUDE",
-        "table.cell_column": "LONGITUDE",
+        "map.latitude_column": "LATITUDE",
+        "map.longitude_column": "LONGITUDE",
       },
+    });
+
+    // this should not create a 400 error
+    cy.wait("@tiles").then((xhr) => {
+      expect(xhr.response.statusCode).to.equal(200);
     });
   });
 

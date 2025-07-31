@@ -5,13 +5,15 @@ import { getTileUrl } from "../lib/map";
 import LeafletMap from "./LeafletMap";
 
 // When base-type is present in the field ref (usually due to a breakout) the call to get
-// tiles will fail because its value of text/Float (for example) gets encoded as test%2FFloat
+// tiles will fail because its value of type/Float (for example) gets encoded as test%2FFloat
 // Jetty URL decodes this to `/` before attempting to parse the URI which results in Jetty
 // reporting an ambiguous path identifier.
 //
 // There may be other problematic field ref options, but this one causes the immediate bug
-const stringifyFieldRef = ([type, key, { ["base-type"]: _, ...restOpts }]) =>
-  encodeURIComponent(JSON.stringify([type, key, restOpts]));
+const stringifyFieldRef = ([type, key, opts]) => {
+  const { ["base-type"]: _, ...restOpts } = !opts ? {} : opts;
+  return encodeURIComponent(JSON.stringify([type, key, restOpts]));
+};
 
 export default class LeafletTilePinMap extends LeafletMap {
   componentDidMount() {
