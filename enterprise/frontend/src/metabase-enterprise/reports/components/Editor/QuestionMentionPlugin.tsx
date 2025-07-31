@@ -2,7 +2,11 @@ import type { Editor } from "@tiptap/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { t } from "ttag";
 
-import { useListRecentsQuery } from "metabase/api";
+import {
+  cardApi,
+  useCreateCardMutation,
+  useListRecentsQuery,
+} from "metabase/api";
 import { QuestionPickerModal } from "metabase/common/components/Pickers/QuestionPicker/components/QuestionPickerModal";
 import Search from "metabase/entities/search";
 import { getName } from "metabase/lib/name";
@@ -92,6 +96,7 @@ export const QuestionMentionPlugin = ({
   editor,
 }: QuestionMentionPluginProps) => {
   const dispatch = useDispatch();
+  const [createCard] = useCreateCardMutation();
   const [showPopover, setShowPopover] = useState(false);
   const [modal, setModal] = useState<"question-picker" | null>(null);
   const [query, setQuery] = useState("");
@@ -229,6 +234,7 @@ export const QuestionMentionPlugin = ({
       setShowPopover(false);
       setMentionRange(null);
       editor.commands.focus();
+      return;
     }
 
     const wrappedItem = Search.wrapEntity(item, dispatch);
@@ -236,6 +242,24 @@ export const QuestionMentionPlugin = ({
 
     if (mentionRange.mode === "embed") {
       try {
+        // Fetch the full card data using RTK Query
+        const { data: originalCard } = await dispatch(
+          cardApi.endpoints.getCard.initiate({ id: wrappedItem.id }),
+        );
+
+        if (!originalCard) {
+          throw new Error("Failed to fetch card data");
+        }
+
+        // Clone the card with "in_report" type
+        const { id, created_at, updated_at, ...cardData } = originalCard;
+
+        const clonedCard = await createCard({
+          ...cardData,
+          type: "in_report",
+          collection_id: originalCard.collection_id ?? null,
+        }).unwrap();
+
         editor
           .chain()
           .focus()
@@ -243,7 +267,7 @@ export const QuestionMentionPlugin = ({
           .insertContentAt(insertPosition, {
             type: "cardEmbed",
             attrs: {
-              id: wrappedItem.id,
+              id: clonedCard.id,
             },
           })
           .setTextSelection(insertPosition + 1)
