@@ -36,26 +36,17 @@ export function ColumnListItem({
   onHideField,
   onUnhideField,
 }: Props) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id: column.id as number });
-
   return (
     <Box
       component="li"
       className={S.ObjectViewSidebarColumn}
       mt="sm"
-      style={{
-        transition,
-        transform: CSS.Transform.toString(transform),
-        opacity: isDragging ? 0.5 : 1,
-      }}
-      ref={setNodeRef}
+      // style={{
+      //   transition,
+      //   transform: CSS.Transform.toString(transform),
+      //   opacity: isDragging ? 0.5 : 1,
+      // }}
+      // ref={setNodeRef}
     >
       <Flex pl="md" align="center" justify="space-between">
         <Group gap="sm">
@@ -63,8 +54,8 @@ export function ColumnListItem({
             name="grabber"
             className={S.ObjectViewSidebarColumnActionIcon}
             style={{ cursor: "grab" }}
-            {...attributes}
-            {...listeners}
+            // {...attributes}
+            // {...listeners}
           />
           <Icon name={getIconForField(column) as IconName} />
           <Text>{column.display_name}</Text>

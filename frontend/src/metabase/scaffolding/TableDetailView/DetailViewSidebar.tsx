@@ -262,7 +262,13 @@ export function DetailViewSidebar({
     }
   };
 
-  return <Dnd />;
+  return (
+    <Dnd
+      columns={columns}
+      sections={sections}
+      onUpdateSection={onUpdateSection}
+    />
+  );
 
   return (
     <DndContext

@@ -36,6 +36,11 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal, unstable_batchedUpdates } from "react-dom";
 import { t } from "ttag";
 
+import type {
+  DatasetColumn,
+  ObjectViewSectionSettings,
+} from "metabase-types/api";
+
 import { Container, type Props as ContainerProps } from "./Container";
 import { Item } from "./Item";
 import { coordinateGetter as multipleContainersCoordinateGetter } from "./multipleContainersKeyboardCoordinates";
@@ -124,7 +129,6 @@ type Items = Record<UniqueIdentifier, UniqueIdentifier[]>;
 interface Props {
   adjustScale?: boolean;
   cancelDrop?: CancelDrop;
-  columns?: number;
   containerStyle?: React.CSSProperties;
   coordinateGetter?: KeyboardCoordinateGetter;
   getItemStyles?(args: {
@@ -147,6 +151,15 @@ interface Props {
   trashable?: boolean;
   scrollable?: boolean;
   vertical?: boolean;
+
+  //
+
+  columns: DatasetColumn[];
+  sections: ObjectViewSectionSettings[];
+  onUpdateSection: (
+    id: ObjectViewSectionSettings["id"],
+    section: Partial<ObjectViewSectionSettings>,
+  ) => void;
 }
 
 export const TRASH_ID = "void";
@@ -155,9 +168,7 @@ const empty: UniqueIdentifier[] = [];
 
 export function Dnd({
   adjustScale = false,
-  itemCount = 3,
   cancelDrop,
-  columns,
   handle = false,
   items: initialItems,
   containerStyle,
@@ -168,19 +179,39 @@ export function Dnd({
   modifiers,
   renderItem,
   strategy = verticalListSortingStrategy,
-  trashable = false,
+  trashable = true,
   vertical = true,
   scrollable,
+  //
+
+  columns,
+  sections,
+  onUpdateSection,
 }: Props) {
-  const [items, setItems] = useState<Items>(
-    () =>
-      initialItems ?? {
-        A: createRange(itemCount, (index) => `A${index + 1}`),
-        B: createRange(itemCount, (index) => `B${index + 1}`),
-        C: createRange(itemCount, (index) => `C${index + 1}`),
-        D: createRange(itemCount, (index) => `D${index + 1}`),
-      },
-  );
+  function getSection(id: UniqueIdentifier) {
+    return sections.find((s) => s.id === id)!;
+  }
+
+  function getColumn(id: UniqueIdentifier): DatasetColumn {
+    return columns.find((c) => c.id === id)!;
+  }
+
+  function getFieldSettings(id: UniqueIdentifier) {
+    const section = getFieldSection(id)!;
+    return section.fields.find((f) => f.field_id === id)!;
+  }
+
+  function getFieldSection(id: UniqueIdentifier) {
+    return sections.find((s) => s.fields.some((f) => f.field_id === id));
+  }
+
+  function getItems() {
+    return Object.fromEntries(
+      sections.map((s) => [s.id, s.fields.map((f) => f.field_id)]),
+    );
+  }
+
+  const [items, setItems] = useState<Items>(() => initialItems ?? getItems());
   const [containers, setContainers] = useState(
     Object.keys(items) as UniqueIdentifier[],
   );
@@ -472,7 +503,6 @@ export function Dnd({
               key={containerId}
               id={containerId}
               label={minimal ? undefined : `Column ${containerId}`}
-              columns={columns}
               items={items[containerId]}
               scrollable={scrollable}
               style={containerStyle}
@@ -493,6 +523,9 @@ export function Dnd({
                       renderItem={renderItem}
                       containerId={containerId}
                       getIndex={getIndex}
+                      columns={columns}
+                      onUpdateSection={onUpdateSection}
+                      sections={sections}
                     />
                   );
                 })}
@@ -546,6 +579,13 @@ export function Dnd({
         wrapperStyle={wrapperStyle({ index: 0 })}
         renderItem={renderItem}
         dragOverlay
+        //
+        column={getColumn(id)}
+        fieldSettings={getFieldSettings(id)}
+        section={getSection(id)}
+        onUpdateSection={(update) => {
+          onUpdateSection(getSection(id)?.id, update);
+        }}
       />
     );
   }
@@ -554,7 +594,7 @@ export function Dnd({
     return (
       <Container
         label={`Column ${containerId}`}
-        columns={columns}
+        columns={1}
         style={{
           height: "100%",
         }}
@@ -578,6 +618,13 @@ export function Dnd({
             color={getColor(item)}
             wrapperStyle={wrapperStyle({ index })}
             renderItem={renderItem}
+            //
+            column={getColumn(item)}
+            fieldSettings={getFieldSettings(item)}
+            section={getSection(item)}
+            onUpdateSection={(update) => {
+              onUpdateSection(getSection(item)?.id, update);
+            }}
           />
         ))}
       </Container>
@@ -663,6 +710,13 @@ interface SortableItemProps {
   getIndex(id: UniqueIdentifier): number;
   renderItem(): React.ReactElement;
   wrapperStyle({ index }: { index: number }): React.CSSProperties;
+  //
+  columns: DatasetColumn[];
+  sections: ObjectViewSectionSettings[];
+  onUpdateSection: (
+    id: ObjectViewSectionSettings["id"],
+    section: Partial<ObjectViewSectionSettings>,
+  ) => void;
 }
 
 function SortableItem({
@@ -675,6 +729,10 @@ function SortableItem({
   containerId,
   getIndex,
   wrapperStyle,
+  //
+  columns,
+  sections,
+  onUpdateSection,
 }: SortableItemProps) {
   const {
     setNodeRef,
@@ -691,6 +749,23 @@ function SortableItem({
   });
   const mounted = useMountStatus();
   const mountedWhileDragging = isDragging && !mounted;
+
+  function getSection(id: UniqueIdentifier) {
+    return sections.find((s) => s.id === id)!;
+  }
+
+  function getColumn(id: UniqueIdentifier): DatasetColumn {
+    return columns.find((c) => c.id === id)!;
+  }
+
+  function getFieldSettings(id: UniqueIdentifier) {
+    const section = getFieldSection(id)!;
+    return section.fields.find((f) => f.field_id === id)!;
+  }
+
+  function getFieldSection(id: UniqueIdentifier) {
+    return sections.find((s) => s.fields.some((f) => f.field_id === id));
+  }
 
   return (
     <Item
@@ -716,6 +791,13 @@ function SortableItem({
       fadeIn={mountedWhileDragging}
       listeners={listeners}
       renderItem={renderItem}
+      //
+      column={getColumn(id)}
+      fieldSettings={getFieldSettings(id)}
+      section={getSection(id)}
+      onUpdateSection={(update) => {
+        onUpdateSection(getSection(id)?.id, update);
+      }}
     />
   );
 }
