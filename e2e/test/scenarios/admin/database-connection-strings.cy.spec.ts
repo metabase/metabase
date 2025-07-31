@@ -1,15 +1,11 @@
-const { H } = cy;
-
-export {};
-
 beforeEach(() => {
-  H.restore();
+  cy.H.restore();
   cy.signInAsAdmin();
 });
 
 function selectFieldOption(fieldName: string, option: string) {
   cy.findByLabelText(fieldName).click();
-  H.popover().contains(option).click({ force: true });
+  cy.H.popover().contains(option).click({ force: true });
 }
 
 function chooseDatabase(database: string) {
@@ -208,6 +204,8 @@ describe("Database connection strings", () => {
           connectionString,
         );
 
+        cy.findByText("Connection details pre-filled below.").should("exist");
+
         expectedFields.forEach(({ label, value, isChecked }) => {
           cy.findByLabelText(label).should("have.value", value);
           if (isChecked) {
@@ -216,5 +214,15 @@ describe("Database connection strings", () => {
         });
       },
     );
+  });
+
+  it("should show a warning if the connection string is invalid", () => {
+    cy.visit("/admin/databases/create");
+
+    chooseDatabase("MySQL");
+
+    cy.findByLabelText("Connection string (optional)").paste("invalid");
+
+    cy.findByTextEnsureVisible("Couldn’t use this connection string.");
   });
 });
