@@ -7,6 +7,7 @@
    [metabase-enterprise.semantic-search.pgvector-api :as semantic.pgvector-api]
    [metabase-enterprise.semantic-search.settings :as semantic.settings]
    [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.util.log :as log]
    [next.jdbc :as jdbc]))
 
 (defn- get-pgvector-datasource! []
@@ -17,6 +18,9 @@
 
 (defn- get-index-metadata []
   semantic.index-metadata/default-index-metadata)
+
+(defn- index-active? [pgvector index-metadata]
+  (boolean (semantic.index-metadata/get-active-index-state pgvector index-metadata)))
 
 (defenterprise supported?
   "Enterprise implementation of semantic search engine support check."
@@ -39,20 +43,28 @@
   "Enterprise implementation of semantic index updating."
   :feature :semantic-search
   [document-reducible]
-  (semantic.pgvector-api/index-documents!
-   (get-pgvector-datasource!)
-   (get-index-metadata)
-   (vec document-reducible)))
+  (let [pgvector (get-pgvector-datasource!)
+        index-metadata (get-index-metadata)]
+    (if-not (index-active? pgvector index-metadata)
+      (log/warn "update-index! called prior to init!")
+      (semantic.pgvector-api/index-documents!
+       pgvector
+       index-metadata
+       (vec document-reducible)))))
 
 (defenterprise delete-from-index!
   "Enterprise implementation of semantic index deletion."
   :feature :semantic-search
   [model ids]
-  (semantic.pgvector-api/delete-documents!
-   (get-pgvector-datasource!)
-   (get-index-metadata)
-   model
-   (vec ids)))
+  (let [pgvector (get-pgvector-datasource!)
+        index-metadata (get-index-metadata)]
+    (if-not (index-active? pgvector index-metadata)
+      (log/warn "delete-from-index! called prior to init!")
+      (semantic.pgvector-api/delete-documents!
+       pgvector
+       index-metadata
+       model
+       (vec ids)))))
 
 ;; TODO: add reindexing/table-swapping logic when index is detected as stale
 (defenterprise init!

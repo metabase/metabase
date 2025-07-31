@@ -139,6 +139,21 @@
    :table-name      table_name
    :version         index_version})
 
+(defn- table-exists? [pgvector table-name]
+  (-> (jdbc/execute-one! pgvector
+                         ["SELECT exists (select 1 FROM information_schema.tables WHERE table_name = ?) table_exists"
+                          table-name]
+                         {:builder-fn jdbc.rs/as-unqualified-lower-maps})
+      (:table_exists false)))
+
+(defn- index-table-exists? [pgvector index]
+  (table-exists? pgvector (:table-name index)))
+
+(defn- control-and-metadata-tables-exist?
+  [pgvector index-metadata]
+  (and (table-exists? pgvector (:metadata-table-name index-metadata))
+       (table-exists? pgvector (:control-table-name index-metadata))))
+
 (defn get-active-index-state
   "Returns the currently active index configuration, or nil if none active.
   Expect a map with:
@@ -147,25 +162,19 @@
   - :metadata-row
      The metadata record for this index, as returned by next.jdbc. Keys are unqualified. "
   [pgvector index-metadata]
-  (let [{:keys [metadata-table-name
-                control-table-name]}
-        index-metadata
-        ;; Returns nil if no active index is set (active_id is null).
-        active-row-sql      (-> {:select [:m.*]
-                                 :from   [[(keyword control-table-name)  :c]]
-                                 :join   [[(keyword metadata-table-name) :m] [:= :m.id :c.active_id]]}
-                                (sql/format :quoted true))
-        active-row          (jdbc/execute-one! pgvector active-row-sql {:builder-fn jdbc.rs/as-unqualified-lower-maps})]
-    (when active-row
-      {:index (row->index active-row)
-       :metadata-row active-row})))
-
-(defn- index-table-exists? [pgvector index]
-  (-> (jdbc/execute-one! pgvector
-                         ["SELECT exists (select 1 FROM information_schema.tables WHERE table_name = ?) table_exists"
-                          (:table-name index)]
-                         {:builder-fn jdbc.rs/as-unqualified-lower-maps})
-      (:table_exists false)))
+  (when (control-and-metadata-tables-exist? pgvector index-metadata)
+    (let [{:keys [metadata-table-name
+                  control-table-name]}
+          index-metadata
+          ;; Returns nil if no active index is set (active_id is null).
+          active-row-sql      (-> {:select [:m.*]
+                                   :from   [[(keyword control-table-name)  :c]]
+                                   :join   [[(keyword metadata-table-name) :m] [:= :m.id :c.active_id]]}
+                                  (sql/format :quoted true))
+          active-row          (jdbc/execute-one! pgvector active-row-sql {:builder-fn jdbc.rs/as-unqualified-lower-maps})]
+      (when active-row
+        {:index (row->index active-row)
+         :metadata-row active-row}))))
 
 (defn activate-index!
   "Sets the specified index as active by updating the control table. The index-id is the `id` column value for
