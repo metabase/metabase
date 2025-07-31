@@ -42,6 +42,7 @@ import {
   PLUGIN_EMBEDDING_IFRAME_SDK_SETUP,
   PLUGIN_LANDING_PAGE,
   PLUGIN_METABOT,
+  PLUGIN_TABLE_EDITING,
 } from "metabase/plugins";
 import { QueryBuilder } from "metabase/query_builder/containers/QueryBuilder";
 import { loadCurrentUser } from "metabase/redux/user";
@@ -305,6 +306,8 @@ export const getRoutes = (store) => {
               path="databases/:dbId/schema/:schemaName"
               component={BrowseTables}
             />
+
+            {PLUGIN_TABLE_EDITING.getRoutes()}
 
             {/* These two Redirects support legacy paths in v48 and earlier */}
             <Redirect from=":dbId-:slug" to="databases/:dbId-:slug" />
