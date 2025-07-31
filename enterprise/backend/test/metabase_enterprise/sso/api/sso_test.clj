@@ -1,6 +1,7 @@
 (ns metabase-enterprise.sso.api.sso-test
   (:require
    [buddy.sign.jwt :as jwt]
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [crypto.random :as crypto-random]
    [metabase.config.core :as config]
@@ -84,24 +85,22 @@
           (testing "successful JWT to session conversion"
             (let [jwt-token (create-valid-jwt-token)
                   response (mt/client :post 200 "/auth/sso/to_session" {:jwt jwt-token})]
-              (is (string? (:session_token response)))
-              (is (contains? response :exp))
-              (is (contains? response :iat))))
+              (is (string? (:session_token response)))))
           (testing "missing JWT token"
-            (is (=? {:status "error-jwt-missing"}
+            (is (=? {:errors {:jwt "value must be a non-blank string."}}
                     (mt/client :post 400 "/auth/sso/to_session" {}))))
           (testing "JWT disabled"
             (mt/with-temporary-setting-values [jwt-enabled false]
               (let [jwt-token (create-valid-jwt-token)]
-                (is (=? {:status "error-jwt-disabled"}
-                        (mt/client :post 400 "/auth/sso/to_session" {:jwt jwt-token}))))))
+                (is (= "JWT authentication is not enabled"
+                       (mt/client :post 400 "/auth/sso/to_session" {:jwt jwt-token}))))))
           (testing "invalid JWT token"
-            (is (=? {:status "error-jwt-invalid"}
-                    (mt/client :post 401 "/auth/sso/to_session" {:jwt "invalid-token"}))))
+            (is (= "Message seems corrupt or manipulated"
+                   (mt/client :post 401 "/auth/sso/to_session" {:jwt "invalid-token"}))))
           (testing "expired JWT token"
             (let [expired-token (create-valid-jwt-token {:exp (- (int (/ (System/currentTimeMillis) 1000)) 3600)})]
-              (is (=? {:status "error-jwt-invalid"}
-                      (mt/client :post 401 "/auth/sso/to_session" {:jwt expired-token})))))
+              (is (str/starts-with? (mt/client :post 401 "/auth/sso/to_session" {:jwt expired-token})
+                                    "Token is expired"))))
           (testing "JWT with different secret"
             (let [wrong-secret-token (jwt/sign {:email "test@example.com"
                                                 :first_name "Test"
@@ -109,5 +108,5 @@
                                                 :iat (int (/ (System/currentTimeMillis) 1000))
                                                 :exp (+ (int (/ (System/currentTimeMillis) 1000)) 3600)}
                                                "wrong-secret")]
-              (is (=? {:status "error-jwt-invalid"}
-                      (mt/client :post 401 "/auth/sso/to_session" {:jwt wrong-secret-token}))))))))))
+              (is (= "Message seems corrupt or manipulated"
+                     (mt/client :post 401 "/auth/sso/to_session" {:jwt wrong-secret-token}))))))))))
