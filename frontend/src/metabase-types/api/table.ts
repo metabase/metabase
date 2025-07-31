@@ -80,6 +80,9 @@ export type ObjectViewSectionSettings = {
 
 export type ObjectViewSettings = {
   sections: ObjectViewSectionSettings[];
+  relationships?: {
+    direction: "horizontal" | "vertical";
+  };
 };
 
 export type SchemaName = string;

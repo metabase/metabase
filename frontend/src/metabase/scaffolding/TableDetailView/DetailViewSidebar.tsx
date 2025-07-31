@@ -38,11 +38,17 @@ import type {
 
 import { ColumnListItem } from "./ColumnListItem";
 import { EmptyDropZone } from "./EmptyDropZone";
+import { RelationshipsSectionSettings } from "./RelationshipsSectionSettings";
 import { SortableSectionSettings } from "./SortableSectionSettings";
 
 interface DetailViewSidebarProps {
   columns: DatasetColumn[];
   sections: ObjectViewSectionSettings[];
+  hasRelationships?: boolean;
+  relationshipsDirection?: "horizontal" | "vertical";
+  onUpdateRelationshipsDirection?: (
+    direction: "horizontal" | "vertical",
+  ) => void;
   onCreateSection: () => void;
   onUpdateSection: (
     id: number,
@@ -57,6 +63,9 @@ const HIDDEN_COLUMNS_ID = "hidden-columns";
 export function DetailViewSidebar({
   columns,
   sections,
+  hasRelationships,
+  relationshipsDirection = "vertical",
+  onUpdateRelationshipsDirection,
   onCreateSection,
   onUpdateSection,
   onRemoveSection,
@@ -278,6 +287,13 @@ export function DetailViewSidebar({
             />
           ))}
         </SortableContext>
+
+        {hasRelationships && (
+          <RelationshipsSectionSettings
+            direction={relationshipsDirection}
+            onUpdateDirection={onUpdateRelationshipsDirection || (() => {})}
+          />
+        )}
 
         {onCreateSection && (
           <Button

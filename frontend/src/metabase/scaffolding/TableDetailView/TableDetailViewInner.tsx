@@ -62,6 +62,13 @@ export function TableDetailViewInner({
   isEdit = false,
 }: TableDetailViewProps) {
   const [currentRowIndex, setCurrentRowIndex] = useState(0);
+  const [relationshipsDirection, setRelationshipsDirection] = useState<
+    "horizontal" | "vertical"
+  >(() => {
+    const savedRelationships =
+      table?.component_settings?.object_view?.relationships;
+    return savedRelationships?.direction || "vertical";
+  });
   const dispatch = useDispatch();
   const [updateTableComponentSettings] =
     useUpdateTableComponentSettingsMutation();
@@ -127,6 +134,9 @@ export function TableDetailViewInner({
           ...(table?.component_settings ?? { list_view: {} }),
           object_view: {
             sections: sections,
+            relationships: {
+              direction: relationshipsDirection,
+            },
           },
         },
       }).unwrap();
@@ -140,6 +150,7 @@ export function TableDetailViewInner({
     tableId,
     table?.component_settings,
     sections,
+    relationshipsDirection,
     dispatch,
     rowId,
   ]);
@@ -287,12 +298,14 @@ export function TableDetailViewInner({
               {hasRelationships && (
                 <>
                   <Text component="h2">{t`Relationships`}</Text>
+
                   <Relationships
                     objectName={rowName ? String(rowName) : String(rowId)}
                     tableForeignKeys={tableForeignKeys}
                     tableForeignKeyReferences={tableForeignKeyReferences}
                     foreignKeyClicked={handleFollowForeignKey}
                     disableClicks={isEdit}
+                    relationshipsDirection={relationshipsDirection}
                   />
                 </>
               )}
@@ -323,6 +336,9 @@ export function TableDetailViewInner({
             <DetailViewSidebar
               columns={columns}
               sections={sections}
+              hasRelationships={hasRelationships}
+              relationshipsDirection={relationshipsDirection}
+              onUpdateRelationshipsDirection={setRelationshipsDirection}
               onCreateSection={createSection}
               onUpdateSection={updateSection}
               onRemoveSection={removeSection}

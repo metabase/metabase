@@ -17,6 +17,7 @@ export interface RelationshipsProps {
   tableForeignKeyReferences?: ForeignKeyReferences;
   foreignKeyClicked?: (fk: ForeignKey) => void;
   disableClicks?: boolean;
+  relationshipsDirection?: "horizontal" | "vertical";
 }
 
 export function Relationships({
@@ -25,6 +26,7 @@ export function Relationships({
   tableForeignKeyReferences,
   foreignKeyClicked,
   disableClicks,
+  relationshipsDirection = "vertical",
 }: RelationshipsProps & BoxProps): JSX.Element | null {
   if (!tableForeignKeys || !tableForeignKeys?.length) {
     return null;
@@ -37,7 +39,12 @@ export function Relationships({
   );
 
   return (
-    <Flex component="ul" direction="column" gap="md">
+    <Flex
+      component="ul"
+      direction={relationshipsDirection === "horizontal" ? "row" : "column"}
+      gap="md"
+      wrap={relationshipsDirection === "horizontal" ? "wrap" : "nowrap"}
+    >
       {sortedForeignTables.map((fk) => (
         <Relationship
           key={`${fk.origin_id}-${fk.destination_id}`}
@@ -126,7 +133,12 @@ function Relationship({
       </Flex>
       {fkClickable && foreignKeyClicked && (
         <IconBorder>
-          <Icon data-testid="click-icon" name="chevronright" size={10} />
+          <Icon
+            data-testid="click-icon"
+            name="chevronright"
+            miw={20}
+            size={10}
+          />
         </IconBorder>
       )}
     </Flex>
