@@ -296,16 +296,15 @@
     (with-jwt-default-setup!
       (is
        (= "Token is older than max-age (180)"
-          (:message
-           (client/client :get 401 "/auth/sso" {:request-options {:redirect-strategy :none}}
-                          :return_to default-redirect-uri
-                          :jwt
-                          (jwt/sign
-                           {:email      "test@metabase.com",
-                            :first_name "Test"
-                            :last_name  "User"
-                            :iat        (- (buddy-util/now) (u/minutes->seconds 5))}
-                           default-jwt-secret))))))))
+          (client/client :get 401 "/auth/sso" {:request-options {:redirect-strategy :none}}
+                         :return_to default-redirect-uri
+                         :jwt
+                         (jwt/sign
+                          {:email      "test@metabase.com",
+                           :first_name "Test"
+                           :last_name  "User"
+                           :iat        (- (buddy-util/now) (u/minutes->seconds 5))}
+                          default-jwt-secret)))))))
 
 (defmacro with-users-with-email-deleted {:style/indent 1} [user-email & body]
   `(try
