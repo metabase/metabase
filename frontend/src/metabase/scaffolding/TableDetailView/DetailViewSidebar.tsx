@@ -276,17 +276,6 @@ function DetailViewSidebar({
           items={sections.map((section) => section.id)}
           strategy={verticalListSortingStrategy}
         >
-          {onCreateSection && (
-            <Button
-              variant="subtle"
-              size="compact-sm"
-              leftSection={<Icon name="add" />}
-              mt="md"
-              onClick={() => onCreateSection({ position: "start" })}
-            >{t`Add section`}</Button>
-          )}
-
-          <Divider mt="lg" mb="sm" />
           {sections.map((section) => (
             <SortableSectionSettings
               key={section.id}

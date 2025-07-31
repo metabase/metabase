@@ -336,14 +336,6 @@ export function TableDetailViewInner({
 
   return (
     <DetailContainer>
-      {/* {isEdit && !isListView && (
-        <Flex align="center" justify="center" w="100%" mt="md">
-          <Tooltip label={t`Add section`}>
-            <Button leftSection={<Icon name="add" />} onClick={() => createSection({ position: "start" })} />
-          </Tooltip>
-        </Flex>
-      )} */}
-
       <Stack gap="md" mt={"md"} mb={"sm"}>
         <DndContext
           sensors={sensors}
