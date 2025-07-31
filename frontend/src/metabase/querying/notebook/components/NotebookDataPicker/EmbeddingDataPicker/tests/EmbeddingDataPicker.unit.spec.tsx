@@ -44,21 +44,16 @@ describe("EmbeddingDataPicker", () => {
       expect(screen.getByText("Reviews")).toBeInTheDocument();
     });
 
-    it("should show tables by default when there is one model", async () => {
-      setup({ modelCount: 1 });
+    it.each([1, 2])(
+      "should show tables by default when there is %i model",
+      async (modelCount) => {
+        setup({ modelCount });
 
-      expect(await screen.findByText("Models")).toBeInTheDocument();
-      expect(screen.getByText("Raw Data")).toBeInTheDocument();
-      expect(screen.queryByText("Sample Database")).not.toBeInTheDocument();
-    });
-
-    it("should show tables by default when there are two models", async () => {
-      setup({ modelCount: 2 });
-
-      expect(await screen.findByText("Models")).toBeInTheDocument();
-      expect(screen.getByText("Raw Data")).toBeInTheDocument();
-      expect(screen.queryByText("Sample Database")).not.toBeInTheDocument();
-    });
+        expect(await screen.findByText("Models")).toBeInTheDocument();
+        expect(screen.getByText("Raw Data")).toBeInTheDocument();
+        expect(screen.queryByText("Sample Database")).not.toBeInTheDocument();
+      },
+    );
 
     it("should hide tables by default when there are more than two models", async () => {
       setup({ modelCount: 3 });
