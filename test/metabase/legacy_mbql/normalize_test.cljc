@@ -1567,7 +1567,6 @@
             (t/is (some? cause))
             (t/is (re-find #"Error normalizing form:" (ex-message cause)))
             (t/is (= {:form       bad-query
-                      :path       []
                       :special-fn nil}
                      (ex-data cause)))))))))
 
