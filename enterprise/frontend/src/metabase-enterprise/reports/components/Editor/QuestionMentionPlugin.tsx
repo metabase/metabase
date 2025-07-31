@@ -17,7 +17,6 @@ import {
 import { IconWrapper } from "metabase/search/components/SearchResult/components/ItemIcon.styled";
 import { Box, Group, Icon, Popover, Text } from "metabase/ui";
 import { getSearchIconName } from "metabase/visualizations/visualizations/LinkViz/EntityDisplay";
-import { useMetabotAgent } from "metabase-enterprise/metabot/hooks";
 import type {
   RecentItem,
   SearchModel,
@@ -26,7 +25,7 @@ import type {
 
 const MODELS_TO_SEARCH: SearchModel[] = ["card", "dataset"];
 
-type InsertionMode = "mention" | "embed" | "text" | "metabot";
+type InsertionMode = "mention" | "embed";
 
 interface ExtraItemProps {
   isSelected?: boolean;

@@ -81,7 +81,7 @@ export const MetabotComponent = memo(
       setErrorText("");
       editor.commands.focus();
 
-      const { cardId, snapshotId, description, error } = await queryMetabot({
+      const { cardId, description, error } = await queryMetabot({
         prompt: prompt.trim(),
       });
 
@@ -105,7 +105,6 @@ export const MetabotComponent = memo(
           type: "cardEmbed",
           attrs: {
             id: cardId,
-            snapshotId,
           },
         })
         .insertContentAt(
