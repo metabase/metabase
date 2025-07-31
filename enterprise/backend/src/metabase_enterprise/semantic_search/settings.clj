@@ -22,6 +22,11 @@
   :export? false
   :doc "This feature is experimental. Leave empty to use provider defaults.")
 
+(defn openai-api-base-url
+  "Get the OpenAI API base url from the existing LLM settings."
+  []
+  (llm-settings/ee-openai-api-base-url))
+
 (defn openai-api-key
   "Get the OpenAI API key from the existing LLM settings."
   []
