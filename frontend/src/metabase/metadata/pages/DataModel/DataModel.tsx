@@ -11,9 +11,7 @@ import {
 } from "metabase/api";
 import EmptyState from "metabase/common/components/EmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { TreeItem } from "metabase/metadata/components/TreePicker/TreeItem";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
-import { PLUGIN_TRANSFORMS } from "metabase/plugins";
 import { Box, Flex, Stack, rem } from "metabase/ui";
 
 import S from "./DataModel.module.css";
@@ -24,6 +22,7 @@ import {
   PreviewSection,
   type PreviewType,
   RouterTablePicker,
+  SegmentsLink,
   SyncOptionsModal,
   TableSection,
 } from "./components";
@@ -38,16 +37,13 @@ interface Props {
 }
 
 export const DataModel = ({ children, location, params }: Props) => {
-  const { databaseId, fieldId, schemaName, tableId, transformId } =
-    parseRouteParams(params);
+  const { databaseId, fieldId, schemaName, tableId } = parseRouteParams(params);
   const { data: databasesData, isLoading: isLoadingDatabases } =
     useListDatabasesQuery({ include_editable_data_model: true });
   const databaseExists = databasesData?.data?.some(
     (database) => database.id === databaseId,
   );
   const isSegments = location.pathname.startsWith("/admin/datamodel/segment");
-  const isTransforms = PLUGIN_TRANSFORMS.isTransformsRoute(location.pathname);
-  const isTables = !isSegments && !isTransforms;
   const [isPreviewOpen, { close: closePreview, toggle: togglePreview }] =
     useDisclosure();
   const [isSyncModalOpen, { close: closeSyncModal, open: openSyncModal }] =
@@ -115,22 +111,13 @@ export const DataModel = ({ children, location, params }: Props) => {
         />
 
         <Box className={S.footer} mx="xl" py="sm">
-          <PLUGIN_TRANSFORMS.TransformPicker
-            transformId={transformId}
-            isActive={isTransforms}
-          />
-          <TreeItem
-            label={t`Segments`}
-            icon="pie"
-            to="/admin/datamodel/segments"
-            isActive={isSegments}
-          />
+          <SegmentsLink active={isSegments} to="/admin/datamodel/segments" />
         </Box>
       </Stack>
 
-      {(isSegments || isTransforms) && children}
+      {isSegments && children}
 
-      {isTables && (
+      {!isSegments && (
         <>
           {databaseId != null &&
             tableId == null &&

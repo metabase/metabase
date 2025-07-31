@@ -97,10 +97,6 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
               component={RevisionHistoryApp}
             />
           </Route>
-          {PLUGIN_TRANSFORMS.getRoutesWithoutSidebar()}
-          <Route component={DataModel}>
-            {PLUGIN_TRANSFORMS.getRoutesWithSidebar()}
-          </Route>
           <Redirect
             from="database/:databaseId/schema/:schemaId/table/:tableId/settings"
             to="database/:databaseId/schema/:schemaId/table/:tableId"
@@ -111,6 +107,7 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
           />
         </Route>
       </Route>
+      {PLUGIN_TRANSFORMS.getAdminRoutes(IsAdmin)}
       {/* PEOPLE */}
       <Route path="people" component={createAdminRouteGuard("people")}>
         <Route title={t`People`} component={AdminPeopleApp}>

@@ -1,10 +1,10 @@
 import { useVirtualizer } from "@tanstack/react-virtual";
 import cx from "classnames";
 import { type KeyboardEvent, useEffect, useRef, useState } from "react";
+import { Link } from "react-router";
 
-import { Box } from "metabase/ui";
+import { Box, Flex, Icon, Skeleton, rem } from "metabase/ui";
 
-import { TreeItem } from "../../../../components/TreePicker/TreeItem";
 import { getUrl } from "../../utils";
 
 import { BulkTableVisibilityToggle } from "./BulkTableVisibilityToggle";
@@ -15,6 +15,7 @@ import { TYPE_ICONS, hasChildren } from "./utils";
 
 const VIRTUAL_OVERSCAN = 5;
 const ITEM_MIN_HEIGHT = 32; // items can vary in size because of text wrapping
+const INDENT_OFFSET = 18;
 
 interface Props {
   items: FlatItem[];
@@ -185,11 +186,25 @@ export function Results({
           };
 
           return (
-            <TreeItem
+            <Flex
+              component={Link}
               key={key}
-              className={S.item}
-              label={label}
-              icon={TYPE_ICONS[type]}
+              aria-selected={isActive}
+              align="center"
+              justify="space-between"
+              gap="sm"
+              className={cx(S.item, S[type], {
+                [S.active]: isActive,
+                [S.selected]: selectedIndex === index,
+              })}
+              data-index={index}
+              data-open={isExpanded}
+              tabIndex={disabled ? -1 : 0}
+              style={{
+                top: start,
+                marginLeft: level * INDENT_OFFSET,
+                pointerEvents: disabled ? "none" : undefined,
+              }}
               to={getUrl({
                 databaseId: value?.databaseId,
                 schemaName:
@@ -199,21 +214,8 @@ export function Results({
                 tableId: type === "table" ? value?.tableId : undefined,
                 fieldId: undefined,
               })}
-              level={level}
-              isActive={isActive}
-              isSelected={index === selectedIndex}
-              isExpanded={isExpanded}
-              isExpandable={hasChildren(type)}
-              isLoading={isLoading}
-              isHidden={
-                type === "table" &&
-                item.table &&
-                item.table.visibility_type != null
-              }
-              isDisabled={disabled}
-              style={{ top: start }}
+              data-testid="tree-item"
               data-type={type}
-              data-index={index}
               onKeyDown={handleKeyDown}
               onClick={(event) => {
                 event.preventDefault();
@@ -221,6 +223,45 @@ export function Results({
               }}
               onFocus={() => onSelectedIndexChange?.(index)}
             >
+              <Flex align="center" mih={ITEM_MIN_HEIGHT} py="xs" w="100%">
+                <Flex align="flex-start" gap="xs" w="100%">
+                  <Flex align="center" gap="xs">
+                    {hasChildren(type) && (
+                      <Icon
+                        name="chevronright"
+                        size={10}
+                        color="var(--mb-color-text-light)"
+                        className={cx(S.chevron, {
+                          [S.expanded]: isExpanded,
+                        })}
+                      />
+                    )}
+
+                    <Icon name={TYPE_ICONS[type]} className={S.icon} />
+                  </Flex>
+
+                  {isLoading ? (
+                    <Loading />
+                  ) : (
+                    <Box
+                      className={S.label}
+                      c={
+                        type === "table" &&
+                        item.table &&
+                        item.table.visibility_type != null &&
+                        !isActive
+                          ? "text-secondary"
+                          : undefined
+                      }
+                      data-testid="tree-item-label"
+                      pl="sm"
+                    >
+                      {label}
+                    </Box>
+                  )}
+                </Flex>
+              </Flex>
+
               {withMassToggle &&
                 type === "database" &&
                 value?.databaseId !== undefined &&
@@ -265,10 +306,23 @@ export function Results({
                     onUpdate={() => reload?.(value)}
                   />
                 )}
-            </TreeItem>
+            </Flex>
           );
         })}
       </Box>
     </Box>
+  );
+}
+
+function Loading() {
+  const w = 20 + Math.random() * 80;
+
+  return (
+    <Skeleton
+      data-testid="loading-placeholder"
+      height={rem(12)}
+      width={`${w}%`}
+      radius="sm"
+    />
   );
 }

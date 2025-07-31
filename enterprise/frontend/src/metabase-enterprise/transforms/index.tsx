@@ -1,36 +1,12 @@
-import { Route } from "metabase/hoc/Title";
+import { Route } from "react-router";
+import { t } from "ttag";
+
 import { PLUGIN_TRANSFORMS } from "metabase/plugins";
 
-import { TransformPicker } from "./components/TransformPicker";
-import { NewTransformPage } from "./pages/NewTransformPage";
-import { NewTransformQueryPage } from "./pages/NewTransformQueryPage";
-import { TransformPage } from "./pages/TransformPage";
-import { TransformQueryPage } from "./pages/TransformQueryPage";
-import { TransformSettingsPage } from "./pages/TransformSettingsPage";
-import { isTransformsRoute } from "./utils/urls";
+PLUGIN_TRANSFORMS.getAdminPaths = () => [
+  { key: "transforms", name: t`Transforms`, path: "/admin/transforms" },
+];
 
-PLUGIN_TRANSFORMS.TransformPicker = TransformPicker;
-
-PLUGIN_TRANSFORMS.isTransformsRoute = isTransformsRoute;
-
-PLUGIN_TRANSFORMS.getRoutesWithSidebar = () => (
-  <>
-    <Route path="transforms" component={NewTransformPage} />
-    <Route path="transforms/settings" component={TransformSettingsPage} />
-    <Route path="transforms/:transformId" component={TransformPage} />
-  </>
-);
-
-PLUGIN_TRANSFORMS.getRoutesWithoutSidebar = () => (
-  <>
-    <Route path="transforms/new/:type" component={NewTransformQueryPage} />
-    <Route
-      path="transforms/new/card/:cardId"
-      component={NewTransformQueryPage}
-    />
-    <Route
-      path="transforms/:transformId/query"
-      component={TransformQueryPage}
-    />
-  </>
+PLUGIN_TRANSFORMS.getAdminRoutes = (isAdmin) => (
+  <Route path="transforms" component={isAdmin} />
 );
