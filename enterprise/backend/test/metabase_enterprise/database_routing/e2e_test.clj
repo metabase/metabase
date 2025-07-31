@@ -255,5 +255,3 @@
                       (is (= [[1 "routed-foo"] [2 "routed-bar"]]
                              (mt/with-current-user (mt/user->id :rasta)
                                (mt/rows (mt/process-query (mt/query t)))))))))))))))))
-
-
