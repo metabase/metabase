@@ -105,7 +105,7 @@ export function SettingsNav() {
         )}
         <SettingsNavItem
           path="embedding-in-other-applications/sdk"
-          label={t`Embedding SDK`}
+          label={t`Modular embedding`}
         />
       </SettingsNavItem>
       <NavDivider />

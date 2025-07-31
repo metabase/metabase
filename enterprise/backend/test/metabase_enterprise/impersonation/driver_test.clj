@@ -659,6 +659,47 @@
                                        "DROP ROLE IF EXISTS \"impersonation_role\";"]]
                       (jdbc/execute! spec [statement]))))))))))))
 
+(deftest resilient-connection-options-test
+  (testing "resilient connections have the correct role set"
+    (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc
+                                               :+features [:connection-impersonation]})
+      (mt/with-premium-features #{:advanced-permissions}
+        (let [venues-table (sql.tx/qualify-and-quote driver/*driver* "test-data" "venues")
+              role-a (u/lower-case-en (mt/random-name))]
+
+          (tx/with-temp-roles! driver/*driver*
+
+            (impersonation-granting-details driver/*driver* (mt/db))
+            {role-a {venues-table {}}}
+
+            (impersonation-default-user driver/*driver*)
+            (impersonation-default-role driver/*driver*)
+
+            (mt/with-temp [:model/Database database {:engine driver/*driver*,
+                                                     :details (impersonation-details driver/*driver* (mt/db))}]
+              (mt/with-db database
+
+                (when (driver/database-supports? driver/*driver* :connection-impersonation-requires-role nil)
+                  (t2/update! :model/Database :id (mt/id) (assoc-in (mt/db) [:details :role] (impersonation-default-role driver/*driver*))))
+
+                (sync/sync-database! database {:scan :schema})
+
+                (let [tables-set #(->> (driver/do-with-resilient-connection
+                                        driver/*driver*
+                                        (t2/select-one :model/Database (mt/id))
+                                        driver/describe-database)
+                                       :tables
+                                       set)
+                      default-table-set (tables-set)
+                      do-with-resolved-connection sql-jdbc.execute/do-with-resolved-connection]
+                  (with-redefs [sql-jdbc.execute/do-with-resolved-connection
+                                (fn [driver db options f]
+                                  (do-with-resolved-connection driver db options
+                                                               (fn [conn]
+                                                                 (driver/set-role! driver/*driver* conn role-a)
+                                                                 (f conn))))]
+                    (is (= default-table-set (tables-set)))))))))))))
+
 (defn do-on-all-connection-in-pool [f]
   (let [max-pool-size (driver.settings/jdbc-data-warehouse-max-connection-pool-size)
         ^CountDownLatch start-latch (java.util.concurrent.CountDownLatch. max-pool-size)
