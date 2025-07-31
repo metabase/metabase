@@ -285,7 +285,7 @@ describe("scenarios > embedding-sdk > sdk-bundle", () => {
       getSdkBundleScriptElement()?.remove();
     });
 
-    it("should show an error container if sdk bundle can't be loaded", () => {
+    it("should show an error if sdk bundle can't be loaded", () => {
       cy.intercept("GET", "**/app/embedding-sdk.js", {
         statusCode: 404,
       });
@@ -297,6 +297,28 @@ describe("scenarios > embedding-sdk > sdk-bundle", () => {
       );
 
       cy.findByTestId("sdk-error-container").should("be.visible");
+    });
+
+    it("should show a custom error if sdk bundle can't be loaded", () => {
+      cy.intercept("GET", "**/app/embedding-sdk.js", {
+        statusCode: 404,
+      });
+
+      cy.mount(
+        <MetabaseProvider
+          authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}
+          errorComponent={({ message }: { message: string }) => (
+            <div>Custom error: {message}</div>
+          )}
+        >
+          <InteractiveQuestion questionId={1} />
+        </MetabaseProvider>,
+      );
+
+      cy.findByTestId("sdk-error-container").should(
+        "contain.text",
+        "Custom error: Error loading Metabase Embedding SDK",
+      );
     });
   });
 });
