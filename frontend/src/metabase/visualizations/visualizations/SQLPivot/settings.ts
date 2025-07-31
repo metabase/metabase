@@ -4,7 +4,7 @@ import { getOptionFromColumn } from "metabase/visualizations/lib/settings/utils"
 import { isNumber, isString } from "metabase-lib/v1/types/utils/isa";
 import type { DatasetColumn, Series } from "metabase-types/api";
 
-import { getDefaultRowColumn, getDefaultValueColumns } from "./utils";
+import { getDefaultRowColumn, getDefaultValueColumns, getDefaultColumnDimension } from "./utils";
 
 export const SQL_PIVOT_SETTINGS = {
   "sqlpivot.row_column": {
@@ -25,6 +25,31 @@ export const SQL_PIVOT_SETTINGS = {
       options: data.cols
         .filter((col: DatasetColumn) => isString(col))
         .map((col: DatasetColumn) => getOptionFromColumn(col)),
+    }),
+    useRawSeries: true,
+  },
+
+  "sqlpivot.column_dimension": {
+    get section() {
+      return t`Data`;
+    },
+    get title() {
+      return t`Column dimension`;
+    },
+    get description() {
+      return t`Choose the column to spread across columns (for matrix view)`;
+    },
+    widget: "select",
+    getDefault: ([{ data }]: Series) => {
+      return getDefaultColumnDimension(data.cols);
+    },
+    getProps: ([{ data }]: Series) => ({
+      options: [
+        { name: t`None`, value: null },
+        ...data.cols
+          .filter((col: DatasetColumn) => isString(col))
+          .map((col: DatasetColumn) => getOptionFromColumn(col)),
+      ],
     }),
     useRawSeries: true,
   },

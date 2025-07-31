@@ -10,6 +10,7 @@ import type {
 
 export interface SQLPivotSettings {
   "sqlpivot.row_column"?: string;
+  "sqlpivot.column_dimension"?: string;
   "sqlpivot.value_columns"?: string | string[];
   "sqlpivot.transpose"?: boolean;
 }
@@ -38,11 +39,21 @@ export function getDefaultValueColumns(columns: DatasetColumn[]): string[] {
   return columns.filter(isNumber).map(col => col.name);
 }
 
+export function getDefaultColumnDimension(columns: DatasetColumn[]): string | null {
+  // Prefer the second string column as column dimension, fallback to first if only one exists
+  const stringColumns = columns.filter(isString);
+  if (stringColumns.length > 1) {
+    return stringColumns[1].name;
+  }
+  return null; // Don't auto-select if only one string column (used for rows)
+}
+
 export function transformSQLDataToPivot(
   data: DatasetData,
   settings: SQLPivotSettings,
 ) {
   const rowColumnName = settings["sqlpivot.row_column"];
+  const columnDimensionName = settings["sqlpivot.column_dimension"];
   const rawValueColumns = settings["sqlpivot.value_columns"];
   const transpose = settings["sqlpivot.transpose"] || false;
 
@@ -59,6 +70,8 @@ export function transformSQLDataToPivot(
   }
 
   const rowColumnIndex = data.cols.findIndex(col => col.name === rowColumnName);
+  const columnDimensionIndex = columnDimensionName ? 
+    data.cols.findIndex(col => col.name === columnDimensionName) : -1;
   const valueColumnIndexes = valueColumnNames.map(name => 
     data.cols.findIndex(col => col.name === name)
   ).filter(index => index !== -1);
@@ -67,6 +80,12 @@ export function transformSQLDataToPivot(
     return data; // Return original data if columns not found
   }
 
+  // If column dimension is selected, create matrix pivot
+  if (columnDimensionIndex !== -1) {
+    return transformToMatrixPivot(data, rowColumnIndex, columnDimensionIndex, valueColumnIndexes);
+  }
+
+  // Otherwise use the original pivot logic
   if (transpose) {
     return transformToTransposedPivot(data, rowColumnIndex, valueColumnIndexes);
   } else {
@@ -170,6 +189,86 @@ function transformToTransposedPivot(
   };
 }
 
+function transformToMatrixPivot(
+  data: DatasetData,
+  rowColumnIndex: number,
+  columnDimensionIndex: number,
+  valueColumnIndexes: number[],
+) {
+  // Matrix pivot: Create traditional pivot table with rows and columns from dimensions
+  // Row dimension values become rows, column dimension values become columns
+  
+  const rowColumn = data.cols[rowColumnIndex];
+  const columnDimensionColumn = data.cols[columnDimensionIndex];
+  const valueColumn = data.cols[valueColumnIndexes[0]]; // Use first value column for matrix
+
+  console.log("Matrix pivot transform:", {
+    rowColumn: rowColumn.name,
+    columnDimension: columnDimensionColumn.name,
+    valueColumn: valueColumn.name
+  });
+
+  // Get unique values for rows and columns
+  const uniqueRowValues = _.uniq(data.rows.map(row => row[rowColumnIndex])).sort();
+  const uniqueColumnValues = _.uniq(data.rows.map(row => row[columnDimensionIndex])).sort();
+
+  console.log("Matrix dimensions:", {
+    rowValues: uniqueRowValues,
+    columnValues: uniqueColumnValues
+  });
+
+  // Create new column structure: [Row Dimension, Col1, Col2, Col3, ...]
+  const newCols = [
+    rowColumn,
+    ...uniqueColumnValues.map(value => ({
+      ...valueColumn,
+      name: `${columnDimensionColumn.name}_${value}`,
+      display_name: String(value),
+      _dimension: {
+        value: value,
+        column: columnDimensionColumn,
+      },
+    }))
+  ];
+
+  // Create matrix rows
+  const matrixRows = uniqueRowValues.map(rowValue => {
+    const row = [rowValue]; // Start with row dimension value
+    
+    // Fill in values for each column dimension
+    uniqueColumnValues.forEach(columnValue => {
+      // Find the data row that matches both row and column values
+      const dataRow = data.rows.find(r => 
+        r[rowColumnIndex] === rowValue && 
+        r[columnDimensionIndex] === columnValue
+      );
+      
+      // Add the value or null if no match found
+      row.push(dataRow ? dataRow[valueColumnIndexes[0]] : null);
+    });
+
+    // Add dimension info for click handling
+    (row as any)._dimension = {
+      value: rowValue,
+      column: rowColumn,
+    };
+
+    return row;
+  });
+
+  console.log("Matrix result:", {
+    colCount: newCols.length,
+    rowCount: matrixRows.length,
+    sampleRow: matrixRows[0]
+  });
+
+  return {
+    cols: newCols,
+    rows: matrixRows,
+    results_timezone: data.results_timezone,
+  };
+}
+
 export function checkSQLPivotRenderable(
   data: DatasetData,
   settings: SQLPivotSettings,
@@ -181,6 +280,7 @@ export function checkSQLPivotRenderable(
   }
 
   const rowColumnName = settings["sqlpivot.row_column"];
+  const columnDimensionName = settings["sqlpivot.column_dimension"];
   const rawValueColumns = settings["sqlpivot.value_columns"];
 
   // Handle both string and array cases for value columns
@@ -197,5 +297,10 @@ export function checkSQLPivotRenderable(
 
   if (valueColumnNames.length === 0) {
     throw new Error(t`Please select at least one value column for the pivot table.`);
+  }
+
+  // Validate column dimension if provided
+  if (columnDimensionName && columnDimensionName === rowColumnName) {
+    throw new Error(t`Row dimension and column dimension cannot be the same column.`);
   }
 } 
