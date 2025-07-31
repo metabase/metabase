@@ -80,7 +80,7 @@ const BASE_SCOPED_CSS_RESET = css`
   }
 `;
 
-// For test env we don't use layers, because the current versopn of jsdom does not support it,
+// For test env we don't use layers, because the current version of jsdom does not support it,
 // and upgrading it introduces other issues in tests.
 
 export const SCOPED_CSS_RESET = isTest
