@@ -225,8 +225,7 @@ export function TableDetailViewInner({
   const nameIndex = columns.findIndex(isEntityName);
   const rowName = nameIndex == null ? null : row[nameIndex];
 
-  // Check if we have relationships to show
-  const hasRelationships = tableForeignKeys.length > 0; // TODO: this crashes
+  const hasRelationships = tableForeignKeys.length > 0;
 
   const DetailContainer = ({ children }: { children: ReactNode }) => (
     <Stack
@@ -262,31 +261,6 @@ export function TableDetailViewInner({
           borderTop: "1px solid var(--border-color)",
         }}
       >
-        {hasRelationships && (
-          <Box
-            bg="bg-white"
-            flex="0 0 auto"
-            mih={0}
-            miw={300}
-            h="100%"
-            p="lg"
-            style={{
-              borderRight: `1px solid var(--mb-color-border)`,
-              overflowY: "auto",
-            }}
-          >
-            <Text fw={600} size="lg" mb="md">{t`Relationships`}</Text>
-            <Relationships
-              objectName={rowName ? String(rowName) : String(rowId)}
-              tableForeignKeys={tableForeignKeys as any}
-              tableForeignKeyReferences={tableForeignKeyReferences}
-              foreignKeyClicked={handleFollowForeignKey}
-              bg="bg-white"
-              p="xs"
-            />
-          </Box>
-        )}
-
         <Stack
           align="center"
           bg="bg-white"
@@ -297,6 +271,29 @@ export function TableDetailViewInner({
         >
           <Box maw={800} w="100%">
             {children}
+
+            <Box
+              pos="relative"
+              bg={isEdit ? "bg-medium" : "bg-white"}
+              px="md"
+              py="sm"
+              style={{
+                border: "1px solid var(--border-color)",
+                borderRadius: "var(--default-border-radius)",
+              }}
+            >
+              <Text fw={600} size="lg" mb="md">{t`Relationships`}</Text>
+              {hasRelationships && (
+                <Relationships
+                  objectName={rowName ? String(rowName) : String(rowId)}
+                  tableForeignKeys={tableForeignKeys}
+                  tableForeignKeyReferences={tableForeignKeyReferences}
+                  foreignKeyClicked={handleFollowForeignKey}
+                  bg={isEdit ? "bg-medium" : "bg-white"}
+                  p="xs"
+                />
+              )}
+            </Box>
           </Box>
         </Stack>
 
@@ -367,7 +364,7 @@ export function TableDetailViewInner({
       </Stack>
 
       {isEdit && (
-        <Flex align="center" justify="center" w="100%" mt="md">
+        <Flex align="center" justify="center" w="100%" my="md">
           <Tooltip label={t`Add section`}>
             <Button leftSection={<Icon name="add" />} onClick={createSection} />
           </Tooltip>
