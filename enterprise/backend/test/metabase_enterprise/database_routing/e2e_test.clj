@@ -242,16 +242,18 @@
               (mt/dataset (mt/dataset-definition (router-dataset-name driver/*driver*)
                                                  [["t"
                                                    [{:field-name "f", :base-type :type/Text}]
-                                                   [["router-foo"]
-                                                    ["router-bar"]]]])
+                                                   [["original-foo"]
+                                                    ["original-bar"]]]])
                 (let [router (mt/db)]
                   (wire-routing {:parent router :children [routed]})
                   (mt/with-temp [:model/DatabaseRouter _ {:database_id    (u/the-id router)
                                                           :user_attribute "db_name"}]
                     (met/with-user-attributes! :rasta {"db_name" (:name routed)}
-                      (is (= [[1 "router-foo"] [2 "router-bar"]]
+                      (is (= [[1 "original-foo"] [2 "original-bar"]]
                              (mt/with-current-user (mt/user->id :crowberto)
                                (mt/rows (mt/process-query (mt/query t))))))
                       (is (= [[1 "routed-foo"] [2 "routed-bar"]]
                              (mt/with-current-user (mt/user->id :rasta)
                                (mt/rows (mt/process-query (mt/query t)))))))))))))))))
+
+
