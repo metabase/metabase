@@ -216,6 +216,18 @@ describe("Database connection strings", () => {
     );
   });
 
+  it("should enable the 'Save' button when the connection string is valid", () => {
+    cy.visit("/admin/databases/create");
+
+    chooseDatabase("MySQL");
+
+    cy.findByLabelText("Connection string (optional)").paste(
+      "jdbc:mysql://testuser:testpass@host:3306/dbname?ssl=true",
+    );
+
+    cy.button("Save").should("be.enabled");
+  });
+
   it("should show a warning if the connection string is invalid", () => {
     cy.visit("/admin/databases/create");
 

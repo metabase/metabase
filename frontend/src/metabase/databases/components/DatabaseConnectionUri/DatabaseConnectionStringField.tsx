@@ -22,10 +22,12 @@ export function isEngineKey(value: string | undefined): value is EngineKey {
 
 export function DatabaseConnectionStringField({
   setFieldValue,
+  validateForm,
   engineKey,
   location,
 }: {
   setFieldValue: (field: string, value: string | boolean | undefined) => void;
+  validateForm: () => void;
   engineKey: string | undefined;
   location: "admin" | "setup" | "embedding_setup";
 }) {
@@ -65,6 +67,12 @@ export function DatabaseConnectionStringField({
       deleayedClearStatus();
       connectionStringParsedSuccess(location);
 
+      // Trigger validation after field values are set
+      // This enables submit button if all required fields are filled
+      window.requestAnimationFrame(() => {
+        validateForm();
+      });
+
       return () => {
         clearTimeout();
       };
@@ -101,6 +109,7 @@ export function DatabaseConnectionStringField({
       onChange={(e) => setConnectionString(e.target.value)}
       mb="md"
       placeholder={placeholder}
+      name="connection-string"
     />
   );
 }
