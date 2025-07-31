@@ -27,9 +27,8 @@ export function AdminDatabaseTableEditingSection({
     database: { id: DatabaseId } & Partial<DatabaseData>,
   ) => Promise<void>;
 }) {
-  const isEditingDatabase = !!database.id;
   const showTableEditingSection =
-    isEditingDatabase && hasFeature(database, "actions");
+    !!database.id && hasFeature(database, "actions/data-editing");
 
   const [error, setError] = useState<string | null>(null);
 
