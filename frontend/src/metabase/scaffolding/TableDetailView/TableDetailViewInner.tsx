@@ -29,7 +29,6 @@ import { closeNavbar } from "metabase/redux/app";
 import { Box, Flex, Group, Stack, Text, Tooltip } from "metabase/ui/components";
 import { Button } from "metabase/ui/components/buttons";
 import { Icon } from "metabase/ui/components/icons";
-import { Relationships } from "metabase/visualizations/components/ObjectDetail/ObjectRelationships";
 import type ForeignKey from "metabase-lib/v1/metadata/ForeignKey";
 import { isEntityName, isPK } from "metabase-lib/v1/types/utils/isa";
 import type { Dataset, DatasetColumn } from "metabase-types/api";
@@ -38,6 +37,7 @@ import { getDefaultObjectViewSettings } from "../utils";
 
 import { DetailViewHeader } from "./DetailViewHeader";
 import { DetailViewSidebar } from "./DetailViewSidebar";
+import { Relationships } from "./ObjectRelations";
 import { SortableSection } from "./SortableSection";
 import { useDetailViewSections } from "./use-detail-view-sections";
 import { useForeignKeyReferences } from "./use-foreign-key-references";
@@ -278,20 +278,23 @@ export function TableDetailViewInner({
               px="md"
               py="sm"
               style={{
-                border: "1px solid var(--border-color)",
+                border: isEdit ? "1px solid var(--border-color)" : "none",
                 borderRadius: "var(--default-border-radius)",
+                // eslint-disable-next-line no-color-literals
+                boxShadow: "0 2px 8px rgba(0, 0, 0, 0.1)",
               }}
             >
-              <Text fw={600} size="lg" mb="md">{t`Relationships`}</Text>
               {hasRelationships && (
-                <Relationships
-                  objectName={rowName ? String(rowName) : String(rowId)}
-                  tableForeignKeys={tableForeignKeys}
-                  tableForeignKeyReferences={tableForeignKeyReferences}
-                  foreignKeyClicked={handleFollowForeignKey}
-                  bg={isEdit ? "bg-medium" : "bg-white"}
-                  p="xs"
-                />
+                <>
+                  <Text component="h2">{t`Relationships`}</Text>
+                  <Relationships
+                    objectName={rowName ? String(rowName) : String(rowId)}
+                    tableForeignKeys={tableForeignKeys}
+                    tableForeignKeyReferences={tableForeignKeyReferences}
+                    foreignKeyClicked={handleFollowForeignKey}
+                    disableClicks={isEdit}
+                  />
+                </>
               )}
             </Box>
           </Box>
@@ -333,7 +336,17 @@ export function TableDetailViewInner({
 
   return (
     <DetailContainer>
-      <Stack gap="md" mt={"md"} mb={"sm"}>
+      <Stack
+        gap={isEdit ? "md" : 0}
+        mt="md"
+        mb="sm"
+        bg="transparent"
+        style={{
+          borderRadius: "var(--default-border-radius)",
+          // eslint-disable-next-line no-color-literals
+          boxShadow: "0 2px 8px rgba(0, 0, 0, 0.1)", // can be a Card component
+        }}
+      >
         <DndContext
           sensors={sensors}
           collisionDetection={closestCenter}

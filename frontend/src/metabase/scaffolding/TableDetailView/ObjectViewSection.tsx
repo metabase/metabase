@@ -46,7 +46,7 @@ export function ObjectViewSection({
       px="md"
       py="sm"
       style={{
-        border: "1px solid var(--border-color)",
+        border: isEdit ? "1px solid var(--border-color)" : "none",
         borderRadius: "var(--default-border-radius)",
       }}
     >
@@ -60,12 +60,14 @@ export function ObjectViewSection({
             {...dragHandleProps}
           />
         )}
-        <EditableText
-          initialValue={section.title}
-          isDisabled={!isEdit}
-          onChange={(title) => onUpdateSection({ title })}
-          style={{ fontWeight: 700 }}
-        />
+        {isEdit && (
+          <EditableText
+            initialValue={section.title}
+            isDisabled={!isEdit}
+            onChange={(title) => onUpdateSection({ title })}
+            style={{ fontWeight: 700 }}
+          />
+        )}
       </Group>
       <Flex
         direction={section.direction === "vertical" ? "column" : "row"}
@@ -89,8 +91,7 @@ export function ObjectViewSection({
           return (
             <Box key={field_id}>
               <Text
-                c="text-dark"
-                fw={600}
+                c="var(--mb-color-text-secondary)"
                 size="sm"
                 style={{
                   whiteSpace: "nowrap",
@@ -100,6 +101,8 @@ export function ObjectViewSection({
               </Text>
               <Text
                 {...getStyleProps(style)}
+                fz="1rem"
+                c="var(--mb-color-text-primary)"
                 lineClamp={5}
                 style={{
                   ...(isDate(column) ? { whiteSpace: "nowrap" } : {}),
