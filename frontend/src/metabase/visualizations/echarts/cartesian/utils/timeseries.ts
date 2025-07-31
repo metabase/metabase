@@ -55,7 +55,10 @@ export const TIMESERIES_INTERVALS: (TimeSeriesInterval & {
   { unit: "day", count: 1, testFn: (d: Dayjs) => d.hour() }, // (13) 1 day
   { unit: "week", count: 1, testFn: (d: Dayjs) => d.day() }, // (14) 1 week
   { unit: "month", count: 1, testFn: (d: Dayjs) => d.date() }, // (15) 1 month
-  { unit: "quarter", count: 1, testFn: (d: Dayjs) => d.month() % 3 }, // (16) 3 months / 1 quarter
+  { unit: "month", count: 2, testFn: (d: Dayjs) => d.month() % 2 }, // (16) 2 months
+  { unit: "quarter", count: 1, testFn: (d: Dayjs) => d.month() % 3 }, // (17) 3 months / 1 quarter
+  { unit: "month", count: 4, testFn: (d: Dayjs) => d.month() % 4 }, // (18) 4 months
+  { unit: "month", count: 6, testFn: (d: Dayjs) => d.month() % 6 }, // (19) 6 months
   { unit: "year", count: 1, testFn: (d: Dayjs) => d.month() }, // (17) 1 year
   { unit: "year", count: 2, testFn: (d: Dayjs) => d.year() % 2 }, // (18) 2 year
   { unit: "year", count: 10, testFn: (d: Dayjs) => d.year() % 10 }, // (19) 10 year
@@ -144,7 +147,7 @@ export function getTimeSeriesIntervalDuration(interval: TimeSeriesInterval) {
 
 /// Return the number of ticks we can expect to see over a time range using the TIMESERIES_INTERVALS entry interval.
 /// for example a "5 seconds" interval over a time range of a minute should have an expected tick count of 20.
-function expectedTickCount(
+export function expectedTickCount(
   interval: TimeSeriesInterval,
   timeRangeMilliseconds: number,
 ) {
@@ -200,7 +203,7 @@ function timeseriesTicksInterval(
 }
 
 /// return the maximum number of ticks to show for a timeseries chart of a given width
-function maxTicksForChartWidth(
+export function maxTicksForChartWidth(
   chartWidth: number,
   tickFormat: (value: RowValue) => string,
 ) {
