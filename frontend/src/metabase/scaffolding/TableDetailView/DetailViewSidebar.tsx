@@ -38,6 +38,7 @@ import type {
 } from "metabase-types/api";
 
 import { ColumnListItem } from "./ColumnListItem";
+import { Dnd } from "./Dnd";
 import { EmptyDropZone } from "./EmptyDropZone";
 import { RelationshipsSectionSettings } from "./RelationshipsSectionSettings";
 import { SortableSectionSettings } from "./SortableSectionSettings";
@@ -260,6 +261,8 @@ export function DetailViewSidebar({
       onUpdateSection(firstSection.id, { fields: newFields });
     }
   };
+
+  return <Dnd />;
 
   return (
     <DndContext
