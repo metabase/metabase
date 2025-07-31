@@ -199,7 +199,7 @@
      (requiring-resolve 'metabase-enterprise.api.routes/routes)
      pass-thru-handler)
    (handlers/route-map-handler route-map)
-   (if (and config/is-dev? (not *compile-files*))
+   (if (and config/dev-available? (not *compile-files*))
      (requiring-resolve 'dev.api.routes/routes)
      pass-thru-handler)
    not-found-handler))
