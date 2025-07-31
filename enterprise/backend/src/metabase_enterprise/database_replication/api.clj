@@ -7,6 +7,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.premium-features.core :refer [quotas]]
+   [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -36,9 +37,8 @@
   replicated."
   [database]
   (let [free-quota      (or
-                         (some->> (filter (comp #{"clickhouse-dwh"} :hosting_feature) (quotas))
-                                  first
-                                  ((juxt :total_units :usage))
+                         (some->> (m/find-first (comp #{"clickhouse-dwh"} :hosting-feature) (quotas))
+                                  ((juxt :soft-limit :usage))
                                   (apply -))
                          -1)
         total-row-count (or
@@ -50,6 +50,7 @@
                           (map :estimated_row_count)
                           (reduce +))
                          0)]
+    (log/infof "Quota left: %s. Estimate db row count: %s" free-quota total-row-count)
     (< total-row-count free-quota)))
 
 (api.macros/defendpoint :post "/connection/:database-id"
