@@ -1,5 +1,6 @@
 (ns metabase-enterprise.database-replication.api
   (:require
+   [clojure.set :as set]
    [medley.core :as m]
    [metabase-enterprise.database-replication.settings :as database-replication.settings]
    [metabase-enterprise.harbormaster.client :as hm.client]
@@ -30,6 +31,11 @@
 (defn- database-id->connection-id [conns database-id]
   (->> database-id kw-id (get conns) :connection-id))
 
+(defn- m->schema-filter [m]
+  (-> m
+      (select-keys [:schema-filters-type :schema-filters-patterns])
+      (set/rename-keys {:schema-filters-type :type, :schema-filters-patterns :patterns})))
+
 (defn- can-set-replication?
   "Predicate that signals if replication looks right from the quota perspective.
 
@@ -55,7 +61,7 @@
 
 (api.macros/defendpoint :post "/connection/:database-id"
   "Create a new PG replication connection for the specified database."
-  [{:keys [database-id]} :- [:map [:database-id ms/PositiveInt]]]
+  [{:keys [database-id], :as args} :- [:map [:database-id ms/PositiveInt]]]
   (api/check-400 (database-replication.settings/database-replication-enabled) "PG replication integration is not enabled.")
   (let [database (t2/select-one :model/Database :id database-id)]
     (api/check-404 database)
@@ -65,13 +71,10 @@
       (let [credentials (-> (:details database)
                             (select-keys [:dbname :host :user :password :port])
                             (update :port #(or % 5432))) ;; port is required in the API, but optional in MB
-            {:keys [schema-filters-type schema-filters-patterns]} (:details database)
-            schemas      (when-some [k ({"inclusion" :include, "exclusion" :exclude} schema-filters-type)]
-                           (when schema-filters-patterns
-                             {:schemas {k schema-filters-patterns}}))
-
-            secret       (merge {:credentials (merge {:dbtype "postgresql"} credentials)}
-                                schemas)]
+            secret {:credentials (merge {:dbtype "postgresql"} credentials)
+                    :schema-filters (->> [(m->schema-filter (:details database))
+                                          (m->schema-filter args)]
+                                         (filterv (comp not empty?)))}]
         (if (can-set-replication? database)
           (let [{:keys [id]} (hm.client/call :create-connection, :type "pg_replication", :secret secret)
                 conn         {:connection-id id}]
