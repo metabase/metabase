@@ -1,11 +1,10 @@
-(ns metabase-enterprise.transforms.server
+(ns metabase-enterprise.worker.server
   (:require
    [clojure.edn :as edn]
    [clojure.string :as str]
    [compojure.core :as compojure]
    [compojure.route :as route]
-   [metabase-enterprise.transforms.execute :as transforms.execute]
-   [metabase-enterprise.transforms.tracking :as transforms.track]
+   [metabase-enterprise.transforms.core :as transforms]
    [metabase.api.util.handlers :as handlers]
    [metabase.server.core :as server]
    [metabase.util :as u]
@@ -41,15 +40,15 @@
   (let [success? (.tryAcquire semaphore)]
     (if success?
       (let [{:keys [work-id mb-source] :as body} (:body request)
-            run-id (transforms.track/track-start! work-id "transform" mb-source)]
+            run-id (transforms/track-start! work-id "transform" mb-source)]
         (.submit executor
                  ^Runnable #(try
                               (-> (assoc body :run-id run-id)
-                                  transforms.execute/execute-transform!)
-                              (transforms.track/track-finish! run-id)
+                                  transforms/execute-transform!)
+                              (transforms/track-finish! run-id)
                               (catch Throwable t
                                 (log/error t "Error executing transform")
-                                (transforms.track/track-error! run-id))
+                                (transforms/track-error! run-id))
                               (finally
                                 (.release semaphore))))
         (-> (response/response {:message "Transform started"
@@ -61,8 +60,8 @@
 
 (defn- handle-status-get
   [run-id]
-  (prn "handling transform get")
-  (let [resp (transforms.track/get-status (Integer/parseInt run-id) "mb-1")]
+  (prn "handling task get")
+  (let [resp (transforms/get-status (Integer/parseInt run-id) "mb-1")]
     (if (seq resp)
       (response/response {:status (first resp)})
       (-> (response/response "Not found")
@@ -83,7 +82,7 @@
 
 (defn stop! []
   (when @instance
-    (prn "stopping transforms server")
+    (prn "stopping worker server")
     (.stop ^QueuedThreadPool @instance)
     (reset! instance nil)))
 
@@ -91,7 +90,7 @@
   ([] (start! {}))
   ([opts]
    (stop!)
-   (prn "starting transforms server")
+   (prn "starting worker server")
    (let [thread-pool (doto (new QueuedThreadPool)
                        (.setVirtualThreadsExecutor (Executors/newVirtualThreadPerTaskExecutor)))]
      (reset! instance (ring-jetty/run-jetty handler

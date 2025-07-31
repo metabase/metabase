@@ -197,12 +197,12 @@
 (defn start-worker!
   "Start metabase worker"
   []
-  ((requiring-resolve 'metabase-enterprise.transforms.server/start!) {:dev true}))
+  ((requiring-resolve 'metabase-enterprise.worker.core/start!) {:dev true}))
 
 (defn stop-worker!
   "Stop metabase worker"
   []
-  ((requiring-resolve 'metabase-enterprise.transforms.server/stop!)))
+  ((requiring-resolve 'metabase-enterprise.worker.core/stop!)))
 
 (defn ns-unmap-all
   "Unmap all interned vars in a namespace. Reset the namespace to a blank slate! Perfect for when you rename everything
