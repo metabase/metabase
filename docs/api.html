@@ -206,6 +206,29 @@ redirect_from:
           } ]
         } ]
       },
+      "metabase-enterprise.action-v2.api.api-action-expression" : {
+        "description" : "A more relaxed version of ::action-expression that can still have opaque identifiers inside inside.",
+        "type" : "object",
+        "properties" : { }
+      },
+      "metabase-enterprise.action-v2.api.api-action-id" : {
+        "description" : "Primitive actions, saved actions, and packed encodings from the picker.",
+        "anyOf" : [ {
+          "description" : "value must be an integer greater than zero.",
+          "type" : "integer",
+          "minimum" : 1
+        }, {
+          "type" : "string"
+        } ]
+      },
+      "metabase-enterprise.action-v2.api.api-action-id-or-expression" : {
+        "description" : "All the various ways of referring to an action with the v2 APIs.",
+        "anyOf" : [ {
+          "$ref" : "#/components/schemas/metabase-enterprise.action-v2.api.api-action-id"
+        }, {
+          "$ref" : "#/components/schemas/metabase-enterprise.action-v2.api.api-action-expression"
+        } ]
+      },
       "metabase-enterprise.metabot-v3.client.schema.message" : {
         "allOf" : [ {
           "type" : "object",
@@ -1594,6 +1617,122 @@ redirect_from:
         },
         "required" : [ "conversation_id" ]
       },
+      "metabase-enterprise.permission-debug.impl.group-id" : {
+        "type" : "integer"
+      },
+      "metabase-enterprise.permission-debug.impl.perm-debug-info" : {
+        "type" : "object",
+        "properties" : {
+          "data" : {
+            "type" : "object",
+            "properties" : { }
+          },
+          "decision" : {
+            "type" : "string",
+            "enum" : [ "allow", "denied", "limited" ]
+          },
+          "message" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          },
+          "model-id" : {
+            "type" : "string"
+          },
+          "model-type" : {
+            "type" : "string",
+            "enum" : [ "card", "invalid" ]
+          },
+          "segment" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string",
+              "enum" : [ "sandboxed", "impersonated", "routed" ]
+            },
+            "uniqueItems" : true
+          },
+          "suggestions" : {
+            "type" : "object",
+            "additionalProperties" : {
+              "type" : "string"
+            }
+          }
+        },
+        "required" : [ "model-type", "model-id", "decision", "segment", "message", "data", "suggestions" ]
+      },
+      "metabase.actions.types..scope.raw" : {
+        "anyOf" : [ {
+          "type" : "object",
+          "properties" : {
+            "dashboard-id" : {
+              "description" : "value must be an integer greater than zero.",
+              "type" : "integer",
+              "minimum" : 1
+            }
+          },
+          "required" : [ "dashboard-id" ]
+        }, {
+          "type" : "object",
+          "properties" : {
+            "dashcard-id" : {
+              "description" : "value must be an integer greater than zero.",
+              "type" : "integer",
+              "minimum" : 1
+            }
+          },
+          "required" : [ "dashcard-id" ]
+        }, {
+          "type" : "object",
+          "properties" : {
+            "card-id" : {
+              "description" : "value must be an integer greater than zero.",
+              "type" : "integer",
+              "minimum" : 1
+            }
+          },
+          "required" : [ "card-id" ]
+        }, {
+          "type" : "object",
+          "properties" : {
+            "model-id" : {
+              "description" : "value must be an integer greater than zero.",
+              "type" : "integer",
+              "minimum" : 1
+            }
+          },
+          "required" : [ "model-id" ]
+        }, {
+          "type" : "object",
+          "properties" : {
+            "table-id" : {
+              "description" : "value must be an integer greater than zero.",
+              "type" : "integer",
+              "minimum" : 1
+            }
+          },
+          "required" : [ "table-id" ]
+        }, {
+          "type" : "object",
+          "properties" : {
+            "webhook-id" : {
+              "description" : "value must be an integer greater than zero.",
+              "type" : "integer",
+              "minimum" : 1
+            }
+          },
+          "required" : [ "webhook-id" ]
+        }, {
+          "type" : "object",
+          "properties" : {
+            "unknown" : {
+              "type" : "string",
+              "enum" : [ "model-action" ]
+            }
+          },
+          "required" : [ "unknown" ]
+        } ]
+      },
       "metabase.analyze.query-results.ResultsMetadata" : {
         "type" : "array",
         "items" : {
@@ -2171,14 +2310,6 @@ redirect_from:
           "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.field-or-expression-ref"
         } ]
       },
-      "metabase.legacy-mbql.schema.Ident" : {
-        "description" : "Unique identifier string for new `:column` refs. The new refs aren't used in legacy MBQL (currently) but the\n  idents for column-introducing new clauses (joins, aggregations, breakouts, expressions) are randomly generated when\n  the clauses are created, so the idents must be preserved in legacy MBQL.\n\n  These are opaque strings under the initial design; I've made them a separate schema for documentation and\n  future-proofing.",
-        "anyOf" : [ {
-          "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
-        }, {
-          "type" : "string"
-        } ]
-      },
       "metabase.legacy-mbql.schema.IntGreaterThanZeroOrNumericExpression" : {
         "oneOf" : [ {
           "description" : "Must be a positive integer.",
@@ -2192,32 +2323,13 @@ redirect_from:
         "description" : "Perform the equivalent of a SQL `JOIN` with another Table or nested `:source-query`. JOINs are either explicitly\n  specified in the incoming query, or implicitly generated when one uses a `:field` clause with `:source-field`.\n\n  In the top-level query, you can reference Fields from the joined table or nested query by including `:source-field`\n  in the `:field` options (known as implicit joins); for explicit joins, you *must* specify `:join-alias` yourself; in\n  the `:field` options, e.g.\n\n    ;; for joins against other Tables/MBQL source queries\n    [:field 1 {:join-alias \"my_join_alias\"}]\n\n    ;; for joins against native queries\n    [:field \"my_field\" {:base-type :field/Integer, :join-alias \"my_join_alias\"}]",
         "type" : "object",
         "properties" : {
-          "ident" : {
-            "description" : "An opaque string used as a unique identifier for this join clause, even if it evolves. This string is randomly\n      generated when a join clause is created, so it can never be confused with another join of the same table.",
-            "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.Ident"
-          },
-          "strategy" : {
-            "description" : "Defaults to `:left-join`; used for all automatically-generated JOINs\n\n  Driver implementations: this is guaranteed to be present after pre-processing.",
-            "type" : "string",
-            "enum" : [ "full-join", "right-join", "left-join", "inner-join" ]
-          },
-          "source-metadata" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.legacy-column-metadata"
-            },
-            "description" : "Metadata about the source query being used, if pulled in from a Card via the\n  `:source-table \"card__id\"` syntax. added automatically by the `resolve-card-id-source-tables` middleware."
+          "alias" : {
+            "description" : "The name used to alias the joined table or query. This is usually generated automatically and generally looks\n  like `table__via__field`. You can specify this yourself if you need to reference a joined field with a `:join-alias`\n  in the options.\n\n  Driver implementations: This is guaranteed to be present after pre-processing.",
+            "$ref" : "#/components/schemas/metabase.lib.schema.join.alias"
           },
           "condition" : {
             "description" : "The condition on which to JOIN. Can be anything that is a valid `:filter` clause. For automatically-generated\n  JOINs this is usually something like\n\n    [:= <source-table-fk-field> [:field <dest-table-pk-field> {:join-alias <join-table-alias>}]]",
             "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.Filter"
-          },
-          "source-query" : {
-            "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.SourceQuery"
-          },
-          "fk-field-id" : {
-            "$ref" : "#/components/schemas/metabase.lib.schema.id.field",
-            "description" : "Mostly used only internally. When a join is implicitly generated via a `:field` clause with\n  `:source-field`, the ID of the foreign key field in the source Table will be recorded here. This information is used\n  to add `fk_field_id` information to the `:cols` in the query results, and also for drill-thru. When generating\n  explicit joins by hand you can usually omit this information, altho it doesn't hurt to include it if you know it.\n\n  Don't set this information yourself. It will have no effect."
           },
           "fields" : {
             "description" : "The Fields from this join to include in parent-level results. This can be either `:none`, `:all`, or a sequence\n  of `:field` clauses.\n\n  * `:none`: no Fields from the joined table or nested query are included (unless indirectly included by breakouts or\n     other clauses). This is the default, and what is used for automatically-generated joins.\n\n  * `:all`: will include all of the Field from the joined table or query\n\n  * a sequence of Field clauses: include only the Fields specified. Valid clauses are the same as the top-level\n    `:fields` clause. This should be non-empty and all elements should be distinct. The normalizer will automatically\n    remove duplicate fields for you, and replace empty clauses with `:none`.\n\n  Driver implementations: you can ignore this clause. Relevant fields will be added to top-level `:fields` clause with\n  appropriate aliases.",
@@ -2227,6 +2339,20 @@ redirect_from:
             }, {
               "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.Fields"
             } ]
+          },
+          "fk-field-id" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.id.field",
+            "description" : "Mostly used only internally. When a join is implicitly generated via a `:field` clause with\n  `:source-field`, the ID of the foreign key field in the source Table will be recorded here. This information is used\n  to add `fk_field_id` information to the `:cols` in the query results, and also for drill-thru. When generating\n  explicit joins by hand you can usually omit this information, altho it doesn't hurt to include it if you know it.\n\n  Don't set this information yourself. It will have no effect."
+          },
+          "source-metadata" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.legacy-column-metadata"
+            },
+            "description" : "Metadata about the source query being used, if pulled in from a Card via the\n  `:source-table \"card__id\"` syntax. added automatically by the `resolve-card-id-source-tables` middleware."
+          },
+          "source-query" : {
+            "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.SourceQuery"
           },
           "source-table" : {
             "description" : "*What* to JOIN. Self-joins can be done by using the same `:source-table` as in the query where\n  this is specified. YOU MUST SUPPLY EITHER `:source-table` OR `:source-query`, BUT NOT BOTH!",
@@ -2238,9 +2364,10 @@ redirect_from:
               "pattern" : "^card__[1-9]\\d*$"
             } ]
           },
-          "alias" : {
-            "description" : "The name used to alias the joined table or query. This is usually generated automatically and generally looks\n  like `table__via__field`. You can specify this yourself if you need to reference a joined field with a `:join-alias`\n  in the options.\n\n  Driver implementations: This is guaranteed to be present after pre-processing.",
-            "$ref" : "#/components/schemas/metabase.lib.schema.join.alias"
+          "strategy" : {
+            "description" : "Defaults to `:left-join`; used for all automatically-generated JOINs\n\n  Driver implementations: this is guaranteed to be present after pre-processing.",
+            "type" : "string",
+            "enum" : [ "full-join", "right-join", "left-join", "inner-join" ]
           }
         },
         "required" : [ "condition" ]
@@ -2302,15 +2429,7 @@ redirect_from:
             } ]
           },
           "order-by" : {
-            "allOf" : [ {
-              "type" : "array",
-              "items" : {
-                "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.OrderBy"
-              },
-              "minItems" : 1
-            }, {
-              "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.helpers.distinct"
-            } ]
+            "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.OrderBys"
           },
           "page" : {
             "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.Page"
@@ -2452,6 +2571,17 @@ redirect_from:
           "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.asc"
         }, {
           "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.desc"
+        } ]
+      },
+      "metabase.legacy-mbql.schema.OrderBys" : {
+        "allOf" : [ {
+          "type" : "array",
+          "items" : {
+            "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.OrderBy"
+          },
+          "minItems" : 1
+        }, {
+          "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.helpers.distinct"
         } ]
       },
       "metabase.legacy-mbql.schema.OrderComparable" : {
@@ -3194,7 +3324,7 @@ redirect_from:
             "$ref" : "#/components/schemas/metabase.lib.schema.common.semantic-or-relation-type"
           },
           "display_name" : {
-            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+            "type" : "string"
           },
           "converted_timezone" : {
             "$ref" : "#/components/schemas/metabase.lib.schema.expression.temporal.timezone-id"
@@ -3535,6 +3665,7 @@ redirect_from:
         "format" : "byte"
       },
       "metabase.lib.schema.info.info" : {
+        "description" : "Schema for query `:info` dictionary, which is used for informational purposes to record information about how a query\n  was executed in QueryExecution and other places. It is considered bad form for middleware to change its behavior\n  based on this information, don't do it!\n\n  TODO - this schema is somewhat misleading because if you use a function\n  like [[metabase.query-processor/userland-query]] some of these keys (e.g. `:context`) are in fact required",
         "type" : "object",
         "properties" : {
           "query-hash" : {
@@ -3549,9 +3680,6 @@ redirect_from:
           },
           "executed-by" : {
             "$ref" : "#/components/schemas/metabase.lib.schema.id.user"
-          },
-          "card-entity-id" : {
-            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
           },
           "card-id" : {
             "$ref" : "#/components/schemas/metabase.lib.schema.id.card"
@@ -3640,7 +3768,7 @@ redirect_from:
         "enum" : [ "aggregation", "fields", "breakout", "native" ]
       },
       "metabase.lib.schema.metadata..column.remapping.external" : {
-        "description" : "External remapping (Dimension) for a column. From the [[metabase.warehouse-schema.models.dimension]] with `type =\n  external` associated with a `Field` in the application database.\n  See [[metabase.query-processor.middleware.add-dimension-projections]] for what this means.",
+        "description" : "External remapping (Dimension) for a column. From the [[metabase.warehouse-schema.models.dimension]] with `type =\n  external` associated with a `Field` in the application database.\n  See [[metabase.query-processor.middleware.add-remaps]] for what this means.",
         "type" : "object",
         "properties" : {
           "field-id" : {
@@ -3659,7 +3787,7 @@ redirect_from:
         "required" : [ "lib/type", "id", "name", "field-id" ]
       },
       "metabase.lib.schema.metadata..column.remapping.internal" : {
-        "description" : "Internal remapping (FieldValues) for a column. From [[metabase.warehouse-schema.models.dimension]] with `type =\n  internal` and the [[metabase.warehouse-schema.models.field-values]] associated with a `Field` in the application\n  database. See [[metabase.query-processor.middleware.add-dimension-projections]] for what this means.",
+        "description" : "Internal remapping (FieldValues) for a column. From [[metabase.warehouse-schema.models.dimension]] with `type =\n  internal` and the [[metabase.warehouse-schema.models.field-values]] associated with a `Field` in the application\n  database. See [[metabase.query-processor.middleware.add-remaps]] for what this means.",
         "type" : "object",
         "properties" : {
           "human-readable-values" : {
@@ -11371,6 +11499,119 @@ redirect_from:
         "tags" : [ "/api/dataset" ]
       }
     },
+    "/api/ee/action-v2/execute" : {
+      "post" : {
+        "summary" : "POST /api/ee/action-v2/execute",
+        "description" : "Execute an action with a single input.\n\n   Takes:\n   - `action`            - an identifier or an expression for what we want to execute.\n   - `scope`             - where the action is being invoked from.\n   - `input`             - a single map. currently these are typically a database table row pk, or query result.\n   - `params` (optional) - a map of values for the parameters taken by the action's mapping.\n\n   The `input` and `params` are used by the relevant mapping to calculate a map argument to the underlying action fn.\n   If there is no mapping, `params` are simply used as overrides for `input`.\n\n   Returns the outputs from the performed action.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "action" : {
+                    "$ref" : "#/components/schemas/metabase-enterprise.action-v2.api.api-action-id-or-expression"
+                  },
+                  "input" : {
+                    "type" : "object",
+                    "properties" : { }
+                  },
+                  "params" : {
+                    "type" : "object",
+                    "properties" : { }
+                  },
+                  "scope" : {
+                    "$ref" : "#/components/schemas/metabase.actions.types..scope.raw"
+                  }
+                },
+                "required" : [ "action", "scope" ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/action-v2" ]
+      }
+    },
+    "/api/ee/action-v2/execute-bulk" : {
+      "post" : {
+        "summary" : "POST /api/ee/action-v2/execute-bulk",
+        "description" : "Execute an action with multiple inputs.\n\n   This is typically more efficient than calling execute with each input individually, for example by performing batch\n   SQL operations.\n\n   Takes:\n   - `action`            - an identifier or an expression for what we want to execute.\n   - `scope`             - where the action is being invoked from.\n   - `inputs`            - a list of maps. currently these are typically a database table row pk, or query result.\n   - `params` (optional) - a map of values for the parameters taken by the action's mapping.\n\n   The `inputs` and `params` are used by the relevant mapping to calculate a list of args for the underlying action fn.\n   If there is no mapping, `params` are simply used as overrides for each map within `inputs`.\n\n   Returns the outputs from the performed action.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "action" : {
+                    "$ref" : "#/components/schemas/metabase-enterprise.action-v2.api.api-action-id-or-expression"
+                  },
+                  "inputs" : {
+                    "type" : "array",
+                    "items" : {
+                      "type" : "object",
+                      "properties" : { }
+                    },
+                    "minItems" : 1
+                  },
+                  "params" : {
+                    "type" : "object",
+                    "additionalProperties" : { }
+                  },
+                  "scope" : {
+                    "$ref" : "#/components/schemas/metabase.actions.types..scope.raw"
+                  }
+                },
+                "required" : [ "action", "scope", "inputs" ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/action-v2" ]
+      }
+    },
+    "/api/ee/action-v2/execute-form" : {
+      "post" : {
+        "summary" : "POST /api/ee/action-v2/execute-form",
+        "description" : "Temporary endpoint for describing an actions parameters\n  such that they can be presented correctly in a modal ahead of execution.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/action-v2" ]
+      }
+    },
     "/api/ee/advanced-permissions/application/graph" : {
       "get" : {
         "summary" : "GET /api/ee/advanced-permissions/application/graph",
@@ -13548,6 +13789,55 @@ redirect_from:
         "tags" : [ "/api/ee/metabot-v3" ]
       }
     },
+    "/api/ee/permission_debug/" : {
+      "get" : {
+        "summary" : "GET /api/ee/permission_debug/",
+        "description" : "This endpoint expects a `user_id`, a `model_id` to debug permissions against, and `action_type`.\n  The type of model we are debugging against is inferred by the `action_type`.\n\n  It will return:\n  - `decision`: The overall permission decision (\"allow\", \"denied\", or \"limited\")\n  - `model-type`: The type of model being checked (e.g., \"question\")\n  - `model-id`: The ID of the model being checked\n  - `segment`: A set of segmentation types applied (e.g., \"sandboxed\", \"impersonated\", \"routed\")\n  - `message`: A sequence of strings explaining the decision\n  - `data`: A map containing details about permissions (table or collection names to group names)\n  - `suggestions`: A map of group IDs to group names that could provide access\n\n  Example requests:\n  - Check if user can read a card: `GET /api/ee/permission_debug?user_id=123&model_id=456&action_type=card/read`\n  - Check if user can query a card: `GET /api/ee/permission_debug?user_id=123&model_id=456&action_type=card/query`\n  - Check if user can download data: `GET /api/ee/permission_debug?user_id=123&model_id=456&action_type=card/download-data`\n\n  Example responses:\n  - Allowed access:\n    ```json\n    {\n      \"decision\": \"allow\",\n      \"model-type\": \"question\",\n      \"model-id\": \"456\",\n      \"segment\": [],\n      \"message\": [\"User has permission to read this card\"],\n      \"data\": {},\n      \"suggestions\": {}\n    }\n    ```\n  - Denied access with blocked table:\n    ```json\n    {\n      \"decision\": \"denied\",\n      \"model-type\": \"question\",\n      \"model-id\": \"456\",\n      \"segment\": [],\n      \"message\": [\"User does not have permission to query this card\"],\n      \"data\": {\"sample-db.PUBLIC.ORDERS\": [\"All Users\"]},\n      \"suggestions\": {}\n    }\n    ```\n  - Limited access:\n    ```json\n    {\n      \"decision\": \"limited\",\n      \"model-type\": \"question\",\n      \"model-id\": \"456\",\n      \"segment\": [],\n      \"message\": [\"User has permission to download some data from this card\"],\n      \"data\": {},\n      \"suggestions\": {}\n    }\n    ```",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "user_id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          }
+        }, {
+          "in" : "query",
+          "name" : "model_id",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "action_type",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "enum" : [ "card/read", "card/query", "card/download-data" ]
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "map where {:model-type -> <enum of card, invalid>, :model-id -> <string>, :decision -> <enum of allow, denied, limited>, :segment -> <set of enum of sandboxed, impersonated, routed>, :message -> <sequence of string>, :data -> <map>, :suggestions -> <map from <integer> to <string>>}",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase-enterprise.permission-debug.impl.perm-debug-info"
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/permission_debug" ]
+      }
+    },
     "/api/ee/scim/api_key" : {
       "get" : {
         "summary" : "GET /api/ee/scim/api_key",
@@ -15554,7 +15844,7 @@ redirect_from:
         }, {
           "in" : "query",
           "name" : "value",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "type" : "string",
             "minLength" : 1
@@ -19292,11 +19582,20 @@ redirect_from:
     "/api/pulse/preview_card_png/{id}" : {
       "get" : {
         "summary" : "GET /api/pulse/preview_card_png/{id}",
-        "description" : "Get PNG rendering of a Card with `id`.",
+        "description" : "Get PNG rendering of a Card with `id`. Optionally specify `width` as a query parameter.",
         "parameters" : [ {
           "in" : "path",
           "name" : "id",
           "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        }, {
+          "in" : "query",
+          "name" : "width",
+          "required" : false,
           "schema" : {
             "type" : "integer",
             "minimum" : 1
@@ -19726,7 +20025,7 @@ redirect_from:
     "/api/search/" : {
       "get" : {
         "summary" : "GET /api/search/",
-        "description" : "Search for items in Metabase.\n  For the list of supported models, check [[metabase.search.config/all-models]].\n\n  Filters:\n  - `archived`: set to true to search archived items only, default is false\n  - `table_db_id`: search for tables, cards, and models of a certain DB\n  - `models`: only search for items of specific models. If not provided, search for all models\n  - `filters_items_in_personal_collection`: only search for items in personal collections\n  - `created_at`: search for items created at a specific timestamp\n  - `created_by`: search for items created by a specific user\n  - `last_edited_at`: search for items last edited at a specific timestamp\n  - `last_edited_by`: search for items last edited by a specific user\n  - `search_native_query`: set to true to search the content of native queries\n  - `verified`: set to true to search for verified items only (requires Content Management or Official Collections premium feature)\n  - `ids`: search for items with those ids, works iff single value passed to `models`\n  - `display_type`: search for cards/models with specific display types\n  - `has_temporal_dimensions`: set to true to search for cards with temporal dimensions only\n\n  Note that not all item types support all filters, and the results will include only models that support the provided filters. For example:\n  - The `created-by` filter supports dashboards, models, actions, and cards.\n  - The `verified` filter supports models and cards.\n\n  A search query that has both filters applied will only return models and cards.",
+        "description" : "Search for items in Metabase.\n  For the list of supported models, check [[metabase.search.config/all-models]].\n\n  Filters:\n  - `archived`: set to true to search archived items only, default is false\n  - `table_db_id`: search for tables, cards, and models of a certain DB\n  - `models`: only search for items of specific models. If not provided, search for all models\n  - `filters_items_in_personal_collection`: only search for items in personal collections\n  - `created_at`: search for items created at a specific timestamp\n  - `created_by`: search for items created by a specific user\n  - `last_edited_at`: search for items last edited at a specific timestamp\n  - `last_edited_by`: search for items last edited by a specific user\n  - `search_native_query`: set to true to search the content of native queries\n  - `verified`: set to true to search for verified items only (requires Content Management or Official Collections premium feature)\n  - `ids`: search for items with those ids, works iff single value passed to `models`\n  - `display_type`: search for cards/models with specific display types\n  - `non_temporal_dim_ids`: search for cards/metrics/datasets with this exact set of non temporal dimension field IDs (requires appdb engine)\n  - `has_temporal_dim`: set to true for cards/metrics/datasets with 1 or more temporal dimensions (requires appdb engine)\n\n  Note that not all item types support all filters, and the results will include only models that support the provided filters. For example:\n  - The `created-by` filter supports dashboards, models, actions, and cards.\n  - The `verified` filter supports models and cards.\n\n  A search query that has both filters applied will only return models and cards.",
         "parameters" : [ {
           "in" : "query",
           "name" : "q",
@@ -19811,13 +20110,6 @@ redirect_from:
           }
         }, {
           "in" : "query",
-          "name" : "has_temporal_dimensions",
-          "required" : false,
-          "schema" : {
-            "type" : "boolean"
-          }
-        }, {
-          "in" : "query",
           "name" : "last_edited_at",
           "required" : false,
           "schema" : {
@@ -19899,6 +20191,21 @@ redirect_from:
           "schema" : {
             "type" : "boolean",
             "default" : false
+          }
+        }, {
+          "in" : "query",
+          "name" : "non_temporal_dim_ids",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "minLength" : 1
+          }
+        }, {
+          "in" : "query",
+          "name" : "has_temporal_dim",
+          "required" : false,
+          "schema" : {
+            "type" : "boolean"
           }
         } ],
         "responses" : {
@@ -21481,238 +21788,6 @@ redirect_from:
           }
         },
         "tags" : [ "/api/task" ]
-      }
-    },
-    "/api/testing/echo" : {
-      "post" : {
-        "summary" : "POST /api/testing/echo",
-        "description" : "Simple echo hander. Fails when you POST with `?fail=true`.",
-        "parameters" : [ {
-          "in" : "query",
-          "name" : "fail",
-          "required" : true,
-          "schema" : {
-            "default" : false,
-            "type" : "boolean"
-          }
-        } ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response"
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "tags" : [ "/api/testing" ]
-      },
-      "get" : {
-        "summary" : "GET /api/testing/echo",
-        "description" : "Simple echo hander. Fails when you GET with `?fail=true`.",
-        "parameters" : [ {
-          "in" : "query",
-          "name" : "fail",
-          "required" : true,
-          "schema" : {
-            "default" : false,
-            "type" : "boolean"
-          }
-        }, {
-          "in" : "query",
-          "name" : "body",
-          "required" : true,
-          "schema" : {
-            "type" : "string"
-          },
-          "description" : "value must be a valid JSON string."
-        } ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response"
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "tags" : [ "/api/testing" ]
-      }
-    },
-    "/api/testing/mark-stale" : {
-      "post" : {
-        "summary" : "POST /api/testing/mark-stale",
-        "description" : "Mark the card or dashboard as stale",
-        "parameters" : [ ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response"
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "type" : "object",
-                "properties" : {
-                  "date-str" : {
-                    "type" : "string"
-                  },
-                  "id" : {
-                    "description" : "value must be an integer greater than zero.",
-                    "type" : "integer",
-                    "minimum" : 1
-                  },
-                  "model" : {
-                    "type" : "string"
-                  }
-                },
-                "required" : [ "id", "model" ]
-              }
-            }
-          }
-        },
-        "tags" : [ "/api/testing" ]
-      }
-    },
-    "/api/testing/refresh-caches" : {
-      "post" : {
-        "summary" : "POST /api/testing/refresh-caches",
-        "description" : "Manually triggers the cache refresh task, if Enterprise code is available.",
-        "parameters" : [ ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response"
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "tags" : [ "/api/testing" ]
-      }
-    },
-    "/api/testing/restore/{name}" : {
-      "post" : {
-        "summary" : "POST /api/testing/restore/{name}",
-        "description" : "Restore a database snapshot for testing purposes.",
-        "parameters" : [ {
-          "in" : "path",
-          "name" : "name",
-          "required" : true,
-          "schema" : {
-            "type" : "string",
-            "minLength" : 1
-          }
-        } ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response"
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "tags" : [ "/api/testing" ]
-      }
-    },
-    "/api/testing/set-time" : {
-      "post" : {
-        "summary" : "POST /api/testing/set-time",
-        "description" : "Make java-time see world at exact time.",
-        "parameters" : [ ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response"
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "type" : "object",
-                "properties" : {
-                  "add-ms" : {
-                    "description" : "value must be an integer.",
-                    "type" : "integer"
-                  },
-                  "time" : {
-                    "description" : "value must be a valid date string",
-                    "type" : "string"
-                  }
-                }
-              }
-            }
-          }
-        },
-        "tags" : [ "/api/testing" ]
-      }
-    },
-    "/api/testing/snapshot/{name}" : {
-      "post" : {
-        "summary" : "POST /api/testing/snapshot/{name}",
-        "description" : "Snapshot the database for testing purposes.",
-        "parameters" : [ {
-          "in" : "path",
-          "name" : "name",
-          "required" : true,
-          "schema" : {
-            "type" : "string",
-            "minLength" : 1
-          }
-        } ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response"
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "tags" : [ "/api/testing" ]
-      }
-    },
-    "/api/testing/stats" : {
-      "post" : {
-        "summary" : "POST /api/testing/stats",
-        "description" : "Triggers a send of instance usage stats",
-        "parameters" : [ ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response"
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "tags" : [ "/api/testing" ]
       }
     },
     "/api/tiles/{card-id}/{zoom}/{x}/{y}/{lat-field}/{lon-field}" : {
