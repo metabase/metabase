@@ -120,18 +120,22 @@ describe("EditableDashboard", () => {
     ).toBeInTheDocument();
 
     // Default `entityTypes` should be `["model", "table"]`
-    // The EmbeddingDataPicker now makes 2 calls: one for model count, one for data sources
+    // Data picker makes two calls: model count and data sources
     const dataPickerDataCalls = fetchMock.calls("path:/api/search");
     expect(dataPickerDataCalls).toHaveLength(2);
 
-    // Find the call that fetches both models and tables (data sources call)
-    const dataSourceCall = dataPickerDataCalls.find(
-      ([url]) => url.includes("models=dataset") && url.includes("models=table"),
+    // Should make a call to counts the data sources (tables and models)
+    const countDataSourceCall = dataPickerDataCalls.filter(([url]) =>
+      url.includes("models=dataset&models=table"),
     );
-    expect(dataSourceCall).toBeDefined();
-    const [dataSourceCallUrl] = dataSourceCall;
-    expect(dataSourceCallUrl).toContain("models=dataset");
-    expect(dataSourceCallUrl).toContain("models=table");
+    expect(countDataSourceCall).toHaveLength(1);
+
+    // Should make a call to counts models
+    const countModelCall = dataPickerDataCalls.filter(
+      ([url]) =>
+        url.includes("models=dataset") && !url.includes("models=table"),
+    );
+    expect(countModelCall).toHaveLength(1);
   });
 
   it("should allow to go back to the dashboard after seeing the query builder", async () => {
