@@ -14,11 +14,6 @@ describe("parseAttributeValue should be permissive with json attributes", () => 
       expect(value).toEqual(["value1"]);
     });
 
-    it("should allow for a single leading comma", () => {
-      const value = parseAttributeValue(`["value1", "value2",]`);
-      expect(value).toEqual(["value1", "value2"]);
-    });
-
     it("should allow for a single trailing comma", () => {
       const value = parseAttributeValue(`["value1", "value2",]`);
       expect(value).toEqual(["value1", "value2"]);
@@ -41,7 +36,7 @@ describe("parseAttributeValue should be permissive with json attributes", () => 
       expect(value).toEqual({ key1: "value1" });
     });
 
-    it("should allow for a single leading comma", () => {
+    it("should allow for a single trailing comma", () => {
       const value = parseAttributeValue(
         `{"key1": "value1", "key2": "value2",}`,
       );
