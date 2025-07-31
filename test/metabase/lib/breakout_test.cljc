@@ -588,7 +588,7 @@
                                 (lib/breakoutable-columns query)))))))))
 
 (defn legacy-query-with-broken-breakout []
-  (-> (lib.tu.mocks-31368/query-with-legacy-source-card true)
+  (-> (lib.tu.mocks-31368/query-with-legacy-source-card #_has-result-metadata? true)
       ;; this is a bad field reference, it does not contain a `:join-alias`. For some reason the FE is generating
       ;; these in drill thrus (in MLv1). We need to figure out how to make stuff work anyway even tho this is
       ;; technically wrong.

@@ -79,6 +79,7 @@ export function EmbeddingSdkSettings() {
     <ExternalLink
       key="switch-metabase-binaries"
       href={switchMetabaseBinariesUrl}
+      className={cx(CS.link, CS.textBold)}
     >
       {t`switch Metabase binaries`}
     </ExternalLink>
@@ -265,13 +266,19 @@ export function EmbeddingSdkSettings() {
         bg="none"
         bd="1px solid var(--mb-color-border)"
       >
-        <Group gap="sm">
-          <Icon color="var(--mb-color-text-secondary)" name="info_filled" />
+        <Flex gap="sm">
+          <Box>
+            <Icon
+              color="var(--mb-color-text-secondary)"
+              name="info_filled"
+              mt="2px"
+            />
+          </Box>
 
-          <Text size="sm" c="text-medium" lh="lg">
+          <Text c="text-medium" lh="lg">
             {apiKeyBannerText}
           </Text>
-        </Group>
+        </Flex>
       </Alert>
     </SettingsPageWrapper>
   );

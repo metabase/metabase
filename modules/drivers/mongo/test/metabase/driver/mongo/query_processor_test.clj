@@ -635,7 +635,8 @@
                     :let {"let__id___1" "$_id",
                           "let_name___2" "$name"}
                     :pipeline
-                    [{"$match"
+                    [{"$project" {"_id" "$_id", "date" "$date", "user_id" "$user_id", "venue_id" "$venue_id"}}
+                     {"$match"
                       {"$and" [{"$expr" {"$eq" ["$$let__id___1" "$user_id"]}}
                                {"$expr" {"$eq" ["$$let_name___2" "Felipinho Asklepios"]}}]}}]}}
                   {"$unwind" {:path "$join_alias_c"

@@ -77,7 +77,7 @@
                          :fields [&Category.categories.name]
                          ;; This is a hand-rolled implicit join clause.
                          :joins  [{:alias        "Category"
-                                   :source-table $$venues
+                                   :source-table $$categories
                                    :condition    [:= $category-id &CATEGORIES__via__CATEGORY_ID.categories.id]
                                    :strategy     :left-join
                                    :fk-field-id  %category-id}]}})
@@ -97,7 +97,7 @@
                  :query {:source-table (meta/id :venues)
                          :fields [&Categories.categories.name]
                          :joins  [{:alias        "Categories"
-                                   :source-table $$venues
+                                   :source-table $$categories
                                    :condition    [:= $category-id &Categories.categories.id]
                                    :strategy     :left-join}]}})
                {:columns [:name]}))))))

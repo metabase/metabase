@@ -143,8 +143,8 @@
                                          :database_id (mt/id)}]
           (fake-persist-card! card)
           (is (not (str/includes?
-                    #p (:query (qp.compile/compile
-                                {:database (mt/id)
-                                 :query {:source-table (str "card__" (u/the-id card))}
-                                 :type :query}))
+                    (:query (qp.compile/compile
+                             {:database (mt/id)
+                              :query {:source-table (str "card__" (u/the-id card))}
+                              :type :query}))
                     "metabase_cache"))))))))
