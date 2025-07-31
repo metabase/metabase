@@ -10,6 +10,7 @@ export const DEFAULT_VIZ_ORDER: CardDisplayType[] = [
   "area",
   "combo",
   "pivot",
+  "sql_pivot",
   "smartscalar",
   "gauge",
   "progress",
