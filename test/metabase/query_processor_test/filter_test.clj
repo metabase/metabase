@@ -1042,3 +1042,31 @@
           (mt/with-native-query-testing-context query
             (is (= [[2]]
                    (mt/rows (qp/process-query query))))))))))
+
+(deftest ^:parallel filter-on-implicitly-joined-column-test
+  (testing "Should be able to filter on an column that was implicitly joined from a column in an explicit join (#59695)"
+    (let [mp    (lib.tu/mock-metadata-provider
+                 (mt/application-database-metadata-provider (mt/id))
+                 {:cards [{:id            1
+                           :dataset-query (mt/mbql-query orders)}]})
+          query (lib/query
+                 mp
+                 (mt/mbql-query nil
+                   {:source-table "card__1"
+                    :joins        [{:source-table (mt/id :checkins)
+                                    :fields       :all
+                                    :strategy     :left-join
+                                    :alias        "CH"
+                                    :condition    [:=
+                                                   [:field "ID" {:base-type :type/BigInteger}]
+                                                   [:field (mt/id :checkins :id) {:base-type :type/BigInteger, :join-alias "CH"}]]}]
+                    :filter       [:=
+                                   [:field (mt/id :venues :price) {:base-type               :type/Text
+                                                                   :source-field            (mt/id :checkins :venue_id)
+                                                                   :source-field-join-alias "CH"}]
+                                   1]
+                    :order-by     [[:asc [:field (mt/id :orders :id) {}]]]
+                    :limit        2}))]
+      (is (= [[3 1 105 52.72 2.9 49.2 6.42 "2019-12-06T22:22:48.544Z" 2 3 "2014-09-15T00:00:00Z" 8 56]
+              [6 1 60 29.8 1.64 31.44 nil "2019-11-06T16:38:50.134Z" 3 6 "2015-07-04T00:00:00Z" 3 35]]
+             (mt/rows (qp/process-query query)))))))

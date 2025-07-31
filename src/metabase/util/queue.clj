@@ -170,11 +170,11 @@
            pool-size
            max-batch-messages
            max-next-ms]
-    :or   {success-handler (constantly nil)
-           err-handler (constantly nil)
-           pool-size       1
+    :or   {success-handler    (constantly nil)
+           err-handler        (constantly nil)
+           pool-size          1
            max-batch-messages 50
-           max-next-ms     100}} :- ::listener-options]
+           max-next-ms        100}} :- ::listener-options]
   (if (listener-exists? listener-name)
     (log/errorf "Listener %s already exists" listener-name)
 

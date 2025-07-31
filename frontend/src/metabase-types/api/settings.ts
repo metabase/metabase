@@ -4,6 +4,7 @@ import type { SdkIframeEmbedSetupSettings } from "metabase-enterprise/embedding_
 
 import type { InputSettingType } from "./actions";
 import type { DashboardId } from "./dashboard";
+import type { DatabaseId } from "./database";
 import type { GroupId } from "./group";
 import type { UserId } from "./user";
 
@@ -35,6 +36,11 @@ export interface Engine {
   "details-fields"?: EngineField[];
   source: EngineSource;
   "superseded-by": string | null;
+  "extra-info": {
+    "db-routing-info": {
+      text: string;
+    };
+  } | null;
 }
 
 export interface EngineField {
@@ -176,7 +182,7 @@ const tokenStatusFeatures = [
   "email-restrict-recipients",
   "embedding-sdk",
   "embedding",
-  "embedding-iframe-sdk",
+  "embedding-simple",
   "hosting",
   "metabase-store-managed",
   "metabot-v3",
@@ -230,7 +236,7 @@ export const tokenFeatures = [
   "disable_password_login",
   "embedding",
   "embedding_sdk",
-  "embedding_iframe_sdk",
+  "embedding_simple",
   "hosting",
   "official_collections",
   "sandboxes",
@@ -255,6 +261,8 @@ export const tokenFeatures = [
   "ai_entity_analysis",
   "database_routing",
   "development_mode",
+  "etl_connections",
+  "etl_connections_pg",
 ] as const;
 
 export type TokenFeature = (typeof tokenFeatures)[number];
@@ -285,8 +293,6 @@ export type SettingDefinitionMap<
 > = {
   [K in T]: SettingDefinition<K>;
 };
-
-export type UpdateChannel = "latest" | "beta" | "nightly";
 
 export interface OpenAiModel {
   id: string;
@@ -332,6 +338,7 @@ interface InstanceSettings {
   "enable-embedding": boolean;
   "enable-embedding-static": boolean;
   "enable-embedding-sdk": boolean;
+  "enable-embedding-simple": boolean;
   "enable-embedding-interactive": boolean;
   "enable-nested-queries": boolean;
   "enable-public-sharing": boolean;
@@ -380,6 +387,7 @@ interface AdminSettings {
   "last-acknowledged-version": string | null;
   "show-static-embed-terms": boolean | null;
   "show-sdk-embed-terms": boolean | null;
+  "show-simple-embed-terms": boolean | null;
   "embedding-homepage": EmbeddingHomepageStatus;
   "setup-license-active-at-setup": boolean;
   "store-url": string;
@@ -476,7 +484,6 @@ interface PublicSettings {
   "snowplow-url": string;
   "start-of-week": DayOfWeekId;
   "token-features": TokenFeatures;
-  "update-channel": UpdateChannel;
   version: Version;
   "version-info-last-checked": string | null;
   "airgap-enabled": boolean;
@@ -544,6 +551,11 @@ export type ColorSettings = Record<string, string>;
 export type IllustrationSettingValue = "default" | "none" | "custom";
 export type TimeoutValue = { amount: number; unit: string };
 
+export type DatabaseReplicationConnections = Record<
+  DatabaseId,
+  { connection_id: string }
+>;
+
 export interface EnterpriseSettings extends Settings {
   "application-colors"?: ColorSettings | null;
   "application-logo-url"?: string;
@@ -571,6 +583,7 @@ export interface EnterpriseSettings extends Settings {
   "jwt-attribute-email": string | null;
   "jwt-attribute-firstname": string | null;
   "jwt-attribute-lastname": string | null;
+  "jwt-attribute-groups": string | null;
   "jwt-group-sync": boolean | null;
   "saml-enabled": boolean;
   "saml-configured": boolean;
@@ -588,6 +601,8 @@ export interface EnterpriseSettings extends Settings {
   "saml-attribute-group": string | null;
   "saml-group-sync": boolean | null;
   "saml-group-mappings": Record<string, GroupId[]> | null;
+  "database-replication-enabled": boolean | null;
+  "database-replication-connections"?: DatabaseReplicationConnections | null;
   /**
    * @deprecated
    */

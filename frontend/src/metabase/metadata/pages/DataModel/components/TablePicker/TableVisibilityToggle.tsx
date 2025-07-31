@@ -1,25 +1,24 @@
+import type { MouseEvent } from "react";
+import { useLatest } from "react-use";
 import { t } from "ttag";
 
 import { useUpdateTableMutation } from "metabase/api";
-import { useToast } from "metabase/common/hooks";
+import { useMetadataToasts } from "metabase/metadata/hooks";
 import { ActionIcon, Icon, Loader, Tooltip } from "metabase/ui";
 import type { Table } from "metabase-types/api";
 
-export function TableVisibilityToggle({
-  table,
-  className,
-}: {
-  table?: Table;
+interface Props {
   className?: string;
-}) {
+  table: Table;
+  onUpdate: () => void;
+}
+
+export function TableVisibilityToggle({ className, table, onUpdate }: Props) {
   const [updateTable, { isLoading }] = useUpdateTableMutation();
-  const [sendToast] = useToast();
-
-  if (!table) {
-    return null;
-  }
-
-  const isHidden = table?.visibility_type !== null;
+  const { sendErrorToast, sendSuccessToast, sendUndoToast } =
+    useMetadataToasts();
+  const isHidden = table.visibility_type != null;
+  const onUpdateRef = useLatest(onUpdate);
 
   const hide = async () => {
     const { error } = await updateTable({
@@ -27,17 +26,19 @@ export function TableVisibilityToggle({
       visibility_type: "hidden",
     });
 
+    onUpdateRef.current();
+
     if (error) {
-      sendToast({
-        icon: "warning_triangle_filled",
-        iconColor: "var(--mb-color-warning)",
-        message: t`Failed to hide ${table.display_name}`,
-      });
+      sendErrorToast(t`Failed to hide ${table.display_name}`);
     } else {
-      sendToast({
-        message: t`Hid ${table.display_name}`,
-        actionLabel: t`Undo`,
-        action: unhide,
+      sendSuccessToast(t`Hid ${table.display_name}`, async () => {
+        const { error } = await updateTable({
+          id: table.id,
+          visibility_type: null,
+        });
+
+        onUpdateRef.current();
+        sendUndoToast(error);
       });
     }
   };
@@ -48,25 +49,38 @@ export function TableVisibilityToggle({
       visibility_type: null,
     });
 
+    onUpdateRef.current();
+
     if (error) {
-      sendToast({
-        icon: "warning_triangle_filled",
-        iconColor: "var(--mb-color-warning)",
-        message: t`Failed to unhide ${table.display_name}`,
-      });
+      sendErrorToast(t`Failed to unhide ${table.display_name}`);
     } else {
-      sendToast({
-        message: t`Unhid ${table.display_name}`,
-        actionLabel: t`Undo`,
-        action: hide,
+      sendSuccessToast(t`Unhid ${table.display_name}`, async () => {
+        const { error } = await updateTable({
+          id: table.id,
+          visibility_type: "hidden",
+        });
+
+        onUpdateRef.current();
+        sendUndoToast(error);
       });
+    }
+  };
+
+  const handleClick = (event: MouseEvent<HTMLButtonElement>) => {
+    event.stopPropagation();
+    event.preventDefault();
+
+    if (isHidden) {
+      unhide();
+    } else {
+      hide();
     }
   };
 
   if (isLoading) {
     return (
       <ActionIcon disabled variant="transparent">
-        <Loader size="xs" data-testid="loading-indicator" />
+        <Loader data-testid="loading-indicator" size="xs" />
       </ActionIcon>
     );
   }
@@ -75,18 +89,11 @@ export function TableVisibilityToggle({
     <Tooltip label={isHidden ? t`Unhide table` : t`Hide table`}>
       <ActionIcon
         aria-label={isHidden ? t`Unhide table` : t`Hide table`}
+        c={table.visibility_type != null ? "text-secondary" : undefined}
         className={className}
         disabled={isLoading}
         variant="transparent"
-        onClick={(event) => {
-          event.stopPropagation();
-
-          if (isHidden) {
-            unhide();
-          } else {
-            hide();
-          }
-        }}
+        onClick={handleClick}
       >
         <Icon name={isHidden ? "eye_crossed_out" : "eye"} />
       </ActionIcon>

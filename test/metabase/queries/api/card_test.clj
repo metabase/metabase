@@ -23,6 +23,7 @@
    [metabase.models.interface :as mi]
    [metabase.notification.api.notification-test :as api.notification-test]
    [metabase.notification.test-util :as notification.tu]
+   [metabase.parameters.custom-values :as custom-values]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
@@ -97,9 +98,8 @@
   ([db-or-id table-or-id]
    {:database (u/the-id db-or-id)
     :type     :query
-    :query    {:source-table       (u/the-id table-or-id)
-               :aggregation        [[:count]]
-               :aggregation-idents {0 (u/generate-nano-id)}}}))
+    :query    {:source-table (u/the-id table-or-id)
+               :aggregation  [[:count]]}}))
 
 (defn pmbql-count-query
   ([]
@@ -2956,6 +2956,7 @@
                                            "card"
                                            (assoc (card-with-name-and-query "card-name" query)
                                                   :type :model))]
+              (assert (some? metadata))
               (is (= ["ID" "NAME"] (map norm metadata)))
               (is (=? {:result_metadata [{:display_name "EDITED DISPLAY"}
                                          {:display_name "EDITED DISPLAY"}]}
@@ -3033,7 +3034,7 @@
    (mt/with-temp
      [:model/Card source-card {:database_id   (mt/id)
                                :table_id      (mt/id :venues)
-                               :dataset_query (mt/mbql-query venues {:limit 5})}
+                               :dataset_query (mt/mbql-query venues {})}
       :model/Card field-filter-card {:dataset_query
                                      {:database (mt/id)
                                       :type     :native
@@ -3123,17 +3124,18 @@
 
 (deftest parameters-with-source-is-card-test
   (testing "getting values"
-    (with-card-param-values-fixtures [{:keys [card param-keys]}]
-      (testing "GET /api/card/:card-id/params/:param-key/values"
-        (is (=? {:values          [["20th Century Cafe"] ["25°"] ["33 Taps"]
-                                   ["800 Degrees Neapolitan Pizzeria"] ["BCD Tofu House"]]
-                 :has_more_values false}
-                (mt/user-http-request :rasta :get 200 (param-values-url card (:card param-keys))))))
+    (binding [custom-values/*max-rows* 5]
+      (with-card-param-values-fixtures [{:keys [card param-keys]}]
+        (testing "GET /api/card/:card-id/params/:param-key/values"
+          (is (=? {:values          [["20th Century Cafe"] ["25°"] ["33 Taps"]
+                                     ["800 Degrees Neapolitan Pizzeria"] ["BCD Tofu House"]]
+                   :has_more_values true}
+                  (mt/user-http-request :rasta :get 200 (param-values-url card (:card param-keys))))))
 
-      (testing "GET /api/card/:card-id/params/:param-key/search/:query"
-        (is (= {:values          [["Fred 62"] ["Red Medicine"]]
-                :has_more_values false}
-               (mt/user-http-request :rasta :get 200 (param-values-url card (:card param-keys) "red"))))))))
+        (testing "GET /api/card/:card-id/params/:param-key/search/:query"
+          (is (= {:values          [["Fred 62"] ["Red Medicine"]]
+                  :has_more_values false}
+                 (mt/user-http-request :rasta :get 200 (param-values-url card (:card param-keys) "red")))))))))
 
 (deftest parameters-with-source-is-card-test-2
   (testing "fallback to field-values"
@@ -3391,7 +3393,6 @@
                                                                     :joins [{:fields       :all
                                                                              :source-table table-id
                                                                              :condition    [:= 1 2] ; field-ids don't matter
-                                                                             :ident        "DqJ2fSIeMkc31Hx_B1Ees"
                                                                              :alias        "SomeAlias"}]}})]
                   (is (nil? (:based_on_upload (request card'))))))
               (testing "\nIf the table is not based on uploads, based_on_upload should be nil"

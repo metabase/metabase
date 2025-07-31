@@ -250,9 +250,10 @@
   "Should Metabase generate SQL queries?"
   :ai-sql-generation)
 
-(define-premium-feature ^{:added "0.55.0"} enable-embedding-iframe-sdk?
-  "Should we allow users to embed the SDK in iframes?"
-  :embedding-iframe-sdk)
+; the "-feature" suffix avoids name collision with the setting getter
+(define-premium-feature ^{:added "0.55.0"} enable-embedding-simple-feature?
+  "Should we enable Embedded Analytics JS?"
+  :embedding-simple)
 
 (define-premium-feature ^{:added "0.55.0"} enable-ai-entity-analysis?
   "Should Metabase do AI analysis on entities?"
@@ -261,6 +262,18 @@
 (define-premium-feature ^{:added "0.56.0"} cloud-custom-smtp?
   "Can Metabase have a custom smtp details separate from the default Cloud details."
   :cloud-custom-smtp)
+
+(define-premium-feature ^{:added "0.56.0"} enable-etl-connections?
+  "Does the Metabase Cloud instance have ETL connections?"
+  :etl-connections)
+
+(define-premium-feature ^{:added "0.56.0"} enable-etl-connections-pg?
+  "Does the Metabase Cloud instance have ETL connections with PG?"
+  :etl-connections-pg)
+
+(define-premium-feature ^{:added "0.57.0"} table-data-editing?
+  "Should we allow users to edit the data within tables?"
+  :table-data-editing)
 
 (defn- -token-features []
   {:advanced_permissions           (enable-advanced-permissions?)
@@ -285,7 +298,9 @@
    :email_restrict_recipients      (enable-email-restrict-recipients?)
    :embedding                      (hide-embed-branding?)
    :embedding_sdk                  (enable-embedding-sdk-origins?)
-   :embedding_iframe_sdk           (enable-embedding-iframe-sdk?)
+   :embedding_simple               (enable-embedding-simple-feature?)
+   :etl_connections                (enable-etl-connections?)
+   :etl_connections_pg             (enable-etl-connections-pg?)
    :hosting                        (is-hosted?)
    :llm_autodescription            (enable-llm-autodescription?)
    :metabot_v3                     (enable-metabot-v3?)
@@ -300,6 +315,7 @@
    :sso_jwt                        (enable-sso-jwt?)
    :sso_ldap                       (enable-sso-ldap?)
    :sso_saml                       (enable-sso-saml?)
+   :table_data_editing             (table-data-editing?)
    :upload_management              (enable-upload-management?)
    :whitelabel                     (enable-whitelabeling?)})
 

@@ -1,5 +1,6 @@
 import cx from "classnames";
 import { useMount } from "react-use";
+import { P, match } from "ts-pattern";
 import { t } from "ttag";
 
 import ExternalLink from "metabase/common/components/ExternalLink";
@@ -44,6 +45,7 @@ type UpsellBannerPropsBase = {
   large?: boolean;
   children: React.ReactNode;
   style?: React.CSSProperties;
+  onClick?: () => void;
 };
 
 export type UpsellBannerProps =
@@ -59,6 +61,7 @@ export const _UpsellBanner: React.FC<UpsellBannerProps> = ({
   location,
   large,
   children,
+  onClick,
   ...props
 }: UpsellBannerProps) => {
   const url = useUpsellLink({
@@ -76,7 +79,6 @@ export const _UpsellBanner: React.FC<UpsellBannerProps> = ({
       ? props
       : { dismissible: false, onDismiss: () => {} };
   const gemSize = large ? 24 : undefined;
-  const contentAlignment = large ? "flex-start" : "center";
 
   return (
     <Box
@@ -85,8 +87,9 @@ export const _UpsellBanner: React.FC<UpsellBannerProps> = ({
       bg="bg-white"
       {...domProps}
     >
-      <Flex align={contentAlignment} gap="md" wrap="nowrap">
-        <UpsellGem size={gemSize} />
+      <Flex align="flex-start" gap="sm" wrap="nowrap">
+        <UpsellGem size={gemSize} mt="1px" />
+
         <Stack gap="xs">
           <Title lh={1.25} order={3} size="md">
             {title}
@@ -98,23 +101,62 @@ export const _UpsellBanner: React.FC<UpsellBannerProps> = ({
       </Flex>
 
       <Flex align="center" gap="md">
-        {buttonLink !== undefined ? (
-          <ExternalLink
-            onClickCapture={() => trackUpsellClicked({ location, campaign })}
-            href={url}
-            className={S.UpsellCTALink}
-          >
-            {buttonText}
-          </ExternalLink>
-        ) : (
-          <Link
-            onClickCapture={() => trackUpsellClicked({ location, campaign })}
-            to={internalLink}
-            className={S.UpsellCTALink}
-          >
-            {buttonText}
-          </Link>
-        )}
+        {match({ onClick, buttonLink, internalLink })
+          .with(
+            {
+              onClick: P.nonNullable,
+              buttonLink: P.any,
+              internalLink: P.nullish,
+            },
+            (args) => (
+              <UnstyledButton
+                onClick={() => {
+                  trackUpsellClicked({ location, campaign });
+                  args.onClick();
+                }}
+                className={S.UpsellCTALink}
+              >
+                {buttonText}
+              </UnstyledButton>
+            ),
+          )
+          .with(
+            {
+              onClick: P.any,
+              buttonLink: P.nonNullable,
+              internalLink: P.nullish,
+            },
+            () => (
+              <ExternalLink
+                onClickCapture={() =>
+                  trackUpsellClicked({ location, campaign })
+                }
+                href={url}
+                className={S.UpsellCTALink}
+              >
+                {buttonText}
+              </ExternalLink>
+            ),
+          )
+          .with(
+            {
+              onClick: P.any,
+              buttonLink: P.any,
+              internalLink: P.nonNullable,
+            },
+            (args) => (
+              <Link
+                onClickCapture={() =>
+                  trackUpsellClicked({ location, campaign })
+                }
+                to={args.internalLink}
+                className={S.UpsellCTALink}
+              >
+                {buttonText}
+              </Link>
+            ),
+          )
+          .otherwise(() => null)}
 
         {dismissible && (
           <UnstyledButton

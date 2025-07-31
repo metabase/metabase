@@ -784,7 +784,7 @@ describe("issue 40064", () => {
       blur: true,
     });
     H.popover().within(() => {
-      cy.findByText("Cycle detected: Tax3 → Tax3").should("be.visible");
+      cy.findByText("Unknown column: Tax3").should("be.visible");
       cy.button("Update").should("be.disabled");
     });
   });
@@ -1965,7 +1965,7 @@ describe("issue 45063", { tags: "@flaky" }, () => {
       verifyRemappedFilter({
         visitCard: () => cy.get("@modelId").then(H.visitModel),
         fieldId: ORDERS.PRODUCT_ID,
-        fieldDisplayName: "PRODUCT_ID",
+        fieldDisplayName: "Product ID",
         fieldPlaceholder: "Search by Title or enter an ID",
         fieldValue: 1,
         fieldValueLabel: "Rustic Paper Wallet",

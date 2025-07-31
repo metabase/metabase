@@ -23,7 +23,7 @@
                               :email-restrict-recipients
                               :embedding
                               :embedding-sdk
-                              :embedding-iframe-sdk
+                              :embedding-simple
                               :hosting
                               :llm-autodescription
                               :metabot-v3
@@ -63,7 +63,7 @@
             :email_restrict_recipients      true
             :embedding                      true
             :embedding_sdk                  true
-            :embedding_iframe_sdk           true
+            :embedding_simple               true
             :hosting                        true
             :llm_autodescription            true
             :metabot_v3                     true
@@ -81,9 +81,12 @@
             :sso_jwt                        true
             :sso_ldap                       true
             :sso_saml                       true
+            :table_data_editing             false
             :upload_management              true
             :whitelabel                     true
             :collection_cleanup             true
             :database_routing               true
-            :cloud_custom_smtp               true}
+            :cloud_custom_smtp              true
+            :etl_connections                false
+            :etl_connections_pg             false}
            (:token-features (mt/user-http-request :crowberto :get 200 "session/properties"))))))

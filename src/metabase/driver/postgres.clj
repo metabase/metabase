@@ -86,9 +86,11 @@
 ;; Features that are supported by postgres only
 (doseq [feature [:actions
                  :actions/custom
+                 :actions/data-editing
                  :table-privileges
                  ;; Index sync is turned off across the application as it is not used ATM.
-                 #_:index-info]]
+                 #_:index-info
+                 :database-replication]]
   (defmethod driver/database-supports? [:postgres feature]
     [driver _feat _db]
     (= driver :postgres)))

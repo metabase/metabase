@@ -48,14 +48,18 @@
  {actions
   {:team "Workflows"
    :api  #{metabase.actions.api
+           metabase.actions.args
            metabase.actions.core
-           metabase.actions.init}
+           metabase.actions.init
+           metabase.actions.types}
    :uses #{analytics
            api
            collections
            driver
+           events
            legacy-mbql
            lib
+           lib-be
            model-persistence
            models
            permissions
@@ -105,7 +109,7 @@
            version}}
 
   analyze
-  {:team "Semantic Layer"
+  {:team "Querying"
    :api  #{metabase.analyze.core
            metabase.analyze.query-results}
    :uses #{config
@@ -578,7 +582,6 @@
           metabase.lib.field
           metabase.lib.field.resolution
           metabase.lib.filter
-          metabase.lib.ident
           metabase.lib.init
           metabase.lib.join.util
           metabase.lib.metadata
@@ -601,7 +604,10 @@
           metabase.lib.schema.join
           metabase.lib.schema.literal
           metabase.lib.schema.metadata
+          metabase.lib.schema.metadata.fingerprint
+          metabase.lib.schema.order-by
           metabase.lib.schema.parameter
+          metabase.lib.schema.ref
           metabase.lib.schema.template-tag
           metabase.lib.schema.temporal-bucketing
           metabase.lib.schema.util
@@ -766,6 +772,7 @@
            audit-app
            collections
            config
+           events
            models
            premium-features
            request
@@ -1164,7 +1171,7 @@
    :uses #{util}}
 
   sync
-  {:team "Semantic Layer"
+  {:team "Querying"
    :api #{metabase.sync.api
           metabase.sync.core
           metabase.sync.init
@@ -1249,13 +1256,13 @@
            util}}
 
   types
-  {:team "Semantic Layer"
+  {:team "Querying"
    :api  #{metabase.types.core
            metabase.types.init}
    :uses #{util}}
 
   upload
-  {:team "Semantic Layer"
+  {:team "Querying"
    :api  #{metabase.upload.api
            metabase.upload.core
            metabase.upload.init}
@@ -1433,6 +1440,19 @@
            util
            warehouse-schema}}
 
+  enterprise/action-v2
+  {:team "Workflows"
+   :api  #{metabase-enterprise.action-v2.api
+           metabase-enterprise.action-v2.core
+           metabase-enterprise.action-v2.init}
+   :uses #{actions
+           api
+           driver
+           lib
+           query-processor
+           util
+           warehouse-schema}}
+
   enterprise/advanced-config
   {:team "Admin Webapp"
    :api  #{metabase-enterprise.advanced-config.api.logs
@@ -1585,6 +1605,17 @@
            api
            util}}
 
+  enterprise/database-replication
+  {:team "Cloud"
+   :api  #{metabase-enterprise.database-replication.api
+           metabase-enterprise.database-replication.init}
+   :uses #{analytics
+           api
+           premium-features
+           settings
+           util
+           enterprise/harbormaster}}
+
   enterprise/database-routing
   {:team "Admin Webapp"
    :api  #{metabase-enterprise.database-routing.api}
@@ -1601,7 +1632,6 @@
            util
            warehouse-schema
            warehouses}}
-
 
   enterprise/email
   {:team "Admin Webapp"
@@ -1769,6 +1799,7 @@
            models
            plugins
            premium-features
+           search
            settings
            setup
            util

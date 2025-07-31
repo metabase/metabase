@@ -118,15 +118,54 @@
 
 (defn- default-search-results []
   (cleaned-results
-   [(make-result "dashboard test dashboard", :model "dashboard", :bookmark false :creator_id true :creator_common_name "Rasta Toucan" :can_write true)
+   [(make-result "dashboard test dashboard"
+                 :model "dashboard"
+                 :bookmark false
+                 :creator_id true
+                 :creator_common_name
+                 "Rasta Toucan"
+                 :can_write true)
     test-collection
-    (make-result "card test card", :model "card", :bookmark false, :dashboardcard_count 0 :creator_id true :creator_common_name "Rasta Toucan" :display "table" :can_write true)
-    (make-result "dataset test dataset", :model "dataset", :bookmark false, :dashboardcard_count 0 :creator_id true :creator_common_name "Rasta Toucan" :display "table" :can_write true)
-    (make-result "action test action", :model "action", :model_name (:name action-model-params), :model_id true,
-                 :database_id true :creator_id true :creator_common_name "Rasta Toucan")
-    (make-result "metric test metric", :model "metric", :bookmark false, :dashboardcard_count 0 :creator_id true :creator_common_name "Rasta Toucan" :display "table" :can_write true)
+    (make-result "card test card"
+                 :model               "card"
+                 :bookmark            false
+                 :dashboardcard_count 0
+                 :creator_id          true
+                 :creator_common_name "Rasta Toucan"
+                 :display             "table"
+                 :can_write           true
+                 :display_type        "table")
+    (make-result "dataset test dataset"
+                 :model               "dataset"
+                 :bookmark            false
+                 :dashboardcard_count 0
+                 :creator_id          true
+                 :creator_common_name "Rasta Toucan"
+                 :display             "table"
+                 :can_write           true
+                 :display_type        "table")
+    (make-result "action test action"
+                 :model               "action"
+                 :model_name          (:name action-model-params)
+                 :model_id            true
+                 :database_id         true
+                 :creator_id          true
+                 :creator_common_name "Rasta Toucan")
+    (make-result "metric test metric"
+                 :model               "metric"
+                 :bookmark            false
+                 :dashboardcard_count 0
+                 :creator_id          true
+                 :creator_common_name "Rasta Toucan"
+                 :display             "table"
+                 :can_write           true
+                 :display_type        "table")
     (merge
-     (make-result "segment test segment", :model "segment", :description "Lookin' for a blueberry" :creator_id true :creator_common_name "Rasta Toucan")
+     (make-result "segment test segment"
+                  :model "segment"
+                  :description "Lookin' for a blueberry"
+                  :creator_id true
+                  :creator_common_name "Rasta Toucan")
      (table-search-results))]))
 
 (defn- default-segment-results []
@@ -395,7 +434,7 @@
   (letfn [(make-card [dashboard-count]
             (make-result (str "dashboard-count " dashboard-count) :dashboardcard_count dashboard-count,
                          :model "card", :bookmark false :creator_id true :creator_common_name "Rasta Toucan"
-                         :display "table" :can_write true))]
+                         :display "table" :display_type "table" :can_write true))]
     (set [(make-card 5)
           (make-card 3)
           (make-card 0)])))
@@ -1758,16 +1797,17 @@
     (let [search-name (random-uuid)
           named #(str search-name "-" %)]
       (mt/with-temp [:model/Card {reg-card-id :id} {:name            (named "regular card")
-                                                    :result_metadata [{:description "The state or province of the account’s billing address."
-                                                                       :ident       "OmdKsPv5v1ct3Ku6X4tJl"}]}]
+                                                    :result_metadata [{:name         "STATE"
+                                                                       :display_name "State"
+                                                                       :base_type    :type/Text
+                                                                       :description  "The state or province of the account’s billing address."}]}]
         (testing "Can include `result_metadata` info"
-          (is (= [{:description "The state or province of the account’s billing address."
-                   :ident       "OmdKsPv5v1ct3Ku6X4tJl"}]
-                 (->> (mt/user-http-request :crowberto :get 200 "/search" :q search-name :include_metadata "true")
-                      :data
-                      (filter #(= reg-card-id (:id %)))
-                      first
-                      :result_metadata))))
+          (is (=? [{:description "The state or province of the account’s billing address."}]
+                  (->> (mt/user-http-request :crowberto :get 200 "/search" :q search-name :include_metadata "true")
+                       :data
+                       (filter #(= reg-card-id (:id %)))
+                       first
+                       :result_metadata))))
         (testing "result_metadata not included by default"
           (is (nil?
                (->> (mt/user-http-request :crowberto :get 200 "/search" :q search-name)

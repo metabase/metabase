@@ -863,7 +863,7 @@ describe("Dashboard > Dashboard Questions", () => {
 
       H.modal().within(() => {
         H.switchToAddMoreData();
-        H.addDataset("Average Quantity by Month Question");
+        H.selectDataset("Average Quantity by Month Question");
         cy.button("Save").click();
       });
 

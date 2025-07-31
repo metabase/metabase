@@ -225,8 +225,7 @@ describe("scenarios > dashboard > parameters", () => {
 
     // Remove filter (metabase#17933)
     cy.icon("pencil").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(startsWith.name).find(".Icon-gear").click();
+    H.filterWidget({ isEditing: true, name: startsWith.name }).click();
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Remove").click();
@@ -315,7 +314,10 @@ describe("scenarios > dashboard > parameters", () => {
       cy.findByText(/Add a variable to this question/).should("be.visible");
 
       // Confirm that the correct parameter type is connected to the native question's field filter
-      cy.findByText(matchingFilterType.name).find(".Icon-gear").click();
+      H.filterWidget({
+        isEditing: true,
+        name: matchingFilterType.name,
+      }).click();
 
       H.getDashboardCard().within(() => {
         cy.findByText("Column to filter on");
@@ -345,7 +347,10 @@ describe("scenarios > dashboard > parameters", () => {
 
       // Confirm that it is not possible to connect filter to the updated question anymore (metabase#9299)
       cy.icon("pencil").click();
-      cy.findByText(matchingFilterType.name).find(".Icon-gear").click();
+      H.filterWidget({
+        isEditing: true,
+        name: matchingFilterType.name,
+      }).click();
       cy.findByText(
         /A text variable in this card can only be connected to a text filter with Is operator/,
       ).should("be.visible");
@@ -526,9 +531,7 @@ describe("scenarios > dashboard > parameters", () => {
 
     it("should not see mapping options", () => {
       cy.icon("pencil").click();
-      cy.findByTestId("edit-dashboard-parameters-widget-container")
-        .find(".Icon-gear")
-        .click();
+      H.filterWidget({ isEditing: true }).click();
 
       cy.icon("key");
     });
@@ -2450,6 +2453,318 @@ describe("scenarios > dashboard > parameters", () => {
       });
     });
   });
+
+  describe("moving filters", () => {
+    const categoryParameter = createMockParameter({
+      id: "1b9cd9f1",
+      name: "Category",
+      type: "string/=",
+      slug: "category",
+      sectionId: "string",
+    });
+
+    const countParameter = createMockParameter({
+      id: "88a1257c",
+      name: "Count",
+      type: "number/<=",
+      slug: "count",
+      sectionId: "number",
+    });
+
+    const categoryFieldRef = [
+      "field",
+      PRODUCTS.CATEGORY,
+      { "source-field": ORDERS.PRODUCT_ID },
+    ];
+
+    it("should allow moving filters on a single tab dashboard", () => {
+      H.createQuestionAndDashboard({
+        dashboardDetails: {
+          parameters: [categoryParameter, countParameter],
+        },
+        questionDetails: {
+          display: "bar",
+          query: {
+            "source-table": ORDERS_ID,
+            aggregation: [["count"]],
+            breakout: [categoryFieldRef],
+          },
+        },
+        cardDetails: {
+          inline_parameters: [categoryParameter.id],
+        },
+      }).then(({ body: { dashboard_id } }) => {
+        H.visitDashboard(dashboard_id);
+        H.editDashboard();
+      });
+
+      // Wire-up filters with the card
+      H.editingDashboardParametersContainer().within(() => {
+        H.filterWidget({ isEditing: true }).contains("Count").click();
+      });
+      H.selectDashboardFilter(H.getDashboardCard(0), "Count");
+      H.dashboardParameterSidebar().button("Done").click();
+
+      H.getDashboardCard(0).within(() => {
+        H.filterWidget({ isEditing: true }).contains("Category").click();
+      });
+      H.selectDashboardFilter(H.getDashboardCard(0), "Category");
+
+      // Move card filter to the header
+      H.moveDashboardFilter("Top of page");
+
+      H.getDashboardCard(0).findByText("Category").should("not.exist");
+      H.editingDashboardParametersContainer().within(() => {
+        H.filterWidget({ isEditing: true })
+          .contains("Category")
+          .should("exist");
+      });
+
+      // Move header filter to the card
+      H.editingDashboardParametersContainer().within(() => {
+        H.filterWidget({ isEditing: true }).contains("Count").click();
+      });
+      H.moveDashboardFilter("test question");
+
+      H.getDashboardCard(0).within(() => {
+        H.filterWidget({ isEditing: true }).contains("Count").should("exist");
+      });
+      H.editingDashboardParametersContainer().within(() => {
+        H.filterWidget({ isEditing: true })
+          .contains("Count")
+          .should("not.exist");
+      });
+
+      // Save and assert changes are applied
+      H.saveDashboard();
+      H.getDashboardCard(0).within(() => {
+        H.filterWidget().contains("Count").should("exist");
+      });
+      H.dashboardParametersContainer().within(() => {
+        H.filterWidget().contains("Count").should("not.exist");
+      });
+    });
+
+    it("should allow moving filters on a dashboard with tabs", () => {
+      const TAB_1 = { id: 1, name: "Tab 1" };
+      const TAB_2 = { id: 2, name: "Tab 2" };
+
+      H.createDashboardWithTabs({
+        parameters: [categoryParameter, countParameter],
+        tabs: [TAB_1, TAB_2],
+        dashcards: [
+          createMockHeadingDashboardCard({
+            id: -1,
+            dashboard_tab_id: TAB_2.id,
+            inline_parameters: [categoryParameter.id],
+            size_x: 24,
+            size_y: 2,
+          }),
+          createMockDashboardCard({
+            id: -2,
+            card_id: ORDERS_BY_YEAR_QUESTION_ID,
+            dashboard_tab_id: TAB_1.id,
+            inline_parameters: [countParameter.id],
+            parameter_mappings: [
+              {
+                parameter_id: countParameter.id,
+                card_id: ORDERS_BY_YEAR_QUESTION_ID,
+                target: [
+                  "dimension",
+                  ["field", "count", { "base-type": "type/Integer" }],
+                  { "stage-number": 1 },
+                ],
+              },
+            ],
+            row: 1,
+            size_x: 18,
+            size_y: 6,
+          }),
+        ],
+      }).then((dashboard) => {
+        H.visitDashboard(dashboard.id);
+        H.editDashboard();
+      });
+
+      // Move filter from tab 1 to tab 2
+      H.getDashboardCard(0).within(() => {
+        H.filterWidget({ isEditing: true }).contains("Count").click();
+      });
+
+      H.moveDashboardFilter("Heading Text");
+      H.dashboardParameterSidebar().button("Done").click();
+
+      H.getDashboardCard(0)
+        .findByTestId("editing-parameter-widget")
+        .should("not.exist");
+      H.editingDashboardParametersContainer().should("not.exist");
+
+      // Move filter from tab 2 to tab 1
+      H.goToTab("Tab 2");
+
+      H.getDashboardCard(0).within(() => {
+        H.filterWidget({ isEditing: true }).contains("Count").should("exist");
+        H.filterWidget({ isEditing: true }).contains("Category").click();
+      });
+
+      H.moveDashboardFilter(/Orders, Count/);
+      H.dashboardParameterSidebar().button("Done").click();
+
+      H.getDashboardCard(0).within(() => {
+        H.filterWidget({ isEditing: true })
+          .contains("Category")
+          .should("not.exist");
+      });
+      H.editingDashboardParametersContainer().should("not.exist");
+
+      H.goToTab("Tab 1");
+      H.getDashboardCard(0).within(() => {
+        H.filterWidget({ isEditing: true }).contains("Category").click();
+      });
+      H.selectDashboardFilter(H.getDashboardCard(0), "Category");
+      H.dashboardParameterSidebar().button("Done").click();
+
+      // Save and assert changes are applied
+      H.saveDashboard();
+      H.getDashboardCard(0).within(() => {
+        H.filterWidget().contains("Category").should("exist");
+        H.filterWidget().contains("Count").should("not.exist");
+      });
+    });
+
+    it("should allow undoing a move", () => {
+      H.createQuestionAndDashboard({
+        dashboardDetails: {
+          parameters: [categoryParameter, countParameter],
+        },
+        questionDetails: {
+          display: "bar",
+          query: {
+            "source-table": ORDERS_ID,
+            aggregation: [["count"]],
+            breakout: [categoryFieldRef],
+          },
+        },
+        cardDetails: {
+          inline_parameters: [categoryParameter.id],
+          size_x: 18,
+        },
+      }).then(({ body: { dashboard_id } }) => {
+        H.visitDashboard(dashboard_id);
+        H.editDashboard();
+      });
+
+      // Move card filter to the header
+      H.getDashboardCard(0).within(() => {
+        H.filterWidget({ isEditing: true }).contains("Category").click();
+      });
+      H.dashboardParameterSidebar()
+        .findByPlaceholderText("Move filter")
+        .click();
+      H.popover().findByText("Top of page").click();
+
+      // Undo
+      H.undo();
+      H.getDashboardCard(0).within(() => {
+        H.filterWidget({ isEditing: true })
+          .contains("Category")
+          .should("exist");
+      });
+      H.editingDashboardParametersContainer().within(() => {
+        H.filterWidget({ isEditing: true })
+          .contains("Category")
+          .should("not.exist");
+      });
+
+      // Move header filter to the card
+      H.editingDashboardParametersContainer().within(() => {
+        H.filterWidget({ isEditing: true }).contains("Count").click();
+      });
+      H.dashboardParameterSidebar()
+        .findByPlaceholderText("Move filter")
+        .click();
+      H.popover().findByText("test question").click();
+      H.dashboardParameterSidebar().button("Done").click();
+
+      // Undo
+      H.undo();
+      H.getDashboardCard(0).within(() => {
+        H.filterWidget({ isEditing: true })
+          .contains("Count")
+          .should("not.exist");
+      });
+      H.editingDashboardParametersContainer().within(() => {
+        H.filterWidget({ isEditing: true }).contains("Count").should("exist");
+      });
+    });
+
+    it("should provide a way to 'focus' the recently moved filter", () => {
+      const TAB_1 = { id: 1, name: "Tab 1" };
+      const TAB_2 = { id: 2, name: "Tab 2" };
+
+      H.createDashboardWithTabs({
+        parameters: [categoryParameter, countParameter],
+        tabs: [TAB_1, TAB_2],
+        dashcards: [
+          createMockDashboardCard({
+            id: -1,
+            card_id: ORDERS_BY_YEAR_QUESTION_ID,
+            dashboard_tab_id: TAB_1.id,
+            size_x: 18,
+            size_y: 6,
+          }),
+          createMockHeadingDashboardCard({
+            id: -2,
+            dashboard_tab_id: TAB_2.id,
+            size_x: 24,
+            size_y: 30,
+            text: "Tall heading card",
+          }),
+          createMockHeadingDashboardCard({
+            id: -3,
+            dashboard_tab_id: TAB_2.id,
+            size_x: 24,
+            size_y: 2,
+            text: "Heading text card",
+          }),
+        ],
+      }).then((dashboard) => {
+        H.visitDashboard(dashboard.id);
+        H.editDashboard();
+      });
+
+      H.editingDashboardParametersContainer().within(() => {
+        H.filterWidget({ isEditing: true }).contains("Count").click();
+      });
+      H.moveDashboardFilter("Heading text card", { showFilter: true });
+
+      // Assert tab changed and the filter is in viewport now
+      cy.findByRole("tab", { name: "Tab 2" }).should(
+        "have.attr",
+        "aria-selected",
+        "true",
+      );
+      H.getDashboardCard(1).within(() => {
+        H.filterWidget({ isEditing: true }).contains("Count").should("exist");
+        H.filterWidget({ isEditing: true })
+          .contains("Count")
+          .isRenderedWithinViewport();
+      });
+
+      // Move filter to another card on the same tab
+      H.moveDashboardFilter("Tall heading card", { showFilter: true });
+      H.getDashboardCard(0).within(() => {
+        H.filterWidget({ isEditing: true }).contains("Count").should("exist");
+        H.filterWidget({ isEditing: true })
+          .contains("Count")
+          .isRenderedWithinViewport();
+      });
+
+      // Move filter to top nav and assert the "Show filter" button isn't displayed
+      H.moveDashboardFilter("Top of page");
+      H.undoToast().button("Show filter").should("not.exist");
+    });
+  });
 });
 
 H.describeWithSnowplow("scenarios > dashboard > parameters", () => {
@@ -2502,6 +2817,67 @@ H.describeWithSnowplow("scenarios > dashboard > parameters", () => {
       triggered_from: null,
       event_detail: "id",
       target_id: ORDERS_DASHBOARD_ID,
+    });
+  });
+
+  it("should track dashboard_filter_moved event when moving a filter", () => {
+    H.createQuestionAndDashboard({
+      dashboardDetails: {
+        parameters: [
+          createMockParameter({
+            id: "1b9cd9f1",
+            name: "Category",
+            type: "string/=",
+            slug: "category",
+            sectionId: "string",
+          }),
+        ],
+      },
+      questionDetails: {
+        display: "bar",
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"]],
+          breakout: [
+            ["field", PRODUCTS.CATEGORY, { "source-field": ORDERS.PRODUCT_ID }],
+          ],
+        },
+      },
+    }).then(({ body: { dashboard_id } }) => {
+      H.visitDashboard(dashboard_id);
+      H.editDashboard();
+      H.addHeadingWhileEditing("heading card");
+      cy.wrap(dashboard_id).as("dashboardId");
+    });
+
+    H.editingDashboardParametersContainer().within(() => {
+      H.filterWidget({ isEditing: true }).contains("Category").click();
+    });
+
+    cy.get("@dashboardId").then((dashboardId) => {
+      H.moveDashboardFilter("test question");
+      H.expectUnstructuredSnowplowEvent({
+        event: "dashboard_filter_moved",
+        triggered_from: null,
+        event_detail: "bar",
+        target_id: dashboardId,
+      });
+
+      H.moveDashboardFilter("heading card");
+      H.expectUnstructuredSnowplowEvent({
+        event: "dashboard_filter_moved",
+        triggered_from: "bar",
+        event_detail: "heading",
+        target_id: dashboardId,
+      });
+
+      H.moveDashboardFilter("Top of page");
+      H.expectUnstructuredSnowplowEvent({
+        event: "dashboard_filter_moved",
+        triggered_from: "heading",
+        event_detail: null,
+        target_id: dashboardId,
+      });
     });
   });
 });

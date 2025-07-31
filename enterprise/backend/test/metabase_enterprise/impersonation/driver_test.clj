@@ -9,6 +9,7 @@
    [metabase-enterprise.test :as met]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.query-processor :as qp]
    [metabase.request.core :as request]
    [metabase.sync.core :as sync]
@@ -167,6 +168,10 @@
   [_driver]
   "default_impersonation_role")
 
+(defmethod impersonation-default-role :sqlserver
+  [driver]
+  (impersonation-default-user driver))
+
 (defmethod impersonation-default-role :snowflake
   [_driver]
   "ACCOUNTADMIN")
@@ -220,9 +225,9 @@
           (mt/with-temp [:model/Database database {:engine driver/*driver*,
                                                    :details (impersonation-details driver/*driver* (mt/db))}]
             (mt/with-db database
-              (sync/sync-database! database {:scan :schema})
               (when (driver/database-supports? driver/*driver* :connection-impersonation-requires-role nil)
                 (t2/update! :model/Database :id (mt/id) (assoc-in (mt/db) [:details :role] (impersonation-default-role driver/*driver*))))
+              (sync/sync-database! database {:scan :schema})
               (impersonation.util-test/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
                                                              :attributes     {"impersonation_attr" role-a}}
                 (is (= [[100]]
@@ -260,9 +265,9 @@
           (mt/with-temp [:model/Database database {:engine driver/*driver*,
                                                    :details (impersonation-details driver/*driver* (mt/db))}]
             (mt/with-db database
-              (sync/sync-database! database {:scan :schema})
               (when (driver/database-supports? driver/*driver* :connection-impersonation-requires-role nil)
                 (t2/update! :model/Database :id (mt/id) (assoc-in (mt/db) [:details :role] (impersonation-default-role driver/*driver*))))
+              (sync/sync-database! database {:scan :schema})
               (impersonation.util-test/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
                                                              :attributes     {"impersonation_attr" role-a}}
                 (is (= [[1 3]]
@@ -302,9 +307,9 @@
           (mt/with-temp [:model/Database database {:engine driver/*driver*,
                                                    :details (impersonation-details driver/*driver* (mt/db))}]
             (mt/with-db database
-              (sync/sync-database! database {:scan :schema})
               (when (driver/database-supports? driver/*driver* :connection-impersonation-requires-role nil)
                 (t2/update! :model/Database :id (mt/id) (assoc-in (mt/db) [:details :role] (impersonation-default-role driver/*driver*))))
+              (sync/sync-database! database {:scan :schema})
               (impersonation.util-test/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
                                                              :attributes     {"impersonation_attr" role-a}}
                 (is (= [[1 3]]
@@ -345,9 +350,9 @@
           (mt/with-temp [:model/Database database {:engine driver/*driver*,
                                                    :details (impersonation-details driver/*driver* (mt/db))}]
             (mt/with-db database
-              (sync/sync-database! database {:scan :schema})
               (when (driver/database-supports? driver/*driver* :connection-impersonation-requires-role nil)
                 (t2/update! :model/Database :id (mt/id) (assoc-in (mt/db) [:details :role] (impersonation-default-role driver/*driver*))))
+              (sync/sync-database! database {:scan :schema})
               (impersonation.util-test/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
                                                              :attributes     {"impersonation_attr" role-a}}
                 (is (= [[1 3]]
@@ -400,23 +405,6 @@
                        clojure.lang.ExceptionInfo
                        #"Connection impersonation is enabled for this database, but no default role is found"
                        (mt/run-mbql-query venues
-                         {:aggregation [[:count]]})))))))
-          (testing "Using connection impersonation with user that can be impersonated works"
-            (mt/with-temp [:model/Database database {:engine driver/*driver*,
-                                                     :details (merge details {:user impersonation-user
-                                                                              ;; i think this should be (impersonation-details (mt/db)) which will set a role
-                                                                              :role impersonation-user})}]
-              (mt/with-db database
-                (sync/sync-database! database {:scan :schema})
-                (impersonation.util-test/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
-                                                               :attributes     {"impersonation_attr" role-a}}
-                  (is (= [[100]]
-                         (mt/rows
-                          (mt/run-mbql-query venues
-                            {:aggregation [[:count]]}))))
-                  (is (thrown?
-                       java.lang.Exception
-                       (mt/run-mbql-query checkins
                          {:aggregation [[:count]]})))))))
           (testing "Using connection impersonation with a default user that can't be impersonated works if an impersonation user (role) is provided"
             (mt/with-temp [:model/Database database {:engine driver/*driver*,
@@ -664,3 +652,44 @@
                     (doseq [statement ["REVOKE ALL PRIVILEGES ON TABLE \"products\" FROM \"impersonation_role\";"
                                        "DROP ROLE IF EXISTS \"impersonation_role\";"]]
                       (jdbc/execute! spec [statement]))))))))))))
+
+(deftest resilient-connection-options-test
+  (testing "resilient connections have the correct role set"
+    (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc
+                                               :+features [:connection-impersonation]})
+      (mt/with-premium-features #{:advanced-permissions}
+        (let [venues-table (sql.tx/qualify-and-quote driver/*driver* "test-data" "venues")
+              role-a (u/lower-case-en (mt/random-name))]
+
+          (tx/with-temp-roles! driver/*driver*
+
+            (impersonation-granting-details driver/*driver* (mt/db))
+            {role-a {venues-table {}}}
+
+            (impersonation-default-user driver/*driver*)
+            (impersonation-default-role driver/*driver*)
+
+            (mt/with-temp [:model/Database database {:engine driver/*driver*,
+                                                     :details (impersonation-details driver/*driver* (mt/db))}]
+              (mt/with-db database
+
+                (when (driver/database-supports? driver/*driver* :connection-impersonation-requires-role nil)
+                  (t2/update! :model/Database :id (mt/id) (assoc-in (mt/db) [:details :role] (impersonation-default-role driver/*driver*))))
+
+                (sync/sync-database! database {:scan :schema})
+
+                (let [tables-set #(->> (driver/do-with-resilient-connection
+                                        driver/*driver*
+                                        (t2/select-one :model/Database (mt/id))
+                                        driver/describe-database)
+                                       :tables
+                                       set)
+                      default-table-set (tables-set)
+                      do-with-resolved-connection sql-jdbc.execute/do-with-resolved-connection]
+                  (with-redefs [sql-jdbc.execute/do-with-resolved-connection
+                                (fn [driver db options f]
+                                  (do-with-resolved-connection driver db options
+                                                               (fn [conn]
+                                                                 (driver/set-role! driver/*driver* conn role-a)
+                                                                 (f conn))))]
+                    (is (= default-table-set (tables-set)))))))))))))

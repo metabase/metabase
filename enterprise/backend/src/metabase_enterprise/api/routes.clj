@@ -5,6 +5,7 @@
   These routes should generally live under prefixes like `/api/ee/<feature>/` -- see the
   `enterprise/backend/README.md` for more details."
   (:require
+   [metabase-enterprise.action-v2.api]
    [metabase-enterprise.advanced-config.api.logs]
    [metabase-enterprise.advanced-permissions.api.routes]
    [metabase-enterprise.ai-entity-analysis.api]
@@ -15,6 +16,7 @@
    [metabase-enterprise.billing.api.routes]
    [metabase-enterprise.content-translation.routes]
    [metabase-enterprise.content-verification.api.routes]
+   [metabase-enterprise.database-replication.api :as database-replication.api]
    [metabase-enterprise.database-routing.api]
    [metabase-enterprise.email.api]
    [metabase-enterprise.gsheets.api :as gsheets.api]
@@ -44,10 +46,12 @@
    :collection-cleanup         (deferred-tru "Collection Cleanup")
    :content-translation        (deferred-tru "Content translation")
    :etl-connections            (deferred-tru "ETL Connections")
+   :etl-connections-pg         (deferred-tru "ETL Connections PG replication")
    :llm-autodescription        (deferred-tru "LLM Auto-description")
    :metabot-v3                 (deferred-tru "MetaBot")
    :scim                       (deferred-tru "SCIM configuration")
    :serialization              (deferred-tru "Serialization")
+   :table-data-editing         (deferred-tru "Table Data Editing")
    :upload-management          (deferred-tru "Upload Management")
    :database-routing           (deferred-tru "Database Routing")
    :cloud-custom-smtp          (deferred-tru "Custom SMTP")})
@@ -71,7 +75,9 @@
 (def ^:private ee-routes-map
   "/api/ee routes. The following routes are NICE and do follow the `/ee/<feature>/` naming convention. Please add new
   routes here and follow the convention."
-  {"/advanced-permissions"         (premium-handler metabase-enterprise.advanced-permissions.api.routes/routes :advanced-permissions)
+  ;; Postponing a granular flag for :actions until it's used more widely.
+  {"/action-v2"                    (premium-handler metabase-enterprise.action-v2.api/routes :table-data-editing)
+   "/advanced-permissions"         (premium-handler metabase-enterprise.advanced-permissions.api.routes/routes :advanced-permissions)
    "/ai-entity-analysis"           (premium-handler metabase-enterprise.ai-entity-analysis.api/routes :ai-entity-analysis)
    "/ai-sql-fixer"                 (premium-handler metabase-enterprise.ai-sql-fixer.api/routes :ai-sql-fixer)
    "/ai-sql-generation"            (premium-handler metabase-enterprise.ai-sql-generation.api/routes :ai-sql-generation)
@@ -79,6 +85,10 @@
    "/autodescribe"                 (premium-handler 'metabase-enterprise.llm.api :llm-autodescription)
    "/billing"                      metabase-enterprise.billing.api.routes/routes
    "/content-translation"          (premium-handler metabase-enterprise.content-translation.routes/routes :content-translation)
+   "/database-replication"         (-> database-replication.api/routes ;; database-replication requires all these features.
+                                       (premium-handler :attached-dwh)
+                                       (premium-handler :etl-connections)
+                                       (premium-handler :etl-connections-pg))
    "/database-routing"             (premium-handler metabase-enterprise.database-routing.api/routes :database-routing)
    "/email"                        (premium-handler metabase-enterprise.email.api/routes :cloud-custom-smtp)
    "/gsheets"                      (-> gsheets.api/routes ;; gsheets requires both features.

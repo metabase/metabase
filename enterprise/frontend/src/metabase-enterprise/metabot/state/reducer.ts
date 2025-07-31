@@ -3,7 +3,7 @@ import _ from "underscore";
 
 import { logout } from "metabase/auth/actions";
 import { uuid } from "metabase/lib/uuid";
-import type { MetabotHistory, MetabotStateContext } from "metabase-types/api";
+import type { MetabotHistory } from "metabase-types/api";
 
 import { TOOL_CALL_MESSAGES } from "../constants";
 
@@ -24,7 +24,7 @@ export type MetabotErrorMessage = {
 export type MetabotToolCall = {
   id: string;
   name: string;
-  message: string;
+  message: string | undefined;
   status: "started" | "ended";
 };
 
@@ -106,23 +106,17 @@ export const metabot = createSlice({
 
       state.toolCalls = hasToolCalls ? [] : state.toolCalls;
     },
-    setStateContext: (state, action: PayloadAction<MetabotStateContext>) => {
-      state.state = action.payload;
-    },
     toolCallStart: (
       state,
       action: PayloadAction<{ toolCallId: string; toolName: string }>,
     ) => {
       const { toolCallId, toolName } = action.payload;
-      const toolCallMessage = TOOL_CALL_MESSAGES[toolName];
-      if (toolCallMessage) {
-        state.toolCalls.push({
-          id: toolCallId,
-          name: toolName,
-          message: toolCallMessage,
-          status: "started",
-        });
-      }
+      state.toolCalls.push({
+        id: toolCallId,
+        name: toolName,
+        message: TOOL_CALL_MESSAGES[toolName],
+        status: "started",
+      });
     },
     toolCallEnd: (state, action: PayloadAction<{ toolCallId: string }>) => {
       state.toolCalls = state.toolCalls.map((tc) =>

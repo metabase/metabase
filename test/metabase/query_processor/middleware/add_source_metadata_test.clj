@@ -1,7 +1,6 @@
 (ns metabase.query-processor.middleware.add-source-metadata-test
   (:require
    [clojure.test :refer :all]
-   [clojure.walk :as walk]
    [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.lib.test-metadata :as meta]
@@ -18,12 +17,7 @@
     (qp.store/with-metadata-provider (if (qp.store/initialized?)
                                        (qp.store/metadata-provider)
                                        meta/metadata-provider)
-      (->> (add-source-metadata/add-source-metadata-for-source-queries query)
-           (walk/postwalk
-            (fn [form]
-              (if (map? form)
-                (dissoc form :ident)
-                form)))))))
+      (add-source-metadata/add-source-metadata-for-source-queries query))))
 
 (defn- results-col [col]
   (select-keys
@@ -250,7 +244,9 @@
     (is (=? (lib.tu.macros/mbql-query venues
               {:source-query    {:source-query    {:native "SELECT \"ID\", \"NAME\" FROM \"VENUES\";"}
                                  :source-metadata (venues-source-metadata :id :name)}
-               :source-metadata (venues-source-metadata :id :name)})
+               :source-metadata (let [[id-col name-col] (venues-source-metadata :id :name)]
+                                  [(assoc id-col :field_ref [:field "ID" {:base-type :type/BigInteger}])
+                                   (assoc name-col :field_ref [:field "NAME" {:base-type :type/Text}])])})
             (add-source-metadata
              (lib.tu.macros/mbql-query venues
                {:source-query {:source-query    {:native "SELECT \"ID\", \"NAME\" FROM \"VENUES\";"}
@@ -267,7 +263,8 @@
              (lib.tu.macros/mbql-query venues
                {:source-table $$venues
                 :joins        [{:source-query {:source-table $$venues
-                                               :fields       [$id $name]}}]}))))))
+                                               :fields       [$id $name]}
+                                :condition    [:= "A" "B"]}]}))))))
 
 (deftest ^:parallel binned-fields-test
   (testing "source metadata should handle source queries that have binned fields"
@@ -364,9 +361,7 @@
                                               :order-by     [[:asc $id]]
                                               :limit        2}})
           metadata          (qp.store/with-metadata-provider meta/metadata-provider
-                              (->> (qp.preprocess/query->expected-cols query)
-                                   (mapv (fn [col]
-                                           (dissoc col :ident)))))
+                              (qp.preprocess/query->expected-cols query))
           ;; the actual metadata this middleware should return. Doesn't have all the columns that come back from
           ;; `qp.preprocess/query->expected-cols`
           expected-metadata (map results-col metadata)]

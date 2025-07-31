@@ -20,9 +20,17 @@ title: Driver interface changelog
   replace existing keys like `:alias`, `:join-alias`, or `:name`; make sure you use `driver-api/qp.add.alias`,
   `driver-api/qp.add.source-table`, and `driver-api/qp.add.source-alias` respectively.
 
+- Added the driver multi-method `driver/extra-info` for drivers to provide info such as db routing configuration details
+  from their `metabase-plugin.yaml` file.
+
 - Extend `datetime()` to accept UTF-8 encoded binary and numbers (unix timestamps) in addition to strings.
 
 - Added a feature `:expressions/today` for drivers that support generating a date for the current day.
+
+## Metabase 0.55.9
+
+- Add multi-method `driver/do-with-resilient-connection` for executing functions in a context where closed connections may be automatically reopened
+
 
 ## Metabase 0.55.0
 
@@ -51,7 +59,6 @@ title: Driver interface changelog
   `metabase.driver/upload-type->database-type` or `metabase.driver/allowed-promotions` -- make sure you use
   `:metabase.upload/varchar-255` rather than something like `::upload/varchar-255`.
 
-- Added the multi-method `metabase.driver.sql.parameters.substitution/time-grouping->replacement-snippet-info`.  This is effectively `->replacement-snippet-info` for the new native query time grouping feature, but is its own separate multimethod because it needs an extra parameter.
 - The `metabase.models.secret` namespace has been replaced with `metabase.secrets.core`; if you were using it please
   update your usages.
 
