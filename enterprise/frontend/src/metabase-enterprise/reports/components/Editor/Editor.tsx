@@ -25,6 +25,7 @@ import { SmartLinkEmbed } from "./extensions/SmartLink";
 import { Markdown } from "./extensions/markdown/index";
 import { useCardEmbedsTracking, useQuestionSelection } from "./hooks";
 import type { CardEmbedRef } from "./types";
+import { EmojiExtension } from "./extensions/Emojis";
 
 interface EditorProps {
   onEditorReady?: (editor: TiptapEditor) => void;
@@ -75,6 +76,7 @@ export const Editor: React.FC<EditorProps> = ({
       }),
       MetabotNode,
       DisableMetabotSidebar,
+      EmojiExtension,
     ],
     autofocus: false,
     immediatelyRender: false,

@@ -37,6 +37,7 @@
     "@tanstack/react-virtual": "^3.13.2",
     "@tippyjs/react": "^4.2.6",
     "@tiptap/core": "^3.0.7",
+    "@tiptap/extension-emoji": "^3.0.7",
     "@tiptap/extension-image": "^3.0.7",
     "@tiptap/extension-mention": "^3.0.7",
     "@tiptap/extension-placeholder": "^3.0.7",
