@@ -34,8 +34,6 @@ export interface Undo {
     action: () => void;
   };
   ref?: RefObject<HTMLDivElement>;
-  renderChildren?: (undo: Undo) => ReactNode;
-  onDismiss?: (undoId: string | number) => void;
 }
 
 export type UndoState = Undo[];

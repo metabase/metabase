@@ -8,11 +8,7 @@ import { BrowserCrumbs } from "metabase/common/components/BrowserCrumbs";
 import Link from "metabase/common/components/Link";
 import CS from "metabase/css/core/index.css";
 import { color } from "metabase/lib/colors";
-import { useSelector } from "metabase/lib/redux";
 import { isSyncInProgress } from "metabase/lib/syncing";
-import { PLUGIN_TABLE_EDITING } from "metabase/plugins";
-import { getDatabases } from "metabase/reference/selectors";
-import { getUserIsAdmin } from "metabase/selectors/user";
 import { Box, Group, Icon, Loader } from "metabase/ui";
 import { isVirtualCardId } from "metabase-lib/v1/metadata/utils/saved-questions";
 
@@ -22,6 +18,7 @@ import { trackTableClick } from "../analytics";
 import { useDatabaseCrumb } from "./useDatabaseCrumb";
 
 const propTypes = {
+  database: PropTypes.object,
   tables: PropTypes.array.isRequired,
   getTableUrl: PropTypes.func.isRequired,
   metadata: PropTypes.object,
@@ -40,14 +37,7 @@ export const TableBrowser = ({
   xraysEnabled,
   showSchemaInHeader = true,
 }) => {
-  const databases = useSelector(getDatabases);
-  const database = databases[dbId];
-  const isAdmin = useSelector(getUserIsAdmin);
   const databaseCrumb = useDatabaseCrumb(dbId);
-  const canEditTables =
-    database &&
-    isAdmin &&
-    PLUGIN_TABLE_EDITING.isDatabaseTableEditingEnabled(database);
 
   return (
     <>
@@ -69,7 +59,6 @@ export const TableBrowser = ({
             getTableUrl={getTableUrl}
             xraysEnabled={xraysEnabled}
             metadata={metadata}
-            canEditTables={canEditTables}
           />
         ))}
       </BrowseGrid>
@@ -85,7 +74,6 @@ const itemPropTypes = {
   xraysEnabled: PropTypes.bool,
   metadata: PropTypes.object,
   getTableUrl: PropTypes.func.isRequired,
-  canEditTables: PropTypes.bool,
 };
 
 const TableBrowserItem = ({
@@ -94,7 +82,6 @@ const TableBrowserItem = ({
   xraysEnabled,
   metadata,
   getTableUrl,
-  canEditTables,
 }) => {
   const isVirtual = isVirtualCardId(table.id);
   const isLoading = isSyncInProgress(table);
@@ -113,7 +100,6 @@ const TableBrowserItem = ({
             tableId={table.id}
             dbId={dbId}
             xraysEnabled={xraysEnabled}
-            canEditTables={canEditTables}
           />
         )}
       </>
@@ -127,15 +113,9 @@ const itemButtonsPropTypes = {
   tableId: PropTypes.number,
   dbId: PropTypes.number,
   xraysEnabled: PropTypes.bool,
-  canEditTables: PropTypes.bool,
 };
 
-const TableBrowserItemButtons = ({
-  tableId,
-  dbId,
-  xraysEnabled,
-  canEditTables,
-}) => {
+const TableBrowserItemButtons = ({ tableId, dbId, xraysEnabled }) => {
   return (
     <Box className={cx(CS.hoverChild)}>
       <Group gap="md">
@@ -145,18 +125,6 @@ const TableBrowserItemButtons = ({
               name="bolt_filled"
               tooltip={t`X-ray this table`}
               color={color("warning")}
-            />
-          </Link>
-        )}
-        {canEditTables && (
-          <Link
-            to={PLUGIN_TABLE_EDITING.getTableEditUrl(tableId, dbId)}
-            data-testid="edit-table-icon"
-          >
-            <Icon
-              name="pencil"
-              tooltip={t`Edit this table`}
-              color={"var(--mb-color-text-medium)"}
             />
           </Link>
         )}

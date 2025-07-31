@@ -1,6 +1,5 @@
 import type { Card, CardType } from "./card";
 import type { Database, DatabaseId, InitialSyncStatus } from "./database";
-import type { DatasetData } from "./dataset";
 import type { Field, FieldDimensionOption, FieldId } from "./field";
 import type { Segment } from "./segment";
 
@@ -130,28 +129,3 @@ export interface DeleteUploadTableRequest {
   tableId: TableId;
   "archive-cards"?: boolean;
 }
-
-export interface GetTableDataRequest {
-  tableId: TableId;
-}
-
-export type TableData = {
-  data: DatasetData;
-  database_id: DatabaseId;
-  table_id: TableId;
-  row_count: number;
-  running_time: number;
-  error?:
-    | string
-    | {
-        status: number; // HTTP status code
-        data?: string;
-      };
-  error_type?: string;
-  error_is_curated?: boolean;
-  status?: string;
-  /** In milliseconds */
-  average_execution_time?: number;
-  /** A date in ISO 8601 format */
-  started_at?: string;
-};
