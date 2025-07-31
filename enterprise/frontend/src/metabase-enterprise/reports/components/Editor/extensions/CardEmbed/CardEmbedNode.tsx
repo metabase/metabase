@@ -10,6 +10,7 @@ import { loadMetadataForCard } from "metabase/questions/actions";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Box, Icon, Loader, Menu, Text, TextInput } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
+import ChartSkeleton from "metabase/visualizations/components/skeletons/ChartSkeleton";
 import Question from "metabase-lib/v1/Question";
 import { getUrl } from "metabase-lib/v1/urls";
 import type { Card } from "metabase-types/api";
@@ -277,12 +278,33 @@ export const CardEmbedComponent = memo(
       [dispatch, metadata],
     );
 
-    if (isLoading) {
+    if (isLoadingCard && !card) {
       return (
         <NodeViewWrapper className={styles.embedWrapper}>
-          <Box className={styles.loadingContainer}>
-            <Loader size="sm" />
-            <Text>Loading question...</Text>
+          <Box
+            className={`${styles.cardEmbed} ${selected ? styles.selected : ""}`}
+          >
+            <Box className={styles.questionHeader}>
+              <Box
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: "0.5rem",
+                }}
+              >
+                <Box className={styles.titleContainer}>
+                  <Text size="md" color="text-dark" fw={700}>
+                    {t`Loading question...`}
+                  </Text>
+                </Box>
+              </Box>
+            </Box>
+            <Box className={styles.questionResults}>
+              <Box className={styles.loadingContainer}>
+                <Loader />
+              </Box>
+            </Box>
           </Box>
         </NodeViewWrapper>
       );
@@ -433,9 +455,8 @@ export const CardEmbedComponent = memo(
               </Box>
             </>
           ) : (
-            <Box className={styles.loadingContainer}>
-              <Loader size="sm" />
-              <Text>Loading results...</Text>
+            <Box className={styles.questionResults}>
+              <ChartSkeleton display={card?.display || "table"} />
             </Box>
           )}
         </Box>
