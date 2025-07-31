@@ -37,11 +37,19 @@ export function EmbeddingDataPicker({
   isDisabled,
   onChange,
 }: EmbeddingDataPickerProps) {
+  const userDefinedEntityTypes = useSelector(getEntityTypes);
+
   const { data: dataSourceCountData, isLoading: isDataSourceCountLoading } =
     useSearchQuery({ models: ["dataset", "table"], limit: 0 });
 
+  // We only count models to determine if we should hide tables.
+  // We don't need to do this if the user has defined their own visible entity types.
   const { data: modelCountData, isLoading: isModelCountLoading } =
-    useSearchQuery({ models: ["dataset"], limit: 0 });
+    useSearchQuery(
+      userDefinedEntityTypes.length > 0
+        ? skipToken
+        : { models: ["dataset"], limit: 0 },
+    );
 
   const databaseId = Lib.databaseID(query);
   const tableInfo =
@@ -57,7 +65,6 @@ export function EmbeddingDataPicker({
    */
   const normalizedCard = pickerInfo?.cardId ? card : undefined;
 
-  const userDefinedEntityTypes = useSelector(getEntityTypes);
   const forceMultiStagedDataPicker = useSelector(
     (state) => getEmbedOptions(state).data_picker === "staged",
   );
