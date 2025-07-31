@@ -114,8 +114,7 @@
             resp (mt/user-http-request :crowberto :post 200 "ee/transform" body)]
         (is (=? (assoc body
                        :last_started_at nil
-                       :last_ended_at nil
-                       :live_target nil)
+                       :last_ended_at nil)
                 (mt/user-http-request :crowberto :get 200 (format "ee/transform/%s" (:id resp)))))))))
 
 (deftest put-transforms-test
@@ -258,5 +257,5 @@
         (is (=? updated
                 (mt/user-http-request :crowberto :put 200 (format "ee/transform/%s" transform-id) updated)))
         (test-execution transform-id)
-        (is (false? (transforms.util/target-table-exists? original)))
+        (is (true? (transforms.util/target-table-exists? original)))
         (is (true? (transforms.util/target-table-exists? updated)))))))

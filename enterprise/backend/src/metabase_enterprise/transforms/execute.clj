@@ -24,10 +24,10 @@
   "Executes a query transform. "
   [{:keys [driver connection-details query primary-key output-table overwrite?] :as _data}]
   (let [driver (keyword driver)
-        queries (cond->> (list (driver/compile-transform driver
-                                                         {:query query
-                                                          :output-table output-table
-                                                          :primary-key primary-key}))
+        queries (cond->> [(driver/compile-transform driver
+                                                    {:query query
+                                                     :output-table output-table
+                                                     :primary-key primary-key})]
                   overwrite? (cons (driver/compile-drop-table driver output-table)))]
     {:rows-affected (last (driver/execute-raw-queries! driver connection-details queries))}))
 
@@ -101,8 +101,7 @@
    (try
      (let [db (get-in source [:query :database])
            {driver :engine :as database} (t2/select-one :model/Database db)
-           feature (transforms.util/required-database-feature transform)
-           live-target (:live_target transform)]
+           feature (transforms.util/required-database-feature transform)]
        (when-not (driver.u/supports? driver feature database)
          (throw (ex-info "The database does not support the requested transform target type."
                          {:driver driver, :database database, :feature feature})))
@@ -112,15 +111,6 @@
                                 {:last_started_at :%now
                                  :execution_status :started}))
          (throw (ex-info "The transform is running (or missing)." {:transform-id id})))
-       ;; remove the live table if it's not our target anymore
-       (when (and live-target
-                  (not= target live-target))
-         (log/info "Deleting old target table" (pr-str live-target))
-         (transforms.util/delete-live-target-table! transform)
-         (when-let [table (transforms.util/target-table (:id database) live-target)]
-           ;; there is a metabase table, sync it away
-           (log/info "Syncing away old target table" (->  table (select-keys [:db_id :id :schema :name]) pr-str))
-           (sync/sync-table! table)))
        (when start-promise
          (deliver start-promise :started))
        ;; start the execution for real
@@ -134,8 +124,7 @@
            :primary-key nil ;; fixme
            :output-table (transforms.util/qualified-table-name driver target)
            :overwrite? true})
-         (t2/update! :model/Transform id {:live_target (assoc target :database (-> source :query :database))
-                                          :execution_status :exec-succeeded
+         (t2/update! :model/Transform id {:execution_status :exec-succeeded
                                           :last_ended_at :%now})
          (catch Throwable t
            (t2/update! :model/Transform id {:execution_status :exec-failed

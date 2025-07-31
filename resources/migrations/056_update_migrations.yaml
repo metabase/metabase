@@ -303,12 +303,6 @@ databaseChangeLog:
                   type: ${timestamp_type}
                   constraints:
                     nullable: true
-              - column:
-                  name: live_target
-                  remarks: JSON of target this transform last successfully executed with
-                  type: ${text.type}
-                  constraints:
-                    nullable: true
 
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<

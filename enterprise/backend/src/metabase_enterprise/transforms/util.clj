@@ -2,6 +2,8 @@
   (:require
    [metabase.driver :as driver]
    [metabase.query-processor.compile :as qp.compile]
+   [metabase.sync.core :as sync]
+   [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
 (defn qualified-table-name
@@ -25,25 +27,6 @@
       (catch Exception e
         (not (driver/table-known-to-not-exist? driver e))))))
 
-(defn delete-live-target-table!
-  "Delete the target table of a transform."
-  [{live-target :live_target, :as _transform}]
-  (when live-target
-    (let [database (:database live-target)
-          driver (t2/select-one-fn :engine :model/Database database)]
-      (driver/drop-table! driver database (qualified-table-name driver live-target)))))
-
-(defn delete-live-target-table-by-id!
-  "Delete the target table of the transform specified by `transform-id`."
-  [transform-id]
-  (delete-live-target-table! (t2/select-one :model/Transform transform-id)))
-
-(defn compile-source
-  "Compile the source query of a transform."
-  [{query-type :type :as source}]
-  (case query-type
-    "query" (:query (qp.compile/compile-with-inline-parameters (:query source)))))
-
 (defn target-table
   "Load the `target` table of a transform from the database specified by `database-id`."
   [database-id target]
@@ -52,6 +35,29 @@
                      :schema (:schema target)
                      :name (:name target))
       (t2/hydrate :db)))
+
+(defn delete-target-table!
+  "Delete the target table of a transform and sync it from the app db."
+  [{:keys [target source], :as _transform}]
+  (when target
+    (let [database (-> source :query :database)
+          driver (t2/select-one-fn :engine :model/Database database)]
+      (driver/drop-table! driver database (qualified-table-name driver target))
+      (when-let [table (target-table (:id database) target)]
+        ;; there is a metabase table, sync it away
+        (log/info "Syncing away old target table" (-> table (select-keys [:db_id :id :schema :name]) pr-str))
+        (sync/sync-table! table)))))
+
+(defn delete-target-table-by-id!
+  "Delete the target table of the transform specified by `transform-id`."
+  [transform-id]
+  (delete-target-table! (t2/select-one :model/Transform transform-id)))
+
+(defn compile-source
+  "Compile the source query of a transform."
+  [{query-type :type :as source}]
+  (case query-type
+    "query" (:query (qp.compile/compile-with-inline-parameters (:query source)))))
 
 (defn required-database-feature
   "Returns the database feature necessary to execute `transform`."

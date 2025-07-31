@@ -81,11 +81,9 @@
                     [:id ms/PositiveInt]]]
   (log/info "get transform" id)
   (api/check-superuser)
-  (let [transform (api/check-404 (t2/select-one :model/Transform id))
-        database-id (source-database-id transform)
-        live-target (:live_target transform)]
-    (cond-> transform
-      live-target (assoc :live_table (transforms.util/target-table database-id live-target)))))
+  (let [{:keys [target] :as transform} (api/check-404 (t2/select-one :model/Transform id))
+        database-id (source-database-id transform)]
+    (assoc transform :table (transforms.util/target-table database-id target))))
 
 (api.macros/defendpoint :put "/:id"
   [{:keys [id]} :- [:map
@@ -114,7 +112,6 @@
                     [:id ms/PositiveInt]]]
   (log/info "delete transform" id)
   (api/check-superuser)
-  (transforms.util/delete-live-target-table-by-id! id)
   (t2/delete! :model/Transform id)
   nil)
 
@@ -123,7 +120,7 @@
                     [:id ms/PositiveInt]]]
   (log/info "delete transform target table" id)
   (api/check-superuser)
-  (transforms.util/delete-live-target-table-by-id! id)
+  (transforms.util/delete-target-table-by-id! id)
   nil)
 
 (api.macros/defendpoint :post "/:id/execute"
