@@ -1,7 +1,6 @@
 import {
   DndContext,
   type DragEndEvent,
-  type DragOverEvent,
   DragOverlay,
   type DragStartEvent,
   KeyboardSensor,
@@ -105,19 +104,30 @@ export function DetailViewSidebar({
     setIsDraggingSection(isSection);
   };
 
-  const handleDragOver = (event: DragOverEvent) => {
+  const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
 
-    if (!over) {
+    if (!over || active.id === over.id) {
+      setActiveId(null);
+      return;
+    }
+
+    // Check if we're dragging a section (sections have larger IDs that are timestamps)
+    const isSection = sections.some((section) => section.id === active.id);
+    if (isSection) {
+      onDragEnd(event);
+      setActiveId(null);
+      setIsDraggingSection(false);
       return;
     }
 
     const activeFieldId = active.id as number;
-    const overId = over.id;
+    const overFieldId = over.id as number;
 
     // Find which container the active item is in
     const activeContainer = findContainer(activeFieldId, sections);
-    const overContainer = over.data.current?.sortable?.containerId || overId;
+    const overContainer =
+      over.data.current?.sortable?.containerId || overFieldId;
 
     if (activeContainer !== overContainer) {
       // Moving between containers
@@ -163,9 +173,14 @@ export function DetailViewSidebar({
           const targetSection = updatedSections[targetSectionIndex];
           const newFields = [...targetSection.fields];
 
-          if (overId !== overContainer && typeof overId === "number") {
+          if (
+            overFieldId !== overContainer &&
+            typeof overFieldId === "number"
+          ) {
             // Insert at specific position
-            const overIndex = newFields.findIndex((f) => f.field_id === overId);
+            const overIndex = newFields.findIndex(
+              (f) => f.field_id === overFieldId,
+            );
             if (overIndex !== -1) {
               newFields.splice(overIndex + 1, 0, newField);
             } else {
@@ -188,59 +203,38 @@ export function DetailViewSidebar({
           });
         }
       }
-    }
-  };
+    } else {
+      // Handle reordering within the same container
+      const activeContainer = findContainer(activeFieldId, sections);
+      const overContainer =
+        over.data.current?.sortable?.containerId ||
+        findContainer(overFieldId, sections);
 
-  const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
+      if (
+        activeContainer === overContainer &&
+        activeContainer !== HIDDEN_COLUMNS_ID
+      ) {
+        const sectionId = Number(activeContainer);
+        const section = sections.find((s) => s.id === sectionId);
 
-    if (!over || active.id === over.id) {
-      setActiveId(null);
-      return;
-    }
+        if (section) {
+          const oldIndex = section.fields.findIndex(
+            (f) => f.field_id === activeFieldId,
+          );
+          const newIndex = section.fields.findIndex(
+            (f) => f.field_id === overFieldId,
+          );
 
-    // Check if we're dragging a section (sections have larger IDs that are timestamps)
-    const isSection = sections.some((section) => section.id === active.id);
-    if (isSection) {
-      onDragEnd(event);
-      setActiveId(null);
-      setIsDraggingSection(false);
-      return;
-    }
-
-    const activeFieldId = active.id as number;
-    const overFieldId = over.id as number;
-
-    // Handle reordering within the same container
-    const activeContainer = findContainer(activeFieldId, sections);
-    const overContainer =
-      over.data.current?.sortable?.containerId ||
-      findContainer(overFieldId, sections);
-
-    if (
-      activeContainer === overContainer &&
-      activeContainer !== HIDDEN_COLUMNS_ID
-    ) {
-      const sectionId = Number(activeContainer);
-      const section = sections.find((s) => s.id === sectionId);
-
-      if (section) {
-        const oldIndex = section.fields.findIndex(
-          (f) => f.field_id === activeFieldId,
-        );
-        const newIndex = section.fields.findIndex(
-          (f) => f.field_id === overFieldId,
-        );
-
-        if (oldIndex !== -1 && newIndex !== -1) {
-          const newFields = arrayMove(section.fields, oldIndex, newIndex);
-          onUpdateSection(sectionId, { fields: newFields });
+          if (oldIndex !== -1 && newIndex !== -1) {
+            const newFields = arrayMove(section.fields, oldIndex, newIndex);
+            onUpdateSection(sectionId, { fields: newFields });
+          }
         }
       }
-    }
 
-    setActiveId(null);
-    setIsDraggingSection(false);
+      setActiveId(null);
+      setIsDraggingSection(false);
+    }
   };
 
   const handleUnhideField = (fieldId: number) => {
@@ -262,7 +256,6 @@ export function DetailViewSidebar({
       sensors={sensors}
       collisionDetection={closestCenter}
       onDragStart={handleDragStart}
-      onDragOver={handleDragOver}
       onDragEnd={handleDragEnd}
     >
       <Box>
