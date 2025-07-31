@@ -73,14 +73,14 @@ export const _InteractiveQuestion = (props: InteractiveQuestionProps) => (
 
 const subComponents: InteractiveQuestionComponents = {
   BackButton: BackButton,
-  Filter: SdkQuestion.Filter,
+  Filter: Filter,
   FilterDropdown: FilterDropdown,
   ResetButton: QuestionResetButton,
-  Title: SdkQuestion.Title,
+  Title: Title,
   Summarize: Summarize,
   SummarizeDropdown: SummarizeDropdown,
-  Notebook: SdkQuestion.Editor,
-  Editor: SdkQuestion.Editor,
+  Notebook: Editor,
+  Editor: Editor,
   NotebookButton: EditorButton,
   EditorButton: EditorButton,
   QuestionVisualization: QuestionVisualization,
