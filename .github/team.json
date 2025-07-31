@@ -47,8 +47,8 @@
       ]
     },
     {
-      "name": "UX West",
-      "label": ".Team/UXWest",
+      "name": "Admin Webapp",
+      "label": ".Team/AdminWebapp",
       "members": [
         "npfitz",
         "johnswanson",
@@ -93,6 +93,13 @@
       "label": "cloud",
       "members": [
         "filipesilva"
+      ]
+    },
+    {
+      "name": "DashViz",
+      "label": ".Team/DashViz",
+      "members": [
+        "eliotmetabase"
       ]
     }
   ]
