@@ -38,29 +38,9 @@ Cypress.Commands.add(
         }
       }
 
-      // Fallback: try to trigger React's internal setValue
-      const nativeInputValueSetter = Object.getOwnPropertyDescriptor(
-        window.HTMLInputElement.prototype,
-        "value",
-      )?.set;
-
-      const nativeTextAreaValueSetter = Object.getOwnPropertyDescriptor(
-        window.HTMLTextAreaElement.prototype,
-        "value",
-      )?.set;
-
-      const setter =
-        element instanceof HTMLInputElement
-          ? nativeInputValueSetter
-          : nativeTextAreaValueSetter;
-
-      if (setter) {
-        setter.call(element, text);
-
-        // Dispatch input event
-        element.dispatchEvent(new Event("input", { bubbles: true }));
-        element.dispatchEvent(new Event("change", { bubbles: true }));
-      }
+      element.value = text;
+      element.dispatchEvent(new Event("input", { bubbles: true }));
+      element.dispatchEvent(new Event("change", { bubbles: true }));
     });
 
     return cy.wrap(subject);
