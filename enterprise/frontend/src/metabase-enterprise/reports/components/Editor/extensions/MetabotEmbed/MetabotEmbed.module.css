@@ -1,0 +1,15 @@
+.codeBlockTextArea {
+  background-color: var(--mb-bg-light);
+  font-family: monospace;
+  width: 100%;
+  padding: 0.5rem;
+  min-height: 4rem;
+  border: none;
+  outline: none;
+  resize: none;
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: progress;
+  }
+}

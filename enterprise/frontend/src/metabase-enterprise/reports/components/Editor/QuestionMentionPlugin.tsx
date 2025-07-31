@@ -1,5 +1,5 @@
 import type { Editor } from "@tiptap/react";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { t } from "ttag";
 
 import { useListRecentsQuery } from "metabase/api";
@@ -15,7 +15,7 @@ import {
   SearchResultContainer,
 } from "metabase/search/components/SearchResult";
 import { IconWrapper } from "metabase/search/components/SearchResult/components/ItemIcon.styled";
-import { Box, Group, Icon, Popover } from "metabase/ui";
+import { Box, Group, Icon, Popover, Text } from "metabase/ui";
 import { getSearchIconName } from "metabase/visualizations/visualizations/LinkViz/EntityDisplay";
 import type {
   RecentItem,
@@ -27,21 +27,18 @@ const MODELS_TO_SEARCH: SearchModel[] = ["card", "dataset"];
 
 type InsertionMode = "mention" | "embed";
 
-interface SearchResultsFooterProps {
+interface ExtraItemProps {
   isSelected?: boolean;
-  onFooterSelect?: () => void;
+  onClick?: () => void;
 }
 
-const SearchResultsFooter = ({
-  isSelected,
-  onFooterSelect,
-}: SearchResultsFooterProps) => (
+const SearchResultsFooter = ({ isSelected, onClick }: ExtraItemProps) => (
   <Box mx="sm" mb="sm" mt={-8}>
     <SearchResultContainer
       align="center"
       isActive
       isSelected={isSelected}
-      onClick={onFooterSelect}
+      onClick={onClick}
     >
       <IconWrapper active archived={false} type="search">
         <Icon name="search" />
@@ -62,6 +59,31 @@ const SearchResultsFooter = ({
   </Box>
 );
 
+const MetabotMenuItem = ({ isSelected, onClick }: ExtraItemProps) => (
+  <Box>
+    <SearchResultContainer isActive isSelected={isSelected} onClick={onClick}>
+      <IconWrapper active archived={false} type="search">
+        <Icon name="metabot" />
+      </IconWrapper>
+
+      <ResultNameSection gap="xs">
+        <Group gap="xs" align="center" wrap="nowrap">
+          <ResultTitle
+            role="heading"
+            data-testid="search-result-item-name"
+            truncate
+          >
+            {t`Ask metabot`}
+          </ResultTitle>
+        </Group>
+        <Text size="sm" c="text-medium">
+          {t`It wants to help!`}
+        </Text>
+      </ResultNameSection>
+    </SearchResultContainer>
+  </Box>
+);
+
 interface QuestionMentionPluginProps {
   editor: Editor;
 }
@@ -73,6 +95,7 @@ export const QuestionMentionPlugin = ({
   const [showPopover, setShowPopover] = useState(false);
   const [modal, setModal] = useState<"question-picker" | null>(null);
   const [query, setQuery] = useState("");
+
   const [mentionRange, setMentionRange] = useState<{
     from: number;
     to: number;
@@ -89,6 +112,25 @@ export const QuestionMentionPlugin = ({
   const filteredRecents = recents
     .filter((item) => item.model === "card" || item.model === "dataset")
     .slice(0, 4);
+
+  const insertMetabotBlock = useCallback(async () => {
+    if (!mentionRange) {
+      return;
+    }
+
+    const insertPosition = mentionRange.from;
+
+    editor
+      .chain()
+      .focus()
+      .deleteRange(mentionRange)
+      .insertContentAt(insertPosition, {
+        type: "metabot",
+        attrs: {},
+      })
+      .setTextSelection(insertPosition + 1)
+      .run();
+  }, [editor, mentionRange]);
 
   useEffect(() => {
     if (!editor) {
@@ -291,13 +333,23 @@ export const QuestionMentionPlugin = ({
               showFooterOnNoResults
             />
           ) : (
-            <RecentsListContent
-              isLoading={isRecentsLoading}
-              results={filteredRecents}
-              onClick={handleRecentSelect}
-              footerComponent={SearchResultsFooter}
-              onFooterSelect={() => setModal("question-picker")}
-            />
+            <>
+              <RecentsListContent
+                isLoading={isRecentsLoading}
+                results={filteredRecents}
+                onClick={handleRecentSelect}
+                headerChildren={[
+                  Object.assign(MetabotMenuItem, {
+                    onClick: insertMetabotBlock,
+                  }),
+                ]}
+                footerChildren={[
+                  Object.assign(SearchResultsFooter, {
+                    onClick: () => setModal("question-picker"),
+                  }),
+                ]}
+              />
+            </>
           )}
         </Popover.Dropdown>
       </Popover>

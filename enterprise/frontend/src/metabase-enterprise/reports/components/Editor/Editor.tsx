@@ -19,6 +19,7 @@ import { Box, Loader } from "metabase/ui";
 import styles from "./Editor.module.css";
 import { QuestionMentionPlugin } from "./QuestionMentionPlugin";
 import { CardEmbed } from "./extensions/CardEmbed";
+import { MetabotNode } from "./extensions/MetabotEmbed";
 import { SmartLinkEmbed } from "./extensions/SmartLink";
 import { Markdown } from "./extensions/markdown/index";
 import { useCardEmbedsTracking, useQuestionSelection } from "./hooks";
@@ -71,6 +72,7 @@ export const Editor: React.FC<EditorProps> = ({
           class: "smart-link",
         },
       }),
+      MetabotNode,
     ],
     autofocus: true,
     immediatelyRender: false,

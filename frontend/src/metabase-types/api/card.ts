@@ -19,12 +19,12 @@ import type {
   ParameterValueOrArray,
 } from "./parameters";
 import type { DatasetQuery, FieldReference, PublicDatasetQuery } from "./query";
+import type { ReportId } from "./report";
 import type { CollectionEssentials } from "./search";
 import type { Table, TableId } from "./table";
 import type { UserInfo } from "./user";
 import type { CardDisplayType, VisualizationDisplay } from "./visualization";
 import type { SmartScalarComparison } from "./visualization-settings";
-
 export type CardType = "model" | "question" | "metric" | "in_report";
 
 type CreatorInfo = Pick<
@@ -372,6 +372,8 @@ export interface CreateCardRequest {
   visualization_settings: VisualizationSettings;
   type?: CardType;
   parameters?: Parameter[];
+  in_report?: boolean;
+  report_id?: ReportId;
   parameter_mappings?: unknown;
   description?: string;
   collection_id?: CollectionId;
