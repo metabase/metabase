@@ -16,7 +16,7 @@ import { CollectionPickerModal } from "metabase/common/components/Pickers/Collec
 import { useToast } from "metabase/common/hooks";
 import { useCallbackEffect } from "metabase/common/hooks/use-callback-effect";
 import { useDispatch } from "metabase/lib/redux";
-import { ActionIcon, Box, Button, Icon, Loader, Menu } from "metabase/ui";
+import { ActionIcon, Box, Button, Flex, Icon, Loader, Menu } from "metabase/ui";
 import {
   useCreateReportMutation,
   useGetReportQuery,
@@ -302,9 +302,7 @@ export const ReportPage = ({
                   className={styles.titleInput}
                 />
               </Box>
-              <Box
-                style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}
-              >
+              <Flex gap="sm" align="center" h="2.5rem">
                 {showSaveButton && (
                   <Button
                     onClick={() => {
@@ -351,7 +349,7 @@ export const ReportPage = ({
                     </Menu.Item>
                   </Menu.Dropdown>
                 </Menu>
-              </Box>
+              </Flex>
             </Box>
             <Editor
               onEditorReady={setEditorInstance}
