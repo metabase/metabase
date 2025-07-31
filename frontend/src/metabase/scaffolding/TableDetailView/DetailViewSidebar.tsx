@@ -305,39 +305,22 @@ export function DetailViewSidebar({
             strategy={verticalListSortingStrategy}
           >
             <Text fw={600}>{t`Hidden columns`}</Text>
-            <Box
-              mt="sm"
-              style={{
-                minHeight: hiddenColumns.length === 0 ? 40 : undefined,
-                border:
-                  hiddenColumns.length === 0
-                    ? "1px dashed var(--mb-color-border)"
-                    : undefined,
-                borderRadius: 4,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              {hiddenColumns.length === 0 ? (
-                <EmptyDropZone
-                  sectionId={HIDDEN_COLUMNS_ID}
-                  message={t`Drop columns here to hide them`}
-                />
-              ) : (
-                <ul style={{ width: "100%" }}>
-                  {hiddenColumns.map((column) => (
-                    <ColumnListItem
-                      key={column.id}
-                      column={column}
-                      onUnhideField={() =>
-                        handleUnhideField(column.id as number)
-                      }
-                    />
-                  ))}
-                </ul>
-              )}
-            </Box>
+            {hiddenColumns.length === 0 ? (
+              <EmptyDropZone
+                sectionId={HIDDEN_COLUMNS_ID}
+                message={t`Drop columns here to hide them`}
+              />
+            ) : (
+              <ul style={{ width: "100%" }}>
+                {hiddenColumns.map((column) => (
+                  <ColumnListItem
+                    key={column.id}
+                    column={column}
+                    onUnhideField={() => handleUnhideField(column.id as number)}
+                  />
+                ))}
+              </ul>
+            )}
           </SortableContext>
         </Box>
       </Box>

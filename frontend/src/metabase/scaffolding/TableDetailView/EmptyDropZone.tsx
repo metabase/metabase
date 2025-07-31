@@ -21,8 +21,10 @@ export function EmptyDropZone({
       ref={setNodeRef}
       mt="sm"
       style={{
-        minHeight: 40,
-        border: `1px dashed ${isOver ? "var(--mb-brand)" : "var(--mb-color-border)"}`,
+        minHeight: 80,
+        border: isOver
+          ? "1px dashed var(--mb-color-brand)"
+          : "1px dashed var(--mb-color-border)",
         borderRadius: 4,
         display: "flex",
         alignItems: "center",
