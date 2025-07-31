@@ -11,6 +11,7 @@ import type { Database, TokenFeatures } from "metabase-types/api";
 import {
   createMockSettings,
   createMockTokenFeatures,
+  createMockUser,
 } from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 import { createMockState } from "metabase-types/store/mocks";
@@ -21,6 +22,8 @@ type SetupOpts = {
   databases?: Database[];
   hasModels?: boolean;
   tokenFeatures?: Partial<TokenFeatures>;
+  isAdmin?: boolean;
+  isSimpleEmbeddingEnabled?: boolean;
 };
 
 const SAMPLE_DATABASE = createSampleDatabase();
@@ -28,9 +31,12 @@ const SAMPLE_DATABASE = createSampleDatabase();
 async function setup({
   databases = [SAMPLE_DATABASE],
   tokenFeatures,
+  isAdmin = true,
+  isSimpleEmbeddingEnabled = false,
 }: SetupOpts = {}) {
   const settings = mockSettings({
     "token-features": createMockTokenFeatures(tokenFeatures),
+    "enable-embedding-simple": isSimpleEmbeddingEnabled,
   });
 
   setupDatabasesEndpoints(databases);
@@ -38,7 +44,10 @@ async function setup({
   setupPropertiesEndpoints(createMockSettings());
 
   renderWithProviders(<NewItemMenu trigger={<button>New</button>} />, {
-    storeInitialState: createMockState({ settings }),
+    storeInitialState: createMockState({
+      settings,
+      currentUser: createMockUser({ is_superuser: isAdmin }),
+    }),
   });
 
   await userEvent.click(screen.getByText("New"));
@@ -54,10 +63,43 @@ describe("NewItemMenu (EE with token)", () => {
     jest.restoreAllMocks();
   });
 
-  it("shows the Embed item when embedding_simple feature is enabled", async () => {
-    await setup({ tokenFeatures: { embedding_simple: true } });
+  it.each([
+    {
+      description: "user is admin and embedding is disabled",
+      isAdmin: true,
+      isSimpleEmbeddingEnabled: false,
+    },
+    {
+      description: "user is non-admin and embedding is enabled",
+      isAdmin: false,
+      isSimpleEmbeddingEnabled: true,
+    },
+    {
+      description: "user is admin and embedding is enabled",
+      isAdmin: true,
+      isSimpleEmbeddingEnabled: true,
+    },
+  ])(
+    "shows the Embed item when $description",
+    async ({ isAdmin, isSimpleEmbeddingEnabled }) => {
+      await setup({
+        tokenFeatures: { embedding_simple: true },
+        isAdmin,
+        isSimpleEmbeddingEnabled,
+      });
 
-    expect(await screen.findByText("Embed")).toBeInTheDocument();
-    expect(screen.queryAllByText("Beta")).toHaveLength(1);
+      expect(await screen.findByText("Embed")).toBeInTheDocument();
+      expect(screen.queryAllByText("Beta")).toHaveLength(1);
+    },
+  );
+
+  it("hides the Embed item when user is non-admin and embedding is disabled", async () => {
+    await setup({
+      tokenFeatures: { embedding_simple: true },
+      isAdmin: false,
+      isSimpleEmbeddingEnabled: false,
+    });
+
+    expect(screen.queryByText("Embed")).not.toBeInTheDocument();
   });
 });
