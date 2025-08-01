@@ -107,7 +107,9 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
           />
         </Route>
       </Route>
-      {PLUGIN_TRANSFORMS.getAdminRoutes(IsAdmin)}
+      <Route path="transforms" component={createAdminRouteGuard("transforms")}>
+        {PLUGIN_TRANSFORMS.getAdminRoutes()}
+      </Route>
       {/* PEOPLE */}
       <Route path="people" component={createAdminRouteGuard("people")}>
         <Route title={t`People`} component={AdminPeopleApp}>

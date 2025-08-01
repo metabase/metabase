@@ -807,7 +807,7 @@ export const PLUGIN_SMTP_OVERRIDE: {
 
 export type TransformsPlugin = {
   getAdminPaths(): AdminPath[];
-  getAdminRoutes(IsAdmin: ComponentType): ReactNode;
+  getAdminRoutes(): ReactNode;
 };
 
 export const PLUGIN_TRANSFORMS: TransformsPlugin = {

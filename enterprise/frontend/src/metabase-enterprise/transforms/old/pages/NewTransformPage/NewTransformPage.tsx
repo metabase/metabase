@@ -2,7 +2,7 @@ import { t } from "ttag";
 
 import EmptyDashboardBot from "assets/img/dashboard-empty.svg";
 import { Button, Flex, Text, Title } from "metabase/ui";
-import { NewTransformMenu } from "metabase-enterprise/transforms/components/NewTransformMenu";
+import { NewTransformMenu } from "metabase-enterprise/transforms/old/components/NewTransformMenu";
 
 export function NewTransformPage() {
   return (

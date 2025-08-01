@@ -12,7 +12,7 @@ import { Icon, Menu } from "metabase/ui";
 import {
   getNewTransformFromCardUrl,
   getNewTransformFromTypeUrl,
-} from "metabase-enterprise/transforms/utils/urls";
+} from "metabase-enterprise/transforms/old/utils/urls";
 
 type TransformMenuProps = {
   children: ReactNode;

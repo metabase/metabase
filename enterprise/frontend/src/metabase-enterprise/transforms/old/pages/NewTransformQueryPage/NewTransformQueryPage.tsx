@@ -7,12 +7,12 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { useCreateTransformMutation } from "metabase-enterprise/api";
-import { TransformQueryBuilder } from "metabase-enterprise/transforms/components/TransformQueryBuilder";
-import { TransformTargetModal } from "metabase-enterprise/transforms/components/TransformTargetModal";
+import { TransformQueryBuilder } from "metabase-enterprise/transforms/old/components/TransformQueryBuilder";
+import { TransformTargetModal } from "metabase-enterprise/transforms/old/components/TransformTargetModal";
 import {
   getTransformRootUrl,
   getTransformUrl,
-} from "metabase-enterprise/transforms/utils/urls";
+} from "metabase-enterprise/transforms/old/utils/urls";
 import Question from "metabase-lib/v1/Question";
 import type {
   Card,

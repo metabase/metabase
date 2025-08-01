@@ -11,11 +11,11 @@ import {
   useDeleteTransformMutation,
   useExecuteTransformMutation,
 } from "metabase-enterprise/api";
-import { CardSection } from "metabase-enterprise/transforms/pages/TransformPage/CardSection";
+import { CardSection } from "metabase-enterprise/transforms/old/pages/TransformPage/CardSection";
 import {
   getTransformQueryUrl,
   getTransformRootUrl,
-} from "metabase-enterprise/transforms/utils/urls";
+} from "metabase-enterprise/transforms/old/utils/urls";
 import type { Transform } from "metabase-types/api";
 
 export type ManageSectionProps = {

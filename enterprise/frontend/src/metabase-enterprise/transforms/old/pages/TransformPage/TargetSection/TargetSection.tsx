@@ -7,9 +7,9 @@ import { useConfirmation } from "metabase/common/hooks";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Box, Button, Divider, Group, Icon, type IconName } from "metabase/ui";
 import { useUpdateTransformMutation } from "metabase-enterprise/api";
-import { TransformTargetModal } from "metabase-enterprise/transforms/components/TransformTargetModal";
-import { CardSection } from "metabase-enterprise/transforms/pages/TransformPage/CardSection";
-import { getTableMetadataUrl } from "metabase-enterprise/transforms/utils/urls";
+import { TransformTargetModal } from "metabase-enterprise/transforms/old/components/TransformTargetModal";
+import { CardSection } from "metabase-enterprise/transforms/old/pages/TransformPage/CardSection";
+import { getTableMetadataUrl } from "metabase-enterprise/transforms/old/utils/urls";
 import type { Table, Transform, TransformTarget } from "metabase-types/api";
 
 export type TargetSectionProps = {
