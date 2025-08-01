@@ -35,19 +35,35 @@
 
    This predicate checks that the quotas we got from the latest tokencheck have enough space for the database to be
   replicated."
-  [database]
+  [database schemas]
   (let [free-quota      (or
                          (some->> (m/find-first (comp #{"clickhouse-dwh"} :hosting-feature) (quotas))
                                   ((juxt :soft-limit :usage))
                                   (apply -))
                          -1)
+        include-patterns (->> schemas
+                              (filter (comp #{"include"} :type))
+                              (map (comp re-pattern :pattern)))
+        exclude-patterns (->> schemas
+                              (filter (comp #{"exclude"} :type))
+                              (map (comp re-pattern :pattern)))
         total-row-count (or
                          (some->>
                           (t2/hydrate database [:tables :fields])
                           :tables
                           (filter (comp (fn [x] (re-matches #"^[A-Za-z0-9_]+$" x)) :name))       ; sanitized name
                           (filter (fn [t] (some (comp #{:type/PK} :semantic_type) (:fields t)))) ; has-pkey
+                          (filter (fn [{:keys [schema]}]
+                                    (cond
+                                      (empty? schemas)
+                                      true
+                                      (not-empty include-patterns)
+                                      (some #(re-matches % schema) include-patterns)
+                                      (not-empty exclude-patterns)
+                                      (not (some #(re-matches % schema) exclude-patterns)))))
                           (map :estimated_row_count)
+                          ;; FIXME: `estimated_row_count` might be `nil`, in which case we should tell the user:
+                          ;;  "we don't know yet whether this will work, wait or try your luck"
                           (reduce +))
                          0)]
     (log/infof "Quota left: %s. Estimate db row count: %s" free-quota total-row-count)
@@ -55,7 +71,14 @@
 
 (api.macros/defendpoint :post "/connection/:database-id"
   "Create a new PG replication connection for the specified database."
-  [{:keys [database-id]} :- [:map [:database-id ms/PositiveInt]]]
+  ;; FIXME: First arg is route params, 2nd arg is query params, 3rd arg is body params:
+  [{:keys [database-id]} :- [:map [:database-id ms/PositiveInt]]
+   _query-params
+   {:keys [schemas]} :- [:map
+                         [:schemas {:optional true} [:sequential
+                                                     [:map
+                                                      [:type [:enum "include" "exclude"]]
+                                                      [:pattern :string]]]]]]
   (api/check-400 (database-replication.settings/database-replication-enabled) "PG replication integration is not enabled.")
   (let [database (t2/select-one :model/Database :id database-id)]
     (api/check-404 database)
@@ -66,13 +89,14 @@
                             (select-keys [:dbname :host :user :password :port])
                             (update :port #(or % 5432))) ;; port is required in the API, but optional in MB
             {:keys [schema-filters-type schema-filters-patterns]} (:details database)
-            schemas      (when-some [k ({"inclusion" :include, "exclusion" :exclude} schema-filters-type)]
-                           (when schema-filters-patterns
-                             {:schemas {k schema-filters-patterns}}))
-
-            secret       (merge {:credentials (merge {:dbtype "postgresql"} credentials)}
-                                schemas)]
-        (if (can-set-replication? database)
+            schemas     (-> (when-some [k ({"inclusion" :include, "exclusion" :exclude} schema-filters-type)]
+                              (for [pattern schema-filters-patterns]
+                                {:type k :pattern pattern}))
+                            (concat (map #(select-keys % [:type :pattern]) schemas))
+                            not-empty)
+            secret      {:credentials (merge {:dbtype "postgresql"} credentials)
+                         :schemas     schemas}]
+        (if (can-set-replication? database schemas)
           (let [{:keys [id]} (hm.client/call :create-connection, :type "pg_replication", :secret secret)
                 conn         {:connection-id id}]
             (database-replication.settings/database-replication-connections! (assoc conns (kw-id database-id) conn))
