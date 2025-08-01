@@ -150,6 +150,7 @@ llm-payloads
 CLAUDE.local.md
 .claude/settings.local.json
 
+.wireit/
 .eslintcache
 
 /logs
