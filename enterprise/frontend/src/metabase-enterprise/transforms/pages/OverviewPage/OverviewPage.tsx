@@ -1,9 +1,12 @@
+import { useDisclosure } from "@mantine/hooks";
 import { Link } from "react-router";
 import { t } from "ttag";
 
 import { Button, Group, Icon, Stack, Text, Title } from "metabase/ui";
-import { CardSection } from "metabase-enterprise/transforms/components/CardSection";
-import { getNewTransformPageUrl } from "metabase-enterprise/transforms/urls";
+
+import { CardSection } from "../../components/CardSection";
+import { NewTransformFromCardModal } from "../../components/NewTransformFromCardModal";
+import { getNewTransformPageUrl } from "../../urls";
 
 export function OverviewPage() {
   return (
@@ -24,6 +27,9 @@ function HeaderSection() {
 }
 
 function CreateSection() {
+  const [isPickerOpened, { open: openPicker, close: closePicker }] =
+    useDisclosure();
+
   return (
     <CardSection
       label={t`Create a transform`}
@@ -44,10 +50,11 @@ function CreateSection() {
         >
           {t`SQL editor`}
         </Button>
-        <Button leftSection={<Icon name="folder" />}>
+        <Button leftSection={<Icon name="folder" />} onClick={openPicker}>
           {t`Existing saved question`}
         </Button>
       </Group>
+      {isPickerOpened && <NewTransformFromCardModal onClose={closePicker} />}
     </CardSection>
   );
 }

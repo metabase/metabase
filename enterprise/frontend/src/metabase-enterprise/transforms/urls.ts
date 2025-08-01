@@ -6,6 +6,6 @@ export function getNewTransformPageUrl(type: DatasetQuery["type"]) {
   return `${ROOT_URL}/new/${type}`;
 }
 
-export function newTransformFromCardPageUrl(cardId: CardId) {
+export function getNewTransformFromCardPageUrl(cardId: CardId) {
   return `${ROOT_URL}/new/card/${cardId}`;
 }
