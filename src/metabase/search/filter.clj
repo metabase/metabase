@@ -103,7 +103,7 @@
                         collection-id-col)]
       [:or (with-filter "only-mine") (with-filter "exclude")])
 
-    (let [personal-ids   (t2/select-pks-vec :model/Collection :personal_owner_id [:not= nil])
+    (let [personal-ids   (t2/select-pks-vec :model/Collection :personal_owner_id [:not= nil] :location "/")
           child-patterns (for [id personal-ids] (format "/%d/%%" id))]
       (case filter-type
         "only"
