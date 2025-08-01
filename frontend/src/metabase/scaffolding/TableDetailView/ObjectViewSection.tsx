@@ -4,7 +4,7 @@ import EditableText from "metabase/common/components/EditableText";
 import { useTranslateContent } from "metabase/i18n/hooks";
 import { formatValue } from "metabase/lib/formatting/value";
 import { Box, Flex, Group, Text, Tooltip } from "metabase/ui/components";
-import { Button } from "metabase/ui/components/buttons";
+import { ActionIcon } from "metabase/ui/components/buttons";
 import { Icon } from "metabase/ui/components/icons";
 import { isDate } from "metabase-lib/v1/types/utils/isa";
 import type {
@@ -128,11 +128,9 @@ export function ObjectViewSection({
           right={-5}
         >
           <Tooltip label={t`Remove section`}>
-            <Button
-              size="compact-xs"
-              leftSection={<Icon name="close" />}
-              onClick={onRemoveSection}
-            />
+            <ActionIcon onClick={onRemoveSection}>
+              <Icon name="close" />
+            </ActionIcon>
           </Tooltip>
         </Group>
       )}
