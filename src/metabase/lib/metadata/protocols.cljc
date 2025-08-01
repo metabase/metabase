@@ -122,6 +122,12 @@
    card-id           :- ::lib.schema.id/card]
   (metadata metadata-provider :metadata/card card-id))
 
+(mu/defn native-query-snippet :- [:maybe ::lib.schema.metadata/native-query-snippet]
+  "Get metadata for a NativeQuerySnippet with `snippet-id` if it can be found."
+  [metadata-provider :- ::metadata-provider
+   snippet-id        :- ::lib.schema.id/native-query-snippet]
+  (metadata metadata-provider :metadata/native-query-snippet snippet-id))
+
 (mu/defn segment :- [:maybe ::lib.schema.metadata/segment]
   "Return metadata for a particular captial-S Segment, i.e. something from the `segment` table in the application
   database. Metadata should match `:metabase.lib.schema.metadata/segment`."
