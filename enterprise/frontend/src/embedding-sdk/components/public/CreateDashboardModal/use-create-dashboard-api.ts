@@ -1,7 +1,7 @@
 import { useCallback } from "react";
 
 import { useSdkStore } from "embedding-sdk/store";
-import { getCollectionNumericIdFromReference } from "embedding-sdk/store/collections";
+import { getCollectionIdValueFromReference } from "embedding-sdk/store/collections";
 import type { SdkCollectionId } from "embedding-sdk/types/collection";
 import type { MetabaseDashboard } from "embedding-sdk/types/dashboard";
 import { useCreateDashboardMutation } from "metabase/api";
@@ -40,7 +40,7 @@ export const useCreateDashboardApi = () => {
       collectionId = "personal",
       ...rest
     }: CreateDashboardValues): Promise<MetabaseDashboard> => {
-      const realCollectionId = getCollectionNumericIdFromReference(
+      const realCollectionId = getCollectionIdValueFromReference(
         store.getState(),
         collectionId,
       );
