@@ -95,7 +95,9 @@
     "only-mine"
     [:or
      [:= :collection.personal_owner_id current-user-id]
-     [:like :collection.location (format "/%d/%%" (t2/select-one-pk :model/Collection :personal_owner_id [:= current-user-id]))]]
+     [:like :collection.location (format "/%d/%%" (t2/select-one-pk :model/Collection
+                                                                    :personal_owner_id [:= current-user-id]
+                                                                    :location          "/"))]]
 
     "exclude-others"
     (let [with-filter #(personal-collections-where-clause
