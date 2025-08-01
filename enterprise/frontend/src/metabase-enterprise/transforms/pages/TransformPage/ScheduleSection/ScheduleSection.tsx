@@ -2,9 +2,12 @@ import { t } from "ttag";
 
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Button, Divider, Group, Icon, SegmentedControl } from "metabase/ui";
-import { useExecuteTransformMutation } from "metabase-enterprise/api";
+import {
+  useExecuteTransformMutation,
+  useUpdateTransformMutation,
+} from "metabase-enterprise/api";
 import { CardSection } from "metabase-enterprise/transforms/components/CardSection";
-import type { Transform } from "metabase-types/api";
+import type { Transform, TransformExecutionTrigger } from "metabase-types/api";
 
 type ScheduleSectionProps = {
   transform: Transform;
@@ -32,10 +35,34 @@ type ExecutionTriggerControlProps = {
 };
 
 function ExecutionTriggerControl({ transform }: ExecutionTriggerControlProps) {
+  const [updateTransform] = useUpdateTransformMutation();
+  const { sendSuccessToast, sendErrorToast, sendUndoToast } =
+    useMetadataToasts();
+
+  const handleChange = async (newValue: TransformExecutionTrigger) => {
+    const { error } = await updateTransform({
+      id: transform.id,
+      execution_trigger: newValue,
+    });
+
+    if (error) {
+      sendErrorToast(t`Failed to update transform schedule`);
+    } else {
+      sendSuccessToast(t`Transform schedule updated`, async () => {
+        const { error } = await updateTransform({
+          id: transform.id,
+          execution_trigger: transform.execution_trigger,
+        });
+        sendUndoToast(error);
+      });
+    }
+  };
+
   return (
     <SegmentedControl
       value={transform.execution_trigger}
       data={getExecutionTriggerOptions()}
+      onChange={handleChange}
     />
   );
 }
