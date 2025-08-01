@@ -1,9 +1,15 @@
 import { useDisclosure } from "@mantine/hooks";
 import { Link } from "react-router";
+import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { useAdminSetting } from "metabase/api/utils";
+import {
+  QuestionPickerModal,
+  type QuestionPickerValueItem,
+} from "metabase/common/components/Pickers/QuestionPicker";
 import { Schedule } from "metabase/common/components/Schedule";
+import { useDispatch } from "metabase/lib/redux";
 import {
   Button,
   Divider,
@@ -16,9 +22,11 @@ import {
 } from "metabase/ui";
 
 import { CardSection } from "../../components/CardSection";
-import { NewTransformFromCardModal } from "../../components/NewTransformFromCardModal";
 import { DEFAULT_SCHEDULE, SCHEDULE_OPTIONS } from "../../constants";
-import { getNewTransformPageUrl } from "../../urls";
+import {
+  getNewTransformFromCardPageUrl,
+  getNewTransformPageUrl,
+} from "../../urls";
 
 export function TransformOverviewPage() {
   return (
@@ -49,8 +57,13 @@ function HeaderSection() {
 }
 
 function CreateSection() {
-  const [isModalOpened, { open: openModal, close: closeModal }] =
+  const dispatch = useDispatch();
+  const [isPickerOpened, { open: openPicker, close: closePicker }] =
     useDisclosure();
+
+  const handlePickerChange = (item: QuestionPickerValueItem) => {
+    dispatch(push(getNewTransformFromCardPageUrl(item.id)));
+  };
 
   return (
     <CardSection
@@ -72,11 +85,16 @@ function CreateSection() {
         >
           {t`SQL editor`}
         </Button>
-        <Button leftSection={<Icon name="folder" />} onClick={openModal}>
+        <Button leftSection={<Icon name="folder" />} onClick={openPicker}>
           {t`Existing saved question`}
         </Button>
       </Group>
-      {isModalOpened && <NewTransformFromCardModal onClose={closeModal} />}
+      {isPickerOpened && (
+        <QuestionPickerModal
+          onChange={handlePickerChange}
+          onClose={closePicker}
+        />
+      )}
     </CardSection>
   );
 }
