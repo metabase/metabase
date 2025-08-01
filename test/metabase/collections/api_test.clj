@@ -1766,7 +1766,7 @@
 (deftest get-root-dashboard-question-candidates-non-admin
   (testing "GET /api/collection/root/dashboard-question-candidates"
     (testing "Non-admin request (using `:rasta` instead of `:crowberto`)"
-      (is (= message-403
+      (is (= "You don't have permissions to do that."
              (mt/user-http-request :rasta :get 403 "collection/root/dashboard-question-candidates"))))))
 
 (deftest get-root-dashboard-question-candidates-archived-dashboard
@@ -2345,7 +2345,7 @@
   (testing "POST /api/collection"
     (testing "\ntest that non-admins aren't allowed to create a collection in the root collection"
       (mt/with-non-admin-groups-no-root-collection-perms
-        (is (= message-403
+        (is (= "You don't have permissions to do that."
                (mt/user-http-request :rasta :post 403 "collection"
                                      {:name "Stamp Collection"})))))
     (testing "\nCan a non-admin user with Root Collection perms add a new collection to the Root Collection? (#8949)"
@@ -2645,7 +2645,7 @@
                  (nice-graph (mt/user-http-request :crowberto :get 200 "collection/graph?namespace=currency")))))
 
         (testing "have to be a superuser"
-          (is (= message-403
+          (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :get 403 "collection/graph")))))
 
       (testing "PUT /api/collection/graph\n"
@@ -2681,7 +2681,7 @@
                    (nice-graph response)))))
 
         (testing "have to be a superuser"
-          (is (= message-403
+          (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :put 403 "collection/graph"
                                        (assoc (graph/graph)
                                               :groups {group-id {default-a :write, currency-a :write}}
