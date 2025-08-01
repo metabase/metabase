@@ -60,7 +60,8 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.lib.equality :as lib.equality]))
+   [metabase.lib.equality :as lib.equality]
+   [metabase.lib.schema.ref :as lib.schema.ref]))
 
 (defmulti ^String field-reference-mlv2
   "Generate a reference for the field instance `field-inst` appropriate for the driver `driver`.
@@ -105,28 +106,15 @@
     [::escaped-join-alias    [:maybe ::lib.schema.join/alias]]]])
 
 (defn- returned-columns [query path]
-  (let [cache-key (into [::returned-columns] path)]
-    (or (u/prog1 (get @(::cache query) cache-key)
-          (if <>
-            (println "<CACHE HIT>" (pr-str cache-key))
-            (println "<CACHE MISS>" (pr-str cache-key))))
-        #_((requiring-resolve 'metabase.test/set-ns-log-level!) 'metabase.lib.metadata.cache :debug)
-        (u/prog1 (u/profile 'returned-columns (lib.walk/apply-f-for-stage-at-path lib/returned-columns (::original query) path))
-          #_((requiring-resolve 'metabase.test/set-ns-log-level!) 'metabase.lib.metadata.cache :error)
-          (swap! (::cache query) assoc cache-key <>)))))
+  (lib.walk/apply-f-for-stage-at-path lib/returned-columns (::original query) path))
 
 (defn- visible-columns [query path opts]
-  (let [cache-key (into [::visible-columns] [path opts])]
-    (or (u/prog1 (get @(::cache query) cache-key)
-          (if <>
-            (println "<CACHE HIT>" (pr-str cache-key))
-            (println "<CACHE MISS>" (pr-str cache-key))))
-        (u/prog1 (u/profile 'visible-columns
-                   (lib.walk/apply-f-for-stage-at-path
-                    (fn [query stage-number]
-                      (lib/visible-columns query stage-number (lib.util/query-stage query stage-number) opts))
-                    query path))
-          (swap! (::cache query) assoc cache-key <>)))))
+  (letfn [(f [query stage-number]
+            (lib/visible-columns query stage-number (lib.util/query-stage query stage-number) opts))]
+    (lib.walk/apply-f-for-stage-at-path f (::original query) path)))
+
+(defn- resolve-field-ref [query stage-path field-ref]
+  (lib.walk/apply-f-for-stage-at-path lib/metadata (::original query) stage-path field-ref))
 
 (mu/defn- add-escaped-desired-aliases :- [:map
                                           [:lib/type keyword?]
@@ -145,26 +133,25 @@
     (assoc stage-or-join ::desired-alias->escaped escaped-aliases)))
 
 (mu/defn- update-opts :- ::lib.schema.mbql-clause/clause
-  [[_tag :as clause] :- ::lib.schema.mbql-clause/clause
-   resolved          :- ::resolved-column]
+  [clause   :- ::lib.schema.mbql-clause/clause
+   resolved :- ::resolved-column]
   (lib.options/update-options
    clause
    (mu/fn :- ::updated-opts
      [opts :- [:maybe :map]]
-     (merge opts
-            (u/select-non-nil-keys resolved [::position])
-            {::source-alias  (::escaped-source-alias resolved)
-             ::desired-alias (::escaped-desired-alias resolved)
-             ::source-table  (case (:lib/source resolved)
-                               :source/table-defaults        (:table-id resolved)
-                               (:source/joins
-                                :source/implicitly-joinable) (or (::escaped-join-alias resolved)
-                                                                 (throw (ex-info "Resolved metadata is missing ::escaped-join-alias" {:ref clause, :resolved resolved})))
-                               (:source/previous-stage
-                                :source/card)                ::source
-                               (:source/expressions
-                                :source/aggregations
-                                :source/native)              ::none)}))))
+     (assoc opts
+            ::source-alias  (::escaped-source-alias resolved)
+            ::desired-alias (::escaped-desired-alias resolved)
+            ::source-table  (case (:lib/source resolved)
+                              :source/table-defaults        (:table-id resolved)
+                              (:source/joins
+                               :source/implicitly-joinable) (or (::escaped-join-alias resolved)
+                               (throw (ex-info "Resolved metadata is missing ::escaped-join-alias" {:ref clause, :resolved resolved})))
+                              (:source/previous-stage
+                               :source/card)                ::source
+                              (:source/expressions
+                               :source/aggregations
+                               :source/native)              ::none)))))
 
 (declare update-refs)
 
@@ -259,7 +246,7 @@
   [query      :- ::lib.schema/query
    stage-path :- ::lib.walk/path
    field-ref  :- :mbql.clause/field]
-  (let [col           (lib.walk/apply-f-for-stage-at-path lib/metadata query stage-path field-ref)
+  (let [col           (resolve-field-ref query stage-path field-ref)
         returned-cols (returned-columns query stage-path)]
     (lib.walk/apply-f-for-stage-at-path lib.equality/find-matching-column query stage-path col returned-cols)))
 
@@ -267,7 +254,7 @@
   [query      :- ::lib.schema/query
    stage-path :- ::lib.walk/path
    field-ref  :- :mbql.clause/field]
-  (let [col          (lib.walk/apply-f-for-stage-at-path lib/metadata query stage-path field-ref)
+  (let [col          (resolve-field-ref query stage-path field-ref)
         opts         {:include-joined?                              true
                       :include-expressions?                         false
                       :include-implicitly-joinable?                 false
@@ -353,8 +340,8 @@
                                                                                 :col  col})))
                                           source-alias     (escaped-desired-alias query join-last-stage-path last-stage-alias)
                                           source-table     (escaped-join-alias query parent-stage-path (:join-alias opts))]
-                                      ;; don't need to add `::desired-alias` because it may not be returned and even if
-                                      ;; it is it's not getting returned in the join conditions
+                                      ;; don't need to calculate `::desired-alias` because it may not be returned and
+                                      ;; even if it is it's not getting returned in the join conditions
                                       (lib/update-options field-ref assoc
                                                           ::source-alias  source-alias
                                                           ::desired-alias "<IRRELEVANT>"
@@ -365,6 +352,9 @@
         update-conditions         (fn [conditions]
                                     ;; the only kind of ref join conditions can have is a `:field` ref
                                     (lib.util.match/replace conditions
+                                      ;; already resolved
+                                      [:field (_opts :guard ::source-alias) _id-or-name]
+                                      &match
                                       ;; a field ref that comes from THIS join needs to get the desired alias returned
                                       ;; by the last stage of the join to use as its source alias
                                       [:field (_opts :guard #(= (:join-alias %) (:alias join))) _id-or-name]
@@ -407,7 +397,7 @@
                                                                          {:path parent-stage-path, :alias (:alias join)})))]
                                (assoc join
                                       ::original-alias (:alias join)
-                                      ::add/alias      escaped-alias)))))))
+                                      ::alias         escaped-alias)))))))
 
 (mr/def ::options
   [:map
@@ -417,33 +407,32 @@
 (mu/defn- escape-join-aliases :- ::lib.schema/query
   [query                                                                              :- ::lib.schema/query
    {:keys [globally-unique-join-aliases?], :or {globally-unique-join-aliases? false}} :- [:maybe ::options]]
-  (u/profile 'escape-join-aliases
-    (let [make-join-alias-unique-name-generator (if globally-unique-join-aliases?
-                                                  (constantly (lib.util/unique-name-generator))
-                                                  lib.util/unique-name-generator)]
-      (lib.walk/walk-stages
-       query
-       (fn [_query _path stage]
-         (if (empty? (:joins stage))
-           stage
-           (-> stage
-               (update :joins (let [unique (comp (partial driver/escape-alias driver/*driver*)
-                                                 (make-join-alias-unique-name-generator))]
-                                (fn [joins]
-                                  (mapv (mu/fn [join :- [:map
-                                                         [:alias ::lib.schema.join/alias]]]
-                                          (assoc join ::alias (unique (:alias join))))
-                                        joins))))
-               (as-> $stage (assoc $stage ::join-alias->escaped (into {} (map (juxt :alias ::alias)) (:joins $stage)))))))))))
+  (let [make-join-alias-unique-name-generator (if globally-unique-join-aliases?
+                                                (constantly (lib.util/unique-name-generator))
+                                                lib.util/unique-name-generator)]
+    (lib.walk/walk-stages
+     query
+     (fn [_query _path stage]
+       (if (empty? (:joins stage))
+         stage
+         (-> stage
+             (update :joins (let [unique (comp (partial driver/escape-alias driver/*driver*)
+                                               (make-join-alias-unique-name-generator))]
+                              (fn [joins]
+                                (mapv (mu/fn [join :- [:map
+                                                       [:alias ::lib.schema.join/alias]]]
+                                        (assoc join ::alias (unique (:alias join))))
+                                      joins))))
+             (as-> $stage (assoc $stage ::join-alias->escaped (into {} (map (juxt :alias ::alias)) (:joins $stage))))))))))
 
 (mu/defn- add-alias-info* :- ::lib.schema/query
   [query   :- ::lib.schema/query
    options :- [:maybe ::options]]
   (-> query
       (escape-join-aliases options)
-      (assoc ::cache (atom {}), ::original query)
+      (assoc ::original query)
       add-alias-info**
-      (dissoc ::cache ::original)))
+      (dissoc ::original)))
 
 (mu/defn add-alias-info :- :map
   "Add extra info to `:field` clauses, `:expression` references, and `:aggregation` references in `query`. `query` must

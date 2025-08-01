@@ -6,7 +6,6 @@
    [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver.h2 :as h2]
-   [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
@@ -803,7 +802,7 @@
                                                              (lib.metadata/field mp (meta/id :products :id))
                                                              (lib.metadata/field mp (meta/id :reviews :product-id)))])
                                           (lib/with-join-fields :all)))
-                            lib.convert/->legacy-MBQL)
+                            lib/->legacy-MBQL)
                         :database-id (meta/id)
                         :name "Products+Reviews"
                         :type :model}]})
@@ -821,11 +820,10 @@
                             (lib/breakout $q (-> (m/find-first (comp #{"Reviews → Created At"} :display-name)
                                                                (lib/breakoutable-columns $q))
                                                  (lib/with-temporal-bucket :month)))
-                            (lib.convert/->legacy-MBQL $q)))
+                            (lib/->legacy-MBQL $q)))
                         :database-id (meta/id)
                         :name "Products+Reviews Summary"
                         :type :model}]})
-          _ (println "<X>") ; NOCOMMIT
           question (binding [lib.metadata.calculation/*display-name-style* :long]
                      (as-> (lib/query mp (lib.metadata/card mp 1)) $q
                        (lib/breakout $q (-> (m/find-first (comp #{"Reviews → Created At"} :display-name)
@@ -852,12 +850,10 @@
                                                                                         "Reviews → Created At: Month")
                                                                :month))])
                                           (lib/with-join-fields :all))))))]
-      (println "<Y>")
       (qp.store/with-metadata-provider mp
         (driver/with-driver :h2
-          (let [preprocessed (metabase.util/profile 'preprocess
-                               (-> question qp.preprocess/preprocess))
-                expected     (metabase.util/profile (add/add-alias-info preprocessed))] ; NOCOMMIT
+          (let [preprocessed (metabase.util/profile (-> question qp.preprocess/preprocess))
+                expected     (metabase.util/profile (add/add-alias-info preprocessed))]
             (testing ":source-query -> :source-query -> :joins"
               (is (=? [{:alias "Reviews"
                         :condition [:=

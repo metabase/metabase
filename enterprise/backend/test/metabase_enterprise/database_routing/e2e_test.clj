@@ -4,6 +4,7 @@
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.test :as met]
    [metabase.app-db.core :as mdb]
+   [metabase.driver :as driver]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.query-processor :as qp]
@@ -197,25 +198,32 @@
                     (is (= {:values [["destination-2"]] :field_id field-id :has_more_values false}
                            response))))))))))))
 
-;; used to be named table but that is reserved on bigquery
-(tx/defdataset router-data
-  [["t"
-    [{:field-name "f", :base-type :type/Text}]
-    [["original-foo"]
-     ["original-bar"]]]])
-
-(tx/defdataset routed-data
-  [["t"
-    [{:field-name "f", :base-type :type/Text}]
-    [["routed-foo"]
-     ["routed-bar"]]]])
-
 (defn- wire-routing [{:keys [parent children]}]
   (t2/update! :model/Database :id [:in (map :id children)]
               {:router_database_id (:id parent)})
   (doseq [child children]
     (t2/update! :model/Database :id (:id child)
                 {:details (assoc (:details child) :destination-database true)})))
+
+(defmulti router-dataset-name
+  "Name for router dataset"
+  {:arglists '([driver])}
+  tx/dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod router-dataset-name :default [_driver] "db-router-data")
+
+(defmethod router-dataset-name :redshift [_driver] "db-routing-data")
+
+(defmulti routed-dataset-name
+  "Name for routed dataset"
+  {:arglists '([driver])}
+  tx/dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod routed-dataset-name :default [_driver] "db-routed-data")
+
+(defmethod routed-dataset-name :redshift [_driver] "db-routing-data")
 
 (deftest db-routing-e2e-test
   ;; todo: this is to quickly get tests against all drivers right now. We probably want to make a
@@ -224,10 +232,18 @@
     (mt/with-premium-features #{:database-routing}
       (binding [tx/*use-routing-dataset* true
                 tx/*use-routing-details* true]
-        (mt/dataset routed-data
+        (mt/dataset (mt/dataset-definition (routed-dataset-name driver/*driver*)
+                                           [["t"
+                                             [{:field-name "f", :base-type :type/Text}]
+                                             [["routed-foo"]
+                                              ["routed-bar"]]]])
           (let [routed (mt/db)]
             (binding [tx/*use-routing-details* false]
-              (mt/dataset router-data
+              (mt/dataset (mt/dataset-definition (router-dataset-name driver/*driver*)
+                                                 [["t"
+                                                   [{:field-name "f", :base-type :type/Text}]
+                                                   [["original-foo"]
+                                                    ["original-bar"]]]])
                 (let [router (mt/db)]
                   (wire-routing {:parent router :children [routed]})
                   (mt/with-temp [:model/DatabaseRouter _ {:database_id    (u/the-id router)
