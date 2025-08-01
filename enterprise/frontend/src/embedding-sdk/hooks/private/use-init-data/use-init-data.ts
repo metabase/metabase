@@ -9,7 +9,10 @@ import {
   useSdkStore,
 } from "embedding-sdk/store";
 import { initAuth } from "embedding-sdk/store/auth";
-import { setFetchRefreshTokenFn } from "embedding-sdk/store/reducer";
+import {
+  setFetchRefreshTokenFn,
+  setMetabaseInstanceVersion,
+} from "embedding-sdk/store/reducer";
 import { getFetchRefreshTokenFn } from "embedding-sdk/store/selectors";
 import type { MetabaseAuthConfig } from "embedding-sdk/types";
 import { EMBEDDING_SDK_CONFIG } from "metabase/embedding-sdk/config";
@@ -71,6 +74,14 @@ export const useInitData = ({
     api.requestClient = {
       name: EMBEDDING_SDK_CONFIG.metabaseClientRequestHeader,
       version: EMBEDDING_SDK_VERSION,
+    };
+
+    api.onResponseError = ({
+      metabaseVersion,
+    }: {
+      metabaseVersion: string;
+    }) => {
+      store.dispatch(setMetabaseInstanceVersion(metabaseVersion));
     };
 
     if (allowConsoleLog) {

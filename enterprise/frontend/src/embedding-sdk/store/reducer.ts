@@ -13,11 +13,15 @@ import { createAsyncThunk } from "metabase/lib/redux";
 import { initAuth, refreshTokenAsync } from "./auth";
 import { getSessionTokenState } from "./selectors";
 
+const SET_METABASE_INSTANCE_VERSION = "sdk/SET_METABASE_INSTANCE_VERSION";
 const SET_METABASE_CLIENT_URL = "sdk/SET_METABASE_CLIENT_URL";
 const SET_LOADER_COMPONENT = "sdk/SET_LOADER_COMPONENT";
 const SET_ERROR_COMPONENT = "sdk/SET_ERROR_COMPONENT";
 const SET_FETCH_REQUEST_TOKEN_FN = "sdk/SET_FETCH_REQUEST_TOKEN_FN";
 
+export const setMetabaseInstanceVersion = createAction<string>(
+  SET_METABASE_INSTANCE_VERSION,
+);
 export const setMetabaseClientUrl = createAction<string>(
   SET_METABASE_CLIENT_URL,
 );
@@ -74,6 +78,7 @@ export const setUsageProblem = createAction<SdkUsageProblem | null>(
 
 const initialState: SdkState = {
   metabaseInstanceUrl: "",
+  metabaseInstanceVersion: null,
   token: {
     token: null,
     loading: false,
@@ -136,6 +141,10 @@ export const sdk = createReducer(initialState, (builder) => {
 
   builder.addCase(setErrorComponent, (state, action) => {
     state.errorComponent = action.payload;
+  });
+
+  builder.addCase(setMetabaseInstanceVersion, (state, action) => {
+    state.metabaseInstanceVersion = action.payload;
   });
 
   builder.addCase(setMetabaseClientUrl, (state, action) => {

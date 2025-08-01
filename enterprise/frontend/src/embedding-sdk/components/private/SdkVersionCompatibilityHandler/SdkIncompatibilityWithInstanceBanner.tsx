@@ -8,13 +8,11 @@ import {
   isSdkVersionCompatibleWithMetabaseVersion,
 } from "embedding-sdk/lib/version-utils";
 import { useSdkSelector } from "embedding-sdk/store";
-import { getSetting } from "metabase/selectors/settings";
+import { getMetabaseInstanceVersion } from "embedding-sdk/store/selectors";
 import { Anchor } from "metabase/ui";
 
 export function SdkIncompatibilityWithInstanceBanner() {
-  const version = useSdkSelector((state) => getSetting(state, "version"));
-
-  const mbVersion = version?.tag;
+  const mbVersion = useSdkSelector(getMetabaseInstanceVersion);
   const sdkVersion = getEmbeddingSdkVersion();
 
   const isSdkCompatibleWithInstance = useMemo(() => {
