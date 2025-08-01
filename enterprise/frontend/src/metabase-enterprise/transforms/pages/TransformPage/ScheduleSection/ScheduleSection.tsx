@@ -101,17 +101,20 @@ function getStatusText({
   execution_status: status,
   last_ended_at: lastEndedAt,
 }: Transform) {
+  const lastEndedAtText =
+    lastEndedAt != null
+      ? dayjs.parseZone(lastEndedAt).local().format("lll")
+      : null;
+
   return match(status)
     .with("never-executed", () => t`This transform hasn’t run yet.`)
     .with("started", () => t`In progress…`)
     .with("exec-succeeded", "sync-succeeded", () =>
-      lastEndedAt
-        ? t`Last run ${dayjs.parseZone(lastEndedAt).local().format("lll")}`
-        : t`Last run succeeded`,
+      lastEndedAtText ? t`Last run ${lastEndedAtText}` : t`Last run succeeded`,
     )
     .with("exec-failed", "sync-failed", () =>
-      lastEndedAt
-        ? t`Last run failed at ${dayjs.parseZone(lastEndedAt).local().format("lll")}`
+      lastEndedAtText
+        ? t`Last run failed at ${lastEndedAtText}`
         : t`Last run failed`,
     )
     .otherwise(() => null);
