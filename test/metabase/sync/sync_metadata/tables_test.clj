@@ -181,7 +181,7 @@
       (testing "Old deactivated table is archived with suffix"
         (let [archived-table (t2/select-one :model/Table (:id table-1))]
           (is (some? (:archived_at archived-table)))
-          (is (str/starts-with? (:name archived-table) "old_table__archived__"))))
+          (is (str/starts-with? (:name archived-table) "old_table__mbarchiv__"))))
 
       (testing "Recently deactivated table is not archived"
         (let [recent-table (t2/select-one :model/Table (:id table-2))]
@@ -246,7 +246,7 @@
       (testing "the original table was archived and renamed"
         (let [archived-table (t2/select-one :model/Table (:id original-table))]
           (is (some? (:archived_at archived-table)))
-          (is (str/starts-with? (:name archived-table) "sensitive_table__archived__"))))
+          (is (str/starts-with? (:name archived-table) "sensitive_table__mbarchiv__"))))
 
       (mt/with-temp [:model/Table new-table {:name "sensitive_table"
                                              :db_id (u/the-id db)

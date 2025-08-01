@@ -283,7 +283,7 @@
   (let [;; we use UTC offset time for suffix, may not match db time but
         ;; it doesn't matter much, the source of time truth is `archived_at`,
         ;; we're just using this as a cheap namespace
-        suffix (str "__archived__" (.toEpochSecond (t/offset-date-time)))
+        suffix (str "__mbarchiv__" (.toEpochSecond (t/offset-date-time)))
         threshold-expr (apply
                         (requiring-resolve 'metabase.driver.sql.query-processor/add-interval-honeysql-form)
                         (mdb/db-type) :%now archive-tables-threshold)
