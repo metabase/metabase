@@ -419,6 +419,12 @@
               (is (= [[2 "Stout Burgers & Beers" 11 34.0996 -118.329 2 1 "toucan" 1 1]]
                      (mt/rows (qp/process-query manual-query)))))))))))
 
+(deftest ^:parallel array-test
+  (mt/test-driver :databricks
+    (let [query (mt/native-query {:query "select array(1,2,3)"})]
+      (is (= [["[1,2,3]"]]
+             (mt/rows (qp/process-query query)))))))
+
 (deftest can-connect-test
   (mt/test-driver
     :databricks

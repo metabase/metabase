@@ -91,6 +91,12 @@
                     "  `t1`.`name` = decode(unhex('776f77'), 'utf-8')"]
                    (str/split-lines (driver/prettify-native-form :sparksql @the-sql))))))))))
 
+(deftest ^:parallel array-test
+  (mt/test-driver :sparksql
+    (let [query (mt/native-query {:query "select array(1,2,3)"})]
+      (is (= [["[1,2,3]"]]
+             (mt/rows (qp/process-query query)))))))
+
 (deftest ^:parallel read-dates-test
   (testing "DATE columns should come back as LocalDate"
     (mt/test-driver :sparksql

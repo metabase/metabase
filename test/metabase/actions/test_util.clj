@@ -87,7 +87,7 @@
   [dataset-definition thunk]
   ;; use a unique DB name each time so this is thread-safe
   (let [db                 (atom nil)
-        dataset-definition (tx/get-dataset-definition dataset-definition)
+        dataset-definition (tx/map->DatabaseDefinition (into {} (tx/get-dataset-definition dataset-definition)))
         dataset-definition (update dataset-definition :database-name #(str % "-" (u.random/random-name)))]
     (try
       (data/dataset dataset-definition
