@@ -12,7 +12,7 @@ describe("EmbeddingDataPicker", () => {
 
   describe("multi-stage data picker", () => {
     it("should show tables when there is no models", async () => {
-      setup({ hasModels: false, modelCount: 2 });
+      setup({ hasModels: false });
 
       const databaseOption = await screen.findByText("Sample Database");
       expect(databaseOption).toBeInTheDocument();
@@ -28,7 +28,7 @@ describe("EmbeddingDataPicker", () => {
     });
 
     it('should show "BUCKET" step when there are both models and tables', async () => {
-      setup({ modelCount: 2 });
+      setup();
 
       expect(await screen.findByText("Models")).toBeInTheDocument();
       const rawDataOption = screen.getByText("Raw Data");
@@ -44,28 +44,11 @@ describe("EmbeddingDataPicker", () => {
       expect(screen.getByText("Reviews")).toBeInTheDocument();
     });
 
-    it.each([1, 2])(
-      "should show tables by default when there is %i model",
-      async (modelCount) => {
-        setup({ modelCount });
-
-        expect(await screen.findByText("Models")).toBeInTheDocument();
-        expect(screen.getByText("Raw Data")).toBeInTheDocument();
-        expect(screen.queryByText("Sample Database")).not.toBeInTheDocument();
-      },
-    );
-
-    it("should hide tables by default when there are more than two models", async () => {
-      setup({ modelCount: 3 });
-
-      expect(await screen.findByText("Models")).toBeInTheDocument();
-      expect(screen.queryByText("Raw Data")).not.toBeInTheDocument();
-      expect(screen.queryByText("Sample Database")).not.toBeInTheDocument();
-    });
-
     describe("entity_types", () => {
       it('should show only models when `entity_types=["models"]`', async () => {
-        setup({ entityTypes: ["model"], modelCount: 2 });
+        setup({
+          entityTypes: ["model"],
+        });
 
         expect(await screen.findByText("Models")).toBeInTheDocument();
 
@@ -74,7 +57,9 @@ describe("EmbeddingDataPicker", () => {
       });
 
       it('should show only tables when `entity_types=["table"]`', async () => {
-        setup({ entityTypes: ["table"], modelCount: 2 });
+        setup({
+          entityTypes: ["table"],
+        });
 
         expect(await screen.findByText("Sample Database")).toBeInTheDocument();
 
@@ -83,27 +68,24 @@ describe("EmbeddingDataPicker", () => {
       });
 
       it('should not show "saved questions" in the database list when `entity_types=["table"]`', async () => {
-        setup({ entityTypes: ["table"], modelCount: 2 });
+        setup({
+          entityTypes: ["table"],
+        });
 
         expect(await screen.findByText("Sample Database")).toBeInTheDocument();
         expect(screen.queryByText("Saved Questions")).not.toBeInTheDocument();
       });
 
-      // Ensure that the user's provided entity_types always take precedence over the default behavior of hiding tables.
-      it.each([2, 3])(
-        'should show both models and tables when `entity_types=["models", "table"] with %i models',
-        async (modelCount) => {
-          setup({
-            modelCount,
-            entityTypes: ["model", "table"],
-          });
+      it('should show both models and tables when `entity_types=["models", "table"]`', async () => {
+        setup({
+          entityTypes: ["model", "table"],
+        });
 
-          expect(await screen.findByText("Models")).toBeInTheDocument();
-          expect(screen.getByText("Raw Data")).toBeInTheDocument();
+        expect(await screen.findByText("Models")).toBeInTheDocument();
+        expect(screen.getByText("Raw Data")).toBeInTheDocument();
 
-          expect(screen.queryByText("Sample Database")).not.toBeInTheDocument();
-        },
-      );
+        expect(screen.queryByText("Sample Database")).not.toBeInTheDocument();
+      });
 
       /**
        * We don't test invalid `entityTypes` values here as the redux state is set via a slice which has proper validations and tests in place.

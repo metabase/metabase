@@ -20,22 +20,24 @@ import { createMockState } from "metabase-types/store/mocks";
 import { EmbeddingDataPicker } from "../EmbeddingDataPicker";
 
 interface SetupOpts {
-  modelCount: number;
   hasModels?: boolean;
   entityTypes?: EmbeddingEntityType[];
 }
 
+const DEFAULT_OPTS: Partial<SetupOpts> = {
+  hasModels: true,
+};
+
 export function setup({
-  hasModels = true,
-  modelCount,
-  entityTypes = [],
-}: SetupOpts) {
+  hasModels = DEFAULT_OPTS.hasModels,
+  entityTypes,
+}: SetupOpts = {}) {
   const query = createEmptyQuery();
 
   setupEmbeddingDataPickerDecisionEndpoints("staged");
 
   if (hasModels) {
-    setupSearchEndpoints(createSearchResults(modelCount ?? 2));
+    setupSearchEndpoints(createSearchResults());
   } else {
     setupSearchEndpoints([]);
   }
@@ -51,11 +53,15 @@ export function setup({
       placeholder="Pick your starting data"
       table={undefined}
     />,
-    {
-      storeInitialState: createMockState({
-        embeddingDataPicker: { entityTypes },
-      }),
-    },
+    entityTypes
+      ? {
+          storeInitialState: createMockState({
+            embeddingDataPicker: {
+              entityTypes,
+            },
+          }),
+        }
+      : undefined,
   );
 }
 
@@ -70,10 +76,17 @@ function createDatabase() {
   });
 }
 
-function createSearchResults(modelCount = 2) {
-  return Array.from({ length: modelCount }, (_, i) =>
-    createMockModelResult({ id: i, name: `Model ${i + 1}` }),
-  );
+function createSearchResults() {
+  return [
+    createMockModelResult({
+      id: 1,
+      name: "Orders model",
+    }),
+    createMockModelResult({
+      id: 2,
+      name: "People model",
+    }),
+  ];
 }
 
 function createEmptyQuery(): Query {
