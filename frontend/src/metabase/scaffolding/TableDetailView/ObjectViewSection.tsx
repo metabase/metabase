@@ -1,5 +1,4 @@
 import EditableText from "metabase/common/components/EditableText";
-import { formatValue } from "metabase/lib/formatting/value";
 import { Box, Flex, Group, Text } from "metabase/ui/components";
 import { Button } from "metabase/ui/components/buttons";
 import { Icon } from "metabase/ui/components/icons";
@@ -11,9 +10,10 @@ import type {
   TableId,
 } from "metabase-types/api";
 
-import { getStyleProps } from "../utils";
+import { getStyleProps, renderValue } from "../utils";
 
 import S from "./TableDetailView.module.css";
+import { useTranslateContent } from "metabase/i18n/hooks";
 
 type ObjectViewSectionProps = {
   section: ObjectViewSectionSettings;
@@ -37,6 +37,7 @@ export function ObjectViewSection({
   dragHandleProps,
 }: ObjectViewSectionProps) {
   // const pkIndex = columns.findIndex(isPK); // TODO: handle multiple PKs
+  const tc = useTranslateContent();
 
   return (
     <Box
@@ -108,7 +109,7 @@ export function ObjectViewSection({
                   ...(isDate(column) ? { whiteSpace: "nowrap" } : {}),
                 }}
               >
-                {formatValue(value, { column })}
+                {renderValue(tc, value, column)}
               </Text>
             </Box>
           );
