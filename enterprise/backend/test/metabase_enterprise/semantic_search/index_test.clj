@@ -4,6 +4,8 @@
    [clojure.test :refer :all]
    [metabase-enterprise.semantic-search.index :as semantic.index]
    [metabase-enterprise.semantic-search.test-util :as semantic.tu]
+   [metabase.api.common :as api]
+   [metabase.models.interface :as mi]
    [metabase.test :as mt]))
 
 (use-fixtures :once #'semantic.tu/once-fixture)
@@ -196,3 +198,72 @@
           (is (= {"card" 1, "dashboard" 1}
                  (semantic.tu/upsert-index! (semantic.tu/mock-documents))))
           (is (= 2.0 (mt/metric-value system :metabase-search/semantic-index-size))))))))
+
+(deftest filter-can-read-indexed-entity-test
+  (mt/with-premium-features #{:semantic-search}
+    (testing "filter-can-read-indexed-entity function"
+      (mt/with-temp [:model/Collection {coll-id :id} {}
+                     :model/Card model-1 (assoc (mt/card-with-source-metadata-for-query
+                                                 (mt/mbql-query products {:fields [$id $title]
+                                                                          :limit 1}))
+                                                :type "model"
+                                                :name "Readable Model"
+                                                :database_id (mt/id)
+                                                :collection_id coll-id)
+                     :model/Card model-2 (assoc (mt/card-with-source-metadata-for-query
+                                                 (mt/mbql-query products {:fields [$id $title]
+                                                                          :limit 1}))
+                                                :type "model"
+                                                :name "Unreadable Model"
+                                                :database_id (mt/id)
+                                                :collection_id coll-id)
+                     :model/ModelIndex model-index-1 {:model_id (:id model-1)
+                                                      :pk_ref (mt/$ids :products $id)
+                                                      :value_ref (mt/$ids :products $title)
+                                                      :schedule "0 0 0 * * *"
+                                                      :state "initial"
+                                                      :creator_id (mt/user->id :rasta)}
+                     :model/ModelIndex model-index-2 {:model_id (:id model-2)
+                                                      :pk_ref (mt/$ids :products $id)
+                                                      :value_ref (mt/$ids :products $title)
+                                                      :schedule "0 0 0 * * *"
+                                                      :state "initial"
+                                                      :creator_id (mt/user->id :rasta)}]
+        (let [indexed-entity-docs [{:id (str (:id model-index-1) ":123")
+                                    :model "indexed-entity"
+                                    :content "Test Entity 1"}
+                                   {:id (str (:id model-index-2) ":456")
+                                    :model "indexed-entity"
+                                    :content "Test Entity 2"}
+                                   {:id "invalid:789"
+                                    :model "indexed-entity"
+                                    :content "Invalid Entity"}]]
+
+          (testing "returns all entities when user can read all parent cards"
+            (binding [api/*current-user-permissions-set* (atom #{"/"})]
+              (let [result (#'semantic.index/filter-can-read-indexed-entity indexed-entity-docs)]
+                (is (= 2 (count result)))
+                (is (= #{(str (:id model-index-1) ":123") (str (:id model-index-2) ":456")}
+                       (set (map :id result)))))))
+
+          (testing "returns no entities when user cannot read any parent cards"
+            (binding [api/*current-user-permissions-set* (atom #{})]
+              (let [result (#'semantic.index/filter-can-read-indexed-entity indexed-entity-docs)]
+                (is (= 0 (count result))))))
+
+          (testing "returns subset when user can read some parent cards"
+            (with-redefs [mi/can-read? (fn [card] (= (:id card) (:id model-1)))]
+              (let [result (#'semantic.index/filter-can-read-indexed-entity indexed-entity-docs)]
+                (is (= 1 (count result)))
+                (is (= (str (:id model-index-1) ":123") (:id (first result)))))))
+
+          (testing "handles empty input"
+            (is (= [] (#'semantic.index/filter-can-read-indexed-entity []))))
+
+          (testing "handles invalid entity IDs"
+            (let [invalid-only-docs [{:id "invalid:789" :model "indexed-entity" :content "Invalid"}]]
+              (is (= [] (#'semantic.index/filter-can-read-indexed-entity invalid-only-docs)))))
+
+          (testing "handles non-existent model indexes"
+            (let [non-existent-docs [{:id "99999:123" :model "indexed-entity" :content "Non-existent"}]]
+              (is (= [] (#'semantic.index/filter-can-read-indexed-entity non-existent-docs))))))))))
