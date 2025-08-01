@@ -2,6 +2,7 @@ import { useState } from "react";
 
 import { PublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
 import { CommonSdkStoryWrapper } from "embedding-sdk/test/CommonSdkStoryWrapper";
+import { Box } from "metabase/ui";
 
 import { BadgeList } from "./BadgeList";
 
@@ -60,11 +61,11 @@ export const DefaultLayoutBadgeList = {
           onRemoveItem={onRemoveItem}
           addButtonLabel="Add another item"
         />
-        <div style={{ padding: "1rem" }}>
+        <Box p="md">
           {selectedItem?.item
             ? `The selected element is ${selectedItem.item} at index ${selectedItem.index}`
             : "No element has been selected"}
-        </div>
+        </Box>
       </PublicComponentWrapper>
     );
   },

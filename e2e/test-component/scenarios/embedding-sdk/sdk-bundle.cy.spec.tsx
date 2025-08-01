@@ -342,7 +342,7 @@ describe("scenarios > embedding-sdk > sdk-bundle", () => {
 
         cy.findByTestId("sdk-error-container").should(
           "contain.text",
-          "Embedding SDK version incompatible with the Instance version",
+          "The analytics server is undergoing maintenance",
         );
 
         cy.findByTestId("sdk-error-container").within(() => {
@@ -383,7 +383,7 @@ describe("scenarios > embedding-sdk > sdk-bundle", () => {
 
         cy.findByTestId("sdk-error-container").should(
           "contain.text",
-          "Embedding SDK version incompatible with the Instance version",
+          "The analytics server is undergoing maintenance",
         );
 
         cy.findByTestId("sdk-error-container").within(() => {
