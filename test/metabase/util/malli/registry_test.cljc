@@ -2,10 +2,40 @@
   (:require
    #?@(:clj
        ([metabase.util.i18n :as i18n]))
-   [clojure.test :refer [are deftest is testing]]
+   [clojure.test :refer [are deftest is testing use-fixtures]]
    [malli.core :as mc]
    [malli.error :as me]
    [metabase.util.malli.registry :as mr]))
+
+(defn- clear-cache []
+  (reset! @#'mr/cache {}))
+
+(use-fixtures :each (fn [t] (clear-cache) (t)))
+
+(defmacro ^:private with-returning-cache-misses [& body]
+  `(let [cache-misses# (volatile! [])]
+     (binding [mr/*cache-miss-hook* (fn [k# schema# _#]
+                                      (vswap! cache-misses# conj [k# schema#]))]
+       ~@body)
+     @cache-misses#))
+
+(deftest ^:parallel validation-with-unique-schemas-grows-cache
+  (is (= 1 (count (with-returning-cache-misses (mr/validate [:int {:special (rand)}] 1))))))
+
+(deftest ^:parallel validation-with-non-unique-schemas-does-not
+  (let [skema [:int {:special (rand)}]]
+    (is (= 1 (count (with-returning-cache-misses (mr/validate skema 1)))))
+    (is (= 0 (count (with-returning-cache-misses
+                      (dotimes [_ 20] (mr/validate skema 1))))))))
+
+(deftest ^:parallel explaination-with-unique-schemas-grows-cache
+  (is (= 1 (count (with-returning-cache-misses (mr/explain [:int {:special (rand)}] "hi"))))))
+
+(deftest ^:parallel explaination-with-non-unique-schemas-does-not
+  (let [skema [:int {:special (rand)}]]
+    (is (= 1 (count (with-returning-cache-misses (mr/explain skema "hi")))))
+    (is (= 0 (count (with-returning-cache-misses
+                      (dotimes [_ 20] (mr/explain skema "hi"))))))))
 
 (deftest ^:parallel cache-handle-regexes-test
   (testing (str "For things that aren't ever equal when you re-evaluate them (like Regex literals) maybe sure we do"
@@ -18,16 +48,46 @@
       (is (= (count (:validator @@#'mr/cache))
              before-count)))))
 
-(mr/def ::int
-  :int)
+(mr/def ::int :int)
 
 (deftest ^:parallel explainer-test
   (is (= ["should be an integer"]
          (me/humanize (mr/explain ::int "1"))
-         (me/humanize ((mr/explainer ::int) "1"))))
+         (me/humanize (mr/explain [:schema ::int] "1"))
+         (me/humanize ((mr/explainer ::int) "1"))
+         (me/humanize ((mr/explainer [:schema ::int]) "1"))))
   (testing "cache explainers"
     (is (identical? (mr/explainer ::int)
                     (mr/explainer ::int)))))
+
+(deftest schema-caching-test
+  (let [misses (with-returning-cache-misses
+                 (is (identical? (mr/explainer (mr/with-key [:fn (some-fn :x :y)]))
+                                 (mr/explainer (mr/with-key [:fn (some-fn :x :y)]))))
+                 (is (nil? (mr/explain (mr/with-key [:fn (some-fn :x :y)])
+                                       {:x true}))))]
+    (is (= 1 (count misses))))
+
+  (let [misses (with-returning-cache-misses
+                 (is (identical? (mr/explainer (mr/with-key [:fn (fn [x] ((some-fn :x :y) x))]))
+                                 (mr/explainer (mr/with-key [:fn (fn [x] ((some-fn :x :y) x))]))))
+                 (is (nil? (mr/explain (mr/with-key [:fn (fn [x] ((some-fn :x :y) x))])
+                                       {:x true}))))]
+    (is (= 1 (count misses))))
+
+  (let [misses (with-returning-cache-misses
+                 (is (identical? (mr/explainer (mr/with-key [:fn {:actually :odd?} #(even? (inc %))]))
+                                 (mr/explainer (mr/with-key [:fn {:actually :odd?} #(even? (inc %))]))))
+                 (is (nil? (mr/explain (mr/with-key [:fn {:actually :odd?} #(even? (inc %))]) 3))))]
+    (is (= 1 (count misses)))))
+
+(deftest ^:parallel with-key-idempotency-test
+  (is (= (#'mr/schema-cache-key (mr/with-key [:fn (constantly true)]))
+         (#'mr/schema-cache-key (mr/with-key (mr/with-key [:fn (constantly true)])))))
+  (is (= (#'mr/schema-cache-key (mr/with-key [:fn #(even? (inc %))]))
+         (#'mr/schema-cache-key (-> [:fn #(even? (inc %))]
+                                    mr/with-key mr/with-key mr/with-key mr/with-key
+                                    mr/with-key mr/with-key mr/with-key mr/with-key)))))
 
 (deftest ^:parallel resolve-test
   (is (mc/schema? (mr/resolve-schema :int)))
