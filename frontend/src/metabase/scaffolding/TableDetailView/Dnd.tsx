@@ -223,9 +223,10 @@ export function Dnd({
   }
 
   const [items, setItems] = useState<Items>(() => initialItems ?? getItems());
+
   const containers = useMemo(
-    () => Object.keys(items) as UniqueIdentifier[],
-    [items],
+    () => sections.map((s) => String(s.id)) as UniqueIdentifier[],
+    [sections],
   );
   const [activeId, setActiveId] = useState<UniqueIdentifier | null>(null);
   const lastOverId = useRef<UniqueIdentifier | null>(null);
@@ -517,7 +518,7 @@ export function Dnd({
             <DroppableContainer
               key={containerId}
               id={containerId}
-              label={minimal ? undefined : `Column ${containerId}`}
+              label={minimal ? undefined : t`Column ${containerId}`}
               items={items[containerId]}
               scrollable={scrollable}
               style={containerStyle}
