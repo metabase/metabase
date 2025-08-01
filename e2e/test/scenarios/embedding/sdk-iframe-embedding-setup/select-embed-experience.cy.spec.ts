@@ -73,7 +73,7 @@ H.describeWithSnowplow(suiteTitle, () => {
       });
     });
 
-    it.skip("shows exploration template when selected", () => {
+    it("shows exploration template when selected", () => {
       visitNewEmbedPage();
       getEmbedSidebar().findByText("Exploration").click();
 
@@ -86,7 +86,9 @@ H.describeWithSnowplow(suiteTitle, () => {
 
       H.getSimpleEmbedIframeContent().within(() => {
         cy.log("data picker is visible");
-        cy.findByText("Pick your starting data").should("be.visible");
+        cy.findByText("Pick your starting data", { timeout: 20_000 }).should(
+          "be.visible",
+        );
       });
     });
   });
@@ -114,7 +116,7 @@ H.describeWithSnowplow(suiteTitle, () => {
       });
     });
 
-    it.skip("shows question of id=1 when activity log is empty and chart is selected", () => {
+    it("shows question of id=1 when activity log is empty and chart is selected", () => {
       visitNewEmbedPage();
       cy.wait("@emptyRecentItems");
 
@@ -129,7 +131,7 @@ H.describeWithSnowplow(suiteTitle, () => {
 
       H.getSimpleEmbedIframeContent().within(() => {
         cy.log("question title of id=1 is visible");
-        cy.findByText("Query log").should("be.visible");
+        cy.findByText("Query log", { timeout: 20_000 }).should("be.visible");
       });
     });
   });
