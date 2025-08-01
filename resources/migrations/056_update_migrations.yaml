@@ -313,6 +313,7 @@ databaseChangeLog:
                 name = REGEXP_REPLACE(name, '__mbarchiv__\d+$', ''),
                 archived_at = NULL
               WHERE archived_at IS NOT NULL
+                AND active = false
                 AND name ~ '__mbarchiv__\d+$'
                 AND NOT EXISTS (
                   SELECT 1 FROM metabase_table mt2
@@ -334,6 +335,7 @@ databaseChangeLog:
                 mt1.name = SUBSTRING(mt1.name, 1, POSITION('__mbarchiv__' IN mt1.name) - 1),
                 mt1.archived_at = NULL
               WHERE mt1.archived_at IS NOT NULL
+                AND mt1.active = false
                 AND mt1.name LIKE '%__mbarchiv__%'
                 AND mt2.id IS NULL;
         - sql:
@@ -344,6 +346,7 @@ databaseChangeLog:
                 name = SUBSTRING(name, 1, POSITION('__mbarchiv__' IN name) - 1),
                 archived_at = NULL
               WHERE archived_at IS NOT NULL
+                AND active = false
                 AND name LIKE '%__mbarchiv__%'
                 AND NOT EXISTS (
                   SELECT 1 FROM metabase_table mt2
