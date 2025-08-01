@@ -6,10 +6,13 @@ import {
   AdminNavWrapper,
 } from "metabase/admin/components/AdminNav";
 import { AdminSettingsLayout } from "metabase/common/components/AdminLayout/AdminSettingsLayout";
+import { useListTransformsQuery } from "metabase-enterprise/api";
 import {
   getOverviewPageUrl,
   getnewTransformPageUrl,
 } from "metabase-enterprise/transforms/urls";
+
+import { TransformList } from "./TransformList";
 
 type TransformPageLayoutProps = {
   children: ReactNode;
@@ -24,6 +27,8 @@ export function TransformPageLayout({ children }: TransformPageLayoutProps) {
 }
 
 function Sidebar() {
+  const { data: transforms = [] } = useListTransformsQuery();
+
   return (
     <AdminNavWrapper>
       <AdminNavItem
@@ -31,11 +36,15 @@ function Sidebar() {
         path={getOverviewPageUrl()}
         icon="home"
       />
-      <AdminNavItem
-        label={t`Transforms`}
-        path={getnewTransformPageUrl()}
-        icon="refresh_downstream"
-      />
+      {transforms.length > 0 ? (
+        <TransformList transforms={transforms} />
+      ) : (
+        <AdminNavItem
+          label={t`Transforms`}
+          path={getnewTransformPageUrl()}
+          icon="refresh_downstream"
+        />
+      )}
     </AdminNavWrapper>
   );
 }

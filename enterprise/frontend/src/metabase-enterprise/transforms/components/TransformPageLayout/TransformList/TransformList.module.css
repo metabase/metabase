@@ -1,0 +1,8 @@
+.chevron {
+  transition: transform 100ms ease-in-out;
+  flex-shrink: 0;
+
+  &.expanded {
+    transform: rotate(90deg);
+  }
+}
