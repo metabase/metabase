@@ -9,7 +9,7 @@ import {
   SdkError,
   SdkLoader,
 } from "embedding-sdk/components/private/PublicComponentWrapper";
-import { SdkQuestion } from "embedding-sdk/components/public/SdkQuestion/SdkQuestion";
+import { QuestionVisualization } from "embedding-sdk/components/private/SdkQuestion/components/Visualization";
 import { useTranslatedCollectionId } from "embedding-sdk/hooks/private/use-translated-collection-id";
 import { shouldRunCardQuery } from "embedding-sdk/lib/sdk-question";
 import type { SdkQuestionTitleProps } from "embedding-sdk/types/question";
@@ -28,7 +28,19 @@ import {
   FlexibleSizeComponent,
   type FlexibleSizeProps,
 } from "../FlexibleSizeComponent";
-import { shouldShowSaveButton } from "../SdkQuestion/components";
+import { BackButton } from "../SdkQuestion/components/BackButton/BackButton";
+import { BreakoutDropdown } from "../SdkQuestion/components/Breakout/BreakoutDropdown";
+import { ChartTypeDropdown } from "../SdkQuestion/components/ChartTypeSelectorList";
+import { DownloadWidgetDropdown } from "../SdkQuestion/components/DownloadWidget";
+import { Editor } from "../SdkQuestion/components/Editor";
+import { EditorButton } from "../SdkQuestion/components/EditorButton/EditorButton";
+import { FilterDropdown } from "../SdkQuestion/components/Filter/FilterDropdown";
+import { QuestionSettingsDropdown } from "../SdkQuestion/components/QuestionSettings";
+import {
+  SaveButton,
+  shouldShowSaveButton,
+} from "../SdkQuestion/components/SaveButton";
+import { SummarizeDropdown } from "../SdkQuestion/components/Summarize/SummarizeDropdown";
 import { useSdkQuestionContext } from "../SdkQuestion/context";
 
 import { DefaultViewTitle } from "./DefaultViewTitle";
@@ -126,11 +138,11 @@ export const SdkQuestionDefaultView = ({
         <Group justify="space-between" align="flex-end">
           <Group gap="xs">
             <Box mr="sm">
-              <SdkQuestion.BackButton />
+              <BackButton />
             </Box>
             <DefaultViewTitle title={title} withResetButton={withResetButton} />
           </Group>
-          {showSaveButton && <SdkQuestion.SaveButton onClick={openSaveModal} />}
+          {showSaveButton && <SaveButton onClick={openSaveModal} />}
         </Group>
         {queryResults && (
           <Group
@@ -155,8 +167,8 @@ export const SdkQuestionDefaultView = ({
                   {withChartTypeSelector && (
                     <>
                       <Button.Group>
-                        <SdkQuestion.ChartTypeDropdown />
-                        <SdkQuestion.QuestionSettingsDropdown />
+                        <ChartTypeDropdown />
+                        <QuestionSettingsDropdown />
                       </Button.Group>
                       <Divider
                         mx="xs"
@@ -166,18 +178,15 @@ export const SdkQuestionDefaultView = ({
                       />
                     </>
                   )}
-                  <SdkQuestion.FilterDropdown />
-                  <SdkQuestion.SummarizeDropdown />
-                  <SdkQuestion.BreakoutDropdown />
+                  <FilterDropdown />
+                  <SummarizeDropdown />
+                  <BreakoutDropdown />
                 </>
               )}
             </Group>
             <Group gap="sm">
-              {withDownloads && <SdkQuestion.DownloadWidgetDropdown />}
-              <SdkQuestion.EditorButton
-                isOpen={isEditorOpen}
-                onClick={toggleEditor}
-              />
+              {withDownloads && <DownloadWidgetDropdown />}
+              <EditorButton isOpen={isEditorOpen} onClick={toggleEditor} />
             </Group>
           </Group>
         )}
@@ -186,9 +195,9 @@ export const SdkQuestionDefaultView = ({
       <Box className={InteractiveQuestionS.Main} p="sm" w="100%" h="100%">
         <Box className={InteractiveQuestionS.Content}>
           {isEditorOpen ? (
-            <SdkQuestion.Editor onApply={closeEditor} />
+            <Editor onApply={closeEditor} />
           ) : (
-            <SdkQuestion.QuestionVisualization height="100%" />
+            <QuestionVisualization height="100%" />
           )}
         </Box>
       </Box>

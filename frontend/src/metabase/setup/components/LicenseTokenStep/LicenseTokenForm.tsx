@@ -2,13 +2,13 @@ import { c, t } from "ttag";
 
 import ExternalLink from "metabase/common/components/ExternalLink";
 import FormSubmitButton from "metabase/common/components/FormSubmitButton";
+import { useStoreUrl } from "metabase/common/hooks";
 import {
   Form,
   FormErrorMessage,
   FormProvider,
   FormTextInput,
 } from "metabase/forms";
-import { getStoreUrl } from "metabase/selectors/settings";
 import {
   Box,
   Button,
@@ -36,9 +36,10 @@ export const LicenseTokenForm = ({
   onSkip,
   initialValue = "",
 }: LicenseTokenFormProps) => {
+  const storeUrl = useStoreUrl("checkout");
   const storeLink = (
     <ExternalLink
-      href={getStoreUrl("checkout")}
+      href={storeUrl}
       key="store-link"
     >{t`Try Metabase for free`}</ExternalLink>
   );

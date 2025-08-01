@@ -608,6 +608,9 @@
     ;; implement [[execute-write-query!]]
     :actions/custom
 
+    ;; Does the driver support editing data within database tables.
+    :actions/data-editing
+
     ;; Does changing the JVM timezone allow producing correct results? (See #27876 for details.)
     :test/jvm-timezone-setting
 
@@ -1351,3 +1354,14 @@
   :hierarchy #'hierarchy)
 
 (defmethod table-known-to-not-exist? ::driver [_ _] false)
+
+(defmulti do-with-resilient-connection
+  "Execute function `f` within a context that may recover (on-demand) from connection failures.
+  `f` must be eager."
+  {:added "0.55.9" :arglists '([driver database f])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmethod do-with-resilient-connection
+  ::driver
+  [driver database f] (f driver database))
