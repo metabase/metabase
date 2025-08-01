@@ -5,15 +5,20 @@ import type { MetabaseTheme } from "metabase/embedding-sdk/theme";
 import type { MetabaseAuthConfig } from "./auth-config";
 import type { SdkEventHandlersConfig } from "./events";
 import type { MetabasePluginsConfig } from "./plugins";
-import type { CommonStylingProps } from "./props";
 import type { SdkErrorComponent } from "./ui";
 
 /**
  * @expand
  * @category MetabaseProvider
  */
-export interface MetabaseProviderProps
-  extends Omit<CommonStylingProps, "style"> {
+export interface MetabaseProviderProps {
+  /**
+   * A custom class name to be added to the root element.
+   *
+   * @deprecated This prop is not used anymore.
+   */
+  className?: string;
+
   /**
    * The children of the MetabaseProvider component.
    */

@@ -20,7 +20,6 @@ import { MetabaseReduxProvider } from "metabase/lib/redux";
 import { LocaleProvider } from "metabase/public/LocaleProvider";
 import { setOptions } from "metabase/redux/embed";
 import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
-import { Box } from "metabase/ui";
 import { MetabotProvider } from "metabase-enterprise/metabot/context";
 
 import { SCOPED_CSS_RESET } from "../private/PublicComponentStylesWrapper";
@@ -40,7 +39,6 @@ export const MetabaseProviderInternal = ({
   eventHandlers,
   theme,
   reduxStore,
-  className,
   locale,
   errorComponent,
   loaderComponent,
@@ -81,7 +79,7 @@ export const MetabaseProviderInternal = ({
     <EmotionCacheProvider>
       <SdkThemeProvider theme={theme}>
         <LocaleProvider locale={locale || instanceLocale}>
-          <Box className={className}>{children}</Box>
+          {children}
         </LocaleProvider>
 
         <RenderSingleCopy>
