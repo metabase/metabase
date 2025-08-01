@@ -291,25 +291,91 @@ databaseChangeLog:
                   defaultValue: none
                   constraints:
                     nullable:  false
+  - changeSet:
+      id: v56.2025-07-31-worker-runs-app-db
+      author: eric
+      comment: Create worker_runs table in app database to track worker execution
+      changes:
+        - createTable:
+            tableName: worker_runs
+            remarks: Table to track worker job executions and their status in the app database
+            columns:
               - column:
-                  name: execution_status
-                  type: varchar(32)
-                  remarks: The status of the transform's current or last execution
-                  defaultValue: never-executed
+                  name: run_id
+                  type: varchar(36)
+                  remarks: 'UUID-4 identifier for the worker run'
                   constraints:
-                    nullable:  false
+                    primaryKey: true
+                    nullable: false
               - column:
-                  remarks: The timestamp of when the transform last started
-                  name: last_started_at
-                  type: ${timestamp_type}
+                  name: work_id
+                  type: bigint
+                  remarks: 'Identifier for the unit of work (transform, sync, etc.)'
+                  constraints:
+                    nullable: false
+              - column:
+                  name: work_type
+                  type: varchar(255)
+                  remarks: 'Type/category of the worker job'
+                  constraints:
+                    nullable: false
+              - column:
+                  name: run_method
+                  type: varchar(255)
+                  remarks: 'Method used to execute the worker job'
+                  constraints:
+                    nullable: false
+              - column:
+                  name: is_local
+                  type: boolean
+                  remarks: 'Is this run local?'
+                  constraints:
+                    nullable: false
+              - column:
+                  name: status
+                  type: varchar(50)
+                  remarks: 'Current status of the worker job (running, completed, failed, etc.)'
+                  constraints:
+                    nullable: false
+              - column:
+                  name: start_time
+                  type: timestamp with time zone
+                  remarks: 'When the worker job started'
+                  defaultValueComputed: NOW()
+                  constraints:
+                    nullable: false
+              - column:
+                  name: end_time
+                  type: timestamp with time zone
+                  remarks: 'When the worker job completed (null if still running)'
                   constraints:
                     nullable: true
               - column:
-                  remarks: The timestamp of when the transform last ended
-                  name: last_ended_at
-                  type: ${timestamp_type}
+                  name: message
+                  type: text
+                  remarks: 'Human-readable message about the run; may contain error message in case status is error'
                   constraints:
                     nullable: true
+        - createIndex:
+            tableName: worker_runs
+            indexName: idx_worker_runs_work_id
+            columns:
+              - column:
+                  name: work_type
+              - column:
+                  name: work_id
+        - createIndex:
+            tableName: worker_runs
+            indexName: idx_worker_runs_status
+            columns:
+              - column:
+                  name: status
+        - createIndex:
+            tableName: worker_runs
+            indexName: idx_worker_runs_start_time
+            columns:
+              - column:
+                  name: start_time
 
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
