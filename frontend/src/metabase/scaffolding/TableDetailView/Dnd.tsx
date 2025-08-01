@@ -69,6 +69,7 @@ function DroppableContainer({
   ...props
 }: ContainerProps & {
   disabled?: boolean;
+  hasManySections?: boolean;
   id: UniqueIdentifier;
   items: UniqueIdentifier[];
   style?: React.CSSProperties;
@@ -599,6 +600,7 @@ export function Dnd({
               style={containerStyle}
               unstyled={minimal}
               columns={columns}
+              hasManySections={sections.length > 1}
               section={getSection(containerId)}
               onUpdateSection={(update) => {
                 onUpdateSection(containerId, update);

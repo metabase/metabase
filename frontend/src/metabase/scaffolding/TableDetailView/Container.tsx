@@ -34,6 +34,7 @@ export interface Props {
   onRemoveSection?: () => void;
   dragHandleProps?: any;
   isDraggingSection?: boolean;
+  hasManySections?: boolean;
 }
 
 // eslint-disable-next-line react/display-name
@@ -53,6 +54,7 @@ export const Container = forwardRef<HTMLDivElement, Props>(
       shadow,
       unstyled,
       //
+      hasManySections,
       columns,
       section,
       onUpdateSection,
@@ -104,11 +106,13 @@ export const Container = forwardRef<HTMLDivElement, Props>(
         ) : null} */}
         <Flex align="center" justify="space-between" w="100%">
           <Group gap="xs">
-            <Icon
-              name="grabber"
-              style={{ cursor: "grab", outline: "none" }}
-              {...handleProps}
-            />
+            {onRemoveSection && (
+              <Icon
+                name="grabber"
+                style={{ cursor: "grab", outline: "none" }}
+                {...handleProps}
+              />
+            )}
             <EditableText
               initialValue={section.title}
               onChange={(title) => onUpdateSection({ title })}

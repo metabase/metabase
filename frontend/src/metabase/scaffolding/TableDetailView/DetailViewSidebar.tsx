@@ -273,7 +273,8 @@ export function DetailViewSidebar({
     <Stack gap={0} h="100%">
       <Box
         flex="0 0 auto"
-        p="xl"
+        px="xl"
+        py="lg"
         style={{
           borderBottom: "1px solid var(--border-color)",
         }}
@@ -281,7 +282,7 @@ export function DetailViewSidebar({
         <Text fw={600} size="lg">{t`Detail view settings`}</Text>
       </Box>
 
-      <Box flex="1" px="xl" pb="xl" pt={24} style={{ overflow: "auto" }}>
+      <Box flex="1" px="xl" pb="xl" pt={16} style={{ overflow: "auto" }}>
         <Dnd
           columns={columns}
           sections={sections}
