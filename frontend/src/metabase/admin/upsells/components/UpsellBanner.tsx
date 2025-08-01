@@ -62,7 +62,7 @@ export const _UpsellBanner: React.FC<UpsellBannerProps> = ({
   onClick,
   ...props
 }: UpsellBannerProps) => {
-  const url = useUpsellLink({
+  const urlWithParams = useUpsellLink({
     url: buttonLink ?? UPGRADE_URL,
     campaign,
     location,
@@ -101,10 +101,9 @@ export const _UpsellBanner: React.FC<UpsellBannerProps> = ({
       <Flex align="center" gap="md">
         <UpsellCta
           onClick={onClick}
-          buttonLink={buttonLink}
+          url={buttonLink ? urlWithParams : undefined}
           internalLink={internalLink}
           buttonText={buttonText}
-          url={url}
           onClickCapture={() => trackUpsellClicked({ location, campaign })}
         />
 
