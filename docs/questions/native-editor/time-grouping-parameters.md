@@ -20,11 +20,11 @@ Here's an example that counts the number of orders in the `orders` table and ins
 {% raw %}
 SELECT
   COUNT(*) AS "Orders",
-  {{mb.time_grouping("Time grouping", "created_at")}} AS "Created At"
+  {{created_at_param)}} AS "Created At"
 FROM
   orders
 GROUP BY
-  {{mb.time_grouping("Time grouping", "created_at")}}
+  {{created_at_param")}}
 {% endraw %}
 ```
 
