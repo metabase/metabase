@@ -15,6 +15,7 @@ export interface MarkdownProps
   children: string;
   lineClamp?: number;
   c?: string;
+  components?: Record<string, any>;
 }
 
 const Markdown = ({
