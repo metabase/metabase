@@ -42,6 +42,7 @@ persisted-models-enabled: null
 report-timezone: null
 report-timezone-long: null
 report-timezone-short: null
+search-engine: null
 search-typeahead-enabled: null
 setup-embedding-autoenabled: null
 setup-license-active-at-setup: null
