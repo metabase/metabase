@@ -9,6 +9,7 @@
    [metabase-enterprise.transforms.core :as transforms]
    [metabase-enterprise.worker.tracking :as tracking]
    [metabase.api.util.handlers :as handlers]
+   [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.lib.schema.common :as schema.common]
    [metabase.server.core :as server]
@@ -74,7 +75,7 @@
 
 (def ^:private routes
   (compojure/routes
-   (compojure/GET "/health-check" [] "healthy")
+   (compojure/GET "/api/health" [] "healthy")
    (compojure/PUT "/transform/:run-id" request (handle-transform-put request))
    (compojure/GET "/status/:run-id" [run-id] (handle-status-get run-id))
    (route/not-found "Page not found")))
@@ -86,6 +87,11 @@
           [server/wrap-json-body
            server/wrap-streamed-json-response
            wrap-keyword-params]))
+
+(defn ^:private port []
+  (if-let [port (config/config-str :mb-worker-jetty-port)]
+    (Integer/parseInt port)
+    3030))
 
 (defonce ^:private instance (atom nil))
 
@@ -99,11 +105,12 @@
   ([] (start! {}))
   ([opts]
    (stop!)
-   (log/info "Starting worker server")
    (let [thread-pool (doto (new QueuedThreadPool)
-                       (.setVirtualThreadsExecutor (Executors/newVirtualThreadPerTaskExecutor)))]
+                       (.setVirtualThreadsExecutor (Executors/newVirtualThreadPerTaskExecutor)))
+         jetty-port (port)]
+     (log/info "Starting worker server on port" jetty-port)
      (reset! instance (ring-jetty/run-jetty #'handler
-                                            {:port 3030
+                                            {:port jetty-port
                                              :thread-pool thread-pool
                                              :join? (not (:dev opts))})))))
 
