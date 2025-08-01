@@ -45,3 +45,10 @@
 (defn get-status [run-id]
   (json-body (http/get (worker-route (str "/status/" run-id))
                        {:content-type :json})))
+
+(defn health-check []
+  (:body (http/get (worker-route "/api/health"))))
+
+(comment
+
+  (health-check))

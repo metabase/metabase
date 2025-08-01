@@ -135,7 +135,8 @@
   (let [transform (api/check-404 (t2/select-one :model/Transform id))
         start-promise (promise)]
     (future
-      (transforms.execute/execute-mbql-transform! transform {:start-promise start-promise}))
+      (transforms.execute/execute-mbql-transform! transform {:start-promise start-promise
+                                                             :run-method :manual}))
     (when (instance? Throwable @start-promise)
       (throw @start-promise))
     (-> (response/response {:message (deferred-tru "Transform execution started")})

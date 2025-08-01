@@ -6,6 +6,7 @@
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.lib.schema.common :as schema.common]
+   [metabase.sync.core :as sync]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -55,16 +56,19 @@
    ;; sync the new table (note that even a failed sync status means that the execution succeeded)
    (try
      (log/info "Syncing target" (pr-str target) "for transform")
-     (t2/update! :model/WorkerRun run-id
+     (t2/update! :model/WorkerRun
+                 :run_id run-id
                  :status [:= :exec-succeeded]
                  {:status :sync-started})
      (sync-table! database target)
-     (t2/update! :model/WorkerRun run-id
+     (t2/update! :model/WorkerRun
+                 :run_id run-id
                  :status [:= :sync-started]
                  {:status :sync-succeeded})
      (catch Throwable t
        (log/error "Syncing target" (pr-str target) "failed.")
-       (t2/update! :model/WorkerRun run-id
+       (t2/update! :model/WorkerRun
+                   :run_id run-id
                    :status [:= :sync-started]
                    {:status :sync-failed})
        (throw t)))))
@@ -79,11 +83,13 @@
   ;; local run is responsible for status
   (try
     (driver/execute-transform! driver transform-details opts)
-    (t2/update! :model/WorkerRun run-id
+    (t2/update! :model/WorkerRun
+                :run_id run-id
                 {:status :exec-succeeded
                  :end_time :%now})
     (catch Throwable t
-      (t2/update! :model/WorkerRun run-id
+      (t2/update! :model/WorkerRun
+                  :run_id run-id
                   {:status :exec-failed
                    :end-time :%now
                    :message (.getMessage t)})

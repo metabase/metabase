@@ -5,6 +5,7 @@
    [clojurewerkz.quartzite.schedule.calendar-interval :as calendar-interval]
    [clojurewerkz.quartzite.schedule.simple :as simple]
    [clojurewerkz.quartzite.triggers :as triggers]
+   [java-time.api :as t]
    [metabase-enterprise.worker.api :as api]
    [metabase-enterprise.worker.models.worker-run]
    [metabase.task.core :as task]
@@ -18,11 +19,19 @@
 (defmulti post-success
   "What to run after successful remote run is synced locally. Dispatches on work_type."
   {:arglists '([run])}
-  :run_id)
+  :work_type)
 
 (defmethod post-success :default
   [_]
   #_do-nothing)
+
+(comment
+
+  (reduce conj
+          []
+          (t2/reducible-select :model/WorkerRun :is_local false :status :started))
+
+  (t2/select :model/WorkerRun))
 
 (defn- sync-worker-runs! [_ctx]
   (log/trace "Syncing worker runs.")
@@ -33,14 +42,16 @@
                   (case (:status resp)
                     "success"
                     (do
-                      (t2/update! :model/WorkerRun (:run_id run)
+                      (t2/update! :model/WorkerRun
+                                  :run_id (:run_id run)
                                   {:status :exec-succeeded
-                                   :end_time (:end-time resp)})
+                                   :end_time (t/instant (:end-time resp))})
                       (post-success run))
                     "error"
-                    (t2/update! :model/WorkerRun (:run_id run)
+                    (t2/update! :model/WorkerRun
+                                :run_id (:run_id run)
                                 {:status :exec-failed
-                                 :end_time (:end-time resp)
+                                 :end_time (t/instant (:end-time resp))
                                  :message (:note resp)})))
                 (catch Throwable t
                   (log/error t (str "Error syncing " (:run_id run))))))
