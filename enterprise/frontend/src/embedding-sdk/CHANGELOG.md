@@ -1,3 +1,60 @@
+## [0.56.1-nightly](https://github.com/metabase/metabase/compare/embedding-sdk-0.55.1-nightly...embedding-sdk-0.56.1-nightly) (2025-08-01)
+
+
+### Bug Fixes
+
+* **sdk:** clicking on "and X more" in chart legend throws error ([#57175](https://github.com/metabase/metabase/issues/57175)) ([6b427ef](https://github.com/metabase/metabase/commit/6b427efbfcf2dfc114cdc892a4bf9ec9cee3f38d))
+* **sdk:** crash when changing questionId from new to native question ([#60161](https://github.com/metabase/metabase/issues/60161)) ([ebcf446](https://github.com/metabase/metabase/commit/ebcf446ad9a186a6cefd7c901a8460a15a882aa5))
+* **sdk:** css variables leak from Mantine to the host app ([#56985](https://github.com/metabase/metabase/issues/56985)) ([2b3f683](https://github.com/metabase/metabase/commit/2b3f6833e71696827cb61a4b5a504859ce674f01))
+* **sdk:** custom GeoJSON maps does not load due to wrong domain ([#57539](https://github.com/metabase/metabase/issues/57539)) ([7f92780](https://github.com/metabase/metabase/commit/7f92780e9e1641fb79054e4f9b99c7819f5d9833))
+* **sdk:** Ensure that questions don't flicker when fetching entity IDs ([#57073](https://github.com/metabase/metabase/issues/57073)) ([af0188a](https://github.com/metabase/metabase/commit/af0188ade10002d948efe3199839cb3f000f164d))
+* **sdk:** Fix flickered "Question new not found error" ([#59696](https://github.com/metabase/metabase/issues/59696)) ([15dcbf0](https://github.com/metabase/metabase/commit/15dcbf0b7cba224a4efcd4a92c90729f0136b7da))
+* **sdk:** fix popovers can't be rendered inside modals ([#60431](https://github.com/metabase/metabase/issues/60431)) ([68549e8](https://github.com/metabase/metabase/commit/68549e8664d29114d9fdd95fff0877c7e44e23de))
+* **sdk:** fix tooltip crash by migrating away from renderToString ([#58394](https://github.com/metabase/metabase/issues/58394)) ([d40df5e](https://github.com/metabase/metabase/commit/d40df5ea08082a1ea22668f7f6363ef39e43f2e2))
+* **sdk:** hide the "back to previous results" button in questions ([#61018](https://github.com/metabase/metabase/issues/61018)) ([fd5a433](https://github.com/metabase/metabase/commit/fd5a43326523dd7638960d21711211b8c5b6e87d))
+* **sdk:** make isEmbeddingSdk consistent on new iframe embed using singletons ([#60349](https://github.com/metabase/metabase/issues/60349)) ([efef12d](https://github.com/metabase/metabase/commit/efef12dbb0f19d52b8f72a1eb1b42bc335a7424d))
+* **sdk:** manual fixes for module level ttag calls causing broken translations ([#57391](https://github.com/metabase/metabase/issues/57391)) ([2adc027](https://github.com/metabase/metabase/commit/2adc0271787a0a07b1ec5e704198432166071ac3))
+* **sdk:** Move @cypress/react as dev dependency for SDK ([#57962](https://github.com/metabase/metabase/issues/57962)) ([424be85](https://github.com/metabase/metabase/commit/424be8573c5cabae040c8aa9c940386ca56921bd))
+* **sdk:** omit jwt token response from error messages ([#59108](https://github.com/metabase/metabase/issues/59108)) ([12351f9](https://github.com/metabase/metabase/commit/12351f93d8bf9a1e2902ea2c018758a98817351c))
+* **sdk:** questions shows an error while loading on strict mode ([#58183](https://github.com/metabase/metabase/issues/58183)) ([f5f8a13](https://github.com/metabase/metabase/commit/f5f8a13af95892795446ee7ce1d8b65a8f8cb89a))
+* **sdk:** Remove fullscreen and refresh buttons from SDK dashboard as they don't make sense ([#60198](https://github.com/metabase/metabase/issues/60198)) ([50ba791](https://github.com/metabase/metabase/commit/50ba7910a0e9940721f24f00eef88d55867bb4b0))
+* **sdk:** Remove unhelpful error `Error: null` ([#59168](https://github.com/metabase/metabase/issues/59168)) ([30405be](https://github.com/metabase/metabase/commit/30405beba7f2501a5cac387ce4fc4744a17006fc))
+* **sdk:** Render ChartSettingColorPicker color picker without a portal ([#59821](https://github.com/metabase/metabase/issues/59821)) ([027dcf9](https://github.com/metabase/metabase/commit/027dcf907185dc320ff3c7812bcc62e319b42bc1))
+* **sdk:** SAML + JWT + New Auth Flow ([#56869](https://github.com/metabase/metabase/issues/56869)) ([98e1166](https://github.com/metabase/metabase/commit/98e1166ea0492732c6f4c76e12d83c1329a740bb))
+* **sdk:** switching from existing to new question should keep query builder open ([#60077](https://github.com/metabase/metabase/issues/60077)) ([a41e383](https://github.com/metabase/metabase/commit/a41e383e0ecc3ff93d43c73d48f2087023abe9ca))
+* **sdk:** table cell color is always white on the sdk ([#57770](https://github.com/metabase/metabase/issues/57770)) ([fb06c2b](https://github.com/metabase/metabase/commit/fb06c2b571ab2dc45b73be217ea8bae16d9fed1f))
+* **sdk:** updating collection's entity id crashes InteractiveQuestion and CollectionBrowser ([#57529](https://github.com/metabase/metabase/issues/57529)) ([92fac6c](https://github.com/metabase/metabase/commit/92fac6cabb08e59ef39a80a5c589df458c749cb5))
+* **sdk:** use background color in sankey chart text outline ([#57135](https://github.com/metabase/metabase/issues/57135)) ([dd76006](https://github.com/metabase/metabase/commit/dd76006c42a5220db0097bdc583ffd110cf174ae))
+* **sdk:** use instance locale if no locale is passed ([#56683](https://github.com/metabase/metabase/issues/56683)) ([88a8827](https://github.com/metabase/metabase/commit/88a88270be99c24095deb6bbf3bf6eb61ca73e1a))
+* **sdk:** use supbath for `/auth/sso` http call ([#60488](https://github.com/metabase/metabase/issues/60488)) ([dccd4f9](https://github.com/metabase/metabase/commit/dccd4f970ec9685c0c2647c6ebedfa99ae5badf4))
+* **sdk:** wait for locales to be loaded before rendering SDK components ([#58566](https://github.com/metabase/metabase/issues/58566)) ([3bcdb8a](https://github.com/metabase/metabase/commit/3bcdb8ae5d81ad783d2ca8ca577d107d5fbde18b))
+* **sdk:** when starting from an entity id dashboard, use the numeric id ([#61188](https://github.com/metabase/metabase/issues/61188)) ([c4aca65](https://github.com/metabase/metabase/commit/c4aca6545e1542b3aea7fca55c4ba452600844fe))
+
+
+### Features
+
+* **sdk:** ability to specify preferred authentication method ([#58641](https://github.com/metabase/metabase/issues/58641)) ([cdbd112](https://github.com/metabase/metabase/commit/cdbd112bffb3fcdd060ea3900b4019de800828bf))
+* **sdk:** Add Visualization Button, hook, and onRun event ([#58080](https://github.com/metabase/metabase/issues/58080)) ([61bf62e](https://github.com/metabase/metabase/commit/61bf62e6b930552c005fcabce056875042f4bbc8))
+* **sdk:** Add withDownloads to the static question ([#60976](https://github.com/metabase/metabase/issues/60976)) ([2ff8906](https://github.com/metabase/metabase/commit/2ff890692e437dda1b42c05b1f3dd3dd8ec16499))
+* **sdk:** Automatically set a sensible display to interactive questions ([#56584](https://github.com/metabase/metabase/issues/56584)) ([#56667](https://github.com/metabase/metabase/issues/56667)) ([b7a74d0](https://github.com/metabase/metabase/commit/b7a74d02c7082b1dd180d059c255e2ebb1d0cbaf))
+* **sdk:** Create new dashboard question from `EditableDashboard` ([#60920](https://github.com/metabase/metabase/issues/60920)) ([1bf726b](https://github.com/metabase/metabase/commit/1bf726bddc9e9248fa4f66b3007c7fa5edf53674))
+* **sdk:** Do not add unused Empty state SVG images to the SDK bundle ([#58013](https://github.com/metabase/metabase/issues/58013)) ([801e9b6](https://github.com/metabase/metabase/commit/801e9b6e6b82d237abaace2669a0c3e462174695))
+* **sdk:** Do not bundle main-app plugins to the SDK bundle ([#58028](https://github.com/metabase/metabase/issues/58028)) ([a664244](https://github.com/metabase/metabase/commit/a6642444d60be7676327612c43ff210087685ada))
+* **sdk:** do not show "New Question" as fallback for new question ([#61015](https://github.com/metabase/metabase/issues/61015)) ([aa7ced1](https://github.com/metabase/metabase/commit/aa7ced174f847b9914c0b7778e344fd20d0d30ed))
+* **sdk:** download button is now in an always visible ... menu ([#61556](https://github.com/metabase/metabase/issues/61556)) ([f517801](https://github.com/metabase/metabase/commit/f51780142f21c1aaa9b96fa37bfc5f9d168839f3))
+* **sdk:** Export more public SDK types ([#56838](https://github.com/metabase/metabase/issues/56838)) ([764b236](https://github.com/metabase/metabase/commit/764b2366015df4594d3e7745234fdef126abc3b5))
+* **sdk:** Export public plugin and icon types ([#56851](https://github.com/metabase/metabase/issues/56851)) ([fe1df8d](https://github.com/metabase/metabase/commit/fe1df8df8839eca275dd1dd2c02d1a8872278643))
+* **sdk:** expose the title prop in StaticQuestion ([#61001](https://github.com/metabase/metabase/issues/61001)) ([206f7ea](https://github.com/metabase/metabase/commit/206f7eaccbba6278a050f386382060c1ca177e51))
+* **sdk:** Reduce bundle size by avoiding the usage of `jsrsasign` dependency ([#58009](https://github.com/metabase/metabase/issues/58009)) ([9fcd2fe](https://github.com/metabase/metabase/commit/9fcd2fef3412c13d19d698154a86cb315e757288))
+* **sdk:** remove footer from dashboards ([#57779](https://github.com/metabase/metabase/issues/57779)) ([7fff64e](https://github.com/metabase/metabase/commit/7fff64eaf730631282bc7727a13b53ee5a5a6491))
+* **sdk:** remove question and metric from entity type filters in the sdk's data picker ([#58339](https://github.com/metabase/metabase/issues/58339)) ([608bb8c](https://github.com/metabase/metabase/commit/608bb8c1c46a39ac50dae3fe80bd00496c4755e0))
+* **sdk:** theme-dependent default question toolbar colors ([#57747](https://github.com/metabase/metabase/issues/57747)) ([d52a4e3](https://github.com/metabase/metabase/commit/d52a4e35da9765cbc4218c4fe9091df1df4daba0))
+* **sdk:** use entity ids directly in questions and dashboards ([#60555](https://github.com/metabase/metabase/issues/60555)) ([9258906](https://github.com/metabase/metabase/commit/92589063d615280be84dd4f1fe4dd5df981143a9))
+* **sdk:** Use public types for Dashboard/Collection/User and other entities ([#56875](https://github.com/metabase/metabase/issues/56875)) ([9bb5e3e](https://github.com/metabase/metabase/commit/9bb5e3ec502f6a2bb80ad0be0c01124668abf387))
+* **sdk:** warn when using dev instance and change banner design ([#57746](https://github.com/metabase/metabase/issues/57746)) ([32b3f46](https://github.com/metabase/metabase/commit/32b3f46331b4fbb23c8aebd8cd887297be5a02b4))
+
+
+
 ## [0.55.5-metabot](https://github.com/metabase/metabase/compare/embedding-sdk-0.55.4-metabot...embedding-sdk-0.55.5-metabot) (2025-05-07)
 
 
