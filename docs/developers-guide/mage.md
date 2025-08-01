@@ -4,7 +4,7 @@ Run `./bin/mage` to list your tasks. All of them support `-h` to learn more and 
 
 All tasks support a `-h` option and will print their usage info.
 
-``` shell
+```shell
 $ ./bin/mage
    ███╗   ███╗ █████╗  ██████╗ ███████╗
    ████╗ ████║██╔══██╗██╔════╝ ██╔════╝

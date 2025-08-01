@@ -149,4 +149,3 @@ WHERE
 If you pass a value to the variable, the `WHERE` clause runs, including the comment syntax that comments out the default `CURRENT_DATE` function.
 
 Note that the hash (`--`) used to comment the text might need to be replaced by the comment syntax specific to the database you're using.
-
