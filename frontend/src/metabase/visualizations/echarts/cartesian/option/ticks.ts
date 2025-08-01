@@ -1,6 +1,7 @@
 import type { Dayjs } from "dayjs";
 import dayjs from "dayjs";
 
+import { shouldPinInterval } from "metabase/visualizations/echarts/cartesian/model/util";
 import type { ContinuousDomain } from "metabase/visualizations/shared/types/scale";
 
 import type {
@@ -51,6 +52,7 @@ export const getTicksOptions = (
   ];
   const paddedMin = dayjs(xDomainPadded[0]);
   const paddedMax = dayjs(xDomainPadded[1]);
+  const timeRangeMs = xDomain[1] - xDomain[0];
 
   // Compute ticks interval based on the X-axis range, original interval, and the chart width.
   const computedInterval = computeTimeseriesTicksInterval(
@@ -102,6 +104,16 @@ export const getTicksOptions = (
       count: 1,
       unit: effectiveTicksUnit,
     });
+  }
+
+  if (
+    interval.unit === "month" &&
+    interval.count === 1 &&
+    shouldPinInterval(interval, timeRangeMs, chartWidth, xAxisModel.formatter)
+  ) {
+    const dur = getTimeSeriesIntervalDuration(interval);
+    minInterval = dur;
+    maxInterval = dur;
   }
 
   if (!maxInterval) {
