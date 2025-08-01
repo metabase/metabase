@@ -64,9 +64,10 @@
   "Delete the target table of a transform and sync it from the app db."
   [{:keys [id target source], :as _transform}]
   (when target
-    (let [database-id (-> source :query :database)
+    (let [target (update target :type keyword)
+          database-id (-> source :query :database)
           {driver :engine :as database} (t2/select-one :model/Database database-id)]
-      (driver/drop-table! driver database-id (qualified-table-name driver target))
+      (driver/drop-transform-target! driver database target)
       (log/info "Deactivating  target " (pr-str target) "for transform" id)
       (deactivate-table! database target))))
 
