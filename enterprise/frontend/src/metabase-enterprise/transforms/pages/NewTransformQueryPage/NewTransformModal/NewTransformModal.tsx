@@ -15,7 +15,7 @@ import {
   FormTextInput,
 } from "metabase/forms";
 import * as Errors from "metabase/lib/errors";
-import { Button, Group, Radio, Stack } from "metabase/ui";
+import { Button, Group, Modal, Radio, Stack } from "metabase/ui";
 import { useCreateTransformMutation } from "metabase-enterprise/api";
 import type {
   CreateTransformRequest,
@@ -24,6 +24,24 @@ import type {
   TransformExecutionTrigger,
   TransformTargetType,
 } from "metabase-types/api";
+
+type NewTransformModalProps = {
+  query: DatasetQuery;
+  onSave: (transform: Transform) => void;
+  onCancel: () => void;
+};
+
+export function NewTransformModal({
+  query,
+  onSave,
+  onCancel,
+}: NewTransformModalProps) {
+  return (
+    <Modal title={t`New transform`} opened padding="xl" onClose={onCancel}>
+      <NewTransformForm query={query} onSave={onSave} onCancel={onCancel} />
+    </Modal>
+  );
+}
 
 type NewTransformFormProps = {
   query: DatasetQuery;
@@ -45,11 +63,7 @@ const NEW_TRANSFORM_SCHEMA = Yup.object({
   executionTrigger: Yup.string().oneOf(["none", "global-schedule"]),
 });
 
-export function NewTransformForm({
-  query,
-  onSave,
-  onCancel,
-}: NewTransformFormProps) {
+function NewTransformForm({ query, onSave, onCancel }: NewTransformFormProps) {
   const { database: databaseId } = query;
   const {
     data: schemas = [],

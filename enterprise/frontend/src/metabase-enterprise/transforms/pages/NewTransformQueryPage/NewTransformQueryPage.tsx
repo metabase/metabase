@@ -1,13 +1,11 @@
 import { useDisclosure } from "@mantine/hooks";
 import { useState } from "react";
 import { push } from "react-router-redux";
-import { t } from "ttag";
 
 import { skipToken, useGetCardQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import { Modal } from "metabase/ui";
 import { TransformQueryEditor } from "metabase-enterprise/transforms/components/TransformQueryEditor";
 import {
   getOverviewPageUrl,
@@ -16,7 +14,7 @@ import {
 import Question from "metabase-lib/v1/Question";
 import type { Card, CardId, DatasetQuery, Transform } from "metabase-types/api";
 
-import { NewTransformForm } from "./NewTransformForm";
+import { NewTransformModal } from "./NewTransformModal";
 
 type NewTransformQueryPageParams = {
   type?: string;
@@ -79,18 +77,11 @@ function NewTransformPageBody({ initialQuery }: NewTransformPageBodyProps) {
         onCancel={handleCancelClick}
       />
       {isModalOpened && (
-        <Modal
-          title={t`New transform`}
-          opened={isModalOpened}
-          padding="xl"
-          onClose={closeModal}
-        >
-          <NewTransformForm
-            query={query}
-            onSave={handleSave}
-            onCancel={closeModal}
-          />
-        </Modal>
+        <NewTransformModal
+          query={query}
+          onSave={handleSave}
+          onCancel={closeModal}
+        />
       )}
     </>
   );
