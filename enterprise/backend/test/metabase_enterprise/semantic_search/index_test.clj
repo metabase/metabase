@@ -4,15 +4,11 @@
    [clojure.test :refer :all]
    [metabase-enterprise.semantic-search.index :as semantic.index]
    [metabase-enterprise.semantic-search.test-util :as semantic.tu]
-<<<<<<< HEAD
+   [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
+   [metabase.models.interface :as mi]
    [metabase.test :as mt]
    [metabase.util :as u]))
-=======
-   [metabase.api.common :as api]
-   [metabase.models.interface :as mi]
-   [metabase.test :as mt]))
->>>>>>> nm-semantic-search-in-metabase
 
 (use-fixtures :once #'semantic.tu/once-fixture)
 
