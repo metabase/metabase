@@ -12,3 +12,9 @@
   {:work_type mi/transform-keyword
    :status mi/transform-keyword
    :run_method mi/transform-keyword})
+
+(mi/define-simple-hydration-method add-user-permissions
+  :worker-runs
+  "Add worker-runs for a transform or other work. Must have :id field."
+  [work]
+  (t2/select :model/WorkerRun :work_id (:id work) {:order-by [[:start_time :desc] [:end_time :desc]]}))

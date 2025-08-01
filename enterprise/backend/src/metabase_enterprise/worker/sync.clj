@@ -27,6 +27,8 @@
 
 (comment
 
+  (t2/hydrate (t2/select-one :model/Transform 1) :worker-runs)
+
   (reduce conj
           []
           (t2/reducible-select :model/WorkerRun :is_local false :status :started))
