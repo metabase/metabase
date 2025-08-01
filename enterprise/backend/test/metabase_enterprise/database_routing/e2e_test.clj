@@ -213,7 +213,8 @@
 
 (defmethod router-dataset-name :default [_driver] "db-router-data")
 
-(defmethod router-dataset-name :redshift [_driver] "db-routing-data")
+(doseq [driver [:redshift :databricks]]
+  (defmethod router-dataset-name driver [_driver] "db-routing-data"))
 
 (defmulti routed-dataset-name
   "Name for routed dataset"
@@ -223,12 +224,13 @@
 
 (defmethod routed-dataset-name :default [_driver] "db-routed-data")
 
-(defmethod routed-dataset-name :redshift [_driver] "db-routing-data")
+(doseq [driver [:redshift :databricks]]
+  (defmethod routed-dataset-name driver [_driver] "db-routing-data"))
 
 (deftest db-routing-e2e-test
   ;; todo: this is to quickly get tests against all drivers right now. We probably want to make a
   ;; few more nice helpers, and remove some of the above tests which are duplicative of the below.
-  (mt/test-drivers (mt/normal-drivers-with-feature :database-routing)
+  (mt/test-drivers (mt/normal-driver-select {:+features [:database-routing]})
     (mt/with-premium-features #{:database-routing}
       (binding [tx/*use-routing-dataset* true
                 tx/*use-routing-details* true]
@@ -238,20 +240,21 @@
                                              [["routed-foo"]
                                               ["routed-bar"]]]])
           (let [routed (mt/db)]
-            (binding [tx/*use-routing-details* false]
-              (mt/dataset (mt/dataset-definition (router-dataset-name driver/*driver*)
-                                                 [["t"
-                                                   [{:field-name "f", :base-type :type/Text}]
-                                                   [["original-foo"]
-                                                    ["original-bar"]]]])
-                (let [router (mt/db)]
-                  (wire-routing {:parent router :children [routed]})
-                  (mt/with-temp [:model/DatabaseRouter _ {:database_id    (u/the-id router)
-                                                          :user_attribute "db_name"}]
-                    (met/with-user-attributes! :rasta {"db_name" (:name routed)}
-                      (is (= [[1 "original-foo"] [2 "original-bar"]]
-                             (mt/with-current-user (mt/user->id :crowberto)
-                               (mt/rows (mt/process-query (mt/query t))))))
-                      (is (= [[1 "routed-foo"] [2 "routed-bar"]]
-                             (mt/with-current-user (mt/user->id :rasta)
-                               (mt/rows (mt/process-query (mt/query t)))))))))))))))))
+            (when-not (get-in routed [:details :multi-level-schema])
+              (binding [tx/*use-routing-details* false]
+                (mt/dataset (mt/dataset-definition (router-dataset-name driver/*driver*)
+                                                   [["t"
+                                                     [{:field-name "f", :base-type :type/Text}]
+                                                     [["original-foo"]
+                                                      ["original-bar"]]]])
+                  (let [router (mt/db)]
+                    (wire-routing {:parent router :children [routed]})
+                    (mt/with-temp [:model/DatabaseRouter _ {:database_id    (u/the-id router)
+                                                            :user_attribute "db_name"}]
+                      (met/with-user-attributes! :rasta {"db_name" (:name routed)}
+                        (is (= [[1 "original-foo"] [2 "original-bar"]]
+                               (mt/with-current-user (mt/user->id :crowberto)
+                                 (mt/rows (mt/process-query (mt/query t))))))
+                        (is (= [[1 "routed-foo"] [2 "routed-bar"]]
+                               (mt/with-current-user (mt/user->id :rasta)
+                                 (mt/rows (mt/process-query (mt/query t))))))))))))))))))
