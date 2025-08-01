@@ -19,7 +19,6 @@ interface Props {
 }
 
 export const TableBreadcrumbs = ({
-  className,
   hideTableName,
   tableId,
 }: Props) => {

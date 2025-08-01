@@ -3,5 +3,7 @@
 }
 
 .breadcrumb {
-  overflow: hidden;
+  &:hover {
+    color: #509ee3 !important;
+  }
 }

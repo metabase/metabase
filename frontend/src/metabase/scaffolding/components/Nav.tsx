@@ -35,9 +35,9 @@ export const Nav = ({ children, rowId, rowName, table }: Props) => {
 
             <Group
               align="flex-end"
-              component={Link}
+              // component={Link}
               gap="sm"
-              to={`/table/${table.id}/detail/${rowId}`}
+              // to={`/table/${table.id}/detail/${rowId}`}
               style={{
                 fontSize: 20,
               }}
