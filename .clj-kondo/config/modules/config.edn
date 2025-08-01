@@ -48,14 +48,18 @@
  {actions
   {:team "Workflows"
    :api  #{metabase.actions.api
+           metabase.actions.args
            metabase.actions.core
-           metabase.actions.init}
+           metabase.actions.init
+           metabase.actions.types}
    :uses #{analytics
            api
            collections
            driver
+           events
            legacy-mbql
            lib
+           lib-be
            model-persistence
            models
            permissions
@@ -587,6 +591,7 @@
           metabase.lib.metadata.result-metadata
           metabase.lib.normalize
           metabase.lib.options
+          metabase.lib.parse
           metabase.lib.query
           metabase.lib.schema
           metabase.lib.schema.actions
@@ -1436,6 +1441,19 @@
            util
            warehouse-schema}}
 
+  enterprise/action-v2
+  {:team "Workflows"
+   :api  #{metabase-enterprise.action-v2.api
+           metabase-enterprise.action-v2.core
+           metabase-enterprise.action-v2.init}
+   :uses #{actions
+           api
+           driver
+           lib
+           query-processor
+           util
+           warehouse-schema}}
+
   enterprise/advanced-config
   {:team "Admin Webapp"
    :api  #{metabase-enterprise.advanced-config.api.logs
@@ -1837,11 +1855,13 @@
    :api  #{metabase-enterprise.transforms.api
            metabase-enterprise.transforms.init}
    :uses #{api
+           config
            driver
            events
            models
            permissions
            query-processor
+           settings
            sync
            task
            task-history

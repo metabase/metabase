@@ -145,12 +145,8 @@ export const SettingsJWTForm = () => {
                   />
                 </Stack>
               </FormSection>
-              <FormSection
-                title={"Group Schema"}
-                data-testid="jwt-group-schema"
-              >
+              <FormSection title={"Group Sync"} data-testid="jwt-group-schema">
                 <GroupMappingsWidget
-                  isFormik
                   setting={{ key: "jwt-group-sync" }}
                   onChange={handleSubmit}
                   settingValues={settingValues}

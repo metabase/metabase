@@ -77,7 +77,8 @@
                               :expressions/float        true
                               :expressions/date         true
                               :database-routing         true
-                              :transforms/table         true}]
+                              :transforms/table         true
+                              :transforms/view          true}]
   (defmethod driver/database-supports? [:postgres feature] [_driver _feature _db] supported?))
 
 (defmethod driver/database-supports? [:postgres :nested-field-columns]
@@ -87,6 +88,7 @@
 ;; Features that are supported by postgres only
 (doseq [feature [:actions
                  :actions/custom
+                 :actions/data-editing
                  :table-privileges
                  ;; Index sync is turned off across the application as it is not used ATM.
                  #_:index-info

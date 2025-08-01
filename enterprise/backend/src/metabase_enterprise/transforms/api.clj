@@ -23,9 +23,12 @@
 
 (mr/def ::transform-target
   [:map
-   [:type [:= "table"]]
+   [:type [:enum "table" "view"]]
    [:schema {:optional true} :string]
    [:name :string]])
+
+(mr/def ::execution-trigger
+  [:enum "none" "global-schedule"])
 
 (comment
   ;; Examples
@@ -68,22 +71,22 @@
             [:description {:optional true} [:maybe :string]]
             [:source ::transform-source]
             [:target ::transform-target]
-            [:schedule {:optional true} [:maybe :string]]]]
+            [:execution_trigger {:optional true} ::execution-trigger]]]
   (api/check-superuser)
   (check-database-feature body)
   (when (transforms.util/target-table-exists? body)
     (api/throw-403))
   (t2/insert-returning-instance!
-   :model/Transform (select-keys body [:name :description :source :target :schedule])))
+   :model/Transform (select-keys body [:name :description :source :target :execution_trigger])))
 
 (api.macros/defendpoint :get "/:id"
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
   (log/info "get transform" id)
   (api/check-superuser)
-  (let [transform (api/check-404 (t2/select-one :model/Transform id))
+  (let [{:keys [target] :as transform} (api/check-404 (t2/select-one :model/Transform id))
         database-id (source-database-id transform)]
-    (assoc transform :table (transforms.util/target-table database-id (:target transform)))))
+    (assoc transform :table (transforms.util/target-table database-id target))))
 
 (api.macros/defendpoint :put "/:id"
   [{:keys [id]} :- [:map
@@ -94,7 +97,7 @@
             [:description {:optional true} [:maybe :string]]
             [:source {:optional true} ::transform-source]
             [:target {:optional true} ::transform-target]
-            [:schedule {:optional true} [:maybe :string]]]]
+            [:execution_trigger {:optional true} ::execution-trigger]]]
   (log/info "put transform" id)
   (api/check-superuser)
   (let [old (t2/select-one :model/Transform id)
@@ -112,7 +115,6 @@
                     [:id ms/PositiveInt]]]
   (log/info "delete transform" id)
   (api/check-superuser)
-  (transforms.util/delete-live-target-table-by-id! id)
   (t2/delete! :model/Transform id)
   nil)
 
@@ -121,7 +123,7 @@
                     [:id ms/PositiveInt]]]
   (log/info "delete transform target table" id)
   (api/check-superuser)
-  (transforms.util/delete-live-target-table-by-id! id)
+  (transforms.util/delete-target-table-by-id! id)
   nil)
 
 (api.macros/defendpoint :post "/:id/execute"
@@ -129,8 +131,12 @@
                     [:id ms/PositiveInt]]]
   (log/info "execute transform" id)
   (api/check-superuser)
-  (let [transform (api/check-404 (t2/select-one :model/Transform id))]
-    (transforms.execute/start-transform! transform)
+  (let [transform (api/check-404 (t2/select-one :model/Transform id))
+        start-promise (promise)]
+    (future
+      (transforms.execute/execute-mbql-transform! transform {:start-promise start-promise}))
+    (when (instance? Throwable @start-promise)
+      (throw @start-promise))
     (-> (response/response {:message (deferred-tru "Transform execution started")})
         (assoc :status 202))))
 

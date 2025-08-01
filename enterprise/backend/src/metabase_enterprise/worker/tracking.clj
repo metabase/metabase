@@ -1,4 +1,4 @@
-(ns metabase-enterprise.transforms.tracking
+(ns metabase-enterprise.worker.tracking
   (:require
    [metabase.config.core :as config]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute])
@@ -33,28 +33,47 @@
       (.executeUpdate stmt sql))))
 
 (defn track-start!
-  [work-id work-type mb-source]
-  (first (first (run-query! :postgres (config/config-str :mb-worker-db)
-                            "INSERT INTO worker_runs (work_id, type, source, status) VALUES (?, ?, ?, ?) RETURNING run_id"
-                            [work-id work-type mb-source "running"]))))
+  [run-id mb-source]
+  (-> (run-update! :postgres (config/config-str :mb-worker-db)
+                   "
+INSERT INTO worker_runs (run_id, source, status)
+SELECT ?, ?, 'running'
+WHERE NOT EXISTS (
+    SELECT 1 FROM worker_runs WHERE run_id = ?
+);"
+
+                   [run-id mb-source run-id])
+      (= 1))) ;; new?
+
+(defn set-status!
+  ([run-id status]
+   (set-status! run-id status ""))
+  ([run-id status note]
+   (run-update! :postgres (config/config-str :mb-worker-db)
+                "UPDATE worker_runs
+                 SET status = ?, end_time = now(), note = ?
+                 WHERE run_id = ?"
+                [status note run-id])
+   :ok))
 
 (defn track-finish!
   [run-id]
-  (run-update! :postgres (config/config-str :mb-worker-db)
-               "UPDATE worker_runs SET status = ?, end_time = now() WHERE run_id = ?"
-               ["success" run-id]))
+  (set-status! run-id "success"))
 
 (defn track-error!
-  [run-id]
-  (run-update! :postgres (config/config-str :mb-worker-db)
-               "UPDATE worker_runs SET status = ?, end_time = now() WHERE run_id = ?"
-               ["error" run-id]))
+  [run-id msg]
+  (set-status! run-id "error" msg))
 
 (defn get-status
   [run-id mb-source]
-  (first (run-query! :postgres (config/config-str :mb-worker-db)
-                     "SELECT status FROM worker_runs WHERE run_id = ? AND source = ?"
-                     [run-id mb-source])))
+  (->> (run-query! :postgres (config/config-str :mb-worker-db)
+                   "SELECT run_id, status, start_time, end_time, note
+                      FROM worker_runs
+                      WHERE run_id = ? AND source = ?"
+                   [run-id mb-source])
+       first ;; row
+       (zipmap [:run-id :status :start-time :end-time :note])
+       not-empty))
 
 (comment
 
@@ -87,3 +106,14 @@
                    (.executeQuery stmt sql))
               rsmeta (.getMetaData rs)]
           (into [] (sql-jdbc.execute/reducible-rows driver rs rsmeta)))))))
+
+(comment
+
+  (alter-var-root #'environ.core/env assoc :mb-worker-db "jdbc:postgresql://localhost:5432/worker")
+
+  (def id (str (random-uuid)))
+  (track-start! id "mb-1")
+  (track-finish! id)
+  (track-error! id "oops")
+
+  (get-status id "mb-1"))

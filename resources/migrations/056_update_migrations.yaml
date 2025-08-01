@@ -285,6 +285,13 @@ databaseChangeLog:
                   constraints:
                     nullable: false
               - column:
+                  name: execution_trigger
+                  type: varchar(32)
+                  remarks: The type of automatic trigger (e.g., 'global-schedule') or 'none'
+                  defaultValue: none
+                  constraints:
+                    nullable:  false
+              - column:
                   name: execution_status
                   type: varchar(32)
                   remarks: The status of the transform's current or last execution
@@ -301,12 +308,6 @@ databaseChangeLog:
                   remarks: The timestamp of when the transform last ended
                   name: last_ended_at
                   type: ${timestamp_type}
-                  constraints:
-                    nullable: true
-              - column:
-                  name: live_target
-                  remarks: JSON of target this transform last successfully executed with
-                  type: ${text.type}
                   constraints:
                     nullable: true
 

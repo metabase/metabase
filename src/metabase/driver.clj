@@ -608,6 +608,9 @@
     ;; implement [[execute-write-query!]]
     :actions/custom
 
+    ;; Does the driver support editing data within database tables.
+    :actions/data-editing
+
     ;; Does changing the JVM timezone allow producing correct results? (See #27876 for details.)
     :test/jvm-timezone-setting
 
@@ -1109,8 +1112,21 @@
   drivers.
 
   Drivers that support any of the `:transforms/...` features must implement this method."
-  {:added "0.56.0", :arglists '([driver connection-details queries])}
+  {:added "0.57.0", :arglists '([driver connection-details queries])}
   dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmulti execute-transform!
+  "Executes a transform.
+
+  Drivers that support any of the `:transforms/...` features must implement this method for the appropriate transform
+  types."
+  {:added "0.57.0",
+   :arglists '([driver
+                {:keys [transform-type connection-details query output-table] :as _transform-details}
+                {:keys [overwrite?] :as _opts}])}
+  (fn [driver transform-details _opts]
+    [(dispatch-on-initialized-driver driver) (:transform-type transform-details)])
   :hierarchy #'hierarchy)
 
 (defmulti connection-details
@@ -1379,3 +1395,14 @@
   :hierarchy #'hierarchy)
 
 (defmethod table-known-to-not-exist? ::driver [_ _] false)
+
+(defmulti do-with-resilient-connection
+  "Execute function `f` within a context that may recover (on-demand) from connection failures.
+  `f` must be eager."
+  {:added "0.55.9" :arglists '([driver database f])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmethod do-with-resilient-connection
+  ::driver
+  [driver database f] (f driver database))

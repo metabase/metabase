@@ -270,9 +270,9 @@
       (log/error e "ERROR REMOVING ENCRYPTION.")
       (system-exit! 1))))
 
-(defn ^:command start-transform-worker
+(defn ^:command worker-mode
   []
-  (call-enterprise 'metabase-enterprise.transforms.server/start!))
+  (call-enterprise 'metabase-enterprise.worker.core/start!))
 
 (defn ^:command worker-migrations
   []
