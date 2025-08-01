@@ -22,7 +22,9 @@ console.warn = () => {};
 
 describe("InteractiveDashboard", () => {
   it("should allow users to click the dashcard title", async () => {
-    await setup();
+    await setup({
+      dashboardName: "Test dashboard",
+    });
 
     expect(screen.getByTestId("legend-label")).toHaveAttribute(
       "data-is-clickable",
@@ -32,7 +34,7 @@ describe("InteractiveDashboard", () => {
     await userEvent.click(screen.getByTestId("legend-label"));
 
     expect(
-      await screen.findByLabelText("Back to Dashboard"),
+      await screen.findByLabelText("Back to Test dashboard"),
     ).toBeInTheDocument();
     expect(screen.getByText("Filter")).toBeInTheDocument();
     expect(screen.getByText("Group")).toBeInTheDocument();
@@ -46,8 +48,12 @@ describe("InteractiveDashboard", () => {
       },
     });
 
-    expect(screen.getByLabelText("Download results")).toBeInTheDocument();
-    expect(screen.queryByLabelText("ellipsis icon")).not.toBeInTheDocument();
+    const ellipsisIcon = screen.queryByLabelText("ellipsis icon");
+    expect(ellipsisIcon).toBeInTheDocument();
+    await userEvent.click(ellipsisIcon!);
+    await waitFor(() => {
+      expect(screen.getByLabelText("Download results")).toBeInTheDocument();
+    });
   });
 
   it("should show no button in the dashcard when downloads are disabled", async () => {

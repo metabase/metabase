@@ -1,6 +1,6 @@
-import type { EditorState } from "@codemirror/state";
+import { EditorSelection, type EditorState } from "@codemirror/state";
 import { useDisclosure } from "@mantine/hooks";
-import { EditorSelection } from "@uiw/react-codemirror";
+import type { ViewUpdate } from "@uiw/react-codemirror";
 import cx from "classnames";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { useMount } from "react-use";
@@ -12,17 +12,18 @@ import {
   type CodeMirrorRef,
 } from "metabase/common/components/CodeMirror";
 import { useSelector } from "metabase/lib/redux";
-import { getMetadata } from "metabase/selectors/metadata";
-import { Button, Tooltip as ButtonTooltip, Flex, Icon } from "metabase/ui";
-import type * as Lib from "metabase-lib";
 import {
+  type DefinedClauseName,
   type ExpressionError,
   diagnoseAndCompile,
   format,
   getClauseDefinition,
-} from "metabase-lib/v1/expressions";
-import { tokenAtPos } from "metabase-lib/v1/expressions/complete/util";
-import { COMMA, GROUP } from "metabase-lib/v1/expressions/pratt";
+} from "metabase/querying/expressions";
+import { tokenAtPos } from "metabase/querying/expressions";
+import { COMMA, GROUP } from "metabase/querying/expressions/pratt";
+import { getMetadata } from "metabase/selectors/metadata";
+import { Button, Tooltip as ButtonTooltip, Flex, Icon } from "metabase/ui";
+import type * as Lib from "metabase-lib";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 
 import { FunctionBrowser } from "../FunctionBrowser";
@@ -37,6 +38,7 @@ import { Tooltip } from "./Tooltip";
 import { DEBOUNCE_VALIDATION_MS } from "./constants";
 import { useCustomTooltip } from "./custom-tooltip";
 import { useExtensions } from "./extensions";
+import { hasActiveSnippet, useInitialClause } from "./utils";
 
 type EditorProps = {
   id?: string;
@@ -51,6 +53,7 @@ type EditorProps = {
   error?: ExpressionError | Error | null;
   hasHeader?: boolean;
   onCloseEditor?: () => void;
+  initialExpressionClause?: DefinedClauseName | null;
 
   onChange: (
     clause: Lib.ExpressionClause | null,
@@ -76,6 +79,7 @@ export function Editor(props: EditorProps) {
     shortcuts,
     hasHeader,
     onCloseEditor,
+    initialExpressionClause,
   } = props;
 
   const ref = useRef<CodeMirrorRef>(null);
@@ -120,7 +124,6 @@ export function Editor(props: EditorProps) {
     query,
     stageIndex,
     availableColumns,
-    reportTimezone,
     metadata,
     extensions: [customTooltip],
   });
@@ -147,6 +150,15 @@ export function Editor(props: EditorProps) {
     );
   }, []);
 
+  const applyInitialSnippet = useInitialClause({
+    initialExpressionClause,
+  });
+
+  const [isSnippetActive, setIsSnippetActive] = useState(false);
+  const handleUpdate = useCallback((update: ViewUpdate) => {
+    setIsSnippetActive(hasActiveSnippet(update.state));
+  }, []);
+
   return (
     <>
       <LayoutMain className={cx(S.wrapper, { [S.formatting]: isFormatting })}>
@@ -165,13 +177,17 @@ export function Editor(props: EditorProps) {
           width="100%"
           indentWithTab={false}
           autoFocus
+          onCreateEditor={applyInitialSnippet}
+          onUpdate={handleUpdate}
           autoCorrect="off"
           tabIndex={0}
           onFormat={
-            error === null && isValidated ? formatExpression : undefined
+            error === null && isValidated && !isSnippetActive
+              ? formatExpression
+              : undefined
           }
         />
-        <Errors error={error} />
+        <Errors error={isSnippetActive ? null : error} />
 
         {source.trim() === "" && !isFormatting && error == null && (
           <Shortcuts shortcuts={shortcuts} className={S.shortcuts} />

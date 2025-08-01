@@ -168,7 +168,9 @@ describe("scenarios > embedding-sdk > popovers", () => {
 
     getSdkRoot().within(() => {
       H.editDashboard();
-      H.showDashcardVisualizerModalSettings(0);
+      H.showDashcardVisualizerModalSettings(0, {
+        isVisualizerCard: false,
+      });
 
       cy.findAllByTestId("color-selector-button").first().click();
 

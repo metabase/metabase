@@ -22,7 +22,6 @@ const setup = () => {
     <DataSelectorDatabasePicker
       databases={[database]}
       onChangeDatabase={jest.fn()}
-      onChangeSchema={jest.fn()}
     />,
   );
 };

@@ -107,7 +107,7 @@
 
 (mu/defn check-query-permissions*
   "Check that User with `user-id` has permissions to run `query`, or throw an exception."
-  [{database-id :database, {gtap-perms :gtaps} ::perms :as outer-query} :- [:map [:database ::lib.schema.id/database]]]
+  [{database-id :database, {gtap-perms :gtaps} :query-permissions/perms :as outer-query} :- [:map [:database ::lib.schema.id/database]]]
   (when *current-user-id*
     (log/tracef "Checking query permissions. Current user permissions = %s"
                 (pr-str (perms/permissions-for-user *current-user-id*)))
@@ -137,9 +137,7 @@
           ;; Check that we permissions for any source cards first, then check that we have requisite data permissions
           ;; Recursively check permissions for any source Cards
           (doseq [card-id source-card-ids]
-            (let [{query :dataset-query} (lib.metadata.protocols/card (qp.store/metadata-provider) card-id)]
-              (binding [*card-id* card-id]
-                (check-query-permissions* query))))
+            (query-perms/check-card-read-perms database-id card-id))
 
           ;; Check that we have the data permissions to run this card
           (query-perms/check-data-perms outer-query required-perms :throw-exceptions? true)

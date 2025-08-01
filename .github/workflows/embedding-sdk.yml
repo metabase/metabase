@@ -1,12 +1,7 @@
-name: Embedding SDK
+name: SDK
 
 on:
-  push:
-    branches:
-      - "master"
-      - "release-**"
-  pull_request:
-    types: [opened, synchronize, reopened]
+  workflow_call:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}
@@ -129,7 +124,7 @@ jobs:
         with:
           remove-previous-comment: true
           add-new-comment: ${{ steps.docs-generation.outcome == 'failure' && contains(steps.docs-generation.outputs.output, 'not included in the documentation') }}
-          message: "📝 Some exported from `@metabase/embedding-sdk-react` types reference other types that are not exported, i.e. internal types.<br><br>The internal type reference breaks API documentation generation for the SDK and also may unexpectedly increase the output size of the type declaration file.<br><br>Please check the CI logs to find the name of such type.<br><br>- If a type should be publicly available in the SDK, add a description to it or a TypeDoc annotation and export it from SDK.<br>- If a type is internal and should _not_ be publicly exposed, refactor types to prevent referencing other types that are not exported from SDK.<br><br>You can run `yarn embedding-sdk:docs:generate` locally to  verify that the issue has been resolved."
+          message: "📝 Some exported types from `@metabase/embedding-sdk-react` reference other types that are not exported, i.e. internal types.<br><br>The internal type reference breaks API documentation generation for the SDK and also may unexpectedly increase the output size of the type declaration file.<br><br>Please check the CI logs to find the name of such type.<br><br>- If a type should be publicly available in the SDK, add a description to it or a TypeDoc annotation and export it from SDK.<br>- If a type is internal and should _not_ be publicly exposed, refactor types to prevent referencing other types that are not exported from SDK.<br><br>You can run `yarn embedding-sdk:docs:generate` locally to  verify that the issue has been resolved."
           include-log: true
       - name: Comment on PR if 'Failed to resolve link' error happens
         uses: ./.github/actions/notify-pull-request
@@ -144,6 +139,7 @@ jobs:
 
   # See `Component e2e tests` in `enterprise/frontend/src/embedding-sdk/dev.md`
   sdk-e2e-tests:
+    name: "SDK e2e tests"
     uses: ./.github/workflows/e2e-component-tests-embedding-sdk.yml
     needs: [build]
     secrets: inherit
@@ -151,20 +147,23 @@ jobs:
       cached-embedding-sdk-dist-artifact-name: embedding-sdk-${{ github.event.pull_request.head.sha || github.sha }}
 
   e2e-component-tests-embedding-sdk-cross-version:
+    name: "[Backport only] SDK e2e cross version tests"
     # run on: every push on release branches, and every pr that targets a release branch
     if: ${{ startsWith(github.ref, 'refs/heads/release-x.') || (github.event_name == 'pull_request' && startsWith(github.base_ref, 'release-x.')) }}
     uses: ./.github/workflows/e2e-component-tests-embedding-sdk-cross-version.yml
     secrets: inherit
 
+  # Temporarily skipped because the cypress runner crashes
   # See `bin/backward-compatibility-test.js` for the documentation of this workflow.
-  cross-version-for-breaking-changes:
-    # run on: every pr that targets a release branch, it does NOT run for pr targeting master
-    if: ${{ github.event_name == 'pull_request' && startsWith(github.base_ref, 'release-x.') }}
-    uses: ./.github/workflows/e2e-cross-version-for-breaking-changes.yml
-    secrets: inherit
-    with:
-      fe-ref: ${{ github.base_ref }}
-      be-ref: ${{ github.head_ref }}
+  # cross-version-for-breaking-changes:
+  # name: "[NOT REQUIRED - Experimental - Backport only] detect breaking changes with cross versions tests"
+  #   # run on: every pr that targets a release branch, it does NOT run for pr targeting master
+  #   if: ${{ github.event_name == 'pull_request' && startsWith(github.base_ref, 'release-x.') }}
+  #   uses: ./.github/workflows/e2e-cross-version-for-breaking-changes.yml
+  #   secrets: inherit
+  #   with:
+  #     fe-ref: ${{ github.base_ref }}
+  #     be-ref: ${{ github.head_ref }}
 
   embedding-sdk-tests-result:
     needs:

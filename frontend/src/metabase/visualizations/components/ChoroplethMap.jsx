@@ -12,10 +12,10 @@ import { getMetabaseInstanceUrl } from "embedding-sdk/store/selectors";
 import Link from "metabase/common/components/Link";
 import LoadingSpinner from "metabase/common/components/LoadingSpinner";
 import CS from "metabase/css/core/index.css";
+import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { formatValue } from "metabase/lib/formatting";
 import { connect, useSelector } from "metabase/lib/redux";
 import MetabaseSettings from "metabase/lib/settings";
-import { getIsEmbeddingSdk } from "metabase/selectors/embed";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { Flex, Text } from "metabase/ui";
 import { MinColumnsError } from "metabase/visualizations/lib/errors";
@@ -110,7 +110,6 @@ function shouldUseCompactFormatting(groups, formatMetric) {
 }
 
 const mapStateToProps = (state) => ({
-  isSdk: getIsEmbeddingSdk(state),
   sdkMetabaseInstanceUrl: getMetabaseInstanceUrl(state),
 });
 
@@ -123,7 +122,7 @@ export function getMapUrl(details, props) {
     ? details.url
     : "api/geojson/" + props.settings["map.region"];
 
-  if (!props?.isSdk || !props?.sdkMetabaseInstanceUrl) {
+  if (!isEmbeddingSdk() || !props?.sdkMetabaseInstanceUrl) {
     return mapUrl;
   }
 

@@ -1,16 +1,11 @@
 (ns metabase.warehouse-schema.metadata-from-qp
   "Get metadata by running queries with the query processor."
   (:require
-   [medley.core :as m]
-   [metabase.lib.ident :as lib.ident]
    [metabase.query-processor :as qp]
    [metabase.query-processor.interface :as qp.i]
    [metabase.util :as u]
    [metabase.warehouse-schema.metadata-queries :as schema.metadata-queries]
    [toucan2.core :as t2]))
-
-(defn- add-breakout-idents-if-needed [{:keys [breakout] :as inner-query}]
-  (m/assoc-some inner-query :breakout-idents (lib.ident/indexed-idents breakout)))
 
 (defn table-query
   "Runs the `mbql-query` where the source table is `table-id` and returns the result.
@@ -27,22 +22,19 @@
        :database   (t2/select-one-fn :db_id :model/Table table-id)
        :query      (-> mbql-query
                        (assoc :source-table table-id)
-                       schema.metadata-queries/add-required-filters-if-needed
-                       add-breakout-idents-if-needed)
+                       schema.metadata-queries/add-required-filters-if-needed)
        :middleware {:disable-remaps? true}}
       rff))))
 
 (defn field-distinct-count
   "Return the distinct count of `field`."
   [field & [limit]]
-  (-> (table-query (:table_id field) {:aggregation        [[:distinct [:field (u/the-id field) nil]]]
-                                      :aggregation-idents (lib.ident/indexed-idents 1)
-                                      :limit              limit})
+  (-> (table-query (:table_id field) {:aggregation [[:distinct [:field (u/the-id field) nil]]]
+                                      :limit       limit})
       :data :rows first first int))
 
 (defn field-count
   "Return the count of `field`."
   [field]
-  (-> (table-query (:table_id field) {:aggregation        [[:count [:field (u/the-id field) nil]]]
-                                      :aggregation-idents (lib.ident/indexed-idents 1)})
+  (-> (table-query (:table_id field) {:aggregation [[:count [:field (u/the-id field) nil]]]})
       :data :rows first first int))

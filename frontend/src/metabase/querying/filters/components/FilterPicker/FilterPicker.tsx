@@ -1,8 +1,11 @@
 import { useDisclosure } from "@mantine/hooks";
 import { useCallback, useLayoutEffect, useMemo, useState } from "react";
 
-import { ExpressionWidget } from "metabase/query_builder/components/expressions/ExpressionWidget";
-import { ExpressionWidgetHeader } from "metabase/query_builder/components/expressions/ExpressionWidgetHeader";
+import {
+  ExpressionWidget,
+  ExpressionWidgetHeader,
+} from "metabase/query_builder/components/expressions";
+import type { DefinedClauseName } from "metabase/querying/expressions";
 import * as Lib from "metabase-lib";
 
 import {
@@ -10,7 +13,11 @@ import {
   type FilterColumnPickerProps,
 } from "./FilterColumnPicker";
 import { FilterPickerBody } from "./FilterPickerBody";
-import type { ColumnListItem, SegmentListItem } from "./types";
+import type {
+  ColumnListItem,
+  ExpressionClauseItem,
+  SegmentListItem,
+} from "./types";
 
 export type FilterPickerProps = {
   className?: string;
@@ -45,6 +52,8 @@ export function FilterPicker({
     getInitialColumn(query, stageIndex, filter),
   );
   const stageIndexes = useMemo(() => [stageIndex], [stageIndex]);
+  const [initialExpressionClause, setInitialExpressionClause] =
+    useState<DefinedClauseName | null>(null);
   const availableColumns = useMemo(
     () => Lib.expressionableColumns(query, stageIndex),
     [query, stageIndex],
@@ -80,10 +89,17 @@ export function FilterPicker({
     handleChange(item.segment);
   };
 
+  const handleExpressionSelect = (clause?: DefinedClauseName) => {
+    setInitialExpressionClause(clause ?? null);
+    openExpressionEditor();
+  };
+
   const checkItemIsSelected = useCallback(
-    (item: ColumnListItem | SegmentListItem) => {
+    (item: ColumnListItem | SegmentListItem | ExpressionClauseItem) => {
       return Boolean(
-        filterIndex != null && item.filterPositions?.includes?.(filterIndex),
+        filterIndex != null &&
+          "filterPositions" in item &&
+          item.filterPositions?.includes?.(filterIndex),
       );
     },
     [filterIndex],
@@ -108,6 +124,7 @@ export function FilterPicker({
         header={<ExpressionWidgetHeader onBack={closeExpressionEditor} />}
         onChangeClause={handleClauseChange}
         onClose={closeExpressionEditor}
+        initialExpressionClause={initialExpressionClause}
       />
     );
   }
@@ -121,7 +138,7 @@ export function FilterPicker({
         checkItemIsSelected={checkItemIsSelected}
         onColumnSelect={handleColumnSelect}
         onSegmentSelect={handleSegmentSelect}
-        onExpressionSelect={openExpressionEditor}
+        onExpressionSelect={handleExpressionSelect}
         withColumnGroupIcon={withColumnGroupIcon}
         withColumnItemIcon={withColumnItemIcon}
         withCustomExpression={withCustomExpression}

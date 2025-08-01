@@ -57,13 +57,11 @@ import {
   getIsLiveResizable,
   getIsLoadingComplete,
   getIsNativeEditorOpen,
-  getIsObjectDetail,
   getIsResultDirty,
   getIsRunnable,
   getIsTimeseries,
   getLastRunCard,
   getModalSnippet,
-  getMode,
   getNativeEditorCursorOffset,
   getNativeEditorSelectedText,
   getOriginalCard,
@@ -88,6 +86,7 @@ import {
   getVisualizationSettings,
   isResultsMetadataDirty,
 } from "../selectors";
+import { getIsObjectDetail, getMode } from "../selectors/mode";
 import { isNavigationAllowed } from "../utils";
 
 import { useCreateQuestion } from "./use-create-question";
@@ -238,6 +237,7 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
     allLoaded,
     showTimelinesForCollection,
     card,
+    isAdmin,
     isLoadingComplete,
     closeQB,
     route,
@@ -253,6 +253,7 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
     (series: Series) => {
       const isNonTable = series[0].card.display !== "table";
       if (
+        isAdmin &&
         !didFirstNonTableChartGenerated &&
         !didTrackFirstNonTableChartGeneratedRef.current &&
         isNonTable
@@ -261,7 +262,12 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
         didTrackFirstNonTableChartGeneratedRef.current = true;
       }
     },
-    [card, didFirstNonTableChartGenerated, setDidFirstNonTableChartRender],
+    [
+      isAdmin,
+      card,
+      didFirstNonTableChartGenerated,
+      setDidFirstNonTableChartRender,
+    ],
   );
 
   const forceUpdate = useForceUpdate();

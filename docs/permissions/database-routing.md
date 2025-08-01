@@ -11,13 +11,14 @@ With database routing, an admin can build a question once using one database, an
 
 Database routing is useful for:
 
-- Managing embedding setups where each customer has their own database with identical schemas.
+- Managing interactive embedding setups where each customer has their own database with identical schemas.
 - Switching between dev and prod data warehouses.
 - Changing the target data warehouse for certain teams.
 - Managing separate connections to the same data warehouse, with each connection having separate privileges. This connection management is akin to [connection impersonation](./impersonation.md) for databases that prevent the same connection from changing roles.
 
 ## Databases that support database routing
 
+- [BigQuery](../databases/connections/bigquery.md)
 - [Druid](../databases/connections/druid.md)
 - [MongoDB](../databases/connections/mongodb.md)
 - [MariaDB](../databases/connections/mariadb.md)

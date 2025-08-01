@@ -2,7 +2,6 @@
   "There are more e2e tests in [[metabase.queries.api.card-test]]."
   (:require
    [clojure.test :refer :all]
-   [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.models.interface :as mi]
    [metabase.permissions.models.data-permissions :as data-perms]
@@ -232,18 +231,16 @@
                                        :entity_id       entity-id
                                        :result_metadata [{:name         "NAME"
                                                           :display_name "Name"
-                                                          :ident        (lib/native-ident "NAME" entity-id)
                                                           :base_type    :type/Text}]}]
         (mt/with-metadata-provider (mt/id)
           (run-query-for-card (u/the-id card))
           (is (= [{:name         "NAME"
                    :display_name "Name"
-                   :ident        (lib/native-ident "NAME" entity-id)
                    :base_type    :type/Text}]
                  (qp.store/miscellaneous-value [::qp.results-metadata/card-stored-metadata]))))))))
 
 ;;; adapted from [[metabase.queries.api.card-test/model-card-test-2]]
-(deftest preserve-model-metadata-test
+(deftest ^:parallel preserve-model-metadata-test
   (testing "Cards preserve their edited metadata"
     (letfn [(base-type->semantic-type [base-type]
               (condp #(isa? %2 %1) base-type

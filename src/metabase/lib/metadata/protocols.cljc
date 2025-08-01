@@ -87,7 +87,7 @@
 (mr/def ::metadata-type-excluding-database
   "Database metadata is stored separately/in a special way. These are the types of metadata that are stored with the
   other non-Database methods."
-  [:enum :metadata/table :metadata/column :metadata/card :metadata/segment])
+  [:enum :metadata/table :metadata/column :metadata/card :metadata/segment :metadata/native-query-snippet])
 
 (mr/def ::metadata
   [:map
@@ -122,6 +122,12 @@
    card-id           :- ::lib.schema.id/card]
   (metadata metadata-provider :metadata/card card-id))
 
+(mu/defn native-query-snippet :- [:maybe ::lib.schema.metadata/native-query-snippet]
+  "Get metadata for a NativeQuerySnippet with `snippet-id` if it can be found."
+  [metadata-provider :- ::metadata-provider
+   snippet-id        :- ::lib.schema.id/native-query-snippet]
+  (metadata metadata-provider :metadata/native-query-snippet snippet-id))
+
 (mu/defn segment :- [:maybe ::lib.schema.metadata/segment]
   "Return metadata for a particular captial-S Segment, i.e. something from the `segment` table in the application
   database. Metadata should match `:metabase.lib.schema.metadata/segment`."
@@ -155,7 +161,11 @@
   (cached-metadatas [cached-metadata-provider metadata-type metadata-ids]
     "Like [[metadatas]], but only return metadata that is already present in the cache.")
   (store-metadata! [cached-metadata-provider object]
-    "Store metadata of a specific type, e.g. `:metadata/table`."))
+    "Store metadata of a specific type, e.g. `:metadata/table`.")
+  (cached-value [cached-metadata-provider k not-found]
+    "Fetch a general cached value stored by [[cache-value!]] with the key `k`.")
+  (cache-value! [cached-metadata-provider k v]
+    "Store a general cached value `v` under the key `k`."))
 
 (defn cached-metadata-provider?
   "Whether `x` is a valid [[CachedMetadataProvider]]."

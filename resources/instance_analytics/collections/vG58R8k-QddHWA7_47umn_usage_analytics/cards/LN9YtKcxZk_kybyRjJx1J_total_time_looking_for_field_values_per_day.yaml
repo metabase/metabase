@@ -31,8 +31,6 @@ dataset_query:
           - v_tasks
           - duration_seconds
         - base-type: type/Float
-    aggregation-idents:
-      0: aggregation_LN9YtKcxZk_kybyRjJx1J@0__0
     breakout:
     - - field
       - - Internal Metabase Database
@@ -48,9 +46,6 @@ dataset_query:
         - name
       - base-type: type/Text
         join-alias: Databases - Database Qualified
-    breakout-idents:
-      0: breakout_LN9YtKcxZk_kybyRjJx1J@0__0
-      1: breakout_LN9YtKcxZk_kybyRjJx1J@0__1
     filter:
     - and
     - - =
@@ -153,8 +148,6 @@ result_metadata:
   ident: LMqtaUMyPJJMZqYYeSRbs
   name: name
   nfc_path: null
-  options:
-    metabase.query-processor.middleware.add-dimension-projections/new-field-dimension-id: 19
   parent_id: null
   position: 4
   semantic_type: type/Name

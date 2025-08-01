@@ -122,6 +122,11 @@
    (and (can-write? pk)
         (not (:is_attached_dwh (t2/select-one :model/Database :id pk))))))
 
+(mu/defmethod mi/visible-filter-clause :model/Database
+  [_model column-or-exp user-info permission-mapping]
+  [:in column-or-exp
+   (perms/visible-database-filter-select user-info permission-mapping)])
+
 (defn- infer-db-schedules
   "Infer database schedule settings based on its options."
   [{:keys [details is_full_sync is_on_demand cache_field_values_schedule metadata_sync_schedule] :as database}]
@@ -370,6 +375,14 @@
         (when (and (:database-enable-actions (or new-settings existing-settings))
                    (not (driver.u/supports? (or new-engine existing-engine) :actions database)))
           (throw (ex-info (trs "The database does not support actions.")
+                          {:status-code     400
+                           :existing-engine existing-engine
+                           :new-engine      new-engine})))
+        ;; This maintains a constraint that if a driver doesn't support data editing, it can never be enabled
+        ;; If we drop support for a driver, we'd need to add a migration to disable it for all databases
+        (when (and (:database-enable-table-editing (or new-settings existing-settings))
+                   (not (driver.u/supports? (or new-engine existing-engine) :actions/data-editing database)))
+          (throw (ex-info (trs "The database does not support table editing.")
                           {:status-code     400
                            :existing-engine existing-engine
                            :new-engine      new-engine})))))))

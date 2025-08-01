@@ -3,8 +3,8 @@ import { EditorView, tooltips } from "@codemirror/view";
 import { useMemo } from "react";
 
 import { isNotNull } from "metabase/lib/types";
+import { suggestions } from "metabase/querying/expressions";
 import type * as Lib from "metabase-lib";
-import { suggestions } from "metabase-lib/v1/expressions/complete";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 
 import S from "./Editor.module.css";
@@ -16,7 +16,6 @@ type Options = {
   stageIndex: number;
   availableColumns: Lib.ColumnMetadata[];
   metadata: Metadata;
-  reportTimezone?: string;
   extensions?: Extension[];
 };
 
@@ -39,7 +38,6 @@ export function useExtensions(options: Options): Extension[] {
     query,
     stageIndex,
     availableColumns,
-    reportTimezone,
     metadata,
     extensions: extra = [],
   } = options;
@@ -57,7 +55,6 @@ export function useExtensions(options: Options): Extension[] {
       suggestions({
         query,
         stageIndex,
-        reportTimezone,
         expressionMode,
         availableColumns,
         metadata,
@@ -77,7 +74,6 @@ export function useExtensions(options: Options): Extension[] {
     stageIndex,
     availableColumns,
     metadata,
-    reportTimezone,
     // eslint-disable-next-line react-hooks/exhaustive-deps
     ...extra,
   ]);

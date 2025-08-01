@@ -4,6 +4,7 @@ import {
   setupGdriveGetFolderEndpoint,
   setupGdrivePostFolderEndpoint,
   setupGdriveServiceAccountEndpoint,
+  setupTokenStatusEndpoint,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
@@ -32,6 +33,7 @@ interface SetupOpts {
   tokenFeatures?: Partial<TokenFeatures>;
   enableGoogleSheets?: boolean;
   status?: GdrivePayload["status"];
+  adminEmail?: string | null;
 }
 
 export const setup = ({
@@ -45,6 +47,7 @@ export const setup = ({
   tokenFeatures = {},
   enableGoogleSheets = false,
   status,
+  adminEmail = "admin@metabase.test",
 }: SetupOpts = {}) => {
   const user = {
     is_superuser: isAdmin,
@@ -78,6 +81,7 @@ export const setup = ({
       collections,
     }),
     settings: mockSettings({
+      "admin-email": adminEmail,
       "is-hosted?": isHosted,
       "show-google-sheets-integration": enableGoogleSheets,
       "token-features": createMockTokenFeatures(tokenFeatures),
@@ -86,12 +90,14 @@ export const setup = ({
         schema_name: "uploads",
         table_prefix: "uploaded_",
       },
+      "store-url": "https://store.metabase.com",
     }),
   });
 
   if (hasEnterprisePlugins) {
     setupEnterprisePlugins();
   }
+  setupTokenStatusEndpoint(true);
 
   setupDatabaseListEndpoint(databases);
 

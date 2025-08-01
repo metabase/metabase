@@ -11,7 +11,6 @@
    [metabase.lib.core :as lib]
    [metabase.lib.expression :as lib.expression]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.metadata.ident :as lib.metadata.ident]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.mocks-31769 :as lib.tu.mocks-31769]
    [metabase.query-processor :as qp]
@@ -38,7 +37,9 @@
                              VENUES.LONGITUDE   AS LONGITUDE
                              VENUES.PRICE       AS PRICE]
                  :from      [VENUES]
-                 :left-join [CATEGORIES AS __join
+                 :left-join [{:select [CATEGORIES.ID   AS ID
+                                       CATEGORIES.NAME AS NAME]
+                              :from [CATEGORIES]} AS __join
                              ON VENUES.CATEGORY_ID = 1]
                  :limit     [1048575]}
                (sql.qp-test-util/query->sql-map query)))))))
@@ -355,76 +356,98 @@
 ;; unambiguously refer to the underlying fields. The only way to reference them
 ;; properly is by the name they have in the source metadata.
 (deftest ^:parallel join-against-multiple-card-copies-test
-  (binding [;; TODO: This test uses `qp.preprocess/query->expected-cols`, which uses `annotate` middleware to compute
-            ;; the columns based on legacy MBQL. It does not support `:idents`, and this test won't pass until then.
-            lib.metadata.ident/*enforce-idents-present* false]
-    (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
-      (testing "join against multiple copies of a card (#34227)"
-        (mt/dataset test-data
-          (let [metadata-provider (qp.test-util/metadata-provider-with-cards-with-metadata-for-queries
-                                   [(mt/mbql-query orders
-                                      {:breakout [$user_id]
-                                       :aggregation [[:count]]})
-                                    (mt/mbql-query orders
-                                      {:breakout [$user_id]
-                                       :aggregation [[:count]]})
-                                    (mt/mbql-query people
-                                      {:fields [$id]
-                                       :joins [{:fields :all
-                                                :alias "ord1"
-                                                :source-table "card__1"
-                                                :condition [:= $id &ord1.orders.user_id]}
-                                               {:fields :all
-                                                :alias "ord2"
-                                                :source-table "card__2"
-                                                :condition [:= $id &ord2.orders.user_id]}]})])]
-            (qp.store/with-metadata-provider metadata-provider
-              (let [top-card-query (mt/mbql-query people
-                                     {:source-table "card__3"
-                                      :limit        3})
-                    [cid cuser-id ccount cuser-id2 ccount2] (->> top-card-query
-                                                                 qp.preprocess/query->expected-cols
-                                                                 (map :name))
-                    cid2 (str cid "_2")
-                    col-data-fn   (juxt            :id       :name)
-                    top-card-cols [[(mt/id :people :id)      cid]
-                                   [(mt/id :orders :user_id) cuser-id]
-                                   [nil                      ccount]
-                                   [(mt/id :orders :user_id) cuser-id2]
-                                   [nil                      ccount2]]]
-                (testing "sanity"
-                  (is (= top-card-cols
-                         (->> top-card-query
-                              qp/process-query
-                              mt/cols
-                              (map col-data-fn)))))
-
-                (when (= driver/*driver* :h2)
-                  (testing "suggested join condition references the FK by name"
-                    (let [query (lib/query metadata-provider (lib.metadata/table metadata-provider (mt/id :people)))
-                          card-meta (lib.metadata/card metadata-provider 3)]
-                      (is (=? [[:= {} [:field {} (mt/id :people :id)] [:field {} "ord1__USER_ID"]]]
-                              (lib/suggested-join-conditions query card-meta))))))
-
-                (testing "the query runs and returns correct data"
-                  (is (= {:columns [cid cid2 cuser-id ccount cuser-id2 ccount2]
-                          :rows    [[1  1    1        11     1         11]
-                                    [2  nil  nil      nil    nil       nil]
-                                    [3  3    3        10     3         10]]}
-                         (-> (mt/mbql-query people
-                               {:joins    [{:alias        "peeps"
-                                            :source-table "card__3"
-                                            :fields       :all
-                                            :condition    [:= $id [:field cuser-id2 {:base-type :type/Integer
-                                                                                     :join-alias "peeps"}]]}]
-                                :fields [$id]
-                                :order-by [[:asc $id]]
-                                :limit    3})
-                             qp/process-query
-                             mt/rows+column-names
-                             ;; Oracle is returning java.math.BigDecimal objects
-                             (update :rows #(mt/format-rows-by
-                                             [int int int int int int] %))))))))))))))
+  (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
+    (testing "join against multiple copies of a card (#34227)"
+      (let [metadata-provider (qp.test-util/metadata-provider-with-cards-with-metadata-for-queries
+                               [(mt/mbql-query orders
+                                  {:breakout [$user_id]
+                                   :aggregation [[:count]]})
+                                (mt/mbql-query orders
+                                  {:breakout [$user_id]
+                                   :aggregation [[:count]]})
+                                (mt/mbql-query people
+                                  {:fields [$id]
+                                   :joins [{:fields :all
+                                            :alias "ord1"
+                                            :source-table "card__1"
+                                            :condition [:= $id &ord1.orders.user_id]}
+                                           {:fields :all
+                                            :alias "ord2"
+                                            :source-table "card__2"
+                                            :condition [:= $id &ord2.orders.user_id]}]})])]
+        (qp.store/with-metadata-provider metadata-provider
+          (let [top-card-query (mt/mbql-query people
+                                 {:source-table "card__3"
+                                  :limit        3})
+                top-card-cols (qp.preprocess/query->expected-cols top-card-query)
+                ;; unfortunately to maintain backward compatibility with legacy viz settings we need to return
+                ;; deduplicated names here like `USER_ID_2` instead of desired column aliases like `order__USER_ID`.
+                ;;
+                ;; only verifying column names for H2 since other drivers can use different casing... this is all
+                ;; calculatedd by general QP/Lib stuff anyway so if it passes for H2 we can be satisfied that it works
+                ;; as intended for all drivers
+                _ (when (= driver/*driver* :h2)
+                    (testing "should return distinct field refs (QUE-1623)"
+                      (is (= [[:field (mt/id :people :id) nil]
+                              [:field "USER_ID"   {:base-type :type/Integer}]
+                              [:field "count"     {:base-type :type/Integer}]
+                              [:field "USER_ID_2" {:base-type :type/Integer}]
+                              [:field "count_2"   {:base-type :type/Integer}]]
+                             (map :field_ref top-card-cols)))))
+                _ (when (= driver/*driver* :h2)
+                    (is (= ["ID" "USER_ID" "count" "USER_ID_2" "count_2"]
+                           (map :name top-card-cols))))
+                [cid cuser-id ccount cuser-id2 ccount2] (map :name top-card-cols)
+                cid2 (str cid "_2")
+                col-data-fn   (juxt            :id       :name)
+                top-card-cols [[(mt/id :people :id)      cid]
+                               [(mt/id :orders :user_id) cuser-id]
+                               [nil                      ccount]
+                               [(mt/id :orders :user_id) cuser-id2]
+                               [nil                      ccount2]]]
+            (testing "sanity"
+              (is (= top-card-cols
+                     (->> top-card-query
+                          qp/process-query
+                          mt/cols
+                          (map col-data-fn)))))
+            (when (= driver/*driver* :h2)
+              (testing "suggested join condition references the FK by name"
+                (let [query (lib/query metadata-provider (lib.metadata/table metadata-provider (mt/id :people)))
+                      card-meta (lib.metadata/card metadata-provider 3)]
+                  (is (=? [[:= {} [:field {} (mt/id :people :id)] [:field {} "ord1__USER_ID"]]]
+                          (lib/suggested-join-conditions query card-meta))))))
+            (let [query (mt/mbql-query people
+                          {:joins    [{:alias        "peeps"
+                                       :source-table "card__3"
+                                       :fields       :all
+                                       :condition    [:= $id [:field cuser-id2 {:base-type :type/Integer
+                                                                                :join-alias "peeps"}]]}]
+                           :fields [$id]
+                           :order-by [[:asc $id]]
+                           :limit    3})]
+              (when (= driver/*driver* :h2)
+                (testing "should return distinct field refs (QUE-1623)"
+                  ;; the refs and names returned should use deduplicated names for consistency with legacy viz settings
+                  ;; that use them as keys
+                  (is (= [[:field (mt/id :people :id) nil]
+                          [:field (mt/id :people :id) {:join-alias "peeps"}]
+                          [:field "USER_ID"   {:base-type :type/Integer, :join-alias "peeps"}]
+                          [:field "count"     {:base-type :type/Integer, :join-alias "peeps"}]
+                          [:field "USER_ID_2" {:base-type :type/Integer, :join-alias "peeps"}]
+                          [:field "count_2"   {:base-type :type/Integer, :join-alias "peeps"}]]
+                         (map :field_ref (qp.preprocess/query->expected-cols query))))))
+              (testing "the query runs and returns correct data"
+                (is (= {:columns [cid cid2 cuser-id ccount cuser-id2 ccount2]
+                        :rows    [[1  1    1        11     1         11]
+                                  [2  nil  nil      nil    nil       nil]
+                                  [3  3    3        10     3         10]]}
+                       (-> query
+                           qp/process-query
+                           mt/rows+column-names
+                           ;; Oracle is returning java.math.BigDecimal objects
+                           (update :rows #(mt/format-rows-by
+                                           [int int int int int int] %)))))))))))))
 
 (deftest ^:parallel join-on-field-literal-test
   (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
@@ -784,7 +807,6 @@
                                        ;; yes, `!month.products.created_at` is a so-called 'bad reference' (should
                                        ;; include the `:join-alias`) but this test is also testing that we detect this
                                        ;; situation and handle it appropriately.
-                                       ;; See [[metabase.query-processor.middleware.fix-bad-references]]
                                        :condition    [:= !month.products.created_at !month.&Q2.products.created_at]
                                        :fields       :all}]
                        :order-by     [[:asc !month.&Products.products.created_at]]
@@ -1117,6 +1139,7 @@
                   ["2016-06-01T00:00:00Z" 2 "2016-06-01T00:00:00Z" 1]]
                  (mt/rows (qp/process-query query)))))))))
 
+;;; see also [[metabase.query-processor.preprocess-test/test-31769]]
 (deftest ^:parallel test-31769
   (testing "Make sure queries built with MLv2 that have source Cards with joins work correctly (#31769) (#33083)"
     (let [metadata-provider (lib.tu.mocks-31769/mock-metadata-provider
@@ -1126,9 +1149,15 @@
         (let [legacy-query (lib.convert/->legacy-MBQL
                             (lib.tu.mocks-31769/query metadata-provider))]
           (mt/with-native-query-testing-context legacy-query
-            (is (= [["Doohickey" 3976 "Doohickey"]
-                    ["Gadget"    4939 "Gadget"]]
-                   (mt/rows (qp/process-query legacy-query))))))))))
+            (let [results (qp/process-query legacy-query)]
+              (is (= [["Products → Category"                     "Products__CATEGORY"]
+                      ["Count"                                   "count"]
+                      ["Card 2 - Products → Category → Category" "Card 2 - Products → Category__CATEGORY"]]
+                     (map (juxt :display_name :lib/desired-column-alias)
+                          (mt/cols results))))
+              (is (= [["Doohickey" 3976 "Doohickey"]
+                      ["Gadget"    4939 "Gadget"]]
+                     (mt/rows results))))))))))
 
 (deftest ^:parallel test-13000
   (testing "Should join MBQL Saved Questions (#13000, #13649, #13744)"

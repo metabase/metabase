@@ -1,20 +1,19 @@
 import { useMemo, useState } from "react";
-import { t } from "ttag";
 
 import {
   type ColumnListItem,
   QueryColumnPicker,
-  type QueryColumnPickerSection,
 } from "metabase/common/components/QueryColumnPicker";
-import { ExpressionWidget } from "metabase/query_builder/components/expressions/ExpressionWidget";
-import { ExpressionWidgetHeader } from "metabase/query_builder/components/expressions/ExpressionWidgetHeader";
+import {
+  ExpressionWidget,
+  ExpressionWidgetHeader,
+} from "metabase/query_builder/components/expressions/ExpressionWidget";
+import type { DefinedClauseName } from "metabase/querying/expressions";
 import * as Lib from "metabase-lib";
 
 import { getJoinStrategyIcon } from "../../utils";
 
 import S from "./JoinColumnDropdown.module.css";
-
-const CUSTOM_EXPRESSION_SECTION_KEY = "custom-expression";
 
 type JoinColumnDropdownProps = {
   query: Lib.Query;
@@ -46,8 +45,10 @@ export function JoinColumnDropdown({
   const [isEditingExpression, setIsEditingExpression] = useState(() =>
     isEditingExpressionInitially(expression),
   );
+  const [initialExpressionClause, setInitialExpressionClause] =
+    useState<DefinedClauseName | null>(null);
 
-  const { columns, columnGroups, extraSections } = useMemo(() => {
+  const { columns, columnGroups } = useMemo(() => {
     const getColumns = isLhsPicker
       ? Lib.joinConditionLHSColumns
       : Lib.joinConditionRHSColumns;
@@ -59,26 +60,11 @@ export function JoinColumnDropdown({
       rhsExpression,
     );
     const columnGroups = Lib.groupColumns(columns);
-    const extraSections = getExtraSections(query, stageIndex, strategy);
-    return { columns, columnGroups, extraSections };
-  }, [
-    query,
-    stageIndex,
-    joinable,
-    strategy,
-    lhsExpression,
-    rhsExpression,
-    isLhsPicker,
-  ]);
+    return { columns, columnGroups };
+  }, [query, stageIndex, joinable, lhsExpression, rhsExpression, isLhsPicker]);
 
   const handleColumnSelect = (newColumn: Lib.ColumnMetadata) => {
     onChange(Lib.expressionClause(newColumn), Lib.temporalBucket(newColumn));
-  };
-
-  const handleSectionSelect = (newSection: QueryColumnPickerSection) => {
-    if (newSection.key === CUSTOM_EXPRESSION_SECTION_KEY) {
-      setIsEditingExpression(true);
-    }
   };
 
   const handleExpressionSelect = (
@@ -87,6 +73,11 @@ export function JoinColumnDropdown({
   ) => {
     onChange(newExpression, null);
     onClose();
+  };
+
+  const handleExpressionClauseSelect = (clause?: DefinedClauseName) => {
+    setInitialExpressionClause(clause ?? null);
+    setIsEditingExpression(true);
   };
 
   const handleExpressionEditorClose = () => {
@@ -104,43 +95,28 @@ export function JoinColumnDropdown({
         header={<ExpressionWidgetHeader onBack={handleExpressionEditorClose} />}
         onChangeClause={handleExpressionSelect}
         onClose={handleExpressionEditorClose}
+        initialExpressionClause={initialExpressionClause}
       />
     );
   }
 
   return (
     <QueryColumnPicker
-      className={S.JoinColumnPicker}
+      className={S.joinColumnPicker}
       query={query}
       stageIndex={stageIndex}
       columnGroups={columnGroups}
-      extraSections={extraSections}
       hasTemporalBucketing
       checkIsColumnSelected={isColumnSelected}
       onSelect={handleColumnSelect}
-      onSelectSection={handleSectionSelect}
+      onSelectExpression={handleExpressionClauseSelect}
+      expressionSectionIcon={getJoinStrategyIcon(
+        Lib.displayInfo(query, stageIndex, strategy),
+      )}
       onClose={onClose}
       data-testid={isLhsPicker ? "lhs-column-picker" : "rhs-column-picker"}
     />
   );
-}
-
-function getExtraSections(
-  query: Lib.Query,
-  stageIndex: number,
-  strategy: Lib.JoinStrategy,
-): QueryColumnPickerSection[] {
-  const strategyInfo = Lib.displayInfo(query, stageIndex, strategy);
-
-  return [
-    {
-      key: CUSTOM_EXPRESSION_SECTION_KEY,
-      type: "action",
-      name: t`Custom Expression`,
-      items: [],
-      icon: getJoinStrategyIcon(strategyInfo),
-    },
-  ];
 }
 
 function isColumnSelected(item: ColumnListItem) {

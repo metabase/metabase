@@ -694,6 +694,20 @@
         (is (= (assoc crowberto-personal-coll :is_personal true :effective_location "/")
                (:collection (mt/user-http-request :crowberto :get 200 (format "dashboard/%d" dash-id)))))))))
 
+(deftest dashboard-entity-id-test
+  (testing "Dashboard endpoints accept entity IDs"
+    (mt/with-temp [:model/Dashboard {dashboard-id :id dashboard-entity-id :entity_id}
+                   {:name "Test Dashboard"}]
+      (with-dashboards-in-readable-collection! [dashboard-id]
+
+        (testing "GET /api/dashboard/:id works with entity ID"
+          (is (=? {:name "Test Dashboard"}
+                  (dashboard-response (mt/user-http-request :rasta :get 200 (str "dashboard/" dashboard-entity-id))))))
+
+        (testing "GET /api/dashboard/:id/query_metadata works with entity ID"
+          (is (map? (mt/user-http-request :rasta :get 200
+                                          (str "dashboard/" dashboard-entity-id "/query_metadata")))))))))
+
 (deftest ^:parallel fetch-a-dashboard-with-param-linked-to-a-field-filter-that-is-not-existed
   (testing "when fetching a dashboard that has a param linked to a field filter that no longer exists, we shouldn't throw an error (#15494)"
     (mt/with-temp
@@ -3147,7 +3161,6 @@
                                                                                   {:query "SELECT category FROM products LIMIT 10;"})
                                                                  :type          :model}]
         (let [metadata (-> (:dataset_query native-card)
-                           (assoc-in [:info :card-entity-id] (:entity_id native-card))
                            qp/process-query :data :results_metadata :columns)]
           (is (seq metadata) "Did not get metadata")
           (t2/update! 'Card {:id model-id}
@@ -3894,7 +3907,7 @@
                                                                  :action_id action-id}]
             (let [execute-path (format "dashboard/%s/dashcard/%s/execute" dashboard-id dashcard-id)]
               (testing "Should be able to update"
-                (is (= {:rows-updated [1]}
+                (is (= {:rows-updated 1}
                        (mt/user-http-request :crowberto :post 200 execute-path
                                              {:parameters {"id" 1 "name" "Birds"}}))))
               (testing "Extra parameter should fail gracefully"
@@ -3921,7 +3934,7 @@
                                                                  :action_id action-id}]
             (let [execute-path (format "dashboard/%s/dashcard/%s/execute" dashboard-id dashcard-id)]
               (testing "Should be able to delete"
-                (is (= {:rows-deleted [1]}
+                (is (= {:rows-deleted 1}
                        (mt/user-http-request :crowberto :post 200 execute-path
                                              {:parameters {"id" 1}}))))
               (testing "Extra parameter should fail gracefully"
@@ -4140,7 +4153,7 @@
                 (let [values (mt/user-http-request :crowberto :get 200 execute-path :parameters (json/encode {:id 1}))]
                   (is (= {:id 1 :name "Red Medicine"} values))))
               (testing "Update should only allow name"
-                (is (= {:rows-updated [1]}
+                (is (= {:rows-updated 1}
                        (mt/user-http-request :crowberto :post 200 execute-path {:parameters {"id" 1 "name" "Blueberries"}})))
                 (is (partial= {:message "No destination parameter found for #{\"price\"}. Found: #{\"id\" \"name\"}"}
                               (mt/user-http-request :crowberto :post 400 execute-path {:parameters {"id" 1 "name" "Blueberries" "price" 1234}})))))))))))
@@ -4170,7 +4183,7 @@
                 (is (= {:id 1 :name "Red Medicine"} ; price is hidden
                        (mt/user-http-request :crowberto :get 200 execute-path :parameters (json/encode {:id 1})))))
               (testing "Update should only allow name"
-                (is (= {:rows-updated [1]}
+                (is (= {:rows-updated 1}
                        (mt/user-http-request :crowberto :post 200 execute-path {:parameters {"id" 1 "name" "Blueberries"}})))
                 (is (partial= {:message "No destination parameter found for #{\"price\"}. Found: #{\"id\" \"name\"}"}
                               (mt/user-http-request :crowberto :post 400 execute-path {:parameters {"id" 1 "name" "Blueberries" "price" 1234}})))))))))))
@@ -5368,3 +5381,12 @@
                                           :size_x  4
                                           :size_y  4}]})
       (is (not (nil? (t2/select-one :model/PulseCard :card_id new-card-id)))))))
+
+(deftest save-dashboard-test
+  (let [response (mt/user-http-request :crowberto :post 200 "dashboard/save" {:auto_apply_filters true,
+                                                                              :name               "Test Dashboard",
+                                                                              :description        "A test dashboard to save"
+                                                                              :creator_id         399381 ;; any passed creator_id is ignored
+                                                                              })]
+    (is (partial= {:name       "Test Dashboard"
+                   :creator_id (mt/user->id :crowberto)} response))))

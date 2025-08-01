@@ -20,6 +20,7 @@ export const createMockEngine = (opts?: Partial<Engine>): Engine => ({
   "details-fields": [],
   source: createMockEngineSource(),
   "superseded-by": null,
+  "extra-info": null,
   ...opts,
 });
 
@@ -101,11 +102,14 @@ export const createMockTokenFeatures = (
   audit_app: false,
   cache_granular_controls: false,
   disable_password_login: false,
+  cloud_custom_smtp: false,
   content_translation: false,
   content_verification: false,
   embedding: false,
   embedding_sdk: false,
-  embedding_iframe_sdk: false,
+  embedding_simple: false,
+  etl_connections: false,
+  etl_connections_pg: false,
   hosting: false,
   official_collections: false,
   sandboxes: false,
@@ -178,6 +182,13 @@ export const createMockSettings = (
   ],
   "bug-reporting-enabled": false,
   "bcc-enabled?": true,
+  "smtp-override-enabled": false,
+  "email-from-address-override": null,
+  "email-smtp-host-override": "localhost",
+  "email-smtp-port-override": 465,
+  "email-smtp-security-override": "ssl",
+  "email-smtp-username-override": null,
+  "email-smtp-password-override": null,
   "cloud-gateway-ips": null,
   "custom-geojson": {
     us_states: {
@@ -222,6 +233,7 @@ export const createMockSettings = (
   "non-table-chart-generated": true,
   "enable-embedding-static": false,
   "enable-embedding-sdk": false,
+  "enable-embedding-simple": false,
   "enable-embedding-interactive": false,
   "enable-nested-queries": true,
   "enable-pivoted-exports": true,
@@ -237,11 +249,19 @@ export const createMockSettings = (
   "example-dashboard-id": 1,
   gsheets: {},
   "humanization-strategy": "simple",
+  /**
+   * This is a derived setting and it reads either from an env, or from the list
+   * of databases. It checks whether there is a db with `is_sample` property.
+   * You probably don't want to set this directly in tests because it can get out
+   * of sync with the database state (whch should be a source of truth).
+   */
+  "has-sample-database?": undefined,
   "has-user-setup": true,
   "hide-embed-branding?": true,
   "instance-creation": dayjs().toISOString(),
   "show-static-embed-terms": true,
   "show-sdk-embed-terms": true,
+  "show-simple-embed-terms": true,
   "google-auth-auto-create-accounts-domain": null,
   "google-auth-client-id": null,
   "google-auth-configured": false,
@@ -255,6 +275,7 @@ export const createMockSettings = (
   "jwt-attribute-email": null,
   "jwt-attribute-firstname": null,
   "jwt-attribute-lastname": null,
+  "jwt-attribute-groups": null,
   "jwt-group-sync": false,
   "ldap-configured?": false,
   "ldap-enabled": false,
@@ -284,6 +305,8 @@ export const createMockSettings = (
   "password-complexity": { total: 6, digit: 1 },
   "persisted-models-enabled": false,
   "persisted-model-refresh-cron-schedule": "0 0 0/6 * * ? *",
+  "database-replication-enabled": null,
+  "database-replication-connections": null,
   "premium-embedding-token": null,
   "read-only-mode": false,
   "redirect-all-requests-to-https": false,
@@ -354,8 +377,8 @@ export const createMockSettings = (
   "notebook-native-preview-sidebar-width": null,
   "query-analysis-enabled": false,
   "check-for-updates": true,
-  "update-channel": "latest",
   "trial-banner-dismissal-timestamp": null,
   "license-token-missing-banner-dismissal-timestamp": [],
+  "sdk-iframe-embed-setup-settings": null,
   ...opts,
 });

@@ -4,7 +4,6 @@
    [metabase.lib.binning :as lib.binning]
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
-   [metabase.lib.options :as lib.options]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.remove-replace :as lib.remove-replace]
    [metabase.lib.schema :as lib.schema]
@@ -33,7 +32,7 @@
     stage-number :- :int]
    (not-empty (:breakout (lib.util/query-stage query stage-number)))))
 
-(mu/defn breakouts-metadata :- [:maybe [:sequential ::lib.schema.metadata/column]]
+(mu/defn breakouts-metadata :- [:maybe [:sequential ::lib.metadata.calculation/column-metadata-with-source]]
   "Get metadata about the breakouts in a given stage of a `query`."
   ([query]
    (breakouts-metadata query -1))
@@ -42,8 +41,7 @@
    (some->> (breakouts query stage-number)
             (mapv (fn [field-ref]
                     (-> (lib.metadata.calculation/metadata query stage-number field-ref)
-                        (assoc :lib/source :source/breakouts
-                               :ident      (lib.options/ident field-ref))))))))
+                        (assoc :lib/breakout? true)))))))
 
 (mu/defn breakout :- ::lib.schema/query
   "Add a new breakout on an expression, presumably a Field reference. Ignores attempts to add a duplicate breakout."
@@ -53,7 +51,7 @@
     stage-number :- :int
     expr         :- some?]
    (let [expr (if (fn? expr) (expr query stage-number) expr)]
-     (if (lib.schema.util/distinct-refs? (map lib.ref/ref (cons expr (breakouts query stage-number))))
+     (if (lib.schema.util/distinct-mbql-clauses? (map lib.ref/ref (cons expr (breakouts query stage-number))))
        (lib.util/add-summary-clause query stage-number :breakout expr)
        query))))
 
@@ -107,8 +105,8 @@
     {:keys [same-binning-strategy?
             same-temporal-bucket?], :as _options} :- [:maybe
                                                       [:map
-                                                       [:same-binning-strategy? {:optional true} [:maybe :boolean]]
-                                                       [:same-temporal-bucket? {:optional true} [:maybe :boolean]]]]]
+                                                       [:same-binning-strategy? {:optional true, :default false} [:maybe :boolean]]
+                                                       [:same-temporal-bucket? {:optional true, :default false} [:maybe :boolean]]]]]
    (not-empty
     (into []
           (filter (fn [a-breakout]

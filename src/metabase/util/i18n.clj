@@ -67,6 +67,14 @@
     ;; because the locale is normalized before saving (metabase#15657, metabase#16654)
     [(normalized-locale-string locale-name) (.getDisplayName (locale locale-name))]))
 
+(def ^:private included-locales
+  (delay (set (map normalized-locale-string (i18n.impl/available-locale-names)))))
+
+(defn included-locale?
+  "Returns true is this is a locale included in locales.clj instead of just one available on the JVM."
+  [locale]
+  (contains? @included-locales locale))
+
 (defn- translate-site-locale
   "Translate a string with the System locale."
   [format-string args pluralization-opts]

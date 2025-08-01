@@ -1,30 +1,34 @@
 import { t } from "ttag";
 
-import { useHasTokenFeature, useSetting } from "metabase/common/hooks";
-import { getStoreUrl } from "metabase/selectors/settings";
+import {
+  useHasTokenFeature,
+  useSetting,
+  useStoreUrl,
+} from "metabase/common/hooks";
 import { List } from "metabase/ui";
 
 import { UpsellBanner } from "./components";
 
-/**
- * @link https://linear.app/metabase/issue/CLO-4190/create-url-for-buy-storage-page-without-purchase-id
- */
-export const BUY_STORAGE_URL = getStoreUrl("account/storage");
+export const UpsellStorage = ({ location }: { location: string }) => {
+  const campaign = "storage";
+  /**
+   * @link https://linear.app/metabase/issue/CLO-4190/create-url-for-buy-storage-page-without-purchase-id
+   */
+  const storeUrl = useStoreUrl("account/storage");
 
-export const UpsellStorage = ({ source }: { source: string }) => {
   const isHosted = useSetting("is-hosted?");
   const hasStorage = useHasTokenFeature("attached_dwh");
 
-  if (!isHosted || hasStorage) {
+  if (!isHosted || hasStorage || storeUrl === undefined) {
     return null;
   }
 
   return (
     <UpsellBanner
-      campaign="storage"
+      campaign={campaign}
       buttonText={t`Add`}
-      buttonLink={BUY_STORAGE_URL}
-      source={source}
+      buttonLink={storeUrl}
+      location={location}
       title={t`Add Metabase Storage`}
       large
     >

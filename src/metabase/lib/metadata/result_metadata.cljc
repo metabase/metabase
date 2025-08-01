@@ -30,20 +30,14 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
 
-(mr/def ::legacy-source
-  [:enum :aggregation :fields :breakout :native])
-
-(mr/def ::super-broken-legacy-field-ref
-  mbql.s/Reference)
-
 (mr/def ::col
   ;; TODO (Cam 6/19/25) -- I think we should actually namespace all the keys added here (to make it clear where they
   ;; came from) and then have the `annotate` middleware convert them to something else for QP results purposes. Then
   ;; we can 'ban' stuff like `:source-alias` and `:source` within Lib itself. See #59772 for some experimental work
   ;; there.
   [:map
-   [:source    {:optional true} ::legacy-source]
-   [:field-ref {:optional true} ::super-broken-legacy-field-ref]])
+   [:source    {:optional true} ::lib.schema.metadata/column.legacy-source]
+   [:field-ref {:optional true} ::mbql.s/Reference]])
 
 (mr/def ::kebab-cased-map
   [:and
@@ -111,22 +105,15 @@
                       {:initial-cols (map select-relevant-keys initial-cols)
                        :lib-cols     (map select-relevant-keys lib-cols)})))))
 
-(mu/defn- source->legacy-source :- ::legacy-source
-  [source :- [:maybe ::lib.schema.metadata/column-source]]
-  (case source
-    :source/card                :fields
-    :source/native              :native
-    :source/previous-stage      :fields
-    :source/table-defaults      :fields
-    :source/fields              :fields
-    :source/aggregations        :aggregation
-    :source/breakouts           :breakout
-    :source/joins               :fields
-    :source/expressions         :fields
-    :source/implicitly-joinable :fields
-    ;; TODO (Cam 6/26/25) -- ???? Not clear why some columns don't have a `:lib/source` at all. But in that case just
-    ;; fall back to `:fields`
-    :fields))
+(mu/defn- legacy-source :- ::lib.schema.metadata/column.legacy-source
+  [{source :lib/source, breakout? :lib/breakout?, :as _col} :- [:maybe ::lib.schema.metadata/column]]
+  (if breakout?
+    :breakout
+    (case source
+      :source/native       :native
+      :source/aggregations :aggregation
+      ;; everything else gets mapped to `:fields`.
+      :fields)))
 
 (mu/defn- basic-native-col :- ::kebab-cased-map
   "Generate basic column metadata for a column coming back from a native query for which we have only barebones metadata
@@ -191,6 +178,10 @@
       (set/union aliases (implicit-join-aliases query previous-stage-number))
       aliases)))
 
+;;; TODO (Cam 7/30/25) -- I have no real idea why we're doing this. It seems dumb and broken; a column from a reified
+;;; explicit join that gets `:source/joins` should always have a join aliases -- see my notes on
+;;; `:metabase.lib.metadata.result-metadata/column.validate-join-alias`. Can we just remove `:source-alias` (which is
+;;; used by the FE for mysterious/unknown purposes) and leave the Lib keys in the correct shape?
 (defn- remove-implicit-join-aliases
   [query cols]
   (let [implicit-aliases (implicit-join-aliases query -1)]
@@ -205,21 +196,21 @@
                                 [:merge
                                  ::kebab-cased-map
                                  [:map
-                                  [:source ::legacy-source]]]]
+                                  [:source ::lib.schema.metadata/column.legacy-source]]]]
   "Add `:source` to result columns. Needed for legacy FE code. See
   https://metaboat.slack.com/archives/C0645JP1W81/p1749064861598669?thread_ts=1748958872.704799&cid=C0645JP1W81"
   [cols :- [:sequential ::kebab-cased-map]]
   (mapv (fn [col]
-          (assoc col :source (source->legacy-source (:lib/source col))))
+          (assoc col :source (legacy-source col)))
         cols))
 
-(mu/defn- fe-friendly-expression-ref :- ::super-broken-legacy-field-ref
+(mu/defn- fe-friendly-expression-ref :- ::mbql.s/Reference
   "Apparently the FE viz code breaks for pivot queries if `field_ref` comes back with extra 'non-traditional' MLv2
   info (`:base-type` or `:effective-type` in `:expression`), so we better just strip this info out to be sure. If you
   don't believe me remove this and run `e2e/test/scenarios/visualizations-tabular/pivot_tables.cy.spec.js` and you
   will see."
   [col   :- ::kebab-cased-map
-   a-ref :- ::super-broken-legacy-field-ref]
+   a-ref :- ::mbql.s/Reference]
   (let [a-ref (mbql.u/remove-namespaced-options a-ref)]
     (lib.util.match/replace a-ref
       [:field (id :guard pos-int?) opts]
@@ -234,7 +225,13 @@
       (let [fe-friendly-opts (dissoc opts :base-type :effective-type)]
         (if (seq fe-friendly-opts)
           [:expression expression-name fe-friendly-opts]
-          [:expression expression-name])))))
+          [:expression expression-name]))
+
+      [:aggregation aggregation-index (opts :guard (some-fn :base-type :effective-type))]
+      (let [fe-friendly-opts (dissoc opts :base-type :effective-type)]
+        (if (seq fe-friendly-opts)
+          [:aggregation aggregation-index fe-friendly-opts]
+          [:aggregation aggregation-index])))))
 
 (mu/defn- remove-join-alias-from-broken-field-ref?
   "Following the rules for the old 'annotate' code:
@@ -254,7 +251,7 @@
 
 ;;; TODO (Cam 6/12/25) -- all this stuff should be moved into the main [[metabase.lib.field]] namespace as and done
 ;;; automatically when [[lib.ref/*ref-style*]] is `:ref.style/broken-legacy-qp-results`
-(mu/defn- super-broken-legacy-field-ref :- [:maybe ::super-broken-legacy-field-ref]
+(mu/defn- super-broken-legacy-field-ref :- [:maybe ::mbql.s/Reference]
   "Generate a SUPER BROKEN legacy field ref for backward-compatibility purposes for frontend viz settings usage."
   [query :- ::lib.schema/query
    col   :- ::kebab-cased-map]
@@ -276,17 +273,33 @@
            lib.convert/->legacy-MBQL
            (fe-friendly-expression-ref col)))))
 
+;; For unambiguous columns we should use broken legacy refs to maintain backward compatibility with legacy viz
+;; settings, which use them as keys. Since ambiguous refs have never worked correctly it is ok to return
+;; 'modern' refs instead.
+(defn- deduplicate-field-refs [cols]
+  (let [duplicate-refs (->> (frequencies (map :field-ref cols))
+                            (m/filter-vals #(> % 1))
+                            keys
+                            set)]
+    (cond->> cols
+      (seq duplicate-refs) (mapv (fn [col]
+                                   (cond-> col
+                                     (duplicate-refs (:field-ref col))
+                                     (update :field-ref (fn [[tag _id-or-name opts]]
+                                                          [tag (:lib/deduplicated-name col) (assoc opts :base-type (:base-type col))]))))))))
+
 (mu/defn- add-legacy-field-refs :- [:sequential ::kebab-cased-map]
   "Add legacy `:field_ref` to QP results metadata which is still used in a single place in the FE -- see
   https://metaboat.slack.com/archives/C0645JP1W81/p1749064632710409?thread_ts=1748958872.704799&cid=C0645JP1W81"
   [query :- ::lib.schema/query
    cols  :- [:sequential ::kebab-cased-map]]
   (lib.convert/with-aggregation-list (lib.aggregation/aggregations query)
-    (mapv (fn [col]
-            (let [field-ref (super-broken-legacy-field-ref query col)]
-              (cond-> col
-                field-ref (assoc :field-ref field-ref))))
-          cols)))
+    (let [cols (mapv (fn [col]
+                       (let [field-ref (super-broken-legacy-field-ref query col)]
+                         (cond-> col
+                           field-ref (assoc :field-ref field-ref))))
+                     cols)]
+      (deduplicate-field-refs cols))))
 
 (mu/defn- deduplicate-names :- [:sequential ::kebab-cased-map]
   "Needed for legacy FE viz settings purposes for the time being. See
@@ -322,8 +335,7 @@
                            query
                            -1
                            (lib.util/query-stage query -1)
-                           {:unique-name-fn  (lib.util/non-truncating-unique-name-generator)
-                            :include-remaps? (not (get-in query [:middleware :disable-remaps?]))}))
+                           {:include-remaps? (not (get-in query [:middleware :disable-remaps?]))}))
           ;; generate barebones cols if lib was unable to calculate metadata here.
           lib-cols (if (empty? lib-cols)
                      (mapv basic-native-col initial-cols)
@@ -364,7 +376,7 @@
 ;;; keep it around but I don't have time to update a million tests. Why do columns have `:lib/uuid` anyway? They
 ;;; should maybe have `:lib/source-uuid` but I don't think they should have `:lib/uuid`.
 (defn- remove-lib-uuids [col]
-  (dissoc col :lib/uuid :lib/source-uuid :lib/original-ref :ident))
+  (dissoc col :lib/uuid :lib/source-uuid :lib/original-ref))
 
 (mu/defn- col->legacy-metadata :- ::kebab-cased-map
   "Convert MLv2-style `:metadata/column` column metadata to the `snake_case` legacy format we've come to know and love
@@ -388,7 +400,13 @@
                                {:error/message "columns should have unique :name(s)"}
                                (fn [cols]
                                  (or (empty? cols)
-                                     (apply distinct? (map :name cols))))]]
+                                     (apply distinct? (map :name cols))))]
+                              ;; QUE-1623
+                              [:fn
+                               {:error/message "columns should have unique :field-ref(s)"}
+                               (fn [cols]
+                                 (or (empty? cols)
+                                     (apply distinct? (map :field-ref cols))))]]
   "Return metadata for columns returned by a pMBQL `query`.
 
   `initial-cols` are (optionally) the initial minimal metadata columns as returned by the driver (usually just column

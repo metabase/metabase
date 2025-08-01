@@ -3,9 +3,7 @@
   (:require
    #?@(:clj ([toucan2.core :as t2]))
    [clojure.string :as str]
-   [clojure.walk :as walk]
-   [metabase.util :as u]
-   [metabase.util.malli :as mu]))
+   [clojure.walk :as walk]))
 
 #?(:clj (set! *warn-on-reflection* true))
 
@@ -166,66 +164,12 @@
   [source-table-symb-or-nil body]
   (walk/postwalk (partial parse-token-by-sigil source-table-symb-or-nil) body))
 
-(declare populate-idents)
-
-(mu/defn- populate-idents-join [join-clause :- map?]
-  (-> join-clause
-      (u/assoc-default :ident (u/generate-nano-id))
-      populate-idents))
-
-(defn populate-idents
-  "Internal impl fn for `data/mbql-query` macro.
-
-  Fills in `:aggregation-idents`, `:breakout-idents`, `:expression-idents`, and `:ident` on joins where missing."
-  [{:keys [aggregation aggregation-idents
-           breakout    breakout-idents
-           expressions expression-idents
-           joins source-query] :as inner-query}]
-  (let [fresh-expr-idents (into {} (map (juxt name (fn [_] (u/generate-nano-id))))
-                                (keys expressions))
-        agg-idents        (into {} (map-indexed (fn [i _agg]
-                                                  [i (or (get aggregation-idents i)
-                                                         (u/generate-nano-id))]))
-                                (cond-> aggregation
-                                  (not (seqable? aggregation)) vector))
-        brk-idents        (into {} (map-indexed (fn [i _brk]
-                                                  [i (or (get breakout-idents i)
-                                                         (u/generate-nano-id))]))
-                                (cond-> breakout
-                                  (not (seqable? breakout)) vector))
-        populated-joins   (mapv populate-idents-join joins)]
-    (cond-> inner-query
-      source-query (update :source-query populate-idents)
-      joins        (assoc :joins populated-joins)
-      expressions  (assoc :expression-idents (merge fresh-expr-idents expression-idents))
-      aggregation  (assoc :aggregation-idents agg-idents)
-      breakout     (assoc :breakout-idents brk-idents)
-      ;; This metadata is used by query= and similar to ignore mismatches if the mbql-query macro generated idents on
-      ;; the expectation side. It includes only the *new*, macro-generated idents.
-      true         (vary-meta assoc :generated-idents
-                              {:generated-paths/expression-idents  (set (keys fresh-expr-idents))
-                               :generated-paths/aggregation-idents (set (remove (set (keys aggregation-idents)) (keys agg-idents)))
-                               :generated-paths/breakout-idents    (set (remove (set (keys breakout-idents))    (keys brk-idents)))
-                               :generated-paths/join-idents        (set (keep-indexed (fn [i join]
-                                                                                        (when-not (:ident join)
-                                                                                          i))
-                                                                                      joins))}))))
-
-(defn wrap-populate-idents
-  "Internal impl fn for `data/mbql-query` macro.
-
-  Wraps with a call to [[populate-idents]] to ensure `:aggregation-idents` and `:expression-idents` exist when there
-  are aggregations or expressions on a stage."
-  [inner-query]
-  `(populate-idents ~inner-query))
-
 (defn wrap-inner-query
   "Internal impl fn of `data/mbql-query` macro."
   [inner-query]
-  (-> {:database (list *id-fn-symb*)
-       :type     :query
-       :query    inner-query}
-      (vary-meta assoc :type  :metabase.lib.test-util.macros/mbql-query)))
+  {:database (list *id-fn-symb*)
+   :type     :query
+   :query    inner-query})
 
 (defn maybe-add-source-table
   "Internal impl fn of `data/mbql-query` macro. Add `:source-table` to `inner-query` unless it already has a

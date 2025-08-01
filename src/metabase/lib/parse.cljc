@@ -1,7 +1,6 @@
 (ns metabase.lib.parse
   (:require
    [clojure.string :as str]
-   [metabase.lib.parse-param :as parse-param]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]))
@@ -86,7 +85,7 @@
       (empty? (str/trim k))
       (maybe-throw-error parse-error-type (tru "'''{{...}}''' clauses cannot be empty."))
 
-      :else [(parse-param/parse-param k)])))
+      :else [{:type :metabase.lib.parse/param, :name k}])))
 
 (defn- optional [{:keys [parse-error-type]} parsed]
   (if-not (some #(and (map? %) (#{::param ::function-param} (:type %)))
