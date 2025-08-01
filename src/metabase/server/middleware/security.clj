@@ -209,34 +209,47 @@
   (let [urls (str/split approved-origins-raw #" +")]
     (keep parse-url urls)))
 
+(defn- localhost-origin?
+  "Returns true if the origin is localhost (any port)"
+  [raw-origin]
+  (when raw-origin
+    (let [origin (parse-url raw-origin)]
+      (and origin
+           (= (:domain origin) "localhost")))))
+
 (mu/defn approved-origin?
   "Returns true if `origin` should be allowed for CORS based on the `approved-origins`"
   [raw-origin :- [:maybe :string]
    approved-origins-raw :- [:maybe :string]]
   (boolean
-   (when (and (seq raw-origin) (seq approved-origins-raw))
-     (let [approved-list (parse-approved-origins approved-origins-raw)
-           origin        (parse-url raw-origin)]
-       (some (fn [approved-origin]
-               (and
-                (approved-domain? (:domain origin) (:domain approved-origin))
-                (approved-protocol? (:protocol origin) (:protocol approved-origin))
-                (approved-port? (:port origin) (:port approved-origin))))
-             approved-list)))))
+   (or
+    ;; Always allow localhost origins regardless of embedding settings
+    (localhost-origin? raw-origin)
+    ;; Check against approved origins list
+    (when (and (seq raw-origin) (seq approved-origins-raw))
+      (let [approved-list (parse-approved-origins approved-origins-raw)
+            origin        (parse-url raw-origin)]
+        (some (fn [approved-origin]
+                (and
+                 (approved-domain? (:domain origin) (:domain approved-origin))
+                 (approved-protocol? (:protocol origin) (:protocol approved-origin))
+                 (approved-port? (:port origin) (:port approved-origin))))
+              approved-list))))))
 
 (defn access-control-headers
   "Returns headers for CORS requests"
   [origin enabled? approved-origins]
-  (when enabled?
-    (merge
-     (when (approved-origin? origin approved-origins)
-       {"Access-Control-Allow-Origin" origin
-        "Vary"                        "Origin"})
-     {"Access-Control-Allow-Headers"  "*"
-      "Access-Control-Allow-Methods"  "*"
-      "Access-Control-Expose-Headers" "X-Metabase-Anti-CSRF-Token, X-Metabase-Version"
-      ;; Needed for Embedding SDK. Should cache preflight requests for the specified number of seconds.
-      "Access-Control-Max-Age"  "60"})))
+  (let [localhost? (localhost-origin? origin)]
+    (when (or enabled? localhost?)
+      (merge
+       (when (approved-origin? origin approved-origins)
+         {"Access-Control-Allow-Origin" origin
+          "Vary"                        "Origin"})
+       {"Access-Control-Allow-Headers"  "*"
+        "Access-Control-Allow-Methods"  "*"
+        "Access-Control-Expose-Headers" "X-Metabase-Anti-CSRF-Token, X-Metabase-Version"
+        ;; Needed for Embedding SDK. Should cache preflight requests for the specified number of seconds.
+        "Access-Control-Max-Age"  "60"}))))
 
 (defn security-headers
   "Fetch a map of security headers that should be added to a response based on the passed options."
