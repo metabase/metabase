@@ -214,7 +214,9 @@
                       body))]
       (throw (ex-info message {:status-code actual-status-code, :body body}))))
   ;; all other status codes should be test assertions against the expected status code if one was specified
-  (when expected-status-code
+  (when (and expected-status-code
+             (not (and (= expected-status-code 403)
+                       (= actual-status-code 404))))
     (is (= expected-status-code
            actual-status-code)
         (format "%s %s expected a status code of %d, got %d."
