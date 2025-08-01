@@ -235,9 +235,12 @@
             status (-> resp :execution_status keyword)]
         (when-not (contains? #{:started :exec-succeeded :sync-succeeded} status)
           (throw (ex-info (str "Transfer execution failed with status " status) {})))
-        (when (not= status :sync-succeeded)
-          (Thread/sleep 100)
-          (recur))))))
+        (if (= status :sync-succeeded)
+          (is (some? (:table resp)))
+          (do
+            (is (nil? (:table resp)))
+            (Thread/sleep 100)
+            (recur)))))))
 
 (defn- check-query-results
   [table-name ids category]

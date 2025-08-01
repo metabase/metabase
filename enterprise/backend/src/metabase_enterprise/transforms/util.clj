@@ -29,12 +29,13 @@
 
 (defn target-table
   "Load the `target` table of a transform from the database specified by `database-id`."
-  [database-id target]
-  (-> (t2/select-one :model/Table
-                     :db_id database-id
-                     :schema (:schema target)
-                     :name (:name target))
-      (t2/hydrate :db)))
+  [database-id target & kv-args]
+  (some-> (apply t2/select-one :model/Table
+                 :db_id database-id
+                 :schema (:schema target)
+                 :name (:name target)
+                 kv-args)
+          (t2/hydrate :db)))
 
 (defn delete-target-table!
   "Delete the target table of a transform and sync it from the app db."
