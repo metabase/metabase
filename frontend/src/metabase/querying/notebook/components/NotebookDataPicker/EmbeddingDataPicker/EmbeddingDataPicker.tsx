@@ -1,3 +1,5 @@
+import { useMemo } from "react";
+
 import { skipToken, useGetCardQuery, useSearchQuery } from "metabase/api";
 import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_EMBEDDING } from "metabase/plugins";
@@ -8,9 +10,14 @@ import { getMetadata } from "metabase/selectors/metadata";
 import * as Lib from "metabase-lib";
 import { getQuestionIdFromVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type { CardType, TableId } from "metabase-types/api";
-import type { EmbeddingEntityType } from "metabase-types/store/embedding-data-picker";
 
 import { DataPickerTarget } from "../DataPickerTarget";
+
+import {
+  ALLOWED_SIMPLE_DATA_PICKER_ENTITY_TYPES,
+  HIDE_TABLES_IF_MORE_THAN_N_MODELS,
+  USE_SIMPLE_DATA_PICKER_IF_LESS_THAN_N_ITEMS,
+} from "./constants";
 
 type EmbeddingDataPickerProps = {
   query: Lib.Query;
@@ -30,11 +37,19 @@ export function EmbeddingDataPicker({
   isDisabled,
   onChange,
 }: EmbeddingDataPickerProps) {
+  const userDefinedEntityTypes = useSelector(getEntityTypes);
+
   const { data: dataSourceCountData, isLoading: isDataSourceCountLoading } =
-    useSearchQuery({
-      models: ["dataset", "table"],
-      limit: 0,
-    });
+    useSearchQuery({ models: ["dataset", "table"], limit: 0 });
+
+  // We only count models to determine if we should hide tables.
+  // We don't need to do this if the user has defined their own visible entity types.
+  const { data: modelCountData, isLoading: isModelCountLoading } =
+    useSearchQuery(
+      userDefinedEntityTypes && userDefinedEntityTypes.length > 0
+        ? skipToken
+        : { models: ["dataset"], limit: 0 },
+    );
 
   const databaseId = Lib.databaseID(query);
   const tableInfo =
@@ -50,7 +65,6 @@ export function EmbeddingDataPicker({
    */
   const normalizedCard = pickerInfo?.cardId ? card : undefined;
 
-  const entityTypes = useSelector(getEntityTypes);
   const forceMultiStagedDataPicker = useSelector(
     (state) => getEmbedOptions(state).data_picker === "staged",
   );
@@ -62,19 +76,35 @@ export function EmbeddingDataPicker({
     isFetching: isSourceModelFetching,
   } = useSourceEntityCollectionId(query);
 
-  if (isDataSourceCountLoading) {
-    return null;
-  }
-
   const shouldUseSimpleDataPicker =
     !forceMultiStagedDataPicker &&
     dataSourceCountData != null &&
-    dataSourceCountData.total < 100;
+    dataSourceCountData.total < USE_SIMPLE_DATA_PICKER_IF_LESS_THAN_N_ITEMS;
+
+  const entityTypes = useMemo(() => {
+    if (userDefinedEntityTypes && userDefinedEntityTypes.length > 0) {
+      return userDefinedEntityTypes;
+    }
+
+    // For the multi-stage data picker, we always show models and tables.
+    if (!shouldUseSimpleDataPicker) {
+      return DEFAULT_EMBEDDING_ENTITY_TYPES;
+    }
+
+    // Hide tables when there are more than a certain number of models.
+    // This is to reduce clutter in the data picker by default.
+    const modelCount = modelCountData?.total ?? 0;
+
+    return modelCount > HIDE_TABLES_IF_MORE_THAN_N_MODELS
+      ? DEFAULT_EMBEDDING_ENTITY_TYPES.filter((type) => type !== "table")
+      : DEFAULT_EMBEDDING_ENTITY_TYPES;
+  }, [modelCountData, userDefinedEntityTypes, shouldUseSimpleDataPicker]);
+
+  if (isDataSourceCountLoading || isModelCountLoading) {
+    return null;
+  }
+
   if (shouldUseSimpleDataPicker) {
-    const ALLOWED_SIMPLE_DATA_PICKER_ENTITY_TYPES: EmbeddingEntityType[] = [
-      "model",
-      "table",
-    ];
     const filteredEntityTypes = entityTypes.filter((entityType) =>
       ALLOWED_SIMPLE_DATA_PICKER_ENTITY_TYPES.includes(entityType),
     );
