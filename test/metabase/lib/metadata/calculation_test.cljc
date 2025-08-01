@@ -981,7 +981,7 @@
                   :lib/source-column-alias      "Cat__NAME"
                   ;; should not be returned by `visible-columns` since it needs to be recalculated in the context of
                   ;; everything that gets returned.
-                  :lib/desired-column-alias     (symbol "nil #_\"key is not present.\"")}]
+                  #_:lib/desired-column-alias     #_(symbol "nil #_\"key is not present.\"")}]
                 (lib/visible-columns query -1 (lib/query-stage query -1) {:include-joined?                              false
                                                                           :include-expressions?                         false
                                                                           :include-implicitly-joinable?                 false

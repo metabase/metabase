@@ -111,6 +111,7 @@
               (assoc :fk-target-field-id nil))]
     (-> col
         lib.field.util/update-keys-for-col-from-previous-stage
+        (assoc :lib/source :source/card)
         ;; :effective-type is required, but not always set, see e.g.,
         ;; [[metabase.warehouse-schema.api.table/card-result-metadata->virtual-fields]]
         (u/assoc-default :effective-type (:base-type col))

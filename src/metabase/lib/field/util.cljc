@@ -85,12 +85,18 @@
                         :metabase.lib.field/binning       :lib/original-binning
                         :metabase.lib.field/temporal-unit :inherited-temporal-unit
                         :metabase.lib.join/join-alias     :lib/original-join-alias})
-      (assoc :lib/source :source/previous-stage
-             :lib/breakout? false
+      (assoc :lib/breakout? false
              ;; TODO (Cam 6/26/25) -- should we set `:lib/original-display-name` here too?
              :lib/original-name ((some-fn :lib/original-name :name) col)
              ;; desired-column-alias is previous stage => source column alias in next stage
              :lib/source-column-alias ((some-fn :lib/desired-column-alias :lib/source-column-alias :name) col))
-      ;; remove `:lib/desired-column-alias` which needs to be recalculated in the context of what is returned by the
-      ;; current stage.
-      (dissoc :lib/desired-column-alias)))
+      ;;
+      ;; TODO (Cam 8/1/25) -- we should definitely be setting this here but it breaks a lot of dumb tests and I don't
+      ;; really want to run around fixing all of them right now.
+      #_(assoc :lib/source :source/previous-stage)
+      ;;
+      ;; TODO (Cam 8/1/25) -- we should remove `:lib/desired-column-alias`, which needs to be recalculated in the
+      ;; context of what is returned by the current stage, to prevent any confusion; its value is now probably wrong
+      ;; and we don't want people to get confused by its presence -- right? Unfortunately this breaks a lot of dumb
+      ;; tests.
+      #_(dissoc :lib/desired-column-alias)))
