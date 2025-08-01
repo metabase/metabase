@@ -5,10 +5,7 @@ import {
   samlTokenStorage,
   validateSessionToken,
 } from "embedding/auth-common";
-import {
-  INSTANCE_VERSION_POLLING_INTERVAL,
-  getEmbeddingSdkVersion,
-} from "embedding-sdk/config";
+import { getEmbeddingSdkVersion } from "embedding-sdk/config";
 import * as MetabaseError from "embedding-sdk/errors";
 import { getIsLocalhost } from "embedding-sdk/lib/is-localhost";
 import { isSdkVersionCompatibleWithMetabaseVersion } from "embedding-sdk/lib/version-utils";
@@ -80,11 +77,7 @@ export const initAuth = createAsyncThunk(
     // Fetch user and site settings
     const [user, siteSettings] = await Promise.all([
       dispatch(refreshCurrentUser()),
-      dispatch(
-        refreshSiteSettings({
-          pollingInterval: INSTANCE_VERSION_POLLING_INTERVAL,
-        }),
-      ),
+      dispatch(refreshSiteSettings()),
     ]);
 
     const mbVersion = (siteSettings.payload as Settings)?.version?.tag;

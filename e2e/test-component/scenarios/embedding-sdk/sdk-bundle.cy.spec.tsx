@@ -328,17 +328,27 @@ describe("scenarios > embedding-sdk > sdk-bundle", () => {
 
     describe("when the SDK bundle is incompatible with an instance", () => {
       it("should show an error with a close button", () => {
-        cy.intercept("GET", "**/api/session/properties", {
-          version: {
-            tag: "v0.0.0", // incompatible version
-          },
-        });
-
         cy.mount(
           <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}>
             <InteractiveQuestion questionId={1} />
           </MetabaseProvider>,
         );
+
+        getSdkRoot().within(() => {
+          cy.findByTestId("notebook-button").click();
+
+          cy.intercept("POST", "*", (req) => {
+            req.reply({
+              statusCode: 500,
+              headers: {
+                "X-Metabase-Version": "v0.0.0", // incompatible version
+              },
+              body: req.body,
+            });
+          });
+
+          cy.findByText("Visualize").click();
+        });
 
         cy.findByTestId("sdk-error-container").should(
           "contain.text",
@@ -353,12 +363,6 @@ describe("scenarios > embedding-sdk > sdk-bundle", () => {
       });
 
       it("should show a custom error with a close button", () => {
-        cy.intercept("GET", "**/api/session/properties", {
-          version: {
-            tag: "v0.0.0", // incompatible version
-          },
-        });
-
         cy.mount(
           <MetabaseProvider
             authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}
@@ -380,6 +384,22 @@ describe("scenarios > embedding-sdk > sdk-bundle", () => {
             <InteractiveQuestion questionId={1} />
           </MetabaseProvider>,
         );
+
+        getSdkRoot().within(() => {
+          cy.findByTestId("notebook-button").click();
+
+          cy.intercept("POST", "*", (req) => {
+            req.reply({
+              statusCode: 500,
+              headers: {
+                "X-Metabase-Version": "v0.0.0", // incompatible version
+              },
+              body: req.body,
+            });
+          });
+
+          cy.findByText("Visualize").click();
+        });
 
         cy.findByTestId("sdk-error-container").should(
           "contain.text",
