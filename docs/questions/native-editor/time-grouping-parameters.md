@@ -20,11 +20,11 @@ Here's an example that counts the number of orders in the `orders` table and ins
 {% raw %}
 SELECT
   COUNT(*) AS "Orders",
-  {{created_at_param)}} AS "Created At"
+  {{created_at_param}} AS "Created At"
 FROM
   orders
 GROUP BY
-  {{created_at_param")}}
+  {{created_at_param}}
 {% endraw %}
 ```
 
