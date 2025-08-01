@@ -11,6 +11,8 @@ export type Transform = {
   target: TransformTarget;
   table?: Table | null;
   execution_trigger: TransformExecutionTrigger;
+  last_started_at: string | null;
+  last_ended_at: string | null;
 };
 
 export type TransformSource = {

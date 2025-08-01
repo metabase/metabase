@@ -1,7 +1,15 @@
+import { P, match } from "ts-pattern";
 import { t } from "ttag";
 
 import { useMetadataToasts } from "metabase/metadata/hooks";
-import { Button, Divider, Group, Icon, SegmentedControl } from "metabase/ui";
+import {
+  Button,
+  Divider,
+  Group,
+  Icon,
+  SegmentedControl,
+  Text,
+} from "metabase/ui";
 import {
   useExecuteTransformMutation,
   useUpdateTransformMutation,
@@ -23,7 +31,8 @@ export function ScheduleSection({ transform }: ScheduleSectionProps) {
         <ExecutionTriggerControl transform={transform} />
       </Group>
       <Divider />
-      <Group p="lg" justify="end">
+      <Group p="lg" justify="space-between">
+        <ExecuteStatus transform={transform} />
         <ExecuteButton transform={transform} />
       </Group>
     </CardSection>
@@ -72,6 +81,29 @@ function getExecutionTriggerOptions() {
     { value: "global-schedule" as const, label: t`On the schedule` },
     { value: "none" as const, label: t`Manually only` },
   ];
+}
+
+type ExecuteStatusProps = {
+  transform: Transform;
+};
+
+function ExecuteStatus({ transform }: ExecuteStatusProps) {
+  return (
+    <Group c="text-secondary" gap="sm">
+      <Icon name="calendar" />
+      <Text>{getStatusText(transform)}</Text>
+    </Group>
+  );
+}
+
+function getStatusText({
+  last_started_at: lastStartedAt,
+  last_ended_at: lastEndedAt,
+}: Transform) {
+  return match({ lastStartedAt, lastEndedAt })
+    .with({ lastStartedAt: P.nullish }, () => t`This transform hasn’t run yet.`)
+    .with({ lastEndedAt: P.nullish }, () => t`In progress…`)
+    .otherwise(() => t`Last run`);
 }
 
 type ExecuteButtonProps = {
