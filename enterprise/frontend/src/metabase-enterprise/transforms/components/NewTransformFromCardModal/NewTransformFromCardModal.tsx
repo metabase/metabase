@@ -6,7 +6,7 @@ import {
 } from "metabase/common/components/Pickers/QuestionPicker";
 import { useDispatch } from "metabase/lib/redux";
 
-import { getNewTransformFromCardPageUrl } from "../../../urls";
+import { getNewTransformFromCardPageUrl } from "../../urls";
 
 type NewTransformFromCardModalProps = {
   onClose: () => void;
