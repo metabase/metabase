@@ -10,6 +10,7 @@ export type Transform = {
   source: TransformSource;
   target: TransformTarget;
   table?: Table | null;
+  execution_trigger: TransformExecutionTrigger;
 };
 
 export type TransformSource = {
@@ -25,10 +26,13 @@ export type TransformTarget = {
   schema: string | null;
 };
 
+export type TransformExecutionTrigger = "none" | "global-schedule";
+
 export type CreateTransformRequest = {
   name: string;
   source: TransformSource;
   target: TransformTarget;
+  execution_trigger: TransformExecutionTrigger;
 };
 
 export type UpdateTransformRequest = {
@@ -37,5 +41,5 @@ export type UpdateTransformRequest = {
   description?: string | null;
   source?: TransformSource;
   target?: TransformTarget;
-  schedule?: string | null;
+  execution_trigger?: TransformExecutionTrigger;
 };

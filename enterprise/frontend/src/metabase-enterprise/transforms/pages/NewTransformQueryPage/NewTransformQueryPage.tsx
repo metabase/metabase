@@ -1,15 +1,20 @@
+import { useDisclosure } from "@mantine/hooks";
 import { useState } from "react";
 import { push } from "react-router-redux";
+import { t } from "ttag";
 
 import { skipToken, useGetCardQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
+import { Modal } from "metabase/ui";
 import Question from "metabase-lib/v1/Question";
-import type { Card, CardId, DatasetQuery } from "metabase-types/api";
+import type { Card, CardId, DatasetQuery, Transform } from "metabase-types/api";
 
 import { TransformQueryEditor } from "../../components/TransformQueryEditor";
-import { getTransformRootPageUrl } from "../../urls";
+import { getTransformRootPageUrl, getTransformUrl } from "../../urls";
+
+import { NewTransformForm } from "./NewTransformForm";
 
 type NewTransformQueryPageParams = {
   type?: string;
@@ -46,10 +51,17 @@ type NewTransformPageBodyProps = {
 
 function NewTransformPageBody({ initialQuery }: NewTransformPageBodyProps) {
   const [query, setQuery] = useState(initialQuery);
+  const [isModalOpened, { open: openModal, close: closeModal }] =
+    useDisclosure();
   const dispatch = useDispatch();
+
+  const handleSave = (transform: Transform) => {
+    dispatch(push(getTransformUrl(transform.id)));
+  };
 
   const handleSaveClick = (newQuery: DatasetQuery) => {
     setQuery(newQuery);
+    openModal();
   };
 
   const handleCancelClick = () => {
@@ -57,12 +69,28 @@ function NewTransformPageBody({ initialQuery }: NewTransformPageBodyProps) {
   };
 
   return (
-    <TransformQueryEditor
-      query={query}
-      isNew
-      onSave={handleSaveClick}
-      onCancel={handleCancelClick}
-    />
+    <>
+      <TransformQueryEditor
+        query={query}
+        isNew
+        onSave={handleSaveClick}
+        onCancel={handleCancelClick}
+      />
+      {isModalOpened && (
+        <Modal
+          title={t`New transform`}
+          opened={isModalOpened}
+          padding="xl"
+          onClose={closeModal}
+        >
+          <NewTransformForm
+            query={query}
+            onSave={handleSave}
+            onCancel={closeModal}
+          />
+        </Modal>
+      )}
+    </>
   );
 }
 
