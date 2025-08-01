@@ -31,7 +31,7 @@ You can define up to one row and column security policy for each table/group com
 Row and column security show specific data to each person based on their [user attributes](../people-and-groups/managing.md#adding-a-user-attribute). You can:
 
 - [Restrict **rows**](#row-level-security-filter-by-a-column-in-the-table)
-- [Restrict **columns** and rows](#custom-row-and-column-security-use-a-saved-question-to-create-a-custom-view-of-a-table) (as well as rows) for specific people.
+- [Restrict **columns** and rows](#custom-row-and-column-security-use-a-saved-question-to-create-a-custom-view-of-a-table) for specific people.
 
 | Goal                                           | Row (filter by a column in the table) | Custom (use a saved SQL question) |
 | ---------------------------------------------- | ------------------------------------- | --------------------------------- |
