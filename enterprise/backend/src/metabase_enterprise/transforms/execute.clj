@@ -138,6 +138,9 @@
        (try
          (log/info "Syncing target" (pr-str target) "for transform" id)
          (sync-table! database target)
+         ;; TODO hack to make table active
+         (when-let [table (transforms.util/target-table (:id database) target)]
+           (t2/update! :model/Table (:id table) {:active true}))
          (t2/update! :model/Transform id
                      :execution_status [:= :exec-succeeded]
                      {:execution_status :sync-succeeded})

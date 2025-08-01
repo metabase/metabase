@@ -44,10 +44,12 @@
     (let [database (-> source :query :database)
           driver (t2/select-one-fn :engine :model/Database database)]
       (driver/drop-table! driver database (qualified-table-name driver target))
-      (when-let [table (target-table (:id database) target)]
+      (when-let [table (target-table database target)]
         ;; there is a metabase table, sync it away
         (log/info "Syncing away old target table" (-> table (select-keys [:db_id :id :schema :name]) pr-str))
-        (sync/sync-table! table)))))
+        (sync/sync-table! table)
+        ;; TODO hack to make table inactive
+        (t2/update! :model/Table (:id table) {:active false})))))
 
 (defn delete-target-table-by-id!
   "Delete the target table of the transform specified by `transform-id`."
