@@ -8,6 +8,7 @@
   Important: The pgvector database must be setup for metadata by calling (init-semantic-search!)
   After this, the document management and query functions will work as long as you pass the same index-metadata configuration."
   (:require
+   [metabase-enterprise.semantic-search.gate :as semantic.gate]
    [metabase-enterprise.semantic-search.index :as semantic.index]
    [metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]
    [metabase.util :as u]
@@ -79,10 +80,24 @@
   "Indexes documents into the active semantic search index.
   Documents are upserted - existing documents with same id are replaced.
 
+  This is the 'immediate mode' API for inserting documents, the expected production behaviour
+  is to instead (gate!) the documents and allow the indexer task to pick them.
+
   `documents` is a logical collection, but can be reducible to save memory usage."
   [pgvector index-metadata documents]
   (let [{:keys [index]} (ensure-active-index-state pgvector index-metadata)]
     (semantic.index/upsert-index! pgvector index documents)))
+
+(defn gate!
+  ;; TODO doc
+  [pgvector index-metadata documents]
+  (transduce
+   (partition-all 512)
+   (fn [frequencies documents]
+     (semantic.gate/signal-possibly-new-documents! pgvector index-metadata documents)
+     (merge-with + (frequencies (map :model documents))))
+   {}
+   documents))
 
 (defn delete-documents!
   "Removes documents from the active index by model (search.spec model string) and ids.
