@@ -1,5 +1,5 @@
 import { enginesConfig } from "./engines-config";
-import { parseConnectionUriRegex } from "./parseConnectionRegex";
+import { parseConnectionUriRegex } from "./parse-connection-regex";
 
 describe("parseConnectionUriRegex - Amazon Athena", () => {
   it("should parse a basic Amazon Athena connection string", () => {

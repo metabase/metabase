@@ -11,7 +11,7 @@ import {
 } from "./analytics";
 import { mapDatabaseValues } from "./database-field-mapper";
 import { enginesConfig } from "./engines-config";
-import { parseConnectionUriRegex } from "./parseConnectionRegex";
+import { parseConnectionUriRegex } from "./parse-connection-regex";
 
 /**
  * Type guard function that checks if a string is a valid EngineKey

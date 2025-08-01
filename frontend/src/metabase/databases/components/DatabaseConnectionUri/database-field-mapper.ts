@@ -2,7 +2,7 @@ import { P, match } from "ts-pattern";
 
 import type { EngineKey } from "metabase-types/api/settings";
 
-import type { RegexFields } from "./parseConnectionRegex";
+import type { RegexFields } from "./parse-connection-regex";
 
 function mapAthenaValues(parsedValues: RegexFields) {
   const region = parsedValues.host?.match(/athena\.(.*)\.amazonaws\.com/)?.[1];
