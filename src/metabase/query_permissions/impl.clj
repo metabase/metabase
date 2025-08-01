@@ -291,6 +291,38 @@
                                     (perms/at-least-as-permissive? perm-type gtap-perm required-perm))))]))]
     (every? true? (vals table-id->has-perm?))))
 
+(defn- card
+  [database-id card-id]
+  (or (some-> (lib.metadata.protocols/card (qp.store/metadata-provider) card-id)
+              (update-keys u/->snake_case_en)
+              (vary-meta assoc :type :model/Card))
+      ;; In the case of SQL actions, the query being executed might not act on the same database as that
+      ;; used by the model upon which the action is defined. In this case, the underlying model whose
+      ;; permissions we need to check will not be exposed by the metadata provider, so we need a fallback.
+      ;; -- Noah
+      (t2/select-one :model/Card :id card-id :database_id [:!= database-id])
+      (throw (ex-info (tru "Card {0} does not exist." card-id)
+                      {:type    qp.error-type/invalid-query
+                       :card-id card-id}))))
+
+(defn check-card-result-metadata-data-perms
+  [database-id card-id]
+  (let [{result-metadata :result_metadata :as _card} (card database-id card-id)
+        field-ids (keep :id result-metadata)
+        table-ids (into #{} (concat (keep (some-fn :table-id :table_id) result-metadata)
+                                    (when field-ids
+                                      (t2/select-fn-set :table_id :model/Field :id [:in field-ids]))))]
+    (some #(when-not (perms/user-has-permission-for-table?
+                      api/*current-user-id*
+                      :perms/view-data
+                      :unrestricted
+                      database-id
+                      %)
+             (perms-exception (tru "You do not have permission to view data of table {0} from card {1} result_metadata."
+                                   % card-id)
+                              {database-id {:perms/view-data {% :unrestricted}}}))
+          table-ids)))
+
 (mu/defn has-perm-for-query? :- :boolean
   "Returns true when the query is accessible for the given perm-type and required-perms for individual tables, or the
   entire DB, false otherwise. Only throws if the permission format is incorrect."
@@ -316,16 +348,7 @@
   [database-id :- ::lib.schema.id/database
    card-id     :- ::lib.schema.id/card]
   (qp.store/with-metadata-provider database-id
-    (let [card (or (some-> (lib.metadata.protocols/card (qp.store/metadata-provider) card-id)
-                           (update-keys u/->snake_case_en)
-                           (vary-meta assoc :type :model/Card))
-                   ;; In the case of SQL actions, the query being executed might not act on the same database as that
-                   ;; used by the model upon which the action is defined. In this case, the underlying model whose
-                   ;; permissions we need to check will not be exposed by the metadata provider, so we need a fallback.
-                   (t2/select-one :model/Card :id card-id :database_id [:!= database-id])
-                   (throw (ex-info (tru "Card {0} does not exist." card-id)
-                                   {:type    qp.error-type/invalid-query
-                                    :card-id card-id})))]
+    (let [card (card database-id card-id)]
       (log/tracef "Required perms to run Card: %s" (pr-str (mi/perms-objects-set card :read)))
       (when-not (mi/can-read? card)
         (throw (perms-exception (tru "You do not have permissions to view Card {0}." (pr-str card-id))
