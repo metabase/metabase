@@ -2,12 +2,12 @@ import cx from "classnames";
 import { type ComponentProps, useState } from "react";
 import { t } from "ttag";
 
+import { UpsellGem } from "metabase/admin/upsells/components";
 import ExternalLink from "metabase/common/components/ExternalLink";
 import Link from "metabase/common/components/Link";
 import { useDocsUrl, useSetting, useUrlWithUtm } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import type { ExportFormatType } from "metabase/embedding/components/PublicLinkPopover/types";
-import { Badge } from "metabase/home/components/EmbedHomepage/Badge";
 import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_EMBEDDING } from "metabase/plugins";
 import { trackPublicLinkRemoved } from "metabase/public/lib/analytics";
@@ -133,7 +133,7 @@ export function SelectEmbedTypePane({
         >
           <SharingPaneButton
             title={t`Interactive embedding`}
-            badge={<Badge color="brand">{t`Pro`}</Badge>}
+            badge={<UpsellGem />}
             illustration={<InteractiveEmbeddingIllustration />}
             isDisabled={
               isInteractiveEmbeddingAvailable && !isInteractiveEmbeddingEnabled
@@ -167,11 +167,7 @@ export function SelectEmbedTypePane({
         >
           <SharingPaneButton
             title={t`Embedded analytics SDK`}
-            badge={
-              <>
-                <Badge color="brand">{t`Pro`}</Badge>
-              </>
-            }
+            badge={<UpsellGem />}
             illustration={<SdkIllustration />}
             isDisabled={!isEmbeddingSdkEnabled}
             disabledLink={"/admin/settings/embedding-in-other-applications/sdk"}
