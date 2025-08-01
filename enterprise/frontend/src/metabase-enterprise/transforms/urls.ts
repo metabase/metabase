@@ -11,7 +11,7 @@ export function getOverviewPageUrl() {
   return ROOT_URL;
 }
 
-export function getEmptyStatePageUrl() {
+export function getnewTransformPageUrl() {
   return `${ROOT_URL}/new`;
 }
 

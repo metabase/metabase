@@ -7,8 +7,8 @@ import {
 } from "metabase/admin/components/AdminNav";
 import { AdminSettingsLayout } from "metabase/common/components/AdminLayout/AdminSettingsLayout";
 import {
-  getEmptyStatePageUrl,
   getOverviewPageUrl,
+  getnewTransformPageUrl,
 } from "metabase-enterprise/transforms/urls";
 
 type TransformPageLayoutProps = {
@@ -33,7 +33,7 @@ function Sidebar() {
       />
       <AdminNavItem
         label={t`Transforms`}
-        path={getEmptyStatePageUrl()}
+        path={getnewTransformPageUrl()}
         icon="refresh_downstream"
       />
     </AdminNavWrapper>
