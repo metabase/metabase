@@ -43,18 +43,18 @@ export function DeleteTransformModal({
   );
 }
 
-type DeleteTransformType = "transform-only" | "transform-with-target";
+type DeleteTransformAction = "transform-only" | "transform-with-target";
 
 type DeleteTransformValues = {
-  type: DeleteTransformType;
+  action: DeleteTransformAction;
 };
 
 const INITIAL_VALUES: DeleteTransformValues = {
-  type: "transform-only",
+  action: "transform-only",
 };
 
 const DELETE_TRANSFORM_SCHEMA = Yup.object({
-  type: Yup.string().oneOf(["transform-only", "transform-with-target"]),
+  action: Yup.string().oneOf(["transform-only", "transform-with-target"]),
 });
 
 type DeleteTransformFormProps = {
@@ -71,8 +71,8 @@ function DeleteTransformForm({
   const [deleteTransform] = useDeleteTransformMutation();
   const [deleteTransformTarget] = useDeleteTransformTargetMutation();
 
-  const handleSubmit = async ({ type }: DeleteTransformValues) => {
-    if (type === "transform-with-target") {
+  const handleSubmit = async ({ action }: DeleteTransformValues) => {
+    if (action === "transform-with-target") {
       await deleteTransformTarget(transform.id);
     }
     await deleteTransform(transform.id);
@@ -90,7 +90,7 @@ function DeleteTransformForm({
           <Stack gap="lg">
             <Text>{getFormMessage(transform)}</Text>
             {transform.table && (
-              <FormRadioGroup name="type">
+              <FormRadioGroup name="action">
                 <Stack gap="sm">
                   <Radio
                     value="transform-only"
@@ -160,16 +160,16 @@ function getFormMessage({ target, table }: Transform) {
 
 function getSubmitButtonLabel(
   { target, table }: Transform,
-  { type }: DeleteTransformValues,
+  { action }: DeleteTransformValues,
 ) {
   return match({
-    actionType: type,
-    targetType: target.type,
+    action,
+    type: target.type,
     hasTarget: table != null,
   })
     .with({ hasTarget: false }, () => t`Delete transform`)
-    .with({ actionType: "transform-only" }, () => t`Delete transform only`)
-    .with({ targetType: "view" }, () => t`Delete transform and view`)
-    .with({ targetType: "table" }, () => t`Delete transform and table`)
+    .with({ action: "transform-only" }, () => t`Delete transform only`)
+    .with({ type: "view" }, () => t`Delete transform and view`)
+    .with({ type: "table" }, () => t`Delete transform and table`)
     .exhaustive();
 }
