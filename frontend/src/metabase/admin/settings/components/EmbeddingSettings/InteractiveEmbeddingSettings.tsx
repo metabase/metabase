@@ -1,6 +1,10 @@
 import RedirectWidget from "../widgets/RedirectWidget";
 
-export function InteractiveEmbeddingSettings() {
+import type { AdminSettingComponentProps } from "./types";
+
+export function InteractiveEmbeddingSettings(
+  _props: AdminSettingComponentProps,
+) {
   return (
     <RedirectWidget to="/admin/settings/embedding-in-other-applications" />
   );

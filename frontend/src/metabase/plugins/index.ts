@@ -1,3 +1,4 @@
+import type { Middleware } from "@reduxjs/toolkit";
 import React, {
   type ComponentType,
   type HTMLAttributes,
@@ -88,24 +89,29 @@ import type { EmbeddingEntityType } from "metabase-types/store/embedding-data-pi
 import type { GetAuthProviders, PluginGroupManagersType } from "./types";
 
 // functions called when the application is started
-export const PLUGIN_APP_INIT_FUNCTIONS = [];
+export const PLUGIN_APP_INIT_FUNCTIONS: (() => void)[] = [];
 
-export const PLUGIN_LANDING_PAGE = {
+export const PLUGIN_LANDING_PAGE: {
+  getLandingPage: () => string | null | undefined;
+  LandingPageWidget: ComponentType;
+} = {
   getLandingPage: () => "/",
   LandingPageWidget: PluginPlaceholder,
 };
 
-export const PLUGIN_REDUX_MIDDLEWARES = [];
+export const PLUGIN_REDUX_MIDDLEWARES: Middleware[] = [];
 
 // override for LogoIcon
-export const PLUGIN_LOGO_ICON_COMPONENTS = [];
+export const PLUGIN_LOGO_ICON_COMPONENTS: ComponentType[] = [];
 
 // admin nav items and routes
 export const PLUGIN_ADMIN_ALLOWED_PATH_GETTERS: ((
   user: any,
 ) => AdminPathKey[])[] = [];
 
-export const PLUGIN_ADMIN_TOOLS = {
+export const PLUGIN_ADMIN_TOOLS: {
+  COMPONENT: ComponentType | null;
+} = {
   COMPONENT: null,
 };
 
@@ -243,7 +249,7 @@ const defaultLoginPageIllustration = {
   isDefault: true,
 };
 
-const getLoadingMessage = (isSlow: boolean = false) =>
+const getLoadingMessage = (isSlow: boolean | undefined = false) =>
   isSlow ? t`Waiting for results...` : t`Doing science...`;
 
 // selectors that customize behavior between app versions
@@ -260,10 +266,10 @@ export const PLUGIN_SELECTORS = {
   getLandingPageIllustration: (_state: State): IllustrationValue => {
     return defaultLandingPageIllustration;
   },
-  getNoDataIllustration: (_state: State): string => {
+  getNoDataIllustration: (_state: State): string | null => {
     return noResultsSource;
   },
-  getNoObjectIllustration: (_state: State): string => {
+  getNoObjectIllustration: (_state: State): string | null => {
     return noResultsSource;
   },
 };
@@ -542,8 +548,8 @@ export const PLUGIN_MODEL_PERSISTENCE = {
 export const PLUGIN_EMBEDDING = {
   isEnabled: () => false,
   isInteractiveEmbeddingEnabled: (_state: State) => false,
-  SimpleDataPicker: (_props: SimpleDataPickerProps) => null,
-  DataSourceSelector: (_props: DataSourceSelectorProps) => null,
+  SimpleDataPicker: (_props: SimpleDataPickerProps): ReactNode => null,
+  DataSourceSelector: (_props: DataSourceSelectorProps): ReactNode => null,
 };
 
 export interface SimpleDataPickerProps {
