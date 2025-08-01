@@ -14,7 +14,7 @@
 
 ;; This constant is also defined in metabase.revisions.impl.card but we duplicate it here
 ;; to avoid circular dependencies. Keep both definitions in sync!
-(def ^:private legacy-card-schema-version
+(def legacy-card-schema-version
   "The default schema version assigned to all cards that existed before the `:card_schema` column was added in v0.55."
   20)
 
