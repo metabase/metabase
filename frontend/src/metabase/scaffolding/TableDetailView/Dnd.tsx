@@ -222,6 +222,23 @@ export function Dnd({
     );
   }
 
+  function itemsToSections(items: Items): ObjectViewSectionSettings[] {
+    return sections.map((section) => {
+      const sectionItems = items[String(section.id)] || [];
+      return {
+        ...section,
+        fields: sectionItems.map((fieldId) => {
+          const existingField = section.fields.find(
+            (f) => String(f.field_id) === fieldId,
+          );
+          return (
+            existingField || { field_id: Number(fieldId), style: "normal" }
+          );
+        }),
+      };
+    });
+  }
+
   const [items, setItems] = useState<Items>(() => initialItems ?? getItems());
 
   const containers = useMemo(
@@ -231,18 +248,47 @@ export function Dnd({
   const [activeId, setActiveId] = useState<UniqueIdentifier | null>(null);
   const lastOverId = useRef<UniqueIdentifier | null>(null);
   const recentlyMovedToNewContainer = useRef(false);
+  const [dragFinished, setDragFinished] = useState(false);
   const isSortingContainer =
     activeId != null ? containers.includes(activeId) : false;
 
+  // useEffect(() => {
+  //   const items = Object.fromEntries(
+  //     sections.map((s) => [
+  //       String(s.id),
+  //       s.fields.map((f) => String(f.field_id)),
+  //     ]),
+  //   );
+  //   setItems(items);
+  // }, [sections]);
+
   useEffect(() => {
-    const items = Object.fromEntries(
-      sections.map((s) => [
-        String(s.id),
-        s.fields.map((f) => String(f.field_id)),
-      ]),
-    );
-    setItems(items);
-  }, [sections]);
+    if (dragFinished) {
+      // eslint-disable-next-line no-inner-declarations
+      function itemsToSections(items: Items): ObjectViewSectionSettings[] {
+        return sections.map((section) => {
+          const sectionItems = items[String(section.id)] || [];
+          return {
+            ...section,
+            fields: sectionItems.map((fieldId) => {
+              const existingField = section.fields.find(
+                (f) => String(f.field_id) === fieldId,
+              );
+              return (
+                existingField || {
+                  field_id: Number(fieldId),
+                  style: "normal",
+                }
+              );
+            }),
+          };
+        });
+      }
+
+      onUpdateSections(itemsToSections(items));
+      setDragFinished(false);
+    }
+  }, [dragFinished, onUpdateSections, items, sections]);
 
   /**
    * Custom collision detection strategy optimized for multiple containers
@@ -430,6 +476,8 @@ export function Dnd({
         }
       }}
       onDragEnd={({ active, over }) => {
+        setDragFinished(true);
+
         if (active.id in items && over?.id) {
           // setContainers((containers) => {
           const activeIndex = containers.indexOf(active.id);
@@ -600,7 +648,6 @@ export function Dnd({
           isDragging: true,
           isDragOverlay: true,
         })}
-        color={getColor(id)}
         wrapperStyle={wrapperStyle({ index: 0 })}
         renderItem={renderItem}
         dragOverlay
@@ -643,7 +690,6 @@ export function Dnd({
               isSorting: false,
               isDragOverlay: false,
             })}
-            color={getColor(item)}
             wrapperStyle={wrapperStyle({ index })}
             renderItem={renderItem}
             //
@@ -677,21 +723,6 @@ export function Dnd({
 
     return String.fromCharCode(lastContainerId.charCodeAt(0) + 1);
   }
-}
-
-function getColor(id: UniqueIdentifier) {
-  switch (String(id)[0]) {
-    case "A":
-      return "#7193f1";
-    case "B":
-      return "#ffda6c";
-    case "C":
-      return "#00bcd4";
-    case "D":
-      return "#ef769f";
-  }
-
-  return undefined;
 }
 
 function Trash({ id }: { id: UniqueIdentifier }) {
@@ -809,7 +840,6 @@ function SortableItem({
         overIndex: over ? getIndex(over.id) : overIndex,
         containerId,
       })}
-      color={getColor(id)}
       transition={transition}
       transform={transform}
       fadeIn={mountedWhileDragging}
