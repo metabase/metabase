@@ -1,5 +1,6 @@
 (ns metabase-enterprise.database-replication.api
   (:require
+   [clojure.string :as str]
    [medley.core :as m]
    [metabase-enterprise.database-replication.settings :as database-replication.settings]
    [metabase-enterprise.harbormaster.client :as hm.client]
@@ -90,7 +91,7 @@
                             (update :port #(or % 5432))) ;; port is required in the API, but optional in MB
             {:keys [schema-filters-type schema-filters-patterns]} (:details database)
             schemas     (-> (when-some [k ({"inclusion" :include, "exclusion" :exclude} schema-filters-type)]
-                              (for [pattern schema-filters-patterns]
+                              (for [pattern (str/split schema-filters-patterns #",")]
                                 {:type k :pattern pattern}))
                             (concat (map #(select-keys % [:type :pattern]) schemas))
                             not-empty)
