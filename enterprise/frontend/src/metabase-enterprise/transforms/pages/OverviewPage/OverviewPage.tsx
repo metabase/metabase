@@ -25,19 +25,12 @@ import { CardSection } from "../../components/CardSection";
 import { DEFAULT_SCHEDULE, SCHEDULE_OPTIONS } from "../../constants";
 import {
   getNewTransformFromCardPageUrl,
-  getNewTransformPageUrl,
+  getNewTransformFromTypePageUrl,
 } from "../../urls";
 
-export function TransformOverviewPage() {
+export function OverviewPage() {
   return (
-    <Flex
-      direction="column"
-      align="center"
-      w="100%"
-      h="100%"
-      p="2.5rem"
-      bg="accent-gray-light"
-    >
+    <Flex direction="column" align="center">
       <Stack gap="3.5rem">
         <HeaderSection />
         <CreateSection />
@@ -73,14 +66,14 @@ function CreateSection() {
       <Group p="lg">
         <Button
           component={Link}
-          to={getNewTransformPageUrl("query")}
+          to={getNewTransformFromTypePageUrl("query")}
           leftSection={<Icon name="notebook" />}
         >
           {t`Query builder`}
         </Button>
         <Button
           component={Link}
-          to={getNewTransformPageUrl("native")}
+          to={getNewTransformFromTypePageUrl("native")}
           leftSection={<Icon name="sql" />}
         >
           {t`SQL editor`}

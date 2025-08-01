@@ -13,20 +13,12 @@ import { Button, Flex, Icon, Menu, Text, Title } from "metabase/ui";
 
 import {
   getNewTransformFromCardPageUrl,
-  getNewTransformPageUrl,
+  getNewTransformFromTypePageUrl,
 } from "../../urls";
 
 export function NewTransformPage() {
   return (
-    <Flex
-      direction="column"
-      justify="center"
-      align="center"
-      w="100%"
-      h="100%"
-      p="2.5rem"
-      bg="accent-gray-light"
-    >
+    <Flex direction="column" justify="center" align="center">
       <Flex direction="column" justify="center" align="center">
         <img
           src={EmptyDashboardBot}
@@ -65,14 +57,14 @@ function NewTransformMenu() {
           <Menu.Label>{t`Create your transform with…`}</Menu.Label>
           <Menu.Item
             component={ForwardRefLink}
-            to={getNewTransformPageUrl("query")}
+            to={getNewTransformFromTypePageUrl("query")}
             leftSection={<Icon name="notebook" />}
           >
             {t`Query builder`}
           </Menu.Item>
           <Menu.Item
             component={ForwardRefLink}
-            to={getNewTransformPageUrl("native")}
+            to={getNewTransformFromTypePageUrl("native")}
             leftSection={<Icon name="sql" />}
           >
             {t`SQL query`}

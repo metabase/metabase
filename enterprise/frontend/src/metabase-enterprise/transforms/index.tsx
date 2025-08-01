@@ -5,8 +5,9 @@ import { createAdminRouteGuard } from "metabase/admin/utils";
 import { Route } from "metabase/hoc/Title";
 import { PLUGIN_TRANSFORMS } from "metabase/plugins";
 
+import { PageLayout } from "./components/PageLayout";
 import { NewTransformPage } from "./pages/NewTransformPage";
-import { TransformOverviewPage } from "./pages/TransformOverviewPage";
+import { OverviewPage } from "./pages/OverviewPage";
 
 PLUGIN_TRANSFORMS.getAdminPaths = () => [
   { key: "transforms", name: t`Transforms`, path: "/admin/transforms" },
@@ -15,8 +16,10 @@ PLUGIN_TRANSFORMS.getAdminPaths = () => [
 PLUGIN_TRANSFORMS.getAdminRoutes = () => (
   <Route path="transforms" component={createAdminRouteGuard("transforms")}>
     <Route title={t`Transforms`}>
-      <IndexRoute component={TransformOverviewPage} />
-      <Route path="new" component={NewTransformPage} />
+      <Route component={PageLayout}>
+        <IndexRoute component={OverviewPage} />
+        <Route path="new" component={NewTransformPage} />
+      </Route>
     </Route>
   </Route>
 );
