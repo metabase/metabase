@@ -23,10 +23,10 @@ PLUGIN_TRANSFORMS.getAdminRoutes = () => (
         <IndexRoute component={OverviewPage} />
         <Route path="new" component={NewTransformPage} />
         <Route path=":transformId" component={TransformPage} />
-        <Route path=":transformId/query" component={TransformQueryPage} />
       </Route>
       <Route path="new/:type" component={NewTransformQueryPage} />
       <Route path="new/card/:cardId" component={NewTransformQueryPage} />
+      <Route path=":transformId/query" component={TransformQueryPage} />
     </Route>
   </Route>
 );
