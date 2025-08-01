@@ -33,6 +33,7 @@ import { useVisualizerUi } from "../VisualizerUiContext";
 import S from "./VisualizationCanvas.module.css";
 import { HorizontalWell } from "./wells/HorizontalWell";
 import { ScatterFloatingWell } from "./wells/ScatterFloatingWell";
+import { TooltipExtraMetricsFloatingWell } from "./wells/TooltipExtraMetricsFloatingWell";
 import { VerticalWell } from "./wells/VerticalWell";
 
 function disableAxisLabels(rawSeries: RawSeries) {
@@ -137,9 +138,15 @@ export function VisualizationCanvas({ className }: VisualizationCanvasProps) {
           <HorizontalWell display={display} />
         </Box>
         {display === "scatter" && (
-          <Box style={{ gridArea: "top" }}>
-            <ScatterFloatingWell />
-          </Box>
+          <>
+            <Box style={{ gridArea: "top-center" }}>
+              <TooltipExtraMetricsFloatingWell />
+            </Box>
+
+            <Box style={{ gridArea: "top" }}>
+              <ScatterFloatingWell />
+            </Box>
+          </>
         )}
         <Center
           className={`${S.SwapAffordance} ${isSwapAffordanceVisible ? S.visible : ""}`}
