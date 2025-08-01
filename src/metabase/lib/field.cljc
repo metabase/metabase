@@ -349,7 +349,7 @@
 
 (defmethod lib.binning/available-binning-strategies-method :metadata/column
   [query _stage-number {:keys [effective-type fingerprint semantic-type] :as field-metadata}]
-  (if (not= (:lib/source field-metadata) :source/expressions)
+  (if-not (= (:lib/source field-metadata) :source/expressions)
     (let [binning?    (lib.metadata/database-supports? query :binning)
           fingerprint (get-in fingerprint [:type :type/Number])
           existing    (lib.binning/binning field-metadata)
