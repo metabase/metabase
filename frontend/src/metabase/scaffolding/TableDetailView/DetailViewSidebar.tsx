@@ -268,6 +268,10 @@ export function DetailViewSidebar({
     <Dnd
       columns={columns}
       sections={sections}
+      hiddenColumns={hiddenColumns}
+      relationshipsDirection={relationshipsDirection}
+      onUpdateRelationshipsDirection={onUpdateRelationshipsDirection}
+      hasRelationships={hasRelationships}
       onCreateSection={onCreateSection}
       onUpdateSection={onUpdateSection}
       onUpdateSections={onUpdateSections}

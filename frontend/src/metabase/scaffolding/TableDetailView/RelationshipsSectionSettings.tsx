@@ -22,12 +22,10 @@ export function RelationshipsSectionSettings({
   onUpdateDirection,
 }: RelationshipsSectionSettingsProps) {
   return (
-    <Box mt="sm" className={S.ObjectViewSidebarSection}>
+    <Box mt="sm" mb="sm" className={S.ObjectViewSidebarSection}>
       <Flex align="center" justify="space-between" w="100%">
         <Group gap="xs">
-          <Text fw={600} size="sm">
-            {t`Relationships`}
-          </Text>
+          <Text fw={600}>{t`Relationships`}</Text>
         </Group>
         <Group gap="sm" className={S.ObjectViewSidebarSectionActions}>
           <Tooltip label={t`Change section direction`}>

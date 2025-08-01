@@ -163,9 +163,9 @@ export const Container = forwardRef<HTMLDivElement, Props>(
           </Group>
         </Flex>
 
-        {section.fields.length === 0 && (
+        {/* {section.fields.length === 0 && (
           <EmptyDropZone sectionId={String(section.id)} />
-        )}
+        )} */}
 
         {children}
       </Box>

@@ -36,15 +36,18 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal, unstable_batchedUpdates } from "react-dom";
 import { t } from "ttag";
 
+import { Button, Icon, Stack, Text } from "metabase/ui";
 import type {
   DatasetColumn,
   ObjectViewSectionSettings,
 } from "metabase-types/api";
 
+import { ColumnListItem } from "./ColumnListItem";
 import { Container, type Props as ContainerProps } from "./Container";
 import { Item } from "./Item";
+import { RelationshipsSectionSettings } from "./RelationshipsSectionSettings";
 import { coordinateGetter as multipleContainersCoordinateGetter } from "./multipleContainersKeyboardCoordinates";
-import { Button, Icon } from "metabase/ui";
+
 const defaultInitializer = (index: number) => index;
 
 export function createRange<T = number>(
@@ -153,6 +156,12 @@ interface Props {
 
   //
 
+  hiddenColumns: DatasetColumn[];
+  hasRelationships?: boolean;
+  relationshipsDirection?: "horizontal" | "vertical";
+  onUpdateRelationshipsDirection?: (
+    direction: "horizontal" | "vertical",
+  ) => void;
   columns: DatasetColumn[];
   sections: ObjectViewSectionSettings[];
   onCreateSection: () => void;
@@ -186,6 +195,10 @@ export function Dnd({
   scrollable,
   //
 
+  hiddenColumns,
+  hasRelationships,
+  relationshipsDirection = "vertical",
+  onUpdateRelationshipsDirection,
   columns,
   sections,
   onCreateSection,
@@ -386,6 +399,20 @@ export function Dnd({
     const index = items[container].indexOf(id);
 
     return index;
+  };
+
+  const handleUnhideField = (fieldId: number) => {
+    // TODO: support any section, not just the first one
+    if (sections.length > 0) {
+      const firstSection = sections[0];
+      const newField = {
+        field_id: fieldId,
+        style: "normal" as const,
+      };
+
+      const newFields = [...firstSection.fields, newField];
+      onUpdateSection(firstSection.id, { fields: newFields });
+    }
   };
 
   const onDragCancel = () => {
@@ -607,16 +634,36 @@ export function Dnd({
               </SortableContext>
             </DroppableContainer>
           ))}
+
+          <Button
+            variant="subtle"
+            size="compact-sm"
+            leftSection={<Icon name="add" />}
+            mt="md"
+            onClick={onCreateSection}
+          >{t`Add group`}</Button>
+
+          {hasRelationships && (
+            <RelationshipsSectionSettings
+              direction={relationshipsDirection}
+              onUpdateDirection={onUpdateRelationshipsDirection || (() => {})}
+            />
+          )}
+
+          <Text fw={600} mb="sm">{t`Hidden columns`}</Text>
+
+          <Stack gap="sm">
+            {hiddenColumns.map((column) => (
+              <ColumnListItem
+                key={column.id}
+                column={column}
+                onUnhideField={() => handleUnhideField(column.id as number)}
+                handleProps={undefined}
+              />
+            ))}
+          </Stack>
         </SortableContext>
       </div>
-
-      <Button
-        variant="subtle"
-        size="compact-sm"
-        leftSection={<Icon name="add" />}
-        mt="md"
-        onClick={onCreateSection}
-      >{t`Add group`}</Button>
 
       {createPortal(
         <DragOverlay adjustScale={adjustScale} dropAnimation={dropAnimation}>
@@ -628,9 +675,7 @@ export function Dnd({
         </DragOverlay>,
         document.body,
       )}
-      {trashable && activeId && !containers.includes(activeId) ? (
-        <Trash id={TRASH_ID} />
-      ) : null}
+      {/* {trashable ? <Trash id={TRASH_ID} /> : null} */}
     </DndContext>
   );
 
@@ -737,18 +782,13 @@ function Trash({ id }: { id: UniqueIdentifier }) {
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        position: "fixed",
-        left: "50%",
-        marginLeft: -150,
-        bottom: 20,
-        width: 300,
-        height: 60,
-        borderRadius: 5,
+        // height: 60,
+        // borderRadius: 5,
         border: "1px solid",
         borderColor: isOver ? "red" : "#DDD",
       }}
     >
-      {t`Drop here to delete`}
+      {t`Drop here to hide columns`}
     </div>
   );
 }
