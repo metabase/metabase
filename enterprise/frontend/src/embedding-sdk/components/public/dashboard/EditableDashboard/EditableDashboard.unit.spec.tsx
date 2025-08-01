@@ -126,7 +126,7 @@ describe("EditableDashboard", () => {
 
     // Should make a call to count the data sources (tables and models)
     const countDataSourceCall = dataPickerDataCalls.filter(([url]) =>
-      url.includes("models=dataset&models=table"),
+      url.includes("models=dataset") && url.includes("models=table"),
     );
     expect(countDataSourceCall).toHaveLength(1);
 
