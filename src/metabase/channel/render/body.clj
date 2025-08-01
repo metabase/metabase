@@ -71,14 +71,14 @@
 
 ;;; --------------------------------------------------- Formatting ---------------------------------------------------
 
-(mu/defn- format-cell
+(mu/defn- format-scalar-value
   [timezone-id :- [:maybe :string] value col visualization-settings]
   (cond
     (types/temporal-field? col)
     ((formatter/make-temporal-str-formatter timezone-id col {}) value)
 
     (number? value)
-    (formatter/format-number value col visualization-settings)
+    (formatter/format-scalar-number value col visualization-settings)
 
     :else
     (str value)))
@@ -153,7 +153,7 @@
       (query-results->row-seq timezone-id remapping-lookup cols (take row-limit rows) viz-settings)))))
 
 (defn- strong-limit-text [number]
-  [:strong {:style (style/style {:color style/color-gray-3})} (h (formatter/format-number number))])
+  [:strong {:style (style/style {:color style/color-gray-3})} (h (formatter/format-scalar-number number))])
 
 (defn- render-truncation-warning
   [row-limit row-count]
@@ -408,7 +408,7 @@
                           [0 (first cols)])
         row           (first rows)
         raw-value     (get row row-idx)
-        value         (format-cell timezone-id raw-value col viz-settings)]
+        value         (format-scalar-value timezone-id raw-value col viz-settings)]
     {:attachments
      nil
 
@@ -481,8 +481,8 @@
           {:keys [last-value previous-value unit last-change] :as _insight}
           (where (comp #{(:name metric-col)} :col) insights)]
       (if (and last-value previous-value unit last-change)
-        (let [value                (format-cell timezone-id last-value metric-col viz-settings)
-              previous             (format-cell timezone-id previous-value metric-col viz-settings)
+        (let [value                (format-scalar-value timezone-id last-value metric-col viz-settings)
+              previous             (format-scalar-value timezone-id previous-value metric-col viz-settings)
               delta-statement      (cond
                                      (= last-value previous-value)
                                      (tru "No change")
@@ -515,7 +515,7 @@
                                                  :font-weight   700
                                                  :padding-right :16px})}
                         (trs "Nothing to compare to.")]]
-         :render/text (str (format-cell timezone-id last-value metric-col viz-settings)
+         :render/text (str (format-scalar-value timezone-id last-value metric-col viz-settings)
                            "\n" (trs "Nothing to compare to."))}))))
 
 (defn- all-unique?
