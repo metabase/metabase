@@ -4,7 +4,16 @@ import { c, t } from "ttag";
 
 import { useAdminSetting } from "metabase/api/utils";
 import { Schedule } from "metabase/common/components/Schedule";
-import { Box, Button, Group, Icon, Stack, Text, Title } from "metabase/ui";
+import {
+  Box,
+  Button,
+  Flex,
+  Group,
+  Icon,
+  Stack,
+  Text,
+  Title,
+} from "metabase/ui";
 
 import { CardSection } from "../../components/CardSection";
 import { NewTransformFromCardModal } from "../../components/NewTransformFromCardModal";
@@ -13,11 +22,20 @@ import { getNewTransformPageUrl } from "../../urls";
 
 export function OverviewPage() {
   return (
-    <Stack gap="3.5rem">
-      <HeaderSection />
-      <CreateSection />
-      <ScheduleSection />
-    </Stack>
+    <Flex
+      direction="column"
+      align="center"
+      w="100%"
+      h="100%"
+      p="2.5rem"
+      bg="accent-gray-light"
+    >
+      <Stack gap="3.5rem">
+        <HeaderSection />
+        <CreateSection />
+        <ScheduleSection />
+      </Stack>
+    </Flex>
   );
 }
 
