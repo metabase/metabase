@@ -4,6 +4,7 @@ import * as Yup from "yup";
 
 import { skipToken, useListDatabaseSchemasQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { useSetting } from "metabase/common/hooks";
 import {
   Form,
   FormErrorMessage,
@@ -14,6 +15,7 @@ import {
   FormSubmitButton,
   FormTextInput,
 } from "metabase/forms";
+import { getScheduleExplanation } from "metabase/lib/cron";
 import * as Errors from "metabase/lib/errors";
 import { Button, Group, Modal, Radio, Stack } from "metabase/ui";
 import { useCreateTransformMutation } from "metabase-enterprise/api";
@@ -72,6 +74,7 @@ function NewTransformForm({ query, onSave, onCancel }: NewTransformFormProps) {
   } = useListDatabaseSchemasQuery(
     databaseId ? { id: databaseId, include_hidden: true } : skipToken,
   );
+  const schedule = useSetting("transform-schedule");
   const [createTransform] = useCreateTransformMutation();
 
   const initialValues: NewTransformValues = useMemo(
@@ -116,7 +119,7 @@ function NewTransformForm({ query, onSave, onCancel }: NewTransformFormProps) {
           <FormRadioGroup
             name="executionTrigger"
             label={t`When should this transform run?`}
-            description={t`The schedule is currently daily at 12:00 AM UTC. You can change this on the overview page.`}
+            description={getScheduleDescription(schedule)}
           >
             <Stack gap="sm">
               <Radio value="global-schedule" label={t`On the schedule`} />
@@ -172,4 +175,13 @@ function getCreateRequest(
     },
     execution_trigger: executionTrigger,
   };
+}
+
+function getScheduleDescription(schedule: string | undefined) {
+  if (!schedule) {
+    return null;
+  }
+
+  const explanation = getScheduleExplanation(schedule) ?? schedule;
+  return t`The schedule is currently ${explanation}. You can change this on the overview page.`;
 }
