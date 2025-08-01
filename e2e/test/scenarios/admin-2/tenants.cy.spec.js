@@ -469,7 +469,7 @@ describe("Tenants - management", () => {
     });
 
     cy.findAllByRole("button", { name: /ellipsis/ })
-      .should("have.length", 2)
+      .should("have.length", 3)
       .last()
       .click();
     H.popover().findByText("Edit user").click();
@@ -482,7 +482,6 @@ describe("Tenants - management", () => {
         cy.findByText(key).should("be.visible");
         cy.findByDisplayValue(value).should("be.visible");
       });
-      cy.findByLabelText("close").click();
     });
   });
 });
