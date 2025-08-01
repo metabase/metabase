@@ -202,7 +202,10 @@
   ;; the current user. Throw an Exception and then [[metabase.test/user-http-request]] will handle it and call
   ;; `authenticate` to get new creds and retry the request automatically.
   (when (and (= actual-status-code 401)
-             (not= expected-status-code 401))
+             (not= expected-status-code 401)
+             ;; allow for a 404 if expecting a 403
+             (not (and (= expected-status-code 403)
+                       (= actual-status-code 404))))
     (let [message (format "%s %s expected a status code of %d, got %d."
                           method-name url expected-status-code actual-status-code)
           body    (try
