@@ -2,11 +2,11 @@ import type { CardId, DatasetQuery, TransformId } from "metabase-types/api";
 
 export const ROOT_URL = "/admin/transforms";
 
-export function getTransformRootPageUrl() {
+export function getOverviewPageUrl() {
   return ROOT_URL;
 }
 
-export function getNewTransformPageUrl() {
+export function getEmptyStatePageUrl() {
   return `${ROOT_URL}/new`;
 }
 

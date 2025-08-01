@@ -1,87 +1,114 @@
 import { useDisclosure } from "@mantine/hooks";
+import { useState } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
-import EmptyDashboardBot from "assets/img/dashboard-empty.svg";
-import { ForwardRefLink } from "metabase/common/components/Link";
-import {
-  QuestionPickerModal,
-  type QuestionPickerValueItem,
-} from "metabase/common/components/Pickers/QuestionPicker";
+import { skipToken, useGetCardQuery } from "metabase/api";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useDispatch } from "metabase/lib/redux";
-import { Button, Flex, Icon, Menu, Text, Title } from "metabase/ui";
+import * as Urls from "metabase/lib/urls";
+import { Modal } from "metabase/ui";
+import Question from "metabase-lib/v1/Question";
+import type { Card, CardId, DatasetQuery, Transform } from "metabase-types/api";
 
-import {
-  getNewTransformFromCardPageUrl,
-  getNewTransformFromTypePageUrl,
-} from "../../urls";
+import { TransformQueryEditor } from "../../components/TransformQueryEditor";
+import { getOverviewPageUrl, getTransformUrl } from "../../urls";
 
-export function NewTransformPage() {
-  return (
-    <Flex direction="column" justify="center" align="center">
-      <Flex direction="column" justify="center" align="center">
-        <img
-          src={EmptyDashboardBot}
-          alt={t`Empty dashboard`}
-          width={96}
-          height={96}
-        />
-        <Title order={3} c="text-secondary" mt="md" ta="center">
-          {t`Create custom views and tables with transforms`}
-        </Title>
-        <Text c="text-secondary" mt="sm" mb="xl" ta="center">
-          {t`You can write SQL, use the query builder, or an existing query.`}
-        </Text>
-        <NewTransformMenu />
-      </Flex>
-    </Flex>
-  );
+import { NewTransformForm } from "./NewTransformForm";
+
+type NewTransformPageParams = {
+  type?: string;
+  cardId?: string;
+};
+
+type NewTransformPageParsedParams = {
+  type?: DatasetQuery["type"];
+  cardId?: CardId;
+};
+
+type NewTransformPageProps = {
+  params: NewTransformPageParams;
+};
+
+export function NewTransformPage({ params }: NewTransformPageProps) {
+  const { type, cardId } = getParsedParams(params);
+  const {
+    data: card,
+    isLoading,
+    error,
+  } = useGetCardQuery(cardId ? { id: cardId } : skipToken);
+
+  if (isLoading || error) {
+    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
+  }
+
+  return <NewTransformPageBody initialQuery={getInitialQuery(card, type)} />;
 }
 
-function NewTransformMenu() {
-  const dispatch = useDispatch();
-  const [isPickerOpened, { open: openPicker, close: closePicker }] =
-    useDisclosure();
+type NewTransformPageBodyProps = {
+  initialQuery: DatasetQuery;
+};
 
-  const handlePickerChange = (item: QuestionPickerValueItem) => {
-    dispatch(push(getNewTransformFromCardPageUrl(item.id)));
+function NewTransformPageBody({ initialQuery }: NewTransformPageBodyProps) {
+  const [query, setQuery] = useState(initialQuery);
+  const [isModalOpened, { open: openModal, close: closeModal }] =
+    useDisclosure();
+  const dispatch = useDispatch();
+
+  const handleSave = (transform: Transform) => {
+    dispatch(push(getTransformUrl(transform.id)));
+  };
+
+  const handleSaveClick = (newQuery: DatasetQuery) => {
+    setQuery(newQuery);
+    openModal();
+  };
+
+  const handleCancelClick = () => {
+    dispatch(push(getOverviewPageUrl()));
   };
 
   return (
     <>
-      <Menu>
-        <Menu.Target>
-          <Button variant="filled">{t`Create a transform`}</Button>
-        </Menu.Target>
-        <Menu.Dropdown>
-          <Menu.Label>{t`Create your transform with…`}</Menu.Label>
-          <Menu.Item
-            component={ForwardRefLink}
-            to={getNewTransformFromTypePageUrl("query")}
-            leftSection={<Icon name="notebook" />}
-          >
-            {t`Query builder`}
-          </Menu.Item>
-          <Menu.Item
-            component={ForwardRefLink}
-            to={getNewTransformFromTypePageUrl("native")}
-            leftSection={<Icon name="sql" />}
-          >
-            {t`SQL query`}
-          </Menu.Item>
-          <Menu.Item leftSection={<Icon name="folder" />} onClick={openPicker}>
-            {t`A saved question`}
-          </Menu.Item>
-        </Menu.Dropdown>
-      </Menu>
-      {isPickerOpened && (
-        <QuestionPickerModal
-          title={t`Pick a question`}
-          models={["card", "dataset"]}
-          onChange={handlePickerChange}
-          onClose={closePicker}
-        />
+      <TransformQueryEditor
+        query={query}
+        isNew
+        onSave={handleSaveClick}
+        onCancel={handleCancelClick}
+      />
+      {isModalOpened && (
+        <Modal
+          title={t`New transform`}
+          opened={isModalOpened}
+          padding="xl"
+          onClose={closeModal}
+        >
+          <NewTransformForm
+            query={query}
+            onSave={handleSave}
+            onCancel={closeModal}
+          />
+        </Modal>
       )}
     </>
   );
+}
+
+function getParsedParams({
+  type,
+  cardId,
+}: NewTransformPageParams): NewTransformPageParsedParams {
+  return {
+    type: type === "native" ? "native" : "query",
+    cardId: cardId != null ? Urls.extractEntityId(cardId) : undefined,
+  };
+}
+
+function getInitialQuery(
+  card: Card | undefined,
+  type: DatasetQuery["type"] | undefined,
+) {
+  return card != null
+    ? card.dataset_query
+    : Question.create({ type }).datasetQuery();
 }

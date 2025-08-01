@@ -7,7 +7,7 @@ import {
 } from "metabase/admin/components/AdminNav";
 import { AdminSettingsLayout } from "metabase/common/components/AdminLayout/AdminSettingsLayout";
 
-import { getNewTransformPageUrl, getTransformRootPageUrl } from "../../urls";
+import { getEmptyStatePageUrl, getOverviewPageUrl } from "../../urls";
 
 type TransformPageLayoutProps = {
   children: ReactNode;
@@ -26,12 +26,12 @@ function Sidebar() {
     <AdminNavWrapper>
       <AdminNavItem
         label={t`Overview`}
-        path={getTransformRootPageUrl()}
+        path={getOverviewPageUrl()}
         icon="home"
       />
       <AdminNavItem
         label={t`Transforms`}
-        path={getNewTransformPageUrl()}
+        path={getEmptyStatePageUrl()}
         icon="refresh_downstream"
       />
     </AdminNavWrapper>
