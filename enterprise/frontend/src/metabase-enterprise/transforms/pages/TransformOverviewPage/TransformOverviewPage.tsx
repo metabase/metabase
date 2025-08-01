@@ -20,7 +20,7 @@ import { NewTransformFromCardModal } from "../../components/NewTransformFromCard
 import { DEFAULT_SCHEDULE, SCHEDULE_OPTIONS } from "../../constants";
 import { getNewTransformPageUrl } from "../../urls";
 
-export function OverviewPage() {
+export function TransformOverviewPage() {
   return (
     <Flex
       direction="column"
