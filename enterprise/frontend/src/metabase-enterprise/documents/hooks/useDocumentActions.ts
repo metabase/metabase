@@ -5,10 +5,15 @@ import { useToast } from "metabase/common/hooks";
 import type { Card } from "metabase-types/api";
 
 import { clearDraftState } from "../documents.slice";
-import { useDocumentsDispatch, useDocumentsStore } from "../redux-utils";
+import {
+  useDocumentsDispatch,
+  useDocumentsSelector,
+  useDocumentsStore,
+} from "../redux-utils";
 import {
   getCardEmbeds,
   getDocumentCardWithDraftSettings,
+  getDocumentCollectionId,
   getDocumentsState,
   getHasDraftChanges,
 } from "../selectors";
@@ -19,7 +24,8 @@ export function useDocumentActions() {
   const dispatch = useDocumentsDispatch();
   const store = useDocumentsStore();
   const [sendToast] = useToast();
-  const { saveCard } = useDocumentCardSave();
+  const documentCollectionId = useDocumentsSelector(getDocumentCollectionId);
+  const { saveCard } = useDocumentCardSave(documentCollectionId);
 
   const commitVisualizationChanges = useCallback(
     async (embedIndex: number, editorInstance: any, originalCard: Card) => {

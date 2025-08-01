@@ -11,6 +11,7 @@ import {
   useGetCardQuery,
   useGetCollectionQuery,
 } from "metabase/api";
+import { canonicalCollectionId } from "metabase/collections/utils";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { CollectionPickerModal } from "metabase/common/components/Pickers/CollectionPicker";
 import { useToast } from "metabase/common/hooks";
@@ -22,9 +23,13 @@ import {
   useGetDocumentQuery,
   useUpdateDocumentMutation,
 } from "metabase-enterprise/api";
-import type { CollectionId } from "metabase-types/api";
+import type { RegularCollectionId } from "metabase-types/api";
 
-import { closeSidebar, resetDocuments } from "../documents.slice";
+import {
+  closeSidebar,
+  resetDocuments,
+  setDocumentCollectionId,
+} from "../documents.slice";
 import {
   useDocumentActions,
   useDocumentState,
@@ -141,6 +146,14 @@ export const DocumentPage = ({
     dispatch,
   ]);
 
+  useEffect(() => {
+    dispatch(
+      setDocumentCollectionId(
+        canonicalCollectionId(documentData?.collection_id),
+      ),
+    );
+  }, [documentData?.collection_id, dispatch]);
+
   const hasUnsavedChanges = useCallback(() => {
     const currentTitle = documentTitle.trim();
     const originalTitle = documentData?.name || "";
@@ -169,7 +182,7 @@ export const DocumentPage = ({
   const showSaveButton = hasUnsavedChanges() && canWrite;
 
   const handleSave = useCallback(
-    async (collectionId?: CollectionId) => {
+    async (collectionId: RegularCollectionId | null = null) => {
       if (!editorInstance) {
         return;
       }
@@ -182,7 +195,7 @@ export const DocumentPage = ({
         const newDocumentData = {
           name: documentTitle,
           document: currentContent,
-          used_card_ids: [...new Set(cardEmbeds.map((embed) => embed.id))],
+          card_ids: [...new Set(cardEmbeds.map((embed) => embed.id))],
         };
 
         const result = await (documentId !== "new" && documentData?.id
@@ -401,7 +414,7 @@ export const DocumentPage = ({
               showRootCollection: true,
             }}
             onChange={(collection) => {
-              handleSave(collection.id as CollectionId);
+              handleSave(canonicalCollectionId(collection.id));
               hideCollectionPicker();
             }}
           />

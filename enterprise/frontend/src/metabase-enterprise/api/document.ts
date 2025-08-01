@@ -29,7 +29,7 @@ export const documentApi = EnterpriseApi.injectEndpoints({
     updateDocument: builder.mutation<
       Document,
       Pick<Document, "id" | "name" | "document"> & {
-        used_card_ids?: number[];
+        card_ids?: number[];
       }
     >({
       query: (document) => ({

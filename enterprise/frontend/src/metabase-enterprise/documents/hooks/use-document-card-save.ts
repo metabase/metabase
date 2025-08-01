@@ -2,7 +2,7 @@ import type { Editor } from "@tiptap/react";
 import { useCallback } from "react";
 
 import { useCreateCardMutation, useUpdateCardMutation } from "metabase/api";
-import type { Card } from "metabase-types/api";
+import type { Card, RegularCollectionId } from "metabase-types/api";
 
 interface CardSaveOptions {
   card: Card;
@@ -19,7 +19,9 @@ interface CardSaveResult {
  * Hook that determines whether to update an existing card or create a new one
  * based on card type and occurrence count in the editor
  */
-export const useDocumentCardSave = () => {
+export const useDocumentCardSave = (
+  documentCollectionId: RegularCollectionId | null,
+) => {
   const [createCard] = useCreateCardMutation();
   const [updateCard] = useUpdateCardMutation();
 
@@ -73,7 +75,7 @@ export const useDocumentCardSave = () => {
           ...cardData,
           ...modifiedCardData,
           type: "in_document",
-          collection_id: card.collection_id ?? null,
+          collection_id: documentCollectionId,
         }).unwrap();
 
         return {
@@ -82,7 +84,7 @@ export const useDocumentCardSave = () => {
         };
       }
     },
-    [countCardOccurrences, createCard, updateCard],
+    [countCardOccurrences, createCard, documentCollectionId, updateCard],
   );
 
   return { saveCard };

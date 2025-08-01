@@ -15,6 +15,7 @@ import type { Card } from "metabase-types/api";
 
 import { useDocumentCardSave } from "../../../../hooks";
 import { useDocumentsSelector } from "../../../../redux-utils";
+import { getDocumentCollectionId } from "../../../../selectors";
 
 interface ModifyQuestionModalProps {
   card: Card;
@@ -34,10 +35,11 @@ export const ModifyQuestionModal = ({
   const store = useStore();
   const dispatch = useDispatch();
   const metadata = useDocumentsSelector(getMetadata);
+  const documentCollectionId = useDocumentsSelector(getDocumentCollectionId);
   const [modifiedQuestion, setModifiedQuestion] = useState<Question | null>(
     null,
   );
-  const { saveCard } = useDocumentCardSave();
+  const { saveCard } = useDocumentCardSave(documentCollectionId);
 
   const metadataState = useAsync(async () => {
     if (isOpen && card) {
@@ -108,7 +110,7 @@ export const ModifyQuestionModal = ({
       const result = await saveCard({
         card,
         modifiedCardData: {
-         dataset_query: modifiedQuestion.datasetQuery(),
+          dataset_query: modifiedQuestion.datasetQuery(),
           display: modifiedQuestion.display(),
           visualization_settings:
             modifiedQuestion.card().visualization_settings ?? {},

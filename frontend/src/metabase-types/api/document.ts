@@ -16,5 +16,5 @@ export type DocumentVersions = Document[];
 
 export type CreateDocumentRequest = Pick<Document, "name" | "document"> & {
   collection_id?: CollectionId;
-  used_card_ids?: number[];
+  card_ids?: number[];
 };

@@ -1,7 +1,7 @@
 import { createSelector } from "@reduxjs/toolkit";
 import _ from "underscore";
 
-import type { Card, CardId } from "metabase-types/api";
+import type { Card, CardId, RegularCollectionId } from "metabase-types/api";
 
 import type { DocumentsStoreState } from "./types";
 
@@ -27,6 +27,11 @@ export const getCardEmbeds = createSelector(
 export const getSelectedEmbedIndex = createSelector(
   getDocumentsState,
   (documents): number | null => documents.selectedEmbedIndex,
+);
+
+export const getDocumentCollectionId = createSelector(
+  getDocumentsState,
+  (documents): RegularCollectionId | null => documents.documentCollectionId,
 );
 
 // Get draft card for the currently selected embed

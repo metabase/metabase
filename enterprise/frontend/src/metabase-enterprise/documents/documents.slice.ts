@@ -3,6 +3,7 @@ import { type PayloadAction, createSlice } from "@reduxjs/toolkit";
 import type {
   Card,
   CardDisplayType,
+  RegularCollectionId,
   VisualizationSettings,
 } from "metabase-types/api";
 
@@ -13,12 +14,14 @@ export interface DocumentsState {
   // Draft state for currently editing embed
   draftCard: Card | null;
   cardEmbeds: CardEmbedRef[];
+  documentCollectionId: RegularCollectionId | null;
 }
 
 const initialState: DocumentsState = {
   selectedEmbedIndex: null,
   draftCard: null,
   cardEmbeds: [],
+  documentCollectionId: null,
 };
 
 const documentsSlice = createSlice({
@@ -67,6 +70,12 @@ const documentsSlice = createSlice({
     setCardEmbeds: (state, action: PayloadAction<CardEmbedRef[]>) => {
       state.cardEmbeds = action.payload;
     },
+    setDocumentCollectionId: (
+      state,
+      action: PayloadAction<RegularCollectionId | null>,
+    ) => {
+      state.documentCollectionId = action.payload;
+    },
     resetDocuments: () => initialState,
   },
 });
@@ -78,6 +87,7 @@ export const {
   clearDraftState,
   closeSidebar,
   setCardEmbeds,
+  setDocumentCollectionId,
   resetDocuments,
 } = documentsSlice.actions;
 
