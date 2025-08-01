@@ -126,12 +126,22 @@ export function startNewNativeModel(config) {
 /**
  * Visit any valid query in an ad-hoc manner.
  *
- * @param {import("./api").QuestionDetails} question
- * @param {{callback?: function, mode: (undefined|"notebook")}} config
+ * @param {object} question
+ * @param {{
+ *  callback?: function,
+ *  mode?: "notebook",
+ *  waitOptions?: Partial<import("cypress/types/net-stubbing").WaitOptions>
+ * }} [config]
  */
 export function visitQuestionAdhoc(
   question,
-  { callback, mode, autorun = true, skipWaiting = false } = {},
+  {
+    callback,
+    mode,
+    autorun = true,
+    skipWaiting = false,
+    waitOptions = {},
+  } = {},
 ) {
   const questionMode = mode === "notebook" ? "/notebook" : "";
 
@@ -139,12 +149,15 @@ export function visitQuestionAdhoc(
 
   cy.intercept(url).as(alias);
 
+  cy.log("Visit ad hoc question");
   cy.visit(`/question${questionMode}#` + adhocQuestionHash(question));
 
   runQueryIfNeeded(question, autorun);
 
   if (mode !== "notebook" && !skipWaiting) {
-    return cy.wait("@" + alias).then((xhr) => callback && callback(xhr));
+    return cy
+      .wait("@" + alias, waitOptions)
+      .then((xhr) => callback && callback(xhr));
   }
 
   // Ensure chainability
