@@ -28,7 +28,7 @@ There are two basic types of widgets you can add. The type of filter or paramete
 
 ### Parameter widgets
 
- **Parameters** determine _how_ to show the data. The time grouping parameter, for example, changes the granularity of time-based visualizations (like showing data by month instead of by day) without removing any data points.
+**Parameters** determine _how_ to show the data. The time grouping parameter, for example, changes the granularity of time-based visualizations (like showing data by month instead of by day) without removing any data points.
 
 - [Time grouping](#time-grouping-parameter)
 
@@ -38,12 +38,13 @@ There are two basic types of widgets you can add. The type of filter or paramete
 
 1. Click the **pencil icon** to enter dashboard editing mode.
 2. You can add a filter or parameter widget to:
-    
-    - **The whole dashboard**. You'll need to connect these dashboard-level filters to individual cards. Metabase will only display dashboard-level widgets if they're connected to a card on the current tab.
-    - **Heading cards**. Not text cards, only [heading cards](./introduction.md#adding-headings-or-descriptions-with-text-cards). Can only be connected to cards on the current tab.
-    - **Question cards**. Can only be connected to cards on the current tab.
-   
+
+   - **The whole dashboard**. You'll need to connect these dashboard-level filters to individual cards. Metabase will only display dashboard-level widgets if they're connected to a card on the current tab.
+   - **Heading cards**. Not text cards, only [heading cards](./introduction.md#adding-headings-or-descriptions-with-text-cards). Can only be connected to cards on the current tab.
+   - **Question cards**. Can only be connected to cards on the current tab.
+
    Go to where you want to add a filter and click the **filter icon**.
+
 3. Select a [filter type](#filter-and-parameter-widgets).
 4. [Connect your filter or parameter widget to one or more dashboard cards](#connecting-a-filter-or-parameter-widget-to-dashboard-cards). Only dashboard-level widgets can be connected to cards on multiple tabs.
 5. [Configure your filter](#editing-a-filter).
@@ -182,7 +183,7 @@ To undo this auto-connecting of cards, click on the toast that pops up when Meta
 
 ## Filtering dashboards with native/SQL questions
 
-For filters, you'll need to [add a variable or field filter to your query](../questions/native-editor/sql-parameters.md). 
+For filters, you'll need to [add a variable or field filter to your query](../questions/native-editor/sql-parameters.md).
 
 For parameters, check out [Time grouping parameters](../questions/native-editor/time-grouping-parameters.md).
 
