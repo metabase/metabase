@@ -605,6 +605,7 @@
 (defmethod ->legacy-MBQL :mbql/join [join]
   (let [base     (cond-> (disqualify join)
                    (and *clean-query*
+                        (:alias join)
                         (str/starts-with? (:alias join) legacy-default-join-alias)
                         ;; added by [[metabase.query-processor.middleware.resolve-joins]]
                         (not (:qp/keep-default-join-alias join)))

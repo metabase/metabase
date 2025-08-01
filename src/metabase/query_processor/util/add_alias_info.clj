@@ -39,548 +39,406 @@
   ##### `::desired-alias`
 
   If this clause is 'selected' (i.e., appears in `:fields`, `:aggregation`, or `:breakout`), select the clause `AS`
-  this alias. This alias is guaranteed to be unique.
-
-  ##### `::position`
-
-  If this clause is 'selected', this is the position the clause will appear in the results (i.e. the corresponding
-  column index)."
+  this alias. This alias is guaranteed to be unique."
+  (:refer-clojure :exclude [ref])
   (:require
    [medley.core :as m]
    [metabase.driver :as driver]
-   [metabase.legacy-mbql.schema :as mbql.s]
-   [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.core :as lib]
-   [metabase.lib.field.resolution :as lib.field.resolution]
-   [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.options :as lib.options]
+   [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.join :as lib.schema.join]
+   [metabase.lib.schema.mbql-clause :as lib.schema.mbql-clause]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
-   [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.lib.walk :as lib.walk]
    [metabase.query-processor.middleware.annotate.legacy-helper-fns :as annotate.legacy-helper-fns]
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.performance :as perf]))
-
-(defn- prefix-field-alias
-  "Generate a field alias by applying `prefix` to `field-alias`. This is used for automatically-generated aliases for
-  columns that are the result of joins."
-  [prefix field-alias]
-  (driver/escape-alias driver/*driver* (str prefix "__" field-alias)))
-
-(defn- make-unique-alias-fn
-  "Creates a function with the signature
-
-    (unique-alias position original-alias)
-
-  To return a uniquified version of `original-alias`. Memoized by `position`, so duplicate calls will result in the
-  same unique alias."
-  []
-  (let [unique-name-fn (lib.util/unique-name-generator)]
-    (fn unique-alias-fn [position original-alias]
-      (assert (string? original-alias)
-              (format "unique-alias-fn expected string, got: %s" (pr-str original-alias)))
-      (unique-name-fn position (driver/escape-alias driver/*driver* original-alias)))))
-
-;; TODO -- this should probably limit the resulting alias, and suffix a short hash as well if it gets too long. See also
-;; [[unique-alias-fn]] below.
-
-(defn- remove-namespaced-options [options]
-  (not-empty
-   (reduce-kv (fn [m k _]
-                (if (qualified-keyword? k)
-                  (dissoc m k)
-                  m))
-              options options)))
-
-(defn normalize-clause
-  "Normalize a `:field`/`:expression`/`:aggregation` clause by removing extra info so it can serve as a key for
-  `:qp/refs`. This removes `:source-field` if it is present -- don't use the output of this for anything but internal
-  key/distinct comparison purposes."
-  [clause]
-  (lib.util.match/match-lite clause
-    ;; optimization: don't need to rewrite a `:field` clause without any options
-    [:field _ nil]
-    clause
-
-    [:field id-or-name opts]
-    ;; this doesn't use [[mbql.u/update-field-options]] because this gets called a lot and the overhead actually adds up
-    ;; a bit
-    [:field id-or-name (remove-namespaced-options (cond-> (dissoc opts :source-field :effective-type)
-                                                    (integer? id-or-name) (dissoc :base-type)))]
-
-    ;; for `:expression` and `:aggregation` references, remove the options map if they are empty.
-    [:expression expression-name opts]
-    (if-let [opts (remove-namespaced-options opts)]
-      [:expression expression-name opts]
-      [:expression expression-name])
-
-    [:aggregation index opts]
-    (if-let [opts (-> opts
-                      (dissoc :base-type)
-                      (remove-namespaced-options))]
-      [:aggregation index opts]
-      [:aggregation index])
-
-    _
-    clause))
-
-(defn- selected-clauses
-  "Get all the clauses that are returned by this level of the query as a map of normalized-clause -> index of that
-  column in the results."
-  [{:keys [fields breakout aggregation], :as query}]
-  ;; this is cached for the duration of the QP run because it's a little expensive to calculate and caching this speeds
-  ;; up this namespace A LOT
-  (qp.store/cached (select-keys query [:fields :breakout :aggregation])
-    (into
-     {}
-     (comp cat
-           (map-indexed
-            (fn [i clause]
-              [(normalize-clause clause) i])))
-     [breakout
-      (map-indexed
-       (fn [i ag]
-         (lib.util.match/replace ag
-           ;; :offset is a special case since it doesn't NEED to get wrapped in aggregation options.
-           [:offset _opts _expr _n]
-           [:aggregation i]
-
-           [:aggregation-options wrapped opts]
-           [:aggregation i]
-
-           ;; aggregation clause should be preprocessed into an `:aggregation-options` clause by now.
-           _
-           (throw (ex-info (tru "Expected :aggregation-options clause, got {0}" (pr-str ag))
-                           {:type qp.error-type/qp, :clause ag}))))
-       aggregation)
-      fields])))
-
-(defn- clause->position
-  "Get the position (i.e., column index) `clause` is returned as, if it is returned (i.e. if it is in `:breakout`,
-  `:aggregation`, or `:fields`). Not all clauses are returned."
-  [inner-query clause]
-  ((selected-clauses inner-query) (normalize-clause clause)))
-
-(defn- this-level-join-aliases [{:keys [joins]}]
-  (into #{} (map :alias) joins))
-
-(defn- field-is-from-join-in-this-level? [inner-query [_field _id-or-name {:keys [join-alias]}]]
-  (when join-alias
-    ((this-level-join-aliases inner-query) join-alias)))
-
-(mu/defn- field-instance :- [:maybe ::lib.schema.metadata/column]
-  [[_ id-or-name :as _field-clause] :- mbql.s/field]
-  (when (integer? id-or-name)
-    (lib.metadata/field (qp.store/metadata-provider) id-or-name)))
-
-(defn- field-table-id [field-clause]
-  (:table-id (field-instance field-clause)))
-
-(defn- resolve-field-source-table-alias-with-lib-field-resolution
-  "This is only an absolute last resort -- use Lib `resolve-field-ref` to resolve a field ref if the code we have here
-  can't do it.
-
-  We should actually rewrite this entire namespace to just use Lib in the first place for everything, but that's a
-  project for another day. (See #59589)"
-  [inner-query field-ref]
-  (try
-    (let [lib-query (annotate.legacy-helper-fns/legacy-inner-query->mlv2-query inner-query)]
-      (when-let [resolved (lib.field.resolution/resolve-field-ref lib-query -1 (lib/->pMBQL field-ref))]
-        (cond
-          (= (:lib/source resolved) :source/previous-stage)
-          ::source
-
-          (= (:lib/source resolved) :source/joins)
-          (when-let [join-alias (:metabase.lib.join/join-alias resolved)]
-            (get-in inner-query [::join-alias->escaped join-alias] join-alias)))))
-    (catch Throwable e
-      (log/error e "Failed to convert inner query to Lib query, unable to do fallback matching" (pr-str inner-query))
-      nil)))
-
-(mu/defn- field-source-table-alias :- [:or
-                                       ::lib.schema.common/non-blank-string
-                                       ::lib.schema.id/table
-                                       [:= ::source]]
-  "Determine the appropriate `::source-table` alias for a `field-clause`."
-  [{:keys [source-table source-query], :as inner-query} [_ _id-or-name {:keys [join-alias]}, :as field-clause]]
-  (let [table-id            (field-table-id field-clause)
-        join-is-this-level? (field-is-from-join-in-this-level? inner-query field-clause)]
-    (cond
-      join-is-this-level?                      (get-in inner-query [::join-alias->escaped join-alias] join-alias)
-      (and table-id (= table-id source-table)) table-id
-      source-query                             ::source
-      :else
-      (or (resolve-field-source-table-alias-with-lib-field-resolution inner-query field-clause)
-          (throw (ex-info (trs "Cannot determine the source table or query for Field clause {0}" (pr-str field-clause))
-                          {:type   qp.error-type/invalid-query
-                           :clause field-clause
-                           :query  inner-query}))))))
-
-(mr/def ::exported-clause
-  [:or ::mbql.s/field ::mbql.s/expression ::mbql.s/aggregation-options])
-
-(mu/defn- exports :- [:set ::exported-clause]
-  [query :- ::mbql.s/SourceQuery]
-  (into #{} (lib.util.match/match (dissoc query :source-query :source-metadata :joins)
-              [(_ :guard #{:field :expression :aggregation-options}) _ (_ :guard (every-pred map? ::position))])))
-
-(defn- join-with-alias [{:keys [joins]} join-alias]
-  (some (fn [join]
-          (when (= (:alias join) join-alias)
-            join))
-        joins))
-
-(defn- fuzzify [clause]
-  (mbql.u/update-field-options clause dissoc :temporal-unit :binning))
-
-(defn- field-signature
-  [field-clause]
-  [(second field-clause) (get-in field-clause [2 :join-alias])])
-
-(mu/defn- field-name-match :- [:maybe ::exported-clause]
-  [field-name      :- :string
-   all-exports     :- [:set ::exported-clause]
-   source-metadata :- [:maybe [:sequential ::mbql.s/legacy-column-metadata]]
-   field-exports   :- [:sequential ::mbql.s/field]]
-  ;; First, look for Expressions or fields from the source query stage whose `::desired-alias` matches the
-  ;; name we're searching for.
-  (or (m/find-first (fn [[tag _id-or-name {::keys [desired-alias], :as _opts} :as _ref]]
-                      (when (#{:expression :field} tag)
-                        (= desired-alias field-name)))
-                    all-exports)
-      ;; Expressions by exact name.
-      (m/find-first (fn [[_ expression-name :as _expression-clause]]
-                      (= expression-name field-name))
-                    (filter (partial mbql.u/is-clause? :expression) all-exports))
-      ;; aggregation clauses from the previous stage based on their `::desired-alias`. If THAT doesn't work,
-      ;; then try to match based on their `::source-alias` (not 100% sure why we're checking `::source-alias` at
-      ;; all TBH -- Cam)
-      (when-let [ag-clauses (seq (filter (partial mbql.u/is-clause? :aggregation-options) all-exports))]
-        (some (fn [k]
-                (m/find-first (fn [[_tag _ag-clause opts :as _aggregation-options-clause]]
-                                (= (get opts k) field-name))
-                              ag-clauses))
-              [::desired-alias ::source-alias]))
-      ;; look for a field referenced by the name in source-metadata
-      (when-let [column (m/find-first #(= (:name %) field-name) source-metadata)]
-        (let [signature (field-signature (:field_ref column))]
-          (or ;; First try to match with the join alias.
-           (m/find-first #(= (field-signature %) signature) field-exports)
-              ;; Then just the names, but if the match is ambiguous, warn and return nil.
-           (let [matches (filter #(= (second %) field-name) field-exports)]
-             (when (= (count matches) 1)
-               (first matches))))))))
-
-(mu/defn- matching-field-in-source-query*
-  [source-query    :- ::mbql.s/SourceQuery
-   source-metadata :- [:maybe [:sequential ::mbql.s/legacy-column-metadata]]
-   field-clause    :- ::mbql.s/field
-   & {:keys [normalize-fn]
-      :or   {normalize-fn normalize-clause}}]
-  (let [normalized    (normalize-fn field-clause)
-        all-exports   (exports source-query)
-        field-exports (filter (partial mbql.u/is-clause? :field)
-                              all-exports)]
-    ;; first look for an EXACT match in the `exports`
-    (or (m/find-first (fn [a-clause]
-                        (= (normalize-fn a-clause) normalized))
-                      field-exports)
-        ;; if there is no EXACT match, attempt a 'fuzzy' match by disregarding the `:temporal-unit` and `:binning`
-        (let [fuzzy-normalized (fuzzify normalized)]
-          (m/find-first (fn [a-clause]
-                          (= (fuzzify (normalize-fn a-clause)) fuzzy-normalized))
-                        field-exports))
-        ;; if still no match try looking based for a matching Field based on ID.
-        (let [[_field id-or-name _opts] field-clause]
-          (when (integer? id-or-name)
-            (or (m/find-first (fn [[_field an-id-or-name _opts]]
-                                (= an-id-or-name id-or-name))
-                              field-exports)
-                ;; look for a field referenced by the ID in source-metadata
-                (when-let [column (m/find-first #(= (:id %) id-or-name) source-metadata)]
-                  (let [signature (field-signature (:field_ref column))]
-                    (m/find-first #(= (field-signature %) signature) field-exports))))))
-        ;; otherwise if this is a nominal field literal ref then look for matches based on the string name used
-        (when-let [field-names (let [[_ id-or-name] field-clause]
-                                 (when (string? id-or-name)
-                                   [id-or-name (some-> driver/*driver* (driver/escape-alias id-or-name))]))]
-          (some #(field-name-match % all-exports source-metadata field-exports) field-names))
-        ;; if all of that failed then try to find a match using `:lib/deduplicated-name` (if present)
-        (let [[_ id-or-name] field-clause]
-          (when (string? id-or-name)
-            (when-let [col (m/find-first (fn [col]
-                                           (= (:lib/deduplicated-name col) id-or-name))
-                                         source-metadata)]
-              (when-let [desired-column-alias (:lib/desired-column-alias col)]
-                (m/find-first (fn [[_tag _id-or-name opts]]
-                                (= (::desired-alias opts) desired-column-alias))
-                              all-exports)))))
-        ;; otherwise we failed to find a match! This is expected for native queries but if the source query was MBQL
-        ;; there's probably something wrong.
-        (when-not (:native source-query)
-          (log/debugf "Failed to find matching field for\n\n%s\n\nin MBQL source query, query may not work! Found:\n\n%s"
-                      (pr-str field-clause)
-                      (u/pprint-to-str (into #{}
-                                             (map (some-fn ::desired-alias :name identity))
-                                             all-exports)))))))
-
-(defn- matching-field-in-join-at-this-level
-  "If `field-clause` is the result of a join *at this level* with a `:source-query`, return the 'source' `:field` clause
-  from that source query."
-  [inner-query [_ _ {:keys [join-alias]} :as field-clause]]
-  (when join-alias
-    (let [{:keys [source-query source-metadata]} (join-with-alias inner-query join-alias)]
-      (when source-query
-        (matching-field-in-source-query*
-         source-query
-         source-metadata
-         field-clause
-         :normalize-fn #(mbql.u/update-field-options (normalize-clause %) dissoc :join-alias))))))
-
-(defn- field-alias-in-join-at-this-level
-  "If `field-clause` is the result of a join at this level, return the `::desired-alias` from that join (where the Field is
-  introduced). This is the appropriate `::source-alias` for such a Field."
-  [inner-query field-clause]
-  (when-let [[_ _ {::keys [desired-alias]}] (matching-field-in-join-at-this-level inner-query field-clause)]
-    desired-alias))
-
-(defn- matching-field-in-source-query
-  [{:keys [source-query source-metadata], :as inner-query} field-clause]
-  (when (and source-query
-             (= (field-source-table-alias inner-query field-clause) ::source))
-    (matching-field-in-source-query* source-query source-metadata field-clause)))
-
-(defn- field-alias-in-source-query
-  [inner-query field-clause]
-  (when-let [[_tag _id-or-name {::keys [desired-alias]}] (matching-field-in-source-query inner-query field-clause)]
-    desired-alias))
-
-;;; TODO (Cam 6/22/25) -- remove this method ASAP
-(defmulti ^String field-reference
-  "Generate a reference for the field instance `field-inst` appropriate for the driver `driver`.
-  By default this is just the name of the field, but it can be more complicated, e.g., take
-  parent fields into account.
-
-  DEPRECATED: Implement [[field-reference-mlv2]] instead, which accepts a `kebab-case` Field metadata rather than
-  `snake_case` metadata."
-  {:added "0.46.0", :arglists '([driver field-inst]), :deprecated "0.48.0"}
-  driver/dispatch-on-initialized-driver
-  :hierarchy #'driver/hierarchy)
+   [metabase.lib.equality :as lib.equality]
+   [metabase.lib.schema.ref :as lib.schema.ref]))
 
 (defmulti ^String field-reference-mlv2
   "Generate a reference for the field instance `field-inst` appropriate for the driver `driver`.
   By default this is just the name of the field, but it can be more complicated, e.g., take
-  parent fields into account."
-  {:added "0.48.0", :arglists '([driver field-inst])}
+  parent fields into account.
+
+  DEPRECATED in 0.56.0, and no longer used."
+  {:added "0.48.0", :deprecated "0.56.0, " :arglists '([driver field-inst])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
-(mu/defmethod field-reference-mlv2 ::driver/driver
-  [driver :- :keyword
-   field  :- ::lib.schema.metadata/column]
-  #_{:clj-kondo/ignore [:deprecated-var]}
-  (if (get-method field-reference driver)
-    (do
-      ;; We should not be reaching into driver implementations
-      ((requiring-resolve 'metabase.driver.sql.query-processor.deprecated/log-deprecation-warning)
-       driver
-       `field-reference
-       "0.48.0")
-      (field-reference driver
-                       #_{:clj-kondo/ignore [:deprecated-var]}
-                       (qp.store/->legacy-metadata field)))
-    (:name field)))
+(mr/def ::updated-opts
+  "Schema for an updated options map that includes the keys added by this namespace."
+  [:map
+   [::source-alias  ::lib.schema.metadata/source-column-alias]
+   [::desired-alias ::lib.schema.metadata/desired-column-alias]
+   [::source-table  [:or
+                     [:enum ::source ::none]
+                     ::lib.schema.join/alias
+                     ::lib.schema.id/table]]
+   ;; only for 'returned' columns.
+   [::position {:optional true} [:int {:min 0}]]])
 
-(defn- field-nfc-path
-  "Nested field components path for field, so drivers can use in identifiers."
-  [field-clause]
-  (some-> field-clause field-instance :nfc-path not-empty vec))
+(defn- escape-fn []
+  {:pre [(keyword? driver/*driver*)]}
+  (let [f      (lib.util/unique-name-generator)
+        driver driver/*driver*]
+    (fn [s]
+      (->> s
+           f
+           (driver/escape-alias driver)))))
 
-(defn- field-requires-original-field-name
-  "JSON extraction fields need to be named with their outer `field-name`, not use any existing `::desired-alias`."
-  [field-clause]
-  (boolean (field-nfc-path field-clause)))
+(mr/def ::desired-alias->escaped
+  [:map-of ::lib.schema.metadata/desired-column-alias ::lib.schema.metadata/desired-column-alias])
 
-(mu/defn- field-name :- [:maybe :string]
-  "*Actual* name of a `:field` from the database or source query (for Field literals)."
-  [_inner-query [_ id-or-name :as field-clause] :- mbql.s/field]
-  (or (some->> field-clause
-               field-instance
-               (field-reference-mlv2 driver/*driver*))
-      (when (string? id-or-name)
-        id-or-name)))
+(mr/def ::resolved-column
+  [:merge
+   ::lib.schema.metadata/column
+   [:map
+    [::escaped-source-alias  ::lib.schema.metadata/source-column-alias]
+    [::escaped-desired-alias ::lib.schema.metadata/desired-column-alias]
+    [::escaped-join-alias    [:maybe ::lib.schema.join/alias]]]])
 
-(mu/defn- expensive-field-info
-  "Calculate extra stuff about `field-clause` that's a little expensive to calculate. This is done once so we can pass
-  it around instead of recalculating it a bunch of times."
-  [inner-query  :- :map
-   field-clause :- mbql.s/field]
-  (merge
-   {:field-name              (field-name inner-query field-clause)
-    :override-alias?         (field-requires-original-field-name field-clause)
-    :join-is-this-level?     (field-is-from-join-in-this-level? inner-query field-clause)
-    :alias-from-join         (field-alias-in-join-at-this-level inner-query field-clause)
-    :alias-from-source-query (field-alias-in-source-query inner-query field-clause)}
-   (when-let [nfc-path (field-nfc-path field-clause)]
-     {:nfc-path nfc-path})))
+(defn- returned-columns [query path]
+  (lib.walk/apply-f-for-stage-at-path lib/returned-columns (::original query) path))
 
-(defn- field-source-alias
-  "Determine the appropriate `::source-alias` for a `field-clause`."
-  {:arglists '([inner-query field-clause expensive-field-info])}
-  [{:keys [_source-table], :as _inner-query}
-   [_ _id-or-name {:keys [join-alias]}, :as _field-clause]
-   {:keys [field-name join-is-this-level? alias-from-join alias-from-source-query]}]
-  (cond
-    ;; TODO -- this just recalculates the info instead of actually finding the Field in the join and getting its desired
-    ;; alias there... this seems like a clear bug since it doesn't go thru the uniquify logic. Something will
-    ;; potentially break by doing this. I haven't been able to reproduce it yet however.
-    ;;
-    ;; This will only be triggered if the join somehow exposes duplicate columns or columns that have the same escaped
-    ;; name after going thru [[driver/escape-alias]]. I think the only way this could happen is if we escape them
-    ;; aggressively but the escape logic produces duplicate columns (i.e., there is overlap between the unique hashes we
-    ;; suffix to escaped identifiers.)
-    ;;
-    ;; We'll have to look into this more in the future. For now, it seems to work for everything we try it with.
-    (and join-is-this-level? alias-from-join)  alias-from-join
-    alias-from-source-query                    alias-from-source-query
-    (and join-alias (not join-is-this-level?)) (prefix-field-alias join-alias field-name)
-    :else                                      field-name))
+(defn- visible-columns [query path opts]
+  (letfn [(f [query stage-number]
+            (lib/visible-columns query stage-number (lib.util/query-stage query stage-number) opts))]
+    (lib.walk/apply-f-for-stage-at-path f (::original query) path)))
 
-(defn- field-desired-alias
-  "Determine the appropriate `::desired-alias` for a `field-clause`."
-  {:arglists '([inner-query field-clause expensive-field-info])}
-  [_inner-query
-   [_ _id-or-name {:keys [join-alias], ::keys [desired-alias], explicit-name :name} :as _field-clause]
-   {:keys [field-name alias-from-join alias-from-source-query override-alias?], :as _expensive-field-info}]
-  (cond
-    join-alias              (prefix-field-alias join-alias (or alias-from-join field-name))
-    ;; JSON fields and similar have to be aliased by the outer field name.
-    override-alias?         field-name
-    explicit-name           explicit-name
-    desired-alias           desired-alias
-    alias-from-source-query alias-from-source-query
-    :else                   field-name))
+(defn- resolve-field-ref [query stage-path field-ref]
+  (lib.walk/apply-f-for-stage-at-path lib/metadata (::original query) stage-path field-ref))
 
-(defmulti ^:private clause-alias-info
-  {:arglists '([inner-query unique-alias-fn clause])}
-  (fn [_ _ [clause-type]]
-    clause-type))
+(mu/defn- add-escaped-desired-aliases :- [:map
+                                          [:lib/type keyword?]
+                                          [::desired-alias->escaped ::desired-alias->escaped]]
+  [query         :- ::lib.schema/query
+   path          :- ::lib.walk/path
+   stage-or-join :- [:map [:lib/type keyword?]]]
+  (let [returned-columns (returned-columns query path)
+        escape-fn        (escape-fn)
+        escaped-aliases  (into {}
+                               (comp
+                                (map :lib/desired-column-alias)
+                                (map (fn [k]
+                                       [k (escape-fn k)])))
+                               returned-columns)]
+    (assoc stage-or-join ::desired-alias->escaped escaped-aliases)))
 
-(mu/defmethod clause-alias-info :field
-  [inner-query     :- :map
-   unique-alias-fn :- fn?
-   field-clause    :- mbql.s/field]
-  (let [expensive-info (expensive-field-info inner-query field-clause)]
-    (merge {::source-table (field-source-table-alias inner-query field-clause)
-            ::source-alias (field-source-alias inner-query field-clause expensive-info)}
-           (when-let [nfc-path (:nfc-path expensive-info)]
-             {::nfc-path nfc-path})
-           (when-let [position (clause->position inner-query field-clause)]
-             {::desired-alias (unique-alias-fn position (field-desired-alias inner-query field-clause expensive-info))
-              ::position      position}))))
+(mu/defn- update-opts :- ::lib.schema.mbql-clause/clause
+  [clause   :- ::lib.schema.mbql-clause/clause
+   resolved :- ::resolved-column]
+  (lib.options/update-options
+   clause
+   (mu/fn :- ::updated-opts
+     [opts :- [:maybe :map]]
+     (assoc opts
+            ::source-alias  (::escaped-source-alias resolved)
+            ::desired-alias (::escaped-desired-alias resolved)
+            ::source-table  (case (:lib/source resolved)
+                              :source/table-defaults        (:table-id resolved)
+                              (:source/joins
+                               :source/implicitly-joinable) (or (::escaped-join-alias resolved)
+                               (throw (ex-info "Resolved metadata is missing ::escaped-join-alias" {:ref clause, :resolved resolved})))
+                              (:source/previous-stage
+                               :source/card)                ::source
+                              (:source/expressions
+                               :source/aggregations
+                               :source/native)              ::none)))))
 
-(defmulti ^:private aggregation-name
-  {:arglists '([mbql-clause])}
-  (fn [x]
-    (when (mbql.u/mbql-clause? x)
-      (first x))))
+(declare update-refs)
 
-;;; make sure we have an `:aggregation-options` or other fully-preprocessed aggregation clause (i.e., `:offset`) like we
-;;; expect. This is mostly a precondition check since we should never be running this code on not-preprocessed queries,
-;;; so it's not i18n'ed
-(defmethod aggregation-name :default
-  [ag-clause]
-  (throw (ex-info (format "Expected :aggregation-options or other fully-preprocessed aggregation, got %s."
-                          (pr-str ag-clause))
-                  {:clause ag-clause})))
+(defn- escaped-source-alias [query stage-path source-column-alias]
+  (or (when-let [previous-stage-path (lib.walk/previous-path stage-path)]
+        (let [previous-stage (get-in query previous-stage-path)]
+          (get-in previous-stage [::desired-alias->escaped source-column-alias])))
+      source-column-alias
+      "<COLUMN WAS INTRODUCED IN THIS STAGE>"))
 
-(mu/defmethod aggregation-name :aggregation-options :- :string
-  [[_aggregation-options _wrapped-ag opts]]
-  (:name opts))
+(defn- escaped-desired-alias
+  [query stage-path desired-column-alias]
+  (or (when desired-column-alias
+        (or (get-in query (into (vec stage-path) [::desired-alias->escaped desired-column-alias]))
+            (throw (ex-info "Missing ::desired-alias->escaped"
+                            {:path stage-path, :desired-alias desired-column-alias}))))
+      "<COLUMN IS NOT RETURNED>"))
 
-(mu/defmethod aggregation-name :offset :- :string
-  [[_offset opts _expr _n]]
-  (:name opts))
+(defn- escaped-join-alias [query stage-path join-alias]
+  (when join-alias
+    (or (get-in query (into (vec stage-path) [::join-alias->escaped join-alias]))
+        (throw (ex-info "Missing ::join-alias->escaped"
+                        {:path stage-path, :join-alias join-alias})))))
 
-(defmethod clause-alias-info :aggregation
-  [{aggregations :aggregation, :as inner-query} unique-alias-fn [_ index _opts :as ag-ref-clause]]
-  (let [position (clause->position inner-query ag-ref-clause)]
-    ;; an aggregation is ALWAYS returned, so it HAS to have a `position`. If it does not, the aggregation reference
-    ;; is busted.
-    (when-not position
-      (throw (ex-info (tru "Aggregation does not exist at index {0}" index)
-                      {:type   qp.error-type/invalid-query
-                       :clause ag-ref-clause
-                       :query  inner-query})))
-    (let [ag-name (aggregation-name (nth aggregations index))]
-      {::desired-alias (unique-alias-fn position ag-name)
-       ::position      position})))
+(mu/defn- add-escaped-aliases :- ::resolved-column
+  [query      :- ::lib.schema/query
+   stage-path :- ::lib.walk/path
+   col        :- ::lib.schema.metadata/column]
+  (assoc col
+         ::escaped-source-alias  (escaped-source-alias  query stage-path ((some-fn :lib/source-column-alias :name) col))
+         ::escaped-desired-alias (escaped-desired-alias query stage-path (:lib/desired-column-alias col))
+         ::escaped-join-alias    (escaped-join-alias    query stage-path (lib/current-join-alias col))))
 
-(defmethod clause-alias-info :expression
-  [inner-query unique-alias-fn [_ expression-name :as expression-ref-clause]]
-  (when-let [position (clause->position inner-query expression-ref-clause)]
-    {::desired-alias (unique-alias-fn position expression-name)
-     ::position      position}))
+(mu/defn- update-field-ref :- :mbql.clause/field
+  [query      :- ::lib.schema/query
+   stage-path :- ::lib.walk/path
+   field-ref  :- :mbql.clause/field
+   col        :- ::lib.schema.metadata/column]
+  (update-opts field-ref (add-escaped-aliases query stage-path col)))
 
-(defn- add-info-to-aggregation-definition
-  [inner-query unique-alias-fn ag-clause ag-index]
-  (lib.util.match/replace ag-clause
-    [:offset opts expr n]
-    (let [position         (clause->position inner-query [:aggregation ag-index])
-          original-ag-name (:name opts)
-          unique-alias     (unique-alias-fn position original-ag-name)]
-      [:offset (assoc opts
-                      :name           unique-alias
-                      ::source-alias  original-ag-name
-                      ::position      position
-                      ::desired-alias unique-alias)
-       expr
-       n])
+(mu/defn- update-expression-ref
+  [query                                           :- ::lib.schema/query
+   stage-path                                      :- ::lib.walk/path
+   [_tag _opts expression-name :as expression-ref] :- :mbql.clause/expression]
+  (let [find-col (fn [cols]
+                   (m/find-first #(and (= (:lib/source %) :source/expressions)
+                                       (= (:lib/expression-name %) expression-name))
+                                 cols))
+        col      (or (find-col (returned-columns query stage-path))
+                     (let [opts         {:include-joined?                              false
+                                         :include-expressions?                         true
+                                         :include-implicitly-joinable?                 false
+                                         :include-implicitly-joinable-for-source-card? false}
+                           visible-cols (visible-columns query stage-path opts)]
+                       (find-col visible-cols)))]
+    (update-opts expression-ref (add-escaped-aliases query stage-path col))))
 
-    [:aggregation-options wrapped-ag-clause opts, :as _ag-clause]
-    (let [position         (clause->position inner-query [:aggregation ag-index])
-          original-ag-name (:name opts)
-          unique-alias     (unique-alias-fn position original-ag-name)]
-      [:aggregation-options wrapped-ag-clause (assoc opts
-                                                     :name           unique-alias
-                                                     ::source-alias  original-ag-name
-                                                     ::position      position
-                                                     ::desired-alias unique-alias)])))
+(mu/defn- update-aggregation-ref
+  [query                        :- ::lib.schema/query
+   path                         :- ::lib.walk/path
+   [_tag opts uuid :as _ag-ref] :- :mbql.clause/aggregation]
+  (when-let [ag-clause (or (m/find-first #(= (lib.options/uuid %) uuid)
+                                         (:aggregation (get-in query path)))
+                           (log/errorf "No aggregation matching %s" (pr-str uuid)))]
+    (let [[_tag ag-opts] (update-refs query
+                                      path
+                                      (lib.options/update-options ag-clause assoc ::recursive-ag-clause-resolution? true))
+          opts'          (merge
+                          opts
+                          (select-keys ag-opts [::desired-alias ::source-alias]))]
+      [:aggregation opts' uuid])))
 
-(defn- add-info-to-aggregation-definitions [{aggregations :aggregation, :as inner-query} unique-alias-fn]
-  (cond-> inner-query
-    (seq aggregations)
-    (update :aggregation (fn [aggregations]
-                           (into
-                            []
-                            (map-indexed (fn [i aggregation]
-                                           (add-info-to-aggregation-definition inner-query unique-alias-fn aggregation i)))
-                            aggregations)))))
+(mu/defn- update-ag-clause
+  [query      :- ::lib.schema/query
+   stage-path :- ::lib.walk/path
+   ag-clause  :- ::lib.schema.mbql-clause/clause]
+  (let [[_tag opts]       ag-clause
+        ag-cols           (filter #(= (:lib/source %) :source/aggregations)
+                                  (returned-columns query stage-path))
+        col               (->> (or (m/find-first #(= (:lib/source-uuid %) (:lib/uuid opts))
+                                                 ag-cols)
+                                   (throw (ex-info "aggregation definition was not resolved" {:aggregation ag-clause})))
+                               (add-escaped-aliases query stage-path))
+        [tag opts & args] (update-opts ag-clause col)]
+    ;; recursively update args
+    (into [tag opts]
+          (map (fn [arg]
+                 (update-refs query stage-path arg)))
+          args)))
 
-(mu/defn- add-alias-info* :- ::mbql.s/SourceQuery
-  [inner-query :- ::mbql.s/SourceQuery]
-  (assert (not (:strategy inner-query)) "add-alias-info* should not be called on a join") ; not user-facing
-  (let [unique-alias-fn (make-unique-alias-fn)]
-    (-> (lib.util.match/replace inner-query
-          ;; don't rewrite anything inside any source queries or source metadata.
-          (_ :guard (constantly (some (partial contains? (set &parents))
-                                      [:source-query :source-metadata])))
-          &match
+(mu/defn- resolve-returned-field :- ::lib.schema.metadata/column
+  [query      :- ::lib.schema/query
+   stage-path :- ::lib.walk/path
+   field-ref  :- :mbql.clause/field]
+  (let [col           (resolve-field-ref query stage-path field-ref)
+        returned-cols (returned-columns query stage-path)]
+    (lib.walk/apply-f-for-stage-at-path lib.equality/find-matching-column query stage-path col returned-cols)))
 
-          #{:field :aggregation :expression}
-          (mbql.u/update-field-options &match merge (clause-alias-info inner-query unique-alias-fn &match)))
-        (add-info-to-aggregation-definitions unique-alias-fn))))
+(mu/defn- resolve-visible-field :- ::lib.schema.metadata/column
+  [query      :- ::lib.schema/query
+   stage-path :- ::lib.walk/path
+   field-ref  :- :mbql.clause/field]
+  (let [col          (resolve-field-ref query stage-path field-ref)
+        opts         {:include-joined?                              true
+                      :include-expressions?                         false
+                      :include-implicitly-joinable?                 false
+                      :include-implicitly-joinable-for-source-card? false}
+        visible-cols (visible-columns query stage-path opts)]
+    (-> (or (lib.walk/apply-f-for-stage-at-path lib.equality/find-matching-column query stage-path col visible-cols)
+            (lib.walk/apply-f-for-stage-at-path lib.equality/find-matching-column query stage-path col visible-cols {:generous? true})
+            col
+            (throw (ex-info "Failed to resolve ref in visible-cols"
+                            {:path stage-path, :ref field-ref, :cols visible-cols})))
+        (dissoc :lib/desired-column-alias))))
 
-(defn add-alias-info
+(mu/defn- update-refs
+  [query :- ::lib.schema/query
+   path  :- ::lib.walk/path
+   x]
+  (lib.util.match/replace x
+    ;; don't recurse into the metadata keys, or into the stages of a join or joins of a stage -- [[lib.walk]] will take
+    ;; care of that recursion for us.
+    (_ :guard (fn [_]
+                (some (set &parents)
+                      [:source-metadata
+                       :lib/stage-metadata
+                       :joins
+                       :stages])))
+    &match
+
+    [:field (_opts :guard (complement ::source-alias)) _id-or-name]
+    (let [resolved (try
+                     (resolve-returned-field query path &match)
+                     (catch Throwable _
+                       (resolve-visible-field query path &match)))]
+      (update-field-ref query path &match resolved))
+
+    ;; [[lib.equality/find-matching-column]] gets confused when the expression name matches a field name -- work around
+    ;; this (#59590)
+    [:expression (_opts :guard (complement ::source-alias)) _expression-name]
+    (update-expression-ref query path &match)
+
+    [:aggregation (_opts :guard (complement ::source-alias)) _uuid]
+    (update-aggregation-ref query path &match)
+
+    (ag-clause :guard (fn [clause]
+                        (and (vector? clause)
+                             (keyword? (first clause))
+                             (map? (second clause))
+                             (or (::recursive-ag-clause-resolution? (second clause))
+                                 (= (last &parents) :aggregation)))))
+    (update-ag-clause query path &match)))
+
+(mu/defn- add-alias-info-to-stage :- [:map
+                                      [:lib/type ::lib.schema/stage.type]]
+  [query      :- ::lib.schema/query
+   stage-path :- ::lib.walk/path
+   stage      :- ::lib.schema/stage]
+  (try
+    (update-refs query stage-path stage)
+    (catch Throwable e
+      (throw (ex-info (format "Error adding alias info to stage: %s" (ex-message e))
+                      {:stage-path stage-path, :stage stage}
+                      e)))))
+
+(mu/defn- add-alias-info-to-join :- ::lib.schema.join/join
+  "Add alias info to refs in join `:conditions`. Join `:fields` do not need to be updated since they are only used to
+  update parent stage `:fields` as appropriate (which will have already been done by now) and otherwise do not directly
+  affect the resulting SQL (i.e., drivers should not be looking at them anyway)."
+  [query     :- ::lib.schema/query
+   join-path :- ::lib.walk/path
+   join      :- ::lib.schema.join/join]
+  (let [parent-stage-path         (-> (vec join-path) pop pop)
+        join-last-stage-path      (into (vec join-path) [:stages (dec (count (:stages join)))])
+        update-ref-from-this-join (fn [[_tag opts _id-or-name, :as field-ref]]
+                                    (let [col              (resolve-returned-field
+                                                            query join-last-stage-path
+                                                            ;; join alias is for use outside the join, a column doesn't
+                                                            ;; have the join alias INSIDE the join itself.
+                                                            (lib/with-join-alias field-ref nil))
+                                          last-stage-alias (or (:lib/desired-column-alias col)
+                                                               (throw (ex-info "Expected col column to have :lib/desired-column-alias"
+                                                                               {:path join-path
+                                                                                :join join
+                                                                                :ref  field-ref
+                                                                                :col  col})))
+                                          source-alias     (escaped-desired-alias query join-last-stage-path last-stage-alias)
+                                          source-table     (escaped-join-alias query parent-stage-path (:join-alias opts))]
+                                      ;; don't need to calculate `::desired-alias` because it may not be returned and
+                                      ;; even if it is it's not getting returned in the join conditions
+                                      (lib/update-options field-ref assoc
+                                                          ::source-alias  source-alias
+                                                          ::desired-alias "<IRRELEVANT>"
+                                                          ::source-table  source-table)))
+        update-other-ref          (fn [field-ref]
+                                    (let [resolved (resolve-visible-field query parent-stage-path field-ref)]
+                                      (update-field-ref query parent-stage-path field-ref resolved)))
+        update-conditions         (fn [conditions]
+                                    ;; the only kind of ref join conditions can have is a `:field` ref
+                                    (lib.util.match/replace conditions
+                                      ;; already resolved
+                                      [:field (_opts :guard ::source-alias) _id-or-name]
+                                      &match
+                                      ;; a field ref that comes from THIS join needs to get the desired alias returned
+                                      ;; by the last stage of the join to use as its source alias
+                                      [:field (_opts :guard #(= (:join-alias %) (:alias join))) _id-or-name]
+                                      (update-ref-from-this-join &match)
+
+
+                                      ;; a field ref that DOES NOT come from this join should get resolved relative to
+                                      ;; the parent stage.
+                                      [:field (_opts :guard #(not= (:join-alias %) (:alias join))) _id-or-name]
+                                      (update-other-ref &match)))]
+    (try
+      (update join :conditions update-conditions)
+      (catch Throwable e
+        (throw (ex-info (format "Error adding alias info to join: %s" (ex-message e))
+                        {:join-path join-path, :join join}
+                        e))))))
+
+;;; the query returned by this is not necessarily valid anymore; see comments below
+(mu/defn- add-alias-info** :- ::lib.schema/query
+  [query :- ::lib.schema/query]
+  (as-> query query
+    ;; next walk all stages and JOINs and for all returned columns add a map of lib/desired-column-alias =>
+    ;; escaped-desired-alias
+    (lib.walk/walk query (fn [query _path-type path stage-or-join]
+                           (add-escaped-desired-aliases query path stage-or-join)))
+    ;; then walk all the stages AND joins and update the refs
+    (lib.walk/walk query (fn [query path-type path stage-or-join]
+                           (case path-type
+                             :lib.walk/stage
+                             (add-alias-info-to-stage query path stage-or-join)
+
+                             :lib.walk/join
+                             (add-alias-info-to-join query path stage-or-join))))
+    (lib.walk/walk query (fn [query path-type path join]
+                           (when (= path-type :lib.walk/join)
+                             (let [parent-stage-path (-> (vec path) pop pop)
+                                   stage             (get-in query parent-stage-path)
+                                   escaped-alias     (or (get-in stage [::join-alias->escaped (:alias join)])
+                                                         (throw (ex-info "Missing ::join-alias->escaped"
+                                                                         {:path parent-stage-path, :alias (:alias join)})))]
+                               (assoc join
+                                      ::original-alias (:alias join)
+                                      ::alias         escaped-alias)))))))
+
+(mr/def ::options
+  [:map
+   {:closed true}
+   [:globally-unique-join-aliases? {:default false} :any]])
+
+(mu/defn- escape-join-aliases :- ::lib.schema/query
+  [query                                                                              :- ::lib.schema/query
+   {:keys [globally-unique-join-aliases?], :or {globally-unique-join-aliases? false}} :- [:maybe ::options]]
+  (let [make-join-alias-unique-name-generator (if globally-unique-join-aliases?
+                                                (constantly (lib.util/unique-name-generator))
+                                                lib.util/unique-name-generator)]
+    (lib.walk/walk-stages
+     query
+     (fn [_query _path stage]
+       (if (empty? (:joins stage))
+         stage
+         (-> stage
+             (update :joins (let [unique (comp (partial driver/escape-alias driver/*driver*)
+                                               (make-join-alias-unique-name-generator))]
+                              (fn [joins]
+                                (mapv (mu/fn [join :- [:map
+                                                       [:alias ::lib.schema.join/alias]]]
+                                        (assoc join ::alias (unique (:alias join))))
+                                      joins))))
+             (as-> $stage (assoc $stage ::join-alias->escaped (into {} (map (juxt :alias ::alias)) (:joins $stage))))))))))
+
+(mu/defn- add-alias-info* :- ::lib.schema/query
+  [query   :- ::lib.schema/query
+   options :- [:maybe ::options]]
+  (-> query
+      (escape-join-aliases options)
+      (assoc ::original query)
+      add-alias-info**
+      (dissoc ::original)))
+
+(mu/defn add-alias-info :- :map
   "Add extra info to `:field` clauses, `:expression` references, and `:aggregation` references in `query`. `query` must
   be fully preprocessed.
+
+  Works on MBQL 5 queries, MBQL 4 (legacy) outer queries, or MBQL 4 inner queries.
 
   Adds some or all of the following keys:
 
@@ -606,35 +464,25 @@
 
   If this clause is 'selected', this is the position the clause will appear in the results (i.e. the corresponding
   column index)."
-  ([query-or-inner-query]
-   (add-alias-info query-or-inner-query nil))
+  ([query]
+   (add-alias-info query nil))
 
-  ([query-or-inner-query {:keys [globally-unique-join-aliases?], :or {globally-unique-join-aliases? false}}]
-   (let [make-join-alias-unique-name-generator (if globally-unique-join-aliases?
-                                                 (constantly (lib.util/unique-name-generator))
-                                                 lib.util/unique-name-generator)]
-     (as-> query-or-inner-query $q
-       ;; first escape all the join aliases
-       (perf/postwalk
-        (fn [form]
-          (if (and (map? form)
-                   (seq (:joins form)))
-            (as-> form form
-              (update form :joins (let [unique (comp (partial driver/escape-alias driver/*driver*)
-                                                     (make-join-alias-unique-name-generator))]
-                                    (fn [joins]
-                                      (mapv (fn [join]
-                                              (assoc join ::alias (unique (:alias join))))
-                                            joins))))
-              (assoc form ::join-alias->escaped (into {} (map (juxt :alias ::alias)) (:joins form))))
-            form))
-        $q)
-       ;; then add alias info
-       (perf/postwalk
-        (fn [form]
-          (if (and (map? form)
-                   ((some-fn :source-query :source-table) form)
-                   (not (:strategy form)))
-            (vary-meta (add-alias-info* form) assoc ::transformed true)
-            form))
-        $q)))))
+  ([query   :- :map
+    options :- [:maybe ::options]]
+   (cond
+     ;; MBQL 5 query
+     (= (:lib/type query) :mbql/query)
+     (add-alias-info* query options)
+
+     ;; MBQL 4 outer query
+     (:type query)
+     (-> (lib/query (qp.store/metadata-provider) query)
+         (add-alias-info* options)
+         lib/->legacy-MBQL)
+
+     ;; MBQL 4 inner query
+     :else
+     (-> query
+         annotate.legacy-helper-fns/legacy-inner-query->mlv2-query
+         (add-alias-info options)
+         :query))))

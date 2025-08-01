@@ -75,7 +75,7 @@
   [query stage-number metric-metadata]
   (merge
    ((get-method lib.metadata.calculation/display-info-method :default) query stage-number metric-metadata)
-   (select-keys metric-metadata [:description :aggregation-position])))
+   (select-keys metric-metadata [:description :aggregation-position :display-name])))
 
 (defmethod lib.metadata.calculation/display-info-method :metric
   [query stage-number [_tag opts metric-id-or-name]]
