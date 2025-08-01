@@ -32,6 +32,10 @@ export function getTransformQueryUrl(transformId: TransformId) {
   return `${ROOT_URL}/${transformId}/query`;
 }
 
+export function getRunsUrl() {
+  return `${ROOT_URL}/runs`;
+}
+
 export function getBrowseDatabaseUrl(databaseId: DatabaseId) {
   return `/browse/databases/${databaseId}`;
 }
