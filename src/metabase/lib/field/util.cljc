@@ -85,9 +85,12 @@
                         :metabase.lib.field/binning       :lib/original-binning
                         :metabase.lib.field/temporal-unit :inherited-temporal-unit
                         :metabase.lib.join/join-alias     :lib/original-join-alias})
-      ;; TODO (Cam 7/25/25) -- shouldn't this set `:lib/source` as well?
-      (assoc :lib/breakout? false
+      (assoc :lib/source :source/previous-stage
+             :lib/breakout? false
              ;; TODO (Cam 6/26/25) -- should we set `:lib/original-display-name` here too?
              :lib/original-name ((some-fn :lib/original-name :name) col)
              ;; desired-column-alias is previous stage => source column alias in next stage
-             :lib/source-column-alias ((some-fn :lib/desired-column-alias :lib/source-column-alias :name) col))))
+             :lib/source-column-alias ((some-fn :lib/desired-column-alias :lib/source-column-alias :name) col))
+      ;; remove `:lib/desired-column-alias` which needs to be recalculated in the context of what is returned by the
+      ;; current stage.
+      (dissoc :lib/desired-column-alias)))

@@ -445,7 +445,8 @@
           :visibility-type (:visibility-type table)}))
 
 (mr/def ::column-metadata-with-source
-  "Schema for the column metadata that should be returned by [[metadata]]."
+  "Schema for the column metadata that should be returned by [[metadata]]. A column metadata that is also required to
+  have `:lib/source`."
   [:merge
    [:ref ::lib.schema.metadata/column]
    [:map
@@ -524,6 +525,12 @@
        (returned-columns-method query stage-number x options)))))
 
 (mr/def ::visible-column
+  "Schema for a column that should be returned by [[visible-columns]]. A visible column is a column metadata that is
+  required to also have `:lib/source` and `:lib/source-column-alias`.
+
+  TODO (Cam 8/1/25) -- `:lib/desired-alias` should not be returned by [[visible-columns]] since it needs to be
+  calculated in the context of the columns RETURNED by the stage... I'm not explicitly disallowing it just yet tho. I
+  probably SHOULD, but I don't want to update a ton of code."
   [:merge
    [:ref ::column-metadata-with-source]
    [:map
@@ -540,10 +547,10 @@
    [:ref ::returned-columns.options]
    [:map
     ;; these all default to true
-    [:include-joined?                              {:optional true} :boolean]
-    [:include-expressions?                         {:optional true} :boolean]
-    [:include-implicitly-joinable?                 {:optional true} :boolean]
-    [:include-implicitly-joinable-for-source-card? {:optional true} :boolean]]])
+    [:include-joined?                              {:optional true, :default true} :boolean]
+    [:include-expressions?                         {:optional true, :default true} :boolean]
+    [:include-implicitly-joinable?                 {:optional true, :default true} :boolean]
+    [:include-implicitly-joinable-for-source-card? {:optional true, :default true} :boolean]]])
 
 (mu/defn- default-visible-columns-options :- ::visible-columns.options
   []

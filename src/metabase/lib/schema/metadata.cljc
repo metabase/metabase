@@ -358,6 +358,10 @@
     ;;    original join alias = X
     ;;    column => [join X => join Y]
     ;;
+    ;; It is not currently well-defined whether this appears when the join was the current stage or not, i.e. if it's
+    ;; equal to `:metabase.lib.join/join-alias` when it is set or if it is only set if the join happened in a previous
+    ;; stage, i.e. if it's `nil` when `:metabase.lib.join/join-alias` is set. It seems like current behavior is the
+    ;; former but you should NOT rely on this behavior.
     [:lib/original-join-alias {:optional true} [:maybe ::lib.schema.join/alias]]
     ;; these should only be present if temporal bucketing or binning is done in the current stage of the query; if
     ;; this happened in a previous stage they should get propagated as the keys below instead.

@@ -84,6 +84,16 @@
 
 (mr/def ::join
   [:and
+   ;; fn has to be first so the `:decode/normalize` function will be applied first, otherwise the `:conditions` will not
+   ;; get normalized after renaming by the `:map` schema below.
+   [:fn
+    {:error/message    ":condition is not allowed for MBQL 5 joins, use :conditions instead"
+     :decode/normalize (fn [join]
+                         (when (map? join)
+                           (-> join
+                               (dissoc :condition)
+                               (assoc :conditions [(:condition join)]))))}
+    (complement :condition)]
    [:map
     {:default {}, :decode/normalize normalize-join}
     [:lib/type    [:= {:default :mbql/join, :decode/normalize common/normalize-keyword} :mbql/join]]
@@ -97,7 +107,10 @@
     [:strategy {:optional true} ::strategy]]
    [:fn
     {:error/message "join should not have metadata attached directly to them; attach metadata to their last stage instead"}
-    (complement (some-fn :lib/stage-metadata :source-metadata))]])
+    (complement (some-fn :lib/stage-metadata :source-metadata))]
+   [:fn
+    {:error/message "join should not have :source-table or :source-query; use :stages instead"}
+    (complement (some-fn :source-table :source-query))]])
 
 (mr/def ::joins
   [:and

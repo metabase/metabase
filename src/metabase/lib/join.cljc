@@ -284,8 +284,15 @@
                     join-query -1 (lib.util/query-stage join-query -1)
                     options)]
     (into []
-          (comp (map #(column-from-join query stage-number % join-alias))
-                (lib.field.util/add-source-and-desired-aliases-xform query))
+          (comp
+           ;; desired column alias from the last stage of the join needs to become the new source column alias in the
+           ;; join's parent stage e.g. if the last stage of the join `Q2` returns `P2__CATEGORY` then the ultimate
+           ;; source alias in the parent stage of this join should be `P2__CATEGORY`, and the desired alias should be
+           ;; `Q2__P2__CATEGORY`. See [[metabase.lib.metadata.calculation-test/join-source-query-join-test]] for a
+           ;; concrete example of this.
+           (map lib.field.util/update-keys-for-col-from-previous-stage)
+           (map #(column-from-join query stage-number % join-alias))
+           (lib.field.util/add-source-and-desired-aliases-xform query))
           cols)))
 
 (defn- update-keys-for-join-returned-column
