@@ -305,10 +305,9 @@
                       {:type    qp.error-type/invalid-query
                        :card-id card-id}))))
 
-(defn check-card-result-metadata-data-perms
-  [database-id card-id]
-  (let [{result-metadata :result_metadata :as _card} (card database-id card-id)
-        field-ids (keep :id result-metadata)
+(defn check-result-metadata-data-perms
+  [database-id result-metadata]
+  (let [field-ids (keep :id result-metadata)
         table-ids (into #{} (concat (keep (some-fn :table-id :table_id) result-metadata)
                                     (when field-ids
                                       (t2/select-fn-set :table_id :model/Field :id [:in field-ids]))))]
@@ -318,10 +317,14 @@
                       :unrestricted
                       database-id
                       %)
-             (perms-exception (tru "You do not have permission to view data of table {0} from card {1} result_metadata."
-                                   % card-id)
+             (perms-exception (tru "You do not have permission to view data of table {0} in result_metadata." %)
                               {database-id {:perms/view-data {% :unrestricted}}}))
           table-ids)))
+
+(defn check-card-result-metadata-data-perms
+  [database-id card-id]
+  (let [result-metadata (:result_metadata (card database-id card-id))]
+    (check-result-metadata-data-perms database-id result-metadata)))
 
 (mu/defn has-perm-for-query? :- :boolean
   "Returns true when the query is accessible for the given perm-type and required-perms for individual tables, or the
