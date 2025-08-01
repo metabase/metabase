@@ -142,14 +142,16 @@ PLUGIN_ADMIN_SETTINGS_UPDATES.push((sections) => ({
         type: "string",
         required: true,
         autoFocus: true,
-        getHidden: (_, derivedSettings) => !derivedSettings["jwt-enabled"],
+        getHidden: (_: any, derivedSettings: any) =>
+          !derivedSettings["jwt-enabled"],
       },
       {
         key: "jwt-shared-secret",
         display_name: t`String used by the JWT signing key`,
         type: "text",
         required: true,
-        getHidden: (_, derivedSettings) => !derivedSettings["jwt-enabled"],
+        getHidden: (_: any, derivedSettings: any) =>
+          !derivedSettings["jwt-enabled"],
       },
       {
         key: "jwt-attribute-email",
@@ -219,7 +221,13 @@ if (hasPremiumFeature("sso_ldap")) {
     formFieldsSchemas: {
       "ldap-user-provisioning-enabled?": Yup.boolean().default(null),
     },
-    UserProvisioning: ({ fields, settings }) => (
+    UserProvisioning: ({
+      fields,
+      settings,
+    }: {
+      fields: any;
+      settings: any;
+    }) => (
       <Stack gap="0.75rem" m="2.5rem 0">
         <SettingHeader
           id="ldap-user-provisioning-enabled?"
