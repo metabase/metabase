@@ -1,4 +1,4 @@
-(ns metabase.transforms.ordering
+(ns metabase-enterprise.transforms.ordering
   (:require
    [clojure.set :as set]))
 
