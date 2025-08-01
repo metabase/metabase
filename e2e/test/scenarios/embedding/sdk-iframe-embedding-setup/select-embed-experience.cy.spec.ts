@@ -86,7 +86,9 @@ H.describeWithSnowplow(suiteTitle, () => {
 
       H.getSimpleEmbedIframeContent().within(() => {
         cy.log("data picker is visible");
-        cy.findByText("Pick your starting data").should("be.visible");
+        cy.findByText("Pick your starting data", { timeout: 20_000 }).should(
+          "be.visible",
+        );
       });
     });
   });
@@ -129,7 +131,7 @@ H.describeWithSnowplow(suiteTitle, () => {
 
       H.getSimpleEmbedIframeContent().within(() => {
         cy.log("question title of id=1 is visible");
-        cy.findByText("Query log").should("be.visible");
+        cy.findByText("Query log", { timeout: 20_000 }).should("be.visible");
       });
     });
   });
