@@ -13,7 +13,7 @@ If a person has the wrong level of access to the data that's returned by a quest
 ### Native query (SQL) permissions
 
 - [A user group can't access the SQL editor][sql-access].
-- [A user group with SQL permissions isn't being restricted by their row and column security](../permissions/row-and-column-security.md).
+- [A user group with SQL permissions isn't being restricted by their row and column security policy](../permissions/row-and-column-security.md).
 
 ### Table or schema permissions
 

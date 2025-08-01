@@ -4,14 +4,14 @@ redirect_from:
   - /docs/latest/troubleshooting-guide/sandboxing
 ---
 
-# Troubleshooting row and column security access
+# Troubleshooting row and column security
 
 [Row and column security](../permissions/row-and-column-security.md) gives some people access to only a subset of the data. To implement row and column security, Metabase runs a query that filters rows and/or selects a subset of columns from a table based on [the person's permissions][permissions]; the person's query then runs on the initial query's result (i.e., it runs on the secured data).
 
 These articles will help you understand how row and column security works:
 
-- [Row and column security: setting row-level permissions][row-permissions].
-- [Advanced row and column security: limiting access to columns][column-permissions].
+- [Row-level permissions][row-permissions].
+- [Column security: limiting access to columns][column-permissions].
 
 If you have a different data access issue, see [related problems](#do-you-have-a-different-problem).
 
@@ -70,7 +70,7 @@ There is not much you can do here: if you need to apply row and column security,
 
 ### If using Single Sign-on (SSO), are user attributes correct?
 
-**Root cause**: If people are logging in with SSO, but the expected attributes aren't being saved and made available, row and column security will deny access.
+**Root cause**: If people are logging in with SSO, but the expected attributes aren't being saved and made available, row and column security policies will deny access.
 
 **Steps to take**:
 

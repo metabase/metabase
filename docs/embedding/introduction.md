@@ -22,7 +22,7 @@ With the [Embedded analytics SDK](./sdk/introduction.md), you can embed individu
 
 Interactive embedding is the only kind of embedding that [integrates with SSO and data permissions](./interactive-embedding.md) to enable true self-service access to the underlying data.
 
-**When to use interactive embedding**: you want to [offer multi-tenant, self-service analytics](https://www.metabase.com/blog/why-full-app-embedding). With interactive embedding, people can create their own questions, dashboards, models, and more, all in their own row and column security.
+**When to use interactive embedding**: you want to [offer multi-tenant, self-service analytics](https://www.metabase.com/blog/why-full-app-embedding). With interactive embedding, people can create their own questions, dashboards, models, and more, with row and column security policies determining which data they can access.
 
 ## Static embedding
 

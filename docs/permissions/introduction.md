@@ -37,7 +37,7 @@ At a high-level, Metabase provides several approaches to managing permissions fo
 
 ### Your customers share a single database
 
-[Row and column security](./row-and-column-security.md) let you apply row and column-level security, so each customer only sees their data in the tables.
+The [row and column security](./row-and-column-security.md) permission setting lets you restrict rows and columns based on who's logged in.
 
 ### Each customer has their own database
 

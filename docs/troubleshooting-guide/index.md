@@ -26,7 +26,7 @@ Problems, their causes, how to detect them, and how to fix them.
 ## Permissions
 
 - [My permissions aren't working][permissions].
-- [My row and column security aren't working][row-and-column].
+- [Row and column security isn't working][row-and-column].
 
 ## Databases
 
