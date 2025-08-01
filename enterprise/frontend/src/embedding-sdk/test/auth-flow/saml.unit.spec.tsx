@@ -40,7 +40,7 @@ describe("Auth Flow - SAML", () => {
     const { rerender, popup } = setup({ authConfig });
 
     await waitForLoaderToBeRemoved();
-    expect(fetchMock.calls(`begin:${MOCK_INSTANCE_URL}/auth/sso`)).toHaveLength(
+    expect(fetchMock.callHistory.calls(`begin:${MOCK_INSTANCE_URL}/auth/sso`)).toHaveLength(
       1,
     );
     expect(popup.close).toHaveBeenCalled();
@@ -53,7 +53,7 @@ describe("Auth Flow - SAML", () => {
 
     await waitForLoaderToBeRemoved();
 
-    expect(fetchMock.calls(`begin:${MOCK_INSTANCE_URL}/auth/sso`)).toHaveLength(
+    expect(fetchMock.callHistory.calls(`begin:${MOCK_INSTANCE_URL}/auth/sso`)).toHaveLength(
       1,
     );
 

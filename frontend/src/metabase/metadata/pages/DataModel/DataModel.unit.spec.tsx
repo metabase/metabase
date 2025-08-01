@@ -711,7 +711,7 @@ describe("DataModel", () => {
 
       await waitFor(() => {
         const path = `path:/api/table/${ORDERS_TABLE.id}/rescan_values`;
-        expect(fetchMock.called(path, { method: "POST" })).toBeTruthy();
+        expect(fetchMock.callHistory.called(path, { method: "POST" })).toBeTruthy();
       });
     });
 
@@ -733,7 +733,7 @@ describe("DataModel", () => {
 
       await waitFor(() => {
         const path = `path:/api/table/${ORDERS_TABLE.id}/discard_values`;
-        expect(fetchMock.called(path, { method: "POST" })).toBeTruthy();
+        expect(fetchMock.callHistory.called(path, { method: "POST" })).toBeTruthy();
       });
     });
   });
@@ -905,7 +905,7 @@ describe("DataModel", () => {
 
       await waitFor(() => {
         const path = `path:/api/field/${ORDERS_ID_FIELD.id}/rescan_values`;
-        expect(fetchMock.called(path, { method: "POST" })).toBeTruthy();
+        expect(fetchMock.callHistory.called(path, { method: "POST" })).toBeTruthy();
       });
     });
 
@@ -928,7 +928,7 @@ describe("DataModel", () => {
 
       await waitFor(() => {
         const path = `path:/api/field/${ORDERS_ID_FIELD.id}/discard_values`;
-        expect(fetchMock.called(path, { method: "POST" })).toBeTruthy();
+        expect(fetchMock.callHistory.called(path, { method: "POST" })).toBeTruthy();
       });
     });
   });

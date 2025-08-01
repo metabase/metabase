@@ -62,6 +62,7 @@ describe("DashboardSubscriptionsSidebar", () => {
       expect(hasBasicFilterOptions(screen)).toBe(true);
     });
 
+
     it("should filter out actions and links when sending a test subscription", async () => {
       setup();
 
@@ -78,9 +79,9 @@ describe("DashboardSubscriptionsSidebar", () => {
 
       await userEvent.click(await screen.findByText("Send email now"));
 
-      const payload = await fetchMock
-        ?.lastCall("path:/api/pulse/test")
-        ?.request?.json();
+      const calls = fetchMock.callHistory.calls("path:/api/pulse/test");
+      const lastCall = calls[calls.length - 1];
+      const payload = await lastCall?.request?.json();
       expect(payload.cards).toHaveLength(1);
       expect(payload.cards[0].id).toEqual(dashcard.id);
     });

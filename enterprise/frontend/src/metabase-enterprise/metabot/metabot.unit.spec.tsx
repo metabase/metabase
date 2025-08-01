@@ -112,8 +112,9 @@ const showMetabot = (dispatch: any) => act(() => dispatch(setVisible(true)));
 const getMetabotState = (store: any) => store.getState().plugins.metabotPlugin;
 
 const lastReqBody = async () => {
-  const lastCall = fetchMock.lastCall();
-  const bodyStr = String(await lastCall?.[1]?.body) || "";
+  const calls = fetchMock.callHistory.calls();
+  const lastCall = calls[calls.length - 1];
+  const bodyStr = String(await lastCall?.options?.body) || "";
   return JSON.parse(bodyStr);
 };
 
@@ -304,7 +305,7 @@ describe("metabot", () => {
       await userEvent.click(prompt1);
       await waitFor(async () => {
         expect(
-          fetchMock.calls(`path:/api/ee/metabot-v3/v2/agent`),
+          fetchMock.callHistory.calls(`path:/api/ee/metabot-v3/v2/agent`),
         ).toHaveLength(1);
       });
 
@@ -320,7 +321,7 @@ describe("metabot", () => {
       setup({ promptSuggestions: [] });
       await waitFor(async () => {
         expect(
-          fetchMock.calls(
+          fetchMock.callHistory.calls(
             `path:/api/ee/metabot-v3/metabot/1/prompt-suggestions`,
           ),
         ).toHaveLength(1);
@@ -330,7 +331,7 @@ describe("metabot", () => {
 
       await waitFor(async () => {
         expect(
-          fetchMock.calls(
+          fetchMock.callHistory.calls(
             `path:/api/ee/metabot-v3/metabot/1/prompt-suggestions`,
           ),
         ).toHaveLength(2);
@@ -524,13 +525,13 @@ describe("metabot", () => {
       await enterChatMessage("Who is your favorite?");
       await waitFor(() =>
         expect(
-          fetchMock.calls(`path:/api/ee/metabot-v3/v2/agent`),
+          fetchMock.callHistory.calls(`path:/api/ee/metabot-v3/v2/agent`),
         ).toHaveLength(1),
       );
 
       // send another message and check that there is proper history
       await enterChatMessage("Hi!");
-      const lastCall = fetchMock.lastCall();
+      const lastCall = fetchMock.callHistory.lastCall();
       const bodyStr = String(await lastCall?.[1]?.body) || "";
       const sentHistory = JSON.parse(bodyStr)?.history;
       expect(sentHistory).toEqual(whoIsYourFavoriteResponse.history);
@@ -547,7 +548,7 @@ describe("metabot", () => {
       await enterChatMessage("Who is your favorite?");
       await waitFor(() =>
         expect(
-          fetchMock.calls(`path:/api/ee/metabot-v3/v2/agent`),
+          fetchMock.callHistory.calls(`path:/api/ee/metabot-v3/v2/agent`),
         ).toHaveLength(1),
       );
 
@@ -555,7 +556,7 @@ describe("metabot", () => {
       hideMetabot(store.dispatch);
       showMetabot(store.dispatch);
       await enterChatMessage("Hi!");
-      const lastCall = fetchMock.lastCall();
+      const lastCall = fetchMock.callHistory.lastCall();
       const bodyStr = String(await lastCall?.[1]?.body) || "";
       const sentHistory = JSON.parse(bodyStr)?.history;
       expect(sentHistory).toEqual(whoIsYourFavoriteResponse.history);
@@ -572,7 +573,7 @@ describe("metabot", () => {
       await enterChatMessage("Who is your favorite?");
       await waitFor(() =>
         expect(
-          fetchMock.calls(`path:/api/ee/metabot-v3/v2/agent`),
+          fetchMock.callHistory.calls(`path:/api/ee/metabot-v3/v2/agent`),
         ).toHaveLength(1),
       );
 

@@ -79,9 +79,7 @@ describe("SendTestEmailWidget", () => {
   it("should show an error message if the test email errors", async () => {
     await setup({ emailConfigured: true });
 
-    fetchMock.post("path:/api/email/test", 400, {
-      overwriteRoutes: true,
-    });
+    fetchMock.modifyRoute("email-test", { response: 400 });
 
     await userEvent.click(
       screen.getByRole("button", { name: "Send test email" }),

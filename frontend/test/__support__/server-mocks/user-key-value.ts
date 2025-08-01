@@ -51,7 +51,7 @@ export function setupGetUserKeyValueEndpoint(kv: UserKeyValue) {
   return fetchMock.get(
     `path:/api/user-key-value/namespace/${kv.namespace}/key/${kv.key}`,
     { status: 200, body: kv.value },
-    { overwriteRoutes: true },
+    // { overwriteRoutes: true },
   );
 }
 
@@ -59,7 +59,7 @@ export function setupNullGetUserKeyValueEndpoints() {
   return fetchMock.get(
     `express:/api/user-key-value/namespace/:namespace/key/:key`,
     { status: 200 },
-    { overwriteRoutes: true },
+    // { overwriteRoutes: true },
   );
 }
 
@@ -67,7 +67,7 @@ export function setupUpdateUserKeyValueEndpoint(kv: UserKeyValue) {
   return fetchMock.put(
     `path:/api/user-key-value/namespace/${kv.namespace}/key/${kv.key}`,
     { status: 200, body: kv.value },
-    { overwriteRoutes: true },
+    // { overwriteRoutes: true },
   );
 }
 
@@ -75,7 +75,7 @@ export function setupDeleteUserKeyValueEndpoint(k: UserKeyValueKey) {
   return fetchMock.delete(
     `path:/api/user-key-value/namespace/${k.namespace}/key/${k.key}`,
     { status: 200 },
-    { overwriteRoutes: true },
+    // { overwriteRoutes: true },
   );
 }
 

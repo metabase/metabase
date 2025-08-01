@@ -78,11 +78,12 @@ describe("AnonymousTrackingInput", () => {
 });
 
 async function findPut() {
-  const calls = fetchMock.calls();
-  const [putUrl, putDetails] =
-    calls.find((call) => call[1]?.method === "PUT") ?? [];
-
-  const body = ((await putDetails?.body) as string) ?? "{}";
-
+  const calls = fetchMock.callHistory.calls();
+  const putCall = calls.find((call) => call.request?.method === "PUT");
+  if (!putCall) {
+    return [undefined, {}];
+  }
+  const putUrl = putCall.request?.url;
+  const body = ((await putCall.options?.body) as string) ?? "{}";
   return [putUrl, JSON.parse(body)];
 }

@@ -1,0 +1,138 @@
+PASS core frontend/src/metabase/admin/settings/components/UploadSettings/UploadSettingsForm.unit.spec.tsx (56.683 s)
+PASS core frontend/src/metabase/querying/filters/components/FilterPicker/CoordinateFilterPicker/CoordinateFilterPicker.unit.spec.tsx (64.457 s)
+PASS core frontend/src/metabase/visualizations/visualizations/SmartScalar/utils.unit.spec.ts
+PASS core frontend/src/metabase/query_builder/components/AddToDashSelectDashModal/AddToDashSelectDashModal.unit.spec.tsx (9.321 s)
+PASS core frontend/src/metabase-lib/v1/metadata/Field.unit.spec.ts
+PASS core frontend/src/metabase/parameters/utils/dashboards.unit.spec.js
+(node:2433) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+PASS core enterprise/frontend/src/embedding/data-picker/DataSelector/tests/DataSelector.unit.spec.js
+PASS core frontend/src/metabase/admin/performance/utils.unit.spec.ts
+PASS core enterprise/frontend/src/metabase-enterprise/moderation/service.unit.spec.ts
+PASS core frontend/src/metabase/visualizations/visualizations/Heading/Heading.unit.spec.tsx
+PASS core enterprise/frontend/src/metabase-enterprise/metabot/metabot.unit.spec.tsx (76.767 s)
+PASS core frontend/src/metabase/visualizations/lib/settings/visualization.unit.spec.js
+PASS core frontend/src/metabase/collections/components/CollectionMenu/tests/common.unit.spec.tsx (5.495 s)
+(node:2414) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+PASS core frontend/src/metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/DashboardHeaderButtonRow.unit.spec.tsx (16.613 s)
+PASS core enterprise/frontend/src/metabase-enterprise/caching/components/StrategyEditorForDatabases.unit.spec.tsx (5.839 s)
+PASS core frontend/lint/tests/no-unconditional-metabase-links-render.unit.spec.js
+PASS core enterprise/frontend/src/metabase-enterprise/smtp-override/components/SMTPOverrideConnectionForm.unit.spec.tsx (5.968 s)
+PASS core frontend/src/metabase/common/hooks/entity-framework/use-entity-list-query/use-entity-list-query.unit.spec.tsx
+PASS core enterprise/frontend/src/metabase-enterprise/google_drive/GdriveDbMenu.unit.spec.tsx
+PASS core frontend/src/metabase/actions/containers/ActionParametersInputForm/ActionParametersInputForm.unit.spec.tsx
+PASS core enterprise/frontend/src/metabase-enterprise/snippets/components/SnippetCollectionFormModal.unit.spec.tsx
+PASS core frontend/src/metabase/visualizations/lib/renderer_utils.unit.spec.js
+PASS core enterprise/frontend/src/metabase-enterprise/feature_level_permissions/permission-management/download-permission.unit.spec.ts
+PASS core frontend/src/metabase/query_builder/containers/QueryBuilder.unit.spec.tsx (26.93 s)
+PASS core frontend/src/metabase/actions/containers/ActionCreator/ActionContext/QueryActionContextProvider/utils.unit.spec.ts
+PASS core frontend/src/metabase/public/components/EmbedModal/StaticEmbedSetupPane/tests/premium.unit.spec.tsx (7.575 s)
+PASS core frontend/src/metabase/visualizer/utils/get-visualization-columns.unit.spec.ts
+PASS core frontend/src/metabase/visualizations/lib/table_format.unit.spec.js
+PASS core frontend/src/metabase/metadata/components/FkTargetPicker/FkTargetPicker.unit.spec.tsx
+PASS core frontend/src/metabase/query_builder/components/view/sidebars/QuestionInfoSidebar/components/QuestionSources.unit.spec.tsx
+PASS core frontend/src/metabase/collections/components/PinnedItemCard/PinnedItemCard.unit.spec.tsx
+PASS core frontend/src/metabase/metadata/pages/DataModel/DataModel.unit.spec.tsx (115.175 s)
+PASS core frontend/src/metabase/admin/settings/components/widgets/PublicLinksListing/PublicResources.unit.spec.tsx
+PASS core frontend/src/metabase/querying/filters/hooks/use-default-filter/use-default-filter.unit.spec.ts
+PASS core frontend/src/metabase/querying/filters/components/DatePicker/RelativeDatePicker/RelativeDatePicker.unit.spec.tsx (7.09 s)
+PASS core frontend/src/metabase/common/components/TabButton/TabButton.unit.spec.tsx
+PASS core frontend/src/metabase/redux/settings.unit.spec.tsx
+PASS core enterprise/frontend/src/metabase-enterprise/feature_level_permissions/permission-management/details-permission.unit.spec.ts
+PASS core enterprise/frontend/src/metabase-enterprise/sandboxes/components/AttributeMappingEditor/DataAttributeMappingEditor.unit.spec.tsx
+PASS core frontend/src/metabase/home/components/Onboarding/tests/premium.unit.spec.tsx
+PASS core frontend/src/metabase/admin/permissions/test/GroupsPermissionsPage/GroupsPermissionsPage.unit.spec.tsx
+PASS core frontend/src/metabase/lib/entities.unit.spec.js
+PASS core frontend/src/metabase/querying/expressions/suggestions/metrics.unit.spec.ts
+PASS core frontend/src/metabase/query_builder/components/DataSelector/DataSelectorDatabaseSchemaPicker/DataSelectorDatabaseSchemaPicker.unit.spec.js
+PASS core frontend/src/metabase/visualizations/components/ObjectDetail/ObjectDetailWrapper.unit.spec.tsx
+PASS core frontend/src/metabase/query_builder/components/expressions/Editor/HelpText/tests/common.unit.spec.tsx
+PASS core frontend/src/metabase/metadata/components/DiscardFieldValuesButton/DiscardFieldValuesButton.unit.spec.tsx
+PASS core frontend/src/metabase/metadata/components/RescanFieldButton/RescanFieldButton.unit.spec.tsx
+PASS core frontend/src/metabase/common/components/EditableText/EditableText.unit.spec.tsx
+PASS core frontend/src/metabase/query_builder/components/dataref/DatabaseTablesPane.unit.spec.tsx
+PASS core frontend/src/metabase/search/utils/search-location/search-location.unit.spec.ts
+PASS core frontend/src/metabase/lib/formatting/numbers.unit.spec.ts
+PASS core frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSdkSettings/tests/premium.unit.spec.tsx
+PASS core frontend/src/metabase/common/components/AutocompleteInput/AutocompleteInput.unit.spec.tsx
+PASS core frontend/src/metabase/data-grid/utils/column-sizing.unit.spec.ts
+PASS core frontend/src/metabase/query_builder/components/DataSelector/DataSelectorTablePicker/DataSelectorTablePicker.unit.spec.tsx
+PASS core frontend/src/metabase/common/components/NewItemMenu/NewItemMenu.unit.spec.tsx
+PASS core frontend/src/metabase/parameters/components/widgets/ParameterFieldWidget/FieldValuesWidget/SingleSelectListField/SingleSelectListField.unit.spec.js
+PASS core frontend/src/metabase/search/components/filters/TypeFilter/TypeFilter.unit.spec.tsx
+PASS sdk enterprise/frontend/src/embedding-sdk/components/public/CollectionBrowser/CollectionBrowser.unit.spec.tsx (43.367 s)
+PASS core frontend/src/metabase/visualizations/visualizations/Funnel/Funnel.unit.spec.jsx
+PASS core frontend/src/metabase/common/components/FormSelect/FormSelect.unit.spec.tsx
+PASS sdk enterprise/frontend/src/embedding-sdk/test/sdk-config-errors/sdk-config-errors.unit.spec.tsx (59.467 s)
+PASS core frontend/src/metabase/admin/people/containers/AdminPeopleApp.unit.spec.tsx
+PASS sdk enterprise/frontend/src/embedding-sdk/components/private/PublicComponentWrapper/PublicComponentWrapper.unit.spec.tsx
+PASS core frontend/src/metabase/browse/databases/BrowseDatabases.unit.spec.tsx
+PASS sdk enterprise/frontend/src/embedding-sdk/lib/version-utils.unit.spec.ts
+PASS core frontend/src/metabase/dashboard/actions/getNewCardUrl.unit.spec.ts
+PASS core enterprise/frontend/src/metabase-enterprise/content_translation/components/ContentTranslationConfiguration/tests/common.unit.spec.tsx
+PASS core frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingLegaleseModal/EmbeddingLegaleseModal.unit.spec.tsx
+PASS core frontend/src/metabase/status/components/DatabaseStatus/DatabaseStatus.unit.spec.tsx
+PASS core frontend/src/metabase/setup/tests/premium-pro-cloud.unit.spec.tsx (7.449 s)
+PASS core frontend/src/metabase/common/components/FormNumericInput/FormNumericInput.unit.spec.tsx
+PASS core frontend/src/metabase/visualizations/visualizations/Map/CustomMapFooter/tests/common.unit.spec.ts
+PASS core frontend/src/metabase/common/components/Sidesheet/Sidesheet.unit.spec.tsx
+PASS sdk enterprise/frontend/src/embedding-sdk/components/private/SdkQuestion/components/util/BadgeList/BadgeList.unit.spec.tsx
+PASS core frontend/src/metabase/admin/settings/components/GeneralSettings/DevInstanceBanner.unit.spec.tsx
+PASS core enterprise/frontend/src/metabase-enterprise/google_drive/utils.unit.spec.ts
+PASS core frontend/src/metabase/nav/containers/MainNavbar/MainNavbarContainer/GettingStartedSection.unit.spec.tsx
+PASS core frontend/src/metabase/common/components/InputWithSelectPrefix/InputWithSelectPrefix.unit.spec.tsx
+PASS core enterprise/frontend/src/metabase-enterprise/moderation/components/ModerationReviewBanner/ModerationReviewBanner.unit.spec.tsx
+PASS core frontend/src/metabase/collections/components/PinnedItemCard/PinnedItemCard-ee.unit.spec.tsx
+PASS sdk enterprise/frontend/src/embedding-sdk/hooks/private/use-init-data/test/common.unit.spec.tsx
+PASS core frontend/src/metabase/query_builder/components/NativeQueryEditor/CodeMirrorEditor/CodeMirrorEditor.unit.spec.tsx
+FAIL core frontend/src/metabase/common/hooks/entity-framework/use-collection-query/use-collection-query.unit.spec.tsx
+  ● useCollectionQuery › should display error
+
+    thrown: Object {
+      "error": FetchError {
+        "code": "ECONNREFUSED",
+        "errno": "ECONNREFUSED",
+        "message": "request to http://localhost/api/session/properties failed, reason: ",
+        "type": "system",
+      },
+      "isUnhandledError": false,
+      "meta": undefined,
+    }
+
+      at _getError (node_modules/jest-circus/build/utils.js:432:18)
+          at Array.map (<anonymous>)
+
+PASS core frontend/src/metabase/palette/components/test/PaletteResults/PaletteResults-ee.unit.spec.tsx
+PASS core frontend/src/metabase/lib/urls/modelToUrl.unit.spec.ts
+PASS core frontend/src/metabase-lib/comparison.unit.spec.ts
+PASS core frontend/src/metabase/forms/components/FormDateInput/FormDateInput.unit.spec.tsx
+PASS core frontend/test/metabase/lib/validate.unit.spec.js
+PASS core frontend/src/metabase/common/hooks/use-callback-effect/use-callback-effect.unit.spec.tsx
+PASS core frontend/src/metabase/setup/components/LanguageStep/LanguageStep.unit.spec.tsx
+PASS sdk enterprise/frontend/src/embedding-sdk/components/public/dashboard/EditableDashboard/EditableDashboard.unit.spec.tsx (105.276 s)
+PASS core frontend/src/metabase/dashboard/components/DashboardHeader/tests/enterprise.unit.spec.ts
+PASS core frontend/src/metabase/collections/components/CreateCollectionForm/tests/common.unit.spec.tsx
+PASS core frontend/src/metabase/visualizations/echarts/cartesian/model/legend.unit.spec.ts
+PASS core frontend/src/metabase/visualizations/echarts/pie/util/colors.unit.spec.ts
+PASS core frontend/src/metabase/search/components/SearchFilterPopoverWrapper/SearchFilterPopoverWrapper.unit.spec.tsx
+PASS sdk enterprise/frontend/src/embedding-sdk/components/private/SdkQuestion/components/util/BadgeList/BadgeListItem/BadgeListItem.unit.spec.tsx
+PASS core frontend/src/metabase/common/components/NewItemMenu/NewItemMenu.enterprise.unit.spec.tsx
+PASS core frontend/src/metabase/admin/settings/components/SettingsPages/test/AuthenticationSettingsPage.enterprise.unit.spec.tsx
+PASS core frontend/src/metabase/public/components/EmbedModal/StaticEmbedSetupPane/tests/enterprise.unit.spec.tsx (6.392 s)
+PASS core frontend/src/metabase/lib/compat/check-version.unit.spec.ts
+PASS core frontend/src/metabase/query_builder/components/template_tags/SnippetSidebar/tests/premium.unit.spec.tsx
+PASS core frontend/src/metabase/query_builder/components/DataSelector/DataSelectorDatabasePicker/DataSelectorDatabasePicker.unit.spec.tsx
+PASS core frontend/src/metabase/lib/formatting/currency.unit.spec.ts
+PASS core frontend/src/metabase/common/components/MetadataInfo/TableLabel/TableLabel.unit.spec.tsx
+PASS core frontend/src/metabase/admin/settings/slack/SlackBadge.unit.spec.tsx
+PASS core frontend/src/metabase/visualizations/visualizations/SankeyChart/utils/cycle-detection.unit.spec.ts
+PASS core frontend/src/metabase/querying/expressions/diagnostics/utils.unit.spec.ts
+PASS core enterprise/frontend/src/metabase-enterprise/group_managers/components/UserTypeToggle/UserTypeToggle.unit.spec.tsx
+PASS core frontend/src/metabase/common/utils/model-names.unit.spec.ts
+PASS core frontend/src/metabase/notifications/AddEditSidebar/CaveatMessage/tests/common.unit.spec.ts
+PASS core frontend/src/metabase/auth/components/Logout/Logout.unit.spec.tsx
+PASS core frontend/src/metabase-lib/metadata.unit.spec.ts
+PASS core frontend/src/metabase/home/components/HomeModelCard/HomeModelCard.unit.spec.tsx
+PASS core frontend/src/metabase/common/components/FileInput/FileInput.unit.spec.tsx
+PASS core frontend/src/metabase/dashboard/components/DashboardSettingsSidebar/tests/enterprise.unit.spec.ts

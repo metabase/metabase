@@ -101,7 +101,7 @@ describe("QuestionPublicLinkPopover", () => {
     setup({ hasPublicLink: false });
 
     expect(
-      fetchMock.calls(`path:/api/card/${TEST_CARD_ID}/public_link`, {
+      fetchMock.callHistory.calls(`path:/api/card/${TEST_CARD_ID}/public_link`, {
         method: "POST",
       }),
     ).toHaveLength(1);
@@ -111,7 +111,7 @@ describe("QuestionPublicLinkPopover", () => {
     setup({ hasPublicLink: true });
     await userEvent.click(screen.getByText("Remove public link"));
     expect(
-      fetchMock.calls(`path:/api/card/${TEST_CARD_ID}/public_link`, {
+      fetchMock.callHistory.calls(`path:/api/card/${TEST_CARD_ID}/public_link`, {
         method: "DELETE",
       }),
     ).toHaveLength(1);

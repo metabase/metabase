@@ -115,7 +115,7 @@ describe("useUserKeyValue", () => {
       expect(result.current.value).toBe("before-value");
 
       // set new value
-      expect(mockedFetch.calls().length).toBe(1);
+      expect(fetchMock.callHistory.calls().length).toBe(1);
       act(() => {
         result.current.setValue("after-value");
       });
@@ -128,7 +128,7 @@ describe("useUserKeyValue", () => {
       });
       expect(result.current?.isLoading).toBe(false);
       expect(
-        mockedFetch.calls(`path:/api/user-key-value/namespace/test/key/test`, {
+        fetchMock.callHistory.calls(`path:/api/user-key-value/namespace/test/key/test`, {
           method: "GET",
         }),
       ).toHaveLength(1);
@@ -154,7 +154,7 @@ describe("useUserKeyValue", () => {
       expect(result.current.value).toBe("before-value");
 
       // set new value
-      expect(mockedFetch.calls().length).toBe(1);
+      expect(fetchMock.callHistory.calls().length).toBe(1);
       act(() => {
         result.current.setValue("after-value");
       });
@@ -167,7 +167,7 @@ describe("useUserKeyValue", () => {
       });
       expect(result.current?.isLoading).toBe(false);
       expect(
-        mockedFetch.calls(`path:/api/user-key-value/namespace/test/key/test`, {
+        fetchMock.callHistory.calls(`path:/api/user-key-value/namespace/test/key/test`, {
           method: "GET",
         }),
       ).toHaveLength(1);
@@ -195,7 +195,7 @@ describe("useUserKeyValue", () => {
       expect(result.current.value).toBe("value");
 
       // set new value
-      expect(mockedFetch.calls().length).toBe(1);
+      expect(fetchMock.callHistory.calls().length).toBe(1);
       act(() => {
         result.current.clearValue();
       });
@@ -208,7 +208,7 @@ describe("useUserKeyValue", () => {
       });
       expect(result.current?.isLoading).toBe(false);
       expect(
-        mockedFetch.calls(`path:/api/user-key-value/namespace/test/key/test`, {
+        fetchMock.callHistory.calls(`path:/api/user-key-value/namespace/test/key/test`, {
           method: "GET",
         }),
       ).toHaveLength(1);
@@ -234,7 +234,7 @@ describe("useUserKeyValue", () => {
       expect(result.current.value).toBe("before-value");
 
       // set new value
-      expect(mockedFetch.calls().length).toBe(1);
+      expect(fetchMock.callHistory.calls().length).toBe(1);
       act(() => {
         result.current.clearValue();
       });
@@ -247,7 +247,7 @@ describe("useUserKeyValue", () => {
       });
       expect(result.current?.isLoading).toBe(false);
       expect(
-        mockedFetch.calls(`path:/api/user-key-value/namespace/test/key/test`, {
+        fetchMock.callHistory.calls(`path:/api/user-key-value/namespace/test/key/test`, {
           method: "GET",
         }),
       ).toHaveLength(1);

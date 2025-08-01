@@ -15,8 +15,8 @@ export function setupContentTranslationEndpoints({
 
   fetchMock.get(
     "express:/api/ee/content-translation/dictionary/:token",
-    (url): DictionaryResponse => {
-      const localeCode = new URL(url).searchParams.get("locale");
+    (callLog): DictionaryResponse => {
+      const localeCode = new URL(callLog.url).searchParams.get("locale");
       if (!localeCode) {
         throw new Error("Locale is required");
       }

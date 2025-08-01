@@ -30,7 +30,7 @@ const setup = ({ databaseId = 1, settings = {} }) => {
 
 describe("DatabaseReplicationButton", () => {
   beforeEach(() => {
-    fetchMock.reset();
+    fetchMock.hardReset();
     // Mock the API endpoints
     fetchMock.post(
       "express:/api/ee/database-replication/connection/:databaseId",
@@ -43,7 +43,7 @@ describe("DatabaseReplicationButton", () => {
   });
 
   afterEach(() => {
-    fetchMock.restore();
+    fetchMock.hardReset();
   });
 
   describe("when database-replication-enabled is false", () => {

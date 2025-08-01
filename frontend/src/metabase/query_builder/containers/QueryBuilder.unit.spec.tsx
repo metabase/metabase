@@ -187,7 +187,7 @@ describe("QueryBuilder", () => {
         await screen.findByTestId("download-results-button"),
       );
 
-      expect(mockDownloadEndpoint.called()).toBe(true);
+      expect(fetchMock.callHistory.calls(`path:/api/card/${TEST_NATIVE_CARD.id}/query/csv`)).toHaveLength(1);
     });
 
     it("should allow downloading results for a native query using the current result even the query has changed but not rerun (metabase#28834)", async () => {
@@ -220,10 +220,11 @@ describe("QueryBuilder", () => {
         await screen.findByTestId("download-results-button"),
       );
 
-      const [url, options] = mockDownloadEndpoint.lastCall() as MockCall;
-      const body = await Promise.resolve(options?.body);
+      const calls = fetchMock.callHistory.calls("path:/api/dataset/csv");
+      const lastCall = calls[calls.length - 1];
+      const body = await Promise.resolve(lastCall.options?.body);
       const urlSearchParams = new URLSearchParams(body as string);
-      expect(url).toEqual(expect.stringContaining("/api/dataset/csv"));
+      expect(lastCall.url).toEqual(expect.stringContaining("/api/dataset/csv"));
       const query =
         urlSearchParams instanceof URLSearchParams
           ? JSON.parse(urlSearchParams.get("query") ?? "{}")

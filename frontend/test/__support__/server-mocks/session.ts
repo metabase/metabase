@@ -9,29 +9,33 @@ import type {
 export function setupPropertiesEndpoints(
   settings: Settings | EnterpriseSettings,
 ) {
-  fetchMock.get("path:/api/session/properties", settings, {
-    overwriteRoutes: true,
-  });
+  const name = "session-properties";
+  try {
+    fetchMock.removeRoute(name);
+  } catch {
+    // Route might not exist, ignore
+  }
+  fetchMock.get("path:/api/session/properties", settings, { name });
 }
 
 export function setupLoginEndpoint() {
-  fetchMock.post("path:/api/session", 204);
+  fetchMock.post("path:/api/session", 204, { name: "session-login" });
 }
 
 export function setupLogoutEndpoint() {
-  fetchMock.delete("path:/api/session", 204);
+  fetchMock.delete("path:/api/session", 204, { name: "session-logout" });
 }
 
 export function setupForgotPasswordEndpoint() {
-  fetchMock.post("path:/api/session/forgot_password", 204);
+  fetchMock.post("path:/api/session/forgot_password", 204, { name: "session-forgot-password" });
 }
 
 export function setupResetPasswordEndpoint() {
-  fetchMock.post("path:/api/session/reset_password", 204);
+  fetchMock.post("path:/api/session/reset_password", 204, { name: "session-reset-password" });
 }
 
 export function setupPasswordResetTokenEndpoint(
   status: PasswordResetTokenStatus,
 ) {
-  fetchMock.get("path:/api/session/password_reset_token_valid", status);
+  fetchMock.get("path:/api/session/password_reset_token_valid", status, { name: "session-password-reset-token" });
 }

@@ -120,7 +120,7 @@ describe("uploadManagementTable", () => {
     );
 
     await waitFor(() => {
-      const [url, details] = fetchMock.calls()[1]; // next to last call should be the DELETE request
+      const [url, details] = fetchMock.callHistory.calls()[1]; // next to last call should be the DELETE request
 
       expect(details?.method).toEqual("DELETE");
       return expect(url).toContain("?archive-cards=true");
@@ -151,7 +151,7 @@ describe("uploadManagementTable", () => {
     );
 
     await waitFor(() => {
-      const [url, details] = fetchMock.calls()[1]; // next to last call should be the DELETE request
+      const [url, details] = fetchMock.callHistory.calls()[1]; // next to last call should be the DELETE request
 
       expect(details?.method).toEqual("DELETE");
       return expect(url).toContain("?archive-cards=false");
@@ -176,7 +176,7 @@ describe("uploadManagementTable", () => {
     await waitFor(() =>
       expect(screen.queryByText("Delete")).not.toBeInTheDocument(),
     );
-    expect(fetchMock.calls().map((call) => call?.[1]?.method)).toEqual([
+    expect(fetchMock.callHistory.calls().map((call) => call?.[1]?.method)).toEqual([
       "GET",
       "DELETE",
       "DELETE",

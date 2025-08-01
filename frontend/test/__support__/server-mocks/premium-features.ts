@@ -4,21 +4,26 @@ export const setupTokenStatusEndpoint = (
   valid: boolean,
   features: string[] = [],
 ) => {
-  fetchMock.get(
-    "path:/api/premium-features/token/status",
-    {
-      valid,
-      "valid-thru": valid ? "2099-12-31T12:00:00" : null,
-      features,
-    },
-    { overwriteRoutes: true },
-  );
+  const name = "premium-token-status";
+  try {
+    fetchMock.removeRoute(name);
+  } catch {
+    // Route might not exist, ignore
+  }
+  fetchMock.get("path:/api/premium-features/token/status", {
+    valid,
+    "valid-thru": valid ? "2099-12-31T12:00:00" : null,
+    features,
+  }, { name });
 };
 
 export const setupTokenStatusEndpointEmpty = () => {
-  fetchMock.get("path:/api/premium-features/token/status", 404, {
-    overwriteRoutes: true,
-  });
+  try {
+    fetchMock.removeRoute("premium-token-status");
+  } catch {
+    // Route might not exist, ignore
+  }
+  fetchMock.get("path:/api/premium-features/token/status", 404, { name: "premium-token-status" });
 };
 
 export const setupTokenActivationEndpoint = ({
@@ -28,10 +33,19 @@ export const setupTokenActivationEndpoint = ({
   success?: boolean;
   status?: number;
 }) => {
+  const name = "premium-token-activation";
+  try {
+    fetchMock.removeRoute(name);
+  } catch {
+    // Route might not exist, ignore
+  }
   const responseStatus = status ?? (success ? 204 : 400);
   fetchMock.put(
     "path:/api/setting/premium-embedding-token",
     { success, error: success ? undefined : "Invalid token" },
-    { response: responseStatus, overwriteRoutes: true },
+    {
+      response: responseStatus,
+      name
+    },
   );
 };

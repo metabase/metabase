@@ -43,7 +43,7 @@ describe("DiscardFieldValuesButton", () => {
 
     await userEvent.click(button);
     expect(
-      fetchMock.calls(`path:/api/field/${field.id}/discard_values`, {
+      fetchMock.callHistory.calls(`path:/api/field/${field.id}/discard_values`, {
         method: "POST",
       }),
     ).toHaveLength(1);
@@ -65,7 +65,7 @@ describe("DiscardFieldValuesButton", () => {
 
     await userEvent.click(button);
     expect(
-      fetchMock.calls(`path:/api/field/${field.id}/discard_values`, {
+      fetchMock.callHistory.calls(`path:/api/field/${field.id}/discard_values`, {
         method: "POST",
       }),
     ).toHaveLength(1);
@@ -80,7 +80,7 @@ describe("DiscardFieldValuesButton", () => {
     expect(button).toHaveTextContent("Discard triggered!");
     await userEvent.click(button);
     expect(
-      fetchMock.calls(`path:/api/field/${field.id}/discard_values`, {
+      fetchMock.callHistory.calls(`path:/api/field/${field.id}/discard_values`, {
         method: "POST",
       }),
     ).toHaveLength(2);
@@ -101,18 +101,14 @@ describe("DiscardFieldValuesButton", () => {
   it("should show error message toast", async () => {
     const { field } = setup();
 
-    fetchMock.post(
-      `path:/api/field/${field.id}/discard_values`,
-      { status: 500 },
-      { overwriteRoutes: true },
-    );
+    fetchMock.modifyRoute(`field-${field.id}-discard-values`, { response: { status: 500 } });
 
     const button = screen.getByRole("button");
     expect(button).toHaveTextContent("Discard cached field values");
 
     await userEvent.click(button);
     expect(
-      fetchMock.calls(`path:/api/field/${field.id}/discard_values`, {
+      fetchMock.callHistory.calls(`path:/api/field/${field.id}/discard_values`, {
         method: "POST",
       }),
     ).toHaveLength(1);

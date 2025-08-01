@@ -86,7 +86,7 @@ export async function setup({
   if (action) {
     await waitFor(() => {
       expect(
-        fetchMock.calls(`path:/api/action/${action.id}`, { method: "GET" }),
+        fetchMock.callHistory.calls(`path:/api/action/${action.id}`, { method: "GET" }),
       ).toHaveLength(1);
     });
   }

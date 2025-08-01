@@ -46,7 +46,7 @@ async function setup({
 
   fetchMock.post("path:/api/native-query-snippet", async (url) => {
     return createMockNativeQuerySnippet(
-      await fetchMock.lastCall(url)?.request?.json(),
+      await fetchMock.callHistory.lastCall(url)?.request?.json(),
     );
   });
 
@@ -55,7 +55,7 @@ async function setup({
       `path:/api/native-query-snippet/${snippet.id}`,
       async (url) => {
         return createMockNativeQuerySnippet(
-          await fetchMock.lastCall(url)?.request?.json(),
+          await fetchMock.callHistory.lastCall(url)?.request?.json(),
         );
       },
     );

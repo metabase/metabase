@@ -10,8 +10,7 @@ export function setupModelIndexEndpoints(
   fetchMock.get(
     {
       url: `path:/api/model-index`,
-      query: { model_id: modelId },
-      overwriteRoutes: false,
+      query: { model_id: modelId }
     },
     indexes,
     { name: `getModelIndexes-${modelId}` },
@@ -23,10 +22,12 @@ export function setupModelIndexEndpoints(
     });
   });
 
+
+
   fetchMock.post(
     `path:/api/model-index`,
     async (url) => {
-      const lastCall = fetchMock.lastCall(url);
+      const lastCall = fetchMock.callHistory.lastCall(url);
       return createMockModelIndex(await lastCall?.request?.json());
     },
     { name: `createModelIndex` },

@@ -167,9 +167,9 @@ describe("CustomHomepageDashboardSetting", () => {
     await userEvent.click(await screen.findByText("My dashboard"));
 
     await waitFor(() => {
-      const calls = fetchMock.calls();
+      const calls = fetchMock.callHistory.calls();
       const userCall = calls.find((call) =>
-        call[0].includes("/api/user/current"),
+        call.url?.includes("/api/user/current"),
       );
       expect(userCall).toBeDefined();
     });
@@ -177,11 +177,12 @@ describe("CustomHomepageDashboardSetting", () => {
 });
 
 async function findPuts() {
-  const calls = fetchMock.calls();
-  const data = calls.filter((call) => call[1]?.method === "PUT") ?? [];
+  const calls = fetchMock.callHistory.calls();
+  const data = calls.filter((call) => call.request?.method === "PUT") ?? [];
 
-  const puts = data.map(async ([putUrl, putDetails]) => {
-    const body = ((await putDetails?.body) as string) ?? "{}";
+  const puts = data.map(async (call) => {
+    const putUrl = call.request?.url;
+    const body = ((await call.options?.body) as string) ?? "{}";
 
     return [putUrl, JSON.parse(body ?? "{}")];
   });

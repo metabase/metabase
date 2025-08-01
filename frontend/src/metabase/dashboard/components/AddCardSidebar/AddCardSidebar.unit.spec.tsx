@@ -423,7 +423,7 @@ describe("AddCardSideBar", () => {
 
       // There's no way to math a URL that a query param is not present
       // with fetch-mock, so we have to assert it manually.
-      const call = fetchMock.lastCall("path:/api/search");
+      const call = fetchMock.callHistory.lastCall("path:/api/search");
       const urlObject = new URL(checkNotNull(call?.request?.url));
       expect(urlObject.pathname).toEqual("/api/search");
       expect(

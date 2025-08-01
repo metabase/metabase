@@ -146,7 +146,7 @@ describe("CollectionHeader", () => {
       const button = screen.getByLabelText("calendar icon");
       expect(button).toBeInTheDocument();
 
-      userEvent.click(button);
+      await userEvent.click(button);
 
       const puts = await waitFor(async () => {
         const puts = await findRequests("PUT");

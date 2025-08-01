@@ -22,6 +22,7 @@ describe("Edit user modal", () => {
     expect(onCloseSpy).toHaveBeenCalled();
   });
 
+
   it("should send name updates to the API", async () => {
     setup({ userData: defaultUser });
     const firstNameField = await screen.findByLabelText("First name");
@@ -34,7 +35,7 @@ describe("Edit user modal", () => {
 
     await userEvent.click(submitButton);
 
-    const call = fetchMock.lastCall("path:/api/user/97", { method: "PUT" });
+    const call = fetchMock.callHistory.lastCall("path:/api/user/97", { method: "PUT" });
 
     const req = await call?.request?.json();
 
@@ -48,7 +49,7 @@ describe("Edit user modal", () => {
   });
 
   describe("users with empty name fields (metabase#46446)", () => {
-    it("can update the first name of a user with no last name", async () => {
+      it("can update the first name of a user with no last name", async () => {
       setup({
         userData: {
           id: 11,
@@ -65,7 +66,7 @@ describe("Edit user modal", () => {
       await userEvent.type(firstNameField, "Madonna");
       await userEvent.click(submitButton);
 
-      const call = fetchMock.lastCall("path:/api/user/11", { method: "PUT" });
+      const call = fetchMock.callHistory.lastCall("path:/api/user/11", { method: "PUT" });
       const req = await call?.request?.json();
 
       expect(req).toEqual({
@@ -77,6 +78,7 @@ describe("Edit user modal", () => {
       });
     });
 
+  
     it("can update the email of a user with no name", async () => {
       setup({
         userData: {
@@ -94,7 +96,7 @@ describe("Edit user modal", () => {
       await userEvent.type(emailField, "morpheus@example.com");
       await userEvent.click(submitButton);
 
-      const call = fetchMock.lastCall("path:/api/user/11", { method: "PUT" });
+      const call = fetchMock.callHistory.lastCall("path:/api/user/11", { method: "PUT" });
       const req = await call?.request?.json();
 
       expect(req).toEqual({
@@ -106,6 +108,7 @@ describe("Edit user modal", () => {
       });
     });
 
+  
     it("can remove a user's name", async () => {
       setup({
         userData: {
@@ -124,7 +127,7 @@ describe("Edit user modal", () => {
       await userEvent.clear(lastNameField);
       await userEvent.click(submitButton);
 
-      const call = fetchMock.lastCall("path:/api/user/11", { method: "PUT" });
+      const call = fetchMock.callHistory.lastCall("path:/api/user/11", { method: "PUT" });
       const req = await call?.request?.json();
 
       expect(req).toEqual({

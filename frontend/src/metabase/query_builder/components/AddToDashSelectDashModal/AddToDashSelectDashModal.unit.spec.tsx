@@ -549,7 +549,7 @@ describe("AddToDashSelectDashModal", () => {
       await waitForLoaderToBeRemoved();
       await screen.findAllByTestId("result-item");
 
-      const call = fetchMock.lastCall("path:/api/search");
+      const call = fetchMock.callHistory.lastCall("path:/api/search");
       const urlObject = new URL(checkNotNull(call?.request?.url));
       expect(urlObject.pathname).toEqual("/api/search");
       expect(Object.fromEntries(urlObject.searchParams.entries())).toEqual({
@@ -559,6 +559,7 @@ describe("AddToDashSelectDashModal", () => {
         filter_items_in_personal_collection: "only",
       });
     });
+
 
     it("when adding a public question, should not send a personal-only query param", async () => {
       await setup({
@@ -579,7 +580,7 @@ describe("AddToDashSelectDashModal", () => {
       await waitForLoaderToBeRemoved();
       await screen.findAllByTestId("result-item");
 
-      const call = fetchMock.lastCall("path:/api/search");
+      const call = fetchMock.callHistory.lastCall("path:/api/search");
       const urlObject = new URL(checkNotNull(call?.request?.url));
       expect(urlObject.pathname).toEqual("/api/search");
       expect(Object.fromEntries(urlObject.searchParams.entries())).toEqual({

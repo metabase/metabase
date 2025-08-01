@@ -11,7 +11,7 @@ export function setupLoggerPresetsEndpoint(
   response: LoggerPreset[] | MockResponse,
   options?: MockOptionsMethodGet,
 ) {
-  fetchMock.get("path:/api/logger/presets", response, options);
+  fetchMock.get("path:/api/logger/presets", response, { name: "logger-presets", ...options });
 }
 
 export function setupPostLoggerAdjustmentEndpoint(

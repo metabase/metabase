@@ -13,41 +13,43 @@ import { createMockCard } from "metabase-types/api/mocks";
 import { PERMISSION_ERROR } from "./constants";
 
 export function setupCardEndpoints(card: Card) {
-  fetchMock.get(`path:/api/card/${card.id}`, card);
+  fetchMock.get(`path:/api/card/${card.id}`, card, { name: `card-${card.id}-get` });
   fetchMock.put(`path:/api/card/${card.id}`, async (url) => {
-    const lastCall = fetchMock.lastCall(url);
+    const lastCall = fetchMock.callHistory.lastCall(url);
     return createMockCard(await lastCall?.request?.json());
-  });
-  fetchMock.get(`path:/api/card/${card.id}/series`, []);
+  }, { name: `card-${card.id}-put` });
+  fetchMock.get(`path:/api/card/${card.id}/series`, [], { name: `card-${card.id}-series` });
 }
 
 export function setupCardByEntityIdEndpoints(card: Card) {
-  fetchMock.get(`path:/api/card/${card.entity_id}`, card);
+  fetchMock.get(`path:/api/card/${card.entity_id}`, card, { name: `card-entity-${card.entity_id}-get` });
   fetchMock.put(`path:/api/card/${card.entity_id}`, async (url) => {
-    const lastCall = fetchMock.lastCall(url);
+    const lastCall = fetchMock.callHistory.lastCall(url);
     return createMockCard(await lastCall?.request?.json());
-  });
-  fetchMock.get(`path:/api/card/${card.entity_id}/series`, []);
+  }, { name: `card-entity-${card.entity_id}-put` });
+  fetchMock.get(`path:/api/card/${card.entity_id}/series`, [], { name: `card-entity-${card.entity_id}-series` });
 }
 
 export function setupCardQueryMetadataEndpoint(
   card: Card,
   metadata: CardQueryMetadata,
 ) {
-  fetchMock.get(`path:/api/card/${card.id}/query_metadata`, metadata);
+  fetchMock.get(`path:/api/card/${card.id}/query_metadata`, metadata, { name: `card-${card.id}-query-metadata` });
 }
 
 export function setupCardsEndpoints(cards: Card[]) {
-  fetchMock.get({ url: "path:/api/card", overwriteRoutes: false }, cards);
+  fetchMock.get({
+    url: "path:/api/card"
+  }, cards, { name: "cards-list" });
   setupCardCreateEndpoint();
   cards.forEach((card) => setupCardEndpoints(card));
 }
 
 export function setupCardCreateEndpoint() {
   fetchMock.post("path:/api/card", async (url) => {
-    const lastCall = fetchMock.lastCall(url);
+    const lastCall = fetchMock.callHistory.lastCall(url);
     return createMockCard(await lastCall?.request?.json());
-  });
+  }, { name: "card-create" });
 }
 
 export function setupUnauthorizedCardEndpoints(card: Card) {
