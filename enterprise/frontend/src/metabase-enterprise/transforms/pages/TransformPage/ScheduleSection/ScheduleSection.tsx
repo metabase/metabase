@@ -104,10 +104,15 @@ function getStatusText({
   return match(status)
     .with("never-executed", () => t`This transform hasn’t run yet.`)
     .with("started", () => t`In progress…`)
-    .with("sync-succeeded", () =>
+    .with("exec-succeeded", "sync-succeeded", () =>
       lastEndedAt
         ? t`Last run ${dayjs.parseZone(lastEndedAt).local().format("lll")}`
         : t`Last run succeeded`,
+    )
+    .with("exec-failed", "sync-failed", () =>
+      lastEndedAt
+        ? t`Last run failed at ${dayjs.parseZone(lastEndedAt).local().format("lll")}`
+        : t`Last run failed`,
     )
     .otherwise(() => null);
 }
@@ -125,7 +130,7 @@ function ExecuteButton({ transform }: ExecuteButtonProps) {
   const handleRun = async () => {
     const { error } = await executeTransform(transform.id);
     if (error) {
-      sendErrorToast(t`Failed to schedule transform run`);
+      sendErrorToast(t`Failed to run transform`);
     }
   };
 
