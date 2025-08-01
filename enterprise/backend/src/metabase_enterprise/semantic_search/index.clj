@@ -51,6 +51,9 @@
      [:archived :boolean [:default false]]
      [:verified :boolean]
      [:official_collection :boolean]
+     [:database_id :int]
+     [:collection_id :int]
+     [:display_type :text]
      [:legacy_input :jsonb]
      [:embedding [:raw (format "vector(%d)" vector-dimensions)] :not-null]
      [:text_search_vector :tsvector :not-null]
@@ -74,7 +77,7 @@
 (defn- doc->db-record
   "Convert a document to a database record with a provided embedding."
   [embedding-vec {:keys [model id searchable_text created_at creator_id updated_at
-                         last_editor_id archived verified official_collection legacy_input] :as doc}]
+                         last_editor_id archived verified official_collection database_id collection_id display_type legacy_input] :as doc}]
   {:model               model
    :model_id            id
    :creator_id          creator_id
@@ -84,6 +87,9 @@
    :archived            archived
    :verified            verified
    :official_collection official_collection
+   :database_id         database_id
+   :collection_id       collection_id
+   :display_type        display_type
    :embedding           [:raw (format-embedding embedding-vec)]
    :content             searchable_text
    :text_search_vector (if (:name doc)
@@ -284,7 +290,7 @@
 
 (defn- search-filters
   "Generate WHERE conditions based on search context filters."
-  [{:keys [archived? verified models created-at created-by last-edited-at last-edited-by]}]
+  [{:keys [archived? verified models created-at created-by last-edited-at last-edited-by table-db-id ids display-type]}]
   (let [conditions (filter some?
                            [(when (some? archived?)
                               [:= :archived archived?])
@@ -296,6 +302,12 @@
                               [:in :creator_id created-by])
                             (when (seq last-edited-by)
                               [:in :last_editor_id last-edited-by])
+                            (when table-db-id
+                              [:= :database_id table-db-id])
+                            (when (seq ids)
+                              [:in :model_id (map str ids)])
+                            (when (seq display-type)
+                              [:in :display_type display-type])
                             (when (and created-at (:start created-at) (:end created-at))
                               [:between :model_created_at
                                (LocalDate/parse (:start created-at))
@@ -448,6 +460,105 @@
      (filterv (fn [doc] (some-> doc doc->t2 mi/can-read?)) regular-docs)
      permitted-entities)))
 
+(defn- get-personal-collection-ids
+  "Get the set of personal collection IDs by extracting root collection IDs from locations."
+  [collections-map]
+  (let [root-collection-ids (->> collections-map
+                                 vals
+                                 (map :location)
+                                 (keep (fn [location]
+                                         (when-let [match (re-find #"^/(\d+)/" location)]
+                                           (parse-long (second match)))))
+                                 distinct)]
+    (when (seq root-collection-ids)
+      (->> (t2/select [:collection :id]
+                      :id [:in root-collection-ids]
+                      :personal_owner_id [:not= nil])
+           (map :id)
+           set))))
+
+(defn- filter-by-collection
+  "Filter documents based on personal collection preferences.
+  Equivalent to metabase.search.filter/personal-collections-where-clause but operates on docs in memory.
+
+  | Filter         | Personal | Others' Personal | Shared Coll. | No Coll. |
+  |----------------|----------|------------------|--------------|----------|
+  | all            | ✅       | ✅               | ✅           | ✅       |
+  | only-mine      | ✅       | ❌               | ❌           | ❌       |
+  | only           | ✅       | ✅               | ❌           | ❌       |
+  | exclude        | ❌       | ❌               | ✅           | ✅       |
+  | exclude-others | ✅       | ❌               | ✅           | ✅       |
+  "
+  [docs {:keys [filter-items-in-personal-collection current-user-id]}]
+  (let [filter-type (or filter-items-in-personal-collection "all")]
+    (if (= filter-type "all")
+      docs
+      (let [collection-ids (keep :collection_id docs)
+            collections-map (when (seq collection-ids)
+                              (->> (t2/select [:collection :id :location :personal_owner_id]
+                                              :id [:in collection-ids])
+                                   (into {} (map (juxt :id identity)))))
+            personal-collection-ids (when (not= filter-type "only-mine")
+                                      (get-personal-collection-ids collections-map))
+            user-personal-collection-id (t2/select-one-pk :model/Collection :personal_owner_id [:= current-user-id])
+            is-personal-collection?   (fn [coll] (some? (:personal_owner_id coll)))
+            is-owned-by-user?         (fn [coll] (= (:personal_owner_id coll) current-user-id))
+            is-in-user-personal-tree? (fn [coll] (str/starts-with? (:location coll) (str "/" user-personal-collection-id "/")))
+            is-in-any-personal-tree?  (fn [coll]
+                                        (when-let [match (re-find #"^/(\d+)/" (:location coll))]
+                                          (contains? personal-collection-ids (parse-long (second match)))))]
+        (case filter-type
+          "only-mine"
+          (filterv (fn [doc]
+                     (when-let [collection (get collections-map (:collection_id doc))]
+                       (or (is-owned-by-user? collection)
+                           (is-in-user-personal-tree? collection))))
+                   docs)
+
+          "only"
+          (filterv (fn [doc]
+                     (when-let [collection (get collections-map (:collection_id doc))]
+                       (or (is-personal-collection? collection)
+                           (is-in-any-personal-tree? collection))))
+                   docs)
+
+          "exclude"
+          (filterv (fn [doc]
+                     (let [collection-id (:collection_id doc)]
+                       (or (nil? collection-id)
+                           (when-let [collection (get collections-map collection-id)]
+                             (and (not (is-personal-collection? collection))
+                                  (not (is-in-any-personal-tree? collection)))))))
+                   docs)
+
+          "exclude-others"
+          (filterv (fn [doc]
+                     (let [collection-id (:collection_id doc)]
+                       (or (nil? collection-id)
+                           (when-let [collection (get collections-map collection-id)]
+                             (or (is-owned-by-user? collection)
+                                 (is-in-user-personal-tree? collection)
+                                 (and (not (is-personal-collection? collection))
+                                      (not (is-in-any-personal-tree? collection))))))))
+                   docs)
+
+          docs)))))
+
+(defn- apply-collection-filter
+  "Apply personal collection filtering with logging."
+  [docs search-context]
+  (let [filter-type (:filter-items-in-personal-collection search-context)]
+    (if (or (nil? filter-type) (= filter-type "all"))
+      docs
+      (let [timer (u/start-timer)
+            filtered-docs (filter-by-collection docs search-context)]
+        (log/debug "Collection filter" {:filter  filter-type
+                                        :before  (count docs)
+                                        :after   (count filtered-docs)
+                                        :dropped (- (count docs) (count filtered-docs))
+                                        :time_ms (u/since-ms timer)})
+        filtered-docs))))
+
 (defn query-index
   "Query the index for documents similar to the search string."
   [db index search-context]
@@ -463,7 +574,8 @@
         (comment
           (jdbc/execute! db (sql-format-quoted query)))
         (-> (transduce xform conj [] reducible)
-            filter-read-permitted)))))
+            filter-read-permitted
+            (apply-collection-filter search-context))))))
 
 (comment
   (def embedding-model (embedding/get-configured-model))
