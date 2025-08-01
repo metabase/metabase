@@ -43,7 +43,9 @@ export const InsightsLink = ({
 
   const entityId = dashboard
     ? auditInfo.dashboard_overview
-    : auditInfo.question_overview;
+    : question.type() === "model"
+      ? auditInfo.model_overview
+      : auditInfo.question_overview;
 
   const linkQueryParams = new URLSearchParams(
     dashboard
