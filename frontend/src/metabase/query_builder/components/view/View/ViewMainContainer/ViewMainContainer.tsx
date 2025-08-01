@@ -91,6 +91,8 @@ interface ViewMainContainerProps {
   parameters: UiParameter[];
 
   updateQuestion: (question: Question, opts?: { run?: boolean }) => void;
+
+  visualizationSettings: unknown;
 }
 
 export const ViewMainContainer = (props: ViewMainContainerProps) => {
@@ -102,7 +104,6 @@ export const ViewMainContainer = (props: ViewMainContainerProps) => {
     showRightSidebar,
     parameters,
     setParameterValue,
-    isLiveResizable,
     updateQuestion,
   } = props;
 
@@ -136,7 +137,8 @@ export const ViewMainContainer = (props: ViewMainContainerProps) => {
 
       <DebouncedFrame
         className={ViewMainContainerS.StyledDebouncedFrame}
-        enabled={!isLiveResizable}
+        enabled
+        resetKey={props.visualizationSettings}
       >
         <QueryVisualization
           {...props}

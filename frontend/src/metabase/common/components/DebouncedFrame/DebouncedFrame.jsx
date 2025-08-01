@@ -20,6 +20,10 @@ class DebouncedFrame extends Component {
   // There's probably a better way to block renders of children though
   _transition = false;
 
+  // This component may resize because the page layout changes, and you might want to re-render immediately (w/o a transition)
+  // e.g. clicking a table column then "Sum over time". Pass a new resetKey via props to trigger a resize without a transition.
+  _resetKey;
+
   static defaultProps = {
     enabled: true,
   };
@@ -45,30 +49,32 @@ class DebouncedFrame extends Component {
 
   updateSizeDebounced = _.debounce(this.updateSize, DEBOUNCE_PERIOD);
 
-  UNSAFE_componentWillReceiveProps(nextProps) {
+  componentDidUpdate() {
+    this._updateTransitionStyle();
+    const nextProps = this.props;
     if (!nextProps.enabled) {
-      this._updateTransitionStyle();
       return;
     }
     if (
       this.state.width !== nextProps.width ||
       this.state.height !== nextProps.height
     ) {
+      const updateSize =
+        nextProps.resetKey === this._resetKey
+          ? () => this.updateSizeDebounced()
+          : () => this.updateSize();
+      this._resetKey = nextProps.resetKey;
       if (this.state.width == null || this.state.height == null) {
-        this.updateSizeDebounced();
+        updateSize();
       } else {
         this._transition = true;
         this._updateTransitionStyle();
-        this.updateSizeDebounced();
+        updateSize();
       }
     }
   }
 
   componentDidMount() {
-    this._updateTransitionStyle();
-  }
-
-  componentDidUpdate() {
     this._updateTransitionStyle();
   }
 
@@ -123,4 +129,7 @@ const DebouncedFrameForwardRef = forwardRef(
   },
 );
 
-export default ExplicitSize()(DebouncedFrameForwardRef);
+export default ExplicitSize({
+  // set to "none" (i.e. no throttle/debounce) since DebouncedFrame has a built-in debounce
+  refreshMode: "none",
+})(DebouncedFrameForwardRef);
