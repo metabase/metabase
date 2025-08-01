@@ -22,6 +22,8 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
+(set! *warn-on-reflection* true)
+
 ;;; ------------------------------------------------ "Crufty" Tables -------------------------------------------------
 
 ;; Crufty tables are ones we know are from frameworks like Rails or Django and thus automatically mark as `:cruft`
@@ -278,9 +280,10 @@
   "Mark tables that have been deactivated for longer than the configured threshold as archived
   and suffixes their names."
   [database]
-  (let [;; we use UTC offset time for suffix, may not match db timezone but
-        ;; it doesn't matter much, the source of time truth is `archived_at`
-        suffix (str "__archived__" (t/truncate-to (t/offset-date-time) :seconds))
+  (let [;; we use UTC offset time for suffix, may not match db time but
+        ;; it doesn't matter much, the source of time truth is `archived_at`,
+        ;; we're just using this as a cheap namespace
+        suffix (str "__archived__" (.toEpochSecond (t/offset-date-time)))
         threshold-expr (apply
                         (requiring-resolve 'metabase.driver.sql.query-processor/add-interval-honeysql-form)
                         (mdb/db-type) :%now archive-tables-threshold)
