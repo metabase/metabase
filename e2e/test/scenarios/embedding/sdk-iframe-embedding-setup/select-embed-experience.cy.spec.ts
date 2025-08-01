@@ -73,7 +73,7 @@ H.describeWithSnowplow(suiteTitle, () => {
       });
     });
 
-    it.skip("shows exploration template when selected", () => {
+    it("shows exploration template when selected", () => {
       visitNewEmbedPage();
       getEmbedSidebar().findByText("Exploration").click();
 
@@ -114,7 +114,7 @@ H.describeWithSnowplow(suiteTitle, () => {
       });
     });
 
-    it.skip("shows question of id=1 when activity log is empty and chart is selected", () => {
+    it("shows question of id=1 when activity log is empty and chart is selected", () => {
       visitNewEmbedPage();
       cy.wait("@emptyRecentItems");
 
