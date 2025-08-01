@@ -32,29 +32,23 @@ export const useMetabotDocumentQuery = () => {
       // FIXME: get the backend to do all this processing - this is just a hacky prototype
       const description = response?.text;
 
-      const queryToolCall: any = response.toolCalls?.findLast(
-        (call: any) => call.toolName === "construct_notebook_query",
+      const navigateTo = response.data.find(
+        (d: any) => d.type === "navigate_to",
       );
 
-      if (!queryToolCall) {
-        console.error("No tool call found in Metabot response");
+      if (!navigateTo) {
         return { error: description };
       }
 
-      let vizSettings: any = {};
-      let query = null;
-      try {
-        const args = JSON.parse(queryToolCall.args || {});
-        vizSettings = args.viz_settings ?? {};
-      } catch (e) {
-        return { error: description };
-      }
+      const encodedQuery = navigateTo?.value?.replace?.("/question#", "");
+
+      let query = {};
 
       try {
-        // captures text inside triple backticks
-        query = JSON.parse(queryToolCall.value.match(/```(.*?)```/s)[1]);
+        query = JSON.parse(atob(encodedQuery));
       } catch (e) {
-        console.error("Failed to parse query from Metabot response", e);
+        console.error("Failed to parse query", e, encodedQuery);
+        return { error: description };
       }
 
       if (!query) {
@@ -62,12 +56,10 @@ export const useMetabotDocumentQuery = () => {
       }
 
       const createQuestionResponse = await createQuestion({
-        dataset_query: query,
+        visualization_settings: {},
+        ...(query as any),
+        type: "in_report",
         name: "Exploration",
-        type: "question",
-        in_report: true,
-        display: vizSettings.type ?? "table",
-        visualization_settings: vizSettings ?? {},
       });
 
       const questionId = createQuestionResponse?.data?.id;

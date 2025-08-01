@@ -372,7 +372,6 @@ export interface CreateCardRequest {
   visualization_settings: VisualizationSettings;
   type?: CardType;
   parameters?: Parameter[];
-  in_report?: boolean;
   report_id?: DocumentId;
   parameter_mappings?: unknown;
   description?: string;

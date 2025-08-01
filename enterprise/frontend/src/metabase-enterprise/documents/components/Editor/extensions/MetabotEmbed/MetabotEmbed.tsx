@@ -124,6 +124,7 @@ export const MetabotComponent = memo(
           inputRef.current?.focus();
           const unfocus = (e: KeyboardEvent) => {
             if (e.key === "Tab") {
+              inputRef.current?.blur();
               editor.commands.focus();
             }
           };
