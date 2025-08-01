@@ -1,4 +1,4 @@
-import { Button, MantineProvider } from "@mantine/core";
+import { Button, MantineProvider, Title } from "@mantine/core";
 import {
   CreateDashboardModal,
   EditableDashboard,
@@ -8,6 +8,7 @@ import {
   StaticQuestion,
   defineMetabaseTheme,
 } from "@metabase/embedding-sdk-react";
+import { useEffect } from "react";
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
@@ -627,6 +628,48 @@ describe("scenarios > embedding-sdk > styles", () => {
           "rgb(255, 0, 0)",
         );
       });
+    });
+  });
+
+  describe("styles specificity", () => {
+    it("Mantine styles should have proper specificity and not override custom styles", () => {
+      const TitleWrapper = () => {
+        useEffect(() => {
+          const style = document.createElement("style");
+
+          style.innerHTML = `
+          .some-title {
+            font-size: 40px;
+          }
+        `;
+
+          document.head.prepend(style);
+
+          return () => {
+            style.remove();
+          };
+        }, []);
+
+        return (
+          <Title data-testid="title" className="some-title">
+            Some title
+          </Title>
+        );
+      };
+
+      cy.mount(
+        <MantineProvider>
+          <TitleWrapper />
+
+          <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}>
+            <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />
+          </MetabaseProvider>
+        </MantineProvider>,
+      );
+
+      getSdkRoot().findByText("Product ID").should("exist");
+
+      cy.findByTestId("title").should("have.css", "font-size", "40px");
     });
   });
 });
