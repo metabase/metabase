@@ -1,5 +1,3 @@
-/* eslint-disable react/prop-types */
-
 import { updateIn } from "icepick";
 import { t } from "ttag";
 import * as Yup from "yup";
