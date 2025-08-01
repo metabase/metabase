@@ -241,7 +241,10 @@
   [qp export-format]
   (mu/fn [query :- :map
           info  :- [:maybe ::lib.schema.info/info]]
-    (qp.streaming/streaming-response [rff export-format (u/slugify (:card-name info))]
+    (qp.streaming/streaming-response [rff export-format (or (when-let [name (:card-name info)]
+                                                              (when-not (str/blank? name)
+                                                                (u/slugify name)))
+                                                            "question")]
       (qp (update query :info merge info) rff))))
 
 (defn combined-parameters-and-template-tags
