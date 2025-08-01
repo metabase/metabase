@@ -603,6 +603,7 @@
           metabase.lib.schema.info
           metabase.lib.schema.join
           metabase.lib.schema.literal
+          metabase.lib.schema.mbql-clause
           metabase.lib.schema.metadata
           metabase.lib.schema.metadata.fingerprint
           metabase.lib.schema.order-by
