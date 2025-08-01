@@ -351,7 +351,6 @@
   [index embedding search-context]
   (let [filters (search-filters search-context)
         embedding-literal (format-embedding embedding)
-        max-cosine-distance 0.7
         base-query {:select [[:id :id]
                              [:model_id :model_id]
                              [:model :model]
@@ -361,7 +360,6 @@
                              [[:raw (str "embedding <=> " embedding-literal)] :semantic_score]
                              [[:raw (str "row_number() OVER (ORDER BY embedding <=> " embedding-literal " ASC)")] :semantic_rank]]
                     :from   [(keyword (:table-name index))]
-                    :where [:<= [:raw (str "embedding <=> " embedding-literal)] max-cosine-distance]
                     :order-by [[:semantic_rank :asc]]
                     :limit  100}]
     (if filters
