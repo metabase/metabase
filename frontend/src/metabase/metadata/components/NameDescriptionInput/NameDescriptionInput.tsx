@@ -17,6 +17,7 @@ interface Props {
   namePrefix?: string;
   onDescriptionChange: (description: string) => void;
   onNameChange: (name: string) => void;
+  rightSection?: React.ReactNode;
 }
 
 export const NameDescriptionInput = ({
@@ -29,6 +30,7 @@ export const NameDescriptionInput = ({
   namePrefix,
   onDescriptionChange,
   onNameChange,
+  rightSection,
 }: Props) => {
   const { ref, width } = useElementSize();
   const { ref: sectionRef, width: sectionWidth } = useElementSize();
@@ -100,6 +102,8 @@ export const NameDescriptionInput = ({
         maxLength={nameMaxLength}
         placeholder={namePlaceholder}
         required
+        rightSection={rightSection}
+        rightSectionWidth={rightSection ? 40 : 0}
         size="lg"
         styles={{
           section: {
