@@ -9,11 +9,11 @@ import { AdminSettingsLayout } from "metabase/common/components/AdminLayout/Admi
 
 import { getNewTransformPageUrl, getOverviewPageUrl } from "../../urls";
 
-type PageLayoutProps = {
+type TransformPageLayoutProps = {
   children: ReactNode;
 };
 
-export function PageLayout({ children }: PageLayoutProps) {
+export function TransformPageLayout({ children }: TransformPageLayoutProps) {
   return (
     <AdminSettingsLayout sidebar={<Sidebar />} maw="60rem">
       {children}
