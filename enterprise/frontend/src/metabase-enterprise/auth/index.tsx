@@ -20,8 +20,8 @@ import { Stack } from "metabase/ui";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { AuthSettingsPage } from "./components/AuthSettingsPage";
-import { SettingsJWTForm } from "./components/SettingsJWTForm";
-import { SettingsSAMLForm } from "./components/SettingsSAMLForm";
+import SettingsJWTForm from "./components/SettingsJWTForm";
+import SettingsSAMLForm from "./components/SettingsSAMLForm";
 import { SsoButton } from "./components/SsoButton";
 import { createSessionMiddleware } from "./middleware/session-middleware";
 
