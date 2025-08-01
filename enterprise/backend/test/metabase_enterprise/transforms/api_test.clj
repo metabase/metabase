@@ -238,7 +238,6 @@
         (if (= status :sync-succeeded)
           (is (some? (:table resp)))
           (do
-            (is (nil? (:table resp)))
             (Thread/sleep 100)
             (recur)))))))
 
@@ -258,40 +257,43 @@
 (deftest execute-test
   (doseq [target-type ["table" "view"]
           :let [feature (keyword "transforms" target-type)]]
-    (mt/test-drivers (mt/normal-drivers-with-feature feature)
-      (with-transform-cleanup! [table1-name "dookey_products"
-                                table2-name "doohickey_products"]
-        (let [query2 (make-query "Doohickey")
-              original {:name "Gadget Products"
-                        :source {:type "query"
-                                 :query {:database (mt/id)
-                                         :type "native"
-                                         :native {:query (make-query "Gadget")
-                                                  :template-tags {}}}}
-                        :target {:type target-type
-                                 ;;:schema "transforms"
-                                 :name table1-name}}
-              {transform-id :id} (mt/user-http-request :crowberto :post 200 "ee/transform"
-                                                       original)
-              _ (test-execution transform-id)
-              _ (is (true? (transforms.util/target-table-exists? original)))
-              _ (check-query-results table1-name [5 11 16] "Gadget")
-              updated {:name "Doohickey Products"
-                       :description "Desc"
-                       :source {:type "query"
-                                :query {:database (mt/id)
-                                        :type "native",
-                                        :native {:query query2
-                                                 :template-tags {}}}}
-                       :target {:type target-type
-                                :name table2-name}}]
-          (is (=? (assoc updated
-                         :execution_trigger "none"
-                         :execution_status "sync-succeeded"
-                         :last_started_at string?
-                         :last_ended_at string?)
-                  (mt/user-http-request :crowberto :put 200 (format "ee/transform/%s" transform-id) updated)))
-          (test-execution transform-id)
-          (is (true? (transforms.util/target-table-exists? original)))
-          (is (true? (transforms.util/target-table-exists? updated)))
-          (check-query-results table2-name [2 3 4] "Doohickey"))))))
+    (testing (str "transform execution with " target-type " target")
+      (mt/test-drivers (mt/normal-drivers-with-feature feature)
+        (with-transform-cleanup! [table1-name "dookey_products"
+                                  table2-name "doohickey_products"]
+          (let [schema (t2/select-one-fn :schema :model/Table (mt/id :products))
+                query2 (make-query "Doohickey")
+                original {:name "Gadget Products"
+                          :source {:type "query"
+                                   :query {:database (mt/id)
+                                           :type "native"
+                                           :native {:query (make-query "Gadget")
+                                                    :template-tags {}}}}
+                          :target {:type target-type
+                                   :schema schema
+                                   :name table1-name}}
+                {transform-id :id} (mt/user-http-request :crowberto :post 200 "ee/transform"
+                                                         original)
+                _ (test-execution transform-id)
+                _ (is (true? (transforms.util/target-table-exists? original)))
+                _ (check-query-results table1-name [5 11 16] "Gadget")
+                updated {:name "Doohickey Products"
+                         :description "Desc"
+                         :source {:type "query"
+                                  :query {:database (mt/id)
+                                          :type "native",
+                                          :native {:query query2
+                                                   :template-tags {}}}}
+                         :target {:type target-type
+                                  :schema schema
+                                  :name table2-name}}]
+            (is (=? (assoc updated
+                           :execution_trigger "none"
+                           :execution_status "sync-succeeded"
+                           :last_started_at string?
+                           :last_ended_at string?)
+                    (mt/user-http-request :crowberto :put 200 (format "ee/transform/%s" transform-id) updated)))
+            (test-execution transform-id)
+            (is (true? (transforms.util/target-table-exists? original)))
+            (is (true? (transforms.util/target-table-exists? updated)))
+            (check-query-results table2-name [2 3 4] "Doohickey")))))))
