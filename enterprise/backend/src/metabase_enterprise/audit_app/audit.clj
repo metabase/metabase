@@ -73,6 +73,10 @@
   "Default Dashboard Overview (this is a dashboard) entity id."
   "bJEYb0o5CXlfWFcIztDwJ")
 
+(def default-model-overview-entity-id
+  "Default Model Overview (this is a dashboard) entity id."
+  "-bNrqEyUgUbTTEQC2bAVx")
+
 (defn- install-database!
   "Creates the audit db, a clone of the app db used for auditing purposes.
 

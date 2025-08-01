@@ -1,7 +1,8 @@
-import type { CardId, CollectionId, DashboardId } from "metabase-types/api";
+import type { CollectionId, DashboardId } from "metabase-types/api";
 
 export interface AuditInfo {
   dashboard_overview: DashboardId;
-  question_overview: CardId;
+  question_overview: DashboardId;
   custom_reports: CollectionId;
+  model_overview: DashboardId;
 }
