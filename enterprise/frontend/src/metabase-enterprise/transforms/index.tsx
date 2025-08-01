@@ -5,11 +5,11 @@ import { createAdminRouteGuard } from "metabase/admin/utils";
 import { Route } from "metabase/hoc/Title";
 import { PLUGIN_TRANSFORMS } from "metabase/plugins";
 
-import { TransformPageLayout } from "./components/TransformPageLayout";
 import { NewTransformPage } from "./pages/NewTransformPage";
 import { NewTransformQueryPage } from "./pages/NewTransformQueryPage";
 import { OverviewPage } from "./pages/OverviewPage";
 import { TransformPage } from "./pages/TransformPage";
+import { TransformPageLayout } from "./pages/TransformPageLayout";
 import { TransformQueryPage } from "./pages/TransformQueryPage";
 
 PLUGIN_TRANSFORMS.getAdminPaths = () => [

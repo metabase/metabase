@@ -6,27 +6,50 @@ import {
   AdminNavWrapper,
 } from "metabase/admin/components/AdminNav";
 import { AdminSettingsLayout } from "metabase/common/components/AdminLayout/AdminSettingsLayout";
+import * as Urls from "metabase/lib/urls";
 import { useListTransformsQuery } from "metabase-enterprise/api";
 import {
   getOverviewPageUrl,
   getnewTransformPageUrl,
 } from "metabase-enterprise/transforms/urls";
+import type { TransformId } from "metabase-types/api";
 
 import { TransformList } from "./TransformList";
 
-type TransformPageLayoutProps = {
-  children: ReactNode;
+type TransformPageLayoutParams = {
+  transformId?: string;
 };
 
-export function TransformPageLayout({ children }: TransformPageLayoutProps) {
+type TransformPageLayoutParsedParams = {
+  transformId?: TransformId;
+};
+
+type TransformPageLayoutProps = {
+  params: TransformPageLayoutParams;
+  children?: ReactNode;
+};
+
+export function TransformPageLayout({
+  params,
+  children,
+}: TransformPageLayoutProps) {
+  const { transformId } = getParsedParams(params);
+
   return (
-    <AdminSettingsLayout sidebar={<Sidebar />} maw="60rem">
+    <AdminSettingsLayout
+      sidebar={<TransformSidebar transformId={transformId} />}
+      maw="60rem"
+    >
       {children}
     </AdminSettingsLayout>
   );
 }
 
-function Sidebar() {
+type TransformSidebarProps = {
+  transformId?: TransformId;
+};
+
+function TransformSidebar({ transformId }: TransformSidebarProps) {
   const { data: transforms = [] } = useListTransformsQuery();
 
   return (
@@ -37,7 +60,7 @@ function Sidebar() {
         icon="home"
       />
       {transforms.length > 0 ? (
-        <TransformList transforms={transforms} />
+        <TransformList transforms={transforms} transformId={transformId} />
       ) : (
         <AdminNavItem
           label={t`Transforms`}
@@ -47,4 +70,12 @@ function Sidebar() {
       )}
     </AdminNavWrapper>
   );
+}
+
+function getParsedParams({
+  transformId,
+}: TransformPageLayoutParams): TransformPageLayoutParsedParams {
+  return {
+    transformId: Urls.extractEntityId(transformId),
+  };
 }

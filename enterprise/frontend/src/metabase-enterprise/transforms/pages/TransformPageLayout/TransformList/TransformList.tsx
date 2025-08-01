@@ -5,16 +5,17 @@ import { t } from "ttag";
 import { AdminNavItem } from "metabase/admin/components/AdminNav";
 import { Icon, NavLink, Stack, UnstyledButton } from "metabase/ui";
 import { getTransformUrl } from "metabase-enterprise/transforms/urls";
-import type { Transform } from "metabase-types/api";
+import type { Transform, TransformId } from "metabase-types/api";
 
 import S from "./TransformList.module.css";
 
 type TransformListProps = {
   transforms: Transform[];
+  transformId?: TransformId;
 };
 
-export function TransformList({ transforms }: TransformListProps) {
-  const [isExpanded, { toggle }] = useDisclosure();
+export function TransformList({ transforms, transformId }: TransformListProps) {
+  const [isExpanded, { toggle }] = useDisclosure(transformId != null);
 
   return (
     <Stack gap="xs">
