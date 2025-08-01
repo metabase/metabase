@@ -59,9 +59,9 @@ function DeleteTransformForm({
 
   const handleSubmit = async () => {
     if (shouldDeleteTarget) {
-      await deleteTransformTarget(transform.id);
+      await deleteTransformTarget(transform.id).unwrap();
     }
-    await deleteTransform(transform.id);
+    await deleteTransform(transform.id).unwrap();
     onDelete();
   };
 
