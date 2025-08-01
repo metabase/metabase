@@ -12,15 +12,12 @@
   line-height: var(--mantine-line-height-lg);
   padding: var(--mantine-spacing-sm);
 
-  &:disabled {
+  &[data-disabled="true"] {
     color: var(--mb-color-text-light);
+    opacity: 1;
   }
 
-  &.ignoreHover {
-    cursor: default;
-  }
-
-  &:hover:not(.ignoreHover) {
+  &:hover:not([data-disabled="true"]) {
     color: var(--mb-color-text-hover);
     background-color: var(--mb-color-background-hover);
 

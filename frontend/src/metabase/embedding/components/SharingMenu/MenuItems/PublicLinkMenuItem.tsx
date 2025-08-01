@@ -7,7 +7,6 @@ import CS from "metabase/css/core/index.css";
 import { useSelector } from "metabase/lib/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { Button, Icon, Menu } from "metabase/ui";
-import MenuStyles from "metabase/ui/components/overlays/Menu/Menu.module.css";
 
 export function PublicLinkMenuItem({
   hasPublicLink,
@@ -28,7 +27,7 @@ export function PublicLinkMenuItem({
         {...(!isPublicSharingEnabled && {
           onClick: undefined,
           component: "div",
-          className: cx(MenuStyles.ignoreHover, CS.textLight),
+          disabled: true,
         })}
       >
         {isPublicSharingEnabled ? (
