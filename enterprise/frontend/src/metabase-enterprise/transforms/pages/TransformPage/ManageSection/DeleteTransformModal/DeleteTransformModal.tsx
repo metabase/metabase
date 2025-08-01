@@ -98,7 +98,7 @@ function DeleteTransformForm({
                   />
                   <Radio
                     value="transform-with-target"
-                    label={t`Delete the transform and the view`}
+                    label={getRadioLabel(transform)}
                   />
                 </Stack>
               </FormRadioGroup>
@@ -130,6 +130,13 @@ function getModalTitle({ target, table }: Transform) {
       { type: "table" },
       () => t`Delete only the transform, or the table it generates, too?`,
     )
+    .exhaustive();
+}
+
+function getRadioLabel({ target }: Transform) {
+  return match(target.type)
+    .with("view", () => t`Delete the transform and the view`)
+    .with("table", () => t`Delete the transform and the table`)
     .exhaustive();
 }
 
