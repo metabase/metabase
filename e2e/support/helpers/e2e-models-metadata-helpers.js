@@ -26,13 +26,12 @@ export function saveMetadataChanges() {
 export function openColumnOptions(column) {
   const columnNameRegex = new RegExp(`^${column}$`);
 
-  tableInteractive()
-    .findAllByTestId("header-cell")
-    .contains(columnNameRegex)
-    .scrollIntoView()
-    .should("be.visible");
-
   // Query element again to ensure it's not unmounted
+  tableInteractive().findAllByTestId("header-cell");
+  tableInteractive().contains(columnNameRegex);
+  tableInteractive().scrollIntoView();
+  tableInteractive().should("be.visible");
+
   tableInteractive()
     .findAllByTestId("header-cell")
     .contains(columnNameRegex)
