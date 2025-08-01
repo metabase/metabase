@@ -65,7 +65,6 @@ yarn add @metabase/embedding-sdk-react@53-stable
 
 In your app, import the SDK components, like so:
 
-
 ```jsx
 {% include_file "{{ dirname }}/snippets/quickstart/example.tsx" %}
 ```
