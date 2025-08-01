@@ -82,9 +82,8 @@ export const PARSER_TOKENS: Record<string, ParseSpec> = {
   smartlink: {
     node: SmartLinkNode.name,
     getAttrs: (tok: Token) => ({
-      url: tok.attrGet("url"),
-      text: tok.attrGet("text"),
-      icon: tok.attrGet("icon"),
+      entityId: parseInt(tok.attrGet("id") || "0", 10),
+      model: tok.attrGet("model"),
     }),
   },
 };

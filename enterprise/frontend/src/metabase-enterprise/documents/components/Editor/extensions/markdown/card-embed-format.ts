@@ -9,11 +9,10 @@ export function formatCardEmbed(attrs: { id: number; name?: string }): string {
 
 // Shared utility for generating smart link markdown format
 export function formatSmartLink(attrs: {
-  url: string;
-  text: string;
-  icon?: string;
+  entityId?: number;
+  model?: string;
 }): string {
-  return `{% link url="${attrs.url}" text="${attrs.text}" icon="${attrs.icon}" %}`;
+  return `{% entity id="${attrs.entityId}" model="${attrs.model}" %}`;
 }
 
 // Shared utility for generating spacer markdown format
@@ -27,7 +26,7 @@ export const CARD_EMBED_PATTERN =
 
 // Regex pattern for matching smart links in markdown
 export const SMART_LINK_PATTERN =
-  /{%\s*link\s+url="([^"]+)"\s+text="([^"]+)"\s+icon="([^"]+)"\s*%}/g;
+  /{%\s*entity\s+id="(\d+)"\s+model="([^"]+)"\s*%}/g;
 
 // Regex pattern for matching spacers in markdown
 export const SPACER_PATTERN = /{%\s*spacer\s+lines=(\d+)\s*%}/g;

@@ -9,62 +9,54 @@ function smartLinkInline(state: StateInline, silent: boolean): boolean {
   const pos = state.pos;
   const max = state.posMax;
 
-  // Check if we have enough characters for {% link
-  if (pos + 7 > max) {
+  // Check if we have enough characters for {% entity
+  if (pos + 9 > max) {
     return false;
   }
-  if (state.src.slice(pos, pos + 7) !== "{% link") {
+  if (state.src.slice(pos, pos + 9) !== "{% entity") {
     return false;
   }
 
   // Find the closing %}
-  const closePos = state.src.indexOf("%}", pos + 7);
+  const closePos = state.src.indexOf("%}", pos + 9);
   if (closePos === -1) {
     return false;
   }
 
   // Extract attributes
-  const content = state.src.slice(pos + 7, closePos).trim();
-  const attrs = parseLinkAttributes(content);
+  const content = state.src.slice(pos + 9, closePos).trim();
+  const attrs = parseEntityAttributes(content);
 
-  if (!attrs.url || !attrs.text || !attrs.icon) {
+  if (!attrs.id || !attrs.model) {
     return false;
   }
 
   if (!silent) {
     const token = state.push("smartlink", "", 0);
-    token.attrSet("url", attrs.url);
-    token.attrSet("text", attrs.text);
-    token.attrSet("icon", attrs.icon);
+    token.attrSet("id", attrs.id);
+    token.attrSet("model", attrs.model);
   }
 
   state.pos = closePos + 2;
   return true;
 }
 
-function parseLinkAttributes(content: string): {
-  url?: string;
-  text?: string;
-  icon?: string;
+function parseEntityAttributes(content: string): {
+  id?: string;
+  model?: string;
 } {
-  const attrs: { url?: string; text?: string; icon?: string } = {};
+  const attrs: { id?: string; model?: string } = {};
 
-  // Match url="..."
-  const urlMatch = content.match(/url="([^"]*)"/);
-  if (urlMatch) {
-    attrs.url = urlMatch[1];
+  // Match id="..."
+  const idMatch = content.match(/id="([^"]*)"/);
+  if (idMatch) {
+    attrs.id = idMatch[1];
   }
 
-  // Match text="..."
-  const textMatch = content.match(/text="([^"]*)"/);
-  if (textMatch) {
-    attrs.text = textMatch[1];
-  }
-
-  // Match icon="..."
-  const iconMatch = content.match(/icon="([^"]*)"/);
-  if (iconMatch) {
-    attrs.icon = iconMatch[1];
+  // Match model="..."
+  const modelMatch = content.match(/model="([^"]*)"/);
+  if (modelMatch) {
+    attrs.model = modelMatch[1];
   }
 
   return attrs;

@@ -26,7 +26,14 @@ import type {
 
 import { useDocumentCardSave } from "../../hooks/use-document-card-save";
 
-const MODELS_TO_SEARCH: SearchModel[] = ["card", "dataset"];
+const MODELS_TO_SEARCH: SearchModel[] = [
+  "card",
+  "dataset", 
+  "dashboard",
+  "collection",
+  "database",
+  "table",
+];
 
 type InsertionMode = "mention" | "embed";
 
@@ -116,7 +123,7 @@ export const QuestionMentionPlugin = ({
     useListRecentsQuery(undefined, { refetchOnMountOrArgChange: true });
 
   const filteredRecents = recents
-    .filter((item) => item.model === "card" || item.model === "dataset")
+    .filter((item) => MODELS_TO_SEARCH.includes(item.model as SearchModel))
     .slice(0, 4);
 
   const insertMetabotBlock = useCallback(async () => {
@@ -284,9 +291,8 @@ export const QuestionMentionPlugin = ({
         .insertContentAt(insertPosition, {
           type: "smartLink",
           attrs: {
-            url: `/question/${wrappedItem.id}`,
-            text: wrappedItem.name,
-            icon: getSearchIconName(wrappedItem),
+            entityId: wrappedItem.id,
+            model: wrappedItem.model,
           },
         })
         .setTextSelection(insertPosition + 1)
