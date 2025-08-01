@@ -6,6 +6,7 @@ import {
   useUpdateTableMutation,
 } from "metabase/api";
 import EmptyState from "metabase/common/components/EmptyState";
+import Link from "metabase/common/components/Link";
 import {
   FieldOrderPicker,
   NameDescriptionInput,
@@ -13,7 +14,17 @@ import {
 } from "metabase/metadata/components";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
-import { Group, Loader, Stack, Text } from "metabase/ui";
+import {
+  ActionIcon,
+  Group,
+  Icon,
+  Loader,
+  Stack,
+  Text,
+  Tooltip,
+} from "metabase/ui";
+import Question from "metabase-lib/v1/Question";
+import * as ML_Urls from "metabase-lib/v1/urls";
 import type { FieldId, Table, TableFieldOrder } from "metabase-types/api";
 
 import type { RouteParams } from "../../types";
@@ -134,6 +145,12 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
     }
   };
 
+  const question = Question.create({
+    databaseId: table.db_id,
+    tableId: table.id,
+  });
+  const questionUrl = ML_Urls.getUrl(question);
+
   return (
     <Stack data-testid="table-section" gap={0} pb="xl">
       <Stack
@@ -155,6 +172,22 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
           namePlaceholder={t`Give this table a name`}
           onDescriptionChange={handleDescriptionChange}
           onNameChange={handleNameChange}
+          rightSection={
+            <div style={{ marginRight: 16 }}>
+              <Link to={questionUrl}>
+                <Tooltip label={t`Go to this table`} position="top">
+                  <ActionIcon
+                    aria-label={t`Explore this table`}
+                    color="text-light"
+                    size="sm"
+                    variant="subtle"
+                  >
+                    <Icon name="external" size={16} />
+                  </ActionIcon>
+                </Tooltip>
+              </Link>
+            </div>
+          }
         />
 
         <Group
