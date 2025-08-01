@@ -1,4 +1,3 @@
-import cx from "classnames";
 import { t } from "ttag";
 
 import Link from "metabase/common/components/Link";
@@ -47,7 +46,9 @@ export function PublicLinkMenuItem({
               h="auto"
               lh="inherit"
               ml="sm"
-              className={cx(CS.floatRight, CS.borderless, CS.p0)}
+              p={0}
+              bd={0}
+              className={CS.floatRight}
             >
               {t`Enable`}
             </Button>
