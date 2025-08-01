@@ -12,6 +12,12 @@
    [toucan2.core :as t2]
    [toucan2.model :as t2.model]))
 
+;; This constant is also defined in metabase.revisions.impl.card but we duplicate it here
+;; to avoid circular dependencies. Keep both definitions in sync!
+(def ^:private legacy-card-schema-version
+  "The default schema version assigned to all cards that existed before the `:card_schema` column was added in v0.55."
+  20)
+
 (defn toucan-model?
   "Check if `model` is a toucan model."
   [model]
@@ -104,6 +110,12 @@
   ;; those cases
   (let [model (u/ignore-exceptions (t2.model/resolve-model (symbol model)))]
     (cond-> revision
+      ;; For Card revisions, ensure :card_schema is present before calling after-select.
+      ;; Old revisions from before v0.55 won't have this field!
+      ;; We add the legacy default value to handle these cases.
+      (and (= model :model/Card) (map? (:object revision)) (not (:card_schema (:object revision))))
+      (update :object assoc :card_schema legacy-card-schema-version)
+
       model (update :object (partial mi/do-after-select model)))))
 
 (defn- delete-old-revisions!

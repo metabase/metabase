@@ -2,6 +2,11 @@
   (:require
    [metabase.revisions.models.revision :as revision]))
 
+(def legacy-card-schema-version
+  "The default schema version assigned to all cards that existed before the `:card_schema` column was added in v0.55.
+  This value is used when loading old revision records that predate the schema versioning system."
+  20)
+
 (def ^:private excluded-columns-for-card-revision
   #{:cache_invalidated_at
     :created_at
@@ -22,8 +27,8 @@
   (let [serialized-card (cond-> serialized-card
                           (contains? serialized-card :dataset) (-> (dissoc :dataset)
                                                                    (assoc :type (if (:dataset serialized-card) :model :question)))
-                          ;; Add the default `:card_schema` of 20, if it's missing.
-                          (not (:card_schema serialized-card)) (assoc :card_schema 20))]
+                          ;; Add the default `:card_schema` if it's missing.
+                          (not (:card_schema serialized-card)) (assoc :card_schema legacy-card-schema-version))]
     ((get-method revision/revert-to-revision! :default) model id user-id serialized-card)))
 
 (defn- model?
