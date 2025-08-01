@@ -89,26 +89,31 @@
 (defn- prune-batches! [batches-to-keep & [where]]
   (prune-from-batch! (batch-to-prune-from batches-to-keep where) where))
 
+(def ^:private next-batch-number-hsql
+  [:coalesce
+   [:+
+    {:select [[:%max.batch_num]]
+     :from [:data_edit_undo_chain]}
+    [:inline 1]]
+   [:inline 1]])
+
 (defn track-change!
   "Insert some snapshot data based on edits made to the given table."
   [user-id scope table-id->row-pk->values]
   (let [scope (serialize-scope scope)]
     (t2/with-transaction [_conn]
-      (let [seq-name       "undo_batch_num"
-            next-batch-num (or (t2/select-one-fn :next_val [:sequences :next_val] :name seq-name {:for :update}) 1)]
-        (t2/update! :sequences {:name seq-name} {:next_val (inc next-batch-num)})
-        (t2/insert!
-         :model/Undo
-         (for [[table-id table-updates] table-id->row-pk->values
-               [row-pk values] table-updates]
-           (merge {:batch_num  next-batch-num
-                   :table_id   table-id
-                   :user_id    user-id
-                   :row_pk     row-pk
-                   :scope      scope
-                   ;; default value, can be override in values
-                   :undoable   true}
-                  values)))))
+      (t2/insert!
+       :model/Undo
+       (for [[table-id table-updates] table-id->row-pk->values
+             [row-pk values] table-updates]
+         (merge {:batch_num  next-batch-number-hsql
+                 :table_id   table-id
+                 :user_id    user-id
+                 :row_pk     row-pk
+                 :scope      scope
+                 ;; default value, can be override in values
+                 :undoable   true}
+                values))))
 
     ;; Delete snapshots that have been undone, as we keep a linear history and will no longer be able to "redo" them.
     (when-let [{:keys [batch_num]} (first (next-batch false user-id scope))]

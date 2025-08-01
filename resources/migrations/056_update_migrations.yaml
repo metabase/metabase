@@ -217,127 +217,6 @@ databaseChangeLog:
                   constraints:
                     nullable: true
 
-  - changeSet:
-      id: v57.2025-08-01T10:00:00
-      author: qnkhuat
-      comment: Add undo/redo change tracking table
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - tableExists:
-                tableName: data_edit_undo_chain
-      changes:
-        - createTable:
-            tableName: data_edit_undo_chain
-            remarks: Store the state necessary to power undo / redo.
-            columns:
-              - column:
-                  name: id
-                  type: int
-                  autoIncrement: true
-                  constraints:
-                    primaryKey: true
-                    nullable: false
-              - column:
-                  remarks: Batch number for grouped changes (global increment)
-                  name: batch_num
-                  type: int
-                  constraints:
-                    nullable: false
-              - column:
-                  remarks: Reference to the table being modified
-                  name: table_id
-                  type: int
-                  constraints:
-                    nullable: false
-              - column:
-                  remarks: PK of the row being modified, potentially composite. Stored as a sorted JSON map.
-                  name: row_pk
-                  type: ${text.type}
-                  constraints:
-                    nullable: false
-              - column:
-                  remarks: ID of the user who made the change
-                  name: user_id
-                  type: int
-                  constraints:
-                    nullable: false
-              - column:
-                  name: scope
-                  type: ${text.type}
-                  remarks: Identifies where the changes were made from
-                  constraints:
-                    nullable: false
-              - column:
-                  name: undoable
-                  type: ${boolean.type}
-                  remarks: Identifies whether a change can be undo
-                  constraints:
-                    nullable: false
-                  defaultValue: true
-              - column:
-                  remarks: Value of the field before the change
-                  name: raw_before
-                  type: ${text.type}
-                  constraints:
-                    nullable: true
-              - column:
-                  remarks: Value of the field after the change
-                  name: raw_after
-                  type: ${text.type}
-                  constraints:
-                    nullable: true
-              - column:
-                  remarks: Whether this change has been undone
-                  name: undone
-                  type: ${boolean.type}
-                  defaultValueBoolean: false
-                  constraints:
-                    nullable: false
-              - column:
-                  remarks: The timestamp of when the change was created
-                  name: created_at
-                  type: ${timestamp_type}
-                  defaultValueComputed: current_timestamp
-                  constraints:
-                    nullable: false
-              - column:
-                  remarks: The timestamp of when the change was updated
-                  name: updated_at
-                  type: ${timestamp_type}
-                  defaultValueComputed: current_timestamp
-                  constraints:
-                    nullable: false
-
-
-  - changeSet:
-      id: v57.2025-08-01T10:01:00
-      author: qnkhuat
-      comment: A table for generating atomic sequence numbers
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - tableExists:
-                tableName: sequences
-      changes:
-        - createTable:
-            tableName: sequences
-            remarks: A table for generating atomic sequence numbers
-            columns:
-              - column:
-                  name: name
-                  type: varchar(50)
-                  remarks: The name of the sequence
-                  constraints:
-                    primaryKey: true
-                    nullable: false
-              - column:
-                  name: next_val
-                  remarks: The next value in this sequence
-                  type: bigint
-                  constraints:
-                    nullable: false
-
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
@@ -345,7 +224,7 @@ databaseChangeLog:
 # ADVICE:
 #
 # 1) Think through some of these points when writing a migration, learn from our past mistakes:
-#    - Do you really need a migration? Could the feature work without it? Prefer not to if possible.
+#    - Do you really need a migration? Could the feature work without it? Pefer not to if possible.
 #      Data in the wild can be vastly different from what you expect, and it's hard to get right.
 #    - Make sure your migration is backward compatible: it might not be possible to add a constraint back
 #      if you drop it in a migration.

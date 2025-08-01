@@ -361,7 +361,7 @@
                                              :dashcards
                                              (map #(+ (:row %) (:size_y %)))
                                              (apply max -1) ; -1 so it neturalizes +1 for spacing
-                                                            ; if the target dashboard is empty.
+                                             ; if the target dashboard is empty.
                                              inc)
          cards                        (->> dashboard
                                            :dashcards
@@ -377,8 +377,7 @@
                                                                 (assoc mapping :card_id card-id)))))))]
      (-> target
          (assoc :parameters parameters)
-         (cond->
-          (not skip-titles?)
+         (cond-> (not skip-titles?)
            (add-text-card {:width                  grid-width
                            :height                 group-heading-height
                            :text                   (format "# %s" (:name dashboard))
