@@ -1,4 +1,5 @@
-import { P, match } from "ts-pattern";
+import dayjs from "dayjs";
+import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import { useMetadataToasts } from "metabase/metadata/hooks";
@@ -97,13 +98,18 @@ function ExecuteStatus({ transform }: ExecuteStatusProps) {
 }
 
 function getStatusText({
-  last_started_at: lastStartedAt,
+  execution_status: status,
   last_ended_at: lastEndedAt,
 }: Transform) {
-  return match({ lastStartedAt, lastEndedAt })
-    .with({ lastStartedAt: P.nullish }, () => t`This transform hasn’t run yet.`)
-    .with({ lastEndedAt: P.nullish }, () => t`In progress…`)
-    .otherwise(() => t`Last run`);
+  return match(status)
+    .with("never-executed", () => t`This transform hasn’t run yet.`)
+    .with("started", () => t`In progress…`)
+    .with("sync-succeeded", () =>
+      lastEndedAt
+        ? t`Last run ${dayjs.parseZone(lastEndedAt).local().format("lll")}`
+        : t`Last run succeeded`,
+    )
+    .otherwise(() => null);
 }
 
 type ExecuteButtonProps = {
@@ -112,21 +118,22 @@ type ExecuteButtonProps = {
 
 function ExecuteButton({ transform }: ExecuteButtonProps) {
   const [executeTransform, { isLoading }] = useExecuteTransformMutation();
-  const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
+  const { sendErrorToast } = useMetadataToasts();
+  const isStarted = transform.execution_status === "started";
+  const isRunning = isLoading || isStarted;
 
   const handleRun = async () => {
     const { error } = await executeTransform(transform.id);
     if (error) {
       sendErrorToast(t`Failed to schedule transform run`);
-    } else {
-      sendSuccessToast(t`Transform run scheduled`);
     }
   };
 
   return (
     <Button
+      loading={isRunning}
       leftSection={<Icon name="play_outlined" />}
-      disabled={isLoading}
+      disabled={isRunning}
       onClick={handleRun}
     >
       {t`Run now`}

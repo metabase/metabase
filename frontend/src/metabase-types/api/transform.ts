@@ -10,6 +10,7 @@ export type Transform = {
   source: TransformSource;
   target: TransformTarget;
   table?: Table | null;
+  execution_status: TransformExecutionStatus;
   execution_trigger: TransformExecutionTrigger;
   last_started_at: string | null;
   last_ended_at: string | null;
@@ -27,6 +28,14 @@ export type TransformTarget = {
   name: string;
   schema: string | null;
 };
+
+export type TransformExecutionStatus =
+  | "never-executed"
+  | "started"
+  | "exec-succeeded"
+  | "sync-succeeded"
+  | "exec-failed"
+  | "sync-failed";
 
 export type TransformExecutionTrigger = "none" | "global-schedule";
 
