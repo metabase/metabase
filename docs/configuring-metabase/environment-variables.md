@@ -430,6 +430,16 @@ This feature is experimental.
 
 The email address you want to use for the sender of emails.
 
+### `MB_EMAIL_FROM_ADDRESS_OVERRIDE`
+
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+
+- Type: string
+- Default: `notifications@metabase.com`
+- [Configuration file name](./config-file.md): `email-from-address-override`
+
+The email address you want to use for the sender of emails from your custom SMTP server.
+
 ### `MB_EMAIL_FROM_NAME`
 
 - Type: string
@@ -464,6 +474,16 @@ The email address you want the replies to go to, if different from the from addr
 
 The address of the SMTP server that handles your emails.
 
+### `MB_EMAIL_SMTP_HOST_OVERRIDE`
+
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+
+- Type: string
+- Default: `null`
+- [Configuration file name](./config-file.md): `email-smtp-host-override`
+
+The address of the custom SMTP server that handles your emails.
+
 ### `MB_EMAIL_SMTP_PASSWORD`
 
 - Type: string
@@ -471,6 +491,16 @@ The address of the SMTP server that handles your emails.
 - [Configuration file name](./config-file.md): `email-smtp-password`
 
 SMTP password.
+
+### `MB_EMAIL_SMTP_PASSWORD_OVERRIDE`
+
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+
+- Type: string
+- Default: `null`
+- [Configuration file name](./config-file.md): `email-smtp-password-override`
+
+Custom SMTP server password.
 
 ### `MB_EMAIL_SMTP_PORT`
 
@@ -480,6 +510,16 @@ SMTP password.
 
 The port your SMTP server uses for outgoing emails.
 
+### `MB_EMAIL_SMTP_PORT_OVERRIDE`
+
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+
+- Type: integer
+- Default: `null`
+- [Configuration file name](./config-file.md): `email-smtp-port-override`
+
+The port your custom SMTP server uses for outgoing emails. Only ports 465, 587, and 2525 are supported.
+
 ### `MB_EMAIL_SMTP_SECURITY`
 
 - Type: keyword
@@ -488,6 +528,16 @@ The port your SMTP server uses for outgoing emails.
 
 SMTP secure connection protocol. (tls, ssl, starttls, or none).
 
+### `MB_EMAIL_SMTP_SECURITY_OVERRIDE`
+
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+
+- Type: keyword
+- Default: `:ssl`
+- [Configuration file name](./config-file.md): `email-smtp-security-override`
+
+SMTP secure connection protocol for your custom server. (tls, ssl, or starttls).
+
 ### `MB_EMAIL_SMTP_USERNAME`
 
 - Type: string
@@ -495,6 +545,16 @@ SMTP secure connection protocol. (tls, ssl, starttls, or none).
 - [Configuration file name](./config-file.md): `email-smtp-username`
 
 SMTP username.
+
+### `MB_EMAIL_SMTP_USERNAME_OVERRIDE`
+
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+
+- Type: string
+- Default: `null`
+- [Configuration file name](./config-file.md): `email-smtp-username-override`
+
+Custom SMTP server username.
 
 ### `MB_EMBEDDING_APP_ORIGIN [DEPRECATED]`
 
@@ -571,6 +631,14 @@ Allow admins to embed Metabase via interactive embedding?
 - [Configuration file name](./config-file.md): `enable-embedding-sdk`
 
 Allow admins to embed Metabase via the SDK?
+
+### `MB_ENABLE_EMBEDDING_SIMPLE`
+
+- Type: boolean
+- Default: `false`
+- [Configuration file name](./config-file.md): `enable-embedding-simple`
+
+Allow admins to embed Metabase via Embedded Analytics JS?
 
 ### `MB_ENABLE_EMBEDDING_STATIC`
 
@@ -1642,6 +1710,16 @@ The name of the channel where bug reports should be posted.
 - [Configuration file name](./config-file.md): `slack-files-channel`
 
 The name of the channel to which Metabase files should be initially uploaded.
+
+### `MB_SMTP_OVERRIDE_ENABLED`
+
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+
+- Type: boolean
+- Default: `false`
+- [Configuration file name](./config-file.md): `smtp-override-enabled`
+
+Whether to use the custom SMTP server rather than the standard settings.
 
 ### `MB_SOURCE_ADDRESS_HEADER`
 
