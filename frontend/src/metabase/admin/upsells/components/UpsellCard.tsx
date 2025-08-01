@@ -60,7 +60,7 @@ export const _UpsellCard: React.FC<UpsellCardProps> = ({
   onClick,
   ...props
 }: UpsellCardProps) => {
-  const url = useUpsellLink({
+  const urlWithParams = useUpsellLink({
     url: buttonLink ?? UPGRADE_URL,
     campaign,
     location,
@@ -100,10 +100,9 @@ export const _UpsellCard: React.FC<UpsellCardProps> = ({
           <Box mx="md" mb="lg">
             <UpsellCta
               onClick={onClick}
-              buttonLink={buttonLink}
+              url={buttonLink ? urlWithParams : undefined}
               internalLink={internalLink}
               buttonText={buttonText}
-              url={url}
               onClickCapture={() => trackUpsellClicked({ location, campaign })}
             />
           </Box>

@@ -1,3 +1,5 @@
+import { action } from "@storybook/addon-actions";
+
 import { UpsellCta } from "./UpsellCta";
 
 export default {
@@ -7,22 +9,31 @@ export default {
 
 export const CtaButton = () => (
   <UpsellCta
-    onClick={() => {}}
-    buttonLink=""
-    internalLink=""
+    onClick={action("clicked")}
+    internalLink={undefined}
     buttonText="Try it now"
-    url=""
+    url={undefined}
     onClickCapture={() => {}}
+  />
+);
+
+export const CtaButtonLarge = () => (
+  <UpsellCta
+    onClick={action("clicked")}
+    internalLink={undefined}
+    buttonText="Try it now"
+    url={undefined}
+    onClickCapture={() => {}}
+    size="large"
   />
 );
 
 export const CtaExternalLink = () => (
   <UpsellCta
     onClick={undefined}
-    buttonLink="https://store.metabase.com"
+    url="https://store.metabase.com"
     internalLink={undefined}
     buttonText="Try it now"
-    url=""
     onClickCapture={() => {}}
   />
 );
@@ -30,10 +41,9 @@ export const CtaExternalLink = () => (
 export const CtaInternalLink = () => (
   <UpsellCta
     onClick={undefined}
-    buttonLink={undefined}
     internalLink="/admin/settings/embed"
     buttonText="Try it now"
-    url=""
+    url={undefined}
     onClickCapture={() => {}}
   />
 );

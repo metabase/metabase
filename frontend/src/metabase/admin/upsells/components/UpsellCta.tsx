@@ -1,33 +1,38 @@
+import cx from "classnames";
 import { P, match } from "ts-pattern";
 
 import ExternalLink from "metabase/common/components/ExternalLink";
 import Link from "metabase/common/components/Link";
 import { UnstyledButton } from "metabase/ui";
 
-import S from "./Upsells.module.css";
+import S from "./UpsellCta.module.css";
 
 type UpsellCtaProps = {
   onClick: (() => void) | undefined;
-  buttonLink: string | undefined;
   internalLink: string | undefined;
   buttonText: string;
   url: string | undefined;
   onClickCapture: () => void;
+  size?: "default" | "large";
 };
 
 export function UpsellCta({
   onClick,
   onClickCapture,
-  buttonLink,
   internalLink,
   buttonText,
   url,
+  size = "default",
 }: UpsellCtaProps) {
-  return match({ onClick, buttonLink, internalLink })
+  const className = cx(S.UpsellCTALink, {
+    [S.Large]: size === "large",
+  });
+
+  return match({ onClick, url, internalLink })
     .with(
       {
         onClick: P.nonNullable,
-        buttonLink: P.any,
+        url: P.any,
         internalLink: P.nullish,
       },
       (args) => (
@@ -36,7 +41,7 @@ export function UpsellCta({
             args.onClick();
             onClickCapture?.();
           }}
-          className={S.UpsellCTALink}
+          className={className}
         >
           {buttonText}
         </UnstyledButton>
@@ -45,14 +50,14 @@ export function UpsellCta({
     .with(
       {
         onClick: P.any,
-        buttonLink: P.nonNullable,
+        url: P.nonNullable,
         internalLink: P.nullish,
       },
       () => (
         <ExternalLink
           onClickCapture={onClickCapture}
           href={url}
-          className={S.UpsellCTALink}
+          className={className}
         >
           {buttonText}
         </ExternalLink>
@@ -61,14 +66,14 @@ export function UpsellCta({
     .with(
       {
         onClick: P.any,
-        buttonLink: P.any,
+        url: P.any,
         internalLink: P.nonNullable,
       },
       (args) => (
         <Link
           onClickCapture={onClickCapture}
           to={args.internalLink}
-          className={S.UpsellCTALink}
+          className={className}
         >
           {buttonText}
         </Link>
