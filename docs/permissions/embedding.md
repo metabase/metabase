@@ -44,7 +44,7 @@ Here's how the basic row-level security will work:
 
 1. **Create a group**, for example "Restricted Tenants", and add people's Metabase accounts to that group.
 2. **Add a user attribute**. For each person's account, [add a user attribute](../people-and-groups/managing.md#adding-a-user-attribute) like `Tenant_ID`, with the user attribute value set to "A", "B", or "C".
-3. **Add row and column security** to the table for that group. See [row and column security](./row-and-column-security.md)
+3. **Add row-level security** to the table for that group. See [row and column security](./row-and-column-security.md)
 
 ### Restricting columns based on tenancy
 

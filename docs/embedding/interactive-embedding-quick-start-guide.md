@@ -215,7 +215,7 @@ That user ID will correspond to the `Account ID` column in the Sample Database's
 
 Note that to persist the user attribute in Metabase, you'll need to log in. Log in to your app as a non-admin, and visit the page with your embedded Metabase.
 
-### Set row-level permissions with row and column security
+### Set row-level permissions
 
 In Metabase, go to **Admin settings** > **Permissions**. Under the **Data** tab on the left, click on a group. For "Sample Database", change its **Data access** column to **Granular**.
 

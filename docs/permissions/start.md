@@ -26,7 +26,7 @@ Granting group access to different Metabase features.
 
 ## [Row and column security](./row-and-column-security.md)
 
-Creating row and column security to restrict access to rows and columns in tables.
+Setting up row and column security to restrict access to rows and columns in tables.
 
 ## [Snippet folder permissions](./snippets.md)
 

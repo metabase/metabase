@@ -219,7 +219,7 @@ To set up these multi-tenant permissions, we'll need to:
 4. Synchronize group membership between Metabase and our IdP so that:
    - People with `role=tenant` are assigned to the Tenant group.
    - People with `role=customer` are assigned to the Customers group.
-5. Set up row and column security on the Accounts table for each group:
+5. Set up row-level security on the Accounts table for each group:
    - For the Customers group, the Accounts table will be restricted with `Account ID = primary_id`.
    - For the Tenants group,, the Accounts table will be restricted with `Tenant ID = primary_id`.
 
