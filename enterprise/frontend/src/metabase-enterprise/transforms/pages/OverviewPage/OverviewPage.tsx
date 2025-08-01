@@ -1,12 +1,12 @@
 import { useDisclosure } from "@mantine/hooks";
 import { Link } from "react-router";
-import { c, t } from "ttag";
+import { t } from "ttag";
 
 import { useAdminSetting } from "metabase/api/utils";
 import { Schedule } from "metabase/common/components/Schedule";
 import {
-  Box,
   Button,
+  Divider,
   Flex,
   Group,
   Icon,
@@ -57,7 +57,7 @@ function CreateSection() {
       label={t`Create a transform`}
       description={t`You can create a new transform a few different ways.`}
     >
-      <Group px="lg" py="xl">
+      <Group p="lg">
         <Button
           component={Link}
           to={getNewTransformPageUrl("query")}
@@ -93,14 +93,18 @@ function ScheduleSection() {
       label={t`Schedule`}
       description={t`Pick when your transforms should run.`}
     >
-      <Box px="lg" py="xl">
+      <Group p="lg">
         <Schedule
           cronString={value ?? DEFAULT_SCHEDULE}
           scheduleOptions={SCHEDULE_OPTIONS}
-          verb={c("A verb in the imperative mood").t`Run`}
+          verb={t`Run`}
           onScheduleChange={handleChange}
         />
-      </Box>
+      </Group>
+      <Divider />
+      <Group p="lg" justify="end">
+        <Button>{t`Run`}</Button>
+      </Group>
     </CardSection>
   );
 }
