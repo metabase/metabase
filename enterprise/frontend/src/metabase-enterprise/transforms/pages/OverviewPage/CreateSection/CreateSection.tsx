@@ -11,8 +11,8 @@ import { useDispatch } from "metabase/lib/redux";
 import { Button, Group, Icon } from "metabase/ui";
 import { CardSection } from "metabase-enterprise/transforms/components/CardSection";
 import {
-  getNewTransformFromCardPageUrl,
-  getNewTransformFromTypePageUrl,
+  getNewTransformFromCardUrl,
+  getNewTransformFromTypeUrl,
 } from "metabase-enterprise/transforms/urls";
 
 export function CreateSection() {
@@ -21,7 +21,7 @@ export function CreateSection() {
     useDisclosure();
 
   const handlePickerChange = (item: QuestionPickerValueItem) => {
-    dispatch(push(getNewTransformFromCardPageUrl(item.id)));
+    dispatch(push(getNewTransformFromCardUrl(item.id)));
   };
 
   return (
@@ -32,14 +32,14 @@ export function CreateSection() {
       <Group p="lg">
         <Button
           component={Link}
-          to={getNewTransformFromTypePageUrl("query")}
+          to={getNewTransformFromTypeUrl("query")}
           leftSection={<Icon name="notebook" />}
         >
           {t`Query builder`}
         </Button>
         <Button
           component={Link}
-          to={getNewTransformFromTypePageUrl("native")}
+          to={getNewTransformFromTypeUrl("native")}
           leftSection={<Icon name="sql" />}
         >
           {t`SQL editor`}

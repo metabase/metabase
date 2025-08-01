@@ -85,8 +85,9 @@
   (log/info "get transform" id)
   (api/check-superuser)
   (let [{:keys [target] :as transform} (api/check-404 (t2/select-one :model/Transform id))
-        database-id (source-database-id transform)]
-    (assoc transform :table (transforms.util/target-table database-id target))))
+        database-id (source-database-id transform)
+        target-table (transforms.util/target-table database-id target :active true)]
+    (assoc transform :table target-table)))
 
 (api.macros/defendpoint :put "/:id"
   [{:keys [id]} :- [:map

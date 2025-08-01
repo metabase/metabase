@@ -27,6 +27,8 @@ title: Driver interface changelog
 
 - Added a feature `:expressions/today` for drivers that support generating a date for the current day.
 
+- Added the driver multi-method `driver/set-database-used!` for drivers to set a database on the connection with statements like `USE DATABASE`.
+
 - Added the driver features `:transforms/table`, `:transforms/view`, and `:transforms/matarialized-view` for drivers
   that support transforms with table, view, and materialized view as target, respectively.
 

@@ -8,7 +8,7 @@ import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Button, Group, Icon } from "metabase/ui";
 import { CardSection } from "metabase-enterprise/transforms/components/CardSection";
 import {
-  getOverviewPageUrl,
+  getOverviewUrl,
   getTransformQueryUrl,
 } from "metabase-enterprise/transforms/urls";
 import type { Transform } from "metabase-types/api";
@@ -61,7 +61,7 @@ function DeleteTransformButton({ transform }: DeleteTransformButtonProps) {
 
   const handleDelete = () => {
     sendSuccessToast(t`Transform deleted`);
-    dispatch(push(getOverviewPageUrl()));
+    dispatch(push(getOverviewUrl()));
   };
 
   return (

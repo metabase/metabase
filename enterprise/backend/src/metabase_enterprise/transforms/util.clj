@@ -29,24 +29,46 @@
 
 (defn target-table
   "Load the `target` table of a transform from the database specified by `database-id`."
-  [database-id target]
-  (-> (t2/select-one :model/Table
-                     :db_id database-id
-                     :schema (:schema target)
-                     :name (:name target))
-      (t2/hydrate :db)))
+  [database-id target & kv-args]
+  (some-> (apply t2/select-one :model/Table
+                 :db_id database-id
+                 :schema (:schema target)
+                 :name (:name target)
+                 kv-args)
+          (t2/hydrate :db)))
+
+(defn- sync-table!
+  ([database target] (sync-table! database target nil))
+  ([database target {:keys [create?]}]
+   (when-let [table (or (target-table (:id database) target)
+                        (when create?
+                          (sync/create-table! database (select-keys target [:schema :name]))))]
+     (sync/sync-table! table)
+     table)))
+
+(defn activate-table!
+  "Activate table for `target` in `database` in the app db."
+  [database target]
+  (when-let [table (sync-table! database target {:create? true})]
+    ;; TODO this should probably be a function in the sync module
+    (t2/update! :model/Table (:id table) {:active true})))
+
+(defn deactivate-table!
+  "Deactivate table for `target` in `database` in the app db."
+  [database target]
+  (when-let [table (sync-table! database target)]
+    ;; TODO this should probably be a function in the sync module
+    (t2/update! :model/Table (:id table) {:active false})))
 
 (defn delete-target-table!
   "Delete the target table of a transform and sync it from the app db."
-  [{:keys [target source], :as _transform}]
+  [{:keys [id target source], :as _transform}]
   (when target
-    (let [database (-> source :query :database)
-          driver (t2/select-one-fn :engine :model/Database database)]
-      (driver/drop-table! driver database (qualified-table-name driver target))
-      (when-let [table (target-table (:id database) target)]
-        ;; there is a metabase table, sync it away
-        (log/info "Syncing away old target table" (-> table (select-keys [:db_id :id :schema :name]) pr-str))
-        (sync/sync-table! table)))))
+    (let [database-id (-> source :query :database)
+          {driver :engine :as database} (t2/select-one :model/Database database-id)]
+      (driver/drop-table! driver database-id (qualified-table-name driver target))
+      (log/info "Deactivating  target " (pr-str target) "for transform" id)
+      (deactivate-table! database target))))
 
 (defn delete-target-table-by-id!
   "Delete the target table of the transform specified by `transform-id`."

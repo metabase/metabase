@@ -1,4 +1,4 @@
-import { t } from "ttag";
+import { c, t } from "ttag";
 
 import { useAdminSetting } from "metabase/api/utils";
 import { Schedule } from "metabase/common/components/Schedule";
@@ -31,7 +31,8 @@ export function ScheduleSection() {
         <Schedule
           cronString={value ?? DEFAULT_SCHEDULE}
           scheduleOptions={SCHEDULE_OPTIONS}
-          verb={t`Run`}
+          verb={c("A verb in the imperative mood").t`Run`}
+          minutesOnHourPicker
           onScheduleChange={handleChange}
         />
       </Group>

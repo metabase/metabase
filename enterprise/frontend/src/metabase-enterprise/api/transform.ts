@@ -63,13 +63,13 @@ export const transformApi = EnterpriseApi.injectEndpoints({
         method: "DELETE",
         url: `/api/ee/transform/${id}`,
       }),
-      invalidatesTags: (_, error, id) =>
-        invalidateTags(error, [listTag("transform"), idTag("transform", id)]),
+      invalidatesTags: (_, error) =>
+        invalidateTags(error, [listTag("transform")]),
     }),
     deleteTransformTarget: builder.mutation<Transform, TransformId>({
       query: (id) => ({
         method: "DELETE",
-        url: `/api/ee/transform/${id}/target`,
+        url: `/api/ee/transform/${id}/table`,
       }),
       invalidatesTags: (_, error, id) =>
         invalidateTags(error, [idTag("transform", id), listTag("table")]),

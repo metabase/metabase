@@ -8,7 +8,7 @@ import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { TransformQueryEditor } from "metabase-enterprise/transforms/components/TransformQueryEditor";
 import {
-  getOverviewPageUrl,
+  getOverviewUrl,
   getTransformUrl,
 } from "metabase-enterprise/transforms/urls";
 import Question from "metabase-lib/v1/Question";
@@ -65,7 +65,7 @@ function NewTransformPageBody({ initialQuery }: NewTransformPageBodyProps) {
   };
 
   const handleCancelClick = () => {
-    dispatch(push(getOverviewPageUrl()));
+    dispatch(push(getOverviewUrl()));
   };
 
   return (
