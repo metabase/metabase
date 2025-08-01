@@ -19,7 +19,7 @@ export function CardSection({
         <Title order={4}>{label}</Title>
         <Text c="text-secondary">{description}</Text>
       </Stack>
-      <Card p={0} flex={1}>
+      <Card p={0} flex={1} shadow="none" withBorder>
         {children}
       </Card>
     </Group>
