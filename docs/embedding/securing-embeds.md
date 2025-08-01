@@ -71,7 +71,7 @@ Static embedding uses a [JWT authorization flow](#static-embedding-with-jwt-auth
 
 Static embeds don't authenticate people's identities on the Metabase side, so people can view a static embed without creating a Metabase account. However, without a Metabase account, Metabase won't have a way to remember a user or their session, which means:
 
-- Metabase [permissions](../permissions/introduction.md) and [data sandboxes](../permissions/data-sandboxes.md) won't work --- if you need to lock down sensitive data, you must set up [locked parameters](#example-securing-data-with-locked-parameters-on-a-static-embed) for _each_ of your static embeds.
+- Metabase [permissions](../permissions/introduction.md) and [row and column security](../permissions/row-and-column-security.md) won't work --- if you need to lock down sensitive data, you must set up [locked parameters](#example-securing-data-with-locked-parameters-on-a-static-embed) for _each_ of your static embeds.
 - Any filter selections in a static embed will reset once the signed JWT expires.
 - All Static embed usage will show up in [usage analytics](../usage-and-performance-tools/usage-analytics.md) under "External user".
 
@@ -167,8 +167,8 @@ For code samples, see the [static embedding reference app](https://github.com/me
 Interactive embedding integrates with SSO ([JWT](/docs/latest/people-and-groups/authenticating-with-jwt) or [SAML](/docs/latest/people-and-groups/authenticating-with-saml)) to authenticate and authorize people in one flow. The auth integration makes it easy to map user attributes (such as a person's role or department) to granular levels of data access, including:
 
 - [Tables](../permissions/data.md)
-- [Rows](../permissions/data-sandboxes.md#creating-a-basic-sandbox)
-- [Columns](../permissions/data-sandboxes.md#creating-a-custom-sandbox)
+- [Rows](../permissions/row-and-column-security.md#row-level-security-filter-by-a-column-in-the-table)
+- [Columns](../permissions/row-and-column-security.md#custom-row-and-column-security-use-a-saved-question-to-create-a-custom-view-of-a-table)
 - [Other data permissions](../permissions/data.md), such as data download permissions or SQL access.
 
 ### Interactive embedding with SSO
@@ -182,7 +182,7 @@ This diagram shows you how a interactive embed gets secured with [SSO](../people
 3. **Check session**: to display data at the embedding URL, your Metabase backend checks for a valid session (a logged-in visitor).
 4. **If there's no valid session**:
    - **Redirect to SSO**: your Metabase frontend redirects the visitor to your SSO login page.
-   - **SSO auth**: your SSO flow authenticates the visitor and generates a session based on their identity. The session info should encode user attributes such as group membership and [data sandboxing](../permissions/data-sandboxes.md) permissions.
+   - **SSO auth**: your SSO flow authenticates the visitor and generates a session based on their identity. The session info should encode user attributes such as group membership and [row and column security](../permissions/row-and-column-security.md) permissions.
    - **Redirect to Metabase**: your SSO flow redirects the visitor to your Metabase frontend with the session info.
 5. **Request**: your Metabase frontend sends the request for data to the Metabase backend, along with the session info.
 6. **Response**: your Metabase backend returns data based on the user attributes encoded in the session info.
@@ -190,11 +190,11 @@ This diagram shows you how a interactive embed gets secured with [SSO](../people
 
 The mechanics of step 4 will vary a bit depending on whether you use [JWT](../people-and-groups/authenticating-with-jwt.md) or [SAML](../people-and-groups/authenticating-with-saml.md) for SSO.
 
-### Example: securing data with SSO and data sandboxing
+### Example: securing data with SSO and row and column security
 
 In our static embedding example, we used [locked parameters](#example-securing-data-with-locked-parameters-on-a-static-embed) to display secure filtered views of the Accounts table.
 
-The nice thing about interactive embedding and [SSO](../people-and-groups/start.md#sso-for-metabase-pro-and-enterprise-plans) integration is that we don't have to manually manage locked parameters for each embed. Instead, we can map user attributes from our identity provider (IdP) to [permissions](../permissions/introduction.md) and [data sandboxes](../permissions/data-sandboxes.md) in Metabase. People can get authenticated and authorized to self-serve specific subsets of data from their very first login.
+The nice thing about interactive embedding and [SSO](../people-and-groups/start.md#sso-for-metabase-pro-and-enterprise-plans) integration is that we don't have to manually manage locked parameters for each embed. Instead, we can map user attributes from our identity provider (IdP) to [permissions](../permissions/introduction.md) and [row and column security](../permissions/row-and-column-security.md) in Metabase. People can get authenticated and authorized to self-serve specific subsets of data from their very first login.
 
 Let's expand on our Accounts example to include a Tenant ID. The Tenant ID represents the parent org for a group of customers:
 
@@ -219,17 +219,17 @@ To set up these multi-tenant permissions, we'll need to:
 4. Synchronize group membership between Metabase and our IdP so that:
    - People with `role=tenant` are assigned to the Tenant group.
    - People with `role=customer` are assigned to the Customers group.
-5. Set up a sandboxed view of the Accounts table for each group:
-   - For the Customers group, the Accounts table will be sandboxed (filtered) to `Account ID = primary_id`.
-   - For the Tenants group,, the Accounts table will be sandboxed to `Tenant ID = primary_id`.
+5. Set up row-level security on the Accounts table for each group:
+   - For the Customers group, the Accounts table will be restricted with `Account ID = primary_id`.
+   - For the Tenants group,, the Accounts table will be restricted with `Tenant ID = primary_id`.
 
 When Tenant A logs in with SSO for the first time:
 
 - Metabase will create an account for them.
 - Our IdP will send the `role=tenant` and `primary_id=999` attributes to Metabase.
 - Metabase will automatically assign Tenant A to the Tenant group.
-- Tenant A will get the Tenant group's permissions (including data sandboxes).
-- Tenant A will see a sandboxed view of the Accounts table everywhere in Metabase:
+- Tenant A will get the Tenant group's permissions (including row and column security).
+- Tenant A will see a restricted view of the Accounts table everywhere in Metabase:
 
 | Tenant ID | Account ID | Plan  | Status   |
 | --------- | ---------- | ----- | -------- |

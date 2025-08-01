@@ -114,7 +114,7 @@ Report timezone is only supported for the following databases:
 
 ### First day of the week
 
-If you need to, you can change the first day of the week for your instance (the default is Sunday). 
+If you need to, you can change the first day of the week for your instance (the default is Sunday).
 
 Setting the first day of the week affects how the [query builder](../questions/query-builder/editor.md) filters or groups by week. People can, however, use the `week` function to override this default when filtering or grouping by week of year. See [using a different first week of the year](../questions/query-builder/expressions/week.md#using-a-different-first-week-of-the-year).
 
