@@ -5,7 +5,7 @@
   grid-template-columns: auto minmax(0, 1fr) minmax(118px, auto);
   grid-template-rows: auto minmax(0, 1fr) minmax(auto, 42px);
   grid-template-areas:
-    ". . top"
+    ". top-center top"
     "left main main"
     "bottom-left bottom bottom";
   position: relative;

@@ -280,6 +280,8 @@ export type VisualizationSettings = {
 
   "graph.series_order"?: SeriesOrderSetting[];
 
+  "graph.tooltip_columns"?: string[]; // stringified column key using `getColumnKey` - e.g."["name","COLUMN_3"]"
+
   // Scatter plot settings
   "scatter.bubble"?: string; // col name
 
