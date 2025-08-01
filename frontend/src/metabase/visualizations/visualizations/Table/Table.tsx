@@ -292,6 +292,19 @@ class Table extends Component<TableProps, TableState> {
           return !canWrapText(columnSettings);
         },
       };
+
+      settings["format_newlines"] = {
+        title: t`Format newlines`,
+        default: false,
+        widget: "toggle",
+        inline: true,
+        isValid: (_column, columnSettings) => {
+          return canWrapText(columnSettings);
+        },
+        getHidden: (_column, columnSettings) => {
+          return !canWrapText(columnSettings);
+        },
+      };
     }
 
     let defaultValue = !column.semantic_type || isURL(column) ? "link" : null;
