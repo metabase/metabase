@@ -2,6 +2,7 @@ import type { StoryFn } from "@storybook/react";
 import type { ComponentProps } from "react";
 
 import { CommonSdkStoryWrapper } from "embedding-sdk/test/CommonSdkStoryWrapper";
+import { Flex } from "metabase/ui";
 
 import { CreateQuestion } from "./CreateQuestion";
 
@@ -17,7 +18,11 @@ export default {
 };
 
 const Template: StoryFn<CreateQuestionComponentProps> = (args) => {
-  return <CreateQuestion {...args} />;
+  return (
+    <Flex p="xl">
+      <CreateQuestion {...args} />
+    </Flex>
+  );
 };
 
 export const Default = {
