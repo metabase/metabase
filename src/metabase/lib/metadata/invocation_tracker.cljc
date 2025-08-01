@@ -60,13 +60,20 @@
 
   lib.metadata.protocols/CachedMetadataProvider
   (cached-metadatas [_this metadata-type ids]
-    (lib.metadata.protocols/cached-metadatas metadata-provider metadata-type ids))
+    (when (lib.metadata.protocols/cached-metadata-provider? metadata-provider)
+      (lib.metadata.protocols/cached-metadatas metadata-provider metadata-type ids)))
   (store-metadata! [_this object]
-    (lib.metadata.protocols/store-metadata! metadata-provider object))
+    (when (lib.metadata.protocols/cached-metadata-provider? metadata-provider)
+      (lib.metadata.protocols/store-metadata! metadata-provider object)))
   (cached-value [_this k not-found]
-    (lib.metadata.protocols/cached-value metadata-provider k not-found))
+    (when (lib.metadata.protocols/cached-metadata-provider? metadata-provider)
+      (lib.metadata.protocols/cached-value metadata-provider k not-found)))
   (cache-value! [_this k v]
-    (lib.metadata.protocols/cache-value! metadata-provider k v))
+    (when (lib.metadata.protocols/cached-metadata-provider? metadata-provider)
+      (lib.metadata.protocols/cache-value! metadata-provider k v)))
+  (has-cache? [_this]
+    (when (lib.metadata.protocols/cached-metadata-provider? metadata-provider)
+      (lib.metadata.protocols/has-cache? metadata-provider)))
 
   #?(:clj Object :cljs IEquiv)
   (#?(:clj equals :cljs -equiv) [_this another]

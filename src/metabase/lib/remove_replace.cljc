@@ -9,6 +9,7 @@
    [metabase.lib.join :as lib.join]
    [metabase.lib.join.util :as lib.join.util]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
+   [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.options :as lib.options]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema :as lib.schema]
@@ -496,15 +497,17 @@
     stage-number :- :int
     target-clause
     new-clause]
-   (cond
-     (and (map? target-clause) (= (:lib/type target-clause) :mbql/join))
-     (replace-join query stage-number target-clause new-clause)
+   (->> (cond
+          (and (map? target-clause) (= (:lib/type target-clause) :mbql/join))
+          (replace-join query stage-number target-clause new-clause)
 
-     (expression-replacement? target-clause new-clause)
-     (replace-expression-removing-erroneous-parts query stage-number target-clause new-clause)
+          (expression-replacement? target-clause new-clause)
+          (replace-expression-removing-erroneous-parts query stage-number target-clause new-clause)
 
-     :else
-     (remove-replace* query stage-number target-clause :replace new-clause))))
+          :else
+          (remove-replace* query stage-number target-clause :replace new-clause))
+        ;; normalize the query which will fix anything like join fields missing aliases and what not
+        (lib.normalize/normalize ::lib.schema/query))))
 
 (defn- field-clause-with-join-alias?
   [field-clause join-alias]

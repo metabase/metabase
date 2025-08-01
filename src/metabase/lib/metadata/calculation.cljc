@@ -10,7 +10,6 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.cache :as lib.metadata.cache]
    [metabase.lib.options :as lib.options]
-   [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.expression :as lib.schema.expresssion]
@@ -238,8 +237,7 @@
    unique-key query stage-number x
    (assoc options
           ::display-name-style              *display-name-style*
-          ::propagate-binning-and-bucketing (boolean *propagate-binning-and-bucketing*)
-          ::ref-style                       lib.ref/*ref-style*)))
+          ::propagate-binning-and-bucketing (boolean *propagate-binning-and-bucketing*))))
 
 (defmulti metadata-method
   "Impl for [[metadata]]. Implementations that call [[display-name]] should use the `:default` display name style."
@@ -586,7 +584,7 @@
   and would thus be returned by this function.
 
   Columns from joins, expressions, and implicitly joinable columns are included automatically by default;
-  see [[VisibleColumnsOptions]] for the options for disabling these columns."
+  see `::visible-columns.options` for the options for disabling these columns."
   ([query]
    (visible-columns query (lib.util/query-stage query -1)))
 

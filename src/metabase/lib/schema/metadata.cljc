@@ -195,12 +195,19 @@
 (mr/def ::column.validate-expression-source
   "Only allow `:lib/expression-name` when `:lib/source` is `:source/expressions`. If it's anything else, it probably
   means it's getting incorrectly propagated from a previous stage (QUE-1342)."
-  [:fn
-   {:error/message ":lib/expression-name should only be set for expressions in the current stage (:lib/source = :source/expressions)"}
-   (fn [m]
-     (if (:lib/expression-name m)
-       (= (:lib/source m) :source/expressions)
-       true))])
+  [:and
+   [:fn
+    {:error/message ":lib/expression-name should only be set for expressions in the current stage (:lib/source = :source/expressions)"}
+    (fn [m]
+      (if (:lib/expression-name m)
+        (= (:lib/source m) :source/expressions)
+        true))]
+   [:fn
+    {:error/message ":lib/expression-name is required when :lib/source = :source/expressions"}
+    (fn [m]
+      (if (= (:lib/source m) :source/expressions)
+        (:lib/expression-name m)
+        true))]])
 
 (mr/def ::column.validate-native-column
   "Certain keys cannot possibly be set when a column comes from directly from native query results, for example

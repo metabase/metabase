@@ -7,6 +7,7 @@
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.cached-provider :as lib.metadata.cached-provider]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.metadata.invocation-tracker :as lib.metadata.invocation-tracker]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
@@ -600,7 +601,17 @@
 (deftest ^:parallel automatically-wrap-metadata-providers-in-cached-metadata-provider-test-2
   (testing "Don't re-wrap things that are already CachedMetadataProviders"
     (let [mp (lib.metadata.invocation-tracker/invocation-tracker-provider
-              (lib.tu/mock-metadata-provider {}))]
+              (lib.metadata.cached-provider/cached-metadata-provider
+               (lib.tu/mock-metadata-provider {})))]
       (is (lib.metadata.protocols/cached-metadata-provider? mp))
       (is (identical? mp
                       (:lib/metadata (#'lib.query/ensure-cached-metadata-provider {:lib/metadata mp})))))))
+
+(deftest ^:parallel automatically-wrap-metadata-providers-in-cached-metadata-provider-test-3
+  (testing "DO re-wrap them if they don't support caching (`has-cache?` is false)"
+    (let [mp (lib.metadata.invocation-tracker/invocation-tracker-provider
+              (lib.tu/mock-metadata-provider {}))]
+      (is (not (lib.metadata.protocols/has-cache? mp)))
+      (let [mp' (:lib/metadata (#'lib.query/ensure-cached-metadata-provider {:lib/metadata mp}))]
+        (is (not (identical? mp' mp)))
+        (is (lib.metadata.protocols/has-cache? mp'))))))

@@ -26,7 +26,10 @@
   (let [original-query query]
     (lib.walk/walk-stages
      query
-     (fn [_query stage-path stage]
+     (mu/fn :- ::lib.schema/stage
+       [_query
+        stage-path :- ::lib.walk/path
+        stage      :- ::lib.schema/stage]
        (letfn [(resolve-field-ref [field-ref]
                  (when (= (first field-ref) :field)
                    ;; resolve metadata in the ORIGINAL query so removing fields upstream doesn't mess up our metadata
