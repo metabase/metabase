@@ -1,15 +1,20 @@
 import { useTimeout } from "@mantine/hooks";
+import type { FormikErrors } from "formik";
 import { useEffect, useState } from "react";
 import { c, t } from "ttag";
 
 import { Group, Icon, Text, Textarea, Transition } from "metabase/ui";
+import type { DatabaseData } from "metabase-types/api";
 import { type EngineKey, engineKeys } from "metabase-types/api/settings";
 
 import {
   connectionStringParsedFailed,
   connectionStringParsedSuccess,
 } from "./analytics";
-import { mapDatabaseValues } from "./database-field-mapper";
+import {
+  mapDatabaseValues,
+  mapFieldsToNestedObject,
+} from "./database-field-mapper";
 import { enginesConfig } from "./engines-config";
 import { parseConnectionUriRegex } from "./parse-connection-regex";
 
@@ -21,13 +26,14 @@ export function isEngineKey(value: string | undefined): value is EngineKey {
 }
 
 export function DatabaseConnectionStringField({
-  setFieldValue,
-  validateForm,
+  setValues,
   engineKey,
   location,
 }: {
-  setFieldValue: (field: string, value: string | boolean | undefined) => void;
-  validateForm: () => void;
+  setValues: (
+    values: DatabaseData,
+    shouldValidate: boolean,
+  ) => Promise<void | FormikErrors<DatabaseData>>;
   engineKey: string | undefined;
   location: "admin" | "setup" | "embedding_setup";
 }) {
@@ -43,49 +49,44 @@ export function DatabaseConnectionStringField({
   }, [engineKey]);
 
   useEffect(
-    function handleConnectionStringChange() {
-      if (!connectionString || !isEngineKey(engineKey)) {
+    () => {
+      async function handleConnectionStringChange() {
+        if (!connectionString || !isEngineKey(engineKey)) {
+          deleayedClearStatus();
+          return () => clearTimeout();
+        }
+
+        const parsedValues = parseConnectionUriRegex(connectionString);
+
+        // it was not possible to parse the connection string
+        if (!parsedValues) {
+          setStatus("failure");
+          deleayedClearStatus();
+          connectionStringParsedFailed(location);
+          return () => clearTimeout();
+        }
+
+        const fieldsMap = mapDatabaseValues(parsedValues, engineKey);
+        const fields = mapFieldsToNestedObject(fieldsMap) as DatabaseData;
+        await setValues(fields, true);
+
+        // if there are no values, we couldn't get any details from the connection string
+        const hasValues = hasNonUndefinedValue(fieldsMap);
+        setStatus(hasValues ? "success" : "failure");
+
         deleayedClearStatus();
-        return () => clearTimeout();
+        connectionStringParsedSuccess(location);
+
+        return () => {
+          clearTimeout();
+        };
       }
 
-      const parsedValues = parseConnectionUriRegex(connectionString);
-
-      // it was not possible to parse the connection string
-      if (!parsedValues) {
-        setStatus("failure");
-        deleayedClearStatus();
-        connectionStringParsedFailed(location);
-        return () => clearTimeout();
-      }
-
-      const fieldsMap = mapDatabaseValues(parsedValues, engineKey);
-      // if there are no values, we couldn't get any details from the connection string
-      const hasValues = hasNonUndefinedValue(fieldsMap);
-      fieldsMap.forEach((value, field) => setFieldValue(field, value));
-      setStatus(hasValues ? "success" : "failure");
-      deleayedClearStatus();
-      connectionStringParsedSuccess(location);
-
-      // Trigger validation after field values are set
-      // This enables submit button if all required fields are filled
-      window.requestAnimationFrame(() => {
-        validateForm();
-      });
-
-      return () => {
-        clearTimeout();
-      };
+      handleConnectionStringChange();
     },
     // We don't want to rerun this effect when engineKey changes
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [
-      connectionString,
-      setFieldValue,
-      deleayedClearStatus,
-      clearTimeout,
-      setStatus,
-    ],
+    [connectionString, setValues, deleayedClearStatus, clearTimeout, setStatus],
   );
 
   if (!isEngineKey(engineKey)) {

@@ -164,8 +164,7 @@ const DatabaseFormBody = ({
   ContinueWithoutDataSlot,
   location,
 }: DatabaseFormBodyProps): JSX.Element => {
-  const { values, dirty, setFieldValue, validateForm } =
-    useFormikContext<DatabaseData>();
+  const { values, dirty, setValues } = useFormikContext<DatabaseData>();
 
   useEffect(() => {
     setIsDirty?.(dirty);
@@ -195,10 +194,9 @@ const DatabaseFormBody = ({
         </>
       )}
       <DatabaseConnectionStringField
-        setFieldValue={setFieldValue}
         engineKey={engineKey}
         location={location}
-        validateForm={validateForm}
+        setValues={setValues}
       />
       {engine && (
         <DatabaseNameField
