@@ -89,6 +89,7 @@ describe("EmbeddingDataPicker", () => {
         expect(screen.queryByText("Saved Questions")).not.toBeInTheDocument();
       });
 
+      // Ensure that the user's provided entity_types always take precedence over the default behavior of hiding tables.
       it.each([2, 3])(
         'should show both models and tables when `entity_types=["models", "table"] with %i models',
         async (modelCount) => {
