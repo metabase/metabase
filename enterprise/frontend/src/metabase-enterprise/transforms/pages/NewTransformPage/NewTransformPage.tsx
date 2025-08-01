@@ -11,8 +11,8 @@ import {
 import { useDispatch } from "metabase/lib/redux";
 import { Button, Flex, Icon, Menu, Text, Title } from "metabase/ui";
 import {
-  getNewTransformFromCardPageUrl,
-  getNewTransformFromTypePageUrl,
+  getNewTransformFromCardUrl,
+  getNewTransformFromTypeUrl,
 } from "metabase-enterprise/transforms/urls";
 
 export function NewTransformPage() {
@@ -43,7 +43,7 @@ function NewTransformMenu() {
     useDisclosure();
 
   const handlePickerChange = (item: QuestionPickerValueItem) => {
-    dispatch(push(getNewTransformFromCardPageUrl(item.id)));
+    dispatch(push(getNewTransformFromCardUrl(item.id)));
   };
 
   return (
@@ -56,14 +56,14 @@ function NewTransformMenu() {
           <Menu.Label>{t`Create your transform with…`}</Menu.Label>
           <Menu.Item
             component={ForwardRefLink}
-            to={getNewTransformFromTypePageUrl("query")}
+            to={getNewTransformFromTypeUrl("query")}
             leftSection={<Icon name="notebook" />}
           >
             {t`Query builder`}
           </Menu.Item>
           <Menu.Item
             component={ForwardRefLink}
-            to={getNewTransformFromTypePageUrl("native")}
+            to={getNewTransformFromTypeUrl("native")}
             leftSection={<Icon name="sql" />}
           >
             {t`SQL query`}

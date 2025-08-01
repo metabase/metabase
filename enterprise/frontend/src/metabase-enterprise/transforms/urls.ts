@@ -1,25 +1,26 @@
 import type {
   CardId,
+  DatabaseId,
   DatasetQuery,
-  Table,
+  TableId,
   TransformId,
 } from "metabase-types/api";
 
 export const ROOT_URL = "/admin/transforms";
 
-export function getOverviewPageUrl() {
+export function getOverviewUrl() {
   return ROOT_URL;
 }
 
-export function getnewTransformPageUrl() {
+export function getnewTransformUrl() {
   return `${ROOT_URL}/new`;
 }
 
-export function getNewTransformFromTypePageUrl(type: DatasetQuery["type"]) {
+export function getNewTransformFromTypeUrl(type: DatasetQuery["type"]) {
   return `${ROOT_URL}/new/${type}`;
 }
 
-export function getNewTransformFromCardPageUrl(cardId: CardId) {
+export function getNewTransformFromCardUrl(cardId: CardId) {
   return `${ROOT_URL}/new/card/${cardId}`;
 }
 
@@ -31,6 +32,22 @@ export function getTransformQueryUrl(transformId: TransformId) {
   return `${ROOT_URL}/${transformId}/query`;
 }
 
-export function getTableMetadataUrl({ id, db_id, schema }: Table) {
-  return `/admin/datamodel/database/${db_id}/schema/${db_id}:${encodeURIComponent(schema)}/table/${id}`;
+export function getBrowseDatabaseUrl(databaseId: DatabaseId) {
+  return `/browse/databases/${databaseId}`;
+}
+
+export function getBrowseSchemaUrl(databaseId: DatabaseId, schema: string) {
+  return `/browse/databases/${databaseId}/schema/${schema ?? ""}`;
+}
+
+export function getQueryBuilderUrl(tableId: TableId, databaseId: DatabaseId) {
+  return `/question#?db=${databaseId}&table=${tableId}`;
+}
+
+export function getTableMetadataUrl(
+  tableId: TableId,
+  schema: string | null,
+  databaseId: DatabaseId,
+) {
+  return `/admin/datamodel/database/${databaseId}/schema/${databaseId}:${encodeURIComponent(schema ?? "")}/table/${tableId}`;
 }
