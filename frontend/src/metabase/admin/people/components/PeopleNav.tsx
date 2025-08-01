@@ -41,10 +41,16 @@ export function PeopleNav() {
               icon="globe"
             />
             <PeopleNavItem
+              path="/admin/tenants/groups"
+              data-testid="nav-item"
+              label={t`Tenant Groups`}
+              icon="group"
+            />
+            <PeopleNavItem
               path="/admin/tenants/people"
               data-testid="nav-item"
               label={t`External Users`}
-              icon="group"
+              icon="person"
             />
           </>
         )}

@@ -15,7 +15,7 @@ export const getOrderedGroups = createSelector(
     const [pinnedGroups, unpinnedGroups] = _.partition(groups, isPinnedGroup);
     return [
       pinnedGroups,
-      ..._.partition(unpinnedGroups, PLUGIN_TENANTS.isExternalUsersGroup),
+      ..._.partition(unpinnedGroups, PLUGIN_TENANTS.isTenantGroup),
     ];
   },
 );
