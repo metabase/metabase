@@ -10,16 +10,7 @@ import {
 } from "metabase/common/components/Pickers/QuestionPicker";
 import { Schedule } from "metabase/common/components/Schedule";
 import { useDispatch } from "metabase/lib/redux";
-import {
-  Button,
-  Divider,
-  Flex,
-  Group,
-  Icon,
-  Stack,
-  Text,
-  Title,
-} from "metabase/ui";
+import { Button, Flex, Group, Icon, Stack, Text, Title } from "metabase/ui";
 
 import { CardSection } from "../../components/CardSection";
 import { DEFAULT_SCHEDULE, SCHEDULE_OPTIONS } from "../../constants";
@@ -111,10 +102,6 @@ function ScheduleSection() {
           verb={t`Run`}
           onScheduleChange={handleChange}
         />
-      </Group>
-      <Divider />
-      <Group p="lg" justify="end">
-        <Button>{t`Run`}</Button>
       </Group>
     </CardSection>
   );
