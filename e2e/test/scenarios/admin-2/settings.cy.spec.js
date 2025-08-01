@@ -487,7 +487,7 @@ describe("Cloud settings section", () => {
     cy.findByTestId("admin-layout-sidebar").findByText(/Cloud/i).click();
     cy.findByTestId("admin-layout-content")
       .findByText("Go to the Metabase Store")
-      .should("have.attr", "href", "https://store.metabase.com/");
+      .should("have.attr", "href", "https://test-store.metabase.com/");
   });
 
   it("should prompt us to migrate to cloud if we are not hosted", () => {

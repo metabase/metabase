@@ -7,7 +7,7 @@ summary: Text, number, and date variables let you plug basic values into your SQ
 
 > If you want to filter on a database field in your query, you should prefer using [field filter variables](./sql-parameters.md), which require a different syntax.
 
-Text, number, and date variables let you plug basic values into your SQL code. 
+Text, number, and date variables let you plug basic values into your SQL code.
 
 To add a basic variable to a SQL query, enclose the variable in double braces: `{% raw %}{{variable_name}}{% endraw %}`.
 

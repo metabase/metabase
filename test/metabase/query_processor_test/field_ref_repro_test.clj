@@ -491,7 +491,7 @@
                        "borer-hudson@yahoo.com"]]
                      (mt/rows results))))))))))
 
-(deftest multi-stage-with-external-remapping-test
+(deftest ^:parallel multi-stage-with-external-remapping-test
   (testing "Should handle multiple stages with external remapping (#60587)"
     (let [mp    (lib.tu/remap-metadata-provider (mt/application-database-metadata-provider (mt/id))
                                                 (mt/id :orders :user_id)
@@ -502,13 +502,12 @@
                   (lib/expression $ "user" (first (lib/returned-columns $)))
                   (lib/aggregate $ (lib/distinct (m/find-first (comp #{"user"} :name)
                                                                (lib/visible-columns $)))))]
-          ;; should return {:rows [[1746]], :columns ("count")}
-      (mt/with-native-query-testing-context
-        query
-        (is (thrown-with-msg?
-             clojure.lang.ExceptionInfo
-             #"\QBreakouts must be distinct\E"
-             (-> query qp/process-query mt/rows+column-names)))))))
+      (mt/with-native-query-testing-context query
+        (let [results (qp/process-query query)]
+          (is (=? [{:lib/desired-column-alias "count"}]
+                  (mt/cols results)))
+          (is (= [[1746]]
+                 (mt/rows results))))))))
 
 (deftest model-with-implicit-join-and-external-remapping-test
   (testing "Should handle models with implicit join on externally remapped field (#57596)"

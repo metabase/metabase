@@ -98,12 +98,20 @@
                   ;; than in the current stage. However, we should be smart enough to try to figure out what they
                   ;; meant.
                   :breakout     [&Cat.categories.name]}))]
-    ;; we expect the returned column should not look like it's coming from a join
-    (is (=? [{:id                           (meta/id :categories :name)
-              :name                         "NAME"
-              ;; `:lib/source` is broken -- see #59596
-              :lib/source                   :source/joins ; should be :source/breakout (if something at all)
-              :metabase.lib.join/join-alias "Cat"  ; should be missing
-              :lib/source-column-alias      "NAME" ; should be "Cat__NAME"
-              :lib/desired-column-alias     "Cat__NAME"}]
-            (lib/returned-columns query)))))
+    (testing "returned columns for first stage"
+      (is (=? [{:name "ID"}
+               {:id                           (meta/id :categories :name)
+                :name                         "NAME"
+                :lib/source                   :source/joins
+                :metabase.lib.join/join-alias "Cat"
+                :lib/source-column-alias      "NAME"
+                :lib/desired-column-alias     "Cat__NAME"}]
+              (lib/returned-columns query 0))))
+    (testing "we expect the returned column should not look like it's coming from a join"
+      (is (=? [{:id                           (meta/id :categories :name)
+                :name                         "NAME"
+                :lib/source                   :source/previous-stage
+                :metabase.lib.join/join-alias (symbol "nil #_\"key is not present.\"")
+                :lib/source-column-alias      "Cat__NAME"
+                :lib/desired-column-alias     "Cat__NAME"}]
+              (lib/returned-columns query))))))

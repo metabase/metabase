@@ -21,7 +21,7 @@ You can override the global defaults for a specific field by going to the `Table
 
 ## Formatting options depend on the data type and the semantic type
 
-The options you'll see here will depend on the field's data type and it's [semantic type](./semantic-types.md). 
+The options you'll see here will depend on the field's data type and it's [semantic type](./semantic-types.md).
 
 ## Text formatting options
 
@@ -31,11 +31,11 @@ Options depend on the [semantic type](./semantic-types.md) you select for the fi
 
 ### Align
 
-Whether to display the values in the middle, left, or right in table cells. 
+Whether to display the values in the middle, left, or right in table cells.
 
 ### Display As
 
-If you have text, like an image URL, you may need to change the semantic type before Metabase will offer you the option to display the text as an image.  
+If you have text, like an image URL, you may need to change the semantic type before Metabase will offer you the option to display the text as an image.
 
 - Text (display "as is").
 - Email link (i.e., if you have a `mailto` link).
@@ -87,7 +87,7 @@ This lets you choose if this time field should be displayed by default without t
 
 - **Off** - Display only the date without time
 - **HH:MM** - Display hours and minutes
-- **HH:MM:SS** - Display hours, minutes, and seconds  
+- **HH:MM:SS** - Display hours, minutes, and seconds
 - **HH:MM:SS.MS** - Display hours, minutes, seconds, and milliseconds
 
 ### Time style
@@ -122,7 +122,7 @@ Only applies to table visualizations. Displays a bar for each value to show larg
 Lets you choose to display the number as a plain number, a percent, in scientific notation, or as a currency.
 
 - **Normal** - Display as a regular number
-- **Percent** - Display as a percentage 
+- **Percent** - Display as a percentage
 - **Scientific notation** - Display in scientific format (e.g., 1.23e+4)
 - **Currency** - Display with currency formatting
 

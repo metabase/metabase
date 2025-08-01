@@ -18,7 +18,7 @@ If you want to use the SDK in production, however, you'll also need to [set up J
 ## Prerequisites
 
 - [Metabase](https://github.com/metabase/metabase/releases) version 52 or higher (OSS or EE). See [Installing Metabase](../../installation-and-operation/installing-metabase.md).
-- An application using React 17 or 18. (You could also use the [sample React app](https://github.com/metabase/metabase-nodejs-react-sdk-embedding-sample/tree/{{page.version | remove: "v0."}}-stable))
+- Make sure your [React version is compatible](./introduction.md#embedded-analytics-sdk-prerequisites). (You could also use the [sample React app](https://github.com/metabase/metabase-nodejs-react-sdk-embedding-sample/tree/{{page.version | remove: "v0."}}-stable).)
 
 If you _don't_ have a Metabase up and running, check out the [Quickstart CLI](./quickstart-cli.md).
 
@@ -64,7 +64,6 @@ yarn add @metabase/embedding-sdk-react@53-stable
 ## 4. Embed SDK components in your app
 
 In your app, import the SDK components, like so:
-
 
 ```jsx
 {% include_file "{{ dirname }}/snippets/quickstart/example.tsx" %}
