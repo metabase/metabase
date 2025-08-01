@@ -1,0 +1,9 @@
+.breadcrumbs {
+  width: 100%;
+}
+
+.breadcrumb {
+  &:hover {
+    color: #509ee3 !important;
+  }
+}
