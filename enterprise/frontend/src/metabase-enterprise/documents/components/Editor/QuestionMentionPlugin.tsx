@@ -251,12 +251,12 @@ export const QuestionMentionPlugin = ({
           throw new Error("Failed to fetch card data");
         }
 
-        // Clone the card with "in_report" type
+        // Clone the card with "in_document" type
         const { id, created_at, updated_at, ...cardData } = originalCard;
 
         const clonedCard = await createCard({
           ...cardData,
-          type: "in_report",
+          type: "in_document",
           collection_id: originalCard.collection_id,
         }).unwrap();
 

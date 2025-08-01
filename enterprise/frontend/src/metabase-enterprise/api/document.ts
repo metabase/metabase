@@ -12,16 +12,16 @@ export const documentApi = EnterpriseApi.injectEndpoints({
     getDocument: builder.query<Document, { id: DocumentId; version?: number }>({
       query: ({ id, version }) => ({
         method: "GET",
-        url: `/api/ee/report/${id}`,
+        url: `/api/ee/document/${id}`,
         params: { version },
       }),
       providesTags: (result, error, { id }) =>
-        !error ? [idTag("report", id)] : [],
+        !error ? [idTag("document", id)] : [],
     }),
     createDocument: builder.mutation<Document, CreateDocumentRequest>({
       query: (body) => ({
         method: "POST",
-        url: "/api/ee/report",
+        url: "/api/ee/document",
         body,
       }),
       invalidatesTags: (_, error) => (error ? [] : []), // TODO: invalidate parent collection?
@@ -32,13 +32,13 @@ export const documentApi = EnterpriseApi.injectEndpoints({
         used_card_ids?: number[];
       }
     >({
-      query: (report) => ({
+      query: (document) => ({
         method: "PUT",
-        url: `/api/ee/report/${report.id}`,
-        body: report,
+        url: `/api/ee/document/${document.id}`,
+        body: document,
       }),
       invalidatesTags: (_, error, { id }) =>
-        !error ? [idTag("report", id), idTag("report-versions", id)] : [],
+        !error ? [idTag("document", id), idTag("document-versions", id)] : [],
     }),
   }),
 });

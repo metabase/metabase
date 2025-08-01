@@ -13,6 +13,8 @@ export const TAG_TYPES = [
   "dashboard",
   "dashboard-question-candidates",
   "database",
+  "document",
+  "document-version",
   "field",
   "field-values",
   "indexed-entity",
@@ -50,6 +52,7 @@ export const TAG_TYPE_MAPPING = {
   card: "card",
   dashboard: "dashboard",
   database: "database",
+  document: "document",
   "indexed-entity": "indexed-entity",
   table: "table",
   dataset: "card",
@@ -58,4 +61,6 @@ export const TAG_TYPE_MAPPING = {
   metric: "card",
   snippet: "snippet",
   pulse: "subscription",
+  // Legacy mapping for reports - now maps to document
+  report: "document",
 } as const;

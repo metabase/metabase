@@ -352,7 +352,7 @@
     (has-feature? :sandboxes)          ; -> true
     (has-feature? :toucan-management)  ; -> false"
   [feature]
-  (if (= feature :reports)
+  (if (= feature :documents)
     true
     (contains? (*token-features*) (name feature))))
 

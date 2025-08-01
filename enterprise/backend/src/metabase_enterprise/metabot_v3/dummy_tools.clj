@@ -1,8 +1,8 @@
 (ns metabase-enterprise.metabot-v3.dummy-tools
   (:require
    [medley.core :as m]
+   [metabase-enterprise.documents.api.document :as documents.api]
    [metabase-enterprise.metabot-v3.tools.util :as metabot-v3.tools.u]
-   [metabase-enterprise.reports.api.report :as reports.api]
    [metabase.api.common :as api]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
@@ -290,20 +290,20 @@
         {:structured-output details}
         {:output (or details "report not found")}))))
 
-(defn get-markdown-report-details
-  "Get information about the report with ID `report-id`."
-  [{:keys [report-id]}]
-  (if (int? report-id)
+(defn get-document-details
+  "Get information about the document with ID `document-id`."
+  [{:keys [document-id]}]
+  (if (int? document-id)
     (try
-      (if-let [report (reports.api/get-report report-id nil)]
+      (if-let [doc (documents.api/get-document document-id nil)]
         (do
-          {:structured-output {:id (:id report)
-                               :name (:name report)
-                               :document (:document report)}})
+          {:structured-output {:id (:id doc)
+                               :name (:name doc)
+                               :document (:document doc)}})
         {:output "report not found"})
       (catch Exception e
         {:output (str "error fetching report: " (.getMessage e))}))
-    {:output "invalid report_id"}))
+    {:output "invalid document_id"}))
 
 (defn- execute-query
   [query-id legacy-query]

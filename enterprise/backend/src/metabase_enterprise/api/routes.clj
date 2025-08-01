@@ -17,13 +17,13 @@
    [metabase-enterprise.content-verification.api.routes]
    [metabase-enterprise.database-replication.api :as database-replication.api]
    [metabase-enterprise.database-routing.api]
+   [metabase-enterprise.documents.api]
    [metabase-enterprise.email.api]
    [metabase-enterprise.gsheets.api :as gsheets.api]
    [metabase-enterprise.llm.api]
    [metabase-enterprise.metabot-v3.api]
    [metabase-enterprise.metabot-v3.tools.api]
    [metabase-enterprise.permission-debug.api]
-   [metabase-enterprise.reports.api]
    [metabase-enterprise.sandbox.api.routes]
    [metabase-enterprise.scim.routes]
    [metabase-enterprise.serialization.api]
@@ -49,7 +49,7 @@
    :etl-connections-pg         (deferred-tru "ETL Connections PG replication")
    :llm-autodescription        (deferred-tru "LLM Auto-description")
    :metabot-v3                 (deferred-tru "MetaBot")
-   :reports                    (deferred-tru "Reports")
+   :documents                  (deferred-tru "Documents")
    :scim                       (deferred-tru "SCIM configuration")
    :serialization              (deferred-tru "Serialization")
    :upload-management          (deferred-tru "Upload Management")
@@ -96,7 +96,7 @@
    "/metabot-tools"                metabase-enterprise.metabot-v3.tools.api/routes
    "/metabot-v3"                   (premium-handler metabase-enterprise.metabot-v3.api/routes :metabot-v3)
    "/permission_debug"             (premium-handler metabase-enterprise.permission-debug.api/routes :advanced-permissions)
-   "/report"                       (premium-handler metabase-enterprise.reports.api/routes :reports)
+   "/document"                     (premium-handler metabase-enterprise.documents.api/routes :documents)
    "/scim"                         (premium-handler metabase-enterprise.scim.routes/routes :scim)
    "/serialization"                (premium-handler metabase-enterprise.serialization.api/routes :serialization)
    "/stale"                        (premium-handler metabase-enterprise.stale.api/routes :collection-cleanup)

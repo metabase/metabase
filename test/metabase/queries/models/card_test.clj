@@ -1102,149 +1102,149 @@
       (is (= "Updated" (t2/select-one-fn :name :model/Card :id card-id))))))
 
 (deftest create-in-report-card-test
-  (testing "Can create a card with type :in_report"
+  (testing "Can create a card with type :in_document"
     (mt/with-temp [:model/Card card {:name "In Report Card"
-                                     :type :in_report
+                                     :type :in_document
                                      :dataset_query (mt/mbql-query venues)
                                      :visualization_settings {}}]
-      (is (= :in_report (:type card)))
+      (is (= :in_document (:type card)))
       (is (= "In Report Card" (:name card)))))
 
-  (testing "Can create a card with type \"in_report\" (string format)"
+  (testing "Can create a card with type \"in_document\" (string format)"
     (mt/with-temp [:model/Card card {:name "In Report Card String"
-                                     :type "in_report"
+                                     :type "in_document"
                                      :dataset_query (mt/mbql-query venues)
                                      :visualization_settings {}}]
-      (is (= :in_report (:type card)))
+      (is (= :in_document (:type card)))
       (is (= "In Report Card String" (:name card))))))
 
 (deftest report-document-id-validation-test
-  (testing "report_document_id validation constraints"
+  (testing "document_id validation constraints"
     ;; Access private validation function for direct testing of validation logic
     (let [assert-valid-report-card-constraints
           (ns-resolve 'metabase.queries.models.card 'assert-valid-report-card-constraints)]
 
-      (testing "Cards with report_document_id must have type :in_report"
-        (testing "should fail when report_document_id is set but type is :question"
+      (testing "Cards with document_id must have type :in_document"
+        (testing "should fail when document_id is set but type is :question"
           (is (thrown-with-msg?
                Exception
-               #"Cards with report_document_id must have type :in_report"
-               (assert-valid-report-card-constraints {:type :question :report_document_id 123}))))
+               #"Cards with document_id must have type :in_document"
+               (assert-valid-report-card-constraints {:type :question :document_id 123}))))
 
-        (testing "should fail when report_document_id is set but type is :model"
+        (testing "should fail when document_id is set but type is :model"
           (is (thrown-with-msg?
                Exception
-               #"Cards with report_document_id must have type :in_report"
-               (assert-valid-report-card-constraints {:type :model :report_document_id 123}))))
+               #"Cards with document_id must have type :in_document"
+               (assert-valid-report-card-constraints {:type :model :document_id 123}))))
 
-        (testing "should fail when report_document_id is set but type is :metric"
+        (testing "should fail when document_id is set but type is :metric"
           (is (thrown-with-msg?
                Exception
-               #"Cards with report_document_id must have type :in_report"
-               (assert-valid-report-card-constraints {:type :metric :report_document_id 123}))))
+               #"Cards with document_id must have type :in_document"
+               (assert-valid-report-card-constraints {:type :metric :document_id 123}))))
 
-        (testing "should pass when report_document_id is set and type is :in_report"
-          (is (nil? (assert-valid-report-card-constraints {:type :in_report :report_document_id 123}))))
+        (testing "should pass when document_id is set and type is :in_document"
+          (is (nil? (assert-valid-report-card-constraints {:type :in_document :document_id 123}))))
 
-        (testing "should allow report_document_id to be nil regardless of type"
-          (is (nil? (assert-valid-report-card-constraints {:type :question :report_document_id nil})))
-          (is (nil? (assert-valid-report-card-constraints {:type :model :report_document_id nil})))
-          (is (nil? (assert-valid-report-card-constraints {:type :metric :report_document_id nil})))
-          (is (nil? (assert-valid-report-card-constraints {:type :in_report :report_document_id nil})))))
+        (testing "should allow document_id to be nil regardless of type"
+          (is (nil? (assert-valid-report-card-constraints {:type :question :document_id nil})))
+          (is (nil? (assert-valid-report-card-constraints {:type :model :document_id nil})))
+          (is (nil? (assert-valid-report-card-constraints {:type :metric :document_id nil})))
+          (is (nil? (assert-valid-report-card-constraints {:type :in_document :document_id nil})))))
 
-      (testing "Cards cannot have both dashboard_id and report_document_id (mutual exclusion)"
-        (testing "should fail when both dashboard_id and report_document_id are set"
+      (testing "Cards cannot have both dashboard_id and document_id (mutual exclusion)"
+        (testing "should fail when both dashboard_id and document_id are set"
           (is (thrown-with-msg?
                Exception
-               #"Cards cannot have both dashboard_id and report_document_id"
-               (assert-valid-report-card-constraints {:type :in_report
+               #"Cards cannot have both dashboard_id and document_id"
+               (assert-valid-report-card-constraints {:type :in_document
                                                       :dashboard_id 456
-                                                      :report_document_id 123}))))
+                                                      :document_id 123}))))
 
         (testing "should pass when only dashboard_id is set"
           (is (nil? (assert-valid-report-card-constraints {:type :question :dashboard_id 456}))))
 
-        (testing "should pass when only report_document_id is set"
-          (is (nil? (assert-valid-report-card-constraints {:type :in_report :report_document_id 123})))))
+        (testing "should pass when only document_id is set"
+          (is (nil? (assert-valid-report-card-constraints {:type :in_document :document_id 123})))))
 
       (testing "Database integration tests with valid scenarios"
-        (testing "Can create card with type :in_report and no report_document_id"
+        (testing "Can create card with type :in_document and no document_id"
           (mt/with-temp [:model/Card card {:name "In Report Card No Doc ID"
-                                           :type :in_report
+                                           :type :in_document
                                            :dataset_query (mt/mbql-query venues)
                                            :visualization_settings {}}]
-            (is (= :in_report (:type card)))
-            (is (nil? (:report_document_id card)))))
+            (is (= :in_document (:type card)))
+            (is (nil? (:document_id card)))))
 
-        (testing "Can create cards with different types and no report_document_id"
+        (testing "Can create cards with different types and no document_id"
           (mt/with-temp [:model/Card question-card {:name "Question Card"
                                                     :type :question
                                                     :dataset_query (mt/mbql-query venues)
                                                     :visualization_settings {}}]
             (is (= :question (:type question-card)))
-            (is (nil? (:report_document_id question-card))))
+            (is (nil? (:document_id question-card))))
 
           (mt/with-temp [:model/Card model-card {:name "Model Card"
                                                  :type :model
                                                  :dataset_query (mt/mbql-query venues)
                                                  :visualization_settings {}}]
             (is (= :model (:type model-card)))
-            (is (nil? (:report_document_id model-card))))
+            (is (nil? (:document_id model-card))))
 
           (mt/with-temp [:model/Card metric-card {:name "Metric Card"
                                                   :type :metric
                                                   :dataset_query (mt/mbql-query venues)
                                                   :visualization_settings {}}]
             (is (= :metric (:type metric-card)))
-            (is (nil? (:report_document_id metric-card)))))))))
+            (is (nil? (:document_id metric-card)))))))))
 
 (deftest report-document-id-update-validation-test
-  (testing "report_document_id validation on card updates"
+  (testing "document_id validation on card updates"
     ;; Access private validation function for direct testing of validation logic
     (let [assert-valid-report-card-constraints
           (ns-resolve 'metabase.queries.models.card 'assert-valid-report-card-constraints)]
 
       (testing "Direct validation testing of update scenarios"
-        (testing "should fail when card has report_document_id but type is :question (simulating invalid update)"
+        (testing "should fail when card has document_id but type is :question (simulating invalid update)"
           (is (thrown-with-msg?
                Exception
-               #"Cards with report_document_id must have type :in_report"
-               (assert-valid-report-card-constraints {:type :question :report_document_id 123}))))
+               #"Cards with document_id must have type :in_document"
+               (assert-valid-report-card-constraints {:type :question :document_id 123}))))
 
-        (testing "should pass when card has report_document_id and type is :in_report (simulating valid update)"
-          (is (nil? (assert-valid-report-card-constraints {:type :in_report :report_document_id 123}))))
+        (testing "should pass when card has document_id and type is :in_document (simulating valid update)"
+          (is (nil? (assert-valid-report-card-constraints {:type :in_document :document_id 123}))))
 
-        (testing "should fail when card has both dashboard_id and report_document_id (simulating invalid update)"
+        (testing "should fail when card has both dashboard_id and document_id (simulating invalid update)"
           (is (thrown-with-msg?
                Exception
-               #"Cards cannot have both dashboard_id and report_document_id"
-               (assert-valid-report-card-constraints {:type :in_report
+               #"Cards cannot have both dashboard_id and document_id"
+               (assert-valid-report-card-constraints {:type :in_document
                                                       :dashboard_id 456
-                                                      :report_document_id 123}))))))
+                                                      :document_id 123}))))))
 
     (testing "Database integration tests for valid update scenarios"
-      (testing "should pass when updating card to change type to :in_report with no report_document_id"
+      (testing "should pass when updating card to change type to :in_document with no document_id"
         (mt/with-temp [:model/Card card {:name "Test Card"
                                          :type :question
                                          :dataset_query (mt/mbql-query venues)
                                          :visualization_settings {}}]
-          (t2/update! :model/Card (:id card) {:type :in_report})
+          (t2/update! :model/Card (:id card) {:type :in_document})
           (let [updated-card (t2/select-one :model/Card :id (:id card))]
-            (is (= :in_report (:type updated-card)))
-            (is (nil? (:report_document_id updated-card))))))
+            (is (= :in_document (:type updated-card)))
+            (is (nil? (:document_id updated-card))))))
 
-      (testing "Cards can be updated to remove report_document_id by setting type to something other than :in_report"
-        ;; This tests that existing :in_report cards can be converted to other types by clearing report_document_id
+      (testing "Cards can be updated to remove document_id by setting type to something other than :in_document"
+        ;; This tests that existing :in_document cards can be converted to other types by clearing document_id
         (mt/with-temp [:model/Card card {:name "Test Card"
-                                         :type :in_report
+                                         :type :in_document
                                          :dataset_query (mt/mbql-query venues)
                                          :visualization_settings {}}]
-          ;; First verify the card is in_report with no report_document_id
-          (is (= :in_report (:type card)))
-          (is (nil? (:report_document_id card)))
+          ;; First verify the card is in_document with no document_id
+          (is (= :in_document (:type card)))
+          (is (nil? (:document_id card)))
 
           ;; Update to a different type should succeed
           (t2/update! :model/Card (:id card) {:type :question})
           (let [updated-card (t2/select-one :model/Card :id (:id card))]
             (is (= :question (:type updated-card)))
-            (is (nil? (:report_document_id updated-card)))))))))
+            (is (nil? (:document_id updated-card)))))))))

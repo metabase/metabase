@@ -355,10 +355,10 @@
                transformed))))))
 
 (deftest prevent-in-report-cards-from-being-added-to-dashboards-test
-  (testing "Cannot add a card with type :in_report to a dashboard"
+  (testing "Cannot add a card with type :in_document to a dashboard"
     (mt/with-temp [:model/Dashboard dashboard   {}
                    :model/Card      normal-card  {:name "Normal Card" :type :question}
-                   :model/Card      report-card  {:name "Report Card" :type :in_report}]
+                   :model/Card      report-card  {:name "Report Card" :type :in_document}]
       (testing "Adding a normal card works fine"
         (let [result (dashboard-card/create-dashboard-cards!
                       [{:dashboard_id (:id dashboard)
@@ -370,10 +370,10 @@
           (is (= 1 (count result)))
           (is (= (:id normal-card) (:card_id (first result))))))
 
-      (testing "Adding an in_report card throws an exception"
+      (testing "Adding an in_document card throws an exception"
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
-             #"Cards with type 'in_report' cannot be added to dashboards"
+             #"Cards with type 'in_document' cannot be added to dashboards"
              (dashboard-card/create-dashboard-cards!
               [{:dashboard_id (:id dashboard)
                 :card_id      (:id report-card)
@@ -382,16 +382,16 @@
                 :row          1
                 :col          0}]))))))
 
-  (testing "Cannot add multiple cards if any of them is type :in_report"
+  (testing "Cannot add multiple cards if any of them is type :in_document"
     (mt/with-temp [:model/Dashboard dashboard    {}
                    :model/Card      normal-card1  {:name "Normal Card 1" :type :question}
                    :model/Card      normal-card2  {:name "Normal Card 2" :type :model}
-                   :model/Card      report-card1  {:name "Report Card 1" :type :in_report}
-                   :model/Card      report-card2  {:name "Report Card 2" :type "in_report"}]
-      (testing "Batch creation fails if any card is in_report type"
+                   :model/Card      report-card1  {:name "Report Card 1" :type :in_document}
+                   :model/Card      report-card2  {:name "Report Card 2" :type "in_document"}]
+      (testing "Batch creation fails if any card is in_document type"
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
-             #"Cards with type 'in_report' cannot be added to dashboards"
+             #"Cards with type 'in_document' cannot be added to dashboards"
              (dashboard-card/create-dashboard-cards!
               [{:dashboard_id (:id dashboard)
                 :card_id      (:id normal-card1)

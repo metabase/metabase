@@ -50,10 +50,10 @@ export const useDocumentCardSave = () => {
       const cardName = modifiedCardData.name || card.name;
       const cardOccurrences = countCardOccurrences(editor, card.id);
 
-      // If card is "in_report" type and appears only once in the editor, update it
-      // Otherwise, create a new card (for regular cards or duplicated in_report cards)
-      if (card.type === "in_report" && cardOccurrences <= 1) {
-        // Card is already an in_report type and appears only once, just update it
+      // If card is "in_document" type and appears only once in the editor, update it
+      // Otherwise, create a new card (for regular cards or duplicated in_document cards)
+      if (card.type === "in_document" && cardOccurrences <= 1) {
+        // Card is already an in_document type and appears only once, just update it
         await updateCard({
           id: card.id,
           ...modifiedCardData,
@@ -65,14 +65,14 @@ export const useDocumentCardSave = () => {
         };
       } else {
         // Card is either:
-        // 1. A regular card (not in_report type), or
-        // 2. An in_report card that appears multiple times (was copy-pasted)
-        // In both cases, create a new in_report card
+        // 1. A regular card (not in_document type), or
+        // 2. An in_document card that appears multiple times (was copy-pasted)
+        // In both cases, create a new in_document card
         const { id, created_at, updated_at, ...cardData } = card;
         const savedCard = await createCard({
           ...cardData,
           ...modifiedCardData,
-          type: "in_report",
+          type: "in_document",
           collection_id: card.collection_id ?? null,
         }).unwrap();
 

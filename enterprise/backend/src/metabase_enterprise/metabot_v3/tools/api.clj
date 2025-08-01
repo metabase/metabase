@@ -540,14 +540,14 @@
                          [:result_columns ::columns]]]]
    [:map [:output :string]]])
 
-(mr/def ::get-markdown-report-details-arguments
+(mr/def ::get-document-details-arguments
   [:and
    [:map
-    [:report_id                                         :int]]
+    [:document_id                                         :int]]
    [:map {:encode/tool-api-request
-          #(set/rename-keys % {:report_id         :report-id})}]])
+          #(set/rename-keys % {:document_id         :document-id})}]])
 
-(mr/def ::get-markdown-report-details-result
+(mr/def ::get-document-details-result
   [:or
    [:map
     {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
@@ -795,17 +795,17 @@
               (assoc :conversation_id conversation_id))
       (metabot-v3.context/log :llm.log/be->llm))))
 
-(api.macros/defendpoint :post "/get-markdown-report-details" :- [:merge ::get-markdown-report-details-result ::tool-request]
+(api.macros/defendpoint :post "/get-document-details" :- [:merge ::get-document-details-result ::tool-request]
   "Get information about a given report."
   [_route-params
    _query-params
    {:keys [arguments conversation_id] :as body} :- [:merge
-                                                    [:map [:arguments ::get-markdown-report-details-arguments]]
+                                                    [:map [:arguments ::get-document-details-arguments]]
                                                     ::tool-request]]
-  (metabot-v3.context/log (assoc body :api :get-markdown-report-details) :llm.log/llm->be)
-  (let [arguments (mc/encode ::get-markdown-report-details-arguments arguments (mtx/transformer {:name :tool-api-request}))]
-    (doto (-> (mc/decode ::get-report-details-result
-                         (metabot-v3.dummy-tools/get-markdown-report-details arguments)
+  (metabot-v3.context/log (assoc body :api :get-document-details) :llm.log/llm->be)
+  (let [arguments (mc/encode ::get-document-details-arguments arguments (mtx/transformer {:name :tool-api-request}))]
+    (doto (-> (mc/decode ::get-document-details-result
+                         (metabot-v3.dummy-tools/get-document-details arguments)
                          (mtx/transformer {:name :tool-api-response}))
               (assoc :conversation_id conversation_id))
       (metabot-v3.context/log :llm.log/be->llm))))

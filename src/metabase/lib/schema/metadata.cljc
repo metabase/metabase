@@ -439,7 +439,7 @@
    :question
    :model
    :metric
-   :in_report])
+   :in_document])
 
 (mr/def ::type
   "TODO -- not convinced we need a separate `:metadata/metric` anymore, it made sense back when Legacy/V1 Metrics were a

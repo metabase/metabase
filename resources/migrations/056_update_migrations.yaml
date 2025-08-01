@@ -205,11 +205,11 @@ databaseChangeLog:
   - changeSet:
       id: v56.2025-07-21T12:00:00
       author: edpaget
-      comment: Create report_document table
+      comment: Create document table
       changes:
         - createTable:
-            tableName: report_document
-            remarks: Reports table
+            tableName: document
+            remarks: Documents table
             columns:
               - column:
                   name: id
@@ -221,20 +221,20 @@ databaseChangeLog:
                     nullable: false
               - column:
                   name: name
-                  remarks: Report name
+                  remarks: Document name
                   type: ${text.type}
                   constraints:
                     nullable: false
               - column:
                   name: created_at
-                  remarks: The timestamp of when the report was created
+                  remarks: The timestamp of when the document was created
                   type: ${timestamp_type}
                   defaultValueComputed: current_timestamp
                   constraints:
                     nullable: false
               - column:
                   name: updated_at
-                  remarks: The timestamp of when the report was updated
+                  remarks: The timestamp of when the document was updated
                   type: ${timestamp_type}
                   defaultValueComputed: current_timestamp
                   constraints:
@@ -249,24 +249,24 @@ databaseChangeLog:
   - changeSet:
       id: v56.2025-07-21T12:00:59
       author: johnswanson
-      comment: Add `report_document.collection_id` foreign key constraint
+      comment: Add `document.collection_id` foreign key constraint
       changes:
         - addForeignKeyConstraint:
-            baseTableName: report_document
+            baseTableName: document
             baseColumnNames: collection_id
             referencedTableName: collection
             referencedColumnNames: id
-            constraintName: fk_report_document_ref_collection_id
+            constraintName: fk_document_ref_collection_id
             onDelete: CASCADE
 
   - changeSet:
       id: v56.2025-07-21T12:01:00
       author: edpaget
-      comment: Create report_version table
+      comment: Create document_version table
       changes:
         - createTable:
-            tableName: report_document_version
-            remarks: Report versions table
+            tableName: document_version
+            remarks: Document versions table
             columns:
               - column:
                   name: id
@@ -277,18 +277,18 @@ databaseChangeLog:
                     primaryKey: true
                     nullable: false
               - column:
-                  name: report_id
-                  remarks: Referenced report
+                  name: document_id
+                  remarks: Referenced document
                   type: int
                   constraints:
                     nullable: false
-                    referencedTableName: report_document
+                    referencedTableName: document
                     referencedColumnNames: id
-                    foreignKeyName: fk_report_version_report_id
+                    foreignKeyName: fk_document_version_document_id
                     deleteCascade: true
               - column:
                   name: document
-                  remarks: content of the report version
+                  remarks: content of the document version
                   type: ${text.type}
                   constraints:
                     nullable: false
@@ -312,7 +312,7 @@ databaseChangeLog:
                     nullable: false
                     referencedTableName: core_user
                     referencedColumnNames: id
-                    foreignKeyName: fk_report_version_user_id
+                    foreignKeyName: fk_document_version_user_id
               - column:
                   name: created_at
                   remarks: The timestamp of when the version was created
@@ -331,14 +331,14 @@ databaseChangeLog:
   - changeSet:
       id: v56.2025-07-21T12:01:56
       author: edpaget
-      comment: add current_version_id column to report_document
+      comment: add current_version_id column to document
       changes:
         - addColumn:
-            tableName: report_document
+            tableName: document
             columns:
               - column:
                   name: current_version_id
-                  remarks: current version of a report that should be loaded by default
+                  remarks: current version of a document that should be loaded by default
                   type: int
                   constraints:
                     nullable: true
@@ -346,14 +346,14 @@ databaseChangeLog:
   - changeSet:
       id: v56.2025-07-21T12:01:57
       author: edpaget
-      comment: add parent_version_id column to report_document_version
+      comment: add parent_version_id column to document_version
       changes:
         - addColumn:
-            tableName: report_document_version
+            tableName: document_version
             columns:
               - column:
                   name: parent_version_id
-                  remarks: the report_document_version this version was created from
+                  remarks: the document_version this version was created from
                   type: int
                   constraints:
                     nullable: true
@@ -361,92 +361,39 @@ databaseChangeLog:
   - changeSet:
       id: v56.2025-07-21T12:01:58
       author: edpaget
-      comment: add foreign key constraint for current_version_id in report_document
+      comment: add foreign key constraint for current_version_id in document
       changes:
         - addForeignKeyConstraint:
-            baseTableName: report_document
+            baseTableName: document
             baseColumnNames: current_version_id
-            referencedTableName: report_document_version
+            referencedTableName: document_version
             referencedColumnNames: id
-            constraintName: fk_current_report_document_version_id
+            constraintName: fk_current_document_version_id
             onDelete: CASCADE
 
   - changeSet:
       id: v56.2025-07-21T12:01:59
       author: edpaget
-      comment: add foreign key constraint for parent_version_id in report_document_version
+      comment: add foreign key constraint for parent_version_id in document_version
       changes:
         - addForeignKeyConstraint:
-            baseTableName: report_document_version
+            baseTableName: document_version
             baseColumnNames: parent_version_id
-            referencedTableName: report_document_version
+            referencedTableName: document_version
             referencedColumnNames: id
-            constraintName: fk_parent_report_document_version_id
+            constraintName: fk_parent_document_version_id
             onDelete: CASCADE
-
-  - changeSet:
-      id: v56.2025-07-22T12:01:02
-      author: edpaget
-      comment: Create report_run_card_data table
-      preConditions:
-      changes:
-        - createTable:
-            tableName: report_run_card_data
-            remarks: Report stores data for each card involved in a given report run
-            columns:
-              - column:
-                  name: id
-                  remarks: Unique ID
-                  type: int
-                  autoIncrement: true
-                  constraints:
-                    primaryKey: true
-                    nullable: false
-              - column:
-                  name: report_id
-                  remarks: report this snapshot was created for
-                  type: int
-                  constraints:
-                    nullable: true
-                    referencedTableName: report_document
-                    referencedColumnNames: id
-                    foreignKeyName: fk_report_run_card_data_report_id
-              - column:
-                  name: user_id
-                  remarks: User who created this version
-                  type: int
-                  constraints:
-                    nullable: false
-                    referencedTableName: core_user
-                    referencedColumnNames: id
-                    foreignKeyName: fk_report_run_card_data_version_user_id
-              - column:
-                  name: card_id
-                  remarks: Referenced card run
-                  type: int
-                  constraints:
-                    nullable: false
-                    referencedTableName: report_card
-                    referencedColumnNames: id
-                    foreignKeyName: fk_report_run_card_data_card_id
-                    deleteCascade: true
-              - column:
-                  name: data
-                  remarks: binary encrypted data for the run and card id
-                  type: bytea
-                  constraints:
-                    nullable: false
 
   - changeSet:
       id: v56.2025-07-29T17:23:32
       author: edpaget
-      comment: Add report_document_id column to report_card table
+      comment: Add document_id column to report_card table
       changes:
         - addColumn:
             tableName: report_card
             columns:
               - column:
-                  name: report_document_id
+                  name: document_id
                   remarks: Associates cards with a particular report version
                   type: int
                   constraints:
@@ -455,14 +402,14 @@ databaseChangeLog:
   - changeSet:
       id: v56.2025-07-29T17:23:33
       author: edpaget
-      comment: Add foreign key constraint for report_document_id in report_card
+      comment: Add foreign key constraint for document_id in report_card
       changes:
         - addForeignKeyConstraint:
             baseTableName: report_card
-            baseColumnNames: report_document_id
-            referencedTableName: report_document
+            baseColumnNames: document_id
+            referencedTableName: document
             referencedColumnNames: id
-            constraintName: fk_report_card_report_document_id
+            constraintName: fk_report_card_document_id
             onDelete: CASCADE
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<

@@ -330,13 +330,13 @@
 
 (defmethod collection-children-query :report
   [_ collection {:keys [archived?]}]
-  {:select [:report.id
-            :report.name
-            :report.collection_id
+  {:select [:document.id
+            :document.name
+            :document.collection_id
             [(h2x/literal "report") :model]]
-   :from [[:report_document :report]]
+   :from [[:document :document]]
    :where [:and
-           [:= :report.collection_id (:id collection)]
+           [:= :document.collection_id (:id collection)]
            (if archived?
              [:= [:inline 0] [:inline 1]]
              [:= [:inline 1] [:inline 1]])]})
@@ -777,7 +777,7 @@
     :pulse      :model/Pulse
     :snippet    :model/NativeQuerySnippet
     :timeline   :model/Timeline
-    :report     :model/Report))
+    :report :model/Document))
 
 (defn post-process-rows
   "Post process any data. Have a chance to process all of the same type at once using
