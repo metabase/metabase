@@ -32,6 +32,7 @@ export function ScheduleSection() {
           cronString={value ?? DEFAULT_SCHEDULE}
           scheduleOptions={SCHEDULE_OPTIONS}
           verb={t`Run`}
+          minutesOnHourPicker
           onScheduleChange={handleChange}
         />
       </Group>
