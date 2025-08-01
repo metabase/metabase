@@ -158,13 +158,14 @@ describe("QuestionSharingMenu", () => {
         ).not.toBeInTheDocument();
       });
 
-      it("should show a 'public links are off' menu item if public sharing is disabled", async () => {
+      it('should show an "Enable" link if public sharing is disabled', async () => {
         setupQuestionSharingMenu({
           isAdmin: true,
           isPublicSharingEnabled: false,
         });
         await openMenu();
-        expect(screen.getByText("Public links are off")).toBeInTheDocument();
+        expect(screen.getByText("Public link")).toBeInTheDocument();
+        expect(screen.getByText("Enable")).toBeInTheDocument();
         expect(
           screen.queryByText("Create a public link"),
         ).not.toBeInTheDocument();
