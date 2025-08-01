@@ -3,9 +3,9 @@ import QueryVisualization from "metabase/query_builder/components/QueryVisualiza
 import type Question from "metabase-lib/v1/Question";
 import type { Dataset, RawSeries } from "metabase-types/api";
 
-import S from "./TransformVisualization.module.css";
+import S from "./EditorVisualization.module.css";
 
-type TransformVisualizationProps = {
+type EditorVisualizationProps = {
   question: Question;
   result: Dataset | null;
   rawSeries: RawSeries | null;
@@ -17,7 +17,7 @@ type TransformVisualizationProps = {
   onCancelQuery: () => void;
 };
 
-export function TransformVisualization({
+export function EditorVisualization({
   question,
   result,
   rawSeries,
@@ -27,7 +27,7 @@ export function TransformVisualization({
   isResultDirty,
   onRunQuery,
   onCancelQuery,
-}: TransformVisualizationProps) {
+}: EditorVisualizationProps) {
   return (
     <DebouncedFrame className={S.root}>
       <QueryVisualization

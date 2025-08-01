@@ -8,12 +8,12 @@ import { Box } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 
+import S from "./EditorBody.module.css";
 import { ResizableBoxHandle } from "./ResizableBoxHandle";
-import S from "./TransformQueryEditor.module.css";
 
 const EDITOR_HEIGHT = 400;
 
-type TransformQueryEditorProps = {
+type EditorBodyProps = {
   question: Question;
   isNative: boolean;
   isRunnable: boolean;
@@ -24,7 +24,7 @@ type TransformQueryEditorProps = {
   onCancelQuery: () => void;
 };
 
-export function TransformQueryEditor({
+export function EditorBody({
   question,
   isNative,
   isRunnable,
@@ -33,7 +33,7 @@ export function TransformQueryEditor({
   onChange,
   onRunQuery,
   onCancelQuery,
-}: TransformQueryEditorProps) {
+}: EditorBodyProps) {
   const [isResizing, setIsResizing] = useState(false);
   const reportTimezone = useSetting("report-timezone-long");
 

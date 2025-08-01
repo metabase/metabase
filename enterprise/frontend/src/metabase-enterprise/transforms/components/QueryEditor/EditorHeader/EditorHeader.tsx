@@ -3,8 +3,7 @@ import { t } from "ttag";
 import Button from "metabase/common/components/Button";
 import EditBar from "metabase/common/components/EditBar";
 
-type TransformHeaderProps = {
-  name?: string;
+type EditorHeaderProps = {
   canSave: boolean;
   isNew: boolean;
   isSaving: boolean;
@@ -12,44 +11,38 @@ type TransformHeaderProps = {
   onCancel: () => void;
 };
 
-export function TransformHeader({
-  name,
+export function EditorHeader({
   canSave,
   isNew,
   isSaving,
   onSave,
   onCancel,
-}: TransformHeaderProps) {
-  const saveButton = (
-    <Button
-      key="save"
-      onClick={onSave}
-      primary
-      small
-      disabled={!canSave || isSaving}
-    >
-      {getSaveButtonLabel(isNew, isSaving)}
-    </Button>
-  );
-
-  const cancelButton = (
-    <Button key="cancel" small onClick={onCancel}>{t`Cancel`}</Button>
-  );
-
+}: EditorHeaderProps) {
   return (
     <EditBar
-      title={getTitle(name, isNew)}
+      title={getTitle(isNew)}
       admin
-      buttons={[saveButton, cancelButton]}
+      buttons={[
+        <Button
+          key="save"
+          onClick={onSave}
+          primary
+          small
+          disabled={!canSave || isSaving}
+        >
+          {getSaveButtonLabel(isNew, isSaving)}
+        </Button>,
+        <Button key="cancel" small onClick={onCancel}>{t`Cancel`}</Button>,
+      ]}
     />
   );
 }
 
-function getTitle(name: string | undefined, isNew: boolean) {
+function getTitle(isNew: boolean) {
   if (isNew) {
     return t`You’re creating a new transform`;
   } else {
-    return name ?? t`You’re editing a transform`;
+    return t`You’re editing a transform`;
   }
 }
 

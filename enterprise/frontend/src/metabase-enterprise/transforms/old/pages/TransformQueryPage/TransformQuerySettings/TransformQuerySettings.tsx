@@ -4,9 +4,10 @@ import { t } from "ttag";
 import { useDispatch } from "metabase/lib/redux";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { useUpdateTransformMutation } from "metabase-enterprise/api";
-import { TransformQueryBuilder } from "metabase-enterprise/transforms/old/components/TransformQueryBuilder";
 import { getTransformUrl } from "metabase-enterprise/transforms/old/utils/urls";
 import type { DatasetQuery, Transform } from "metabase-types/api";
+
+import { QueryEditor } from "../../../../components/QueryEditor";
 
 type TransformQuerySettingsProps = {
   transform: Transform;
@@ -41,7 +42,7 @@ export function TransformQuerySettings({
   };
 
   return (
-    <TransformQueryBuilder
+    <QueryEditor
       name={transform.name}
       query={transform.source.query}
       isNew={false}

@@ -28,7 +28,7 @@ import {
   getNewTransformFromTypePageUrl,
 } from "../../urls";
 
-export function TransformOverviewPage() {
+export function OverviewPage() {
   return (
     <Flex direction="column" align="center">
       <Stack gap="3.5rem">

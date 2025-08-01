@@ -4,31 +4,29 @@ import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { DatasetQuery } from "metabase-types/api";
 
-import { TransformHeader } from "./TransformHeader";
-import S from "./TransformQueryBuilder.module.css";
-import { TransformQueryEditor } from "./TransformQueryEditor";
-import { TransformVisualization } from "./TransformVisualization";
+import { EditorBody } from "./EditorBody";
+import { EditorHeader } from "./EditorHeader";
+import { EditorVisualization } from "./EditorVisualization";
+import S from "./QueryEditor.module.css";
 import { useQueryMetadata } from "./use-query-metadata";
 import { useQueryResults } from "./use-query-results";
 import { useQueryState } from "./use-query-state";
 
-type TransformQueryBuilderProps = {
+type QueryEditorProps = {
   query: DatasetQuery;
-  name?: string;
   isNew?: boolean;
   isSaving?: boolean;
   onSave: (newQuery: DatasetQuery) => void;
   onCancel: () => void;
 };
 
-export function TransformQueryBuilder({
+export function QueryEditor({
   query: initialQuery,
-  name,
   isNew = true,
   isSaving = false,
   onSave,
   onCancel,
-}: TransformQueryBuilderProps) {
+}: QueryEditorProps) {
   const { question, setQuestion } = useQueryState(initialQuery);
   const { isInitiallyLoaded } = useQueryMetadata(question);
   const {
@@ -57,15 +55,14 @@ export function TransformQueryBuilder({
 
   return (
     <Flex className={S.root} w="100%" h="100%" direction="column" bg="bg-white">
-      <TransformHeader
-        name={name}
+      <EditorHeader
         canSave={canSave}
         isNew={isNew}
         isSaving={isSaving}
         onSave={handleSave}
         onCancel={onCancel}
       />
-      <TransformQueryEditor
+      <EditorBody
         question={question}
         isNative={isNative}
         isRunnable={isRunnable}
@@ -75,7 +72,7 @@ export function TransformQueryBuilder({
         onRunQuery={runQuery}
         onCancelQuery={cancelQuery}
       />
-      <TransformVisualization
+      <EditorVisualization
         question={question}
         result={result}
         rawSeries={rawSeries}
