@@ -16,12 +16,13 @@ import Question from "metabase-lib/v1/Question";
 import { getUrl } from "metabase-lib/v1/urls";
 import type { Card } from "metabase-types/api";
 
-import { useDocumentsSelector } from "../../../../redux-utils";
 import { openVizSettingsSidebar } from "../../../../documents.slice";
+import { useDocumentsSelector } from "../../../../redux-utils";
 import {
   getDocumentCardWithDraftSettings,
   getSelectedEmbedIndex,
 } from "../../../../selectors";
+import { EDITOR_STYLE_BOUNDARY_CLASS } from "../../constants";
 import { formatCardEmbed } from "../markdown/card-embed-format";
 
 import styles from "./CardEmbedNode.module.css";
@@ -283,7 +284,9 @@ export const CardEmbedComponent = memo(
       return (
         <NodeViewWrapper className={styles.embedWrapper}>
           <Box
-            className={`${styles.cardEmbed} ${selected ? styles.selected : ""}`}
+            className={cx(styles.cardEmbed, EDITOR_STYLE_BOUNDARY_CLASS, {
+              [styles.selected]: selected,
+            })}
           >
             <Box className={styles.questionHeader}>
               <Box
@@ -314,7 +317,9 @@ export const CardEmbedComponent = memo(
     if (error) {
       return (
         <NodeViewWrapper className={styles.embedWrapper}>
-          <Box className={styles.errorContainer}>
+          <Box
+            className={cx(styles.errorContainer, EDITOR_STYLE_BOUNDARY_CLASS)}
+          >
             <Text color="error">{t`Failed to load question`}</Text>
           </Box>
         </NodeViewWrapper>
@@ -323,7 +328,11 @@ export const CardEmbedComponent = memo(
 
     return (
       <NodeViewWrapper className={styles.embedWrapper}>
-        <Box className={cx(styles.cardEmbed, { [styles.selected]: selected })}>
+        <Box
+          className={cx(styles.cardEmbed, EDITOR_STYLE_BOUNDARY_CLASS, {
+            [styles.selected]: selected,
+          })}
+        >
           {card && (
             <Box className={styles.questionHeader}>
               <Box
