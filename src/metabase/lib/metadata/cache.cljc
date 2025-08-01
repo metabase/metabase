@@ -81,21 +81,21 @@
   "Function called whenever we have a cache hit. Normally just does boring logging but dynamic so we can test this
   stuff."
   [k]
-  (log/debug (str (str/join (repeat *cache-depth* "|   ")) (u/format-color :green "Found %s" (pr-str k)))))
+  (log/debug (str (str/join (repeat *cache-depth* "|   ")) (u/colorize :green "HIT: ") (name (first k)) " " (hash (rest k)))))
 
 (defn ^:dynamic *cache-miss-hook*
   "Function called whenever we have a cache miss. Normally just does boring logging but dynamic so we can test this
   stuff."
   [k]
-  (log/debug (str (str/join (repeat *cache-depth* "|   ")) (u/format-color :yellow "Calculating %s" (pr-str k)))))
+  (log/debug (str (str/join (repeat *cache-depth* "|   ")) (u/colorize :red "MISS: ") (name (first k)) " " (hash (rest k)))))
 
-(mu/defn do-with-cached-value :- :some
+(mu/defn do-with-cached-value
   "Impl for [[with-cached-value]]."
   [metadata-providerable :- ::lib.metadata.protocols/metadata-providerable
    k                     :- ::cache-key
-   thunk                 :- [:=> [:cat] :some]]
+   thunk                 :- [:=> [:cat] :any]]
   (binding [*cache-depth* (inc *cache-depth*)]
-    (log/debug (str (str/join (repeat *cache-depth* "|   ")) (u/format-color :red "Get %s" (pr-str k))))
+    (log/debug (str (str/join (repeat *cache-depth* "|   ")) (u/colorize :cyan "GET: ") (name (first k)) " " (hash (rest k))))
     (let [cached-v (cached-value metadata-providerable k ::not-found)]
       (if-not (= cached-v ::not-found)
         (do

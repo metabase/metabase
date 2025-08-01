@@ -1,5 +1,6 @@
 (ns metabase.query-processor.preprocess
   (:require
+   [metabase.config.core :as config]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.core :as lib]
    [metabase.lib.schema :as lib.schema]
@@ -49,6 +50,8 @@
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
+
+(set! *warn-on-reflection* true)
 
 ;;; the following helper functions are temporary, to aid in the transition from a legacy MBQL QP to a pMBQL QP. Each
 ;;; individual middleware function is wrapped in either [[ensure-legacy]] or [[ensure-pmbql]], and will then see the
@@ -167,6 +170,12 @@
       fn-name)
     middleware-fn))
 
+(def ^:private ^Long slow-middleware-warning-threshold-ms
+  "Warn about slow middleware if it takes longer than this many milliseconds."
+  (if config/is-prod?
+    1000 ; this is egregious but we don't want to spam the logs with stuff like this in prod
+    100))
+
 (mu/defn preprocess :- [:map
                         [:database ::lib.schema.id/database]]
   "Fully preprocess a query, but do not compile it to a native query or execute it."
@@ -182,19 +191,23 @@
        ([query middleware-fn]
         (try
           (assert (ifn? middleware-fn))
-          ;; make sure the middleware returns a valid query... this should be dev-facing only so no need to i18n
-          (u/prog1 (middleware-fn query)
-            (qp.debug/debug>
-              (when-not (= <> query)
-                (let [middleware-fn-name (middleware-fn-name middleware-fn)]
-                  (list middleware-fn-name '=> <>
-                        ^{:portal.viewer/default :portal.viewer/diff}
-                        [(or (-> <> meta :converted-form) query)
-                         <>]))))
+          (let [start-timer (u/start-timer)]
             ;; make sure the middleware returns a valid query... this should be dev-facing only so no need to i18n
-            (when-not (map? <>)
-              (throw (ex-info (format "Middleware did not return a valid query.")
-                              {:fn (middleware-fn-name middleware-fn), :query query, :result <>, :type qp.error-type/qp}))))
+            (u/prog1 (middleware-fn query)
+              (let [duration-ms (u/since-ms start-timer)]
+                (when (> duration-ms slow-middleware-warning-threshold-ms)
+                  (log/warnf "Slow middleware: %s took %s" (middleware-fn-name middleware-fn) (u/format-milliseconds duration-ms))))
+              (qp.debug/debug>
+                (when-not (= <> query)
+                  (let [middleware-fn-name (middleware-fn-name middleware-fn)]
+                    (list middleware-fn-name '=> <>
+                          ^{:portal.viewer/default :portal.viewer/diff}
+                          [(or (-> <> meta :converted-form) query)
+                           <>]))))
+              ;; make sure the middleware returns a valid query... this should be dev-facing only so no need to i18n
+              (when-not (map? <>)
+                (throw (ex-info (format "Middleware did not return a valid query.")
+                                {:fn (middleware-fn-name middleware-fn), :query query, :result <>, :type qp.error-type/qp})))))
           (catch Throwable e
             (let [middleware-fn (middleware-fn-name middleware-fn)]
               (throw (ex-info (i18n/tru "Error preprocessing query in {0}: {1}" middleware-fn (ex-message e))
