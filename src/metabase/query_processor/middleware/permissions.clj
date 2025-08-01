@@ -123,7 +123,8 @@
         ;; if card-id is bound this means that this is not an ad hoc query and we can just
         ;; check that the user has permission to read this card
         *card-id*
-        (query-perms/check-card-read-perms database-id *card-id*)
+        (do (query-perms/check-card-read-perms database-id *card-id*)
+            (query-perms/check-card-result-metadata-data-perms database-id *card-id*))
 
         ;; set when querying for field values of dashboard filters, which only require
         ;; collection perms for the dashboard and not ad-hoc query perms
