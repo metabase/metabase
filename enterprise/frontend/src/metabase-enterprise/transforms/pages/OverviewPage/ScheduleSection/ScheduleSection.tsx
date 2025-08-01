@@ -34,12 +34,12 @@ export function ScheduleSection() {
           verb={t`Run`}
           onScheduleChange={handleChange}
         />
-        <Divider />
-        <Group p="lg" justify="end">
-          <Button
-            leftSection={<Icon name="play_outlined" />}
-          >{t`Run now`}</Button>
-        </Group>
+      </Group>
+      <Divider />
+      <Group p="lg" justify="end">
+        <Button leftSection={<Icon name="play_outlined" />}>
+          {t`Run now`}
+        </Button>
       </Group>
     </CardSection>
   );
