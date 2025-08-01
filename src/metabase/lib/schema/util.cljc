@@ -1,7 +1,8 @@
 (ns metabase.lib.schema.util
   (:refer-clojure :exclude [ref])
   (:require
-   [clojure.walk :as walk]
+   #?(:clj [metabase.util.performance :refer [postwalk]]
+      :default [clojure.walk :refer [postwalk]])
    [medley.core :as m]
    [metabase.lib.options :as lib.options]
    [metabase.util.malli :as mu]
@@ -117,7 +118,7 @@
 (defn remove-lib-uuids
   "Recursively remove all uuids from `x`."
   [x]
-  (walk/postwalk
+  (postwalk
    (fn [x]
      (cond-> x
        (map? x) (dissoc :lib/uuid)))
