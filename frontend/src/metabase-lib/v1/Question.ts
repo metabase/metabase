@@ -221,8 +221,8 @@ class Question {
 
   type(): CardType {
     const type = this._card?.type ?? "question";
-    // HACK: Treat "in_report" cards as regular questions
-    return type === "in_report" ? "question" : type;
+    // HACK: Treat "in_document" cards as regular questions
+    return type === "in_document" ? "question" : type;
   }
 
   setType(type: CardType) {

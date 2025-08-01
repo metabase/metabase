@@ -511,7 +511,7 @@
                             [:cache_ttl              {:optional true} [:maybe ms/PositiveInt]]
                             [:dashboard_id           {:optional true} [:maybe ms/PositiveInt]]
                             [:dashboard_tab_id {:optional true} [:maybe ms/PositiveInt]]
-                            [:report_document_id {:optional true} [:maybe ms/PositiveInt]]]]
+                            [:document_id {:optional true} [:maybe ms/PositiveInt]]]]
   (check-if-card-can-be-saved query card-type)
   ;; check that we have permissions to run the query that we're trying to save
   (query-perms/check-run-permissions-for-query query)
@@ -578,7 +578,7 @@
    [:collection_preview     {:optional true} [:maybe :boolean]]
    [:dashboard_id           {:optional true} [:maybe ms/PositiveInt]]
    [:dashboard_tab_id {:optional true} [:maybe ms/PositiveInt]]
-   [:report_document_id {:optional true} [:maybe ms/PositiveInt]]])
+   [:document_id {:optional true} [:maybe ms/PositiveInt]]])
 
 (defn- maybe-populate-collection-id
   "`card-updates` may contain either or both of a `collection_id` and a `dashboard_id`.

@@ -248,21 +248,15 @@
              :schedule_type :daily
              :schedule_hour 15}))
 
-   :model/Report
+   :model/Document
    (fn [_] (default-timestamped
             {:name (u.random/random-name)}))
 
-   :model/ReportVersion
+   :model/DocumentVersion
    (fn [_] (default-timestamped
             {:document (u.random/random-name)
              :content_type "text/markdown"
              :version_identifier 0
-             :user_id (rasta-id)}))
-
-   :model/ReportRun
-   (fn [_] (default-created-at-timestamped
-            {:version_id (data/id)
-             :status :in-progress
              :user_id (rasta-id)}))
 
    :model/Revision

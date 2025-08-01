@@ -73,9 +73,8 @@
     :model/QueryField                        metabase.queries.models.query-field
     :model/QueryTable                        metabase.queries.models.query-table
     :model/RecentViews                       metabase.activity-feed.models.recent-views
-    :model/Report                            metabase-enterprise.reports.models.report
-    :model/ReportRunCardData                 metabase-enterprise.reports.models.report-run-card-data
-    :model/ReportVersion                     metabase-enterprise.reports.models.report-version
+    :model/Document                          metabase-enterprise.documents.models.document
+    :model/DocumentVersion                   metabase-enterprise.documents.models.document-version
     :model/Revision                          metabase.revisions.models.revision
     :model/SearchIndexMetadata               metabase.search.models.search-index-metadata
     :model/Secret                            metabase.secrets.models.secret

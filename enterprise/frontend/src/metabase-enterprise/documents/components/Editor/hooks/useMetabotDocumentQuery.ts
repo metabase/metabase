@@ -58,7 +58,7 @@ export const useMetabotDocumentQuery = () => {
       const createQuestionResponse = await createQuestion({
         visualization_settings: {},
         ...(query as any),
-        type: "in_report",
+        type: "in_document",
         name: "Exploration",
       });
 

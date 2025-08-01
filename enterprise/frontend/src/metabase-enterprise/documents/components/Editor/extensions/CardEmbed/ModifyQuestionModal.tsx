@@ -108,7 +108,7 @@ export const ModifyQuestionModal = ({
       const result = await saveCard({
         card,
         modifiedCardData: {
-          dataset_query: modifiedQuestion.datasetQuery(),
+         dataset_query: modifiedQuestion.datasetQuery(),
           display: modifiedQuestion.display(),
           visualization_settings:
             modifiedQuestion.card().visualization_settings ?? {},

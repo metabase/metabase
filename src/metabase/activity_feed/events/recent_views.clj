@@ -49,10 +49,10 @@
   [topic {:keys [card-id user-id context] :as _event}]
   (try
     (let [user-id  (or user-id api/*current-user-id*)]
-      ;; we don't want to count pinned card views or in_report cards
+      ;; we don't want to count pinned card views or in_document cards
       (when-not (#{:collection :dashboard :dashboard-subscription} context)
         (let [card-type (t2/select-one-fn :type :model/Card :id card-id)]
-          (when-not (= card-type :in_report)
+          (when-not (= card-type :in_document)
             (recent-views/update-users-recent-views! user-id :model/Card card-id :view)))))
     (catch Throwable e
       (log/warnf e "Failed to process recent_views event: %s" topic))))
@@ -69,7 +69,7 @@
   (when (= context :question)
     (try
       (let [card-type (t2/select-one-fn :type :model/Card :id object-id)]
-        (when-not (= card-type :in_report)
+        (when-not (= card-type :in_document)
           (recent-views/update-users-recent-views! (or user-id api/*current-user-id*) :model/Card object-id :view)))
       (catch Throwable e
         (log/warnf e "Failed to process recent_views event: %s" topic)))))

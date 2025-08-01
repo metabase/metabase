@@ -38,10 +38,10 @@
                                                     :context :dashboard-subscription})
           (is (nil? (most-recent-view (mt/user->id :rasta) (:id card-2) "card")))))
 
-      (testing "in_report cards should not be counted"
+      (testing "in_document cards should not be counted"
         (mt/with-temp [:model/Dashboard dashboard {:creator_id (mt/user->id :rasta)}
                        :model/Card card-3 {:creator_id (mt/user->id :rasta)
-                                           :type :in_report
+                                           :type :in_document
                                            :dashboard_id (:id dashboard)}]
           (events/publish-event! :event/card-query {:card-id (:id card-3)
                                                     :user-id (mt/user->id :rasta)
@@ -88,10 +88,10 @@
                                                  :context :dashboard})
         (is (nil? (most-recent-view (mt/user->id :rasta) (:id card) "card"))))))
 
-  (testing "in_report cards should not be counted even with context :question"
+  (testing "in_document cards should not be counted even with context :question"
     (mt/with-temp [:model/Dashboard dashboard {:creator_id (mt/user->id :rasta)}
                    :model/Card card {:creator_id (mt/user->id :rasta)
-                                     :type :in_report
+                                     :type :in_document
                                      :dashboard_id (:id dashboard)}]
       (mt/with-test-user :rasta
         (events/publish-event! :event/card-read {:object-id (:id card)

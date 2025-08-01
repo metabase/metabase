@@ -16,7 +16,7 @@ export const useRegisterDocumentMetabotContext = () => {
     return {
       user_is_viewing: [
         {
-          type: "report", // FIXME: update to document once BE is updated
+          type: "document", // FIXME: update to document once BE is updated
           id: documentId,
         },
       ],

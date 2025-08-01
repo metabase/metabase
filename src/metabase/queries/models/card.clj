@@ -458,16 +458,16 @@
   nil)
 
 (defn- assert-valid-report-card-constraints
-  "Check that the card meets constraints for report_document_id field. Throw an exception if not."
-  [{card-type :type, report-document-id :report_document_id, dashboard-id :dashboard_id, :as _card}]
-  ;; First constraint: Cards with report_document_id must have type :in_report
-  (when (and report-document-id
-             (not= (keyword card-type) :in_report))
-    (throw (ex-info (tru "Cards with report_document_id must have type :in_report")
+  "Check that the card meets constraints for document_id field. Throw an exception if not."
+  [{card-type :type, document-id :document_id, dashboard-id :dashboard_id, :as _card}]
+  ;; First constraint: Cards with document_id must have type :in_document
+  (when (and document-id
+             (not= (keyword card-type) :in_document))
+    (throw (ex-info (tru "Cards with document_id must have type :in_document")
                     {:status-code 400})))
-  ;; Second constraint: Cards cannot have both dashboard_id and report_document_id (mutual exclusion)
-  (when (and dashboard-id report-document-id)
-    (throw (ex-info (tru "Cards cannot have both dashboard_id and report_document_id")
+  ;; Second constraint: Cards cannot have both dashboard_id and document_id (mutual exclusion)
+  (when (and dashboard-id document-id)
+    (throw (ex-info (tru "Cards cannot have both dashboard_id and document_id")
                     {:status-code 400})))
   nil)
 
@@ -491,7 +491,7 @@
         (tru "Invalid Dashboard Question: Cannot set `collection_position` on a Dashboard Question")
         ;; `column-will-change?` seems broken in the case where we 'change' :question to "question"
         (and (api/column-will-change? :type card changes)
-             (not (contains? #{"question" :question "in_report" :in_report} (:type changes))))
+             (not (contains? #{"question" :question "in_document" :in_document} (:type changes))))
         (tru "Invalid Dashboard Question: Cannot set `type` on a Dashboard Question")))))
 
 (defn- assert-is-valid-dashboard-internal-update [changes card]
@@ -518,7 +518,7 @@
   (let [correct-collection-id (t2/select-one-fn :collection_id [:model/Dashboard :collection_id] (:dashboard_id card))
         invalid? (or (and (contains? card :collection_id)
                           (not= correct-collection-id (:collection_id card)))
-                     (not (contains? #{:question "question" :in_report "in_report" nil} (:type card)))
+                     (not (contains? #{:question "question" :in_document "in_document" nil} (:type card)))
                      (some? (:collection_position card)))]
     (when invalid?
       (throw (ex-info (tru "Invalid dashboard-internal card")
@@ -924,7 +924,7 @@
                             (not (:dashboard_id input-card-data)))))
    (let [data-keys                          [:dataset_query :description :display :name :visualization_settings
                                              :parameters :parameter_mappings :collection_id :collection_position
-                                             :cache_ttl :type :dashboard_id :report_document_id]
+                                             :cache_ttl :type :dashboard_id :document_id]
          position-info                      {:collection_id (:collection_id input-card-data)
                                              :collection_position (:collection_position input-card-data)}
          card-data                          (-> (select-keys input-card-data data-keys)
@@ -1113,7 +1113,7 @@
                 ;; `collection_id` and `description` can be `nil` (in order to unset them).
                 ;; Other values should only be modified if they're passed in as non-nil
                 (u/select-keys-when card-updates
-                                    :present #{:collection_id :collection_position :description :cache_ttl :archived_directly :dashboard_id :report_document_id}
+                                    :present #{:collection_id :collection_position :description :cache_ttl :archived_directly :dashboard_id :document_id}
                                     :non-nil #{:dataset_query :display :name :visualization_settings :archived
                                                :enable_embedding :type :parameters :parameter_mappings :embedding_params
                                                :result_metadata :collection_preview :verified-result-metadata?}))
