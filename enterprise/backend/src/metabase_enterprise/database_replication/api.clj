@@ -54,8 +54,13 @@
                           (filter (comp (fn [x] (re-matches #"^[A-Za-z0-9_]+$" x)) :name))       ; sanitized name
                           (filter (fn [t] (some (comp #{:type/PK} :semantic_type) (:fields t)))) ; has-pkey
                           (filter (fn [{:keys [schema]}]
-                                    (or (some #(re-matches % schema) include-patterns)
-                                        (not (some #(re-matches % schema) exclude-patterns)))))
+                                    (cond
+                                      (empty? schemas)
+                                      true
+                                      (not-empty include-patterns)
+                                      (some #(re-matches % schema) include-patterns)
+                                      (not-empty exclude-patterns)
+                                      (not (some #(re-matches % schema) exclude-patterns)))))
                           (map :estimated_row_count)
                           ;; FIXME: `estimated_row_count` might be `nil`, in which case we should tell the user:
                           ;;  "we don't know yet whether this will work, wait or try your luck"
