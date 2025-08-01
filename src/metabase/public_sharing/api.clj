@@ -1,6 +1,7 @@
 (ns metabase.public-sharing.api
   "Metabase API endpoints for viewing publicly-accessible Cards and Dashboards."
   (:require
+   [clojure.string :as str]
    [hiccup.core :as hiccup]
    [medley.core :as m]
    [metabase.actions.core :as actions]
@@ -124,7 +125,10 @@
   "Create the `:make-run` function used for [[process-query-for-card-with-id]] and [[process-query-for-dashcard]]."
   [qp export-format]
   (fn run [query info]
-    (qp.streaming/streaming-response [rff export-format (u/slugify (:card-name info))]
+    (qp.streaming/streaming-response [rff export-format (or (when-let [name (:card-name info)]
+                                                              (when-not (str/blank? name)
+                                                                (u/slugify name)))
+                                                            "question")]
       (binding [qp.pipeline/*result* (comp qp.pipeline/*result* transform-qp-result)]
         (request/as-admin
           (qp (update query :info merge info) rff))))))
