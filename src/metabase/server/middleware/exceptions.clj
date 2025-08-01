@@ -17,10 +17,10 @@
   "Convert an uncaught exception from an API endpoint into an appropriate format to be returned by the REST API (e.g. a
   map, which eventually gets serialized to JSON, or a plain string message)."
   {:arglists '([e])}
-  class)
+  (fn [_req ex] (class ex)))
 
 (defmethod api-exception-response Throwable
-  [^Throwable e]
+  [req ^Throwable e]
   (let [{:keys [status-code], :as info} (ex-data e)
         other-info                      (dissoc info :status-code :schema :type :toucan2/context-trace)
         body                            (cond
@@ -43,18 +43,23 @@
                                            (Throwable->map e)
                                            {:message (.getMessage e)}
                                            other-info))]
-    {:status  (or status-code 500)
-     :headers (mw.security/security-headers)
-     :body    body}))
+    (if (and (some-> e ex-data :status-code #{403})
+             (->> req :uri (re-find #"\d+")))
+      {:status 404
+       :headers (mw.security/security-headers)
+       :body "You don't have permissions to see that or it doesn't exist"}
+      {:status  (or status-code 500)
+       :headers (mw.security/security-headers)
+       :body    body})))
 
 (defmethod api-exception-response SQLException
-  [e]
+  [_req e]
   (-> ((get-method api-exception-response (.getSuperclass SQLException)) e)
       (assoc-in [:body :sql-exception-chain] (str/split (with-out-str (jdbc/print-sql-exception-chain e))
                                                         #"\s*\n\s*"))))
 
 (defmethod api-exception-response EofException
-  [_e]
+  [_req _e]
   (log/info "Request canceled before finishing.")
   {:status-code 204, :body nil, :headers (mw.security/security-headers)})
 
@@ -66,7 +71,7 @@
     (handler
      request
      respond
-     (comp respond api-exception-response))))
+     (comp respond (partial api-exception-response request)))))
 
 (defn catch-uncaught-exceptions
   "Middleware (with `[request respond raise]`) that catches any unexpected Exceptions and reroutes them through `raise`
