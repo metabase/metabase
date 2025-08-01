@@ -92,8 +92,10 @@
     (breakouts-columns query stage-number options)
     (aggregations-columns query stage-number))))
 
-(mu/defn- previous-stage-metadata :- [:maybe ::lib.metadata.calculation/returned-columns]
-  "Metadata for the previous stage, if there is one."
+(mu/defn- visible-columns-from-previous-stage-returned-columns :- [:maybe ::lib.metadata.calculation/visible-columns]
+  "Columns that are visible in the current stage because they were returned by the previous stage, if there is one.
+  These are updated to use correct aliases and other info for the current stage
+  with [[lib.field.util/update-keys-for-col-from-previous-stage]]."
   [query        :- ::lib.schema/query
    stage-number :- :int
    options      :- [:maybe ::lib.metadata.calculation/returned-columns.options]]
@@ -101,8 +103,7 @@
     (not-empty
      (into []
            (comp (map lib.field.util/update-keys-for-col-from-previous-stage)
-                 (map #(assoc % :lib/source :source/previous-stage))
-                 (lib.field.util/add-source-and-desired-aliases-xform query))
+                 (map #(assoc % :lib/source :source/previous-stage)))
            (lib.metadata.calculation/returned-columns query
                                                       previous-stage-number
                                                       (lib.util/query-stage query previous-stage-number)
@@ -183,7 +184,7 @@
             (map lib.field.util/update-keys-for-col-from-previous-stage))
           (or
            ;; 1a. columns returned by previous stage
-           (previous-stage-metadata query stage-number options)
+           (visible-columns-from-previous-stage-returned-columns query stage-number options)
            ;; 1b: default visible Fields for the source Table
            (when source-table
              (assert (integer? source-table))
@@ -226,12 +227,10 @@
    _stage                                              :- ::lib.schema/stage
    {:keys [include-implicitly-joinable?], :as options} :- ::lib.metadata.calculation/visible-columns.options]
   (let [existing-columns (existing-visible-columns query stage-number options)]
-    (->> (concat
-          existing-columns
-           ;; add implicitly joinable columns if desired
+    (into (vec existing-columns)
+          ;; add implicitly joinable columns if desired
           (when include-implicitly-joinable?
-            (lib.metadata.calculation/implicitly-joinable-columns query stage-number existing-columns)))
-         vec)))
+            (lib.metadata.calculation/implicitly-joinable-columns query stage-number existing-columns)))))
 
 (defn- add-cols-from-join-duplicate?
   "Whether two columns are considered to be the same for purposes of [[add-cols-from-join]]."

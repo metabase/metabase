@@ -80,7 +80,14 @@
         (seq (:source-metadata join))
         (-> (assoc-in [:stages (dec (count (:stages join))) :lib/stage-metadata] {:lib/type :metadata/results
                                                                                   :columns  (:source-metadata join)})
-            (dissoc :source-metadata))))))
+            (dissoc :source-metadata))
+
+        ;; automatically fix :condition => :conditions if we run into it. Kinda overlapping responsibility
+        ;; with [[metabase.lib.convert]] but this lets us write busted stuff in tests more easily
+        ;; using [[metabase.lib.test-util.macros/mbql-5-query]]
+        (:condition join)
+        (-> (dissoc :condition)
+            (assoc :conditions [(:condition join)]))))))
 
 (mr/def ::join
   [:and
@@ -97,7 +104,13 @@
     [:strategy {:optional true} ::strategy]]
    [:fn
     {:error/message "join should not have metadata attached directly to them; attach metadata to their last stage instead"}
-    (complement (some-fn :lib/stage-metadata :source-metadata))]])
+    (complement (some-fn :lib/stage-metadata :source-metadata))]
+   [:fn
+    {:error/message ":condition is not allowed for MBQL 5 joins, use :conditions instead"}
+    (complement :condition)]
+   [:fn
+    {:error/message "join should not have :source-table or :source-query; use :stages instead"}
+    (complement (some-fn :source-table :source-query))]])
 
 (mr/def ::joins
   [:and

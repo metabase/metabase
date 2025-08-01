@@ -1166,3 +1166,32 @@
                 (lib.field.resolution/resolve-field-ref
                  query 1
                  (lib/normalize :mbql.clause/field [:field {:base-type :type/Integer} "Category__ID"]))))))))
+
+(deftest ^:parallel return-correct-metadata-for-broken-field-refs-test
+  (testing "Do not propagate join alias in metadata for busted field refs that incorrectly use it (QUE-1496)"
+    (let [query     (lib/query
+                     meta/metadata-provider
+                     (lib.tu.macros/mbql-query venues
+                       {:source-query {:source-table $$venues
+                                       :joins        [{:strategy     :left-join
+                                                       :source-table $$categories
+                                                       :alias        "Cat"
+                                                       :condition    [:= $category-id &Cat.categories.id]
+                                                       :fields       [&Cat.categories.name]}]
+                                       :fields       [$id
+                                                      &Cat.categories.name]}
+                        ;; THIS REF IS WRONG -- it should not be using `Cat` because the join is in the source query
+                        ;; rather than in the current stage. However, we should be smart enough to try to figure out
+                        ;; what they meant.
+                        :breakout     [&Cat.categories.name]}))
+          [bad-ref] (lib/breakouts query -1)]
+      ;; maybe one day `lib/query` will automatically fix bad refs like these. If that happens, we probably don't even
+      ;; need this test anymore? Or we should update it so it's still testing with a bad ref rather than a fixed ref.
+      (is (=? [:field {:join-alias "Cat"} (meta/id :categories :name)]
+              bad-ref))
+      (is (=? {:table-id                     (meta/id :categories)
+               :id                           (meta/id :categories :name)
+               :name                         "NAME"
+               :lib/original-join-alias      "Cat"
+               :metabase.lib.join/join-alias (symbol "nil #_\"key is not present.\"")}
+              (lib.field.resolution/resolve-field-ref query -1 bad-ref))))))
