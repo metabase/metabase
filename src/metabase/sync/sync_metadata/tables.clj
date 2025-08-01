@@ -303,13 +303,22 @@
                      (sync-util/name-for-logging table)
                      (:deactivated_at table)
                      new-name)
-          (let [did-update (t2/update! :model/Table
-                                       {:id (:id table)
-                                        :active false}
-                                       {:archived_at (mi/now)
-                                        :name new-name})]
+          (let [[did-update err]
+                (try
+                  ;; in the extremely unlikely case that there already exists a table with our
+                  ;; archived name, we let it fail from hitting the unique constraints violation
+                  ;; and just report the failure
+                  [(t2/update! :model/Table
+                               {:id (:id table)
+                                :active false}
+                               {:archived_at (mi/now)
+                                :name new-name})]
+                  (catch Throwable t
+                    [0 t]))]
             (when (zero? did-update)
-              (log/warnf "Did not archive table %s" (sync-util/name-for-logging table)))
+              (if err
+                (log/errorf err "Failed archiving table %s" (sync-util/name-for-logging table))
+                (log/warnf "Did not archive table %s" (sync-util/name-for-logging table))))
             (swap! archived + did-update)))))
     @archived))
 
