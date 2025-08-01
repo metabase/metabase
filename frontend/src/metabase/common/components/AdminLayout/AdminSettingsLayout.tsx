@@ -23,10 +23,8 @@ export const AdminSettingsLayout = ({
           {sidebar}
         </Box>
         <Box className={S.Content} data-testid="admin-layout-content">
-          <Box maw={maw} w="100%">
-            <Box pb="2rem">
-              <ErrorBoundary>{children ?? <NotFound />}</ErrorBoundary>
-            </Box>
+          <Box maw={maw} w="100%" pb="2rem">
+            <ErrorBoundary>{children ?? <NotFound />}</ErrorBoundary>
           </Box>
         </Box>
       </Box>

@@ -17,7 +17,7 @@ import {
 
 export function NewTransformPage() {
   return (
-    <Flex direction="column" justify="center" align="center">
+    <Flex direction="column" justify="center" align="center" h="100%">
       <Flex direction="column" justify="center" align="center">
         <img
           src={EmptyDashboardBot}
