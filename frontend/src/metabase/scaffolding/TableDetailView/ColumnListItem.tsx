@@ -20,6 +20,7 @@ import { ColumnFormatControl } from "../components/ColumnFormatControl";
 import S from "./TableDetailView.module.css";
 
 interface Props {
+  handleProps: any;
   column: DatasetColumn;
   style?: "normal" | "bold" | "dim" | "title";
   onChangeFieldSettings?: (update: {
@@ -30,6 +31,7 @@ interface Props {
 }
 
 export function ColumnListItem({
+  handleProps,
   column,
   style,
   onChangeFieldSettings,
@@ -53,6 +55,7 @@ export function ColumnListItem({
             name="grabber"
             className={S.ObjectViewSidebarColumnActionIcon}
             style={{ cursor: "grab" }}
+            {...handleProps}
             // {...attributes}
             // {...listeners}
           />

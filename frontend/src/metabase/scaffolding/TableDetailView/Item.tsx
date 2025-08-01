@@ -106,7 +106,7 @@ const ItemBase = forwardRef<HTMLLIElement, Props>(
     ) => {
       onUpdateSection({
         fields: section.fields.map((f) => {
-          if (f.field_id === fieldId) {
+          if (String(f.field_id) === String(fieldId)) {
             return { ...f, style };
           }
           return f;
@@ -116,7 +116,9 @@ const ItemBase = forwardRef<HTMLLIElement, Props>(
 
     const handleHideField = (fieldId: number) => {
       onUpdateSection({
-        fields: section.fields.filter((f) => f.field_id !== fieldId),
+        fields: section.fields.filter(
+          (f) => String(f.field_id) !== String(fieldId),
+        ),
       });
     };
 
@@ -160,11 +162,15 @@ const ItemBase = forwardRef<HTMLLIElement, Props>(
           )}
           style={style}
           data-cypress="draggable-item"
-          {...(!handle ? listeners : undefined)}
+          // {...(!handle ? listeners : undefined)}
           {...props}
           tabIndex={!handle ? 0 : undefined}
         >
           <ColumnListItem
+            handleProps={{
+              ...handleProps,
+              ...listeners,
+            }}
             key={fieldSettings.field_id}
             column={column}
             style={fieldSettings.style}

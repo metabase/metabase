@@ -61,8 +61,8 @@
   transition: box-shadow 200ms cubic-bezier(0.18, 0.67, 0.6, 1.22);
 
   &:not(.withHandle) {
-    touch-action: manipulation;
-    cursor: grab;
+    /* touch-action: manipulation; */
+    /* cursor: grab; */
   }
 
   &.dragging:not(.dragOverlay) {

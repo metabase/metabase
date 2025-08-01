@@ -465,11 +465,9 @@ export function Dnd({
         }
 
         if (overId === PLACEHOLDER_ID) {
-          debugger;
           const newContainerId = getNextContainerId();
 
           unstable_batchedUpdates(() => {
-            setContainers((containers) => [...containers, newContainerId]);
             setItems((items) => ({
               ...items,
               [activeContainer]: items[activeContainer].filter(
@@ -789,7 +787,7 @@ function SortableItem({
   function getFieldSection(id: UniqueIdentifier) {
     return sections.find((s) =>
       s.fields.some((f) => String(f.field_id) === String(id)),
-    );
+    )!;
   }
 
   return (
@@ -819,9 +817,9 @@ function SortableItem({
       //
       column={getColumn(id)}
       fieldSettings={getFieldSettings(id)}
-      section={getSection(id)}
+      section={getFieldSection(id)}
       onUpdateSection={(update) => {
-        onUpdateSection(getSection(id)?.id, update);
+        onUpdateSection(getFieldSection(id)?.id, update);
       }}
     />
   );
