@@ -12,6 +12,12 @@
    [toucan2.core :as t2]
    [toucan2.model :as t2.model]))
 
+;; This constant is also defined in metabase.revisions.impl.card but we duplicate it here
+;; to avoid circular dependencies. Keep both definitions in sync!
+(def legacy-card-schema-version
+  "The default schema version assigned to all cards that existed before the `:card_schema` column was added in v0.55."
+  20)
+
 (defn toucan-model?
   "Check if `model` is a toucan model."
   [model]
@@ -169,8 +175,18 @@
   "Get the revisions for `model` with `id` in reverse chronological order."
   [model :- [:fn toucan-model?]
    id    :- pos-int?]
-  (let [model-name (name model)]
-    (t2/select :model/Revision :model model-name :model_id id {:order-by [[:id :desc]]})))
+  (let [model-name (name model)
+        revisions (t2/select :model/Revision :model model-name :model_id id {:order-by [[:id :desc]]})]
+    (if (= model :model/Card)
+      ;; For Card revisions, ensure old ones have card_schema to prevent errors in after-select.
+      ;; Old revisions from before v0.55 won't have this field in their serialized object data.
+      (mapv (fn [revision]
+              (if (and (map? (:object revision))
+                       (not (:card_schema (:object revision))))
+                (update revision :object assoc :card_schema legacy-card-schema-version)
+                revision))
+            revisions)
+      revisions)))
 
 (mu/defn revisions+details
   "Fetch `revisions` for `model` with `id` and add details."
