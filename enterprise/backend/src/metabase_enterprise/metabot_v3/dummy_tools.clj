@@ -14,6 +14,16 @@
    [metabase.warehouse-schema.models.field-values :as field-values]
    [toucan2.core :as t2]))
 
+(defn- verified-review?
+  "Return true if the most recent ModerationReview for the given item id/type is verified."
+  [id item-type]
+  (let [review (t2/select-one [:model/ModerationReview :status]
+                              :moderated_item_id id
+                              :moderated_item_type item-type
+                              :most_recent true
+                              {:order-by [[:id :desc]]})]
+    (= (:status review) "verified")))
+
 (defn get-current-user
   "Get information about the current user."
   []
@@ -31,7 +41,11 @@
   [{:keys [dashboard-id]}]
   (if-let [dashboard (t2/select-one [:model/Dashboard :id :description :name :collection_id] dashboard-id)]
     (do (api/read-check dashboard)
-        {:structured-output (-> dashboard (dissoc :collection_id) (assoc :type :dashboard))})
+        {:structured-output
+         (-> dashboard
+             (dissoc :collection_id)
+             (assoc :type :dashboard
+                    :verified (verified-review? dashboard-id "dashboard")))})
     {:output "dashboard not found"}))
 
 (defn- add-field-values
@@ -89,7 +103,8 @@
                                                       default-temporal-breakout
                                                       (col-index default-temporal-breakout)
                                                       field-id-prefix)
-                                                     :field-id))}
+                                                     :field-id))
+              :verified (verified-review? id "card")}
        with-queryable-dimensions?
        (assoc :queryable-dimensions (into []
                                           (comp (map #(add-table-reference base-query %))
@@ -120,7 +135,7 @@
         :as   options}]
    (when-let [base (if metadata-provider
                      (lib.metadata/table metadata-provider id)
-                     (metabot-v3.tools.u/get-table id :db_id :description :name))]
+                     (metabot-v3.tools.u/get-table id :db_id :description :name :schema))]
      (let [query-needed? (or with-fields? with-metrics?)
            mp (when query-needed?
                 (or metadata-provider
@@ -136,9 +151,12 @@
        (-> {:id id
             :type :table
             :fields (into [] (map-indexed #(metabot-v3.tools.u/->result-column table-query %2 %1 field-id-prefix)) cols)
-            ;; :name should be (lib/display-name table-query), but we want to avoid creating the query if possible
-            :name (some->> (:name base)
-                           (u.humanization/name->human-readable-name :simple))}
+            :name (:name base)
+            ;; :display_name should be (lib/display-name table-query), but we want to avoid creating the query if possible
+            :display_name (some->> (:name base)
+                                   (u.humanization/name->human-readable-name :simple))
+            :database_id (:db_id base)
+            :database_schema (:schema base)}
            (m/assoc-some :description (:description base)
                          :metrics (when with-metrics?
                                     (not-empty (mapv #(convert-metric % mp options)
@@ -178,7 +196,12 @@
           :type card-type
           :fields (into [] (map-indexed #(metabot-v3.tools.u/->result-column card-query %2 %1 field-id-prefix)) cols)
           :name (:name base)
-          :queryable-foreign-key-tables []}
+          :display_name (some->> (:name base)
+                                 (u.humanization/name->human-readable-name :simple))
+          :database_id (:database_id base)
+          :queryable-foreign-key-tables []
+          :verified (verified-review? id "card")}
+
          (m/assoc-some :description (:description base)
                        :metrics (when with-metrics?
                                   (not-empty (mapv #(convert-metric % metadata-provider options)
@@ -225,7 +248,7 @@
                                   :with-metrics?                   true
                                   :with-default-temporal-breakout? false
                                   :with-queryable-dimensions?      false})
-          (tap> (queries)))))
+                 (tap> (queries)))))
   -)
 
 (defn get-table-details
@@ -282,7 +305,7 @@
           details (if (int? report-id)
                     (let [details (card-details report-id options)]
                       (some-> details
-                              (select-keys [:id :type :description :name])
+                              (select-keys [:id :type :description :name :verified])
                               (assoc :result-columns (:fields details))))
                     "invalid report_id")]
       (if (map? details)
