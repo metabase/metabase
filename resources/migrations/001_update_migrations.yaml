@@ -12155,7 +12155,7 @@ databaseChangeLog:
       rollback: # not necessary
 
   - changeSet:
-      id: v55.2025-07-30T10:35:00
+      id: v56.2025-07-30T10:35:00
       author: bronsa
       comment: Add deactivated_at column to metabase_table
       preConditions:
@@ -12176,7 +12176,7 @@ databaseChangeLog:
                     nullable: true
 
   - changeSet:
-      id: v55.2025-07-30T10:35:01
+      id: v56.2025-07-30T10:35:01
       author: bronsa
       comment: Add archived_at column to metabase_table
       preConditions:
@@ -12197,7 +12197,7 @@ databaseChangeLog:
                     nullable: true
 
   - changeSet:
-      id: v55.2025-07-30T10:41:00
+      id: v56.2025-07-30T10:41:00
       author: bronsa
       comment: Add composite index on metabase_table for unarchived deactivated tables by db_id (PostgreSQL)
       dbms: postgresql
@@ -12219,7 +12219,7 @@ databaseChangeLog:
             indexName: idx_metabase_table_db_deactivated
 
   - changeSet:
-      id: v55.2025-07-30T10:43:00
+      id: v56.2025-07-30T10:43:00
       author: bronsa
       comment: Backfill deactivated_at for existing inactive tables
       changes:
@@ -12234,6 +12234,60 @@ databaseChangeLog:
             sql: >-
               UPDATE metabase_table
               SET deactivated_at = NULL;
+
+  - changeSet:
+      id: v56.2025-08-01T11:11:00
+      author: bronsa
+      comment: Migration to allow rollbacking of archived tables when possible
+      changes:
+        - empty: #no-op on forward migration
+      rollback:
+        - sql:
+            dbms: postgresql
+            sql: >-
+              UPDATE metabase_table
+              SET
+                name = REGEXP_REPLACE(name, '__mbarchiv__\d+$', ''),
+                archived_at = NULL
+              WHERE archived_at IS NOT NULL
+                AND name ~ '__mbarchiv__\d+$'
+                AND NOT EXISTS (
+                  SELECT 1 FROM metabase_table mt2
+                  WHERE mt2.db_id = metabase_table.db_id
+                    AND mt2.schema IS NOT DISTINCT FROM metabase_table.schema
+                    AND mt2.name = REGEXP_REPLACE(metabase_table.name, '__mbarchiv__\d+$', '')
+                    AND mt2.id != metabase_table.id);
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              UPDATE metabase_table mt1
+              LEFT JOIN metabase_table mt2 ON (
+                mt2.db_id = mt1.db_id
+                AND (mt2.schema = mt1.schema OR (mt2.schema IS NULL AND mt1.schema IS NULL))
+                AND mt2.name = SUBSTRING(mt1.name, 1, POSITION('__mbarchiv__' IN mt1.name) - 1)
+                AND mt2.id != mt1.id
+              )
+              SET
+                mt1.name = SUBSTRING(mt1.name, 1, POSITION('__mbarchiv__' IN mt1.name) - 1),
+                mt1.archived_at = NULL
+              WHERE mt1.archived_at IS NOT NULL
+                AND mt1.name LIKE '%__mbarchiv__%'
+                AND mt2.id IS NULL;
+        - sql:
+            dbms: h2
+            sql: >-
+              UPDATE metabase_table
+              SET
+                name = SUBSTRING(name, 1, POSITION('__mbarchiv__' IN name) - 1),
+                archived_at = NULL
+              WHERE archived_at IS NOT NULL
+                AND name LIKE '%__mbarchiv__%'
+                AND NOT EXISTS (
+                  SELECT 1 FROM metabase_table mt2
+                  WHERE mt2.db_id = metabase_table.db_id
+                    AND (mt2.schema = metabase_table.schema OR (mt2.schema IS NULL AND metabase_table.schema IS NULL))
+                    AND mt2.name = SUBSTRING(metabase_table.name, 1, POSITION('__mbarchiv__' IN metabase_table.name) - 1)
+                    AND mt2.id != metabase_table.id);
 
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
