@@ -20,7 +20,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -36,11 +36,13 @@ import {
   type IconName,
   Portal,
   Text,
+  Textarea,
 } from "metabase/ui/components";
 import { getIconForField } from "metabase-lib/v1/metadata/utils/fields";
 import type {
   DatasetColumn,
   ObjectViewSectionSettings,
+  ObjectViewSettings,
 } from "metabase-types/api";
 
 import { ColumnFormatControl } from "../components/ColumnFormatControl";
@@ -50,12 +52,14 @@ import S from "./TableDetailView.module.css";
 interface DetailViewSidebarProps {
   columns: DatasetColumn[];
   sections: ObjectViewSectionSettings[];
+  objectViewSettings: ObjectViewSettings;
   onCreateSection: () => void;
   onUpdateSection: (
     id: number,
     update: Partial<ObjectViewSectionSettings>,
   ) => void;
   onRemoveSection: (id: number) => void;
+  onUpdateObjectView: (update: Partial<ObjectViewSettings>) => void;
   onDragEnd: (event: any) => void;
 }
 
@@ -64,13 +68,37 @@ const HIDDEN_COLUMNS_ID = "hidden-columns";
 function DetailViewSidebar({
   columns,
   sections,
+  objectViewSettings,
   onCreateSection,
   onUpdateSection,
   onRemoveSection,
+  onUpdateObjectView,
   onDragEnd,
 }: DetailViewSidebarProps) {
   const [activeId, setActiveId] = useState<UniqueIdentifier | null>(null);
   const [isDraggingSection, setIsDraggingSection] = useState(false);
+  
+  // Local state for markdown to prevent losing focus
+  const [localMarkdown, setLocalMarkdown] = useState(objectViewSettings.markdown || "");
+
+  // Sync local state when objectViewSettings changes
+  useEffect(() => {
+    setLocalMarkdown(objectViewSettings.markdown || "");
+  }, [objectViewSettings.markdown]);
+
+  // Debounced update function
+  const debouncedUpdate = useCallback(
+    _.debounce((markdown: string) => {
+      onUpdateObjectView({ markdown });
+    }, 500),
+    [onUpdateObjectView]
+  );
+
+  const handleMarkdownChange = useCallback((event: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const value = event.currentTarget.value;
+    setLocalMarkdown(value);
+    debouncedUpdate(value);
+  }, [debouncedUpdate]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -272,6 +300,27 @@ function DetailViewSidebar({
       onDragEnd={handleDragEnd}
     >
       <Box>
+        <Box mb="lg">
+          <Text size="sm" fw={600} mb="xs">{t`Detail view markdown`}</Text>
+          <Text size="xs" c="text-medium" mb="xs">
+            {t`Use {{field_name}} to reference field values. For example: {{Name}} or {{Created At}}`}
+          </Text>
+          <Textarea
+            placeholder={t`Add markdown content to display above all sections...
+
+Example:
+# Welcome {{Name}}!
+Last updated: {{Updated At}}
+
+This record was created on {{Created At}}.`}
+            value={localMarkdown}
+            onChange={handleMarkdownChange}
+            minRows={3}
+            maxRows={10}
+            autosize
+          />
+        </Box>
+
         <SortableContext
           items={sections.map((section) => section.id)}
           strategy={verticalListSortingStrategy}

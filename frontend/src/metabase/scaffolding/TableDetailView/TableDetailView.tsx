@@ -23,6 +23,7 @@ import {
 import { Link } from "react-router";
 import { push } from "react-router-redux";
 import { t } from "ttag";
+import Markdown from "react-markdown";
 
 import { skipToken } from "metabase/api/api";
 import { useGetAdhocQueryQuery } from "metabase/api/dataset";
@@ -50,6 +51,36 @@ import type {
   StructuredDatasetQuery,
   TableId,
 } from "metabase-types/api";
+
+// Helper function to interpolate field values into markdown
+function interpolateFieldsInMarkdown(
+  markdown: string,
+  columns: DatasetColumn[],
+  row: RowValues,
+): string {
+  return markdown.replace(/\{\{([^}]+)\}\}/g, (match, fieldReference) => {
+    const fieldName = fieldReference.trim();
+    
+    // Find column by display_name or name
+    const column = columns.find(
+      col => col.display_name === fieldName || col.name === fieldName
+    );
+    
+    if (!column) {
+      return match; // Return original if field not found
+    }
+    
+    const columnIndex = columns.indexOf(column);
+    const value = row[columnIndex];
+    
+    if (value == null) {
+      return "";
+    }
+    
+    // Format the value using the same formatting as the detail view
+    return formatValue(value, { column });
+  });
+}
 
 import {
   getDefaultObjectViewSettings,
@@ -159,6 +190,10 @@ export function TableDetailViewInner({
       : defaultSections;
   }, [table?.component_settings?.object_view?.sections, defaultSections]);
 
+  const objectViewSettings = useMemo(() => {
+    return table?.component_settings?.object_view || { sections: defaultSections };
+  }, [table?.component_settings?.object_view, defaultSections]);
+
   const {
     sections,
     createSection,
@@ -166,6 +201,17 @@ export function TableDetailViewInner({
     removeSection,
     handleDragEnd,
   } = useDetailViewSections(initialSections);
+
+  const [currentObjectViewSettings, setCurrentObjectViewSettings] = useState(objectViewSettings);
+
+  // Sync with objectViewSettings when it changes
+  useEffect(() => {
+    setCurrentObjectViewSettings(objectViewSettings);
+  }, [objectViewSettings]);
+
+  const updateObjectView = useCallback((update: Partial<ObjectViewSettings>) => {
+    setCurrentObjectViewSettings(prev => ({ ...prev, ...update }));
+  }, []);
 
   const sectionsOrOverride = isListView
     ? (sectionsOverride ?? sections)
@@ -198,6 +244,7 @@ export function TableDetailViewInner({
           ...(table?.component_settings ?? { list_view: {} }),
           object_view: {
             sections: sectionsOrOverride,
+            markdown: currentObjectViewSettings.markdown,
           },
         },
       }).unwrap();
@@ -211,6 +258,7 @@ export function TableDetailViewInner({
     tableId,
     table?.component_settings,
     sectionsOrOverride,
+    currentObjectViewSettings.markdown,
     dispatch,
     rowId,
   ]);
@@ -389,9 +437,11 @@ export function TableDetailViewInner({
             <DetailViewSidebar
               columns={columns}
               sections={sectionsOrOverride}
+              objectViewSettings={currentObjectViewSettings}
               onCreateSection={createSection}
               onUpdateSection={updateSection}
               onRemoveSection={removeSection}
+              onUpdateObjectView={updateObjectView}
               onDragEnd={handleDragEnd}
             />
           </Box>
@@ -416,13 +466,26 @@ export function TableDetailViewInner({
   const Container = isListView ? ListContainer : DetailContainer;
   return (
     <Container>
-      {/* {isEdit && !isListView && (
-        <Flex align="center" justify="center" w="100%" mt="md">
-          <Tooltip label={t`Add section`}>
-            <Button leftSection={<Icon name="add" />} onClick={() => createSection({ position: "start" })} />
-          </Tooltip>
-        </Flex>
-      )} */}
+      {currentObjectViewSettings.markdown && (
+        <Box 
+          mt={isListView ? 0 : "md"} 
+          mb="lg" 
+          style={{
+            border: "1px solid var(--border-color)",
+            borderRadius: "var(--default-border-radius)",
+          }}
+          p="md"
+          bg="bg-white"
+        >
+          <Markdown>
+            {interpolateFieldsInMarkdown(
+              currentObjectViewSettings.markdown,
+              columns,
+              row
+            )}
+          </Markdown>
+        </Box>
+      )}
 
       <Stack gap="md" mt={isListView ? 0 : "md"} mb={isListView ? 0 : "sm"}>
         <DndContext
