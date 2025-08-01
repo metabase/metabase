@@ -252,14 +252,15 @@
         ;; 3. Later, we combine all HTMLs using ordinary string mashing.
         merged-attachments  (volatile! {})
         result-attachments  (volatile! [])
-        html-contents       (->> dashboard_parts
-                                 (assoc-attachment-booleans (:dashboard_subscription_dashcards dashboard_subscription))
-                                 (mapv #(let [{:keys [attachments content]}
-                                              (render-part timezone % {:channel.render/include-title? true})
-                                              result-attachment (email.result-attachment/result-attachment %)]
-                                          (vswap! merged-attachments merge attachments)
-                                          (vswap! result-attachments into result-attachment)
-                                          (html content))))
+        html-contents        (binding [urls/*dashcard-parameters* parameters]
+                               (->> dashboard_parts
+                                    (assoc-attachment-booleans (:dashboard_subscription_dashcards dashboard_subscription))
+                                    (mapv #(let [{:keys [attachments content]}
+                                                 (render-part timezone % {:channel.render/include-title? true})
+                                                 result-attachment (email.result-attachment/result-attachment %)]
+                                             (vswap! merged-attachments merge attachments)
+                                             (vswap! result-attachments into result-attachment)
+                                             (html content)))))
         icon-attachment     (make-message-attachment (first (icon-bundle :dashboard)))
         card-attachments    (map make-message-attachment @merged-attachments)
         attachments         (concat [icon-attachment] card-attachments @result-attachments)
