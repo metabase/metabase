@@ -120,11 +120,22 @@ describe("EditableDashboard", () => {
     ).toBeInTheDocument();
 
     // Default `entityTypes` should be `["model", "table"]`
+    // Data picker makes two calls: model count and data sources
     const dataPickerDataCalls = fetchMock.calls("path:/api/search");
-    expect(dataPickerDataCalls).toHaveLength(1);
-    const [[dataPickerDataCallUrl]] = dataPickerDataCalls;
-    expect(dataPickerDataCallUrl).toContain("models=dataset");
-    expect(dataPickerDataCallUrl).toContain("models=table");
+    expect(dataPickerDataCalls).toHaveLength(2);
+
+    // Should make a call to count the data sources (tables and models)
+    const countDataSourceCall = dataPickerDataCalls.filter(
+      ([url]) => url.includes("models=dataset") && url.includes("models=table"),
+    );
+    expect(countDataSourceCall).toHaveLength(1);
+
+    // Should make a call to count models
+    const countModelCall = dataPickerDataCalls.filter(
+      ([url]) =>
+        url.includes("models=dataset") && !url.includes("models=table"),
+    );
+    expect(countModelCall).toHaveLength(1);
   });
 
   it("should allow to go back to the dashboard after seeing the query builder", async () => {
