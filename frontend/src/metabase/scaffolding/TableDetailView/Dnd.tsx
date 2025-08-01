@@ -635,7 +635,7 @@ export function Dnd({
             </DroppableContainer>
           ))}
 
-          <Button
+          {/* <Button
             variant="subtle"
             size="compact-sm"
             leftSection={<Icon name="add" />}
@@ -648,13 +648,14 @@ export function Dnd({
               direction={relationshipsDirection}
               onUpdateDirection={onUpdateRelationshipsDirection || (() => {})}
             />
-          )}
+          )} */}
 
-          <Text fw={600} mb="sm">{t`Hidden columns`}</Text>
+          <Stack gap="sm" mt="md">
+            <Text fw={600}>{t`Hidden columns`}</Text>
 
-          <Stack gap="sm">
             {hiddenColumns.map((column) => (
               <ColumnListItem
+                draggable={false}
                 key={column.id}
                 column={column}
                 onUnhideField={() => handleUnhideField(column.id as number)}

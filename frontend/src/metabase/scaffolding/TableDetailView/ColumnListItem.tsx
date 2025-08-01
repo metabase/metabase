@@ -20,6 +20,7 @@ import { ColumnFormatControl } from "../components/ColumnFormatControl";
 import S from "./TableDetailView.module.css";
 
 interface Props {
+  draggable?: boolean;
   handleProps: any;
   column: DatasetColumn;
   style?: "normal" | "bold" | "dim" | "title";
@@ -31,6 +32,7 @@ interface Props {
 }
 
 export function ColumnListItem({
+  draggable = true,
   handleProps,
   column,
   style,
@@ -51,14 +53,16 @@ export function ColumnListItem({
     >
       <Flex pl="md" align="center" justify="space-between">
         <Group gap="sm">
-          <Icon
-            name="grabber"
-            className={S.ObjectViewSidebarColumnActionIcon}
-            style={{ cursor: "grab" }}
-            {...handleProps}
-            // {...attributes}
-            // {...listeners}
-          />
+          {draggable && (
+            <Icon
+              name="grabber"
+              className={S.ObjectViewSidebarColumnActionIcon}
+              style={{ cursor: "grab" }}
+              {...handleProps}
+              // {...attributes}
+              // {...listeners}
+            />
+          )}
           <Icon name={getIconForField(column) as IconName} />
           <Text>{column.display_name}</Text>
         </Group>
