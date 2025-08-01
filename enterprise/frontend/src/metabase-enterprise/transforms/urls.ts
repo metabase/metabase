@@ -2,7 +2,7 @@ import type { CardId, DatasetQuery, TransformId } from "metabase-types/api";
 
 export const ROOT_URL = "/admin/transforms";
 
-export function getOverviewPageUrl() {
+export function getTransformRootPageUrl() {
   return ROOT_URL;
 }
 

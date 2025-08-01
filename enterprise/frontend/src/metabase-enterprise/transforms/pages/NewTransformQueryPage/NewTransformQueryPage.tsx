@@ -8,8 +8,8 @@ import * as Urls from "metabase/lib/urls";
 import Question from "metabase-lib/v1/Question";
 import type { Card, CardId, DatasetQuery } from "metabase-types/api";
 
-import { QueryEditor } from "../../components/QueryEditor";
-import { getOverviewPageUrl } from "../../urls";
+import { TransformQueryEditor } from "../../components/TransformQueryEditor";
+import { getTransformRootPageUrl } from "../../urls";
 
 type NewTransformQueryPageParams = {
   type?: string;
@@ -53,11 +53,11 @@ function NewTransformPageBody({ initialQuery }: NewTransformPageBodyProps) {
   };
 
   const handleCancelClick = () => {
-    dispatch(push(getOverviewPageUrl()));
+    dispatch(push(getTransformRootPageUrl()));
   };
 
   return (
-    <QueryEditor
+    <TransformQueryEditor
       query={query}
       isNew
       onSave={handleSaveClick}

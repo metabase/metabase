@@ -7,12 +7,12 @@ import type { DatasetQuery } from "metabase-types/api";
 import { EditorBody } from "./EditorBody";
 import { EditorHeader } from "./EditorHeader";
 import { EditorVisualization } from "./EditorVisualization";
-import S from "./QueryEditor.module.css";
+import S from "./TransformQueryEditor.module.css";
 import { useQueryMetadata } from "./use-query-metadata";
 import { useQueryResults } from "./use-query-results";
 import { useQueryState } from "./use-query-state";
 
-type QueryEditorProps = {
+type TransformQueryEditorProps = {
   query: DatasetQuery;
   isNew?: boolean;
   isSaving?: boolean;
@@ -20,13 +20,13 @@ type QueryEditorProps = {
   onCancel: () => void;
 };
 
-export function QueryEditor({
+export function TransformQueryEditor({
   query: initialQuery,
   isNew = true,
   isSaving = false,
   onSave,
   onCancel,
-}: QueryEditorProps) {
+}: TransformQueryEditorProps) {
   const { question, setQuestion } = useQueryState(initialQuery);
   const { isInitiallyLoaded } = useQueryMetadata(question);
   const {

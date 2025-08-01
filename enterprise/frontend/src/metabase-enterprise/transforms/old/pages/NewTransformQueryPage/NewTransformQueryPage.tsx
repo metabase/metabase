@@ -21,7 +21,7 @@ import type {
   TransformTarget,
 } from "metabase-types/api";
 
-import { QueryEditor } from "../../../components/QueryEditor";
+import { TransformQueryEditor } from "../../../components/TransformQueryEditor";
 
 type NewTransformQueryPageParams = {
   type?: string;
@@ -79,7 +79,7 @@ function NewTransformPageBody({ initialQuery }: NewTransformPageBodyProps) {
   };
   return (
     <>
-      <QueryEditor
+      <TransformQueryEditor
         query={query}
         isNew
         onSave={handleSaveClick}

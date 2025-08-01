@@ -7,7 +7,7 @@ import { useUpdateTransformMutation } from "metabase-enterprise/api";
 import { getTransformUrl } from "metabase-enterprise/transforms/old/utils/urls";
 import type { DatasetQuery, Transform } from "metabase-types/api";
 
-import { QueryEditor } from "../../../../components/QueryEditor";
+import { TransformQueryEditor } from "../../../../components/TransformQueryEditor";
 
 type TransformQuerySettingsProps = {
   transform: Transform;
@@ -42,7 +42,7 @@ export function TransformQuerySettings({
   };
 
   return (
-    <QueryEditor
+    <TransformQueryEditor
       name={transform.name}
       query={transform.source.query}
       isNew={false}

@@ -7,13 +7,13 @@ import {
 } from "metabase/admin/components/AdminNav";
 import { AdminSettingsLayout } from "metabase/common/components/AdminLayout/AdminSettingsLayout";
 
-import { getNewTransformPageUrl, getOverviewPageUrl } from "../../urls";
+import { getNewTransformPageUrl, getTransformRootPageUrl } from "../../urls";
 
-type PageLayoutProps = {
+type TransformPageLayoutProps = {
   children: ReactNode;
 };
 
-export function PageLayout({ children }: PageLayoutProps) {
+export function TransformPageLayout({ children }: TransformPageLayoutProps) {
   return (
     <AdminSettingsLayout sidebar={<Sidebar />} maw="60rem">
       {children}
@@ -26,7 +26,7 @@ function Sidebar() {
     <AdminNavWrapper>
       <AdminNavItem
         label={t`Overview`}
-        path={getOverviewPageUrl()}
+        path={getTransformRootPageUrl()}
         icon="home"
       />
       <AdminNavItem
