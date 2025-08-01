@@ -45,13 +45,13 @@ export function SdkIncompatibilityWithInstanceBanner() {
     <SdkError
       type="floating"
       message={
-        <span>{jt`Embedding SDK version incompatible with the Instance version. ${(
+        <span>{jt`The analytics server is undergoing maintenance. ${(
           <Anchor
             key="reload-page-button"
             data-testid="reload-page-button"
             onClick={handlePageReload}
           >{t`Reload the page`}</Anchor>
-        )} to get the updated SDK version.`}</span>
+        )}.`}</span>
       }
     />
   );
