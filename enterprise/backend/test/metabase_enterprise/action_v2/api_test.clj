@@ -7,7 +7,7 @@
    [metabase-enterprise.action-v2.api]
    [metabase-enterprise.action-v2.coerce :as coerce]
    [metabase-enterprise.action-v2.data-editing :as data-editing]
-   [metabase-enterprise.action-v2.test-util :as data-editing.tu]
+   [metabase-enterprise.action-v2.test-util :as action-v2.tu]
    [metabase.actions.test-util :as actions.tu]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc :as sql-jdbc]
@@ -37,39 +37,6 @@
 (def ^:private execute-bulk-url "/ee/action-v2/execute-bulk")
 (def ^:private execute-form-url "/ee/action-v2/execute-form")
 
-;; TODO make non-bulk versions, and DRY up  bit
-
-(defn create-rows!
-  ([table-id rows]
-   (create-rows! table-id :crowberto 200 rows))
-  ([table-id user response-code rows]
-   (mt/user-http-request user :post response-code execute-bulk-url
-                         {:action :data-grid.row/create
-                          :scope  {:table-id table-id}
-                          :inputs rows})))
-
-(defn- update-rows!
-  ([table-id rows]
-   (update-rows! table-id :crowberto 200 rows))
-  ([table-id rows params]
-   (update-rows! table-id :crowberto 200 rows params))
-  ([table-id user response-code rows & [params]]
-   (mt/user-http-request user :post response-code execute-bulk-url
-                         (cond->
-                          {:action :data-grid.row/update
-                           :scope  {:table-id table-id}
-                           :inputs rows}
-                           params (assoc :params params)))))
-
-(defn- delete-rows!
-  ([table-id rows]
-   (delete-rows! table-id :crowberto 200 rows))
-  ([table-id user response-code rows]
-   (mt/user-http-request user :post response-code execute-bulk-url
-                         {:action :data-grid.row/delete
-                          :scope  {:table-id table-id}
-                          :inputs rows})))
-
 (deftest feature-flag-required-test
   (mt/with-premium-features #{}
     (mt/assert-has-premium-feature-error "Table Data Editing" (mt/user-http-request :crowberto :post 402 execute-url))
@@ -81,7 +48,7 @@
 (deftest table-operations-via-action-execute-test
   (mt/with-premium-features #{actions-feature-flag}
     (mt/test-drivers (mt/normal-drivers-with-feature :actions/data-editing)
-      (data-editing.tu/with-test-tables! [table-id data-editing.tu/default-test-table]
+      (action-v2.tu/with-test-tables! [table-id action-v2.tu/default-test-table]
         (testing "Initially the table is empty"
           (is (= [] (table-rows table-id))))
 
@@ -91,9 +58,9 @@
                    {:op "created", :table-id table-id, :row {:id 3, :name "Farfetch'd", :song "The land of lisp"}}}
                  (set
                   (:outputs
-                   (create-rows! table-id [{:name "Pidgey" :song "Car alarms"}
-                                           {:name "Spearow" :song "Hold music"}
-                                           {:name "Farfetch'd" :song "The land of lisp"}])))))
+                   (action-v2.tu/create-rows! table-id [{:name "Pidgey" :song "Car alarms"}
+                                                        {:name "Spearow" :song "Hold music"}
+                                                        {:name "Farfetch'd" :song "The land of lisp"}])))))
 
           (is (= [[1 "Pidgey" "Car alarms"]
                   [2 "Spearow" "Hold music"]
@@ -105,8 +72,8 @@
                    {:op "updated", :table-id table-id :row {:id 2, :name "Speacolumn", :song "Hold music"}}}
                  (set
                   (:outputs
-                   (update-rows! table-id [{:id 1 :song "Join us now and share the software"}
-                                           {:id 2 :name "Speacolumn"}])))))
+                   (action-v2.tu/update-rows! table-id [{:id 1 :song "Join us now and share the software"}
+                                                        {:id 2 :name "Speacolumn"}])))))
 
           (is (= #{[1 "Pidgey" "Join us now and share the software"]
                    [2 "Speacolumn" "Hold music"]
@@ -118,7 +85,7 @@
                    {:op "updated", :table-id table-id, :row {:id 2, :name "Speacolumn", :song "The Star-Spangled Banner"}}}
                  (set
                   (:outputs
-                   (update-rows! table-id [{:id 1} {:id 2}] {:song "The Star-Spangled Banner"})))))
+                   (action-v2.tu/update-rows! table-id [{:id 1} {:id 2}] {:song "The Star-Spangled Banner"})))))
 
           (is (= #{[1 "Pidgey" "The Star-Spangled Banner"]
                    [2 "Speacolumn" "The Star-Spangled Banner"]
@@ -130,7 +97,7 @@
                    {:op "deleted", :table-id table-id, :row {:id 2}}}
                  (set
                   (:outputs
-                   (delete-rows! table-id [{:id 1} {:id 2}])))))
+                   (action-v2.tu/delete-rows! table-id [{:id 1} {:id 2}])))))
           (is (= [[3 "Farfetch'd" "The land of lisp"]]
                  (table-rows table-id))))))))
 
@@ -138,10 +105,10 @@
   (mt/with-premium-features #{actions-feature-flag}
     ;; MySQL does not support a UUID type (or at least if it does, our create-table syntax is wrong)
     (mt/test-drivers (disj (mt/normal-drivers-with-feature :actions/data-editing) :mysql)
-      (data-editing.tu/with-test-tables! [table-id [{:id [:uuid]
-                                                     :name [:text]
-                                                     :song [:text]}
-                                                    {:primary-key [:id]}]]
+      (action-v2.tu/with-test-tables! [table-id [{:id [:uuid]
+                                                  :name [:text]
+                                                  :song [:text]}
+                                                 {:primary-key [:id]}]]
         (let [id-1 (random-uuid)
               id-2 (random-uuid)
               id-3 (random-uuid)]
@@ -154,9 +121,9 @@
                      {:op "created", :table-id table-id, :row {:id (str id-3), :name "Farfetch'd", :song "The land of lisp"}}}
                    (set
                     (:outputs
-                     (create-rows! table-id [{:id id-1, :name "Pidgey"     :song "Car alarms"}
-                                             {:id id-2, :name "Spearow"    :song "Hold music"}
-                                             {:id id-3, :name "Farfetch'd" :song "The land of lisp"}])))))
+                     (action-v2.tu/create-rows! table-id [{:id id-1, :name "Pidgey"     :song "Car alarms"}
+                                                          {:id id-2, :name "Spearow"    :song "Hold music"}
+                                                          {:id id-3, :name "Farfetch'd" :song "The land of lisp"}])))))
 
             (is (= [[id-1 "Pidgey" "Car alarms"]
                     [id-2 "Spearow" "Hold music"]
@@ -168,8 +135,8 @@
                      {:op "updated", :table-id table-id :row {:id (str id-2), :name "Speacolumn", :song "Hold music"}}}
                    (set
                     (:outputs
-                     (update-rows! table-id [{:id id-1, :song "Join us now and share the software"}
-                                             {:id id-2, :name "Speacolumn"}])))))
+                     (action-v2.tu/update-rows! table-id [{:id id-1, :song "Join us now and share the software"}
+                                                          {:id id-2, :name "Speacolumn"}])))))
 
             (is (= #{[id-1 "Pidgey" "Join us now and share the software"]
                      [id-2 "Speacolumn" "Hold music"]
@@ -181,10 +148,10 @@
                      {:op "updated", :table-id table-id, :row {:id (str id-2), :name "Speacolumn", :song "The Star-Spangled Banner"}}}
                    (set
                     (:outputs
-                     (update-rows! table-id
-                                   [{:id id-1}
-                                    {:id id-2}]
-                                   {:song "The Star-Spangled Banner"})))))
+                     (action-v2.tu/update-rows! table-id
+                                                [{:id id-1}
+                                                 {:id id-2}]
+                                                {:song "The Star-Spangled Banner"})))))
 
             (is (= #{[id-1 "Pidgey" "The Star-Spangled Banner"]
                      [id-2 "Speacolumn" "The Star-Spangled Banner"]
@@ -196,20 +163,20 @@
                      {:op "deleted", :table-id table-id, :row {:id (str id-2)}}}
                    (set
                     (:outputs
-                     (delete-rows! table-id [{:id id-1}
-                                             {:id id-2}])))))
+                     (action-v2.tu/delete-rows! table-id [{:id id-1}
+                                                          {:id id-2}])))))
             (is (= [[id-3 "Farfetch'd" "The land of lisp"]]
                    (table-rows table-id)))))))))
 
 (deftest table-operations-via-action-execute-with-compound-pk-test
   (mt/with-premium-features #{actions-feature-flag}
     (mt/test-drivers (mt/normal-drivers-with-feature :actions/data-editing)
-      (data-editing.tu/with-test-tables! [table-id [{:id_1   'auto-inc-type
+      (action-v2.tu/with-test-tables! [table-id [{:id_1   'auto-inc-type
                                                      ;; MySQL does not support multiple auto increment fields.
-                                                     :id_2   [:integer]
-                                                     :name   [:text]
-                                                     :song   [:text]}
-                                                    {:primary-key [:id_1 :id_2]}]]
+                                                  :id_2   [:integer]
+                                                  :name   [:text]
+                                                  :song   [:text]}
+                                                 {:primary-key [:id_1 :id_2]}]]
         (testing "Initially the table is empty"
           (is (= [] (table-rows table-id))))
 
@@ -219,9 +186,9 @@
                    {:op "created", :table-id table-id, :row {:id_1 3, :id_2 0, :name "Farfetch'd", :song "The land of lisp"}}}
                  (set
                   (:outputs
-                   (create-rows! table-id [{:id_2 0 :name "Pidgey"     :song "Car alarms"}
-                                           {:id_2 0 :name "Spearow"    :song "Hold music"}
-                                           {:id_2 0 :name "Farfetch'd" :song "The land of lisp"}])))))
+                   (action-v2.tu/create-rows! table-id [{:id_2 0 :name "Pidgey"     :song "Car alarms"}
+                                                        {:id_2 0 :name "Spearow"    :song "Hold music"}
+                                                        {:id_2 0 :name "Farfetch'd" :song "The land of lisp"}])))))
 
           (is (= [[1 0 "Pidgey" "Car alarms"]
                   [2 0 "Spearow" "Hold music"]
@@ -233,8 +200,8 @@
                    {:op "updated", :table-id table-id :row {:id_1 2, :id_2 0, :name "Speacolumn", :song "Hold music"}}}
                  (set
                   (:outputs
-                   (update-rows! table-id [{:id_1 1, :id_2 0, :song "Join us now and share the software"}
-                                           {:id_1 2, :id_2 0, :name "Speacolumn"}])))))
+                   (action-v2.tu/update-rows! table-id [{:id_1 1, :id_2 0, :song "Join us now and share the software"}
+                                                        {:id_1 2, :id_2 0, :name "Speacolumn"}])))))
 
           (is (= #{[1 0 "Pidgey" "Join us now and share the software"]
                    [2 0 "Speacolumn" "Hold music"]
@@ -246,10 +213,10 @@
                    {:op "updated", :table-id table-id, :row {:id_1 2, :id_2 0, :name "Speacolumn", :song "The Star-Spangled Banner"}}}
                  (set
                   (:outputs
-                   (update-rows! table-id
-                                 [{:id_1 1, :id_2 0}
-                                  {:id_1 2, :id_2 0}]
-                                 {:song "The Star-Spangled Banner"})))))
+                   (action-v2.tu/update-rows! table-id
+                                              [{:id_1 1, :id_2 0}
+                                               {:id_1 2, :id_2 0}]
+                                              {:song "The Star-Spangled Banner"})))))
 
           (is (= #{[1 0 "Pidgey" "The Star-Spangled Banner"]
                    [2 0 "Speacolumn" "The Star-Spangled Banner"]
@@ -261,15 +228,15 @@
                    {:op "deleted", :table-id table-id, :row {:id_1 2, :id_2 0}}}
                  (set
                   (:outputs
-                   (delete-rows! table-id [{:id_1 1, :id_2 0}
-                                           {:id_1 2, :id_2 0}])))))
+                   (action-v2.tu/delete-rows! table-id [{:id_1 1, :id_2 0}
+                                                        {:id_1 2, :id_2 0}])))))
           (is (= [[3 0 "Farfetch'd" "The land of lisp"]]
                  (table-rows table-id))))))))
 
 (deftest simple-delete-with-children-test
   (binding [actions.tu/*actions-test-data-tables* #{"people" "products" "orders"}]
     (mt/with-premium-features #{actions-feature-flag}
-      (data-editing.tu/with-temp-test-db!
+      (action-v2.tu/with-temp-test-db!
         (let [body {:action "data-grid.row/delete"
                     :scope  {:table-id (mt/id :products)}
                     :inputs [{(mt/format-name :id) 1}
@@ -327,7 +294,7 @@
 
 (deftest simple-delete-with-self-referential-children-test
   (mt/with-premium-features #{actions-feature-flag}
-    (data-editing.tu/with-actions-temp-db self-referential-categories
+    (action-v2.tu/with-actions-temp-db self-referential-categories
       (let [body {:action "data-grid.row/delete"
                   :scope  {:table-id (mt/id :category)}
                   :inputs [{(mt/format-name :id) 1}]}
@@ -386,7 +353,7 @@
 (deftest mutual-recursion-delete-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions/data-editing)
     (mt/with-premium-features #{actions-feature-flag}
-      (data-editing.tu/with-actions-temp-db mutual-recursion-users-teams
+      (action-v2.tu/with-actions-temp-db mutual-recursion-users-teams
         (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
                        (sql.tx/add-fk-sql driver/*driver*
                                           mutual-recursion-users-teams
@@ -430,7 +397,7 @@
     (mt/test-drivers (mt/normal-drivers-with-feature :actions/data-editing)
       (testing "40x returned if user/database not configured for editing"
         (let [test-endpoints (fn [flags status-code]
-                               (data-editing.tu/with-test-tables! [table-id data-editing.tu/default-test-table]
+                               (action-v2.tu/with-test-tables! [table-id action-v2.tu/default-test-table]
                                  (let [actions-enabled (:a flags)
                                        editing-enabled (:d flags)
                                        superuser       (:s flags)
@@ -440,9 +407,9 @@
                                    (mt/with-temp-vals-in-db :model/Database (mt/id) {:settings settings}
                                      {:settings settings
                                       :user     user
-                                      :responses {:create (create-rows! table-id user status-code [{:name "Pidgey" :song "Car alarms"}])
-                                                  :update (update-rows! table-id user status-code [{:id 1 :song "Join us now and share the software"}])
-                                                  :delete (delete-rows! table-id user status-code [{:id 1}])}}))))
+                                      :responses {:create (action-v2.tu/create-rows! table-id user status-code [{:name "Pidgey" :song "Car alarms"}])
+                                                  :update (action-v2.tu/update-rows! table-id user status-code [{:id 1 :song "Join us now and share the software"}])
+                                                  :delete (action-v2.tu/delete-rows! table-id user status-code [{:id 1}])}}))))
               error-or-ok (fn [res]
                             (cond
                               (string? res)  res
@@ -494,9 +461,9 @@
             lossy? (set/union always-lossy driver-lossy)
             do-test (fn [t coercion-strategy input expected]
                       (testing (str t " " coercion-strategy " " input)
-                        (data-editing.tu/with-test-tables! [table-id [{:id 'auto-inc-type
-                                                                       :o  [t :null]}
-                                                                      {:primary-key [:id]}]]
+                        (action-v2.tu/with-test-tables! [table-id [{:id 'auto-inc-type
+                                                                    :o  [t :null]}
+                                                                   {:primary-key [:id]}]]
                           (let [table-name-kw (t2/select-one-fn (comp keyword :name) [:model/Table :name] table-id)
                                 field-id      (t2/select-one-fn :id [:model/Field :id] :table_id table-id :name "o")
                                 driver        driver/*driver*
@@ -505,7 +472,7 @@
                             (t2/update! :model/Field field-id {:coercion_strategy coercion-strategy})
                             (testing "create"
                               (let [row                {:o input}
-                                    {outputs :outputs} (create-rows! table-id [row])
+                                    {outputs :outputs} (action-v2.tu/create-rows! table-id [row])
                                     qp-state           (get-qp-state)
                                     _                  (is (= 1 (count outputs)))]
                                 (when-not (lossy? coercion-strategy)
@@ -513,9 +480,9 @@
                                   (is (= input (:o (first qp-state))) "the qp value should be the same as the input"))
                                 (is (= expected (:o (first (get-db-state)))))))
                             (testing "update"
-                              (let [[{id :id}]         (map :row (:outputs (create-rows! table-id [{:o nil}])))
+                              (let [[{id :id}]         (map :row (:outputs (action-v2.tu/create-rows! table-id [{:o nil}])))
                                     _ (is (some? id))
-                                    {outputs :outputs} (update-rows! table-id [{:id id, :o input}])
+                                    {outputs :outputs} (action-v2.tu/update-rows! table-id [{:id id, :o input}])
                                     [qp-row] (filter (comp #{id} :id) (get-qp-state))]
                                 (is (= 1 (count outputs)))
                                 (is (some? qp-row))
@@ -555,13 +522,13 @@
 (deftest field-values-invalidated-test
   (mt/with-premium-features #{actions-feature-flag}
     (mt/test-drivers (mt/normal-drivers-with-feature :actions/data-editing)
-      (data-editing.tu/with-test-tables! [table-id [{:id 'auto-inc-type, :n [:text]} {:primary-key [:id]}]]
+      (action-v2.tu/with-test-tables! [table-id [{:id 'auto-inc-type, :n [:text]} {:primary-key [:id]}]]
         (let [field-id         (t2/select-one-fn :id :model/Field :table_id table-id :name "n")
               _                (t2/update! :model/Field {:id field-id} {:semantic_type "type/Category"})
               field-values     #(vec (:values (field-values/get-latest-full-field-values field-id)))
               test-queue       (ArrayBlockingQueue. 100)
-              create!          #(create-rows! table-id %)
-              update!          #(update-rows! table-id %)
+              create!          #(action-v2.tu/create-rows! table-id %)
+              update!          #(action-v2.tu/update-rows! table-id %)
               process-queue!   (fn []
                                  (when-let [field-ids (.poll test-queue)]
                                    (#'data-editing/batch-invalidate-field-values! [field-ids])
@@ -596,9 +563,9 @@
   (mt/with-premium-features #{actions-feature-flag}
     (mt/test-drivers (mt/normal-drivers-with-feature :actions/data-editing)
       (testing "Data editing not enabled on database"
-        (data-editing.tu/with-test-tables! [table-id [{:id        [:int]
-                                                       :text      [:text]}
-                                                      {:primary-key [:id]}]]
+        (action-v2.tu/with-test-tables! [table-id [{:id        [:int]
+                                                    :text      [:text]}
+                                                   {:primary-key [:id]}]]
           (mt/with-temp-vals-in-db :model/Database (mt/id) {:settings {:database-enable-table-editing false}}
             (testing "execute-form should return 400 error when data editing is not enabled"
               (is (= {:message "Data editing is not enabled."}
@@ -609,13 +576,13 @@
                       [:message])))))))
 
       (testing "Non auto-incrementing pk"
-        (data-editing.tu/with-test-tables! [table-id [{:id        [:int]
-                                                       :text      [:text]
-                                                       :int       [:int]
-                                                       :timestamp [:timestamp]
-                                                       :date      [:date]
-                                                       :inactive  [:text]}
-                                                      {:primary-key [:id]}]]
+        (action-v2.tu/with-test-tables! [table-id [{:id        [:int]
+                                                    :text      [:text]
+                                                    :int       [:int]
+                                                    :timestamp [:timestamp]
+                                                    :date      [:date]
+                                                    :inactive  [:text]}
+                                                   {:primary-key [:id]}]]
           ;; This inactive field should not show up
           (t2/update! :model/Field {:table_id table-id, :name "inactive"} {:active false})
           (testing "table actions"
@@ -651,13 +618,13 @@
                                                :action delete-id}))))))))
 
       (testing "Auto incrementing pk"
-        (data-editing.tu/with-test-tables! [table-id [{:id 'auto-inc-type
-                                                       :text      [:text]
-                                                       :int       [:int]
-                                                       :timestamp [:timestamp]
-                                                       :date [:date]
-                                                       :inactive [:text]}
-                                                      {:primary-key [:id]}]]
+        (action-v2.tu/with-test-tables! [table-id [{:id 'auto-inc-type
+                                                    :text      [:text]
+                                                    :int       [:int]
+                                                    :timestamp [:timestamp]
+                                                    :date [:date]
+                                                    :inactive [:text]}
+                                                   {:primary-key [:id]}]]
           ;; This inactive field should not show up
           (t2/update! :model/Field {:table_id table-id, :name "inactive"} {:active false})
           (testing "table actions"
