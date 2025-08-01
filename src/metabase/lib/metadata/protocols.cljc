@@ -87,7 +87,7 @@
 (mr/def ::metadata-type-excluding-database
   "Database metadata is stored separately/in a special way. These are the types of metadata that are stored with the
   other non-Database methods."
-  [:enum :metadata/table :metadata/column :metadata/card :metadata/segment])
+  [:enum :metadata/table :metadata/column :metadata/card :metadata/segment :metadata/native-query-snippet])
 
 (mr/def ::metadata
   [:map
