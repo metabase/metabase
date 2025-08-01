@@ -6,8 +6,6 @@
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.lib.schema.common :as schema.common]
-   [metabase.sync.core :as sync]
-   [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -28,12 +26,6 @@
 (mr/def ::transform-opts
   [:map
    [:overwrite? :boolean]])
-
-(defn- sync-table!
-  [database target]
-  (let [table (or (transforms.util/target-table (:id database) target)
-                  (sync/create-table! database (select-keys target [:schema :name])))]
-    (sync/sync-table! table)))
 
 (defn- worker-uri []
   (config/config-str :mb-transform-worker-uri))
@@ -136,11 +128,8 @@
            (throw t)))
        ;; sync the new table (note that even a failed sync status means that the execution succeeded)
        (try
-         (log/info "Syncing target" (pr-str target) "for transform" id)
-         (sync-table! database target)
-         ;; TODO hack to make table active
-         (when-let [table (transforms.util/target-table (:id database) target)]
-           (t2/update! :model/Table (:id table) {:active true}))
+         (log/info "Activating target" (pr-str target) "for transform" id)
+         (transforms.util/activate-table! database target)
          (t2/update! :model/Transform id
                      :execution_status [:= :exec-succeeded]
                      {:execution_status :sync-succeeded})
