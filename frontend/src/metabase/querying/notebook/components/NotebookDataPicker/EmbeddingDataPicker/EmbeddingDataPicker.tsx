@@ -46,7 +46,7 @@ export function EmbeddingDataPicker({
   // We don't need to do this if the user has defined their own visible entity types.
   const { data: modelCountData, isLoading: isModelCountLoading } =
     useSearchQuery(
-      userDefinedEntityTypes.length > 0
+      userDefinedEntityTypes && userDefinedEntityTypes.length > 0
         ? skipToken
         : { models: ["dataset"], limit: 0 },
     );
@@ -77,7 +77,7 @@ export function EmbeddingDataPicker({
   } = useSourceEntityCollectionId(query);
 
   const entityTypes = useMemo(() => {
-    if (userDefinedEntityTypes.length > 0) {
+    if (userDefinedEntityTypes && userDefinedEntityTypes.length > 0) {
       return userDefinedEntityTypes;
     }
 

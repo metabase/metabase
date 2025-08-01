@@ -1,5 +1,5 @@
 export interface EmbeddingDataPickerState {
-  entityTypes: EmbeddingEntityType[];
+  entityTypes: EmbeddingEntityType[] | null;
 }
 
 /**
