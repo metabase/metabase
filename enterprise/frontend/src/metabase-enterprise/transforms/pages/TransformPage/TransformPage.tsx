@@ -37,7 +37,7 @@ export function TransformPage({ params }: TransformPageProps) {
   }
 
   if (transform == null) {
-    return <LoadingAndErrorWrapper error={t`No transform found.`} />;
+    return <LoadingAndErrorWrapper error={t`Transform not found.`} />;
   }
 
   return (
