@@ -13,7 +13,6 @@ import { startSampleAppContainers } from "./start-sample-app-containers/startSam
 const userOptions = {
   TEST_SUITE: "e2e", // e2e | component
   MB_EDITION: "ee", // ee | oss
-  ENTERPRISE_TOKEN: "",
   START_CONTAINERS: true,
   STOP_CONTAINERS: false,
   BACKEND_PORT: 4000,
@@ -25,7 +24,6 @@ const userOptions = {
 };
 
 const derivedOptions = {
-  CYPRESS_MB_ALL_FEATURES_TOKEN: userOptions.ENTERPRISE_TOKEN,
   QA_DB_ENABLED: userOptions.START_CONTAINERS,
   BUILD_JAR: userOptions.BACKEND_PORT === 4000,
   START_BACKEND: userOptions.BACKEND_PORT === 4000,
@@ -41,9 +39,16 @@ const options = {
 
 process.env = unBooleanify(options);
 
-if (options.MB_EDITION === "ee" && !options.ENTERPRISE_TOKEN) {
+const missingTokens = [
+  "MB_ALL_FEATURES_TOKEN",
+  "MB_STARTER_CLOUD_TOKEN",
+  "MB_PRO_CLOUD_TOKEN",
+  "MB_PRO_SELF_HOSTED_TOKEN",
+].filter((token) => !process.env[token]);
+
+if (options.MB_EDITION === "ee" && missingTokens.length > 0) {
   printBold(
-    "⚠️ ENTERPRISE_TOKEN is not set. Either set it or run with MB_EDITION=oss",
+    `⚠️ Missing tokens: ${missingTokens.join(", ")}. Either set them or run with MB_EDITION=oss`,
   );
   process.exit(FAILURE_EXIT_CODE);
 }
@@ -51,7 +56,6 @@ if (options.MB_EDITION === "ee" && !options.ENTERPRISE_TOKEN) {
 printBold(`Running Cypress with options:
   - TEST_SUITE         : ${options.TEST_SUITE}
   - MB_EDITION         : ${options.MB_EDITION}
-  - ENTERPRISE_TOKEN   : ${options.ENTERPRISE_TOKEN ? "present" : "<missing>"}
   - START_CONTAINERS   : ${options.START_CONTAINERS}
   - STOP_CONTAINERS    : ${options.STOP_CONTAINERS}
   - BUILD_JAR          : ${options.BUILD_JAR}
