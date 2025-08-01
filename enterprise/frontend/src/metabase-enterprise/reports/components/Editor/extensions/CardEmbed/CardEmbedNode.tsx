@@ -1,5 +1,6 @@
 import { Node, mergeAttributes } from "@tiptap/core";
 import { type NodeViewProps, NodeViewWrapper } from "@tiptap/react";
+import cx from "classnames";
 import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
@@ -322,9 +323,7 @@ export const CardEmbedComponent = memo(
 
     return (
       <NodeViewWrapper className={styles.embedWrapper}>
-        <Box
-          className={`${styles.cardEmbed} ${selected ? styles.selected : ""}`}
-        >
+        <Box className={cx(styles.cardEmbed, { [styles.selected]: selected })}>
           {card && (
             <Box className={styles.questionHeader}>
               <Box
@@ -417,6 +416,7 @@ export const CardEmbedComponent = memo(
                       <Menu.Item
                         onClick={handleEditVisualizationSettings}
                         disabled={!canWrite}
+                        leftSection={<Icon name="palette" size={14} />}
                       >
                         {t`Edit Visualization`}
                       </Menu.Item>
@@ -424,6 +424,7 @@ export const CardEmbedComponent = memo(
                         <Menu.Item
                           onClick={() => setIsModifyModalOpen(true)}
                           disabled={!canWrite}
+                          leftSection={<Icon name="notebook" size={14} />}
                         >
                           {t`Edit Query`}
                         </Menu.Item>
@@ -431,6 +432,7 @@ export const CardEmbedComponent = memo(
                       <Menu.Item
                         onClick={handleReplaceQuestion}
                         disabled={!canWrite}
+                        leftSection={<Icon name="refresh" size={14} />}
                       >
                         {t`Replace question`}
                       </Menu.Item>
