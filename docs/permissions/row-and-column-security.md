@@ -9,7 +9,7 @@ redirect_from:
 
 {% include plans-blockquote.html feature="Row and column security" %}
 
-Row and column security lets you give granular permissions to rows and columns for different groups of people. You can change what data a group [can view](./data.md#can-view-data-permission), as well as what data a group [can query](./data.md#create-queries-permissions) with the query builder.
+Row and column security lets you give granular permissions for different groups of people. You can change what data a group [can view](./data.md#can-view-data-permission), as well as what data a group [can query](./data.md#create-queries-permissions) with the query builder.
 
 You can use row and column security to set up [self-service analytics](https://www.metabase.com/learn/metabase-basics/embedding/multi-tenant-self-service-analytics), so that each of your customers can only view the rows that match their customer ID. For example, if you have an Accounts table with information about your customers, you can add permissions to the table so that each customer only sees the data relevant to them.
 
@@ -31,7 +31,7 @@ You can define up to one row and column security policy for each table/group com
 Row and column security show specific data to each person based on their [user attributes](../people-and-groups/managing.md#adding-a-user-attribute). You can:
 
 - [Restrict **rows**](#row-level-security-filter-by-a-column-in-the-table)
-- [Restrict **columns**](#custom-row-and-column-security-use-a-saved-question-to-create-a-custom-view-of-a-table) (as well as rows) for specific people.
+- [Restrict **columns** and rows](#custom-row-and-column-security-use-a-saved-question-to-create-a-custom-view-of-a-table) (as well as rows) for specific people.
 
 | Goal                                           | Row (filter by a column in the table) | Custom (use a saved SQL question) |
 | ---------------------------------------------- | ------------------------------------- | --------------------------------- |
@@ -49,9 +49,9 @@ For example, you can filter the Accounts table for a group so that:
 - A person with the user attribute value "Basic" will see rows where `Plan = "Basic"` (rows where the Plan column matches the value "Basic").
 - A person with the user attribute value "Premium" will see the rows where `Plan = "Premium"` (rows where the Plan column matches the value "Premium").
 
-### Custom row and column security: use a saved question to create a custom "view" of a table
+### Custom row and column security: use a SQL question to create a custom "view" of a table
 
-To **restrict rows _and_ columns**, you can use a saved question to filter the table. When someone views that table, they'll instead see the question's results, not the raw table.
+To **restrict rows _and_ columns**, you can use a SQL question to filter the table. When someone views that table, they'll instead see the question's results, not the raw table.
 
 For example, say your original Accounts table includes the columns: `ID`, `Email`, `Plan`, and `Created At`. If you want to hide the Email column, you can create a "Restricted Accounts" SQL question with the columns: `ID`, `Plan`, and `Created At`.
 
@@ -68,7 +68,7 @@ You can use a question to filter tables to:
 
 Row security displays a filtered table, in place of an original table, to a specific group. How Metabase filters that table depends on the value in each person's user attribute.
 
-For example, you can set up a row security so that:
+For example, you can set up a row-level security so that:
 
 - Someone with the user attribute with key of "plan" and a value of "Basic" will see a version of the Accounts table with a filter for `Plan = "Basic"` (that is, only the rows where the Plan column matches the value "Basic").
 - Someone with a "plan" user attribute set to "Premium" will see a different version of the Accounts table with the filter `Plan = "Premium"` applied.
@@ -237,7 +237,7 @@ To prevent the Email column from being exposed via a SQL question:
 
 ### Public sharing
 
-Row and column security permissions don't apply to public questions or public dashboards. If somone in an unsecured group person creates a public link using an original table, the original table will be displayed to anyone who has the public link URL.
+Row and column security permissions don't apply to public questions or public dashboards. If somone in an unsecured group creates a public link using an original table, the original table will be displayed to anyone who has the public link URL.
 
 To prevent this from happening, you'll have to [disable public sharing](../embedding/public-links.md) for your Metabase.
 
@@ -249,7 +249,7 @@ Row and column security is limited to questions built with the [query builder](.
 
 ### Groups with native query permissions (access to the SQL editor) can bypass row and column security
 
-You can't set up [query builder and native](./data.md#create-queries-permissions) for groups with row and column security.
+You can't set up [native query persmissons](./data.md#create-queries-permissions) for groups with row and column security.
 
 To enforce row-level permissions with the native query editor, check out [impersonation](./impersonation.md).
 
