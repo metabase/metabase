@@ -1,27 +1,31 @@
 import { type PayloadAction, createSlice } from "@reduxjs/toolkit";
 
+import { CLOSE_QB } from "metabase/query_builder/actions";
 import type {
   Card,
   CardDisplayType,
-  RegularCollectionId,
+  Document,
   VisualizationSettings,
 } from "metabase-types/api";
 
 import type { CardEmbedRef } from "./components/Editor/types";
 
 export interface DocumentsState {
-  selectedEmbedIndex: number | null; // Index in cardEmbeds array
-  // Draft state for currently editing embed
+  // Index in cardEmbeds array
+  selectedEmbedIndex: number | null;
   draftCard: Card | null;
   cardEmbeds: CardEmbedRef[];
-  documentCollectionId: RegularCollectionId | null;
+  currentDocument: Document | null;
+  // Flag to show navigate back to document button (set when navigating from document to question)
+  showNavigateBackToDocumentButton: boolean;
 }
 
 const initialState: DocumentsState = {
   selectedEmbedIndex: null,
   draftCard: null,
   cardEmbeds: [],
-  documentCollectionId: null,
+  currentDocument: null,
+  showNavigateBackToDocumentButton: false,
 };
 
 const documentsSlice = createSlice({
@@ -70,13 +74,21 @@ const documentsSlice = createSlice({
     setCardEmbeds: (state, action: PayloadAction<CardEmbedRef[]>) => {
       state.cardEmbeds = action.payload;
     },
-    setDocumentCollectionId: (
+    setCurrentDocument: (state, action: PayloadAction<Document | null>) => {
+      state.currentDocument = action.payload;
+    },
+    setShowNavigateBackToDocumentButton: (
       state,
-      action: PayloadAction<RegularCollectionId | null>,
+      action: PayloadAction<boolean>,
     ) => {
-      state.documentCollectionId = action.payload;
+      state.showNavigateBackToDocumentButton = action.payload;
     },
     resetDocuments: () => initialState,
+  },
+  extraReducers: (builder) => {
+    builder.addCase(CLOSE_QB, (state) => {
+      state.showNavigateBackToDocumentButton = false;
+    });
   },
 });
 
@@ -87,7 +99,8 @@ export const {
   clearDraftState,
   closeSidebar,
   setCardEmbeds,
-  setDocumentCollectionId,
+  setCurrentDocument,
+  setShowNavigateBackToDocumentButton,
   resetDocuments,
 } = documentsSlice.actions;
 

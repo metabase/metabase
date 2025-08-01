@@ -16,7 +16,10 @@ import Question from "metabase-lib/v1/Question";
 import { getUrl } from "metabase-lib/v1/urls";
 import type { Card } from "metabase-types/api";
 
-import { openVizSettingsSidebar } from "../../../../documents.slice";
+import {
+  openVizSettingsSidebar,
+  setShowNavigateBackToDocumentButton,
+} from "../../../../documents.slice";
 import { useDocumentsSelector } from "../../../../redux-utils";
 import {
   getDocumentCardWithDraftSettings,
@@ -222,6 +225,7 @@ export const CardEmbedComponent = memo(
     const handleTitleClick = () => {
       if (cardWithDraft && metadata) {
         try {
+          dispatch(setShowNavigateBackToDocumentButton(true));
           const question = new Question(cardWithDraft, metadata);
           const url = getUrl(question, { includeDisplayIsLocked: true });
           dispatch(push(url));
@@ -261,6 +265,7 @@ export const CardEmbedComponent = memo(
         }
 
         try {
+          dispatch(setShowNavigateBackToDocumentButton(true));
           // For drill-through, we need to ensure the card is treated as adhoc
           // Remove the ID so getUrl creates an adhoc question URL instead of navigating to saved question
           const adhocCard = { ...nextCard, id: null };
@@ -271,6 +276,7 @@ export const CardEmbedComponent = memo(
           console.error("Failed to create question URL:", error);
           // Fallback: navigate to a new question with the dataset_query
           if (nextCard.dataset_query) {
+            dispatch(setShowNavigateBackToDocumentButton(true));
             const params = new URLSearchParams();
             params.set("dataset_query", JSON.stringify(nextCard.dataset_query));
             dispatch(push(`/question?${params.toString()}`));

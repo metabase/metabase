@@ -28,7 +28,7 @@ import type { RegularCollectionId } from "metabase-types/api";
 import {
   closeSidebar,
   resetDocuments,
-  setDocumentCollectionId,
+  setCurrentDocument,
 } from "../documents.slice";
 import {
   useDocumentActions,
@@ -147,12 +147,13 @@ export const DocumentPage = ({
   ]);
 
   useEffect(() => {
-    dispatch(
-      setDocumentCollectionId(
-        canonicalCollectionId(documentData?.collection_id),
-      ),
-    );
-  }, [documentData?.collection_id, dispatch]);
+    // Set current document when document loads (includes collection_id and all other data)
+    if (documentData && documentId !== "new") {
+      dispatch(setCurrentDocument(documentData));
+    } else if (documentId === "new") {
+      dispatch(setCurrentDocument(null));
+    }
+  }, [documentData, documentId, dispatch]);
 
   const hasUnsavedChanges = useCallback(() => {
     const currentTitle = documentTitle.trim();
