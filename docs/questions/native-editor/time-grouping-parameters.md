@@ -31,6 +31,7 @@ GROUP BY
 Like in all SQL groupings, you must include the parameter in both the `SELECT` and `GROUP BY` clauses. You can also use the `mb.time_grouping` function on different columns in the same query, like this:
 
 ```sql
+{% raw %}
 SELECT
   COUNT(*) AS "Count",
   {{created_at_param}} AS "Created at",
@@ -40,6 +41,7 @@ FROM
 GROUP BY
   {{created_at_param}},
   {{trial_ends_at}}
+{% endraw %}
 ```
 
 Like with all parameters, you can set a default value (e.g., "month"). With time grouping parameters, you're limited to the options for the [time grouping parameter](../../dashboards/filters.md#time-grouping-parameter).
