@@ -76,9 +76,19 @@ export function EmbeddingDataPicker({
     isFetching: isSourceModelFetching,
   } = useSourceEntityCollectionId(query);
 
+  const shouldUseSimpleDataPicker =
+    !forceMultiStagedDataPicker &&
+    dataSourceCountData != null &&
+    dataSourceCountData.total < USE_SIMPLE_DATA_PICKER_IF_LESS_THAN_N_ITEMS;
+
   const entityTypes = useMemo(() => {
     if (userDefinedEntityTypes && userDefinedEntityTypes.length > 0) {
       return userDefinedEntityTypes;
+    }
+
+    // For the multi-stage data picker, we always show models and tables.
+    if (!shouldUseSimpleDataPicker) {
+      return DEFAULT_EMBEDDING_ENTITY_TYPES;
     }
 
     // Hide tables when there are more than a certain number of models.
@@ -88,16 +98,11 @@ export function EmbeddingDataPicker({
     return modelCount > HIDE_TABLES_IF_MORE_THAN_N_MODELS
       ? DEFAULT_EMBEDDING_ENTITY_TYPES.filter((type) => type !== "table")
       : DEFAULT_EMBEDDING_ENTITY_TYPES;
-  }, [modelCountData, userDefinedEntityTypes]);
+  }, [modelCountData, userDefinedEntityTypes, shouldUseSimpleDataPicker]);
 
   if (isDataSourceCountLoading || isModelCountLoading) {
     return null;
   }
-
-  const shouldUseSimpleDataPicker =
-    !forceMultiStagedDataPicker &&
-    dataSourceCountData != null &&
-    dataSourceCountData.total < USE_SIMPLE_DATA_PICKER_IF_LESS_THAN_N_ITEMS;
 
   if (shouldUseSimpleDataPicker) {
     const filteredEntityTypes = entityTypes.filter((entityType) =>
