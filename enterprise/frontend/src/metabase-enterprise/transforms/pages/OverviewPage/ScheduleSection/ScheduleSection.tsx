@@ -2,7 +2,7 @@ import { t } from "ttag";
 
 import { useAdminSetting } from "metabase/api/utils";
 import { Schedule } from "metabase/common/components/Schedule";
-import { Button, Divider, Group } from "metabase/ui";
+import { Button, Divider, Group, Icon } from "metabase/ui";
 import { CardSection } from "metabase-enterprise/transforms/components/CardSection";
 import type { ScheduleType } from "metabase-types/api";
 
@@ -36,7 +36,9 @@ export function ScheduleSection() {
         />
         <Divider />
         <Group p="lg" justify="end">
-          <Button>{t`Run now`}</Button>
+          <Button
+            leftSection={<Icon name="play_outlined" />}
+          >{t`Run now`}</Button>
         </Group>
       </Group>
     </CardSection>

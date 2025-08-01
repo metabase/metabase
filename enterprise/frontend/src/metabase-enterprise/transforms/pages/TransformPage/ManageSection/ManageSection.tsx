@@ -4,6 +4,7 @@ import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { useDispatch } from "metabase/lib/redux";
+import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Button, Group, Icon } from "metabase/ui";
 import { CardSection } from "metabase-enterprise/transforms/components/CardSection";
 import {
@@ -56,8 +57,10 @@ function DeleteTransformButton({ transform }: DeleteTransformButtonProps) {
   const dispatch = useDispatch();
   const [isModalOpened, { open: openModal, close: closeModal }] =
     useDisclosure();
+  const { sendSuccessToast } = useMetadataToasts();
 
   const handleDelete = () => {
+    sendSuccessToast(t`Transform deleted`);
     dispatch(push(getOverviewPageUrl()));
   };
 
