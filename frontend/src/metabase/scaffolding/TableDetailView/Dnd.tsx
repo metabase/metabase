@@ -635,13 +635,15 @@ export function Dnd({
             </DroppableContainer>
           ))}
 
-          {/* <Button
+          <Button
             variant="subtle"
             size="compact-sm"
             leftSection={<Icon name="add" />}
             mt="md"
             onClick={onCreateSection}
           >{t`Add group`}</Button>
+
+          {/*
 
           {hasRelationships && (
             <RelationshipsSectionSettings
