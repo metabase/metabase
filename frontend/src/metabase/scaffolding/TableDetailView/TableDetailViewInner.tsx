@@ -39,6 +39,7 @@ import { DetailViewHeader } from "./DetailViewHeader";
 import { DetailViewSidebar } from "./DetailViewSidebar";
 import { Relationships } from "./ObjectRelations";
 import { SortableSection } from "./SortableSection";
+import { TableDetailViewContentHeader } from "./TableDetailViewContentHeader";
 import { useDetailViewSections } from "./use-detail-view-sections";
 import { useForeignKeyReferences } from "./use-foreign-key-references";
 
@@ -69,6 +70,7 @@ export function TableDetailViewInner({
       table?.component_settings?.object_view?.relationships;
     return savedRelationships?.direction || "vertical";
   });
+  const [linkCopied, setLinkCopied] = useState(false);
   const dispatch = useDispatch();
   const [updateTableComponentSettings] =
     useUpdateTableComponentSettingsMutation();
@@ -155,6 +157,16 @@ export function TableDetailViewInner({
     dispatch,
     rowId,
   ]);
+
+  const handleCopyLink = useCallback(async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 2000);
+    } catch (error) {
+      console.error("Failed to copy link:", error);
+    }
+  }, []);
 
   // Handle foreign key navigation
   const handleFollowForeignKey = useCallback(
@@ -283,20 +295,19 @@ export function TableDetailViewInner({
         >
           <Box maw={800} w="100%">
             {children}
-
-            <Box
-              pos="relative"
-              bg={isEdit ? "bg-medium" : "bg-white"}
-              px="md"
-              py="sm"
-              style={{
-                border: isEdit ? "1px solid var(--border-color)" : "none",
-                borderRadius: "var(--default-border-radius)",
-                // eslint-disable-next-line no-color-literals
-                boxShadow: "0 2px 8px rgba(0, 0, 0, 0.1)",
-              }}
-            >
-              {hasRelationships && (
+            {hasRelationships && (
+              <Box
+                pos="relative"
+                bg={isEdit ? "bg-medium" : "bg-white"}
+                px="md"
+                py="sm"
+                style={{
+                  border: isEdit ? "1px solid var(--border-color)" : "none",
+                  borderRadius: "var(--default-border-radius)",
+                  // eslint-disable-next-line no-color-literals
+                  boxShadow: "0 2px 8px rgba(0, 0, 0, 0.1)",
+                }}
+              >
                 <>
                   <Text component="h2">{t`Relationships`}</Text>
 
@@ -309,8 +320,8 @@ export function TableDetailViewInner({
                     relationshipsDirection={relationshipsDirection}
                   />
                 </>
-              )}
-            </Box>
+              </Box>
+            )}
           </Box>
         </Stack>
 
@@ -353,6 +364,7 @@ export function TableDetailViewInner({
         gap={isEdit ? "md" : 0}
         mt="md"
         mb="sm"
+        py="md"
         bg="transparent"
         style={{
           borderRadius: "var(--default-border-radius)",
@@ -360,6 +372,19 @@ export function TableDetailViewInner({
           boxShadow: isEdit ? "none" : "0 2px 8px rgba(0, 0, 0, 0.1)", // can be a Card component
         }}
       >
+        {!isEdit && (
+          <TableDetailViewContentHeader
+            canOpenPreviousItem={rows.length > 1 && currentRowIndex > 0}
+            canOpenNextItem={
+              rows.length > 1 && currentRowIndex < rows.length - 1
+            }
+            onViewNextObjectDetail={handleViewNextObjectDetail}
+            onViewPreviousObjectDetail={handleViewPreviousObjectDetail}
+            onCopyLink={handleCopyLink}
+            onEditClick={handleEditClick}
+            linkCopied={linkCopied}
+          />
+        )}
         <DndContext
           sensors={sensors}
           collisionDetection={closestCenter}
@@ -392,7 +417,10 @@ export function TableDetailViewInner({
       {isEdit && (
         <Flex align="center" justify="center" w="100%" my="md">
           <Tooltip label={t`Add group`}>
-            <Button leftSection={<Icon name="add" />} onClick={createSection} />
+            <Button
+              leftSection={<Icon name="add" />}
+              onClick={() => createSection({ position: "end" })}
+            />
           </Tooltip>
         </Flex>
       )}
