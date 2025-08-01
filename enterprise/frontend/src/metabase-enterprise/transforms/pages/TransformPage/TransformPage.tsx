@@ -10,6 +10,7 @@ import type { TransformId } from "metabase-types/api";
 import { ManageSection } from "./ManageSection";
 import { NameSection } from "./NameSection";
 import { ScheduleSection } from "./ScheduleSection";
+import { TargetSection } from "./TargetSection";
 
 type TransformPageParams = {
   transformId: string;
@@ -40,10 +41,11 @@ export function TransformPage({ params }: TransformPageProps) {
   }
 
   return (
-    <Stack gap="5rem">
+    <Stack gap="3.5rem">
       <NameSection transform={transform} />
       <ManageSection transform={transform} />
       <ScheduleSection transform={transform} />
+      <TargetSection transform={transform} />
     </Stack>
   );
 }

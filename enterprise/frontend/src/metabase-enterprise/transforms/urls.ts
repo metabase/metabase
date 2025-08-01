@@ -1,4 +1,9 @@
-import type { CardId, DatasetQuery, TransformId } from "metabase-types/api";
+import type {
+  CardId,
+  DatasetQuery,
+  Table,
+  TransformId,
+} from "metabase-types/api";
 
 export const ROOT_URL = "/admin/transforms";
 
@@ -24,4 +29,8 @@ export function getTransformUrl(transformId: TransformId) {
 
 export function getTransformQueryUrl(transformId: TransformId) {
   return `${ROOT_URL}/${transformId}/query`;
+}
+
+export function getTableMetadataUrl({ id, db_id, schema }: Table) {
+  return `/admin/datamodel/database/${db_id}/schema/${db_id}:${encodeURIComponent(schema)}/table/${id}`;
 }
