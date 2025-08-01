@@ -6,6 +6,7 @@
 
   See https://metaboat.slack.com/archives/CKZEMT1MJ/p1736556522733279 for rationale behind this pattern."
   (:require
+   [metabase-enterprise.action-v2.init]
    [metabase-enterprise.advanced-config.init]
    [metabase-enterprise.audit-app.init]
    [metabase-enterprise.cache.init]

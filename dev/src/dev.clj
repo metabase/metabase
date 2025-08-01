@@ -56,6 +56,7 @@
    [dev.debug-qp :as debug-qp]
    [dev.explain :as dev.explain]
    [dev.h2 :as dev.h2]
+   [dev.malli :as dev.malli]
    [dev.memory :as dev.memory]
    [dev.migrate :as dev.migrate]
    [dev.model-tracking :as model-tracking]
@@ -108,6 +109,8 @@
   pprint-sql]
  [dev.explain
   explain-query]
+ [dev.malli
+  visualize-schema!]
  [dev.migrate
   migrate!
   rollback!
