@@ -4,6 +4,8 @@ title: Migrating from legacy permissions
 
 # Migrating from legacy permissions
 
+> In Metabase 56, we renamed Data sandboxing to Row and column security. The functionality is the same. Some people found the term "data sandboxing" confusing, so we changed the name of the feature to the more industry-standard Row and column security.
+
 In Metabase 50, we overhauled our data permissions system to make it more expressive and easier to reason about. This page explains what changed and why.
 
 **The TL;DR: we split the old Data access setting into two settings: [View data](./data.md#can-view-data-permission) and [Create Queries](./data.md#create-queries-permissions). Your data permissions may look different, but the access hasn't changed.**
@@ -32,17 +34,17 @@ This table is just if you're interested in Metabase archeologically. Metabase ha
 
 Before, Metabase had **Data access** and **Native query editing**. Now, Metabase has [View data](./data.md#view-data-permissions) and [Create queries](./data.md#create-queries-permissions). Here's how Metabase migrated each pairing to the new system.
 
-| **Data access**            | **Native query editing** | **>** | **View data**        | **Create queries**            |
-| -------------------------- | ------------------------ | ----- | -------------------- | ----------------------------- |
-| Unrestricted               | Yes                      | **>** | Can view             | Query builder and native code |
-| Unrestricted               | No                       | **>** | Can view             | Query builder                 |
-| No self-service            | No                       | **>** | Can view             | No                            |
-| Blocked                    | No                       | **>** | Blocked              | No                            |
-| Impersonated               | Yes                      | **>** | Impersonated         | Query builder and native code |
-| Impersonated               | No                       | **>** | Impersonated         | Query builder                 |
-| Unrestricted (granular)    | No                       | **>** | Can view             | Query builder (granular)      |
-| Sandboxed (granular)       | No                       | **>** | Sandboxed (granular) | Query builder (granular)      |
-| No self-service (granular) | No                       | **>** | Can view             | No (granular)                 |
+| **Data access**            | **Native query editing** | **>** | **View data**                      | **Create queries**            |
+| -------------------------- | ------------------------ | ----- | ---------------------------------- | ----------------------------- |
+| Unrestricted               | Yes                      | **>** | Can view                           | Query builder and native code |
+| Unrestricted               | No                       | **>** | Can view                           | Query builder                 |
+| No self-service            | No                       | **>** | Can view                           | No                            |
+| Blocked                    | No                       | **>** | Blocked                            | No                            |
+| Impersonated               | Yes                      | **>** | Impersonated                       | Query builder and native code |
+| Impersonated               | No                       | **>** | Impersonated                       | Query builder                 |
+| Unrestricted (granular)    | No                       | **>** | Can view                           | Query builder (granular)      |
+| Sandboxed (granular)       | No                       | **>** | Row and column security (granular) | Query builder (granular)      |
+| No self-service (granular) | No                       | **>** | Can view                           | No (granular)                 |
 
 ## The `No self-service (deprecated)` View access level
 
@@ -52,7 +54,7 @@ For any group that has their **View data** access set to `No self-service (depre
 
 - [Can view](./data.md#can-view-data-permission)
 - [Impersonated](./data.md#impersonated-view-data-permission)
-- [Sandboxed](./data.md#sandboxed-view-data-permission)
+- [Row and column security](./data.md#row-and-column-security)
 - [Blocked](./data.md#blocked-view-data-permission)
 
 If you take no action, Metabase will change any groups with View data access set to `No self-service (deprecated)` to `Blocked` in a future release. We're defaulting to "Blocked", the least permissive View data access, to prevent any unintended access to data. But this change to Blocked could cause people to lose access to data they previously had access to.
@@ -76,12 +78,12 @@ If you’re a member of Group B and one of Group C, D, or E, you’ll have limit
 
 We could migrate the permissions like so:
 
-|                    | **Group A**        | **Group B** | **Group C** | **Group D**        | **Group E**        |
-| ------------------ | ------------------ | ----------- | ----------- | ------------------ | ------------------ |
-| **View data**      | Can view           | ?           | Blocked     | Sandboxed          | Impersonated       |
-| **Create queries** | Query Builder only | No          | No          | Query Builder only | Query Builder only |
+|                    | **Group A**        | **Group B** | **Group C** | **Group D**             | **Group E**        |
+| ------------------ | ------------------ | ----------- | ----------- | ----------------------- | ------------------ |
+| **View data**      | Can view           | ?           | Blocked     | Row and column security | Impersonated       |
+| **Create queries** | Query Builder only | No          | No          | Query Builder only      | Query Builder only |
 
-We can't really make a call on what Group B's View data should be. If we switch it to **Can view**, the person won't be affected by the Blocked, Sandboxed, or Impersonated settings in their other group. If we set it to **Blocked**, they could lose access to data that you think they should have access to. So we created an interim setting, `No self-service (legacy)` to manage this (temporarily) awkward transition.
+We can't really make a call on what Group B's View data should be. If we switch it to **Can view**, the person won't be affected by the Blocked, Row and column security, or Impersonated settings in their other group. If we set it to **Blocked**, they could lose access to data that you think they should have access to. So we created an interim setting, `No self-service (legacy)` to manage this (temporarily) awkward transition.
 
 ### For some permission setups with groups that have "No self-service" and "Sandboxed" data access, you may need to create a new group to replicate the setup in 50 or higher
 
@@ -105,7 +107,7 @@ But if you still want everyone else who _isn't_ in the Foo group to view items i
 **Permission setup in 50:**
 
 - All users group is "Blocked" for all tables in the Sample database.
-- Foo group has View data permission of "Sandboxed" for all tables in the Sample database.
+- Foo group has View data permission of "Row and columns security" for all tables in the Sample database.
 - **Create a new group**, Bar, that includes everyone in the All users group _except for_ people in the Foo group. Set this Bar group's View data permission to "Can view" for the Sample database.
 
 ## Further reading
