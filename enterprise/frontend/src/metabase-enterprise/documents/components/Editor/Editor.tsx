@@ -16,16 +16,19 @@ import { DND_IGNORE_CLASS_NAME } from "metabase/common/components/dnd";
 import CS from "metabase/css/core/index.css";
 import { Box, Loader } from "metabase/ui";
 
+import { useDocumentsSelector } from "../../redux-utils";
+import { getDocumentCollectionId } from "../../selectors";
+
 import styles from "./Editor.module.css";
 import { QuestionMentionPlugin } from "./QuestionMentionPlugin";
 import { CardEmbed } from "./extensions/CardEmbed";
 import { DisableMetabotSidebar } from "./extensions/DisableMetabotSidebar";
+import { EmojiExtension } from "./extensions/Emojis";
 import { MetabotNode } from "./extensions/MetabotEmbed";
 import { SmartLinkEmbed } from "./extensions/SmartLink";
 import { Markdown } from "./extensions/markdown/index";
 import { useCardEmbedsTracking, useQuestionSelection } from "./hooks";
 import type { CardEmbedRef } from "./types";
-import { EmojiExtension } from "./extensions/Emojis";
 
 interface EditorProps {
   onEditorReady?: (editor: TiptapEditor) => void;
@@ -46,6 +49,7 @@ export const Editor: React.FC<EditorProps> = ({
   onQuestionSelect,
   isLoading = false,
 }) => {
+  const documentCollectionId = useDocumentsSelector(getDocumentCollectionId);
   const editor = useEditor({
     extensions: [
       StarterKit,
@@ -194,7 +198,10 @@ export const Editor: React.FC<EditorProps> = ({
         }}
       >
         <EditorContent editor={editor} />
-        <QuestionMentionPlugin editor={editor} />
+        <QuestionMentionPlugin
+          editor={editor}
+          documentCollectionId={documentCollectionId}
+        />
       </Box>
     </Box>
   );

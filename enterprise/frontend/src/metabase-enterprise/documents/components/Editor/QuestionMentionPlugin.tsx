@@ -2,11 +2,7 @@ import type { Editor } from "@tiptap/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { t } from "ttag";
 
-import {
-  cardApi,
-  useCreateCardMutation,
-  useListRecentsQuery,
-} from "metabase/api";
+import { cardApi, useListRecentsQuery } from "metabase/api";
 import { QuestionPickerModal } from "metabase/common/components/Pickers/QuestionPicker/components/QuestionPickerModal";
 import Search from "metabase/entities/search";
 import { getName } from "metabase/lib/name";
@@ -23,9 +19,12 @@ import { Box, Group, Icon, Popover, Text } from "metabase/ui";
 import { getSearchIconName } from "metabase/visualizations/visualizations/LinkViz/EntityDisplay";
 import type {
   RecentItem,
+  RegularCollectionId,
   SearchModel,
   UnrestrictedLinkEntity,
 } from "metabase-types/api";
+
+import { useDocumentCardSave } from "../../hooks/use-document-card-save";
 
 const MODELS_TO_SEARCH: SearchModel[] = ["card", "dataset"];
 
@@ -90,13 +89,15 @@ const MetabotMenuItem = ({ isSelected, onClick }: ExtraItemProps) => (
 
 interface QuestionMentionPluginProps {
   editor: Editor;
+  documentCollectionId: RegularCollectionId | null;
 }
 
 export const QuestionMentionPlugin = ({
   editor,
+  documentCollectionId,
 }: QuestionMentionPluginProps) => {
   const dispatch = useDispatch();
-  const [createCard] = useCreateCardMutation();
+  const { saveCard } = useDocumentCardSave(documentCollectionId);
   const [showPopover, setShowPopover] = useState(false);
   const [modal, setModal] = useState<"question-picker" | null>(null);
   const [query, setQuery] = useState("");
@@ -251,14 +252,11 @@ export const QuestionMentionPlugin = ({
           throw new Error("Failed to fetch card data");
         }
 
-        // Clone the card with "in_document" type
-        const { id, created_at, updated_at, ...cardData } = originalCard;
-
-        const clonedCard = await createCard({
-          ...cardData,
-          type: "in_document",
-          collection_id: originalCard.collection_id,
-        }).unwrap();
+        const { card_id } = await saveCard({
+          card: originalCard,
+          modifiedCardData: {},
+          editor,
+        });
 
         editor
           .chain()
@@ -267,7 +265,7 @@ export const QuestionMentionPlugin = ({
           .insertContentAt(insertPosition, {
             type: "cardEmbed",
             attrs: {
-              id: clonedCard.id,
+              id: card_id,
             },
           })
           .setTextSelection(insertPosition + 1)

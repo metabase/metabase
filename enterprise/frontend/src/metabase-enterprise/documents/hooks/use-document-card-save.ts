@@ -76,6 +76,7 @@ export const useDocumentCardSave = (
           ...modifiedCardData,
           type: "in_document",
           collection_id: documentCollectionId,
+          dashboard_id: null,
         }).unwrap();
 
         return {
