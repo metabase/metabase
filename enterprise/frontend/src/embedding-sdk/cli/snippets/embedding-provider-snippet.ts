@@ -1,16 +1,13 @@
-import { getSdkPackageName } from "../utils/snippets-helpers";
+import { SDK_PACKAGE_NAME } from "../constants/config";
 
 interface Options {
   instanceUrl: string;
   apiKey: string;
   userSwitcherEnabled: boolean;
-  isNextJs: boolean;
 }
 
 export const getEmbeddingProviderSnippet = (options: Options) => {
-  const { instanceUrl, apiKey, userSwitcherEnabled, isNextJs } = options;
-
-  const sdkPackageName = getSdkPackageName({ isNextJs });
+  const { instanceUrl, apiKey, userSwitcherEnabled } = options;
 
   let imports = "";
   let apiKeyOrAuthUriConfig = "";
@@ -25,7 +22,7 @@ export const getEmbeddingProviderSnippet = (options: Options) => {
 
   return `
 import {useContext, useMemo} from 'react'
-import {MetabaseProvider} from '${sdkPackageName}'
+import {MetabaseProvider} from '${SDK_PACKAGE_NAME}'
 
 ${imports}
 
