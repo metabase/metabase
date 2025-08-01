@@ -52,16 +52,16 @@ type NewTransformFormProps = {
 };
 
 type NewTransformValues = {
-  targetType: TransformTargetType;
-  targetName: string;
-  targetSchema: string | null;
+  type: TransformTargetType;
+  name: string;
+  schema: string | null;
   executionTrigger: TransformExecutionTrigger;
 };
 
 const NEW_TRANSFORM_SCHEMA = Yup.object({
-  targetType: Yup.string().oneOf(["view", "table"]),
-  targetName: Yup.string().required(Errors.required),
-  targetSchema: Yup.string().nullable(),
+  type: Yup.string().oneOf(["view", "table"]),
+  name: Yup.string().required(Errors.required),
+  schema: Yup.string().nullable(),
   executionTrigger: Yup.string().oneOf(["none", "global-schedule"]),
 });
 
@@ -101,17 +101,17 @@ function NewTransformForm({ query, onSave, onCancel }: NewTransformFormProps) {
       <Form>
         <Stack gap="lg">
           <FormSegmentedControl
-            name="targetType"
+            name="type"
             label={t`Should this transform create a view or a table in the database?`}
             data={getTypeOptions()}
           />
           <FormTextInput
-            name="targetName"
+            name="name"
             label={t`What should it be called in the database?`}
           />
           {schemas.length > 0 && (
             <FormSelect
-              name="targetSchema"
+              name="schema"
               label={t`In which schema should it go?`}
               data={schemas}
             />
@@ -139,9 +139,9 @@ function NewTransformForm({ query, onSave, onCancel }: NewTransformFormProps) {
 
 function getInitialValues(schemas: string[]): NewTransformValues {
   return {
-    targetType: "view",
-    targetName: "",
-    targetSchema: schemas ? schemas[0] : null,
+    type: "view",
+    name: "",
+    schema: schemas ? schemas[0] : null,
     executionTrigger: "global-schedule",
   };
 }
@@ -155,23 +155,18 @@ function getTypeOptions() {
 
 function getCreateRequest(
   query: DatasetQuery,
-  {
-    targetType,
-    targetName,
-    targetSchema,
-    executionTrigger,
-  }: NewTransformValues,
+  { type, name, schema, executionTrigger }: NewTransformValues,
 ): CreateTransformRequest {
   return {
-    name: targetName,
+    name: name,
     source: {
       type: "query",
       query,
     },
     target: {
-      type: targetType,
-      name: targetName,
-      schema: targetSchema,
+      type: type,
+      name: name,
+      schema: schema,
     },
     execution_trigger: executionTrigger,
   };

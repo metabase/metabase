@@ -1,12 +1,11 @@
+import { useState } from "react";
 import { match } from "ts-pattern";
 import { jt, t } from "ttag";
-import * as Yup from "yup";
 
 import {
   Form,
   FormErrorMessage,
   FormProvider,
-  FormRadioGroup,
   FormSubmitButton,
 } from "metabase/forms";
 import { Button, Group, Modal, Radio, Stack, Text } from "metabase/ui";
@@ -43,20 +42,6 @@ export function DeleteTransformModal({
   );
 }
 
-type DeleteTransformAction = "transform-only" | "transform-with-target";
-
-type DeleteTransformValues = {
-  action: DeleteTransformAction;
-};
-
-const INITIAL_VALUES: DeleteTransformValues = {
-  action: "transform-only",
-};
-
-const DELETE_TRANSFORM_SCHEMA = Yup.object({
-  action: Yup.string().oneOf(["transform-only", "transform-with-target"]),
-});
-
 type DeleteTransformFormProps = {
   transform: Transform;
   onDelete: () => void;
@@ -70,9 +55,10 @@ function DeleteTransformForm({
 }: DeleteTransformFormProps) {
   const [deleteTransform] = useDeleteTransformMutation();
   const [deleteTransformTarget] = useDeleteTransformTargetMutation();
+  const [shouldDeleteTarget, setShouldDeleteTarget] = useState(false);
 
-  const handleSubmit = async ({ action }: DeleteTransformValues) => {
-    if (action === "transform-with-target") {
+  const handleSubmit = async () => {
+    if (shouldDeleteTarget) {
       await deleteTransformTarget(transform.id);
     }
     await deleteTransform(transform.id);
@@ -80,41 +66,32 @@ function DeleteTransformForm({
   };
 
   return (
-    <FormProvider
-      initialValues={INITIAL_VALUES}
-      validationSchema={DELETE_TRANSFORM_SCHEMA}
-      onSubmit={handleSubmit}
-    >
-      {({ values }) => (
-        <Form>
-          <Stack gap="lg">
-            <Text>{getFormMessage(transform)}</Text>
-            {transform.table && (
-              <FormRadioGroup name="action">
-                <Stack gap="sm">
-                  <Radio
-                    value="transform-only"
-                    label={t`Delete the transform only`}
-                  />
-                  <Radio
-                    value="transform-with-target"
-                    label={getRadioLabel(transform)}
-                  />
-                </Stack>
-              </FormRadioGroup>
-            )}
-            <FormErrorMessage />
-            <Group justify="end">
-              <Button onClick={onCancel}>{t`Cancel`}</Button>
-              <FormSubmitButton
-                label={getSubmitButtonLabel(transform, values)}
-                variant="filled"
-                color="error"
-              />
-            </Group>
-          </Stack>
-        </Form>
-      )}
+    <FormProvider initialValues={{}} onSubmit={handleSubmit}>
+      <Form>
+        <Stack gap="lg">
+          <Text>{getFormMessage(transform)}</Text>
+          {transform.table && (
+            <Radio.Group
+              value={shouldDeleteTarget.toString()}
+              onChange={(value) => setShouldDeleteTarget(value === "true")}
+            >
+              <Stack gap="sm">
+                <Radio value="false" label={t`Delete the transform only`} />
+                <Radio value="true" label={getRadioLabel(transform)} />
+              </Stack>
+            </Radio.Group>
+          )}
+          <FormErrorMessage />
+          <Group justify="end">
+            <Button onClick={onCancel}>{t`Cancel`}</Button>
+            <FormSubmitButton
+              label={getSubmitButtonLabel(transform, shouldDeleteTarget)}
+              variant="filled"
+              color="error"
+            />
+          </Group>
+        </Stack>
+      </Form>
     </FormProvider>
   );
 }
@@ -167,15 +144,15 @@ function getFormMessage({ target, table }: Transform) {
 
 function getSubmitButtonLabel(
   { target, table }: Transform,
-  { action }: DeleteTransformValues,
+  shouldDeleteTarget: boolean,
 ) {
   return match({
-    action,
     type: target.type,
     hasTarget: table != null,
+    shouldDeleteTarget,
   })
     .with({ hasTarget: false }, () => t`Delete transform`)
-    .with({ action: "transform-only" }, () => t`Delete transform only`)
+    .with({ shouldDeleteTarget: false }, () => t`Delete transform only`)
     .with({ type: "view" }, () => t`Delete transform and view`)
     .with({ type: "table" }, () => t`Delete transform and table`)
     .exhaustive();

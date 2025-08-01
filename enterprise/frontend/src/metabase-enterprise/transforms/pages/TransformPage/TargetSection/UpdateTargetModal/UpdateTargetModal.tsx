@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { match } from "ts-pattern";
 import { jt, t } from "ttag";
 import * as Yup from "yup";
@@ -9,7 +9,6 @@ import {
   Form,
   FormErrorMessage,
   FormProvider,
-  FormRadioGroup,
   FormSegmentedControl,
   FormSelect,
   FormSubmitButton,
@@ -55,13 +54,10 @@ export function UpdateTargetModal({
   );
 }
 
-type EditTransformAction = "keep-target" | "delete-target";
-
 type EditTransformValues = {
   type: TransformTargetType;
   name: string;
   schema: string | null;
-  action: EditTransformAction;
 };
 
 const EDIT_TRANSFORM_SCHEMA = Yup.object({
@@ -87,6 +83,7 @@ function UpdateTargetForm({
   const [updateTransform] = useUpdateTransformMutation();
   const [deleteTransformTarget] = useDeleteTransformTargetMutation();
   const initialValues = useMemo(() => getInitialValues(transform), [transform]);
+  const [shouldDeleteTarget, setShouldDeleteTarget] = useState(false);
 
   const {
     data: schemas = [],
@@ -101,7 +98,7 @@ function UpdateTargetForm({
   }
 
   const handleSubmit = async (values: EditTransformValues) => {
-    if (values.action === "delete-target") {
+    if (shouldDeleteTarget) {
       await deleteTransformTarget(transform.id);
     }
     await updateTransform(getUpdateRequest(transform, values));
@@ -114,7 +111,7 @@ function UpdateTargetForm({
       validationSchema={EDIT_TRANSFORM_SCHEMA}
       onSubmit={handleSubmit}
     >
-      {({ values }) => (
+      {({ dirty }) => (
         <Form>
           <Stack gap="lg">
             <FormSegmentedControl
@@ -133,23 +130,27 @@ function UpdateTargetForm({
                 data={schemas}
               />
             )}
-            <FormRadioGroup
-              name="action"
+            <Radio.Group
+              value={shouldDeleteTarget.toString()}
               label={getActionLabel(target)}
-              description={jt`You can keep or delete ${(<strong>{target.name}</strong>)}. Deleting it can’t be undone, and will break queries that used it. Please be careful!`}
+              description={jt`You can keep or delete ${(
+                <strong>{target.name}</strong>
+              )}. Deleting it can’t be undone, and will break queries that used it. Please be careful!`}
+              onChange={(value) => setShouldDeleteTarget(value === "true")}
             >
               <Stack gap="sm">
-                <Radio value="keep-target" label={t`Keep ${target.name}`} />
-                <Radio value="delete-target" label={t`Delete ${target.name}`} />
+                <Radio value="false" label={t`Keep ${target.name}`} />
+                <Radio value="true" label={t`Delete ${target.name}`} />
               </Stack>
-            </FormRadioGroup>
+            </Radio.Group>
             <FormErrorMessage />
             <Group justify="end">
               <Button onClick={onCancel}>{t`Cancel`}</Button>
               <FormSubmitButton
-                label={getSubmitButtonLabel(values)}
-                color={getSubmitButtonColor(values)}
+                label={getSubmitButtonLabel(shouldDeleteTarget)}
+                color={getSubmitButtonColor(shouldDeleteTarget)}
                 variant="filled"
+                disabled={!dirty}
               />
             </Group>
           </Stack>
@@ -164,7 +165,6 @@ function getInitialValues({ target }: Transform): EditTransformValues {
     type: target.type,
     name: target.name,
     schema: target.schema,
-    action: "keep-target",
   };
 }
 
@@ -182,18 +182,14 @@ function getActionLabel(target: TransformTarget) {
     .exhaustive();
 }
 
-function getSubmitButtonLabel({ action }: EditTransformValues) {
-  return match(action)
-    .with("keep-target", () => t`Change target`)
-    .with("delete-target", () => t`Change target and delete the old one`)
-    .exhaustive();
+function getSubmitButtonLabel(shouldDeleteTarget: boolean) {
+  return shouldDeleteTarget
+    ? t`Change target and delete the old one`
+    : t`Change target`;
 }
 
-function getSubmitButtonColor({ action }: EditTransformValues) {
-  return match(action)
-    .with("keep-target", () => undefined)
-    .with("delete-target", () => "error")
-    .exhaustive();
+function getSubmitButtonColor(shouldDeleteTarget: boolean) {
+  return shouldDeleteTarget ? "error" : undefined;
 }
 
 function getUpdateRequest(
