@@ -95,8 +95,10 @@
             title                                  (or (-> dashcard :visualization_settings :card.title)
                                                        card-name)
             rendered-info                          (channel.render/render-pulse-card :inline (channel.render/defaulted-timezone card) card dashcard result)
-            title-link                             (when-not (= :table-editable (:display card))
-                                                     (urls/card-url card-id))]
+            title-link                             (if dashcard
+                                                     (urls/dashcard-url dashcard)
+                                                     (when-not (= :table-editable (:display card))
+                                                       (urls/card-url card-id)))]
         (conj (maybe-append-params-block
                [{:type "section"
                  :text {:type     "mrkdwn"

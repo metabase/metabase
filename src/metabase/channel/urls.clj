@@ -51,6 +51,11 @@
   [^Integer id]
   (format "%s/question/%d" (site-url) id))
 
+(defn dashcard-url
+  "Build deep linking href for visualizer dashcards"
+  [{:keys [dashboard_id id]}]
+  (str (dashboard-url dashboard_id) "#scrollTo=" id))
+
 (defn legacy-pulse-url
   "Return an appropriate URL for a legacy `Pulse` with ID.
 
