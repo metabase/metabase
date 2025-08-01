@@ -130,28 +130,29 @@ export const useInjectSeriesColorsClasses = (hexColors: string[]) => {
       .join("\n");
   }, [hexColors]);
 
-  const style = useMemo(
+  return useMemo(
     () =>
       cssString !== null ? (
         <style nonce={window.MetabaseNonce}>{cssString}</style>
       ) : null,
     [cssString],
   );
-
-  return style;
 };
 
 export const useClickedStateTooltipSync = (
   chart?: EChartsType,
   clicked?: ClickObject | null,
 ) => {
-  useEffect(
-    function toggleTooltip() {
-      const isTooltipEnabled = clicked == null;
-      chart?.setOption({ tooltip: { show: isTooltipEnabled } }, false);
-    },
-    [chart, clicked],
-  );
+  useEffect(() => {
+    if (!chart) {
+      return;
+    }
+
+    if (clicked) {
+      chart.dispatchAction({ type: "hideTip" });
+      chart.dispatchAction({ type: "updateAxisPointer", currTrigger: "leave" });
+    }
+  }, [chart, clicked]);
 };
 
 export const useCartesianChartSeriesColorsClasses = (
