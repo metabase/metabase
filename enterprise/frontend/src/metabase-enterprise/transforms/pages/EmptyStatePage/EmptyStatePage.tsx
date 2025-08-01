@@ -10,11 +10,10 @@ import {
 } from "metabase/common/components/Pickers/QuestionPicker";
 import { useDispatch } from "metabase/lib/redux";
 import { Button, Flex, Icon, Menu, Text, Title } from "metabase/ui";
-
 import {
   getNewTransformFromCardPageUrl,
   getNewTransformFromTypePageUrl,
-} from "../../urls";
+} from "metabase-enterprise/transforms/urls";
 
 export function EmptyStatePage() {
   return (

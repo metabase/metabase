@@ -21,3 +21,7 @@ export function getNewTransformFromCardPageUrl(cardId: CardId) {
 export function getTransformUrl(transformId: TransformId) {
   return `${ROOT_URL}/${transformId}`;
 }
+
+export function getTransformQueryUrl(transformId: TransformId) {
+  return `${ROOT_URL}/${transformId}/query`;
+}

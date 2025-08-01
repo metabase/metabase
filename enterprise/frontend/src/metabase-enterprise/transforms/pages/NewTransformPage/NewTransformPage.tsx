@@ -8,11 +8,13 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { Modal } from "metabase/ui";
+import { TransformQueryEditor } from "metabase-enterprise/transforms/components/TransformQueryEditor";
+import {
+  getOverviewPageUrl,
+  getTransformUrl,
+} from "metabase-enterprise/transforms/urls";
 import Question from "metabase-lib/v1/Question";
 import type { Card, CardId, DatasetQuery, Transform } from "metabase-types/api";
-
-import { TransformQueryEditor } from "../../components/TransformQueryEditor";
-import { getOverviewPageUrl, getTransformUrl } from "../../urls";
 
 import { NewTransformForm } from "./NewTransformForm";
 

@@ -6,8 +6,10 @@ import {
   AdminNavWrapper,
 } from "metabase/admin/components/AdminNav";
 import { AdminSettingsLayout } from "metabase/common/components/AdminLayout/AdminSettingsLayout";
-
-import { getEmptyStatePageUrl, getOverviewPageUrl } from "../../urls";
+import {
+  getEmptyStatePageUrl,
+  getOverviewPageUrl,
+} from "metabase-enterprise/transforms/urls";
 
 type TransformPageLayoutProps = {
   children: ReactNode;
