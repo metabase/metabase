@@ -29,6 +29,7 @@ import {
   Icon,
   type IconName,
   Portal,
+  Stack,
   Text,
 } from "metabase/ui/components";
 import { getIconForField } from "metabase-lib/v1/metadata/utils/fields";
@@ -51,6 +52,8 @@ interface DetailViewSidebarProps {
   onUpdateRelationshipsDirection?: (
     direction: "horizontal" | "vertical",
   ) => void;
+  onCancel: () => void;
+  onSubmit: () => void;
   onCreateSection: () => void;
   onUpdateSection: (
     id: number,
@@ -74,6 +77,8 @@ export function DetailViewSidebar({
   onUpdateSections,
   onRemoveSection,
   onDragEnd,
+  onCancel,
+  onSubmit,
 }: DetailViewSidebarProps) {
   const [activeId, setActiveId] = useState<UniqueIdentifier | null>(null);
   const [isDraggingSection, setIsDraggingSection] = useState(false);
@@ -265,18 +270,54 @@ export function DetailViewSidebar({
   };
 
   return (
-    <Dnd
-      columns={columns}
-      sections={sections}
-      hiddenColumns={hiddenColumns}
-      relationshipsDirection={relationshipsDirection}
-      onUpdateRelationshipsDirection={onUpdateRelationshipsDirection}
-      hasRelationships={hasRelationships}
-      onCreateSection={onCreateSection}
-      onUpdateSection={onUpdateSection}
-      onUpdateSections={onUpdateSections}
-      onRemoveSection={onRemoveSection}
-    />
+    <Stack gap={0} h="100%">
+      <Box
+        flex="0 0 auto"
+        p="xl"
+        style={{
+          borderBottom: "1px solid var(--border-color)",
+        }}
+      >
+        <Text fw={600} size="lg">{t`Detail view settings`}</Text>
+      </Box>
+
+      <Box flex="1" px="xl" pb="xl" pt={24} style={{ overflow: "auto" }}>
+        <Dnd
+          columns={columns}
+          sections={sections}
+          hiddenColumns={hiddenColumns}
+          relationshipsDirection={relationshipsDirection}
+          onUpdateRelationshipsDirection={onUpdateRelationshipsDirection}
+          hasRelationships={hasRelationships}
+          onCreateSection={onCreateSection}
+          onUpdateSection={onUpdateSection}
+          onUpdateSections={onUpdateSections}
+          onRemoveSection={onRemoveSection}
+        />
+      </Box>
+
+      <Box
+        flex="0 0 auto"
+        bg="white"
+        px="xl"
+        py="md"
+        style={{
+          borderTop: "1px solid var(--border-color)",
+        }}
+      >
+        <Group gap="md" justify="space-between">
+          <Group gap="md">
+            <Button size="sm" variant="subtle" onClick={onCancel}>
+              {t`Cancel`}
+            </Button>
+          </Group>
+
+          <Button size="sm" type="submit" variant="filled" onClick={onSubmit}>
+            {t`Save`}
+          </Button>
+        </Group>
+      </Box>
+    </Stack>
   );
 
   return (

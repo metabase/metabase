@@ -67,15 +67,7 @@ export function DetailViewHeader({
           </Button>
         )}
 
-        {/* TODO: move this block to sidebar */}
-        {isEdit && (
-          <>
-            <Button variant="filled" onClick={onSaveClick}>{t`Save`}</Button>
-            <Button onClick={onCloseClick}>{t`Cancel`}</Button>
-          </>
-        )}
-
-        {!isSyncInProgress(table) && (
+        {/* {!isSyncInProgress(table) && (
           <Menu position="bottom-end">
             <Menu.Target>
               <Tooltip label={t`More`}>
@@ -106,7 +98,7 @@ export function DetailViewHeader({
               </Menu.Item>
             </Menu.Dropdown>
           </Menu>
-        )}
+        )} */}
       </Flex>
     </Nav>
   );

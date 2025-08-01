@@ -321,19 +321,12 @@ export function TableDetailViewInner({
             mih={0}
             miw={400}
             h="100%"
-            p="lg"
+            // p="lg"
             style={{
               borderLeft: `1px solid var(--mb-color-border)`,
-              overflowY: "auto",
+              // overflowY: "auto",
             }}
           >
-            <Text
-              fw={600}
-              size="lg"
-              mb="xs"
-              pb="sm"
-            >{t`Detail view settings`}</Text>
-
             <DetailViewSidebar
               columns={columns}
               sections={sections}
@@ -345,6 +338,8 @@ export function TableDetailViewInner({
               onUpdateSections={updateSections}
               onRemoveSection={removeSection}
               onDragEnd={handleDragEnd}
+              onCancel={handleCloseClick}
+              onSubmit={handleSaveClick}
             />
           </Box>
         )}
