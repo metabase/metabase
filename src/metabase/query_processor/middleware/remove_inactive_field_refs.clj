@@ -23,20 +23,19 @@
   We determine which direct database field references are referencing active fields and remove the others.
   Then we recursively remove references to the removed columns."
   [query :- ::lib.schema/query]
-  (let [original-query query]
-    (lib.walk/walk-stages
-     query
-     (fn [_query stage-path stage]
-       (letfn [(resolve-field-ref [field-ref]
-                 (when (= (first field-ref) :field)
-                   ;; resolve metadata in the ORIGINAL query so removing fields upstream doesn't mess up our metadata
-                   ;; resolution
-                   (lib.walk/apply-f-for-stage-at-path lib.field.resolution/resolve-field-ref original-query stage-path field-ref)))
-               (inactive-field-ref? [field-ref]
-                 (when-let [col (resolve-field-ref field-ref)]
-                   (false? (:active col))))
-               (update-fields [fields]
-                 (not-empty (into [] (remove inactive-field-ref?) fields)))]
-         (if (empty? (:fields stage))
-           stage
-           (u/assoc-dissoc stage :fields (update-fields (:fields stage)))))))))
+  (lib.walk/walk-stages
+   query
+   (fn [_query stage-path stage]
+     (letfn [(resolve-field-ref [field-ref]
+               (when (= (first field-ref) :field)
+                 ;; resolve metadata in the ORIGINAL query so removing fields upstream doesn't mess up our metadata
+                 ;; resolution
+                 (lib.walk/apply-f-for-stage-at-path lib.field.resolution/resolve-field-ref query stage-path field-ref)))
+             (inactive-field-ref? [field-ref]
+               (when-let [col (resolve-field-ref field-ref)]
+                 (false? (:active col))))
+             (update-fields [fields]
+               (not-empty (into [] (remove inactive-field-ref?) fields)))]
+       (if (empty? (:fields stage))
+         stage
+         (u/assoc-dissoc stage :fields (update-fields (:fields stage))))))))

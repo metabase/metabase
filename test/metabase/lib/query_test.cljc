@@ -17,7 +17,8 @@
    [metabase.lib.test-util.metadata-providers.merged-mock :as merged-mock]
    [metabase.lib.util :as lib.util]
    [metabase.types.core :as types]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.lib.metadata.cached-provider :as lib.metadata.cached-provider]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
@@ -598,9 +599,19 @@
         (is (lib.metadata.protocols/cached-metadata-provider? (lib.metadata/->metadata-provider query)))))))
 
 (deftest ^:parallel automatically-wrap-metadata-providers-in-cached-metadata-provider-test-2
-  (testing "Don't re-wrap things that are already CachedMetadataProviders"
+  (testing "Re-wrap things that are CachedMetadataProviders IF they do not have a cache"
     (let [mp (lib.metadata.invocation-tracker/invocation-tracker-provider
               (lib.tu/mock-metadata-provider {}))]
       (is (lib.metadata.protocols/cached-metadata-provider? mp))
-      (is (identical? mp
-                      (:lib/metadata (#'lib.query/ensure-cached-metadata-provider {:lib/metadata mp})))))))
+      (is (not (lib.metadata.protocols/cached-metadata-provider-with-cache? mp)))
+      (is (= (lib.metadata.cached-provider/cached-metadata-provider mp)
+             (:lib/metadata (#'lib.query/ensure-cached-metadata-provider {:lib/metadata mp})))))))
+
+(deftest ^:parallel automatically-wrap-metadata-providers-in-cached-metadata-provider-test-3
+  (testing "Do-not re-wrap things that already have a cache"
+    (let [mp (lib.metadata.invocation-tracker/invocation-tracker-provider
+              (lib.metadata.cached-provider/cached-metadata-provider
+               (lib.tu/mock-metadata-provider {})))]
+      (is (lib.metadata.protocols/cached-metadata-provider? mp))
+      (is (lib.metadata.protocols/cached-metadata-provider-with-cache? mp))
+      (is (identical? mp (:lib/metadata (#'lib.query/ensure-cached-metadata-provider {:lib/metadata mp})))))))

@@ -16,6 +16,8 @@
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.cached-provider :as lib.metadata.cached-provider]
+   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.query-processor.error-type :as qp.error-type]
@@ -118,9 +120,12 @@
 
 (mu/defn- ->metadata-provider :- ::lib.schema.metadata/metadata-provider
   [database-id-or-metadata-providerable :- ::database-id-or-metadata-providerable]
-  (if (integer? database-id-or-metadata-providerable)
-    (lib.metadata.jvm/application-database-metadata-provider database-id-or-metadata-providerable)
-    database-id-or-metadata-providerable))
+  (let [mp (if (pos-int? database-id-or-metadata-providerable)
+             (lib.metadata.jvm/application-database-metadata-provider database-id-or-metadata-providerable)
+             (lib.metadata/->metadata-provider database-id-or-metadata-providerable))]
+    (if (lib.metadata.protocols/cached-metadata-provider-with-cache? mp)
+      mp
+      (lib.metadata.cached-provider/cached-metadata-provider mp))))
 
 (mu/defn- validate-existing-provider
   "Impl for [[with-metadata-provider]]; if there's already a provider, just make sure we're not trying to change the
