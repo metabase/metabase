@@ -77,28 +77,32 @@ function DetailViewSidebar({
 }: DetailViewSidebarProps) {
   const [activeId, setActiveId] = useState<UniqueIdentifier | null>(null);
   const [isDraggingSection, setIsDraggingSection] = useState(false);
-  
+
   // Local state for markdown to prevent losing focus
-  const [localMarkdown, setLocalMarkdown] = useState(objectViewSettings.markdown || "");
+  const [localMarkdown, setLocalMarkdown] = useState(
+    objectViewSettings.markdown || "",
+  );
 
   // Sync local state when objectViewSettings changes
   useEffect(() => {
     setLocalMarkdown(objectViewSettings.markdown || "");
   }, [objectViewSettings.markdown]);
 
-  // Debounced update function
-  const debouncedUpdate = useCallback(
-    _.debounce((markdown: string) => {
-      onUpdateObjectView({ markdown });
-    }, 500),
-    [onUpdateObjectView]
+  const handleMarkdownChange = useCallback(
+    (event: React.ChangeEvent<HTMLTextAreaElement>) => {
+      const value = event.currentTarget.value;
+      setLocalMarkdown(value);
+    },
+    [],
   );
 
-  const handleMarkdownChange = useCallback((event: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const value = event.currentTarget.value;
-    setLocalMarkdown(value);
-    debouncedUpdate(value);
-  }, [debouncedUpdate]);
+  const handleMarkdownBlur = useCallback(
+    (event: React.FocusEvent<HTMLTextAreaElement>) => {
+      const value = event.currentTarget.value;
+      onUpdateObjectView({ markdown: value });
+    },
+    [onUpdateObjectView],
+  );
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -315,6 +319,7 @@ Last updated: {{Updated At}}
 This record was created on {{Created At}}.`}
             value={localMarkdown}
             onChange={handleMarkdownChange}
+            onBlur={handleMarkdownBlur}
             minRows={3}
             maxRows={10}
             autosize
