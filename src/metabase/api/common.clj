@@ -244,7 +244,7 @@
 
 ;; #### GENERIC 404 RESPONSE HELPERS
 (def ^:private generic-404
-  [404 (tru "You don''t have permissions to do that or it does not exist.")])
+  [404 (deferred-tru "You don''t have permissions to do that or it does not exist.")])
 
 (defn check-404
   "Throw a `404` if `arg` is `false` or `nil`, otherwise return as-is."
