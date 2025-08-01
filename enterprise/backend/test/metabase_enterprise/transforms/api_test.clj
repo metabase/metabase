@@ -253,8 +253,9 @@
                :limit 3}))))))
 
 (deftest execute-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
-    (doseq [target-type ["table" "view"]]
+  (doseq [target-type ["table" "view"]
+          :let [feature (keyword "transforms" target-type)]]
+    (mt/test-drivers (mt/normal-drivers-with-feature feature)
       (with-transform-cleanup! [table1-name "dookey_products"
                                 table2-name "doohickey_products"]
         (let [query2 (make-query "Doohickey")
