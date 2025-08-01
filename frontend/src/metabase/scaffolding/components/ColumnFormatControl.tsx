@@ -42,7 +42,7 @@ export const ColumnFormatControl = ({
         {hasTitleOption && (
           <Menu.Item
             fw="bold"
-            leftSection={<Icon name="bold" />}
+            leftSection={<Icon name="string" />}
             onClick={() => onStyleChange("title")}
           >
             {t`Title`}

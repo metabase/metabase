@@ -1,5 +1,9 @@
+import { t } from "ttag";
+
 import EditableText from "metabase/common/components/EditableText";
-import { Box, Flex, Group, Text } from "metabase/ui/components";
+import { useTranslateContent } from "metabase/i18n/hooks";
+import { formatValue } from "metabase/lib/formatting/value";
+import { Box, Flex, Group, Text, Tooltip } from "metabase/ui/components";
 import { Button } from "metabase/ui/components/buttons";
 import { Icon } from "metabase/ui/components/icons";
 import { isDate } from "metabase-lib/v1/types/utils/isa";
@@ -13,7 +17,6 @@ import type {
 import { getStyleProps, renderValue } from "../utils";
 
 import S from "./TableDetailView.module.css";
-import { useTranslateContent } from "metabase/i18n/hooks";
 
 type ObjectViewSectionProps = {
   section: ObjectViewSectionSettings;
@@ -102,14 +105,14 @@ export function ObjectViewSection({
               </Text>
               <Text
                 {...getStyleProps(style)}
-                fz="1rem"
-                c="var(--mb-color-text-primary)"
                 lineClamp={5}
                 style={{
                   ...(isDate(column) ? { whiteSpace: "nowrap" } : {}),
                 }}
               >
-                {renderValue(tc, value, column)}
+                {isEdit
+                  ? formatValue(value, { column })
+                  : renderValue(tc, value, column)}
               </Text>
             </Box>
           );
@@ -124,11 +127,13 @@ export function ObjectViewSection({
           top={-5}
           right={-5}
         >
-          <Button
-            size="compact-xs"
-            leftSection={<Icon name="close" />}
-            onClick={onRemoveSection}
-          />
+          <Tooltip label={t`Remove section`}>
+            <Button
+              size="compact-xs"
+              leftSection={<Icon name="close" />}
+              onClick={onRemoveSection}
+            />
+          </Tooltip>
         </Group>
       )}
     </Box>
