@@ -89,12 +89,21 @@ type ExecuteStatusProps = {
 };
 
 function ExecuteStatus({ transform }: ExecuteStatusProps) {
+  const isFailed = isStatusFailed(transform);
+
   return (
-    <Group c="text-secondary" gap="sm">
-      <Icon name="calendar" />
-      <Text>{getStatusText(transform)}</Text>
+    <Group gap="sm">
+      <Icon
+        c={isFailed ? "warning" : "text-secondary"}
+        name={isFailed ? "warning" : "calendar"}
+      />
+      <Text c="text-secondary">{getStatusText(transform)}</Text>
     </Group>
   );
+}
+
+function isStatusFailed({ execution_status: status }: Transform) {
+  return status === "exec-failed" || status === "sync-failed";
 }
 
 function getStatusText({
