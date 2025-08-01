@@ -4,17 +4,10 @@ import {
   CollectionNotFoundError,
   SdkLoader,
   withPublicComponentWrapper,
-<<<<<<< HEAD:enterprise/frontend/src/embedding-sdk-bundle/components/public/CollectionBrowser/CollectionBrowser.tsx
 } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
 import { useSdkBreadcrumbs } from "embedding-sdk-bundle/hooks/private/use-sdk-breadcrumb";
-import { useTranslatedCollectionId } from "embedding-sdk-bundle/hooks/private/use-translated-collection-id";
+import { useSdkSelector } from "embedding-sdk-bundle/store";
 import { getCollectionIdSlugFromReference } from "embedding-sdk-bundle/store/collections";
-import { useSdkSelector } from "embedding-sdk-bundle/store/use-sdk-selector";
-=======
-} from "embedding-sdk/components/private/PublicComponentWrapper";
-import { getCollectionIdSlugFromReference } from "embedding-sdk/store/collections";
-import { useSdkSelector } from "embedding-sdk/store/use-sdk-selector";
->>>>>>> 6a72cab5e38 (remove resolving collections):enterprise/frontend/src/embedding-sdk/components/public/CollectionBrowser/CollectionBrowser.tsx
 import type {
   MetabaseCollectionItem,
   SdkCollectionId,

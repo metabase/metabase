@@ -1,7 +1,3 @@
-<<<<<<< HEAD:enterprise/frontend/src/embedding-sdk-bundle/components/private/SdkQuestion/components/SdkSaveQuestionForm.tsx
-import { useTranslatedCollectionId } from "embedding-sdk-bundle/hooks/private/use-translated-collection-id";
-=======
->>>>>>> 6a72cab5e38 (remove resolving collections):enterprise/frontend/src/embedding-sdk/components/private/SdkQuestion/components/SdkSaveQuestionForm.tsx
 import {
   SaveQuestionForm,
   SaveQuestionTitle,

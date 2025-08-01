@@ -1,13 +1,5 @@
-<<<<<<< HEAD:enterprise/frontend/src/embedding-sdk-bundle/components/public/CreateDashboardModal/CreateDashboardModal.tsx
 import { withPublicComponentWrapper } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
-import { useTranslatedCollectionId } from "embedding-sdk-bundle/hooks/private/use-translated-collection-id";
-import type { SdkCollectionId } from "embedding-sdk-bundle/types/collection";
-import type { MetabaseDashboard } from "embedding-sdk-bundle/types/dashboard";
-=======
-import { withPublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
-import type { SdkCollectionId } from "embedding-sdk/types/collection";
-import type { MetabaseDashboard } from "embedding-sdk/types/dashboard";
->>>>>>> 6a72cab5e38 (remove resolving collections):enterprise/frontend/src/embedding-sdk/components/public/CreateDashboardModal/CreateDashboardModal.tsx
+import type { MetabaseDashboard, SdkCollectionId } from "embedding-sdk-package";
 import { useCollectionQuery, useLocale } from "metabase/common/hooks";
 import { CreateDashboardModal as CreateDashboardModalCore } from "metabase/dashboard/containers/CreateDashboardModal";
 

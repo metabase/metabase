@@ -89,9 +89,16 @@ describe("scenarios > embedding-sdk > collection browser", () => {
             <div>id = {collectionId}</div>
             <CollectionBrowser collectionId={collectionId} />
 
-            <div onClick={() => setCollectionId(SECOND_COLLECTION_ENTITY_ID!)}>
+            <button
+              onClick={() => setCollectionId(FIRST_COLLECTION_ENTITY_ID!)}
+            >
+              use first collection
+            </button>
+            <button
+              onClick={() => setCollectionId(SECOND_COLLECTION_ENTITY_ID!)}
+            >
               use second collection
-            </div>
+            </button>
           </div>
         );
       };
