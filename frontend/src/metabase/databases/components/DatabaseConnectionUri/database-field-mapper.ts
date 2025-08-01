@@ -349,6 +349,41 @@ export function mapDatabaseValues(
 }
 
 /**
+ * Converts a Map of flat field paths to nested object format.
+ * @param fieldsMap - Map with keys like 'details.ssl' and corresponding values
+ * @returns Nested object where 'details.ssl' → true becomes { details: { ssl: true } }
+ */
+export function mapFieldsToNestedObject(
+  fieldsMap: Map<string, string | boolean | undefined>,
+): Record<string, any> {
+  const result: Record<string, any> = {};
+
+  for (const [key, value] of fieldsMap.entries()) {
+    if (value === undefined) {
+      continue;
+    }
+
+    const parts = key.split(".");
+    let current = result;
+
+    // Navigate/create nested structure
+    for (let i = 0; i < parts.length - 1; i++) {
+      const part = parts[i];
+      if (!(part in current)) {
+        current[part] = {};
+      }
+      current = current[part];
+    }
+
+    // Set the final value
+    const finalKey = parts[parts.length - 1];
+    current[finalKey] = value;
+  }
+
+  return result;
+}
+
+/**
  * Converts an object to a semicolon-separated string.
  * @param obj - The object to convert.
  * @param filterProperties - The properties to filter out.
