@@ -78,7 +78,7 @@ function UpdateTargetForm({
   onUpdate,
   onCancel,
 }: UpdateTargetFormProps) {
-  const { source, target } = transform;
+  const { source, target, table } = transform;
   const { database: databaseId } = source.query;
   const [updateTransform] = useUpdateTransformMutation();
   const [deleteTransformTarget] = useDeleteTransformTargetMutation();
@@ -130,19 +130,21 @@ function UpdateTargetForm({
                 data={schemas}
               />
             )}
-            <Radio.Group
-              value={shouldDeleteTarget.toString()}
-              label={getActionLabel(target)}
-              description={jt`You can keep or delete ${(
-                <strong>{target.name}</strong>
-              )}. Deleting it can’t be undone, and will break queries that used it. Please be careful!`}
-              onChange={(value) => setShouldDeleteTarget(value === "true")}
-            >
-              <Stack gap="sm">
-                <Radio value="false" label={t`Keep ${target.name}`} />
-                <Radio value="true" label={t`Delete ${target.name}`} />
-              </Stack>
-            </Radio.Group>
+            {table != null && (
+              <Radio.Group
+                value={shouldDeleteTarget.toString()}
+                label={getActionLabel(target)}
+                description={jt`You can keep or delete ${(
+                  <strong>{target.name}</strong>
+                )}. Deleting it can’t be undone, and will break queries that used it. Please be careful!`}
+                onChange={(value) => setShouldDeleteTarget(value === "true")}
+              >
+                <Stack gap="sm">
+                  <Radio value="false" label={t`Keep ${target.name}`} />
+                  <Radio value="true" label={t`Delete ${target.name}`} />
+                </Stack>
+              </Radio.Group>
+            )}
             <FormErrorMessage />
             <Group justify="end">
               <Button onClick={onCancel}>{t`Cancel`}</Button>
