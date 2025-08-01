@@ -84,7 +84,7 @@
                     [:id ms/PositiveInt]]]
   (log/info "get transform" id)
   (api/check-superuser)
-  (let [{:keys [target] :as transform} (api/check-404 (t2/hydrate (t2/select-one :model/Transform id) :worker-runs))
+  (let [{:keys [target] :as transform} (api/check-404 (t2/select-one :model/Transform id))
         database-id (source-database-id transform)
         target-table (transforms.util/target-table database-id target :active true)]
     (assoc transform :table target-table)))
