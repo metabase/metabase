@@ -19,10 +19,11 @@ import {
   getValidationSchema,
   getVisibleFields,
 } from "../../utils/schema";
+import { DatabaseConnectionStringField } from "../DatabaseConnectionUri";
 import DatabaseDetailField from "../DatabaseDetailField";
 import { DatabaseEngineField } from "../DatabaseEngineField";
 import DatabaseEngineWarning from "../DatabaseEngineWarning";
-import DatabaseNameField from "../DatabaseNameField";
+import { DatabaseNameField } from "../DatabaseNameField";
 
 export type EngineFieldState = "default" | "hidden" | "disabled";
 
@@ -51,6 +52,7 @@ interface DatabaseFormProps {
   onCancel?: () => void;
   setIsDirty?: (isDirty: boolean) => void;
   config?: DatabaseFormConfig;
+  location: "admin" | "setup" | "embedding_setup";
   /**
    * Whether to show the sample database indicator in the engine list and change the "I'll add my data later" button to "Continue with sample data"
    */
@@ -66,6 +68,7 @@ export const DatabaseForm = ({
   onCancel,
   onEngineChange,
   setIsDirty,
+  location,
   showSampleDatabase = false,
   ContinueWithoutDataSlot,
   config = {},
@@ -124,6 +127,7 @@ export const DatabaseForm = ({
         config={config}
         showSampleDatabase={showSampleDatabase}
         ContinueWithoutDataSlot={ContinueWithoutDataSlot}
+        location={location}
       />
     </FormProvider>
   );
@@ -142,6 +146,7 @@ interface DatabaseFormBodyProps {
   config: DatabaseFormConfig;
   showSampleDatabase?: boolean;
   ContinueWithoutDataSlot?: ContinueWithoutDataComponent;
+  location: "admin" | "setup" | "embedding_setup";
 }
 
 const DatabaseFormBody = ({
@@ -157,8 +162,9 @@ const DatabaseFormBody = ({
   config,
   showSampleDatabase = false,
   ContinueWithoutDataSlot,
+  location,
 }: DatabaseFormBodyProps): JSX.Element => {
-  const { values, dirty } = useFormikContext<DatabaseData>();
+  const { values, dirty, setValues } = useFormikContext<DatabaseData>();
 
   useEffect(() => {
     setIsDirty?.(dirty);
@@ -187,6 +193,11 @@ const DatabaseFormBody = ({
           />
         </>
       )}
+      <DatabaseConnectionStringField
+        engineKey={engineKey}
+        location={location}
+        setValues={setValues}
+      />
       {engine && (
         <DatabaseNameField
           engine={engine}
