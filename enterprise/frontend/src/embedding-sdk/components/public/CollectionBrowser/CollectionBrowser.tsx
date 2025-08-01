@@ -5,7 +5,6 @@ import {
   SdkLoader,
   withPublicComponentWrapper,
 } from "embedding-sdk/components/private/PublicComponentWrapper";
-import { useTranslatedCollectionId } from "embedding-sdk/hooks/private/use-translated-collection-id";
 import { getCollectionIdSlugFromReference } from "embedding-sdk/store/collections";
 import { useSdkSelector } from "embedding-sdk/store/use-sdk-selector";
 import type {
@@ -102,9 +101,7 @@ export const CollectionBrowserInner = ({
   visibleColumns = COLLECTION_BROWSER_LIST_COLUMNS,
   className,
   style,
-}: Omit<CollectionBrowserProps, "collectionId"> & {
-  collectionId: CollectionId;
-}) => {
+}: CollectionBrowserProps) => {
   const baseCollectionId = useSdkSelector((state) =>
     getCollectionIdSlugFromReference(state, collectionId),
   );
@@ -158,19 +155,16 @@ const CollectionBrowserWrapper = ({
   ...restProps
 }: CollectionBrowserProps) => {
   const { isLocaleLoading } = useLocale();
-  const { id, isLoading } = useTranslatedCollectionId({
-    id: collectionId,
-  });
 
-  if (isLocaleLoading || isLoading) {
+  if (isLocaleLoading) {
     return <SdkLoader />;
   }
 
-  if (!id) {
+  if (!collectionId) {
     return <CollectionNotFoundError id={collectionId} />;
   }
 
-  return <CollectionBrowserInner collectionId={id} {...restProps} />;
+  return <CollectionBrowserInner collectionId={collectionId} {...restProps} />;
 };
 
 /**
