@@ -97,7 +97,7 @@ export const downloadFile = (markdown: string) => {
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
-  link.download = `report-${new Date().toISOString().split("T")[0]}.md`;
+  link.download = `document-${new Date().toISOString().split("T")[0]}.md`;
   document.body.appendChild(link);
 
   link.click();

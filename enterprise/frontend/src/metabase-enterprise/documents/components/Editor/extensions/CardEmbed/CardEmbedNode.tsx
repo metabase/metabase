@@ -16,10 +16,10 @@ import Question from "metabase-lib/v1/Question";
 import { getUrl } from "metabase-lib/v1/urls";
 import type { Card } from "metabase-types/api";
 
-import { useReportsSelector } from "../../../../redux-utils";
-import { openVizSettingsSidebar } from "../../../../reports.slice";
+import { useDocumentsSelector } from "../../../../redux-utils";
+import { openVizSettingsSidebar } from "../../../../documents.slice";
 import {
-  getReportCardWithDraftSettings,
+  getDocumentCardWithDraftSettings,
   getSelectedEmbedIndex,
 } from "../../../../selectors";
 import { formatCardEmbed } from "../markdown/card-embed-format";
@@ -138,14 +138,14 @@ export const CardEmbedComponent = memo(
       { skip: !id || !card },
     );
 
-    const selectedEmbedIndex = useReportsSelector(getSelectedEmbedIndex);
+    const selectedEmbedIndex = useDocumentsSelector(getSelectedEmbedIndex);
     const isCurrentlyEditing =
       selectedEmbedIndex === embedIndex && embedIndex !== -1;
 
     // Use draft settings if this embed is currently being edited
-    const cardWithDraft = useReportsSelector((state) =>
+    const cardWithDraft = useDocumentsSelector((state) =>
       isCurrentlyEditing && card
-        ? getReportCardWithDraftSettings(state, id, card)
+        ? getDocumentCardWithDraftSettings(state, id, card)
         : card,
     );
 
@@ -160,7 +160,7 @@ export const CardEmbedComponent = memo(
           ]
         : null;
 
-    const metadata = useReportsSelector(getMetadata);
+    const metadata = useDocumentsSelector(getMetadata);
     const [isEditingTitle, setIsEditingTitle] = useState(false);
     const [editedTitle, setEditedTitle] = useState(name || "");
     const titleInputRef = useRef<HTMLInputElement>(null);

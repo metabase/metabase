@@ -3,15 +3,15 @@ import _ from "underscore";
 
 import type { Card, CardId } from "metabase-types/api";
 
-import type { ReportsStoreState } from "./types";
+import type { DocumentsStoreState } from "./types";
 
-export const getReportsState = (state: ReportsStoreState) =>
-  state.plugins?.reports;
+export const getDocumentsState = (state: DocumentsStoreState) =>
+  state.plugins?.documents;
 
 export const getSelectedQuestionId = createSelector(
-  getReportsState,
-  (reports): CardId | null => {
-    const { selectedEmbedIndex, cardEmbeds } = reports;
+  getDocumentsState,
+  (documents): CardId | null => {
+    const { selectedEmbedIndex, cardEmbeds } = documents;
     if (selectedEmbedIndex === null || !cardEmbeds[selectedEmbedIndex]) {
       return null;
     }
@@ -20,26 +20,26 @@ export const getSelectedQuestionId = createSelector(
 );
 
 export const getCardEmbeds = createSelector(
-  getReportsState,
-  (reports) => reports?.cardEmbeds ?? [],
+  getDocumentsState,
+  (documents) => documents?.cardEmbeds ?? [],
 );
 
 export const getSelectedEmbedIndex = createSelector(
-  getReportsState,
-  (reports): number | null => reports.selectedEmbedIndex,
+  getDocumentsState,
+  (documents): number | null => documents.selectedEmbedIndex,
 );
 
 // Get draft card for the currently selected embed
 export const getDraftCard = createSelector(
-  getReportsState,
-  (reports) => reports.draftCard,
+  getDocumentsState,
+  (documents) => documents.draftCard,
 );
 
 // Get card with draft settings merged for the currently selected embed
-export const getReportCardWithDraftSettings = createSelector(
+export const getDocumentCardWithDraftSettings = createSelector(
   [
     (_state: any, _cardId: CardId, card?: Card) => card,
-    (state: any) => getReportsState(state).draftCard,
+    (state: any) => getDocumentsState(state).draftCard,
   ],
   (card, draftCard) => {
     if (!card) {
@@ -59,7 +59,7 @@ export const getReportCardWithDraftSettings = createSelector(
 // Check if there are pending draft changes
 export const getHasDraftChanges = createSelector(
   [
-    (state: any) => getReportsState(state).draftCard,
+    (state: any) => getDocumentsState(state).draftCard,
     (_state: any, originalCard?: Card) => originalCard,
   ],
   (draftCard, originalCard) => {

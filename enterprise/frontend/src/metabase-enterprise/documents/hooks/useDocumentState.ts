@@ -4,29 +4,29 @@ import { useDispatch } from "metabase/lib/redux";
 import type { CollectionId } from "metabase-types/api";
 
 import type { CardEmbedRef } from "../components/Editor/types";
-import { useReportsSelector } from "../redux-utils";
-import { setCardEmbeds } from "../reports.slice";
+import { setCardEmbeds } from "../documents.slice";
+import { useDocumentsSelector } from "../redux-utils";
 import { getCardEmbeds } from "../selectors";
 
-export function useReportState(reportData?: {
+export function useDocumentState(documentData?: {
   name: string;
   document: string;
 }) {
   const dispatch = useDispatch();
-  const cardEmbeds = useReportsSelector(getCardEmbeds);
-  const [reportTitle, setReportTitle] = useState("");
-  const [reportContent, setReportContent] = useState("");
-  const [reportCollectionId, setReportCollectionId] =
+  const cardEmbeds = useDocumentsSelector(getCardEmbeds);
+  const [documentTitle, setDocumentTitle] = useState("");
+  const [documentContent, setDocumentContent] = useState("");
+  const [documentCollectionId, setDocumentCollectionId] =
     useState<CollectionId | null>(null);
   const previousEmbedsRef = useRef<CardEmbedRef[]>([]);
 
-  // Sync report data when it changes
+  // Sync document data when it changes
   useEffect(() => {
-    if (reportData) {
-      setReportTitle(reportData.name);
-      setReportContent(reportData.document);
+    if (documentData) {
+      setDocumentTitle(documentData.name);
+      setDocumentContent(documentData.document);
     }
-  }, [reportData]);
+  }, [documentData]);
 
   const updateCardEmbeds = useCallback(
     (newEmbeds: CardEmbedRef[]) => {
@@ -50,12 +50,12 @@ export function useReportState(reportData?: {
   );
 
   return {
-    reportTitle,
-    setReportTitle,
-    reportContent,
-    setReportContent,
-    reportCollectionId,
-    setReportCollectionId,
+    documentTitle,
+    setDocumentTitle,
+    documentContent,
+    setDocumentContent,
+    documentCollectionId,
+    setDocumentCollectionId,
     cardEmbeds,
     updateCardEmbeds,
   };

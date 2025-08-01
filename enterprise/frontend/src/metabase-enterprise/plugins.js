@@ -39,4 +39,4 @@ import "./user_provisioning";
 import "./clean_up";
 import "./metabot";
 import "./database_replication";
-import "./reports";
+import "./documents";

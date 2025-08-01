@@ -7,7 +7,7 @@ export * from "./content-translation";
 export * from "./db-routing";
 export * from "./gdrive";
 export * from "./metabot";
-export * from "./report";
+export * from "./document";
 export * from "./saml";
 export * from "./scim";
 export * from "./tags";

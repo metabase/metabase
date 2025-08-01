@@ -19,7 +19,7 @@ interface CardSaveResult {
  * Hook that determines whether to update an existing card or create a new one
  * based on card type and occurrence count in the editor
  */
-export const useCardSaveStrategy = () => {
+export const useDocumentCardSave = () => {
   const [createCard] = useCreateCardMutation();
   const [updateCard] = useUpdateCardMutation();
 

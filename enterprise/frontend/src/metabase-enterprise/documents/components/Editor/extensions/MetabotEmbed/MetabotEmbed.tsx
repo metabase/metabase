@@ -9,7 +9,7 @@ import { t } from "ttag";
 
 import { Box, Button, Flex, Icon } from "metabase/ui";
 
-import { useMetabotReportQuery } from "../../hooks/useMetabotReportQuery";
+import { useMetabotDocumentQuery } from "../../hooks/useMetabotDocumentQuery";
 
 import Styles from "./MetabotEmbed.module.css";
 
@@ -73,7 +73,7 @@ export const MetabotComponent = memo(
     const inputRef = useRef<HTMLTextAreaElement>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [errorText, setErrorText] = useState("");
-    const queryMetabot = useMetabotReportQuery();
+    const queryMetabot = useMetabotDocumentQuery();
     const { text: prompt } = node.attrs;
 
     const handleRunMetabot = useCallback(async () => {

@@ -1,4 +1,4 @@
-.reportPage {
+.documentPage {
   display: flex;
   flex-direction: column;
   height: calc(100vh - var(--nav-sidebar-height, 60px));

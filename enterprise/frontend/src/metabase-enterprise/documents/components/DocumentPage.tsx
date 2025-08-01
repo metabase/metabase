@@ -18,28 +18,28 @@ import { useCallbackEffect } from "metabase/common/hooks/use-callback-effect";
 import { useDispatch } from "metabase/lib/redux";
 import { ActionIcon, Box, Button, Flex, Icon, Loader, Menu } from "metabase/ui";
 import {
-  useCreateReportMutation,
-  useGetReportQuery,
-  useUpdateReportMutation,
+  useCreateDocumentMutation,
+  useGetDocumentQuery,
+  useUpdateDocumentMutation,
 } from "metabase-enterprise/api";
 import type { CollectionId } from "metabase-types/api";
 
+import { closeSidebar, resetDocuments } from "../documents.slice";
 import {
-  useRegisterReportMetabotContext,
-  useReportActions,
-  useReportState,
+  useDocumentActions,
+  useDocumentState,
+  useRegisterDocumentMetabotContext,
 } from "../hooks";
-import { useReportsSelector } from "../redux-utils";
-import { closeSidebar, resetReports } from "../reports.slice";
+import { useDocumentsSelector } from "../redux-utils";
 import { getSelectedEmbedIndex, getSelectedQuestionId } from "../selectors";
 
+import styles from "./DocumentPage.module.css";
 import { Editor } from "./Editor";
 import { EmbedQuestionSettingsSidebar } from "./EmbedQuestionSettingsSidebar";
-import styles from "./ReportPage.module.css";
 import { downloadFile, getDownloadableMarkdown } from "./exports";
 
-export const ReportPage = ({
-  params: { id: reportId },
+export const DocumentPage = ({
+  params: { id: documentId },
   location,
   route,
 }: {
@@ -48,13 +48,13 @@ export const ReportPage = ({
   route: Route;
 }) => {
   const dispatch = useDispatch();
-  const selectedQuestionId = useReportsSelector(getSelectedQuestionId);
-  const selectedEmbedIndex = useReportsSelector(getSelectedEmbedIndex);
+  const selectedQuestionId = useDocumentsSelector(getSelectedQuestionId);
+  const selectedEmbedIndex = useDocumentsSelector(getSelectedEmbedIndex);
   const [editorInstance, setEditorInstance] = useState<any>(null);
   const [isDownloading, setIsDownloading] = useState(false);
   const [currentContent, setCurrentContent] = useState<string>("");
-  const [createReport] = useCreateReportMutation();
-  const [updateReport] = useUpdateReportMutation();
+  const [createDocument] = useCreateDocumentMutation();
+  const [updateDocument] = useUpdateDocumentMutation();
   const [
     isShowingCollectionPicker,
     { open: showCollectionPicker, close: hideCollectionPicker },
@@ -63,90 +63,108 @@ export const ReportPage = ({
   const selectedVersion = location?.query?.version
     ? Number(location.query.version)
     : undefined;
-  const previousReportId = usePrevious(reportId);
+  const previousDocumentId = usePrevious(documentId);
   const previousVersion = usePrevious(selectedVersion);
   const [isNavigationScheduled, scheduleNavigation] = useCallbackEffect();
 
-  const { data: report, isLoading: isReportLoading } = useGetReportQuery(
-    reportId && reportId !== "new"
-      ? { id: reportId, version: selectedVersion }
-      : skipToken,
-  );
+  const { data: documentData, isLoading: isDocumentLoading } =
+    useGetDocumentQuery(
+      documentId && documentId !== "new"
+        ? { id: documentId, version: selectedVersion }
+        : skipToken,
+    );
 
   const { data: collection } = useGetCollectionQuery(
-    report?.collection_id ? { id: report.collection_id } : skipToken,
+    documentData?.collection_id
+      ? { id: documentData.collection_id }
+      : skipToken,
   );
 
   const { data: selectedCard } = useGetCardQuery(
     selectedQuestionId ? { id: selectedQuestionId } : skipToken,
   );
 
-  const canWrite = reportId === "new" ? true : collection?.can_write;
+  const canWrite = documentId === "new" ? true : collection?.can_write;
 
   const {
-    reportTitle,
-    setReportTitle,
-    reportContent,
-    setReportContent,
+    documentTitle,
+    setDocumentTitle,
+    documentContent,
+    setDocumentContent,
     cardEmbeds,
     updateCardEmbeds,
-  } = useReportState(report);
+  } = useDocumentState(documentData);
 
-  // Reset current content when report changes
+  // Reset current content when document changes
   useEffect(() => {
-    if (reportId !== previousReportId || selectedVersion !== previousVersion) {
-      setCurrentContent(reportContent || "");
+    if (
+      documentId !== previousDocumentId ||
+      selectedVersion !== previousVersion
+    ) {
+      setCurrentContent(documentContent || "");
     }
   }, [
-    reportId,
-    previousReportId,
+    documentId,
+    previousDocumentId,
     selectedVersion,
     previousVersion,
-    reportContent,
+    documentContent,
   ]);
 
   const { commitVisualizationChanges, commitAllPendingChanges } =
-    useReportActions();
-  useRegisterReportMetabotContext();
+    useDocumentActions();
+  useRegisterDocumentMetabotContext();
   useBeforeUnload(() => {
     // warn if you try to navigate away with unsaved changes
     return hasUnsavedChanges();
   });
 
-  // Update current content when report content changes
+  // Update current content when document content changes
   useEffect(() => {
-    setCurrentContent(reportContent || "");
-  }, [reportContent]);
+    setCurrentContent(documentContent || "");
+  }, [documentContent]);
 
-  // Reset state when creating a new report
+  // Reset state when creating a new document
   useEffect(() => {
-    if (reportId === "new" && previousReportId !== "new") {
-      setReportTitle("");
-      setReportContent("");
+    if (documentId === "new" && previousDocumentId !== "new") {
+      setDocumentTitle("");
+      setDocumentContent("");
       setCurrentContent("");
-      // Clear the Redux state to ensure no card embeds from previous report
-      dispatch(resetReports());
+      // Clear the Redux state to ensure no card embeds from previous document
+      dispatch(resetDocuments());
     }
-  }, [reportId, setReportTitle, setReportContent, previousReportId, dispatch]);
+  }, [
+    documentId,
+    setDocumentTitle,
+    setDocumentContent,
+    previousDocumentId,
+    dispatch,
+  ]);
 
   const hasUnsavedChanges = useCallback(() => {
-    const currentTitle = reportTitle.trim();
-    const originalTitle = report?.name || "";
+    const currentTitle = documentTitle.trim();
+    const originalTitle = documentData?.name || "";
     const titleChanged = currentTitle !== originalTitle;
 
-    // For new reports, show Save if there's title or content exists
-    if (reportId === "new") {
+    // For new documents, show Save if there's title or content exists
+    if (documentId === "new") {
       const emptyDocAst = JSON.stringify({ type: "doc", content: [] });
       const hasContent =
         currentContent !== emptyDocAst && currentContent !== "";
       return currentTitle.length > 0 || hasContent;
     }
 
-    // For existing reports, compare current content with report content
-    const contentChanged = currentContent !== (reportContent ?? "");
+    // For existing documents, compare current content with document content
+    const contentChanged = currentContent !== (documentContent ?? "");
 
     return titleChanged || contentChanged;
-  }, [reportTitle, reportId, report, currentContent, reportContent]);
+  }, [
+    documentTitle,
+    documentId,
+    documentData,
+    currentContent,
+    documentContent,
+  ]);
 
   const showSaveButton = hasUnsavedChanges() && canWrite;
 
@@ -161,20 +179,20 @@ export const ReportPage = ({
         await commitAllPendingChanges(editorInstance);
 
         // Use the current content (already in JSON AST format)
-        const newReportData = {
-          name: reportTitle,
+        const newDocumentData = {
+          name: documentTitle,
           document: currentContent,
           used_card_ids: [...new Set(cardEmbeds.map((embed) => embed.id))],
         };
 
-        const result = await (reportId !== "new" && report?.id
-          ? updateReport({ ...newReportData, id: report.id }).then(
+        const result = await (documentId !== "new" && documentData?.id
+          ? updateDocument({ ...newDocumentData, id: documentData.id }).then(
               (response) => {
                 if (response.data) {
                   scheduleNavigation(() => {
                     dispatch(
                       push(
-                        `/report/${response.data.id}?version=${response.data.version}`,
+                        `/document/${response.data.id}?version=${response.data.version}`,
                       ),
                     );
                   });
@@ -182,13 +200,13 @@ export const ReportPage = ({
                 return response.data;
               },
             )
-          : createReport({
-              ...newReportData,
+          : createDocument({
+              ...newDocumentData,
               collection_id: collectionId,
             }).then((response) => {
               if (response.data) {
                 scheduleNavigation(() => {
-                  dispatch(replace(`/report/${response.data.id}`));
+                  dispatch(replace(`/document/${response.data.id}`));
                 });
               }
               return response.data;
@@ -196,28 +214,28 @@ export const ReportPage = ({
 
         if (result) {
           sendToast({
-            message: report?.id
-              ? t`Report v${result?.version} saved`
-              : t`Report created`,
+            message: documentData?.id
+              ? t`Document v${result?.version} saved`
+              : t`Document created`,
           });
-          // Content will be updated automatically when the new report data loads
+          // Content will be updated automatically when the new document data loads
         }
       } catch (error) {
-        console.error("Failed to save report:", error);
-        sendToast({ message: t`Error saving report`, icon: "warning" });
+        console.error("Failed to save document:", error);
+        sendToast({ message: t`Error saving document`, icon: "warning" });
       }
     },
     [
       editorInstance,
-      createReport,
-      updateReport,
-      report,
-      reportTitle,
+      createDocument,
+      updateDocument,
+      documentData,
+      documentTitle,
       currentContent,
       sendToast,
       dispatch,
       commitAllPendingChanges,
-      reportId,
+      documentId,
       cardEmbeds,
       scheduleNavigation,
     ],
@@ -232,7 +250,7 @@ export const ReportPage = ({
           return;
         }
 
-        reportId === "new" ? showCollectionPicker() : handleSave();
+        documentId === "new" ? showCollectionPicker() : handleSave();
       }
     };
 
@@ -241,7 +259,7 @@ export const ReportPage = ({
     return () => {
       document.removeEventListener("keydown", handleKeyDown);
     };
-  }, [hasUnsavedChanges, handleSave, reportId, showCollectionPicker]);
+  }, [hasUnsavedChanges, handleSave, documentId, showCollectionPicker]);
 
   const handleQuestionSelect = useCallback(async () => {
     if (selectedEmbedIndex !== null && selectedCard) {
@@ -281,23 +299,23 @@ export const ReportPage = ({
     })();
   }, [cardEmbeds, editorInstance]);
 
-  const handlePrintReport = useCallback(() => {
+  const handlePrintDocument = useCallback(() => {
     window.print();
   }, []);
 
   return (
-    <Box className={styles.reportPage}>
+    <Box className={styles.documentPage}>
       <Box className={styles.contentArea}>
         <Box className={styles.mainContent}>
           <Box className={styles.documentContainer}>
             <Box className={styles.header} mt="xl" pt="xl">
               <Box>
                 <input
-                  value={reportTitle}
+                  value={documentTitle}
                   onChange={(event) =>
-                    setReportTitle(event.currentTarget.value)
+                    setDocumentTitle(event.currentTarget.value)
                   }
-                  placeholder={t`New report`}
+                  placeholder={t`New document`}
                   readOnly={!canWrite}
                   className={styles.titleInput}
                 />
@@ -306,7 +324,7 @@ export const ReportPage = ({
                 {showSaveButton && (
                   <Button
                     onClick={() => {
-                      reportId === "new"
+                      documentId === "new"
                         ? showCollectionPicker()
                         : handleSave();
                     }}
@@ -343,9 +361,9 @@ export const ReportPage = ({
                     </Menu.Item>
                     <Menu.Item
                       leftSection={<Icon name="document" />}
-                      onClick={handlePrintReport}
+                      onClick={handlePrintDocument}
                     >
-                      {t`Print Report`}
+                      {t`Print Document`}
                     </Menu.Item>
                   </Menu.Dropdown>
                 </Menu>
@@ -355,10 +373,10 @@ export const ReportPage = ({
               onEditorReady={setEditorInstance}
               onCardEmbedsChange={updateCardEmbeds}
               onQuestionSelect={handleQuestionSelect}
-              content={reportContent || ""}
+              content={documentContent || ""}
               onChange={setCurrentContent}
               editable={canWrite}
-              isLoading={isReportLoading}
+              isLoading={isDocumentLoading}
             />
           </Box>
         </Box>
@@ -375,7 +393,7 @@ export const ReportPage = ({
 
         {isShowingCollectionPicker && (
           <CollectionPickerModal
-            title={t`Where should we save this report?`}
+            title={t`Where should we save this document?`}
             onClose={hideCollectionPicker}
             value={{ id: "root", model: "collection" }}
             options={{

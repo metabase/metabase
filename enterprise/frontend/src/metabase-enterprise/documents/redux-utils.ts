@@ -8,14 +8,14 @@ import {
 
 import { MetabaseReduxContext } from "metabase/lib/redux";
 
-import type { ReportsStoreState } from "./types";
+import type { DocumentsStoreState } from "./types";
 
-export const useReportsStore: () => Store<ReportsStoreState, AnyAction> =
+export const useDocumentsStore: () => Store<DocumentsStoreState, AnyAction> =
   createStoreHook(MetabaseReduxContext);
-export const useReportsDispatch: () => ThunkDispatch<
-  ReportsStoreState,
+export const useDocumentsDispatch: () => ThunkDispatch<
+  DocumentsStoreState,
   void,
   AnyAction
 > = createDispatchHook(MetabaseReduxContext);
-export const useReportsSelector: TypedUseSelectorHook<ReportsStoreState> =
+export const useDocumentsSelector: TypedUseSelectorHook<DocumentsStoreState> =
   createSelectorHook(MetabaseReduxContext);

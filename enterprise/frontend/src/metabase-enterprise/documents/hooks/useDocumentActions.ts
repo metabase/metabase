@@ -4,22 +4,22 @@ import { t } from "ttag";
 import { useToast } from "metabase/common/hooks";
 import type { Card } from "metabase-types/api";
 
-import { useReportsDispatch, useReportsStore } from "../redux-utils";
-import { clearDraftState } from "../reports.slice";
+import { clearDraftState } from "../documents.slice";
+import { useDocumentsDispatch, useDocumentsStore } from "../redux-utils";
 import {
   getCardEmbeds,
+  getDocumentCardWithDraftSettings,
+  getDocumentsState,
   getHasDraftChanges,
-  getReportCardWithDraftSettings,
-  getReportsState,
 } from "../selectors";
 
-import { useCardSaveStrategy } from "./useCardSaveStrategy";
+import { useDocumentCardSave } from "./use-document-card-save";
 
-export function useReportActions() {
-  const dispatch = useReportsDispatch();
-  const store = useReportsStore();
+export function useDocumentActions() {
+  const dispatch = useDocumentsDispatch();
+  const store = useDocumentsStore();
   const [sendToast] = useToast();
-  const { saveCard } = useCardSaveStrategy();
+  const { saveCard } = useDocumentCardSave();
 
   const commitVisualizationChanges = useCallback(
     async (embedIndex: number, editorInstance: any, originalCard: Card) => {
@@ -37,7 +37,7 @@ export function useReportActions() {
       }
 
       const embed = cardEmbeds[embedIndex];
-      const cardWithDraftSettings = getReportCardWithDraftSettings(
+      const cardWithDraftSettings = getDocumentCardWithDraftSettings(
         state,
         embed.id,
         originalCard,
@@ -118,7 +118,7 @@ export function useReportActions() {
 
       const state = store.getState();
       const hasDraftChanges = getHasDraftChanges(state, originalCard);
-      const selectedEmbedIndex = getReportsState(state).selectedEmbedIndex;
+      const selectedEmbedIndex = getDocumentsState(state).selectedEmbedIndex;
 
       // Commit changes if there are any and we have a selected embed
       if (hasDraftChanges && selectedEmbedIndex !== null && originalCard) {

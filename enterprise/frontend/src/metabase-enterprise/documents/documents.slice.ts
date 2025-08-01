@@ -8,21 +8,21 @@ import type {
 
 import type { CardEmbedRef } from "./components/Editor/types";
 
-export interface ReportsState {
+export interface DocumentsState {
   selectedEmbedIndex: number | null; // Index in cardEmbeds array
   // Draft state for currently editing embed
   draftCard: Card | null;
   cardEmbeds: CardEmbedRef[];
 }
 
-const initialState: ReportsState = {
+const initialState: DocumentsState = {
   selectedEmbedIndex: null,
   draftCard: null,
   cardEmbeds: [],
 };
 
-const reportsSlice = createSlice({
-  name: "reports",
+const documentsSlice = createSlice({
+  name: "documents",
   initialState,
   reducers: {
     openVizSettingsSidebar: (
@@ -67,7 +67,7 @@ const reportsSlice = createSlice({
     setCardEmbeds: (state, action: PayloadAction<CardEmbedRef[]>) => {
       state.cardEmbeds = action.payload;
     },
-    resetReports: () => initialState,
+    resetDocuments: () => initialState,
   },
 });
 
@@ -78,7 +78,7 @@ export const {
   clearDraftState,
   closeSidebar,
   setCardEmbeds,
-  resetReports,
-} = reportsSlice.actions;
+  resetDocuments,
+} = documentsSlice.actions;
 
-export const reportsReducer = reportsSlice.reducer;
+export const documentsReducer = documentsSlice.reducer;

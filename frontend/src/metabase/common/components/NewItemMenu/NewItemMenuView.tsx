@@ -7,7 +7,7 @@ import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import {
   PLUGIN_EMBEDDING_IFRAME_SDK_SETUP,
-  PLUGIN_REPORTS,
+  PLUGIN_DOCUMENTS,
 } from "metabase/plugins";
 import { setOpenModal } from "metabase/redux/ui";
 import { getSetting } from "metabase/selectors/settings";
@@ -93,15 +93,15 @@ const NewItemMenuView = ({
       </Menu.Item>,
     );
 
-    if (PLUGIN_REPORTS.shouldShowReportInNewItemMenu()) {
+    if (PLUGIN_DOCUMENTS.shouldShowDocumentInNewItemMenu()) {
       items.push(
         <Menu.Item
-          key="report"
+          key="document"
           component={ForwardRefLink}
-          to="report/new"
+          to="/document/new"
           leftSection={<Icon name="document" />}
         >
-          {t`Report`}
+          {t`Document`}
         </Menu.Item>,
       );
     }

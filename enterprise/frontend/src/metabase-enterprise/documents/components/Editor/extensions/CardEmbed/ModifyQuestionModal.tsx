@@ -13,8 +13,8 @@ import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type { Card } from "metabase-types/api";
 
-import { useCardSaveStrategy } from "../../../../hooks";
-import { useReportsSelector } from "../../../../redux-utils";
+import { useDocumentCardSave } from "../../../../hooks";
+import { useDocumentsSelector } from "../../../../redux-utils";
 
 interface ModifyQuestionModalProps {
   card: Card;
@@ -33,11 +33,11 @@ export const ModifyQuestionModal = ({
 }: ModifyQuestionModalProps) => {
   const store = useStore();
   const dispatch = useDispatch();
-  const metadata = useReportsSelector(getMetadata);
+  const metadata = useDocumentsSelector(getMetadata);
   const [modifiedQuestion, setModifiedQuestion] = useState<Question | null>(
     null,
   );
-  const { saveCard } = useCardSaveStrategy();
+  const { saveCard } = useDocumentCardSave();
 
   const metadataState = useAsync(async () => {
     if (isOpen && card) {

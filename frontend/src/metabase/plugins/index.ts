@@ -787,7 +787,7 @@ export const PLUGIN_SMTP_OVERRIDE = {
   SMTPOverrideConnectionForm: PluginPlaceholder,
 };
 
-export const PLUGIN_REPORTS = {
+export const PLUGIN_DOCUMENTS = {
   getRoutes: () => null as React.ReactElement | null,
-  shouldShowReportInNewItemMenu: () => false,
+  shouldShowDocumentInNewItemMenu: () => false,
 };

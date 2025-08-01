@@ -1,9 +1,9 @@
 import type { CollectionId } from "./collection";
 
-export type ReportId = number;
+export type DocumentId = number;
 
-export type Report = {
-  id: ReportId;
+export type Document = {
+  id: DocumentId;
   document: string;
   name: string;
   version: number;
@@ -12,9 +12,9 @@ export type Report = {
   updated_at: string;
 };
 
-export type ReportVersions = Report[];
+export type DocumentVersions = Document[];
 
-export type CreateReportRequest = Pick<Report, "name" | "document"> & {
+export type CreateDocumentRequest = Pick<Document, "name" | "document"> & {
   collection_id?: CollectionId;
   used_card_ids?: number[];
 };

@@ -1,6 +1,6 @@
 import { useCallback } from "react";
 
-import styles from "../components/ReportPage.module.css";
+import styles from "../components/DocumentPage.module.css";
 
 export function useEditorActions() {
   const handleQuestionClick = useCallback(

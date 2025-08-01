@@ -25,16 +25,16 @@ import type {
   VisualizationSettings,
 } from "metabase-types/api";
 
-import { useReportActions } from "../hooks";
-import { useReportsSelector } from "../redux-utils";
 import {
   clearDraftState,
   updateVisualizationType,
   updateVizSettings,
-} from "../reports.slice";
+} from "../documents.slice";
+import { useDocumentActions } from "../hooks";
+import { useDocumentsSelector } from "../redux-utils";
 import {
+  getDocumentCardWithDraftSettings,
   getHasDraftChanges,
-  getReportCardWithDraftSettings,
   getSelectedEmbedIndex,
 } from "../selectors";
 
@@ -49,9 +49,9 @@ export const EmbedQuestionSettingsSidebar = ({
   editorInstance,
 }: EmbedQuestionSettingsSidebarProps) => {
   const dispatch = useDispatch();
-  const metadata = useReportsSelector(getMetadata);
-  const selectedEmbedIndex = useReportsSelector(getSelectedEmbedIndex);
-  const { commitVisualizationChanges } = useReportActions();
+  const metadata = useDocumentsSelector(getMetadata);
+  const selectedEmbedIndex = useDocumentsSelector(getSelectedEmbedIndex);
+  const { commitVisualizationChanges } = useDocumentActions();
 
   const { data: card, isLoading: isCardLoading } = cardApi.useGetCardQuery(
     { id: cardId },
@@ -61,13 +61,13 @@ export const EmbedQuestionSettingsSidebar = ({
     cardApi.useGetCardQueryQuery({ cardId }, { skip: !cardId || !card });
 
   // Use card with draft settings merged for the sidebar
-  const cardWithDraft = useReportsSelector((state) =>
+  const cardWithDraft = useDocumentsSelector((state) =>
     selectedEmbedIndex !== null && card
-      ? getReportCardWithDraftSettings(state, cardId, card)
+      ? getDocumentCardWithDraftSettings(state, cardId, card)
       : card,
   );
 
-  const hasDraftChanges = useReportsSelector((state) =>
+  const hasDraftChanges = useDocumentsSelector((state) =>
     getHasDraftChanges(state, card),
   );
 

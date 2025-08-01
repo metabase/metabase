@@ -19,7 +19,7 @@ import type {
   ParameterValueOrArray,
 } from "./parameters";
 import type { DatasetQuery, FieldReference, PublicDatasetQuery } from "./query";
-import type { ReportId } from "./report";
+import type { DocumentId } from "./report";
 import type { CollectionEssentials } from "./search";
 import type { Table, TableId } from "./table";
 import type { UserInfo } from "./user";
@@ -373,7 +373,7 @@ export interface CreateCardRequest {
   type?: CardType;
   parameters?: Parameter[];
   in_report?: boolean;
-  report_id?: ReportId;
+  report_id?: DocumentId;
   parameter_mappings?: unknown;
   description?: string;
   collection_id?: CollectionId;

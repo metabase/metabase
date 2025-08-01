@@ -1,11 +1,15 @@
-import type { CreateReportRequest, Report, ReportId } from "metabase-types/api";
+import type {
+  CreateDocumentRequest,
+  Document,
+  DocumentId,
+} from "metabase-types/api";
 
 import { EnterpriseApi } from "./api";
 import { idTag } from "./tags";
 
-export const reportApi = EnterpriseApi.injectEndpoints({
+export const documentApi = EnterpriseApi.injectEndpoints({
   endpoints: (builder) => ({
-    getReport: builder.query<Report, { id: ReportId; version?: number }>({
+    getDocument: builder.query<Document, { id: DocumentId; version?: number }>({
       query: ({ id, version }) => ({
         method: "GET",
         url: `/api/ee/report/${id}`,
@@ -14,7 +18,7 @@ export const reportApi = EnterpriseApi.injectEndpoints({
       providesTags: (result, error, { id }) =>
         !error ? [idTag("report", id)] : [],
     }),
-    createReport: builder.mutation<Report, CreateReportRequest>({
+    createDocument: builder.mutation<Document, CreateDocumentRequest>({
       query: (body) => ({
         method: "POST",
         url: "/api/ee/report",
@@ -22,9 +26,9 @@ export const reportApi = EnterpriseApi.injectEndpoints({
       }),
       invalidatesTags: (_, error) => (error ? [] : []), // TODO: invalidate parent collection?
     }),
-    updateReport: builder.mutation<
-      Report,
-      Pick<Report, "id" | "name" | "document"> & {
+    updateDocument: builder.mutation<
+      Document,
+      Pick<Document, "id" | "name" | "document"> & {
         used_card_ids?: number[];
       }
     >({
@@ -40,7 +44,7 @@ export const reportApi = EnterpriseApi.injectEndpoints({
 });
 
 export const {
-  useGetReportQuery,
-  useCreateReportMutation,
-  useUpdateReportMutation,
-} = reportApi;
+  useGetDocumentQuery,
+  useCreateDocumentMutation,
+  useUpdateDocumentMutation,
+} = documentApi;

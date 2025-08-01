@@ -8,7 +8,7 @@ import { aiStreamingQuery } from "metabase-enterprise/api/ai-streaming";
 const ENDPOINT = "/api/ee/metabot-v3/v2/agent-streaming"; // TODO: we should get our own endpoint
 const EXTRA_PROMPT = ", do not ask me any further clarifying questions";
 
-export const useMetabotReportQuery = () => {
+export const useMetabotDocumentQuery = () => {
   const [createQuestion] = useCreateCardMutation();
 
   const queryMetabot = useCallback(
