@@ -109,6 +109,29 @@
   nil)
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                              Transforms                                                        |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defmethod driver/execute-transform! [:sql :table]
+  [driver {:keys [connection-details query output-table]} {:keys [overwrite?]}]
+  (let [driver (keyword driver)
+        queries (cond->> [(driver/compile-transform driver
+                                                    {:query query
+                                                     :output-table output-table})]
+                  overwrite? (cons (driver/compile-drop-table driver output-table)))]
+    {:rows-affected (last (driver/execute-raw-queries! driver connection-details queries))}))
+
+(defmethod driver/execute-transform! [:sql :view]
+  [driver {:keys [connection-details query output-table]} {:keys [overwrite?]}]
+  (let [driver (keyword driver)
+        statement (if overwrite?
+                    :create-or-replace-view
+                    :create-view)
+        sql (sql.qp/format-honeysql driver {statement [(keyword output-table)]
+                                            :raw query})]
+    {:rows-affected (last (driver/execute-raw-queries! driver connection-details [sql]))}))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Convenience Imports                                               |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 

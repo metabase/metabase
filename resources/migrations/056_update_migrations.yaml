@@ -217,6 +217,101 @@ databaseChangeLog:
                   constraints:
                     nullable: true
 
+  - changeSet:
+      id: v56.2025-07-29T15:55:38
+      author: metamben
+      comment: Create transform table
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: transform
+      changes:
+        - createTable:
+            tableName: transform
+            remarks: The main table for Transform entities
+            columns:
+              - column:
+                  name: id
+                  remarks: Unique ID
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: name
+                  remarks: Name
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+              - column:
+                  name: description
+                  type: ${text.type}
+                  remarks: the description of the transform
+                  constraints:
+                    nullable: true
+              - column:
+                  name: source
+                  remarks: JSON of source
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+              - column:
+                  name: target
+                  remarks: JSON of target
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+              - column:
+                  name: entity_id
+                  type: char(21)
+                  remarks: Random NanoID tag for unique identity.
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  remarks: The timestamp of when the transform was created
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: The timestamp of when the transform was updated
+                  name: updated_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: execution_trigger
+                  type: varchar(32)
+                  remarks: The type of automatic trigger (e.g., 'global-schedule') or 'none'
+                  defaultValue: none
+                  constraints:
+                    nullable:  false
+              - column:
+                  name: execution_status
+                  type: varchar(32)
+                  remarks: The status of the transform's current or last execution
+                  defaultValue: never-executed
+                  constraints:
+                    nullable:  false
+              - column:
+                  remarks: The timestamp of when the transform last started
+                  name: last_started_at
+                  type: ${timestamp_type}
+                  constraints:
+                    nullable: true
+              - column:
+                  remarks: The timestamp of when the transform last ended
+                  name: last_ended_at
+                  type: ${timestamp_type}
+                  constraints:
+                    nullable: true
+
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
