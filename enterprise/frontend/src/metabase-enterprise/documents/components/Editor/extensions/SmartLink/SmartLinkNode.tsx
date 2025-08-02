@@ -1,14 +1,15 @@
-import { Node, mergeAttributes } from "@tiptap/core";
+import { Node, mergeAttributes, nodePasteRule } from "@tiptap/core";
 import { type NodeViewProps, NodeViewWrapper } from "@tiptap/react";
 import { memo } from "react";
 
 import { cardApi } from "metabase/api";
-import { dashboardApi } from "metabase/api/dashboard";
 import { collectionApi } from "metabase/api/collection";
-import { tableApi } from "metabase/api/table";
+import { dashboardApi } from "metabase/api/dashboard";
 import { databaseApi } from "metabase/api/database";
+import { tableApi } from "metabase/api/table";
 import { getIcon } from "metabase/lib/icon";
 import { modelToUrl } from "metabase/lib/urls/modelToUrl";
+import { extractEntityId } from "metabase/lib/urls/utils";
 import { Icon } from "metabase/ui";
 import type { SearchModel } from "metabase-types/api";
 
@@ -19,13 +20,86 @@ export interface SmartLinkAttributes {
   model: string;
 }
 
+// Utility function to parse entity URLs and extract entityId and model
+export function parseEntityUrl(
+  url: string,
+  siteUrl?: string,
+): { entityId: number; model: SearchModel } | null {
+  try {
+    const urlObj = new URL(url);
+
+    // Validate URL matches the site-url if provided
+    if (siteUrl) {
+      const siteUrlObj = new URL(siteUrl);
+
+      // Check if origins match
+      if (urlObj.origin !== siteUrlObj.origin) {
+        return null; // URL is not from this Metabase instance
+      }
+
+      // Check if the path starts with the site-url path
+      const siteUrlPath = siteUrlObj.pathname;
+      if (!urlObj.pathname.startsWith(siteUrlPath)) {
+        return null; // URL is not under the correct path
+      }
+    } else {
+      // Fallback: validate against current window origin
+      if (urlObj.origin !== window.location.origin) {
+        return null;
+      }
+    }
+
+    // Remove site-url path prefix if present to get the clean pathname
+    let cleanPathname = urlObj.pathname;
+    if (siteUrl) {
+      const siteUrlPath = new URL(siteUrl).pathname;
+      // Remove the site-url path prefix, ensuring we don't create double slashes
+      cleanPathname = urlObj.pathname.replace(siteUrlPath, "");
+      // Ensure the pathname starts with /
+      if (!cleanPathname.startsWith("/")) {
+        cleanPathname = "/" + cleanPathname;
+      }
+    }
+
+    // Match different entity URL patterns
+    const patterns = [
+      { pattern: /^\/question\/(\d+)/, model: "card" as SearchModel },
+      { pattern: /^\/model\/(\d+)/, model: "dataset" as SearchModel },
+      { pattern: /^\/dashboard\/(\d+)/, model: "dashboard" as SearchModel },
+      { pattern: /^\/collection\/(\d+)/, model: "collection" as SearchModel },
+      {
+        pattern: /^\/browse\/(\d+)\/table\/(\d+)/,
+        model: "table" as SearchModel,
+        idIndex: 2,
+      },
+      { pattern: /^\/browse\/(\d+)/, model: "database" as SearchModel },
+    ];
+
+    for (const { pattern, model, idIndex = 1 } of patterns) {
+      const match = cleanPathname.match(pattern);
+      if (match) {
+        const entityId = extractEntityId(match[idIndex]);
+        if (entityId) {
+          return { entityId, model };
+        }
+      }
+    }
+
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 export const SmartLinkNode = Node.create<{
   HTMLAttributes: Record<string, unknown>;
+  siteUrl?: string;
 }>({
   name: "smartLink",
   group: "inline",
   inline: true,
   atom: true,
+  priority: 1000, // Higher priority than Link extension (default 100)
 
   addAttributes() {
     return {
@@ -53,7 +127,7 @@ export const SmartLinkNode = Node.create<{
 
   renderHTML({ node, HTMLAttributes }) {
     const { entityId, model } = node.attrs;
-    
+
     return [
       "span",
       mergeAttributes(
@@ -71,36 +145,57 @@ export const SmartLinkNode = Node.create<{
 
   renderText({ node }) {
     const { entityId, model } = node.attrs;
-    
+
     return `{% entity id="${entityId}" model="${model}" %}`;
+  },
+
+  addPasteRules() {
+    return [
+      nodePasteRule({
+        find: /https?:\/\/[^\s]+/g,
+        type: this.type,
+        getAttributes: (match) => {
+          const url = match[0];
+          const parsedEntity = parseEntityUrl(url, this.options.siteUrl);
+
+          if (parsedEntity) {
+            return {
+              entityId: parsedEntity.entityId,
+              model: parsedEntity.model,
+            };
+          }
+
+          return null; // Return null to prevent node creation
+        },
+      }),
+    ];
   },
 });
 
 const useEntityData = (entityId: number | null, model: SearchModel | null) => {
-  // Use different API hooks based on the model type
   const cardQuery = cardApi.useGetCardQuery(
     { id: entityId! },
-    { skip: !entityId || (model !== "card" && model !== "dataset") }
+    { skip: !entityId || (model !== "card" && model !== "dataset") },
   );
-  
+
   const dashboardQuery = dashboardApi.useGetDashboardQuery(
     { id: entityId! },
-    { skip: !entityId || model !== "dashboard" }
+    { skip: !entityId || model !== "dashboard" },
   );
-  
+
   const collectionQuery = collectionApi.useGetCollectionQuery(
     { id: entityId! },
-    { skip: !entityId || model !== "collection" }
+    { skip: !entityId || model !== "collection" },
   );
-  
+
   const tableQuery = tableApi.useGetTableQuery(
     { id: entityId! },
-    { skip: !entityId || model !== "table" }
+    { skip: !entityId || model !== "table" },
   );
-  
+
   const databaseQuery = databaseApi.useGetDatabaseQuery(
     { id: entityId! },
-    { skip: !entityId || model !== "database" }
+    { skip: !entityId || model !== "database" },
   );
 
   // Determine which query is active and return its state
@@ -111,7 +206,7 @@ const useEntityData = (entityId: number | null, model: SearchModel | null) => {
       error: cardQuery.error,
     };
   }
-  
+
   if (model === "dashboard") {
     return {
       entity: dashboardQuery.data,
@@ -119,7 +214,7 @@ const useEntityData = (entityId: number | null, model: SearchModel | null) => {
       error: dashboardQuery.error,
     };
   }
-  
+
   if (model === "collection") {
     return {
       entity: collectionQuery.data,
@@ -127,7 +222,7 @@ const useEntityData = (entityId: number | null, model: SearchModel | null) => {
       error: collectionQuery.error,
     };
   }
-  
+
   if (model === "table") {
     return {
       entity: tableQuery.data,
@@ -135,7 +230,7 @@ const useEntityData = (entityId: number | null, model: SearchModel | null) => {
       error: tableQuery.error,
     };
   }
-  
+
   if (model === "database") {
     return {
       entity: databaseQuery.data,
@@ -158,7 +253,7 @@ export const SmartLinkComponent = memo(
           <span className={styles.smartLink}>
             <span className={styles.smartLinkInner}>
               <Icon name="hourglass" className={styles.icon} />
-              Loading {model}...
+              {t`Loading ${model}...`}
             </span>
           </span>
         </NodeViewWrapper>
@@ -171,7 +266,7 @@ export const SmartLinkComponent = memo(
           <span className={styles.smartLink}>
             <span className={styles.smartLinkInner}>
               <Icon name="warning" className={styles.icon} />
-              {error ? "Failed to load" : "Unknown"} {model}
+              {error ? t`Failed to load` : t`Unknown`} {model}
             </span>
           </span>
         </NodeViewWrapper>

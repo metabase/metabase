@@ -14,6 +14,8 @@ import { t } from "ttag";
 
 import { DND_IGNORE_CLASS_NAME } from "metabase/common/components/dnd";
 import CS from "metabase/css/core/index.css";
+import { useSelector } from "metabase/lib/redux";
+import { getSetting } from "metabase/selectors/settings";
 import { Box, Loader } from "metabase/ui";
 
 import { useDocumentsSelector } from "../../redux-utils";
@@ -51,41 +53,46 @@ export const Editor: React.FC<EditorProps> = ({
   isLoading = false,
 }) => {
   const documentCollectionId = useDocumentsSelector(getDocumentCollectionId);
-  const editor = useEditor({
-    extensions: [
-      StarterKit,
-      Image.configure({
-        inline: false,
-        HTMLAttributes: {
-          class: styles.img,
-        },
-      }),
-      Link.configure({
-        HTMLAttributes: {
-          class: CS.link,
-        },
-      }),
-      Placeholder.configure({
-        placeholder: t`Start writing, press "/" to insert a chart, or "@" to insert a reference...`,
-      }),
-      Markdown,
-      CardEmbed.configure({
-        HTMLAttributes: {
-          class: "card-embed",
-        },
-      }),
-      SmartLinkEmbed.configure({
-        HTMLAttributes: {
-          class: "smart-link",
-        },
-      }),
-      MetabotNode,
-      DisableMetabotSidebar,
-      EmojiExtension,
-    ],
-    autofocus: false,
-    immediatelyRender: false,
-  });
+  const siteUrl = useSelector((state) => getSetting(state, "site-url"));
+  const editor = useEditor(
+    {
+      extensions: [
+        StarterKit,
+        Image.configure({
+          inline: false,
+          HTMLAttributes: {
+            class: styles.img,
+          },
+        }),
+        SmartLinkEmbed.configure({
+          HTMLAttributes: {
+            class: "smart-link",
+          },
+          siteUrl,
+        }),
+        Link.configure({
+          HTMLAttributes: {
+            class: CS.link,
+          },
+        }),
+        Placeholder.configure({
+          placeholder: t`Start writing, press "/" to insert a chart, or "@" to insert a reference...`,
+        }),
+        Markdown,
+        CardEmbed.configure({
+          HTMLAttributes: {
+            class: "card-embed",
+          },
+        }),
+        MetabotNode,
+        DisableMetabotSidebar,
+        EmojiExtension,
+      ],
+      autofocus: false,
+      immediatelyRender: false,
+    },
+    [siteUrl],
+  );
 
   // Track the previous content to avoid unnecessary updates
   const previousContent = useRef<string>("");
