@@ -1,9 +1,9 @@
 (ns metabase.util.performance
   "Functions and utilities for faster processing. This namespace is compatible with both Clojure and ClojureScript.
   However, some functions are either not only available in CLJS, or offer passthrough non-improved functions."
-  (:refer-clojure :exclude [reduce mapv run! some every? concat select-keys])
+  (:refer-clojure :exclude [reduce mapv run! some every? concat select-keys #?(:cljs clj->js)])
   #?@(:clj [(:import (clojure.lang LazilyPersistentVector RT)
-                     java.util.Iterator)]
+                     (java.util ArrayList HashMap Iterator))]
       :default ()))
 
 #?(:clj (set! *warn-on-reflection* true))
@@ -341,3 +341,74 @@
                                acc
                                (assoc! acc k v))))
                          (transient {}) keyseq))))
+
+;;;; Cross-platform mutable list and map wrapper functions.
+
+#?(:cljs
+   (defn clj->js
+     "Optimized implementation of `cljs.core/clj->js`. The main distinction is using `reduce` to iterate through
+     collections and thus reduce allocation pressure."
+     [x]
+     (letfn [(keyfn [k] (cond
+                          (satisfies? IEncodeJS k) (-clj->js k)
+                          (string? k) k
+                          (number? k) k
+                          (keyword? k) (name k)
+                          (symbol? k) (str k)
+                          :else (pr-str k)))
+             (thisfn [x] (cond
+                           (nil? x) nil
+                           (satisfies? IEncodeJS x) (-clj->js x)
+                           (keyword? x) (name x)
+                           (symbol? x) (str x)
+                           (map? x) (let [m (js-obj)]
+                                      (reduce-kv (fn [_ k v]
+                                                   (gobject/set m (keyfn k) (thisfn v))
+                                                   nil)
+                                                 nil x)
+                                      m)
+                           (coll? x) (let [arr (array)]
+                                       (reduce (fn [_ y]
+                                                 (.push arr (thisfn y)))
+                                               nil x)
+                                       arr)
+                           :else x))]
+       (thisfn x))))
+
+;;;; Cross-platform mutable list and map wrapper functions.
+
+(defn make-list
+  "Create an empty mutable list. Returns ArrayList in Clojure, js array in ClojureScript."
+  []
+  #?(:clj (ArrayList.)
+     :cljs #js []))
+
+(defn list-add!
+  "Add a value to the end of a mutable list. Returns the list for chaining."
+  [lst value]
+  #?(:clj (do (.add ^ArrayList lst value) lst)
+     :cljs (do (.push lst value) lst)))
+
+(defn list-nth
+  "Get value at index from mutable list."
+  [lst index]
+  #?(:clj (.get ^ArrayList lst index)
+     :cljs (aget lst index)))
+
+(defn make-map
+  "Create an empty mutable map. Returns HashMap in Clojure, plain js object in ClojureScript."
+  []
+  #?(:clj (HashMap.)
+     :cljs (js/Map.)))
+
+(defn map-get
+  "Get value by key from mutable map."
+  [m key]
+  #?(:clj (.get ^HashMap m key)
+     :cljs (.get m key)))
+
+(defn map-put!
+  "Put a key-value pair into a mutable map. Returns the map for chaining."
+  [m key value]
+  #?(:clj (do (.put ^HashMap m key value) m)
+     :cljs (do (.set m key value) m)))
