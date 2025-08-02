@@ -21,6 +21,7 @@ export { MetabotQuestion } from "./sdk-wrapper/components/public/MetabotQuestion
 export { useApplicationName } from "./sdk-wrapper/hooks/public/use-application-name";
 export { useAvailableFonts } from "./sdk-wrapper/hooks/public/use-available-fonts";
 export { useCurrentUser } from "./sdk-wrapper/hooks/public/use-current-user";
+export { useCreateDashboardApi } from "./sdk-wrapper/hooks/public/use-create-dashboard-api";
 export { useMetabaseAuthStatus } from "./sdk-wrapper/hooks/public/use-metabase-auth-status";
 
 export * from "./sdk-wrapper/lib/public/define-metabase-auth-config";
@@ -30,10 +31,7 @@ export {
   type CollectionBrowserProps,
   type CollectionBrowserListColumns,
 } from "./components/public/CollectionBrowser";
-export {
-  type CreateDashboardModalProps,
-  type CreateDashboardValues,
-} from "./components/public/CreateDashboardModal";
+export { type CreateDashboardModalProps } from "./components/public/CreateDashboardModal";
 export { type CreateQuestionProps } from "./components/public/CreateQuestion";
 export type {
   StaticDashboardProps,
@@ -83,6 +81,7 @@ export type {
 export type {
   ButtonProps,
   ChartColor,
+  CreateDashboardValues,
   EntityTypeFilterKeys,
   LoginStatus,
   MetabaseAuthConfig,

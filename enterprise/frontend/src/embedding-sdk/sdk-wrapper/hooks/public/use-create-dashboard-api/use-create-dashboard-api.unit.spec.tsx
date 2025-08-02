@@ -3,13 +3,19 @@ import fetchMock from "fetch-mock";
 
 import { setupDashboardCreateEndpoint } from "__support__/server-mocks";
 import { screen } from "__support__/ui";
+import {
+  createDashboard,
+  getCollectionNumericIdFromReference,
+} from "embedding-sdk/bundle";
 import { renderWithSDKProviders } from "embedding-sdk/test/__support__/ui";
 import { createMockSdkConfig } from "embedding-sdk/test/mocks/config";
 import { setupSdkState } from "embedding-sdk/test/server-mocks/sdk-init";
-import type { MetabaseDashboard } from "embedding-sdk/types/dashboard";
+import type {
+  CreateDashboardValues,
+  MetabaseDashboard,
+} from "embedding-sdk/types/dashboard";
 import { createMockUser } from "metabase-types/api/mocks";
 
-import type { CreateDashboardValues } from "./use-create-dashboard-api";
 import { useCreateDashboardApi } from "./use-create-dashboard-api";
 
 const TEST_COLLECTION_ID = 11;
@@ -67,10 +73,14 @@ const TestComponent = (
   },
 ) => {
   const { onDashboardCreate, ...restProps } = props;
-  const { createDashboard } = useCreateDashboardApi();
+  const result = useCreateDashboardApi();
 
   const handleCreate = async () => {
-    const dashboard = await createDashboard(restProps);
+    if (!result) {
+      return;
+    }
+
+    const dashboard = await result.createDashboard(restProps);
 
     onDashboardCreate(dashboard);
   };
@@ -114,6 +124,10 @@ function setup(overrides: SetupProps = {}) {
   renderWithSDKProviders(
     <TestComponent {...mockProps} onDashboardCreate={onDashboardCreateSpy} />,
     {
+      sdkBundleExports: {
+        createDashboard,
+        getCollectionNumericIdFromReference,
+      },
       storeInitialState: state,
       sdkProviderProps: {
         authConfig: createMockSdkConfig(),

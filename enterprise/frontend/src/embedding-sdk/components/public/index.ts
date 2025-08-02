@@ -1,8 +1,5 @@
 export { CollectionBrowser } from "./CollectionBrowser";
-export {
-  CreateDashboardModal,
-  useCreateDashboardApi,
-} from "./CreateDashboardModal";
+export { CreateDashboardModal } from "./CreateDashboardModal";
 export { CreateQuestion } from "./CreateQuestion";
 export {
   StaticDashboard,
