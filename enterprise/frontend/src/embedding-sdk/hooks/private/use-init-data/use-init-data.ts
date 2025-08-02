@@ -3,17 +3,14 @@ import { useMount } from "react-use";
 import _ from "underscore";
 
 import { getEmbeddingSdkVersion } from "embedding-sdk/config";
-import {
-  useSdkDispatch,
-  useSdkSelector,
-  useSdkStore,
-} from "embedding-sdk/store";
+import { useLazySelector } from "embedding-sdk/sdk-wrapper/hooks/private/use-lazy-selector";
 import { initAuth } from "embedding-sdk/store/auth";
 import {
   setFetchRefreshTokenFn,
   setMetabaseInstanceVersion,
 } from "embedding-sdk/store/reducer";
 import { getFetchRefreshTokenFn } from "embedding-sdk/store/selectors";
+import type { SdkStore } from "embedding-sdk/store/types";
 import type { MetabaseAuthConfig } from "embedding-sdk/types";
 import { EMBEDDING_SDK_CONFIG } from "metabase/embedding-sdk/config";
 import api from "metabase/lib/api";
@@ -22,11 +19,13 @@ import registerVisualizations from "metabase/visualizations/register";
 const registerVisualizationsOnce = _.once(registerVisualizations);
 
 interface InitDataLoaderParameters {
+  reduxStore: SdkStore;
   authConfig: MetabaseAuthConfig;
   allowConsoleLog?: boolean;
 }
 
 export const useInitData = ({
+  reduxStore,
   authConfig,
   allowConsoleLog = true,
 }: InitDataLoaderParameters) => {
@@ -34,10 +33,9 @@ export const useInitData = ({
   // it fires them twice as well, making debugging harder as they show up twice in the network tab and in the logs
   const hasBeenInitialized = useRef(false);
 
-  const store = useSdkStore();
-  const dispatch = useSdkDispatch();
+  const dispatch = reduxStore.dispatch;
 
-  const fetchRefreshTokenFnFromStore = useSdkSelector(getFetchRefreshTokenFn);
+  const fetchRefreshTokenFnFromStore = useLazySelector(getFetchRefreshTokenFn);
 
   // This is outside of a useEffect otherwise calls done on the first render could use the wrong value
   // This is the case for example for the locale json files
@@ -60,7 +58,8 @@ export const useInitData = ({
     registerVisualizationsOnce();
 
     const isAuthUninitialized =
-      store && store.getState().sdk.loginStatus.status === "uninitialized";
+      reduxStore &&
+      reduxStore.getState().sdk.loginStatus.status === "uninitialized";
 
     if (!isAuthUninitialized) {
       return;
