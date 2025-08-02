@@ -4,8 +4,8 @@ import { sessionApi } from "metabase/api";
 import { createAsyncThunk } from "metabase/lib/redux";
 import { SettingsApi } from "metabase/services";
 import type { Settings, UserSettings } from "metabase-types/api";
-export const REFRESH_SITE_SETTINGS = "metabase/settings/REFRESH_SITE_SETTINGS";
 
+export const REFRESH_SITE_SETTINGS = "metabase/settings/REFRESH_SITE_SETTINGS";
 export const refreshSiteSettings = createAsyncThunk(
   REFRESH_SITE_SETTINGS,
   async (_, { dispatch }) => {

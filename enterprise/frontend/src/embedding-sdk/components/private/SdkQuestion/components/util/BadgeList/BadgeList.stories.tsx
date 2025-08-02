@@ -1,12 +1,15 @@
 import { useState } from "react";
 
-import { Box, Stack } from "metabase/ui";
+import { PublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
+import { CommonSdkStoryWrapper } from "embedding-sdk/test/CommonSdkStoryWrapper";
+import { Box } from "metabase/ui";
 
 import { BadgeList } from "./BadgeList";
 
 export default {
   title: "BadgeList",
   component: BadgeList,
+  decorators: [CommonSdkStoryWrapper],
   parameters: {
     layout: "fullscreen",
   },
@@ -50,7 +53,7 @@ export const DefaultLayoutBadgeList = {
     };
 
     return (
-      <Stack>
+      <PublicComponentWrapper>
         <BadgeList
           items={items}
           onSelectItem={onSelectItem}
@@ -63,7 +66,7 @@ export const DefaultLayoutBadgeList = {
             ? `The selected element is ${selectedItem.item} at index ${selectedItem.index}`
             : "No element has been selected"}
         </Box>
-      </Stack>
+      </PublicComponentWrapper>
     );
   },
 };

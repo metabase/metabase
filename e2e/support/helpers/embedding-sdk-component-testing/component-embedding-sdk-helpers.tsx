@@ -47,3 +47,7 @@ export function mountSdkContent(
     expect(response?.statusCode).to.equal(200);
   });
 }
+
+export function getSdkBundleScriptElement(): HTMLScriptElement | null {
+  return document.querySelector('[data-embedding-sdk-bundle="true"]');
+}

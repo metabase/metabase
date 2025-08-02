@@ -77,6 +77,7 @@
         #'mw.session/wrap-session-key                ; looks for a Metabase Session ID and assoc as :metabase-session-key
         #'mw.auth/wrap-static-api-key                ; looks for a static Metabase API Key on the request and assocs as :metabase-api-key
         #'wrap-cookies                               ; Parses cookies in the request map and assocs as :cookies
+        #'mw.misc/add-version                        ; Adds a X-Metabase-Version header to the response
         #'mw.misc/add-content-type                   ; Adds a Content-Type header for any response that doesn't already have one
         #'mw.misc/disable-streaming-buffering        ; Add header to streaming (async) responses so ngnix doesn't buffer keepalive bytes
         #'wrap-gzip                                  ; GZIP response if client can handle it

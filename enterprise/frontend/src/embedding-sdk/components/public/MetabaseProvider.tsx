@@ -1,8 +1,8 @@
 import { Global } from "@emotion/react";
-import type { Action, Store } from "@reduxjs/toolkit";
-import { type JSX, type ReactNode, memo, useEffect, useRef } from "react";
+import { type JSX, memo, useEffect, useRef } from "react";
 
 import { SdkThemeProvider } from "embedding-sdk/components/private/SdkThemeProvider";
+import { SdkIncompatibilityWithInstanceBanner } from "embedding-sdk/components/private/SdkVersionCompatibilityHandler/SdkIncompatibilityWithInstanceBanner";
 import { useInitData } from "embedding-sdk/hooks";
 import { getSdkStore } from "embedding-sdk/store";
 import {
@@ -12,83 +12,23 @@ import {
   setMetabaseClientUrl,
   setPlugins,
 } from "embedding-sdk/store/reducer";
-import type { SdkStoreState } from "embedding-sdk/store/types";
-import type { MetabaseAuthConfig } from "embedding-sdk/types/auth-config";
-import type { SdkEventHandlersConfig } from "embedding-sdk/types/events";
-import type { MetabasePluginsConfig } from "embedding-sdk/types/plugins";
-import type { CommonStylingProps } from "embedding-sdk/types/props";
-import type { SdkErrorComponent } from "embedding-sdk/types/ui";
-import { EMBEDDING_SDK_ROOT_ELEMENT_ID } from "metabase/embedding-sdk/config";
-import type { MetabaseTheme } from "metabase/embedding-sdk/theme";
+import type { SdkStore } from "embedding-sdk/store/types";
+import type { MetabaseProviderProps } from "embedding-sdk/types/metabase-provider";
+import { useInstanceLocale } from "metabase/common/hooks/use-instance-locale";
 import { MetabaseReduxProvider } from "metabase/lib/redux";
 import { LocaleProvider } from "metabase/public/LocaleProvider";
 import { setOptions } from "metabase/redux/embed";
-import { getSetting } from "metabase/selectors/settings";
 import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
-import { Box } from "metabase/ui";
 import { MetabotProvider } from "metabase-enterprise/metabot/context";
 
 import { SCOPED_CSS_RESET } from "../private/PublicComponentStylesWrapper";
-import { SdkContextProvider } from "../private/SdkContext";
+import { RenderSingleCopy } from "../private/RenderSingleCopy/RenderSingleCopy";
 import { SdkFontsGlobalStyles } from "../private/SdkGlobalFontsStyles";
 import { PortalContainer } from "../private/SdkPortalContainer";
 import { SdkUsageProblemDisplay } from "../private/SdkUsageProblem";
 
-/**
- * @expand
- * @category MetabaseProvider
- */
-export interface MetabaseProviderProps
-  extends Omit<CommonStylingProps, "style"> {
-  /**
-   * The children of the MetabaseProvider component.
-   */
-  children: ReactNode;
-
-  /**
-   * Defines how to authenticate with Metabase.
-   */
-  authConfig: MetabaseAuthConfig;
-
-  /**
-   * See [Appearance](https://www.metabase.com/docs/latest/embedding/sdk/appearance).
-   */
-  theme?: MetabaseTheme;
-
-  /**
-   * See [Plugins](https://www.metabase.com/docs/latest/embedding/sdk/plugins).
-   */
-  pluginsConfig?: MetabasePluginsConfig;
-
-  /**
-   * See [Global event handlers](https://www.metabase.com/docs/latest/embedding/sdk/config#global-event-handlers).
-   */
-  eventHandlers?: SdkEventHandlersConfig;
-
-  /**
-   * Defines the display language. Accepts an ISO language code such as `en` or `de`.
-   * Defaults to the instance locale.
-   **/
-  locale?: string;
-
-  /**
-   * A custom loader component to display while the SDK is loading.
-   **/
-  loaderComponent?: () => JSX.Element;
-
-  /**
-   * A custom error component to display when the SDK encounters an error.
-   **/
-  errorComponent?: SdkErrorComponent;
-
-  /**
-   * Whether to allow logging to the DevTools console. Defaults to true.
-   **/
-  allowConsoleLog?: boolean;
-}
-
-interface InternalMetabaseProviderProps extends MetabaseProviderProps {
-  store: Store<SdkStoreState, Action>;
+export interface InternalMetabaseProviderProps extends MetabaseProviderProps {
+  reduxStore: SdkStore;
 }
 
 export const MetabaseProviderInternal = ({
@@ -97,86 +37,86 @@ export const MetabaseProviderInternal = ({
   pluginsConfig,
   eventHandlers,
   theme,
-  store,
-  className,
+  reduxStore,
   locale,
   errorComponent,
   loaderComponent,
   allowConsoleLog,
 }: InternalMetabaseProviderProps): JSX.Element => {
   const { fontFamily } = theme ?? {};
-  useInitData({ authConfig, allowConsoleLog });
+  useInitData({ reduxStore, authConfig, allowConsoleLog });
 
   useEffect(() => {
     if (fontFamily) {
-      store.dispatch(setOptions({ font: fontFamily }));
+      reduxStore.dispatch(setOptions({ font: fontFamily }));
     }
-  }, [store, fontFamily]);
+  }, [reduxStore, fontFamily]);
 
   useEffect(() => {
-    store.dispatch(setPlugins(pluginsConfig || null));
-  }, [store, pluginsConfig]);
+    reduxStore.dispatch(setPlugins(pluginsConfig || null));
+  }, [reduxStore, pluginsConfig]);
 
   useEffect(() => {
-    store.dispatch(setEventHandlers(eventHandlers || null));
-  }, [store, eventHandlers]);
+    reduxStore.dispatch(setEventHandlers(eventHandlers || null));
+  }, [reduxStore, eventHandlers]);
 
   useEffect(() => {
-    store.dispatch(setLoaderComponent(loaderComponent ?? null));
-  }, [store, loaderComponent]);
+    reduxStore.dispatch(setLoaderComponent(loaderComponent ?? null));
+  }, [reduxStore, loaderComponent]);
 
   useEffect(() => {
-    store.dispatch(setErrorComponent(errorComponent ?? null));
-  }, [store, errorComponent]);
+    reduxStore.dispatch(setErrorComponent(errorComponent ?? null));
+  }, [reduxStore, errorComponent]);
 
   useEffect(() => {
-    store.dispatch(setMetabaseClientUrl(authConfig.metabaseInstanceUrl));
-  }, [store, authConfig.metabaseInstanceUrl]);
+    reduxStore.dispatch(setMetabaseClientUrl(authConfig.metabaseInstanceUrl));
+  }, [reduxStore, authConfig.metabaseInstanceUrl]);
 
-  const instanceLocale = getSetting(store.getState(), "site-locale");
+  const instanceLocale = useInstanceLocale();
 
   return (
-    <SdkContextProvider>
-      <EmotionCacheProvider>
-        <Global styles={SCOPED_CSS_RESET} />
-        <SdkThemeProvider theme={theme}>
+    <EmotionCacheProvider>
+      <SdkThemeProvider theme={theme}>
+        <LocaleProvider locale={locale || instanceLocale}>
+          {children}
+        </LocaleProvider>
+
+        <RenderSingleCopy>
+          <Global styles={SCOPED_CSS_RESET} />
           <SdkFontsGlobalStyles baseUrl={authConfig.metabaseInstanceUrl} />
-          <Box className={className} id={EMBEDDING_SDK_ROOT_ELEMENT_ID}>
-            <LocaleProvider locale={locale || instanceLocale}>
-              {children}
-            </LocaleProvider>
-            <SdkUsageProblemDisplay
-              authConfig={authConfig}
-              allowConsoleLog={allowConsoleLog}
-            />
-            <PortalContainer />
-          </Box>
-        </SdkThemeProvider>
-      </EmotionCacheProvider>
-    </SdkContextProvider>
+
+          <SdkIncompatibilityWithInstanceBanner />
+          <SdkUsageProblemDisplay
+            authConfig={authConfig}
+            allowConsoleLog={allowConsoleLog}
+          />
+          <PortalContainer />
+        </RenderSingleCopy>
+      </SdkThemeProvider>
+    </EmotionCacheProvider>
   );
 };
 
-/**
- * A component that provides the Metabase SDK context and theme.
- *
- * @function
- * @category MetabaseProvider
- */
-export const MetabaseProvider = memo(function MetabaseProvider(
-  props: MetabaseProviderProps,
-) {
-  // This makes the store stable across re-renders, but still not a singleton:
-  // we need a different store for each test or each storybook story
-  const storeRef = useRef<Store<SdkStoreState, Action> | undefined>(undefined);
-  if (!storeRef.current) {
-    storeRef.current = getSdkStore();
+export const MetabaseProvider = memo(function MetabaseProvider({
+  children,
+  ...props
+}: Omit<InternalMetabaseProviderProps, "reduxStore"> &
+  Partial<Pick<InternalMetabaseProviderProps, "reduxStore">>) {
+  const reduxStoreRef = useRef<SdkStore | null>(null);
+
+  if (!reduxStoreRef.current) {
+    reduxStoreRef.current = props.reduxStore ?? getSdkStore();
   }
 
   return (
-    <MetabaseReduxProvider store={storeRef.current}>
+    <MetabaseReduxProvider store={reduxStoreRef.current!}>
       <MetabotProvider>
-        <MetabaseProviderInternal store={storeRef.current} {...props} />
+        <MetabaseProviderInternal
+          {...props}
+          reduxStore={reduxStoreRef.current!}
+        >
+          {children}
+        </MetabaseProviderInternal>
       </MetabotProvider>
     </MetabaseReduxProvider>
   );

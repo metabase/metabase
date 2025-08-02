@@ -264,6 +264,7 @@ export const {
   endpoints: {
     getDashboard,
     deleteDashboardPublicLink,
+    createDashboard,
     createDashboardPublicLink,
     updateDashboardEnableEmbedding,
     updateDashboardEmbeddingParams,

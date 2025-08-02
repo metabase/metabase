@@ -1,6 +1,8 @@
 import type {
+  Action,
   AnyAction,
   SerializedError,
+  Store,
   ThunkDispatch,
 } from "@reduxjs/toolkit";
 import type { JSX } from "react";
@@ -20,10 +22,15 @@ export type EmbeddingSessionTokenState = {
   error: SerializedError | null;
 };
 
+export type SdkStore = Omit<Store<SdkStoreState, Action>, "dispatch"> & {
+  dispatch: SdkDispatch;
+};
+
 export type SdkDispatch = ThunkDispatch<SdkStoreState, void, AnyAction>;
 
 export type SdkState = {
   metabaseInstanceUrl: MetabaseAuthConfig["metabaseInstanceUrl"];
+  metabaseInstanceVersion: string | null;
   token: EmbeddingSessionTokenState;
   loginStatus: LoginStatus;
   plugins: null | MetabasePluginsConfig;

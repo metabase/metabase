@@ -10,6 +10,12 @@ import { Button } from "metabase/ui";
 import { useSdkQuestionContext } from "../../context";
 import { useRunVisualization } from "../../hooks/use-run-visualization";
 
+/**
+ * A button that triggers the visualization of the current question.
+ *
+ * @function
+ * @category InteractiveQuestion
+ */
 export const VisualizationButton = () => {
   const { question, originalQuestion } = useSdkQuestionContext();
   const { visualizeQuestion } = useRunVisualization();

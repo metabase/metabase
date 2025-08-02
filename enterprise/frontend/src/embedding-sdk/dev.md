@@ -4,19 +4,16 @@ These docs are for building the sdk locally, if you just want to use the sdk, pl
 
 ## Build
 
-You can build the sdk with `yarn build-embedding-sdk`.
-
-### Watch
-
-If you want to have it build when you change a file there are two options:
-
-#### build-embedding-sdk:watch
-
-`yarn build-embedding-sdk:watch` is the original command, the js output is fast, but the dts output is extremely slow and is not fixed by the dts fixup script on watch so typescript definitions may be broken.
+You can build the SDK NPM package with `yarn build-embedding-sdk-package`.
+You can build the SDK bundle with `build-release:embedding-sdk-bundle`
 
 #### embedding-sdk:dev
 
-This is an _experimental_ command that should be much faster, it uses `tsc --incremental` to to generate the dts files and fixes them automatically by running the fixup script on watch.
+Builds both SDK NPM package and SDK bundle in the `watch` mode.
+
+It runs a local dev server that serves compiled files; the server is used by `Cypress`.
+
+It uses `tsc --incremental` to generate the dts files and fixes them automatically by running the fixup script on watch.
 
 The `tsc` command will output a lot of errors, to keep the terminal output under control you may want to run the three different `embedding-sdk:dev:*` commands on different terminals.
 There is a VS code task named `Run embedding sdk dev commands` that does that
@@ -63,6 +60,8 @@ To start the cypress for the e2e tests:
 ```bash
 TEST_SUITE="component" yarn test-cypress
 ```
+
+Then in a separate terminal run `yarn embedding-sdk:dev` to build SDK NPM package and SDK bundle in the `watch` mode.
 
 ### Sample Apps compatibility with Embedding SDK tests
 

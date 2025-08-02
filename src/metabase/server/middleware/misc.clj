@@ -3,6 +3,7 @@
   (:require
    [clojure.string :as str]
    [metabase.app-db.core :as mdb]
+   [metabase.config.core :as config]
    [metabase.request.core :as request]
    [metabase.server.streaming-response]
    [metabase.system.core :as system]
@@ -12,6 +13,24 @@
    (metabase.server.streaming_response StreamingResponse)))
 
 (comment metabase.server.streaming-response/keep-me)
+
+(defn- add-version*
+  "Assoc the `x-metabase-version` header onto the response."
+  [response]
+  (assoc-in response
+            [:headers "x-metabase-version"]
+            (:tag config/mb-version-info)))
+
+(defn add-version
+  "Middleware that adds an `x-metabase-version` header (from `:tag mb-version-info`)
+   to all API-call responses. Non-API calls are left untouched."
+  [handler]
+  (fn [request respond raise]
+    (handler request
+             (if-not (request/api-call? request)
+               respond
+               (comp respond add-version*))
+             raise)))
 
 (defn- add-content-type* [{:keys [body], {:strs [Content-Type]} :headers, :as response}]
   (cond-> response

@@ -1,10 +1,8 @@
 const webpack = require("webpack");
 const MiniCssExtractPlugin = require("mini-css-extract-plugin");
-const getAppConfig = require("../webpack.embedding-sdk.config");
+const appConfig = require("../rspack.embedding-sdk-bundle.config");
 const fs = require("fs");
 const path = require("path");
-
-const appConfig = getAppConfig();
 
 const {
   isEmbeddingSdkPackageInstalled,

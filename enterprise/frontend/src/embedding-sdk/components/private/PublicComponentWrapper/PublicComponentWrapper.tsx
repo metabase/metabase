@@ -1,5 +1,4 @@
-import React from "react";
-import { t } from "ttag";
+import { type ReactNode, forwardRef } from "react";
 
 import { PublicComponentStylesWrapper } from "embedding-sdk/components/private/PublicComponentStylesWrapper";
 import { SdkError } from "embedding-sdk/components/private/PublicComponentWrapper/SdkError";
@@ -8,13 +7,11 @@ import { useSdkSelector } from "embedding-sdk/store";
 import { getLoginStatus, getUsageProblem } from "embedding-sdk/store/selectors";
 import type { CommonStylingProps } from "embedding-sdk/types/props";
 
-import { RenderOnlyInSdkProvider } from "../SdkContext";
-
 export type PublicComponentWrapperProps = {
-  children: React.ReactNode;
+  children: ReactNode;
 } & CommonStylingProps;
 
-const PublicComponentWrapperInner = React.forwardRef<
+export const PublicComponentWrapper = forwardRef<
   HTMLDivElement,
   PublicComponentWrapperProps
 >(function PublicComponentWrapper({ children, className, style }, ref) {
@@ -23,11 +20,10 @@ const PublicComponentWrapperInner = React.forwardRef<
 
   let content = children;
 
-  if (loginStatus.status === "uninitialized") {
-    content = <div>{t`Initializing…`}</div>;
-  }
-
-  if (loginStatus.status === "loading") {
+  if (
+    loginStatus.status === "uninitialized" ||
+    loginStatus.status === "loading"
+  ) {
     content = <SdkLoader />;
   }
 
@@ -44,16 +40,5 @@ const PublicComponentWrapperInner = React.forwardRef<
     <PublicComponentStylesWrapper className={className} style={style} ref={ref}>
       {content}
     </PublicComponentStylesWrapper>
-  );
-});
-
-export const PublicComponentWrapper = React.forwardRef<
-  HTMLDivElement,
-  PublicComponentWrapperProps
->(function PublicComponentWrapper(props, ref) {
-  return (
-    <RenderOnlyInSdkProvider>
-      <PublicComponentWrapperInner ref={ref} {...props} />
-    </RenderOnlyInSdkProvider>
   );
 });
