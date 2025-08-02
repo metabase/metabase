@@ -147,7 +147,12 @@
         (with-join-alias-update-join-fields new-alias)
         (with-join-alias-update-join-conditions old-alias new-alias))))
 
-(mu/defn with-join-alias :- lib.join.util/FieldOrPartialJoin
+(mu/defn with-join-alias :- [:or
+                             [:map
+                              [:lib/type [:= :metadata/column]]]
+                             [:map
+                              [:lib/type [:= :mbql/join]]]
+                             :mbql.clause/field]
   "Add OR REMOVE a specific `join-alias` to `field-or-join`, which is either a `:field`/Field metadata, or a join map.
   Does not recursively update other references (yet; we can add this in the future)."
   {:style/indent [:form]}
@@ -268,45 +273,48 @@
            :display-name (lib.metadata.calculation/display-name query stage-number option)}
     default (assoc :default true)))
 
-;;; this returns ALL the columns 'visible' within the join, regardless of `:fields` ! `:fields` is only the list of
+;;; this returns ALL the columns made 'visible' by the join, regardless of `:fields` ! `:fields` is only the list of
 ;;; things to get added to the parent stage `:fields`! See QUE-1380
 ;;;
 ;;; If you want just the stuff in `:fields`, use [[join-fields-to-add-to-parent-stage]] instead.
 ;;;
-;;; returned columns for a join == returned columns from the previous stage
-(mu/defmethod lib.metadata.calculation/returned-columns-method :mbql/join :- [:maybe ::lib.metadata.calculation/returned-columns]
-  [query                                          :- ::lib.schema/query
-   stage-number                                   :- :int
-   {:keys [stages], join-alias :alias, :as _join} :- ::lib.schema.join/join
-   options                                        :- [:maybe ::lib.metadata.calculation/returned-columns.options]]
-  (let [join-query (assoc query :stages stages)
-        cols       (lib.metadata.calculation/returned-columns
-                    join-query -1 (lib.util/query-stage join-query -1)
-                    options)]
-    (into []
-          (comp
-           ;; desired column alias from the last stage of the join needs to become the new source column alias in the
-           ;; join's parent stage e.g. if the last stage of the join `Q2` returns `P2__CATEGORY` then the ultimate
-           ;; source alias in the parent stage of this join should be `P2__CATEGORY`, and the desired alias should be
-           ;; `Q2__P2__CATEGORY`. See [[metabase.lib.metadata.calculation-test/join-source-query-join-test]] for a
-           ;; concrete example of this.
-           (map lib.field.util/update-keys-for-col-from-previous-stage)
-           (map #(column-from-join query stage-number % join-alias))
-           (lib.field.util/add-source-and-desired-aliases-xform query))
-          cols)))
+;;; returned columns for a join == returned columns from the join's last stage.
+;;;
+;;; THIS METADATA IS RELATIVE TO THE JOIN! IT DOES NOT INCLUDE THE JOIN ALIAS OR UPDATED SOURCE/DESIRED ALIASES AS
+;;; THEY WOULD APPEAR IN THE PARENT STAGE!!! USE [[join-returned-columns-relative-to-parent-stage]] if that's what you
+;;; want instead.
+(mu/defmethod lib.metadata.calculation/returned-columns-method :mbql/join :- ::lib.metadata.calculation/returned-columns
+  [query                       :- ::lib.schema/query
+   _stage-number               :- :int
+   {:keys [stages], :as _join} :- ::lib.schema.join/join
+   options                     :- [:maybe ::lib.metadata.calculation/returned-columns.options]]
+  (let [join-query (assoc query :stages stages)]
+    (lib.metadata.calculation/returned-columns join-query -1 (lib.util/query-stage join-query -1) options)))
 
-(defn- update-keys-for-join-returned-column
-  "Things like bucketing that happened in the last stage of the join they should NOT get propagated (QUE-1621) to the
-  parent stage, otherwise we'd be performing the bucketing twice.
-  Use [[lib.field.util/update-keys-for-col-from-previous-stage]] to update all these keys so we make sure stuff like
-  binning and bucketing that should not get propagated are updated appropriately."
-  [col]
-  (-> col
-      lib.field.util/update-keys-for-col-from-previous-stage
-      ;; these columns aren't TRULY from a previous stage so we don't want to update `:lib/desired-column-alias` =>
-      ;; `:lib/source-column-alias`; we'll keep the ones we already have. Throw out the
-      ;; changes [[lib.field.util/update-keys-for-col-from-previous-stage]] made to these.
-      (merge (select-keys col [:lib/source-column-alias :lib/desired-column-alias]))))
+(mu/defn- join-returned-columns-relative-to-parent-stage :- ::lib.metadata.calculation/visible-columns
+  "All columns made 'visible' by the join (regardless of `:fields`) -- i.e., the columns returned by the last stage of
+  the join -- updated so their metadata is relative to the parent stage.
+
+  E.g. the desired column alias from the last stage of the join needs to become the new source column alias in the
+  join's parent stage e.g. if the last stage of the join `Q2` returns `P2__CATEGORY` then the ultimate source alias in
+  the parent stage of this join should be `P2__CATEGORY`, and the desired alias should be `Q2__P2__CATEGORY`.
+  See [[metabase.lib.metadata.calculation-test/join-source-query-join-test]] for a concrete example of this.
+
+  Note that a join's `:fields` is effectively relative to the parent stage of the join, rather than the join's last
+  stage, since they include `:join-alias`; if you want to resolve these refs, you should use this function as opposed
+  to `returned-columns`."
+  ([query stage-number join]
+   (join-returned-columns-relative-to-parent-stage query stage-number join nil))
+
+  ([query                         :- ::lib.schema/query
+    stage-number                  :- :int
+    {join-alias :alias, :as join} :- ::lib.schema.join/join
+    options                       :- [:maybe ::lib.metadata.calculation/returned-columns.options]]
+   (into []
+         (comp
+          (map lib.field.util/update-keys-for-col-from-previous-stage)
+          (map #(column-from-join query stage-number % join-alias)))
+         (lib.metadata.calculation/returned-columns query stage-number join options))))
 
 (mu/defn join-fields-to-add-to-parent-stage :- [:maybe [:sequential ::lib.metadata.calculation/column-metadata-with-source]]
   "The resolved `:fields` from a join, which we automatically append to the parent stage's `:fields`."
@@ -315,27 +323,26 @@
    {:keys [fields stages], join-alias :alias, :or {fields :none}, :as join}
    options :- [:maybe ::lib.metadata.calculation/returned-columns.options]]
   (when-not (= fields :none)
-    (let [cols   (lib.metadata.calculation/returned-columns query stage-number join options)
-          cols'  (if (= fields :all)
-                   (map update-keys-for-join-returned-column cols)
-                   (for [field-ref fields
-                         :let      [match (or (lib.equality/find-matching-column field-ref cols)
-                                              (log/warnf "Failed to find matching column in join %s for ref %s, found:\n%s"
-                                                         (pr-str join-alias)
-                                                         (pr-str field-ref)
-                                                         (u/pprint-to-str (map :lib/desired-column-alias cols))))]
-                         :when     match]
-                     (-> match
-                         update-keys-for-join-returned-column
-                         (assoc :lib/source-uuid (lib.options/uuid field-ref))
-                         ;; if the ref in join `:fields` is bucketed then we need to propagate this, since the
-                         ;; bucketing will actually take place in the parent stage. Note that this unit can differ
-                         ;; from bucketing done in the last stage of the join --
-                         ;; see [[metabase.lib.join-test/do-not-incorrectly-propagate-temporal-unit-in-returned-columns-test-2]]
-                         (m/assoc-some :metabase.lib.field/temporal-unit (lib.temporal-bucket/raw-temporal-bucket field-ref)))))
+    (let [cols  (join-returned-columns-relative-to-parent-stage query stage-number join options)
+          cols' (if (= fields :all)
+                  cols
+                  (for [field-ref fields
+                        :let      [match (or (lib.equality/find-matching-column field-ref cols)
+                                             (log/warnf "Failed to find matching column in join %s for ref %s, found:\n%s"
+                                                        (pr-str join-alias)
+                                                        (pr-str field-ref)
+                                                        (u/pprint-to-str (map :lib/desired-column-alias cols))))]
+                        :when     match]
+                    (-> match
+                        (assoc :lib/source-uuid (lib.options/uuid field-ref))
+                        ;; if the ref in join `:fields` is bucketed then we need to propagate this, since the
+                        ;; bucketing will actually take place in the parent stage. Note that this unit can differ
+                        ;; from bucketing done in the last stage of the join --
+                        ;; see [[metabase.lib.join-test/do-not-incorrectly-propagate-temporal-unit-in-returned-columns-test-2]]
+                        (m/assoc-some :metabase.lib.field/temporal-unit (lib.temporal-bucket/raw-temporal-bucket field-ref)))))
           ;; If there was a `:fields` clause but none of them matched the `join-cols` then pretend it was `:fields :all`
           ;; instead. That can happen if a model gets reworked and an old join clause remembers the old fields.
-          cols'  (if (empty? cols') cols cols')
+          cols' (if (empty? cols') cols cols')
           ;; add any remaps for the fields as needed.
           cols' (concat
                  cols'
@@ -344,29 +351,41 @@
                   0
                   cols'
                   options))]
+      ;; TODO (Cam 8/1/25) -- doesn't [[join-returned-columns-relative-to-parent-stage]] already
+      ;; call [[column-from-join]] ???
       (mapv #(column-from-join query stage-number % join-alias)
             cols'))))
 
+;;; VISIBLE COLUMNS FOR A JOIN ARE RELATIVE TO THE
+;;;
+;;; TODO NOCOMMIT -- VISIBLE COLUMNS FOR A JOIN IS === RETURNED COLUMNS FOR A JOIN === RETURNED COLUMNS FOR THE LAST STAGE OF A JOIN
 (defmethod lib.metadata.calculation/visible-columns-method :mbql/join
   [query stage-number join options]
-  (lib.metadata.calculation/returned-columns query stage-number (assoc join :fields :all) options))
+  (lib.metadata.calculation/returned-columns query stage-number join options))
 
-(mu/defn all-joins-visible-columns :- ::lib.metadata.calculation/visible-columns
+(mu/defn- join-visible-columns-relative-to-parent-stage :- ::lib.metadata.calculation/visible-columns
+  "Convenience for calling [[lib.metadata.calculation/visible-columns]] on all of the joins in a query stage."
+  [query                         :- ::lib.schema/query
+   stage-number                  :- :int
+   {join-alias :alias, :as join} :- ::lib.schema.join/join
+   options                       :- ::lib.metadata.calculation/visible-columns.options]
+  (into []
+        (comp (map lib.field.util/update-keys-for-col-from-previous-stage)
+              (map #(column-from-join query stage-number % join-alias)))
+        (lib.metadata.calculation/visible-columns query stage-number join options)))
+
+(mu/defn all-joins-visible-columns-relative-to-parent-stage :- ::lib.metadata.calculation/visible-columns
   "Convenience for calling [[lib.metadata.calculation/visible-columns]] on all of the joins in a query stage."
   [query          :- ::lib.schema/query
    stage-number   :- :int
    options        :- ::lib.metadata.calculation/visible-columns.options]
   (into []
         (mapcat (fn [join]
-                  (lib.metadata.calculation/visible-columns
-                   query stage-number join
-                   (-> options
-                       (select-keys [:include-remaps?]) ; WHY
-                       (assoc :include-implicitly-joinable? false)))))
+                  (join-visible-columns-relative-to-parent-stage query stage-number join options)))
         (:joins (lib.util/query-stage query stage-number))))
 
-(mu/defn all-joins-fields-to-add-to-parent-stage :- ::lib.metadata.calculation/returned-columns
-  "Convenience for calling [[lib.metadata.calculation/returned-columns-method]] on all the joins in a query stage."
+(mu/defn all-joins-fields-to-add-to-parent-stage :- ::lib.metadata.calculation/visible-columns
+  "Convenience for calling [[join-fields-to-add-to-parent-stage]] on all the joins in a query stage."
   [query        :- ::lib.schema/query
    stage-number :- :int
    options      :- [:maybe ::lib.metadata.calculation/returned-columns.options]]

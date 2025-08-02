@@ -693,6 +693,16 @@
                           (lib/append-stage))
           columns     (lib/fieldable-columns query)
           column-refs (mapv lib.ref/ref columns)]
+      (is (=? [{:lib/source-column-alias "CREATED_AT"
+                :inherited-temporal-unit :year}
+               {:lib/source-column-alias "CREATED_AT_2"
+                :inherited-temporal-unit :month}
+               {:lib/source-column-alias "count"}]
+              columns))
+      (is (=? [[:field {:inherited-temporal-unit :year} "CREATED_AT"]
+               [:field {:inherited-temporal-unit :month} "CREATED_AT_2"]
+               [:field {} "count"]]
+              column-refs))
       (is (=? [:field {} "CREATED_AT"]
               (lib.equality/find-matching-ref (first columns) column-refs)))
       (is (=? [:field {} "CREATED_AT_2"]
@@ -738,7 +748,7 @@
                                        {:base-type :type/BigInteger, :lib/uuid "00000000-0000-0000-0000-000000000001"}
                                        "Products__ID"]]))
           cols  (lib/visible-columns query)]
-      (is (=? {:name "ID_2", :lib/desired-column-alias "Products__ID"}
+      (is (=? {:name "ID_2", :lib/source-column-alias "Products__ID"}
               (lib.equality/find-matching-column
                [:field
                 {:base-type :type/BigInteger, :lib/uuid "00000000-0000-0000-0000-000000000002"}
@@ -941,15 +951,14 @@
                :base-type      :type/Text
                :join-alias     "question b - Product"}
               "TITLE"]
-             (lib.equality/find-matching-ref col refs {:match-type ::lib.equality/match-type.same-stage}))))))
+             (lib.equality/find-matching-ref col refs))))))
 
 (deftest ^:parallel same-stage-matching-do-not-barf-when-trying-to-find-a-match-for-an-expression-ref-test
   (let [[col] (lib/returned-columns (lib/query meta/metadata-provider (meta/table-metadata :venues)))]
     ;; just make sure this doesn't barf.
     (is (nil? (lib.equality/find-matching-ref
                col
-               [[:expression {:lib/uuid (str (random-uuid)), :base-type :type/Integer} "bad_expression"]]
-               {:match-type ::lib.equality/match-type.same-stage})))))
+               [[:expression {:lib/uuid (str (random-uuid)), :base-type :type/Integer} "bad_expression"]])))))
 
 (deftest ^:parallel pick-correct-column-when-one-is-from-join-and-on-is-not-test
   (testing "If we have two cols and one has a join alias and one doesn't, and our ref has no alias, then pick the col with no alias"
@@ -1019,7 +1028,7 @@
                 :join-alias     "Orders"}
                55603]]]
     (is (= (first refs)
-           (lib.equality/find-matching-ref col refs {:match-type ::lib.equality/match-type.same-stage})))))
+           (lib.equality/find-matching-ref col refs)))))
 
 (deftest ^:parallel match-by-source-field-test
   (let [col  {:base-type                :type/BigInteger
@@ -1040,7 +1049,7 @@
         refs [[:field {:base-type :type/BigInteger, :lib/uuid "b10907ef-d71b-4ddc-b3b9-ff0fda706b6d"} "ID"]
               [:field {:base-type :type/BigInteger, :source-field 35, :source-field-name "USER_ID", :lib/uuid "1cb6708d-754d-48b9-b44f-660a7c91561d", :effective-type :type/BigInteger} 24]]]
     (is (= (second refs)
-           (lib.equality/find-matching-ref col refs {:match-type ::lib.equality/match-type.same-stage})))))
+           (lib.equality/find-matching-ref col refs)))))
 
 (deftest ^:parallel find-matching-column-prefer-exact-matches-test
   (testing `lib.equality/find-matching-column

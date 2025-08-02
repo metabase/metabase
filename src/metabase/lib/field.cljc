@@ -57,7 +57,7 @@
   [_query _stage-number {field-name :name, :as field-metadata}]
   (assoc field-metadata :name field-name))
 
-(mu/defmethod lib.metadata.calculation/metadata-method :field :- ::lib.schema.metadata/column
+(mu/defmethod lib.metadata.calculation/metadata-method :field :- ::lib.metadata.calculation/visible-column
   [query stage-number field-ref]
   (lib.field.resolution/resolve-field-ref query stage-number field-ref))
 
@@ -610,7 +610,7 @@
         lib.remove-replace/normalize-fields-clauses)))
 
 (defn- remove-matching-ref [column refs]
-  (let [match (or (lib.equality/find-matching-ref column refs {:match-type ::lib.equality/match-type.same-stage})
+  (let [match (or (lib.equality/find-matching-ref column refs)
                   (log/warnf "Failed to find match for column\n%s\nin refs:\n%s"
                              (u/pprint-to-str column)
                              (u/pprint-to-str refs)))]

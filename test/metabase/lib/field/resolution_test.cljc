@@ -460,7 +460,6 @@
                      :visibility-type                  :normal
                      :lib/original-binning             {:strategy :default}
                      :lib/card-id                      1
-                     :lib/desired-column-alias         "C__NAME"
                      :lib/original-display-name        "Name"
                      :lib/original-join-alias          "C"
                      :lib/original-name                "NAME"
@@ -474,7 +473,6 @@
       (binding [lib.metadata.calculation/*display-name-style* :long]
         (testing "with model as :source-card (current-stage-source-card-metadata pathway)"
           (is (=? (assoc expected
-                         :lib/deduplicated-name   "NAME"
                          :name                    "NAME"
                          :lib/source-column-alias "C__NAME")
                   (lib.field.resolution/resolve-field-ref query -1 field-ref))))
@@ -520,14 +518,16 @@
 
 (deftest ^:parallel column-filter-join-alias-test
   (testing "We should be able to resolve a ref missing join alias and add that to the metadata (#36861)"
-    (let [query        (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
-                           (lib/join (lib/join-clause (meta/table-metadata :products)
-                                                      [(lib/= (meta/field-metadata :orders :product-id)
-                                                              (meta/field-metadata :products :id))])))
+    (let [query      (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                         (lib/join (lib/join-clause (meta/table-metadata :products)
+                                                    [(lib/= (meta/field-metadata :orders :product-id)
+                                                            (meta/field-metadata :products :id))])))
           broken-ref [:field {:lib/uuid "00000000-0000-0000-0000-000000000000", :base-type :type/Text} "CATEGORY"]]
-      (is (=? {:id                           (meta/id :products :category)
+        (is (=? {:id                           (meta/id :products :category)
                :table-id                     (meta/id :products)
                :name                         "CATEGORY"
+               :lib/source                   :source/joins
+               :lib/source-column-alias      "CATEGORY"
                :lib/original-join-alias      "Products"
                :metabase.lib.join/join-alias "Products"}
               (lib.field.resolution/resolve-field-ref query -1 broken-ref))))))
@@ -834,7 +834,6 @@
              (map #(select-keys % [:name :lib/source-column-alias])
                   (lib/visible-columns q3))))
       (is (=? {:lib/source-column-alias  "Reviews__CREATED_AT"
-               :lib/desired-column-alias "Reviews__CREATED_AT"
                :lib/original-join-alias  "Reviews"
                :display-name             "Reviews → Created At"}
               (lib.field.resolution/resolve-field-ref
@@ -1097,7 +1096,6 @@
                      :display-name             "Product → Category"
                      :lib/source               :source/previous-stage
                      :lib/source-column-alias  "PRODUCTS__via__PRODUCT_ID__CATEGORY"
-                     :lib/desired-column-alias "PRODUCTS__via__PRODUCT_ID__CATEGORY"
                      :fk-field-id              (symbol "nil #_\"key is not present.\"")
                      :lib/original-fk-field-id (meta/id :orders :product-id)}
                     (lib.field.resolution/resolve-field-ref query 1 field-ref))))
@@ -1106,7 +1104,6 @@
                      :display-name             "Product → Category"
                      :lib/source               :source/previous-stage
                      :lib/source-column-alias  "PRODUCTS__via__PRODUCT_ID__CATEGORY"
-                     :lib/desired-column-alias "PRODUCTS__via__PRODUCT_ID__CATEGORY"
                      :fk-field-id              (symbol "nil #_\"key is not present.\"")
                      :lib/original-fk-field-id (meta/id :orders :product-id)}
                     (lib.field.resolution/resolve-field-ref query 2 field-ref)))))))))
@@ -1129,7 +1126,6 @@
                      :display-name             "ID → Category"
                      :lib/source               :source/previous-stage
                      :lib/source-column-alias  "PRODUCTS__via__ID__CATEGORY"
-                     :lib/desired-column-alias "PRODUCTS__via__ID__CATEGORY"
                      :fk-field-id              (symbol "nil #_\"key is not present.\"")
                      :lib/original-fk-field-id (meta/id :orders :id)}
                     (lib.field.resolution/resolve-field-ref query 1 field-ref))))
@@ -1138,7 +1134,6 @@
                      :display-name             "ID → Category"
                      :lib/source               :source/previous-stage
                      :lib/source-column-alias  "PRODUCTS__via__ID__CATEGORY"
-                     :lib/desired-column-alias "PRODUCTS__via__ID__CATEGORY"
                      :fk-field-id              (symbol "nil #_\"key is not present.\"")
                      :lib/original-fk-field-id (meta/id :orders :id)}
                     (lib.field.resolution/resolve-field-ref query 2 field-ref)))))))))
@@ -1148,7 +1143,7 @@
     (let [query (-> (lib/query
                      meta/metadata-provider
                      (lib.tu.macros/mbql-query venues
-                       {:fields [&Category.categories.name]
+                       {:fields [&Category.categories.id]
                         :joins  [{:alias        "Category"
                                   :source-table $$categories
                                   :condition    [:= $category-id &Category.categories.id]
@@ -1193,5 +1188,7 @@
                :id                           (meta/id :categories :name)
                :name                         "NAME"
                :lib/original-join-alias      "Cat"
-               :metabase.lib.join/join-alias (symbol "nil #_\"key is not present.\"")}
+               :metabase.lib.join/join-alias (symbol "nil #_\"key is not present.\"")
+               :lib/source-column-alias      "Cat__NAME"
+               :lib/desired-column-alias     (symbol "nil #_\"key is not present.\"")}
               (lib.field.resolution/resolve-field-ref query -1 bad-ref))))))

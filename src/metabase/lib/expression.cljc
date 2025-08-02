@@ -86,15 +86,16 @@
   (let [expression (resolve-expression query stage-number expression-name)]
     (lib.metadata.calculation/type-of query stage-number expression)))
 
-(defmethod lib.metadata.calculation/metadata-method :expression
+(mu/defmethod lib.metadata.calculation/metadata-method :expression :- ::lib.metadata.calculation/visible-column
   [query stage-number [_expression opts expression-name, :as expression-ref-clause]]
-  (merge {:lib/type            :metadata/column
-          :lib/source-uuid     (:lib/uuid opts)
-          :name                expression-name
-          :lib/expression-name expression-name
-          :display-name        (lib.metadata.calculation/display-name query stage-number expression-ref-clause)
-          :base-type           (lib.metadata.calculation/type-of query stage-number expression-ref-clause)
-          :lib/source          :source/expressions}
+  (merge {:lib/type                :metadata/column
+          :lib/source-uuid         (:lib/uuid opts)
+          :name                    expression-name
+          :lib/expression-name     expression-name
+          :lib/source-column-alias expression-name
+          :display-name            (lib.metadata.calculation/display-name query stage-number expression-ref-clause)
+          :base-type               (lib.metadata.calculation/type-of query stage-number expression-ref-clause)
+          :lib/source              :source/expressions}
          (when-let [unit (lib.temporal-bucket/raw-temporal-bucket expression-ref-clause)]
            {:metabase.lib.field/temporal-unit unit})
          (when lib.metadata.calculation/*propagate-binning-and-bucketing*

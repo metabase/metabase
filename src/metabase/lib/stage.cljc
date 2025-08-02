@@ -22,7 +22,8 @@
    [metabase.lib.util.match :as lib.util.match]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [medley.core :as m]))
 
 (lib.hierarchy/derive :mbql.stage/mbql   ::stage)
 (lib.hierarchy/derive :mbql.stage/native ::stage)
@@ -52,7 +53,7 @@
                        (lib.field.util/add-source-and-desired-aliases-xform query))
                  (:columns metadata))))))))
 
-(mu/defn- breakouts-columns :- [:maybe [:sequential ::lib.metadata.calculation/column-metadata-with-source]]
+(mu/defn- breakouts-columns :- [:maybe ::lib.metadata.calculation/visible-columns]
   [query        :- ::lib.schema/query
    stage-number :- :int
    options      :- [:maybe ::lib.metadata.calculation/returned-columns.options]]
@@ -62,16 +63,19 @@
       cols
       (lib.metadata.calculation/remapped-columns query stage-number cols options)))))
 
-(mu/defn- aggregations-columns :- [:maybe [:sequential ::lib.metadata.calculation/column-metadata-with-source]]
+(mu/defn- aggregations-columns :- [:maybe ::lib.metadata.calculation/visible-columns]
   [query        :- ::lib.schema/query
    stage-number :- :int]
   (not-empty
    (for [ag (lib.aggregation/aggregations-metadata query stage-number)]
-     (assoc ag :lib/source :source/aggregations))))
+     ;; TODO (Cam 8/1/25) -- why don't we just do this in [[lib.aggregation/aggregations-metadata]] instead of here?
+     (assoc ag
+            :lib/source              :source/aggregations
+            :lib/source-column-alias ((some-fn :lib/source-column-alias :name) ag)))))
 
 ;;; TODO -- maybe the bulk of this logic should be moved into [[metabase.lib.field]], like we did for breakouts and
 ;;; aggregations above.
-(mu/defn- fields-columns :- [:maybe [:sequential ::lib.metadata.calculation/column-metadata-with-source]]
+(mu/defn- fields-columns :- [:maybe ::lib.metadata.calculation/visible-columns]
   [query        :- ::lib.schema/query
    stage-number :- :int
    options      :- [:maybe ::lib.metadata.calculation/returned-columns.options]]
@@ -79,11 +83,12 @@
     (-> (for [[tag :as ref-clause] fields
               :let                 [col (lib.metadata.calculation/metadata query stage-number ref-clause)]]
           (cond-> col
-            (= tag :expression) (assoc :lib/source :source/expressions)))
+            (= tag :expression) (assoc :lib/source              :source/expressions
+                                       :lib/source-column-alias (:lib/expression-name col))))
         (as-> $cols (concat $cols (lib.metadata.calculation/remapped-columns query stage-number $cols options)))
         not-empty)))
 
-(mu/defn- summary-columns :- [:maybe [:sequential ::lib.metadata.calculation/column-metadata-with-source]]
+(mu/defn- summary-columns :- [:maybe ::lib.metadata.calculation/visible-columns]
   [query        :- ::lib.schema/query
    stage-number :- :int
    options      :- [:maybe ::lib.metadata.calculation/returned-columns.options]]
@@ -219,7 +224,7 @@
      (lib.metadata.calculation/remapped-columns query stage-number source-columns options)
      ;; 4: columns added by joins at this stage
      (when include-joined?
-       (lib.join/all-joins-visible-columns query stage-number options)))))
+       (lib.join/all-joins-visible-columns-relative-to-parent-stage query stage-number options)))))
 
 (mu/defmethod lib.metadata.calculation/visible-columns-method ::stage :- ::lib.metadata.calculation/visible-columns
   [query                                               :- ::lib.schema/query
@@ -247,15 +252,14 @@
                  bucket)))]
      (= (bucket col-1)
         (bucket col-2)))
-   ;; compare by IDs if we have ID info for both.
-   (if (every? :id [col-1 col-2])
-     ;; same IDs
-     (= (:id col-1) (:id col-2))
-     ;; same names
-     (some (fn [f]
-             (= (f col-2)
-                (f col-1)))
-           [:lib/desired-column-alias :lib/source-column-alias :lib/deduplicated-name :name]))))
+   ;; compare by something that both columns have, trying ID first falling back to column name
+   (let [k (m/find-first (fn [k]
+                           (and (k col-1)
+                                (k col-2)))
+                         [:id :lib/source-column-alias :name])]
+     (assert k "No key common to both columns")
+     (= (k col-1)
+        (k col-2)))))
 
 (defn- add-cols-from-join
   "The columns from `:fields` may contain columns from `:joins` -- so if the joins specify their own `:fields` we need
@@ -304,7 +308,7 @@
                         ;; there is no `:fields` or summary columns (aggregtions or breakouts) which means we return
                         ;; all the visible columns from the source or previous stage plus all the expressions. We
                         ;; return only the `:fields` from any joins
-                        (let [;; we don't want to include all visible joined columns, so calculate that separately
+                        (let [ ;; we don't want to include all visible joined columns, so calculate that separately
                               source-cols (previous-stage-or-source-visible-columns
                                            query stage-number
                                            {:include-implicitly-joinable? false

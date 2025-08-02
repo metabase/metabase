@@ -863,6 +863,50 @@
           :metabase.lib.join/join-alias "Orders"
           :name                         "sum"}))))
 
+(deftest ^:parallel add-cols-from-join-duplicate?-test
+  (let [join-col     {:active                       true
+                      :base-type                    :type/Text
+                      :caveats                      nil
+                      :coercion-strategy            nil
+                      :custom-position              0
+                      :database-is-auto-increment   false
+                      :database-position            2
+                      :database-required            false
+                      :database-type                "CHARACTER VARYING"
+                      :description                  nil
+                      :display-name                 "Orders → Title"
+                      :effective-type               :type/Text,
+                      :fingerprint-version          5
+                      :fk-target-field-id           nil
+                      :has-field-values             :auto-list
+                      :id                           24504
+                      :name                         "TITLE"
+                      :nfc-path                     nil
+                      :parent-id                    nil
+                      :points-of-interest           nil
+                      :position                     2
+                      :preview-display              true
+                      :semantic-type                :type/Title
+                      :settings                     nil
+                      :source-alias                 "Orders"
+                      :table-id                     24050
+                      :visibility-type              :normal
+                      :lib/breakout?                false
+                      :lib/original-display-name    "Title"
+                      :lib/original-join-alias      "Orders"
+                      :lib/original-name            "TITLE"
+                      :lib/source                   :source/joins
+                      :lib/source-column-alias      "TITLE"
+                      :lib/type                     :metadata/column
+                      :metabase.lib.join/join-alias "Orders"}
+        existing-col {:base-type                    :type/Integer
+                      :display-name                 "Orders → Sum"
+                      :name                         "sum"
+                      :lib/source                   :source/previous-stage
+                      :lib/type                     :metadata/column
+                      :metabase.lib.join/join-alias "Orders"}]
+    (is (not (#'lib.stage/add-cols-from-join-duplicate? join-col existing-col)))))
+
 (deftest ^:parallel sane-desired-column-aliases-test
   (testing "Do not 'double-dip' a desired-column alias and do `__via__` twice"
     (let [query (lib/query

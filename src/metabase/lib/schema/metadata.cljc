@@ -232,26 +232,26 @@
 
 ;;; TODO (Cam 7/1/25) -- disabled for now because of bugs like QUE-1496; once that's fixed we should re-enable this.
 ;;; Note we probably also need to remove [[metabase.lib.metadata.result-metadata/remove-implicit-join-aliases]]
-#_(mr/def ::column.validate-join-alias
-    "* Current stage join alias (`:metabase.lib.join/join-alias`) should only be set for columns whose `:lib/source` is
+(mr/def ::column.validate-join-alias
+  "* Current stage join alias (`:metabase.lib.join/join-alias`) should only be set for columns whose `:lib/source` is
      `:source/joins`
 
   * If source is `:source/joins` column must specify a current stage join alias."
-    [:and
-     [:fn
-      {:error/message (str "Current stage join alias (:metabase.lib.join/join-alias) should only be set for columns"
-                           " whose :lib/source is :source/joins.")}
-      (fn [m]
-        (if (:metabase.lib.join/join-alias m)
-          (= (:lib/source m) :source/joins)
-          true))]
-     [:fn
-      {:error/message (str "If source is :source/joins the column must specify current stage join"
-                           " alias (:metabase.lib.join/join-alias).")}
-      (fn [m]
-        (if (= (:lib/source m) :source/joins)
-          (:metabase.lib.join/join-alias m)
-          true))]])
+  [:and
+   [:fn
+    {:error/message (str "Current stage join alias (:metabase.lib.join/join-alias) should only be set for columns"
+                         " whose :lib/source is :source/joins.")}
+    (fn [m]
+      (if (:metabase.lib.join/join-alias m)
+        (= (:lib/source m) :source/joins)
+        true))]
+   [:fn
+    {:error/message (str "If source is :source/joins the column must specify current stage join"
+                         " alias (:metabase.lib.join/join-alias).")}
+    (fn [m]
+      (if (= (:lib/source m) :source/joins)
+        (:metabase.lib.join/join-alias m)
+        true))]])
 
 ;;; TODO (Cam 7/30/25) -- we should also validate that if `:lib/source` is `:source/implicitly-joinable` it includes
 ;;; `:fk-field-id`, and vice-versa (actually this is also allowed if source is `:source/joins` as well.) The implicit
@@ -464,7 +464,7 @@
    ::column.validate-expression-source
    ::column.validate-native-column
    ::column.validate-table-defaults-column
-   #_::column.validate-join-alias])
+   ::column.validate-join-alias])
 
 (mr/def ::persisted-info.definition
   "Definition spec for a cached table."

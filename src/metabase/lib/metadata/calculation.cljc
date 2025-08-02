@@ -696,4 +696,4 @@
   (let [no-fields (lib.util/update-query-stage query stage-number dissoc :fields)]
     (into [] (remove (comp #{:source/joins :source/implicitly-joinable}
                            :lib/source))
-          (returned-columns no-fields stage-number (lib.util/query-stage no-fields stage-number)))))
+          (returned-columns no-fields stage-number))))

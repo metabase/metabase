@@ -14,7 +14,8 @@
    [metabase.lib.util :as lib.util]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
-   [metabase.lib.walk :as lib.walk]))
+   [metabase.lib.walk :as lib.walk]
+   [metabase.lib.join :as lib.join]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
@@ -959,6 +960,7 @@
                     :table-id                     (meta/id :categories)
                     :name                         "NAME"
                     :lib/source                   :source/previous-stage
+                    :lib/breakout?                true
                     :lib/original-join-alias      "Cat"
                     :metabase.lib.join/join-alias (symbol "nil #_\"key is not present.\"")
                     :lib/source-column-alias      "Cat__NAME"
@@ -981,7 +983,7 @@
                   :lib/source-column-alias      "Cat__NAME"
                   ;; should not be returned by `visible-columns` since it needs to be recalculated in the context of
                   ;; everything that gets returned.
-                  #_:lib/desired-column-alias     #_(symbol "nil #_\"key is not present.\"")}]
+                  :lib/desired-column-alias     (symbol "nil #_\"key is not present.\"")}]
                 (lib/visible-columns query -1 (lib/query-stage query -1) {:include-joined?                              false
                                                                           :include-expressions?                         false
                                                                           :include-implicitly-joinable?                 false
@@ -1018,7 +1020,7 @@
                                                 :lib/source-column-alias
                                                 :lib/desired-column-alias])
                                cols))]
-      (testing "join last stage returned columns"
+      (testing "join last stage returned columns == join returned columns"
         (is (= [{:name                         "CATEGORY"
                  :lib/source                   :source/joins
                  :lib/desired-column-alias     "P2__CATEGORY"
@@ -1028,19 +1030,18 @@
                  :lib/source               :source/aggregations
                  :lib/desired-column-alias "avg"
                  :lib/source-column-alias  "avg"}]
-               (relevant-keys (lib.walk/apply-f-for-stage-at-path lib/returned-columns query [:stages 0 :joins 0 :stages 0])))))
-      (testing "join returned columns"
+               (relevant-keys (lib.walk/apply-f-for-stage-at-path lib/returned-columns query [:stages 0 :joins 0 :stages 0]))
+               (relevant-keys (lib/returned-columns query (first (lib/joins query)))))))
+      (testing "join returned columns relative to parent stage"
         (is (= [{:name                         "CATEGORY"
                  :lib/source                   :source/joins
                  :metabase.lib.join/join-alias "Q2"
-                 :lib/source-column-alias      "P2__CATEGORY"
-                 :lib/desired-column-alias     "Q2__P2__CATEGORY"}
+                 :lib/source-column-alias      "P2__CATEGORY"}
                 {:name                         "avg"
                  :lib/source                   :source/joins
                  :metabase.lib.join/join-alias "Q2"
-                 :lib/source-column-alias      "avg"
-                 :lib/desired-column-alias     "Q2__avg"}]
-               (relevant-keys (lib/returned-columns query (first (lib/joins query)))))))
+                 :lib/source-column-alias      "avg"}]
+               (relevant-keys (#'lib.join/join-returned-columns-relative-to-parent-stage query -1 (first (lib/joins query)))))))
       (testing "query (last stage) returned columns"
         (is (= [{:name                         "CATEGORY"
                  :lib/source                   :source/joins
