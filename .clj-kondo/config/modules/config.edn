@@ -1519,6 +1519,7 @@
            premium-features
            enterprise/advanced-config
            enterprise/scim
+           enterprise/semantic-search
            enterprise/sso}}
 
   enterprise/api
@@ -1685,7 +1686,8 @@
   enterprise/llm
   {:team "Metabot"
    :api  #{metabase-enterprise.llm.api
-           metabase-enterprise.llm.init}
+           metabase-enterprise.llm.init
+           metabase-enterprise.llm.settings}
    :uses #{analytics
            analyze
            api
@@ -1782,6 +1784,19 @@
    :api  #{}
    :uses #{premium-features
            search}}
+
+  enterprise/semantic-search
+  {:team "Metabot"
+   :api  #{metabase-enterprise.semantic-search.core
+           metabase-enterprise.semantic-search.init}
+   :uses #{analytics
+           connection-pool
+           models
+           premium-features
+           search
+           settings
+           util
+           enterprise/llm}}
 
   enterprise/serialization
   {:team "Workflows"

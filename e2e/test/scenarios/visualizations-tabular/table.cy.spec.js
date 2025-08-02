@@ -191,7 +191,7 @@ describe("scenarios > visualizations > table", () => {
   it("should preserve set widths after reordering (VIZ-439)", () => {
     cy.intercept(
       "GET",
-      "/api/search?models=dataset&models=table&table_db_id=*",
+      "/api/search?search_engine=appdb&models=dataset&models=table&table_db_id=*",
     ).as("getSearchResults");
     H.startNewNativeQuestion({
       query: 'select 1 "first_column", 2 "second_column"',
