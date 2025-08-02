@@ -1,6 +1,10 @@
 (ns metabase-enterprise.transforms.ordering
   (:require
-   [clojure.set :as set]))
+   [clojure.core.match :as match]
+   [clojure.set :as set]
+   [clojure.string :as str]
+   [metabase.lib.util.match :as lib.util.match]
+   [toucan2.core :as t2]))
 
 (defn- get-output-table [transform]
   (t2/select-one-fn :id
@@ -9,8 +13,38 @@
                     :name (get-in transform [:target :name])
                     :db_id (get-in transform [:source :query :database])))
 
+(defn- card-id [card-ref]
+  (->> (str/split card-ref #"_")
+       last
+       Integer/parseInt))
+
+(defn- query-deps [query]
+  (->> (tree-seq coll? seq query)
+       (map #(match/match %
+               [:source-table source] (if (string? source)
+                                        {:cards #{(card-id source)}}
+                                        {:tables #{source}})
+               _ {}))
+       (apply merge-with set/union)))
+
+(defn- get-cards [cards seen]
+  (let [filtered (filter #(not (seen %)) cards)]
+    (when (seq filtered)
+      (t2/select-fn-vec :dataset_query :model/Card :id
+                        [:in filtered]))))
+
 (defn- transform-deps [transform]
-  (filter identity [(get-in transform [:source :query :query :source-table])]))
+  (loop [[t & transforms] [(get-in transform [:source :query])]
+         results {}
+         seen #{}]
+    (if t
+      (let [{:keys [tables cards]} (query-deps t)]
+        (recur (apply conj
+                      transforms
+                      (get-cards cards seen))
+               tables
+               (apply conj seen cards)))
+      results)))
 
 (defn transform-ordering
   "Computes an 'ordering' of a given list of transforms.
