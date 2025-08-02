@@ -232,26 +232,26 @@
 
 ;;; TODO (Cam 7/1/25) -- disabled for now because of bugs like QUE-1496; once that's fixed we should re-enable this.
 ;;; Note we probably also need to remove [[metabase.lib.metadata.result-metadata/remove-implicit-join-aliases]]
-#_(mr/def ::column.validate-join-alias
-    "* Current stage join alias (`:metabase.lib.join/join-alias`) should only be set for columns whose `:lib/source` is
+(mr/def ::column.validate-join-alias
+  "* Current stage join alias (`:metabase.lib.join/join-alias`) should only be set for columns whose `:lib/source` is
      `:source/joins`
 
   * If source is `:source/joins` column must specify a current stage join alias."
-    [:and
-     [:fn
-      {:error/message (str "Current stage join alias (:metabase.lib.join/join-alias) should only be set for columns"
-                           " whose :lib/source is :source/joins.")}
-      (fn [m]
-        (if (:metabase.lib.join/join-alias m)
-          (= (:lib/source m) :source/joins)
-          true))]
-     [:fn
-      {:error/message (str "If source is :source/joins the column must specify current stage join"
-                           " alias (:metabase.lib.join/join-alias).")}
-      (fn [m]
-        (if (= (:lib/source m) :source/joins)
-          (:metabase.lib.join/join-alias m)
-          true))]])
+  [:and
+   [:fn
+    {:error/message (str "Current stage join alias (:metabase.lib.join/join-alias) should only be set for columns"
+                         " whose :lib/source is :source/joins.")}
+    (fn [m]
+      (if (:metabase.lib.join/join-alias m)
+        (= (:lib/source m) :source/joins)
+        true))]
+   [:fn
+    {:error/message (str "If source is :source/joins the column must specify current stage join"
+                         " alias (:metabase.lib.join/join-alias).")}
+    (fn [m]
+      (if (= (:lib/source m) :source/joins)
+        (:metabase.lib.join/join-alias m)
+        true))]])
 
 ;;; TODO (Cam 7/30/25) -- we should also validate that if `:lib/source` is `:source/implicitly-joinable` it includes
 ;;; `:fk-field-id`, and vice-versa (actually this is also allowed if source is `:source/joins` as well.) The implicit
@@ -358,6 +358,10 @@
     ;;    original join alias = X
     ;;    column => [join X => join Y]
     ;;
+    ;; It is not currently well-defined whether this appears when the join was the current stage or not, i.e. if it's
+    ;; equal to `:metabase.lib.join/join-alias` when it is set or if it is only set if the join happened in a previous
+    ;; stage, i.e. if it's `nil` when `:metabase.lib.join/join-alias` is set. It seems like current behavior is the
+    ;; former but you should NOT rely on this behavior.
     [:lib/original-join-alias {:optional true} [:maybe ::lib.schema.join/alias]]
     ;; these should only be present if temporal bucketing or binning is done in the current stage of the query; if
     ;; this happened in a previous stage they should get propagated as the keys below instead.
@@ -460,7 +464,7 @@
    ::column.validate-expression-source
    ::column.validate-native-column
    ::column.validate-table-defaults-column
-   #_::column.validate-join-alias])
+   ::column.validate-join-alias])
 
 (mr/def ::persisted-info.definition
   "Definition spec for a cached table."

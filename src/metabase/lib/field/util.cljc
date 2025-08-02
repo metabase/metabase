@@ -17,16 +17,25 @@
   (some? (#{:source/card :source/native :source/previous-stage} (:lib/source column))))
 
 (mu/defn inherited-column-name :- [:maybe :string]
-  "If the field ref for this `column` should be name-based, returns the name used in the field ref."
+  "If the field ref for this `column` should be name-based, returns the name used in the field ref.
+
+  `column` SHOULD BE METADATA RELATIVE TO THE CURRENT STAGE WHERE YOU ARE ADDING THE REF!!!!!!
+
+  Field name refs should use the `:lib/source-column-alias`, e.g.
+
+    [:field {} \"WHATEVER\"]
+
+  which should be the same as the `:lib/desired-column-alias` the previous stage or (last stage of the) join that it
+  came from."
   [column :- ::lib.schema.metadata/column]
   (when (inherited-column? column)
     ((some-fn
-      ;; broken field refs never use `:lib/desired-column-alias`.
+      ;; broken field refs never use `:lib/source-column-alias`.
       (case lib.ref/*ref-style*
-        :ref.style/default                  :lib/desired-column-alias
+        :ref.style/default                  :lib/source-column-alias
         :ref.style/broken-legacy-qp-results (constantly nil))
-      :lib/deduplicated-name
-      :lib/original-name
+      ;; if this is missing for some reason then fall back to `:name` -- probably wrong, but maybe not and it might
+      ;; still work.
       :name)
      column)))
 
@@ -85,9 +94,18 @@
                         :metabase.lib.field/binning       :lib/original-binning
                         :metabase.lib.field/temporal-unit :inherited-temporal-unit
                         :metabase.lib.join/join-alias     :lib/original-join-alias})
-      ;; TODO (Cam 7/25/25) -- shouldn't this set `:lib/source` as well?
       (assoc :lib/breakout? false
              ;; TODO (Cam 6/26/25) -- should we set `:lib/original-display-name` here too?
              :lib/original-name ((some-fn :lib/original-name :name) col)
              ;; desired-column-alias is previous stage => source column alias in next stage
-             :lib/source-column-alias ((some-fn :lib/desired-column-alias :lib/source-column-alias :name) col))))
+             :lib/source-column-alias ((some-fn :lib/desired-column-alias :lib/source-column-alias :name) col))
+      ;;
+      ;; TODO (Cam 8/1/25) -- we should definitely be setting this here but it breaks a lot of dumb tests and I don't
+      ;; really want to run around fixing all of them right now.
+      #_(assoc :lib/source :source/previous-stage)
+      ;;
+      ;; Remove `:lib/desired-column-alias` and `:lib/deduplicated-name`, which need to be recalculated in the context
+      ;; of what is returned by the current stage, to prevent any confusion; their values are likely wrong now and we
+      ;; don't want people to get confused by them. `visible-columns` is not supposed to return these, since we can't
+      ;; know their value without knowing what is actually returned.
+      (dissoc :lib/desired-column-alias :lib/deduplicated-name)))

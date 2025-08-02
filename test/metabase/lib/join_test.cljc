@@ -1842,22 +1842,18 @@
                                         :condition    [:= !month.created-at !month.&Q2.birth-date]
                                         :fields       fields}]}))]
           ;; these SHOULD NOT include `:metabase.lib.field/temporal-unit`, so don't change this to `=?`.
-          (is (= [{:lib/source-column-alias  "BIRTH_DATE"
-                   ::lib.join/join-alias     "Q2"
-                   :lib/desired-column-alias "Q2__BIRTH_DATE"
-                   :lib/original-name        "BIRTH_DATE"
-                   :inherited-temporal-unit  :month}
-                  {:lib/source-column-alias  "count"
-                   ::lib.join/join-alias     "Q2"
-                   :lib/desired-column-alias "Q2__count"
-                   :lib/original-name        "count"}]
-                 (map #(select-keys % [:lib/source-column-alias
-                                       ::lib.join/join-alias
-                                       :lib/desired-column-alias
-                                       :lib/original-name
-                                       :metabase.lib.field/temporal-unit
-                                       :inherited-temporal-unit])
-                      (lib.join/join-fields-to-add-to-parent-stage query -1 (first (lib/joins query -1)) {})))))))))
+          (is (=? [{:lib/source                       :source/joins
+                    :lib/source-column-alias          "BIRTH_DATE"
+                    ::lib.join/join-alias             "Q2"
+                    :lib/original-name                "BIRTH_DATE"
+                    :metabase.lib.field/temporal-unit (symbol "nil #_\"key is not present.\"")
+                    :inherited-temporal-unit          :month}
+                   {:lib/source                       :source/joins
+                    :lib/source-column-alias          "count"
+                    ::lib.join/join-alias             "Q2"
+                    :metabase.lib.field/temporal-unit (symbol "nil #_\"key is not present.\"")
+                    :lib/original-name                "count"}]
+                  (lib.join/join-fields-to-add-to-parent-stage query -1 (first (lib/joins query -1)) {}))))))))
 
 (deftest ^:parallel do-not-incorrectly-propagate-temporal-unit-in-returned-columns-test-2
   (testing "DO propagate temporal unit if it is included in join :fields"
@@ -1875,9 +1871,10 @@
                                     :condition    [:= !month.created-at !month.&Q2.birth-date]
                                     :fields       [[:field (meta/id :people :birth-date) {:join-alias "Q2", :temporal-unit :month}]
                                                    [:field "count" {:base-type :type/Integer, :join-alias "Q2"}]]}]}))]
-      (is (= [{:lib/desired-column-alias         "Q2__BIRTH_DATE"
-               :metabase.lib.field/temporal-unit :month
-               :inherited-temporal-unit          :year}
-              {:lib/desired-column-alias "Q2__count"}]
-             (map #(select-keys % [:lib/desired-column-alias :metabase.lib.field/temporal-unit :inherited-temporal-unit])
-                  (lib.join/join-fields-to-add-to-parent-stage query -1 (first (lib/joins query -1)) {})))))))
+      (is (=? [{::lib.join/join-alias             "Q2"
+                :lib/source-column-alias          "BIRTH_DATE"
+                :metabase.lib.field/temporal-unit :month
+                :inherited-temporal-unit          :year}
+               {::lib.join/join-alias    "Q2"
+                :lib/source-column-alias "count"}]
+              (lib.join/join-fields-to-add-to-parent-stage query -1 (first (lib/joins query -1)) {}))))))
