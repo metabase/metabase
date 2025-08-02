@@ -33,8 +33,11 @@ export const useInitializeMetabaseProviderPropsStore = (
 ) => {
   // Initialize the store once, it's done during the first render to be sure that all other
   // `ensureMetabaseProviderPropsStore` and `useMetabaseProviderPropsStore` calls are performed over the initialized store.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useMemo(() => ensureMetabaseProviderPropsStore(initialProps), []);
+  useMemo(
+    () => ensureMetabaseProviderPropsStore().initialize(initialProps),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  );
 
   const {
     props: { initialized = false },

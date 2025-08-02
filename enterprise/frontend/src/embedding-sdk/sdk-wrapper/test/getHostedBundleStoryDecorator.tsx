@@ -1,3 +1,5 @@
+// eslint-disable-next-line no-restricted-imports
+import { MantineProvider } from "@mantine/core";
 import type { StoryContext, StoryFn } from "@storybook/react";
 import { useEffect } from "react";
 
@@ -13,5 +15,9 @@ export const getHostedBundleStoryDecorator = () =>
       };
     }, [context.name]);
 
-    return <Story />;
+    return (
+      <MantineProvider>
+        <Story />
+      </MantineProvider>
+    );
   };
