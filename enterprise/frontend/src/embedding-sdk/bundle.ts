@@ -19,6 +19,9 @@ import "sdk-specific-imports";
 // Components
 export * from "./components/public";
 
+// Init data hook
+export { useInitData } from "./hooks/private/use-init-data";
+
 // Exports needed for public Hooks that use sdk redux store
 export { getSdkStore } from "./store/index";
 export { getApplicationName } from "metabase/selectors/whitelabel";
