@@ -19,8 +19,9 @@ import { Box, Loader } from "metabase/ui";
 import { useDocumentsSelector } from "../../redux-utils";
 import { getDocumentCollectionId } from "../../selectors";
 
+import { CommandPlugin } from "./CommandPlugin";
 import styles from "./Editor.module.css";
-import { QuestionMentionPlugin } from "./QuestionMentionPlugin";
+import { MentionPlugin } from "./MentionPlugin";
 import { CardEmbed } from "./extensions/CardEmbed";
 import { DisableMetabotSidebar } from "./extensions/DisableMetabotSidebar";
 import { EmojiExtension } from "./extensions/Emojis";
@@ -198,7 +199,8 @@ export const Editor: React.FC<EditorProps> = ({
         }}
       >
         <EditorContent editor={editor} />
-        <QuestionMentionPlugin
+        <MentionPlugin editor={editor} />
+        <CommandPlugin
           editor={editor}
           documentCollectionId={documentCollectionId}
         />

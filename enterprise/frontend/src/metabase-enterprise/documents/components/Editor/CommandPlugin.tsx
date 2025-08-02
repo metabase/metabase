@@ -16,7 +16,6 @@ import {
 } from "metabase/search/components/SearchResult";
 import { IconWrapper } from "metabase/search/components/SearchResult/components/ItemIcon.styled";
 import { Box, Group, Icon, Popover, Text } from "metabase/ui";
-import { getSearchIconName } from "metabase/visualizations/visualizations/LinkViz/EntityDisplay";
 import type {
   RecentItem,
   RegularCollectionId,
@@ -26,16 +25,7 @@ import type {
 
 import { useDocumentCardSave } from "../../hooks/use-document-card-save";
 
-const MODELS_TO_SEARCH: SearchModel[] = [
-  "card",
-  "dataset", 
-  "dashboard",
-  "collection",
-  "database",
-  "table",
-];
-
-type InsertionMode = "mention" | "embed";
+const COMMAND_MODELS_TO_SEARCH: SearchModel[] = ["card", "dataset"];
 
 interface ExtraItemProps {
   isSelected?: boolean;
@@ -94,25 +84,24 @@ const MetabotMenuItem = ({ isSelected, onClick }: ExtraItemProps) => (
   </Box>
 );
 
-interface QuestionMentionPluginProps {
+interface CommandPluginProps {
   editor: Editor;
   documentCollectionId: RegularCollectionId | null;
 }
 
-export const QuestionMentionPlugin = ({
+export const CommandPlugin = ({
   editor,
   documentCollectionId,
-}: QuestionMentionPluginProps) => {
+}: CommandPluginProps) => {
   const dispatch = useDispatch();
   const { saveCard } = useDocumentCardSave(documentCollectionId);
   const [showPopover, setShowPopover] = useState(false);
   const [modal, setModal] = useState<"question-picker" | null>(null);
   const [query, setQuery] = useState("");
 
-  const [mentionRange, setMentionRange] = useState<{
+  const [commandRange, setCommandRange] = useState<{
     from: number;
     to: number;
-    mode: InsertionMode;
   } | null>(null);
   const [anchorPos, setAnchorPos] = useState<{ x: number; y: number } | null>(
     null,
@@ -123,27 +112,32 @@ export const QuestionMentionPlugin = ({
     useListRecentsQuery(undefined, { refetchOnMountOrArgChange: true });
 
   const filteredRecents = recents
-    .filter((item) => MODELS_TO_SEARCH.includes(item.model as SearchModel))
+    .filter((item) =>
+      COMMAND_MODELS_TO_SEARCH.includes(item.model as SearchModel),
+    )
     .slice(0, 4);
 
   const insertMetabotBlock = useCallback(async () => {
-    if (!mentionRange) {
+    if (!commandRange) {
       return;
     }
 
-    const insertPosition = mentionRange.from;
+    const insertPosition = commandRange.from;
 
     editor
       .chain()
       .focus()
-      .deleteRange(mentionRange)
+      .deleteRange(commandRange)
       .insertContentAt(insertPosition, {
         type: "metabot",
         attrs: {},
       })
       .setTextSelection(insertPosition + 1)
       .run();
-  }, [editor, mentionRange]);
+
+    setShowPopover(false);
+    setCommandRange(null);
+  }, [editor, commandRange]);
 
   useEffect(() => {
     if (!editor) {
@@ -152,44 +146,31 @@ export const QuestionMentionPlugin = ({
 
     const updateHandler = () => {
       const { $from } = editor.state.selection;
-      if (mentionRange && showPopover) {
-        // Check if we're still in mention mode
+      if (commandRange && showPopover) {
+        // Check if we're still in command mode
         const currentText = editor.state.doc.textBetween(
-          mentionRange.from,
+          commandRange.from,
           Math.min(editor.state.doc.content.size, $from.pos),
           "",
         );
 
-        if (currentText.startsWith("/") || currentText.startsWith("@")) {
+        if (currentText.startsWith("/")) {
           setQuery(currentText.slice(1));
-          setMentionRange({
-            from: mentionRange.from,
+          setCommandRange({
+            from: commandRange.from,
             to: $from.pos,
-            mode: mentionRange.mode,
           });
         } else {
           setShowPopover(false);
-          setMentionRange(null);
+          setCommandRange(null);
         }
       }
 
       const text = $from.nodeBefore?.text || "";
-      const getInsertionMode = (): InsertionMode | null => {
-        // Check if we're typing after @
-        if (text.endsWith("@")) {
-          return "mention";
-        }
-        // Check if we're typing after "/" and it's the start of the paragraph
-        if (text.trimStart() === "/") {
-          return "embed";
-        }
-        return null;
-      };
-
-      const mode = getInsertionMode();
-      if (mode) {
+      // Check if we're typing after "/" and it's the start of the paragraph
+      if (text.trimStart() === "/") {
         const from = $from.pos - 1;
-        setMentionRange({ from, to: $from.pos, mode });
+        setCommandRange({ from, to: $from.pos });
 
         // Get cursor position
         const coords = editor.view.coordsAtPos(from);
@@ -215,7 +196,7 @@ export const QuestionMentionPlugin = ({
         event.preventDefault();
         event.stopPropagation();
         setShowPopover(false);
-        setMentionRange(null);
+        setCommandRange(null);
         editor.commands.focus();
       }
     };
@@ -231,75 +212,56 @@ export const QuestionMentionPlugin = ({
       editor.off("selectionUpdate", updateHandler);
       editorElement.removeEventListener("keydown", keydownHandler, true);
     };
-  }, [editor, mentionRange, showPopover]);
+  }, [editor, commandRange, showPopover]);
 
   const handleSelect = async (item: UnrestrictedLinkEntity | null) => {
-    if (!mentionRange) {
+    if (!commandRange) {
       return;
     }
 
     if (item === null) {
       setShowPopover(false);
-      setMentionRange(null);
+      setCommandRange(null);
       editor.commands.focus();
       return;
     }
 
     const wrappedItem = Search.wrapEntity(item, dispatch);
-    const insertPosition = mentionRange.from;
+    const insertPosition = commandRange.from;
 
-    if (mentionRange.mode === "embed") {
-      try {
-        // Fetch the full card data using RTK Query
-        const { data: originalCard } = await dispatch(
-          cardApi.endpoints.getCard.initiate({ id: wrappedItem.id }),
-        );
+    try {
+      // Fetch the full card data using RTK Query
+      const { data: originalCard } = await dispatch(
+        cardApi.endpoints.getCard.initiate({ id: wrappedItem.id }),
+      );
 
-        if (!originalCard) {
-          throw new Error("Failed to fetch card data");
-        }
-
-        const { card_id } = await saveCard({
-          card: originalCard,
-          modifiedCardData: {},
-          editor,
-        });
-
-        editor
-          .chain()
-          .focus()
-          .deleteRange(mentionRange)
-          .insertContentAt(insertPosition, {
-            type: "cardEmbed",
-            attrs: {
-              id: card_id,
-            },
-          })
-          .setTextSelection(insertPosition + 1)
-          .run();
-
-        setShowPopover(false);
-        setMentionRange(null);
-      } catch (error) {
-        console.error("Failed to create snapshot:", error);
+      if (!originalCard) {
+        throw new Error("Failed to fetch card data");
       }
-    } else if (mentionRange.mode === "mention") {
+
+      const { card_id } = await saveCard({
+        card: originalCard,
+        modifiedCardData: {},
+        editor,
+      });
+
       editor
         .chain()
         .focus()
-        .deleteRange(mentionRange)
+        .deleteRange(commandRange)
         .insertContentAt(insertPosition, {
-          type: "smartLink",
+          type: "cardEmbed",
           attrs: {
-            entityId: wrappedItem.id,
-            model: wrappedItem.model,
+            id: card_id,
           },
         })
         .setTextSelection(insertPosition + 1)
         .run();
 
       setShowPopover(false);
-      setMentionRange(null);
+      setCommandRange(null);
+    } catch (error) {
+      console.error("Failed to create snapshot:", error);
     }
   };
 
@@ -333,7 +295,7 @@ export const QuestionMentionPlugin = ({
         middlewares={{ flip: true, shift: true }}
         onClose={() => {
           setShowPopover(false);
-          setMentionRange(null);
+          setCommandRange(null);
         }}
       >
         <Popover.Target>
@@ -355,29 +317,27 @@ export const QuestionMentionPlugin = ({
               limit={4}
               forceEntitySelect
               onEntitySelect={handleSelect}
-              models={MODELS_TO_SEARCH}
+              models={COMMAND_MODELS_TO_SEARCH}
               footerComponent={SearchResultsFooter}
               onFooterSelect={() => setModal("question-picker")}
               showFooterOnNoResults
             />
           ) : (
-            <>
-              <RecentsListContent
-                isLoading={isRecentsLoading}
-                results={filteredRecents}
-                onClick={handleRecentSelect}
-                headerChildren={[
-                  Object.assign(MetabotMenuItem, {
-                    onClick: insertMetabotBlock,
-                  }),
-                ]}
-                footerChildren={[
-                  Object.assign(SearchResultsFooter, {
-                    onClick: () => setModal("question-picker"),
-                  }),
-                ]}
-              />
-            </>
+            <RecentsListContent
+              isLoading={isRecentsLoading}
+              results={filteredRecents}
+              onClick={handleRecentSelect}
+              headerChildren={[
+                Object.assign(MetabotMenuItem, {
+                  onClick: insertMetabotBlock,
+                }),
+              ]}
+              footerChildren={[
+                Object.assign(SearchResultsFooter, {
+                  onClick: () => setModal("question-picker"),
+                }),
+              ]}
+            />
           )}
         </Popover.Dropdown>
       </Popover>
