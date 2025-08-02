@@ -1,6 +1,7 @@
 import { Node, mergeAttributes, nodePasteRule } from "@tiptap/core";
 import { type NodeViewProps, NodeViewWrapper } from "@tiptap/react";
 import { memo } from "react";
+import { t } from "ttag";
 
 import { cardApi } from "metabase/api";
 import { collectionApi } from "metabase/api/collection";
