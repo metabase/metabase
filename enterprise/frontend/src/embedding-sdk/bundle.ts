@@ -28,3 +28,5 @@ export { getApplicationName } from "metabase/selectors/whitelabel";
 export { getSetting } from "metabase/selectors/settings";
 export { getUser } from "metabase/selectors/user";
 export { getLoginStatus } from "embedding-sdk/store/selectors";
+export { createDashboard } from "metabase/api/dashboard";
+export { getCollectionNumericIdFromReference } from "embedding-sdk/store/collections";

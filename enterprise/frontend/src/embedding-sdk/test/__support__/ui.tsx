@@ -4,6 +4,7 @@ import _ from "underscore";
 
 import { getStore } from "__support__/entities-store";
 import { MetabaseProviderInternal } from "embedding-sdk/components/public/MetabaseProvider";
+import { ensureMetabaseProviderPropsStore } from "embedding-sdk/sdk-shared/lib/ensure-metabase-provider-props-store";
 import { sdkReducers } from "embedding-sdk/store";
 import type { SdkStore, SdkStoreState } from "embedding-sdk/store/types";
 import { createMockSdkState } from "embedding-sdk/test/mocks/state";
@@ -19,6 +20,7 @@ export interface RenderWithSDKProvidersOptions {
   storeInitialState?: Partial<State>;
   sdkProviderProps?: Partial<MetabaseProviderProps> | null;
   theme?: MantineThemeOverride;
+  sdkBundleExports?: Partial<typeof window.MetabaseEmbeddingSDK>;
 }
 
 export function renderWithSDKProviders(
@@ -27,6 +29,7 @@ export function renderWithSDKProviders(
     storeInitialState = {},
     sdkProviderProps = null,
     theme,
+    sdkBundleExports,
     ...options
   }: RenderWithSDKProvidersOptions = {},
 ) {
@@ -57,6 +60,15 @@ export function renderWithSDKProviders(
   // Prevent spamming the console during tests
   if (sdkProviderProps) {
     sdkProviderProps.allowConsoleLog = false;
+  }
+
+  if (sdkBundleExports) {
+    window.MetabaseEmbeddingSDK =
+      sdkBundleExports as typeof window.MetabaseEmbeddingSDK;
+
+    ensureMetabaseProviderPropsStore().updateInternalProps({
+      reduxStore: store,
+    });
   }
 
   const wrapper = (props: any) => {
