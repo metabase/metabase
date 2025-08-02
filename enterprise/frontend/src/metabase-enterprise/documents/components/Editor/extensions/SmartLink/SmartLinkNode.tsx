@@ -278,7 +278,11 @@ export const SmartLinkComponent = memo(
       id: entity.id,
       model: entity.model || model,
       name: entity.name,
-      database: entity.database_id ? { id: entity.database_id } : undefined,
+      database: entity.db_id
+        ? { id: entity.db_id }
+        : entity.database_id
+          ? { id: entity.database_id }
+          : undefined,
     });
 
     const iconData = getIcon({
