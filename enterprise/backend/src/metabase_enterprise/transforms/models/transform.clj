@@ -13,3 +13,17 @@
   {:source mi/transform-json
    :target mi/transform-json
    :execution_trigger mi/transform-keyword})
+
+(mi/define-batched-hydration-method add-transform
+  :transform
+  "Add transform to a WorkRun"
+  [runs]
+  (let [work-ids (set (map :work_id runs))
+        transforms (t2/select [:model/Transform :id :name]
+                              {:where [:and
+                                       [:in :id work-ids]]})
+        id->transform (reduce (fn [idx transform]
+                                (assoc idx (:id transform) transform))
+                              {} transforms)]
+    (for [run runs]
+      (assoc run :transform (get id->transform (:work_id run))))))
