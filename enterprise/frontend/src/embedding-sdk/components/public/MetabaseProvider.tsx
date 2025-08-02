@@ -1,5 +1,4 @@
 import { Global } from "@emotion/react";
-import type { Action, Store } from "@reduxjs/toolkit";
 import { type JSX, memo, useEffect, useRef } from "react";
 
 import { SdkThemeProvider } from "embedding-sdk/components/private/SdkThemeProvider";
@@ -13,7 +12,7 @@ import {
   setMetabaseClientUrl,
   setPlugins,
 } from "embedding-sdk/store/reducer";
-import type { SdkStoreState } from "embedding-sdk/store/types";
+import type { SdkStore } from "embedding-sdk/store/types";
 import type { MetabaseProviderProps } from "embedding-sdk/types/metabase-provider";
 import { useInstanceLocale } from "metabase/common/hooks/use-instance-locale";
 import { MetabaseReduxProvider } from "metabase/lib/redux";
@@ -29,7 +28,7 @@ import { PortalContainer } from "../private/SdkPortalContainer";
 import { SdkUsageProblemDisplay } from "../private/SdkUsageProblem";
 
 export interface InternalMetabaseProviderProps extends MetabaseProviderProps {
-  reduxStore: Store<SdkStoreState, Action>;
+  reduxStore: SdkStore;
 }
 
 export const MetabaseProviderInternal = ({
@@ -45,7 +44,7 @@ export const MetabaseProviderInternal = ({
   allowConsoleLog,
 }: InternalMetabaseProviderProps): JSX.Element => {
   const { fontFamily } = theme ?? {};
-  useInitData({ authConfig, allowConsoleLog });
+  useInitData({ reduxStore, authConfig, allowConsoleLog });
 
   useEffect(() => {
     if (fontFamily) {
@@ -103,7 +102,7 @@ export const MetabaseProvider = memo(function MetabaseProvider({
   ...props
 }: Omit<InternalMetabaseProviderProps, "reduxStore"> &
   Partial<Pick<InternalMetabaseProviderProps, "reduxStore">>) {
-  const reduxStoreRef = useRef<Store<SdkStoreState, Action> | null>(null);
+  const reduxStoreRef = useRef<SdkStore | null>(null);
 
   if (!reduxStoreRef.current) {
     reduxStoreRef.current = props.reduxStore ?? getSdkStore();

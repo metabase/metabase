@@ -19,6 +19,7 @@ export type MetabaseProviderPropsStoreInternalProps = {
 export type MetabaseProviderPropsStore = {
   getSnapshot(): MetabaseProviderPropsToStore;
   subscribe(fn: () => void): () => void;
+  initialize(initialProps: MetabaseProviderPropsStoreExternalProps): void;
   updateInternalProps(
     p: Partial<MetabaseProviderPropsStoreInternalProps>,
   ): void;
@@ -39,9 +40,7 @@ const EMPTY_PROPS = {
   singleCopyWrapperIds: [],
 } as MetabaseProviderPropsStoreInternalProps;
 
-export function ensureMetabaseProviderPropsStore(
-  initial?: MetabaseProviderPropsStoreExternalProps,
-): MetabaseProviderPropsStore {
+export function ensureMetabaseProviderPropsStore(): MetabaseProviderPropsStore {
   const win = getWindow();
 
   if (!win) {
@@ -52,10 +51,8 @@ export function ensureMetabaseProviderPropsStore(
     return win[KEY];
   }
 
-  let props: MetabaseProviderPropsToStore = {
-    ...EMPTY_PROPS,
-    ...(initial ?? {}),
-  } as MetabaseProviderPropsToStore;
+  let props: MetabaseProviderPropsToStore =
+    EMPTY_PROPS as MetabaseProviderPropsToStore;
   const listeners = new Set<() => void>();
 
   const store: MetabaseProviderPropsStore = {
@@ -65,6 +62,17 @@ export function ensureMetabaseProviderPropsStore(
 
       return () => listeners.delete(listener);
     },
+    initialize(initialProps) {
+      const internalProps = Object.fromEntries(
+        INTERNAL_PROP_NAMES.map((key) => [key, props[key]]),
+      ) as MetabaseProviderPropsStoreInternalProps;
+
+      props = {
+        ...internalProps,
+        ...initialProps,
+      } as MetabaseProviderPropsToStore;
+    },
+
     updateInternalProps(propsToSet) {
       props = {
         ...props,
