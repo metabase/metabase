@@ -17,6 +17,12 @@ import { renameConflictingCljsGlobals } from "metabase/embedding-sdk/test/rename
 
 const { ORDERS_ID } = SAMPLE_DATABASE;
 
+const cleanup = () => {
+  (window as any).EMBEDDING_SDK_BUNDLE_LOADING_STATE = undefined;
+  getSdkBundleScriptElement()?.remove();
+  renameConflictingCljsGlobals();
+};
+
 describe("scenarios > embedding-sdk > sdk-bundle", () => {
   beforeEach(() => {
     cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
@@ -53,7 +59,7 @@ describe("scenarios > embedding-sdk > sdk-bundle", () => {
 
   describe("Common cases", () => {
     afterEach(() => {
-      getSdkBundleScriptElement()?.remove();
+      cleanup();
     });
 
     it("should update props passed to MetabaseProvider", () => {
@@ -126,9 +132,7 @@ describe("scenarios > embedding-sdk > sdk-bundle", () => {
     describe(`${removeScriptTag ? "With" : "Without"} the script tag removal between tests`, () => {
       beforeEach(() => {
         if (removeScriptTag) {
-          getSdkBundleScriptElement()?.remove();
-          (window as any).EMBEDDING_SDK_BUNDLE_LOADING_STATE = "loading";
-          renameConflictingCljsGlobals();
+          cleanup();
         }
       });
 
@@ -278,11 +282,11 @@ describe("scenarios > embedding-sdk > sdk-bundle", () => {
 
   describe("Error handling", () => {
     beforeEach(() => {
-      getSdkBundleScriptElement()?.remove();
+      cleanup();
     });
 
     afterEach(() => {
-      getSdkBundleScriptElement()?.remove();
+      cleanup();
     });
 
     describe("when the SDK bundle can't be loaded", () => {
