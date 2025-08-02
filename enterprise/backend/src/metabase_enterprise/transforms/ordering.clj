@@ -27,16 +27,21 @@
                _ {}))
        (apply merge-with set/union)))
 
+(defn- get-cards [cards seen]
+  (let [filtered (filter #(not (seen %)) cards)]
+    (when (seq filtered)
+      (t2/select-fn-vec :dataset_query :model/Card :id
+                        [:in filtered]))))
+
 (defn- transform-deps [transform]
   (loop [[t & transforms] [(get-in transform [:source :query])]
          results {}
          seen #{}]
     (if t
       (let [{:keys [tables cards]} (query-deps t)]
-        (recur (concat (->> (for [card cards
-                                  :when (not (seen card))]
-                              (t2/select-one-fn :dataset_query :model/Card :id card)))
-                       transforms)
+        (recur (apply conj
+                      transforms
+                      (get-cards cards seen))
                tables
                (apply conj seen cards)))
       results)))
