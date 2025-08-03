@@ -4,6 +4,7 @@ import { type JSX, memo, useEffect, useRef } from "react";
 import { SdkThemeProvider } from "embedding-sdk/components/private/SdkThemeProvider";
 import { SdkIncompatibilityWithInstanceBanner } from "embedding-sdk/components/private/SdkVersionCompatibilityHandler/SdkIncompatibilityWithInstanceBanner";
 import { useInitData } from "embedding-sdk/hooks";
+import { RenderSingleCopy } from "embedding-sdk/sdk-shared/components/RenderSingleCopy/RenderSingleCopy";
 import { getSdkStore } from "embedding-sdk/store";
 import {
   setErrorComponent,
@@ -22,7 +23,6 @@ import { EmotionCacheProvider } from "metabase/styled-components/components/Emot
 import { MetabotProvider } from "metabase-enterprise/metabot/context";
 
 import { SCOPED_CSS_RESET } from "../private/PublicComponentStylesWrapper";
-import { RenderSingleCopy } from "../private/RenderSingleCopy/RenderSingleCopy";
 import { SdkFontsGlobalStyles } from "../private/SdkGlobalFontsStyles";
 import { PortalContainer } from "../private/SdkPortalContainer";
 import { SdkUsageProblemDisplay } from "../private/SdkUsageProblem";
@@ -81,7 +81,7 @@ export const MetabaseProviderInternal = ({
           {children}
         </LocaleProvider>
 
-        <RenderSingleCopy>
+        <RenderSingleCopy id="component-level-providers">
           <Global styles={SCOPED_CSS_RESET} />
           <SdkFontsGlobalStyles baseUrl={authConfig.metabaseInstanceUrl} />
 
