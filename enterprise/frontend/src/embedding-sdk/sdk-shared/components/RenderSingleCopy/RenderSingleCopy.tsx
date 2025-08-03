@@ -1,6 +1,6 @@
 import { type PropsWithChildren, useEffect, useMemo, useRef } from "react";
 
-import { useMetabaseProviderPropsStore } from "embedding-sdk/sdk-shared/hooks/use-metabase-provider-props-store";
+import { useSingleCopyWrapperIds } from "embedding-sdk/sdk-shared/hooks/use-single-copy-wrapper-ids";
 
 type Props = {
   id: string;
@@ -12,78 +12,67 @@ type Props = {
  *
  * This component:
  * 1. Generates a unique instance key (via `useId()`).
- * 2. Registers itself in a shared `singleCopyWrapperIdsMap` inside the Metabase provider store on mount.
+ * 2. Registers itself in a passed `singleCopyWrapperIdsMap` on mount.
  * 3. Removes itself from that map on unmount.
- * 4. Once the store is initialized, only the very first-registered instance for this `id` will render its `children`; all others return `null`.
+ * 4. Only the very first-registered instance for this `id` will render its `children`; all others return `null`.
  */
 export const RenderSingleCopy = ({
   id,
   children,
   multipleRegisteredInstancesWarningMessage,
 }: PropsWithChildren<Props>) => {
+  const { singleCopyIdsMap, setSingleCopyIdsMap } = useSingleCopyWrapperIds();
+
   const currentIdRef = useRef(
-    `single-copy-${Math.random().toString(36).slice(2)}`,
+    `single-copy-${id}-${Math.random().toString(36).slice(2)}`,
   );
 
-  const { props: metabaseProviderProps, store } =
-    useMetabaseProviderPropsStore();
-  const { initialized, singleCopyWrapperIdsMap = {} } = metabaseProviderProps;
-
-  const singleCopyWrapperIds = useMemo(
-    () => singleCopyWrapperIdsMap[id] ?? [],
-    [id, singleCopyWrapperIdsMap],
+  const singleCopyIds = useMemo(
+    () => (singleCopyIdsMap ?? {})[id] ?? [],
+    [id, singleCopyIdsMap],
   );
 
   useEffect(() => {
-    if (!store) {
-      return;
-    }
-
     const currentId = currentIdRef.current;
 
-    const singleCopyWrapperIdsMap =
-      store.getSnapshot().singleCopyWrapperIdsMap ?? {};
-    const idsOnMount = singleCopyWrapperIdsMap[id] ?? [];
+    setSingleCopyIdsMap((singleCopyIdsMap) => {
+      const idsOnMount = singleCopyIdsMap[id] ?? [];
 
-    store.updateInternalProps({
-      singleCopyWrapperIdsMap: {
-        ...singleCopyWrapperIdsMap,
+      return {
+        ...singleCopyIdsMap,
         [id]: [...idsOnMount, currentId],
-      },
+      };
     });
 
     return () => {
-      const singleCopyWrapperIdsMap =
-        store.getSnapshot().singleCopyWrapperIdsMap ?? {};
-      const idsOnUnmount = singleCopyWrapperIdsMap[id] ?? [];
+      setSingleCopyIdsMap((singleCopyIdsMap) => {
+        const idsOnUnmount = singleCopyIdsMap[id] ?? [];
 
-      store.updateInternalProps({
-        singleCopyWrapperIdsMap: {
-          ...singleCopyWrapperIdsMap,
+        return {
+          ...singleCopyIdsMap,
           [id]: idsOnUnmount.filter((id) => id !== currentId),
-        },
+        };
       });
     };
-  }, [id, currentIdRef, store]);
+  }, [id, currentIdRef, setSingleCopyIdsMap]);
+
+  const shouldRender = singleCopyIds[0] === currentIdRef.current;
 
   useEffect(
     function showWarningOnMultipleRegisteredInstances() {
       const shouldShowWaring =
         !!multipleRegisteredInstancesWarningMessage &&
-        singleCopyWrapperIds.length > 1;
+        shouldRender &&
+        singleCopyIds.length > 1;
 
       if (shouldShowWaring) {
         console.warn(multipleRegisteredInstancesWarningMessage);
       }
     },
-    [multipleRegisteredInstancesWarningMessage, singleCopyWrapperIds],
+    [multipleRegisteredInstancesWarningMessage, shouldRender, singleCopyIds],
   );
 
-  if (
-    initialized &&
-    singleCopyWrapperIds.length > 0 &&
-    singleCopyWrapperIds[0] !== currentIdRef.current
-  ) {
+  if (!shouldRender) {
     return null;
   }
 
