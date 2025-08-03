@@ -1,13 +1,11 @@
 (ns metabase-enterprise.action-v2.data-editing
   (:require
    [clojure.set :as set]
-   [java-time.api :as t]
    [medley.core :as m]
    [metabase-enterprise.action-v2.coerce :as data-editing.coerce]
    [metabase-enterprise.action-v2.models.undo :as undo]
    [metabase.actions.core :as actions]
    [metabase.api.common :as api]
-   [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor :as qp]
@@ -167,16 +165,6 @@
   ;; still feels messy, revisit this
   (let [pk-fields (select-table-pk-fields table-id)]
     (query-db-rows table-id pk-fields rows)))
-
-(defn- row-update-event
-  "Given a :effect/row.modified diff, figure out what kind of mutation it was."
-  [{:keys [before after]}]
-  (case [(some? before) (some? after)]
-    [false true]  :event/row.created
-    [true  true]  :event/row.updated
-    [true  false] :event/row.deleted
-    ;; should not happen
-    [false false] ::no-op))
 
 (defmethod actions/handle-effects!* :effect/row.modified
   [_ {:keys [user-id invocation-stack scope]} diffs]
