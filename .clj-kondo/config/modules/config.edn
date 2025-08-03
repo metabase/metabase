@@ -1448,8 +1448,8 @@
    :uses #{actions
            api
            driver
-           models
            lib
+           models
            query-processor
            util
            warehouse-schema}}
