@@ -317,8 +317,8 @@
                       :unrestricted
                       database-id
                       %)
-             (perms-exception (tru "You do not have permission to view data of table {0} in result_metadata." %)
-                              {database-id {:perms/view-data {% :unrestricted}}}))
+             (throw (perms-exception (tru "You do not have permission to view data of table {0} in result_metadata." %)
+                                     {database-id {:perms/view-data {% :unrestricted}}})))
           table-ids)))
 
 (defn check-card-result-metadata-data-perms
