@@ -6,26 +6,6 @@ import {
   type MetabaseProviderPropsStoreInternalProps,
   ensureMetabaseProviderPropsStore,
 } from "embedding-sdk/sdk-shared/lib/ensure-metabase-provider-props-store";
-import { getWindow } from "embedding-sdk/sdk-shared/lib/get-window";
-
-const incrementProvidersCount = () => {
-  window.METABASE_PROVIDERS_COUNT = (window.METABASE_PROVIDERS_COUNT ?? 0) + 1;
-};
-
-const decrementProvidersCount = () => {
-  window.METABASE_PROVIDERS_COUNT = Math.max(
-    0,
-    (window.METABASE_PROVIDERS_COUNT ?? 1) - 1,
-  );
-};
-
-const alreadyInitialized = () => {
-  return (getWindow()?.METABASE_PROVIDERS_COUNT ?? 0) > 1;
-};
-
-const shouldCleanup = () => {
-  return (getWindow()?.METABASE_PROVIDERS_COUNT ?? 0) === 0;
-};
 
 export const useInitializeMetabaseProviderPropsStore = (
   initialProps: MetabaseProviderPropsStoreExternalProps,
@@ -43,22 +23,9 @@ export const useInitializeMetabaseProviderPropsStore = (
     props: { initialized = false },
   } = useMetabaseProviderPropsStore();
 
-  useEffect(function updateProvidersCount() {
-    incrementProvidersCount();
-
-    if (alreadyInitialized()) {
-      console.warn(
-        // eslint-disable-next-line no-literal-metabase-strings -- Warning message
-        "Multiple instances of MetabaseProvider detected. Metabase Embedding SDK may work unexpectedly. Ensure only one instance of MetabaseProvider is rendered at a time.",
-      );
-    }
-
+  useEffect(function cleanupMetabaseProviderPropsStore() {
     return () => {
-      decrementProvidersCount();
-
-      if (shouldCleanup()) {
-        ensureMetabaseProviderPropsStore().cleanup();
-      }
+      ensureMetabaseProviderPropsStore().cleanup();
     };
   }, []);
 
