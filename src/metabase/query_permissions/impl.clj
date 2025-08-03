@@ -310,7 +310,7 @@
   [database-id result-metadata]
   (let [field-ids (keep :id result-metadata)
         table-ids (into #{} (concat (keep (some-fn :table-id :table_id) result-metadata)
-                                    (when field-ids
+                                    (when (seq field-ids)
                                       (t2/select-fn-set :table_id :model/Field :id [:in field-ids]))))]
     (some #(when-not (perms/user-has-permission-for-table?
                       api/*current-user-id*
