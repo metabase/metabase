@@ -306,6 +306,7 @@
                        :card-id card-id}))))
 
 (defn check-result-metadata-data-perms
+  "Check current user has view-data perms on all columns of `result-metadata`."
   [database-id result-metadata]
   (let [field-ids (keep :id result-metadata)
         table-ids (into #{} (concat (keep (some-fn :table-id :table_id) result-metadata)
@@ -322,6 +323,7 @@
           table-ids)))
 
 (defn check-card-result-metadata-data-perms
+  "Using `card-id` check current user has view data perms on all of card's result_metadata elements."
   [database-id card-id]
   (let [result-metadata (:result_metadata (card database-id card-id))]
     (check-result-metadata-data-perms database-id result-metadata)))
