@@ -1448,6 +1448,7 @@
    :uses #{actions
            api
            driver
+           models
            lib
            query-processor
            util
