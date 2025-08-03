@@ -1,6 +1,7 @@
 import { memo } from "react";
 import useDeepCompareEffect from "react-use/lib/useDeepCompareEffect";
 
+import { RenderSingleCopy } from "embedding-sdk/sdk-shared/components/RenderSingleCopy/RenderSingleCopy";
 import { useMetabaseProviderPropsStore } from "embedding-sdk/sdk-shared/hooks/use-metabase-provider-props-store";
 import { ensureMetabaseProviderPropsStore } from "embedding-sdk/sdk-shared/lib/ensure-metabase-provider-props-store";
 import { getWindow } from "embedding-sdk/sdk-shared/lib/get-window";
@@ -15,7 +16,7 @@ import type { MetabaseProviderProps } from "embedding-sdk/types/metabase-provide
  * This is necessary when hooks are used before any SDK component is rendered.
  */
 const InitDataWrapper = memo(function InitDataWrapper(
-  props: MetabaseProviderProps,
+  props: Omit<MetabaseProviderProps, "children">,
 ) {
   const {
     props: { initialized, reduxStore },
@@ -37,11 +38,10 @@ const InitDataWrapper = memo(function InitDataWrapper(
 });
 
 const MetabaseProviderInner = memo(function MetabaseProviderInner(
-  props: MetabaseProviderProps,
+  props: Omit<MetabaseProviderProps, "children">,
 ) {
-  const { children, ...metabaseProviderProps } = props;
-
   useLoadSdkBundle(props.authConfig.metabaseInstanceUrl);
+
   const { isLoading } = useWaitForSdkBundle();
 
   const reduxStore = isLoading
@@ -49,24 +49,18 @@ const MetabaseProviderInner = memo(function MetabaseProviderInner(
     : getWindow()?.MetabaseEmbeddingSDK?.getSdkStore();
 
   const { initialized } = useInitializeMetabaseProviderPropsStore(
-    metabaseProviderProps,
+    props,
     reduxStore,
   );
 
   useDeepCompareEffect(
     function updateMetabaseProviderProps() {
-      ensureMetabaseProviderPropsStore().setProps(metabaseProviderProps);
+      ensureMetabaseProviderPropsStore().setProps(props);
     },
-    [metabaseProviderProps],
+    [props],
   );
 
-  return (
-    <>
-      {initialized && <InitDataWrapper {...props} />}
-
-      <>{children}</>
-    </>
-  );
+  return <>{initialized && <InitDataWrapper {...props} />}</>;
 });
 
 /**
@@ -75,12 +69,23 @@ const MetabaseProviderInner = memo(function MetabaseProviderInner(
  * @function
  * @category MetabaseProvider
  */
-export const MetabaseProvider = memo(function MetabaseProvider(
-  props: MetabaseProviderProps,
-) {
+export const MetabaseProvider = memo(function MetabaseProvider({
+  children,
+  ...props
+}: MetabaseProviderProps) {
   return (
-    <ClientSideOnlyWrapper ssrFallback={props.children}>
-      <MetabaseProviderInner {...props}>{props.children}</MetabaseProviderInner>
+    <ClientSideOnlyWrapper ssrFallback={children}>
+      <RenderSingleCopy
+        id="metabase-provider"
+        multipleRegisteredInstancesWarningMessage={
+          // eslint-disable-next-line no-literal-metabase-strings -- Warning message
+          "Multiple instances of MetabaseProvider detected. Metabase Embedding SDK may work unexpectedly. Ensure only one instance of MetabaseProvider is rendered at a time."
+        }
+      >
+        <MetabaseProviderInner {...props} />
+      </RenderSingleCopy>
+
+      <>{children}</>
     </ClientSideOnlyWrapper>
   );
 });
