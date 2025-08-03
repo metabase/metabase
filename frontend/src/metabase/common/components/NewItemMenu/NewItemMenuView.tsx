@@ -8,7 +8,7 @@ import * as Urls from "metabase/lib/urls";
 import { PLUGIN_EMBEDDING_IFRAME_SDK_SETUP } from "metabase/plugins";
 import { setOpenModal } from "metabase/redux/ui";
 import { getSetting } from "metabase/selectors/settings";
-import { Box, Icon, Menu } from "metabase/ui";
+import { Badge, Box, Icon, Menu } from "metabase/ui";
 import type { CollectionId } from "metabase-types/api";
 
 import { trackNewMenuItemClicked } from "./analytics";
@@ -23,6 +23,7 @@ export interface NewItemMenuProps {
   hasNativeWrite: boolean;
   hasDatabaseWithJsonEngine: boolean;
   onCloseNavbar: () => void;
+  isAdmin: boolean;
 }
 
 const NewItemMenuView = ({
@@ -31,6 +32,7 @@ const NewItemMenuView = ({
   hasDataAccess,
   hasNativeWrite,
   hasDatabaseWithJsonEngine,
+  isAdmin,
 }: NewItemMenuProps) => {
   const dispatch = useDispatch();
 
@@ -91,13 +93,18 @@ const NewItemMenuView = ({
     );
 
     // This is a non-standard way of feature gating, akin to using hasPremiumFeature. Do not do this for more complex setups.
-    if (PLUGIN_EMBEDDING_IFRAME_SDK_SETUP.shouldShowEmbedInNewItemMenu()) {
+    // We hide the "Embed" menu item if the user is not an admin
+    if (
+      PLUGIN_EMBEDDING_IFRAME_SDK_SETUP.shouldShowEmbedInNewItemMenu() &&
+      isAdmin
+    ) {
       items.push(
         <Menu.Item
           key="embed"
           component={ForwardRefLink}
           to="/embed-iframe"
           leftSection={<Icon name="embed" />}
+          rightSection={<Badge size="xs">{t`Beta`}</Badge>}
         >
           {t`Embed`}
         </Menu.Item>,
@@ -108,9 +115,10 @@ const NewItemMenuView = ({
   }, [
     hasDataAccess,
     hasNativeWrite,
+    isAdmin,
     collectionId,
-    hasDatabaseWithJsonEngine,
     lastUsedDatabaseId,
+    hasDatabaseWithJsonEngine,
     dispatch,
   ]);
 

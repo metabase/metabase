@@ -48,14 +48,18 @@
  {actions
   {:team "Workflows"
    :api  #{metabase.actions.api
+           metabase.actions.args
            metabase.actions.core
-           metabase.actions.init}
+           metabase.actions.init
+           metabase.actions.types}
    :uses #{analytics
            api
            collections
            driver
+           events
            legacy-mbql
            lib
+           lib-be
            model-persistence
            models
            permissions
@@ -105,7 +109,7 @@
            version}}
 
   analyze
-  {:team "Semantic Layer"
+  {:team "Querying"
    :api  #{metabase.analyze.core
            metabase.analyze.query-results}
    :uses #{config
@@ -587,6 +591,7 @@
           metabase.lib.metadata.result-metadata
           metabase.lib.normalize
           metabase.lib.options
+          metabase.lib.parse
           metabase.lib.query
           metabase.lib.schema
           metabase.lib.schema.actions
@@ -768,6 +773,7 @@
            audit-app
            collections
            config
+           events
            models
            premium-features
            request
@@ -1166,7 +1172,7 @@
    :uses #{util}}
 
   sync
-  {:team "Semantic Layer"
+  {:team "Querying"
    :api #{metabase.sync.api
           metabase.sync.core
           metabase.sync.init
@@ -1251,13 +1257,13 @@
            util}}
 
   types
-  {:team "Semantic Layer"
+  {:team "Querying"
    :api  #{metabase.types.core
            metabase.types.init}
    :uses #{util}}
 
   upload
-  {:team "Semantic Layer"
+  {:team "Querying"
    :api  #{metabase.upload.api
            metabase.upload.core
            metabase.upload.init}
@@ -1432,6 +1438,19 @@
            query-permissions
            query-processor
            settings
+           util
+           warehouse-schema}}
+
+  enterprise/action-v2
+  {:team "Workflows"
+   :api  #{metabase-enterprise.action-v2.api
+           metabase-enterprise.action-v2.core
+           metabase-enterprise.action-v2.init}
+   :uses #{actions
+           api
+           driver
+           lib
+           query-processor
            util
            warehouse-schema}}
 
@@ -1614,7 +1633,6 @@
            util
            warehouse-schema
            warehouses}}
-
 
   enterprise/email
   {:team "Admin Webapp"

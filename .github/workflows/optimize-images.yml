@@ -13,6 +13,7 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
       with:
+        ref: ${{ github.head_ref }}
         token: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Install pngcrush and bc

@@ -107,7 +107,7 @@
 
 (mu/defn check-query-permissions*
   "Check that User with `user-id` has permissions to run `query`, or throw an exception."
-  [{database-id :database, {gtap-perms :gtaps} ::perms :as outer-query} :- [:map [:database ::lib.schema.id/database]]]
+  [{database-id :database, {gtap-perms :gtaps} :query-permissions/perms :as outer-query} :- [:map [:database ::lib.schema.id/database]]]
   (when *current-user-id*
     (log/tracef "Checking query permissions. Current user permissions = %s"
                 (pr-str (perms/permissions-for-user *current-user-id*)))

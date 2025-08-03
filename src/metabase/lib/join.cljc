@@ -234,7 +234,7 @@
   (throw (ex-info "You can't calculate a metadata map for a join! Use lib.metadata.calculation/returned-columns-method instead."
                   {})))
 
-(mu/defn- column-from-join :- ::lib.metadata.calculation/column-metadata-with-source
+(mu/defn column-from-join :- ::lib.metadata.calculation/column-metadata-with-source
   "For a column that comes from a join, add or update metadata as needed, e.g. include join name in the display name."
   [query        :- ::lib.schema/query
    stage-number :- :int
@@ -248,11 +248,9 @@
        :lib/original-join-alias   join-alias
        :lib/source                :source/joins
        ::join-alias               join-alias
-       ;;
-       ;; TODO (Cam 7/25/25) -- this seems like a correct thing to do but uncommenting
-       ;; it breaks [[metabase.lib.field-test/nested-field-display-name-test-3]]
-       ;;
-       #_:lib/original-display-name #_((some-fn :lib/original-display-name :display-name) col))
+       :lib/original-name         ((some-fn :lib/original-name :name) col)
+       :lib/original-display-name (or (:lib/original-display-name col)
+                                      (lib.metadata.calculation/display-name query stage-number (dissoc col ::join-alias :lib/original-join-alias :source-alias))))
       (set/rename-keys {:lib/expression-name :lib/original-expression-name})
       (as-> $col (assoc $col :display-name (lib.metadata.calculation/display-name query stage-number $col)))))
 
@@ -274,6 +272,8 @@
 ;;; things to get added to the parent stage `:fields`! See QUE-1380
 ;;;
 ;;; If you want just the stuff in `:fields`, use [[join-fields-to-add-to-parent-stage]] instead.
+;;;
+;;; returned columns for a join == returned columns from the previous stage
 (mu/defmethod lib.metadata.calculation/returned-columns-method :mbql/join :- [:maybe ::lib.metadata.calculation/returned-columns]
   [query                                          :- ::lib.schema/query
    stage-number                                   :- :int

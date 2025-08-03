@@ -37,7 +37,9 @@
                              VENUES.LONGITUDE   AS LONGITUDE
                              VENUES.PRICE       AS PRICE]
                  :from      [VENUES]
-                 :left-join [CATEGORIES AS __join
+                 :left-join [{:select [CATEGORIES.ID   AS ID
+                                       CATEGORIES.NAME AS NAME]
+                              :from [CATEGORIES]} AS __join
                              ON VENUES.CATEGORY_ID = 1]
                  :limit     [1048575]}
                (sql.qp-test-util/query->sql-map query)))))))
@@ -805,7 +807,6 @@
                                        ;; yes, `!month.products.created_at` is a so-called 'bad reference' (should
                                        ;; include the `:join-alias`) but this test is also testing that we detect this
                                        ;; situation and handle it appropriately.
-                                       ;; See [[metabase.query-processor.middleware.fix-bad-references]]
                                        :condition    [:= !month.products.created_at !month.&Q2.products.created_at]
                                        :fields       :all}]
                        :order-by     [[:asc !month.&Products.products.created_at]]
@@ -1138,6 +1139,7 @@
                   ["2016-06-01T00:00:00Z" 2 "2016-06-01T00:00:00Z" 1]]
                  (mt/rows (qp/process-query query)))))))))
 
+;;; see also [[metabase.query-processor.preprocess-test/test-31769]]
 (deftest ^:parallel test-31769
   (testing "Make sure queries built with MLv2 that have source Cards with joins work correctly (#31769) (#33083)"
     (let [metadata-provider (lib.tu.mocks-31769/mock-metadata-provider
@@ -1147,9 +1149,15 @@
         (let [legacy-query (lib.convert/->legacy-MBQL
                             (lib.tu.mocks-31769/query metadata-provider))]
           (mt/with-native-query-testing-context legacy-query
-            (is (= [["Doohickey" 3976 "Doohickey"]
-                    ["Gadget"    4939 "Gadget"]]
-                   (mt/rows (qp/process-query legacy-query))))))))))
+            (let [results (qp/process-query legacy-query)]
+              (is (= [["Products → Category"                     "Products__CATEGORY"]
+                      ["Count"                                   "count"]
+                      ["Card 2 - Products → Category → Category" "Card 2 - Products → Category__CATEGORY"]]
+                     (map (juxt :display_name :lib/desired-column-alias)
+                          (mt/cols results))))
+              (is (= [["Doohickey" 3976 "Doohickey"]
+                      ["Gadget"    4939 "Gadget"]]
+                     (mt/rows results))))))))))
 
 (deftest ^:parallel test-13000
   (testing "Should join MBQL Saved Questions (#13000, #13649, #13744)"

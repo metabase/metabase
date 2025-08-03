@@ -36,7 +36,7 @@ export const visitNewEmbedPage = ({
       cy.findByText("First, some legalese.").should("be.visible");
 
       cy.findByText(
-        "When using simple embedding, each end user should have their own Metabase account.",
+        "When using Embedded Analytics JS, each end user should have their own Metabase account.",
       ).should("be.visible");
 
       cy.findByText("Got it").should("be.visible").click();

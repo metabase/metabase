@@ -45,13 +45,14 @@ Storybook will use the source files and not the built package.
 
 E2e tests for the sdk are currently done with cypress component tests, and located in `e2e/test-component/scenarios/embedding-sdk/`.
 
-
 You'll need to have the following ENVs for running EE E2E tests:
 
 ```bash
 MB_EDITION=ee
-CYPRESS_ALL_FEATURES_TOKEN=  ${usual token from password manager}
-CYPRESS_NO_FEATURES_TOKEN=  ${usual token from password manager}
+MB_ALL_FEATURES_TOKEN=${usual token from password manager}
+MB_STARTER_CLOUD_TOKEN=${usual token from password manager}
+MB_PRO_CLOUD_TOKEN=${usual token from password manager}
+MB_PRO_SELF_HOSTED_TOKEN=${usual token from password manager}
 ```
 
 Cypress will use the built package, so you'll have to build the sdk first (see above).
@@ -71,12 +72,12 @@ In order to check compatibility between Sample Apps and Embedding SDK, we have a
 
 To run these tests locally, run:
 ```
-ENTERPRISE_TOKEN=<token> TEST_SUITE=<sample_app_repo_name>-e2e OPEN_UI=false EMBEDDING_SDK_VERSION=local START_METABASE=false GENERATE_SNAPSHOTS=false START_CONTAINERS=false yarn test-cypress
+TEST_SUITE=<sample_app_repo_name>-e2e OPEN_UI=false EMBEDDING_SDK_VERSION=local START_METABASE=false GENERATE_SNAPSHOTS=false START_CONTAINERS=false yarn test-cypress
 ```
 
 For example for the `metabase-nodejs-react-sdk-embedding-sample`, run:
 ```
-ENTERPRISE_TOKEN=<token> TEST_SUITE=metabase-nodejs-react-sdk-embedding-sample-e2e OPEN_UI=false EMBEDDING_SDK_VERSION=local START_METABASE=false GENERATE_SNAPSHOTS=false START_CONTAINERS=false yarn test-cypress
+TEST_SUITE=metabase-nodejs-react-sdk-embedding-sample-e2e OPEN_UI=false EMBEDDING_SDK_VERSION=local START_METABASE=false GENERATE_SNAPSHOTS=false START_CONTAINERS=false yarn test-cypress
 ```
 
 ##### :warning: Obtaining the Shoppy's Metabase App DB Dump locally

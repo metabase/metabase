@@ -526,12 +526,12 @@
                                :alias        "Products"
                                :fields       :all}]
                 :aggregation [[:distinct &Products.products.id]]
-                :breakout    [&Products.!month.created-at]})
+                :breakout    [&Products.!month.products.created-at]})
         mp   (lib.tu/mock-metadata-provider
               meta/metadata-provider
               {:cards [{:id 1, :dataset-query q1}]})
-        q2   (lib/query mp (meta/table-metadata :reviews))
-        card (lib.metadata/card mp 1)]
+        card (lib.metadata/card mp 1)
+        q2   (lib/query mp card)]
     (doseq [f [#'lib/returned-columns
                #'lib/visible-columns]]
       (testing (str f " for a card should NEVER return `:metabase.lib.join/join-alias`, because the join happened within the Card itself.")

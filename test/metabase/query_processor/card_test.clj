@@ -240,7 +240,7 @@
                  (qp.store/miscellaneous-value [::qp.results-metadata/card-stored-metadata]))))))))
 
 ;;; adapted from [[metabase.queries.api.card-test/model-card-test-2]]
-(deftest preserve-model-metadata-test
+(deftest ^:parallel preserve-model-metadata-test
   (testing "Cards preserve their edited metadata"
     (letfn [(base-type->semantic-type [base-type]
               (condp #(isa? %2 %1) base-type

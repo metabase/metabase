@@ -91,16 +91,12 @@
 (mr/def ::breakouts
   [:and
    [:sequential {:min 1} ::breakout]
-   [:fn
-    {:error/message "Breakouts must be distinct"}
-    #'lib.schema.util/distinct-refs?]])
+   [:ref ::lib.schema.util/distinct-mbql-clauses]])
 
 (mr/def ::fields
   [:and
    [:sequential {:min 1} [:ref ::ref/ref]]
-   [:fn
-    {:error/message ":fields must be distinct"}
-    #'lib.schema.util/distinct-refs?]])
+   [:ref ::lib.schema.util/distinct-mbql-clauses]])
 
 (mr/def ::filterable
   [:ref ::expression/boolean])
