@@ -138,7 +138,8 @@
           ;; Check that we permissions for any source cards first, then check that we have requisite data permissions
           ;; Recursively check permissions for any source Cards
           (doseq [card-id source-card-ids]
-            (query-perms/check-card-read-perms database-id card-id))
+            (query-perms/check-card-read-perms database-id card-id)
+            (query-perms/check-card-result-metadata-data-perms database-id card-id))
 
           ;; Check that we have the data permissions to run this card
           (query-perms/check-data-perms outer-query required-perms :throw-exceptions? true)
