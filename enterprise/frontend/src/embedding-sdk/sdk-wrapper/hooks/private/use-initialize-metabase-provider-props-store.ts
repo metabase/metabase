@@ -13,6 +13,8 @@ export const useInitializeMetabaseProviderPropsStore = (
 ) => {
   // Initialize the store once, it's done during the first render to be sure that all other
   // `ensureMetabaseProviderPropsStore` and `useMetabaseProviderPropsStore` calls are performed over the initialized store.
+  // Note: there's the exception when the `ensureMetabaseProviderPropsStore()` can be called before its initialization:
+  // it happens when SDK hooks are used outside the MetabaseProvider component.
   useMemo(
     () => ensureMetabaseProviderPropsStore().initialize(initialProps),
     // eslint-disable-next-line react-hooks/exhaustive-deps
