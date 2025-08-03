@@ -93,7 +93,7 @@
   [:coalesce
    [:+
     {:select [[:%max.batch_num]]
-     :from [:data_edit_undo_chain]}
+     :from [[{:select [:batch_num] :from [:data_edit_undo_chain]} :dumb_alias]]}
     [:inline 1]]
    [:inline 1]])
 
