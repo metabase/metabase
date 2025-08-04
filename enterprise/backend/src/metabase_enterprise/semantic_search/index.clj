@@ -347,21 +347,43 @@
      :limit 100}))
 
 (defn- semantic-search-query
-  "Build a semantic search query using vector similarity."
+  "Build a semantic search query using vector similarity with post-filtering to enable HNSW index usage."
   [index embedding search-context]
   (let [filters (search-filters search-context)
         embedding-literal (format-embedding embedding)
-        base-query {:select [[:id :id]
+        max-cosine-distance 0.7
+        ;; Inner query: pure vector search to better trigger HNSW index vs. seqscan
+        ;; TODO: only pull in necessary extra columns from configured filters
+        hnsw-query {:select [[:id :id]
                              [:model_id :model_id]
                              [:model :model]
                              [:content :content]
                              [:verified :verified]
                              [:metadata :metadata]
-                             [[:raw (str "embedding <=> " embedding-literal)] :semantic_score]
-                             [[:raw (str "row_number() OVER (ORDER BY embedding <=> " embedding-literal " ASC)")] :semantic_rank]]
+                             [:archived :archived]
+                             [:creator_id :creator_id]
+                             [:last_editor_id :last_editor_id]
+                             [:database_id :database_id]
+                             [:display_type :display_type]
+                             [:model_created_at :model_created_at]
+                             [:model_updated_at :model_updated_at]
+                             [:collection_id :collection_id]
+                             [[:raw (str "embedding <=> " embedding-literal)] :distance]]
                     :from   [(keyword (:table-name index))]
-                    :order-by [[:semantic_rank :asc]]
-                    :limit  100}]
+                    :order-by [[[:raw (str "embedding <=> " embedding-literal)] :asc]]
+                    :limit  100}
+        base-query {:with [[:vector_candidates hnsw-query]]
+                    :select [[:id :id]
+                             [:model_id :model_id]
+                             [:model :model]
+                             [:content :content]
+                             [:verified :verified]
+                             [:metadata :metadata]
+                             [[:raw "row_number() OVER (ORDER BY distance ASC)"] :semantic_rank]
+                             [:distance :semantic_score]]
+                    :from [:vector_candidates]
+                    :where [:<= :distance max-cosine-distance]
+                    :order-by [[:semantic_rank :asc]]}]
     (if filters
       (update base-query :where #(into [:and] [% filters]))
       base-query)))
@@ -626,3 +648,40 @@
   (require '[metabase.test :as mt])
   (mt/with-test-user :crowberto
     (doall (query-index db index {:search-string "Copper knife"}))))
+
+(comment
+  ;; Query performance analysis with EXPLAIN ANALYZE
+  ;; Run this to debug query performance and execution plans
+  (defn explain-analyze-query
+    [db sql-with-params]
+    (let [[sql & params] sql-with-params
+          explain-sql (str "EXPLAIN (ANALYZE true, BUFFERS true, FORMAT text) " sql)]
+      (jdbc/execute! db (into [explain-sql] params))))
+
+  ((requiring-resolve 'metabase-enterprise.semantic-search.db/init-db!))
+  (def db @@(requiring-resolve 'metabase-enterprise.semantic-search.db/data-source))
+  (jdbc/execute! db ["SHOW random_page_cost;"])      ; makes index scans appear cheaper
+  (jdbc/execute! db ["SHOW seq_page_cost;"])         ; default 1
+  (jdbc/execute! db ["SHOW hnsw.ef_search;"])
+  (jdbc/execute! db ["SET random_page_cost = 1.0;"]) ; Default 4, should set to seq_page_cost (default 1)
+  (jdbc/execute! db ["SET enable_seqscan = ON;"])    ; ON|OFF - Disable seq scan to force index scan
+
+  (def embedding-model (embedding/get-configured-model))
+  (def index (default-index embedding-model))
+  (def search-string "product orders")
+  (def search-context {:search-string search-string
+                       :models ["card" "dashboard"]
+                       :archived? false
+                       :verified nil})
+  (def search-context {:search-string search-string})
+
+  (def embedding (embedding/get-embedding (:embedding-model index) search-string))
+
+  ;; Format queries for execution
+  (def semantic-sql (sql-format-quoted (semantic-search-query index embedding search-context)))
+  (def keyword-sql (sql-format-quoted (keyword-search-query index search-context)))
+  (def hybrid-sql (sql-format-quoted (hybrid-search-query index embedding search-context)))
+  ;; do in repl ->
+  #_(explain-analyze-query db semantic-sql)
+  #_(explain-analyze-query db keyword-sql)
+  #_(explain-analyze-query db hybrid-sql))
