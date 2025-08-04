@@ -21,8 +21,8 @@ export function useDetailViewSections(
   const createSection = ({
     position = "end",
   }: {
-    position: "start" | "end";
-  }) => {
+    position?: "start" | "end";
+  } = {}) => {
     if (position === "end") {
       setSections([
         ...sections,

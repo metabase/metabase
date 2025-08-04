@@ -14,7 +14,7 @@ interface DetailViewSidebarProps {
   sections: ObjectViewSectionSettings[];
   onCreateSection: (options?: { position?: "start" | "end" }) => void;
   onUpdateSection: (
-    sectionId: string,
+    sectionId: number,
     update: Partial<ObjectViewSectionSettings>,
   ) => void;
   onUpdateSections: (sections: ObjectViewSectionSettings[]) => void;
