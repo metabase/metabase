@@ -1,10 +1,10 @@
 (ns metabase-enterprise.transforms.schedule
   (:require
-   [clojurewerkz.quartzite.conversion :as qc]
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.schedule.cron :as cron]
    [clojurewerkz.quartzite.triggers :as triggers]
    [metabase-enterprise.transforms.execute :as transforms.execute]
+   [metabase-enterprise.transforms.settings :as transforms.settings]
    [metabase.driver :as driver]
    [metabase.events.core :as events]
    [metabase.query-processor.timezone :as qp.timezone]
@@ -19,7 +19,7 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:private job-key (jobs/key "metabase.task.transforms.schedule.job"))
+(def ^:private global-job-key (jobs/key "metabase.task.transforms.schedule.global"))
 
 (defn- timezone
   []
@@ -27,91 +27,76 @@
       (qp.timezone/system-timezone-id)
       "UTC"))
 
-(defn- trigger-key
-  ^TriggerKey [transform-id]
-  (triggers/key (format "metabase.task.transforms.trigger.transform.%d" transform-id)))
+(def ^:private ^TriggerKey global-trigger-key
+  (triggers/key "metabase.task.transforms.trigger.global"))
 
-(defn- build-trigger
-  ^CronTrigger [transform-id schedule]
+(defn- build-global-trigger
+  ^CronTrigger [schedule]
   (triggers/build
-   (triggers/with-description (format "Transform %d" transform-id))
-   (triggers/with-identity (trigger-key transform-id))
-   (triggers/using-job-data {"transform-id" transform-id})
-   (triggers/for-job job-key)
+   (triggers/with-description "Transform Global Schedule")
+   (triggers/with-identity global-trigger-key)
+   (triggers/for-job global-job-key)
    (triggers/start-now)
    (triggers/with-schedule
     (cron/schedule
      (cron/cron-schedule schedule)
      (cron/in-time-zone (TimeZone/getTimeZone ^String (timezone)))
-      ;; We want to fire the trigger once even if the previous triggers missed
+     ;; We want to fire the trigger once even if the previous triggers missed
+     ;; (potentially several times)
      (cron/with-misfire-handling-instruction-fire-and-proceed)))
    ;; higher than sync
    (triggers/with-priority 6)))
 
-(defn- create-trigger!
-  "Create a trigger for a transform."
-  [{:keys [id schedule] :as _transform}]
+(defn- create-global-trigger!
+  "Creates the global trigger for a transform."
+  [schedule]
   (when schedule
-    (log/info "Creating trigger for transform" id "with schedule" schedule)
-    (task/add-trigger! (build-trigger id schedule))))
+    (log/info "Creating global trigger for transforms with schedule" schedule)
+    (task/add-trigger! (build-global-trigger schedule))))
 
-(defn- delete-trigger-for-transform-id!
-  [id trigger]
-  (log/info "Deleting trigger for transform" id "with schedule" (:schedule trigger))
-  (task/delete-trigger! (-> trigger :key triggers/key)))
+(defn- delete-global-trigger!
+  "Delete the global trigger for a transform."
+  ([]
+   (if-let [trigger (first (task/existing-triggers global-job-key global-trigger-key))]
+     (delete-global-trigger! trigger)
+     (log/info "No global trigger for transforms exists")))
+  ([trigger]
+   (log/info "Deleting global trigger for transforms with schedule" (:schedule trigger))
+   (task/delete-trigger! (-> trigger :key triggers/key))))
 
-(defn- update-trigger!
-  "Update the trigger for a transform."
-  [{:keys [id schedule] :as transform}]
-  (let [existing-trigger (first (task/existing-triggers job-key (trigger-key id)))]
+(defn- update-global-trigger!
+  "Update the global trigger."
+  [schedule]
+  (let [existing-trigger (first (task/existing-triggers global-job-key global-trigger-key))]
     (if (not= schedule (:schedule existing-trigger))
       (do
         (when existing-trigger
-          (delete-trigger-for-transform-id! id existing-trigger))
+          (delete-global-trigger! existing-trigger))
         (when schedule
-          (create-trigger! transform)))
-      (log/info "No changes to trigger for transform" id "with schedule" schedule))))
+          (create-global-trigger! schedule)))
+      (log/info "No changes to the global trigger for transforms with schedule" schedule))))
 
-(defn- delete-trigger!
-  "Delete the trigger for a transform."
-  [{:keys [id] :as _transform}]
-  (when-first [trigger (task/existing-triggers job-key (trigger-key id))]
-    (delete-trigger-for-transform-id! id trigger)))
-
-(task/defjob ^{:doc "Execute a transform."}
-  ExecuteTransform
-  [context]
-  (let [{:strs [transform-id]} (qc/from-job-data context)]
-    (when-let [transform (t2/select-one :model/Transform transform-id)]
-      (task-history/with-task-history {:task         "execute-transform"
-                                       :db_id        (-> transform :source :query :database)
-                                       :task_details {:trigger_type :transform/cron
-                                                      :transform_id transform-id
-                                                      :schedule     (:schedule transform)}}
-        (transforms.execute/execute-mbql-transform! transform {:run-method :cron})))))
+(task/defjob ^{:doc "Execute transforms."
+               org.quartz.DisallowConcurrentExecution true}
+  ExecuteTransforms
+  [_context]
+  (when-let [transforms (t2/select :model/Transform :execution_trigger :global-schedule)]
+    (task-history/with-task-history {:task "execute-transforms"}
+      (transforms.execute/execute-transforms! transforms {:run-method :cron}))))
 
 (defmethod task/init! ::ExecuteTransform [_]
-  (let [execute-transform-job (jobs/build
-                               (jobs/with-identity job-key)
-                               (jobs/with-description "Execute Transform")
-                               (jobs/of-type ExecuteTransform)
-                               (jobs/store-durably))]
-    (task/add-job! execute-transform-job)))
+  (log/info "Initializing global transform execution job")
+  (let [job (jobs/build
+             (jobs/with-identity global-job-key)
+             (jobs/with-description "Execute Transforms")
+             (jobs/of-type ExecuteTransforms)
+             (jobs/store-durably))
+        trigger (build-global-trigger (transforms.settings/transform-schedule))]
+    (task/schedule-task! job trigger)))
 
-(doseq [event ["transform-create" "transform-update" "transform-delete"]
-        :let [local-kw (keyword (str *ns*) event)
-              global-kw (keyword "event" event)]]
-  (derive local-kw :metabase/event)
-  (derive global-kw local-kw))
+(derive ::gloabal-transform-schedule-update :metabase/event)
+(derive :event/gloabal-transform-schedule-update ::gloabal-transform-schedule-update)
 
-(methodical/defmethod events/publish-event! ::transform-create
-  [_topic {transform :object}]
-  (create-trigger! transform))
-
-(methodical/defmethod events/publish-event! ::transform-update
-  [_topic {transform :object}]
-  (update-trigger! transform))
-
-(methodical/defmethod events/publish-event! ::transform-delete
-  [_topic {transform :object}]
-  (delete-trigger! transform))
+(methodical/defmethod events/publish-event! ::gloabal-transform-schedule-update
+  [_topic {:keys [new-schedule]}]
+  (update-global-trigger! new-schedule))

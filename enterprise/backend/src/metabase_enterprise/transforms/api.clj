@@ -87,8 +87,14 @@
   (api/check-superuser)
   (let [{:keys [target] :as transform} (api/check-404 (t2/select-one :model/Transform id))
         database-id (source-database-id transform)
-        target-table (transforms.util/target-table database-id target :active true)]
-    (assoc transform :table target-table)))
+        target-table (transforms.util/target-table database-id target :active true)
+        execution-status (or (t2/select-one-fn :status :model/WorkerRun :work_type :transform :work_id id
+                                               {:order-by [[:start_time :desc]]
+                                                :limit 1})
+                             :never-executed)]
+    (assoc transform
+           :table target-table
+           :execution_status execution-status)))
 
 (def ^:private status->status
   {:exec-succeeded :success
@@ -130,7 +136,11 @@
                            (when transform_id
                              [:work_id transform_id])
                            (when status
-                             [:status status]))
+                             [:in :status (into #{} (keep #(when (= (val %) status)
+                                                             (key %)))
+                                                status->status)])
+                           (when (= status "started")
+                             [:is_active true]))
         conditions-with-sort-and-pagination (concat conditions [{:order-by order-by
                                                                  :offset offset
                                                                  :limit limit}])
@@ -142,7 +152,7 @@
                                          :run_method :trigger
                                          :start_time :started_at
                                          :end_time   :ended_at})
-                       (update :status status->status)))
+                       (update :status status->status :unknown)))
                  (t2/hydrate runs :transform))
      :limit limit
      :offset offset
@@ -191,11 +201,19 @@
                     [:id ms/PositiveInt]]]
   (log/info "execute transform" id)
   (api/check-superuser)
-  (let [transform (api/check-404 (t2/select-one :model/Transform id))]
+  (let [transform (api/check-404 (t2/select-one :model/Transform id))
+        start-promise (promise)]
     (future
-      (transforms.execute/execute-mbql-transform! transform {:run-method :manual}))
-    (-> (response/response {:message (deferred-tru "Transform execution started")})
-        (assoc :status 202))))
+      (transforms.execute/execute-mbql-transform! transform {:start-promise start-promise
+                                                             :run-method :manual}))
+    (when (instance? Throwable @start-promise)
+      (throw @start-promise))
+    (let [result @start-promise
+          run-id (when (and (vector? result) (= (first result) :started))
+                   (second result))]
+      (-> (response/response {:message (deferred-tru "Transform execution started")
+                              :run_id run-id})
+          (assoc :status 202)))))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/transform` routes."

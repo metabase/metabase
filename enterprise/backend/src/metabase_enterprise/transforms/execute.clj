@@ -1,15 +1,14 @@
 (ns metabase-enterprise.transforms.execute
   (:require
+   [clojure.string :as str]
+   [metabase-enterprise.transforms.ordering :as transforms.ordering]
    [metabase-enterprise.transforms.util :as transforms.util]
    [metabase-enterprise.worker.core :as worker]
-   [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.lib.schema.common :as schema.common]
    [metabase.sync.core :as sync]
-   [metabase.util.json :as json]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
@@ -43,6 +42,7 @@
                   :status :started
                   {:status :exec-failed
                    :end_time :%now
+                   :is_active nil
                    :message (.getMessage t)})
       (throw t))))
 
@@ -86,23 +86,25 @@
     (t2/update! :model/WorkerRun
                 :run_id run-id
                 {:status :exec-succeeded
-                 :end_time :%now})
+                 :end_time :%now
+                 :is_active nil})
     (catch Throwable t
       (t2/update! :model/WorkerRun
                   :run_id run-id
                   {:status :exec-failed
                    :end-time :%now
+                   :is_active nil
                    :message (.getMessage t)})
       (throw t))))
 
 (defn execute-mbql-transform!
   "Execute `transform` and sync its target table.
 
-  This is executing anything synchronously, but supports being kicked off in the background
+  This is executing synchronously, but supports being kicked off in the background
   by delivering the `start-promise` just before the start when the beginning of the execution has been booked
   in the database."
   ([transform] (execute-mbql-transform! transform nil))
-  ([{:keys [id source target] :as transform} {:keys [run-method]}]
+  ([{:keys [id source target] :as transform} {:keys [run-method start-promise]}]
    (try
      (let [db (get-in source [:query :database])
            {driver :engine :as database} (t2/select-one :model/Database db)
@@ -116,15 +118,25 @@
        (when-not (driver.u/supports? driver feature database)
          (throw (ex-info "The database does not support the requested transform target type."
                          {:driver driver, :database database, :feature feature})))
-       ;; TODO: Check if it's already running
        ;; mark the execution as started and notify any observers
-       (t2/insert! :model/WorkerRun
-                   {:run_id run-id
-                    :work_id id
-                    :work_type :transform
-                    :run_method run-method
-                    :is_local (not (worker/run-remote?))
-                    :status :started})
+       (try
+         (t2/insert! :model/WorkerRun
+                     {:run_id run-id
+                      :work_id id
+                      :work_type :transform
+                      :run_method run-method
+                      :is_local (not (worker/run-remote?))
+                      :status :started
+                      :is_active true})
+         (catch java.sql.SQLException e
+           (if (= (.getSQLState e) "23505")
+             (throw (ex-info "Transform is already running"
+                             {:error :already-running
+                              :transform-id id}
+                             e))
+             (throw e))))
+       (when start-promise
+         (deliver start-promise [:started run-id]))
        (log/info "Executing transform" id "with target" (pr-str target))
        (if (worker/run-remote?)
          (execute-mbl-transform-remote! run-id driver transform-details opts)
@@ -133,15 +145,30 @@
            (sync-target! target database run-id))))
      (catch Throwable t
        (log/error t "Error executing transform")
+       (when start-promise
+         ;; if the start-promise has been delivered, this is a no-op,
+         ;; but we assume nobody would catch the exception anyway
+         (deliver start-promise t))
        (throw t)))))
 
 (comment
-
   (t2/insert! :model/WorkerRun
               {:run_id (str (random-uuid))
                :work_id 1
                :work_type :transform
                :run_method :remote
                :is_local true
-               :status :started})
-  (sync-worker-runs!))
+               :status :started
+               :is_active true})
+  (sync-worker-runs!)
+  -)
+
+(defn execute-transforms!
+  "Execute `transforms` and sync their target tables in dependency order."
+  [transforms {:keys [run-method]}]
+  (let [ordering (transforms.ordering/transform-ordering transforms)]
+    (when-let [cycle (transforms.ordering/cycle ordering)]
+      (let [id->name (into {} (map (juxt :id :name)) transforms)]
+        (throw (ex-info (str "Cyclic transform definitions detected: "
+                             (str/join " → " (map id->name cycle)))
+                        {:cycle cycle}))))))

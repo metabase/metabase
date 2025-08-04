@@ -291,13 +291,19 @@ databaseChangeLog:
                   defaultValue: none
                   constraints:
                     nullable:  false
+
   - changeSet:
       id: v56.2025-07-31-worker-runs-app-db
       author: eric
-      comment: Create worker_runs table in app database to track worker execution
+      comment: Create worker_run table in app database to track worker execution
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: worker_run
       changes:
         - createTable:
-            tableName: worker_runs
+            tableName: worker_run
             remarks: Table to track worker job executions and their status in the app database
             columns:
               - column:
@@ -338,15 +344,22 @@ databaseChangeLog:
                   constraints:
                     nullable: false
               - column:
+                  name: is_active
+                  type: boolean
+                  remarks: 'True only for currently running jobs, null for the others'
+                  constraints:
+                    nullable: true
+                    defaultValue: true
+              - column:
                   name: start_time
-                  type: timestamp with time zone
+                  type: ${timestamp_type}
                   remarks: 'When the worker job started'
-                  defaultValueComputed: NOW()
+                  defaultValueComputed: current_timestamp
                   constraints:
                     nullable: false
               - column:
                   name: end_time
-                  type: timestamp with time zone
+                  type: ${timestamp_type}
                   remarks: 'When the worker job completed (null if still running)'
                   constraints:
                     nullable: true
@@ -356,27 +369,91 @@ databaseChangeLog:
                   remarks: 'Human-readable message about the run; may contain error message in case status is error'
                   constraints:
                     nullable: true
+
+
+  - changeSet:
+      id: v56.2025-08-04T10:53:00
+      author: metamben
+      comment: Add last run index on worker_run
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: worker_run
+                indexName: idx_worker_run_last_run_idx
+      changes:
         - createIndex:
-            tableName: worker_runs
-            indexName: idx_worker_runs_work_id
+            tableName: worker_run
+            indexName: idx_worker_run_last_run_idx
             columns:
               - column:
                   name: work_type
               - column:
                   name: work_id
-        - createIndex:
-            tableName: worker_runs
-            indexName: idx_worker_runs_status
-            columns:
-              - column:
-                  name: status
-        - createIndex:
-            tableName: worker_runs
-            indexName: idx_worker_runs_start_time
-            columns:
               - column:
                   name: start_time
+                  descending: true
 
+  - changeSet:
+      id: v56.2025-08-04T10:54:00
+      author: metamben
+      comment: Add unique index to make sure at most one run can be active
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: worker_run
+                indexName: idx_unique_active_worker_run
+      changes:
+        - addUniqueConstraint:
+            tableName: worker_run
+            constraintName: idx_unique_active_worker_run
+            columnNames: work_type, work_id, is_active
+
+  - changeSet:
+      id: v56.2025-08-04T10:55:00
+      author: metamben
+      comment: Add partial index for querying active runs
+      dbms: postgresql
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: worker_run
+                indexName: idx_worker_run_active_runs
+      changes:
+        - createIndex:
+            tableName: worker_run
+            indexName: idx_worker_run_active_runs
+            columns:
+              - column:
+                  name: work_type
+              - column:
+                  name: work_id
+            where: "is_active = true"
+
+  - changeSet:
+      id: v56.2025-08-04T10:55:01
+      author: metamben
+      comment: Add index for querying active runs
+      dbms: mysql, h2
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: worker_run
+                indexName: idx_worker_run_active_runs
+      changes:
+        - createIndex:
+            tableName: worker_run
+            indexName: idx_worker_run_active_runs
+            columns:
+              - column:
+                  name: is_active
+              - column:
+                  name: work_type
+              - column:
+                  name: work_id
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

@@ -31,13 +31,13 @@
 
   (reduce conj
           []
-          (t2/reducible-select :model/WorkerRun :is_local false :status :started))
+          (t2/reducible-select :model/WorkerRun :is_local false :is_active true))
 
   (t2/select :model/WorkerRun))
 
 (defn- sync-worker-runs! [_ctx]
   (log/trace "Syncing worker runs.")
-  (let [runs (t2/reducible-select :model/WorkerRun :is_local false :status :started)]
+  (let [runs (t2/reducible-select :model/WorkerRun :is_local false :is_active true)]
     (reduce (fn [_ run]
               (try
                 (let [resp (api/get-status (:run_id run))]
@@ -47,13 +47,15 @@
                       (t2/update! :model/WorkerRun
                                   :run_id (:run_id run)
                                   {:status :exec-succeeded
-                                   :end_time (t/instant (:end-time resp))})
+                                   :end_time (t/instant (:end-time resp))
+                                   :is_active nil})
                       (post-success run))
                     "error"
                     (t2/update! :model/WorkerRun
                                 :run_id (:run_id run)
                                 {:status :exec-failed
                                  :end_time (t/instant (:end-time resp))
+                                 :is_active nil
                                  :message (:note resp)})))
                 (catch Throwable t
                   (log/error t (str "Error syncing " (:run_id run))))))

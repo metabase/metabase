@@ -4,7 +4,7 @@
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
-(methodical/defmethod t2/table-name :model/WorkerRun [_model] :worker_runs)
+(methodical/defmethod t2/table-name :model/WorkerRun [_model] :worker_run)
 
 (derive :model/WorkerRun :metabase/model)
 
@@ -16,7 +16,7 @@
 (def ^:private model->work-type
   {:model/Transform :transform})
 
-(mi/define-simple-hydration-method add-user-permissions
+(mi/define-simple-hydration-method add-worker-runs
   :worker-runs
   "Add worker-runs for a transform or other work. Must have :id field."
   [work]

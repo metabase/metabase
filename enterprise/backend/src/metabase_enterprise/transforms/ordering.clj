@@ -1,9 +1,9 @@
 (ns metabase-enterprise.transforms.ordering
   (:require
-   [clojure.core.match :as match]
+   [clojure.core.match]
    [clojure.set :as set]
-   [clojure.string :as str]
-   [metabase.lib.util.match :as lib.util.match]
+   [flatland.ordered.set :refer [ordered-set]]
+   [metabase.lib.util :as lib.util]
    [toucan2.core :as t2]))
 
 (defn- get-output-table [transform]
@@ -13,16 +13,11 @@
                     :name (get-in transform [:target :name])
                     :db_id (get-in transform [:source :query :database])))
 
-(defn- card-id [card-ref]
-  (->> (str/split card-ref #"_")
-       last
-       Integer/parseInt))
-
 (defn- query-deps [query]
   (->> (tree-seq coll? seq query)
-       (map #(match/match %
-               [:source-table source] (if (string? source)
-                                        {:cards #{(card-id source)}}
+       (map #(clojure.core.match/match %
+               [:source-table source] (if-let [card-id (lib.util/legacy-string-table-id->card-id source)]
+                                        {:cards #{card-id}}
                                         {:tables #{source}})
                _ {}))
        (apply merge-with set/union)))
@@ -64,7 +59,29 @@
                                         (transform-deps transform))]))
           transforms)))
 
-(defn get-available-transforms
+(defn cycle
+  "Finds a path containing a cycle in the directed graph `node->children`."
+  ([node->children]
+   (some #(cycle node->children %) (keys node->children)))
+  ([node->children start]
+   (loop [stack [[start (ordered-set)]]
+          visited #{}]
+     (when-let [[node path] (peek stack)]
+       (cond
+         (contains? path node)
+         (into [] (drop-while (complement #{node})) (conj path node))
+
+         (contains? visited node)
+         (recur (pop stack) visited)
+
+         :else
+         (let [new-path (conj path node)
+               new-stack (into (pop stack)
+                               (map #(vector % new-path))
+                               (node->children node))]
+           (recur new-stack (conj visited node))))))))
+
+(defn available-transforms
   "Given an ordering (see transform-ordering), a set of running transform ids, and a set of completed transform ids,
   computes which transforms are currently able to be run."
   [ordering running complete]

@@ -115,9 +115,7 @@
             resp (mt/user-http-request :crowberto :post 200 "ee/transform" body)]
         (is (=? (assoc body
                        :execution_trigger "none"
-                       :execution_status "never-executed"
-                       :last_started_at nil
-                       :last_ended_at nil)
+                       :execution_status "never-executed")
                 (mt/user-http-request :crowberto :get 200 (format "ee/transform/%s" (:id resp)))))))))
 
 (deftest put-transforms-test
@@ -143,10 +141,7 @@
                                            :template-tags {}}}}
                  :target {:type "table"
                           :name table-name}
-                 :execution_trigger "global-schedule"
-                 :execution_status "never-executed"
-                 :last_started_at nil
-                 :last_ended_at nil}
+                 :execution_trigger "global-schedule"}
                 (mt/user-http-request :crowberto :put 200 (format "ee/transform/%s" (:id resp))
                                       {:name "Gadget Products 2"
                                        :description "Desc"
@@ -229,7 +224,7 @@
         (throw (ex-info (str "Transfer execution timed out after " timeout-s " seconds") {})))
       (let [resp (mt/user-http-request :crowberto :get 200 (format "ee/transform/%s" transform-id))
             status (-> resp :execution_status keyword)]
-        (when-not (contains? #{:started :exec-succeeded :sync-succeeded} status)
+        (when-not (contains? #{:started :exec-succeeded :sync-started :sync-succeeded} status)
           (throw (ex-info (str "Transfer execution failed with status " status) {})))
         (if (= status :sync-succeeded)
           (is (some? (:table resp)))
@@ -284,10 +279,7 @@
                                                      :template-tags {}}}}
                            :target target2}]
               (is (=? (assoc updated
-                             :execution_trigger "none"
-                             :execution_status "sync-succeeded"
-                             :last_started_at string?
-                             :last_ended_at string?)
+                             :execution_trigger "none")
                       (mt/user-http-request :crowberto :put 200 (format "ee/transform/%s" transform-id) updated)))
               (test-execution transform-id)
               (is (true? (transforms.util/target-table-exists? original)))
