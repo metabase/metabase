@@ -13,7 +13,6 @@ import {
   PLUGIN_EMBEDDING_IFRAME_SDK_SETUP,
   PLUGIN_EMBEDDING_SDK,
 } from "metabase/plugins";
-import { getLearnUrl } from "metabase/selectors/settings";
 import {
   Alert,
   Badge,
@@ -63,10 +62,9 @@ export function EmbeddingSdkSettings() {
     { utm: utmTags },
   );
 
-  const implementJwtUrl = useUrlWithUtm(
-    getLearnUrl("metabase-basics/embedding/securing-embeds"),
-    utmTags,
-  );
+  const implementJwtUrl = useDocsUrl("embedding/sdk/authentication", {
+    utm: utmTags,
+  });
 
   const quickStartUrl = useUrlWithUtm(
     "https://metaba.se/sdk-quick-start",
@@ -91,7 +89,7 @@ export function EmbeddingSdkSettings() {
       href={implementJwtUrl}
       className={cx(CS.link, CS.textBold)}
     >
-      {t`implement JWT SSO`}
+      {t`implement JWT or SAML SSO`}
     </ExternalLink>
   );
 
