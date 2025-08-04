@@ -62,6 +62,8 @@ export function TableDetailViewInner({
   isEdit = false,
 }: TableDetailViewProps) {
   const [currentRowIndex, setCurrentRowIndex] = useState(0);
+  const [linkCopied, setLinkCopied] = useState(false);
+  const [openPopoverId, setOpenPopoverId] = useState<number | null>(null);
   const dispatch = useDispatch();
   const [updateTableComponentSettings] =
     useUpdateTableComponentSettingsMutation();
@@ -290,60 +292,67 @@ export function TableDetailViewInner({
               // overflowY: "auto",
             }}
           >
-            {isEdit && (
-              <DetailViewSidebar
-                columns={columns}
-                sections={sections}
-                onCreateSection={createSection}
-                onUpdateSection={updateSection}
-                onUpdateSections={updateSections}
-                onRemoveSection={removeSection}
-                onDragEnd={handleDragEnd}
-                onCancel={handleCloseClick}
-                onSubmit={handleSaveClick}
-              />
-            )}
+            {
+              isEdit && (
+                <DetailViewSidebar
+                  columns={columns}
+                  sections={sections}
+                  onCreateSection={createSection}
+                  onUpdateSection={updateSection}
+                  onUpdateSections={updateSections}
+                  onRemoveSection={removeSection}
+                  onDragEnd={handleDragEnd}
+                  onCancel={handleCloseClick}
+                  onSubmit={handleSaveClick}
+                  openPopoverId={openPopoverId}
+                  setOpenPopoverId={setOpenPopoverId}
+                />
+              )
+            }
 
-            {!isEdit && (
-              <Stack
-                pos="relative"
-                bg={isEdit ? "bg-medium" : "bg-white"}
-                gap={0}
-                h="100%"
-              >
-                <Box
-                  flex="0 0 auto"
-                  px="xl"
-                  py="lg"
-                  style={{
-                    borderBottom: "1px solid var(--border-color)",
-                  }}
+            {
+              !isEdit && (
+                <Stack
+                  pos="relative"
+                  bg={isEdit ? "bg-medium" : "bg-white"}
+                  gap={0}
+                  h="100%"
                 >
-                  <Text fw={600} size="lg">{t`Relationships`}</Text>
-                </Box>
+                  <Box
+                    flex="0 0 auto"
+                    px="xl"
+                    py="lg"
+                    style={{
+                      borderBottom: "1px solid var(--border-color)",
+                    }}
+                  >
+                    <Text fw={600} size="lg">{t`Relationships`}</Text>
+                  </Box>
 
-                <Box
-                  flex="1"
-                  px="xl"
-                  pb="xl"
-                  pt={16}
-                  style={{ overflow: "auto" }}
-                >
-                  <Relationships
-                    objectName={rowName ? String(rowName) : String(rowId)}
-                    tableForeignKeys={tableForeignKeys}
-                    tableForeignKeyReferences={tableForeignKeyReferences}
-                    foreignKeyClicked={handleFollowForeignKey}
-                    disableClicks={isEdit}
-                    relationshipsDirection={"vertical"}
-                  />
-                </Box>
-              </Stack>
-            )}
-          </Box>
-        )}
-      </Group>
-    </Stack>
+                  <Box
+                    flex="1"
+                    px="xl"
+                    pb="xl"
+                    pt={16}
+                    style={{ overflow: "auto" }}
+                  >
+                    <Relationships
+                      objectName={rowName ? String(rowName) : String(rowId)}
+                      tableForeignKeys={tableForeignKeys}
+                      tableForeignKeyReferences={tableForeignKeyReferences}
+                      foreignKeyClicked={handleFollowForeignKey}
+                      disableClicks={isEdit}
+                      relationshipsDirection={"vertical"}
+                    />
+                  </Box>
+                </Stack>
+              )
+            }
+          </Box >
+        )
+        }
+      </Group >
+    </Stack >
   );
 
   return (

@@ -1,0 +1,98 @@
+import { useMemo, useRef } from "react";
+import { t } from "ttag";
+
+import { Box, Group, Stack, Text } from "metabase/ui/components";
+import type {
+  DatasetColumn,
+  ObjectViewSectionSettings,
+} from "metabase-types/api";
+
+import { FieldsPopover } from "./FieldsPopover";
+
+type Section = ObjectViewSectionSettings;
+
+interface SidebarSectionItemProps {
+  section: Section;
+  sections: Section[];
+  columns: DatasetColumn[];
+  onUpdateSection: (sectionId: number, update: Partial<Section>) => void;
+  onRemoveSection?: (sectionId: number) => void;
+  openPopoverId: number | null;
+  setOpenPopoverId: (id: number | null) => void;
+}
+
+export function SidebarSectionItem({
+  section,
+  // sections,
+  columns,
+  onUpdateSection,
+  onRemoveSection: _onRemoveSection,
+  openPopoverId,
+  setOpenPopoverId,
+}: SidebarSectionItemProps) {
+  const triggerRef = useRef<HTMLDivElement>(null);
+  const usedFieldIds = useMemo(() => {
+    return new Set(section.fields.map((f) => String(f.field_id)));
+  }, [section.fields]);
+
+  return (
+    <>
+      <Text fw={500} size="sm">
+        {section.title}
+      </Text>
+      <Box
+        key={section.id}
+        p="md"
+        style={{
+          border: "1px solid var(--border-color)",
+          borderRadius: "var(--default-border-radius)",
+          backgroundColor: "var(--mb-color-bg-white)",
+        }}
+      >
+        <Group justify="space-between" align="flex-start">
+          <Stack gap="xs" flex="1">
+            <Box pos="relative">
+              <Text
+                ref={triggerRef}
+                size="xs"
+                c="text-medium"
+                style={{
+                  cursor: "pointer",
+                }}
+                onClick={() => {
+                  if (openPopoverId === section.id) {
+                    setOpenPopoverId(null);
+                  } else {
+                    setOpenPopoverId(section.id);
+                  }
+                }}
+              >
+                {section.fields.length} {t`fields`}
+              </Text>
+
+              <FieldsPopover
+                isOpen={openPopoverId === section.id}
+                section={section}
+                usedFieldIds={usedFieldIds}
+                columns={columns}
+                onUpdateSection={onUpdateSection}
+                onClose={() => setOpenPopoverId(null)}
+                triggerRef={triggerRef}
+              />
+            </Box>
+          </Stack>
+          {/* {sections.length > 1 && onRemoveSection && (
+            <Button
+              size="xs"
+              variant="subtle"
+              color="red"
+              onClick={() => onRemoveSection(section.id)}
+            >
+              {t`Remove`}
+            </Button>
+          )} */}
+        </Group>
+      </Box>
+    </>
+  );
+}
