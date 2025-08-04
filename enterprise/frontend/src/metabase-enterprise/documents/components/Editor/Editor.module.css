@@ -189,9 +189,8 @@
 
 .img {
   max-width: 80%;
-  position: relative;
-  left: 50%;
-  transform: translateX(-50%);
+  display: block;
+  margin: 1rem auto;
 
   &:global(.ProseMirror-selectednode) {
     box-shadow: 0 0 0 1px var(--mb-color-brand);
