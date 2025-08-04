@@ -1,4 +1,5 @@
 import { useSelector } from "metabase/lib/redux";
+import { isEEBuild } from "metabase/lib/utils";
 import { PLUGIN_ADMIN_SETTINGS, PLUGIN_EMBEDDING } from "metabase/plugins";
 import { Box } from "metabase/ui";
 
@@ -43,6 +44,10 @@ export function useUpsellSdkCta() {
 export function UpsellSdkCta() {
   const { url, internalLink, triggerUpsellFlow, trackUpsell } =
     useUpsellSdkCta();
+
+  if (!isEEBuild()) {
+    return null;
+  }
 
   return (
     <Box>
