@@ -107,4 +107,11 @@
                   {:model "dashboard"
                    :id "3"
                    :searchable_text "This is a test dashboard"}])
-  (delete-from-index! "card" ["1" "2"]))
+  (delete-from-index! "card" ["1" "2"])
+
+  ;; reindex! testing
+  (require '[metabase.search.ingestion :as search.ingestion])
+  (def all-docs (search.ingestion/searchable-documents))
+  (def subset-docs (eduction (take 2000) all-docs))
+  (reindex! subset-docs {})
+  (reindex! all-docs {}))
