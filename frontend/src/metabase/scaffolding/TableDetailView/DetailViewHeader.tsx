@@ -56,11 +56,18 @@ export function DetailViewHeader({
           </>
         )}
 
-        {!isEdit && (
-          <Button leftSection={<Icon name="gear" />} onClick={onEditClick}>
+        <Tooltip
+          disabled={!isEdit}
+          label={t`Button is disabled to prevent losing unsaved changes. We'll have something better for production.`}
+        >
+          <Button
+            disabled={isEdit}
+            leftSection={<Icon name="gear" />}
+            onClick={onEditClick}
+          >
             {t`Display settings`}
           </Button>
-        )}
+        </Tooltip>
       </Flex>
     </Nav>
   );
