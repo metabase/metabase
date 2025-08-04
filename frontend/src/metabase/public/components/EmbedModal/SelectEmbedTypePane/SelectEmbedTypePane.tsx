@@ -10,7 +10,7 @@ import {
 import { UpsellGem } from "metabase/admin/upsells/components";
 import ExternalLink from "metabase/common/components/ExternalLink";
 import Link from "metabase/common/components/Link";
-import { useDocsUrl, useSetting, useUrlWithUtm } from "metabase/common/hooks";
+import { useDocsUrl, useSetting } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import type { ExportFormatType } from "metabase/embedding/components/PublicLinkPopover/types";
 import { useSelector } from "metabase/lib/redux";
@@ -220,33 +220,6 @@ function LearnMore({ url }: { url: string | undefined }) {
   );
 }
 
-export const useInteractiveEmbeddingCta = () => {
-  const isInteractiveEmbeddingEnabled = useSelector(
-    PLUGIN_EMBEDDING.isInteractiveEmbeddingEnabled,
-  );
-
-  const url = useUrlWithUtm(
-    `https://www.metabase.com/product/embedded-analytics`,
-    {
-      utm_source: "product",
-      utm_medium: "upsell",
-      utm_campaign: "embedding-interactive",
-      utm_content: "static-embed-popover",
-    },
-  );
-
-  if (isInteractiveEmbeddingEnabled) {
-    return {
-      url: "/admin/settings/embedding-in-other-applications/full-app",
-    };
-  }
-
-  return {
-    url,
-    target: "_blank",
-  };
-};
-
 interface MaybeLinkInteractiveEmbeddingProps {
   shouldRenderLink?: boolean;
   children: React.ReactNode;
@@ -301,6 +274,7 @@ function MaybeLinkInteractiveEmbedding({
 interface MaybeLinkProps extends ComponentProps<typeof Link> {
   shouldRenderLink?: boolean;
 }
+
 function MaybeLink({ shouldRenderLink, ...props }: MaybeLinkProps) {
   if (shouldRenderLink) {
     return <Link {...props} />;
