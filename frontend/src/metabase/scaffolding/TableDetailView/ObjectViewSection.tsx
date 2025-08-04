@@ -47,6 +47,7 @@ export function ObjectViewSection({
   return (
     <Box
       className={cx(S.ObjectViewSection, {
+        [S.normal]: type === "normal",
         [S.header]: type === "header",
         [S.subheader]: type === "subheader",
         [S.highlight1]: type === "highlight-1",
@@ -78,13 +79,7 @@ export function ObjectViewSection({
           style={{ fontWeight: 700, fontSize: "1.25rem" }}
         />
       </Group>
-      <Flex
-        direction={section.direction === "vertical" ? "column" : "row"}
-        gap="md"
-        mt={"sm"}
-        px="xs"
-        className={S.SectionContent}
-      >
+      <Flex gap="md" mt={"sm"} px="xs" className={S.SectionContent}>
         {section.fields.map(({ field_id, style }) => {
           const columnIndex = columns.findIndex(
             (column) => column.id === field_id,
@@ -98,33 +93,26 @@ export function ObjectViewSection({
           const value = row[columnIndex];
 
           return (
-            <Flex align="center" key={field_id} gap="md">
+            <Flex key={field_id} gap="md" className={S.Field}>
               <Text
                 c="var(--mb-color-text-secondary)"
                 fw="bold"
-                fz="1rem"
                 truncate
-                style={{
-                  whiteSpace: "nowrap",
-                  minWidth: "40%",
-                  maxWidth: "40%",
-                  flexShrink: 0,
-                }}
+                className={S.FieldName}
               >
                 {column.display_name}
               </Text>
               <Text
                 {...getStyleProps(style)}
                 variant="primary"
-                fz="1rem"
                 truncate
                 c="var(--mb-color-text-primary)"
                 lineClamp={5}
                 style={{
                   ...(isDate(column) ? { whiteSpace: "nowrap" } : {}),
                   flexGrow: 1,
-                  textAlign: "left",
                 }}
+                className={S.FieldValue}
               >
                 {renderValue(tc, value, column)}
               </Text>
