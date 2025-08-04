@@ -74,7 +74,7 @@
   (t2/update! :model/WorkerRun
               :is_active true
               [:< :start_time
-               (sql.qp/add-interval-honeysql-form (mdb/db-type) [:now] -1 :minute)] true
+               (sql.qp/add-interval-honeysql-form (mdb/db-type) [:now] -4 :hour)] true
               {:status :timeout
                :end_time [:now]
                :is_active nil
