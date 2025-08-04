@@ -2,6 +2,7 @@
   (:require
    [clojure.set :as set]
    [clojure.test :refer :all]
+   [metabase.config.core :as config]
    [metabase.queries.models.card :as card]
    [metabase.revisions.impl.card :as impl.card]
    [metabase.revisions.init]
@@ -170,55 +171,56 @@
 
 (deftest load-old-revision-without-card-schema-test
   (testing "Old revisions without :card_schema should be loadable (regression test for #61555)"
-    (mt/with-temp [:model/Card {card-id :id} {:name "Test Card"
-                                              :dataset_query (mt/mbql-query venues)
-                                              :display :table}]
-      ;; Get the full card and serialize it
-      (let [full-card (t2/select-one :model/Card :id card-id)
-            serialized-card (revision/serialize-instance :model/Card card-id full-card)
-            ;; Remove card_schema to simulate pre-v0.55 revision
-            ;; But keep the id field as it's needed for upgrade-card-schema-to-latest to trigger
-            old-card-data (-> serialized-card
-                              (into {})
-                              (dissoc :card_schema)
-                              (assoc :id card-id))]
+    ;; Override config/is-test? to simulate production behavior for this test
+    (with-redefs [config/is-test? false]
+      (mt/with-temp [:model/Card {card-id :id} {:name          "Test Card"
+                                                :dataset_query (mt/mbql-query venues)
+                                                :display       :table}]
+        ;; Get the full card and serialize it
+        (let [full-card       (t2/select-one :model/Card :id card-id)
+              serialized-card (revision/serialize-instance :model/Card card-id full-card)
+              ;; Remove card_schema to simulate pre-v0.55 revision
+              ;; But keep the id field as it's needed for upgrade-card-schema-to-latest to trigger
+              old-card-data   (-> serialized-card
+                                  (into {})
+                                  (dissoc :card_schema)
+                                  (assoc :id card-id))]
 
-        ;; Manually create a revision without :card_schema to simulate pre-v0.55 data
-        ;; Use raw SQL to bypass transforms that would trigger the error during insert
-        (t2/query {:insert-into :revision
-                   :values [{:model "Card"
-                             :model_id card-id
-                             :user_id (mt/user->id :rasta)
-                             :object (json/encode old-card-data)
-                             :message "Test revision without card_schema"
-                             :timestamp :%now
-                             :metabase_version "test"
-                             :most_recent true}]})
+          ;; Manually create a revision without :card_schema to simulate pre-v0.55 data
+          ;; Use raw SQL to bypass transforms that would trigger the error during insert
+          (t2/query {:insert-into :revision
+                     :values      [{:model            "Card"
+                                    :model_id         card-id
+                                    :user_id          (mt/user->id :rasta)
+                                    :object           (json/encode old-card-data)
+                                    :message          "Test revision without card_schema"
+                                    :timestamp        :%now
+                                    :metabase_version "test"
+                                    :most_recent      true}]})
 
-        (testing "Can fetch revisions through API endpoint"
-          ;; This simulates the exact API endpoint path: GET /api/revision/:entity/:id
-          ;; With the fix in upgrade-card-schema-to-latest, this should work even without card_schema
-          (let [revisions (revision/revisions+details :model/Card card-id)]
-            (is (seq revisions))
-            (is (= "Test revision without card_schema"
-                   (-> revisions first :message)))))
+          (testing "Can fetch revisions through API endpoint"
+            ;; This simulates the exact API endpoint path: GET /api/revision/:entity/:id
+            ;; With the fix in upgrade-card-schema-to-latest, this should work even without card_schema
+            (let [revisions (revision/revisions+details :model/Card card-id)]
+              (is (seq revisions))
+              (is (= "Test revision without card_schema"
+                     (-> revisions first :message)))))
 
-        (testing "Revision object is upgraded to have default card_schema"
-          (let [revisions (revision/revisions :model/Card card-id)
-                revision (first revisions)
-                revision-obj (:object revision)]
-            ;; The fix in upgrade-card-schema-to-latest adds default schema 20
-            (is (= @#'card/current-schema-version
-                   (:card_schema revision-obj)))))
+          (testing "Revision object is upgraded to have default card_schema"
+            (let [revisions    (revision/revisions :model/Card card-id)
+                  revision     (first revisions)
+                  revision-obj (:object revision)]
+              ;; The fix in upgrade-card-schema-to-latest adds default schema 20
+              (is (= @#'card/current-schema-version
+                     (:card_schema revision-obj)))))
 
-        (testing "Direct call to upgrade-card-schema-to-latest handles missing card_schema"
-          ;; This demonstrates the fix: if card_schema is missing, it defaults to 20
-          ;; instead of throwing an error
-          (let [card-without-schema {:id card-id
-                                     :dataset_query (:dataset_query old-card-data)
-                                     :type :question}
-                upgraded-card (#'card/upgrade-card-schema-to-latest card-without-schema)]
-            ;; Should succeed and add default card_schema
-            (is (= @#'card/current-schema-version (:card_schema upgraded-card)))
-            ;; Should have been upgraded from 20 to current version
-            (is (some? upgraded-card))))))))
+          (testing "Direct call to upgrade-card-schema-to-latest handles missing card_schema"
+            ;; This demonstrates the fix: if card_schema is missing, it defaults to 20
+            ;; instead of throwing an error
+            (let [card-without-schema {:id            card-id
+                                       :dataset_query (:dataset_query old-card-data)
+                                       :type          :question}
+                  upgraded-card       (#'card/upgrade-card-schema-to-latest card-without-schema)]
+              ;; Should succeed and add default card_schema, then upgrade to current version
+              (is (= @#'card/current-schema-version (:card_schema upgraded-card)))
+              (is (some? upgraded-card)))))))))

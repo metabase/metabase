@@ -712,9 +712,24 @@
                (:type card)))
     ;; A plausible select to run the after-select logic on.
     (if-not (:card_schema card)
-      ;; No :card_schema - assume it's a legacy card from before schema versioning (pre-v0.55)
-      ;; Default to schema 20 and run the upgrades from there
-      (recur (assoc card :card_schema 20))
+      ;; No :card_schema - handle based on environment
+      (cond
+        config/is-test?
+        (throw (ex-info "Cannot SELECT a Card without including :card_schema"
+                        {:card-id (:id card)}))
+
+        config/is-dev?
+        (do
+          (log/warn "Card missing :card_schema - defaulting to version 20"
+                    {:card-id (:id card)})
+          (recur (assoc card :card_schema 20)))
+
+        :else  ; production
+        (do
+          ;; Always log in production for monitoring/debugging
+          (log/warn "Card missing :card_schema in production - defaulting to version 20"
+                    {:card-id (:id card)})
+          (recur (assoc card :card_schema 20))))
       ;; Plausible and has the schema, so run the upgrades over it.
       (loop [card card]
         (if (= (:card_schema card) current-schema-version)
