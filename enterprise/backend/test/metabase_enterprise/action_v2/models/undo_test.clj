@@ -5,7 +5,10 @@
    [metabase-enterprise.action-v2.test-util :as action-v2.tu]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
+
+(use-fixtures :once (fixtures/initialize :test-users-personal-collections))
 
 (deftest diff-keys-test
   (testing "Detect which keys have changes"
