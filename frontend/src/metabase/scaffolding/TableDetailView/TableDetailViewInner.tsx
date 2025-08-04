@@ -322,7 +322,7 @@ export function TableDetailViewInner({
                     borderBottom: "1px solid var(--border-color)",
                   }}
                 >
-                  <Text fw={600} size="lg">{t`Relationships`}</Text>
+                  <Text fw="bold" size="xl">{t`Relationships`}</Text>
                 </Box>
 
                 <Box

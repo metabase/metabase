@@ -58,7 +58,7 @@ export function DetailViewSidebar({
           borderBottom: "1px solid var(--border-color)",
         }}
       >
-        <Text fw={600} size="lg">{t`Settings`}</Text>
+        <Text fw={600} size="xl">{t`Settings`}</Text>
       </Box>
 
       <Box flex="1" p="xl" style={{ overflow: "auto" }}>
@@ -99,8 +99,10 @@ export function DetailViewSidebar({
             />
           )}
 
-          <Group justify="space-between" align="center" mb="md">
-            <Text fw={600}>{t`Sections`}</Text>
+          <Box h={1} bg="var(--border-color)" />
+
+          <Group justify="space-between" align="center">
+            <Text fw="bold" size="lg">{t`Sections`}</Text>
             <Button
               size="xs"
               variant="subtle"
