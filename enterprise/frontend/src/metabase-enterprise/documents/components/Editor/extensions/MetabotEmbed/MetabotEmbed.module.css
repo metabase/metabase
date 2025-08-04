@@ -1,9 +1,9 @@
 .codeBlockTextArea {
-  background-color: var(--mb-bg-light);
-  font-family: monospace;
+  background-color: var(--mb-color-bg-light);
+  color: var(--mb-color-text-primary);
   width: 100%;
-  padding: 0.5rem;
-  min-height: 4rem;
+  padding: var(--mantine-spacing-md);
+  padding-right: var(--mantine-spacing-lg);
   border: none;
   outline: none;
   resize: none;

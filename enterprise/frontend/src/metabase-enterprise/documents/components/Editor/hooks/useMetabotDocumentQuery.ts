@@ -12,12 +12,13 @@ export const useMetabotDocumentQuery = () => {
   const [createQuestion] = useCreateCardMutation();
 
   const queryMetabot = useCallback(
-    async ({ prompt }: { prompt: string }) => {
+    async ({ prompt, signal }: { prompt: string; signal?: AbortSignal }) => {
       const messageId = uuid();
 
       const response = await aiStreamingQuery(
         {
           url: ENDPOINT,
+          signal,
           body: {
             message: prompt + EXTRA_PROMPT,
             conversation_id: messageId,
