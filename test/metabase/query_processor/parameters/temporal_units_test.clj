@@ -1,4 +1,4 @@
-(ns ^:mb/driver-tests metabase.driver.common.parameters.temporal-units-test
+(ns ^:mb/driver-tests metabase.query-processor.parameters.temporal-units-test
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
@@ -30,7 +30,7 @@
   [_driver _feature _database]
   false)
 
-(deftest can-compile-temporal-units-test
+(deftest ^:parallel can-compile-temporal-units-test
   (mt/test-drivers (mt/normal-drivers-with-feature :native-parameters :native-temporal-units ::temporal-units-test)
     (testing "temporal unit parameters"
       (let [base-query (mt/arbitrary-select-query driver/*driver* :orders "{{time-unit}}")
@@ -78,7 +78,7 @@
                      (subvec 0 2)))
               (str "Unexpected results for grouping " grouping)))))))
 
-(deftest can-compile-alias-temporal-units-test
+(deftest ^:parallel can-compile-alias-temporal-units-test
   (mt/test-drivers (mt/normal-drivers-with-feature :native-parameters :native-temporal-units)
     (testing "temporal unit parameters"
       (let [base-query (mt/arbitrary-select-query driver/*driver* :orders "{{time-unit}}")
@@ -127,7 +127,7 @@
                      (subvec 0 2)))
               (str "Unexpected results for aliased grouping " grouping)))))))
 
-(deftest bad-field-reference-throws-errors-test
+(deftest ^:parallel bad-field-reference-throws-errors-test
   (mt/test-drivers (mt/normal-drivers-with-feature :native-parameters :native-temporal-units ::temporal-units-test)
     (testing "temporal unit parameters"
       (let [base-query (mt/arbitrary-select-query driver/*driver* :orders "{{time-unit}}")
@@ -146,7 +146,7 @@
                                 #"Can't find field with ID: 1,000,000,000"
                                 (run-sample-query query))))))))
 
-(deftest bad-parameter-throws-error-test
+(deftest ^:parallel bad-parameter-throws-error-test
   (mt/test-drivers (mt/normal-drivers-with-feature :native-parameters :native-temporal-units ::temporal-units-test)
     (testing "temporal unit parameters"
       (let [base-query (mt/arbitrary-select-query driver/*driver* :orders "{{time-unit}}")

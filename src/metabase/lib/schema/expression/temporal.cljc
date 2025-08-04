@@ -273,6 +273,7 @@
    [true  [:= {:decode/normalize common/normalize-keyword-lower} :current]]
    [false :int]])
 
+;;; TODO (Cam 7/16/25) -- I think unit is rewuired unless `n` is `:current`
 (mbql-clause/define-catn-mbql-clause :relative-datetime :- :type/DateTime
   [:n    [:schema [:ref ::relative-datetime.amount]]]
   [:unit [:? [:schema [:ref ::temporal-bucketing/unit.date-time.interval]]]])

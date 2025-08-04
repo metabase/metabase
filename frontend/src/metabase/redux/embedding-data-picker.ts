@@ -13,7 +13,8 @@ export const DEFAULT_EMBEDDING_ENTITY_TYPES: EmbeddingEntityType[] = [
 ];
 
 export const DEFAULT_EMBEDDING_DATA_PICKER_STATE: EmbeddingDataPickerState = {
-  entityTypes: DEFAULT_EMBEDDING_ENTITY_TYPES,
+  // Entity types are derived at runtime depending on number of models present.
+  entityTypes: null,
 };
 
 const embeddingDataPickerSlice = createSlice({

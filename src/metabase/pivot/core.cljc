@@ -1,6 +1,5 @@
 (ns metabase.pivot.core
   (:require
-   #?(:clj [metabase.util.json :as json])
    [flatland.ordered.map :as ordered-map]
    [medley.core :as m]
    [metabase.models.visualization-settings :as mb.viz]
@@ -18,12 +17,14 @@
      [x]
      (js->clj (js/JSON.parse x))))
 
-(defn- json-roundtrip
-  "Round-trips a value to JSON and back in Clojure to ensure it can be used as a key with consistent type.
+(defn- ensure-consistent-type
+  "Convert Clojure value that may have ambigous type into canonical type to ensure it can be used as a key.
   Does nothing in CLJS."
   [x]
   #?(:cljs x
-     :clj (json/decode (json/encode x))))
+     :clj (cond (integer? x) (int x) ;; Handles BigInteger
+                (decimal? x) (double x) ;; Handles BigDecimal
+                :else x)))
 
 (defn- pivot-group-column?
   "Is the given column the pivot-grouping column?"
@@ -91,7 +92,7 @@
               (persistent!
                (reduce
                 (fn [acc row]
-                  (let [grouping-key (json-roundtrip (mapv #(nth row %) column-indexes))
+                  (let [grouping-key (ensure-consistent-type (mapv #(nth row %) column-indexes))
                         values (mapv #(nth row %) val-indexes)]
                     (assoc! acc grouping-key values)))
                 (transient {})
@@ -144,7 +145,7 @@
     ;; In `add-is-collapsed` we parse JSON from the viz settings to determine
     ;; the path of values to collapse. So we have to roundtrip values from the QP
     ;; to JSON and back to make sure their types match.
-    (let [v (json-roundtrip (first path))]
+    (let [v (ensure-consistent-type (first path))]
       (update tree v
               (fn [node]
                 (let [subtree (or (:children node) (ordered-map/ordered-map))]
@@ -165,7 +166,7 @@
   (let [col-and-row-indexes (into (vec col-indexes) row-indexes)]
     (reduce
      (fn [acc row]
-       (let [value-key  (json-roundtrip (select-indexes row col-and-row-indexes))
+       (let [value-key  (ensure-consistent-type (select-indexes row col-and-row-indexes))
              values     (select-indexes row val-indexes)
              data       (into []
                               (map-indexed
