@@ -26,7 +26,7 @@
                                             {:database (mt/id),
                                              :type "query",
                                              :query {:source-table (mt/id :orders)}})]
-    (is (= [(mt/id :orders)]
+    (is (= #{(mt/id :orders)}
            (#'ordering/transform-deps (t2/select-one :model/Transform :id t1))))))
 
 (deftest joined-dependencies-test
@@ -85,3 +85,22 @@
              (mt/id :products)}
            (into #{}
                  (#'ordering/transform-deps (t2/select-one :model/Transform :id t1)))))))
+
+(defn- rotations
+  [v]
+  (let [n (count v)]
+    (into #{} (map #(take n (drop % (cycle v))))
+          (range n))))
+
+(deftest find-cycle-test
+  (let [test-graph
+        {1 #{2}
+         2 #{3 5}
+         3 #{4}
+         4 #{6}
+         5 #{6}
+         6 #{7}
+         7 #{3}}
+        cycles (rotations [3 4 6 7])]
+    (is (contains? cycles
+                   (ordering/find-cycle test-graph)))))

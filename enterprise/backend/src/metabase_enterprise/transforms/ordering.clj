@@ -59,27 +59,25 @@
                                         (transform-deps transform))]))
           transforms)))
 
-(defn cycle
+(defn find-cycle
   "Finds a path containing a cycle in the directed graph `node->children`."
-  ([node->children]
-   (some #(cycle node->children %) (keys node->children)))
-  ([node->children start]
-   (loop [stack [[start (ordered-set)]]
-          visited #{}]
-     (when-let [[node path] (peek stack)]
-       (cond
-         (contains? path node)
-         (into [] (drop-while (complement #{node})) (conj path node))
+  [node->children]
+  (loop [stack (into [] (map #(vector % (ordered-set))) (keys node->children))
+         visited #{}]
+    (when-let [[node path] (peek stack)]
+      (cond
+        (contains? path node)
+        (into [] (drop-while (complement #{node})) (conj path node))
 
-         (contains? visited node)
-         (recur (pop stack) visited)
+        (contains? visited node)
+        (recur (pop stack) visited)
 
-         :else
-         (let [new-path (conj path node)
-               new-stack (into (pop stack)
-                               (map #(vector % new-path))
-                               (node->children node))]
-           (recur new-stack (conj visited node))))))))
+        :else
+        (let [path' (conj path node)
+              stack' (into (pop stack)
+                           (map #(vector % path'))
+                           (node->children node))]
+          (recur stack' (conj visited node)))))))
 
 (defn available-transforms
   "Given an ordering (see transform-ordering), a set of running transform ids, and a set of completed transform ids,
