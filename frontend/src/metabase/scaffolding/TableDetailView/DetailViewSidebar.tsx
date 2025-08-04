@@ -16,7 +16,14 @@ import {
 import { useRef, useState } from "react";
 import { t } from "ttag";
 
-import { Box, Button, Group, Popover, Stack, Text } from "metabase/ui/components";
+import {
+  Box,
+  Button,
+  Group,
+  Popover,
+  Stack,
+  Text,
+} from "metabase/ui/components";
 import { Icon } from "metabase/ui/components/icons";
 import type { DatasetColumn } from "metabase-types/api";
 
@@ -39,7 +46,9 @@ function SortableFieldItem({ field, column }: SortableFieldItemProps) {
   } = useSortable({ id: field.field_id });
 
   const style = {
-    transform: transform ? `translate3d(${transform.x}px, ${transform.y}px, 0)` : undefined,
+    transform: transform
+      ? `translate3d(${transform.x}px, ${transform.y}px, 0)`
+      : undefined,
     transition,
     opacity: isDragging ? 0.5 : 1,
   };
@@ -60,9 +69,7 @@ function SortableFieldItem({ field, column }: SortableFieldItemProps) {
     >
       <Group gap="xs" align="center">
         <Icon name="grabber" size={12} />
-        <Text size="sm">
-          {column?.display_name || field.field_id}
-        </Text>
+        <Text size="sm">{column?.display_name || field.field_id}</Text>
       </Group>
     </Box>
   );
@@ -81,9 +88,6 @@ interface Section {
 interface DetailViewSidebarProps {
   columns: DatasetColumn[];
   sections: Section[];
-  hasRelationships: boolean;
-  relationshipsDirection: "horizontal" | "vertical";
-  onUpdateRelationshipsDirection: (direction: "horizontal" | "vertical") => void;
   onCreateSection: (options?: { position?: "start" | "end" }) => void;
   onUpdateSection: (sectionId: string, update: Partial<Section>) => void;
   onUpdateSections: (sections: Section[]) => void;
@@ -96,9 +100,6 @@ interface DetailViewSidebarProps {
 export function DetailViewSidebar({
   columns,
   sections,
-  hasRelationships,
-  relationshipsDirection,
-  onUpdateRelationshipsDirection,
   onCreateSection,
   onUpdateSection,
   onUpdateSections,
@@ -148,7 +149,9 @@ export function DetailViewSidebar({
               {sections.map((section, _index) => {
                 return (
                   <>
-                    <Text fw={500} size="sm">{section.title}</Text>
+                    <Text fw={500} size="sm">
+                      {section.title}
+                    </Text>
                     <Box
                       key={section.id}
                       p="md"
@@ -163,10 +166,17 @@ export function DetailViewSidebar({
                           <Box pos="relative">
                             <Text
                               size="xs"
-                              c={section.fields.length === 0 ? "text-light" : "text-medium"}
+                              c={
+                                section.fields.length === 0
+                                  ? "text-light"
+                                  : "text-medium"
+                              }
                               style={{
-                                cursor: section.fields.length === 0 ? "default" : "pointer",
-                                opacity: section.fields.length === 0 ? 0.5 : 1
+                                cursor:
+                                  section.fields.length === 0
+                                    ? "default"
+                                    : "pointer",
+                                opacity: section.fields.length === 0 ? 0.5 : 1,
                               }}
                               onClick={() => {
                                 if (section.fields.length > 0) {
@@ -182,70 +192,104 @@ export function DetailViewSidebar({
                               {section.fields.length} {t`fields`}
                             </Text>
 
-                            {openPopoverId === section.id && section.fields.length > 0 && (
-                              <Box
-                                pos="absolute"
-                                top="100%"
-                                left={0}
-                                mt="xs"
-                                bg="white"
-                                style={{
-                                  border: "1px solid var(--border-color)",
-                                  borderRadius: "var(--default-border-radius)",
-                                  boxShadow: "var(--mb-shadow-lg)",
-                                  zIndex: 1000,
-                                  minWidth: 300,
-                                }}
-                                p="md"
-                              >
-                                <Text fw={600} mb="sm">{t`Fields in ${section.title}`}</Text>
-                                <DndContext
-                                  sensors={sensors}
-                                  collisionDetection={closestCenter}
-                                  onDragStart={() => {
-                                    isDraggingRef.current = true;
-                                    shouldKeepOpenRef.current = true;
+                            {openPopoverId === section.id &&
+                              section.fields.length > 0 && (
+                                <Box
+                                  pos="absolute"
+                                  top="100%"
+                                  left={0}
+                                  mt="xs"
+                                  bg="white"
+                                  style={{
+                                    border: "1px solid var(--border-color)",
+                                    borderRadius:
+                                      "var(--default-border-radius)",
+                                    boxShadow: "var(--mb-shadow-lg)",
+                                    zIndex: 1000,
+                                    minWidth: 300,
                                   }}
-                                  onDragEnd={(event) => {
-                                    isDraggingRef.current = false;
-                                    // Keep the dropdown open after drag ends
-                                    setTimeout(() => {
-                                      shouldKeepOpenRef.current = false;
-                                    }, 100);
-                                    const { active, over } = event;
-                                    if (over && active.id !== over.id) {
-                                      const oldIndex = section.fields.findIndex(field => field.field_id === active.id);
-                                      const newIndex = section.fields.findIndex(field => field.field_id === over.id);
-                                      if (oldIndex !== -1 && newIndex !== -1) {
-                                        const newFields = [...section.fields];
-                                        const [movedField] = newFields.splice(oldIndex, 1);
-                                        newFields.splice(newIndex, 0, movedField);
-                                        onUpdateSection(section.id.toString(), { fields: newFields });
-                                      }
-                                    }
-                                  }}
+                                  p="md"
                                 >
-                                  <SortableContext
-                                    items={section.fields.map(field => field.field_id)}
-                                    strategy={verticalListSortingStrategy}
+                                  <Text
+                                    fw={600}
+                                    mb="sm"
+                                  >{t`Fields in ${section.title}`}</Text>
+                                  <DndContext
+                                    sensors={sensors}
+                                    collisionDetection={closestCenter}
+                                    onDragStart={() => {
+                                      isDraggingRef.current = true;
+                                      shouldKeepOpenRef.current = true;
+                                    }}
+                                    onDragEnd={(event) => {
+                                      isDraggingRef.current = false;
+                                      // Keep the dropdown open after drag ends
+                                      setTimeout(() => {
+                                        shouldKeepOpenRef.current = false;
+                                      }, 100);
+                                      const { active, over } = event;
+                                      if (over && active.id !== over.id) {
+                                        const oldIndex =
+                                          section.fields.findIndex(
+                                            (field) =>
+                                              field.field_id === active.id,
+                                          );
+                                        const newIndex =
+                                          section.fields.findIndex(
+                                            (field) =>
+                                              field.field_id === over.id,
+                                          );
+                                        if (
+                                          oldIndex !== -1 &&
+                                          newIndex !== -1
+                                        ) {
+                                          const newFields = [...section.fields];
+                                          const [movedField] = newFields.splice(
+                                            oldIndex,
+                                            1,
+                                          );
+                                          newFields.splice(
+                                            newIndex,
+                                            0,
+                                            movedField,
+                                          );
+                                          onUpdateSection(
+                                            section.id.toString(),
+                                            { fields: newFields },
+                                          );
+                                        }
+                                      }
+                                    }}
                                   >
-                                    <Stack gap="xs">
-                                      {section.fields.map((field, _fieldIndex) => {
-                                        const column = columns.find((col: DatasetColumn) => String(col.id) === field.field_id);
+                                    <SortableContext
+                                      items={section.fields.map(
+                                        (field) => field.field_id,
+                                      )}
+                                      strategy={verticalListSortingStrategy}
+                                    >
+                                      <Stack gap="xs">
+                                        {section.fields.map(
+                                          (field, _fieldIndex) => {
+                                            const column = columns.find(
+                                              (col: DatasetColumn) =>
+                                                String(col.id) ===
+                                                field.field_id,
+                                            );
 
-                                        return (
-                                          <SortableFieldItem
-                                            key={field.field_id}
-                                            field={field}
-                                            column={column}
-                                          />
-                                        );
-                                      })}
-                                    </Stack>
-                                  </SortableContext>
-                                </DndContext>
-                              </Box>
-                            )}
+                                            return (
+                                              <SortableFieldItem
+                                                key={field.field_id}
+                                                field={field}
+                                                column={column}
+                                              />
+                                            );
+                                          },
+                                        )}
+                                      </Stack>
+                                    </SortableContext>
+                                  </DndContext>
+                                </Box>
+                              )}
                           </Box>
                         </Stack>
                         {/* {sections.length > 1 && (

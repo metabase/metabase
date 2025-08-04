@@ -328,14 +328,13 @@ export function TableDetailViewInner({
             }}
           >
             <DetailViewSidebar
-              // columns={columns}
-              // sections={sections}
-              // hasRelationships={hasRelationships}
-              // onCreateSection={createSection}
-              // onUpdateSection={updateSection}
-              // onUpdateSections={updateSections}
-              // onRemoveSection={removeSection}
-              // onDragEnd={handleDragEnd}
+              columns={columns}
+              sections={sections}
+              onCreateSection={createSection}
+              onUpdateSection={updateSection}
+              onUpdateSections={updateSections}
+              onRemoveSection={removeSection}
+              onDragEnd={handleDragEnd}
               onCancel={handleCloseClick}
               onSubmit={handleSaveClick}
             />
