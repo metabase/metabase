@@ -66,7 +66,7 @@ export function getDefaultObjectViewSettings(
     sections: [
       {
         id: getNextId(),
-        title: "Header",
+        title: "Title",
         variant: "header",
         fields: headerFields.map((field) => ({
           field_id: getRawTableFieldId(field),
@@ -74,13 +74,13 @@ export function getDefaultObjectViewSettings(
       },
       {
         id: getNextId(),
-        title: "Subheader",
+        title: "Subtitle",
         variant: "subheader",
         fields: [],
       },
       {
         id: getNextId(),
-        title: "Highlight level 1",
+        title: "Data Highlight",
         variant: "highlight-1",
         fields: [],
       },

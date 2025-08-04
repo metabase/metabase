@@ -39,6 +39,15 @@ export function DetailViewSidebar({
   openPopoverId,
   setOpenPopoverId,
 }: DetailViewSidebarProps) {
+  const headerSection = sections.find((s) => s.variant === "header");
+  const subheaderSection = sections.find((s) => s.variant === "subheader");
+  const highlight1Section = sections.find((s) => s.variant === "highlight-1");
+
+  const otherSections = sections.filter(
+    (s) =>
+      s !== headerSection && s !== subheaderSection && s !== highlight1Section,
+  );
+
   return (
     <Stack gap={0} h="100%">
       <Box
@@ -54,33 +63,66 @@ export function DetailViewSidebar({
 
       <Box flex="1" px="xl" pb="xl" pt={16} style={{ overflow: "auto" }}>
         <Stack gap="lg">
-          <Box>
-            <Group justify="space-between" align="center" mb="md">
-              <Text fw={600}>{t`Sections`}</Text>
-              <Button
-                size="xs"
-                variant="subtle"
-                leftSection={<Icon name="add" />}
-                onClick={() => onCreateSection({ position: "end" })}
-              >
-                {t`Add section`}
-              </Button>
-            </Group>
-            <Stack gap="sm">
-              {sections.map((section) => (
-                <SidebarSectionItem
-                  key={section.id}
-                  section={section}
-                  sections={sections}
-                  columns={columns}
-                  onUpdateSection={onUpdateSection}
-                  onRemoveSection={onRemoveSection}
-                  openPopoverId={openPopoverId}
-                  setOpenPopoverId={setOpenPopoverId}
-                />
-              ))}
-            </Stack>
-          </Box>
+          {headerSection && (
+            <SidebarSectionItem
+              section={headerSection}
+              sections={sections}
+              columns={columns}
+              onUpdateSection={onUpdateSection}
+              onRemoveSection={onRemoveSection}
+              openPopoverId={openPopoverId}
+              setOpenPopoverId={setOpenPopoverId}
+            />
+          )}
+
+          {subheaderSection && (
+            <SidebarSectionItem
+              section={subheaderSection}
+              sections={sections}
+              columns={columns}
+              onUpdateSection={onUpdateSection}
+              onRemoveSection={onRemoveSection}
+              openPopoverId={openPopoverId}
+              setOpenPopoverId={setOpenPopoverId}
+            />
+          )}
+
+          {highlight1Section && (
+            <SidebarSectionItem
+              section={highlight1Section}
+              sections={sections}
+              columns={columns}
+              onUpdateSection={onUpdateSection}
+              onRemoveSection={onRemoveSection}
+              openPopoverId={openPopoverId}
+              setOpenPopoverId={setOpenPopoverId}
+            />
+          )}
+
+          <Group justify="space-between" align="center" mb="md">
+            <Text fw={600}>{t`Sections`}</Text>
+            <Button
+              size="xs"
+              variant="subtle"
+              leftSection={<Icon name="add" />}
+              onClick={() => onCreateSection({ position: "end" })}
+            >
+              {t`Add section`}
+            </Button>
+          </Group>
+
+          {otherSections.map((section) => (
+            <SidebarSectionItem
+              key={section.id}
+              section={section}
+              sections={sections}
+              columns={columns}
+              onUpdateSection={onUpdateSection}
+              onRemoveSection={onRemoveSection}
+              openPopoverId={openPopoverId}
+              setOpenPopoverId={setOpenPopoverId}
+            />
+          ))}
         </Stack>
       </Box>
 

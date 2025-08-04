@@ -36,8 +36,8 @@ export function SidebarSectionItem({
   }, [section.fields]);
 
   return (
-    <>
-      <Text fw={500} size="sm">
+    <Stack gap={4}>
+      <Text fw="bold" c="text-primary" size="sm">
         {section.title}
       </Text>
       <Box
@@ -93,6 +93,6 @@ export function SidebarSectionItem({
           )} */}
         </Group>
       </Box>
-    </>
+    </Stack>
   );
 }
