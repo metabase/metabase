@@ -3,18 +3,11 @@
    [clojure.core.match]
    [clojure.set :as set]
    [flatland.ordered.set :refer [ordered-set]]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.util :as lib.util]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.store :as qp.store]
-   [metabase.util :as u]
-   [toucan2.core :as t2]))
-
-(defn- get-output-table [transform]
-  (t2/select-one-fn :id
-                    :model/Table
-                    :schema (get-in transform [:target :schema])
-                    :name (get-in transform [:target :name])
-                    :db_id (get-in transform [:source :query :database])))
+   [metabase.util :as u]))
 
 (defn- transform-deps [transform]
   (let [query (-> (get-in transform [:source :query])
@@ -32,6 +25,23 @@
           (map (juxt :id transform-deps))
           transforms)))
 
+(defn- dependency-map [transforms]
+  (into {}
+        (map (juxt :id transform-deps))
+        transforms))
+
+(defn- output-table-map [transforms]
+  (let [table-map (into {}
+                        (map (fn [{:keys [schema name id]}]
+                               [[schema name] id]))
+                        (lib.metadata/tables (qp.store/metadata-provider)))]
+    (into {}
+          (keep (fn [transform]
+                  (when-let [output-table (table-map [(get-in transform [:target :schema])
+                                                      (get-in transform [:target :name])])]
+                    [output-table (:id transform)])))
+          transforms)))
+
 (defn transform-ordering
   "Computes an 'ordering' of a given list of transforms.
 
@@ -43,17 +53,14 @@
                               (map (fn [transform]
                                      {(get-in transform [:source :query :database]) [transform]}))
                               (apply merge-with into))
-        output-tables (into {}
-                            (map (fn [transform]
-                                   [(get-output-table transform) (:id transform)]))
-                            transforms)]
-    (into {}
-          (map (fn [[db-id transforms-for-db]]
-                 (-> (transform-deps-for-db db-id transforms-for-db)
-                     (update-vals #(into #{}
-                                         (keep output-tables)
-                                         %)))))
-          transforms-by-db)))
+
+        {:keys [output-tables dependencies]} (->> transforms-by-db
+                                                  (map (fn [[db-id db-transforms]]
+                                                         (qp.store/with-metadata-provider db-id
+                                                           {:output-tables (output-table-map db-transforms)
+                                                            :dependencies (dependency-map db-transforms)})))
+                                                  (apply merge-with merge))]
+    (update-vals dependencies #(into #{} (keep output-tables) %))))
 
 (defn find-cycle
   "Finds a path containing a cycle in the directed graph `node->children`."
