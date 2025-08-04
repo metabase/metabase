@@ -32,3 +32,7 @@ export const MultipleProviders = () => (
     </MetabaseProvider>
   </>
 );
+
+export const MissingProvider = () => (
+  <InteractiveQuestion questionId={QUESTION_ID} />
+);

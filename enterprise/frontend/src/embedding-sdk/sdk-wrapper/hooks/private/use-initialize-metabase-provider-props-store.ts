@@ -6,6 +6,7 @@ import {
   type MetabaseProviderPropsStoreInternalProps,
   ensureMetabaseProviderPropsStore,
 } from "embedding-sdk/sdk-shared/lib/ensure-metabase-provider-props-store";
+import { SdkLoadingState } from "embedding-sdk/sdk-shared/types/sdk-loading";
 
 export const useInitializeMetabaseProviderPropsStore = (
   initialProps: MetabaseProviderPropsStoreExternalProps,
@@ -22,7 +23,7 @@ export const useInitializeMetabaseProviderPropsStore = (
   );
 
   const {
-    props: { initialized = false },
+    props: { loadingState },
   } = useMetabaseProviderPropsStore();
 
   useEffect(function cleanupMetabaseProviderPropsStore() {
@@ -33,17 +34,21 @@ export const useInitializeMetabaseProviderPropsStore = (
 
   useEffect(
     function initializeReduxStore() {
-      if (reduxStore && !initialized) {
+      if (
+        reduxStore &&
+        !!loadingState &&
+        loadingState < SdkLoadingState.Initialized
+      ) {
         ensureMetabaseProviderPropsStore().updateInternalProps({
           reduxStore,
-          initialized: true,
+          loadingState: SdkLoadingState.Initialized,
         });
       }
     },
-    [reduxStore, initialized],
+    [reduxStore, loadingState],
   );
 
   return {
-    initialized,
+    initialized: !!loadingState && loadingState >= SdkLoadingState.Initialized,
   };
 };
