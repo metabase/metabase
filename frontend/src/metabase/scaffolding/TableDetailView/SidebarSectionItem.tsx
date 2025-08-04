@@ -40,9 +40,11 @@ export function SidebarSectionItem({
       <Text fw="bold" c="text-primary" size="sm">
         {section.title}
       </Text>
+
       <Box
         key={section.id}
-        p="md"
+        px="md"
+        py="sm"
         style={{
           border: "1px solid var(--border-color)",
           borderRadius: "var(--default-border-radius)",
@@ -59,24 +61,22 @@ export function SidebarSectionItem({
         }}
       >
         <Group justify="space-between" align="flex-start">
-          <Stack gap="xs" flex="1">
-            <Box pos="relative">
-              <Text size="xs" c="text-medium">
-                {section.fields.length === 0
-                  ? t`No fields`
-                  : t`${section.fields.length} fields`}
-              </Text>
+          <Stack gap="xs" flex="1" pos="relative">
+            <Text c="text-medium">
+              {section.fields.length === 0
+                ? t`No fields`
+                : t`${section.fields.length} fields`}
+            </Text>
 
-              <FieldsPopover
-                isOpen={openPopoverId === section.id}
-                section={section}
-                usedFieldIds={usedFieldIds}
-                columns={columns}
-                onUpdateSection={onUpdateSection}
-                onClose={() => setOpenPopoverId(null)}
-                triggerRef={triggerRef}
-              />
-            </Box>
+            <FieldsPopover
+              isOpen={openPopoverId === section.id}
+              section={section}
+              usedFieldIds={usedFieldIds}
+              columns={columns}
+              onUpdateSection={onUpdateSection}
+              onClose={() => setOpenPopoverId(null)}
+              triggerRef={triggerRef}
+            />
           </Stack>
           {/* {sections.length > 1 && onRemoveSection && (
             <Button
