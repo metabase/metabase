@@ -136,6 +136,7 @@
                              (metabot-v3.tools.u/table-field-id-prefix id))]
        (-> {:id id
             :type :table
+            :database-id (:db_id base)  ; Include database ID in the result
             :fields (into [] (map-indexed #(metabot-v3.tools.u/->result-column table-query %2 %1 field-id-prefix)) cols)
             ;; :name should be (lib/display-name table-query), but we want to avoid creating the query if possible
             :name (some->> (:name base)
@@ -177,6 +178,7 @@
          field-id-prefix (metabot-v3.tools.u/card-field-id-prefix id)]
      (-> {:id id
           :type card-type
+          :database-id (:database_id base)  ; Include database ID for models/cards
           :fields (into [] (map-indexed #(metabot-v3.tools.u/->result-column card-query %2 %1 field-id-prefix)) cols)
           :name (:name base)
           :queryable-foreign-key-tables []}
