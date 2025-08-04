@@ -1,10 +1,7 @@
 import type { ReactNode } from "react";
-import { Link } from "react-router";
 import { t } from "ttag";
 
-import { isSyncInProgress } from "metabase/lib/syncing";
-import { getUrl } from "metabase/metadata/pages/DataModel/utils";
-import { Flex, Menu, Tooltip } from "metabase/ui/components";
+import { Flex, Tooltip } from "metabase/ui/components";
 import { Button } from "metabase/ui/components/buttons";
 import { Icon } from "metabase/ui/components/icons";
 import type { Table } from "metabase-types/api";
@@ -35,8 +32,6 @@ export function DetailViewHeader({
   onPreviousItemClick,
   onNextItemClick,
   onEditClick,
-  onCloseClick,
-  onSaveClick,
 }: DetailViewHeaderProps & { table: any }): JSX.Element {
   return (
     <Nav rowId={rowId} rowName={rowName} table={table}>
@@ -66,39 +61,6 @@ export function DetailViewHeader({
             {t`Display settings`}
           </Button>
         )}
-
-        {/* {!isSyncInProgress(table) && (
-          <Menu position="bottom-end">
-            <Menu.Target>
-              <Tooltip label={t`More`}>
-                <Button leftSection={<Icon name="ellipsis" />} />
-              </Tooltip>
-            </Menu.Target>
-
-            <Menu.Dropdown>
-              <Menu.Item
-                leftSection={<Icon name="reference" />}
-                component={Link}
-                to={`/reference/databases/${table.db_id}/tables/${table.id}`}
-              >
-                {t`Learn about this table`}
-              </Menu.Item>
-
-              <Menu.Item
-                leftSection={<Icon name="table2" />}
-                component={Link}
-                to={getUrl({
-                  databaseId: table.db_id,
-                  schemaName: table.schema,
-                  tableId: table.id,
-                  fieldId: undefined,
-                })}
-              >
-                {t`Edit table metadata`}
-              </Menu.Item>
-            </Menu.Dropdown>
-          </Menu>
-        )} */}
       </Flex>
     </Nav>
   );
