@@ -34,6 +34,12 @@
   {:result (dissoc result :score)
    :score  (:score result)})
 
+(defmulti scorers
+  "Return the select-item expressions used to calculate the score for each search result for this engine."
+  {:arglists '([search-context])}
+  (fn [{engine :search-engine}]
+    engine))
+
 (defmulti update!
   "Updates the existing search index by consuming the documents from the given reducible.
   Returns a map of the number of documents indexed in each model"

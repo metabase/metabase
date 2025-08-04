@@ -10,6 +10,7 @@
    [metabase.search.config :as search.config]
    [metabase.search.core :as search]
    [metabase.search.ingestion :as search.ingestion]
+   [metabase.search.scoring :as search.scoring]
    [metabase.search.spec :as search.spec]
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
@@ -73,7 +74,8 @@
                                    (map (comp keyword u/->kebab-case-en name second))
                                    ;; Remove db-specific fields
                                    (remove #{:search-vector :query}))
-                             (vals (scoring/scorers {:search-string ""})))
+                             (vals (search.scoring/scorers {:search-engine :search.engine/appdb
+                                                            :search-string ""})))
                        (set (cons :model (keys search.spec/attr-types))))))))
 
 ;; ---- index-ony rankers ----

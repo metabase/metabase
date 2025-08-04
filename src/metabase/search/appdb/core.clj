@@ -8,13 +8,14 @@
    [metabase.config.core :as config]
    [metabase.events.core :as events]
    [metabase.search.appdb.index :as search.index]
-   [metabase.search.appdb.scoring :as search.scoring]
+   [metabase.search.appdb.scoring :as appdb.scoring]
    [metabase.search.appdb.specialization.postgres :as specialization.postgres]
    [metabase.search.config :as search.config]
    [metabase.search.engine :as search.engine]
    [metabase.search.filter :as search.filter]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.search.permissions :as search.permissions]
+   [metabase.search.scoring :as search.scoring]
    [metabase.search.settings :as search.settings]
    [metabase.settings.core :as setting]
    [metabase.util :as u]
@@ -146,7 +147,7 @@
       (->> (search.index/search-query search-string search-ctx [:legacy_input])
            (add-collection-join-and-where-clauses search-ctx)
            (add-table-where-clauses search-ctx)
-           (search.scoring/with-scores search-ctx scorers)
+           (appdb.scoring/with-scores search-ctx scorers)
            (search.filter/with-filters search-ctx)
            t2/query
            (map (partial rehydrate weights (keys scorers)))))
