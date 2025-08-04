@@ -64,21 +64,14 @@
                   (log/error t (str "Error syncing " (:run_id run))))))
             nil runs))
   (log/trace "Timing out old runs.")
-  (let [runs (t2/reducible-select :model/WorkerRun
-                                  :is_active true
-                                  {:where [:< :start_time
-                                           (sql.qp/add-interval-honeysql-form (mdb/db-type) [:now] -4 :hour)]})]
-    (reduce (fn [_ run]
-              (try
-                (t2/update! :model/WorkerRun
-                            :run_id (:run_id run)
-                            {:status :timeout
-                             :end_time [:now]
-                             :is_active nil
-                             :message "Timed out by metabase."})
-                (catch Throwable t
-                  (log/error t (str "Error timing out " (:run_id run))))))
-            nil runs)))
+  (t2/update! :model/WorkerRun
+              :is_active true
+              [:< :start_time
+               (sql.qp/add-interval-honeysql-form (mdb/db-type) [:now] -1 :minute)] true
+              {:status :timeout
+               :end_time [:now]
+               :is_active nil
+               :message "Timed out by metabase"}))
 
 (task/defjob  ^{:doc "Syncs remote execution information with local table."
                 org.quartz.DisallowConcurrentExecution true}
