@@ -33,7 +33,8 @@ export function SidebarSectionItem({
   setOpenPopoverId,
   variant,
 }: SidebarSectionItemProps) {
-  const triggerRef = useRef<HTMLDivElement>(null);
+  const rootTriggerRef = useRef<HTMLDivElement>(null);
+  const textTriggerRef = useRef<HTMLDivElement>(null);
   const usedFieldIds = useMemo(() => {
     return new Set(section.fields.map((f) => String(f.field_id)));
   }, [section.fields]);
@@ -54,11 +55,16 @@ export function SidebarSectionItem({
           backgroundColor: "var(--mb-color-bg-white)",
           cursor: "pointer",
         }}
-        ref={triggerRef}
+        ref={rootTriggerRef}
         onClick={(event) => {
+          const target = event.target as HTMLElement;
+          // popover is open
           if (openPopoverId === section.id) {
             // do not close popover when we click inside it e.g. add section
-            if (triggerRef.current?.contains(event.target as HTMLElement)) {
+            if (
+              rootTriggerRef.current?.contains(target) &&
+              !textTriggerRef.current?.contains(target)
+            ) {
               return;
             }
 
@@ -70,7 +76,7 @@ export function SidebarSectionItem({
       >
         <Group justify="space-between" align="flex-start">
           <Stack gap="xs" flex="1" pos="relative">
-            <Text c="text-medium">
+            <Text c="text-medium" ref={textTriggerRef}>
               {section.fields.length === 0
                 ? t`No fields`
                 : t`${section.fields.length} fields`}
@@ -83,7 +89,7 @@ export function SidebarSectionItem({
               columns={columns}
               onUpdateSection={onUpdateSection}
               onClose={() => setOpenPopoverId(null)}
-              triggerRef={triggerRef}
+              triggerRef={rootTriggerRef}
             />
           </Stack>
           {/* {sections.length > 1 && onRemoveSection && (
