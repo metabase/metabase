@@ -1605,6 +1605,7 @@
    :api  #{metabase-enterprise.data-editing.api}
    :uses #{actions
            api
+           models
            util}}
 
   enterprise/database-replication
