@@ -18,6 +18,8 @@ import { renderValue } from "../utils";
 
 import S from "./TableDetailView.module.css";
 
+const REMOVABLE_SECTIONS = ["normal", "highlight-2"];
+
 type ObjectViewSectionProps = {
   section: ObjectViewSectionSettings;
   columns: DatasetColumn[];
@@ -27,11 +29,11 @@ type ObjectViewSectionProps = {
   onUpdateSection: (section: Partial<ObjectViewSectionSettings>) => void;
   onRemoveSection?: () => void;
   dragHandleProps?: any;
-  type: SectionVariant;
+  variant: SectionVariant;
 };
 
 export function ObjectViewSection({
-  type = "normal",
+  variant = "normal",
   section,
   columns,
   row,
@@ -47,11 +49,11 @@ export function ObjectViewSection({
   return (
     <Box
       className={cx(S.ObjectViewSection, {
-        [S.normal]: type === "normal",
-        [S.header]: type === "header",
-        [S.subheader]: type === "subheader",
-        [S.highlight1]: type === "highlight-1",
-        [S.highlight2]: type === "highlight-2",
+        [S.normal]: variant === "normal",
+        [S.header]: variant === "header",
+        [S.subheader]: variant === "subheader",
+        [S.highlight1]: variant === "highlight-1",
+        [S.highlight2]: variant === "highlight-2",
       })}
       pos="relative"
       px="md"
@@ -126,7 +128,7 @@ export function ObjectViewSection({
           );
         })}
       </Flex>
-      {isEdit && onRemoveSection && (
+      {isEdit && onRemoveSection && REMOVABLE_SECTIONS.includes(variant) && (
         <Group
           className={S.ObjectViewSectionActions}
           pos="absolute"

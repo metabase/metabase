@@ -65,6 +65,7 @@ export function DetailViewSidebar({
         <Stack gap="lg">
           {headerSection && (
             <SidebarSectionItem
+              variant="header"
               section={headerSection}
               sections={sections}
               columns={columns}
@@ -77,6 +78,7 @@ export function DetailViewSidebar({
 
           {subheaderSection && (
             <SidebarSectionItem
+              variant="subheader"
               section={subheaderSection}
               sections={sections}
               columns={columns}
@@ -89,6 +91,7 @@ export function DetailViewSidebar({
 
           {highlight1Section && (
             <SidebarSectionItem
+              variant="highlight-1"
               section={highlight1Section}
               sections={sections}
               columns={columns}
@@ -116,6 +119,7 @@ export function DetailViewSidebar({
           {otherSections.map((section) => (
             <SidebarSectionItem
               key={section.id}
+              variant={section.variant}
               section={section}
               sections={sections}
               columns={columns}

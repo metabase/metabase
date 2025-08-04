@@ -1,13 +1,16 @@
 import { useMemo, useRef } from "react";
 import { t } from "ttag";
 
-import { Box, Group, Stack, Text } from "metabase/ui/components";
+import { Box, Flex, Group, Stack, Switch, Text } from "metabase/ui/components";
 import type {
   DatasetColumn,
   ObjectViewSectionSettings,
+  SectionVariant,
 } from "metabase-types/api";
 
 import { FieldsPopover } from "./FieldsPopover";
+
+const HIGHLIGHTABLE_VARIANTS = ["highlight-2", "normal"];
 
 type Section = ObjectViewSectionSettings;
 
@@ -19,6 +22,7 @@ interface SidebarSectionItemProps {
   onRemoveSection?: (sectionId: number) => void;
   openPopoverId: number | null;
   setOpenPopoverId: (id: number | null) => void;
+  variant: SectionVariant;
 }
 
 export function SidebarSectionItem({
@@ -29,6 +33,7 @@ export function SidebarSectionItem({
   onRemoveSection: _onRemoveSection,
   openPopoverId,
   setOpenPopoverId,
+  variant,
 }: SidebarSectionItemProps) {
   const triggerRef = useRef<HTMLDivElement>(null);
   const usedFieldIds = useMemo(() => {
@@ -37,7 +42,7 @@ export function SidebarSectionItem({
 
   return (
     <Stack gap={4}>
-      <Text fw="bold" c="text-primary" size="sm">
+      <Text fw="bold" c="text-primary" size="md">
         {section.title}
       </Text>
 
@@ -90,6 +95,27 @@ export function SidebarSectionItem({
           )} */}
         </Group>
       </Box>
+      {HIGHLIGHTABLE_VARIANTS.includes(variant) && (
+        <Switch
+          label="Highlight group"
+          size="sm"
+          labelPosition="left"
+          checked={variant === "highlight-2"}
+          styles={{
+            root: {
+              width: "100%",
+            },
+            body: { justifyContent: "space-between" },
+          }}
+          onChange={(event) => {
+            onUpdateSection(section.id, {
+              variant: (event.currentTarget.checked
+                ? "highlight-2"
+                : "normal") as SectionVariant,
+            });
+          }}
+        />
+      )}
     </Stack>
   );
 }

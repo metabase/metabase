@@ -5,10 +5,9 @@ import type {
   DatasetColumn,
   ObjectViewSectionSettings,
   RowValues,
+  SectionVariant,
   TableId,
 } from "metabase-types/api";
-
-import type { SectionType } from "../types";
 
 import { ObjectViewSection } from "./ObjectViewSection";
 
@@ -20,7 +19,7 @@ type SortableSectionProps = {
   isEdit: boolean;
   onUpdateSection: (section: Partial<ObjectViewSectionSettings>) => void;
   onRemoveSection?: () => void;
-  type: SectionType;
+  variant: SectionVariant;
 };
 
 export function SortableSection(props: SortableSectionProps) {
