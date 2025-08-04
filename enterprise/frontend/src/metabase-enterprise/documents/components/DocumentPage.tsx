@@ -80,10 +80,11 @@ export const DocumentPage = ({
   const previousDocumentId = usePrevious(documentId);
   const previousVersion = usePrevious(selectedVersion);
   const [isNavigationScheduled, scheduleNavigation] = useCallbackEffect();
+  const isNewDocument = documentId === "new";
 
   const { data: documentData, isLoading: isDocumentLoading } =
     useGetDocumentQuery(
-      documentId && documentId !== "new"
+      documentId && !isNewDocument
         ? { id: documentId, version: selectedVersion }
         : skipToken,
     );
@@ -98,7 +99,7 @@ export const DocumentPage = ({
     selectedQuestionId ? { id: selectedQuestionId } : skipToken,
   );
 
-  const canWrite = documentId === "new" ? true : collection?.can_write;
+  const canWrite = isNewDocument ? true : collection?.can_write;
 
   const {
     documentTitle,
@@ -140,7 +141,7 @@ export const DocumentPage = ({
 
   // Reset state when creating a new document
   useEffect(() => {
-    if (documentId === "new" && previousDocumentId !== "new") {
+    if (isNewDocument && previousDocumentId !== "new") {
       setDocumentTitle("");
       setDocumentContent("");
       setCurrentContent("");
@@ -153,16 +154,17 @@ export const DocumentPage = ({
     setDocumentContent,
     previousDocumentId,
     dispatch,
+    isNewDocument,
   ]);
 
   useEffect(() => {
     // Set current document when document loads (includes collection_id and all other data)
-    if (documentData && documentId !== "new") {
+    if (documentData && !isNewDocument) {
       dispatch(setCurrentDocument(documentData));
-    } else if (documentId === "new") {
+    } else if (isNewDocument) {
       dispatch(setCurrentDocument(null));
     }
-  }, [documentData, documentId, dispatch]);
+  }, [documentData, documentId, dispatch, isNewDocument]);
 
   const hasUnsavedChanges = useCallback(() => {
     const currentTitle = documentTitle.trim();
@@ -170,7 +172,7 @@ export const DocumentPage = ({
     const titleChanged = currentTitle !== originalTitle;
 
     // For new documents, show Save if there's title or content exists
-    if (documentId === "new") {
+    if (isNewDocument) {
       const emptyDocAst = JSON.stringify({ type: "doc", content: [] });
       const hasContent =
         currentContent !== emptyDocAst && currentContent !== "";
@@ -183,7 +185,7 @@ export const DocumentPage = ({
     return titleChanged || contentChanged;
   }, [
     documentTitle,
-    documentId,
+    isNewDocument,
     documentData,
     currentContent,
     documentContent,
@@ -208,7 +210,7 @@ export const DocumentPage = ({
           card_ids: [...new Set(cardEmbeds.map((embed) => embed.id))],
         };
 
-        const result = await (documentId !== "new" && documentData?.id
+        const result = await (isNewDocument && documentData?.id
           ? updateDocument({ ...newDocumentData, id: documentData.id }).then(
               (response) => {
                 if (response.data) {
@@ -250,17 +252,17 @@ export const DocumentPage = ({
     },
     [
       editorInstance,
-      createDocument,
-      updateDocument,
-      documentData,
+      commitAllPendingChanges,
       documentTitle,
       currentContent,
-      sendToast,
-      dispatch,
-      commitAllPendingChanges,
-      documentId,
       cardEmbeds,
+      isNewDocument,
+      documentData?.id,
+      updateDocument,
+      createDocument,
       scheduleNavigation,
+      dispatch,
+      sendToast,
     ],
   );
 
@@ -273,7 +275,7 @@ export const DocumentPage = ({
           return;
         }
 
-        documentId === "new" ? showCollectionPicker() : handleSave();
+        isNewDocument ? showCollectionPicker() : handleSave();
       }
     };
 
@@ -282,7 +284,7 @@ export const DocumentPage = ({
     return () => {
       document.removeEventListener("keydown", handleKeyDown);
     };
-  }, [hasUnsavedChanges, handleSave, documentId, showCollectionPicker]);
+  }, [hasUnsavedChanges, handleSave, isNewDocument, showCollectionPicker]);
 
   const handleQuestionSelect = useCallback(async () => {
     if (selectedEmbedIndex !== null && selectedCard) {
@@ -339,6 +341,7 @@ export const DocumentPage = ({
                 style={{ width: "100%" }}
               >
                 <TextInput
+                  autoFocus={isNewDocument}
                   value={documentTitle}
                   onChange={(event) =>
                     setDocumentTitle(event.currentTarget.value)
@@ -358,9 +361,7 @@ export const DocumentPage = ({
                 {showSaveButton && (
                   <Button
                     onClick={() => {
-                      documentId === "new"
-                        ? showCollectionPicker()
-                        : handleSave();
+                      isNewDocument ? showCollectionPicker() : handleSave();
                     }}
                     variant="filled"
                     data-hide-on-print
