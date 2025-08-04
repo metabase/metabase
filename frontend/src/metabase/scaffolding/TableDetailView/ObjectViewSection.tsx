@@ -54,15 +54,13 @@ export function ObjectViewSection({
         [S.highlight2]: type === "highlight-2",
       })}
       pos="relative"
-      bg={isEdit ? "bg-medium" : "bg-white"}
       px="md"
       py="sm"
       style={{
-        border: isEdit ? "1px solid var(--border-color)" : "none",
         borderRadius: "var(--default-border-radius)",
       }}
     >
-      <Group gap="xs" mb="xl">
+      <Group gap="xs">
         {/* {isEdit && (
           <Icon
             name="grabber"
@@ -73,13 +71,14 @@ export function ObjectViewSection({
           />
         )} */}
         <EditableText
+          className={S.SectionTitle}
           initialValue={section.title}
           isDisabled={!isEdit}
           onChange={(title) => onUpdateSection({ title })}
-          style={{ fontWeight: 700, fontSize: "1.25rem" }}
+          style={{ fontWeight: 700, fontSize: "1.25rem", marginBottom: "2rem" }}
         />
       </Group>
-      <Flex gap="md" mt={"sm"} px="xs" className={S.SectionContent}>
+      <Flex gap="md" className={S.SectionContent} borderRadius="md">
         {section.fields.map(({ field_id }) => {
           const columnIndex = columns.findIndex(
             (column) => column.id === field_id,
@@ -105,6 +104,7 @@ export function ObjectViewSection({
               <Text
                 variant="primary"
                 truncate
+                lh="inherit"
                 c="var(--mb-color-text-primary)"
                 lineClamp={5}
                 style={{

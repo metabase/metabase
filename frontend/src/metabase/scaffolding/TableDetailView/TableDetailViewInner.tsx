@@ -101,9 +101,9 @@ export function TableDetailViewInner({
     handleDragEnd,
   } = useDetailViewSections(initialSections);
 
-  const notEmptySections = isEdit
-    ? sections
-    : sections.filter((section) => section.fields.length > 0);
+  const notEmptySections = useMemo(() => {
+    return sections.filter((section) => section.fields.length > 0);
+  }, [sections]);
 
   const sensors = useSensors(
     useSensor(PointerSensor),

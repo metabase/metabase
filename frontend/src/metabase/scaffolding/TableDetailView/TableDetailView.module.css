@@ -7,6 +7,14 @@
     visibility: visible;
   }
 
+  .Field {
+    align-items: center;
+  }
+
+  .SectionTitle {
+    padding: 0;
+  }
+
   &.normal {
     .SectionContent {
       flex-direction: column;
@@ -35,11 +43,9 @@
   &.subheader {
     /* todo  */
   }
-  &.highlight1 {
-    /* todo  */
-  }
+
+  &.highlight1,
   &.highlight2 {
-    /* todo  */
     .SectionContent {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
@@ -52,7 +58,36 @@
       overflow: hidden;
       align-items: start;
       align-content: start;
+    }
 
+    &.highlight1 {
+      .SectionTitle {
+        display: none;
+      }
+      .SectionContent {
+        background-color: var(--mb-base-color-gray-5);
+        padding: 1.5rem 1rem;
+        border-radius: var(--default-border-radius);
+      }
+      .Field {
+        .FieldName,
+        .FieldValue {
+          text-align: center;
+        }
+
+        .FieldName {
+          font-size: 0.875rem;
+        }
+        .FieldValue {
+          font-size: 2.625rem;
+        }
+      }
+    }
+    &.highlight2 {
+      .Field {
+        align-items: start;
+        align-content: start;
+      }
       .FieldName {
         font-size: 0.875rem;
       }
