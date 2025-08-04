@@ -29,7 +29,16 @@ export async function connectToInstanceAuthSso(
 
   try {
     const urlResponse = await fetch(ssoUrl, { headers });
+
     if (!urlResponse.ok) {
+      const errorData = await urlResponse.json();
+
+      if (errorData.status === "error-sso-disabled") {
+        throw MetabaseError.SSO_DISABLED({
+          message: errorData.message,
+        });
+      }
+
       throw MetabaseError.CANNOT_CONNECT_TO_INSTANCE({
         instanceUrl: url,
         status: urlResponse.status,

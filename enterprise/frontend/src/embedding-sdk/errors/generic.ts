@@ -35,3 +35,7 @@ export function AUTH_TIMEOUT() {
     "Authentication has not been completed in time.",
   );
 }
+
+export function SSO_DISABLED({ message }: { message: string }) {
+  return new MetabaseError("SSO_DISABLED", message);
+}
