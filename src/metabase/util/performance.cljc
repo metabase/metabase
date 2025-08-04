@@ -314,6 +314,9 @@
        [f form]
        (walk (fn postwalker [form] (walk postwalker f form)) f form))
 
+     (defn postwalk-demo [form]
+       (postwalk (fn [x] (prn x) x) form))
+
      (defn keywordize-keys
        "Like `clojure.walk/keywordize-keys`, but uses a more efficient `metabase.util.performance/walk` underneath and
   preserves original metadata on the transformed maps."

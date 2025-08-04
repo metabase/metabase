@@ -7,16 +7,44 @@
    [malli.error :as me]
    [metabase.util.malli.registry :as mr]))
 
+(defmacro with-returning-cache-miss-count [& body]
+  `(let [cache-misses# (atom 0)]
+     (binding [mr/*cache-miss-hook* (fn [_# _# _#]
+                                      (swap! cache-misses# inc))]
+       ~@body)
+     @cache-misses#))
+
 (deftest ^:parallel cache-handle-regexes-test
   (testing (str "For things that aren't ever equal when you re-evaluate them (like Regex literals) maybe sure we do"
                 " something smart to avoid creating infinite cache entries")
-    (mr/validate [:re #"\d{4}"] "1234")
-    (:validator @@#'mr/cache)
-    (let [before-count (count (:validator @@#'mr/cache))]
-      (mr/validate [:re #"\d{4}"] "1234")
-      (mr/validate [:re #"\d{4}"] "1234")
-      (is (= (count (:validator @@#'mr/cache))
-             before-count)))))
+    (let [unique-schema [:re {:id (rand)} #"\d{4}"]]
+      (is (= 1 (with-returning-cache-miss-count
+                 (mr/validate unique-schema "1234"))))
+      (is (= 0 (with-returning-cache-miss-count
+                 (mr/validate unique-schema "1234")
+                 (mr/validate unique-schema "1234")))
+          "Calling validate with a previously cached schema does not miss cache"))))
+
+(deftest ^:parallel cache-handle-composed-regexes-test
+  (testing (str "For things that aren't ever equal when you re-evaluate them (like Regex literals) maybe sure we do"
+                " something smart to avoid creating infinite cache entries")
+    (let [unique-schema [:and {:id (rand)} :string [:re #"\d{4}"]]]
+      (is (= 1 (with-returning-cache-miss-count
+                 (mr/validate unique-schema "1234"))))
+      (is (contains? (set (keys (:validator @@#'mr/cache))) (#'mr/schema-cache-key unique-schema)))
+      (is (not (contains? (set (keys (:validator @@#'mr/cache))) unique-schema)))
+      (is (= 0
+             (with-returning-cache-miss-count
+               (mr/validate unique-schema "1234")
+               (mr/validate unique-schema "1234")))
+          "Calling validate with a previously cached schema does not miss cache"))
+    (is (= 3
+           (with-returning-cache-miss-count
+             (dotimes [_ 10]
+               (mr/validate [:and :string [:re #"\d{1}"]] "1234")
+               (mr/validate [:and :string [:re #"\d{2}"]] "1234")
+               (mr/validate [:and :string [:re #"\d{3}"]] "1234"))))
+        "Calling validate multiple times with the 'same' schema does not miss cache")))
 
 (mr/def ::int
   :int)

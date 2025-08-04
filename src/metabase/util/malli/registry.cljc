@@ -15,16 +15,22 @@
   "Make schemas that aren't `=` to identical ones e.g.
 
     [:re #\"\\d{4}\"]
+    [:or :int [:re #\"\\d{4}\"]]
 
   work correctly as cache keys instead of creating new entries every time the code is evaluated."
   [x]
-  (perf/walk
+  (perf/postwalk
    (fn [form]
      (cond-> form
        (instance? #?(:clj java.util.regex.Pattern :cljs js/RegExp) form)
-       str)
-     form)
+       str))
    x))
+
+(def ^:dynamic *cache-miss-hook*
+  "A hook that is called whenever there is a cache miss, for side effects.
+  This is used in tests or to monitor cache misses."
+  ;; (fn [_k _schema _value] nil)
+  nil)
 
 (defn cached
   "Get a cached value for `k` + `schema`. Cache is cleared whenever a schema is (re)defined
@@ -35,8 +41,11 @@
   you used namespaced keys if you are using it elsewhere."
   [k schema value-thunk]
   (let [schema-key (schema-cache-key schema)]
+    (prn ["schema-key" schema-key])
     (or (get (get @cache k) schema-key)     ; get-in is terribly inefficient
         (let [v (value-thunk)]
+          (when *cache-miss-hook*
+            (*cache-miss-hook* k schema v))
           (swap! cache assoc-in [k schema-key] v)
           v))))
 
