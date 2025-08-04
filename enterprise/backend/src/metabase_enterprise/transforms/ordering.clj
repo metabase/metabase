@@ -3,6 +3,7 @@
    [clojure.core.match]
    [clojure.set :as set]
    [flatland.ordered.set :refer [ordered-set]]
+   [metabase-enterprise.transforms.util :as transforms.util]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.util :as lib.util]
    [metabase.query-processor.preprocess :as qp.preprocess]
@@ -11,6 +12,7 @@
 
 (defn- transform-deps [transform]
   (let [query (-> (get-in transform [:source :query])
+                  transforms.util/massage-sql-query
                   qp.preprocess/preprocess)]
     (into #{}
           (keep #(clojure.core.match/match %

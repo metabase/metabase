@@ -45,10 +45,6 @@
              :name "gadget_products"}}]
   -)
 
-(defn- massage-transform
-  [transform]
-  (assoc-in transform [:source :query :middleware :disable-remaps?] true))
-
 (defn- source-database-id
   [transform]
   (-> transform :source :query :database))
@@ -82,8 +78,7 @@
   (when (transforms.util/target-table-exists? body)
     (api/throw-403))
   (t2/insert-returning-instance!
-   :model/Transform (-> (select-keys body [:name :description :source :target :execution_trigger])
-                        massage-transform)))
+   :model/Transform (select-keys body [:name :description :source :target :execution_trigger])))
 
 (api.macros/defendpoint :get "/:id"
   [{:keys [id]} :- [:map
@@ -182,7 +177,7 @@
     (when (and (not= (target-fields old) (target-fields new))
                (transforms.util/target-table-exists? new))
       (api/throw-403)))
-  (t2/update! :model/Transform id (massage-transform body))
+  (t2/update! :model/Transform id body)
   (t2/select-one :model/Transform id))
 
 (api.macros/defendpoint :delete "/:id"
