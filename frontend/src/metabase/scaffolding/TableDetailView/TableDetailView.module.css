@@ -14,6 +14,9 @@
   .SectionTitle {
     padding: 0;
   }
+  .SectionContent {
+    gap: var(--mantine-spacing-md);
+  }
 
   &.normal {
     .SectionContent {
@@ -40,8 +43,32 @@
   &.header {
     /* todo  */
   }
+
   &.subheader {
-    /* todo  */
+    .SectionTitle {
+      display: none;
+    }
+    .SectionContent {
+      gap: 0;
+      flex-wrap: wrap;
+    }
+    .FieldName {
+      display: none;
+    }
+    .Field + .Field {
+      display: flex;
+      line-height: 1.25;
+      .FieldValue {
+        display: flex;
+      }
+      .FieldValue::before {
+        display: block;
+        content: "•";
+        margin: 0 0.75rem;
+        color: var(--mb-color-text-secondary);
+        font-size: 1em;
+      }
+    }
   }
 
   &.highlight1,

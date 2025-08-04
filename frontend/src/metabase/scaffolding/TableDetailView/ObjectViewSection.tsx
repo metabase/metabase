@@ -78,7 +78,7 @@ export function ObjectViewSection({
           style={{ fontWeight: 700, fontSize: "1.25rem", marginBottom: "2rem" }}
         />
       </Group>
-      <Flex gap="md" className={S.SectionContent} borderRadius="md">
+      <Flex className={S.SectionContent}>
         {section.fields.map(({ field_id }) => {
           const columnIndex = columns.findIndex(
             (column) => column.id === field_id,
