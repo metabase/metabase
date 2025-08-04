@@ -51,38 +51,27 @@ export type Table = {
 };
 
 export type ComponentSettings = {
-  list_view: {
-    view: "table" | "list" | "gallery";
-    table: ListViewTableSettings;
-    list: ObjectViewSettings;
-    gallery: ObjectViewSettings;
-  };
   object_view: ObjectViewSettings;
 };
 
-export type ListViewTableSettings = {
-  row_height: "thin" | "normal";
-  fields: {
-    field_id: FieldId;
-    style: "normal" | "bold" | "dim";
-  }[];
-};
+export type SectionVariant =
+  | "header"
+  | "subheader"
+  | "highlight-1"
+  | "highlight-2"
+  | "normal";
 
 export type ObjectViewSectionSettings = {
   id: number;
   title: string;
-  direction: "horizontal" | "vertical";
-  fields: Array<{
+  variant: SectionVariant;
+  fields: {
     field_id: FieldId;
-    style: "normal" | "bold" | "dim" | "title";
-  }>;
+  }[];
 };
 
 export type ObjectViewSettings = {
   sections: ObjectViewSectionSettings[];
-  relationships?: {
-    direction: "horizontal" | "vertical";
-  };
 };
 
 export type SchemaName = string;

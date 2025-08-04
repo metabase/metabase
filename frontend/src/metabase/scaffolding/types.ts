@@ -1,15 +1,15 @@
-import type { DatasetColumn, FieldId, RowValue } from "metabase-types/api";
-
-export type SectionType =
-  | "header"
-  | "subheader"
-  | "highlight-1"
-  | "highlight-2"
-  | "normal";
+import type {
+  DatasetColumn,
+  FieldId,
+  RowValue,
+  SectionVariant,
+} from "metabase-types/api";
+export type { SectionVariant } from "metabase-types/api";
 
 export type Section = {
-  type: SectionType;
-  name: string;
+  id: number;
+  title: string;
+  variant: SectionVariant;
   data: {
     field_id: FieldId;
     column: DatasetColumn;

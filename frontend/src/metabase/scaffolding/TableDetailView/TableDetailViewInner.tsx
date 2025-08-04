@@ -63,13 +63,6 @@ export function TableDetailViewInner({
   isEdit = false,
 }: TableDetailViewProps) {
   const [currentRowIndex, setCurrentRowIndex] = useState(0);
-  const [relationshipsDirection, setRelationshipsDirection] = useState<
-    "horizontal" | "vertical"
-  >(() => {
-    const savedRelationships =
-      table?.component_settings?.object_view?.relationships;
-    return savedRelationships?.direction || "vertical";
-  });
   const [linkCopied, setLinkCopied] = useState(false);
   const dispatch = useDispatch();
   const [updateTableComponentSettings] =
@@ -134,12 +127,9 @@ export function TableDetailViewInner({
       await updateTableComponentSettings({
         id: tableId,
         component_settings: {
-          ...(table?.component_settings ?? { list_view: {} }),
+          ...table?.component_settings,
           object_view: {
             sections: sections,
-            relationships: {
-              direction: relationshipsDirection,
-            },
           },
         },
       }).unwrap();
@@ -153,7 +143,6 @@ export function TableDetailViewInner({
     tableId,
     table?.component_settings,
     sections,
-    relationshipsDirection,
     dispatch,
     rowId,
   ]);
@@ -317,7 +306,7 @@ export function TableDetailViewInner({
                     tableForeignKeyReferences={tableForeignKeyReferences}
                     foreignKeyClicked={handleFollowForeignKey}
                     disableClicks={isEdit}
-                    relationshipsDirection={relationshipsDirection}
+                    relationshipsDirection={"vertical"}
                   />
                 </>
               </Box>
@@ -339,16 +328,14 @@ export function TableDetailViewInner({
             }}
           >
             <DetailViewSidebar
-              columns={columns}
-              sections={sections}
-              hasRelationships={hasRelationships}
-              relationshipsDirection={relationshipsDirection}
-              onUpdateRelationshipsDirection={setRelationshipsDirection}
-              onCreateSection={createSection}
-              onUpdateSection={updateSection}
-              onUpdateSections={updateSections}
-              onRemoveSection={removeSection}
-              onDragEnd={handleDragEnd}
+              // columns={columns}
+              // sections={sections}
+              // hasRelationships={hasRelationships}
+              // onCreateSection={createSection}
+              // onUpdateSection={updateSection}
+              // onUpdateSections={updateSections}
+              // onRemoveSection={removeSection}
+              // onDragEnd={handleDragEnd}
               onCancel={handleCloseClick}
               onSubmit={handleSaveClick}
             />

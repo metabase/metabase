@@ -20,7 +20,6 @@ import type {
 } from "metabase-types/api";
 
 import { ColumnListItem } from "./ColumnListItem";
-import { EmptyDropZone } from "./EmptyDropZone";
 import S from "./TableDetailView.module.css";
 
 export type SectionSettingsProps = {
@@ -129,7 +128,8 @@ export function SectionSettings({
       </Flex>
 
       {columnIds.length === 0 ? (
-        <EmptyDropZone sectionId={String(section.id)} />
+        // <EmptyDropZone sectionId={String(section.id)} />
+        <div />
       ) : (
         <SortableContext
           id={String(section.id)}
