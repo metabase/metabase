@@ -20,6 +20,7 @@
    [metabase.util.yaml :as yaml]
    [ring.adapter.jetty :as ring-jetty]
    [ring.middleware.keyword-params :refer [wrap-keyword-params]]
+   [ring.middleware.params :refer [wrap-params]]
    [ring.util.response :as response])
   (:import (java.util.concurrent
             Executors
@@ -74,9 +75,9 @@
         (response/status 429))))
 
 (defn- handle-status-get
-  [run-id]
+  [run-id mb-source]
   (log/info "Handling status GET request")
-  (if-let [resp (tracking/get-status run-id "mb-1")]
+  (if-let [resp (tracking/get-status run-id mb-source)]
     (response/response resp)
     (-> (response/response "Not found")
         (response/status 404))))
@@ -85,7 +86,7 @@
   (compojure/routes
    (compojure/GET "/api/health" [] "healthy")
    (compojure/PUT "/transform/:run-id" request (handle-transform-put request))
-   (compojure/GET "/status/:run-id" [run-id] (handle-status-get run-id))
+   (compojure/GET "/status/:run-id" [run-id mb-source] (handle-status-get run-id mb-source))
    (route/not-found "Page not found")))
 
 (def ^:private handler
@@ -94,7 +95,8 @@
           routes
           [server/wrap-json-body
            server/wrap-streamed-json-response
-           wrap-keyword-params]))
+           wrap-keyword-params
+           wrap-params]))
 
 (defn ^:private port []
   (if-let [port (config/config-str :mb-worker-jetty-port)]

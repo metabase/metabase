@@ -14,8 +14,6 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:private mb-id "mb-1")
-
 (mr/def ::transform-details
   [:map
    [:transform-type [:enum {:decode/normalize schema.common/normalize-keyword} :view :table]]
@@ -35,7 +33,7 @@
 
 (defn- execute-mbl-transform-remote! [run-id driver transform-details opts]
   (try
-    (worker/execute-transform! mb-id run-id driver transform-details opts)
+    (worker/execute-transform! run-id driver transform-details opts)
     (catch Throwable t
       (log/error "Remote execution failed.")
       (t2/update! :model/WorkerRun run-id
