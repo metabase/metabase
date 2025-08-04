@@ -47,26 +47,21 @@ export function SidebarSectionItem({
           border: "1px solid var(--border-color)",
           borderRadius: "var(--default-border-radius)",
           backgroundColor: "var(--mb-color-bg-white)",
+          cursor: "pointer",
+        }}
+        ref={triggerRef}
+        onClick={() => {
+          if (openPopoverId === section.id) {
+            setOpenPopoverId(null);
+          } else {
+            setOpenPopoverId(section.id);
+          }
         }}
       >
         <Group justify="space-between" align="flex-start">
           <Stack gap="xs" flex="1">
             <Box pos="relative">
-              <Text
-                ref={triggerRef}
-                size="xs"
-                c="text-medium"
-                style={{
-                  cursor: "pointer",
-                }}
-                onClick={() => {
-                  if (openPopoverId === section.id) {
-                    setOpenPopoverId(null);
-                  } else {
-                    setOpenPopoverId(section.id);
-                  }
-                }}
-              >
+              <Text size="xs" c="text-medium">
                 {section.fields.length} {t`fields`}
               </Text>
 

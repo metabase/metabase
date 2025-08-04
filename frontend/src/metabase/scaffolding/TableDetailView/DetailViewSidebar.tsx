@@ -61,7 +61,7 @@ export function DetailViewSidebar({
         <Text fw={600} size="lg">{t`Settings`}</Text>
       </Box>
 
-      <Box flex="1" px="xl" pb="xl" pt={16} style={{ overflow: "auto" }}>
+      <Box flex="1" p="xl" style={{ overflow: "auto" }}>
         <Stack gap="lg">
           {headerSection && (
             <SidebarSectionItem
