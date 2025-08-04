@@ -4,6 +4,7 @@ import { jt, t } from "ttag";
 
 import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
 import { UpsellDevInstances } from "metabase/admin/upsells";
+import { UpsellEmbeddingButton } from "metabase/admin/upsells/UpsellEmbeddingButton";
 import { UpsellSdkLink } from "metabase/admin/upsells/UpsellSdkLink";
 import ExternalLink from "metabase/common/components/ExternalLink";
 import { useDocsUrl, useSetting, useUrlWithUtm } from "metabase/common/hooks";
@@ -159,24 +160,24 @@ export function EmbeddingSdkSettings() {
         </Group>
       </Flex>
 
-      {isSimpleEmbedFeatureEnabled && (
-        <Box p="xl" className={S.SectionCard}>
-          <Flex direction="column" gap="md">
-            <Group gap="sm">
-              <Text fz="h3" fw={600} c="text-dark">
-                {t`Embedded Analytics JS`}
-              </Text>
+      <Box p="xl" className={S.SectionCard}>
+        <Flex direction="column" gap="md">
+          <Group gap="sm">
+            <Text fz="h3" fw={600} c="text-dark">
+              {t`Embedded Analytics JS`}
+            </Text>
 
-              <Badge size="sm">{t`Beta`}</Badge>
-            </Group>
+            <Badge size="sm">{t`Beta`}</Badge>
+          </Group>
 
-            <Group gap="sm" align="center" justify="space-between" w="100%">
-              <EmbeddingToggle
-                label={t`Enabled`}
-                labelPosition="right"
-                settingKey="enable-embedding-simple"
-              />
+          <Group gap="sm" align="center" justify="space-between" w="100%">
+            <EmbeddingToggle
+              label={t`Enabled`}
+              labelPosition="right"
+              settingKey="enable-embedding-simple"
+            />
 
+            {isSimpleEmbedFeatureEnabled ? (
               <Group gap="md">
                 <Button
                   size="compact-xs"
@@ -200,10 +201,16 @@ export function EmbeddingSdkSettings() {
                   {t`Documentation`}
                 </Button>
               </Group>
-            </Group>
-          </Flex>
-        </Box>
-      )}
+            ) : (
+              <UpsellEmbeddingButton
+                url="https://www.metabase.com/product/embedded-analytics"
+                campaign="embedded-analytics-js"
+                location="embedding-page"
+              />
+            )}
+          </Group>
+        </Flex>
+      </Box>
 
       <Box py="lg" px="xl" className={S.SectionCard}>
         <AdminSettingInput

@@ -85,6 +85,7 @@ export const InteractiveEmbeddingOptionCard = () => {
             url="https://www.metabase.com/product/embedded-analytics"
             campaign="embedding-interactive"
             location="embedding-page"
+            large
           />
         )}
         <EmbeddingToggle

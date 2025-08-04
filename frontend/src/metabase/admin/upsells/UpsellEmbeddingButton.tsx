@@ -10,10 +10,12 @@ export const UpsellEmbeddingButton = ({
   url,
   campaign,
   location,
+  large = false,
 }: {
   url: string;
   campaign: string;
   location: string;
+  large?: boolean;
 }) => {
   const upsellLink = useUpsellLink({
     url,
@@ -22,7 +24,10 @@ export const UpsellEmbeddingButton = ({
   });
 
   return (
-    <ExternalLink href={upsellLink} className={cx(S.UpsellCTALink, S.Large)}>
+    <ExternalLink
+      href={upsellLink}
+      className={cx(S.UpsellCTALink, large && S.Large)}
+    >
       {t`Try for free`}
     </ExternalLink>
   );
