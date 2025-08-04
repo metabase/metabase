@@ -18,12 +18,12 @@ import type { SdkEventHandlersConfig } from "embedding-sdk/types/events";
 import type { MetabasePluginsConfig } from "embedding-sdk/types/plugins";
 import type { CommonStylingProps } from "embedding-sdk/types/props";
 import type { SdkErrorComponent } from "embedding-sdk/types/ui";
+import { useInstanceLocale } from "metabase/common/hooks/use-instance-locale";
 import { EMBEDDING_SDK_ROOT_ELEMENT_ID } from "metabase/embedding-sdk/config";
 import type { MetabaseTheme } from "metabase/embedding-sdk/theme";
 import { MetabaseReduxProvider } from "metabase/lib/redux";
 import { LocaleProvider } from "metabase/public/LocaleProvider";
 import { setOptions } from "metabase/redux/embed";
-import { getSetting } from "metabase/selectors/settings";
 import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
 import { Box } from "metabase/ui";
 import { MetabotProvider } from "metabase-enterprise/metabot/context";
@@ -133,7 +133,7 @@ export const MetabaseProviderInternal = ({
     store.dispatch(setMetabaseClientUrl(authConfig.metabaseInstanceUrl));
   }, [store, authConfig.metabaseInstanceUrl]);
 
-  const instanceLocale = getSetting(store.getState(), "site-locale");
+  const instanceLocale = useInstanceLocale();
 
   return (
     <SdkContextProvider>
