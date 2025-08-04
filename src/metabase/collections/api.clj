@@ -1398,12 +1398,8 @@
                     [:id ms/PositiveInt]]]
   (api/check-403 api/*is-superuser?*)
   (let [collection (t2/select-one :model/Collection id)
-        parent-id   (:parent_id (t2/hydrate collection :parent_id))
-        parent (if parent-id
-                 (t2/select-one :model/Collection parent-id)
-                 collection/root-collection)
         old-children-location (collection/children-location collection)
-        new-children-location (collection/children-location parent)]
+        new-children-location (:location collection)]
     (api/check-400 (:archived collection)
                    "Collection must be trashed before deletion.")
     (api/check-400 (nil? (:namespace collection))
