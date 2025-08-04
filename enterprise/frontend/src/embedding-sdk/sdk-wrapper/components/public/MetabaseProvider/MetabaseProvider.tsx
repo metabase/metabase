@@ -1,7 +1,8 @@
-import { memo } from "react";
+import { memo, useMemo } from "react";
 import useDeepCompareEffect from "react-use/lib/useDeepCompareEffect";
 
 import { RenderSingleCopy } from "embedding-sdk/sdk-shared/components/RenderSingleCopy/RenderSingleCopy";
+import { useMetabaseProviderPropsStore } from "embedding-sdk/sdk-shared/hooks/use-metabase-provider-props-store";
 import { useSdkLoadingState } from "embedding-sdk/sdk-shared/hooks/use-sdk-loading-state";
 import { ensureMetabaseProviderPropsStore } from "embedding-sdk/sdk-shared/lib/ensure-metabase-provider-props-store";
 import { getWindow } from "embedding-sdk/sdk-shared/lib/get-window";
@@ -49,9 +50,18 @@ const MetabaseProviderInner = memo(function MetabaseProviderInner(
 
   const { isLoading } = useSdkLoadingState();
 
-  const reduxStore = isLoading
-    ? null
-    : getWindow()?.MetabaseEmbeddingSDK?.getSdkStore();
+  const {
+    props: { reduxStore: existingStore },
+  } = useMetabaseProviderPropsStore();
+
+  // Return existing store or create a new one
+  const reduxStore = useMemo(
+    () =>
+      isLoading
+        ? null
+        : (existingStore ?? getWindow()?.MetabaseEmbeddingSDK?.getSdkStore()),
+    [existingStore, isLoading],
+  );
 
   const { initialized: metabaseProviderPropsStoreInitialized } =
     useInitializeMetabaseProviderPropsStore(props, reduxStore);

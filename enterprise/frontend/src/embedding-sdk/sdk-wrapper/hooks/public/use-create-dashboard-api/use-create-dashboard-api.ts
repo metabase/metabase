@@ -1,7 +1,8 @@
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 
 import { useMetabaseProviderPropsStore } from "embedding-sdk/sdk-shared/hooks/use-metabase-provider-props-store";
 import { getWindow } from "embedding-sdk/sdk-shared/lib/get-window";
+import { useLazySelector } from "embedding-sdk/sdk-wrapper/hooks/private/use-lazy-selector";
 import type {
   CreateDashboardValues,
   MetabaseDashboard,
@@ -16,8 +17,9 @@ import type {
  */
 export const useCreateDashboardApi = () => {
   const { props } = useMetabaseProviderPropsStore();
-
   const { reduxStore } = props;
+
+  const loginStatus = useLazySelector((state) => state.sdk.loginStatus);
 
   /**
    * @function
@@ -55,12 +57,17 @@ export const useCreateDashboardApi = () => {
     [reduxStore],
   );
 
-  return reduxStore
-    ? {
-        /**
-         * @param options
-         */
-        createDashboard: handleCreateDashboard,
-      }
-    : null;
+  return useMemo(
+    () =>
+      // Until a user is authorized the `createDashboard` can't be called
+      reduxStore && loginStatus?.status === "success"
+        ? {
+            /**
+             * @param options
+             */
+            createDashboard: handleCreateDashboard,
+          }
+        : null,
+    [handleCreateDashboard, loginStatus?.status, reduxStore],
+  );
 };

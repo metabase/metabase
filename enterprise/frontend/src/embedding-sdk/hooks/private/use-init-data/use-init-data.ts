@@ -7,6 +7,7 @@ import { useLazySelector } from "embedding-sdk/sdk-wrapper/hooks/private/use-laz
 import { initAuth } from "embedding-sdk/store/auth";
 import {
   setFetchRefreshTokenFn,
+  setMetabaseClientUrl,
   setMetabaseInstanceVersion,
 } from "embedding-sdk/store/reducer";
 import { getFetchRefreshTokenFn } from "embedding-sdk/store/selectors";
@@ -42,6 +43,10 @@ export const useInitData = ({
   if (api.basename !== authConfig.metabaseInstanceUrl) {
     api.basename = authConfig.metabaseInstanceUrl;
   }
+
+  useEffect(() => {
+    dispatch(setMetabaseClientUrl(authConfig.metabaseInstanceUrl));
+  }, [dispatch, authConfig.metabaseInstanceUrl]);
 
   useEffect(() => {
     if (authConfig.fetchRequestToken !== fetchRefreshTokenFnFromStore) {
