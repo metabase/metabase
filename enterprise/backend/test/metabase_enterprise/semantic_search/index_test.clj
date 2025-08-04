@@ -325,7 +325,7 @@
             (let [non-existent-docs [{:id "99999:123" :model "indexed-entity" :content "Non-existent"}]]
               (is (= [] (#'semantic.index/filter-can-read-indexed-entity non-existent-docs))))))))))
 
-(deftest ^:synncronized semantic-search-analytics-test
+(deftest ^:syncronized semantic-search-analytics-test
   (mt/with-premium-features #{:semantic-search}
     (with-open [_ (semantic.tu/open-temp-index!)]
       (semantic.tu/upsert-index! (semantic.tu/mock-documents))
