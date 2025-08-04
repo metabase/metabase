@@ -12,12 +12,6 @@
    [toucan2.core :as t2]
    [toucan2.model :as t2.model]))
 
-;; This constant is also defined in metabase.revisions.impl.card but we duplicate it here
-;; to avoid circular dependencies. Keep both definitions in sync!
-(def legacy-card-schema-version
-  "The default schema version assigned to all cards that existed before the `:card_schema` column was added in v0.55."
-  20)
-
 (defn toucan-model?
   "Check if `model` is a toucan model."
   [model]
