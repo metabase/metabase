@@ -232,7 +232,7 @@
      :min (apply min counts)
      :max (apply max counts)
      :sum (reduce + counts)
-     :avg (Double/parseDouble (format "%.2f" (double avg-raw)))}))
+     :avg (parse-double (format "%.2f" (double avg-raw)))}))
 
 (defn process-embeddings-streaming
   "Process texts in provider-appropriate batches, calling process-fn for each batch. process-fn will be called with
