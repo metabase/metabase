@@ -53,7 +53,7 @@
     {:channel_type    channel-type
      :channel         channel
      :recipients      (channel-recipients pulse-channel)
-     :attachment_only (boolean (get-in pulse-channel [:details :attachments_only]))}))
+     :attachment_only (boolean (get-in pulse-channel [:details :attachment_only]))}))
 
 (defn- maybe-name [x] (some-> x name))
 
