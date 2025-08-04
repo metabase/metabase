@@ -167,7 +167,7 @@
   "Execute `transforms` and sync their target tables in dependency order."
   [transforms {:keys [run-method]}]
   (let [ordering (transforms.ordering/transform-ordering transforms)]
-    (when-let [cycle (transforms.ordering/cycle ordering)]
+    (when-let [cycle (transforms.ordering/find-cycle ordering)]
       (let [id->name (into {} (map (juxt :id :name)) transforms)]
         (throw (ex-info (str "Cyclic transform definitions detected: "
                              (str/join " → " (map id->name cycle)))
