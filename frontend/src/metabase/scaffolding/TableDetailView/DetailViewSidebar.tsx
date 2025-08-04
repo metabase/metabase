@@ -49,7 +49,7 @@ export function DetailViewSidebar({
           borderBottom: "1px solid var(--border-color)",
         }}
       >
-        <Text fw={600} size="lg">{t`Detail view settings`}</Text>
+        <Text fw={600} size="lg">{t`Settings`}</Text>
       </Box>
 
       <Box flex="1" px="xl" pb="xl" pt={16} style={{ overflow: "auto" }}>

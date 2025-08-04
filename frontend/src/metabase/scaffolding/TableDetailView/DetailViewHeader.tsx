@@ -58,6 +58,9 @@ export function DetailViewHeader({
                 disabled={!canOpenPreviousItem}
                 onClick={onPreviousItemClick}
                 leftSection={<Icon name="chevronup" />}
+                style={{
+                  opacity: !canOpenPreviousItem ? 0.5 : 1,
+                }}
               />
             </Tooltip>
 
@@ -70,6 +73,9 @@ export function DetailViewHeader({
                 disabled={!canOpenNextItem}
                 onClick={onNextItemClick}
                 leftSection={<Icon name="chevrondown" />}
+                style={{
+                  opacity: !canOpenNextItem ? 0.5 : 1,
+                }}
               />
             </Tooltip>
           </Group>
@@ -84,7 +90,6 @@ export function DetailViewHeader({
               h={32}
               c="text-dark"
               variant="subtle"
-              disabled={isEdit}
               leftSection={<Icon name="link" />}
               onClick={handleCopyLink}
             />
@@ -105,6 +110,9 @@ export function DetailViewHeader({
               disabled={isEdit}
               leftSection={<Icon name="pencil" />}
               onClick={onEditClick}
+              style={{
+                opacity: isEdit ? 0.5 : 1,
+              }}
             />
           </Tooltip>
         </Group>
