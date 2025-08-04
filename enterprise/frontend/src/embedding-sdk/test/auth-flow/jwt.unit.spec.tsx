@@ -1,12 +1,9 @@
 import { screen } from "@testing-library/react";
 import fetchMock from "fetch-mock";
 
-import { renderWithProviders, waitForLoaderToBeRemoved } from "__support__/ui";
+import { waitForLoaderToBeRemoved } from "__support__/ui";
 import { waitForRequest } from "__support__/utils";
-import {
-  MetabaseProvider,
-  StaticQuestion,
-} from "embedding-sdk/components/public";
+import { StaticQuestion } from "embedding-sdk/components/public";
 import { defineMetabaseAuthConfig } from "embedding-sdk/sdk-wrapper/lib/public/define-metabase-auth-config";
 import type { MetabaseProviderProps } from "embedding-sdk/types/metabase-provider";
 
@@ -45,11 +42,7 @@ describe("Auth Flow - JWT", () => {
       fetchMock.callHistory.calls(`${MOCK_JWT_PROVIDER_URI}?response=json`),
     ).toHaveLength(1);
 
-    rerender(
-      <MetabaseProvider authConfig={authConfig}>
-        <StaticQuestion questionId={1} />
-      </MetabaseProvider>,
-    );
+    rerender(<StaticQuestion questionId={1} />);
 
     await waitForLoaderToBeRemoved();
 
@@ -158,11 +151,7 @@ describe("Auth Flow - JWT", () => {
       metabaseInstanceUrl: instanceUrlWithSubpath,
     });
 
-    renderWithProviders(
-      <MetabaseProvider authConfig={authConfig}>
-        <StaticQuestion questionId={1} />
-      </MetabaseProvider>,
-    );
+    setup({ authConfig });
 
     await waitForLoaderToBeRemoved();
 

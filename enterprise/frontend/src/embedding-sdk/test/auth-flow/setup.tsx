@@ -5,11 +5,8 @@ import {
   setupCardQueryEndpoints,
   setupCardQueryMetadataEndpoint,
 } from "__support__/server-mocks";
-import { renderWithProviders } from "__support__/ui";
-import {
-  MetabaseProvider,
-  StaticQuestion,
-} from "embedding-sdk/components/public";
+import { StaticQuestion } from "embedding-sdk/components/public";
+import { renderWithSDKProviders } from "embedding-sdk/test/__support__/ui";
 import type { MetabaseProviderProps } from "embedding-sdk/types/metabase-provider";
 import {
   createMockCard,
@@ -59,14 +56,13 @@ export const setup = ({
     );
 
   return {
-    ...renderWithProviders(
-      <MetabaseProvider authConfig={authConfig} locale={locale}>
-        <StaticQuestion questionId={1} />
-      </MetabaseProvider>,
-      {
-        storeInitialState: state,
+    ...renderWithSDKProviders(<StaticQuestion questionId={1} />, {
+      sdkProviderProps: {
+        authConfig,
+        locale,
       },
-    ),
+      storeInitialState: state,
+    }),
     getLastUserApiCall,
     getLastCardQueryApiCall,
   };
