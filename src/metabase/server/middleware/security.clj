@@ -265,11 +265,19 @@
 
 (defn- add-security-headers* [request response]
   ;; merge is other way around so that handler can override headers
-  (update response :headers #(merge %2 %1) (security-headers
-                                            :origin         (get (:headers request) "origin")
-                                            :nonce          (:nonce request)
-                                            :allow-iframes? ((some-fn request/public? request/embed?) request)
-                                            :allow-cache?   (request/cacheable? request))))
+  (let [headers (security-headers
+                 :origin         (get (:headers request) "origin")
+                 :nonce          (:nonce request)
+                 :allow-iframes? ((some-fn request/public? request/embed?) request)
+                 :allow-cache?   (request/cacheable? request))
+        ;; Add CORS headers for /auth/sso endpoint with 402 status (embedding disabled errors)
+        ;; This allows frontend to read error messages when embedding SDK is not set up
+        cors-headers (when (and (= (:uri request) "/auth/sso")
+                                (= (:status response) 402))
+                       {"Access-Control-Allow-Origin" "*"
+                        "Access-Control-Allow-Headers" "*"
+                        "Access-Control-Allow-Methods" "*"})]
+    (update response :headers #(merge %2 %1 cors-headers) headers)))
 
 (defn add-security-headers
   "Middleware that adds HTTP security and cache-busting headers."
