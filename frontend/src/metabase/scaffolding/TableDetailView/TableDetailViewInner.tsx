@@ -351,20 +351,7 @@ export function TableDetailViewInner({
 
   return (
     <DetailContainer>
-      <Stack
-        gap={isEdit ? "md" : 0}
-        mt="md"
-        mb="sm"
-        py="md"
-        bg="transparent"
-        style={
-          {
-            // borderRadius: "var(--default-border-radius)",
-            // eslint-disable-next-line no-color-literals
-            // boxShadow: isEdit ? "none" : "0 2px 8px rgba(0, 0, 0, 0.1)", // can be a Card component
-          }
-        }
-      >
+      <Stack gap="md" mt="md" mb="sm" py="md" bg="transparent">
         <DndContext
           sensors={sensors}
           collisionDetection={closestCenter}

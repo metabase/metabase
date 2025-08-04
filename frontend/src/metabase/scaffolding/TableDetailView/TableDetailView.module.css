@@ -41,10 +41,27 @@
   }
 
   &.header {
-    /* todo  */
+    .SectionTitle {
+      display: none;
+    }
+    .SectionContent {
+      gap: 0;
+      flex-wrap: wrap;
+      flex-direction: column;
+    }
+    .FieldName {
+      display: none;
+    }
+    .FieldValue {
+      font-size: 3.125rem;
+      font-weight: 700;
+      display: flex;
+    }
   }
 
   &.subheader {
+    margin-bottom: 1rem;
+
     .SectionTitle {
       display: none;
     }
@@ -110,6 +127,7 @@
         }
       }
     }
+
     &.highlight2 {
       .Field {
         align-items: start;

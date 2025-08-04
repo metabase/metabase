@@ -55,7 +55,6 @@ export function ObjectViewSection({
       })}
       pos="relative"
       px="md"
-      py="sm"
       style={{
         borderRadius: "var(--default-border-radius)",
       }}
