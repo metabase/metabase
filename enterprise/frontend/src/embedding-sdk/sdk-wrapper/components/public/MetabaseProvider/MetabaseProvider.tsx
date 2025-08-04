@@ -2,12 +2,12 @@ import { memo } from "react";
 import useDeepCompareEffect from "react-use/lib/useDeepCompareEffect";
 
 import { RenderSingleCopy } from "embedding-sdk/sdk-shared/components/RenderSingleCopy/RenderSingleCopy";
+import { useSdkLoadingState } from "embedding-sdk/sdk-shared/hooks/use-sdk-loading-state";
 import { ensureMetabaseProviderPropsStore } from "embedding-sdk/sdk-shared/lib/ensure-metabase-provider-props-store";
 import { getWindow } from "embedding-sdk/sdk-shared/lib/get-window";
 import { ClientSideOnlyWrapper } from "embedding-sdk/sdk-wrapper/components/private/ClientSideOnlyWrapper/ClientSideOnlyWrapper";
 import { useInitializeMetabaseProviderPropsStore } from "embedding-sdk/sdk-wrapper/hooks/private/use-initialize-metabase-provider-props-store";
 import { useLoadSdkBundle } from "embedding-sdk/sdk-wrapper/hooks/private/use-load-sdk-bundle";
-import { useWaitForSdkBundle } from "embedding-sdk/sdk-wrapper/hooks/private/use-wait-for-sdk-bundle";
 import type { SdkStore } from "embedding-sdk/store/types";
 import type { MetabaseProviderProps } from "embedding-sdk/types/metabase-provider";
 
@@ -47,16 +47,14 @@ const MetabaseProviderInner = memo(function MetabaseProviderInner(
 ) {
   useLoadSdkBundle(props.authConfig.metabaseInstanceUrl);
 
-  const { isLoading } = useWaitForSdkBundle();
+  const { isLoading } = useSdkLoadingState();
 
   const reduxStore = isLoading
     ? null
     : getWindow()?.MetabaseEmbeddingSDK?.getSdkStore();
 
-  const { initialized } = useInitializeMetabaseProviderPropsStore(
-    props,
-    reduxStore,
-  );
+  const { initialized: metabaseProviderPropsStoreInitialized } =
+    useInitializeMetabaseProviderPropsStore(props, reduxStore);
 
   useDeepCompareEffect(
     function updateMetabaseProviderProps() {
@@ -65,7 +63,7 @@ const MetabaseProviderInner = memo(function MetabaseProviderInner(
     [props],
   );
 
-  if (!initialized || !reduxStore) {
+  if (!metabaseProviderPropsStoreInitialized || !reduxStore) {
     return null;
   }
 

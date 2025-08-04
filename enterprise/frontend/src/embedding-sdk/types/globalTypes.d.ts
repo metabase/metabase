@@ -9,7 +9,6 @@ interface Window {
   // Metabase Embedding SDK from Hosted Bundle
   MetabaseEmbeddingSDK?: typeof import("embedding-sdk/bundle");
 
-  EMBEDDING_SDK_BUNDLE_LOADING_STATE?: import("embedding-sdk/sdk-wrapper/types/sdk-bundle-script").SdkBundleScriptLoadingState;
   METABASE_PROVIDER_PROPS_STORE?: typeof import("embedding-sdk/sdk-shared/lib/ensure-metabase-provider-props-store").MetabaseProviderPropsStore;
 
   EMBEDDING_SDK_VERSION?: string;

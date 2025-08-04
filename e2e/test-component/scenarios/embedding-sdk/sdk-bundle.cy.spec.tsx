@@ -10,6 +10,7 @@ import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
 import {
   DEFAULT_SDK_AUTH_PROVIDER_CONFIG,
   getSdkBundleScriptElement,
+  mountSdkContent,
 } from "e2e/support/helpers/embedding-sdk-component-testing";
 import { signInAsAdminAndEnableEmbeddingSdk } from "e2e/support/helpers/embedding-sdk-testing";
 import { mockAuthProviderAndJwtSignIn } from "e2e/support/helpers/embedding-sdk-testing/embedding-sdk-helpers";
@@ -17,9 +18,9 @@ import { renameConflictingCljsGlobals } from "metabase/embedding-sdk/test/rename
 
 const { ORDERS_ID } = SAMPLE_DATABASE;
 
-const cleanup = () => {
-  (window as any).EMBEDDING_SDK_BUNDLE_LOADING_STATE = undefined;
+const sdkBundleCleanup = () => {
   getSdkBundleScriptElement()?.remove();
+  delete (window as any).MetabaseEmbeddingSDK;
   renameConflictingCljsGlobals();
 };
 
@@ -58,8 +59,8 @@ describe("scenarios > embedding-sdk > sdk-bundle", () => {
   });
 
   describe("Common cases", () => {
-    afterEach(() => {
-      cleanup();
+    beforeEach(() => {
+      sdkBundleCleanup();
     });
 
     it("should update props passed to MetabaseProvider", () => {
@@ -107,14 +108,12 @@ describe("scenarios > embedding-sdk > sdk-bundle", () => {
 
     it("should show a custom loader when the SDK bundle is loading", () => {
       cy.get<string>("@questionId").then((questionId) => {
-        cy.mount(
-          <MetabaseProvider
-            authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}
-            loaderComponent={() => <div>Loading...</div>}
-          >
-            <InteractiveQuestion questionId={questionId} />
-          </MetabaseProvider>,
-        );
+        mountSdkContent(<InteractiveQuestion questionId={questionId} />, {
+          sdkProviderProps: {
+            loaderComponent: () => <div>Loading...</div>,
+          },
+          waitForUser: false,
+        });
       });
 
       cy.findByTestId("loading-indicator").should("have.text", "Loading...");
@@ -132,7 +131,7 @@ describe("scenarios > embedding-sdk > sdk-bundle", () => {
     describe(`${removeScriptTag ? "With" : "Without"} the script tag removal between tests`, () => {
       beforeEach(() => {
         if (removeScriptTag) {
-          cleanup();
+          sdkBundleCleanup();
         }
       });
 
@@ -168,11 +167,7 @@ describe("scenarios > embedding-sdk > sdk-bundle", () => {
         });
 
         cy.get<string>("@questionId").then((questionId) => {
-          cy.mount(
-            <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}>
-              <InteractiveQuestion questionId={questionId} />
-            </MetabaseProvider>,
-          );
+          mountSdkContent(<InteractiveQuestion questionId={questionId} />);
         });
 
         getSdkRoot().within(() => {
@@ -188,20 +183,44 @@ describe("scenarios > embedding-sdk > sdk-bundle", () => {
   });
 
   describe("Components", () => {
+    it("should display an SDK question in StrictMode", () => {
+      sdkBundleCleanup();
+
+      cy.window().then((win) => {
+        cy.spy(win.console, "warn").as("consoleWarn");
+      });
+
+      cy.get<string>("@questionId").then((questionId) => {
+        mountSdkContent(<InteractiveQuestion questionId={questionId} />, {
+          strictMode: true,
+        });
+      });
+
+      getSdkRoot().within(() => {
+        cy.findByText(
+          /The loading state is `Loaded` but the SDK bundle is not loaded yet/,
+        ).should("not.exist");
+
+        cy.findByText("Test Question").should("exist");
+
+        cy.findByTestId("visualization-root").should("be.visible");
+      });
+    });
+
     it("should display an SDK question with custom layout components", () => {
       cy.window().then((win) => {
         cy.spy(win.console, "warn").as("consoleWarn");
       });
 
       cy.get<string>("@questionId").then((questionId) => {
-        cy.mount(
-          <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}>
+        mountSdkContent(
+          <>
             <InteractiveQuestion questionId={questionId}>
               <InteractiveQuestion.Title />
 
               <InteractiveQuestion.QuestionVisualization />
             </InteractiveQuestion>
-          </MetabaseProvider>,
+          </>,
         );
       });
 
@@ -212,9 +231,8 @@ describe("scenarios > embedding-sdk > sdk-bundle", () => {
       });
     });
 
-    it("it should show an error on a component level if SDK bundle is uninitialized", () => {
-      (window as any).EMBEDDING_SDK_BUNDLE_LOADING_STATE = undefined;
-      getSdkBundleScriptElement()?.remove();
+    it("it should show an error on a component level if SDK bundle is not loaded", () => {
+      sdkBundleCleanup();
 
       cy.window().then((win) => {
         cy.spy(win.console, "warn").as("consoleWarn");
@@ -233,11 +251,11 @@ describe("scenarios > embedding-sdk > sdk-bundle", () => {
   });
 
   describe("Hooks", () => {
-    it("should call SDK hooks properly when called inside MetabaseProvider", () => {
-      const Wrapper = () => {
-        return useMetabaseAuthStatus()?.status ?? "SDK Bundle Loading...";
-      };
+    const Wrapper = () => {
+      return useMetabaseAuthStatus()?.status ?? "SDK Bundle Loading...";
+    };
 
+    it("should call SDK hooks properly when called inside MetabaseProvider", () => {
       cy.get<string>("@questionId").then((questionId) => {
         cy.mount(
           <>
@@ -257,10 +275,6 @@ describe("scenarios > embedding-sdk > sdk-bundle", () => {
     });
 
     it("should call SDK hooks properly when called outside of MetabaseProvider", () => {
-      const Wrapper = () => {
-        return useMetabaseAuthStatus()?.status ?? "SDK Bundle Loading...";
-      };
-
       cy.get<string>("@questionId").then((questionId) => {
         cy.mount(
           <>
@@ -282,11 +296,11 @@ describe("scenarios > embedding-sdk > sdk-bundle", () => {
 
   describe("Error handling", () => {
     beforeEach(() => {
-      cleanup();
+      sdkBundleCleanup();
     });
 
     afterEach(() => {
-      cleanup();
+      sdkBundleCleanup();
     });
 
     describe("when the SDK bundle can't be loaded", () => {
@@ -295,11 +309,9 @@ describe("scenarios > embedding-sdk > sdk-bundle", () => {
           statusCode: 404,
         });
 
-        cy.mount(
-          <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}>
-            <InteractiveQuestion questionId={1} />
-          </MetabaseProvider>,
-        );
+        mountSdkContent(<InteractiveQuestion questionId={1} />, {
+          waitForUser: false,
+        });
 
         cy.findByTestId("sdk-error-container").should(
           "contain.text",
@@ -312,16 +324,12 @@ describe("scenarios > embedding-sdk > sdk-bundle", () => {
           statusCode: 404,
         });
 
-        cy.mount(
-          <MetabaseProvider
-            authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}
-            errorComponent={({ message }: { message: string }) => (
-              <div>Custom error: {message}</div>
-            )}
-          >
-            <InteractiveQuestion questionId={1} />
-          </MetabaseProvider>,
-        );
+        mountSdkContent(<InteractiveQuestion questionId={1} />, {
+          sdkProviderProps: {
+            errorComponent: ({ message }) => <div>Custom error: {message}</div>,
+          },
+          waitForUser: false,
+        });
 
         cy.findByTestId("sdk-error-container").should(
           "contain.text",
@@ -367,27 +375,18 @@ describe("scenarios > embedding-sdk > sdk-bundle", () => {
       });
 
       it("should show a custom error with a close button", () => {
-        cy.mount(
-          <MetabaseProvider
-            authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}
-            errorComponent={({
-              message,
-              onClose,
-            }: {
-              message: string;
-              onClose: () => void;
-            }) => (
+        mountSdkContent(<InteractiveQuestion questionId={1} />, {
+          sdkProviderProps: {
+            errorComponent: ({ message, onClose }) => (
               <div>
                 <span>Custom error: {message}</span>
                 <div data-testid="custom-alert-close-icon" onClick={onClose}>
                   x
                 </div>
               </div>
-            )}
-          >
-            <InteractiveQuestion questionId={1} />
-          </MetabaseProvider>,
-        );
+            ),
+          },
+        });
 
         getSdkRoot().within(() => {
           cy.findByTestId("notebook-button").click();
