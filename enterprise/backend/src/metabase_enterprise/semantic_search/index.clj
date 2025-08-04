@@ -383,8 +383,7 @@
                              [:distance :semantic_score]]
                     :from [:vector_candidates]
                     :where [:<= :distance max-cosine-distance]
-                    :order-by [[:semantic_rank :asc]]
-                    :limit 100}]
+                    :order-by [[:semantic_rank :asc]]}]
     (if filters
       (update base-query :where #(into [:and] [% filters]))
       base-query)))
@@ -583,13 +582,6 @@
 (defn query-index
   "Query the index for documents similar to the search string."
   [db index search-context]
-  (try
-    ;; Incentivize HNSW index scans over seqscans by reducing cost factor from default 4.0
-    ;; TODO: there's definitely a better way of doing this
-    (jdbc/execute! db ["SET random_page_cost = 1.0"])
-    (catch Exception e
-      (log/warn e "Failed to apply random_page_cost optimization")))
-
   (let [{:keys [embedding-model]} index
         search-string (:search-string search-context)]
     (when-not (str/blank? search-string)
