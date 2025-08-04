@@ -1,4 +1,8 @@
 import type { InternalMetabaseProviderProps } from "embedding-sdk/components/public/MetabaseProvider";
+import {
+  type SdkLoadingError,
+  SdkLoadingState,
+} from "embedding-sdk/sdk-shared/types/sdk-loading";
 
 import { getWindow } from "./get-window";
 
@@ -11,7 +15,9 @@ export type MetabaseProviderPropsStoreExternalProps = Omit<
 >;
 
 export type MetabaseProviderPropsStoreInternalProps = {
-  initialized?: boolean;
+  loadingPromise?: Promise<void> | null;
+  loadingState?: SdkLoadingState;
+  loadingError?: SdkLoadingError | null;
   reduxStore?: InternalMetabaseProviderProps["reduxStore"] | null;
   singleCopyWrapperIdsMap?: Record<string, string[]>;
 };
@@ -28,14 +34,18 @@ export type MetabaseProviderPropsStore = {
 };
 
 const INTERNAL_PROP_NAMES: (keyof MetabaseProviderPropsStoreInternalProps)[] = [
-  "initialized",
+  "loadingPromise",
+  "loadingState",
+  "loadingError",
   "reduxStore",
   "singleCopyWrapperIdsMap",
 ];
 
 const KEY = "METABASE_PROVIDER_PROPS_STORE";
 const EMPTY_PROPS = {
-  initialized: false,
+  loadingPromise: null,
+  loadingState: SdkLoadingState.Initial,
+  loadingError: null,
   reduxStore: null,
   singleCopyWrapperIdsMap: {},
 } as MetabaseProviderPropsStoreInternalProps;

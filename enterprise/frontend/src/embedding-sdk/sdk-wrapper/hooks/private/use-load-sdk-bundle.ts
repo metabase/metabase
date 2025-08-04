@@ -1,59 +1,92 @@
 import { useEffect } from "react";
 
+import { ensureMetabaseProviderPropsStore } from "embedding-sdk/sdk-shared/lib/ensure-metabase-provider-props-store";
+import {
+  SdkLoadingError,
+  SdkLoadingState,
+} from "embedding-sdk/sdk-shared/types/sdk-loading";
 import { SDK_BUNDLE_SCRIPT_DATA_ATTRIBUTE_PASCAL_CASED } from "embedding-sdk/sdk-wrapper/config";
-import { dispatchSdkBundleScriptLoadingEvent } from "embedding-sdk/sdk-wrapper/lib/private/dispatch-sdk-bundle-script-loading-event";
 import { getSdkBundleScriptElement } from "embedding-sdk/sdk-wrapper/lib/private/get-sdk-bundle-script-element";
-import type { SdkBundleScriptLoadingEvent } from "embedding-sdk/sdk-wrapper/types/sdk-bundle-script";
 
-const loadSdkBundle = async (metabaseInstanceUrl: string) => {
-  return new Promise<void>((resolve, reject) => {
+const loadSdkBundle = (
+  metabaseInstanceUrl: string,
+  loadingPromise: Promise<void> | null | undefined,
+): Promise<void> => {
+  if (loadingPromise) {
+    return loadingPromise;
+  }
+
+  loadingPromise = new Promise<void>((resolve, reject) => {
+    const existingScript = getSdkBundleScriptElement();
+
+    if (existingScript) {
+      existingScript.addEventListener("load", () => resolve());
+      existingScript.addEventListener("error", () =>
+        reject(new Error("Failed to load Embedding SDK bundle")),
+      );
+
+      return;
+    }
+
     const script = document.createElement("script");
 
     script.async = true;
     script.dataset[SDK_BUNDLE_SCRIPT_DATA_ATTRIBUTE_PASCAL_CASED] = "true";
-    script.src = `${process.env.EMBEDDING_SDK_BUNDLE_HOST || metabaseInstanceUrl}/app/embedding-sdk.js`;
+    script.src = `${
+      process.env.EMBEDDING_SDK_BUNDLE_HOST || metabaseInstanceUrl
+    }/app/embedding-sdk.js`;
+
+    script.addEventListener("load", () => resolve());
+    script.addEventListener("error", () =>
+      reject(new Error("Failed to load Embedding SDK bundle")),
+    );
 
     document.body.appendChild(script);
-
-    script.onload = () => {
-      resolve();
-    };
-    script.onerror = () => {
-      reject(new Error("Failed to load Embedding SDK bundle"));
-    };
-    script.onabort = () => {
-      reject(new Error("Loading of Embedding SDK bundle was aborted"));
-    };
   });
-};
 
-const dispatchLoadingState = (
-  status: SdkBundleScriptLoadingEvent["status"],
-) => {
-  window.EMBEDDING_SDK_BUNDLE_LOADING_STATE = status;
-  dispatchSdkBundleScriptLoadingEvent(status);
+  return loadingPromise;
 };
 
 export function useLoadSdkBundle(metabaseInstanceUrl: string) {
   useEffect(() => {
-    const load = async () => {
-      const existingScript = getSdkBundleScriptElement();
+    const metabaseProviderPropsStore = ensureMetabaseProviderPropsStore();
+    const { loadingPromise, loadingState } =
+      metabaseProviderPropsStore.getSnapshot();
 
-      if (existingScript) {
-        return;
+    // The SDK bundle script was loaded before
+    if (window.MetabaseEmbeddingSDK) {
+      // After the SDK bundle script was loaded, the MetabaseProviderProps store may be cleaned up.
+      // It happens when the root MetabaseProvider component is unmounted and remounted later.
+      // In this case we don't need to load the SDK bundle again, but we have to set the proper `Loaded` state.
+      if (loadingState === SdkLoadingState.Initial) {
+        metabaseProviderPropsStore.updateInternalProps({
+          loadingState: SdkLoadingState.Loaded,
+          loadingError: null,
+        });
       }
 
-      dispatchLoadingState("loading");
+      return;
+    }
 
-      try {
-        await loadSdkBundle(metabaseInstanceUrl);
-        dispatchLoadingState("loaded");
-      } catch (error) {
-        console.error("Error loading SDK bundle:", error);
-        dispatchLoadingState("error");
-      }
-    };
+    metabaseProviderPropsStore.updateInternalProps({
+      loadingState: SdkLoadingState.Loading,
+      loadingError: null,
+    });
 
-    load();
+    loadSdkBundle(metabaseInstanceUrl, loadingPromise)
+      .then(() => {
+        metabaseProviderPropsStore.updateInternalProps({
+          loadingPromise,
+          loadingState: SdkLoadingState.Loaded,
+          loadingError: null,
+        });
+      })
+      .catch((err) => {
+        console.error("Error loading SDK bundle:", err);
+        metabaseProviderPropsStore.updateInternalProps({
+          loadingPromise: null,
+          loadingError: SdkLoadingError.Error,
+        });
+      });
   }, [metabaseInstanceUrl]);
 }

@@ -1,19 +1,55 @@
-import type { FunctionComponent } from "react";
+import { type FunctionComponent, useEffect, useRef } from "react";
 
+import { RenderSingleCopy } from "embedding-sdk/sdk-shared/components/RenderSingleCopy/RenderSingleCopy";
 import { useMetabaseProviderPropsStore } from "embedding-sdk/sdk-shared/hooks/use-metabase-provider-props-store";
+import { useSdkLoadingState } from "embedding-sdk/sdk-shared/hooks/use-sdk-loading-state";
+import { ensureMetabaseProviderPropsStore } from "embedding-sdk/sdk-shared/lib/ensure-metabase-provider-props-store";
 import { getWindow } from "embedding-sdk/sdk-shared/lib/get-window";
+import {
+  SdkLoadingError,
+  SdkLoadingState,
+} from "embedding-sdk/sdk-shared/types/sdk-loading";
 import { ClientSideOnlyWrapper } from "embedding-sdk/sdk-wrapper/components/private/ClientSideOnlyWrapper/ClientSideOnlyWrapper";
 import { Error } from "embedding-sdk/sdk-wrapper/components/private/Error/Error";
 import { Loader } from "embedding-sdk/sdk-wrapper/components/private/Loader/Loader";
 import {
-  SDK_BUNDLE_LOADING_ERROR_MESSAGE,
-  SDK_BUNDLE_NOT_STARTED_LOADING_MESSAGE,
+  SDK_LOADING_ERROR_MESSAGE,
+  SDK_NOT_LOADED_YET_MESSAGE,
+  SDK_NOT_STARTED_LOADING_MESSAGE,
 } from "embedding-sdk/sdk-wrapper/config";
-import { useWaitForSdkBundle } from "embedding-sdk/sdk-wrapper/hooks/private/use-wait-for-sdk-bundle";
 
 type Props<TComponentProps> = {
   getComponent: () => FunctionComponent<TComponentProps> | null | undefined;
   componentProps: TComponentProps | undefined;
+};
+
+// When the ComponentWrapper is rendered without being wrapped withing the MetabaseProvider,
+// the SDK bundle loading is not triggered.
+// We wait for 1 second and if the loading state is still not set or Initial - we set the NotStartedLoading error
+const NotStartedLoadingTrigger = () => {
+  const timeoutRef = useRef<number>();
+
+  useEffect(function handleSdkBundleNotStartedLoadingState() {
+    timeoutRef.current = window.setTimeout(() => {
+      const store = ensureMetabaseProviderPropsStore();
+      const loadingState = store.getSnapshot().loadingState;
+
+      if (
+        loadingState === undefined ||
+        loadingState === SdkLoadingState.Initial
+      ) {
+        store.updateInternalProps({
+          loadingError: SdkLoadingError.NotStartedLoading,
+        });
+      }
+    }, 1000);
+
+    return () => {
+      window.clearTimeout(timeoutRef.current);
+    };
+  }, []);
+
+  return null;
 };
 
 const ComponentWrapperInner = <TComponentProps,>({
@@ -21,17 +57,17 @@ const ComponentWrapperInner = <TComponentProps,>({
   componentProps,
 }: Props<TComponentProps>) => {
   const { props: metabaseProviderProps } = useMetabaseProviderPropsStore();
-  const { isNotStartedLoading, isLoading, isError } = useWaitForSdkBundle();
-
-  if (isNotStartedLoading) {
-    return <Error message={SDK_BUNDLE_NOT_STARTED_LOADING_MESSAGE} />;
-  }
+  const { isLoading, isError, isNotStartedLoading } = useSdkLoadingState();
 
   if (isError) {
-    return <Error message={SDK_BUNDLE_LOADING_ERROR_MESSAGE} />;
+    return <Error message={SDK_LOADING_ERROR_MESSAGE} />;
   }
 
-  if (isLoading || !metabaseProviderProps.initialized) {
+  if (isNotStartedLoading) {
+    return <Error message={SDK_NOT_STARTED_LOADING_MESSAGE} />;
+  }
+
+  if (isLoading || !metabaseProviderProps.loadingState) {
     return <Loader />;
   }
 
@@ -41,7 +77,7 @@ const ComponentWrapperInner = <TComponentProps,>({
   const Component = getComponent();
 
   if (!MetabaseProvider || !Component || !metabaseProviderProps.reduxStore) {
-    return null;
+    return <Error message={SDK_NOT_LOADED_YET_MESSAGE} />;
   }
 
   return (
@@ -70,6 +106,10 @@ export const createComponent = <
   return function ComponentWrapper(props: TComponentProps) {
     return (
       <ClientSideOnlyWrapper ssrFallback={null}>
+        <RenderSingleCopy id="component-wrapper">
+          <NotStartedLoadingTrigger />
+        </RenderSingleCopy>
+
         <ComponentWrapperInner
           getComponent={getComponent}
           componentProps={props}
