@@ -82,6 +82,12 @@ export const getIsHosted = (state: State): boolean => {
 };
 
 export const getTokenFeature = (state: State, feature: TokenFeature) => {
+  // We should never have token features in non-EE builds.
+  // This check prevents cases where the token from env is applied to OSS.
+  if (!isEEBuild()) {
+    return false;
+  }
+
   const tokenFeatures = getSetting(state, "token-features");
   return tokenFeatures[feature];
 };
