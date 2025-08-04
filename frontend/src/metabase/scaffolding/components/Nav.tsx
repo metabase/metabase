@@ -16,7 +16,7 @@ interface Props {
 
 export const Nav = ({ children, rowId, rowName, table }: Props) => {
   return (
-    <Group align="center" justify="space-between" pt="xl" px="xl">
+    <Group align="center" justify="space-between" pt={11.5} pb={11.5} px="xl">
       <Group
         align="flex-end"
         gap={0}
@@ -59,7 +59,7 @@ export const Nav = ({ children, rowId, rowName, table }: Props) => {
 };
 
 const Separator = () => (
-  <Text c="text-light" pl={"0.5em"} pr={"0.5em"}>
+  <Text c="text-light" px={7.2} style={{ fontSize: 14.4 }} fw={700}>
     /
   </Text>
 );

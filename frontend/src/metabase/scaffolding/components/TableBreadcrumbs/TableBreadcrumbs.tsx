@@ -18,10 +18,7 @@ interface Props {
   tableId: TableId;
 }
 
-export const TableBreadcrumbs = ({
-  hideTableName,
-  tableId,
-}: Props) => {
+export const TableBreadcrumbs = ({ hideTableName, tableId }: Props) => {
   const { data: table } = useGetTableQuery({ id: tableId });
 
   const { data: schemas, isLoading: isLoadingSchemas } =
@@ -103,7 +100,7 @@ export const TableBreadcrumbs = ({
 };
 
 const Separator = () => (
-  <Text c="text-light" pl={"0.5em"} pr={"0.5em"}>
+  <Text c="text-light" px={7.2} style={{ fontSize: 14.4 }} fw={700}>
     /
   </Text>
 );

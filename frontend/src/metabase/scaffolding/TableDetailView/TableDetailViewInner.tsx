@@ -230,12 +230,14 @@ export function TableDetailViewInner({
 
   const DetailContainer = ({ children }: { children: ReactNode }) => (
     <Stack
-      gap="xl"
+      bg="bg-white"
+      gap={0}
       flex="1"
       miw={0}
       h="100%"
       style={{
         overflow: "auto",
+        // borderTop: "1px solid var(--mb-color-border)",
       }}
     >
       <DetailViewHeader
