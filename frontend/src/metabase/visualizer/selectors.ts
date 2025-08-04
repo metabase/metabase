@@ -211,14 +211,24 @@ export const getVisualizerRawSeries = createSelector(
 );
 
 export const getVisualizerAllAvailableRawSeries = createSelector(
-  [getVisualizationType, getVisualizerRawSettings, getDataSources, getDatasets],
-  (display, settings, dataSources, datasets): RawSeries => {
+  [
+    getVisualizationType,
+    getVisualizerRawSettings,
+    getDataSources,
+    getDatasets,
+    getCards,
+  ],
+  (display, settings, dataSources, datasets, cards): RawSeries => {
+    if (!display) {
+      return [];
+    }
+
     return dataSources.map((dataSource, i) => {
       return {
         card: {
           display,
           dataset_query: {},
-          visualization_settings: settings,
+          visualization_settings: cards[i]?.visualization_settings || {},
         } as Card,
 
         data: datasets[dataSource.id]?.data,
@@ -228,6 +238,20 @@ export const getVisualizerAllAvailableRawSeries = createSelector(
         started_at: new Date().toISOString(),
       };
     });
+  },
+);
+
+export const getVisualizerAllAvailableTransformedSeries = createSelector(
+  [getVisualizerAllAvailableRawSeries],
+  (rawSeries) => {
+    if (rawSeries.length === 0) {
+      return [];
+    }
+    const { series } = getVisualizationTransformed(
+      extractRemappings(rawSeries),
+    );
+
+    return series;
   },
 );
 

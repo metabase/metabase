@@ -5,9 +5,13 @@ import { useDispatch, useSelector } from "metabase/lib/redux";
 import { Center } from "metabase/ui";
 import { BaseChartSettings } from "metabase/visualizations/components/ChartSettings";
 import { ErrorView } from "metabase/visualizations/components/Visualization/ErrorView";
-import { getSettingsWidgetsForSeries } from "metabase/visualizations/lib/settings/visualization";
+import {
+  getComputedSettingsForSeries,
+  getSettingsWidgetsForSeries,
+} from "metabase/visualizations/lib/settings/visualization";
 import {
   getVisualizerAllAvailableRawSeries,
+  getVisualizerAllAvailableTransformedSeries,
   getVisualizerComputedSettings,
   getVisualizerRawSeries,
   getVisualizerTransformedSeries,
@@ -15,15 +19,27 @@ import {
 import { updateSettings } from "metabase/visualizer/visualizer.slice";
 import type { VisualizationSettings } from "metabase-types/api";
 
-const HIDDEN_SETTING_WIDGETS = ["card.title", "card.description"];
+const HIDDEN_SETTING_WIDGETS = [
+  "card.title",
+  "card.description",
+  "graph.tooltip_columns",
+];
 
 export function VizSettingsSidebar({ className }: { className?: string }) {
   const series = useSelector(getVisualizerRawSeries);
   const transformedSeries = useSelector(getVisualizerTransformedSeries);
   const allAvailableSeries = useSelector(getVisualizerAllAvailableRawSeries);
+  const allAvailableTransformedSeries = useSelector(
+    getVisualizerAllAvailableTransformedSeries,
+  );
 
   const settings = useSelector(getVisualizerComputedSettings);
   const dispatch = useDispatch();
+
+  const allAvailableSeriesSettings =
+    series.length > 0
+      ? getComputedSettingsForSeries(allAvailableTransformedSeries)
+      : {};
 
   const [error, setError] = useState<Error | null>(null);
 
@@ -47,29 +63,43 @@ export function VizSettingsSidebar({ className }: { className?: string }) {
         true,
       );
 
-      const fullSeriesWidgets = getSettingsWidgetsForSeries(
-        allAvailableSeries,
+      // patch widgets here, to inject custom series options for tooltip
+      return widgets.filter(
+        (widget) => !HIDDEN_SETTING_WIDGETS.includes(widget.id),
+      );
+    } catch (error) {
+      setError(error as Error);
+      return [];
+    }
+  }, [transformedSeries, handleChangeSettings]);
+
+  const allSeriesWidgets = useMemo(() => {
+    if (allAvailableTransformedSeries.length === 0) {
+      return [];
+    }
+
+    try {
+      setError(null);
+      const widgets = getSettingsWidgetsForSeries(
+        allAvailableTransformedSeries,
         handleChangeSettings,
         true,
       );
 
       // patch widgets here, to inject custom series options for tooltip
-      return widgets
-        .filter((widget) => !HIDDEN_SETTING_WIDGETS.includes(widget.id))
-        .map((widget) => {
-          if (widget.id === "graph.tooltip_columns") {
-            return fullSeriesWidgets.find(
-              ({ id }) => id === "graph.tooltip_columns",
-            );
-          }
-        });
+      return widgets.filter((widget) => widget.id === "graph.tooltip_columns");
     } catch (error) {
       setError(error as Error);
       return [];
     }
-  }, [transformedSeries, handleChangeSettings, allAvailableSeries]);
+  }, [allAvailableTransformedSeries, handleChangeSettings]);
 
-  console.log("VizSettingsSidebar", { widgets, allAvailableSeries });
+  console.log("VizSettingsSidebar", {
+    widgets,
+    allAvailableSeries,
+    allAvailableTransformedSeries,
+    allAvailableSeriesSettings,
+  });
 
   return error ? (
     <ErrorComponent message={error.message} />
@@ -80,6 +110,15 @@ export function VizSettingsSidebar({ className }: { className?: string }) {
         transformedSeries={transformedSeries}
         chartSettings={settings}
         widgets={widgets}
+        onChange={handleChangeSettings}
+        className={className}
+      />
+      <div>--------------</div>
+      <BaseChartSettings
+        series={allAvailableSeries}
+        transformedSeries={allAvailableTransformedSeries}
+        chartSettings={allAvailableSeriesSettings}
+        widgets={allSeriesWidgets}
         onChange={handleChangeSettings}
         className={className}
       />
