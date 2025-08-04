@@ -10,13 +10,17 @@ export function USER_FETCH_FAILED() {
 export function CANNOT_CONNECT_TO_INSTANCE({
   instanceUrl,
   status,
+  message,
 }: {
   instanceUrl: string;
   status?: number;
+  message?: string;
 }) {
+  const defaultMessage = `Unable to connect to instance at ${instanceUrl}${status ? ` (status: ${status})` : ""}`;
+
   return new MetabaseError(
     "CANNOT_CONNECT_TO_INSTANCE",
-    `Unable to connect to instance at ${instanceUrl}${status ? ` (status: ${status})` : ""}`,
+    message ?? defaultMessage,
     { status },
   );
 }
@@ -34,8 +38,4 @@ export function AUTH_TIMEOUT() {
     "AUTH_TIMEOUT",
     "Authentication has not been completed in time.",
   );
-}
-
-export function SSO_DISABLED({ message }: { message: string }) {
-  return new MetabaseError("SSO_DISABLED", message);
 }

@@ -270,10 +270,12 @@
                  :nonce          (:nonce request)
                  :allow-iframes? ((some-fn request/public? request/embed?) request)
                  :allow-cache?   (request/cacheable? request))
-        ;; Add CORS headers for /auth/sso endpoint with 402 status (embedding disabled errors)
-        ;; This allows frontend to read error messages when embedding SDK is not set up
+        ;; Add CORS headers for /auth/sso endpoint
+        ;; - For OPTIONS requests (preflight) to allow CORS
+        ;; - For 402 status (embedding disabled errors) to allow frontend to read error messages
         cors-headers (when (and (= (:uri request) "/auth/sso")
-                                (= (:status response) 402))
+                                (or (= (:request-method request) :options)
+                                    (= (:status response) 402)))
                        {"Access-Control-Allow-Origin" "*"
                         "Access-Control-Allow-Headers" "*"
                         "Access-Control-Allow-Methods" "*"})]

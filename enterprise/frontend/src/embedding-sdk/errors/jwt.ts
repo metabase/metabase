@@ -26,11 +26,7 @@ export function REFRESH_TOKEN_BACKEND_ERROR(params: {
   status?: string;
   message?: string;
 }) {
-  return new MetabaseError(
-    "BACKEND_ERROR_STATUS",
-    `Backend returned an error when refreshing the token. Status: ${params.status ?? "unknown"}${params.message ? ", Message: " + params.message : ""}.`,
-    params,
-  );
+  return new MetabaseError("BACKEND_ERROR_STATUS", params.message, params);
 }
 
 export function CUSTOM_FETCH_REQUEST_TOKEN_ERROR(params: {

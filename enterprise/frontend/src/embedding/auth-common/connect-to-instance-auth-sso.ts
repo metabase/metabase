@@ -31,17 +31,17 @@ export async function connectToInstanceAuthSso(
     const urlResponse = await fetch(ssoUrl, { headers });
 
     if (!urlResponse.ok) {
-      const errorData = await urlResponse.json();
-
-      if (errorData.status === "error-sso-disabled") {
-        throw MetabaseError.SSO_DISABLED({
-          message: errorData.message,
-        });
+      let errorData;
+      try {
+        errorData = await urlResponse.json();
+      } catch {
+        // If JSON parsing fails, errorData will be undefined
       }
 
       throw MetabaseError.CANNOT_CONNECT_TO_INSTANCE({
         instanceUrl: url,
         status: urlResponse.status,
+        message: errorData?.message,
       });
     }
     return await urlResponse.json();
