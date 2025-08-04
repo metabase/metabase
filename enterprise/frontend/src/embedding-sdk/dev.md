@@ -47,8 +47,10 @@ You'll need to have the following ENVs for running EE E2E tests:
 
 ```bash
 MB_EDITION=ee
-CYPRESS_ALL_FEATURES_TOKEN=  ${usual token from password manager}
-CYPRESS_NO_FEATURES_TOKEN=  ${usual token from password manager}
+MB_ALL_FEATURES_TOKEN=${usual token from password manager}
+MB_STARTER_CLOUD_TOKEN=${usual token from password manager}
+MB_PRO_CLOUD_TOKEN=${usual token from password manager}
+MB_PRO_SELF_HOSTED_TOKEN=${usual token from password manager}
 ```
 
 Cypress will use the built package, so you'll have to build the sdk first (see above).
