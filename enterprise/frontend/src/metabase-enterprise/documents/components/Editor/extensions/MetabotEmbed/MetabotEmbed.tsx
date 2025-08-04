@@ -9,6 +9,7 @@ import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
 import { Button, Flex, Icon, Text, Tooltip } from "metabase/ui";
+import MetabotThinkingStyles from "metabase-enterprise/metabot/components/MetabotChat/MetabotThinking.module.css";
 
 import { useMetabotDocumentQuery } from "../../hooks/useMetabotDocumentQuery";
 
@@ -202,7 +203,10 @@ export const MetabotComponent = memo(
           <Flex px="md" pb="md" pt="xs" gap="sm">
             <Flex flex={1} my="auto">
               {isLoading ? (
-                <Text flex={1} c="text-secondary">
+                <Text
+                  flex={1}
+                  className={MetabotThinkingStyles.toolCallStarted}
+                >
                   {t`Working on it...`}
                 </Text>
               ) : errorText ? (
