@@ -59,6 +59,13 @@
                                 {:status :exec-failed
                                  :end_time (t/instant (:end-time resp))
                                  :is_active nil
+                                 :message (:note resp)})
+                    "timeout"
+                    (t2/update! :model/WorkerRun
+                                :run_id (:run_id run)
+                                {:status :timeout
+                                 :end_time (t/instant (:end-time resp))
+                                 :is_active nil
                                  :message (:note resp)})))
                 (catch Throwable t
                   (log/error t (str "Error syncing " (:run_id run))))))
