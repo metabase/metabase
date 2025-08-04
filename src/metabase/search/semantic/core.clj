@@ -6,6 +6,14 @@
    [metabase.search.ingestion :as search.ingestion]
    [metabase.util.log :as log]))
 
+(def ^:dynamic *min-results-threshold*
+  "Minimum number of semantic search results required before falling back to other engines."
+  100)
+
+(def ^:dynamic *max-combined-results*
+  "Maximum number of combined results to return when supplementing semantic search with fallback engines."
+  1000)
+
 (defn- oss-semantic-search-error
   "Helper function to throw semantic search enterprise feature error."
   []
@@ -65,10 +73,25 @@
       (log/warn e "Semantic search engine not supported")
       false)))
 
+(defn- fallback-engine
+  "Find the highest priority search engine available for fallback."
+  []
+  (first (filter search.engine/supported-engine?
+                 search.engine/fallback-engine-priority)))
+
 (defmethod search.engine/results :search.engine/semantic
   [search-ctx]
   (try
-    (results search-ctx)
+    (let [semantic-results (results search-ctx)
+          result-count (count semantic-results)]
+      (if (>= result-count *min-results-threshold*)
+        semantic-results
+        (let [fallback (fallback-engine)]
+          (log/infof "Semantic search returned %d results (< %d), supplementing with %s search"
+                     result-count *min-results-threshold* fallback)
+          (let [fallback-results (search.engine/results (assoc search-ctx :search-engine fallback))
+                combined-results (concat semantic-results fallback-results)]
+            (take *max-combined-results* combined-results)))))
     (catch Exception e
       (log/error e "Error executing semantic search")
       [])))

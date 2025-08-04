@@ -1,6 +1,11 @@
 ;; The interface encapsulating the various search engine backends.
 (ns metabase.search.engine)
 
+(def fallback-engine-priority
+  "Search engines in order of preference for fallback scenarios."
+  [:search.engine/appdb
+   :search.engine/in-place])
+
 (defmulti supported-engine?
   "Does this instance support the given engine?"
   {:arglists '([engine])}

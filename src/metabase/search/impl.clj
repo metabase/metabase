@@ -209,9 +209,7 @@
         ;; It would be good to have a warning on start up for this.
         :search.engine/in-place))
     (first (filter search.engine/supported-engine?
-                   [:search.engine/appdb
-                    :search.engine/semantic
-                    :search.engine/in-place]))))
+                   search.engine/fallback-engine-priority))))
 
 (defn- parse-engine [value]
   (or (when-not (str/blank? value)
