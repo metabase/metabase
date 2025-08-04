@@ -1,7 +1,8 @@
 (ns metabase.util.performance
   "Functions and utilities for faster processing. This namespace is compatible with both Clojure and ClojureScript.
   However, some functions are either not only available in CLJS, or offer passthrough non-improved functions."
-  (:refer-clojure :exclude [reduce mapv run! some every? concat select-keys])
+  (:refer-clojure :exclude [reduce mapv run! some every? concat select-keys #?(:cljs clj->js)])
+  #?(:cljs (:require [goog.object :as gobject]))
   #?@(:clj [(:import (clojure.lang LazilyPersistentVector RT)
                      java.util.Iterator)]
       :default ()))
@@ -341,3 +342,36 @@
                                acc
                                (assoc! acc k v))))
                          (transient {}) keyseq))))
+
+;;;; Faster clj->js implementation
+
+#?(:cljs
+   (defn clj->js
+     "Optimized implementation of `cljs.core/clj->js`. The main distinction is using `reduce` to iterate through
+     collections and thus reduce allocation pressure."
+     [x]
+     (letfn [(keyfn [k] (cond
+                          (satisfies? IEncodeJS k) (-clj->js k)
+                          (string? k) k
+                          (number? k) k
+                          (keyword? k) (name k)
+                          (symbol? k) (str k)
+                          :else (pr-str k)))
+             (thisfn [x] (cond
+                           (nil? x) nil
+                           (satisfies? IEncodeJS x) (-clj->js x)
+                           (keyword? x) (name x)
+                           (symbol? x) (str x)
+                           (map? x) (let [m (js-obj)]
+                                      (reduce-kv (fn [_ k v]
+                                                   (gobject/set m (keyfn k) (thisfn v))
+                                                   nil)
+                                                 nil x)
+                                      m)
+                           (coll? x) (let [arr (array)]
+                                       (reduce (fn [_ y]
+                                                 (.push arr (thisfn y)))
+                                               nil x)
+                                       arr)
+                           :else x))]
+       (thisfn x))))
