@@ -18,3 +18,8 @@ export type Section = {
 };
 
 export type Content = Section[];
+
+export type SectionFieldsProps = {
+  value: FieldId[];
+  onChange: (value: FieldId[]) => void;
+};
