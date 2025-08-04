@@ -226,12 +226,13 @@
 
 (defn- calc-token-metrics
   [texts]
-  (let [counts (map count-tokens texts)]
+  (let [counts  (map count-tokens texts)
+        avg-raw (/ (reduce + counts) (count counts))]
     {:n   (count texts)
      :min (apply min counts)
      :max (apply max counts)
      :sum (reduce + counts)
-     :avg (double (/ (reduce + counts) (count counts)))}))
+     :avg (Double/parseDouble (format "%.2f" (double avg-raw)))}))
 
 (defn process-embeddings-streaming
   "Process texts in provider-appropriate batches, calling process-fn for each batch. process-fn will be called with
