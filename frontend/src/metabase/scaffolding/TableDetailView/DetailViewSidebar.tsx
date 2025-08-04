@@ -67,7 +67,6 @@ export function DetailViewSidebar({
             <SidebarSectionItem
               variant="header"
               section={headerSection}
-              sections={sections}
               columns={columns}
               onUpdateSection={onUpdateSection}
               onRemoveSection={onRemoveSection}
@@ -80,7 +79,6 @@ export function DetailViewSidebar({
             <SidebarSectionItem
               variant="subheader"
               section={subheaderSection}
-              sections={sections}
               columns={columns}
               onUpdateSection={onUpdateSection}
               onRemoveSection={onRemoveSection}
@@ -93,7 +91,6 @@ export function DetailViewSidebar({
             <SidebarSectionItem
               variant="highlight-1"
               section={highlight1Section}
-              sections={sections}
               columns={columns}
               onUpdateSection={onUpdateSection}
               onRemoveSection={onRemoveSection}
@@ -121,7 +118,6 @@ export function DetailViewSidebar({
               key={section.id}
               variant={section.variant}
               section={section}
-              sections={sections}
               columns={columns}
               onUpdateSection={onUpdateSection}
               onRemoveSection={onRemoveSection}

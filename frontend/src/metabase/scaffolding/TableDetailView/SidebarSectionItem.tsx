@@ -1,7 +1,7 @@
 import { useMemo, useRef } from "react";
 import { t } from "ttag";
 
-import { Box, Flex, Group, Stack, Switch, Text } from "metabase/ui/components";
+import { Box, Group, Stack, Switch, Text } from "metabase/ui/components";
 import type {
   DatasetColumn,
   ObjectViewSectionSettings,
@@ -16,7 +16,6 @@ type Section = ObjectViewSectionSettings;
 
 interface SidebarSectionItemProps {
   section: Section;
-  sections: Section[];
   columns: DatasetColumn[];
   onUpdateSection: (sectionId: number, update: Partial<Section>) => void;
   onRemoveSection?: (sectionId: number) => void;
@@ -27,7 +26,6 @@ interface SidebarSectionItemProps {
 
 export function SidebarSectionItem({
   section,
-  // sections,
   columns,
   onUpdateSection,
   onRemoveSection: _onRemoveSection,
@@ -57,8 +55,13 @@ export function SidebarSectionItem({
           cursor: "pointer",
         }}
         ref={triggerRef}
-        onClick={() => {
+        onClick={(event) => {
           if (openPopoverId === section.id) {
+            // do not close popover when we click inside it e.g. add section
+            if (triggerRef.current?.contains(event.target as HTMLElement)) {
+              return;
+            }
+
             setOpenPopoverId(null);
           } else {
             setOpenPopoverId(section.id);
