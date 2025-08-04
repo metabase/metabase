@@ -284,37 +284,10 @@ export function TableDetailViewInner({
         >
           <Box maw={800} w="100%">
             {children}
-            {hasRelationships && (
-              <Box
-                pos="relative"
-                bg={isEdit ? "bg-medium" : "bg-white"}
-                px="md"
-                py="sm"
-                style={{
-                  border: isEdit ? "1px solid var(--border-color)" : "none",
-                  borderRadius: "var(--default-border-radius)",
-                  // eslint-disable-next-line no-color-literals
-                  boxShadow: "0 2px 8px rgba(0, 0, 0, 0.1)",
-                }}
-              >
-                <>
-                  <Text component="h2">{t`Relationships`}</Text>
-
-                  <Relationships
-                    objectName={rowName ? String(rowName) : String(rowId)}
-                    tableForeignKeys={tableForeignKeys}
-                    tableForeignKeyReferences={tableForeignKeyReferences}
-                    foreignKeyClicked={handleFollowForeignKey}
-                    disableClicks={isEdit}
-                    relationshipsDirection={"vertical"}
-                  />
-                </>
-              </Box>
-            )}
           </Box>
         </Stack>
 
-        {isEdit && (
+        {(hasRelationships || isEdit) && (
           <Box
             bg="white"
             flex="0 0 auto"
@@ -327,17 +300,56 @@ export function TableDetailViewInner({
               // overflowY: "auto",
             }}
           >
-            <DetailViewSidebar
-              columns={columns}
-              sections={sections}
-              onCreateSection={createSection}
-              onUpdateSection={updateSection}
-              onUpdateSections={updateSections}
-              onRemoveSection={removeSection}
-              onDragEnd={handleDragEnd}
-              onCancel={handleCloseClick}
-              onSubmit={handleSaveClick}
-            />
+            {isEdit && (
+              <DetailViewSidebar
+                columns={columns}
+                sections={sections}
+                onCreateSection={createSection}
+                onUpdateSection={updateSection}
+                onUpdateSections={updateSections}
+                onRemoveSection={removeSection}
+                onDragEnd={handleDragEnd}
+                onCancel={handleCloseClick}
+                onSubmit={handleSaveClick}
+              />
+            )}
+
+            {!isEdit && (
+              <Stack
+                pos="relative"
+                bg={isEdit ? "bg-medium" : "bg-white"}
+                gap={0}
+                h="100%"
+              >
+                <Box
+                  flex="0 0 auto"
+                  px="xl"
+                  py="lg"
+                  style={{
+                    borderBottom: "1px solid var(--border-color)",
+                  }}
+                >
+                  <Text fw={600} size="lg">{t`Relationships`}</Text>
+                </Box>
+
+                <Box
+                  flex="1"
+                  px="xl"
+                  pb="xl"
+                  pt={16}
+                  style={{ overflow: "auto" }}
+                >
+                  <Relationships
+                    objectName={rowName ? String(rowName) : String(rowId)}
+                    tableForeignKeys={tableForeignKeys}
+                    tableForeignKeyReferences={tableForeignKeyReferences}
+                    foreignKeyClicked={handleFollowForeignKey}
+                    disableClicks={isEdit}
+                    relationshipsDirection={"vertical"}
+                  />
+                </Box>
+              </Stack>
+            )}
           </Box>
         )}
       </Group>

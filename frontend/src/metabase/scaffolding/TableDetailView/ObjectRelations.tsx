@@ -124,7 +124,7 @@ function Relationship({
             : undefined
       }
     >
-      <Flex direction="column" style={{ flexBasis: "50px" }}>
+      <Flex flex="1" direction="column" style={{ flexBasis: "50px" }}>
         <h2>{isLoaded ? fkCountValue : <Loader size="xs" />}</h2>
         <h5 className={CS.block}>
           {relationName}
