@@ -1,6 +1,8 @@
 (ns metabase-enterprise.transforms.execute
   (:require
    [clojure.string :as str]
+   [medley.core :as m]
+   [metabase-enterprise.transforms.core :as transforms]
    [metabase-enterprise.transforms.ordering :as transforms.ordering]
    [metabase-enterprise.transforms.util :as transforms.util]
    [metabase-enterprise.worker.core :as worker]
@@ -10,7 +12,9 @@
    [metabase.sync.core :as sync]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (java.util.concurrent Executors ExecutorService)))
 
 (set! *warn-on-reflection* true)
 
@@ -161,12 +165,75 @@
   (sync-worker-runs!)
   -)
 
+(defonce ^:private ^ExecutorService executor (Executors/newVirtualThreadPerTaskExecutor))
+
+(def ^:private ^Long scheduled-execution-poll-delay-millis 2000)
+
+(defn- start-transforms!
+  [transforms opts]
+  (let [started-transforms
+        (mapv (fn [transform]
+                (let [start-promise (promise)]
+                  (try
+                    (let [thunk (^:once fn []
+                                  (execute-mbql-transform! transform (assoc opts :start-promise start-promise)))]
+                      (.submit executor ^Runnable (bound-fn* thunk)))
+                    (catch Throwable t
+                      (deliver start-promise t)))
+                  [transform start-promise]))
+              transforms)]
+    (reduce (fn [done [transform start-promise]]
+              (let [result @start-promise
+                    run-id (when (and (vector? result) (= (first result) :started))
+                             (second result))]
+                (if run-id
+                  (update done :started conj (assoc transform ::run-id run-id))
+                  (update done :failed  conj transform))))
+            {:started []
+             :failed  []}
+            started-transforms)))
+
+(defn- poll-transforms
+  [transforms]
+  (when-let [run-ids (seq (keep ::run-id transforms))]
+    (loop []
+      (Thread/sleep scheduled-execution-poll-delay-millis)
+      (or (not-empty (t2/select-fn-vec :work_id :model/WorkerRun
+                                       :run_id [:in run-ids]
+                                       :status [:!= :started]))
+          (recur)))))
+
 (defn execute-transforms!
   "Execute `transforms` and sync their target tables in dependency order."
-  [transforms {:keys [run-method]}]
-  (let [ordering (transforms.ordering/transform-ordering transforms)]
-    (when-let [cycle (transforms.ordering/find-cycle ordering)]
-      (let [id->name (into {} (map (juxt :id :name)) transforms)]
-        (throw (ex-info (str "Cyclic transform definitions detected: "
-                             (str/join " → " (map id->name cycle)))
-                        {:cycle cycle}))))))
+  [transforms opts]
+  (let [ordering (transforms.ordering/transform-ordering transforms)
+        _ (when-let [cycle (transforms.ordering/find-cycle ordering)]
+            (let [id->name (into {} (map (juxt :id :name)) transforms)]
+              (throw (ex-info (str "Cyclic transform definitions detected: "
+                                   (str/join " → " (map id->name cycle)))
+                              {:cycle cycle}))))
+        id->transform (m/index-by :id transforms)]
+    (loop [to-start (into #{} (map :id) transforms)
+           running #{}
+           complete #{}]
+      (when (seq to-start)
+        (if-let [available-ids (not-empty (transforms.ordering/available-transforms ordering running complete))]
+          ;; there are transforms to start
+          (let [{:keys [started failed]} (start-transforms! (map id->transform available-ids) opts)
+                running' (into running (map :id) started)
+                complete' (into complete (map :id) failed)
+                to-start' (reduce disj to-start available-ids)
+                completed (poll-transforms (map id->transform running'))]
+            (recur to-start'
+                   (reduce disj running' completed)
+                   (reduce conj complete' completed)))
+          ;; nothing to start yet, poll for transforms to finish
+          (if-let [completed (poll-transforms (map id->transform running))]
+            (recur to-start
+                   (reduce disj running completed)
+                   (reduce conj complete completed))
+            (throw (ex-info "There are transforms to start, but nothing can be started and nothing is running!"
+                            {:to-start to-start
+                             :ordering ordering
+                             :running  running
+                             :complete complete}))))))))

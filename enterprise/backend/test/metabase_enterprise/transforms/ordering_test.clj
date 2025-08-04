@@ -88,8 +88,9 @@
 
 (defn- rotations
   [v]
-  (let [n (count v)]
-    (into #{} (map #(take n (drop % (cycle v))))
+  (let [n (count v)
+        elements (cycle v)]
+    (into #{} (map #(take n (drop % elements)))
           (range n))))
 
 (deftest find-cycle-test
