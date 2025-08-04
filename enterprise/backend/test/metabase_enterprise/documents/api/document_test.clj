@@ -2,7 +2,6 @@
   (:require
    [clojure.set :as set]
    [clojure.test :refer :all]
-   [metabase-enterprise.documents.api.document :as document-api]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -40,26 +39,6 @@
                               {:name "Document"
                                :document "Doc"
                                :card_ids [0 1]})))))
-
-(deftest post-document-valid-card-association-test
-  (testing "POST /api/ee/document/ - should associate valid :in_document cards with new document"
-    (mt/with-model-cleanup [:model/Document]
-      (mt/with-temp [:model/Card card1 {:name "Card 1"
-                                        :type :in_document
-                                        :dataset_query (mt/mbql-query venues)}
-                     :model/Card card2 {:name "Card 2"
-                                        :type :in_document
-                                        :dataset_query (mt/mbql-query venues)}]
-        (let [result (mt/user-http-request :crowberto
-                                           :post 200 "ee/document/"
-                                           {:name "Document with Valid Cards"
-                                            :document "Doc with valid cards"
-                                            :card_ids [(:id card1) (:id card2)]})
-              updated-card1 (t2/select-one :model/Card :id (:id card1))
-              updated-card2 (t2/select-one :model/Card :id (:id card2))]
-          (is (pos? (:id result)))
-          (is (= (:id result) (:document_id updated-card1)))
-          (is (= (:id result) (:document_id updated-card2))))))))
 
 (deftest post-document-nonexistent-card-ids-test
   (testing "POST /api/ee/document/ - should reject non-existent card-ids"
@@ -103,27 +82,6 @@
                                           :card_ids []})]
         (is (pos? (:id result)))))))
 
-(deftest post-document-transaction-rollback-test
-  (testing "POST /api/ee/document/ - transaction rollback when card update fails"
-    (mt/with-model-cleanup [:model/Document :model/Card]
-            ;; This test ensures that if card updates fail, the entire transaction is rolled back
-      (mt/with-temp [:model/Card card {:name "Test Card"
-                                       :type :in_document
-                                       :dataset_query (mt/mbql-query venues)}]
-              ;; Create a scenario where card update might fail by using a mixed set of valid and invalid cards
-        (let [invalid-card-id 999999
-              initial-documents-count (t2/count :model/Document)]
-          (mt/user-http-request :crowberto
-                                :post 404 "ee/document/"
-                                {:name "Document That Should Rollback"
-                                 :document "Doc"
-                                 :card_ids [(:id card) invalid-card-id]})
-                ;; Verify no new document was created due to rollback
-          (is (= initial-documents-count (t2/count :model/Document)))
-                ;; Verify the valid card wasn't updated
-          (let [unchanged-card (t2/select-one :model/Card :id (:id card))]
-            (is (nil? (:document_id unchanged-card)))))))))
-
 (deftest put-document-basic-update-test
   (testing "PUT /api/ee/document/id - basic document update"
     (mt/with-temp [:model/Document {document-id :id} {:name "Test Document"
@@ -132,48 +90,6 @@
                                          :put 200 (format "ee/document/%s" document-id) {:name "Document 2" :document "Doc 2"})]
         (is (partial= {:name "Document 2"
                        :document "Doc 2"} result))))))
-
-(deftest put-document-associate-valid-cards-test
-  (testing "PUT /api/ee/document/id - should associate valid :in_document cards with existing document"
-    (mt/with-temp [:model/Document {document-id :id} {:name "Test Document"
-                                                      :document "Initial Doc"}]
-      (mt/with-model-cleanup [:model/Card]
-        (mt/with-temp [:model/Card card1 {:name "Card 1"
-                                          :type :in_document
-                                          :dataset_query (mt/mbql-query venues)}
-                       :model/Card card2 {:name "Card 2"
-                                          :type :in_document
-                                          :dataset_query (mt/mbql-query venues)}]
-          (let [result (mt/user-http-request :crowberto
-                                             :put 200 (format "ee/document/%s" document-id)
-                                             {:name "Updated Document with Cards"
-                                              :document "Updated doc with cards"
-                                              :card_ids [(:id card1) (:id card2)]})
-                updated-card1 (t2/select-one :model/Card :id (:id card1))
-                updated-card2 (t2/select-one :model/Card :id (:id card2))]
-            (is (= document-id (:id result)))
-            (is (= document-id (:document_id updated-card1)))
-            (is (= document-id (:document_id updated-card2)))))))))
-
-(deftest put-document-clear-existing-card-associations-test
-  (testing "PUT /api/ee/document/id - should clear existing card associations when updating with new cards"
-    (mt/with-temp [:model/Document {document-id :id} {:name "Test Document"
-                                                      :document "Initial Doc"}]
-      (mt/with-model-cleanup [:model/Card]
-        (mt/with-temp [:model/Card old-card {:name "Old Card"
-                                             :type :in_document
-                                             :document_id document-id
-                                             :dataset_query (mt/mbql-query venues)}
-                       :model/Card new-card {:name "New Card"
-                                             :type :in_document
-                                             :dataset_query (mt/mbql-query venues)}]
-          (mt/user-http-request :crowberto
-                                :put 200 (format "ee/document/%s" document-id)
-                                {:card_ids [(:id new-card)]})
-          (let [updated-old-card (t2/select-one :model/Card :id (:id old-card))
-                updated-new-card (t2/select-one :model/Card :id (:id new-card))]
-            (is (= document-id (:document_id updated-old-card)))
-            (is (= document-id (:document_id updated-new-card)))))))))
 
 (deftest put-document-reject-nonexistent-card-ids-test
   (testing "PUT /api/ee/document/id - should reject non-existent card-ids"
@@ -280,97 +196,6 @@
     (mt/user-http-request :crowberto
                           :get 404 "ee/document/99999")))
 
-;; Versioning functionality removed with single Document model
-
-(deftest validate-cards-for-document-test
-  (testing "validate-cards-for-document function"
-    (let [validate-cards #'document-api/validate-cards-for-document]
-
-      (testing "should pass with empty card list"
-        (is (nil? (validate-cards []))))
-
-      (testing "should pass with nil card list"
-        (is (nil? (validate-cards nil))))
-
-      (testing "should pass with valid :in_document cards"
-        (mt/with-temp [:model/Card card1 {:name "Valid Card 1"
-                                          :dataset_query (mt/mbql-query venues)
-                                          :display :table
-                                          :visualization_settings {}
-                                          :type :in_document}
-                       :model/Card card2 {:name "Valid Card 2"
-                                          :dataset_query (mt/mbql-query venues)
-                                          :display :table
-                                          :visualization_settings {}
-                                          :type :in_document}]
-          (let [result (validate-cards [(:id card1) (:id card2)])]
-            (is (= 2 (count result)))
-            (is (every? #(= :in_document (:type %)) result))
-            (is (= #{(:id card1) (:id card2)} (set (map :id result)))))))
-
-      (testing "should fail with non-existent card ids"
-        (is (thrown-with-msg?
-             clojure.lang.ExceptionInfo
-             #"The following card IDs do not exist: \[999999\].*"
-             (validate-cards [999999])))
-
-        (let [ex (try (validate-cards [999999 888888])
-                      (catch Exception e e))]
-          (is (= 404 (:status-code (ex-data ex))))
-          (is (= [999999 888888] (:missing-card-ids (ex-data ex))))))
-
-      (testing "should fail with cards that don't have :in_document type"
-        (mt/with-temp [:model/Card question-card {:name "Question Card"
-                                                  :dataset_query (mt/mbql-query venues)
-                                                  :display :table
-                                                  :visualization_settings {}
-                                                  :type :question}
-                       :model/Card model-card {:name "Model Card"
-                                               :dataset_query (mt/mbql-query venues)
-                                               :display :table
-                                               :visualization_settings {}
-                                               :type :model}]
-          (testing "single invalid card"
-            (let [ex (try (validate-cards [(:id question-card)])
-                          (catch Exception e e))]
-              (is (= 400 (:status-code (ex-data ex))))
-              (is (= [(:id question-card)] (mapv :id (:invalid-cards (ex-data ex)))))
-              (is (= [:question] (mapv :type (:invalid-cards (ex-data ex)))))))
-
-          (testing "multiple invalid cards"
-            (let [ex (try (validate-cards [(:id question-card) (:id model-card)])
-                          (catch Exception e e))]
-              (is (= 400 (:status-code (ex-data ex))))
-              (is (= #{(:id question-card) (:id model-card)}
-                     (set (mapv :id (:invalid-cards (ex-data ex))))))))))
-
-      (testing "should fail with mix of valid and invalid cards"
-        (mt/with-temp [:model/Card valid-card {:name "Valid Card"
-                                               :dataset_query (mt/mbql-query venues)
-                                               :display :table
-                                               :visualization_settings {}
-                                               :type :in_document}
-                       :model/Card invalid-card {:name "Invalid Card"
-                                                 :dataset_query (mt/mbql-query venues)
-                                                 :display :table
-                                                 :visualization_settings {}
-                                                 :type :question}]
-          (let [ex (try (validate-cards [(:id valid-card) (:id invalid-card)])
-                        (catch Exception e e))]
-            (is (= 400 (:status-code (ex-data ex))))
-            (is (= [(:id invalid-card)] (mapv :id (:invalid-cards (ex-data ex)))))))
-
-        (testing "should handle partial missing cards"
-          (mt/with-temp [:model/Card existing-card {:name "Existing Card"
-                                                    :dataset_query (mt/mbql-query venues)
-                                                    :display :table
-                                                    :visualization_settings {}
-                                                    :type :in_document}]
-            (let [ex (try (validate-cards [(:id existing-card) 999999])
-                          (catch Exception e e))]
-              (is (= 404 (:status-code (ex-data ex))))
-              (is (= [999999] (:missing-card-ids (ex-data ex)))))))))))
-
 (deftest document-collection-sync-integration-test
   (testing "End-to-end collection synchronization through API"
     (mt/with-temp [:model/Collection {old-collection-id :id} {:name "Old Collection"}
@@ -380,12 +205,10 @@
                                                       :document "Integration test doc"}]
       ;; Create cards associated with the document
       (mt/with-temp [:model/Card {card1-id :id} {:name "Integration Card 1"
-                                                 :type :in_document
                                                  :document_id document-id
                                                  :collection_id old-collection-id
                                                  :dataset_query (mt/mbql-query venues)}
                      :model/Card {card2-id :id} {:name "Integration Card 2"
-                                                 :type :in_document
                                                  :document_id document-id
                                                  :collection_id old-collection-id
                                                  :dataset_query (mt/mbql-query venues)}
@@ -435,7 +258,6 @@
                                                       :document "Permission test doc"}]
       ;; Create cards in the original collection
       (mt/with-temp [:model/Card {card-id :id} {:name "Permission Test Card"
-                                                :type :in_document
                                                 :document_id document-id
                                                 :collection_id collection1-id
                                                 :dataset_query (mt/mbql-query venues)}]

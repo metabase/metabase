@@ -457,20 +457,6 @@
                         {:status-code 400})))))
   nil)
 
-(defn- assert-valid-report-card-constraints
-  "Check that the card meets constraints for document_id field. Throw an exception if not."
-  [{card-type :type, document-id :document_id, dashboard-id :dashboard_id, :as _card}]
-  ;; First constraint: Cards with document_id must have type :in_document
-  (when (and document-id
-             (not= (keyword card-type) :in_document))
-    (throw (ex-info (tru "Cards with document_id must have type :in_document")
-                    {:status-code 400})))
-  ;; Second constraint: Cards cannot have both dashboard_id and document_id (mutual exclusion)
-  (when (and dashboard-id document-id)
-    (throw (ex-info (tru "Cards cannot have both dashboard_id and document_id")
-                    {:status-code 400})))
-  nil)
-
 (defn- dashboard-internal-card? [card]
   (boolean (:dashboard_id card)))
 
@@ -491,7 +477,7 @@
         (tru "Invalid Dashboard Question: Cannot set `collection_position` on a Dashboard Question")
         ;; `column-will-change?` seems broken in the case where we 'change' :question to "question"
         (and (api/column-will-change? :type card changes)
-             (not (contains? #{"question" :question "in_document" :in_document} (:type changes))))
+             (not (contains? #{"question" :question} (:type changes))))
         (tru "Invalid Dashboard Question: Cannot set `type` on a Dashboard Question")))))
 
 (defn- assert-is-valid-dashboard-internal-update [changes card]
@@ -518,7 +504,7 @@
   (let [correct-collection-id (t2/select-one-fn :collection_id [:model/Dashboard :collection_id] (:dashboard_id card))
         invalid? (or (and (contains? card :collection_id)
                           (not= correct-collection-id (:collection_id card)))
-                     (not (contains? #{:question "question" :in_document "in_document" nil} (:type card)))
+                     (not (contains? #{:question "question" nil} (:type card)))
                      (some? (:collection_position card)))]
     (when invalid?
       (throw (ex-info (tru "Invalid dashboard-internal card")
@@ -543,7 +529,7 @@
       (check-field-filter-fields-are-from-correct-database card)
       ;; TODO: add a check to see if all id in :parameter_mappings are in :parameters (#40013)
       (assert-valid-type card)
-      (assert-valid-report-card-constraints card)
+
       (params/assert-valid-parameters card)
       (params/assert-valid-parameter-mappings card)
       (collection/check-collection-namespace :model/Card (:collection_id card)))))
@@ -663,8 +649,7 @@
         (parameter-card/upsert-or-delete-from-parameters! "card" id (:parameters changes)))
       ;; additional checks (Enterprise Edition only)
       (pre-update-check-sandbox-constraints card changes)
-      (assert-valid-type (merge old-card-info changes))
-      (assert-valid-report-card-constraints card))))
+      (assert-valid-type (merge old-card-info changes)))))
 
 (defn- add-query-description-to-metric-card
   "Add `:query_description` key to returned card.

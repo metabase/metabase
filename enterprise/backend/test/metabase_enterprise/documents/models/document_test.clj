@@ -11,16 +11,14 @@
 (use-fixtures :once (fixtures/initialize :db :test-users))
 
 (deftest sync-document-cards-collection-matching-cards-test
-  (testing "should only update cards with matching document_id and :in_document type"
+  (testing "should only update cards with matching document_id"
     (mt/with-temp [:model/Collection {collection-id :id} {:name "Target Collection"}
                    :model/Document {document-id :id} {:name "Test Document"}
                    :model/Card {card1-id :id} {:name "Document Card 1"
-                                               :type :in_document
                                                :document_id document-id
                                                :collection_id nil
                                                :dataset_query (mt/mbql-query venues)}
                    :model/Card {card2-id :id} {:name "Document Card 2"
-                                               :type :in_document
                                                :document_id document-id
                                                :collection_id nil
                                                :dataset_query (mt/mbql-query venues)}
@@ -46,7 +44,6 @@
     (mt/with-temp [:model/Collection {collection-id :id} {:name "Target Collection"}
                    :model/Document {document-id :id} {:name "Test Document"}
                    :model/Card {nil-document-card-id :id} {:name "Nil Document Card"
-                                                           :type :in_document
                                                            :document_id nil
                                                            :collection_id nil
                                                            :dataset_query (mt/mbql-query venues)}]
@@ -68,8 +65,7 @@
                         (for [i (range 50)]
                           (:id (t2/insert-returning-pks! :model/Card
                                                          (merge (mt/with-temp-defaults :model/Card)
-                                                                {:type :in_document
-                                                                 :document_id document-id
+                                                                {:document_id document-id
                                                                  :collection_id nil
                                                                  :dataset_query (mt/mbql-query venues)})))))]
           (let [updated-count (document/sync-document-cards-collection! document-id collection-id)]
@@ -97,11 +93,9 @@
        :model/Document {document-id :id} {:collection_id old-collection-id
                                           :name "Test Document"}
        :model/Card {card1-id :id} {:name "Card 1"
-                                   :type :in_document
                                    :document_id document-id
                                    :collection_id old-collection-id}
        :model/Card {card2-id :id} {:name "Card 2"
-                                   :type :in_document
                                    :document_id document-id
                                    :collection_id old-collection-id}]
 
@@ -119,7 +113,6 @@
        :model/Document {document-id :id} {:collection_id collection-id
                                           :name "Test Document"}
        :model/Card {card-id :id} {:name "Card"
-                                  :type :in_document
                                   :document_id document-id
                                   :collection_id collection-id}]
 
@@ -130,7 +123,7 @@
       (is (nil? (:collection_id (t2/select-one :model/Card :id card-id)))))))
 
 (deftest document-collection-sync-hook-only-affects-in-document-cards-test
-  (testing "Hook only updates cards with type :in_document and matching document_id"
+  (testing "Hook only updates cards with  matching document_id"
     (mt/with-temp
       [:model/Collection {old-collection-id :id} {:name "Old Collection"}
        :model/Collection {new-collection-id :id} {:name "New Collection"}
@@ -138,7 +131,6 @@
                                           :name "Test Document"}
        ;; Card that should be updated (correct type and document_id)
        :model/Card {in-document-card-id :id} {:name "In-Document Card"
-                                              :type :in_document
                                               :document_id document-id
                                               :collection_id old-collection-id}
        ;; Card that should NOT be updated (wrong type)
@@ -147,7 +139,6 @@
                                            :collection_id old-collection-id}
        ;; Card that should NOT be updated (no document_id)
        :model/Card {regular-card-id :id} {:name "Regular Card"
-                                          :type :in_document
                                           :collection_id old-collection-id}]
 
       ;; Update the document's collection_id
@@ -170,7 +161,6 @@
                      :model/Document {document-id :id} {:collection_id regular-collection-id
                                                         :name "Personal Test Document"}
                      :model/Card {card-id :id} {:name "Personal Card"
-                                                :type :in_document
                                                 :document_id document-id
                                                 :collection_id regular-collection-id
                                                 :dataset_query (mt/mbql-query venues)}]

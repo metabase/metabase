@@ -35,22 +35,3 @@
     (collection/check-write-perms-for-collection new-collection-id))
   (when new-collection-id
     (api/check-400 (t2/exists? :model/Collection :id new-collection-id :archived false))))
-
-(defn sync-document-cards-collection!
-  "Updates all cards associated with a document to match the document's collection_id.
-   Takes a document-id and new-collection-id as parameters.
-   Uses bulk t2/update! operation for efficiency and operates within a transaction.
-   Only updates cards with type = :in_document and matching document_document_id."
-  [document-id new-collection-id]
-  (let [updated-count (t2/update! :model/Card
-                                  {:document_id document-id
-                                   :type :in_document}
-                                  {:collection_id new-collection-id})]
-    (when (> updated-count 0)
-      (log/debugf "Successfully updated %d cards to collection %s"
-                  updated-count new-collection-id))
-    updated-count))
-
-(t2/define-after-update :model/Document
-  [{document-id :id new-collection-id :collection_id}]
-  (sync-document-cards-collection! document-id new-collection-id))

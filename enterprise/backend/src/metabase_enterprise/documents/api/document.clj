@@ -11,7 +11,7 @@
    [toucan2.core :as t2]))
 
 (defn- validate-cards-for-document
-  "Validates that all provided card-ids exist and have type :in_document.
+  "Validates that all provided card-ids exist.
    Returns the card records if all are valid, throws exception otherwise."
   [card-ids]
   (when (seq card-ids)
@@ -24,14 +24,6 @@
                           {:status-code 404
                            :error-type :cards-not-found
                            :missing-card-ids missing-ids}))))
-      ;; Check all cards have type :in_document
-      (let [invalid-cards (remove #(= :in_document (keyword (:type %))) cards)]
-        (when (seq invalid-cards)
-          (throw (ex-info (tru "The following cards cannot be used in documents because they have the wrong type: {0}. Only cards with type ''in_document'' can be associated with documents. Please change the card type to ''in_document'' or use different cards."
-                               (mapv #(str "card " (:id %) " (type: " (:type %) ")") invalid-cards))
-                          {:status-code 400
-                           :error-type :invalid-card-type
-                           :invalid-cards (mapv #(select-keys % [:id :type]) invalid-cards)}))))
       cards)))
 
 (defn get-document
