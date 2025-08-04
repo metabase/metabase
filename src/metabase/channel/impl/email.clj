@@ -195,7 +195,7 @@
 ;; ------------------------------------------------------------------------------------------------;;
 
 (mu/defmethod channel/render-notification [:channel/email :notification/card] :- [:sequential EmailMessage]
-  [_channel-type {:keys [payload payload_type] :as notification-payload} template recipients]
+  [_channel-type {:keys [payload payload_type] :as notification-payload} {:keys [template recipients]}]
   (let [{:keys [card_part
                 notification_card
                 subscriptions
@@ -238,7 +238,7 @@
 ;; ------------------------------------------------------------------------------------------------;;
 
 (mu/defmethod channel/render-notification [:channel/email :notification/dashboard] :- [:sequential EmailMessage]
-  [_channel-type {:keys [payload payload_type] :as notification-payload} template recipients]
+  [_channel-type {:keys [payload payload_type] :as notification-payload} {:keys [template recipients attachment_only]}]
   (let [{:keys [dashboard_parts
                 dashboard_subscription
                 parameters
@@ -259,11 +259,16 @@
                                               result-attachment (email.result-attachment/result-attachment %)]
                                           (vswap! merged-attachments merge attachments)
                                           (vswap! result-attachments into result-attachment)
-                                          (html content))))
+                                          (when-not attachment_only
+                                            (html content)))))
         icon-attachment     (make-message-attachment (first (icon-bundle :dashboard)))
         card-attachments    (map make-message-attachment @merged-attachments)
-        attachments         (concat [icon-attachment] card-attachments @result-attachments)
-        dashboard-content   (str "<div>" (str/join html-contents) "</div>")
+        attachments         (cond-> (into [icon-attachment] @result-attachments)
+                              (not attachment_only)
+                              (concat card-attachments))
+        dashboard-content   (if-not attachment_only
+                              (str "<div>" (str/join html-contents) "</div>")
+                              "<div>Your dashboard has results</div>")
         message-context-fn  (fn [non-user-email]
                               (-> notification-payload
                                   (assoc :computed {:dashboard_content  dashboard-content
@@ -275,9 +280,10 @@
                                                     :management_url     (if (nil? non-user-email)
                                                                           (urls/notification-management-url)
                                                                           (pulse-unsubscribe-url-for-non-user (:id dashboard_subscription) non-user-email))
-                                                    :filters            (some-> (seq parameters)
-                                                                                (impl.util/remove-inline-parameters dashboard_parts)
-                                                                                (render.util/render-parameters))})
+                                                    :filters            (when-not attachment_only
+                                                                          (some-> (seq parameters)
+                                                                                  (impl.util/remove-inline-parameters dashboard_parts)
+                                                                                  (render.util/render-parameters)))})
                                   (m/update-existing-in [:payload :dashboard :description] #(markdown/process-markdown % :html))))]
     (construct-emails template message-context-fn attachments recipients)))
 
