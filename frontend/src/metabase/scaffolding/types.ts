@@ -18,29 +18,3 @@ export type Section = {
 };
 
 export type Content = Section[];
-
-
-/*
-
-
-today:
-
-U: dropdown component to add/remove columns
-S: 1 type of section
-K: persistence
-
------->
-
-main:
-- render a list of sections
-- 5 types of sections
-
-
-sidebar:
-- persistence
-- predefined sections
-- adding/removing columns to/from sections
-- move relationships to sidebar
-- move actions from the card to nav
-
-*/

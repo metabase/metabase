@@ -391,6 +391,7 @@ export function TableDetailViewInner({
           onDragEnd={handleDragEnd}
         >
           <SortableContext
+            disabled
             items={notEmptySections.map((section) => section.id)}
             strategy={verticalListSortingStrategy}
           >
@@ -398,6 +399,7 @@ export function TableDetailViewInner({
               <SortableSection
                 key={section.id}
                 section={section}
+                type={section.type}
                 columns={columns}
                 row={row}
                 tableId={tableId}

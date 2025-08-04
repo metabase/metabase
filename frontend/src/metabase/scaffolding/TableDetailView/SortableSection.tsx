@@ -8,6 +8,8 @@ import type {
   TableId,
 } from "metabase-types/api";
 
+import type { SectionType } from "../types";
+
 import { ObjectViewSection } from "./ObjectViewSection";
 
 type SortableSectionProps = {
@@ -18,6 +20,7 @@ type SortableSectionProps = {
   isEdit: boolean;
   onUpdateSection: (section: Partial<ObjectViewSectionSettings>) => void;
   onRemoveSection?: () => void;
+  type: SectionType;
 };
 
 export function SortableSection(props: SortableSectionProps) {

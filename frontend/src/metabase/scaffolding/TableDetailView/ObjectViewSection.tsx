@@ -1,4 +1,7 @@
+import cx from "classnames";
+
 import EditableText from "metabase/common/components/EditableText";
+import { useTranslateContent } from "metabase/i18n/hooks";
 import { Box, Flex, Group, Text } from "metabase/ui/components";
 import { Button } from "metabase/ui/components/buttons";
 import { Icon } from "metabase/ui/components/icons";
@@ -10,10 +13,10 @@ import type {
   TableId,
 } from "metabase-types/api";
 
+import type { SectionType } from "../types";
 import { getStyleProps, renderValue } from "../utils";
 
 import S from "./TableDetailView.module.css";
-import { useTranslateContent } from "metabase/i18n/hooks";
 
 type ObjectViewSectionProps = {
   section: ObjectViewSectionSettings;
@@ -24,9 +27,11 @@ type ObjectViewSectionProps = {
   onUpdateSection: (section: Partial<ObjectViewSectionSettings>) => void;
   onRemoveSection?: () => void;
   dragHandleProps?: any;
+  type: SectionType;
 };
 
 export function ObjectViewSection({
+  type = "normal",
   section,
   columns,
   row,
@@ -34,14 +39,19 @@ export function ObjectViewSection({
   isEdit,
   onUpdateSection,
   onRemoveSection,
-  dragHandleProps,
+  // dragHandleProps,
 }: ObjectViewSectionProps) {
   // const pkIndex = columns.findIndex(isPK); // TODO: handle multiple PKs
   const tc = useTranslateContent();
 
   return (
     <Box
-      className={S.ObjectViewSection}
+      className={cx(S.ObjectViewSection, {
+        [S.header]: type === "header",
+        [S.subheader]: type === "subheader",
+        [S.highlight1]: type === "highlight-1",
+        [S.highlight2]: type === "highlight-2",
+      })}
       pos="relative"
       bg={isEdit ? "bg-medium" : "bg-white"}
       px="md"
@@ -51,8 +61,8 @@ export function ObjectViewSection({
         borderRadius: "var(--default-border-radius)",
       }}
     >
-      <Group gap="xs">
-        {isEdit && (
+      <Group gap="xs" mb="xl">
+        {/* {isEdit && (
           <Icon
             name="grabber"
             style={{ cursor: "grab" }}
@@ -60,15 +70,13 @@ export function ObjectViewSection({
             tabIndex={0}
             {...dragHandleProps}
           />
-        )}
-        {isEdit && (
-          <EditableText
-            initialValue={section.title}
-            isDisabled={!isEdit}
-            onChange={(title) => onUpdateSection({ title })}
-            style={{ fontWeight: 700 }}
-          />
-        )}
+        )} */}
+        <EditableText
+          initialValue={section.title}
+          isDisabled={!isEdit}
+          onChange={(title) => onUpdateSection({ title })}
+          style={{ fontWeight: 700, fontSize: "1.25rem" }}
+        />
       </Group>
       <Flex
         direction={section.direction === "vertical" ? "column" : "row"}
@@ -90,28 +98,37 @@ export function ObjectViewSection({
           const value = row[columnIndex];
 
           return (
-            <Box key={field_id}>
+            <Flex align="center" key={field_id} gap="md">
               <Text
                 c="var(--mb-color-text-secondary)"
-                size="sm"
+                fw="bold"
+                fz="1rem"
+                truncate
                 style={{
                   whiteSpace: "nowrap",
+                  minWidth: "40%",
+                  maxWidth: "40%",
+                  flexShrink: 0,
                 }}
               >
                 {column.display_name}
               </Text>
               <Text
                 {...getStyleProps(style)}
+                variant="primary"
                 fz="1rem"
+                truncate
                 c="var(--mb-color-text-primary)"
                 lineClamp={5}
                 style={{
                   ...(isDate(column) ? { whiteSpace: "nowrap" } : {}),
+                  flexGrow: 1,
+                  textAlign: "left",
                 }}
               >
                 {renderValue(tc, value, column)}
               </Text>
-            </Box>
+            </Flex>
           );
         })}
       </Flex>

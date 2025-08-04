@@ -29,5 +29,16 @@
 }
 
 .SectionContent {
-  overflow-x: auto;
+  .header {
+    /* todo  */
+  }
+  .subheader {
+    /* todo  */
+  }
+  .highlight1 {
+    /* todo  */
+  }
+  .highlight2 {
+    /* todo  */
+  }
 }
