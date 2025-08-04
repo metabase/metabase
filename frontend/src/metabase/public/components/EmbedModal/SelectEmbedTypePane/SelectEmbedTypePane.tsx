@@ -47,6 +47,7 @@ export function SelectEmbedTypePane({
   getPublicUrl,
   goToNextStep,
 }: SelectEmbedTypePaneProps) {
+  const { url } = useUpsellSdkCta();
   const hasPublicLink = resource.public_uuid != null;
 
   const utmTags = {
@@ -147,7 +148,7 @@ export function SelectEmbedTypePane({
               <List.Item>{t`Let people click to explore.`}</List.Item>
               <List.Item>
                 {t`Customize appearance with your logo, font, and colors.`}{" "}
-                {!isInteractiveEmbeddingAvailable && <LearnMore />}
+                {!isInteractiveEmbeddingAvailable && <LearnMore url={url} />}
               </List.Item>
             </List>
             {!isInteractiveEmbeddingAvailable && <UpsellSdkCta />}
@@ -206,9 +207,16 @@ export function SelectEmbedTypePane({
   );
 }
 
-function LearnMore() {
+function LearnMore({ url }: { url: string | undefined }) {
+  if (!url) {
+    return null;
+  }
+
   return (
-    <ExternalLink style={{ fontWeight: "bold" }}>{t`Learn more`}</ExternalLink>
+    <ExternalLink
+      href={url}
+      style={{ fontWeight: "bold" }}
+    >{t`Learn more`}</ExternalLink>
   );
 }
 

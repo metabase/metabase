@@ -58,6 +58,7 @@ export function setup(
     "enable-embedding-interactive": enableEmbeddingInteractive,
     "enable-embedding-sdk": enableEmbeddingSdk,
     "embedding-secret-key": "my_super_secret_key",
+    "is-hosted?": hasEnterprisePlugins,
   });
 
   if (hasEnterprisePlugins) {
