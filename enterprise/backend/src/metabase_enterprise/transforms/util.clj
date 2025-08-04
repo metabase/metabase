@@ -76,11 +76,14 @@
   [transform-id]
   (delete-target-table! (t2/select-one :model/Transform transform-id)))
 
+(defn massage-sql-query [query]
+  (assoc-in query [:middleware :disable-remaps?] true))
+
 (defn compile-source
   "Compile the source query of a transform."
   [{query-type :type :as source}]
   (case query-type
-    "query" (:query (qp.compile/compile-with-inline-parameters (:query source)))))
+    "query" (:query (qp.compile/compile-with-inline-parameters (massage-sql-query (:query source))))))
 
 (defn required-database-feature
   "Returns the database feature necessary to execute `transform`."
