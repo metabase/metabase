@@ -9,6 +9,7 @@ import type { MetabaseAuthConfig } from "embedding-sdk/types/auth-config";
 
 import { USERS } from "../../../../../e2e/support/cypress_data";
 
+import { InitDataWrapper } from "./InitDataWrapper";
 import { storybookThemes } from "./storybook-themes";
 const METABASE_INSTANCE_URL =
   (window as any).METABASE_INSTANCE_URL || "http://localhost:3000";
@@ -65,6 +66,8 @@ export const CommonSdkStoryWrapper = (Story: StoryFn, context: any) => {
         key={key}
         locale={locale}
       >
+        <InitDataWrapper authConfig={authConfig} />
+
         <Story />
       </MetabaseProvider>
     </MantineProvider>

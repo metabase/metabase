@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
 import fetchMock from "fetch-mock";
 
 import {
@@ -7,11 +7,9 @@ import {
 } from "__support__/server-mocks";
 import { waitForLoaderToBeRemoved } from "__support__/ui";
 import { waitForRequest } from "__support__/utils";
-import {
-  MetabaseProvider,
-  StaticQuestion,
-} from "embedding-sdk/components/public";
+import { StaticQuestion } from "embedding-sdk/components/public";
 import { defineMetabaseAuthConfig } from "embedding-sdk/sdk-wrapper/lib/public/define-metabase-auth-config";
+import { renderWithInitData } from "embedding-sdk/test/__support__/ui";
 import type { MetabaseAuthConfig } from "embedding-sdk/types";
 import { createMockCard } from "metabase-types/api/mocks";
 
@@ -49,11 +47,11 @@ const setup = async (
     // Comment the next line to debug the tests
     .mockImplementation(() => {});
 
-  render(
-    <MetabaseProvider authConfig={config}>
-      <StaticQuestion questionId={1} />
-    </MetabaseProvider>,
-  );
+  renderWithInitData(<StaticQuestion questionId={1} />, {
+    sdkProviderProps: {
+      authConfig: config,
+    },
+  });
 
   await waitForLoaderToBeRemoved();
 
