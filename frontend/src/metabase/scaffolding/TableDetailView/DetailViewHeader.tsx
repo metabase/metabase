@@ -78,7 +78,7 @@ export function DetailViewHeader({
         <Box h={20} w={1} bg="var(--border-color)" />
 
         <Group gap="sm">
-          <Tooltip label={linkCopied ? t`Copied!` : t`Copy link to a row`}>
+          <Tooltip label={linkCopied ? t`Copied!` : t`Copy link to this row`}>
             <Button
               w={32}
               h={32}
