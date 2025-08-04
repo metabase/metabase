@@ -8,6 +8,7 @@
    [metabase.revisions.models.revision :as revision]
    [metabase.test :as mt]
    [metabase.util :as u]
+   [metabase.util.json :as json]
    [toucan2.core :as t2]))
 
 (comment metabase.revisions.init/keep-me)
@@ -15,9 +16,9 @@
 (deftest ^:parallel diff-cards-str-test
   (are [x y expected] (= expected
                          (u/build-sentence (revision/diff-strings :model/Card x y)))
-    {:name        "Diff Test"
+    {:name "Diff Test"
      :description nil}
-    {:name        "Diff Test Changed"
+    {:name "Diff Test Changed"
      :description "foobar"}
     "added a description and renamed it from \"Diff Test\" to \"Diff Test Changed\"."
 
@@ -29,9 +30,9 @@
     {:display :pie}
     "changed the display from table to pie."
 
-    {:name        "Diff Test"
+    {:name "Diff Test"
      :description nil}
-    {:name        "Diff Test changed"
+    {:name "Diff Test changed"
      :description "New description"}
     "added a description and renamed it from \"Diff Test\" to \"Diff Test changed\"."))
 
@@ -43,19 +44,19 @@
                            (u/build-sentence (revision/diff-strings :model/Card x y)))
 
       {:name "Apple"}
-      {:name          "Apple"
+      {:name "Apple"
        :collection_id coll-id-2}
       "moved this Card to New collection."
 
-      {:name        "Diff Test"
+      {:name "Diff Test"
        :description nil}
-      {:name        "Diff Test changed"
+      {:name "Diff Test changed"
        :description "New description"}
       "added a description and renamed it from \"Diff Test\" to \"Diff Test changed\"."
 
-      {:name          "Apple"
+      {:name "Apple"
        :collection_id coll-id-1}
-      {:name          "Apple"
+      {:name "Apple"
        :collection_id coll-id-2}
       "moved this Card from Old collection to New collection.")))
 
@@ -63,57 +64,57 @@
   "Fetch the latest version of a Dashboard and save a revision entry for it. Returns the fetched Dashboard."
   [card-id is-creation?]
   (revision/push-revision!
-   {:object       (t2/select-one :model/Card :id card-id)
-    :entity       :model/Card
-    :id           card-id
-    :user-id      (mt/user->id :crowberto)
+   {:object (t2/select-one :model/Card :id card-id)
+    :entity :model/Card
+    :id card-id
+    :user-id (mt/user->id :crowberto)
     :is-creation? is-creation?}))
 
 (deftest record-revision-and-description-completeness-test
   (mt/with-temp
-    [:model/Database   db   {:name "random db"}
-     :model/Dashboard  dashboard {:name "dashboard"}
-     :model/Card       base-card {}
-     :model/Card       card {:name                "A Card"
-                             :description         "An important card"
-                             :collection_position 0
-                             :cache_ttl           1000
-                             :archived            false
-                             :parameters          [{:name       "Category Name"
-                                                    :slug       "category_name"
-                                                    :id         "_CATEGORY_NAME_"
-                                                    :type       "category"}]}
+    [:model/Database db {:name "random db"}
+     :model/Dashboard dashboard {:name "dashboard"}
+     :model/Card base-card {}
+     :model/Card card {:name "A Card"
+                       :description "An important card"
+                       :collection_position 0
+                       :cache_ttl 1000
+                       :archived false
+                       :parameters [{:name "Category Name"
+                                     :slug "category_name"
+                                     :id "_CATEGORY_NAME_"
+                                     :type "category"}]}
      :model/Collection coll {:name "A collection"}]
     (mt/with-temporary-setting-values [enable-public-sharing true]
-      (let [columns     (disj (set/difference (set (keys card)) @#'impl.card/excluded-columns-for-card-revision)
+      (let [columns (disj (set/difference (set (keys card)) @#'impl.card/excluded-columns-for-card-revision)
                               ;; we only record result metadata for models, so we'll test that seperately
-                              :result_metadata)
-            update-col  (fn [col value]
-                          (cond
-                            (= col :collection_id)     (:id coll)
-                            (= col :parameters)        (cons {:name "Category ID"
-                                                              :slug "category_id"
-                                                              :id   "_CATEGORY_ID_"
-                                                              :type "number"}
-                                                             value)
-                            (= col :display)           :pie
-                            (= col :made_public_by_id) (mt/user->id :crowberto)
-                            (= col :embedding_params)  {:category_name "locked"}
-                            (= col :public_uuid)       (str (random-uuid))
-                            (= col :table_id)          (mt/id :venues)
-                            (= col :source_card_id)    (:id base-card)
-                            (= col :database_id)       (:id db)
-                            (= col :dashboard_id)      (:id dashboard)
-                            (= col :query_type)        :native
-                            (= col :type)              "model"
-                            (= col :dataset_query)     (mt/mbql-query users)
-                            (= col :visualization_settings) {:text "now it's a text card"}
-                            (= col :card_schema)       20
-                            (int? value)               (inc value)
-                            (boolean? value)           (not value)
-                            (string? value)            (str value "_changed")))]
+                          :result_metadata)
+            update-col (fn [col value]
+                         (cond
+                           (= col :collection_id) (:id coll)
+                           (= col :parameters) (cons {:name "Category ID"
+                                                      :slug "category_id"
+                                                      :id "_CATEGORY_ID_"
+                                                      :type "number"}
+                                                     value)
+                           (= col :display) :pie
+                           (= col :made_public_by_id) (mt/user->id :crowberto)
+                           (= col :embedding_params) {:category_name "locked"}
+                           (= col :public_uuid) (str (random-uuid))
+                           (= col :table_id) (mt/id :venues)
+                           (= col :source_card_id) (:id base-card)
+                           (= col :database_id) (:id db)
+                           (= col :dashboard_id) (:id dashboard)
+                           (= col :query_type) :native
+                           (= col :type) "model"
+                           (= col :dataset_query) (mt/mbql-query users)
+                           (= col :visualization_settings) {:text "now it's a text card"}
+                           (= col :card_schema) 20
+                           (int? value) (inc value)
+                           (boolean? value) (not value)
+                           (string? value) (str value "_changed")))]
         (doseq [col columns]
-          (let [before  (select-keys card [col])
+          (let [before (select-keys card [col])
                 changes {col (update-col col (get card col))}]
             ;; we'll automatically delete old revisions if we have more than [[revision/max-revisions]]
             ;; revisions for an instance, so let's clear everything to make it easier to test
@@ -152,7 +153,7 @@
                    (mt/mbql-query venues))]
     (mt/with-temp
       [:model/Card card card-info]
-      (let [before  (select-keys card [:result_metadata])
+      (let [before (select-keys card [:result_metadata])
             changes (update before :result_metadata drop-last)]
         (t2/update! :model/Card (:id card) changes)
         (create-card-revision! (:id card) false)
@@ -176,35 +177,48 @@
       (let [full-card (t2/select-one :model/Card :id card-id)
             serialized-card (revision/serialize-instance :model/Card card-id full-card)
             ;; Remove card_schema to simulate pre-v0.55 revision
-            old-card-data (dissoc serialized-card :card_schema)]
+            ;; But keep the id field as it's needed for upgrade-card-schema-to-latest to trigger
+            old-card-data (-> serialized-card
+                              (into {})
+                              (dissoc :card_schema)
+                              (assoc :id card-id))]
 
         ;; Manually create a revision without :card_schema to simulate pre-v0.55 data
-        (t2/insert! :model/Revision
-                    {:model "Card"
-                     :model_id card-id
-                     :user_id (mt/user->id :rasta)
-                     :object old-card-data
-                     :message "Test revision without card_schema"})
+        ;; Use raw SQL to bypass transforms that would trigger the error during insert
+        (t2/query {:insert-into :revision
+                   :values [{:model "Card"
+                             :model_id card-id
+                             :user_id (mt/user->id :rasta)
+                             :object (json/encode old-card-data)
+                             :message "Test revision without card_schema"
+                             :timestamp :%now
+                             :metabase_version "test"
+                             :most_recent true}]})
 
-        (testing "Can fetch revisions without error through API"
+        (testing "Can fetch revisions through API endpoint"
+          ;; This simulates the exact API endpoint path: GET /api/revision/:entity/:id
+          ;; With the fix in upgrade-card-schema-to-latest, this should work even without card_schema
           (let [revisions (revision/revisions+details :model/Card card-id)]
             (is (seq revisions))
             (is (= "Test revision without card_schema"
                    (-> revisions first :message)))))
 
-        (testing "Revision object has card_schema added with legacy default through revisions function"
+        (testing "Revision object is upgraded to have default card_schema"
           (let [revisions (revision/revisions :model/Card card-id)
                 revision (first revisions)
-                ;; Our fix in the revisions function should have added `:card_schema`
                 revision-obj (:object revision)]
-            (is (= impl.card/legacy-card-schema-version
+            ;; The fix in upgrade-card-schema-to-latest adds default schema 20
+            (is (= @#'card/current-schema-version
                    (:card_schema revision-obj)))))
 
-        (testing "Card object from revision can go through upgrade-card-schema-to-latest"
-          ;; Actual regression test; this used to throw:
-          ;; "Cannot SELECT a Card without including :card_schema"
-          (let [revision (first (revision/revisions :model/Card card-id))
-                card-obj (:object revision)]
-            (is (some? (#'card/upgrade-card-schema-to-latest card-obj)))
-            (is (= impl.card/legacy-card-schema-version
-                   (:card_schema card-obj)))))))))
+        (testing "Direct call to upgrade-card-schema-to-latest handles missing card_schema"
+          ;; This demonstrates the fix: if card_schema is missing, it defaults to 20
+          ;; instead of throwing an error
+          (let [card-without-schema {:id card-id
+                                     :dataset_query (:dataset_query old-card-data)
+                                     :type :question}
+                upgraded-card (#'card/upgrade-card-schema-to-latest card-without-schema)]
+            ;; Should succeed and add default card_schema
+            (is (= @#'card/current-schema-version (:card_schema upgraded-card)))
+            ;; Should have been upgraded from 20 to current version
+            (is (some? upgraded-card))))))))

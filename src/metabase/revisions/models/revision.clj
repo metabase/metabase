@@ -175,27 +175,8 @@
   "Get the revisions for `model` with `id` in reverse chronological order."
   [model :- [:fn toucan-model?]
    id :- pos-int?]
-  (println "DEBUG: revisions called with model=" model "id=" id)
-  (let [model-name (name model)
-        revisions (t2/select :model/Revision :model model-name :model_id id {:order-by [[:id :desc]]})]
-    (println "DEBUG: Found" (count revisions) "revisions")
-    (if (= model :model/Card)
-      ;; For Card revisions, ensure old ones have card_schema to prevent errors in after-select.
-      ;; Old revisions from before v0.55 won't have this field in their serialized object data.
-      (do
-        (println "DEBUG: Processing Card revisions")
-        (mapv (fn [revision]
-                (let [has-schema? (and (map? (:object revision))
-                                       (:card_schema (:object revision)))]
-                  (println "DEBUG: Revision" (:id revision) "has card_schema?" has-schema?)
-                  (if (and (map? (:object revision))
-                           (not (:card_schema (:object revision))))
-                    (do
-                      (println "DEBUG: Adding card_schema to revision" (:id revision))
-                      (update revision :object assoc :card_schema legacy-card-schema-version))
-                    revision)))
-              revisions))
-      revisions)))
+  (let [model-name (name model)]
+    (t2/select :model/Revision :model model-name :model_id id {:order-by [[:id :desc]]})))
 
 (mu/defn revisions+details
   "Fetch `revisions` for `model` with `id` and add details."
