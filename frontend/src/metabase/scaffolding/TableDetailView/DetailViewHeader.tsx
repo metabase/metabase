@@ -51,6 +51,10 @@ export function DetailViewHeader({
           <Group gap="sm">
             <Tooltip disabled={!canOpenPreviousItem} label={t`Previous row`}>
               <Button
+                w={32}
+                h={32}
+                c="text-dark"
+                variant="subtle"
                 disabled={!canOpenPreviousItem}
                 onClick={onPreviousItemClick}
                 leftSection={<Icon name="chevronup" />}
@@ -59,6 +63,10 @@ export function DetailViewHeader({
 
             <Tooltip disabled={!canOpenNextItem} label={t`Next row`}>
               <Button
+                w={32}
+                h={32}
+                c="text-dark"
+                variant="subtle"
                 disabled={!canOpenNextItem}
                 onClick={onNextItemClick}
                 leftSection={<Icon name="chevrondown" />}
@@ -72,6 +80,10 @@ export function DetailViewHeader({
         <Group gap="sm">
           <Tooltip label={linkCopied ? t`Copied!` : t`Copy link to a row`}>
             <Button
+              w={32}
+              h={32}
+              c="text-dark"
+              variant="subtle"
               disabled={isEdit}
               leftSection={<Icon name="link" />}
               onClick={handleCopyLink}
@@ -86,6 +98,10 @@ export function DetailViewHeader({
             }
           >
             <Button
+              w={32}
+              h={32}
+              c="text-dark"
+              variant="subtle"
               disabled={isEdit}
               leftSection={<Icon name="pencil" />}
               onClick={onEditClick}

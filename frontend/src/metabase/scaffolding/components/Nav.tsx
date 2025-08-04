@@ -16,7 +16,14 @@ interface Props {
 
 export const Nav = ({ children, rowId, rowName, table }: Props) => {
   return (
-    <Group align="center" justify="space-between" pt={11.5} pb={11.5} px="xl">
+    <Group
+      align="center"
+      justify="space-between"
+      pt={15.5}
+      pb={15.5}
+      pl="xl"
+      pr="md"
+    >
       <Group
         align="flex-end"
         gap={0}
