@@ -2,7 +2,7 @@ import cx from "classnames";
 
 import EditableText from "metabase/common/components/EditableText";
 import { useTranslateContent } from "metabase/i18n/hooks";
-import { Box, Flex, Group, Text } from "metabase/ui/components";
+import { Box, Flex, Group, Text, Tooltip } from "metabase/ui/components";
 import { Button } from "metabase/ui/components/buttons";
 import { Icon } from "metabase/ui/components/icons";
 import { isDate } from "metabase-lib/v1/types/utils/isa";
@@ -92,14 +92,22 @@ export function ObjectViewSection({
 
           return (
             <Flex key={field_id} gap="md" className={S.Field}>
-              <Text
-                c="var(--mb-color-text-secondary)"
-                fw="bold"
-                truncate
-                className={S.FieldName}
+              <Tooltip
+                openDelay={500}
+                closeDelay={100}
+                label={column.description}
+                position="top"
+                withArrow={false}
               >
-                {column.display_name}
-              </Text>
+                <Text
+                  c="var(--mb-color-text-secondary)"
+                  fw="bold"
+                  truncate
+                  className={S.FieldName}
+                >
+                  {column.display_name}
+                </Text>
+              </Tooltip>
               <Text
                 variant="primary"
                 truncate

@@ -17,6 +17,11 @@
   .SectionContent {
     gap: var(--mantine-spacing-md);
   }
+  .FieldName {
+    display: flex;
+    gap: var(--mantine-spacing-sm);
+    align-items: center;
+  }
 
   &.normal {
     .SectionContent {
@@ -45,9 +50,8 @@
       display: none;
     }
     .SectionContent {
-      gap: 0;
+      gap: 1rem;
       flex-wrap: wrap;
-      flex-direction: column;
     }
     .FieldName {
       display: none;
