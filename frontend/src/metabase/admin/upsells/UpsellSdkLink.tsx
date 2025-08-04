@@ -2,14 +2,13 @@ import cx from "classnames";
 import { t } from "ttag";
 
 import ExternalLink from "metabase/common/components/ExternalLink";
-import CS from "metabase/css/core/index.css";
 import linkStyles from "metabase/css/core/link.module.css";
 import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_ADMIN_SETTINGS } from "metabase/plugins";
 import { getUpgradeUrl } from "metabase/selectors/settings";
 import { UnstyledButton } from "metabase/ui";
 
-export function UpsellSdkLink() {
+export function UpsellSdkLink({ className }: { className?: string }) {
   const campaign = "embedding-sdk";
   const location = "embedding-sdk-admin";
   const upgradeUrl = useSelector((state) =>
@@ -28,9 +27,8 @@ export function UpsellSdkLink() {
       <UnstyledButton
         onClick={triggerUpsellFlow}
         c="brand"
-        className={linkStyles.link}
+        className={cx(linkStyles.link, className)}
         key="upgrade-button"
-        fw="bold"
         fz="inherit"
       >
         {t`upgrade to Metabase Pro`}
@@ -42,7 +40,7 @@ export function UpsellSdkLink() {
     <ExternalLink
       key="upgrade-url"
       href={upgradeUrl}
-      className={cx(CS.textBold, linkStyles.link)}
+      className={cx(linkStyles.link, className)}
     >
       {t`upgrade to Metabase Pro`}
     </ExternalLink>

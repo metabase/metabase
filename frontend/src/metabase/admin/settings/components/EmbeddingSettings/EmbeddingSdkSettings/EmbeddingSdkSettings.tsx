@@ -86,7 +86,7 @@ export function EmbeddingSdkSettings() {
   const ImplementJwtLink = (
     <ExternalLink
       key="implement-jwt"
-      href={implementJwtUrl}
+      href={implementJwtUrl.url}
       className={cx(CS.link, CS.textBold)}
     >
       {t`implement JWT or SAML SSO`}
@@ -101,12 +101,12 @@ export function EmbeddingSdkSettings() {
     .with(
       { needsToSwitchBinaries: true },
       () =>
-        jt`You can test Embedded analytics SDK on localhost quickly by using API keys. To use the SDK on other sites, ${SwitchBinariesLink}, ${(<UpsellSdkLink />)} and ${ImplementJwtLink}.`,
+        jt`You can test Embedded analytics SDK on localhost quickly by using API keys. To use the SDK on other sites, ${SwitchBinariesLink}, ${(<UpsellSdkLink className={CS.textBold} />)} and ${ImplementJwtLink}.`,
     )
     .with(
       { needsToUpgrade: true },
       () =>
-        jt`You can test Embedded analytics SDK on localhost quickly by using API keys. To use the SDK on other sites, ${(<UpsellSdkLink />)} and ${ImplementJwtLink}.`,
+        jt`You can test Embedded analytics SDK on localhost quickly by using API keys. To use the SDK on other sites, ${(<UpsellSdkLink className={CS.textBold} />)} and ${ImplementJwtLink}.`,
     )
     .with(
       { needsToImplementJwt: true },
