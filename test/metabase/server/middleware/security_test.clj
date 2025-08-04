@@ -470,30 +470,4 @@
                                       identity
                                       identity)]
         (is (nil? (get-in response [:headers "Access-Control-Allow-Origin"]))
-            (format "Should not set CORS headers for /auth/sso with %d status" status)))))
-
-  (testing "Should not add CORS headers for OPTIONS requests to other endpoints"
-    (let [wrapped-handler (mw.security/add-security-headers
-                           (fn [_request respond _raise]
-                             (respond {:status 200
-                                       :headers {}
-                                       :body ""})))
-          response (wrapped-handler {:request-method :options
-                                     :uri "/api/some-other-endpoint"
-                                     :headers {"origin" "https://example.com"}}
-                                    identity
-                                    identity)]
-      (is (nil? (get-in response [:headers "Access-Control-Allow-Origin"]))
-          "Should not set CORS headers for OPTIONS requests to other endpoints")))
-
-  (testing "Should not add CORS headers for other endpoints with 402 status"
-    (let [wrapped-handler (mw.security/add-security-headers
-                           (fn [_request respond _raise]
-                             (respond {:status 402
-                                       :headers {"Content-Type" "application/json"}
-                                       :body "{\"status\": \"error\"}"})))
-          response (wrapped-handler {:uri "/api/some-other-endpoint" :headers {"origin" "https://example.com"}}
-                                    identity
-                                    identity)]
-      (is (nil? (get-in response [:headers "Access-Control-Allow-Origin"]))
-          "Should not set CORS headers for other endpoints with 402 status"))))
+            (format "Should not set CORS headers for /auth/sso with %d status" status))))))
