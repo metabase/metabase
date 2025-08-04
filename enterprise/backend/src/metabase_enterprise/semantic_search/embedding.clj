@@ -3,6 +3,7 @@
    [clj-http.client :as http]
    [metabase-enterprise.semantic-search.settings :as semantic-settings]
    [metabase.analytics.core :as analytics]
+   [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log :as log])
   (:import
@@ -164,12 +165,13 @@
     (when-not api-key
       (throw (ex-info "OpenAI API key not configured" {:setting "ee-openai-api-key"})))
     (try
-      (log/debug "Generating" (count texts) "OpenAI embeddings in batch")
+      (log/debug "Calling OpenAI embeddings API" {:documents (count texts) :tokens (count-tokens-batch texts)})
       (let [response (-> (http/post endpoint
                                     {:headers {"Content-Type" "application/json"
                                                "Authorization" (str "Bearer " api-key)}
                                      :body    (json/encode {:model model-name
-                                                            :input texts})})
+                                                            :input texts
+                                                            :encoding_format "base64"})})
                          :body
                          (json/decode true))]
         (analytics/inc! :metabase-search/semantic-embedding-tokens
@@ -177,11 +179,18 @@
                         (->> response :usage :total_tokens))
         (->> response
              :data
-             (map :embedding)
+             ;; Decode base64 encoded embedding
+             (map (comp vec
+                        (fn [^String base64-str]
+                          (let [bytes (.decode (java.util.Base64/getDecoder) base64-str)
+                                buffer (java.nio.ByteBuffer/wrap bytes)
+                                _ (.order buffer java.nio.ByteOrder/LITTLE_ENDIAN)
+                                float-count (/ (count bytes) 4)]
+                            (repeatedly float-count #(.getFloat buffer))))
+                        :embedding))
              vec))
       (catch Exception e
-        (log/error e "Failed to generate OpenAI embeddings for batch of" (count texts) "texts"
-                   "with token count:" (count-tokens-batch texts))
+        (log/error e "OpenAI embeddings API call failed" {:documents (count texts) :tokens (count-tokens-batch texts)})
         (throw e)))))
 
 (defn- openai-get-embedding [model-name text]
@@ -215,24 +224,38 @@
      :model-name model-name
      :vector-dimensions vector-dimensions}))
 
+(defn- calc-token-metrics
+  [texts]
+  (let [counts (map count-tokens texts)]
+    {:n   (count texts)
+     :min (apply min counts)
+     :max (apply max counts)
+     :sum (reduce + counts)
+     :avg (double (/ (reduce + counts) (count counts)))}))
+
 (defn process-embeddings-streaming
   "Process texts in provider-appropriate batches, calling process-fn for each batch. process-fn will be called with
   a map from text to embedding for each batch."
   [embedding-model texts process-fn]
   (when (seq texts)
-    (let [{:keys [model-name provider]} embedding-model]
-      (if (= "openai" provider)
-        ;; For OpenAI, use token-aware batching and stream processing
-        (let [batches (create-batches (semantic-settings/openai-max-tokens-per-batch) count-tokens texts)]
-          (run! (fn [batch-texts]
-                  (let [embeddings (openai-get-embeddings-batch model-name batch-texts)
-                        text-embedding-map (zipmap batch-texts embeddings)]
-                    (process-fn text-embedding-map)))
-                batches))
-        ;; For other providers, process all at once (existing behavior)
-        (let [embeddings (get-embeddings-batch embedding-model texts)
-              text-embedding-map (zipmap texts embeddings)]
-          (process-fn text-embedding-map))))))
+    (let [{:keys [model-name provider vector-dimensions]} embedding-model]
+      (u/profile (str "Generating embeddings " {:model model-name
+                                                :dimenions vector-dimensions
+                                                :texts (calc-token-metrics texts)})
+        (if (= "openai" provider)
+          (let [max-tokens-per-batch (semantic-settings/openai-max-tokens-per-batch)
+                batches (create-batches max-tokens-per-batch count-tokens texts)]
+            (doseq [[batch-idx batch-texts] (map-indexed vector batches)]
+              (let [embeddings (u/profile (format "Embedding batch %d/%d %s"
+                                                  (inc batch-idx) (count batches) (str (calc-token-metrics batch-texts)))
+                                 (openai-get-embeddings-batch model-name batch-texts))
+                    text-embedding-map (zipmap batch-texts embeddings)]
+                (process-fn text-embedding-map))))
+
+          ;; No batching for other providers
+          (let [embeddings (get-embeddings-batch embedding-model texts)
+                text-embedding-map (zipmap texts embeddings)]
+            (process-fn text-embedding-map)))))))
 
 (comment
   ;; This gets loaded after metabase.analytics.prometheus/setup-metrics! so the known labels don't get initialized. If
