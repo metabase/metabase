@@ -4,6 +4,9 @@
    [clojure.set :as set]
    [flatland.ordered.set :refer [ordered-set]]
    [metabase.lib.util :as lib.util]
+   [metabase.query-processor.preprocess :as qp.preprocess]
+   [metabase.query-processor.store :as qp.store]
+   [metabase.util :as u]
    [toucan2.core :as t2]))
 
 (defn- get-output-table [transform]
@@ -13,33 +16,21 @@
                     :name (get-in transform [:target :name])
                     :db_id (get-in transform [:source :query :database])))
 
-(defn- query-deps [query]
-  (->> (tree-seq coll? seq query)
-       (map #(clojure.core.match/match %
-               [:source-table source] (if-let [card-id (lib.util/legacy-string-table-id->card-id source)]
-                                        {:cards #{card-id}}
-                                        {:tables #{source}})
-               _ {}))
-       (apply merge-with set/union)))
-
-(defn- get-cards [cards seen]
-  (let [filtered (filter #(not (seen %)) cards)]
-    (when (seq filtered)
-      (t2/select-fn-vec :dataset_query :model/Card :id
-                        [:in filtered]))))
-
 (defn- transform-deps [transform]
-  (loop [[t & transforms] [(get-in transform [:source :query])]
-         results {}
-         seen #{}]
-    (if t
-      (let [{:keys [tables cards]} (query-deps t)]
-        (recur (apply conj
-                      transforms
-                      (get-cards cards seen))
-               tables
-               (apply conj seen cards)))
-      results)))
+  (let [query (-> (get-in transform [:source :query])
+                  qp.preprocess/preprocess)]
+    (into #{}
+          (keep #(clojure.core.match/match %
+                   [:source-table source] (when (int? source)
+                                            source)
+                   _ nil))
+          (tree-seq coll? seq query))))
+
+(defn- transform-deps-for-db [db-id transforms]
+  (qp.store/with-metadata-provider db-id
+    (into {}
+          (map (juxt :id transform-deps))
+          transforms)))
 
 (defn transform-ordering
   "Computes an 'ordering' of a given list of transforms.
@@ -48,16 +39,21 @@
   the transforms in the original list -- if a transform depends on some transform not in the list, the 'extra'
   dependency is ignored."
   [transforms]
-  (let [output-tables (into {}
+  (let [transforms-by-db (->> transforms
+                              (map (fn [transform]
+                                     {(get-in transform [:source :query :database]) [transform]}))
+                              (apply merge-with into))
+        output-tables (into {}
                             (map (fn [transform]
                                    [(get-output-table transform) (:id transform)]))
                             transforms)]
     (into {}
-          (map (fn [transform]
-                 [(:id transform) (into #{}
-                                        (keep output-tables)
-                                        (transform-deps transform))]))
-          transforms)))
+          (map (fn [[db-id transforms-for-db]]
+                 (-> (transform-deps-for-db db-id transforms-for-db)
+                     (update-vals #(into #{}
+                                         (keep output-tables)
+                                         %)))))
+          transforms-by-db)))
 
 (defn find-cycle
   "Finds a path containing a cycle in the directed graph `node->children`."
