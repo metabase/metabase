@@ -1,4 +1,5 @@
-(ns metabase.util.malli.registry-test-macro)
+(ns metabase.util.malli.registry-test-macro
+  #?(:cljs (:require-macros [metabase.util.malli.registry-test-macro :refer [with-returning-cache-miss-count]])))
 
 #?(:clj
    (defmacro with-returning-cache-miss-count
