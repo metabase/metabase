@@ -5,14 +5,8 @@
    [clojure.test :refer [are deftest is testing]]
    [malli.core :as mc]
    [malli.error :as me]
-   [metabase.util.malli.registry :as mr]))
-
-(defmacro with-returning-cache-miss-count [& body]
-  `(let [cache-misses# (atom 0)]
-     (binding [mr/*cache-miss-hook* (fn [_# _# _#]
-                                      (swap! cache-misses# inc))]
-       ~@body)
-     @cache-misses#))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.malli.registry-test-macro :refer [with-returning-cache-miss-count]]))
 
 (deftest ^:parallel cache-handle-regexes-test
   (testing (str "For things that aren't ever equal when you re-evaluate them (like Regex literals) maybe sure we do"
