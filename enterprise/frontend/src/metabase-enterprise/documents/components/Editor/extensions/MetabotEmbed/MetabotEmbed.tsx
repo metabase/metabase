@@ -79,16 +79,17 @@ export const MetabotComponent = memo(
     const { text: prompt } = node.attrs;
 
     const handleRunMetabot = useCallback(async () => {
-      controllerRef.current = new AbortController();
+      const controller = new AbortController();
+      controllerRef.current = controller;
       setIsLoading(true);
       setErrorText("");
       editor.commands.focus();
 
       const { cardId, description, error } = await queryMetabot({
         prompt: prompt.trim(),
-        signal: controllerRef.current.signal,
+        signal: controller.signal,
       });
-      if (controllerRef.current.signal.aborted) {
+      if (controller.signal.aborted) {
         return;
       }
 
