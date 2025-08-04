@@ -11,13 +11,7 @@ import {
   sortableKeyboardCoordinates,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
-import {
-  type ReactNode,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { push } from "react-router-redux";
 import { useMount } from "react-use";
 import { t } from "ttag";
@@ -26,7 +20,7 @@ import { useUpdateTableComponentSettingsMutation } from "metabase/api/table";
 import { useDispatch } from "metabase/lib/redux";
 import { question } from "metabase/lib/urls";
 import { closeNavbar } from "metabase/redux/app";
-import { Box, Flex, Group, Stack, Text, Tooltip } from "metabase/ui/components";
+import { Flex, Stack, Tooltip } from "metabase/ui/components";
 import { Button } from "metabase/ui/components/buttons";
 import { Icon } from "metabase/ui/components/icons";
 import type ForeignKey from "metabase-lib/v1/metadata/ForeignKey";
@@ -35,9 +29,7 @@ import type { Dataset, DatasetColumn } from "metabase-types/api";
 
 import { getDefaultObjectViewSettings } from "../utils";
 
-import { DetailViewHeader } from "./DetailViewHeader";
-import { DetailViewSidebar } from "./DetailViewSidebar";
-import { Relationships } from "./ObjectRelations";
+import { DetailViewContainer } from "./DetailViewContainer";
 import { SortableSection } from "./SortableSection";
 import { useDetailViewSections } from "./use-detail-view-sections";
 import { useForeignKeyReferences } from "./use-foreign-key-references";
@@ -229,128 +221,35 @@ export function TableDetailViewInner({
 
   const hasRelationships = tableForeignKeys.length > 0;
 
-  const DetailContainer = ({ children }: { children: ReactNode }) => (
-    <Stack
-      bg="bg-white"
-      gap={0}
-      flex="1"
-      miw={0}
-      h="100%"
-      style={{
-        overflow: "auto",
-        // borderTop: "1px solid var(--mb-color-border)",
-      }}
-    >
-      <DetailViewHeader
-        rowId={rowId}
-        rowName={rowName}
-        table={table}
-        isEdit={isEdit}
-        canOpenPreviousItem={rows.length > 1 && currentRowIndex > 0}
-        canOpenNextItem={rows.length > 1 && currentRowIndex < rows.length - 1}
-        onEditClick={handleEditClick}
-        onPreviousItemClick={handleViewPreviousObjectDetail}
-        onNextItemClick={handleViewNextObjectDetail}
-        onCloseClick={handleCloseClick}
-        onSaveClick={handleSaveClick}
-      />
-
-      <Group
-        align="flex-start"
-        gap={0}
-        mih={0}
-        wrap="nowrap"
-        h="100%"
-        style={{
-          borderTop: "1px solid var(--border-color)",
-        }}
-      >
-        <Stack
-          align="center"
-          bg="bg-white"
-          h="100%"
-          flex="1"
-          p="xl"
-          style={{ overflow: "auto" }}
-        >
-          <Box maw={800} w="100%">
-            {children}
-          </Box>
-        </Stack>
-
-        {(hasRelationships || isEdit) && (
-          <Box
-            bg="white"
-            flex="0 0 auto"
-            mih={0}
-            miw={400}
-            h="100%"
-            // p="lg"
-            style={{
-              borderLeft: `1px solid var(--mb-color-border)`,
-              // overflowY: "auto",
-            }}
-          >
-            {isEdit && (
-              <DetailViewSidebar
-                columns={columns}
-                sections={sections}
-                onCreateSection={createSection}
-                onUpdateSection={updateSection}
-                onUpdateSections={updateSections}
-                onRemoveSection={removeSection}
-                onDragEnd={handleDragEnd}
-                onCancel={handleCloseClick}
-                onSubmit={handleSaveClick}
-                openPopoverId={openPopoverId}
-                setOpenPopoverId={setOpenPopoverId}
-              />
-            )}
-
-            {!isEdit && (
-              <Stack
-                pos="relative"
-                bg={isEdit ? "bg-medium" : "bg-white"}
-                gap={0}
-                h="100%"
-              >
-                <Box
-                  flex="0 0 auto"
-                  px="xl"
-                  py="lg"
-                  style={{
-                    borderBottom: "1px solid var(--border-color)",
-                  }}
-                >
-                  <Text fw="bold" size="xl">{t`Relationships`}</Text>
-                </Box>
-
-                <Box
-                  flex="1"
-                  px="xl"
-                  pb="xl"
-                  pt={16}
-                  style={{ overflow: "auto" }}
-                >
-                  <Relationships
-                    objectName={rowName ? String(rowName) : String(rowId)}
-                    tableForeignKeys={tableForeignKeys}
-                    tableForeignKeyReferences={tableForeignKeyReferences}
-                    foreignKeyClicked={handleFollowForeignKey}
-                    disableClicks={isEdit}
-                    relationshipsDirection={"vertical"}
-                  />
-                </Box>
-              </Stack>
-            )}
-          </Box>
-        )}
-      </Group>
-    </Stack>
-  );
-
   return (
-    <DetailContainer>
+    <DetailViewContainer
+      rowId={rowId}
+      rowName={rowName}
+      table={table}
+      isEdit={isEdit}
+      rows={rows}
+      currentRowIndex={currentRowIndex}
+      columns={columns}
+      sections={sections}
+      tableForeignKeys={tableForeignKeys}
+      tableForeignKeyReferences={tableForeignKeyReferences}
+      openPopoverId={openPopoverId}
+      setOpenPopoverId={setOpenPopoverId}
+      hasRelationships={hasRelationships}
+      onEditClick={handleEditClick}
+      onPreviousItemClick={handleViewPreviousObjectDetail}
+      onNextItemClick={handleViewNextObjectDetail}
+      onCloseClick={handleCloseClick}
+      onSaveClick={handleSaveClick}
+      onCreateSection={createSection}
+      onUpdateSection={updateSection}
+      onUpdateSections={updateSections}
+      onRemoveSection={removeSection}
+      onDragEnd={handleDragEnd}
+      onCancel={handleCloseClick}
+      onSubmit={handleSaveClick}
+      onFollowForeignKey={handleFollowForeignKey}
+    >
       <Stack gap="md" mt="md" mb="sm" py="md" bg="transparent">
         <DndContext
           sensors={sensors}
@@ -393,6 +292,6 @@ export function TableDetailViewInner({
           </Tooltip>
         </Flex>
       )}
-    </DetailContainer>
+    </DetailViewContainer>
   );
 }
