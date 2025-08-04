@@ -5,7 +5,8 @@
              [net.cgrand.macrovich :as macros]))
    [malli.core :as mc]
    [malli.registry]
-   [malli.util :as mut])
+   [malli.util :as mut]
+   [metabase.util.performance :as perf])
   #?(:cljs (:require-macros [metabase.util.malli.registry])))
 
 (defonce ^:private cache (atom {}))
@@ -17,14 +18,13 @@
 
   work correctly as cache keys instead of creating new entries every time the code is evaluated."
   [x]
-  (if (and (vector? x)
-           (= (first x) :re))
-    (into (empty x)
-          (map (fn [child]
-                 (cond-> child
-                   (instance? #?(:clj java.util.regex.Pattern :cljs js/RegExp) child) str)))
-          x)
-    x))
+  (perf/walk
+   (fn [form]
+     (cond-> form
+       (instance? #?(:clj java.util.regex.Pattern :cljs js/RegExp) form)
+       str)
+     form)
+   x))
 
 (defn cached
   "Get a cached value for `k` + `schema`. Cache is cleared whenever a schema is (re)defined
