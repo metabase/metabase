@@ -263,6 +263,14 @@
     ;; Tell browser not to use MIME sniffing to guess types of files -- protect against MIME type confusion attacks
     "X-Content-Type-Options"            "nosniff"}))
 
+(defn- always-allow-cors?
+  "Returns true if the request/response should have CORS headers added."
+  [request response]
+  ;; Needed for showing errors in the SDK when embedding or SSO is disabled.
+  (and (= (:uri request) "/auth/sso")
+       (or (= (:request-method request) :options)
+           (contains? #{400 402} (:status response)))))
+
 (defn- add-security-headers* [request response]
   ;; merge is other way around so that handler can override headers
   (let [headers (security-headers
@@ -270,8 +278,7 @@
                  :nonce          (:nonce request)
                  :allow-iframes? ((some-fn request/public? request/embed?) request)
                  :allow-cache?   (request/cacheable? request))
-        ;; Add CORS headers for /auth/sso endpoint error handling
-        cors-headers (when (is-auth-sso-error request response)
+        cors-headers (when (always-allow-cors? request response)
                        {"Access-Control-Allow-Origin" "*"
                         "Access-Control-Allow-Headers" "*"
                         "Access-Control-Allow-Methods" "*"})]
@@ -286,10 +293,3 @@
        request
        (comp respond (partial add-security-headers* request))
        raise))))
-
-(defn- is-auth-sso-error
-  "Returns true if the request/response should have CORS headers added for SSO endpoint error handling. This includes: preflight requests and 400/402 status responses from /auth/sso"
-  [request response]
-  (and (= (:uri request) "/auth/sso")
-       (or (= (:request-method request) :options)
-           (contains? #{400 402} (:status response)))))
