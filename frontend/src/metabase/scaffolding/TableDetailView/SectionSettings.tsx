@@ -83,7 +83,7 @@ export function SectionSettings({
           />
         </Group>
         <Group gap="sm" className={S.ObjectViewSidebarSectionActions}>
-          <Tooltip label={t`Flow direction`}>
+          {/* <Tooltip label={t`Flow direction`}>
             <ActionIcon
               color="text-medium"
               variant="transparent"
@@ -111,7 +111,7 @@ export function SectionSettings({
                 }}
               />
             </ActionIcon>
-          </Tooltip>
+          </Tooltip> */}
 
           {onRemoveSection && (
             <Tooltip label={t`Remove group`}>
@@ -150,7 +150,6 @@ export function SectionSettings({
                   <ColumnListItem
                     key={fieldSettings.field_id}
                     column={column}
-                    style={fieldSettings.style}
                     onChangeFieldSettings={(update) =>
                       handleUpdateField(fieldSettings.field_id, update)
                     }

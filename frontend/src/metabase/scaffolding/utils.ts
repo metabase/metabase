@@ -7,6 +7,16 @@ import {
   getGlobalSettingsForColumn,
   getSettingDefinitionsForColumn,
 } from "metabase/visualizations/lib/settings/column";
+import {
+  isAddress,
+  isCountry,
+  isCurrency,
+  isDateWithoutTime,
+  isEntityName,
+  isNumber,
+  isPK,
+  isState,
+} from "metabase-lib/v1/types/utils/isa";
 import type {
   DatasetColumn,
   ObjectViewSettings,
@@ -58,16 +68,55 @@ export function getDefaultObjectViewSettings(
   table: Table | undefined,
 ): ObjectViewSettings {
   const fields = table?.fields ?? [];
+  const headerFields = fields.filter((f) => isEntityName(f) || isPK(f));
+  const subheaderFields = fields.filter(
+    (f) => isState(f) || isCountry(f) || isDateWithoutTime(f) || isAddress(f),
+  );
+  const highlight1Fields = fields.filter((f) => isNumber(f));
+  const highlight2Fields = fields.filter((f) => isCurrency(f));
+
+  const normalFields = fields;
 
   return {
     sections: [
       {
         id: getNextId(),
-        title: "Info",
-        direction: "vertical",
-        fields: fields.map((field) => ({
+        title: "Header",
+        variant: "header",
+        fields: headerFields.map((field) => ({
           field_id: getRawTableFieldId(field),
-          style: "normal",
+        })),
+      },
+      {
+        id: getNextId(),
+        title: "Subheader",
+        variant: "subheader",
+        fields: subheaderFields.map((field) => ({
+          field_id: getRawTableFieldId(field),
+        })),
+      },
+      {
+        id: getNextId(),
+        title: "Highlight level 1",
+        variant: "highlight-1",
+        fields: highlight1Fields.map((field) => ({
+          field_id: getRawTableFieldId(field),
+        })),
+      },
+      {
+        id: getNextId(),
+        title: "Highlight level 2",
+        variant: "highlight-2",
+        fields: highlight2Fields.map((field) => ({
+          field_id: getRawTableFieldId(field),
+        })),
+      },
+      {
+        id: getNextId(),
+        title: "Info",
+        variant: "normal",
+        fields: normalFields.map((field) => ({
+          field_id: getRawTableFieldId(field),
         })),
       },
     ],

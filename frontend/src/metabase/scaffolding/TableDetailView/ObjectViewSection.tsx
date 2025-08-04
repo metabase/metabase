@@ -13,7 +13,7 @@ import type {
   TableId,
 } from "metabase-types/api";
 
-import type { SectionType } from "../types";
+import type { SectionVariant } from "../types";
 import { getStyleProps, renderValue } from "../utils";
 
 import S from "./TableDetailView.module.css";
@@ -27,7 +27,7 @@ type ObjectViewSectionProps = {
   onUpdateSection: (section: Partial<ObjectViewSectionSettings>) => void;
   onRemoveSection?: () => void;
   dragHandleProps?: any;
-  type: SectionType;
+  type: SectionVariant;
 };
 
 export function ObjectViewSection({
@@ -80,7 +80,7 @@ export function ObjectViewSection({
         />
       </Group>
       <Flex gap="md" mt={"sm"} px="xs" className={S.SectionContent}>
-        {section.fields.map(({ field_id, style }) => {
+        {section.fields.map(({ field_id }) => {
           const columnIndex = columns.findIndex(
             (column) => column.id === field_id,
           );
@@ -103,7 +103,6 @@ export function ObjectViewSection({
                 {column.display_name}
               </Text>
               <Text
-                {...getStyleProps(style)}
                 variant="primary"
                 truncate
                 c="var(--mb-color-text-primary)"

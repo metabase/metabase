@@ -386,7 +386,7 @@ export function TableDetailViewInner({
               <SortableSection
                 key={section.id}
                 section={section}
-                type={section.type}
+                type={section.variant}
                 columns={columns}
                 row={row}
                 tableId={tableId}

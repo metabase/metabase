@@ -13,18 +13,12 @@ import {
 import { getIconForField } from "metabase-lib/v1/metadata/utils/fields";
 import type { DatasetColumn } from "metabase-types/api";
 
-import { ColumnFormatControl } from "../components/ColumnFormatControl";
-
 import S from "./TableDetailView.module.css";
 
 interface Props {
   draggable?: boolean;
   handleProps: any;
   column: DatasetColumn;
-  style?: "normal" | "bold" | "dim" | "title";
-  onChangeFieldSettings?: (update: {
-    style: "normal" | "bold" | "dim" | "title";
-  }) => void;
   onHideField?: () => void;
   onUnhideField?: () => void;
 }
@@ -33,8 +27,6 @@ export function ColumnListItem({
   draggable = true,
   handleProps,
   column,
-  style,
-  onChangeFieldSettings,
   onHideField,
   onUnhideField,
 }: Props) {
@@ -88,15 +80,6 @@ export function ColumnListItem({
                 <Icon name="eye_crossed_out" />
               </ActionIcon>
             </Tooltip>
-          )}
-          {!!onChangeFieldSettings && (
-            <ColumnFormatControl
-              style={style}
-              onStyleChange={(style) => onChangeFieldSettings({ style })}
-              actionIconProps={{
-                className: S.ObjectViewSidebarColumnActionIcon,
-              }}
-            />
           )}
         </Group>
       </Flex>
