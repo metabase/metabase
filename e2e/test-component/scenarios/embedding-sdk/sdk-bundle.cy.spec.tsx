@@ -1,8 +1,10 @@
 import {
   InteractiveQuestion,
   MetabaseProvider,
+  useCreateDashboardApi,
   useMetabaseAuthStatus,
 } from "@metabase/embedding-sdk-react";
+import { type ReactNode, useEffect, useState } from "react";
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import * as H from "e2e/support/helpers";
@@ -251,46 +253,114 @@ describe("scenarios > embedding-sdk > sdk-bundle", () => {
   });
 
   describe("Hooks", () => {
-    const Wrapper = () => {
-      return useMetabaseAuthStatus()?.status ?? "SDK Bundle Loading...";
+    type HookScenario = {
+      name: string;
+      waitForComponent: boolean;
+      mount: (Wrapper: () => ReactNode, questionId?: string) => JSX.Element;
     };
 
-    it("should call SDK hooks properly when called inside MetabaseProvider", () => {
-      cy.get<string>("@questionId").then((questionId) => {
-        cy.mount(
-          <>
-            <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}>
-              <Wrapper />
-
-              <InteractiveQuestion questionId={questionId} />
-            </MetabaseProvider>
-          </>,
-        );
-      });
-
-      cy.get("body").within(() => {
-        cy.findByText("loading").should("exist");
-        cy.findByText("success").should("exist");
-      });
-    });
-
-    it("should call SDK hooks properly when called outside of MetabaseProvider", () => {
-      cy.get<string>("@questionId").then((questionId) => {
-        cy.mount(
+    const scenarios: HookScenario[] = [
+      {
+        name: "inside MetabaseProvider",
+        waitForComponent: true,
+        mount: (Wrapper, questionId) => (
+          <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}>
+            <Wrapper />
+            {questionId && <InteractiveQuestion questionId={questionId} />}
+          </MetabaseProvider>
+        ),
+      },
+      {
+        name: "outside of MetabaseProvider",
+        waitForComponent: true,
+        mount: (Wrapper, questionId) => (
           <>
             <Wrapper />
-
             <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}>
-              <InteractiveQuestion questionId={questionId} />
+              {questionId && <InteractiveQuestion questionId={questionId} />}
             </MetabaseProvider>
-          </>,
-        );
-      });
+          </>
+        ),
+      },
+      {
+        name: "without rendered SDK components",
+        waitForComponent: false,
+        mount: (Wrapper) => (
+          <>
+            <Wrapper />
+            <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG} />
+          </>
+        ),
+      },
+    ];
 
-      cy.get("body").within(() => {
-        cy.findByText("loading").should("exist");
-        cy.findByText("success").should("exist");
-      });
+    describe("useMetabaseAuthStatus", () => {
+      const Wrapper = () => {
+        return useMetabaseAuthStatus()?.status ?? "SDK Bundle Loading...";
+      };
+
+      Cypress._.each(
+        scenarios,
+        ({ name, waitForComponent, mount }: HookScenario) => {
+          it(`should call hook properly when called ${name}`, () => {
+            if (waitForComponent) {
+              cy.get<string>("@questionId").then((questionId) => {
+                cy.mount(mount(Wrapper, questionId));
+              });
+            } else {
+              cy.mount(mount(Wrapper));
+            }
+
+            cy.get("body").within(() => {
+              cy.findByText("loading").should("exist");
+              cy.findByText("success").should("exist");
+            });
+          });
+        },
+      );
+    });
+
+    describe("useCreateDashboardApi", () => {
+      const Wrapper = () => {
+        const result = useCreateDashboardApi();
+        const [createdDashboard, setCreatedDashboard] = useState<{
+          name: string;
+        } | null>(null);
+
+        useEffect(() => {
+          if (result) {
+            result
+              .createDashboard({
+                name: "Test Dashboard",
+                description: "This is a test dashboard",
+              })
+              .then((dashboard) => {
+                setCreatedDashboard(dashboard);
+              });
+          }
+        }, [result]);
+
+        return createdDashboard?.name;
+      };
+
+      Cypress._.each(
+        scenarios,
+        ({ name, waitForComponent, mount }: HookScenario) => {
+          it(`should call hook properly when called ${name}`, () => {
+            if (waitForComponent) {
+              cy.get<string>("@questionId").then((questionId) => {
+                cy.mount(mount(Wrapper, questionId));
+              });
+            } else {
+              cy.mount(mount(Wrapper));
+            }
+
+            cy.get("body").within(() => {
+              cy.findByText("Test Dashboard").should("exist");
+            });
+          });
+        },
+      );
     });
   });
 

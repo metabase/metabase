@@ -10,7 +10,6 @@ import {
   setErrorComponent,
   setEventHandlers,
   setLoaderComponent,
-  setMetabaseClientUrl,
   setPlugins,
 } from "embedding-sdk/store/reducer";
 import type { SdkStore } from "embedding-sdk/store/types";
@@ -44,6 +43,10 @@ export const MetabaseProviderInternal = ({
   allowConsoleLog,
 }: InternalMetabaseProviderProps): JSX.Element => {
   const { fontFamily } = theme ?? {};
+
+  // The main call of useInitData happens in the root MetabaseProvider
+  // This call in the component-level MetabaseProvider is still needed
+  // Storybook stories, where we don't have the root MetabaseProvider
   useInitData({ reduxStore, authConfig, allowConsoleLog });
 
   useEffect(() => {
@@ -67,10 +70,6 @@ export const MetabaseProviderInternal = ({
   useEffect(() => {
     reduxStore.dispatch(setErrorComponent(errorComponent ?? null));
   }, [reduxStore, errorComponent]);
-
-  useEffect(() => {
-    reduxStore.dispatch(setMetabaseClientUrl(authConfig.metabaseInstanceUrl));
-  }, [reduxStore, authConfig.metabaseInstanceUrl]);
 
   const instanceLocale = useInstanceLocale();
 
