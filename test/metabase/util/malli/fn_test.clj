@@ -73,61 +73,104 @@
   (are [form expected] (= expected
                           (walk/macroexpand-all (mu.fn/instrumented-fn-form {} (mu.fn/parse-fn-tail form))))
     '([x :- :int y])
-    '(let* [&f (fn* ([x y]))]
-       (fn* ([a b]
-             (try
-               (metabase.util.malli.fn/validate-input {} :int a)
-               (&f a b)
-               (catch java.lang.Exception error
-                 (throw (metabase.util.malli.fn/fixup-stacktrace error)))))))
+    '(let*
+      [&f
+       (fn* ([x y]))
+       &schema+explainers
+       (metabase.util.malli.fn/fn-schemas->schema+explainers [:=> [:cat :int :any] :any])]
+       (fn*
+         ([a b]
+          (try
+            (metabase.util.malli.fn/validate-input
+             {}
+             (clojure.core/first @(clojure.core/nth (:in (clojure.core/nth &schema+explainers 0)) 0))
+             (clojure.core/second @(clojure.core/nth (:in (clojure.core/nth &schema+explainers 0)) 0))
+             a)
+            (&f a b)
+            (catch java.lang.Exception error (throw (metabase.util.malli.fn/fixup-stacktrace error)))))))
 
     '(:- :int [x :- :int y])
-    '(let* [&f (fn* ([x y]))]
-       (fn* ([a b]
-             (try
-               (metabase.util.malli.fn/validate-input {} :int a)
-               (metabase.util.malli.fn/validate-output {} :int (&f a b))
-               (catch java.lang.Exception error
-                 (throw (metabase.util.malli.fn/fixup-stacktrace error)))))))
+    '(let*
+      [&f (fn* ([x y]))
+       &schema+explainers (metabase.util.malli.fn/fn-schemas->schema+explainers
+                           [:=> [:cat :int :any] :int])]
+       (fn*
+         ([a b]
+          (try
+            (metabase.util.malli.fn/validate-input
+             {}
+             (clojure.core/first @(clojure.core/nth (:in (clojure.core/nth &schema+explainers 0)) 0))
+             (clojure.core/second @(clojure.core/nth (:in (clojure.core/nth &schema+explainers 0)) 0))
+             a)
+            (metabase.util.malli.fn/validate-output
+             {}
+             (clojure.core/first @(:out (clojure.core/nth &schema+explainers 0)))
+             (clojure.core/second @(:out (clojure.core/nth &schema+explainers 0)))
+             (&f a b))
+            (catch java.lang.Exception error (throw (metabase.util.malli.fn/fixup-stacktrace error)))))))
 
     '(:- :int [x :- :int y] (+ x y))
-    '(let* [&f (fn* ([x y] (+ x y)))]
-       (fn* ([a b]
-             (try
-               (metabase.util.malli.fn/validate-input {} :int a)
-               (metabase.util.malli.fn/validate-output {} :int (&f a b))
-               (catch java.lang.Exception error
-                 (throw (metabase.util.malli.fn/fixup-stacktrace error)))))))
+    '(let* [&f (fn* ([x y] (+ x y)))
+            &schema+explainers (metabase.util.malli.fn/fn-schemas->schema+explainers
+                                [:=> [:cat :int :any] :int])]
+       (fn*
+         ([a b]
+          (try
+            (metabase.util.malli.fn/validate-input
+             {}
+             (clojure.core/first @(clojure.core/nth (:in (clojure.core/nth &schema+explainers 0)) 0))
+             (clojure.core/second @(clojure.core/nth (:in (clojure.core/nth &schema+explainers 0)) 0))
+             a)
+            (metabase.util.malli.fn/validate-output
+             {}
+             (clojure.core/first @(:out (clojure.core/nth &schema+explainers 0)))
+             (clojure.core/second @(:out (clojure.core/nth &schema+explainers 0)))
+             (&f a b))
+            (catch java.lang.Exception error (throw (metabase.util.malli.fn/fixup-stacktrace error)))))))
 
     '([x :- :int y] {:pre [(int? x)]})
-    '(let* [&f (fn* ([x y]
-                     {:pre [(int? x)]}))]
-       (fn* ([a b]
-             (try
-               (metabase.util.malli.fn/validate-input {} :int a)
-               (&f a b)
-               (catch java.lang.Exception error
-                 (throw (metabase.util.malli.fn/fixup-stacktrace error)))))))
+    '(let* [&f (fn* ([x y] {:pre [(int? x)]}))
+            &schema+explainers (metabase.util.malli.fn/fn-schemas->schema+explainers
+                                [:=> [:cat :int :any] :any])]
+       (fn*
+         ([a b]
+          (try
+            (metabase.util.malli.fn/validate-input
+             {}
+             (clojure.core/first @(clojure.core/nth (:in (clojure.core/nth &schema+explainers 0)) 0))
+             (clojure.core/second @(clojure.core/nth (:in (clojure.core/nth &schema+explainers 0)) 0))
+             a)
+            (&f a b)
+            (catch java.lang.Exception error (throw (metabase.util.malli.fn/fixup-stacktrace error)))))))
 
     '(:- :int
          ([x] (inc x))
          ([x :- :int y] (+ x y)))
-    '(let* [&f (fn* ([x]
-                     (inc x))
-                 ([x y]
-                  (+ x y)))]
+    '(let* [&f (fn* ([x] (inc x)) ([x y] (+ x y)))
+            &schema+explainers (metabase.util.malli.fn/fn-schemas->schema+explainers
+                                [:function [:=> [:cat :any] :int] [:=> [:cat :int :any] :int]])]
        (fn*
          ([a]
           (try
-            (metabase.util.malli.fn/validate-output {} :int (&f a))
-            (catch java.lang.Exception error
-              (throw (metabase.util.malli.fn/fixup-stacktrace error)))))
+            (metabase.util.malli.fn/validate-output
+             {}
+             (clojure.core/first @(:out (clojure.core/nth &schema+explainers 0)))
+             (clojure.core/second @(:out (clojure.core/nth &schema+explainers 0)))
+             (&f a))
+            (catch java.lang.Exception error (throw (metabase.util.malli.fn/fixup-stacktrace error)))))
          ([a b]
           (try
-            (metabase.util.malli.fn/validate-input {} :int a)
-            (metabase.util.malli.fn/validate-output {} :int (&f a b))
-            (catch java.lang.Exception error
-              (throw (metabase.util.malli.fn/fixup-stacktrace error)))))))))
+            (metabase.util.malli.fn/validate-input
+             {}
+             (clojure.core/first @(clojure.core/nth (:in (clojure.core/nth &schema+explainers 1)) 0))
+             (clojure.core/second @(clojure.core/nth (:in (clojure.core/nth &schema+explainers 1)) 0))
+             a)
+            (metabase.util.malli.fn/validate-output
+             {}
+             (clojure.core/first @(:out (clojure.core/nth &schema+explainers 1)))
+             (clojure.core/second @(:out (clojure.core/nth &schema+explainers 1)))
+             (&f a b))
+            (catch java.lang.Exception error (throw (metabase.util.malli.fn/fixup-stacktrace error)))))))))
 
 (deftest ^:parallel fn-test
   (let [f (mu.fn/fn :- :int [y] y)]
@@ -142,20 +185,17 @@
 
 (deftest ^:parallel registry-test
   (mr/def ::number :int)
-  (let [f (mu.fn/fn :- ::number [y] y)]
-    (is (= 1
-           (f 1)))
-    (is (thrown-with-msg?
-         clojure.lang.ExceptionInfo
-         #"Invalid output:.*should be an integer"
-         (f 1.0)))
-    (mr/def ::number double?)
-    (is (= 1.0
-           (f 1.0)))
-    (is (thrown-with-msg?
-         clojure.lang.ExceptionInfo
-         #"Invalid output:.*should be a double"
-         (f 1)))))
+  (is (= 1 ((mu.fn/fn :- ::number [y] y) 1)))
+  (is (thrown-with-msg?
+       clojure.lang.ExceptionInfo
+       #"Invalid output:.*should be an integer"
+       ((mu.fn/fn :- ::number [y] y) 1.0)))
+  (mr/def ::number double?)
+  (is (= 1.0 ((mu.fn/fn :- ::number [y] y) 1.0)))
+  (is (thrown-with-msg?
+       clojure.lang.ExceptionInfo
+       #"Invalid output:.*should be a double"
+       ((mu.fn/fn :- ::number [y] y) 1))))
 
 (deftest ^:parallel varargs-test
   (let [form '(metabase.util.malli.fn/fn my-fn
@@ -164,16 +204,22 @@
                  & {:keys [token-check?]
                     :or   {token-check? true}}]
                 (merge {:path path, :token-check? token-check?} opts))]
-    (is (= '(let* [&f (clojure.core/fn
-                        [path opts & {:keys [token-check?], :or {token-check? true}}]
-                        (merge {:path path, :token-check? token-check?} opts))]
+    (is (= '(let* [&f (clojure.core/fn [path opts & {:keys [token-check?], :or {token-check? true}}]
+                        (merge {:path path, :token-check? token-check?} opts))
+                   &schema+explainers
+                   (metabase.util.malli.fn/fn-schemas->schema+explainers
+                    [:=> [:cat :any :map [:* :any]] :any])]
               (clojure.core/fn
                 ([a b & {:as kvs}]
-                 (try
-                   (metabase.util.malli.fn/validate-input {:fn-name 'my-fn} :map b)
-                   (&f a b kvs)
-                   (catch java.lang.Exception error
-                     (throw (metabase.util.malli.fn/fixup-stacktrace error)))))))
+                 (try (metabase.util.malli.fn/validate-input
+                       {:fn-name 'my-fn}
+                       (clojure.core/-> &schema+explainers (clojure.core/nth 0) :in
+                                        (clojure.core/nth 1) clojure.core/deref clojure.core/first)
+                       (clojure.core/-> &schema+explainers (clojure.core/nth 0) :in
+                                        (clojure.core/nth 1) clojure.core/deref clojure.core/second)
+                       b)
+                      (&f a b kvs)
+                      (catch java.lang.Exception error (throw (metabase.util.malli.fn/fixup-stacktrace error)))))))
            (macroexpand form)))
     (is (= [:=>
             [:cat :any :map [:* :any]]
@@ -197,19 +243,40 @@
                    y :- :int
                    & more :- [:* :int]]
                   (reduce + (list* x y more)))]
-      (is (= '(let* [&f (clojure.core/fn [x y & more]
-                          (reduce + (list* x y more)))]
+      (is (= '(let*
+               [&f
+                (clojure.core/fn [x y & more] (reduce + (list* x y more)))
+                &schema+explainers
+                (metabase.util.malli.fn/fn-schemas->schema+explainers [:=> [:cat :int :int [:* :int]] :int])]
                 (clojure.core/fn
                   ([a b & more]
-                   (try
-                     (metabase.util.malli.fn/validate-input {:fn-name 'my-plus} :int a)
-                     (metabase.util.malli.fn/validate-input {:fn-name 'my-plus} :int b)
-                     (metabase.util.malli.fn/validate-input {:fn-name 'my-plus} [:maybe [:* :int]] more)
-                     (clojure.core/->>
-                      (clojure.core/apply &f a b more)
-                      (metabase.util.malli.fn/validate-output {:fn-name 'my-plus} :int))
-                     (catch java.lang.Exception error
-                       (throw (metabase.util.malli.fn/fixup-stacktrace error)))))))
+                   (try (metabase.util.malli.fn/validate-input
+                         {:fn-name 'my-plus}
+                         (clojure.core/-> &schema+explainers (clojure.core/nth 0)
+                                          :in (clojure.core/nth 0) clojure.core/deref clojure.core/first)
+                         (clojure.core/-> &schema+explainers (clojure.core/nth 0)
+                                          :in (clojure.core/nth 0) clojure.core/deref clojure.core/second)
+                         a)
+                        (metabase.util.malli.fn/validate-input
+                         {:fn-name 'my-plus}
+                         (clojure.core/-> &schema+explainers (clojure.core/nth 0)
+                                          :in (clojure.core/nth 1) clojure.core/deref clojure.core/first)
+                         (clojure.core/-> &schema+explainers (clojure.core/nth 0)
+                                          :in (clojure.core/nth 1) clojure.core/deref clojure.core/second)
+                         b)
+                        (metabase.util.malli.fn/validate-input
+                         {:fn-name 'my-plus}
+                         (clojure.core/-> &schema+explainers (clojure.core/nth 0)
+                                          :in (clojure.core/nth 2) clojure.core/deref clojure.core/first)
+                         (clojure.core/-> &schema+explainers (clojure.core/nth 0)
+                                          :in (clojure.core/nth 2) clojure.core/deref clojure.core/second)
+                         more)
+                        (metabase.util.malli.fn/validate-output
+                         {:fn-name 'my-plus}
+                         (clojure.core/-> &schema+explainers (clojure.core/nth 0) :out clojure.core/deref clojure.core/first)
+                         (clojure.core/-> &schema+explainers (clojure.core/nth 0) :out clojure.core/deref clojure.core/second)
+                         (clojure.core/apply &f a b more))
+                        (catch java.lang.Exception error (throw (metabase.util.malli.fn/fixup-stacktrace error)))))))
 
              (macroexpand form)))
       (is (= [:=>
@@ -235,19 +302,43 @@
                    y :- :int
                    & {:as options} :- [:map [:integer? :boolean]]]
                   {:options options, :output (+ x y)})]
-      (is (= '(let* [&f (clojure.core/fn [x y & {:as options}]
-                          {:options options, :output (+ x y)})]
+      (is (= '(let*
+               [&f
+                (clojure.core/fn [x y & {:as options}] {:options options, :output (+ x y)})
+                &schema+explainers
+                (metabase.util.malli.fn/fn-schemas->schema+explainers [:=> [:cat :int :int [:map [:integer? :boolean]]] :map])]
                 (clojure.core/fn
                   ([a b & {:as kvs}]
                    (try
-                     (metabase.util.malli.fn/validate-input {:fn-name 'my-plus} :int a)
-                     (metabase.util.malli.fn/validate-input {:fn-name 'my-plus} :int b)
-                     (metabase.util.malli.fn/validate-input {:fn-name 'my-plus} [:map [:integer? :boolean]] kvs)
-                     (clojure.core/->>
-                      (&f a b kvs)
-                      (metabase.util.malli.fn/validate-output {:fn-name 'my-plus} :map))
-                     (catch java.lang.Exception error
-                       (throw (metabase.util.malli.fn/fixup-stacktrace error)))))))
+                     (metabase.util.malli.fn/validate-input
+                      {:fn-name 'my-plus}
+                      (clojure.core/-> &schema+explainers (clojure.core/nth 0)
+                                       :in (clojure.core/nth 0) clojure.core/deref clojure.core/first)
+                      (clojure.core/-> &schema+explainers (clojure.core/nth 0)
+                                       :in (clojure.core/nth 0) clojure.core/deref clojure.core/second)
+                      a)
+                     (metabase.util.malli.fn/validate-input
+                      {:fn-name 'my-plus}
+                      (clojure.core/-> &schema+explainers (clojure.core/nth 0)
+                                       :in (clojure.core/nth 1) clojure.core/deref clojure.core/first)
+                      (clojure.core/-> &schema+explainers (clojure.core/nth 0)
+                                       :in (clojure.core/nth 1) clojure.core/deref clojure.core/second)
+                      b)
+                     (metabase.util.malli.fn/validate-input
+                      {:fn-name 'my-plus}
+                      (clojure.core/-> &schema+explainers (clojure.core/nth 0)
+                                       :in (clojure.core/nth 2) clojure.core/deref clojure.core/first)
+                      (clojure.core/-> &schema+explainers (clojure.core/nth 0)
+                                       :in (clojure.core/nth 2) clojure.core/deref clojure.core/second)
+                      kvs)
+                     (metabase.util.malli.fn/validate-output
+                      {:fn-name 'my-plus}
+                      (clojure.core/-> &schema+explainers (clojure.core/nth 0)
+                                       :out clojure.core/deref clojure.core/first)
+                      (clojure.core/-> &schema+explainers (clojure.core/nth 0)
+                                       :out clojure.core/deref clojure.core/second)
+                      (&f a b kvs))
+                     (catch java.lang.Exception error (throw (metabase.util.malli.fn/fixup-stacktrace error)))))))
 
              (macroexpand form)))
       (is (= [:=>
@@ -344,7 +435,9 @@
     (testing "returns an instrumented fn"
       (mt/with-dynamic-fn-redefs [mu.fn/instrument-ns? (constantly true)]
         (let [expansion (macroexpand `(mu.fn/fn :- :int [] "foo"))]
-          (is (= '(let* [&f (clojure.core/fn [] "foo")])
+          (is (= '(let* [&f (clojure.core/fn [] "foo")
+                         &schema+explainers (metabase.util.malli.fn/fn-schemas->schema+explainers
+                                             [:=> :cat :int])])
                  (take 2 expansion)))))))
   (testing "by default, instrumented forms are emitted"
     (let [f (mu.fn/fn :- :int [] "schemas aren't checked if this is returned")]

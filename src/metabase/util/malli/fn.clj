@@ -177,9 +177,9 @@
   use [[metabase.util.malli/disable-enforcement]] to bind this only in Clojure code."
   true)
 
-(defn- validate [error-context schema value error-type]
+(defn- validate [error-context schema explain-fn value error-type]
   (when *enforce*
-    (when-let [error (mr/explain schema value)]
+    (when-let [error (explain-fn value)]
       (let [humanized (me/humanize error {:wrap (core/fn humanize-include-value
                                                   [{:keys [value message]}]
                                                   (str message ", got: " (pr-str value)))})
@@ -208,15 +208,15 @@
 
 (defn validate-input
   "Impl for [[metabase.util.malli.fn/fn]]; validates an input argument with `value` against `schema` using a cached
-  explainer and throws an exception if the check fails."
-  [error-context schema value]
-  (validate error-context schema value ::invalid-input))
+  explainer and throws an exception if the check fails. 2"
+  [error-context schema explainer-fn value]
+  (validate error-context schema explainer-fn value ::invalid-input))
 
 (defn validate-output
   "Impl for [[metabase.util.malli.fn/fn]]; validates function output `value` against `schema` using a cached explainer
-  and throws an exception if the check fails. Returns validated value."
-  [error-context schema value]
-  (validate error-context schema value ::invalid-output)
+  and throws an exception if the check fails. Returns validated value. 2"
+  [error-context schema explainer-fn value]
+  (validate error-context schema explainer-fn value ::invalid-output)
   value)
 
 (defn- varargs-type [input-schema]
@@ -243,12 +243,12 @@
                                              :varargs/map        {:as (last arg-names)})])
            arg-names))))
 
-(defn- input-schema->validation-forms [error-context [_cat & schemas :as input-schema]]
+(defn- input-schema->validation-forms [error-context [_cat & schemas :as input-schema] arity-index]
   (let [arg-names (input-schema-arg-names input-schema)
         schemas   (if (= (varargs-type input-schema) :varargs/sequential)
                     (concat (butlast schemas) [[:maybe (last schemas)]])
                     schemas)]
-    (->> (map (core/fn [arg-name schema]
+    (->> (map (core/fn [arg-name schema arg-index]
                 ;; 1. Skip checks against `:any` schema, there is no situation where it would fail.
                 ;;
                 ;; 2. Skip checks against the default varargs schemas, there is no situation where [:maybe [:* :any]] is
@@ -257,9 +257,13 @@
                                       'more [:maybe [:* :any]]
                                       'kvs  [:* :any]
                                       :any))
-                  `(validate-input ~error-context ~schema ~arg-name)))
+                  `(validate-input ~error-context
+                                   (-> ~'&schema+explainers (nth ~arity-index) :in (nth ~arg-index) deref first)
+                                   (-> ~'&schema+explainers (nth ~arity-index) :in (nth ~arg-index) deref second)
+                                   ~arg-name)))
               arg-names
-              schemas)
+              schemas
+              (range))
          (filter some?))))
 
 (defn- input-schema->application-form [input-schema]
@@ -285,17 +289,16 @@
         (.setStackTrace cleaned)))
     e))
 
-(defn- instrumented-arity [error-context [_=> input-schema output-schema]]
-  (let [input-schema           (if (= input-schema :cat)
-                                 [:cat]
-                                 input-schema)
+(defn- instrumented-arity [error-context [_=> input-schema output-schema] arity-index]
+  (let [input-schema           (if (= input-schema :cat) [:cat] input-schema)
         arglist                (input-schema->arglist input-schema)
-        input-validation-forms (input-schema->validation-forms error-context input-schema)
+        input-validation-forms (input-schema->validation-forms error-context input-schema arity-index)
         result-form            (input-schema->application-form input-schema)
-        result-form            (if (and output-schema
-                                        (not= output-schema :any))
-                                 `(->> ~result-form
-                                       (validate-output ~error-context ~output-schema))
+        result-form            (if (and output-schema (not= output-schema :any))
+                                 `(validate-output ~error-context
+                                                   (-> ~'&schema+explainers (nth ~arity-index) :out deref first)
+                                                   (-> ~'&schema+explainers (nth ~arity-index) :out deref second)
+                                                   ~result-form)
                                  result-form)]
     `(~arglist
       (try
@@ -307,12 +310,64 @@
 (defn- instrumented-fn-tail [error-context [schema-type :as schema]]
   (case schema-type
     :=>
-    [(instrumented-arity error-context schema)]
+    [(instrumented-arity error-context schema 0)]
 
     :function
     (let [[_function & schemas] schema]
-      (for [schema schemas]
-        (instrumented-arity error-context schema)))))
+      (map-indexed
+       (core/fn [arity-index schema]
+         (instrumented-arity error-context schema arity-index))
+       schemas))))
+
+(def ^:private vacuous-schemas
+  "Some schemas that cannot fail"
+  #{:any [:maybe :any]})
+
+(defn- non-vacuous-explainer [schema]
+  (if (contains? vacuous-schemas schema)
+    (constantly nil)
+    #_:clj-kondo/ignore
+    (mc/explainer schema)))
+
+(defn- ->delayed-schema+explainer
+  [sk]
+  (delay [(mc/schema sk) (non-vacuous-explainer sk)]))
+
+(defn- fn-schema->schema+explainers
+  [fn-schema]
+  (assert (= :=> (first fn-schema))
+          "Use `fn-schemas->schema+explainers` to handle :function schemas.")
+  (let [in-schemas (first (rest fn-schema))
+        var-args? (= (varargs-type in-schemas) :varargs/sequential)
+        in-schemas (if (coll? in-schemas)
+                     (drop 1 in-schemas)
+                     [])
+        in-schemas (if var-args?
+                     (concat (butlast in-schemas) [[:maybe (last in-schemas)]])
+                     in-schemas)
+        out-schema (last fn-schema)]
+    {:in (mapv ->delayed-schema+explainer in-schemas)
+     :out (->delayed-schema+explainer out-schema)}))
+
+(defn fn-schemas->schema+explainers
+  "Given a Malli function schema like
+  (single arity)
+   [:=> [:cat :string :string] :int]
+   or
+   (multi-arity)
+   [:function
+     [:=> [:cat :string :string] :int]
+     [:=> [:cat :int] :int]]
+
+   return a vector of maps with `:in` and `:out` keys, where `:in` is a vector of input schemas and explainers, and
+   `:out` is a vector of output schema and explainer. These are used to close over in the fn macro, so that the
+   iinstrumented function can validate its inputs and outputs by referencing these explainer functions."
+  [[schema-type :as fxn-schema]]
+  (case schema-type
+    :function
+    (mapv fn-schema->schema+explainers (rest fxn-schema))
+    :=>
+    [(fn-schema->schema+explainers fxn-schema)]))
 
 (defn instrumented-fn-form
   "Nota Bene: not safe for expansion into Clojurescript!
@@ -327,8 +382,12 @@
     (mc/-instrument {:schema [:=> [:cat :int :any] :any]}
                     (fn [x y] (+ 1 2)))"
   [error-context parsed & [fn-name]]
-  `(let [~'&f ~(deparameterized-fn-form parsed fn-name)]
-     (core/fn ~@(instrumented-fn-tail error-context (fn-schema parsed)))))
+  (let [parsed-fn-schema (fn-schema parsed)]
+    `(let [~'&f ~(deparameterized-fn-form parsed fn-name)
+           ~'&schema+explainers (fn-schemas->schema+explainers ~parsed-fn-schema)]
+       (core/fn ~@(instrumented-fn-tail
+                   error-context
+                   parsed-fn-schema)))))
 
 ;; ------------------------------ Skipping Namespace Enforcement in prod ------------------------------
 
@@ -402,5 +461,6 @@
       (deparameterized-fn-form parsed)
       (let [error-context (if (symbol? (first fn-tail))
                             ;; We want the quoted symbol of first fn-tail:
-                            {:fn-name (list 'quote (first fn-tail))} {})]
+                            {:fn-name (list 'quote (first fn-tail))}
+                            {})]
         (instrumented-fn-form error-context parsed)))))
