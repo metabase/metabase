@@ -49,10 +49,10 @@ export function SidebarSectionItem({
         key={section.id}
         px="md"
         py="sm"
+        bg="bg-medium"
         style={{
           border: "1px solid var(--border-color)",
           borderRadius: "var(--default-border-radius)",
-          backgroundColor: "var(--mb-color-bg-white)",
           cursor: "pointer",
         }}
         ref={rootTriggerRef}

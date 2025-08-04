@@ -15,7 +15,7 @@ import {
 import { useEffect, useRef } from "react";
 import { t } from "ttag";
 
-import { Box, Group, Stack, Text } from "metabase/ui/components";
+import { ActionIcon, Box, Group, Stack, Text } from "metabase/ui/components";
 import { Icon } from "metabase/ui/components/icons";
 import type {
   DatasetColumn,
@@ -29,9 +29,14 @@ interface SortableFieldItemProps {
     field_id: number;
   };
   column?: DatasetColumn;
+  onRemoveItem?: (fieldId: number) => void;
 }
 
-function SortableFieldItem({ field, column }: SortableFieldItemProps) {
+function SortableFieldItem({
+  field,
+  column,
+  onRemoveItem,
+}: SortableFieldItemProps) {
   const {
     attributes,
     listeners,
@@ -52,7 +57,7 @@ function SortableFieldItem({ field, column }: SortableFieldItemProps) {
   return (
     <Box
       ref={setNodeRef}
-      p="xs"
+      p="sm"
       style={{
         ...style,
         border: "1px solid var(--border-color)",
@@ -66,6 +71,17 @@ function SortableFieldItem({ field, column }: SortableFieldItemProps) {
       <Group gap="xs" align="center">
         <Icon name="grabber" size={12} />
         <Text size="sm">{column?.display_name || String(field.field_id)}</Text>
+        {!!onRemoveItem && (
+          <ActionIcon
+            onClick={() => {
+              onRemoveItem(field.field_id);
+            }}
+            // stop dragging behaviour
+            onPointerDown={(e) => e.stopPropagation()}
+          >
+            <Icon name="close" size={12} />
+          </ActionIcon>
+        )}
       </Group>
     </Box>
   );
@@ -90,8 +106,6 @@ export function FieldsPopover({
   onClose,
   triggerRef,
 }: FieldsPopoverProps) {
-  const isDraggingRef = useRef(false);
-  const shouldKeepOpenRef = useRef(false);
   const popoverRef = useRef<HTMLDivElement>(null);
 
   const sensors = useSensors(
@@ -115,12 +129,7 @@ export function FieldsPopover({
         return;
       }
 
-      if (
-        popoverRef.current &&
-        !popoverRef.current.contains(target) &&
-        !isDraggingRef.current &&
-        !shouldKeepOpenRef.current
-      ) {
+      if (popoverRef.current && !popoverRef.current.contains(target)) {
         onClose();
       }
     };
@@ -135,6 +144,12 @@ export function FieldsPopover({
   const availableFields = columns.filter(
     (col: DatasetColumn) => !usedFieldIds.has(String(col.id)),
   );
+
+  const handleRemoveItem = (fieldId: number) => {
+    onUpdateSection(section.id, {
+      fields: section.fields.filter((field) => field.field_id !== fieldId),
+    });
+  };
 
   return (
     <Box
@@ -156,25 +171,26 @@ export function FieldsPopover({
       }}
       p="md"
     >
-      <Text fw={600} mb="sm">{t`Fields for ${section.title}`}</Text>
+      <Group justify="space-between">
+        <Text fw={600} mb="sm">{t`Fields for ${section.title}`}</Text>
+        <ActionIcon
+          onClick={() => {
+            onClose();
+          }}
+        >
+          <Icon name="close" size={12} />
+        </ActionIcon>
+      </Group>
 
-      {/* Showing group */}
       {section.fields.length > 0 && (
         <>
-          <Text size="xs" fw={600} c="text-medium" mb="xs" tt="uppercase">
+          <Text size="xs" fw={600} c="text-medium" mb="sm" tt="uppercase">
             {t`Showing`}
           </Text>
           <DndContext
             sensors={sensors}
             collisionDetection={closestCenter}
-            onDragStart={() => {
-              isDraggingRef.current = true;
-              shouldKeepOpenRef.current = true;
-            }}
             onDragEnd={(event) => {
-              isDraggingRef.current = false;
-              shouldKeepOpenRef.current = false;
-
               const { active, over } = event;
               if (over && active.id !== over.id) {
                 const oldIndex = section.fields.findIndex(
@@ -208,6 +224,9 @@ export function FieldsPopover({
                       key={field.field_id}
                       field={field}
                       column={column}
+                      onRemoveItem={(fieldId: number) =>
+                        handleRemoveItem(fieldId)
+                      }
                     />
                   );
                 })}
@@ -217,17 +236,16 @@ export function FieldsPopover({
         </>
       )}
 
-      {/* Not showing group */}
       {availableFields.length > 0 && (
         <>
-          <Text size="xs" fw={600} c="text-medium" mb="xs" tt="uppercase">
+          <Text size="xs" fw={600} c="text-medium" mb="sm" tt="uppercase">
             {t`Not showing`}
           </Text>
           <Stack gap="xs">
             {availableFields.map((column) => (
               <Box
                 key={column.id}
-                p="xs"
+                p="sm"
                 style={{
                   border: "1px solid var(--border-color)",
                   borderRadius: "var(--default-border-radius)",
