@@ -272,10 +272,10 @@
                  :allow-cache?   (request/cacheable? request))
         ;; Add CORS headers for /auth/sso endpoint
         ;; - For OPTIONS requests (preflight) to allow CORS
-        ;; - For 402 status (embedding disabled errors) to allow frontend to read error messages
+        ;; - For 400/402 status (client/embedding errors) to allow frontend to read error messages
         cors-headers (when (and (= (:uri request) "/auth/sso")
                                 (or (= (:request-method request) :options)
-                                    (= (:status response) 402)))
+                                    (contains? #{400 402} (:status response))))
                        {"Access-Control-Allow-Origin" "*"
                         "Access-Control-Allow-Headers" "*"
                         "Access-Control-Allow-Methods" "*"})]

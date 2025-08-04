@@ -425,6 +425,22 @@
       (is (= "*" (get-in response [:headers "Access-Control-Allow-Methods"]))
           "Should set Access-Control-Allow-Methods to * for /auth/sso with 402 status")))
 
+  (testing "Should add CORS headers for /auth/sso endpoint with 400 status (client errors)"
+    (let [wrapped-handler (mw.security/add-security-headers
+                           (fn [_request respond _raise]
+                             (respond {:status 400
+                                       :headers {"Content-Type" "application/json"}
+                                       :body "{\"status\": \"error-sso-disabled\"}"})))
+          response (wrapped-handler {:uri "/auth/sso" :headers {"origin" "https://example.com"}}
+                                    identity
+                                    identity)]
+      (is (= "*" (get-in response [:headers "Access-Control-Allow-Origin"]))
+          "Should set Access-Control-Allow-Origin to * for /auth/sso with 400 status")
+      (is (= "*" (get-in response [:headers "Access-Control-Allow-Headers"]))
+          "Should set Access-Control-Allow-Headers to * for /auth/sso with 400 status")
+      (is (= "*" (get-in response [:headers "Access-Control-Allow-Methods"]))
+          "Should set Access-Control-Allow-Methods to * for /auth/sso with 400 status")))
+
   (testing "Should add CORS headers for /auth/sso OPTIONS requests (preflight)"
     (let [wrapped-handler (mw.security/add-security-headers
                            (fn [_request respond _raise]
@@ -443,17 +459,18 @@
       (is (= "*" (get-in response [:headers "Access-Control-Allow-Methods"]))
           "Should set Access-Control-Allow-Methods to * for OPTIONS /auth/sso")))
 
-  (testing "Should not add CORS headers for /auth/sso endpoint with non-402 status"
-    (let [wrapped-handler (mw.security/add-security-headers
-                           (fn [_request respond _raise]
-                             (respond {:status 200
-                                       :headers {"Content-Type" "application/json"}
-                                       :body "{\"status\": \"ok\"}"})))
-          response (wrapped-handler {:uri "/auth/sso" :headers {"origin" "https://example.com"}}
-                                    identity
-                                    identity)]
-      (is (nil? (get-in response [:headers "Access-Control-Allow-Origin"]))
-          "Should not set CORS headers for /auth/sso with 200 status when embedding is disabled")))
+  (testing "Should not add CORS headers for /auth/sso endpoint with other status codes"
+    (doseq [status [200 201 500 503]]
+      (let [wrapped-handler (mw.security/add-security-headers
+                             (fn [_request respond _raise]
+                               (respond {:status status
+                                         :headers {"Content-Type" "application/json"}
+                                         :body "{\"status\": \"ok\"}"})))
+            response (wrapped-handler {:uri "/auth/sso" :headers {"origin" "https://example.com"}}
+                                      identity
+                                      identity)]
+        (is (nil? (get-in response [:headers "Access-Control-Allow-Origin"]))
+            (format "Should not set CORS headers for /auth/sso with %d status" status)))))
 
   (testing "Should not add CORS headers for OPTIONS requests to other endpoints"
     (let [wrapped-handler (mw.security/add-security-headers
