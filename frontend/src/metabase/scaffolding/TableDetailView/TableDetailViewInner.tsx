@@ -39,7 +39,6 @@ import { DetailViewHeader } from "./DetailViewHeader";
 import { DetailViewSidebar } from "./DetailViewSidebar";
 import { Relationships } from "./ObjectRelations";
 import { SortableSection } from "./SortableSection";
-import { TableDetailViewContentHeader } from "./TableDetailViewContentHeader";
 import { useDetailViewSections } from "./use-detail-view-sections";
 import { useForeignKeyReferences } from "./use-foreign-key-references";
 
@@ -63,7 +62,6 @@ export function TableDetailViewInner({
   isEdit = false,
 }: TableDetailViewProps) {
   const [currentRowIndex, setCurrentRowIndex] = useState(0);
-  const [linkCopied, setLinkCopied] = useState(false);
   const dispatch = useDispatch();
   const [updateTableComponentSettings] =
     useUpdateTableComponentSettingsMutation();
@@ -146,16 +144,6 @@ export function TableDetailViewInner({
     dispatch,
     rowId,
   ]);
-
-  const handleCopyLink = useCallback(async () => {
-    try {
-      await navigator.clipboard.writeText(window.location.href);
-      setLinkCopied(true);
-      setTimeout(() => setLinkCopied(false), 2000);
-    } catch (error) {
-      console.error("Failed to copy link:", error);
-    }
-  }, []);
 
   // Handle foreign key navigation
   const handleFollowForeignKey = useCallback(
@@ -370,19 +358,6 @@ export function TableDetailViewInner({
           boxShadow: isEdit ? "none" : "0 2px 8px rgba(0, 0, 0, 0.1)", // can be a Card component
         }}
       >
-        {!isEdit && (
-          <TableDetailViewContentHeader
-            canOpenPreviousItem={rows.length > 1 && currentRowIndex > 0}
-            canOpenNextItem={
-              rows.length > 1 && currentRowIndex < rows.length - 1
-            }
-            onViewNextObjectDetail={handleViewNextObjectDetail}
-            onViewPreviousObjectDetail={handleViewPreviousObjectDetail}
-            onCopyLink={handleCopyLink}
-            onEditClick={handleEditClick}
-            linkCopied={linkCopied}
-          />
-        )}
         <DndContext
           sensors={sensors}
           collisionDetection={closestCenter}

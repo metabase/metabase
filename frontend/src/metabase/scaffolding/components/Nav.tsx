@@ -1,8 +1,7 @@
 import type { ReactNode } from "react";
-import { Link } from "react-router";
 
 import { createMockMetadata } from "__support__/metadata";
-import { Box, Group, Text, Title } from "metabase/ui";
+import { Box, Group, Text } from "metabase/ui";
 import * as ML_Urls from "metabase-lib/v1/urls";
 import type { Table } from "metabase-types/api";
 

@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { type ReactNode, useCallback, useState } from "react";
 import { t } from "ttag";
 
 import { Flex, Tooltip } from "metabase/ui/components";
@@ -33,6 +33,17 @@ export function DetailViewHeader({
   onNextItemClick,
   onEditClick,
 }: DetailViewHeaderProps & { table: any }): JSX.Element {
+  const [linkCopied, setLinkCopied] = useState(false);
+  const handleCopyLink = useCallback(async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 2000);
+    } catch (error) {
+      console.error("Failed to copy link:", error);
+    }
+  }, []);
+
   return (
     <Nav rowId={rowId} rowName={rowName} table={table}>
       <Flex align="center" gap="sm">
@@ -56,17 +67,27 @@ export function DetailViewHeader({
           </>
         )}
 
+        <Tooltip label={linkCopied ? t`Copied!` : t`Copy link to a row`}>
+          <Button
+            disabled={isEdit}
+            leftSection={<Icon name="link" />}
+            onClick={handleCopyLink}
+          />
+        </Tooltip>
+
         <Tooltip
           disabled={!isEdit}
-          label={t`Button is disabled to prevent losing unsaved changes. We'll have something better for production.`}
+          label={
+            isEdit
+              ? t`Button is disabled to prevent losing unsaved changes. We'll have something better for production.`
+              : t`Settings`
+          }
         >
           <Button
             disabled={isEdit}
-            leftSection={<Icon name="gear" />}
+            leftSection={<Icon name="pencil" />}
             onClick={onEditClick}
-          >
-            {t`Display settings`}
-          </Button>
+          />
         </Tooltip>
       </Flex>
     </Nav>
