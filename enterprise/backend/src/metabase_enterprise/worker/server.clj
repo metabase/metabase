@@ -125,7 +125,7 @@
                                                 (try
                                                   (tracking/timeout-old-tasks)
                                                   (catch Throwable t
-                                                    (log/error t "Error while running timeout on worker.")))) 0 2 TimeUnit/SECONDS)]
+                                                    (log/error t "Error while running timeout on worker.")))) 0 20 TimeUnit/SECONDS)]
      (swap! tasks conj task))
    (let [thread-pool (doto (new QueuedThreadPool)
                        (.setVirtualThreadsExecutor (Executors/newVirtualThreadPerTaskExecutor)))
