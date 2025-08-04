@@ -21,7 +21,13 @@
    [ring.adapter.jetty :as ring-jetty]
    [ring.middleware.keyword-params :refer [wrap-keyword-params]]
    [ring.util.response :as response])
-  (:import (java.util.concurrent Executors ExecutorService Semaphore)
+  (:import (java.util.concurrent
+            Executors
+            ExecutorService
+            Future
+            ScheduledExecutorService
+            Semaphore
+            TimeUnit)
            (org.eclipse.jetty.util.thread QueuedThreadPool)))
 
 (set! *warn-on-reflection* true)
@@ -30,6 +36,8 @@
 (defonce ^:private ^Semaphore semaphore (Semaphore. 1000 true))
 
 (defonce ^:private ^ExecutorService executor (Executors/newVirtualThreadPerTaskExecutor))
+
+(defonce ^:private ^ScheduledExecutorService scheduler (Executors/newScheduledThreadPool 1))
 
 (mr/def ::transform-api-request
   [:map
@@ -94,17 +102,31 @@
     3030))
 
 (defonce ^:private instance (atom nil))
+(defonce ^:private tasks (atom []))
 
 (defn stop! []
   (when @instance
     (log/info "Stopping worker server")
     (.stop ^QueuedThreadPool @instance)
-    (reset! instance nil)))
+    (reset! instance nil))
+  (doseq [^Future task @tasks]
+    (try
+      (.cancel task false)
+      (catch Throwable t
+        (log/error t "Error while canceling scheduled futures for worker task runner."))))
+  (reset! tasks [])
+  nil)
 
 (defn start!
   ([] (start! {}))
   ([opts]
    (stop!)
+   (let [task (.scheduleAtFixedRate scheduler (fn []
+                                                (try
+                                                  (tracking/timeout-old-tasks)
+                                                  (catch Throwable t
+                                                    (log/error t "Error while running timeout on worker.")))) 0 2 TimeUnit/SECONDS)]
+     (swap! tasks conj task))
    (let [thread-pool (doto (new QueuedThreadPool)
                        (.setVirtualThreadsExecutor (Executors/newVirtualThreadPerTaskExecutor)))
          jetty-port (port)]
