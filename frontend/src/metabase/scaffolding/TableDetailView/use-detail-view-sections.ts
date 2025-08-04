@@ -29,7 +29,7 @@ export function useDetailViewSections(
         {
           id: generateId(),
           title: "Section",
-          direction: "horizontal",
+          variant: "normal",
           fields: [],
         },
       ]);
@@ -38,7 +38,7 @@ export function useDetailViewSections(
         {
           id: generateId(),
           title: "Section",
-          direction: "horizontal",
+          variant: "normal",
           fields: [],
         },
         ...sections,
