@@ -8,8 +8,9 @@
   (testing "semantic search results below threshold are supplemented with appdb results"
     (binding [semantic.core/*min-results-threshold* 3]
       (let [semantic-result     {:id 1 :name "semantic-card" :model "card" :score 0.9}
-            appdb-results       [{:id 2 :name "appdb-card-1" :model "card"}
-                                 {:id 3 :name "appdb-card-2" :model "card"}
+            appdb-results       [{:id 1 :name "appdb-card-1" :model "card"}
+                                 {:id 2 :name "appdb-card-2" :model "card"}
+                                 {:id 3 :name "appdb-card-3" :model "card"}
                                  {:id 4 :name "appdb-dashboard" :model "dashboard"}]
             search-ctx          {:query "test" :search-engine :search.engine/semantic}
             semantic-results-fn (get-method search.engine/results :search.engine/semantic)]
@@ -21,20 +22,22 @@
                                                 :search.engine/semantic (semantic-results-fn ctx)))]
 
           (let [results (search.engine/results search-ctx)]
+            (def results results)
             (testing "semantic result comes first"
               (is (= semantic-result (first results))))
 
-            (testing "appdb results are appended"
-              (is (= appdb-results (rest results))))))))))
+            (testing "appdb results are appended, and duplicate model/id pairs are removed"
+              (is (= (rest appdb-results)
+                     (rest results))))))))))
 
 (deftest test-semantic-search-above-threshold-no-fallback
   (testing "semantic search results above threshold are not supplemented"
     (binding [semantic.core/*min-results-threshold* 3]
-      (let [semantic-results [{:id 1 :name "semantic-card-1" :model "card" :score 0.9}
-                              {:id 2 :name "semantic-card-2" :model "card" :score 0.8}
-                              {:id 3 :name "semantic-card-3" :model "card" :score 0.7}
-                              {:id 4 :name "semantic-card-4" :model "card" :score 0.6}]
-            search-ctx         {:query "test" :search-engine :search.engine/semantic}
+      (let [semantic-results    [{:id 1 :name "semantic-card-1" :model "card" :score 0.9}
+                                 {:id 2 :name "semantic-card-2" :model "card" :score 0.8}
+                                 {:id 3 :name "semantic-card-3" :model "card" :score 0.7}
+                                 {:id 4 :name "semantic-card-4" :model "card" :score 0.6}]
+            search-ctx          {:query "test" :search-engine :search.engine/semantic}
             semantic-results-fn (get-method search.engine/results :search.engine/semantic)]
         (with-redefs [semantic.core/results (constantly semantic-results)
                       search.engine/supported-engine? (constantly true)
@@ -52,10 +55,10 @@
   (testing "combined results are limited by max-combined-results"
     (binding [semantic.core/*min-results-threshold* 3
               semantic.core/*max-combined-results* 5]
-      (let [semantic-result {:id 1 :name "semantic-card" :model "card" :score 0.9}
-            appdb-results (for [i (range 2 10)]
-                            {:id i :name (str "appdb-card-" i) :model "card"})
-            search-ctx         {:query "test" :search-engine :search.engine/semantic}
+      (let [semantic-result     {:id 1 :name "semantic-card" :model "card" :score 0.9}
+            appdb-results       (for [i (range 2 10)]
+                                  {:id i :name (str "appdb-card-" i) :model "card"})
+            search-ctx          {:query "test" :search-engine :search.engine/semantic}
             semantic-results-fn (get-method search.engine/results :search.engine/semantic)]
         (with-redefs [semantic.core/results (constantly [semantic-result])
                       search.engine/supported-engine? (constantly true)

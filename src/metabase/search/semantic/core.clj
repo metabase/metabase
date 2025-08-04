@@ -1,5 +1,6 @@
 (ns metabase.search.semantic.core
   (:require
+   [medley.core :as m]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.search.config :as search.config]
    [metabase.search.engine :as search.engine]
@@ -90,8 +91,9 @@
           (log/infof "Semantic search returned %d results (< %d), supplementing with %s search"
                      result-count *min-results-threshold* fallback)
           (let [fallback-results (search.engine/results (assoc search-ctx :search-engine fallback))
-                combined-results (concat semantic-results fallback-results)]
-            (take *max-combined-results* combined-results)))))
+                combined-results (concat semantic-results fallback-results)
+                deduped-results (m/distinct-by (juxt :model :id) combined-results)]
+            (take *max-combined-results* deduped-results)))))
     (catch Exception e
       (log/error e "Error executing semantic search")
       [])))
