@@ -1,7 +1,7 @@
 import { type ReactNode, useCallback, useState } from "react";
 import { t } from "ttag";
 
-import { Flex, Tooltip } from "metabase/ui/components";
+import { Box, Flex, Group, Tooltip } from "metabase/ui/components";
 import { Button } from "metabase/ui/components/buttons";
 import { Icon } from "metabase/ui/components/icons";
 import type { Table } from "metabase-types/api";
@@ -46,9 +46,9 @@ export function DetailViewHeader({
 
   return (
     <Nav rowId={rowId} rowName={rowName} table={table}>
-      <Flex align="center" gap="sm">
+      <Flex align="center" gap="md">
         {(canOpenPreviousItem || canOpenNextItem) && (
-          <>
+          <Group gap="sm">
             <Tooltip disabled={!canOpenPreviousItem} label={t`Previous row`}>
               <Button
                 disabled={!canOpenPreviousItem}
@@ -64,31 +64,34 @@ export function DetailViewHeader({
                 leftSection={<Icon name="chevrondown" />}
               />
             </Tooltip>
-          </>
+          </Group>
         )}
 
-        <Tooltip label={linkCopied ? t`Copied!` : t`Copy link to a row`}>
-          <Button
-            disabled={isEdit}
-            leftSection={<Icon name="link" />}
-            onClick={handleCopyLink}
-          />
-        </Tooltip>
+        <Box h={20} w={1} bg="var(--border-color)" />
 
-        <Tooltip
-          disabled={!isEdit}
-          label={
-            isEdit
-              ? t`Button is disabled to prevent losing unsaved changes. We'll have something better for production.`
-              : t`Settings`
-          }
-        >
-          <Button
-            disabled={isEdit}
-            leftSection={<Icon name="pencil" />}
-            onClick={onEditClick}
-          />
-        </Tooltip>
+        <Group gap="sm">
+          <Tooltip label={linkCopied ? t`Copied!` : t`Copy link to a row`}>
+            <Button
+              disabled={isEdit}
+              leftSection={<Icon name="link" />}
+              onClick={handleCopyLink}
+            />
+          </Tooltip>
+
+          <Tooltip
+            label={
+              isEdit
+                ? t`Button is disabled to prevent losing unsaved changes. We'll have something better for production.`
+                : t`Settings`
+            }
+          >
+            <Button
+              disabled={isEdit}
+              leftSection={<Icon name="pencil" />}
+              onClick={onEditClick}
+            />
+          </Tooltip>
+        </Group>
       </Flex>
     </Nav>
   );
