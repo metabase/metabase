@@ -62,7 +62,9 @@ export function SidebarSectionItem({
           <Stack gap="xs" flex="1">
             <Box pos="relative">
               <Text size="xs" c="text-medium">
-                {section.fields.length} {t`fields`}
+                {section.fields.length === 0
+                  ? t`No fields`
+                  : t`${section.fields.length} fields`}
               </Text>
 
               <FieldsPopover

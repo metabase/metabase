@@ -84,12 +84,12 @@ export function getDefaultObjectViewSettings(
         variant: "highlight-1",
         fields: [],
       },
-      {
-        id: getNextId(),
-        title: "Highlight level 2",
-        variant: "highlight-2",
-        fields: [],
-      },
+      // {
+      //   id: getNextId(),
+      //   title: "Highlight level 2",
+      //   variant: "highlight-2",
+      //   fields: [],
+      // },
       {
         id: getNextId(),
         title: "Info",
