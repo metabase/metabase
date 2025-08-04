@@ -4,7 +4,6 @@
    [honey.sql.helpers :as sql.helpers]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.search.config :as search.config]
-   [metabase.search.engine :as search.engine]
    [metabase.util :as u]))
 
 (def ^:private seconds-in-a-day 86400)
@@ -120,7 +119,7 @@
   "Return the select-item expressions used to calculate the score for each search result."
   metabase-enterprise.search.scoring
   [search-ctx]
-  (search.engine/scorers search-ctx))
+  (base-scorers search-ctx))
 
 (defn- scorer-select-items [search-ctx scorers] (select-items (:context search-ctx) scorers))
 

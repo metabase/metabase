@@ -6,7 +6,6 @@
    [metabase.search.appdb.index :as search.index]
    [metabase.search.appdb.specialization.api :as specialization]
    [metabase.search.config :as search.config]
-   [metabase.search.engine :as search.engine]
    [metabase.search.scoring :as search.scoring]
    [metabase.util :as u]
    [toucan2.core :as t2]))
@@ -48,14 +47,12 @@
                                        (into [:case] cat cases)
                                        1))))
 
-(defmethod search.engine/scorers :search.engine/appdb
+(defn scorers
+  "Return the select-item expressions used to calculate the score for appdb search results."
   [{:keys [limit-int] :as search-ctx}]
   (merge
-   (search.scoring/base-scorers search-ctx)
-   (if (and limit-int (zero? limit-int))
-     {:model       [:inline 1]}
-     ;; NOTE: we calculate scores even if the weight is zero, so that it's easy to consider how we could affect any
-     ;; given set of results. At some point, we should optimize away the irrelevant scores for any given context.
+   (search.scoring/scorers search-ctx)
+   (when-not (and limit-int (zero? limit-int))
      {:text         (specialization/text-score)
       :view-count   (view-count-expr search.config/view-count-scaling-percentile)
       :bookmarked   bookmark-score-expr})))
