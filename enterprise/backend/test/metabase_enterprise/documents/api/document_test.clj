@@ -12,16 +12,10 @@
       (let [result (mt/user-http-request :crowberto
                                          :post 200 "ee/document/" {:name "Document 1"
                                                                    :document "Doc 1"})
-            document-row (t2/select-one :model/Document :id (:id result))
-            document-doc-row (t2/select-one :model/DocumentVersion :document_id (:id document-row))]
+            document-row (t2/select-one :model/Document :id (:id result))]
         (is (partial= {:name "Document 1" :document "Doc 1"} result))
         (is (pos? (:id result)))
-
-        (is (partial= {:name "Document 1"} document-row))
-        (is (partial=
-             {:document "Doc 1"
-              :version_identifier 1}
-             document-doc-row))))))
+        (is (partial= {:name "Document 1" :document "Doc 1"} document-row))))))
 
 (deftest post-document-invalid-card-ids-test
   (testing "POST /api/ee/document/ - should reject invalid card-ids"
@@ -132,28 +126,17 @@
 
 (deftest put-document-basic-update-test
   (testing "PUT /api/ee/document/id - basic document update"
-    (mt/with-temp [:model/Document {document-id :id} {:name "Test Document"}
-                   :model/DocumentVersion {version-id :id}
-                   {:document_id document-id
-                    :document "Initial Doc"
-                    :version_identifier 1}]
-      (t2/update! :model/Document document-id {:current_version_id version-id})
-
+    (mt/with-temp [:model/Document {document-id :id} {:name "Test Document"
+                                                      :document "Initial Doc"}]
       (let [result (mt/user-http-request :crowberto
                                          :put 200 (format "ee/document/%s" document-id) {:name "Document 2" :document "Doc 2"})]
         (is (partial= {:name "Document 2"
-                       :document "Doc 2"
-                       :version 2} result))))))
+                       :document "Doc 2"} result))))))
 
 (deftest put-document-associate-valid-cards-test
   (testing "PUT /api/ee/document/id - should associate valid :in_document cards with existing document"
-    (mt/with-temp [:model/Document {document-id :id} {:name "Test Document"}
-                   :model/DocumentVersion {version-id :id}
-                   {:document_id document-id
-                    :document "Initial Doc"
-                    :version_identifier 1}]
-      (t2/update! :model/Document document-id {:current_version_id version-id})
-
+    (mt/with-temp [:model/Document {document-id :id} {:name "Test Document"
+                                                      :document "Initial Doc"}]
       (mt/with-model-cleanup [:model/Card]
         (mt/with-temp [:model/Card card1 {:name "Card 1"
                                           :type :in_document
@@ -174,13 +157,8 @@
 
 (deftest put-document-clear-existing-card-associations-test
   (testing "PUT /api/ee/document/id - should clear existing card associations when updating with new cards"
-    (mt/with-temp [:model/Document {document-id :id} {:name "Test Document"}
-                   :model/DocumentVersion {version-id :id}
-                   {:document_id document-id
-                    :document "Initial Doc"
-                    :version_identifier 1}]
-      (t2/update! :model/Document document-id {:current_version_id version-id})
-
+    (mt/with-temp [:model/Document {document-id :id} {:name "Test Document"
+                                                      :document "Initial Doc"}]
       (mt/with-model-cleanup [:model/Card]
         (mt/with-temp [:model/Card old-card {:name "Old Card"
                                              :type :in_document
@@ -199,13 +177,8 @@
 
 (deftest put-document-reject-nonexistent-card-ids-test
   (testing "PUT /api/ee/document/id - should reject non-existent card-ids"
-    (mt/with-temp [:model/Document {document-id :id} {:name "Test Document"}
-                   :model/DocumentVersion {version-id :id}
-                   {:document_id document-id
-                    :document "Initial Doc"
-                    :version_identifier 1}]
-      (t2/update! :model/Document document-id {:current_version_id version-id})
-
+    (mt/with-temp [:model/Document {document-id :id} {:name "Test Document"
+                                                      :document "Initial Doc"}]
       (let [non-existent-id 999999]
         (is (=? {:message #"The following card IDs do not exist.*"}
                 (mt/user-http-request :crowberto
@@ -216,13 +189,8 @@
 
 (deftest put-document-reject-wrong-card-type-test
   (testing "PUT /api/ee/document/id - should reject cards with wrong type"
-    (mt/with-temp [:model/Document {document-id :id} {:name "Test Document"}
-                   :model/DocumentVersion {version-id :id}
-                   {:document_id document-id
-                    :document "Initial Doc"
-                    :version_identifier 1}]
-      (t2/update! :model/Document document-id {:current_version_id version-id})
-
+    (mt/with-temp [:model/Document {document-id :id} {:name "Test Document"
+                                                      :document "Initial Doc"}]
       (mt/with-model-cleanup [:model/Card]
         (mt/with-temp [:model/Card wrong-type-card {:name "Wrong Type Card"
                                                     :type :question
@@ -236,13 +204,8 @@
 
 (deftest put-document-handle-empty-card-ids-test
   (testing "PUT /api/ee/document/id - should handle empty card-ids gracefully"
-    (mt/with-temp [:model/Document {document-id :id} {:name "Test Document"}
-                   :model/DocumentVersion {version-id :id}
-                   {:document_id document-id
-                    :document "Initial Doc"
-                    :version_identifier 1}]
-      (t2/update! :model/Document document-id {:current_version_id version-id})
-
+    (mt/with-temp [:model/Document {document-id :id} {:name "Test Document"
+                                                      :document "Initial Doc"}]
       (let [result (mt/user-http-request :crowberto
                                          :put 200 (format "ee/document/%s" document-id)
                                          {:name "Document with Empty Cards"
@@ -252,23 +215,15 @@
 
 (deftest put-document-transaction-rollback-test
   (testing "PUT /api/ee/document/id - transaction rollback when card update fails"
-    (mt/with-temp [:model/Document {document-id :id} {:name "Test Document"}
-                   :model/DocumentVersion {version-id :id}
-                   {:document_id document-id
-                    :document "Initial Doc"
-                    :version_identifier 1}]
-      (t2/update! :model/Document document-id {:current_version_id version-id})
-
+    (mt/with-temp [:model/Document {document-id :id} {:name "Test Document"
+                                                      :document "Initial Doc"}]
       (let [initial-document (t2/select-one :model/Document :id document-id)
-            invalid-card-id 999999
-            initial-versions-count (t2/count :model/DocumentVersion :document_id document-id)]
+            invalid-card-id 999999]
         (mt/user-http-request :crowberto
                               :put 404 (format "ee/document/%s" document-id)
                               {:name "Document That Should Rollback"
                                :document "Doc that should rollback"
                                :card_ids [invalid-card-id]})
-              ;; Verify no new document version was created due to rollback
-        (is (= initial-versions-count (t2/count :model/DocumentVersion :document_id document-id)))
               ;; Verify the document name wasn't updated
         (let [unchanged-document (t2/select-one :model/Document :id document-id)]
           (is (= (:name initial-document) (:name unchanged-document))))))))
@@ -280,11 +235,9 @@
 
 (deftest put-document-with-no-perms-test
   (mt/with-temp [:model/Collection {coll-id :id} {}
-                 :model/Document {document-id :id} {:collection_id coll-id}
-                 :model/DocumentVersion {version-id :id} {:document_id document-id
-                                                          :document "Doc 1"
-                                                          :version_identifier 1}]
-    (t2/update! :model/Document document-id {:current_version_id version-id})
+                 :model/Document {document-id :id} {:collection_id coll-id
+                                                    :name "Test Document"
+                                                    :document "Doc 1"}]
     (mt/with-non-admin-groups-no-collection-perms coll-id
       (mt/user-http-request :rasta :put 403 (str "ee/document/" document-id)
                             {:name "Meow"}))))
@@ -299,56 +252,24 @@
 
 (deftest get-document-test
   (testing "GET /api/ee/document/id"
-    (mt/with-temp [:model/Document {document-id :id} {:name "Test Document"}
-                   :model/DocumentVersion {} {:document_id document-id
-                                              :document "Doc 1"
-                                              :version_identifier 1}
-                   :model/DocumentVersion {version-id :id} {:document_id document-id
-                                                            :document "Doc 2"
-                                                            :version_identifier 2}]
-      (t2/update! :model/Document document-id {:current_version_id version-id})
-
-      (testing "should get the latest version when no version specified"
+    (mt/with-temp [:model/Document {document-id :id} {:name "Test Document"
+                                                      :document "Doc 1"}]
+      (testing "should get the document"
         (let [result (mt/user-http-request :crowberto
                                            :get 200 (format "ee/document/%s" document-id))]
           (is (partial= {:name "Test Document"
-                         :document "Doc 2"
-                         :version 2} result))
-          result))
-      (testing "should get the 1st version when specified"
-        (let [result (mt/user-http-request :crowberto
-                                           :get 200 (format "ee/document/%s?version=1" document-id))]
-          (is (partial= {:name "Test Document"
-                         :document "Doc 1"
-                         :version 1} result))
-          result))
-      (testing "should get the 2nd version when specified"
-        (let [result (mt/user-http-request :crowberto
-                                           :get 200 (format "ee/document/%s?version=2" document-id))]
-          (is (partial= {:name "Test Document"
-                         :document "Doc 2"
-                         :version 2} result))
+                         :document "Doc 1"} result))
           result))
       (testing "should return 404 for non-existent document"
         (mt/user-http-request :crowberto
-                              :get 404 "ee/document/99999"))
-      (testing "should return 404 for non-existent document versions"
-        (mt/user-http-request :crowberto
-                              :get 404 (format "ee/document/%s?version=3" document-id))))))
+                              :get 404 "ee/document/99999")))))
 
 (deftest get-documents-test
   (testing "GET /api/ee/document"
-    (mt/with-temp [:model/Document {document1-id :id} {:name "Document 1"}
-                   :model/Document {document2-id :id} {:name "Document 2"}
-                   :model/DocumentVersion {version1-id :id} {:document_id document1-id
-                                                             :document "Initial Doc 1"
-                                                             :version_identifier 1}
-                   :model/DocumentVersion {version2-id :id} {:document_id document2-id
-                                                             :document "Initial Doc 2"
-                                                             :version_identifier 1}]
-      (t2/update! :model/Document document1-id {:current_version_id version1-id})
-      (t2/update! :model/Document document2-id {:current_version_id version2-id})
-
+    (mt/with-temp [:model/Document {document1-id :id} {:name "Document 1"
+                                                       :document "Initial Doc 1"}
+                   :model/Document {document2-id :id} {:name "Document 2"
+                                                       :document "Initial Doc 2"}]
       (testing "should get existing documents"
         (let [result (mt/user-http-request :crowberto
                                            :get 200 "ee/document/")]
@@ -359,33 +280,7 @@
     (mt/user-http-request :crowberto
                           :get 404 "ee/document/99999")))
 
-(deftest get-document-versions-test
-  (testing "GET /api/ee/document/:id/versions"
-    (mt/with-temp [:model/Document {document-id :id} {:name "Test Document"}
-                   :model/DocumentVersion {v1 :id} {:document_id document-id
-                                                    :document "Doc 1"
-                                                    :version_identifier 1
-                                                    :parent_version_id nil}
-                   :model/DocumentVersion {v2 :id} {:document_id document-id
-                                                    :document "Doc 2"
-                                                    :version_identifier 2
-                                                    :parent_version_id v1}
-                   :model/DocumentVersion {latest-version-id :id} {:document_id document-id
-                                                                   :document "Doc 3"
-                                                                   :version_identifier 3
-                                                                   :parent_version_id v2}]
-      (t2/update! :model/Document document-id {:current_version_id latest-version-id})
-
-      (testing "should get all versions of a document"
-        (let [result (mt/user-http-request :crowberto
-                                           :get 200 (format "ee/document/%s/versions" document-id))]
-          (is (partial= [{:document "Doc 1" :version 1 :content_type "text/markdown" :parent_version_id nil}
-                         {:document "Doc 2" :version 2 :content_type "text/markdown" :parent_version_id v1}
-                         {:document "Doc 3" :version 3 :content_type "text/markdown" :parent_version_id v2}] result))
-          result))
-      (testing "should return 404 for non-existent document"
-        (mt/user-http-request :crowberto
-                              :get 404 "ee/document/99999/versions")))))
+;; Versioning functionality removed with single Document model
 
 (deftest validate-cards-for-document-test
   (testing "validate-cards-for-document function"
@@ -480,12 +375,9 @@
   (testing "End-to-end collection synchronization through API"
     (mt/with-temp [:model/Collection {old-collection-id :id} {:name "Old Collection"}
                    :model/Collection {new-collection-id :id} {:name "New Collection"}
-                   :model/Document {document-id :id} {:collection_id old-collection-id :name "Integration Test Document"}
-                   :model/DocumentVersion {version-id :id} {:document_id document-id
-                                                            :document "Integration test doc"
-                                                            :version_identifier 1}]
-      (t2/update! :model/Document document-id {:current_version_id version-id})
-
+                   :model/Document {document-id :id} {:collection_id old-collection-id
+                                                      :name "Integration Test Document"
+                                                      :document "Integration test doc"}]
       ;; Create cards associated with the document
       (mt/with-temp [:model/Card {card1-id :id} {:name "Integration Card 1"
                                                  :type :in_document
@@ -538,12 +430,9 @@
     (mt/with-temp [:model/User {user-id :id} {:first_name "Test" :last_name "User" :email "test@integration.com"}
                    :model/Collection {collection1-id :id} {:name "Permission Collection 1"}
                    :model/Collection {collection2-id :id} {:name "Permission Collection 2"}
-                   :model/Document {document-id :id} {:collection_id collection1-id :name "Permission Test Document"}
-                   :model/DocumentVersion {version-id :id} {:document_id document-id
-                                                            :document "Permission test doc"
-                                                            :version_identifier 1}]
-      (t2/update! :model/Document document-id {:current_version_id version-id})
-
+                   :model/Document {document-id :id} {:collection_id collection1-id
+                                                      :name "Permission Test Document"
+                                                      :document "Permission test doc"}]
       ;; Create cards in the original collection
       (mt/with-temp [:model/Card {card-id :id} {:name "Permission Test Card"
                                                 :type :in_document
@@ -553,13 +442,37 @@
 
         (testing "regular user without permissions cannot move document"
           ;; Should fail with 403
-          (mt/user-http-request user-id
-                                :put 403 (format "ee/document/%s" document-id)
-                                {:collection_id collection2-id})
+          (mt/with-non-admin-groups-no-collection-perms collection1-id
+            (mt/with-non-admin-groups-no-collection-perms collection2-id
+              (mt/user-http-request user-id
+                                    :put 403 (format "ee/document/%s" document-id)
+                                    {:collection_id collection2-id})
 
-          ;; Verify nothing changed
-          (is (= collection1-id (:collection_id (t2/select-one :model/Document :id document-id))))
-          (is (= collection1-id (:collection_id (t2/select-one :model/Card :id card-id)))))
+                                                          ;; Verify nothing changed
+              (is (= collection1-id (:collection_id (t2/select-one :model/Document :id document-id))))
+              (is (= collection1-id (:collection_id (t2/select-one :model/Card :id card-id)))))))
+
+        (testing "regular user without source permissions cannot move document"
+          ;; Should fail with 403
+          (mt/with-non-admin-groups-no-collection-perms collection1-id
+            (mt/user-http-request user-id
+                                  :put 403 (format "ee/document/%s" document-id)
+                                  {:collection_id collection2-id})
+
+            ;; Verify nothing changed
+            (is (= collection1-id (:collection_id (t2/select-one :model/Document :id document-id))))
+            (is (= collection1-id (:collection_id (t2/select-one :model/Card :id card-id))))))
+
+        (testing "regular user without destination permissions cannot move document"
+          ;; Should fail with 403
+          (mt/with-non-admin-groups-no-collection-perms collection2-id
+            (mt/user-http-request user-id
+                                  :put 403 (format "ee/document/%s" document-id)
+                                  {:collection_id collection2-id})
+
+            ;; Verify nothing changed
+            (is (= collection1-id (:collection_id (t2/select-one :model/Document :id document-id))))
+            (is (= collection1-id (:collection_id (t2/select-one :model/Card :id card-id))))))
 
         (testing "moving to non-existent collection fails gracefully"
           (mt/user-http-request :crowberto
