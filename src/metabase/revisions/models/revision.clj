@@ -42,7 +42,7 @@
 
 (defmethod revert-to-revision! :default
   [model id _user-id serialized-instance]
-  (let [valid-columns   (keys (t2/select-one (t2/table-name model) :id id))
+  (let [valid-columns (keys (t2/select-one (t2/table-name model) :id id))
         ;; Only include fields that we know are on the model in the current version of Metabase! Otherwise we'll get
         ;; an error if a field in an earlier version has since been dropped, but is still present in the revision.
         ;; This is best effort — other kinds of schema changes could still break the ability to revert successfully.
@@ -59,7 +59,7 @@
   (when o1
     (let [[before after] (data/diff o1 o2)]
       {:before before
-       :after  after})))
+       :after after})))
 
 (defmulti diff-strings
   "Return a seq of string describing the difference between `object-1` and `object-2`.
@@ -116,7 +116,7 @@
   "Delete old revisions of `model` with `id` when there are more than `max-revisions` in the DB."
   [model id]
   (when-let [old-revisions (seq (drop max-revisions (t2/select-fn-vec :id :model/Revision
-                                                                      :model    (name model)
+                                                                      :model (name model)
                                                                       :model_id id
                                                                       {:order-by [[:timestamp :desc]
                                                                                   [:id :desc]]})))]
@@ -139,23 +139,23 @@
 (defn- revision-changes
   [model prev-revision revision]
   (cond
-    (:is_creation revision)  [(deferred-tru "created this")]
+    (:is_creation revision) [(deferred-tru "created this")]
     (:is_reversion revision) [(deferred-tru "reverted to an earlier version")]
     ;; We only keep [[revision/max-revisions]] number of revision per entity.
     ;; prev-revision can be nil when we generate description for oldest revision
-    (nil? prev-revision)     [(deferred-tru "modified this")]
-    :else                    (diff-strings model (:object prev-revision) (:object revision))))
+    (nil? prev-revision) [(deferred-tru "modified this")]
+    :else (diff-strings model (:object prev-revision) (:object revision))))
 
 (defn- revision-description-info
   [model prev-revision revision]
   (let [changes (revision-changes model prev-revision revision)]
-    {:description          (if (seq changes)
-                             (u/build-sentence changes)
+    {:description (if (seq changes)
+                    (u/build-sentence changes)
                              ;; HACK: before #30285 we record revision even when there is nothing changed,
                              ;; so there are cases when revision can comeback as `nil`.
                              ;; This is a safe guard for us to not display "Crowberto null" as
                              ;; description on UI
-                             (deferred-tru "created a revision with no change."))
+                    (deferred-tru "created a revision with no change."))
      ;; this is used on FE
      :has_multiple_changes (> (count changes) 1)}))
 
@@ -174,24 +174,33 @@
 (mu/defn revisions
   "Get the revisions for `model` with `id` in reverse chronological order."
   [model :- [:fn toucan-model?]
-   id    :- pos-int?]
+   id :- pos-int?]
+  (println "DEBUG: revisions called with model=" model "id=" id)
   (let [model-name (name model)
         revisions (t2/select :model/Revision :model model-name :model_id id {:order-by [[:id :desc]]})]
+    (println "DEBUG: Found" (count revisions) "revisions")
     (if (= model :model/Card)
       ;; For Card revisions, ensure old ones have card_schema to prevent errors in after-select.
       ;; Old revisions from before v0.55 won't have this field in their serialized object data.
-      (mapv (fn [revision]
-              (if (and (map? (:object revision))
-                       (not (:card_schema (:object revision))))
-                (update revision :object assoc :card_schema legacy-card-schema-version)
-                revision))
-            revisions)
+      (do
+        (println "DEBUG: Processing Card revisions")
+        (mapv (fn [revision]
+                (let [has-schema? (and (map? (:object revision))
+                                       (:card_schema (:object revision)))]
+                  (println "DEBUG: Revision" (:id revision) "has card_schema?" has-schema?)
+                  (if (and (map? (:object revision))
+                           (not (:card_schema (:object revision))))
+                    (do
+                      (println "DEBUG: Adding card_schema to revision" (:id revision))
+                      (update revision :object assoc :card_schema legacy-card-schema-version))
+                    revision)))
+              revisions))
       revisions)))
 
 (mu/defn revisions+details
   "Fetch `revisions` for `model` with `id` and add details."
   [model :- [:fn toucan-model?]
-   id    :- pos-int?]
+   id :- pos-int?]
   (when-let [revisions (revisions model id)]
     (loop [acc [], [r1 r2 & more] revisions]
       (if-not r2
@@ -204,16 +213,16 @@
   Returns `object` or `nil` if the object does not changed."
   [{:keys [id entity user-id object
            is-creation? message]
-    :or   {is-creation? false}}     :- [:map {:closed true}
-                                        [:id                            pos-int?]
-                                        [:object                        :map]
-                                        [:entity                        [:fn toucan-model?]]
-                                        [:user-id                       pos-int?]
-                                        [:is-creation? {:optional true} [:maybe :boolean]]
-                                        [:message      {:optional true} [:maybe :string]]]]
+    :or {is-creation? false}} :- [:map {:closed true}
+                                  [:id pos-int?]
+                                  [:object :map]
+                                  [:entity [:fn toucan-model?]]
+                                  [:user-id pos-int?]
+                                  [:is-creation? {:optional true} [:maybe :boolean]]
+                                  [:message {:optional true} [:maybe :string]]]]
   (let [entity-name (name entity)
         serialized-object (serialize-instance entity id (dissoc object :message))
-        last-object       (t2/select-one-fn :object :model/Revision :model entity-name :model_id id {:order-by [[:id :desc]]})]
+        last-object (t2/select-one-fn :object :model/Revision :model entity-name :model_id id {:order-by [[:id :desc]]})]
     ;; make sure we still have a map after calling out serialization function
     (assert (map? serialized-object))
     ;; the last-object could have nested object, e.g: Dashboard can have multiple Card in it,
@@ -223,22 +232,22 @@
     (when-not (= (json/encode serialized-object)
                  (json/encode last-object))
       (t2/insert! :model/Revision
-                  :model        entity-name
-                  :model_id     id
-                  :user_id      user-id
-                  :object       serialized-object
-                  :is_creation  is-creation?
+                  :model entity-name
+                  :model_id id
+                  :user_id user-id
+                  :object serialized-object
+                  :is_creation is-creation?
                   :is_reversion false
-                  :message      message)
+                  :message message)
       object)))
 
 (mu/defn revert!
   "Revert `entity` with `id` to a given Revision."
   [info :- [:map {:closed true}
-            [:id          pos-int?]
-            [:user-id     pos-int?]
+            [:id pos-int?]
+            [:user-id pos-int?]
             [:revision-id pos-int?]
-            [:entity      [:fn toucan-model?]]]]
+            [:entity [:fn toucan-model?]]]]
   (let [{:keys [id user-id revision-id entity]} info
         model-name (name entity)
         serialized-instance (t2/select-one-fn :object :model/Revision :model model-name :model_id id :id revision-id)]
@@ -247,11 +256,11 @@
       (revert-to-revision! entity id user-id serialized-instance)
       ;; Push a new revision to record this change
       (let [last-revision (t2/select-one :model/Revision :model model-name, :model_id id, {:order-by [[:id :desc]]})
-            new-revision  (first (t2/insert-returning-instances! :model/Revision
-                                                                 :model        model-name
-                                                                 :model_id     id
-                                                                 :user_id      user-id
-                                                                 :object       serialized-instance
-                                                                 :is_creation  false
-                                                                 :is_reversion true))]
+            new-revision (first (t2/insert-returning-instances! :model/Revision
+                                                                :model model-name
+                                                                :model_id id
+                                                                :user_id user-id
+                                                                :object serialized-instance
+                                                                :is_creation false
+                                                                :is_reversion true))]
         (add-revision-details entity new-revision last-revision)))))
