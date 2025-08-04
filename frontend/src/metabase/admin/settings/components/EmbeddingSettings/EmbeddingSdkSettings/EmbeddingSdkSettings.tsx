@@ -87,7 +87,7 @@ export function EmbeddingSdkSettings() {
   const ImplementJwtLink = (
     <ExternalLink
       key="implement-jwt"
-      href={implementJwtUrl}
+      href={implementJwtUrl.url}
       className={cx(CS.link, CS.textBold)}
     >
       {t`implement JWT or SAML SSO`}
@@ -175,6 +175,7 @@ export function EmbeddingSdkSettings() {
               label={t`Enabled`}
               labelPosition="right"
               settingKey="enable-embedding-simple"
+              disabled={!isSimpleEmbedFeatureEnabled}
             />
 
             {isSimpleEmbedFeatureEnabled ? (
