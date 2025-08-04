@@ -17,7 +17,16 @@ import { CollectionPickerModal } from "metabase/common/components/Pickers/Collec
 import { useToast } from "metabase/common/hooks";
 import { useCallbackEffect } from "metabase/common/hooks/use-callback-effect";
 import { useDispatch } from "metabase/lib/redux";
-import { ActionIcon, Box, Button, Flex, Icon, Loader, Menu } from "metabase/ui";
+import {
+  ActionIcon,
+  Box,
+  Button,
+  Flex,
+  Icon,
+  Loader,
+  Menu,
+  TextInput,
+} from "metabase/ui";
 import {
   useCreateDocumentMutation,
   useGetDocumentQuery,
@@ -323,18 +332,29 @@ export const DocumentPage = ({
         <Box className={styles.mainContent}>
           <Box className={styles.documentContainer}>
             <Box className={styles.header} mt="xl" pt="xl">
-              <Box>
-                <input
+              <Flex
+                gap="sm"
+                align="center"
+                h="2.5rem"
+                style={{ width: "100%" }}
+              >
+                <TextInput
                   value={documentTitle}
                   onChange={(event) =>
                     setDocumentTitle(event.currentTarget.value)
                   }
+                  flex={1}
                   placeholder={t`New document`}
                   readOnly={!canWrite}
-                  className={styles.titleInput}
+                  styles={{
+                    input: {
+                      border: "none",
+                      padding: 0,
+                      fontSize: "2rem",
+                      fontWeight: "bold",
+                    },
+                  }}
                 />
-              </Box>
-              <Flex gap="sm" align="center" h="2.5rem">
                 {showSaveButton && (
                   <Button
                     onClick={() => {
