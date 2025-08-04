@@ -16,21 +16,17 @@ import {
 import { useRef, useState } from "react";
 import { t } from "ttag";
 
-import {
-  Box,
-  Button,
-  Group,
-  Popover,
-  Stack,
-  Text,
-} from "metabase/ui/components";
+import { Box, Button, Group, Stack, Text } from "metabase/ui/components";
 import { Icon } from "metabase/ui/components/icons";
-import type { DatasetColumn } from "metabase-types/api";
+import type {
+  DatasetColumn,
+  FieldId,
+  ObjectViewSectionSettings,
+} from "metabase-types/api";
 
 interface SortableFieldItemProps {
   field: {
-    field_id: string;
-    style: "normal" | "bold" | "dim" | "title";
+    field_id: FieldId;
   };
   column?: DatasetColumn;
 }
@@ -75,22 +71,15 @@ function SortableFieldItem({ field, column }: SortableFieldItemProps) {
   );
 }
 
-interface Section {
-  id: number;
-  title: string;
-  direction: "horizontal" | "vertical";
-  fields: Array<{
-    field_id: string;
-    style: "normal" | "bold" | "dim" | "title";
-  }>;
-}
-
 interface DetailViewSidebarProps {
   columns: DatasetColumn[];
-  sections: Section[];
+  sections: ObjectViewSectionSettings[];
   onCreateSection: (options?: { position?: "start" | "end" }) => void;
-  onUpdateSection: (sectionId: string, update: Partial<Section>) => void;
-  onUpdateSections: (sections: Section[]) => void;
+  onUpdateSection: (
+    sectionId: string,
+    update: Partial<ObjectViewSectionSettings>,
+  ) => void;
+  onUpdateSections: (sections: ObjectViewSectionSettings[]) => void;
   onRemoveSection: (sectionId: number) => void;
   onDragEnd: (event: any) => void;
   onCancel: () => void;
@@ -273,7 +262,7 @@ export function DetailViewSidebar({
                                             const column = columns.find(
                                               (col: DatasetColumn) =>
                                                 String(col.id) ===
-                                                field.field_id,
+                                                String(field.field_id),
                                             );
 
                                             return (

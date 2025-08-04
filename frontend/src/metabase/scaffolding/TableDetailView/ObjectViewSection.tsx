@@ -10,11 +10,11 @@ import type {
   DatasetColumn,
   ObjectViewSectionSettings,
   RowValues,
+  SectionVariant,
   TableId,
 } from "metabase-types/api";
 
-import type { SectionVariant } from "../types";
-import { getStyleProps, renderValue } from "../utils";
+import { renderValue } from "../utils";
 
 import S from "./TableDetailView.module.css";
 
