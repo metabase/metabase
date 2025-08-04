@@ -3,7 +3,7 @@ import cx from "classnames";
 import { t } from "ttag";
 
 import { useDispatch, useSelector } from "metabase/lib/redux";
-import { Box, Text } from "metabase/ui";
+import { Flex, Text } from "metabase/ui";
 import { DROPPABLE_ID } from "metabase/visualizer/constants";
 import { useCanHandleActiveItem } from "metabase/visualizer/hooks/use-can-handle-active-item";
 import {
@@ -48,11 +48,16 @@ export function TooltipExtraMetricsFloatingWell() {
   };
 
   return (
-    <Box
+    <Flex
       className={cx(S.Well, {
         [S.isOver]: isOver,
         [S.isActive]: canHandleActiveItem,
       })}
+      style={{
+        height: "100%",
+        overflowX: "auto",
+        overflowY: "hidden",
+      }}
       ref={setNodeRef}
     >
       {tooltipColumns.length ? (
@@ -67,6 +72,6 @@ export function TooltipExtraMetricsFloatingWell() {
       ) : (
         <Text c="text-light" ta="center">{t`Additional tooltip columns`}</Text>
       )}
-    </Box>
+    </Flex>
   );
 }

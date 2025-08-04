@@ -632,6 +632,8 @@ class Visualization extends PureComponent<
     } = this.props;
     const { width, height } = this.getNormalizedSizes();
 
+    console.log('Visualization', {rawSeries, visualizerRawSeries});
+
     const { genericError, visualization, isNativeView } = this.state;
     const small = width < SMALL_CARD_WIDTH_THRESHOLD;
 

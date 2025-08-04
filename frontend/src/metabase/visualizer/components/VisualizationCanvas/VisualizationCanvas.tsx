@@ -139,7 +139,7 @@ export function VisualizationCanvas({ className }: VisualizationCanvasProps) {
         </Box>
         {display === "scatter" && (
           <>
-            <Box style={{ gridArea: "top-center" }}>
+            <Box style={{ gridArea: "top-center", marginRight: "1rem" }}>
               <TooltipExtraMetricsFloatingWell />
             </Box>
 

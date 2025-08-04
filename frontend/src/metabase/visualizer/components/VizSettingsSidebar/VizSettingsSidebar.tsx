@@ -7,6 +7,7 @@ import { BaseChartSettings } from "metabase/visualizations/components/ChartSetti
 import { ErrorView } from "metabase/visualizations/components/Visualization/ErrorView";
 import { getSettingsWidgetsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import {
+  getVisualizerAllAvailableRawSeries,
   getVisualizerComputedSettings,
   getVisualizerRawSeries,
   getVisualizerTransformedSeries,
@@ -19,6 +20,8 @@ const HIDDEN_SETTING_WIDGETS = ["card.title", "card.description"];
 export function VizSettingsSidebar({ className }: { className?: string }) {
   const series = useSelector(getVisualizerRawSeries);
   const transformedSeries = useSelector(getVisualizerTransformedSeries);
+  const allAvailableSeries = useSelector(getVisualizerAllAvailableRawSeries);
+
   const settings = useSelector(getVisualizerComputedSettings);
   const dispatch = useDispatch();
 
@@ -43,14 +46,30 @@ export function VizSettingsSidebar({ className }: { className?: string }) {
         handleChangeSettings,
         true,
       );
-      return widgets.filter(
-        (widget) => !HIDDEN_SETTING_WIDGETS.includes(widget.id),
+
+      const fullSeriesWidgets = getSettingsWidgetsForSeries(
+        allAvailableSeries,
+        handleChangeSettings,
+        true,
       );
+
+      // patch widgets here, to inject custom series options for tooltip
+      return widgets
+        .filter((widget) => !HIDDEN_SETTING_WIDGETS.includes(widget.id))
+        .map((widget) => {
+          if (widget.id === "graph.tooltip_columns") {
+            return fullSeriesWidgets.find(
+              ({ id }) => id === "graph.tooltip_columns",
+            );
+          }
+        });
     } catch (error) {
       setError(error as Error);
       return [];
     }
-  }, [transformedSeries, handleChangeSettings]);
+  }, [transformedSeries, handleChangeSettings, allAvailableSeries]);
+
+  console.log("VizSettingsSidebar", { widgets, allAvailableSeries });
 
   return error ? (
     <ErrorComponent message={error.message} />
