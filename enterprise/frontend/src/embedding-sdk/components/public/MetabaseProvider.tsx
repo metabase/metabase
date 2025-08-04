@@ -3,7 +3,6 @@ import { type JSX, memo, useEffect, useRef } from "react";
 
 import { SdkThemeProvider } from "embedding-sdk/components/private/SdkThemeProvider";
 import { SdkIncompatibilityWithInstanceBanner } from "embedding-sdk/components/private/SdkVersionCompatibilityHandler/SdkIncompatibilityWithInstanceBanner";
-import { useInitData } from "embedding-sdk/hooks";
 import { RenderSingleCopy } from "embedding-sdk/sdk-shared/components/RenderSingleCopy/RenderSingleCopy";
 import { getSdkStore } from "embedding-sdk/store";
 import {
@@ -43,11 +42,6 @@ export const MetabaseProviderInternal = ({
   allowConsoleLog,
 }: InternalMetabaseProviderProps): JSX.Element => {
   const { fontFamily } = theme ?? {};
-
-  // The main call of useInitData happens in the root MetabaseProvider
-  // This call in the component-level MetabaseProvider is still needed
-  // Storybook stories, where we don't have the root MetabaseProvider
-  useInitData({ reduxStore, authConfig, allowConsoleLog });
 
   useEffect(() => {
     if (fontFamily) {
@@ -96,6 +90,9 @@ export const MetabaseProviderInternal = ({
   );
 };
 
+/**
+ * TODO: Rename into ComponentProvider
+ */
 export const MetabaseProvider = memo(function MetabaseProvider({
   children,
   ...props
