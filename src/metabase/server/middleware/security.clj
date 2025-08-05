@@ -215,7 +215,7 @@
   (when raw-origin
     (let [origin (parse-url raw-origin)]
       (and origin
-           (= (:domain origin) "localhost")))))
+           (= (str/lower-case (:domain origin)) "localhost")))))
 
 (mu/defn approved-origin?
   "Returns true if `origin` should be allowed for CORS based on the `approved-origins`"
