@@ -142,7 +142,7 @@ export function FieldsPopover({
   return (
     <Box p="lg" w="25rem">
       <Group justify="space-between">
-        <Text fw="bold" mb="sm">{t`Fields for ${section.title}`}</Text>
+        <Text fw="bold" mb="sm">{t`Fields in ${section.title}`}</Text>
         <ActionIcon
           onClick={() => {
             onClose();

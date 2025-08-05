@@ -100,7 +100,7 @@ export function SidebarSectionItem({
         )}
 
         {onRemoveSection && (
-          <Tooltip label={t`Remove section`}>
+          <Tooltip label={t`Remove group`}>
             <Button
               c="text-dark"
               variant="subtle"

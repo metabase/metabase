@@ -10,13 +10,13 @@ function generateId() {
 }
 
 function getSectionName(sections: ObjectViewSectionSettings[]) {
-  let nextName = t`Section`;
+  let nextName = t`Group`;
   let nextId = 1;
   let isUsed = sections.find((s) => s.title === nextName);
 
   while (isUsed) {
     ++nextId;
-    nextName = t`Section ${nextId}`;
+    nextName = t`Group ${nextId}`;
     isUsed = sections.find((s) => s.title === nextName);
   }
 

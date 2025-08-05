@@ -153,14 +153,14 @@ export function DetailViewSidebar({
           <Box h={1} bg="var(--border-color)" />
 
           <Group justify="space-between" align="center">
-            <Text fw="bold" size="lg">{t`Sections`}</Text>
+            <Text fw="bold" size="lg">{t`Groups`}</Text>
             <Button
               size="xs"
               variant="subtle"
               leftSection={<Icon name="add" />}
               onClick={() => onCreateSection({ position: "start" })}
             >
-              {t`Add section`}
+              {t`Add group`}
             </Button>
           </Group>
 
