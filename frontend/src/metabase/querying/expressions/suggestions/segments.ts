@@ -27,7 +27,7 @@ export function suggestSegments({ query, stageIndex }: Options) {
     return null;
   }
 
-  const matcher = fuzzyMatcher({ options: segments });
+  const matcher = fuzzyMatcher(segments);
 
   return function (context: CompletionContext) {
     const source = context.state.doc.toString();
@@ -43,7 +43,6 @@ export function suggestSegments({ query, stageIndex }: Options) {
         from: token.start,
         to: token.end,
         options: segments,
-        filter: false,
       };
     }
 

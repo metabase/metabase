@@ -84,12 +84,10 @@ describe("suggestFields", () => {
   const RESULTS = {
     from: 0,
     to: 3,
-    filter: false,
     options: [
       {
         label: "[Email]",
         displayLabel: "Email",
-        displayLabelWithTable: "Table Email",
         matches: [[0, 2]],
         type: "field",
         icon: "list",
@@ -98,7 +96,6 @@ describe("suggestFields", () => {
       {
         label: "[Seats]",
         displayLabel: "Seats",
-        displayLabelWithTable: "Table Seats",
         matches: [[1, 2]],
         type: "field",
         icon: "int",
@@ -110,12 +107,10 @@ describe("suggestFields", () => {
   const ALL_RESULTS = {
     from: 0,
     to: 1,
-    filter: false,
     options: [
       {
         label: "[Email]",
         displayLabel: "Email",
-        displayLabelWithTable: "Table Email",
         type: "field",
         icon: "list",
         column: expect.any(Object),
@@ -123,7 +118,6 @@ describe("suggestFields", () => {
       {
         label: "[Name]",
         displayLabel: "Name",
-        displayLabelWithTable: "Table Name",
         type: "field",
         icon: "list",
         column: expect.any(Object),
@@ -131,7 +125,6 @@ describe("suggestFields", () => {
       {
         label: "[Seats]",
         displayLabel: "Seats",
-        displayLabelWithTable: "Table Seats",
         type: "field",
         icon: "int",
         column: expect.any(Object),
@@ -205,13 +198,11 @@ describe("suggestFields", () => {
     expect(result).toEqual({
       from: 0,
       to: 4,
-      filter: false,
       options: [
         {
           type: "field",
           label: "[User ID]",
           displayLabel: "User ID",
-          displayLabelWithTable: "Orders User ID",
           icon: "connections",
           column: expect.any(Object),
           matches: [[0, 2]],
@@ -220,7 +211,6 @@ describe("suggestFields", () => {
           type: "field",
           label: "[User → Latitude]",
           displayLabel: "User → Latitude",
-          displayLabelWithTable: "People Latitude",
           icon: "location",
           column: expect.any(Object),
           matches: [[0, 2]],
@@ -229,7 +219,6 @@ describe("suggestFields", () => {
           type: "field",
           label: "[User → Longitude]",
           displayLabel: "User → Longitude",
-          displayLabelWithTable: "People Longitude",
           icon: "location",
           column: expect.any(Object),
           matches: [[0, 2]],
@@ -238,7 +227,6 @@ describe("suggestFields", () => {
           type: "field",
           label: "[User → Address]",
           displayLabel: "User → Address",
-          displayLabelWithTable: "People Address",
           icon: "string",
           column: expect.any(Object),
           matches: [[0, 2]],
@@ -247,7 +235,6 @@ describe("suggestFields", () => {
           type: "field",
           label: "[User → City]",
           displayLabel: "User → City",
-          displayLabelWithTable: "People City",
           icon: "location",
           column: expect.any(Object),
           matches: [[0, 2]],
@@ -256,7 +243,6 @@ describe("suggestFields", () => {
           type: "field",
           label: "[User → Email]",
           displayLabel: "User → Email",
-          displayLabelWithTable: "People Email",
           icon: "string",
           column: expect.any(Object),
           matches: [[0, 2]],
@@ -265,7 +251,6 @@ describe("suggestFields", () => {
           type: "field",
           label: "[User → ID]",
           displayLabel: "User → ID",
-          displayLabelWithTable: "People ID",
           icon: "label",
           column: expect.any(Object),
           matches: [[0, 2]],
@@ -274,7 +259,6 @@ describe("suggestFields", () => {
           type: "field",
           label: "[User → Name]",
           displayLabel: "User → Name",
-          displayLabelWithTable: "People Name",
           icon: "string",
           column: expect.any(Object),
           matches: [[0, 2]],
@@ -283,7 +267,6 @@ describe("suggestFields", () => {
           type: "field",
           label: "[User → Password]",
           displayLabel: "User → Password",
-          displayLabelWithTable: "People Password",
           icon: "string",
           column: expect.any(Object),
           matches: [[0, 2]],
@@ -292,7 +275,6 @@ describe("suggestFields", () => {
           type: "field",
           label: "[User → Source]",
           displayLabel: "User → Source",
-          displayLabelWithTable: "People Source",
           icon: "string",
           column: expect.any(Object),
           matches: [[0, 2]],
@@ -301,7 +283,6 @@ describe("suggestFields", () => {
           type: "field",
           label: "[User → State]",
           displayLabel: "User → State",
-          displayLabelWithTable: "People State",
           icon: "location",
           column: expect.any(Object),
           matches: [[0, 2]],
@@ -310,7 +291,6 @@ describe("suggestFields", () => {
           type: "field",
           label: "[User → Zip]",
           displayLabel: "User → Zip",
-          displayLabelWithTable: "People Zip",
           icon: "location",
           column: expect.any(Object),
           matches: [[0, 2]],
@@ -319,7 +299,6 @@ describe("suggestFields", () => {
           type: "field",
           label: "[User → Birth Date]",
           displayLabel: "User → Birth Date",
-          displayLabelWithTable: "People Birth Date",
           icon: "calendar",
           column: expect.any(Object),
           matches: [[0, 2]],
@@ -328,7 +307,6 @@ describe("suggestFields", () => {
           type: "field",
           label: "[User → Created At]",
           displayLabel: "User → Created At",
-          displayLabelWithTable: "People Created At",
           icon: "calendar",
           column: expect.any(Object),
           matches: [[0, 2]],
@@ -379,13 +357,11 @@ describe("suggestFields", () => {
     expect(result).toEqual({
       from: 0,
       to: 3,
-      filter: false,
       options: expect.any(Array),
     });
 
     expect(result?.options[0]).toEqual({
       displayLabel: "Foo → Body",
-      displayLabelWithTable: "Reviews Body",
       label: "[Foo → Body]",
       type: "field",
       icon: "string",
@@ -394,7 +370,6 @@ describe("suggestFields", () => {
     });
     expect(result?.options[1]).toEqual({
       displayLabel: "Foo → ID",
-      displayLabelWithTable: "Reviews ID",
       label: "[Foo → ID]",
       type: "field",
       icon: "label",
@@ -436,13 +411,11 @@ describe("suggestFields", () => {
     expect(result).toEqual({
       from: 0,
       to: 1,
-      filter: false,
       options: [
         {
           type: "field",
           label: "[Total]",
           displayLabel: "Total",
-          displayLabelWithTable: "Orders Total",
           icon: "int",
           column: expect.any(Object),
           matches: [
@@ -454,7 +427,6 @@ describe("suggestFields", () => {
           type: "field",
           label: "[Count]",
           displayLabel: "Count",
-          displayLabelWithTable: "Count",
           icon: "int",
           column: expect.any(Object),
           matches: [[4, 4]],
