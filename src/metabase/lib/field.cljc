@@ -239,20 +239,20 @@
     "unknown_field"))
 
 (defmethod lib.metadata.calculation/display-info-method :metadata/column
-  [query stage-number field-metadata]
+  [query stage-number col]
   (merge
-   ((get-method lib.metadata.calculation/display-info-method :default) query stage-number field-metadata)
+   ((get-method lib.metadata.calculation/display-info-method :default) query stage-number col)
    ;; These have to be calculated even if the metadata has display-name to support nested fields
    ;; because the query processor doesn't produce nested display-names.
-   {:display-name (lib.metadata.calculation/display-name query stage-number field-metadata)
-    :long-display-name (lib.metadata.calculation/display-name query stage-number field-metadata :long)}
+   {:display-name (lib.metadata.calculation/display-name query stage-number col)
+    :long-display-name (lib.metadata.calculation/display-name query stage-number col :long)}
    ;; Include description and fingerprint if they're present on the column. Only proper fields or columns from a model
    ;; have these, not aggregations or expressions.
-   (u/select-non-nil-keys field-metadata [:description :fingerprint])
+   (u/select-non-nil-keys col [:description :fingerprint])
    ;; if this column comes from a source Card (Saved Question/Model/etc.) use the name of the Card as the 'table' name
    ;; rather than the ACTUAL table name.
-   (when (= (:lib/source field-metadata) :source/card)
-     (when-let [card-id (:lib/card-id field-metadata)]
+   (when (= (:lib/source col) :source/card)
+     (when-let [card-id (:lib/card-id col)]
        (when-let [card (lib.metadata/card query card-id)]
          {:table {:name (:name card), :display-name (:name card)}})))))
 
@@ -534,14 +534,15 @@
 (defn- include-field [query stage-number column]
   (let [populated  (query-with-fields query stage-number)
         field-refs (fields populated stage-number)
-        match-ref  (lib.equality/find-matching-ref column field-refs)
-        column-ref (lib.ref/ref column)]
-    (if (and match-ref
-             (or (string? (last column-ref))
-                 (integer? (last match-ref))))
-      ;; If the column is already found, do nothing and return the original query.
-      query
-      (lib.util/update-query-stage populated stage-number update :fields conj column-ref))))
+        matching-ref (lib.equality/find-matching-ref column field-refs)]
+    (if matching-ref
+      (do
+        (log/debugf "Column %s already found in ref %s, doing nothing and returning the original query"
+                    (pr-str (select-keys column [:id :metabase.lib.join/join-alias :lib/source-column-alias]))
+                    (pr-str matching-ref))
+        query)
+      (let [column-ref (lib.ref/ref column)]
+        (lib.util/update-query-stage populated stage-number update :fields conj column-ref)))))
 
 (defn- add-field-to-join [query stage-number column]
   (let [column-ref   (lib.ref/ref column)
@@ -588,7 +589,7 @@
   (let [stage  (lib.util/query-stage query stage-number)
         source (:lib/source column)]
     (when (and (empty? (:fields stage))
-               (not= source :source/joins))
+               (not ({:source/implicitly-joinable :source/joins} source)))
       (log/warnf "[add-field] stage :fields is empty, which means everything will already be included; attempt to add %s will no-op"
                  (pr-str ((some-fn :display-name :name) column))))
     (-> (case source
@@ -611,7 +612,7 @@
 
 (defn- remove-matching-ref [column refs]
   (let [match (or (lib.equality/find-matching-ref column refs)
-                  (log/warnf "Failed to find match for column\n%s\nin refs:\n%s"
+                  (log/warnf "[remove-matching-ref] Failed to find match for column\n%s\nin refs:\n%s"
                              (u/pprint-to-str column)
                              (u/pprint-to-str refs)))]
     (remove #(= % match) refs)))
@@ -639,7 +640,7 @@
       ;; Nothing to do if there's already no join fields.
       query
       (let [resolved-join-fields (if (= join-fields :all)
-                                   (map lib.ref/ref (lib.metadata.calculation/returned-columns query stage-number join))
+                                   (map lib.ref/ref (lib.join/join-returned-columns-relative-to-parent-stage query stage-number join))
                                    join-fields)
             removed              (remove-matching-ref column resolved-join-fields)]
         (cond-> query

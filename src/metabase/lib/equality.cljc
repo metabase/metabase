@@ -437,28 +437,22 @@
   `column` AND `refs` MUST BOTH BE RELATIVE TO THE SAME STAGE FOR THIS TO WORK CORRECTLY!!!!!!"
   [column :- ::lib.schema.metadata/column
    refs   :- [:sequential ::lib.schema.ref/ref]]
-  (let [ref-tails (group-by ref-id-or-name refs)
-        matches   (or (when-let [source-uuid (:lib/source-uuid column)]
+  (let [matches   (or (when-let [source-uuid (:lib/source-uuid column)]
                         (some (fn [a-ref]
                                 (when (= (lib.options/uuid a-ref) source-uuid)
                                   [a-ref]))
                               refs))
-                      ;; same stage match, use SOURCE COLUMN ALIAS!!!! IF YOU ARE NOT CLEAR ON WHY, TALK
-                      ;; TO YOUR BOY CAM!!!!
-                      (let [matches (let [col-join-alias      (lib.join.util/current-join-alias column)
-                                          source-column-alias ((some-fn :lib/source-column-alias :name) column)]
-                                      (filter (fn [a-ref]
-                                                (and (clojure.core/= (:join-alias (lib.options/options a-ref)) col-join-alias)
-                                                     (some #(clojure.core/= (ref-id-or-name a-ref) %)
-                                                           [(:id column) source-column-alias])))
-                                              refs))]
-                        ;; if we fail to match with join alias then try to match by `:source-field`/`:fk-field-id`
-                        (if (= (count matches) 1)
-                          matches
-                          (when-let [fk-field-id (:fk-field-id column)]
-                            (filter (fn [a-ref]
-                                      (= (:source-field (lib.options/options a-ref)) fk-field-id))
-                                    refs))))
+                      ;; same stage match, use SOURCE COLUMN ALIAS!!!! IF YOU ARE NOT CLEAR ON WHY, TALK TO YOUR BOY
+                      ;; CAM!!!!
+                      (let [col-join-alias      (lib.join.util/current-join-alias column)
+                            col-source-field    (:fk-field-id column)
+                            source-column-alias ((some-fn :lib/source-column-alias :name) column)]
+                        (filter (fn [a-ref]
+                                  (and (clojure.core/= (:join-alias (lib.options/options a-ref)) col-join-alias)
+                                       (clojure.core/= (:source-field (lib.options/options a-ref)) col-source-field)
+                                       (some #(clojure.core/= (ref-id-or-name a-ref) %)
+                                             [(:id column) source-column-alias])))
+                                refs))
                       [])]
     (case (count matches)
       0 nil

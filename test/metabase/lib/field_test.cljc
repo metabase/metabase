@@ -833,8 +833,7 @@
           table-columns    (lib/fieldable-columns query -1)
           implicit-columns (filter #(= (:lib/source %) :source/implicitly-joinable) viz-columns)]
       (is (= (map #(dissoc % :selected?) table-columns)
-             (map #(dissoc % :lib/desired-column-alias :lib/deduplicated-name)
-                  (lib/returned-columns query))))
+             (lib/returned-columns query)))
       (testing "with no :fields set"
         (testing "populates the table's fields plus the implicitly joined field"
           (is (=? (->> (concat table-columns
@@ -1020,9 +1019,13 @@
           viz-columns      (lib/visible-columns query)
           table-columns    (lib/fieldable-columns query -1)
           implicit-columns (filter #(= (:lib/source %) :source/implicitly-joinable) viz-columns)
+          _                (is (>= (count implicit-columns) 2)
+                               "Not sure how many it should have but it should have at least the two we use")
           implied-query    (-> query
                                (lib/add-field -1 (first implicit-columns))
                                (lib/add-field -1 (second implicit-columns)))
+          _                (is (= (count (get-in implied-query [:stages 0 :fields])) 11)
+                               "Sanity check: implied-query should now have 11 :fields")
           table-fields     (map clean-ref table-columns)
           implied1         (clean-ref (first implicit-columns))
           implied2         (clean-ref (second implicit-columns))]

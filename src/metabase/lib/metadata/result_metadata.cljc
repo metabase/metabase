@@ -182,7 +182,8 @@
 ;;; explicit join that gets `:source/joins` should always have a join aliases -- see my notes on
 ;;; `:metabase.lib.metadata.result-metadata/column.validate-join-alias`. Can we just remove `:source-alias` (which is
 ;;; used by the FE for mysterious/unknown purposes) and leave the Lib keys in the correct shape?
-(defn- remove-implicit-join-aliases
+(defn- ^:deprecated remove-implicit-join-aliases
+  "DEPRECATED: We probably need to remove this to make `:metabase.lib.schema.metadata/column.validate-join-alias` work."
   [query cols]
   (let [implicit-aliases (implicit-join-aliases query -1)]
     (map (fn [col]

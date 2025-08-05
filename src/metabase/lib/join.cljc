@@ -295,7 +295,7 @@
   (let [join-query (assoc query :stages stages)]
     (lib.metadata.calculation/returned-columns join-query -1 (lib.util/query-stage join-query -1) options)))
 
-(mu/defn- join-returned-columns-relative-to-parent-stage :- ::lib.metadata.calculation/visible-columns
+(mu/defn join-returned-columns-relative-to-parent-stage :- ::lib.metadata.calculation/visible-columns
   "All columns made 'visible' by the join (regardless of `:fields`) -- i.e., the columns returned by the last stage of
   the join -- updated so their metadata is relative to the parent stage.
 
@@ -854,8 +854,8 @@
 (mu/defn join-condition-rhs-columns :- [:sequential ::lib.schema.metadata/column]
   "Get a sequence of columns that can be used as the right-hand-side (target column) in a join condition. This column
   is the one that belongs to the thing being joined, `join-or-joinable`, which can be something like a
-  Table ([[metabase.lib.metadata/TableMetadata]]), Saved Question/Model ([[metabase.lib.metadata/CardMetadata]]),
-  another query, etc. -- anything you can pass to [[join-clause]]. You can also pass in an existing join.
+  Table (`:metabase.lib.metadata/table`), Saved Question/Model (`:metabase.lib.metadata/card`), another query, etc. --
+  anything you can pass to [[join-clause]]. You can also pass in an existing join.
 
   If the left-hand-side column has already been chosen (they can be chosen in any order in the Query Builder UI),
   pass in the chosen LHS column. In the future, this may be used to restrict results to compatible columns. (See #31174)
@@ -878,16 +878,13 @@
    (let [joinable          (if (join? join-or-joinable)
                              (joined-thing query join-or-joinable)
                              join-or-joinable)
-         join-alias        (when (join? join-or-joinable)
-                             (lib.join.util/current-join-alias join-or-joinable))
+         join-alias        (::join-alias join-or-joinable) ; maybe be nil (not yet set)
          rhs-column-or-nil (when (lib.util/field-clause? rhs-expression-or-nil)
                              (cond-> rhs-expression-or-nil
                                ;; Drop the :join-alias from the RHS if the joinable doesn't have one either.
                                (not join-alias) (lib.options/update-options dissoc :join-alias)))]
      (->> (lib.metadata.calculation/visible-columns query stage-number joinable {:include-implicitly-joinable? false})
-          (map (if join-alias
-                 #(column-from-join query stage-number % join-alias)
-                 identity))
+          (map #(column-from-join query stage-number % (or join-alias  "<PLACEHOLDER>"))) ; HACC NOCOMMIT
           (mark-selected-column query stage-number rhs-column-or-nil)
           sort-join-condition-columns))))
 

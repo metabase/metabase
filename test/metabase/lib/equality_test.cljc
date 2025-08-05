@@ -357,8 +357,7 @@
           table-col #(assoc % :lib/source :source/table-defaults)
           join-col  #(-> %
                          (merge {:lib/source                   :source/joins
-                                 :metabase.lib.join/join-alias "Orders"
-                                 :lib/desired-column-alias     (str "Orders__" (:name %))}))
+                                 :metabase.lib.join/join-alias "Orders"}))
           sorted    #(sort-by (juxt :position :source-alias) %)
           visible   (lib/visible-columns query)]
       (is (=? (->> (sorted (concat (map table-col cols)
@@ -409,7 +408,7 @@
                {:lib/desired-column-alias "Orders__ID"}]
               (lib/returned-columns just-3)))
       (testing "matching the four fields against"
-        (let [hr-own-id   {:lib/type :metadata/column
+        (let [hr-own-id   {:lib/type           :metadata/column
                            :description        "Own ID"
                            :base-type          :type/BigInteger
                            :semantic-type      :type/PK
@@ -422,7 +421,7 @@
                            :parent-id          nil
                            :display-name       "ID"
                            :position           0}
-              hr-own-tax  {:lib/type :metadata/column
+              hr-own-tax  {:lib/type           :metadata/column
                            :description        "Own Tax"
                            :base-type          :type/Float
                            :semantic-type      nil
@@ -435,49 +434,49 @@
                            :parent-id          nil
                            :display-name       "Tax"
                            :position           4}
-              hr-join-id  {:lib/type :metadata/column
-                           :description        "Join ID"
-                           :base-type          :type/BigInteger
-                           :semantic-type      :type/PK
-                           :effective-type     :type/BigInteger
-                           :table-id           (meta/id :orders)
-                           :id                 (meta/id :orders :id)
-                           :name               "ID_2"
-                           :source-alias       "Orders"
-                           :lib/source         :source/joins
-                           :fk-target-field-id nil
-                           :parent-id          nil
-                           :display-name       "Orders → ID"
-                           :position           0}
-              hr-join-tax {:lib/type :metadata/column
-                           :description        "Join Tax"
-                           :base-type          :type/Float
-                           :semantic-type      nil
-                           :effective-type     :type/Float
-                           :table-id           (meta/id :orders)
-                           :id                 (meta/id :orders :tax)
-                           :name               "TAX_2"
-                           :source-alias       "Orders"
-                           :lib/source         :source/joins
-                           :fk-target-field-id nil
-                           :parent-id          nil
-                           :display-name       "Orders → Tax"
-                           :position           4}
-              ret-4 [hr-own-id hr-own-tax hr-join-id hr-join-tax]
-              ret-3 [hr-own-id hr-own-tax hr-join-id]
-              refs  (for [join-alias       [nil "Orders"]
-                          [column coltype] [[:id :type/Integer] [:tax :type/Float]]]
-                      [:field (merge {:lib/uuid       (str (random-uuid))
-                                      :base-type      coltype
-                                      :effective-type coltype}
+              hr-join-id  {:lib/type                     :metadata/column
+                           :description                  "Join ID"
+                           :base-type                    :type/BigInteger
+                           :semantic-type                :type/PK
+                           :effective-type               :type/BigInteger
+                           :table-id                     (meta/id :orders)
+                           :id                           (meta/id :orders :id)
+                           :name                         "ID_2"
+                           :metabase.lib.join/join-alias "Orders"
+                           :lib/source                   :source/joins
+                           :fk-target-field-id           nil
+                           :parent-id                    nil
+                           :display-name                 "Orders → ID"
+                           :position                     0}
+              hr-join-tax {:lib/type                     :metadata/column
+                           :description                  "Join Tax"
+                           :base-type                    :type/Float
+                           :semantic-type                nil
+                           :effective-type               :type/Float
+                           :table-id                     (meta/id :orders)
+                           :id                           (meta/id :orders :tax)
+                           :name                         "TAX_2"
+                           :metabase.lib.join/join-alias "Orders"
+                           :lib/source                   :source/joins
+                           :fk-target-field-id           nil
+                           :parent-id                    nil
+                           :display-name                 "Orders → Tax"
+                           :position                     4}
+              ret-4       [hr-own-id hr-own-tax hr-join-id hr-join-tax]
+              ret-3       [hr-own-id hr-own-tax hr-join-id]
+              refs        (for [join-alias       [nil "Orders"]
+                                [column coltype] [[:id :type/Integer] [:tax :type/Float]]]
+                            [:field (merge {:lib/uuid       (str (random-uuid))
+                                            :base-type      coltype
+                                            :effective-type coltype}
                                      (when join-alias
                                        {:join-alias join-alias}))
                        (meta/id :orders column)])
-              exp-4 [{:display-name "ID"}
-                     {:display-name "Tax"}
-                     {:display-name "Orders → ID"}
-                     {:display-name "Orders → Tax"}]
-              exp-3 (update exp-4 3 (constantly nil))]
+              exp-4       [{:display-name "ID"}
+                           {:display-name "Tax"}
+                           {:display-name "Orders → ID"}
+                           {:display-name "Orders → Tax"}]
+              exp-3       (update exp-4 3 (constantly nil))]
           (testing "all-4 matches everything"
             (is (=? exp-4
                     (->> refs
@@ -770,7 +769,6 @@
                     :last-analyzed             "2025-06-24T20:58:41.088313-07:00"
                     :lib/deduplicated-name     "CREATED_AT"
                     :lib/desired-column-alias  "CREATED_AT"
-                    :lib/hack-original-name    "CREATED_AT"
                     :lib/original-display-name "Created At"
                     :lib/original-name         "CREATED_AT"
                     :lib/original-ref          [:field {:base-type :type/DateTime, :temporal-unit :year, :lib/uuid "aa4324c7-12d2-46fe-ba8d-8f1fe54b61af", :effective-type :type/DateTime} 39]
@@ -792,7 +790,6 @@
                     :last-analyzed             "2025-06-24T20:58:41.088313-07:00"
                     :lib/deduplicated-name     "CREATED_AT_2"
                     :lib/desired-column-alias  "CREATED_AT_2"
-                    :lib/hack-original-name    "CREATED_AT"
                     :lib/original-display-name "Created At"
                     :lib/original-name         "CREATED_AT"
                     :lib/original-ref          [:field {:base-type :type/DateTime, :temporal-unit :month, :lib/uuid "1f16a57a-2afd-4c92-8d6c-b41062235a49", :effective-type :type/DateTime} 39]
@@ -1069,6 +1066,7 @@
                     :lib/desired-column-alias     "Cat__NAME"
                     :lib/original-join-alias      "Cat"
                     :lib/original-name            "NAME"
+                    :lib/source                   :source/joins
                     :lib/source-column-alias      "NAME"
                     :lib/source-uuid              "00000000-0000-0000-0000-000000000000"
                     :metabase.lib.join/join-alias "Cat"
@@ -1089,3 +1087,35 @@
                       [col-2 col-1]]]
           (is (= col-2
                  (lib.equality/find-matching-column a-ref cols))))))))
+
+(deftest ^:parallel never-return-match-with-different-id-test
+  (testing "find-matching-ref should never return a match with a different :id"
+    (let [field-refs (mapv #(lib/normalize :mbql.clause/field %)
+                           [[:field {} 10]
+                            [:field {} 8]
+                            [:field {} 7]
+                            [:field {} 1]
+                            [:field {} 3]
+                            [:field {} 2]
+                            [:field {} 4]
+                            [:field {} 6]
+                            [:field {} 5]
+                            [:field {:source-field 8} 20]])
+          col        {:base-type                :type/Text
+                      :display-name             "Address"
+                      :effective-type           :type/Text
+                      :fk-field-id              8
+                      :fk-target-field-id       nil
+                      :id                       23
+                      :name                     "ADDRESS"
+                      :position                 1
+                      :preview-display          true
+                      :table-id                 10
+                      :visibility-type          :normal
+                      :lib/deduplicated-name    "ADDRESS"
+                      :lib/desired-column-alias "ADDRESS"
+                      :lib/original-name        "ADDRESS"
+                      :lib/source               :source/implicitly-joinable
+                      :lib/source-column-alias  "ADDRESS"
+                      :lib/type                 :metadata/column}]
+      (is (nil? (lib.equality/find-matching-ref col field-refs))))))

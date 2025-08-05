@@ -141,7 +141,7 @@
    :fk-join-alias (:fk-join-alias column-metadata)})
 
 (defmethod column-group-info-method :source/joins
-  [{:keys [table-id], card-id :lib/card-id, :as column-metadata}]
+  [{:keys [table-id], card-id :lib/card-id, :as col}]
   (merge
    {::group-type :group-type/join.explicit}
    ;; if we're in the process of BUILDING a join and using this in combination
@@ -149,8 +149,9 @@
    ;; joinable -- either the Card we're joining, or the Table we're joining. Prefer `:lib/card-id` because when we
    ;; join a Card the Fields might have `:table-id` but we want the entire Card to appear as one group. See #32493
    (or
-    (when-let [join-alias (lib.join.util/current-join-alias column-metadata)]
-      {:join-alias join-alias})
+    (when-let [join-alias (lib.join.util/current-join-alias col)]
+      (when-not (= join-alias "<PLACEHOLDER>") ; HACC NOCOMMIT
+        {:join-alias join-alias}))
     (when card-id
       {:card-id card-id})
     (when table-id
