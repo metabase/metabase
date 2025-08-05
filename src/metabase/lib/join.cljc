@@ -248,18 +248,20 @@
    stage-number :- :int
    col          :- [:map
                     [:lib/type [:= :metadata/column]]]
-   join-alias   :- ::lib.schema.join/alias]
+   join-alias   :- [:maybe ::lib.schema.join/alias]]
   (-> col
       (assoc
-       ;; TODO (Cam 6/19/25) -- we need to get rid of `:source-alias` it's just causing confusion; don't need two
-       ;; keys for join aliases.
-       :source-alias              join-alias
-       :lib/original-join-alias   join-alias
        :lib/source                :source/joins
-       ::join-alias               join-alias
        :lib/original-name         ((some-fn :lib/original-name :name) col)
        :lib/original-display-name (or (:lib/original-display-name col)
                                       (lib.metadata.calculation/display-name query stage-number (dissoc col ::join-alias :lib/original-join-alias :source-alias))))
+      (merge (if join-alias
+               ;; TODO (Cam 6/19/25) -- we need to get rid of `:source-alias` it's just causing confusion; don't need
+               ;; two keys for join aliases.
+               {:source-alias            join-alias
+                :lib/original-join-alias join-alias
+                ::join-alias             join-alias}
+               {::incomplete-join? true})) ; HACK NOCOMMIT
       (set/rename-keys {:lib/expression-name :lib/original-expression-name})
       (as-> $col (assoc $col :display-name (lib.metadata.calculation/display-name query stage-number $col)))))
 
@@ -878,13 +880,15 @@
    (let [joinable          (if (join? join-or-joinable)
                              (joined-thing query join-or-joinable)
                              join-or-joinable)
-         join-alias        (::join-alias join-or-joinable) ; maybe be nil (not yet set)
+         join-alias        (if (join? join-or-joinable)
+                             (lib.join.util/current-join-alias join-or-joinable)
+                             (::join-alias join-or-joinable))
          rhs-column-or-nil (when (lib.util/field-clause? rhs-expression-or-nil)
                              (cond-> rhs-expression-or-nil
                                ;; Drop the :join-alias from the RHS if the joinable doesn't have one either.
                                (not join-alias) (lib.options/update-options dissoc :join-alias)))]
      (->> (lib.metadata.calculation/visible-columns query stage-number joinable {:include-implicitly-joinable? false})
-          (map #(column-from-join query stage-number % (or join-alias  "<PLACEHOLDER>"))) ; HACC NOCOMMIT
+          (map #(column-from-join query stage-number % join-alias))
           (mark-selected-column query stage-number rhs-column-or-nil)
           sort-join-condition-columns))))
 

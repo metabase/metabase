@@ -218,7 +218,9 @@
     :schema  [:fn
               {:error/message (str "Columns joined in the current stage (i.e., columns with :source/joins) must specify"
                                    " current stage join alias (:metabase.lib.join/join-alias).")}
-              :metabase.lib.join/join-alias]}
+              (some-fn :metabase.lib.join/join-alias
+                       ;; HACK NOCOMMIT
+                       :metabase.lib.join/incomplete-join?)]}
    ;; `:lib/source` `:source/implicitly-joinable` must have `:fk-field-id`; `:fk-field-id` is only allowed for
    ;; `:source/implicitly-joinable` and `:source/joins`. For columns from `:source/previous-stage` or whatever... in
    ;; that case we should be using `:lib/original-fk-field-id` instead.

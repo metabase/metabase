@@ -150,8 +150,7 @@
    ;; join a Card the Fields might have `:table-id` but we want the entire Card to appear as one group. See #32493
    (or
     (when-let [join-alias (lib.join.util/current-join-alias col)]
-      (when-not (= join-alias "<PLACEHOLDER>") ; HACC NOCOMMIT
-        {:join-alias join-alias}))
+      {:join-alias join-alias})
     (when card-id
       {:card-id card-id})
     (when table-id

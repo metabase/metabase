@@ -624,9 +624,13 @@
             :let   [remapped (lib.metadata/remapped-field query column)]
             :when  (and remapped
                         (not (existing-ids (:id remapped))))]
-        (assoc remapped
-               :lib/source              (:lib/source column) ; TODO: What's the right source for a remap?
-               :lib/source-column-alias ((some-fn :lib/source-column-alias :name) remapped))))))
+        (merge
+         remapped
+         {:lib/source              (:lib/source column) ; TODO: What's the right source for a remap?
+          :lib/source-column-alias ((some-fn :lib/source-column-alias :name) remapped)}
+         ;; if a remap is of a joined column then we should do the remap in the join itself; columns with
+         ;; `:lib/source` `:source/joins` need to have a join alias.
+         (select-keys column [:metabase.lib.join/join-alias]))))))
 
 (mu/defn primary-keys :- [:sequential ::lib.schema.metadata/column]
   "Returns a list of primary keys for the source table of this query."
