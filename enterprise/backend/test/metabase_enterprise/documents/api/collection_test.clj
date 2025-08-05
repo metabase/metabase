@@ -48,3 +48,35 @@
           (is (= #{[normal-card-id "card"]
                    [dash-id "dashboard"]}
                  (set (map (juxt :id :model) root-test-items)))))))))
+
+(deftest documents-appear-in-collection-items
+  (testing "GET /api/collection/:id/items includes documents"
+    (mt/with-temp [:model/Collection {coll-id :id} {}
+                   :model/Document {doc-id :id} {:collection_id coll-id
+                                                 :name "Test Document"}
+                   :model/Card {card-id :id} {:collection_id coll-id}
+                   :model/Dashboard {dash-id :id} {:collection_id coll-id}]
+      (testing "Documents appear alongside cards and dashboards"
+        (is (= #{[doc-id "document"]
+                 [card-id "card"]
+                 [dash-id "dashboard"]}
+               (set (map (juxt :id :model)
+                         (:data (mt/user-http-request :rasta :get 200
+                                                      (str "collection/" coll-id "/items")))))))))))
+
+(deftest documents-appear-in-root-items
+  (testing "GET /api/collection/root/items includes documents"
+    (mt/with-temp [:model/Document {doc-id :id} {:collection_id nil
+                                                 :name "Root Document"}
+                   :model/Card {card-id :id} {:collection_id nil
+                                              :name "Root Card"}
+                   :model/Dashboard {dash-id :id} {:collection_id nil
+                                                   :name "Root Dashboard"}]
+      (testing "Documents appear alongside cards and dashboards in root"
+        (let [items (mt/user-http-request :rasta :get 200 "collection/root/items")
+              root-test-items (filter #(#{doc-id card-id dash-id} (:id %))
+                                      (:data items))]
+          (is (= #{[doc-id "document"]
+                   [card-id "card"]
+                   [dash-id "dashboard"]}
+                 (set (map (juxt :id :model) root-test-items)))))))))
