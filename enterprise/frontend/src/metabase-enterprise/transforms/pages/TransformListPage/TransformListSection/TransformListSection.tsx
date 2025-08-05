@@ -11,14 +11,15 @@ import {
   type QuestionPickerValueItem,
 } from "metabase/common/components/Pickers/QuestionPicker";
 import { useDispatch } from "metabase/lib/redux";
-import { Button, Icon, Menu } from "metabase/ui";
+import { Button, Card, Icon, Menu } from "metabase/ui";
 import { useListTransformsQuery } from "metabase-enterprise/api";
 import { TitleSection } from "metabase-enterprise/transforms/components/TitleSection";
 import {
   getNewTransformFromCardUrl,
   getNewTransformFromTypeUrl,
+  getTransformUrl,
 } from "metabase-enterprise/transforms/urls";
-import type { TransformExecution } from "metabase-types/api";
+import type { Transform, TransformExecution } from "metabase-types/api";
 
 export function TransformListSection() {
   return (
@@ -30,24 +31,31 @@ export function TransformListSection() {
 
 function TransformList() {
   const { data: transforms = [], isLoading, error } = useListTransformsQuery();
+  const dispatch = useDispatch();
+
+  const handleRowClick = (transform: Transform) => {
+    dispatch(push(getTransformUrl(transform.id)));
+  };
 
   if (isLoading || error != null) {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
   }
 
   return (
-    <AdminContentTable
-      columnTitles={[t`Name`, t`Target`, t`Last run at`, `Last run status`]}
-    >
-      {transforms.map((transform) => (
-        <tr key={transform.id}>
-          <td>{transform.name}</td>
-          <td>{transform.target.name}</td>
-          <td>{getLastRunTime(transform.last_execution)}</td>
-          <td>{getLastRunStatus(transform.last_execution)}</td>
-        </tr>
-      ))}
-    </AdminContentTable>
+    <Card p={0} shadow="none" withBorder>
+      <AdminContentTable
+        columnTitles={[t`Name`, t`Target`, t`Last run at`, `Last run status`]}
+      >
+        {transforms.map((transform) => (
+          <tr key={transform.id} onClick={() => handleRowClick(transform)}>
+            <td>{transform.name}</td>
+            <td>{transform.target.name}</td>
+            <td>{getLastRunTime(transform.last_execution)}</td>
+            <td>{getLastRunStatus(transform.last_execution)}</td>
+          </tr>
+        ))}
+      </AdminContentTable>
+    </Card>
   );
 }
 

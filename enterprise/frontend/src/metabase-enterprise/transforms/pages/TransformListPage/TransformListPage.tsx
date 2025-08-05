@@ -10,7 +10,7 @@ export function TransformListPage() {
     <Flex direction="column" align="center">
       <Stack gap="3.5rem">
         <Stack gap="sm">
-          <Title order={1}>{t`Transforms overview`}</Title>
+          <Title order={1}>{t`Transforms`}</Title>
           <Text>{t`Create custom tables with transforms, and run them on a schedule.`}</Text>
         </Stack>
         <ScheduleSection />
