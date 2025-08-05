@@ -19,11 +19,7 @@ import {
 import { updateSettings } from "metabase/visualizer/visualizer.slice";
 import type { VisualizationSettings } from "metabase-types/api";
 
-const HIDDEN_SETTING_WIDGETS = [
-  "card.title",
-  "card.description",
-  "graph.tooltip_columns",
-];
+const HIDDEN_SETTING_WIDGETS = ["card.title", "card.description"];
 
 export function VizSettingsSidebar({ className }: { className?: string }) {
   const series = useSelector(getVisualizerRawSeries);
