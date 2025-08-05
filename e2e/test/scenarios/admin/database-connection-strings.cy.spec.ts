@@ -237,4 +237,18 @@ describe("Database connection strings", () => {
 
     cy.findByTextEnsureVisible("Couldn’t use this connection string.");
   });
+
+  it("should not clear the existing values", () => {
+    cy.visit("/admin/databases/create");
+
+    chooseDatabase("PostgreSQL");
+    cy.findByLabelText("Port").type("1111");
+
+    cy.findByLabelText("Connection string (optional)").paste(
+      "postgresql://postgres:password@db.apbkobhfnmcqqzqeeqss.supabase.co/postgres",
+    );
+
+    cy.findByLabelText("Port").should("have.value", "1111");
+    cy.findByTestId("select-button-content").should("have.text", "PostgreSQL");
+  });
 });
