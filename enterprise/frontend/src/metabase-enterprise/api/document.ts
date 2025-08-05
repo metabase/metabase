@@ -2,6 +2,7 @@ import type {
   Card,
   CreateDocumentRequest,
   Document,
+  DocumentContent,
   DocumentId,
 } from "metabase-types/api";
 
@@ -29,7 +30,8 @@ export const documentApi = EnterpriseApi.injectEndpoints({
     }),
     updateDocument: builder.mutation<
       Document,
-      Pick<Document, "id" | "name" | "document"> & {
+      Pick<Document, "id" | "name"> & {
+        document?: DocumentContent;
         cards?: Record<number, Card>;
       }
     >({
@@ -39,7 +41,7 @@ export const documentApi = EnterpriseApi.injectEndpoints({
         body: document,
       }),
       invalidatesTags: (_, error, { id }) =>
-        !error ? [idTag("document", id), idTag("document-versions", id)] : [],
+        !error ? [idTag("document", id)] : [],
     }),
   }),
 });

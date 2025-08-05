@@ -175,6 +175,7 @@ export const DocumentPage = ({
     }
 
     // For existing documents, compare current content with document content
+    // documentContent is already stringified from the hook
     const contentChanged = currentContent !== (documentContent ?? "");
 
     return titleChanged || contentChanged || hasDraftCards;
@@ -219,10 +220,12 @@ export const DocumentPage = ({
           }
         });
 
-        // Use the current content (already in JSON AST format)
+        // Parse the current content from string to JSON AST
+        const documentAst = currentContent ? JSON.parse(currentContent) : null;
+
         const newDocumentData: any = {
           name: documentTitle,
-          document: currentContent,
+          document: documentAst,
           cards: Object.keys(cardsToSave).length > 0 ? cardsToSave : undefined,
         };
 

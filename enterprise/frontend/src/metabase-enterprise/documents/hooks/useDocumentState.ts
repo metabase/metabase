@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { useDispatch } from "metabase/lib/redux";
-import type { CollectionId } from "metabase-types/api";
+import type { CollectionId, DocumentContent } from "metabase-types/api";
 
 import type { CardEmbedRef } from "../components/Editor/types";
 import { setCardEmbeds } from "../documents.slice";
@@ -10,7 +10,7 @@ import { getCardEmbeds } from "../selectors";
 
 export function useDocumentState(documentData?: {
   name: string;
-  document: string;
+  document: DocumentContent;
 }) {
   const dispatch = useDispatch();
   const cardEmbeds = useDocumentsSelector(getCardEmbeds);
@@ -24,7 +24,12 @@ export function useDocumentState(documentData?: {
   useEffect(() => {
     if (documentData) {
       setDocumentTitle(documentData.name);
-      setDocumentContent(documentData.document);
+      // Convert document to string if it's an object
+      const docContent =
+        typeof documentData.document === "string"
+          ? documentData.document
+          : JSON.stringify(documentData.document);
+      setDocumentContent(docContent);
     }
   }, [documentData]);
 
