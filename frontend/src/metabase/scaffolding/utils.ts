@@ -58,7 +58,9 @@ export function renderValue(
     ...optionsOverride,
   });
 
-  return formattedValue != null ? formattedValue : NO_VALUE;
+  return formattedValue != null && formattedValue !== ""
+    ? formattedValue
+    : NO_VALUE;
 }
 
 export function getDefaultObjectViewSettings(
