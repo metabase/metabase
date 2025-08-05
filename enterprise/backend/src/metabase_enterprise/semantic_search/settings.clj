@@ -51,3 +51,12 @@
   :export? false
   :visibility :internal
   :description "Maximum number of texts per batch for embedding.")
+
+(defsetting embedding-concurrency-limit
+  (deferred-tru "Maximum number of concurrent embedding requests to process in parallel.")
+  :type :integer
+  :default 2
+  :encryption :no
+  :export? false
+  :visibility :internal
+  :description "Controls how many embedding requests can be processed concurrently. Higher values increase throughput but use more resources.")

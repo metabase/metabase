@@ -1,6 +1,7 @@
 (ns metabase-enterprise.semantic-search.embedding
   (:require
    [clj-http.client :as http]
+   [com.climate.claypoole :as cp]
    [metabase-enterprise.semantic-search.settings :as semantic-settings]
    [metabase.analytics.core :as analytics]
    [metabase.util :as u]
@@ -104,6 +105,13 @@
   {"openai" openai-supported-models
    "ollama" ollama-supported-models})
 
+(defn- process-parallel
+  [items process-fn]
+  (if (seq items)
+    (cp/with-shutdown! [pool (cp/threadpool (semantic-settings/embedding-concurrency-limit) :name "embedding-request-thread-pool")]
+      (cp/pmap pool process-fn items))
+    []))
+
 ;;;; Provider SPI
 
 (defn- dispatch-provider [embedding-model & _] (:provider embedding-model))
@@ -138,10 +146,9 @@
       (throw e))))
 
 (defn- ollama-get-embeddings-batch [model-name texts]
-  ;; Ollama doesn't have a native batch API, so we fall back to individual calls
-  ;; No special batching needed for Ollama - just process all texts
-  (log/debug "Generating" (count texts) "Ollama embeddings (using individual calls)")
-  (mapv #(ollama-get-embedding model-name %) texts))
+  ;; Ollama doesn't have a native batch API, so we submit individual calls to thread pool
+  (log/debug "Generating" (count texts) "Ollama embeddings (using parallel individual calls)")
+  (process-parallel texts #(ollama-get-embedding model-name %)))
 
 (defn- ollama-pull-model [model-name]
   (try
@@ -253,9 +260,13 @@
                                                       (inc batch-idx) (count batches) (str (calc-token-metrics batch-texts)))
                                      (openai-get-embeddings-batch model-name batch-texts))
                         text-embedding-map (zipmap batch-texts embeddings)]
-                    (process-fn text-embedding-map)))]
+                    (process-fn text-embedding-map)))
 
-            (transduce (map-indexed process-batch) (partial merge-with +) batches))
+                results
+                (process-parallel (map-indexed vector batches)
+                                  (fn [[batch-idx batch-texts]]
+                                    (process-batch batch-idx batch-texts)))]
+            (transduce identity (partial merge-with +) results))
 
           ;; No batching for other providers
           (let [embeddings (get-embeddings-batch embedding-model texts)
