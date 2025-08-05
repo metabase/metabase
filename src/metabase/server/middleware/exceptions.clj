@@ -19,6 +19,19 @@
   {:arglists '([e])}
   (fn [_req ex] (class ex)))
 
+(def ^:private resource-patterns
+  [
+   #"^/api/card"
+   #"^/api/collection"
+   #"^/api/dashboard"
+   #"^/api/database"
+   #"^/api/snippet"
+   #"^/api/user"
+   ])
+
+(defn- resource-url? [path]
+  (boolean (some #(re-find % path) resource-patterns)))
+
 (defmethod api-exception-response Throwable
   [req ^Throwable e]
   (let [{:keys [status-code], :as info} (ex-data e)
@@ -43,14 +56,19 @@
                                            (Throwable->map e)
                                            {:message (.getMessage e)}
                                            other-info))]
-    (if (and (some-> e ex-data :status-code #{403})
-             (->> req :uri (re-find #"\d+")))
-      {:status 404
-       :headers (mw.security/security-headers)
-       :body "You don't have permissions to see that or it doesn't exist"}
-      {:status  (or status-code 500)
-       :headers (mw.security/security-headers)
-       :body    body})))
+    (let [path (or (:path-info req)
+                   (:uri req))]
+      ;; rewrite real 404s and 403s into one response
+      (if (and (some-> e ex-data :status-code #{403 404})
+               ;; interpret an integer as a resource
+               (or (some->> path (re-find #"\d+"))
+                   (some->> path resource-url?)))
+        {:status 404
+         :headers (mw.security/security-headers)
+         :body "You don't have permissions to see that or it doesn't exist"}
+        {:status  (or status-code 500)
+         :headers (mw.security/security-headers)
+         :body    body}))))
 
 (defmethod api-exception-response SQLException
   [_req e]
