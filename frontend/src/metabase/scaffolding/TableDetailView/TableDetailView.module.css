@@ -14,9 +14,11 @@
   .SectionTitle {
     padding: 0;
   }
+
   .SectionContent {
     gap: var(--mantine-spacing-md);
   }
+
   .Field {
     align-items: center;
     overflow: hidden;
@@ -44,6 +46,7 @@
         flex-shrink: 0;
         font-size: 1rem;
       }
+
       .FieldValue {
         font-size: 1rem;
         text-align: left;
@@ -55,12 +58,15 @@
     .SectionTitle {
       display: none;
     }
+
     .SectionContent {
       gap: 1rem;
     }
+
     .FieldName {
       display: none;
     }
+
     .FieldValue {
       font-size: 3.125rem;
       font-weight: 700;
@@ -73,19 +79,24 @@
     .SectionTitle {
       display: none;
     }
+
     .SectionContent {
       gap: 0;
       flex-wrap: wrap;
     }
+
     .FieldName {
       display: none;
     }
+
     .Field + .Field {
       display: flex;
       line-height: 1.25;
+
       .FieldValue {
         display: flex;
       }
+
       .FieldValue::before {
         display: block;
         content: "•";
@@ -115,11 +126,13 @@
       .SectionTitle {
         display: none;
       }
+
       .SectionContent {
         background-color: var(--mb-base-color-gray-5);
         padding: 1.5rem 1rem;
         border-radius: var(--default-border-radius);
       }
+
       .Field {
         .FieldName,
         .FieldValue {
@@ -130,6 +143,7 @@
         .FieldName {
           font-size: 0.875rem;
         }
+
         .FieldValue {
           font-size: 2.625rem;
         }
@@ -142,6 +156,7 @@
         align-content: start;
         gap: var(--mantine-spacing-sm);
       }
+
       .FieldName {
         text-align: center;
         font-size: 0.875rem;
@@ -178,5 +193,16 @@
 .ObjectViewSidebarColumn {
   &:hover .ObjectViewSidebarColumnActionIcon {
     visibility: visible;
+  }
+}
+
+.link,
+.link > div {
+  cursor: pointer;
+  text-decoration: none;
+  color: var(--mb-color-brand) !important;
+
+  &:hover {
+    text-decoration: underline;
   }
 }

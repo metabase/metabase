@@ -6,6 +6,7 @@ import type {
   ObjectViewSectionSettings,
   RowValues,
   SectionVariant,
+  Table,
   TableId,
 } from "metabase-types/api";
 
@@ -16,6 +17,7 @@ type SortableSectionProps = {
   columns: DatasetColumn[];
   row: RowValues;
   tableId: TableId;
+  table: Table;
   isEdit: boolean;
   onUpdateSection?: (section: Partial<ObjectViewSectionSettings>) => void;
   variant: SectionVariant;

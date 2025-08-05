@@ -41,8 +41,6 @@ export function TableDetailView({
     return <LoadingAndErrorWrapper loading />;
   }
 
-  console.log({ table })
-
   return (
     <TableDetailViewInner
       tableId={tableId}

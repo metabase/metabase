@@ -294,7 +294,7 @@ export function TableDetailViewInner({
                   onUpdateSection={(update) =>
                     updateSection(section.id, update)
                   }
-                  fields={table.fields}
+                  table={table}
                 />
               </Fragment>
             ))}
@@ -309,13 +309,14 @@ export function TableDetailViewInner({
               columns={columns}
               row={row}
               tableId={tableId}
+              table={table}
               isEdit={isEdit}
-            // onUpdateSection={(update) => updateSection(section.id, update)}
-            // onRemoveSection={
-            //   notEmptySections.length > 1
-            //     ? () => removeSection(section.id)
-            //     : undefined
-            // }
+              // onUpdateSection={(update) => updateSection(section.id, update)}
+              // onRemoveSection={
+              //   notEmptySections.length > 1
+              //     ? () => removeSection(section.id)
+              //     : undefined
+              // }
             />
           </SortableContext>
         </DndContext>

@@ -1,20 +1,22 @@
 import cx from "classnames";
+import { Link } from "react-router";
 
 import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { useTranslateContent } from "metabase/i18n/hooks";
 import { Box, Flex, Group, Text, Tooltip } from "metabase/ui/components";
+import { isFK } from "metabase-lib/v1/types/utils/isa";
 import type {
   DatasetColumn,
   ObjectViewSectionSettings,
   RowValues,
   SectionVariant,
+  Table,
   TableId,
 } from "metabase-types/api";
 
 import { renderValue } from "../utils";
 
 import S from "./TableDetailView.module.css";
-import { isFK } from "metabase-lib/v1/types/utils/isa";
 
 type ObjectViewSectionProps = {
   section: ObjectViewSectionSettings;
@@ -22,6 +24,7 @@ type ObjectViewSectionProps = {
   row: RowValues;
   tableId: TableId;
   isEdit: boolean;
+  table: Table;
   onUpdateSection?: (section: Partial<ObjectViewSectionSettings>) => void;
   dragHandleProps?: any;
   variant: SectionVariant;
@@ -33,7 +36,7 @@ export function ObjectViewSection({
   columns,
   row,
   // tableId,
-  fields,
+  table,
   // isEdit,
   onUpdateSection,
   // dragHandleProps,
@@ -120,13 +123,11 @@ export function ObjectViewSection({
           const value = row[columnIndex];
           const isForeignKey = isFK(column);
 
-
-          if (isForeignKey) {
-            // const tableId = column.table_id;
-            const field = fields.find((f) => f.id === field_id);
-            const newTableId = field?.target?.table_id;
-            console.log({ newTableId, row })
-          }
+          const field = table.fields?.find((f) => f.id === field_id);
+          const newTableId = field?.target?.table_id;
+          const link = isForeignKey
+            ? `/table/${newTableId}/detail/${value}`
+            : undefined;
 
           return (
             <Flex key={field_id} className={S.Field}>
@@ -141,23 +142,48 @@ export function ObjectViewSection({
                   </Text>
                 </Tooltip>
               </Box>
-              <Ellipsified
-                alwaysShowTooltip={variant === "subheader"}
-                variant="primary"
-                truncate={variant !== "highlight-2"}
-                c="var(--mb-color-text-primary)"
-                lines={3}
-                style={{
-                  flexGrow: 1,
-                }}
-                className={S.FieldValue}
-                fz={undefined}
-                {...(variant === "subheader" && {
-                  tooltip: column.display_name,
-                })}
-              >
-                {renderValue(tc, value, column)}
-              </Ellipsified>
+
+              {link && (
+                <Link to={link} className={S.link}>
+                  <Ellipsified
+                    alwaysShowTooltip={variant === "subheader"}
+                    variant="primary"
+                    truncate={variant !== "highlight-2"}
+                    c="var(--mb-color-text-primary)"
+                    lines={3}
+                    style={{
+                      flexGrow: 1,
+                    }}
+                    className={S.FieldValue}
+                    fz={undefined}
+                    {...(variant === "subheader" && {
+                      tooltip: column.display_name,
+                    })}
+                  >
+                    {renderValue(tc, value, column)}
+                  </Ellipsified>
+                </Link>
+              )}
+
+              {!link && (
+                <Ellipsified
+                  alwaysShowTooltip={variant === "subheader"}
+                  variant="primary"
+                  truncate={variant !== "highlight-2"}
+                  c="var(--mb-color-text-primary)"
+                  lines={3}
+                  style={{
+                    flexGrow: 1,
+                  }}
+                  className={S.FieldValue}
+                  fz={undefined}
+                  {...(variant === "subheader" && {
+                    tooltip: column.display_name,
+                  })}
+                >
+                  {renderValue(tc, value, column)}
+                </Ellipsified>
+              )}
             </Flex>
           );
         })}
