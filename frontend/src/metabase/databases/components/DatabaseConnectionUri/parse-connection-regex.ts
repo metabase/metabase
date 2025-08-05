@@ -1,3 +1,5 @@
+import type { EngineKey } from "metabase-types/api";
+
 export interface RegexFields {
   host?: string;
   port?: string;
@@ -18,8 +20,18 @@ const hostAndPort = "(?<host>[^:/?#]+)?(?::(?<port>\\d+)?)?";
 const params = "(?:(?<params>.*))?";
 const semicolonParams = ";?(?<semicolonParams>.*)?;?";
 
-const connectionStringRegexes = {
-  "amazon-athena": new RegExp(
+const druidRegex = new RegExp(
+  "^" +
+    jdbcPrefix +
+    "(?<protocol>avatica)" +
+    ":remote:url=(https?://)?(?<host>[^:/]+):(?<port>\\d+)(?<path>/[^;]*)" +
+    semicolonParams +
+    "$",
+  "i",
+);
+
+const connectionStringRegexes: Record<EngineKey, RegExp | RegExp[]> = {
+  athena: new RegExp(
     "^" +
       jdbcPrefix +
       "(?<protocol>awsathena|athena)://" +
@@ -29,7 +41,7 @@ const connectionStringRegexes = {
       "$",
     "i",
   ),
-  "amazon-redshift": new RegExp(
+  redshift: new RegExp(
     "^" +
       jdbcPrefix +
       "(?<protocol>redshift)://" +
@@ -41,7 +53,7 @@ const connectionStringRegexes = {
       "$",
     "i",
   ),
-  bigquery: new RegExp(
+  "bigquery-cloud-sdk": new RegExp(
     "^" +
       jdbcPrefix +
       "(?<protocol>bigquery)://" +
@@ -69,15 +81,8 @@ const connectionStringRegexes = {
       "$",
     "i",
   ),
-  druid: new RegExp(
-    "^" +
-      jdbcPrefix +
-      "(?<protocol>avatica)" +
-      ":remote:url=(https?://)?(?<host>[^:/]+):(?<port>\\d+)(?<path>/[^;]*)" +
-      semicolonParams +
-      "$",
-    "i",
-  ),
+  druid: druidRegex,
+  "druid-jdbc": druidRegex,
   mysql: new RegExp(
     "^" +
       jdbcPrefix +
@@ -89,7 +94,7 @@ const connectionStringRegexes = {
       "$",
     "i",
   ),
-  postgresql: new RegExp(
+  postgres: new RegExp(
     "^" +
       jdbcPrefix +
       "(?<protocol>postgres(?:ql)?)://" +
@@ -100,7 +105,7 @@ const connectionStringRegexes = {
       "$",
     "i",
   ),
-  presto: new RegExp(
+  "presto-jdbc": new RegExp(
     "^" +
       jdbcPrefix +
       "(?<protocol>presto)://" +
@@ -132,25 +137,27 @@ const connectionStringRegexes = {
       "$",
     "i",
   ),
-  "spark-sql": new RegExp(
-    "^" + jdbcPrefix + "(?<protocol>sparksql):" + semicolonParams + "$",
-    "i",
-  ),
-  "spark-sql-hive2": new RegExp(
-    "^" +
-      jdbcPrefix +
-      "(?<protocol>hive2)://" +
-      hostAndPort +
-      "(?:/(?<database>[^/?#;]*))?" +
-      semicolonParams +
-      "$",
-    "i",
-  ),
+  sparksql: [
+    new RegExp(
+      "^" + jdbcPrefix + "(?<protocol>sparksql):" + semicolonParams + "$",
+      "i",
+    ),
+    new RegExp(
+      "^" +
+        jdbcPrefix +
+        "(?<protocol>hive2)://" +
+        hostAndPort +
+        "(?:/(?<database>[^/?#;]*))?" +
+        semicolonParams +
+        "$",
+      "i",
+    ),
+  ],
   sqlite: new RegExp(
     "^" + jdbcPrefix + "(?<protocol>sqlite):///(?<path>.+)$",
     "i",
   ),
-  "sql-server": new RegExp(
+  sqlserver: new RegExp(
     "^" +
       jdbcPrefix +
       "(?<protocol>sqlserver)://" +
@@ -183,24 +190,34 @@ const connectionStringRegexes = {
 
 export function parseConnectionUriRegex(
   connectionUri: string | undefined,
+  engineKey: EngineKey | undefined,
 ): RegexFields | null {
-  if (!connectionUri) {
+  if (!connectionUri || !engineKey) {
     return null;
   }
 
-  for (const regex of Object.values(connectionStringRegexes)) {
-    const match = connectionUri.match(regex);
-    if (match) {
-      const params = match.groups?.params
-        ? Object.fromEntries(new URLSearchParams(match.groups.params))
-        : undefined;
-      const semicolonParams = mapSemicolonParams(match.groups?.semicolonParams);
-      return {
-        ...match.groups,
-        params: params ?? semicolonParams,
-        hasJdbcPrefix: Boolean(match.groups?.hasJdbcPrefix),
-      };
-    }
+  const regex = connectionStringRegexes[engineKey];
+  if (!regex) {
+    return null;
+  }
+  const candidate: RegExp | undefined = Array.isArray(regex)
+    ? regex.find((r) => connectionUri.match(r))
+    : regex;
+
+  if (!candidate) {
+    return null;
+  }
+  const match = connectionUri.match(candidate);
+  if (match) {
+    const params = match.groups?.params
+      ? Object.fromEntries(new URLSearchParams(match.groups.params))
+      : undefined;
+    const semicolonParams = mapSemicolonParams(match.groups?.semicolonParams);
+    return {
+      ...match.groups,
+      params: params ?? semicolonParams,
+      hasJdbcPrefix: Boolean(match.groups?.hasJdbcPrefix),
+    };
   }
 
   return null;

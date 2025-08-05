@@ -49,7 +49,7 @@ export function DatabaseConnectionStringField({
         return () => clearTimeout();
       }
 
-      const parsedValues = parseConnectionUriRegex(connectionString);
+      const parsedValues = parseConnectionUriRegex(connectionString, engineKey);
 
       // it was not possible to parse the connection string
       if (!parsedValues) {
