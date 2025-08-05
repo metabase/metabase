@@ -107,8 +107,7 @@
   (when-let [previous-stage-number (lib.util/previous-stage-number query stage-number)]
     (not-empty
      (into []
-           (comp (map lib.field.util/update-keys-for-col-from-previous-stage)
-                 (map #(assoc % :lib/source :source/previous-stage)))
+           (map lib.field.util/update-keys-for-col-from-previous-stage)
            (lib.metadata.calculation/returned-columns query
                                                       previous-stage-number
                                                       (lib.util/query-stage query previous-stage-number)
@@ -183,30 +182,34 @@
   (let [{:keys [source-table source-card], :as this-stage} (lib.util/query-stage query stage-number)
         card          (some->> source-card (lib.metadata/card query))
         metric-based? (= (:type card) :metric)]
-    (into []
-          (if metric-based?
-            identity
-            (map lib.field.util/update-keys-for-col-from-previous-stage))
-          (or
-           ;; 1a. columns returned by previous stage
-           (visible-columns-from-previous-stage-returned-columns query stage-number options)
-           ;; 1b: default visible Fields for the source Table
-           (when source-table
-             (assert (integer? source-table))
-             (let [table-metadata (lib.metadata/table query source-table)]
-               (lib.metadata.calculation/visible-columns query stage-number table-metadata options)))
-           ;; 1e. Metadata associated with a Metric
-           (when metric-based?
-             (metric-metadata query stage-number card options))
-           ;; 1c. Metadata associated with a saved Question
-           (when source-card
-             (saved-question-visible-columns query stage-number source-card (assoc options :include-implicitly-joinable? false)))
-           ;; 1d: `:lib/stage-metadata` for the (presumably native) query
-           (for [col  (get-in this-stage [:lib/stage-metadata :columns])
-                 :let [source-column-alias ((some-fn :lib/source-column-alias :name) col)]]
-             (assoc col
-                    :lib/source               :source/native
-                    :lib/source-column-alias  source-column-alias))))))
+    (vec
+     (or
+      ;; 1a. columns returned by previous stage
+      (visible-columns-from-previous-stage-returned-columns query stage-number options)
+      ;; 1b: default visible Fields for the source Table
+      (when source-table
+        (assert (integer? source-table))
+        (let [table-metadata (lib.metadata/table query source-table)]
+          (lib.metadata.calculation/visible-columns query stage-number table-metadata options)))
+      ;; 1e. Metadata associated with a Metric
+      (when metric-based?
+        (metric-metadata query stage-number card options))
+      ;; 1c. Metadata associated with a saved Question
+      (when source-card
+        (when-let [cols (not-empty (saved-question-visible-columns query stage-number source-card
+                                                                   (assoc options :include-implicitly-joinable? false)))]
+          (into []
+                (comp (map lib.field.util/update-keys-for-col-from-previous-stage)
+                      (map (fn [col]
+                             (assoc col :lib/source :source/card))))
+                cols)))
+      ;; 1d: `:lib/stage-metadata` for the (presumably native) query
+      (mapv (fn [col]
+              (let [source-column-alias ((some-fn :lib/source-column-alias :name) col)]
+                (assoc col
+                       :lib/source               :source/native
+                       :lib/source-column-alias  source-column-alias)))
+            (get-in this-stage [:lib/stage-metadata :columns]))))))
 
 (mu/defn- existing-visible-columns :- ::lib.metadata.calculation/visible-columns
   [query                                                       :- ::lib.schema/query

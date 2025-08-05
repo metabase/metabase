@@ -140,6 +140,7 @@
 
 (defn- with-join-alias-update-join
   "Impl for [[with-join-alias]] for a join."
+  {:style/indent [:form]}
   [join new-alias]
   (let [old-alias (lib.join.util/current-join-alias join)]
     (-> join
@@ -149,14 +150,15 @@
 
 (mu/defn with-join-alias :- [:or
                              [:map
-                              [:lib/type [:= :metadata/column]]]
-                             [:map
-                              [:lib/type [:= :mbql/join]]]
-                             :mbql.clause/field]
+                              [:lib/type [:enum :metadata/column :mbql/join]]]
+                             [:ref :mbql.clause/field]]
   "Add OR REMOVE a specific `join-alias` to `field-or-join`, which is either a `:field`/Field metadata, or a join map.
   Does not recursively update other references (yet; we can add this in the future)."
   {:style/indent [:form]}
-  [field-or-join :- lib.join.util/FieldOrPartialJoin
+  [field-or-join :- [:or
+                     [:map
+                      [:lib/type [:enum :metadata/column :mbql/join]]]
+                     [:ref :mbql.clause/field]]
    join-alias    :- [:maybe ::lib.schema.common/non-blank-string]]
   (case (lib.dispatch/dispatch-value field-or-join)
     :field
@@ -239,11 +241,13 @@
   (throw (ex-info "You can't calculate a metadata map for a join! Use lib.metadata.calculation/returned-columns-method instead."
                   {})))
 
-(mu/defn column-from-join :- ::lib.metadata.calculation/column-metadata-with-source
+(mu/defn column-from-join :- [:map
+                              [:lib/type [:= :metadata/column]]]
   "For a column that comes from a join, add or update metadata as needed, e.g. include join name in the display name."
   [query        :- ::lib.schema/query
    stage-number :- :int
-   col          :- ::lib.schema.metadata/column
+   col          :- [:map
+                    [:lib/type [:= :metadata/column]]]
    join-alias   :- ::lib.schema.join/alias]
   (-> col
       (assoc
@@ -356,10 +360,9 @@
       (mapv #(column-from-join query stage-number % join-alias)
             cols'))))
 
-;;; VISIBLE COLUMNS FOR A JOIN ARE RELATIVE TO THE
-;;;
-;;; TODO NOCOMMIT -- VISIBLE COLUMNS FOR A JOIN IS === RETURNED COLUMNS FOR A JOIN === RETURNED COLUMNS FOR THE LAST STAGE OF A JOIN
-(defmethod lib.metadata.calculation/visible-columns-method :mbql/join
+;;; VISIBLE COLUMNS FOR A JOIN ARE RELATIVE TO THE LAST STAGE OF A JOIN!!!! IF YOU WANT THEM WITH APPROPRIATE METADATA
+;;; RELATIVE TO THE PARENT STAGE OF A QUERY, USE [[join-visible-columns-relative-to-parent-stage]] INSTEAD!!!
+(mu/defmethod lib.metadata.calculation/visible-columns-method :mbql/join :- ::lib.metadata.calculation/visible-columns
   [query stage-number join options]
   (lib.metadata.calculation/returned-columns query stage-number join options))
 
@@ -882,9 +885,9 @@
                                ;; Drop the :join-alias from the RHS if the joinable doesn't have one either.
                                (not join-alias) (lib.options/update-options dissoc :join-alias)))]
      (->> (lib.metadata.calculation/visible-columns query stage-number joinable {:include-implicitly-joinable? false})
-          (map (fn [col]
-                 (cond-> (assoc col :lib/source :source/joins)
-                   join-alias (with-join-alias join-alias))))
+          (map (if join-alias
+                 column-from-join
+                 identity))
           (mark-selected-column query stage-number rhs-column-or-nil)
           sort-join-condition-columns))))
 

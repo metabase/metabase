@@ -236,9 +236,7 @@
 (defn- resolve-in-previous-stage-cols [query previous-stage-columns id-or-name]
   (log/tracef "Previous stage columns: %s" (pr-str (map (juxt :id :lib/desired-column-alias) previous-stage-columns)))
   (when-some [col (resolve-in-metadata query previous-stage-columns id-or-name)]
-    (-> col
-        lib.field.util/update-keys-for-col-from-previous-stage
-        (assoc :lib/source :source/previous-stage))))
+    (lib.field.util/update-keys-for-col-from-previous-stage col)))
 
 (mu/defn- resolve-in-join :- [:maybe ::lib.metadata.calculation/visible-column]
   [query        :- ::lib.schema/query

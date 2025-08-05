@@ -19,7 +19,8 @@
    [metabase.lib.util :as lib.util]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.lib.schema.mbql-clause :as lib.schema.mbql-clause]))
 
 (mu/defn column-metadata->aggregation-ref :- :mbql.clause/aggregation
   "Given `:metadata/column` column metadata for an aggregation, construct an `:aggregation` reference."
@@ -159,8 +160,11 @@
     :sum       "sum"
     :var       "var"))
 
-(defmethod lib.metadata.calculation/display-name-method ::unary-aggregation
-  [query stage-number [tag _opts arg] style]
+(mu/defmethod lib.metadata.calculation/display-name-method ::unary-aggregation
+  [query
+   stage-number
+   [tag _opts arg] :- [:ref ::lib.schema.mbql-clause/clause]
+   style]
   (let [arg (lib.metadata.calculation/display-name query stage-number arg style)]
     (case tag
       :avg       (i18n/tru "Average of {0}"            arg)

@@ -80,12 +80,14 @@
                           :lib/source-column-alias  source-alias
                           :lib/desired-column-alias desired-alias)))))))
 
-(mu/defn update-keys-for-col-from-previous-stage :- :map
+(mu/defn update-keys-for-col-from-previous-stage :- [:map
+                                                     [:lib/type [:= :metadata/column]]]
   "For a column that came from a previous stage, change the keys for things that mean 'this happened in the current
   stage' to the equivalent keys that mean 'this happened at some stage in the past' e.g.
   `:metabase.lib.join/join-alias` and `:lib/expression-name` become `:lib/original-join-alias` and
   `:lib/original-expression-name` respectively."
-  [col :- :map]
+  [col :- [:map
+           [:lib/type [:= :metadata/column]]]]
   (-> col
       (set/rename-keys {:fk-field-id                      :lib/original-fk-field-id
                         :fk-field-name                    :lib/original-fk-field-name
@@ -98,11 +100,8 @@
              ;; TODO (Cam 6/26/25) -- should we set `:lib/original-display-name` here too?
              :lib/original-name ((some-fn :lib/original-name :name) col)
              ;; desired-column-alias is previous stage => source column alias in next stage
-             :lib/source-column-alias ((some-fn :lib/desired-column-alias :lib/source-column-alias :name) col))
-      ;;
-      ;; TODO (Cam 8/1/25) -- we should definitely be setting this here but it breaks a lot of dumb tests and I don't
-      ;; really want to run around fixing all of them right now.
-      #_(assoc :lib/source :source/previous-stage)
+             :lib/source-column-alias ((some-fn :lib/desired-column-alias :lib/source-column-alias :name) col)
+             :lib/source :source/previous-stage)
       ;;
       ;; Remove `:lib/desired-column-alias` and `:lib/deduplicated-name`, which need to be recalculated in the context
       ;; of what is returned by the current stage, to prevent any confusion; their values are likely wrong now and we
