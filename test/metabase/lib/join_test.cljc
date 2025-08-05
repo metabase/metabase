@@ -702,15 +702,16 @@
                 (lib/join-condition-lhs-columns query nil nil rhs)))))))
 
 (deftest ^:parallel join-condition-lhs-columns-expression-test
-  (testing "Should not include expressions in LHS columns"
+  (testing "Should include expressions in LHS columns"
     (let [query (-> (lib.tu/venues-query)
                     (lib/expression "double-price" (lib/* (meta/field-metadata :venues :price) 2)))]
-      (is (=? [{:lib/desired-column-alias "ID"}
-               {:lib/desired-column-alias "CATEGORY_ID"}
-               {:lib/desired-column-alias "NAME"}
-               {:lib/desired-column-alias "LATITUDE"}
-               {:lib/desired-column-alias "LONGITUDE"}
-               {:lib/desired-column-alias "PRICE"}]
+      (is (=? [{:name "ID"}
+               {:name "CATEGORY_ID"}
+               {:name "NAME"}
+               {:name "LATITUDE"}
+               {:name "LONGITUDE"}
+               {:name "PRICE"}
+               {:name "double-price"}]
               (lib/join-condition-lhs-columns query nil nil nil))))))
 
 (deftest ^:parallel join-condition-lhs-columns-with-previous-join-test
@@ -808,7 +809,31 @@
                    (lib/join-condition-lhs-columns query
                                                    join-for-query-with-join
                                                    (lib/+ (meta/field-metadata :venues :id) 1)
-                                                   (lib/+ (meta/field-metadata :categories :id) 1))))))))
+                                                   (lib/+ (meta/field-metadata :categories :id) 1)))))))
+  (testing "should mark custom columns from LHS columns as selected"
+    (let [query             (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                                (lib/expression "expr" (lib/* (meta/field-metadata :orders :total) 2)))
+          products          (meta/table-metadata :products)
+          lhs-columns       (lib/join-condition-lhs-columns query products nil nil)
+          lhs-custom-column (m/find-first (comp #{"expr"} :name) lhs-columns)
+          rhs-columns       (lib/join-condition-rhs-columns query products nil nil)
+          rhs-product-price (m/find-first (comp #{"PRICE"} :name) rhs-columns)
+          query             (lib/join query (lib/join-clause products [(lib/= lhs-custom-column rhs-product-price)]))]
+      (is (=? [{:name "ID"}
+               {:name "USER_ID"}
+               {:name "PRODUCT_ID"}
+               {:name "SUBTOTAL"}
+               {:name "TAX"}
+               {:name "TOTAL"}
+               {:name "DISCOUNT"}
+               {:name "CREATED_AT"}
+               {:name "QUANTITY"}
+               {:name "expr", :selected true}]
+              (map (partial lib/display-info query)
+                   (lib/join-condition-lhs-columns query
+                                                   (first (lib/joins query))
+                                                   (lib/ref lhs-custom-column)
+                                                   (lib/ref rhs-product-price))))))))
 
 (deftest ^:parallel join-condition-rhs-columns-join-table-test
   (testing "RHS columns when building a join against a Table"
