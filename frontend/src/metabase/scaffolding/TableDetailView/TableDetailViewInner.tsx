@@ -21,7 +21,7 @@ import { useDispatch } from "metabase/lib/redux";
 import { question } from "metabase/lib/urls";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { closeNavbar } from "metabase/redux/app";
-import { Flex, Stack, Tooltip } from "metabase/ui/components";
+import { Divider, Flex, Stack, Tooltip } from "metabase/ui/components";
 import { Button } from "metabase/ui/components/buttons";
 import { Icon } from "metabase/ui/components/icons";
 import type ForeignKey from "metabase-lib/v1/metadata/ForeignKey";
@@ -280,17 +280,24 @@ export function TableDetailViewInner({
             items={notEmptySections.map((section) => section.id)}
             strategy={verticalListSortingStrategy}
           >
-            {notEmptySections.map((section) => (
-              <SortableSection
-                key={section.id}
-                section={section}
-                variant={section.variant}
-                columns={columns}
-                row={row}
-                tableId={tableId}
-                isEdit={isEdit}
-                onUpdateSection={(update) => updateSection(section.id, update)}
-              />
+            {notEmptySections.map((section, index) => (
+              <>
+                <SortableSection
+                  key={section.id}
+                  section={section}
+                  variant={section.variant}
+                  columns={columns}
+                  row={row}
+                  tableId={tableId}
+                  isEdit={isEdit}
+                  onUpdateSection={(update) =>
+                    updateSection(section.id, update)
+                  }
+                />
+                {index < notEmptySections.length - 1 &&
+                  (section.variant === "normal" ||
+                    section.variant === "highlight-2") && <Divider mt="md" />}
+              </>
             ))}
 
             <SortableSection
@@ -310,17 +317,6 @@ export function TableDetailViewInner({
           </SortableContext>
         </DndContext>
       </Stack>
-
-      {isEdit && (
-        <Flex align="center" justify="center" w="100%" my="md">
-          <Tooltip label={t`Add group`}>
-            <Button
-              leftSection={<Icon name="add" />}
-              onClick={() => createSection({ position: "end" })}
-            />
-          </Tooltip>
-        </Flex>
-      )}
     </DetailViewContainer>
   );
 }
