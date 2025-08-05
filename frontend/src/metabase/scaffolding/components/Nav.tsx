@@ -46,6 +46,7 @@ export const Nav = ({
   //   })
   //   .filter((value) => value != null && value !== "");
 
+  // keep in sync with equivalent implementation in ObjectViewSection
   const headerText = headerSection.fields
     .map(({ field_id }) => {
       const columnIndex = columns.findIndex((column) => column.id === field_id);

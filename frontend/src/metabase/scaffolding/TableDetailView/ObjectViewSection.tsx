@@ -41,6 +41,8 @@ export function ObjectViewSection({
 
   if (variant === "header") {
     // Merging header values in 1 element to handle text-overflow: ellipsis correctly.
+
+    // keep in sync with equivalent implementation in Nav
     const headerText = section.fields
       .map(({ field_id }) => {
         const columnIndex = columns.findIndex(
