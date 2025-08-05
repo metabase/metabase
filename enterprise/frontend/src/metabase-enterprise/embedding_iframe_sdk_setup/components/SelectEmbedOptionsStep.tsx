@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { t } from "ttag";
 
 import { ColorPillPicker } from "metabase/common/components/ColorPicker";
@@ -28,6 +28,11 @@ export const SelectEmbedOptionsStep = () => {
 
   const applicationColors = useSetting("application-colors");
 
+  // Undebounced previews to keep color selection fast.
+  const [colorPreviewValues, setColorPreviewValues] = useState<
+    Record<string, string>
+  >({});
+
   const { theme } = settings;
 
   const isQuestionOrDashboardEmbed =
@@ -56,8 +61,11 @@ export const SelectEmbedOptionsStep = () => {
     const colors: Record<string, string> = {};
 
     for (const color of getConfigurableThemeColors()) {
-      colors[color.key] = getOriginalColor(color.originalColorKey);
+      const originalColor = getOriginalColor(color.originalColorKey);
+      colors[color.key] = originalColor;
     }
+
+    setColorPreviewValues(colors);
 
     // FIXME: setting the colors to `undefined` does not work here as there is a
     // visual artifact where the date range picker does not update its background color.
@@ -66,6 +74,18 @@ export const SelectEmbedOptionsStep = () => {
 
   const isDashboardOrInteractiveQuestion =
     settings.dashboardId || (settings.questionId && settings.drills);
+
+  // Helper to get current preview value for a color key
+  const getColorPreviewValue = useCallback(
+    (colorKey: keyof MetabaseColors, originalColor: string) => {
+      return (
+        colorPreviewValues[colorKey] ??
+        theme?.colors?.[colorKey] ??
+        originalColor
+      );
+    },
+    [colorPreviewValues, theme?.colors],
+  );
 
   return (
     <Stack gap="md">
@@ -150,8 +170,14 @@ export const SelectEmbedOptionsStep = () => {
 
                   <ColorPillPicker
                     onChange={(color) => updateColor({ [key]: color })}
-                    initialColor={theme?.colors?.[key]}
                     originalColor={originalColor}
+                    previewValue={getColorPreviewValue(key, originalColor)}
+                    onPreviewChange={(color: string) =>
+                      setColorPreviewValues((prev) => ({
+                        ...prev,
+                        [key]: color,
+                      }))
+                    }
                   />
                 </Stack>
               );
