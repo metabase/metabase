@@ -268,7 +268,7 @@
                               (concat card-attachments))
         dashboard-content   (if-not attachment_only
                               (str "<div>" (str/join html-contents) "</div>")
-                              "<div>Your dashboard has results</div>")
+                              "<p>Dashboard content available in attached files</p>")
         message-context-fn  (fn [non-user-email]
                               (-> notification-payload
                                   (assoc :computed {:dashboard_content  dashboard-content

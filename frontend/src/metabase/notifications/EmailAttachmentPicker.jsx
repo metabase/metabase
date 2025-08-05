@@ -20,6 +20,7 @@ export default class EmailAttachmentPicker extends Component {
     isEnabled: false,
     isFormattingEnabled: true,
     isPivotingEnabled: false,
+    isAttachmentOnly: false,
     selectedAttachmentType: this.DEFAULT_ATTACHMENT_TYPE,
     selectedCardIds: new Set(),
   };
@@ -55,6 +56,7 @@ export default class EmailAttachmentPicker extends Component {
 
   calculateStateFromCards() {
     const selectedCards = this._getCardsWithAttachments();
+    const { pulse } = this.props;
 
     return {
       isEnabled: selectedCards.length > 0,
@@ -65,6 +67,7 @@ export default class EmailAttachmentPicker extends Component {
       ),
       isFormattingEnabled: getInitialFormattingState(selectedCards),
       isPivotingEnabled: getInitialPivotingState(selectedCards),
+      isAttachmentOnly: getInitialAttachmentOnlyState(pulse),
     };
   }
 
@@ -86,7 +89,8 @@ export default class EmailAttachmentPicker extends Component {
    */
   updatePulseCards(attachmentType, selectedCardIds) {
     const { pulse, setPulse } = this.props;
-    const { isFormattingEnabled, isPivotingEnabled } = this.state;
+    const { isFormattingEnabled, isPivotingEnabled, isAttachmentOnly } =
+      this.state;
 
     const isXls = attachmentType === "xlsx",
       isCsv = attachmentType === "csv";
@@ -102,6 +106,13 @@ export default class EmailAttachmentPicker extends Component {
         card.pivot_results = card.display === "pivot" && isPivotingEnabled;
         return card;
       }),
+      channels: pulse.channels.map((channel) => ({
+        ...channel,
+        details: {
+          ...channel.details,
+          attachment_only: isAttachmentOnly,
+        },
+      })),
     });
   }
 
@@ -139,7 +150,10 @@ export default class EmailAttachmentPicker extends Component {
       this.disableAllCards();
     }
 
-    this.setState({ isEnabled: includeAttachment });
+    this.setState({
+      isEnabled: includeAttachment,
+      isAttachmentOnly: includeAttachment ? this.state.isAttachmentOnly : false,
+    });
   };
 
   /*
@@ -213,6 +227,21 @@ export default class EmailAttachmentPicker extends Component {
     );
   };
 
+  onToggleAttachmentOnly = () => {
+    this.setState(
+      (prevState) => ({
+        ...prevState,
+        isAttachmentOnly: !prevState.isAttachmentOnly,
+      }),
+      () => {
+        this.updatePulseCards(
+          this.state.selectedAttachmentType,
+          this.state.selectedCardIds,
+        );
+      },
+    );
+  };
+
   disableAllCards() {
     const selectedCardIds = new Set();
     this.updatePulseCards(this.state.selectedAttachmentType, selectedCardIds);
@@ -233,6 +262,7 @@ export default class EmailAttachmentPicker extends Component {
       isEnabled,
       isFormattingEnabled,
       isPivotingEnabled,
+      isAttachmentOnly,
       selectedAttachmentType,
       selectedCardIds,
     } = this.state;
@@ -257,6 +287,23 @@ export default class EmailAttachmentPicker extends Component {
         </Group>
         {isEnabled && (
           <div>
+            <Group justify="space-between" pb="1rem">
+              <Group position="left" gap="0">
+                <Text fw="bold">{t`Include attachments only`}</Text>
+                <Icon
+                  name="info"
+                  className={cx(CS.textMedium, CS.ml1)}
+                  size={12}
+                  tooltip={t`When enabled, only file attachments will be sent (no email content).`}
+                />
+              </Group>
+              <Toggle
+                aria-label={t`Include attachments only`}
+                value={isAttachmentOnly}
+                onChange={this.onToggleAttachmentOnly}
+              />
+            </Group>
+
             <Box py="1rem">
               <ExportSettingsWidget
                 selectedFormat={selectedAttachmentType}
@@ -333,6 +380,13 @@ function getInitialFormattingState(cards) {
 function getInitialPivotingState(cards) {
   if (cards.length > 0) {
     return cards.some((card) => !!card.pivot_results);
+  }
+  return false;
+}
+
+function getInitialAttachmentOnlyState(pulse) {
+  if (pulse && pulse.channels && pulse.channels.length > 0) {
+    return pulse.channels.some((channel) => !!channel.details?.attachment_only);
   }
   return false;
 }
