@@ -15,7 +15,8 @@ import {
 import { t } from "ttag";
 
 import { ActionIcon, Box, Group, Stack, Text } from "metabase/ui/components";
-import { Icon } from "metabase/ui/components/icons";
+import { Icon, type IconName } from "metabase/ui/components/icons";
+import { getIconForField } from "metabase-lib/v1/metadata/utils/fields";
 import type {
   DatasetColumn,
   ObjectViewSectionSettings,
@@ -27,7 +28,7 @@ interface SortableFieldItemProps {
   field: {
     field_id: number;
   };
-  column?: DatasetColumn;
+  column: DatasetColumn;
   onRemoveItem?: (fieldId: number) => void;
 }
 
@@ -56,7 +57,8 @@ function SortableFieldItem({
   return (
     <Box
       ref={setNodeRef}
-      p="sm"
+      py="xs"
+      px="md"
       style={{
         ...style,
         border: "1px solid var(--border-color)",
@@ -68,11 +70,12 @@ function SortableFieldItem({
       {...listeners}
     >
       <Group gap="xs" align="center" justify="space-between">
-        <Group gap="xs" align="center">
+        <Group gap="sm" align="center">
           <Icon name="grabber" size={12} />
-          <Text size="sm">
-            {column?.display_name || String(field.field_id)}
-          </Text>
+
+          <Icon name={getIconForField(column) as IconName} />
+
+          <Text>{column?.display_name || String(field.field_id)}</Text>
         </Group>
 
         {!!onRemoveItem && (
@@ -132,7 +135,7 @@ export function FieldsPopover({
   return (
     <Box p="lg" w="25rem">
       <Group justify="space-between">
-        <Text fw={600} mb="sm">{t`Fields for ${section.title}`}</Text>
+        <Text fw="bold" mb="sm">{t`Fields for ${section.title}`}</Text>
         <ActionIcon
           onClick={() => {
             onClose();
@@ -144,7 +147,7 @@ export function FieldsPopover({
 
       {section.fields.length > 0 && (
         <>
-          <Text size="xs" fw={600} c="text-medium" mb="sm" tt="uppercase">
+          <Text size="xs" fw="bold" c="text-medium" mb="sm" tt="uppercase">
             {t`Showing`} {fieldsLimit != null ? t`(Max ${fieldsLimit})` : null}
           </Text>
           <DndContext
@@ -174,10 +177,9 @@ export function FieldsPopover({
             >
               <Stack gap="xs" mb="md">
                 {section.fields.map((field, _fieldIndex) => {
-                  const column = columns.find(
-                    (col: DatasetColumn) =>
-                      String(col.id) === String(field.field_id),
-                  );
+                  const column = columns.find((col: DatasetColumn) => {
+                    return String(col.id) === String(field.field_id);
+                  });
 
                   return (
                     <SortableFieldItem
@@ -198,14 +200,19 @@ export function FieldsPopover({
 
       {availableFields.length > 0 && (
         <>
-          <Text size="xs" fw={600} c="text-medium" mb="sm" tt="uppercase">
+          <Text size="xs" fw="bold" c="text-medium" mb="sm" tt="uppercase">
             {t`Not showing`}
           </Text>
+
           <Stack gap="xs">
             {availableFields.map((column) => (
-              <Box
+              <Group
                 key={column.id}
-                p="sm"
+                px="md"
+                py="xs"
+                h={38}
+                gap="sm"
+                align="center"
                 style={{
                   border: "1px solid var(--border-color)",
                   borderRadius: "var(--default-border-radius)",
@@ -228,11 +235,12 @@ export function FieldsPopover({
                   });
                 }}
               >
-                <Group gap="xs" align="center">
-                  {!limitReached && <Icon name="add" size={12} />}
-                  <Text size="sm">{column.display_name}</Text>
-                </Group>
-              </Box>
+                {!limitReached && <Icon name="add" size={12} />}
+
+                <Icon name={getIconForField(column) as IconName} />
+
+                <Text>{column.display_name}</Text>
+              </Group>
             ))}
           </Stack>
         </>
