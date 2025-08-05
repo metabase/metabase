@@ -26,7 +26,7 @@ type ObjectViewSectionProps = {
   row: RowValues;
   tableId: TableId;
   isEdit: boolean;
-  onUpdateSection: (section: Partial<ObjectViewSectionSettings>) => void;
+  onUpdateSection?: (section: Partial<ObjectViewSectionSettings>) => void;
   onRemoveSection?: () => void;
   dragHandleProps?: any;
   variant: SectionVariant;
@@ -61,24 +61,30 @@ export function ObjectViewSection({
         borderRadius: "var(--default-border-radius)",
       }}
     >
-      <Group gap="xs">
-        {/* {isEdit && (
+      {onUpdateSection && (
+        <Group gap="xs">
+          {/* {isEdit && (
           <Icon
-            name="grabber"
-            style={{ cursor: "grab" }}
-            role="button"
-            tabIndex={0}
-            {...dragHandleProps}
+          name="grabber"
+          style={{ cursor: "grab" }}
+          role="button"
+          tabIndex={0}
+          {...dragHandleProps}
           />
-        )} */}
-        <EditableText
-          className={S.SectionTitle}
-          initialValue={section.title}
-          isDisabled={!isEdit}
-          onChange={(title) => onUpdateSection({ title })}
-          style={{ fontWeight: 700, fontSize: "1.25rem", marginBottom: "2rem" }}
-        />
-      </Group>
+          )} */}
+          <EditableText
+            className={S.SectionTitle}
+            initialValue={section.title}
+            isDisabled={!isEdit}
+            onChange={(title) => onUpdateSection({ title })}
+            style={{
+              fontWeight: 700,
+              fontSize: "1.25rem",
+              marginBottom: "2rem",
+            }}
+          />
+        </Group>
+      )}
       <Flex className={S.SectionContent}>
         {section.fields.map(({ field_id }) => {
           const columnIndex = columns.findIndex(

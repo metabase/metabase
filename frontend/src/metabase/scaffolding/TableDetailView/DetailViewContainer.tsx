@@ -143,6 +143,7 @@ export function DetailViewContainer({
               <DetailViewSidebar
                 columns={columns}
                 sections={sections}
+                table={table}
                 onCreateSection={onCreateSection}
                 onUpdateSection={onUpdateSection}
                 onUpdateSections={onUpdateSections}

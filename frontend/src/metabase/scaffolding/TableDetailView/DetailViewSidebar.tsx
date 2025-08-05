@@ -1,10 +1,12 @@
 import { t } from "ttag";
 
+import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { Box, Button, Group, Stack, Text } from "metabase/ui/components";
 import { Icon } from "metabase/ui/components/icons";
 import type {
   DatasetColumn,
   ObjectViewSectionSettings,
+  Table,
 } from "metabase-types/api";
 
 import { SidebarSectionItem } from "./SidebarSectionItem";
@@ -12,6 +14,7 @@ import { SidebarSectionItem } from "./SidebarSectionItem";
 interface DetailViewSidebarProps {
   columns: DatasetColumn[];
   sections: ObjectViewSectionSettings[];
+  table: Table;
   onCreateSection: (options?: { position?: "start" | "end" }) => void;
   onUpdateSection: (
     sectionId: number,
@@ -29,6 +32,7 @@ interface DetailViewSidebarProps {
 export function DetailViewSidebar({
   columns,
   sections,
+  table,
   onCreateSection,
   onUpdateSection,
   onUpdateSections: _onUpdateSections,
@@ -47,6 +51,21 @@ export function DetailViewSidebar({
     (s) =>
       s !== headerSection && s !== subheaderSection && s !== highlight1Section,
   );
+
+  const fieldsInSections = sections.flatMap((s) => s.fields);
+  const fieldsInSectionsIds = fieldsInSections.map((f) => f.field_id);
+  const fields = table?.fields ?? [];
+  const fieldIds = fields.map(getRawTableFieldId);
+  const uncategorizedSection: ObjectViewSectionSettings = {
+    id: -1,
+    title: "Uncategorized",
+    variant: "normal",
+    fields: fieldIds
+      .filter((id) => {
+        return !fieldsInSectionsIds.includes(id);
+      })
+      .map((field_id) => ({ field_id })),
+  };
 
   return (
     <Stack gap={0} h="100%">
@@ -125,6 +144,16 @@ export function DetailViewSidebar({
               setOpenPopoverId={setOpenPopoverId}
             />
           ))}
+
+          <SidebarSectionItem
+            variant={uncategorizedSection.variant}
+            section={uncategorizedSection}
+            columns={columns}
+            // onUpdateSection={onUpdateSection}
+            // onRemoveSection={onRemoveSection}
+            // openPopoverId={openPopoverId}
+            // setOpenPopoverId={setOpenPopoverId}
+          />
         </Stack>
       </Box>
 

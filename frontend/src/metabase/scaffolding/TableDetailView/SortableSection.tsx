@@ -17,7 +17,7 @@ type SortableSectionProps = {
   row: RowValues;
   tableId: TableId;
   isEdit: boolean;
-  onUpdateSection: (section: Partial<ObjectViewSectionSettings>) => void;
+  onUpdateSection?: (section: Partial<ObjectViewSectionSettings>) => void;
   onRemoveSection?: () => void;
   variant: SectionVariant;
 };

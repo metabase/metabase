@@ -59,8 +59,10 @@ export function getDefaultObjectViewSettings(
   table: Table | undefined,
 ): ObjectViewSettings {
   const fields = table?.fields ?? [];
-  const headerFields = fields.filter((f) => isEntityName(f) || isPK(f));
-  const normalFields = fields.filter((f) => !headerFields.includes(f));
+  const headerFields = fields
+    .filter((f) => isEntityName(f) || isPK(f))
+    .slice(0, 3);
+  // const normalFields = fields.filter((f) => !headerFields.includes(f));
 
   return {
     sections: [
@@ -90,14 +92,14 @@ export function getDefaultObjectViewSettings(
       //   variant: "highlight-2",
       //   fields: [],
       // },
-      {
-        id: getNextId(),
-        title: "Info",
-        variant: "normal",
-        fields: normalFields.map((field) => ({
-          field_id: getRawTableFieldId(field),
-        })),
-      },
+      // {
+      //   id: getNextId(),
+      //   title: "Info",
+      //   variant: "normal",
+      //   fields: normalFields.map((field) => ({
+      //     field_id: getRawTableFieldId(field),
+      //   })),
+      // },
     ],
   };
 }

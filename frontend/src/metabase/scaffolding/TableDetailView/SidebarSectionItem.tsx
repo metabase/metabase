@@ -17,10 +17,10 @@ type Section = ObjectViewSectionSettings;
 interface SidebarSectionItemProps {
   section: Section;
   columns: DatasetColumn[];
-  onUpdateSection: (sectionId: number, update: Partial<Section>) => void;
+  onUpdateSection?: (sectionId: number, update: Partial<Section>) => void;
   onRemoveSection?: (sectionId: number) => void;
   openPopoverId: number | null;
-  setOpenPopoverId: (id: number | null) => void;
+  setOpenPopoverId?: (id: number | null) => void;
   variant: SectionVariant;
 }
 
@@ -53,10 +53,14 @@ export function SidebarSectionItem({
         style={{
           border: "1px solid var(--border-color)",
           borderRadius: "var(--default-border-radius)",
-          cursor: "pointer",
+          cursor: setOpenPopoverId ? "pointer" : undefined,
         }}
         ref={rootTriggerRef}
         onClick={(event) => {
+          if (!setOpenPopoverId) {
+            return;
+          }
+
           const target = event.target as HTMLElement;
           // popover is open
           if (openPopoverId === section.id) {
@@ -82,15 +86,17 @@ export function SidebarSectionItem({
                 : t`${section.fields.length} fields`}
             </Text>
 
-            <FieldsPopover
-              isOpen={openPopoverId === section.id}
-              section={section}
-              usedFieldIds={usedFieldIds}
-              columns={columns}
-              onUpdateSection={onUpdateSection}
-              onClose={() => setOpenPopoverId(null)}
-              triggerRef={rootTriggerRef}
-            />
+            {onUpdateSection && setOpenPopoverId && (
+              <FieldsPopover
+                isOpen={openPopoverId === section.id}
+                section={section}
+                usedFieldIds={usedFieldIds}
+                columns={columns}
+                onUpdateSection={onUpdateSection}
+                onClose={() => setOpenPopoverId(null)}
+                triggerRef={rootTriggerRef}
+              />
+            )}
           </Stack>
           {/* {sections.length > 1 && onRemoveSection && (
             <Button
@@ -104,7 +110,8 @@ export function SidebarSectionItem({
           )} */}
         </Group>
       </Box>
-      {HIGHLIGHTABLE_VARIANTS.includes(variant) && (
+
+      {HIGHLIGHTABLE_VARIANTS.includes(variant) && onUpdateSection && (
         <Switch
           label="Highlight group"
           size="sm"

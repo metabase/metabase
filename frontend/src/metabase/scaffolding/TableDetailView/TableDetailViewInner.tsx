@@ -19,13 +19,18 @@ import { t } from "ttag";
 import { useUpdateTableComponentSettingsMutation } from "metabase/api/table";
 import { useDispatch } from "metabase/lib/redux";
 import { question } from "metabase/lib/urls";
+import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { closeNavbar } from "metabase/redux/app";
 import { Flex, Stack, Tooltip } from "metabase/ui/components";
 import { Button } from "metabase/ui/components/buttons";
 import { Icon } from "metabase/ui/components/icons";
 import type ForeignKey from "metabase-lib/v1/metadata/ForeignKey";
 import { isEntityName, isPK } from "metabase-lib/v1/types/utils/isa";
-import type { Dataset, DatasetColumn } from "metabase-types/api";
+import type {
+  Dataset,
+  DatasetColumn,
+  ObjectViewSectionSettings,
+} from "metabase-types/api";
 
 import { getDefaultObjectViewSettings } from "../utils";
 
@@ -98,6 +103,20 @@ export function TableDetailViewInner({
     return sections.filter((section) => section.fields.length > 0);
   }, [sections]);
 
+  const fieldsInSections = notEmptySections.flatMap((s) => s.fields);
+  const fieldsInSectionsIds = fieldsInSections.map((f) => f.field_id);
+  const fields = table?.fields ?? [];
+  const fieldIds = fields.map(getRawTableFieldId);
+  const uncategorizedSection: ObjectViewSectionSettings = {
+    id: -1,
+    title: "",
+    variant: "normal",
+    fields: fieldIds
+      .filter((id) => {
+        return !fieldsInSectionsIds.includes(id);
+      })
+      .map((field_id) => ({ field_id })),
+  };
   const sensors = useSensors(
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, {
@@ -278,6 +297,21 @@ export function TableDetailViewInner({
                 }
               />
             ))}
+
+            <SortableSection
+              section={uncategorizedSection}
+              variant={uncategorizedSection.variant}
+              columns={columns}
+              row={row}
+              tableId={tableId}
+              isEdit={isEdit}
+              // onUpdateSection={(update) => updateSection(section.id, update)}
+              // onRemoveSection={
+              //   notEmptySections.length > 1
+              //     ? () => removeSection(section.id)
+              //     : undefined
+              // }
+            />
           </SortableContext>
         </DndContext>
       </Stack>
