@@ -1,5 +1,6 @@
 (ns metabase-enterprise.worker.tracking
   (:require
+   [java-time.api :as t]
    [metabase.config.core :as config]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute])
   (:import
@@ -64,15 +65,29 @@ WHERE NOT EXISTS (
   [run-id msg]
   (set-status! run-id "error" msg))
 
+(def ^:private timeout-sec (* 4 60 60) #_sec)
+
+(defn- handle-timeout
+  [run]
+  (if (and (= "running" (:status run))
+           (> (:run-time run) timeout-sec))
+    (-> run
+        (assoc :status "timeout")
+        (assoc :end-time (t/plus (:start-time run) (t/duration 4 :hours)))
+        (assoc :note "Timed out.")
+        (dissoc :run-time))
+    (dissoc run :run-time)))
+
 (defn get-status
   [run-id mb-source]
   (->> (run-query! :postgres (config/config-str :mb-worker-db)
-                   "SELECT run_id, status, start_time, end_time, note
+                   "SELECT run_id, status, start_time, end_time, note, EXTRACT(EPOCH FROM now() - start_time) as run_time
                       FROM worker_runs
                       WHERE run_id = ? AND source = ?"
                    [run-id mb-source])
        first ;; row
-       (zipmap [:run-id :status :start-time :end-time :note])
+       (zipmap [:run-id :status :start-time :end-time :note :run-time])
+       handle-timeout
        not-empty))
 
 (defn timeout-old-tasks
