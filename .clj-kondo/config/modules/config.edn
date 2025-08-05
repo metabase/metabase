@@ -1129,9 +1129,7 @@
            events
            models
            permissions
-           premium-features
-           util
-           enterprise/advanced-permissions}}
+           util}}
 
   setup
   {:team "Admin Webapp"
@@ -1477,6 +1475,7 @@
   {:team "Admin Webapp"
    :api  #{metabase-enterprise.advanced-permissions.api.routes
            metabase-enterprise.advanced-permissions.common
+           metabase-enterprise.advanced-permissions.init
            metabase-enterprise.advanced-permissions.models.permissions.group-manager}
    :uses #{api
            lib
@@ -1484,6 +1483,7 @@
            premium-features
            query-permissions
            query-processor
+           settings
            util
            warehouses
            enterprise/impersonation}}
