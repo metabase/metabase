@@ -249,6 +249,6 @@ describe("Database connection strings", () => {
     );
 
     cy.findByLabelText("Port").should("have.value", "1111");
-    cy.findByTestId("select-button-content").should("have.text", "PostgreSQL");
+    cy.findByLabelText("Database type").should("have.text", "PostgreSQL");
   });
 });

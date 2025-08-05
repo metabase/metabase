@@ -1,11 +1,13 @@
 import { useTimeout } from "@mantine/hooks";
 import type { FormikErrors } from "formik";
-import { useEffect, useState } from "react";
+import { type SetStateAction, useEffect, useState } from "react";
 import { c, t } from "ttag";
 
 import { Group, Icon, Text, Textarea, Transition } from "metabase/ui";
 import type { DatabaseData } from "metabase-types/api";
 import { type EngineKey, engineKeys } from "metabase-types/api/settings";
+
+import { setDatabaseFormValues } from "../../utils/schema";
 
 import {
   connectionStringParsedFailed,
@@ -31,8 +33,8 @@ export function DatabaseConnectionStringField({
   location,
 }: {
   setValues: (
-    values: DatabaseData,
-    shouldValidate: boolean,
+    values: SetStateAction<DatabaseData>,
+    shouldValidate?: boolean,
   ) => Promise<void | FormikErrors<DatabaseData>>;
   engineKey: string | undefined;
   location: "admin" | "setup" | "embedding_setup";
@@ -68,7 +70,9 @@ export function DatabaseConnectionStringField({
 
         const fieldsMap = mapDatabaseValues(parsedValues, engineKey);
         const fields = mapFieldsToNestedObject(fieldsMap) as DatabaseData;
-        await setValues(fields, true);
+        await setValues((previousValues) =>
+          setDatabaseFormValues(previousValues, fields),
+        );
 
         // if there are no values, we couldn't get any details from the connection string
         const hasValues = hasNonUndefinedValue(fieldsMap);

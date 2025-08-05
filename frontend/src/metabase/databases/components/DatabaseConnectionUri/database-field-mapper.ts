@@ -156,6 +156,7 @@ function mapPostgresValues(parsedValues: RegexFields) {
       objectToString(parsedValues.params, ["ssl"]),
     ],
   ]);
+
   return fieldsMap;
 }
 

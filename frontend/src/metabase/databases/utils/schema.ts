@@ -136,3 +136,17 @@ const isFieldVisible = (
       : value === details?.[name],
   );
 };
+
+export function setDatabaseFormValues(
+  previousValues: DatabaseData,
+  newValues: DatabaseData,
+) {
+  return {
+    ...previousValues,
+    ...newValues,
+    details: {
+      ...previousValues.details,
+      ...newValues.details,
+    },
+  };
+}
