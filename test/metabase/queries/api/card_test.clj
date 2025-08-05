@@ -432,8 +432,7 @@
           :id           card-1-id
           :user-id      user-id
           :is-creation? true
-          :object {:id          card-1-id
-                   :card_schema 20}}))
+          :object {:id card-1-id}}))
 
       (doseq [user-id [(mt/user->id :crowberto) (mt/user->id :rasta)]]
         (revision/push-revision!
@@ -441,8 +440,7 @@
           :id           card-2-id
           :user-id      user-id
           :is-creation? true
-          :object {:id          card-2-id
-                   :card_schema 20}}))
+          :object {:id card-2-id}}))
       (let [results (m/index-by :id (mt/user-http-request :rasta :get 200 "card"))]
         (is (=? {:name           "Card 1"
                  :last-edit-info {:id         (mt/user->id :rasta)
