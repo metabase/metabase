@@ -29,8 +29,11 @@
      :type     :query
      :query    {:source-table table-id}})))
 
-(defn- next-batch-num [undo-or-redo user-id scope]
-  (undo/next-batch-num undo-or-redo user-id scope))
+(defn next-batch-num
+  "Return the batch number of the new change that we would (un-)revert.
+  NOTE: this does not check whether there is a conflict preventing us from actually performing it."
+  [undo-or-redo user-id scope]
+  (:batch_num (first (#'undo/next-batch (= :undo undo-or-redo) user-id scope))))
 
 (defn- undo-via-api! [user-id scope]
   (mt/user-http-request user-id :post "/ee/action-v2/execute-bulk"

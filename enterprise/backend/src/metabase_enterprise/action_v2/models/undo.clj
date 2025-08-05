@@ -89,14 +89,22 @@
 (defn- prune-batches! [batches-to-keep & [where]]
   (prune-from-batch! (batch-to-prune-from batches-to-keep where) where))
 
+(defn- next-sequence!
+  [seq-name]
+  (if-let [batch-num (t2/select-one-fn :next_val [:sequences :next_val] :name seq-name {:for :update})]
+    (do
+      (t2/update! :sequences {:name seq-name} {:next_val (inc batch-num)})
+      batch-num)
+    (do
+      (t2/insert! :sequences {:name seq-name :next_val 1})
+      0)))
+
 (defn track-change!
   "Insert some snapshot data based on edits made to the given table."
   [user-id scope table-id->row-pk->values]
   (let [scope (serialize-scope scope)]
     (t2/with-transaction [_conn]
-      (let [seq-name       "undo_batch_num"
-            next-batch-num (or (t2/select-one-fn :next_val [:sequences :next_val] :name seq-name {:for :update}) 1)]
-        (t2/update! :sequences {:name seq-name} {:next_val (inc next-batch-num)})
+      (let [next-batch-num (next-sequence! "undo_batch_num")]
         (t2/insert!
          :model/Undo
          (for [[table-id table-updates] table-id->row-pk->values
@@ -122,12 +130,6 @@
                             (batch-to-prune-from retention-total-batches)))
     (prune-batches! retention-batches-per-scope [:= :scope scope])
     (prune-batches! retention-batches-per-user [:= :user_id user-id])))
-
-(defn next-batch-num
-  "Return the batch number of the new change that we would (un-)revert.
-  NOTE: this does not check whether there is a conflict preventing us from actually performing it."
-  [undo-or-redo user-id scope]
-  (:batch_num (first (next-batch (= :undo undo-or-redo) user-id scope))))
 
 ;; This will be used to fix conflict false positives
 #_{:clj-kondo/ignore [:unused-private-var]}
