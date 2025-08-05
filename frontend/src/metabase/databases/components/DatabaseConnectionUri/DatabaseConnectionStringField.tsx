@@ -41,7 +41,7 @@ export function DatabaseConnectionStringField({
 }) {
   const [connectionString, setConnectionString] = useState("");
   const [status, setStatus] = useState<"success" | "failure" | null>(null);
-  const { start: deleayedClearStatus, clear: clearTimeout } = useTimeout(
+  const { start: delayedClearStatus, clear: clearTimeout } = useTimeout(
     () => setStatus(null),
     FEEDBACK_TIMEOUT,
   );
@@ -54,7 +54,7 @@ export function DatabaseConnectionStringField({
     () => {
       async function handleConnectionStringChange() {
         if (!connectionString || !isEngineKey(engineKey)) {
-          deleayedClearStatus();
+          delayedClearStatus();
           return () => clearTimeout();
         }
 
@@ -63,7 +63,7 @@ export function DatabaseConnectionStringField({
         // it was not possible to parse the connection string
         if (!parsedValues) {
           setStatus("failure");
-          deleayedClearStatus();
+          delayedClearStatus();
           connectionStringParsedFailed(location);
           return () => clearTimeout();
         }
@@ -78,7 +78,7 @@ export function DatabaseConnectionStringField({
         const hasValues = hasNonUndefinedValue(fieldsMap);
         setStatus(hasValues ? "success" : "failure");
 
-        deleayedClearStatus();
+        delayedClearStatus();
         connectionStringParsedSuccess(location);
 
         return () => {
@@ -90,7 +90,7 @@ export function DatabaseConnectionStringField({
     },
     // We don't want to rerun this effect when engineKey changes
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [connectionString, setValues, deleayedClearStatus, clearTimeout, setStatus],
+    [connectionString, setValues, delayedClearStatus, clearTimeout, setStatus],
   );
 
   if (!isEngineKey(engineKey)) {
