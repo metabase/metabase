@@ -122,7 +122,7 @@
       ;; Verify that the card's collection_id was updated to nil
       (is (nil? (:collection_id (t2/select-one :model/Card :id card-id)))))))
 
-(deftest document-collection-sync-hook-only-affects-in-document-cards-test
+(deftest document-collection-sync-hook-only-affects-cards-test
   (testing "Hook only updates cards with  matching document_id"
     (mt/with-temp
       [:model/Collection {old-collection-id :id} {:name "Old Collection"}
@@ -131,11 +131,12 @@
                                           :name "Test Document"}
        ;; Card that should be updated (correct type and document_id)
        :model/Card {in-document-card-id :id} {:name "In-Document Card"
+                                              :type :question
                                               :document_id document-id
                                               :collection_id old-collection-id}
-       ;; Card that should NOT be updated (wrong type)
+       ;; Card that should be updated (wrong type)
        :model/Card {question-card-id :id} {:name "Question Card"
-                                           :type :question
+                                           :type :model
                                            :collection_id old-collection-id}
        ;; Card that should NOT be updated (no document_id)
        :model/Card {regular-card-id :id} {:name "Regular Card"
@@ -305,3 +306,56 @@
       (mt/with-current-user (mt/user->id :crowberto)
         ;; Superuser should be able to move without explicit permissions
         (is (true? (document/validate-collection-move-permissions old-collection-id new-collection-id)))))))
+
+(deftest hydrate-document-creator-test
+  (testing "hydrates document creator correctly"
+    (mt/with-temp [:model/User {user-id :id} {:first_name "John"
+                                              :last_name "Doe"
+                                              :email "john.doe@example.com"}
+                   :model/Document {document-id :id} {:name "Test Document"
+                                                      :creator_id user-id}]
+      (let [hydrated-doc (t2/hydrate (t2/select-one :model/Document :id document-id) :creator)]
+        (testing "creator is hydrated with correct user data"
+          (is (some? (:creator hydrated-doc)))
+          (is (= user-id (get-in hydrated-doc [:creator :id])))
+          (is (= "John" (get-in hydrated-doc [:creator :first_name])))
+          (is (= "Doe" (get-in hydrated-doc [:creator :last_name])))
+          (is (= "john.doe@example.com" (get-in hydrated-doc [:creator :email]))))))))
+
+(deftest hydrate-multiple-documents-creator-test
+  (testing "hydrates creators for multiple documents efficiently"
+    (mt/with-temp [:model/User {user1-id :id} {:first_name "Alice"
+                                               :last_name "Smith"
+                                               :email "alice@example.com"}
+                   :model/User {user2-id :id} {:first_name "Bob"
+                                               :last_name "Jones"
+                                               :email "bob@example.com"}
+                   :model/Document {doc1-id :id} {:name "Document 1"
+                                                  :creator_id user1-id}
+                   :model/Document {doc2-id :id} {:name "Document 2"
+                                                  :creator_id user2-id}
+                   :model/Document {doc3-id :id} {:name "Document 3"
+                                                  :creator_id user1-id}] ; Same creator as doc1
+      (let [documents (t2/select :model/Document :id [:in [doc1-id doc2-id doc3-id]])
+            hydrated-docs (t2/hydrate documents :creator)]
+        (testing "all documents have their creators hydrated"
+          (is (= 3 (count hydrated-docs)))
+          (doseq [doc hydrated-docs]
+            (is (some? (:creator doc)))
+            (is (some? (get-in doc [:creator :id])))
+            (is (some? (get-in doc [:creator :first_name])))
+            (is (some? (get-in doc [:creator :last_name])))
+            (is (some? (get-in doc [:creator :email])))))
+
+        (testing "creators are correctly matched to documents"
+          (let [doc1 (first (filter #(= doc1-id (:id %)) hydrated-docs))
+                doc2 (first (filter #(= doc2-id (:id %)) hydrated-docs))
+                doc3 (first (filter #(= doc3-id (:id %)) hydrated-docs))]
+            (is (= user1-id (get-in doc1 [:creator :id])))
+            (is (= "Alice" (get-in doc1 [:creator :first_name])))
+
+            (is (= user2-id (get-in doc2 [:creator :id])))
+            (is (= "Bob" (get-in doc2 [:creator :first_name])))
+
+            (is (= user1-id (get-in doc3 [:creator :id])))
+            (is (= "Alice" (get-in doc3 [:creator :first_name])))))))))

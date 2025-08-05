@@ -31,13 +31,13 @@
   [id]
   (api/check-404
    (api/read-check
-    (t2/select-one :model/Document :id id))))
+    (t2/hydrate (t2/select-one :model/Document :id id) :creator))))
 
 (api.macros/defendpoint :get "/"
   "Gets existing `Documents`."
   [_route-params
    _query-params]
-  (t2/select :model/Document {:where (collection/visible-collection-filter-clause)}))
+  (t2/hydrate (t2/select :model/Document {:where (collection/visible-collection-filter-clause)}) :creator))
 
 (def ^:private prose-mirror-content-type "application/json+vnd.prose-mirro")
 
