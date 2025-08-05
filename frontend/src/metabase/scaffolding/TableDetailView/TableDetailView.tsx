@@ -26,7 +26,7 @@ export function TableDetailView({
   isEdit = false,
 }: TableDetailViewLoaderProps) {
   const tableId = parseInt(params.tableId, 10);
-  const rowId = parseInt(params.rowId, 10);
+  const rowId = params.rowId;
 
   const { data: table } = useGetTableQueryMetadataQuery({ id: tableId });
   const { data: tableForeignKeys = [] } = useListTableForeignKeysQuery(tableId);

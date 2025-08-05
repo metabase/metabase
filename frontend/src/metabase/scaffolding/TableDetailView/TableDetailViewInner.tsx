@@ -38,7 +38,7 @@ import { useForeignKeyReferences } from "./use-foreign-key-references";
 
 interface TableDetailViewProps {
   tableId: number;
-  rowId: number;
+  rowId: number | string;
   dataset: Dataset;
   table: any;
   tableForeignKeys: any[];
