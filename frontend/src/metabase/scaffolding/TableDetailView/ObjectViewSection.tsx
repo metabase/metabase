@@ -131,6 +131,7 @@ export function ObjectViewSection({
                 </Tooltip>
               </Box>
               <Ellipsified
+                alwaysShowTooltip={variant === "subheader"}
                 variant="primary"
                 truncate={variant !== "highlight-2"}
                 c="var(--mb-color-text-primary)"
@@ -140,6 +141,9 @@ export function ObjectViewSection({
                 }}
                 className={S.FieldValue}
                 fz={undefined}
+                {...(variant === "subheader" && {
+                  tooltip: column.display_name,
+                })}
               >
                 {renderValue(tc, value, column)}
               </Ellipsified>
