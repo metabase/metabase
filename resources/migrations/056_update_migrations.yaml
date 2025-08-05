@@ -248,6 +248,27 @@ databaseChangeLog:
                   constraints:
                     nullable: false
               - column:
+                  name: document
+                  remarks: content of the document
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+              - column:
+                  name: content_type
+                  remarks: the content_type of the document column
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+              - column:
+                  name: creator_id
+                  remarks: User who created this document
+                  type: int
+                  constraints:
+                    nullable: false
+                    referencedTableName: core_user
+                    referencedColumnNames: id
+                    foreignKeyName: fk_document_user_id
+              - column:
                   name: updated_at
                   remarks: The timestamp of when the document was updated
                   type: ${timestamp_type}
@@ -275,131 +296,6 @@ databaseChangeLog:
             onDelete: CASCADE
 
   - changeSet:
-      id: v56.2025-07-21T12:01:00
-      author: edpaget
-      comment: Create document_version table
-      changes:
-        - createTable:
-            tableName: document_version
-            remarks: Document versions table
-            columns:
-              - column:
-                  name: id
-                  remarks: Unique ID
-                  type: int
-                  autoIncrement: true
-                  constraints:
-                    primaryKey: true
-                    nullable: false
-              - column:
-                  name: document_id
-                  remarks: Referenced document
-                  type: int
-                  constraints:
-                    nullable: false
-                    referencedTableName: document
-                    referencedColumnNames: id
-                    foreignKeyName: fk_document_version_document_id
-                    deleteCascade: true
-              - column:
-                  name: document
-                  remarks: content of the document version
-                  type: ${text.type}
-                  constraints:
-                    nullable: false
-              - column:
-                  name: content_type
-                  remarks: the content_type of the document column
-                  type: ${text.type}
-                  constraints:
-                    nullable: false
-              - column:
-                  name: version_identifier
-                  remarks: Version number
-                  type: int
-                  constraints:
-                    nullable: false
-              - column:
-                  name: user_id
-                  remarks: User who created this version
-                  type: int
-                  constraints:
-                    nullable: false
-                    referencedTableName: core_user
-                    referencedColumnNames: id
-                    foreignKeyName: fk_document_version_user_id
-              - column:
-                  name: created_at
-                  remarks: The timestamp of when the version was created
-                  type: ${timestamp_type}
-                  defaultValueComputed: current_timestamp
-                  constraints:
-                    nullable: false
-              - column:
-                  remarks: The timestamp of when the version was updated
-                  name: updated_at
-                  type: ${timestamp_type}
-                  defaultValueComputed: current_timestamp
-                  constraints:
-                    nullable: false
-
-  - changeSet:
-      id: v56.2025-07-21T12:01:56
-      author: edpaget
-      comment: add current_version_id column to document
-      changes:
-        - addColumn:
-            tableName: document
-            columns:
-              - column:
-                  name: current_version_id
-                  remarks: current version of a document that should be loaded by default
-                  type: int
-                  constraints:
-                    nullable: true
-
-  - changeSet:
-      id: v56.2025-07-21T12:01:57
-      author: edpaget
-      comment: add parent_version_id column to document_version
-      changes:
-        - addColumn:
-            tableName: document_version
-            columns:
-              - column:
-                  name: parent_version_id
-                  remarks: the document_version this version was created from
-                  type: int
-                  constraints:
-                    nullable: true
-
-  - changeSet:
-      id: v56.2025-07-21T12:01:58
-      author: edpaget
-      comment: add foreign key constraint for current_version_id in document
-      changes:
-        - addForeignKeyConstraint:
-            baseTableName: document
-            baseColumnNames: current_version_id
-            referencedTableName: document_version
-            referencedColumnNames: id
-            constraintName: fk_current_document_version_id
-            onDelete: CASCADE
-
-  - changeSet:
-      id: v56.2025-07-21T12:01:59
-      author: edpaget
-      comment: add foreign key constraint for parent_version_id in document_version
-      changes:
-        - addForeignKeyConstraint:
-            baseTableName: document_version
-            baseColumnNames: parent_version_id
-            referencedTableName: document_version
-            referencedColumnNames: id
-            constraintName: fk_parent_document_version_id
-            onDelete: CASCADE
-
-  - changeSet:
       id: v56.2025-07-29T17:23:32
       author: edpaget
       comment: Add document_id column to report_card table
@@ -409,7 +305,7 @@ databaseChangeLog:
             columns:
               - column:
                   name: document_id
-                  remarks: Associates cards with a particular report version
+                  remarks: Associates cards with a particular document
                   type: int
                   constraints:
                     nullable: true

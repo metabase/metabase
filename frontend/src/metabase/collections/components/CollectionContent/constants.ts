@@ -32,5 +32,5 @@ export const ALL_MODELS: CollectionItemModel[] = [
   "metric",
   "snippet",
   "collection",
-  "report",
+  "document",
 ];

@@ -49,11 +49,10 @@
   [topic {:keys [card-id user-id context] :as _event}]
   (try
     (let [user-id  (or user-id api/*current-user-id*)]
-      ;; we don't want to count pinned card views or in_document cards
-      (when-not (#{:collection :dashboard :dashboard-subscription} context)
-        (let [card-type (t2/select-one-fn :type :model/Card :id card-id)]
-          (when-not (= card-type :in_document)
-            (recent-views/update-users-recent-views! user-id :model/Card card-id :view)))))
+      ;; we don't want to count pinned card views or document cards
+      (when-not (or (#{:collection :dashboard :dashboard-subscription} context)
+                    (some? (t2/select-one-fn :document_id :model/Card :id card-id)))
+        (recent-views/update-users-recent-views! user-id :model/Card card-id :view)))
     (catch Throwable e
       (log/warnf e "Failed to process recent_views event: %s" topic))))
 
@@ -65,12 +64,12 @@
   "Handle recent-view processing for card reads"
   [topic {:keys [object-id user-id context]}]
   ;; Cards can be read indirectly, either through a pinned collection, or in a dashboard.
-  ;; We only want to count direct views of cards, so we skip processing for indirect views here:
-  (when (= context :question)
+  ;; We only want to count direct views of cards, so we skip processing for indirect views here.
+  ;; Also skip document cards.
+  (when (and (= context :question)
+             (nil? (t2/select-one-fn :document_id :model/Card :id object-id)))
     (try
-      (let [card-type (t2/select-one-fn :type :model/Card :id object-id)]
-        (when-not (= card-type :in_document)
-          (recent-views/update-users-recent-views! (or user-id api/*current-user-id*) :model/Card object-id :view)))
+      (recent-views/update-users-recent-views! (or user-id api/*current-user-id*) :model/Card object-id :view)
       (catch Throwable e
         (log/warnf e "Failed to process recent_views event: %s" topic)))))
 

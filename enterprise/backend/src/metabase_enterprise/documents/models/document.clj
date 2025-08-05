@@ -4,24 +4,19 @@
    [metabase.collections.models.collection :as collection]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
+   [metabase.users.models.user]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
-(defmethod mi/can-read? :model/Document
-  ([instance]
-   (mi/current-user-has-full-permissions? (perms/perms-objects-set-for-parent-collection instance :read)))
-  ([_ pk]
-   (mi/can-read? (t2/select-one :model/Document :id pk))))
-
-(defmethod mi/can-write? :model/Document
-  ([_instance] api/*is-superuser?*)
-  ([_ _pk] api/*is-superuser?*))
-
 (methodical/defmethod t2/table-name :model/Document [_model] :document)
+
+(t2/deftransforms :model/Document
+  {:document mi/transform-json})
 
 (doto :model/Document
   (derive :metabase/model)
+  (derive :perms/use-parent-collection-perms)
   (derive :hook/timestamped?))
 
 (defn validate-collection-move-permissions
@@ -36,21 +31,24 @@
   (when new-collection-id
     (api/check-400 (t2/exists? :model/Collection :id new-collection-id :archived false))))
 
+(methodical/defmethod t2/batched-hydrate [:model/Document :creator]
+  "Hydrate the creator (user) of a document based on the creator_id."
+  [_model k documents]
+  (mi/instances-with-hydrated-data
+   documents k
+   #(-> (t2/select [:model/User :id :email :first_name :last_name] :id (keep :creator_id documents))
+        (map (juxt :id identity))
+        (into {}))
+   :creator_id {:default {}}))
+
 (defn sync-document-cards-collection!
-  "Updates all cards associated with a document to match the document's collection_id.
-   Takes a document-id and new-collection-id as parameters.
-   Uses bulk t2/update! operation for efficiency and operates within a transaction.
-   Only updates cards with type = :in_document and matching document_document_id."
-  [document-id new-collection-id]
-  (let [updated-count (t2/update! :model/Card
-                                  {:document_id document-id
-                                   :type :in_document}
-                                  {:collection_id new-collection-id})]
-    (when (> updated-count 0)
-      (log/debugf "Successfully updated %d cards to collection %s"
-                  updated-count new-collection-id))
-    updated-count))
+  "Updates all cards associated with a document to match the document's collection.
+  Returns the number of cards updated."
+  [document-id collection-id]
+  (t2/update! :model/Card
+              :document_id document-id
+              {:collection_id collection-id}))
 
 (t2/define-after-update :model/Document
-  [{document-id :id new-collection-id :collection_id}]
-  (sync-document-cards-collection! document-id new-collection-id))
+  [{:keys [id collection_id]}]
+  (sync-document-cards-collection! id collection_id))

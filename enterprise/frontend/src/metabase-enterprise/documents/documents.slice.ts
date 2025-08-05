@@ -10,22 +10,22 @@ import type {
 
 import type { CardEmbedRef } from "./components/Editor/types";
 
+let nextDraftCardId = -1;
+
 export interface DocumentsState {
-  // Index in cardEmbeds array
   selectedEmbedIndex: number | null;
-  draftCard: Card | null;
   cardEmbeds: CardEmbedRef[];
   currentDocument: Document | null;
-  // Flag to show navigate back to document button (set when navigating from document to question)
   showNavigateBackToDocumentButton: boolean;
+  draftCards: Record<number, Card>;
 }
 
 const initialState: DocumentsState = {
   selectedEmbedIndex: null,
-  draftCard: null,
   cardEmbeds: [],
   currentDocument: null,
   showNavigateBackToDocumentButton: false,
+  draftCards: {},
 };
 
 const documentsSlice = createSlice({
@@ -34,42 +34,36 @@ const documentsSlice = createSlice({
   reducers: {
     openVizSettingsSidebar: (
       state,
-      action: PayloadAction<{ embedIndex: number; card: Card }>,
+      action: PayloadAction<{ embedIndex: number }>,
     ) => {
       state.selectedEmbedIndex = action.payload.embedIndex;
-      // Initialize draftCard from the provided card
-      state.draftCard = { ...action.payload.card };
     },
     updateVizSettings: (
       state,
       action: PayloadAction<{
+        cardId: number;
         settings: VisualizationSettings;
       }>,
     ) => {
-      const { settings } = action.payload;
-      if (state.draftCard) {
-        state.draftCard.visualization_settings = {
-          ...state.draftCard.visualization_settings,
+      const { cardId, settings } = action.payload;
+      if (state.draftCards[cardId]) {
+        state.draftCards[cardId].visualization_settings = {
+          ...state.draftCards[cardId].visualization_settings,
           ...settings,
         };
       }
     },
     updateVisualizationType: (
       state,
-      action: PayloadAction<{ display: CardDisplayType }>,
+      action: PayloadAction<{ cardId: number; display: CardDisplayType }>,
     ) => {
-      const { display } = action.payload;
-      if (state.draftCard) {
-        state.draftCard.display = display;
+      const { cardId, display } = action.payload;
+      if (state.draftCards[cardId]) {
+        state.draftCards[cardId].display = display;
       }
-    },
-    clearDraftState: (state) => {
-      state.draftCard = null;
-      state.selectedEmbedIndex = null;
     },
     closeSidebar: (state) => {
       state.selectedEmbedIndex = null;
-      state.draftCard = null;
     },
     setCardEmbeds: (state, action: PayloadAction<CardEmbedRef[]>) => {
       state.cardEmbeds = action.payload;
@@ -83,7 +77,39 @@ const documentsSlice = createSlice({
     ) => {
       state.showNavigateBackToDocumentButton = action.payload;
     },
-    resetDocuments: () => initialState,
+    resetDocuments: () => {
+      return initialState;
+    },
+    createDraftCard: (
+      state,
+      action: PayloadAction<{
+        originalCard: Card;
+        modifiedData: Partial<Card>;
+        draftId: number;
+      }>,
+    ) => {
+      const { originalCard, modifiedData, draftId } = action.payload;
+      state.draftCards[draftId] = {
+        ...originalCard,
+        ...modifiedData,
+        id: draftId,
+      };
+    },
+    updateDraftCard: (
+      state,
+      action: PayloadAction<{ id: number; modifiedData: Partial<Card> }>,
+    ) => {
+      const { id, modifiedData } = action.payload;
+      if (state.draftCards[id]) {
+        state.draftCards[id] = {
+          ...state.draftCards[id],
+          ...modifiedData,
+        };
+      }
+    },
+    clearDraftCards: (state) => {
+      state.draftCards = {};
+    },
   },
   extraReducers: (builder) => {
     builder.addCase(CLOSE_QB, (state) => {
@@ -96,12 +122,20 @@ export const {
   openVizSettingsSidebar,
   updateVizSettings,
   updateVisualizationType,
-  clearDraftState,
   closeSidebar,
   setCardEmbeds,
   setCurrentDocument,
   setShowNavigateBackToDocumentButton,
   resetDocuments,
+  createDraftCard,
+  updateDraftCard,
+  clearDraftCards,
 } = documentsSlice.actions;
+
+export const generateDraftCardId = (): number => {
+  const draftId = nextDraftCardId;
+  nextDraftCardId -= 1;
+  return draftId;
+};
 
 export const documentsReducer = documentsSlice.reducer;

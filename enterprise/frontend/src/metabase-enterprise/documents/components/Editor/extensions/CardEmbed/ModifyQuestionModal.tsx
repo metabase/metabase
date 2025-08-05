@@ -4,6 +4,8 @@ import { useAsync } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { skipToken } from "metabase/api";
+import { useGetAdhocQueryMetadataQuery } from "metabase/api/dataset";
 import { useDispatch, useStore } from "metabase/lib/redux";
 import { Notebook } from "metabase/querying/notebook/components/Notebook";
 import { loadMetadataForCard } from "metabase/questions/actions";
@@ -13,9 +15,14 @@ import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type { Card } from "metabase-types/api";
 
-import { useDocumentCardSave } from "../../../../hooks";
-import { useDocumentsSelector } from "../../../../redux-utils";
-import { getDocumentCollectionId } from "../../../../selectors";
+import {
+  createDraftCard,
+  generateDraftCardId,
+} from "../../../../documents.slice";
+import {
+  useDocumentsDispatch,
+  useDocumentsSelector,
+} from "../../../../redux-utils";
 
 interface ModifyQuestionModalProps {
   card: Card;
@@ -34,25 +41,37 @@ export const ModifyQuestionModal = ({
 }: ModifyQuestionModalProps) => {
   const store = useStore();
   const dispatch = useDispatch();
+  const documentsDispatch = useDocumentsDispatch();
   const metadata = useDocumentsSelector(getMetadata);
-  const documentCollectionId = useDocumentsSelector(getDocumentCollectionId);
   const [modifiedQuestion, setModifiedQuestion] = useState<Question | null>(
     null,
   );
-  const { saveCard } = useDocumentCardSave(documentCollectionId);
+
+  const isDraftCard = card.id < 0;
+  const { data: adhocMetadata, isLoading: isAdhocMetadataLoading } =
+    useGetAdhocQueryMetadataQuery(
+      isDraftCard && card.dataset_query ? card.dataset_query : skipToken,
+      { skip: !isDraftCard || !card.dataset_query },
+    );
 
   const metadataState = useAsync(async () => {
-    if (isOpen && card) {
+    if (isOpen && card && !isDraftCard) {
       await dispatch(loadMetadataForCard(card));
     }
-  }, [isOpen, card, dispatch]);
+  }, [isOpen, card, dispatch, isDraftCard]);
 
   const question = useMemo(() => {
+    const isMetadataLoading = isDraftCard
+      ? isAdhocMetadataLoading
+      : metadataState.loading;
+    const hasMetadataError = isDraftCard ? false : metadataState.error;
+    const hasMetadata = isDraftCard ? !!adhocMetadata : !!metadata;
+
     if (
-      metadataState.loading ||
-      metadataState.error ||
+      isMetadataLoading ||
+      hasMetadataError ||
       !card ||
-      !metadata ||
+      !hasMetadata ||
       !isOpen
     ) {
       return null;
@@ -64,8 +83,11 @@ export const ModifyQuestionModal = ({
     }
     return baseQuestion;
   }, [
+    isDraftCard,
+    isAdhocMetadataLoading,
     metadataState.loading,
     metadataState.error,
+    adhocMetadata,
     card,
     metadata,
     isOpen,
@@ -88,37 +110,46 @@ export const ModifyQuestionModal = ({
     );
 
     if (!_.isEqual(currentDependencies, nextDependencies)) {
-      await dispatch(loadMetadataForCard(newQuestion.card()));
-
-      const freshMetadata = getMetadata(store.getState());
-      const questionWithFreshMetadata = new Question(
-        newQuestion.card(),
-        freshMetadata,
-      );
-      setModifiedQuestion(questionWithFreshMetadata);
+      if (!isDraftCard) {
+        await dispatch(loadMetadataForCard(newQuestion.card()));
+        const freshMetadata = getMetadata(store.getState());
+        const questionWithFreshMetadata = new Question(
+          newQuestion.card(),
+          freshMetadata,
+        );
+        setModifiedQuestion(questionWithFreshMetadata);
+      } else {
+        setModifiedQuestion(newQuestion);
+      }
     } else {
       setModifiedQuestion(newQuestion);
     }
   };
 
   const handleSave = async () => {
-    if (!modifiedQuestion) {
+    if (!modifiedQuestion || !editor) {
       return;
     }
 
     try {
-      const result = await saveCard({
-        card,
-        modifiedCardData: {
-          dataset_query: modifiedQuestion.datasetQuery(),
-          display: modifiedQuestion.display(),
-          visualization_settings:
-            modifiedQuestion.card().visualization_settings ?? {},
-        },
-        editor,
-      });
+      const modifiedData = {
+        dataset_query: modifiedQuestion.datasetQuery(),
+        display: modifiedQuestion.display(),
+        visualization_settings:
+          modifiedQuestion.card().visualization_settings ?? {},
+      };
 
-      onSave(result);
+      const newCardId = generateDraftCardId();
+
+      documentsDispatch(
+        createDraftCard({
+          originalCard: card,
+          modifiedData,
+          draftId: newCardId,
+        }),
+      );
+
+      onSave({ card_id: newCardId, name: card.name });
       onClose();
     } catch (error) {
       console.error("Failed to save modified question:", error);
@@ -133,7 +164,7 @@ export const ModifyQuestionModal = ({
       title={t`Modify question`}
       padding="lg"
     >
-      {metadataState.loading ? (
+      {(isDraftCard ? isAdhocMetadataLoading : metadataState.loading) ? (
         <Box
           style={{
             height: "70vh",

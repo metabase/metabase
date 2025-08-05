@@ -37,6 +37,7 @@
     :model/Database                          metabase.warehouses.models.database
     :model/DatabaseRouter                    metabase-enterprise.database-routing.model
     :model/Dimension                         metabase.warehouse-schema.models.dimension
+    :model/Document                          metabase-enterprise.documents.models.document
     :model/Field                             metabase.warehouse-schema.models.field
     :model/FieldUserSettings                 metabase.warehouse-schema.models.field-user-settings
     :model/FieldValues                       metabase.warehouse-schema.models.field-values
@@ -73,8 +74,6 @@
     :model/QueryField                        metabase.queries.models.query-field
     :model/QueryTable                        metabase.queries.models.query-table
     :model/RecentViews                       metabase.activity-feed.models.recent-views
-    :model/Document                          metabase-enterprise.documents.models.document
-    :model/DocumentVersion                   metabase-enterprise.documents.models.document-version
     :model/Revision                          metabase.revisions.models.revision
     :model/SearchIndexMetadata               metabase.search.models.search-index-metadata
     :model/Secret                            metabase.secrets.models.secret

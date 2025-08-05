@@ -250,14 +250,16 @@
 
    :model/Document
    (fn [_] (default-timestamped
-            {:name (u.random/random-name)}))
-
-   :model/DocumentVersion
-   (fn [_] (default-timestamped
-            {:document (u.random/random-name)
-             :content_type "text/markdown"
-             :version_identifier 0
-             :user_id (rasta-id)}))
+            {:name (u.random/random-name)
+             :document {:type "doc"
+                        :content [{:type "paragraph"
+                                   :content [{:type "text"
+                                              :text "Hello"}]}
+                                  {:type "paragraph"
+                                   :content [{:type "text"
+                                              :text "World"}]}]}
+             :content_type "application/json+vnd.prose-mirror"
+             :creator_id (rasta-id)}))
 
    :model/Revision
    (fn [_] {:user_id (rasta-id)

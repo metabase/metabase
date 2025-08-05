@@ -1,6 +1,8 @@
 import type {
+  Card,
   CreateDocumentRequest,
   Document,
+  DocumentContent,
   DocumentId,
 } from "metabase-types/api";
 
@@ -9,11 +11,10 @@ import { idTag } from "./tags";
 
 export const documentApi = EnterpriseApi.injectEndpoints({
   endpoints: (builder) => ({
-    getDocument: builder.query<Document, { id: DocumentId; version?: number }>({
-      query: ({ id, version }) => ({
+    getDocument: builder.query<Document, { id: DocumentId }>({
+      query: ({ id }) => ({
         method: "GET",
         url: `/api/ee/document/${id}`,
-        params: { version },
       }),
       providesTags: (result, error, { id }) =>
         !error ? [idTag("document", id)] : [],
@@ -28,8 +29,9 @@ export const documentApi = EnterpriseApi.injectEndpoints({
     }),
     updateDocument: builder.mutation<
       Document,
-      Pick<Document, "id" | "name" | "document"> & {
-        card_ids?: number[];
+      Pick<Document, "id" | "name"> & {
+        document?: DocumentContent;
+        cards?: Record<number, Card>;
       }
     >({
       query: (document) => ({
@@ -38,7 +40,7 @@ export const documentApi = EnterpriseApi.injectEndpoints({
         body: document,
       }),
       invalidatesTags: (_, error, { id }) =>
-        !error ? [idTag("document", id), idTag("document-versions", id)] : [],
+        !error ? [idTag("document", id)] : [],
     }),
   }),
 });

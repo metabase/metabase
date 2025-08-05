@@ -15,7 +15,9 @@ import { useEffect } from "react";
  */
 export const useCardEmbedSelection = (
   editor: TiptapEditor | null,
-  onCardSelect: ((cardId: number | null) => void) | undefined,
+  onCardSelect:
+    | ((cardId: number | null, embedIndex?: number | null) => void)
+    | undefined,
 ): void => {
   useEffect(() => {
     if (!editor || !onCardSelect) {
@@ -28,28 +30,30 @@ export const useCardEmbedSelection = (
      */
     const updateSelection = () => {
       const { selection } = editor.state;
-      const node = editor.state.doc.nodeAt(selection.from);
+      const { doc } = editor.state;
 
-      // Check if the node at the cursor position is a question embed
-      if (node && node.type.name === "cardEmbed") {
-        onCardSelect(node.attrs.id);
-        return;
+      const nodeAtCursor = doc.nodeAt(selection.from);
+
+      if (nodeAtCursor && nodeAtCursor.type.name === "cardEmbed") {
+        // Find which embed index this node corresponds to
+        let embedIndex = -1;
+        let nodeCount = 0;
+
+        doc.descendants((node, pos) => {
+          if (node.type.name === "cardEmbed") {
+            if (pos === selection.from) {
+              embedIndex = nodeCount;
+              return false;
+            }
+            nodeCount++;
+          }
+          return true;
+        });
+
+        onCardSelect(nodeAtCursor.attrs.id, embedIndex);
+      } else {
+        onCardSelect(null, null);
       }
-
-      // If not directly on a question node, check if selection is inside a question embed
-      let foundCardId: number | null = null;
-
-      editor.state.doc.nodesBetween(selection.from, selection.to, (node) => {
-        if (node.type.name === "cardEmbed") {
-          foundCardId = node.attrs.id;
-          // Return false to stop iteration once we find a question embed
-          return false;
-        }
-        // Continue searching
-        return true;
-      });
-
-      onCardSelect(foundCardId);
     };
 
     // Initial selection check

@@ -1,11 +1,8 @@
-import { useCallback, useMemo } from "react";
+import type { Editor } from "@tiptap/react";
+import { useCallback } from "react";
 import { t } from "ttag";
 
-import { cardApi } from "metabase/api";
 import { useDispatch } from "metabase/lib/redux";
-import { isNotNull } from "metabase/lib/types";
-import { getSensibleVisualizations } from "metabase/query_builder/components/chart-type-selector/use-question-visualization-state";
-import { getMetadata } from "metabase/selectors/metadata";
 import {
   ActionIcon,
   Box,
@@ -17,31 +14,27 @@ import {
   Stack,
   Text,
 } from "metabase/ui";
-import visualizations from "metabase/visualizations";
 import { QuestionChartSettings } from "metabase/visualizations/components/ChartSettings";
-import Question from "metabase-lib/v1/Question";
 import type {
   CardDisplayType,
   VisualizationSettings,
 } from "metabase-types/api";
 
 import {
-  clearDraftState,
+  closeSidebar,
   updateVisualizationType,
   updateVizSettings,
 } from "../documents.slice";
-import { useDocumentActions } from "../hooks";
+import { useCardWithDataset } from "../hooks/useCardWithDataset";
+import { useDraftCardOperations } from "../hooks/useDraftCardOperations";
 import { useDocumentsSelector } from "../redux-utils";
-import {
-  getDocumentCardWithDraftSettings,
-  getHasDraftChanges,
-  getSelectedEmbedIndex,
-} from "../selectors";
+import { getSelectedEmbedIndex } from "../selectors";
+import { useVisualizationOptions } from "../utils/visualizationUtils";
 
 interface EmbedQuestionSettingsSidebarProps {
   cardId: number;
   onClose: () => void;
-  editorInstance?: any;
+  editorInstance?: Editor;
 }
 
 export const EmbedQuestionSettingsSidebar = ({
@@ -49,116 +42,75 @@ export const EmbedQuestionSettingsSidebar = ({
   editorInstance,
 }: EmbedQuestionSettingsSidebarProps) => {
   const dispatch = useDispatch();
-  const metadata = useDocumentsSelector(getMetadata);
   const selectedEmbedIndex = useDocumentsSelector(getSelectedEmbedIndex);
-  const { commitVisualizationChanges } = useDocumentActions();
 
-  const { data: card, isLoading: isCardLoading } = cardApi.useGetCardQuery(
-    { id: cardId },
-    { skip: !cardId },
-  );
-  const { data: dataset, isLoading: isResultsLoading } =
-    cardApi.useGetCardQueryQuery({ cardId }, { skip: !cardId || !card });
+  // Use extracted hook for card and dataset fetching
+  const {
+    cardWithDraft,
+    dataset,
+    isResultsLoading,
+    series,
+    question,
+    isCardLoading,
+    draftCard,
+    card,
+    regularDataset,
+  } = useCardWithDataset(cardId);
 
-  // Use card with draft settings merged for the sidebar
-  const cardWithDraft = useDocumentsSelector((state) =>
-    selectedEmbedIndex !== null && card
-      ? getDocumentCardWithDraftSettings(state, cardId, card)
-      : card,
-  );
+  // Use extracted hook for visualization options
+  const { sensibleItems, nonsensibleItems, selectedElem } =
+    useVisualizationOptions(dataset, cardWithDraft?.display as CardDisplayType);
 
-  const hasDraftChanges = useDocumentsSelector((state) =>
-    getHasDraftChanges(state, card),
-  );
-
-  const series = useMemo(() => {
-    return cardWithDraft && dataset?.data
-      ? [
-          {
-            card: cardWithDraft,
-            started_at: dataset.started_at,
-            data: dataset.data,
-          },
-        ]
-      : null;
-  }, [cardWithDraft, dataset]);
-
-  const question = useMemo(
-    () => (cardWithDraft ? new Question(cardWithDraft, metadata) : null),
-    [cardWithDraft, metadata],
-  );
-
-  const { sensibleVisualizations, nonSensibleVisualizations } = useMemo(() => {
-    return getSensibleVisualizations({ result: dataset ?? null });
-  }, [dataset]);
-
-  const getVisualizationItems = (visualizationType: CardDisplayType) => {
-    const visualization = visualizations.get(visualizationType);
-    if (!visualization) {
-      return null;
-    }
-
-    return {
-      value: visualizationType,
-      label: visualization.getUiName(),
-      iconName: visualization.iconName,
-    };
-  };
-
-  const sensibleItems = useMemo(
-    () => sensibleVisualizations.map(getVisualizationItems).filter(isNotNull),
-    [sensibleVisualizations],
-  );
-
-  const nonsensibleItems = useMemo(
-    () =>
-      nonSensibleVisualizations.map(getVisualizationItems).filter(isNotNull),
-    [nonSensibleVisualizations],
-  );
-
-  const selectedElem = useMemo(
-    () =>
-      getVisualizationItems(
-        (cardWithDraft?.display as CardDisplayType) ?? "table",
-      ) ??
-      sensibleItems[0] ??
-      nonsensibleItems[0],
-    [cardWithDraft?.display, sensibleItems, nonsensibleItems],
+  // Use extracted hook for draft card operations
+  const { ensureDraftCard } = useDraftCardOperations(
+    draftCard,
+    card,
+    cardId,
+    editorInstance,
+    selectedEmbedIndex,
+    regularDataset,
   );
 
   const handleSettingsChange = (settings: VisualizationSettings) => {
     if (selectedEmbedIndex !== null) {
-      dispatch(updateVizSettings({ settings }));
+      // If no draft exists, create one with the current settings change
+      if (!draftCard) {
+        const baseCard = card;
+        const newSettings = {
+          ...baseCard?.visualization_settings,
+          ...settings,
+        };
+        const actualCardId = ensureDraftCard(
+          { visualization_settings: newSettings },
+          true,
+        );
+        // Use the returned ID (might be different if this was a duplicate)
+        dispatch(updateVizSettings({ cardId: actualCardId, settings }));
+      } else {
+        // Draft already exists, just update it
+        dispatch(updateVizSettings({ cardId, settings }));
+      }
     }
   };
 
   const handleVisualizationTypeChange = (display: CardDisplayType) => {
     if (selectedEmbedIndex !== null) {
-      dispatch(updateVisualizationType({ display }));
+      // If no draft exists, create one with the current display change
+      if (!draftCard) {
+        const actualCardId = ensureDraftCard({ display }, true);
+        // Use the returned ID (might be different if this was a duplicate)
+        dispatch(updateVisualizationType({ cardId: actualCardId, display }));
+      } else {
+        // Draft already exists, just update it
+        dispatch(updateVisualizationType({ cardId, display }));
+      }
     }
   };
 
-  const handleDone = useCallback(async () => {
-    if (selectedEmbedIndex !== null) {
-      if (hasDraftChanges && card) {
-        await commitVisualizationChanges(
-          selectedEmbedIndex,
-          editorInstance,
-          card,
-        );
-      } else {
-        // No changes, just clear the draft state to show UsedContent
-        dispatch(clearDraftState());
-      }
-    }
-  }, [
-    selectedEmbedIndex,
-    hasDraftChanges,
-    commitVisualizationChanges,
-    editorInstance,
-    dispatch,
-    card,
-  ]);
+  const handleDone = useCallback(() => {
+    // Simply close the sidebar - draft changes are kept in Redux
+    dispatch(closeSidebar());
+  }, [dispatch]);
 
   if (isCardLoading || isResultsLoading || !series) {
     return (
@@ -277,7 +229,7 @@ export const EmbedQuestionSettingsSidebar = ({
       </Box>
       <Box style={{ flex: 1, overflow: "auto" }}>
         <QuestionChartSettings
-          question={question as any}
+          question={question}
           series={series}
           onChange={handleSettingsChange}
           computedSettings={cardWithDraft.visualization_settings || {}}
