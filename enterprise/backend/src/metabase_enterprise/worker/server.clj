@@ -38,8 +38,6 @@
 
 (defonce ^:private ^ExecutorService executor (Executors/newVirtualThreadPerTaskExecutor))
 
-(defonce ^:private ^ScheduledExecutorService scheduler (Executors/newScheduledThreadPool 1))
-
 (mr/def ::transform-api-request
   [:map
    [:driver [:keyword {:decode/normalize schema.common/normalize-keyword}]]
@@ -104,31 +102,18 @@
     3030))
 
 (defonce ^:private instance (atom nil))
-(defonce ^:private tasks (atom []))
 
 (defn stop! []
   (when @instance
     (log/info "Stopping worker server")
     (.stop ^QueuedThreadPool @instance)
     (reset! instance nil))
-  (doseq [^Future task @tasks]
-    (try
-      (.cancel task false)
-      (catch Throwable t
-        (log/error t "Error while canceling scheduled futures for worker task runner."))))
-  (reset! tasks [])
   nil)
 
 (defn start!
   ([] (start! {}))
   ([opts]
    (stop!)
-   (let [task (.scheduleAtFixedRate scheduler (fn []
-                                                (try
-                                                  (tracking/timeout-old-tasks)
-                                                  (catch Throwable t
-                                                    (log/error t "Error while running timeout on worker.")))) 0 20 TimeUnit/SECONDS)]
-     (swap! tasks conj task))
    (let [thread-pool (doto (new QueuedThreadPool)
                        (.setVirtualThreadsExecutor (Executors/newVirtualThreadPerTaskExecutor)))
          jetty-port (port)]
@@ -136,7 +121,8 @@
      (reset! instance (ring-jetty/run-jetty #'handler
                                             {:port jetty-port
                                              :thread-pool thread-pool
-                                             :join? (not (:dev opts))})))))
+                                             :join? (not (:dev opts))})))
+   nil))
 
 (comment
 
