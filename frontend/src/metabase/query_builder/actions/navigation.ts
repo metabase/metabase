@@ -28,15 +28,15 @@ export const popState = createThunkAction(
     dispatch(cancelQuery());
 
     const zoomedObjectId = getZoomedObjectId(getState());
-    if (zoomedObjectId) {
-      const { state, query } = getLocation(getState());
-      const previouslyZoomedObjectId = state?.objectId || query?.objectId;
 
-      if (
-        previouslyZoomedObjectId &&
-        zoomedObjectId !== previouslyZoomedObjectId
-      ) {
-        dispatch(zoomInRow({ objectId: previouslyZoomedObjectId }));
+    const { state, query } = getLocation(getState());
+    const objectIdParam = state?.objectId || query?.objectId;
+
+    if (zoomedObjectId !== objectIdParam) {
+      // objectId in location params doesn't match the currently zoomed object
+      // Zoom on new ID, or reset zoom if no ID
+      if (objectIdParam) {
+        dispatch(zoomInRow({ objectId: objectIdParam }));
       } else {
         dispatch(resetRowZoom());
       }
