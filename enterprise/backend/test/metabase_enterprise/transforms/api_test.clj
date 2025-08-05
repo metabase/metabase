@@ -3,49 +3,14 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase-enterprise.transforms.test-util :refer [with-transform-cleanup!]]
    [metabase-enterprise.transforms.util :as transforms.util]
-   [metabase.api.common :as api]
    [metabase.driver :as driver]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.test :as mt]
-   [metabase.util :as u]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
-
-(defn- drop-target!
-  [target]
-  (let [target (if (map? target)
-                 target
-                 ;; assume this is just a plain table name
-                 {:type :table, :name target})
-        driver driver/*driver*]
-    (binding [api/*is-superuser?* true
-              api/*current-user-id* (mt/user->id :crowberto)]
-      (-> (driver/drop-transform-target! driver (mt/db) target)
-          u/ignore-exceptions))))
-
-(defn- gen-table-name
-  [table-name-prefix]
-  (if (map? table-name-prefix)
-    ;; table-name-prefix is a whole target, randomize the name
-    (update table-name-prefix :name gen-table-name)
-    (str table-name-prefix \_ (str/replace (str (random-uuid)) \- \_))))
-
-(defmacro with-transform-cleanup!
-  "Execute `body`, then delete any new :model/Transform instances and drop tables generated from `table-gens`."
-  [table-gens & body]
-  (assert (seqable? table-gens) "need a seqable? as table-gens")
-  (assert (even? (count table-gens)) "need an even number of forms in table-gens")
-  (if-let [[sym prefix & more-gens] (seq table-gens)]
-    `(let [target# (gen-table-name ~prefix)
-           ~sym target#]
-       (try
-         (with-transform-cleanup! ~more-gens ~@body)
-         (finally
-           (drop-target! target#))))
-    `(mt/with-model-cleanup [:model/Transform :model/Table]
-       ~@body)))
 
 (defn- make-query [category]
   (let [q (if (= :clickhouse driver/*driver*)
