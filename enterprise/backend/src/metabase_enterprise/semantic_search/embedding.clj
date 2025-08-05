@@ -109,7 +109,7 @@
   [items process-fn]
   (if (seq items)
     (cp/with-shutdown! [pool (cp/threadpool (semantic-settings/embedding-concurrency-limit) :name "embedding-request-thread-pool")]
-      (cp/pmap pool process-fn items))
+      (doall (cp/pmap pool process-fn items)))
     []))
 
 ;;;; Provider SPI
