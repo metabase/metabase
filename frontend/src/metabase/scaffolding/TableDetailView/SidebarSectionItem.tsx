@@ -1,6 +1,7 @@
 import { useMemo, useRef } from "react";
 import { t } from "ttag";
 
+import EditableText from "metabase/common/components/EditableText";
 import {
   Box,
   Button,
@@ -51,9 +52,24 @@ export function SidebarSectionItem({
   return (
     <Stack gap={4}>
       <Group justify="space-between">
-        <Text fw="bold" c="text-primary" size="md">
-          {section.title}
-        </Text>
+        {!onUpdateSection && (
+          <Text fw="bold" c="text-primary" size="md">
+            {section.title}
+          </Text>
+        )}
+
+        {onUpdateSection && (
+          <EditableText
+            initialValue={section.title}
+            onChange={(title) => onUpdateSection(section.id, { title })}
+            style={{
+              position: "relative",
+              left: -4,
+              fontWeight: "bold",
+              // fontSize: "1.25rem",
+            }}
+          />
+        )}
 
         {onRemoveSection && (
           <Tooltip label={t`Remove section`}>
