@@ -463,7 +463,7 @@
                                 :display       "line"
                                 :dataset_query (mt/mbql-query venues)
                                 :collection_id (t2/select-one-pk :model/Collection :personal_owner_id (mt/user->id :crowberto))}]
-    (is (= "You don't have permissions to do that."
+    (is (= "You don't have permissions to see that or it doesn't exist"
            (mt/user-http-request :rasta :get 403 (format "card/%d/series" card-id))))
 
     (is (seq? (mt/user-http-request :crowberto :get 200 (format "card/%d/series" card-id))))))
@@ -477,7 +477,7 @@
              (:message (mt/user-http-request :crowberto :get 400 (format "card/%d/series" card-id)))))))
 
   (testing "404 if the card does not exsits"
-    (is (= "Not found."
+    (is (= "You don't have permissions to see that or it doesn't exist"
            (mt/user-http-request :crowberto :get 404 (format "card/%d/series" Integer/MAX_VALUE))))))
 
 (deftest get-series-check-compatibility-test
@@ -1172,7 +1172,7 @@
                            [:required-perms :map]
                            [:actual-perms   [:sequential perms.u/PathSchema]]
                            [:trace          [:sequential :any]]]
-                          (create-card! :rasta 403))))))))))
+                          (create-card! :rasta 400))))))))))
 
 (deftest ^:parallel create-card-with-type-and-dataset-test
   (t2/with-transaction [_]
@@ -1301,7 +1301,7 @@
                      :model/Card       card {:collection_id (u/the-id collection)
                                              :dataset_query (mt/mbql-query venues)}]
         (testing "You have to have Collection perms to fetch a Card"
-          (is (= "You don't have permissions to do that."
+          (is (= "You don't have permissions to see that or it doesn't exist"
                  (mt/user-http-request :rasta :get 403 (str "card/" (u/the-id card))))))
 
         (testing "Should be able to fetch the Card if you have Collection read perms"
@@ -1391,7 +1391,7 @@
 
 (deftest ^:parallel fetch-card-404-test
   (testing "GET /api/card/:id"
-    (is (= "Not found."
+    (is (= "You don't have permissions to see that or it doesn't exist"
            (mt/user-http-request :crowberto :get 404 (format "card/%d" Integer/MAX_VALUE))))))
 
 (deftest fetch-card-with-metric-type
@@ -1406,7 +1406,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (deftest ^:parallel updating-a-card-that-doesnt-exist-should-give-a-404
-  (is (= "Not found."
+  (is (= "You don't have permissions to see that or it doesn't exist"
          (mt/user-http-request :crowberto :put 404 (format "card/%d" Integer/MAX_VALUE) {}))))
 
 (deftest test-that-we-can-edit-a-card
@@ -1440,7 +1440,7 @@
     (mt/with-temp [:model/Collection  collection {}
                    :model/Card card {:collection_id (u/the-id collection)}]
       (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
-      (is (= "You don't have permissions to do that."
+      (is (= "You don't have permissions to see that or it doesn't exist"
              (mt/user-http-request :rasta :put 403 (str "card/" (u/the-id card)) {:archived true}))))))
 
 (deftest we-shouldn-t-be-able-to-unarchive-cards-if-we-don-t-have-collection--write--perms
@@ -1448,7 +1448,7 @@
     (mt/with-temp [:model/Collection  collection {}
                    :model/Card card {:collection_id (u/the-id collection) :archived true}]
       (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
-      (is (= "You don't have permissions to do that."
+      (is (= "You don't have permissions to see that or it doesn't exist"
              (mt/user-http-request :rasta :put 403 (str "card/" (u/the-id card)) {:archived false}))))))
 
 (deftest clear-description-test
@@ -1520,7 +1520,7 @@
 
       (mt/with-temporary-setting-values [enable-embedding-static true]
         (testing "Non-admin should not be allowed to update Card's embedding parms"
-          (is (= "You don't have permissions to do that."
+          (is (= "You don't have permissions to see that or it doesn't exist"
                  (mt/user-http-request :rasta :put 403 (str "card/" (u/the-id card))
                                        {:embedding_params {:abc "enabled"}}))))
 
@@ -1845,7 +1845,7 @@
                                [:required-perms :map]
                                [:actual-perms   [:sequential perms.u/PathSchema]]
                                [:trace          [:sequential :any]]]
-                              (update-card! :rasta 403 {:dataset_query (mt/mbql-query users)}))))
+                              (update-card! :rasta 400 {:dataset_query (mt/mbql-query users)}))))
                 (testing "make sure query hasn't changed in the DB"
                   (is (= (mt/mbql-query checkins)
                          (t2/select-one-fn :dataset_query :model/Card :id card-id)))))
@@ -1980,7 +1980,7 @@
 
 ;; deleting a card that doesn't exist should return a 404 (#1957)
 (deftest deleting-a-card-that-doesnt-exist-should-return-a-404---1957-
-  (is (= "Not found."
+  (is (= "You don't have permissions to see that or it doesn't exist"
          (mt/user-http-request :crowberto :delete 404 "card/12345"))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -2472,7 +2472,7 @@
         (mt/with-non-admin-groups-no-root-collection-perms
           (mt/with-temp [:model/Collection collection]
             (mt/with-model-cleanup [:model/Card]
-              (is (=? {:message "You do not have curate permissions for this Collection."}
+              (is (=? "You don't have permissions to see that or it doesn't exist"
                       (mt/user-http-request :rasta :post 403 "card"
                                             (assoc (card-with-name-and-query) :collection_id (u/the-id collection))))))))))))
 
@@ -2489,7 +2489,7 @@
     (mt/with-non-admin-groups-no-root-collection-perms
       (mt/with-temp [:model/Collection  collection {}
                      :model/Card card       {:collection_id (u/the-id collection)}]
-        (is (= "You don't have permissions to do that."
+        (is (= "You don't have permissions to see that or it doesn't exist"
                (mt/user-http-request :rasta :put 403 (str "card/" (u/the-id card))
                                      {:name "Number of Blueberries Consumed Per Month"})))))))
 
@@ -2504,12 +2504,12 @@
                     (mt/user-http-request :rasta :put expected-status-code (str "card/" (u/the-id card))
                                           {:collection_id (u/the-id new-collection)}))]
             (testing "requires write permissions for the new Collection"
-              (is (= "You don't have permissions to do that."
+              (is (= "You don't have permissions to see that or it doesn't exist"
                      (change-collection! 403))))
 
             (testing "requires write permissions for the current Collection"
               (perms/grant-collection-readwrite-permissions! (perms-group/all-users) new-collection)
-              (is (= "You don't have permissions to do that."
+              (is (= "You don't have permissions to see that or it doesn't exist"
                      (change-collection! 403))))
 
             (testing "Should be able to change it once you have perms for both collections"
@@ -2661,7 +2661,7 @@
     (mt/with-temp [:model/Collection  collection {}
                    :model/Card card-1 {}
                    :model/Card card-2 {}]
-      (is (= {:response    "You don't have permissions to do that."
+      (is (= {:response    "You don't have permissions to see that or it doesn't exist"
               :collections [nil nil]}
              (POST-card-collections! :rasta 403 collection [card-1 card-2]))))))
 
@@ -2670,7 +2670,7 @@
     (mt/with-temp [:model/Collection  collection {:name "Horseshoe Collection"}
                    :model/Card card-1     {:collection_id (u/the-id collection)}
                    :model/Card card-2     {:collection_id (u/the-id collection)}]
-      (is (= {:response    "You don't have permissions to do that."
+      (is (= {:response    "You don't have permissions to see that or it doesn't exist"
               :collections ["Horseshoe Collection" "Horseshoe Collection"]}
              (POST-card-collections! :rasta 403 nil [card-1 card-2]))))))
 
@@ -2683,7 +2683,7 @@
                    :model/Card card-2     {:dataset_query (mbql-count-query (u/the-id database) (u/the-id table))}]
       (mt/with-no-data-perms-for-all-users!
         (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
-        (is (= {:response    "You don't have permissions to do that."
+        (is (= {:response    "You don't have permissions to see that or it doesn't exist"
                 :collections [nil nil]}
                (POST-card-collections! :rasta 403 collection [card-1 card-2])))))))
 
@@ -2758,7 +2758,7 @@
     (mt/with-temporary-setting-values [enable-public-sharing true]
       (testing "Have to be an admin to share a Card"
         (mt/with-temp [:model/Card card]
-          (is (= "You don't have permissions to do that."
+          (is (= "You don't have permissions to see that or it doesn't exist"
                  (mt/user-http-request :rasta :post 403 (format "card/%d/public_link" (u/the-id card)))))))
 
       (testing "Cannot share an archived Card"
@@ -2768,7 +2768,7 @@
                   (mt/user-http-request :crowberto :post 404 (format "card/%d/public_link" (u/the-id card)))))))
 
       (testing "Cannot share a Card that doesn't exist"
-        (is (= "Not found."
+        (is (= "You don't have permissions to see that or it doesn't exist"
                (mt/user-http-request :crowberto :post 404 (format "card/%d/public_link" Integer/MAX_VALUE))))))))
 
 (deftest share-already-shared-card-test
@@ -2786,7 +2786,7 @@
     (mt/with-temporary-setting-values [enable-public-sharing true]
       (mt/with-temp [:model/Card card (shared-card)]
         (testing "requires superuser"
-          (is (= "You don't have permissions to do that."
+          (is (= "You don't have permissions to see that or it doesn't exist"
                  (mt/user-http-request :rasta :delete 403 (format "card/%d/public_link" (u/the-id card))))))
 
         (mt/user-http-request :crowberto :delete 204 (format "card/%d/public_link" (u/the-id card)))
@@ -2798,16 +2798,16 @@
     (mt/with-temporary-setting-values [enable-public-sharing true]
       (testing "Endpoint should return 404 if Card isn't shared"
         (mt/with-temp [:model/Card card]
-          (is (= "Not found."
+          (is (= "You don't have permissions to see that or it doesn't exist"
                  (mt/user-http-request :crowberto :delete 404 (format "card/%d/public_link" (u/the-id card)))))))
 
       (testing "You have to be an admin to unshare a Card"
         (mt/with-temp [:model/Card card (shared-card)]
-          (is (= "You don't have permissions to do that."
+          (is (= "You don't have permissions to see that or it doesn't exist"
                  (mt/user-http-request :rasta :delete 403 (format "card/%d/public_link" (u/the-id card)))))))
 
       (testing "Endpoint should 404 if Card doesn't exist"
-        (is (= "Not found."
+        (is (= "You don't have permissions to see that or it doesn't exist"
                (mt/user-http-request :crowberto :delete 404 (format "card/%d/public_link" Integer/MAX_VALUE))))))))
 
 (deftest test-that-we-can-fetch-a-list-of-publicly-accessible-cards
@@ -3187,16 +3187,16 @@
                                                                                      :value_field (mt/$ids $venues.name)}}]
                                             :table_id       (mt/id :venues)}]
         (testing "Fail because user doesn't have read permissions to coll1"
-          (is (=? "You don't have permissions to do that."
+          (is (=? "You don't have permissions to see that or it doesn't exist"
                   (mt/user-http-request :rasta :get 403 (param-values-url card-id "abc"))))
-          (is (=? "You don't have permissions to do that."
+          (is (=? "You don't have permissions to see that or it doesn't exist"
                   (mt/user-http-request :rasta :get 403 (param-values-url card-id "abc" "search-query")))))
         ;; grant permission to read the collection contains the card
         (perms/grant-collection-read-permissions! (perms-group/all-users) coll2)
         (testing "having read permissions to the card collection is not enough"
-          (is (=? "You don't have permissions to do that."
+          (is (=? "You don't have permissions to see that or it doesn't exist"
                   (mt/user-http-request :rasta :get 403 (param-values-url card-id "abc"))))
-          (is (=? "You don't have permissions to do that."
+          (is (=? "You don't have permissions to see that or it doesn't exist"
                   (mt/user-http-request :rasta :get 403 (param-values-url card-id "abc" "search-query")))))
         ;; grant permission to read the collection contains the source card
         (perms/grant-collection-read-permissions! (perms-group/all-users) coll1)
@@ -3539,7 +3539,9 @@
                                                 :collection_id (u/the-id collection)}]
     (letfn [(process-query []
               (mt/user-http-request :rasta :post (format "card/%d/query" (u/the-id card))))
-            (blocked? [response] (= "You don't have permissions to do that." response))]
+            (blocked? [response] (#{"You don't have permissions to do that."
+                                    "You don't have permissions to see that or it doesn't exist"}
+                                  response))]
       ;;    | Data perms | Collection perms | outcome
       ;;    ------------ | ---------------- | --------
       ;;    | no         | no               | blocked
@@ -3673,7 +3675,7 @@
                    (query-metadata 200 card-id)))))
          #(testing "After delete"
             (doseq [card-id [card-id-1 card-id-2]]
-              (is (= "Not found."
+              (is (= "You don't have permissions to see that or it doesn't exist"
                      (query-metadata 404 card-id))))))))))
 
 (deftest card-query-metadata-no-tables-test
@@ -4014,7 +4016,7 @@
                      :model/DashboardCard _ {:dashboard_id other-dash-id :card_id card-id}]
         (perms/revoke-collection-permissions! (perms-group/all-users) forbidden-coll-id)
         (testing "We get a 403 back, because we don't have permissions"
-          (is (= "You don't have permissions to do that."
+          (is (= "You don't have permissions to see that or it doesn't exist"
                 ;; regardless of the `delete_old_dashcards` value, same response
                  (mt/user-http-request :rasta :put 403 (str "card/" card-id "?delete_old_dashcards=true") {:dashboard_id dash-id})
                  (mt/user-http-request :rasta :put 403 (str "card/" card-id) {:dashboard_id dash-id}))))
@@ -4033,7 +4035,7 @@
                      :model/DashboardCardSeries _ {:dashboardcard_id dc-id :card_id card-id}]
         (perms/revoke-collection-permissions! (perms-group/all-users) forbidden-coll-id)
         (testing "We get a 403 back, because we don't have permissions"
-          (is (= "You don't have permissions to do that."
+          (is (= "You don't have permissions to see that or it doesn't exist"
                 ;; regardless of the `delete_old_dashcards` value, same response
                  (mt/user-http-request :rasta :put 403 (str "card/" card-id "?delete_old_dashcards=true") {:dashboard_id dash-id})
                  (mt/user-http-request :rasta :put 403 (str "card/" card-id) {:dashboard_id dash-id}))))
@@ -4117,7 +4119,8 @@
                    :model/DashboardCard _ {:card_id card-id :dashboard_id allowed-dash-id}
                    :model/DashboardCard _ {:card_id card-id :dashboard_id forbidden-dash-id}]
       (perms/revoke-collection-permissions! (perms-group/all-users) forbidden-coll-id)
-      (is (= "You don't have permissions to do that." (mt/user-http-request :rasta :get 403 (str "card/" card-id "/dashboards")))))))
+      (is (= "You don't have permissions to see that or it doesn't exist"
+             (mt/user-http-request :rasta :get 403 (str "card/" card-id "/dashboards")))))))
 
 (deftest dashboard-questions-have-hydrated-dashboard-details
   (mt/with-temp [:model/Dashboard {dash-id :id} {:name "My Dashboard"}
@@ -4338,7 +4341,7 @@
                                     (card-query-post-request))
                   raw-results-metadata (get-in post-response [:data :results_metadata :columns])]
               (testing "Base: Initial query is cached (2nd post request's response)"
-                (is (some? (:cached post-response))))
+                (is (some? (:cached (doto post-response tap>)))))
               (let [put-resonse (card-put-request (cons (assoc (first raw-results-metadata) :display_name "This is ID")
                                                         (rest raw-results-metadata)))]
                 (testing "Base: Put changes results_metadata successfully"

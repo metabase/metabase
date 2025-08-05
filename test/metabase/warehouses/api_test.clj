@@ -259,7 +259,7 @@
                                        :type        :metric}
      :model/Segment  _                {:table_id table-id-2}]
     (testing "should require admin"
-      (is (= "You don't have permissions to do that."
+      (is (= "You don't have permissions to see that or it doesn't exist"
              (mt/user-http-request :rasta :get 403 (format "database/%d/usage_info" db-id)))))
     (testing "return the correct usage info"
       (is (= {:question 1
@@ -269,7 +269,7 @@
              (mt/user-http-request :crowberto :get 200 (format "database/%d/usage_info" db-id)))))
     (testing "404 if db does not exist"
       (let [non-existing-db-id (inc (t2/select-one-pk :model/Database {:order-by [[:id :desc]]}))]
-        (is (= "Not found."
+        (is (= "You don't have permissions to see that or it doesn't exist"
                (mt/user-http-request :crowberto :get 404
                                      (format "database/%d/usage_info" non-existing-db-id))))))))
 
@@ -847,7 +847,7 @@
         (mt/with-temp [:model/Database {database-id :id} {}
                        :model/Card     _ (card-with-native-query "Maz Quote Views Per Month" :database_id database-id)] {}
           (mt/with-no-data-perms-for-all-users!
-            (is (= "You don't have permissions to do that."
+            (is (= "You don't have permissions to see that or it doesn't exist"
                    (mt/user-http-request :rasta :get 403
                                          (format "database/%d/card_autocomplete_suggestions" database-id)
                                          :query "maz")))))))))
@@ -1442,7 +1442,7 @@
 
 (deftest ^:parallel non-admins-cant-trigger-sync
   (testing "Non-admins should not be allowed to trigger sync"
-    (is (= "You don't have permissions to do that."
+    (is (= "You don't have permissions to see that or it doesn't exist"
            (mt/user-http-request :rasta :post 403 (format "database/%d/sync_schema" (mt/id)))))))
 
 (deftest can-rescan-fieldvalues-for-a-db
@@ -1467,7 +1467,7 @@
 
 (deftest ^:parallel nonadmins-cant-trigger-rescan-test
   (testing "Non-admins should not be allowed to trigger re-scan"
-    (is (= "You don't have permissions to do that."
+    (is (= "You don't have permissions to see that or it doesn't exist"
            (mt/user-http-request :rasta :post 403 (format "database/%d/rescan_values" (mt/id)))))))
 
 (deftest discard-db-fieldvalues-test
@@ -1505,7 +1505,7 @@
 
 (deftest ^:parallel nonadmins-cant-discard-all-fieldvalues
   (testing "Non-admins should not be allowed to discard all FieldValues"
-    (is (= "You don't have permissions to do that."
+    (is (= "You don't have permissions to see that or it doesn't exist"
            (mt/user-http-request :rasta :post 403 (format "database/%d/discard_values" (mt/id)))))))
 
 (defn- api-validate-database!
@@ -1526,7 +1526,7 @@
 (deftest validate-database-test
   (testing "POST /api/database/validate"
     (testing "Should require superuser permissions"
-      (is (= "You don't have permissions to do that."
+      (is (= "You don't have permissions to see that or it doesn't exist"
              (api-validate-database! {:user :rasta, :expected-status-code 403}
                                      {:details {:engine :h2, :details (:details (mt/db))}}))))))
 
@@ -1616,7 +1616,7 @@
                (mt/user-http-request :rasta :get 200 (format "database/%d/schemas" db-id))))))
 
     (testing "Looking for a database that doesn't exist should return a 404"
-      (is (= "Not found."
+      (is (= "You don't have permissions to see that or it doesn't exist"
              (mt/user-http-request :crowberto :get 404 (format "database/%s/schemas" Integer/MAX_VALUE)))))
 
     (testing "should work for the saved questions 'virtual' database"
@@ -1655,7 +1655,7 @@
         (is (= ["PUBLIC"]
                (mt/user-http-request :crowberto :get 200 (format "database/%d/syncable_schemas" (mt/id)))))
         (testing "Non-admins don't have permission to see syncable schemas"
-          (is (= "You don't have permissions to do that."
+          (is (= "You don't have permissions to see that or it doesn't exist"
                  (mt/user-http-request :rasta :get 403 (format "database/%d/syncable_schemas" (mt/id))))))))))
 
 (deftest get-syncable-schemas-checks-permissions-correctly
@@ -1704,7 +1704,7 @@
 
       (testing "should return a 403 for a user that doesn't have read permissions for the database"
         (mt/with-no-data-perms-for-all-users!
-          (is (= "You don't have permissions to do that."
+          (is (= "You don't have permissions to see that or it doesn't exist"
                  (mt/user-http-request :rasta :get 403 (format "database/%s/schemas" db-id))))))
 
       (testing "should return a 403 if there are no perms for any schema"
@@ -1712,7 +1712,7 @@
           (data-perms/set-database-permission! (perms-group/all-users) db-id :perms/view-data :unrestricted)
           (data-perms/set-table-permission! (perms-group/all-users) (u/the-id t1) :perms/create-queries :no)
           (data-perms/set-table-permission! (perms-group/all-users) (u/the-id t2) :perms/create-queries :no)
-          (is (= "You don't have permissions to do that."
+          (is (= "You don't have permissions to see that or it doesn't exist"
                  (mt/user-http-request :rasta :get 403 (format "database/%s/schemas" db-id)))))))
 
     (testing "should exclude schemas for which the user has no perms"
@@ -1728,7 +1728,7 @@
 (deftest ^:parallel get-schema-tables-test
   (testing "GET /api/database/:id/schema/:schema"
     (testing "Should return a 404 if the database isn't found"
-      (is (= "Not found."
+      (is (= "You don't have permissions to see that or it doesn't exist"
              (mt/user-http-request :crowberto :get 404 (format "database/%s/schema/%s" Integer/MAX_VALUE "schema1")))))))
 
 (deftest ^:parallel get-schema-tables-test-2
@@ -1736,7 +1736,7 @@
     (testing "Should return a 404 if the schema isn't found"
       (mt/with-temp [:model/Database {db-id :id} {}
                      :model/Table    _ {:db_id db-id :schema "schema1"}]
-        (is (= "Not found."
+        (is (= "You don't have permissions to see that or it doesn't exist"
                (mt/user-http-request :crowberto :get 404 (format "database/%d/schema/%s" db-id "not schema1"))))))))
 
 (deftest get-schema-tables-test-3
@@ -1827,7 +1827,7 @@
                             :type             "question"}))))
 
         (testing "Should throw 404 if the schema/Collection doesn't exist"
-          (is (= "Not found."
+          (is (= "You don't have permissions to see that or it doesn't exist"
                  (mt/user-http-request :lucky :get 404
                                        (format "database/%d/schema/%s" lib.schema.id/saved-questions-virtual-database-id "Coin Collection")))))))))
 
@@ -1897,7 +1897,7 @@
                             :type             "model"}))))
 
         (testing "Should throw 404 if the schema/Collection doesn't exist"
-          (is (= "Not found."
+          (is (= "You don't have permissions to see that or it doesn't exist"
                  (mt/user-http-request :lucky :get 404
                                        (format "database/%d/schema/%s" lib.schema.id/saved-questions-virtual-database-id "Coin Collection")))))))))
 
@@ -1988,7 +1988,7 @@
         (mt/with-temp [:model/Database {database-id :id} {}
                        :model/Table    _ {:db_id database-id :schema "test"}]
           (mt/with-no-data-perms-for-all-users!
-            (is (= "You don't have permissions to do that."
+            (is (= "You don't have permissions to see that or it doesn't exist"
                    (mt/user-http-request :rasta :get 403 (format "database/%s/schema/%s" database-id "test"))))))))))
 
 (deftest get-schema-tables-permissions-test-2b
@@ -2001,7 +2001,7 @@
           (mt/with-no-data-perms-for-all-users!
             (data-perms/set-database-permission! (perms-group/all-users) database-id :perms/view-data :unrestricted)
             (data-perms/set-table-permission! (perms-group/all-users) t1-id :perms/create-queries :query-builder)
-            (is (= "You don't have permissions to do that."
+            (is (= "You don't have permissions to see that or it doesn't exist"
                    (mt/user-http-request :rasta :get 403 (format "database/%s/schema/%s" database-id "schema-without-perms"))))))))))
 
 (deftest ^:parallel slashes-in-identifiers-test

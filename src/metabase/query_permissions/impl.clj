@@ -392,7 +392,7 @@
                            (catch Throwable e
                              e))]
       (throw (ex-info (tru "You cannot save this Question because you do not have permissions to run its query.")
-                      {:status-code    403
+                      {:status-code    400
                        :query          query
                        :required-perms (if (instance? Throwable required-perms)
                                          :error

@@ -198,7 +198,7 @@
       (mt/with-temp [:model/Database {database-id :id} {}
                      :model/Table    {table-id :id}    {:db_id database-id}]
         (mt/with-no-data-perms-for-all-users!
-          (is (= "You don't have permissions to do that."
+          (is (= "You don't have permissions to see that or it doesn't exist"
                  (mt/user-http-request :rasta :get 403 (str "table/" table-id)))))))))
 
 (deftest api-database-table-endpoint-test
@@ -1143,8 +1143,8 @@
                    :model/FieldValues field-values {:field_id (u/the-id field) :values ["A" "B" "C"]}]
       (let [url (format "table/%d/discard_values" (u/the-id table))]
         (testing "Non-admin toucans should not be allowed to discard values"
-          (is (= "You don't have permissions to do that."
-                 (mt/user-http-request :rasta :post 403 url)))
+          (is (= "You don't have permissions to see that or it doesn't exist"
+                 (mt/user-http-request :rasta :post 404 url)))
           (testing "FieldValues should still exist"
             (is (t2/exists? :model/FieldValues :id (u/the-id field-values)))))
 
@@ -1155,7 +1155,7 @@
             (is (not (t2/exists? :model/FieldValues :id (u/the-id field-values))))))))
 
     (testing "For tables that don't exist, we should return a 404."
-      (is (= "Not found."
+      (is (= "You don't have permissions to see that or it doesn't exist"
              (mt/user-http-request :crowberto :post 404 (format "table/%d/discard_values" Integer/MAX_VALUE)))))))
 
 (deftest field-ordering-test
@@ -1277,8 +1277,8 @@
 (deftest ^:parallel non-admins-cant-trigger-sync-test
   (testing "Non-admins should not be allowed to trigger sync"
     (mt/with-temp [:model/Table table {}]
-      (is (= "You don't have permissions to do that."
-             (mt/user-http-request :rasta :post 403 (format "table/%d/sync_schema" (u/the-id table))))))))
+      (is (= "You don't have permissions to see that or it doesn't exist"
+             (mt/user-http-request :rasta :post 404 (format "table/%d/sync_schema" (u/the-id table))))))))
 
 (defn- deliver-when-tbl [promise-to-deliver expected-tbl]
   (fn [tbl]

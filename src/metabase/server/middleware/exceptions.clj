@@ -55,20 +55,21 @@
                                           (merge
                                            (Throwable->map e)
                                            {:message (.getMessage e)}
-                                           other-info))]
-    (let [path (or (:path-info req)
-                   (:uri req))]
-      ;; rewrite real 404s and 403s into one response
-      (if (and (some-> e ex-data :status-code #{403 404})
-               ;; interpret an integer as a resource
-               (or (some->> path (re-find #"\d+"))
-                   (some->> path resource-url?)))
-        {:status 404
-         :headers (mw.security/security-headers)
-         :body "You don't have permissions to see that or it doesn't exist"}
-        {:status  (or status-code 500)
-         :headers (mw.security/security-headers)
-         :body    body}))))
+                                           other-info))
+        path (or (:path-info req)
+                 (:uri req))]
+    ;; rewrite real 404s and 403s into one response
+    (if (and (some-> e ex-data :status-code #{403 404})
+             (not= (ex-message e) "The object has been archived.")
+             ;; interpret an integer as a resource
+             (or (some->> path (re-find #"\d+"))
+                 (some->> path resource-url?)))
+      {:status  404
+       :headers (mw.security/security-headers)
+       :body    "You don't have permissions to see that or it doesn't exist"}
+      {:status  (or status-code 500)
+       :headers (mw.security/security-headers)
+       :body    body})))
 
 (defmethod api-exception-response SQLException
   [_req e]

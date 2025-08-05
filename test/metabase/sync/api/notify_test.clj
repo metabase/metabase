@@ -37,32 +37,29 @@
   (mt/with-temporary-setting-values [api-key "test-api-key"]
     (testing "POST /api/notify/db/:id"
       (testing "database must exist or we get a 404"
-        (is (= {:status 404
-                :body   "Not found."}
-               (try (http/post (client/build-url (format "notify/db/%d" Integer/MAX_VALUE) {})
-                               (merge {:accept :json} api-headers))
-                    (catch clojure.lang.ExceptionInfo e
-                      (select-keys (ex-data e) [:status :body]))))))
+        (is (=? {:status 404}
+                (try (http/post (client/build-url (format "notify/db/%d" Integer/MAX_VALUE) {})
+                                (merge {:accept :json} api-headers))
+                     (catch clojure.lang.ExceptionInfo e
+                       (select-keys (ex-data e) [:status :body]))))))
       (testing "table ID must exist or we get a 404"
-        (is (= {:status 404
-                :body   "Not found."}
-               (try (http/post (client/build-url (format "notify/db/%d" (:id (mt/db))) {})
-                               (merge {:accept       :json
-                                       :content-type :json
-                                       :form-params  {:table_id Integer/MAX_VALUE}}
-                                      api-headers))
-                    (catch clojure.lang.ExceptionInfo e
-                      (select-keys (ex-data e) [:status :body]))))))
+        (is (=? {:status 404}
+                (try (http/post (client/build-url (format "notify/db/%d" (:id (mt/db))) {})
+                                (merge {:accept       :json
+                                        :content-type :json
+                                        :form-params  {:table_id Integer/MAX_VALUE}}
+                                       api-headers))
+                     (catch clojure.lang.ExceptionInfo e
+                       (select-keys (ex-data e) [:status :body]))))))
       (testing "table name must exist or we get a 404"
-        (is (= {:status 404
-                :body   "Not found."}
-               (try (http/post (client/build-url (format "notify/db/%d" (:id (mt/db))) {})
-                               (merge {:accept       :json
-                                       :content-type :json
-                                       :form-params  {:table_name "IncorrectToucanFact"}}
-                                      api-headers))
-                    (catch clojure.lang.ExceptionInfo e
-                      (select-keys (ex-data e) [:status :body])))))))))
+        (is (=? {:status 404}
+                (try (http/post (client/build-url (format "notify/db/%d" (:id (mt/db))) {})
+                                (merge {:accept       :json
+                                        :content-type :json
+                                        :form-params  {:table_name "IncorrectToucanFact"}}
+                                       api-headers))
+                     (catch clojure.lang.ExceptionInfo e
+                       (select-keys (ex-data e) [:status :body])))))))))
 
 (deftest post-db-id-test
   (mt/test-drivers (mt/normal-drivers)
