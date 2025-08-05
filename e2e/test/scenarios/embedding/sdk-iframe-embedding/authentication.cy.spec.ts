@@ -17,7 +17,7 @@ describe("scenarios > embedding > sdk iframe embedding > authentication", () => 
     frame.within(() => {
       cy.findByTestId("sdk-error-container")
         .should("be.visible")
-        .and("contain", "Backend returned an error when refreshing the token.");
+        .and("contain", "SSO has not been enabled and/or configured");
     });
   });
 
@@ -47,7 +47,7 @@ describe("scenarios > embedding > sdk iframe embedding > authentication", () => 
     frame.within(() => {
       cy.findByTestId("sdk-error-container")
         .should("be.visible")
-        .and("contain", "Backend returned an error when refreshing the token");
+        .and("contain", "SSO has not been enabled and/or configured");
     });
   });
 
