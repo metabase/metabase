@@ -309,9 +309,9 @@
   "Check current user has view-data perms on all columns of `result-metadata`."
   [database-id result-metadata]
   (let [field-ids (keep :id result-metadata)
-        table-ids (into #{} (concat (keep (some-fn :table-id :table_id) result-metadata)
-                                    (when (seq field-ids)
-                                      (t2/select-fn-set :table_id :model/Field :id [:in field-ids]))))]
+        table-ids (into (set (keep (some-fn :table-id :table_id) result-metadata))
+                        (when (seq field-ids)
+                          (t2/select-fn-set :table_id :model/Field :id [:in field-ids])))]
     (run! #(when-not (perms/user-has-permission-for-table?
                       api/*current-user-id*
                       :perms/view-data
