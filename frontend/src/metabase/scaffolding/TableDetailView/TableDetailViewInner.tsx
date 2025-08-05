@@ -266,7 +266,7 @@ export function TableDetailViewInner({
       onSubmit={handleSaveClick}
       onFollowForeignKey={handleFollowForeignKey}
     >
-      <Stack gap="xl" mt="md" mb="sm" py="md" bg="transparent">
+      <Stack gap="md" mt="md" mb="sm" py="md" bg="transparent">
         <DndContext
           sensors={sensors}
           collisionDetection={closestCenter}
@@ -279,6 +279,11 @@ export function TableDetailViewInner({
           >
             {notEmptySections.map((section, index) => (
               <Fragment key={section.id}>
+                {index > 0 &&
+                  (section.variant === "normal" ||
+                    section.variant === "highlight-2") && (
+                    <Divider my="md" mx="md" />
+                  )}
                 <SortableSection
                   section={section}
                   variant={section.variant}
@@ -290,15 +295,13 @@ export function TableDetailViewInner({
                     updateSection(section.id, update)
                   }
                 />
-                {(index < notEmptySections.length - 1 ||
-                  !!uncategorizedSection.fields.length) &&
-                  (section.variant === "normal" ||
-                    section.variant === "highlight-2") && (
-                    <Divider mt="md" mx="md" />
-                  )}
               </Fragment>
             ))}
 
+            {notEmptySections.length > 0 &&
+              uncategorizedSection.fields.length > 0 && (
+                <Divider my="md" mx="md" />
+              )}
             <SortableSection
               section={uncategorizedSection}
               variant={uncategorizedSection.variant}

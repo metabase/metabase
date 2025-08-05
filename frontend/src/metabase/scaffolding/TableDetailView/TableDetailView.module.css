@@ -68,7 +68,7 @@
   }
 
   &.subheader {
-    margin-bottom: 1rem;
+    margin-top: -0.75rejm;
 
     .SectionTitle {
       display: none;
@@ -100,8 +100,8 @@
   &.highlight2 {
     .SectionContent {
       display: grid;
-
-      gap: var(--mantine-spacing-md);
+      grid-template-columns: repeat(3, 1fr);
+      gap: var(--mantine-spacing-xl);
     }
 
     .SectionContent .Field {

@@ -104,12 +104,7 @@ export function ObjectViewSection({
           </Text>
         </Group>
       )}
-      <Flex
-        className={S.SectionContent}
-        style={{
-          gridTemplateColumns: `repeat(${Math.min(section.fields.length, 3)}, 1fr)`,
-        }}
-      >
+      <Flex className={S.SectionContent}>
         {section.fields.map(({ field_id }) => {
           const columnIndex = columns.findIndex(
             (column) => column.id === field_id,
