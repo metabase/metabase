@@ -162,7 +162,7 @@
     Closeable
     (close [_] (close-fn o))))
 
-(defn open-temp-index! []
+(defn open-temp-index! [] ^Closeable
   (closeable
    (do (semantic.index/create-index-table-if-not-exists! db mock-index {:force-reset? true})
        mock-index)

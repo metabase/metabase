@@ -20,6 +20,7 @@
   :visibility :settings-manager
   :default nil
   :export? false
+  :description "test"
   :doc "This feature is experimental. Leave empty to use provider defaults.")
 
 (defn openai-api-base-url
@@ -44,13 +45,13 @@
   :type       :boolean)
 
 (defsetting openai-max-tokens-per-batch
-  (deferred-tru "The maximum number of tokens sent in a single OpenAI embedding API call.")
+  (deferred-tru "The maximum number of tokens sent in a single embedding API call.")
   :type :integer
   :default 4000
   :encryption :no
   :export? false
   :visibility :internal
-  :doc "Maximum number of texts per batch for embedding.")
+  :doc "The maximum number of tokens sent in a single embedding API call.")
 
 (defsetting semantic-search-results-limit
   (deferred-tru "Maximum number of results to return from a single semantic search query.")
