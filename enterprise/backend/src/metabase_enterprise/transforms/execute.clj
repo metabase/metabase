@@ -41,7 +41,7 @@
       (log/error "Remote execution failed.")
       (t2/update! :model/WorkerRun run-id
                   :status :started
-                  {:status :exec-failed
+                  {:status :failed
                    :end_time :%now
                    :is_active nil
                    :message (.getMessage t)})
@@ -53,26 +53,10 @@
          db (get-in source [:query :database])
          database (t2/select-one :model/Database db)]
      (sync-target! target database run-id)))
-  ([target database run-id]
+  ([target database _run-id]
    ;; sync the new table (note that even a failed sync status means that the execution succeeded)
-   (try
-     (log/info "Syncing target" (pr-str target) "for transform")
-     (t2/update! :model/WorkerRun
-                 :run_id run-id
-                 :status [:= :exec-succeeded]
-                 {:status :sync-started})
-     (sync-table! database target)
-     (t2/update! :model/WorkerRun
-                 :run_id run-id
-                 :status [:= :sync-started]
-                 {:status :sync-succeeded})
-     (catch Throwable t
-       (log/error "Syncing target" (pr-str target) "failed.")
-       (t2/update! :model/WorkerRun
-                   :run_id run-id
-                   :status [:= :sync-started]
-                   {:status :sync-failed})
-       (throw t)))))
+   (log/info "Syncing target" (pr-str target) "for transform")
+   (sync-table! database target)))
 
 ;; register that we need to run sync after a transform is finished remotely
 (defmethod worker/post-success :transform
@@ -86,13 +70,13 @@
     (driver/execute-transform! driver transform-details opts)
     (t2/update! :model/WorkerRun
                 :run_id run-id
-                {:status :exec-succeeded
+                {:status :succeeded
                  :end_time :%now
                  :is_active nil})
     (catch Throwable t
       (t2/update! :model/WorkerRun
                   :run_id run-id
-                  {:status :exec-failed
+                  {:status :failed
                    :end-time :%now
                    :is_active nil
                    :message (.getMessage t)})

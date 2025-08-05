@@ -49,14 +49,14 @@
                     (do
                       (t2/update! :model/WorkerRun
                                   :run_id (:run_id run)
-                                  {:status :exec-succeeded
+                                  {:status :succeeded
                                    :end_time (t/instant (:end-time resp))
                                    :is_active nil})
                       (post-success run))
                     "error"
                     (t2/update! :model/WorkerRun
                                 :run_id (:run_id run)
-                                {:status :exec-failed
+                                {:status :failed
                                  :end_time (t/instant (:end-time resp))
                                  :is_active nil
                                  :message (:note resp)})

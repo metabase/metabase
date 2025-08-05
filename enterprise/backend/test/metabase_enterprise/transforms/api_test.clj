@@ -80,7 +80,7 @@
             resp (mt/user-http-request :crowberto :post 200 "ee/transform" body)]
         (is (=? (assoc body
                        :execution_trigger "none"
-                       :execution_status "never-executed")
+                       :last_execution nil)
                 (mt/user-http-request :crowberto :get 200 (format "ee/transform/%s" (:id resp)))))))))
 
 (deftest put-transforms-test
@@ -188,14 +188,12 @@
       (when (> (System/currentTimeMillis) limit)
         (throw (ex-info (str "Transfer execution timed out after " timeout-s " seconds") {})))
       (let [resp (mt/user-http-request :crowberto :get 200 (format "ee/transform/%s" transform-id))
-            status (-> resp :execution_status keyword)]
-        (when-not (contains? #{:started :exec-succeeded :sync-started :sync-succeeded} status)
-          (throw (ex-info (str "Transfer execution failed with status " status) {})))
-        (if (= status :sync-succeeded)
-          (is (some? (:table resp)))
-          (do
-            (Thread/sleep 100)
-            (recur)))))))
+            status (some-> resp :last_execution :status keyword)]
+        (when-not (contains? #{:started :succeeded} status)
+          (throw (ex-info (str "Transfer execution failed with status " status) {:resp resp})))
+        (when-not (some? (:table resp))
+          (Thread/sleep 100)
+          (recur))))))
 
 (defn- check-query-results
   [table-name ids category]
