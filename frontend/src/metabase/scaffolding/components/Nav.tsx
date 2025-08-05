@@ -75,12 +75,14 @@ export const Nav = ({
       pb={15.5}
       pl="xl"
       pr="md"
+      wrap="nowrap"
     >
       <Group
         align="flex-end"
         gap={0}
         wrap="nowrap"
-        flex={1}
+        flex="1"
+        miw={0}
         style={{
           fontSize: 20,
         }}
