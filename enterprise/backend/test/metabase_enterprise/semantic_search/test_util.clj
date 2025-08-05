@@ -129,12 +129,12 @@
 (defn mock-documents []
   (let [native-query-json (dog-training-native-query-json)]
     [{:model "card"
-      :id "123"
+      :id 123
       :searchable_text "Dog Training Guide"
       :created_at #t "2025-01-01T12:00:00Z"
       :creator_id 1
       :archived false
-      :legacy_input {:id "123"
+      :legacy_input {:id 123
                      :model "card"
                      :dataset_query native-query-json}
       :native_query native-query-json
@@ -142,12 +142,12 @@
                  :description "How to teach an old dog new tricks"
                  :native-query native-query-json}}
      {:model "dashboard"
-      :id "456"
+      :id 456
       :searchable_text "Elephant Migration"
       :created_at #t "2025-02-01T12:00:00Z"
       :creator_id 2
       :archived true
-      :legacy_input {:model "dashboard" :id "456"}
+      :legacy_input {:model "dashboard" :id 456}
       :metadata {:title "Elephant Migration" :description "How do elephants deal with schema upgrades?"}}]))
 
 (defn filter-for-mock-embeddings
