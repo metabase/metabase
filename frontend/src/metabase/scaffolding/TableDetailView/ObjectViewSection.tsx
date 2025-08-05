@@ -85,7 +85,6 @@ export function ObjectViewSection({
     <Box
       className={cx(S.ObjectViewSection, {
         [S.normal]: variant === "normal",
-        // [S.header]: variant === "header",
         [S.subheader]: variant === "subheader",
         [S.highlight1]: variant === "highlight-1",
         [S.highlight2]: variant === "highlight-2",
@@ -101,7 +100,7 @@ export function ObjectViewSection({
           tabIndex={0}
           {...dragHandleProps}
           />
-          )} */}
+        )} */}
           <EditableText
             className={S.SectionTitle}
             initialValue={section.title}
@@ -115,7 +114,12 @@ export function ObjectViewSection({
           />
         </Group>
       )}
-      <Flex className={S.SectionContent}>
+      <Flex
+        className={S.SectionContent}
+        style={{
+          gridTemplateColumns: `repeat(${Math.min(section.fields.length, 3)}, 1fr)`,
+        }}
+      >
         {section.fields.map(({ field_id }) => {
           const columnIndex = columns.findIndex(
             (column) => column.id === field_id,

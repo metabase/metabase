@@ -56,7 +56,6 @@
     }
     .SectionContent {
       gap: 1rem;
-      /* flex-wrap: wrap; */
     }
     .FieldName {
       display: none;
@@ -64,7 +63,6 @@
     .FieldValue {
       font-size: 3.125rem;
       font-weight: 700;
-      /* display: flex; */
     }
   }
 
@@ -101,12 +99,11 @@
   &.highlight2 {
     .SectionContent {
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
+
       gap: var(--mantine-spacing-md);
     }
 
     .SectionContent .Field {
-      grid-column: span 1;
       flex-direction: column;
       overflow: hidden;
       align-items: start;
