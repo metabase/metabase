@@ -202,6 +202,59 @@
                  (semantic.tu/upsert-index! (semantic.tu/mock-documents))))
           (is (= 2.0 (mt/metric-value system :metabase-search/semantic-index-size))))))))
 
+(deftest ^:syncronized semantic-search-analytics-test
+  (mt/with-premium-features #{:semantic-search}
+    (with-open [_ (semantic.tu/open-temp-index!)]
+      (semantic.tu/upsert-index! (semantic.tu/mock-documents))
+      (testing "Analytics metrics are recorded for semantic search operations"
+        (let [analytics-calls (atom [])]
+          (mt/with-dynamic-fn-redefs [analytics/inc! (fn [metric & args]
+                                                       (swap! analytics-calls conj [metric args]))]
+            (testing "Permission filtering metrics"
+              (reset! analytics-calls [])
+              (mt/with-test-user :crowberto
+                (semantic.index/query-index semantic.tu/db semantic.tu/mock-index
+                                            {:search-string "dog training"}))
+
+              (let [permission-calls (filter #(= :metabase-search/permission-filtering-ms (first %)) @analytics-calls)]
+                (is (= 1 (count permission-calls)))
+                (let [time-ms (first (second (first permission-calls)))]
+                  (is (number? time-ms))
+                  (is (< time-ms 1000) "Permission filtering should complete within 1000ms"))))
+
+            (testing "Semantic search timing metrics"
+              (reset! analytics-calls [])
+              (mt/with-test-user :crowberto
+                (semantic.index/query-index semantic.tu/db semantic.tu/mock-index
+                                            {:search-string "elephant migration"}))
+
+              (let [metric-names (set (map first @analytics-calls))]
+                (is (contains? metric-names :metabase-search/semantic-search-ms))
+                (is (contains? metric-names :metabase-search/semantic-embedding-ms))
+                (is (contains? metric-names :metabase-search/semantic-db-query-ms))
+                (is (contains? metric-names :metabase-search/permission-filtering-ms)))
+
+              (testing "timing values  are reasonable"
+                (doseq [[metric args] @analytics-calls
+                        :when (#{:metabase-search/semantic-search-ms
+                                 :metabase-search/semantic-embedding-ms
+                                 :metabase-search/semantic-db-query-ms
+                                 :metabase-search/permission-filtering-ms} metric)]
+                  (let [time-ms (if (= metric :metabase-search/permission-filtering-ms)
+                                  (first args)
+                                  (second args))]
+                    (is (number? time-ms) (str "Time for " metric " should be numeric"))
+                    (is (>= time-ms 0) (str "Time for " metric " should be non-negative"))
+                    (is (< time-ms 1000) (str "Time for " metric " should be under 1000ms")))))
+
+              (let [embedding-metrics (filter #(#{:metabase-search/semantic-search-ms
+                                                  :metabase-search/semantic-embedding-ms
+                                                  :metabase-search/semantic-db-query-ms} (first %)) @analytics-calls)]
+                (doseq [[_ args] embedding-metrics]
+                  (let [labels (first args)]
+                    (is (map? labels) "Should have labels map")
+                    (is (contains? labels :embedding-model) "Should include embedding-model label")))))))))))
+
 (deftest filter-by-collection-test
   (testing "filter-by-collection function filters documents based on personal collection preferences"
     (let [user1-id (mt/user->id :rasta)
@@ -324,56 +377,3 @@
           (testing "handles non-existent model indexes"
             (let [non-existent-docs [{:id "99999:123" :model "indexed-entity" :content "Non-existent"}]]
               (is (= [] (#'semantic.index/filter-can-read-indexed-entity non-existent-docs))))))))))
-
-(deftest ^:syncronized semantic-search-analytics-test
-  (mt/with-premium-features #{:semantic-search}
-    (with-open [_ (semantic.tu/open-temp-index!)]
-      (semantic.tu/upsert-index! (semantic.tu/mock-documents))
-      (testing "Analytics metrics are recorded for semantic search operations"
-        (let [analytics-calls (atom [])]
-          (mt/with-dynamic-fn-redefs [analytics/inc! (fn [metric & args]
-                                                       (swap! analytics-calls conj [metric args]))]
-            (testing "Permission filtering metrics"
-              (reset! analytics-calls [])
-              (mt/with-test-user :crowberto
-                (semantic.index/query-index semantic.tu/db semantic.tu/mock-index
-                                            {:search-string "dog training"}))
-
-              (let [permission-calls (filter #(= :metabase-search/permission-filtering-ms (first %)) @analytics-calls)]
-                (is (= 1 (count permission-calls)))
-                (let [time-ms (first (second (first permission-calls)))]
-                  (is (number? time-ms))
-                  (is (< time-ms 1000) "Permission filtering should complete within 1000ms"))))
-
-            (testing "Semantic search timing metrics"
-              (reset! analytics-calls [])
-              (mt/with-test-user :crowberto
-                (semantic.index/query-index semantic.tu/db semantic.tu/mock-index
-                                            {:search-string "elephant migration"}))
-
-              (let [metric-names (set (map first @analytics-calls))]
-                (is (contains? metric-names :metabase-search/semantic-search-ms))
-                (is (contains? metric-names :metabase-search/semantic-embedding-ms))
-                (is (contains? metric-names :metabase-search/semantic-db-query-ms))
-                (is (contains? metric-names :metabase-search/permission-filtering-ms)))
-
-              (testing "timing values  are reasonable"
-                (doseq [[metric args] @analytics-calls
-                        :when (#{:metabase-search/semantic-search-ms
-                                 :metabase-search/semantic-embedding-ms
-                                 :metabase-search/semantic-db-query-ms
-                                 :metabase-search/permission-filtering-ms} metric)]
-                  (let [time-ms (if (= metric :metabase-search/permission-filtering-ms)
-                                  (first args)
-                                  (second args))]
-                    (is (number? time-ms) (str "Time for " metric " should be numeric"))
-                    (is (>= time-ms 0) (str "Time for " metric " should be non-negative"))
-                    (is (< time-ms 1000) (str "Time for " metric " should be under 1000ms")))))
-
-              (let [embedding-metrics (filter #(#{:metabase-search/semantic-search-ms
-                                                  :metabase-search/semantic-embedding-ms
-                                                  :metabase-search/semantic-db-query-ms} (first %)) @analytics-calls)]
-                (doseq [[_ args] embedding-metrics]
-                  (let [labels (first args)]
-                    (is (map? labels) "Should have labels map")
-                    (is (contains? labels :embedding-model) "Should include embedding-model label")))))))))))
