@@ -295,7 +295,19 @@
                        {:description (str "Number of tokens consumed by the given embedding model and provider. "
                                           "Not all providers track token use.")
                         :labels [:model :provider]})
-   ;; notification metrics
+   (prometheus/counter :metabase-search/permission-filtering-ms
+                       {:description "Total number of ms spent filtering readable docs"})
+   (prometheus/counter :metabase-search/semantic-search-ms
+                       {:description "Total number of ms spent performing a semantic search"
+                        :labels [:embedding-model]})
+   (prometheus/counter :metabase-search/semantic-embedding-ms
+                       {:description "Total number of ms spent calculating the embedding of the search string"
+                        :labels [:embedding-model]})
+   (prometheus/counter :metabase-search/semantic-db-query-ms
+                       {:description "Total number of ms spent querying the search index"
+                        :labels [:embedding-model]})
+
+;; notification metrics
    (prometheus/counter :metabase-notification/send-ok
                        {:description "Number of successful notification sends."
                         :labels [:payload-type]})

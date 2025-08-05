@@ -462,17 +462,29 @@
 (defn- filter-read-permitted
   "Returns only those documents in `docs` whose corresponding t2 instances pass an mi/can-read? check for the bound api user."
   [docs]
-  (let [doc->t2-model (fn [doc] (:model (search/spec (:model doc))))
+  (let [timer (u/start-timer)
+        doc->t2-model (fn [doc] (:model (search/spec (:model doc))))
         {indexed-entities true regular-docs false} (group-by #(= "indexed-entity" (:model %)) docs)
         other-docs (for [[t2-model docs] (group-by doc->t2-model regular-docs)
                          t2-instance (t2/select t2-model :id [:in (map :id docs)])]
                      t2-instance)
         permitted-entities (filter-can-read-indexed-entity indexed-entities)
         doc->t2 (comp (u/index-by (juxt :id t2/model) other-docs)
-                      (juxt :id doc->t2-model))]
-    (into
-     (filterv (fn [doc] (some-> doc doc->t2 mi/can-read?)) regular-docs)
-     permitted-entities)))
+                      (juxt :id doc->t2-model))
+        result (into
+                (filterv (fn [doc] (some-> doc doc->t2 mi/can-read?)) regular-docs)
+                permitted-entities)
+        time-ms (u/since-ms timer)]
+
+    (log/debug "Permission filtering" {:before-count (count docs)
+                                       :after-count (count result)
+                                       :indexed-entities-count (count indexed-entities)
+                                       :regular-docs-count (count regular-docs)
+                                       :time-ms time-ms})
+
+    (analytics/inc! :metabase-search/permission-filtering-ms time-ms)
+
+    result))
 
 (defn- get-personal-collection-ids
   "Get the set of personal collection IDs by extracting root collection IDs from locations."
@@ -579,17 +591,48 @@
   (let [{:keys [embedding-model]} index
         search-string (:search-string search-context)]
     (when-not (str/blank? search-string)
-      (let [embedding (embedding/get-embedding embedding-model search-string)
-            query     (hybrid-search-query index embedding search-context)
-            xform     (comp (map unqualify-keys)
-                            (map decode-metadata)
-                            (map legacy-input-with-score))
-            reducible (jdbc/plan db (sql-format-quoted query))]
+      (let [timer (u/start-timer)
+
+            embedding (embedding/get-embedding embedding-model search-string)
+            embedding-time-ms (u/since-ms timer)
+
+            db-timer (u/start-timer)
+            query (hybrid-search-query index embedding search-context)
+            xform (comp (map unqualify-keys)
+                        (map decode-metadata)
+                        (map legacy-input-with-score))
+            reducible (jdbc/plan db (sql-format-quoted query))
+            raw-results (into [] xform reducible)
+            db-query-time-ms (u/since-ms db-timer)
+
+            filtered-results (-> raw-results
+                                 filter-read-permitted
+                                 (apply-collection-filter search-context))
+
+            total-time-ms (u/since-ms timer)]
+
+        (log/debug "Semantic search"
+                   {:search-string-length (count search-string)
+                    :embedding-time-ms embedding-time-ms
+                    :db-query-time-ms db-query-time-ms
+                    :raw-results-count (count raw-results)
+                    :final-results-count (count filtered-results)
+                    :total-time-ms total-time-ms})
+
+        (analytics/inc! :metabase-search/semantic-search-ms
+                        {:embedding-model (:name embedding-model)}
+                        total-time-ms)
+        (analytics/inc! :metabase-search/semantic-embedding-ms
+                        {:embedding-model (:name embedding-model)}
+                        embedding-time-ms)
+        (analytics/inc! :metabase-search/semantic-db-query-ms
+                        {:embedding-model (:name embedding-model)}
+                        db-query-time-ms)
+
         (comment
           (jdbc/execute! db (sql-format-quoted query)))
-        (-> (transduce xform conj [] reducible)
-            filter-read-permitted
-            (apply-collection-filter search-context))))))
+
+        filtered-results))))
 
 (comment
   (def embedding-model (embedding/get-configured-model))
