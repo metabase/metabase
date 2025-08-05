@@ -1,6 +1,7 @@
 import { type ReactNode, useCallback, useState } from "react";
 import { t } from "ttag";
 
+import { useUpdateTableComponentSettingsMutation } from "metabase/api";
 import { Box, Flex, Group, Tooltip } from "metabase/ui/components";
 import { Button } from "metabase/ui/components/buttons";
 import { Icon } from "metabase/ui/components/icons";
@@ -44,44 +45,69 @@ export function DetailViewHeader({
     }
   }, []);
 
+  const [updateTableComponentSettings] =
+    useUpdateTableComponentSettingsMutation();
+
   return (
     <Nav rowId={rowId} rowName={rowName} table={table}>
       <Flex align="center" gap="md">
-        {(canOpenPreviousItem || canOpenNextItem) && (
-          <Group gap="sm">
-            <Tooltip disabled={!canOpenPreviousItem} label={t`Previous row`}>
-              <Button
-                w={32}
-                h={32}
-                c="text-dark"
-                variant="subtle"
-                disabled={!canOpenPreviousItem}
-                onClick={onPreviousItemClick}
-                leftSection={<Icon name="chevronup" />}
-                style={{
-                  opacity: !canOpenPreviousItem ? 0.5 : 1,
-                }}
-              />
-            </Tooltip>
-
-            <Tooltip disabled={!canOpenNextItem} label={t`Next row`}>
-              <Button
-                w={32}
-                h={32}
-                c="text-dark"
-                variant="subtle"
-                disabled={!canOpenNextItem}
-                onClick={onNextItemClick}
-                leftSection={<Icon name="chevrondown" />}
-                style={{
-                  opacity: !canOpenNextItem ? 0.5 : 1,
-                }}
-              />
-            </Tooltip>
-          </Group>
-        )}
+        <Tooltip label={t`Debug: reset settings to default`}>
+          <Button
+            w={32}
+            h={32}
+            c="text-dark"
+            variant="subtle"
+            leftSection={<Icon name="refresh" />}
+            onClick={() => {
+              if (window.confirm("The change will persist. Are you sure?")) {
+                updateTableComponentSettings({
+                  id: table.id,
+                  component_settings: null,
+                });
+              }
+            }}
+          />
+        </Tooltip>
 
         <Box h={20} w={1} bg="var(--border-color)" />
+
+        {(canOpenPreviousItem || canOpenNextItem) && (
+          <>
+            <Group gap="sm">
+              <Tooltip disabled={!canOpenPreviousItem} label={t`Previous row`}>
+                <Button
+                  w={32}
+                  h={32}
+                  c="text-dark"
+                  variant="subtle"
+                  disabled={!canOpenPreviousItem}
+                  onClick={onPreviousItemClick}
+                  leftSection={<Icon name="chevronup" />}
+                  style={{
+                    opacity: !canOpenPreviousItem ? 0.5 : 1,
+                  }}
+                />
+              </Tooltip>
+
+              <Tooltip disabled={!canOpenNextItem} label={t`Next row`}>
+                <Button
+                  w={32}
+                  h={32}
+                  c="text-dark"
+                  variant="subtle"
+                  disabled={!canOpenNextItem}
+                  onClick={onNextItemClick}
+                  leftSection={<Icon name="chevrondown" />}
+                  style={{
+                    opacity: !canOpenNextItem ? 0.5 : 1,
+                  }}
+                />
+              </Tooltip>
+            </Group>
+
+            <Box h={20} w={1} bg="var(--border-color)" />
+          </>
+        )}
 
         <Group gap="sm">
           <Tooltip label={linkCopied ? t`Copied!` : t`Copy link to this row`}>

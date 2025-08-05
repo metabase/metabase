@@ -135,7 +135,7 @@ export interface UpdateTableRequest {
 
 export interface UpdateTableComponentSettingsRequest {
   id: TableId;
-  component_settings: ComponentSettings;
+  component_settings: ComponentSettings | null;
 }
 
 export interface UpdateTableListRequest {
