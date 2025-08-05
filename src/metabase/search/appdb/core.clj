@@ -102,7 +102,7 @@
       true (sql.helpers/where (or-null permitted-clause))
       personal-clause (sql.helpers/where (or-null personal-clause)))))
 
-(defmethod search.engine/results :search.engine/appdb
+(defn- results
   [{:keys [search-engine search-string] :as search-ctx}]
   ;; Check whether there is a query-able index.
   (when-not (search.index/active-table)
@@ -152,6 +152,10 @@
       ;; Rule out the error coming from stale index metadata.
       (#'search.index/sync-tracking-atoms!)
       (throw e))))
+
+(defmethod search.engine/results :search.engine/appdb
+  [search-ctx]
+  (results search-ctx))
 
 (defmethod search.engine/model-set :search.engine/appdb
   [search-ctx]
