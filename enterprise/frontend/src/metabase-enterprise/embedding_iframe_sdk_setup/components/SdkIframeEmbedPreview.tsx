@@ -1,14 +1,17 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParam } from "react-use";
 import _ from "underscore";
 
+import type { MetabaseTheme } from "embedding-sdk";
 import { useSetting } from "metabase/common/hooks";
+import { colors as defaultMetabaseColors } from "metabase/lib/colors";
 import { Card } from "metabase/ui";
 import type { MetabaseEmbedElement } from "metabase-enterprise/embedding_iframe_sdk/embed";
 import type { SdkIframeEmbedBaseSettings } from "metabase-enterprise/embedding_iframe_sdk/types/embed";
 
 import { useSdkIframeEmbedSetupContext } from "../context";
 import { getEmbedCustomElementSnippet } from "../utils/embed-snippet";
+import { getConfigurableThemeColors } from "../utils/theme-colors";
 
 declare global {
   interface Window {
@@ -27,6 +30,22 @@ export const SdkIframeEmbedPreview = () => {
   const scriptRef = useRef<HTMLScriptElement | null>(null);
 
   const instanceUrl = useSetting("site-url");
+  const applicationColors = useSetting("application-colors");
+
+  // TODO: There is a bug in the SDK where if we set the theme back to undefined,
+  // some color will not be reset to the default (e.g. text color, CSS variables).
+  // We can remove this block once the bug is fixed.
+  const defaultTheme: MetabaseTheme = useMemo(() => {
+    const colors = Object.fromEntries(
+      getConfigurableThemeColors().map((color) => [
+        color.key,
+        applicationColors?.[color.originalColorKey] ??
+          defaultMetabaseColors[color.originalColorKey],
+      ]),
+    );
+
+    return { colors };
+  }, [applicationColors]);
 
   useEffect(
     () => {
@@ -96,9 +115,12 @@ export const SdkIframeEmbedPreview = () => {
         // We must always use user sessions in the preview.
         // We never use SSO in the preview as that adds complexity.
         ..._.omit(settings, ["useExistingUserSession"]),
+
+        // Fallback to the default theme if not set due to the bug mentioned above.
+        theme: settings.theme ?? defaultTheme,
       });
     }
-  }, [settings, isIframeLoaded]);
+  }, [settings, isIframeLoaded, defaultTheme]);
 
   return (
     <Card

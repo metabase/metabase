@@ -8,6 +8,8 @@ import { colors as defaultMetabaseColors } from "metabase/lib/colors";
 import type { ColorName } from "metabase/lib/colors/types";
 import { ActionIcon, Group, Icon, Stack, Text, Tooltip } from "metabase/ui";
 
+import { getConfigurableThemeColors } from "../utils/theme-colors";
+
 interface ColorCustomizationSectionProps {
   theme?: { colors?: Partial<MetabaseColors> };
   onColorChange: (colors: Partial<MetabaseColors>) => void;
@@ -96,28 +98,3 @@ export const ColorCustomizationSection = ({
     </>
   );
 };
-
-const getConfigurableThemeColors = () =>
-  [
-    {
-      name: t`Brand Color`,
-      key: "brand",
-      originalColorKey: "brand",
-    },
-    {
-      name: t`Text Color`,
-      key: "text-primary",
-      originalColorKey: "text-dark",
-    },
-    {
-      name: t`Background Color`,
-      key: "background",
-      originalColorKey: "bg-white",
-    },
-  ] as const satisfies {
-    name: string;
-    key: keyof MetabaseColors;
-
-    // Populate colors from appearance settings.
-    originalColorKey: ColorName;
-  }[];
