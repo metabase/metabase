@@ -431,4 +431,5 @@
    [:ref ::lib.schema.util/unique-uuids]
    [:fn
     {:error/message ":expressions is not allowed in the top level of a query -- it is only allowed in MBQL stages"}
-    #(not (contains? % :expressions))]])
+    #(not (when (map? %)
+            (contains? % :expressions)))]])

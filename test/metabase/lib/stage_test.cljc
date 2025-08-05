@@ -261,28 +261,28 @@
               :name "ID"
               :lib/source :source/previous-stage
               :effective-type :type/BigInteger
-              :lib/desired-column-alias "ID"
+              :lib/source-column-alias "ID"
               :display-name "ID"}
              {:base-type :type/Text
               :semantic-type :type/Name
               :name "NAME"
               :lib/source :source/previous-stage
               :effective-type :type/Text
-              :lib/desired-column-alias "NAME"
+              :lib/source-column-alias "NAME"
               :display-name "Name"}
              {:base-type :type/BigInteger
               :semantic-type :type/PK
               :name "ID"
               :lib/source :source/previous-stage
               :effective-type :type/BigInteger
-              :lib/desired-column-alias "Cat__ID"
+              :lib/source-column-alias "Cat__ID"
               :display-name "ID"}
              {:base-type :type/Text
               :semantic-type :type/Name
               :name "NAME"
               :lib/source :source/previous-stage
               :effective-type :type/Text
-              :lib/desired-column-alias "Cat__NAME"
+              :lib/source-column-alias "Cat__NAME"
               :display-name "Name"}]
             (lib/visible-columns query)))))
 
@@ -806,7 +806,7 @@
 
 (deftest ^:parallel return-correct-deduplicated-names-test
   (testing "Deduplicated names from previous stage should be preserved even when excluding certain fields"
-    ;; e.g. a field called CREATED_AT_2 in the previous stage should continue to be called that. See ;; see
+    ;; e.g. a field called CREATED_AT_2 in the previous stage should continue to be called that. See
     ;; https://metaboat.slack.com/archives/C0645JP1W81/p1750961267171999
     (let [query (-> (lib/query
                      meta/metadata-provider
@@ -821,19 +821,60 @@
                     lib/append-stage
                     lib/append-stage
                     (as-> query (lib/remove-field query -1 (first (lib/fieldable-columns query -1)))))]
-      (is (=? [{:name                     "CREATED_AT_2"
-                :lib/original-name        "CREATED_AT"
-                :lib/deduplicated-name    "CREATED_AT_2"
-                :lib/source-column-alias  "CREATED_AT_2"
-                :lib/desired-column-alias "CREATED_AT_2"
-                :display-name             "Created At: Month"}
-               {:name                     "count"
-                :lib/original-name        "count"
-                :lib/deduplicated-name    "count"
-                :lib/source-column-alias  "count"
-                :lib/desired-column-alias "count"
-                :display-name             "Count"}]
-              (lib/returned-columns query))))))
+      (testing "Stage 1 of 3"
+        (is (=? [{:name                     "CREATED_AT"
+                  :lib/original-name        "CREATED_AT"
+                  :lib/deduplicated-name    "CREATED_AT"
+                  :lib/source-column-alias  "CREATED_AT"
+                  :lib/desired-column-alias "CREATED_AT"
+                  :display-name             "Created At: Year"}
+                 {:name                     "CREATED_AT"
+                  :lib/original-name        "CREATED_AT"
+                  :lib/deduplicated-name    "CREATED_AT_2"
+                  :lib/source-column-alias  "CREATED_AT"
+                  :lib/desired-column-alias "CREATED_AT_2"
+                  :display-name             "Created At: Month"}
+                 {:name                     "count"
+                  :lib/original-name        "count"
+                  :lib/deduplicated-name    "count"
+                  :lib/source-column-alias  "count"
+                  :lib/desired-column-alias "count"
+                  :display-name             "Count"}]
+                (lib/returned-columns query 0))))
+      (testing "Stage 2 of 3"
+        (is (=? [{:name                     "CREATED_AT"
+                  :lib/original-name        "CREATED_AT"
+                  :lib/deduplicated-name    "CREATED_AT"
+                  :lib/source-column-alias  "CREATED_AT"
+                  :lib/desired-column-alias "CREATED_AT"
+                  :display-name             "Created At: Year"}
+                 {:name                     "CREATED_AT"
+                  :lib/original-name        "CREATED_AT"
+                  :lib/deduplicated-name    "CREATED_AT_2"
+                  :lib/source-column-alias  "CREATED_AT_2"
+                  :lib/desired-column-alias "CREATED_AT_2"
+                  :display-name             "Created At: Month"}
+                 {:name                     "count"
+                  :lib/original-name        "count"
+                  :lib/deduplicated-name    "count"
+                  :lib/source-column-alias  "count"
+                  :lib/desired-column-alias "count"
+                  :display-name             "Count"}]
+                (lib/returned-columns query 1))))
+      (testing "Stage 3 of 3"
+        (is (=? [{:name                     "CREATED_AT_2" ; name should get deduplicated in the last stage for historical reasons
+                  :lib/original-name        "CREATED_AT"
+                  :lib/deduplicated-name    "CREATED_AT_2"
+                  :lib/source-column-alias  "CREATED_AT_2"
+                  :lib/desired-column-alias "CREATED_AT_2"
+                  :display-name             "Created At: Month"}
+                 {:name                     "count"
+                  :lib/original-name        "count"
+                  :lib/deduplicated-name    "count"
+                  :lib/source-column-alias  "count"
+                  :lib/desired-column-alias "count"
+                  :display-name             "Count"}]
+                (lib/returned-columns query)))))))
 
 (deftest ^:parallel test-QUE-1607
   (testing "QUE-1607"

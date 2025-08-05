@@ -54,10 +54,9 @@
   ([]
    (let [deduplicated-name-fn (lib.util/non-truncating-unique-name-generator)]
      (map (fn [col]
-            (let [original-name ((some-fn :lib/original-name :name) col)]
-              (assoc col
-                     :lib/original-name     original-name
-                     :lib/deduplicated-name (deduplicated-name-fn ((some-fn :lib/deduplicated-name :name) col))))))))
+            (assoc col
+                   :lib/original-name     ((some-fn :lib/original-name :name) col)
+                   :lib/deduplicated-name (deduplicated-name-fn ((some-fn :lib/deduplicated-name :name) col)))))))
 
   ([cols :- [:sequential ::lib.schema.metadata/column]]
    (into []
@@ -103,8 +102,11 @@
              :lib/source-column-alias ((some-fn :lib/desired-column-alias :lib/source-column-alias :name) col)
              :lib/source :source/previous-stage)
       ;;
-      ;; Remove `:lib/desired-column-alias` and `:lib/deduplicated-name`, which need to be recalculated in the context
-      ;; of what is returned by the current stage, to prevent any confusion; their values are likely wrong now and we
-      ;; don't want people to get confused by them. `visible-columns` is not supposed to return these, since we can't
+      ;; Remove `:lib/desired-column-alias`, which needs to be recalculated in the context
+      ;; of what is returned by the current stage, to prevent any confusion; its value is likely wrong now and we
+      ;; don't want people to get confused by them. `visible-columns` is not supposed to return it, since we can't
       ;; know their value without knowing what is actually returned.
-      (dissoc :lib/desired-column-alias :lib/deduplicated-name)))
+      ;;
+      ;; we should OTOH keep `:lib/deduplicated-name`, because this is used to calculate subsequent deduplicated
+      ;; names, see [[metabase.lib.stage-test/return-correct-deduplicated-names-test]] for an example.
+      (dissoc :lib/desired-column-alias)))

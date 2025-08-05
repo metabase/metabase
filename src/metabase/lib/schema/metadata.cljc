@@ -220,7 +220,7 @@
                                    " current stage join alias (:metabase.lib.join/join-alias).")}
               (some-fn :metabase.lib.join/join-alias
                        ;; see [[metabase.lib.join/HACK-column-from-incomplete-join]]
-                       :metabase.lib.join/HACK-incomplete-join?)]}
+                       :metabase.lib.join/HACK-from-incomplete-join?)]}
    ;; `:lib/source` `:source/implicitly-joinable` must have `:fk-field-id`; `:fk-field-id` is only allowed for
    ;; `:source/implicitly-joinable` and `:source/joins`. For columns from `:source/previous-stage` or whatever... in
    ;; that case we should be using `:lib/original-fk-field-id` instead.
