@@ -130,6 +130,7 @@
   (let [native-query-json (dog-training-native-query-json)]
     [{:model "card"
       :id 123
+      :name "Dog Training Guide"
       :searchable_text "Dog Training Guide"
       :created_at #t "2025-01-01T12:00:00Z"
       :creator_id 1
@@ -143,6 +144,7 @@
                  :native-query native-query-json}}
      {:model "dashboard"
       :id 456
+      :name "Elephant Migration"
       :searchable_text "Elephant Migration"
       :created_at #t "2025-02-01T12:00:00Z"
       :creator_id 2

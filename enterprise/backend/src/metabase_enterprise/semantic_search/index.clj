@@ -50,16 +50,21 @@
      [:model_created_at :timestamp-with-time-zone]
      [:last_editor_id :int]
      [:model_updated_at :timestamp-with-time-zone]
+     [:pinned :boolean]
      [:archived :boolean [:default false]]
      [:verified :boolean]
      [:official_collection :boolean]
      [:database_id :int]
      [:collection_id :int]
      [:display_type :text]
+     [:dashboardcard_count :int]
+     [:view_count :int]
+     [:last_viewed_at :timestamp-with-time-zone]
      [:legacy_input :jsonb]
      [:embedding [:raw (format "vector(%d)" vector-dimensions)] :not-null]
      [:text_search_vector :tsvector :not-null]
      [:text_search_with_native_query_vector :tsvector :not-null]
+     [:name :text :not-null]
      [:content :text :not-null]
      [:metadata :jsonb]
      [[:constraint unique-constraint-name]
@@ -79,20 +84,26 @@
 (defn- doc->db-record
   "Convert a document to a database record with a provided embedding."
   [embedding-vec {:keys [model id searchable_text created_at creator_id updated_at
-                         last_editor_id archived verified official_collection database_id collection_id display_type legacy_input] :as doc}]
+                         last_editor_id archived verified official_collection database_id collection_id display_type legacy_input
+                         pinned dashboardcard_count view_count last_viewed_at] :as doc}]
   {:model               model
    :model_id            id
    :creator_id          creator_id
    :model_created_at    created_at
    :last_editor_id      last_editor_id
    :model_updated_at    updated_at
+   :pinned              pinned
    :archived            archived
    :verified            verified
    :official_collection official_collection
    :database_id         database_id
    :collection_id       collection_id
+   :dashboardcard_count dashboardcard_count
+   :view_count          view_count
+   :last_viewed_at      last_viewed_at
    :display_type        display_type
    :embedding           [:raw (format-embedding embedding-vec)]
+   :name                (:name doc)
    :content             searchable_text
    :text_search_vector (if (:name doc)
                          [:||
