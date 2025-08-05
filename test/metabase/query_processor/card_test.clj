@@ -296,15 +296,23 @@
    ["Vendas São Paulo" "vendas_sao_paulo"]
    ["Q1/Q2 Comparison" "q1_q2_comparison"]
    ["   Trimmed   " "trimmed"]
+   ;; Long
    [(apply str (repeat 150 "a")) (apply str (repeat 150 "a"))]
    [(apply str (repeat 254 "a")) (apply str (repeat 200 "a"))]
-   ["Αναφορά Πωλήσεων" "%CE%B1%CE%BD%CE%B1%CF%86%CE%BF%CF%81%CE%B1_%CF%80%CF%89%CE%BB%CE%B7%CF%83%CE%B5%CF%89%CE%BD"] ; Greek
-   ["销售报告" "%E9%94%80%E5%94%AE%E6%8A%A5%E5%91%8A"] ; Chinese
-   ["レポート分析" "%E3%83%AC%E3%83%9B%E3%82%9A%E3%83%BC%E3%83%88%E5%88%86%E6%9E%90"] ; Japanese
-   ["📊 Dashboard Metrics 📈" "%3F%3F_dashboard_metrics_%3F%3F"] ; Emojis
-   ["Отчёт по продажам" "%D0%BE%D1%82%D1%87%D0%B5%D1%82_%D0%BF%D0%BE_%D0%BF%D1%80%D0%BE%D0%B4%D0%B0%D0%B6%D0%B0%D0%BC"] ; Russian
-   ["تقرير المبيعات" "%D8%AA%D9%82%D8%B1%D9%8A%D8%B1_%D8%A7%D9%84%D9%85%D8%A8%D9%8A%D8%B9%D8%A7%D8%AA"] ; Arabic
-   ["混合 Report αβγ" "%E6%B7%B7%E5%90%88_report_%CE%B1%CE%B2%CE%B3"]]) ; Mixed
+   ;; Greek
+   ["ναφρά Πωλήσεων" "%CE%B1%CE%BD%CE%B1%CF%86%CE%BF%CF%81%CE%B1_%CF%80%CF%89%CE%BB%CE%B7%CF%83%CE%B5%CF%89%CE%BD"]
+   ;; Chinese
+   ["销售报告" "%E9%94%80%E5%94%AE%E6%8A%A5%E5%91%8A"]
+   ;; Japanese
+   ["レポート分析" "%E3%83%AC%E3%83%9B%E3%82%9A%E3%83%BC%E3%83%88%E5%88%86%E6%9E%90"]
+   ;; Emojis
+   ["📊 Dashboard Metrics 📈" "%3F%3F_dashboard_metrics_%3F%3F"]
+   ;; Cyrillic
+   ["тчёт п пджм" "%D0%BE%D1%82%D1%87%D0%B5%D1%82_%D0%BF%D0%BE_%D0%BF%D1%80%D0%BE%D0%B4%D0%B0%D0%B6%D0%B0%D0%BC"]
+   ;; Arabic
+   ["تقرير المبيعات" "%D8%AA%D9%82%D8%B1%D9%8A%D8%B1_%D8%A7%D9%84%D9%85%D8%A8%D9%8A%D8%B9%D8%A7%D8%AA"]
+   ;; Mixed
+   ["混合 Report αβγ" "%E6%B7%B7%E5%90%88_report_%CE%B1%CE%B2%CE%B3"]])
 
 (deftest ^:parallel process-query-for-card-default-run-fn-filename-test
   (testing "process-query-for-card-default-run-fn generates correct filenames"
