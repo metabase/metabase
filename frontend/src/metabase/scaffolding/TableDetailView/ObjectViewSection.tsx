@@ -14,6 +14,7 @@ import type {
 import { renderValue } from "../utils";
 
 import S from "./TableDetailView.module.css";
+import { isFK } from "metabase-lib/v1/types/utils/isa";
 
 type ObjectViewSectionProps = {
   section: ObjectViewSectionSettings;
@@ -32,6 +33,7 @@ export function ObjectViewSection({
   columns,
   row,
   // tableId,
+  fields,
   // isEdit,
   onUpdateSection,
   // dragHandleProps,
@@ -116,6 +118,15 @@ export function ObjectViewSection({
           }
 
           const value = row[columnIndex];
+          const isForeignKey = isFK(column);
+
+
+          if (isForeignKey) {
+            // const tableId = column.table_id;
+            const field = fields.find((f) => f.id === field_id);
+            const newTableId = field?.target?.table_id;
+            console.log({ newTableId, row })
+          }
 
           return (
             <Flex key={field_id} className={S.Field}>
