@@ -17,7 +17,8 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:private mb-id (settings/site-uuid))
+(defn- mb-id []
+  (settings/site-uuid))
 
 (defn- json-body [{:keys [body]}]
   (json/decode+kw body))
@@ -44,11 +45,11 @@
                        {:form-params {:driver driver
                                       :transform-details transform-details
                                       :opts opts
-                                      :mb-source mb-id}
+                                      :mb-source (mb-id)}
                         :content-type :json})))
 
 (defn get-status [run-id]
-  (json-body (http/get (worker-route (str "/status/" run-id "?mb-source=" mb-id))
+  (json-body (http/get (worker-route (str "/status/" run-id "?mb-source=" (mb-id)))
                        {:content-type :json})))
 
 (defn health-check []
