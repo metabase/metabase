@@ -1,5 +1,7 @@
+import { PointerSensor, useSensor } from "@dnd-kit/core";
 import { t } from "ttag";
 
+import { SortableList } from "metabase/common/components/Sortable/SortableList";
 import { Box, Button, Group, Stack, Text } from "metabase/ui/components";
 import { Icon } from "metabase/ui/components/icons";
 import type {
@@ -9,6 +11,7 @@ import type {
 } from "metabase-types/api";
 
 import { SidebarSectionItem } from "./SidebarSectionItem";
+import { SortableSidebarSectionItem } from "./SortableSidebarSectionItem";
 
 interface DetailViewSidebarProps {
   columns: DatasetColumn[];
@@ -34,7 +37,7 @@ export function DetailViewSidebar({
   // table,
   onCreateSection,
   onUpdateSection,
-  onUpdateSections: _onUpdateSections,
+  onUpdateSections,
   onRemoveSection,
   onDragEnd: _onDragEnd,
   onCancel,
@@ -66,6 +69,34 @@ export function DetailViewSidebar({
   //     })
   //     .map((field_id) => ({ field_id })),
   // };
+
+  const handleSortEnd = ({
+    id,
+    newIndex,
+  }: {
+    id: number | string;
+    newIndex: number;
+  }) => {
+    const oldIndex = otherSections.findIndex((section) => section.id === id);
+    if (oldIndex !== -1 && oldIndex !== newIndex) {
+      const newSections = [...otherSections];
+      const [movedSection] = newSections.splice(oldIndex, 1);
+      newSections.splice(newIndex, 0, movedSection);
+
+      // Create the new sections array with header, subheader, and reordered other sections
+      const newSectionsArray = [
+        ...(headerSection ? [headerSection] : []),
+        ...(subheaderSection ? [subheaderSection] : []),
+        ...newSections,
+      ];
+
+      onUpdateSections(newSectionsArray);
+    }
+  };
+
+  const pointerSensor = useSensor(PointerSensor, {
+    activationConstraint: { distance: 15 },
+  });
 
   return (
     <Stack gap={0} h="100%">
@@ -130,18 +161,27 @@ export function DetailViewSidebar({
             </Button>
           </Group>
 
-          {otherSections.map((section) => (
-            <SidebarSectionItem
-              key={section.id}
-              variant={section.variant}
-              section={section}
-              columns={columns}
-              onUpdateSection={onUpdateSection}
-              onRemoveSection={onRemoveSection}
-              openPopoverId={openPopoverId}
-              setOpenPopoverId={setOpenPopoverId}
-            />
-          ))}
+          <SortableList
+            items={otherSections}
+            getId={(section) => section.id}
+            renderItem={({ item: section }) => (
+              <SortableSidebarSectionItem
+                key={section.id}
+                variant={section.variant}
+                section={section}
+                columns={columns}
+                onUpdateSection={onUpdateSection}
+                onRemoveSection={onRemoveSection}
+                openPopoverId={openPopoverId}
+                setOpenPopoverId={setOpenPopoverId}
+                showDragHandle={
+                  otherSections.filter((s) => s.fields.length > 0).length > 1
+                }
+              />
+            )}
+            onSortEnd={handleSortEnd}
+            sensors={[pointerSensor]}
+          />
           {/*
           <SidebarSectionItem
             variant={uncategorizedSection.variant}

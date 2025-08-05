@@ -5,6 +5,7 @@ import EditableText from "metabase/common/components/EditableText";
 import {
   Box,
   Button,
+  Flex,
   Group,
   Icon,
   Popover,
@@ -34,6 +35,9 @@ interface SidebarSectionItemProps {
   openPopoverId: number | null;
   setOpenPopoverId?: (id: number | null) => void;
   variant: SectionVariant;
+  showDragHandle?: boolean;
+  dragHandleRef?: React.RefObject<HTMLDivElement>;
+  dragHandleListeners?: React.HTMLAttributes<HTMLDivElement>;
 }
 
 export function SidebarSectionItem({
@@ -45,14 +49,35 @@ export function SidebarSectionItem({
   openPopoverId,
   setOpenPopoverId,
   variant,
+  showDragHandle,
+  dragHandleRef,
+  dragHandleListeners,
 }: SidebarSectionItemProps) {
   const usedFieldIds = useMemo(() => {
     return new Set(section.fields.map((f) => String(f.field_id)));
   }, [section.fields]);
 
   return (
-    <Stack gap={4}>
-      <Group justify="space-between">
+    <Stack gap="xs" maw="330px">
+      <Group align="center" wrap="nowrap" gap="xs">
+        {showDragHandle && (
+          <Flex
+            p="sm"
+            align="center"
+            justify="center"
+            w="xl"
+            h="xl"
+            ref={dragHandleRef as React.RefObject<HTMLDivElement>}
+            style={{
+              cursor: "grab",
+              borderRadius: "var(--default-border-radius)",
+              border: "1px solid var(--border-color)",
+            }}
+            {...dragHandleListeners}
+          >
+            <Icon name="grabber" size={16} />
+          </Flex>
+        )}
         {(!onUpdateSection || !onRemoveSection) && (
           <Text fw="bold" c="text-primary" size="md">
             {section.title}
@@ -60,16 +85,20 @@ export function SidebarSectionItem({
         )}
 
         {onRemoveSection && onUpdateSection && (
-          <EditableText
-            initialValue={section.title}
-            onChange={(title) => onUpdateSection(section.id, { title })}
-            style={{
-              position: "relative",
-              left: -4,
-              fontWeight: "bold",
-              // fontSize: "1.25rem",
-            }}
-          />
+          <Box px="xs" style={{ flexGrow: 1, overflow: "hidden" }}>
+            <EditableText
+              initialValue={section.title}
+              maxLength={240}
+              onChange={(title) => onUpdateSection(section.id, { title })}
+              style={{
+                position: "relative",
+                left: -4,
+                fontWeight: "bold",
+                width: "fit-content",
+                // fontSize: "1.25rem",
+              }}
+            />
+          </Box>
         )}
 
         {onRemoveSection && (
