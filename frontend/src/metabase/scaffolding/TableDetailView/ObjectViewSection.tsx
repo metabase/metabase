@@ -1,9 +1,8 @@
 import cx from "classnames";
 
-// import EditableText from "metabase/common/components/EditableText";
+import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { useTranslateContent } from "metabase/i18n/hooks";
 import { Box, Flex, Group, Text, Tooltip } from "metabase/ui/components";
-import { isDate } from "metabase-lib/v1/types/utils/isa";
 import type {
   DatasetColumn,
   ObjectViewSectionSettings,
@@ -54,22 +53,25 @@ export function ObjectViewSection({
         }
 
         const value = row[columnIndex];
-        return renderValue(tc, value, column);
+        return renderValue(tc, value, column, { jsx: false });
       })
       .join(" ");
 
     return (
       <Box className={cx(S.ObjectViewSection, S.header)}>
         <Flex className={S.SectionContent}>
-          <Text
+          <Ellipsified
             variant="primary"
             truncate
-            lh="inherit"
             c="var(--mb-color-text-primary)"
+            style={{
+              flexGrow: 1,
+            }}
             className={S.FieldValue}
+            fz={undefined}
           >
             {headerText}
-          </Text>
+          </Ellipsified>
         </Flex>
       </Box>
     );
@@ -127,20 +129,19 @@ export function ObjectViewSection({
                   </Text>
                 </Tooltip>
               </Box>
-              <Text
+              <Ellipsified
                 variant="primary"
-                truncate
-                lh="inherit"
+                truncate={variant !== "highlight-2"}
                 c="var(--mb-color-text-primary)"
-                lineClamp={5}
+                lines={3}
                 style={{
-                  ...(isDate(column) ? { whiteSpace: "nowrap" } : {}),
                   flexGrow: 1,
                 }}
                 className={S.FieldValue}
+                fz={undefined}
               >
                 {renderValue(tc, value, column)}
-              </Text>
+              </Ellipsified>
             </Flex>
           );
         })}

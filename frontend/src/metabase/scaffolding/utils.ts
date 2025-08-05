@@ -1,6 +1,6 @@
 import { getNextId } from "__support__/utils";
 import type { ContentTranslationFunction } from "metabase/i18n/types";
-import { formatValue } from "metabase/lib/formatting";
+import { formatValue, OptionsType } from "metabase/lib/formatting";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { getComputedSettings } from "metabase/visualizations/lib/settings";
 import {
@@ -21,6 +21,7 @@ export function renderValue(
   tc: ContentTranslationFunction,
   value: RowValue,
   column: DatasetColumn,
+  optionsOverride?: OptionsType,
 ) {
   const mockSeries = [{ data: { cols: [column] }, card: createMockCard() }];
   const settingDefs = getSettingDefinitionsForColumn(mockSeries, column);
@@ -54,6 +55,7 @@ export function renderValue(
     type: "cell",
     jsx: true,
     rich: true,
+    ...optionsOverride,
   });
 
   return formattedValue != null ? formattedValue : NO_VALUE;
