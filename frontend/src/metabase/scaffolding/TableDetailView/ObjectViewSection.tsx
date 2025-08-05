@@ -120,22 +120,13 @@ export function ObjectViewSection({
 
           return (
             <Flex key={field_id} gap="md" className={S.Field}>
-              <Tooltip
-                openDelay={500}
-                closeDelay={100}
-                label={column.description}
-                position="top"
-                withArrow={false}
-              >
-                <Text
-                  c="var(--mb-color-text-secondary)"
-                  fw="bold"
-                  truncate
-                  className={S.FieldName}
-                >
-                  {column.display_name}
-                </Text>
-              </Tooltip>
+              <Box className={S.FieldName} w="100%">
+                <Tooltip label={column.description} position="top">
+                  <Text c="var(--mb-color-text-secondary)" fw="bold" truncate>
+                    {column.display_name}
+                  </Text>
+                </Tooltip>
+              </Box>
               <Text
                 variant="primary"
                 truncate
