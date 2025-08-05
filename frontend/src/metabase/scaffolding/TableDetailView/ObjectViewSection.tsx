@@ -3,8 +3,6 @@ import cx from "classnames";
 import EditableText from "metabase/common/components/EditableText";
 import { useTranslateContent } from "metabase/i18n/hooks";
 import { Box, Flex, Group, Text, Tooltip } from "metabase/ui/components";
-import { Button } from "metabase/ui/components/buttons";
-import { Icon } from "metabase/ui/components/icons";
 import { isDate } from "metabase-lib/v1/types/utils/isa";
 import type {
   DatasetColumn,
@@ -18,8 +16,6 @@ import { renderValue } from "../utils";
 
 import S from "./TableDetailView.module.css";
 
-const REMOVABLE_SECTIONS = ["normal", "highlight-2"];
-
 type ObjectViewSectionProps = {
   section: ObjectViewSectionSettings;
   columns: DatasetColumn[];
@@ -27,7 +23,6 @@ type ObjectViewSectionProps = {
   tableId: TableId;
   isEdit: boolean;
   onUpdateSection?: (section: Partial<ObjectViewSectionSettings>) => void;
-  onRemoveSection?: () => void;
   dragHandleProps?: any;
   variant: SectionVariant;
 };
@@ -40,7 +35,6 @@ export function ObjectViewSection({
   // tableId,
   isEdit,
   onUpdateSection,
-  onRemoveSection,
   // dragHandleProps,
 }: ObjectViewSectionProps) {
   // const pkIndex = columns.findIndex(isPK); // TODO: handle multiple PKs
@@ -168,22 +162,6 @@ export function ObjectViewSection({
           );
         })}
       </Flex>
-      {isEdit && onRemoveSection && REMOVABLE_SECTIONS.includes(variant) && (
-        <Group
-          className={S.ObjectViewSectionActions}
-          pos="absolute"
-          bg="bg-white"
-          style={{ borderRadius: "var(--default-border-radius)" }}
-          top={-5}
-          right={-5}
-        >
-          <Button
-            size="compact-xs"
-            leftSection={<Icon name="close" />}
-            onClick={onRemoveSection}
-          />
-        </Group>
-      )}
     </Box>
   );
 }

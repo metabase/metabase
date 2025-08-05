@@ -290,11 +290,6 @@ export function TableDetailViewInner({
                 tableId={tableId}
                 isEdit={isEdit}
                 onUpdateSection={(update) => updateSection(section.id, update)}
-                onRemoveSection={
-                  notEmptySections.length > 1
-                    ? () => removeSection(section.id)
-                    : undefined
-                }
               />
             ))}
 
