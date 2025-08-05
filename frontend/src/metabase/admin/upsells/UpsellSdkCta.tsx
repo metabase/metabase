@@ -1,3 +1,5 @@
+import { t } from "ttag";
+
 import { useSelector } from "metabase/lib/redux";
 import { isEEBuild } from "metabase/lib/utils";
 import { PLUGIN_ADMIN_SETTINGS, PLUGIN_EMBEDDING } from "metabase/plugins";
@@ -54,7 +56,7 @@ export function UpsellSdkCta() {
       <UpsellCta
         onClick={triggerUpsellFlow}
         internalLink={internalLink}
-        buttonText="Try it now"
+        buttonText={t`Try for free`}
         url={url}
         onClickCapture={() => trackUpsell?.()}
         size="large"
