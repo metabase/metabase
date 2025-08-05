@@ -1,4 +1,5 @@
 import { useDisclosure } from "@mantine/hooks";
+import dayjs from "dayjs";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
@@ -10,22 +11,20 @@ import {
   type QuestionPickerValueItem,
 } from "metabase/common/components/Pickers/QuestionPicker";
 import { useDispatch } from "metabase/lib/redux";
-import { Button, Group, Icon, Menu, Stack, Title } from "metabase/ui";
+import { Button, Icon, Menu } from "metabase/ui";
 import { useListTransformsQuery } from "metabase-enterprise/api";
+import { TitleSection } from "metabase-enterprise/transforms/components/TitleSection";
 import {
   getNewTransformFromCardUrl,
   getNewTransformFromTypeUrl,
 } from "metabase-enterprise/transforms/urls";
+import type { TransformExecution } from "metabase-types/api";
 
 export function TransformListSection() {
   return (
-    <Stack>
-      <Group>
-        <Title flex={1} order={4}>{t`Transforms`}</Title>
-        <NewTransformMenu />
-      </Group>
+    <TitleSection label={t`Transforms`} rightSection={<NewTransformMenu />}>
       <TransformList />
-    </Stack>
+    </TitleSection>
   );
 }
 
@@ -44,12 +43,37 @@ function TransformList() {
         <tr key={transform.id}>
           <td>{transform.name}</td>
           <td>{transform.target.name}</td>
-          <td>1</td>
-          <td>2</td>
+          <td>{getLastRunTime(transform.last_execution)}</td>
+          <td>{getLastRunStatus(transform.last_execution)}</td>
         </tr>
       ))}
     </AdminContentTable>
   );
+}
+
+function getLastRunTime(execution: TransformExecution | undefined | null) {
+  if (execution?.end_time == null) {
+    return null;
+  }
+
+  return dayjs(execution.end_time).format("lll");
+}
+
+function getLastRunStatus(execution: TransformExecution | undefined | null) {
+  if (execution == null) {
+    return null;
+  }
+
+  switch (execution.status) {
+    case "started":
+      return t`In-progress`;
+    case "succeeded":
+      return t`Success`;
+    case "failed":
+      return `Failed`;
+    case "timeout":
+      return t`Timeout`;
+  }
 }
 
 function NewTransformMenu() {

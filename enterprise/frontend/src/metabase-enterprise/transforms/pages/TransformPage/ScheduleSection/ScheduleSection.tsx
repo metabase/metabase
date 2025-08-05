@@ -15,8 +15,9 @@ import {
   useExecuteTransformMutation,
   useUpdateTransformMutation,
 } from "metabase-enterprise/api";
-import { CardSection } from "metabase-enterprise/transforms/components/CardSection";
 import type { Transform, TransformExecutionTrigger } from "metabase-types/api";
+
+import { SplitSection } from "../../../components/SplitSection";
 
 type ScheduleSectionProps = {
   transform: Transform;
@@ -24,7 +25,7 @@ type ScheduleSectionProps = {
 
 export function ScheduleSection({ transform }: ScheduleSectionProps) {
   return (
-    <CardSection
+    <SplitSection
       label={t`When to run this transform`}
       description={t`Run it on a schedule, or only when you click “Run now.”`}
     >
@@ -36,7 +37,7 @@ export function ScheduleSection({ transform }: ScheduleSectionProps) {
         <ExecuteStatus transform={transform} />
         <ExecuteButton transform={transform} />
       </Group>
-    </CardSection>
+    </SplitSection>
   );
 }
 

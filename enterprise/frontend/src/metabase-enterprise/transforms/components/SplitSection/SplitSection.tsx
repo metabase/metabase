@@ -2,17 +2,17 @@ import type { ReactNode } from "react";
 
 import { Card, Group, Stack, Text, Title } from "metabase/ui";
 
-type CardSectionProps = {
+type SplitSectionProps = {
   label: string;
   description: string;
   children?: ReactNode;
 };
 
-export function CardSection({
+export function SplitSection({
   label,
   description,
   children,
-}: CardSectionProps) {
+}: SplitSectionProps) {
   return (
     <Group align="start" gap="5rem">
       <Stack py="md" gap="md" maw="15rem">
