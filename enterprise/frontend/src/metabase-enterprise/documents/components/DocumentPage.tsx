@@ -28,7 +28,7 @@ import {
   useGetDocumentQuery,
   useUpdateDocumentMutation,
 } from "metabase-enterprise/api";
-import type { RegularCollectionId } from "metabase-types/api";
+import type { Card, RegularCollectionId } from "metabase-types/api";
 
 import {
   closeSidebar,
@@ -163,24 +163,28 @@ export const DocumentPage = ({
     const originalTitle = documentData?.name || "";
     const titleChanged = currentTitle !== originalTitle;
 
-    // For new documents, show Save if there's title or content exists
+    // Check if there are any draft cards
+    const hasDraftCards = Object.keys(draftCards).length > 0;
+
+    // For new documents, show Save if there's title or content exists or draft cards
     if (isNewDocument) {
       const emptyDocAst = JSON.stringify({ type: "doc", content: [] });
       const hasContent =
         currentContent !== emptyDocAst && currentContent !== "";
-      return currentTitle.length > 0 || hasContent;
+      return currentTitle.length > 0 || hasContent || hasDraftCards;
     }
 
     // For existing documents, compare current content with document content
     const contentChanged = currentContent !== (documentContent ?? "");
 
-    return titleChanged || contentChanged;
+    return titleChanged || contentChanged || hasDraftCards;
   }, [
     documentTitle,
     isNewDocument,
     documentData,
     currentContent,
     documentContent,
+    draftCards,
   ]);
 
   const showSaveButton = hasUnsavedChanges() && canWrite;
@@ -193,7 +197,7 @@ export const DocumentPage = ({
 
       try {
         // Extract cards that need to be saved (draft cards and cards with report_id)
-        const cardsToSave: any[] = [];
+        const cardsToSave: Record<number, Card> = {};
         const processedCardIds = new Set<number>();
 
         // Walk through the editor to find all card embeds
@@ -206,8 +210,8 @@ export const DocumentPage = ({
               // If it's a draft card (negative ID)
               if (cardId < 0 && draftCards[cardId]) {
                 const draftCard = draftCards[cardId];
-                // Keep the negative ID so backend can match to prosemirror AST
-                cardsToSave.push(draftCard);
+                // Keep the negative ID as key so backend can match to prosemirror AST
+                cardsToSave[cardId] = draftCard;
               }
               // If it's a card with report_id, we might need to include it for updates
               // Backend will handle this case
@@ -219,7 +223,7 @@ export const DocumentPage = ({
         const newDocumentData: any = {
           name: documentTitle,
           document: currentContent,
-          cards: cardsToSave,
+          cards: Object.keys(cardsToSave).length > 0 ? cardsToSave : undefined,
         };
 
         const result = await (documentData?.id
@@ -281,7 +285,7 @@ export const DocumentPage = ({
       // Save shortcut: Cmd+S (Mac) or Ctrl+S (Windows/Linux)
       if ((event.metaKey || event.ctrlKey) && event.key === "s") {
         event.preventDefault();
-        if (!hasUnsavedChanges()) {
+        if (!hasUnsavedChanges() || !canWrite) {
           return;
         }
 
@@ -294,7 +298,13 @@ export const DocumentPage = ({
     return () => {
       document.removeEventListener("keydown", handleKeyDown);
     };
-  }, [hasUnsavedChanges, handleSave, isNewDocument, showCollectionPicker]);
+  }, [
+    hasUnsavedChanges,
+    handleSave,
+    isNewDocument,
+    showCollectionPicker,
+    canWrite,
+  ]);
 
   const handleQuestionSelect = useCallback(
     (cardId: number | null) => {

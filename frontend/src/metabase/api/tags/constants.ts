@@ -61,6 +61,4 @@ export const TAG_TYPE_MAPPING = {
   metric: "card",
   snippet: "snippet",
   pulse: "subscription",
-  // Legacy mapping for reports - now maps to document
-  report: "document",
 } as const;

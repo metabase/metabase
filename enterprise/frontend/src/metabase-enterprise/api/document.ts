@@ -1,4 +1,5 @@
 import type {
+  Card,
   CreateDocumentRequest,
   Document,
   DocumentId,
@@ -29,7 +30,7 @@ export const documentApi = EnterpriseApi.injectEndpoints({
     updateDocument: builder.mutation<
       Document,
       Pick<Document, "id" | "name" | "document"> & {
-        card_ids?: number[];
+        cards?: Record<number, Card>;
       }
     >({
       query: (document) => ({

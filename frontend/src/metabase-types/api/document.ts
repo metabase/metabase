@@ -1,3 +1,4 @@
+import type { Card } from "./card";
 import type { CollectionId } from "./collection";
 
 export type DocumentId = number;
@@ -16,5 +17,5 @@ export type DocumentVersions = Document[];
 
 export type CreateDocumentRequest = Pick<Document, "name" | "document"> & {
   collection_id?: CollectionId;
-  card_ids?: number[];
+  cards?: Record<number, Card>;
 };

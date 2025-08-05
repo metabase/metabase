@@ -6,8 +6,7 @@ export const ENTERPRISE_TAG_TYPES = [
   "metabot-entities-list",
   "metabot-prompt-suggestions",
   "gsheets-status",
-  "report",
-  "report-versions",
+  "document",
 ] as const;
 
 export type EnterpriseTagType = (typeof ENTERPRISE_TAG_TYPES)[number];
