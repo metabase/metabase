@@ -1,4 +1,4 @@
-import fetchMock, { type MockOptionsMethodGet } from "fetch-mock";
+import fetchMock from "fetch-mock";
 import _ from "underscore";
 
 import { SAVED_QUESTIONS_DATABASE } from "metabase/databases/constants";
@@ -13,15 +13,18 @@ export function setupDatabaseEndpoints(db: Database) {
   fetchMock.post(`path:/api/database/${db.id}/sync_schema`, {});
   fetchMock.post(`path:/api/database/${db.id}/rescan_values`, {});
   fetchMock.post(`path:/api/database/${db.id}/discard_values`, {});
-  fetchMock.get(`path:/api/database/${db.id}/healthcheck`, {
-    body: { status: "ok" },
-  }, { name: `database-${db.id}-healthcheck` });
+  fetchMock.get(
+    `path:/api/database/${db.id}/healthcheck`,
+    {
+      body: { status: "ok" },
+    },
+    { name: `database-${db.id}-healthcheck` },
+  );
   setupSchemaEndpoints(db);
   setupDatabaseIdFieldsEndpoints(db);
   db.tables?.forEach((table) => setupTableEndpoints({ ...table, db }));
 
-  fetchMock.put(`path:/api/database/${db.id}`, async (url) => {
-    const call = fetchMock.callHistory.lastCall(url);
+  fetchMock.put(`path:/api/database/${db.id}`, async (call) => {
     const body = await call?.request?.json();
     return { ...db, ...body };
   });
@@ -34,19 +37,11 @@ export function setupDatabaseUsageInfoEndpoint(
   fetchMock.get(`path:/api/database/${db.id}/usage_info`, usageInfo);
 }
 
-export function setupDatabaseListEndpoint(
-  databases: Database[],
-  { overwriteRoutes = false }: { overwriteRoutes?: boolean } = {},
-) {
-  try {
-    fetchMock.removeRoute("database-list");
-  } catch {
-    // Route might not exist, ignore
-  }
+export function setupDatabaseListEndpoint(databases: Database[]) {
   fetchMock.get(
     "path:/api/database",
     { data: databases, total: databases.length },
-    { name: "database-list" }
+    { name: "database-list" },
   );
 }
 
@@ -58,22 +53,23 @@ export function setupDatabasesEndpoints(
   const databasesWithSavedQuestions = hasSavedQuestions
     ? [...databases, SAVED_QUESTIONS_DATABASE]
     : databases;
-  fetchMock.get(
-    {
-      url: "path:/api/database",
-      query,
-    },
-    {
+  fetchMock.get({
+    url: "path:/api/database",
+    query,
+    response: {
       data: databasesWithSavedQuestions,
       total: databasesWithSavedQuestions.length,
     },
-    { name: "database-list-with-query" }
-  );
+    name: "database-list-with-query",
+  });
   setupDatabaseListEndpoint(databases);
-  fetchMock.post("path:/api/database", async (url) => {
-    const lastCall = fetchMock.callHistory.lastCall(url);
-    return await lastCall?.request?.json();
-  }, { name: "database-post" });
+  fetchMock.post(
+    "path:/api/database",
+    async (call) => {
+      return await call?.request?.json();
+    },
+    { name: "database-post" },
+  );
 
   databases.forEach((db) => setupDatabaseEndpoints(db));
 }
@@ -88,14 +84,14 @@ export const setupSchemaEndpoints = (db: Database) => {
     fetchMock.get(
       `path:/api/database/${db.id}/schema/${schema}`,
       schemas[schema],
-      { name: `database-${db.id}-schema-${schema}` }
+      { name: `database-${db.id}-schema-${schema}` },
     );
   });
 };
 
 export function setupDatabaseIdFieldsEndpoints(
   { id, tables = [] }: Database,
-  options?: MockOptionsMethodGet,
+  overwriteRoutes?: boolean,
 ) {
   const fields = tables.flatMap((table) =>
     (table.fields ?? [])
@@ -104,7 +100,7 @@ export function setupDatabaseIdFieldsEndpoints(
   );
 
   const name = `database-${id}-idfields`;
-  if (options?.overwriteRoutes) {
+  if (overwriteRoutes) {
     try {
       fetchMock.removeRoute(name);
     } catch {
@@ -112,7 +108,9 @@ export function setupDatabaseIdFieldsEndpoints(
     }
   }
 
-  fetchMock.get(`path:/api/database/${id}/idfields`, fields, { name, ...options });
+  fetchMock.get(`path:/api/database/${id}/idfields`, fields, {
+    name,
+  });
 }
 
 export const setupUnauthorizedSchemaEndpoints = (db: Database) => {

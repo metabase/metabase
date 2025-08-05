@@ -34,31 +34,26 @@ export function setupCollectionsEndpoints({
   rootCollection = createMockCollection(ROOT_COLLECTION),
   trashCollection = mockTrashCollection,
 }: CollectionEndpoints) {
-  fetchMock.get("path:/api/collection/root", rootCollection, { name: "collection-root" });
-  fetchMock.get(`path:/api/collection/trash`, trashCollection, { name: "collection-trash" });
-  fetchMock.get(`path:/api/collection/${trashCollection.id}`, trashCollection, { name: `collection-${trashCollection.id}` });
-  fetchMock.mockGlobal().get(
-    {
-      url: "path:/api/collection/tree",
-      query: { "exclude-archived": true },
-    },
+  fetchMock.get("path:/api/collection/root", rootCollection, {
+    name: "collection-root",
+  });
+  fetchMock.get(`path:/api/collection/trash`, trashCollection, {
+    name: "collection-trash",
+  });
+  fetchMock.get(`path:/api/collection/${trashCollection.id}`, trashCollection, {
+    name: `collection-${trashCollection.id}`,
+  });
+  fetchMock.get(
+    "path:/api/collection/tree",
     collections.filter((collection) => !collection.archived),
-    { name: "collection-tree-exclude-archived" }
+    { name: "collection-tree-exclude-archived" },
   );
-  fetchMock.get(
-    {
-      url: "path:/api/collection/tree",
-    },
-    collections,
-    { name: "collection-tree" }
-  );
-  fetchMock.get(
-    {
-      url: "path:/api/collection",
-    },
-    collections,
-    { name: "collection-list" }
-  );
+  fetchMock.get("path:/api/collection/tree", collections, {
+    name: "collection-tree",
+  });
+  fetchMock.get("path:/api/collection", collections, {
+    name: "collection-list",
+  });
 }
 
 function getCollectionVirtualSchemaURLs(collection: Collection) {
@@ -87,8 +82,12 @@ export function setupCollectionVirtualSchemaEndpoints(
     convertSavedQuestionToVirtualTable,
   );
 
-  fetchMock.get(urls.questions, questionVirtualTables, { name: "collection-questions-virtual-tables" });
-  fetchMock.get(urls.models, modelVirtualTables, { name: "collection-models-virtual-tables" });
+  fetchMock.get(urls.questions, questionVirtualTables, {
+    name: "collection-questions-virtual-tables",
+  });
+  fetchMock.get(urls.models, modelVirtualTables, {
+    name: "collection-models-virtual-tables",
+  });
 }
 
 export function setupCollectionItemsEndpoint({
@@ -100,24 +99,29 @@ export function setupCollectionItemsEndpoint({
   collectionItems: CollectionItem[];
   models?: string[];
 }) {
-  fetchMock.get(`path:/api/collection/${collection.id}/items`, (callLog) => {
-    const url = new URL(callLog.url);
-    const models = modelsParam ?? url.searchParams.getAll("models");
-    const matchedItems = collectionItems.filter(({ model }) =>
-      models.includes(model),
-    );
+  fetchMock.get(
+    `path:/api/collection/${collection.id}/items`,
+    (call) => {
+      const url = new URL(call.url);
+      const models = modelsParam ?? url.searchParams.getAll("models");
+      const matchedItems = collectionItems.filter(({ model }) =>
+        models.includes(model),
+      );
 
-    const limit = Number(url.searchParams.get("limit")) || matchedItems.length;
-    const offset = Number(url.searchParams.get("offset")) || 0;
+      const limit =
+        Number(url.searchParams.get("limit")) || matchedItems.length;
+      const offset = Number(url.searchParams.get("offset")) || 0;
 
-    return {
-      data: matchedItems.slice(offset, offset + limit),
-      total: matchedItems.length,
-      models,
-      limit,
-      offset,
-    };
-  }, { name: `collection-${collection.id}-items` });
+      return {
+        data: matchedItems.slice(offset, offset + limit),
+        total: matchedItems.length,
+        models,
+        limit,
+        offset,
+      };
+    },
+    { name: `collection-${collection.id}-items` },
+  );
 }
 
 export function setupDashboardItemsEndpoint({
@@ -129,8 +133,8 @@ export function setupDashboardItemsEndpoint({
   dashboardItems: CollectionItem[];
   models?: string[];
 }) {
-  fetchMock.get(`path:/api/dashboard/${dashboard.id}/items`, (callLog) => {
-    const url = new URL(callLog.url);
+  fetchMock.get(`path:/api/dashboard/${dashboard.id}/items`, (call) => {
+    const url = new URL(call.url);
     const models = modelsParam ?? url.searchParams.getAll("models") ?? ["card"];
     const limit =
       Number(url.searchParams.get("limit")) || dashboardItems.length;
@@ -188,8 +192,8 @@ export function setupCollectionByIdEndpoint({
     return;
   }
 
-  fetchMock.get(/api\/collection\/\d+$/, (callLog) => {
-    const urlString = callLog.url;
+  fetchMock.get(/api\/collection\/\d+$/, (call) => {
+    const urlString = call.url;
     const parts = urlString.split("/");
     const collectionIdParam = parts[parts.length - 1];
     const collectionId = Number(collectionIdParam);
@@ -216,8 +220,8 @@ function setupCollectionWithErrorById({
 }
 
 export function setupDashboardCollectionItemsEndpoint(dashboards: Dashboard[]) {
-  fetchMock.get(/api\/collection\/(\d+|root)\/items/, (callLog) => {
-    const urlString = callLog.url;
+  fetchMock.get(/api\/collection\/(\d+|root)\/items/, (call) => {
+    const urlString = call.url;
     const parts = urlString.split("/");
     const collectionIdParam = parts[parts.indexOf("collection") + 1];
     const collectionId =

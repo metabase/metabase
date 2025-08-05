@@ -1,4 +1,4 @@
-import fetchMock, { type UserRouteConfig } from "fetch-mock";
+import fetchMock from "fetch-mock";
 import { match } from "ts-pattern";
 
 import type { CollectionItem, SearchResult } from "metabase-types/api";
@@ -6,10 +6,10 @@ import type { EmbeddingDataPicker } from "metabase-types/store/embedding-data-pi
 
 export function setupSearchEndpoints(
   items: (CollectionItem | SearchResult)[],
-  options?: UserRouteConfig,
+  overwriteRoutes?: boolean,
 ) {
   const name = "search";
-  if (options?.overwriteRoutes) {
+  if (overwriteRoutes) {
     try {
       fetchMock.removeRoute(name);
     } catch {
@@ -18,8 +18,8 @@ export function setupSearchEndpoints(
   }
   fetchMock.get(
     "path:/api/search",
-    (callLog) => {
-      const url = new URL(callLog.url);
+    (call) => {
+      const url = new URL(call.url);
       const models = url.searchParams.getAll("models");
       const limit = Number(url.searchParams.get("limit")) || 50;
       const offset = Number(url.searchParams.get("offset"));
@@ -38,7 +38,6 @@ export function setupSearchEndpoints(
       matchedItems = matchedItems.filter(
         ({ model }) => !models.length || models.includes(model),
       );
-
       return {
         data: matchedItems.slice(offset, offset + limit),
         total: matchedItems.length,
@@ -49,7 +48,7 @@ export function setupSearchEndpoints(
         table_db_id,
       };
     },
-    { name, ...options },
+    { name },
   );
 }
 
@@ -61,17 +60,15 @@ export function setupEmbeddingDataPickerDecisionEndpoints(
     .with("staged", () => 100)
     .exhaustive();
 
-  fetchMock.get(
-    {
-      name: "entity-count",
-      url: "path:/api/search",
-      query: {
-        models: ["dataset", "table"],
-        limit: 0,
-      },
+  fetchMock.get({
+    name: "entity-count",
+    url: "path:/api/search",
+    query: {
+      models: ["dataset", "table"],
+      limit: 0,
     },
-    {
+    response: {
       total: mockEntityCount,
     },
-  );
+  });
 }

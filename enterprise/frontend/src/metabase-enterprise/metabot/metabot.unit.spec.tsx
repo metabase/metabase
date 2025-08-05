@@ -532,7 +532,7 @@ describe("metabot", () => {
       // send another message and check that there is proper history
       await enterChatMessage("Hi!");
       const lastCall = fetchMock.callHistory.lastCall();
-      const bodyStr = String(await lastCall?.[1]?.body) || "";
+      const bodyStr = String(lastCall?.response?.body) || "";
       const sentHistory = JSON.parse(bodyStr)?.history;
       expect(sentHistory).toEqual(whoIsYourFavoriteResponse.history);
     });
@@ -557,7 +557,7 @@ describe("metabot", () => {
       showMetabot(store.dispatch);
       await enterChatMessage("Hi!");
       const lastCall = fetchMock.callHistory.lastCall();
-      const bodyStr = String(await lastCall?.[1]?.body) || "";
+      const bodyStr = String(lastCall?.response?.body) || "";
       const sentHistory = JSON.parse(bodyStr)?.history;
       expect(sentHistory).toEqual(whoIsYourFavoriteResponse.history);
     });

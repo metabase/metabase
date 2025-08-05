@@ -13,7 +13,7 @@ import {
 export function setupActionEndpoints(action: WritebackAction) {
   const getName = `action-${action.id}-get`;
   const putName = `action-${action.id}-put`;
-  
+
   try {
     fetchMock.removeRoute(getName);
   } catch {
@@ -24,23 +24,27 @@ export function setupActionEndpoints(action: WritebackAction) {
   } catch {
     // Route might not exist, ignore
   }
-  
+
   fetchMock.get(`path:/api/action/${action.id}`, action, { name: getName });
   fetchMock.put(`path:/api/action/${action.id}`, action, { name: putName });
   fetchMock.delete(`path:/api/action/${action.id}`, action);
 }
 
 function setupActionPostEndpoint() {
-  fetchMock.post("path:/api/action", async (callLog) => {
-    const data = await callLog?.request?.json();
-    if (data.type === "implicit") {
-      return createMockImplicitQueryAction(data);
-    }
-    if (data.type === "query") {
-      return createMockQueryAction(data);
-    }
-    throw new Error(`Unknown action type: ${data.type}`);
-  }, { name: "action-post" });
+  fetchMock.post(
+    "path:/api/action",
+    async (call) => {
+      const data = await call?.request?.json();
+      if (data.type === "implicit") {
+        return createMockImplicitQueryAction(data);
+      }
+      if (data.type === "query") {
+        return createMockQueryAction(data);
+      }
+      throw new Error(`Unknown action type: ${data.type}`);
+    },
+    { name: "action-post" },
+  );
 }
 
 export function setupActionsEndpoints(actions: WritebackAction[]) {

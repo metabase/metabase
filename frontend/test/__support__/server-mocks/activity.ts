@@ -1,5 +1,4 @@
 import fetchMock, { type UserRouteConfig } from "fetch-mock";
-import querystring from "querystring";
 
 import type {
   Dashboard,
@@ -21,12 +20,14 @@ export function setupRecentViewsAndSelectionsEndpoints(
   mockPostRequest: boolean = true,
 ) {
   fetchMock.get({
-    url: "end:/api/activity/recents",
+    url: "path:/api/activity/recents",
     query: {
-      context: querystring.stringify({ context }),
+      context,
     },
     response: {
-      recents: recentItems,
+      status: 200,
+      body: { recents: recentItems },
+      ...mockOptions,
     },
     ...mockOptions,
   });

@@ -77,21 +77,22 @@ describe("Auth Flow - JWT", () => {
     } = setup({ authConfig });
 
     await waitForRequest(() => getLastCardQueryApiCall());
-
-    expect(getLastAuthProviderApiCall()![1]).toMatchObject({
+    expect(getLastAuthProviderApiCall()?.options).toMatchObject({
       credentials: "include",
-      method: "GET",
+      method: /GET/i,
     });
 
     await waitForRequest(() => getLastUserApiCall());
-    expect(getLastUserApiCall()![1]).toMatchObject({
-      headers: { "X-Metabase-Session": [MOCK_SESSION_TOKEN_ID] },
-    });
+    expect(getLastUserApiCall()?.options.headers).toHaveProperty(
+      "x-metabase-session",
+      MOCK_SESSION_TOKEN_ID,
+    );
 
     await waitForRequest(() => getLastCardQueryApiCall());
-    expect(getLastCardQueryApiCall()![1]).toMatchObject({
-      headers: { "X-Metabase-Session": [MOCK_SESSION_TOKEN_ID] },
-    });
+    expect(getLastCardQueryApiCall()?.options.headers).toHaveProperty(
+      "x-metabase-session",
+      MOCK_SESSION_TOKEN_ID,
+    );
   });
 
   it("should use `fetchRequestToken` if provided", async () => {
@@ -113,18 +114,16 @@ describe("Auth Flow - JWT", () => {
 
     expect(customFetchFunction).toHaveBeenCalled();
 
-    expect(getLastUserApiCall()![1]).toMatchObject({
-      headers: {
-        "X-Metabase-Session": [MOCK_SESSION_TOKEN_ID],
-      },
-    });
+    expect(getLastUserApiCall()?.options.headers).toHaveProperty(
+      "x-metabase-session",
+      MOCK_SESSION_TOKEN_ID,
+    );
 
     await waitForRequest(() => getLastCardQueryApiCall());
-    expect(getLastCardQueryApiCall()![1]).toMatchObject({
-      headers: {
-        "X-Metabase-Session": [MOCK_SESSION_TOKEN_ID],
-      },
-    });
+    expect(getLastCardQueryApiCall()?.options.headers).toHaveProperty(
+      "x-metabase-session",
+      MOCK_SESSION_TOKEN_ID,
+    );
   });
 
   it("should include the subpath when requesting the SSO endpoint", async () => {
@@ -166,12 +165,10 @@ describe("Auth Flow - JWT", () => {
 
     await waitForLoaderToBeRemoved();
 
-    const expectedSsoUrl = `${instanceUrlWithSubpath}/auth/sso`;
-
     // One call is for the initial "configuration", to know which sso method to use
     // The second call is the actual "login"
     expect(
-      fetchMock.callHistory.calls((url) => url.startsWith(expectedSsoUrl)),
+      fetchMock.callHistory.calls(`begin:${instanceUrlWithSubpath}/auth/sso`),
     ).toHaveLength(2);
   });
 });

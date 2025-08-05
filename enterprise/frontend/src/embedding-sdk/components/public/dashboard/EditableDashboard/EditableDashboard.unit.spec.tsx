@@ -97,7 +97,6 @@ describe("EditableDashboard", () => {
     ).not.toBeInTheDocument();
   });
 
-
   it("should allow to create a new question in addition to adding existing questions", async () => {
     await setup();
     setupSimpleDataPickerEndpoints();
@@ -121,9 +120,11 @@ describe("EditableDashboard", () => {
     ).toBeInTheDocument();
 
     // Default `entityTypes` should be `["model", "table"]`
+    // EmbeddingDataPicker makes a call to `/api/search` with limit=0 to decide if SimpleDataPicker should be used
+    // then SimpleDataPicker makes a call to `/api/search` to fetch the data
     const dataPickerDataCalls = fetchMock.callHistory.calls("path:/api/search");
-    expect(dataPickerDataCalls).toHaveLength(1);
-    const [[dataPickerDataCallUrl]] = dataPickerDataCalls;
+    expect(dataPickerDataCalls).toHaveLength(2);
+    const dataPickerDataCallUrl = dataPickerDataCalls[1].url;
     expect(dataPickerDataCallUrl).toContain("models=dataset");
     expect(dataPickerDataCallUrl).toContain("models=table");
   });
@@ -160,7 +161,6 @@ describe("EditableDashboard", () => {
     ).toBeInTheDocument();
   });
 
-
   it("should allow to pass `dataPickerProps.entityTypes` to the query builder", async () => {
     await setup({
       dataPickerProps: {
@@ -187,9 +187,12 @@ describe("EditableDashboard", () => {
       await screen.findByRole("button", { name: "Pick your starting data" }),
     ).toBeInTheDocument();
 
+    // Default `entityTypes` should be `["model", "table"]`
+    // EmbeddingDataPicker makes a call to `/api/search` with limit=0 to decide if SimpleDataPicker should be used
+    // then SimpleDataPicker makes a call to `/api/search` to fetch the data
     const dataPickerDataCalls = fetchMock.callHistory.calls("path:/api/search");
-    expect(dataPickerDataCalls).toHaveLength(1);
-    const dataPickerDataCallUrl = dataPickerDataCalls[0].url;
+    expect(dataPickerDataCalls).toHaveLength(2);
+    const dataPickerDataCallUrl = dataPickerDataCalls[1].url;
     expect(dataPickerDataCallUrl).toContain("models=dataset");
     expect(dataPickerDataCallUrl).not.toContain("models=table");
   });

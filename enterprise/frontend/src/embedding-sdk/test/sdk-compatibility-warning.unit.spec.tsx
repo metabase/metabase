@@ -1,5 +1,4 @@
 import { render } from "@testing-library/react";
-import fetchMock from "fetch-mock";
 
 import {
   setupCurrentUserEndpoint,
@@ -60,8 +59,6 @@ const getWarnMessages = (): string[] =>
 
 describe("SDK auth errors", () => {
   beforeEach(() => {
-    fetchMock.hardReset();
-
     consoleWarnSpy = jest.spyOn(console, "warn").mockImplementation(() => {});
     (getEmbeddingSdkVersion as jest.Mock).mockClear();
   });

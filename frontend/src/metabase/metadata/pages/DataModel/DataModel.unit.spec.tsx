@@ -308,7 +308,7 @@ describe("DataModel", () => {
             database_name: SAMPLE_DB.name,
           }),
         ],
-        { overwriteRoutes: true },
+        true,
       );
 
       const searchValue = ORDERS_TABLE.name.substring(0, 3);
@@ -711,7 +711,9 @@ describe("DataModel", () => {
 
       await waitFor(() => {
         const path = `path:/api/table/${ORDERS_TABLE.id}/rescan_values`;
-        expect(fetchMock.callHistory.called(path, { method: "POST" })).toBeTruthy();
+        expect(
+          fetchMock.callHistory.called(path, { method: "POST" }),
+        ).toBeTruthy();
       });
     });
 
@@ -733,7 +735,9 @@ describe("DataModel", () => {
 
       await waitFor(() => {
         const path = `path:/api/table/${ORDERS_TABLE.id}/discard_values`;
-        expect(fetchMock.callHistory.called(path, { method: "POST" })).toBeTruthy();
+        expect(
+          fetchMock.callHistory.called(path, { method: "POST" }),
+        ).toBeTruthy();
       });
     });
   });
@@ -876,7 +880,7 @@ describe("DataModel", () => {
         hasFieldValuesAccess: false,
         unauthorizedField: ORDERS_QUANTITY_FIELD,
       });
-      setupDatabaseIdFieldsEndpoints(SAMPLE_DB, { overwriteRoutes: true });
+      setupDatabaseIdFieldsEndpoints(SAMPLE_DB, true);
 
       expect(screen.getByText("Custom mapping")).toBeInTheDocument();
       expect(
@@ -905,7 +909,9 @@ describe("DataModel", () => {
 
       await waitFor(() => {
         const path = `path:/api/field/${ORDERS_ID_FIELD.id}/rescan_values`;
-        expect(fetchMock.callHistory.called(path, { method: "POST" })).toBeTruthy();
+        expect(
+          fetchMock.callHistory.called(path, { method: "POST" }),
+        ).toBeTruthy();
       });
     });
 
@@ -928,7 +934,9 @@ describe("DataModel", () => {
 
       await waitFor(() => {
         const path = `path:/api/field/${ORDERS_ID_FIELD.id}/discard_values`;
-        expect(fetchMock.callHistory.called(path, { method: "POST" })).toBeTruthy();
+        expect(
+          fetchMock.callHistory.called(path, { method: "POST" }),
+        ).toBeTruthy();
       });
     });
   });

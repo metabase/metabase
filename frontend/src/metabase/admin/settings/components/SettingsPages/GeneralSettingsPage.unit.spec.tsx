@@ -2,6 +2,7 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import {
+  findRequests,
   setupDashboardEndpoints,
   setupPropertiesEndpoints,
   setupSettingsEndpoints,
@@ -135,13 +136,13 @@ describe("GeneralSettingsPage", () => {
     await screen.findByDisplayValue("support@mySite.biz");
 
     await waitFor(async () => {
-      const puts = await findPuts();
+      const puts = await findRequests("PUT");
       expect(puts).toHaveLength(2);
     });
 
-    const puts = await findPuts();
-    const [namePutUrl, namePutDetails] = puts[0];
-    const [emailPutUrl, emailPutDetails] = puts[1];
+    const puts = await findRequests("PUT");
+    const { url: namePutUrl, body: namePutDetails } = puts[0];
+    const { url: emailPutUrl, body: emailPutDetails } = puts[1];
 
     expect(namePutUrl).toContain("/api/setting/site-name");
     expect(namePutDetails).toEqual({ value: "Metabasey" });
@@ -155,16 +156,3 @@ describe("GeneralSettingsPage", () => {
     });
   });
 });
-
-async function findPuts() {
-  const calls = fetchMock.callHistory.calls();
-  const data = calls.filter((call) => call[1]?.method === "PUT") ?? [];
-
-  const puts = data.map(async ([putUrl, putDetails]) => {
-    const body = ((await putDetails?.body) as string) ?? "{}";
-
-    return [putUrl, JSON.parse(body ?? "{}")];
-  });
-
-  return Promise.all(puts);
-}

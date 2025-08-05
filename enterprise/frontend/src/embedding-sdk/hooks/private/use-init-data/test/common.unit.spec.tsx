@@ -1,5 +1,3 @@
-import fetchMock from "fetch-mock";
-
 import { screen } from "__support__/ui";
 import {
   setupMockJwtEndpoints,
@@ -18,11 +16,6 @@ const setupCommon = (method: "jwt" | "saml", config?: MetabaseConfigProps) => {
 };
 
 describe.each(["jwt"] as const)("useInitData - %s authentication", (method) => {
-  afterEach(() => {
-    jest.restoreAllMocks();
-    fetchMock.hardReset();
-  });
-
   it("should set isLoggedIn to true if login is successful", async () => {
     setupCommon(method);
 

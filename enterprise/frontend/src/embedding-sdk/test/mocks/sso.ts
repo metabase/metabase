@@ -64,8 +64,8 @@ export const setupMockSamlEndpoints = ({
 }: SamlMockConfig = {}) => {
   const ssoUrl = new URL("/auth/sso", instanceUrl);
 
-  const ssoInitMock = fetchMock.get(`begin:${ssoUrl.toString()}`, (callLog) => {
-    const urlObj = new URL(callLog.url);
+  const ssoInitMock = fetchMock.get(`begin:${ssoUrl.toString()}`, (call) => {
+    const urlObj = new URL(call.url);
     const preferredMethod = urlObj.searchParams.get("preferred_method");
 
     if (preferredMethod === "jwt") {
@@ -174,11 +174,11 @@ export const setupMockJwtEndpoints = ({
   const ssoUrl = new URL("/auth/sso", instanceUrl);
 
   const ssoInitMock = fetchMock.get(
-    (callLog) =>
-      callLog.url.startsWith(ssoUrl.toString()) &&
-      (callLog.url.includes("preferred_method=") || !callLog.url.includes("?")),
-    (callLog) => {
-      const urlObj = new URL(callLog.url);
+    (call) =>
+      call.url.startsWith(ssoUrl.toString()) &&
+      (call.url.includes("preferred_method=") || !call.url.includes("?")),
+    (call) => {
+      const urlObj = new URL(call.url);
       const preferredMethod = urlObj.searchParams.get("preferred_method");
 
       if (preferredMethod === "saml") {
@@ -195,8 +195,8 @@ export const setupMockJwtEndpoints = ({
     },
   );
 
-  const jwtProviderMock = fetchMock.get(`begin:${providerUri}`, (callLog) => {
-    const urlObj = new URL(callLog.url);
+  const jwtProviderMock = fetchMock.get(`begin:${providerUri}`, (call) => {
+    const urlObj = new URL(call.url);
     const responseParam = urlObj.searchParams.get("response");
 
     if (responseParam === "json") {

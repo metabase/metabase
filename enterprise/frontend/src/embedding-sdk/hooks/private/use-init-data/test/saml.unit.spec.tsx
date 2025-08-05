@@ -11,12 +11,6 @@ const setupSaml = (config: MetabaseConfigProps = {}) => {
 };
 
 describe("useInitData - SAML authentication", () => {
-  afterEach(() => {
-    jest.restoreAllMocks();
-    fetchMock.hardReset();
-  });
-
-
   it("should send API requests with session token if initialization and login are successful", async () => {
     const { popupMock } = setupSaml();
 

@@ -191,7 +191,6 @@ describe("Google Drive > DB Menu", () => {
     expect(await screen.findByText("Next sync soon™")).toBeInTheDocument();
   });
 
-
   it("should call the sync API when clicking sync now", async () => {
     setup({ status: "active" });
 
@@ -203,6 +202,7 @@ describe("Google Drive > DB Menu", () => {
     expect(syncButton).toBeEnabled();
 
     setupGdriveGetFolderEndpoint({
+      overwriteRoute: true,
       status: "syncing",
       sync_started_at: dayjs().subtract(3, "minute").unix(),
     });
@@ -211,7 +211,9 @@ describe("Google Drive > DB Menu", () => {
     // sync should cause a refetch
     expect(await screen.findByText("Syncing")).toBeInTheDocument();
 
-    const syncCalls = fetchMock.callHistory.calls("path:/api/ee/gsheets/connection/sync");
+    const syncCalls = fetchMock.callHistory.calls(
+      "path:/api/ee/gsheets/connection/sync",
+    );
     expect(syncCalls).toHaveLength(1);
 
     await closeMenu();
@@ -219,6 +221,7 @@ describe("Google Drive > DB Menu", () => {
       jest.advanceTimersByTime(6000);
     });
     setupGdriveGetFolderEndpoint({
+      overwriteRoute: true,
       status: "active",
       last_sync_at: dayjs().subtract(2, "second").unix(),
     });

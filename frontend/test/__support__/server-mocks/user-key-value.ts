@@ -12,12 +12,20 @@ export const setupUserKeyValueEndpoints = ({
 
   const getName = `get-${name}`;
   const putName = `put-${name}`;
-
+  // Remove existing route if it exists to avoid conflicts
+  try {
+    fetchMock.removeRoute(getName);
+  } catch {
+    // Route might not exist, ignore
+  }
   fetchMock.get(
     `path:/api/user-key-value/namespace/${namespace}/key/${key}`,
-    {
-      status: 200,
-      body: value,
+    () => {
+      // fetch-mock doesn't like returning false directly
+      return new Response(JSON.stringify(value), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
     },
     {
       name: getName,
@@ -26,9 +34,7 @@ export const setupUserKeyValueEndpoints = ({
 
   fetchMock.put(
     `path:/api/user-key-value/namespace/${namespace}/key/${key}`,
-    {
-      status: 200,
-    },
+    { status: 200 },
     {
       name: putName,
     },

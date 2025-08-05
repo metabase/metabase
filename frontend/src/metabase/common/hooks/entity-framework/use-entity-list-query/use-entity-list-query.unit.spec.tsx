@@ -181,22 +181,16 @@ describe("useEntityListQuery", () => {
   });
 
   it("should not remove loader in case second api call is cached", async () => {
-    try {
-      fetchMock.removeRoute("database-list");
-    } catch {
-      // Route might not exist, ignore  
-    }
-    fetchMock.get(
-      "path:/api/database",
-      delay(100).then(() => {
-        return [TEST_DB];
-      }),
-      { name: "database-list" }
-    );
-
     const { rerender } = setup();
-
-    expect(fetchMock.callHistory.calls("path:/api/database")).toHaveLength(1);
+    fetchMock.modifyRoute("database-list", {
+      response: async () => {
+        await delay(100);
+        return [TEST_DB];
+      },
+    });
+    await waitFor(() => {
+      expect(fetchMock.callHistory.calls("path:/api/database")).toHaveLength(1);
+    });
 
     rerender(
       <>

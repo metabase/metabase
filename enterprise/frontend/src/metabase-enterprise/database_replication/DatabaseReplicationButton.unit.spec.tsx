@@ -20,6 +20,15 @@ const setup = ({ databaseId = 1, settings = {} }) => {
     }),
   });
 
+  fetchMock.post(
+    "express:/api/ee/database-replication/connection/:databaseId",
+    200,
+  );
+  fetchMock.delete(
+    "express:/api/ee/database-replication/connection/:databaseId",
+    200,
+  );
+
   return renderWithProviders(
     <DatabaseReplicationButton databaseId={databaseId} />,
     {
@@ -29,23 +38,6 @@ const setup = ({ databaseId = 1, settings = {} }) => {
 };
 
 describe("DatabaseReplicationButton", () => {
-  beforeEach(() => {
-    fetchMock.hardReset();
-    // Mock the API endpoints
-    fetchMock.post(
-      "express:/api/ee/database-replication/connection/:databaseId",
-      200,
-    );
-    fetchMock.delete(
-      "express:/api/ee/database-replication/connection/:databaseId",
-      200,
-    );
-  });
-
-  afterEach(() => {
-    fetchMock.hardReset();
-  });
-
   describe("when database-replication-enabled is false", () => {
     it("should not render button", () => {
       setup({ settings: { "database-replication-enabled": false } });

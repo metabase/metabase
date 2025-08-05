@@ -3,23 +3,33 @@ import fetchMock from "fetch-mock";
 import type { GdrivePayload } from "metabase-types/api";
 
 export function setupGdriveGetFolderEndpoint({
+  overwriteRoute,
   errorCode,
   ...gdrivePayload
-}: Partial<GdrivePayload> & { errorCode?: number }) {
+}: Partial<GdrivePayload> & {
+  errorCode?: number;
+  overwriteRoute?: boolean;
+} = {}) {
+  if (overwriteRoute) {
+    try {
+      fetchMock.removeRoute("gdrive-get-folder");
+    } catch {
+      // Route might not exist, ignore
+    }
+  }
+
   if (errorCode) {
     fetchMock.get("path:/api/ee/gsheets/connection", errorCode, {
-      overwriteRoutes: true,
+      name: "gdrive-get-folder",
     });
     return;
   }
-
   fetchMock.get(
     "path:/api/ee/gsheets/connection",
     () => {
-      // fetchmock gets confused if you try to return only a 'status' property
       return { ...gdrivePayload, _test: "" };
     },
-    { overwriteRoutes: true },
+    { name: "gdrive-get-folder" },
   );
 }
 
