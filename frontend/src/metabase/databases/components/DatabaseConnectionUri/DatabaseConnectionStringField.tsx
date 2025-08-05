@@ -5,7 +5,7 @@ import { c, t } from "ttag";
 
 import { Group, Icon, Text, Textarea, Transition } from "metabase/ui";
 import type { DatabaseData } from "metabase-types/api";
-import { type EngineKey, engineKeys } from "metabase-types/api/settings";
+import { isEngineKey } from "metabase-types/guards";
 
 import { setDatabaseFormValues } from "../../utils/schema";
 
@@ -19,13 +19,6 @@ import {
 } from "./database-field-mapper";
 import { enginesConfig } from "./engines-config";
 import { parseConnectionUriRegex } from "./parse-connection-regex";
-
-/**
- * Type guard function that checks if a string is a valid EngineKey
- */
-export function isEngineKey(value: string | undefined): value is EngineKey {
-  return engineKeys.includes(value as EngineKey);
-}
 
 export function DatabaseConnectionStringField({
   setValues,
