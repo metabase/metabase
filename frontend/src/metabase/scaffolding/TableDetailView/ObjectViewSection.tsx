@@ -87,7 +87,7 @@ export function ObjectViewSection({
       })}
     >
       {onUpdateSection && (
-        <Group gap="md">
+        <Group gap="md" className={S.SectionTitle}>
           {/* {isEdit && (
           <Icon
           name="grabber"
