@@ -305,17 +305,27 @@
          :else (outer form)))
 
      (defn prewalk
-       "Like `clojure.walk/prewalk`, but uses a more efficient `metabase.util.performance/walk` underneath."
+       "Like `clojure.walk/prewalk`, but uses a more efficient `metabase.util.performance/walk` underneath.
+  Doesn't walk over map entries."
        [f form]
        (walk (fn prewalker [form] (walk prewalker identity (f form))) identity (f form)))
 
      (defn postwalk
-       "Like `clojure.walk/postwalk`, but uses a more efficient `metabase.util.performance/walk` underneath."
+       "Like `clojure.walk/postwalk`, but uses a more efficient `metabase.util.performance/walk` underneath.
+   Doesn't walk over map entries."
        [f form]
        (walk (fn postwalker [form] (walk postwalker f form)) f form))
 
-     (defn postwalk-demo [form]
-       (postwalk (fn [x] (prn x) x) form))
+     (defn postwalk-demo
+       "Like `clojure.walk/postwalk-demo`, but uses a more efficient `metabase.util.performance/walk` underneath.
+   Doesn't walk over map entries."
+       [form]
+       (postwalk (fn [x]
+                   #_{:clj-kondo/ignore [:discouraged-var]}
+                   (print "Walked: ")
+                   #_{:clj-kondo/ignore [:discouraged-var]}
+                   (prn x)
+                   x) form))
 
      (defn keywordize-keys
        "Like `clojure.walk/keywordize-keys`, but uses a more efficient `metabase.util.performance/walk` underneath and

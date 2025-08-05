@@ -41,7 +41,6 @@
   you used namespaced keys if you are using it elsewhere."
   [k schema value-thunk]
   (let [schema-key (schema-cache-key schema)]
-    (prn ["schema-key" schema-key])
     (or (get (get @cache k) schema-key)     ; get-in is terribly inefficient
         (let [v (value-thunk)]
           (when *cache-miss-hook*
