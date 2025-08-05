@@ -35,7 +35,7 @@ export const Nav = ({
   table,
 }: Props) => {
   const tc = useTranslateContent();
-  const headerSection = sections.find((s) => s.variant === "header")!;
+  const headerSection = sections.find((s) => s.variant === "header");
 
   // const values = headerSection.fields
   //   .map(({ field_id }) => {
@@ -47,7 +47,7 @@ export const Nav = ({
   //   .filter((value) => value != null && value !== "");
 
   // keep in sync with equivalent implementation in ObjectViewSection
-  const headerText = headerSection.fields
+  const headerText = (headerSection?.fields ?? [])
     .map(({ field_id }) => {
       const columnIndex = columns.findIndex((column) => column.id === field_id);
       const column = columns[columnIndex];
