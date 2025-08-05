@@ -51,6 +51,7 @@ export function suggestFields({
         from: token.start,
         to: token.end,
         options: columns,
+        filter: false,
       };
     }
 
