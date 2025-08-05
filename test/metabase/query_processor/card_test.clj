@@ -1,6 +1,7 @@
 (ns metabase.query-processor.card-test
   "There are more e2e tests in [[metabase.queries.api.card-test]]."
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.models.interface :as mi]
@@ -12,9 +13,13 @@
    [metabase.query-processor.middleware.results-metadata :as qp.results-metadata]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test-util :as qp.test-util]
+   [metabase.server.protocols :as server.protocols]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [metabase.util.json :as json]))
+   [metabase.util.json :as json])
+  (:import
+   [jakarta.servlet ServletOutputStream AsyncContext]
+   [jakarta.servlet.http HttpServletResponse]))
 
 (defn run-query-for-card
   "Run query for Card synchronously."
@@ -284,3 +289,50 @@
                        {:name "LONGITUDE",   :description "user description", :display_name "user display name", :semantic_type :type/Cost}
                        {:name "PRICE",       :description "user description", :display_name "user display name", :semantic_type :type/Quantity}]
                       (mt/cols (run-query-for-card card-id)))))))))))
+
+(def fun-card-name-cases
+  [["My Public Report" "my_public_report"]
+   ["Sales Report!@#$%" "sales_report_____"]
+   ["Vendas São Paulo" "vendas_sao_paulo"]
+   ["Q1/Q2 Comparison" "q1_q2_comparison"]
+   ["   Trimmed   " "trimmed"]
+   [(apply str (repeat 150 "a")) (apply str (repeat 150 "a"))]
+   [(apply str (repeat 254 "a")) (apply str (repeat 200 "a"))]
+   ["Αναφορά Πωλήσεων" "%CE%B1%CE%BD%CE%B1%CF%86%CE%BF%CF%81%CE%B1_%CF%80%CF%89%CE%BB%CE%B7%CF%83%CE%B5%CF%89%CE%BD"] ; Greek
+   ["销售报告" "%E9%94%80%E5%94%AE%E6%8A%A5%E5%91%8A"] ; Chinese
+   ["レポート分析" "%E3%83%AC%E3%83%9B%E3%82%9A%E3%83%BC%E3%83%88%E5%88%86%E6%9E%90"] ; Japanese
+   ["📊 Dashboard Metrics 📈" "%3F%3F_dashboard_metrics_%3F%3F"] ; Emojis
+   ["Отчёт по продажам" "%D0%BE%D1%82%D1%87%D0%B5%D1%82_%D0%BF%D0%BE_%D0%BF%D1%80%D0%BE%D0%B4%D0%B0%D0%B6%D0%B0%D0%BC"] ; Russian
+   ["تقرير المبيعات" "%D8%AA%D9%82%D8%B1%D9%8A%D8%B1_%D8%A7%D9%84%D9%85%D8%A8%D9%8A%D8%B9%D8%A7%D8%AA"] ; Arabic
+   ["混合 Report αβγ" "%E6%B7%B7%E5%90%88_report_%CE%B1%CE%B2%CE%B3"]]) ; Mixed
+
+(deftest ^:parallel process-query-for-card-default-run-fn-filename-test
+  (testing "process-query-for-card-default-run-fn generates correct filenames"
+    (let [test-cases fun-card-name-cases]
+      (doseq [[card-name expected-slug] test-cases]
+        (testing (str "card name: " card-name)
+          (with-open [os (java.io.ByteArrayOutputStream.)]
+            (let [complete-promise (promise)
+                  mock-streaming-qp (fn [_query _rff]
+                                      {:status :completed})
+                  run-fn (qp.card/process-query-for-card-default-run-fn mock-streaming-qp :csv)
+                  info {:card-name card-name}]
+              (server.protocols/respond (run-fn {} info)
+                                        {:response      (reify HttpServletResponse
+                                                          (setStatus [_ _])
+                                                          (setHeader [_ _ x]
+                                                            (when (str/includes? x "attachment;")
+                                                              (is (str/includes? x (str expected-slug "_")))))
+                                                          (setContentType [_ _])
+                                                          (getOutputStream [_]
+                                                            (proxy [ServletOutputStream] []
+                                                              (write
+                                                                ([byytes]
+                                                                 (.write os ^bytes byytes))
+                                                                ([byytes offset length]
+                                                                 (.write os ^bytes byytes offset length))))))
+                                         :async-context (reify AsyncContext
+                                                          (complete [_]
+                                                            (deliver complete-promise true)))})
+              (is (true?
+                   (deref complete-promise 1000 ::timed-out))))))))))
