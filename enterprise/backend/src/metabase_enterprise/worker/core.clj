@@ -11,6 +11,8 @@
   execute-transform!
   get-status
   run-remote?]
+ [metabase-enterprise.worker.models.worker-run
+  latest-runs]
  [metabase-enterprise.worker.server
   start!
   stop!])
