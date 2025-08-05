@@ -56,7 +56,7 @@ export function renderValue(
     rich: true,
   });
 
-  return formattedValue != undefined ? formattedValue : NO_VALUE;
+  return formattedValue != null ? formattedValue : NO_VALUE;
 }
 
 export function getDefaultObjectViewSettings(
@@ -84,12 +84,12 @@ export function getDefaultObjectViewSettings(
         variant: "subheader",
         fields: [],
       },
-      {
-        id: getNextId(),
-        title: "Data Highlight",
-        variant: "highlight-1",
-        fields: [],
-      },
+      // {
+      //   id: getNextId(),
+      //   title: "Data Highlight",
+      //   variant: "highlight-1",
+      //   fields: [],
+      // },
       // {
       //   id: getNextId(),
       //   title: "Highlight level 2",

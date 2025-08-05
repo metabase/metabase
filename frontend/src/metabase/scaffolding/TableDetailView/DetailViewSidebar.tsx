@@ -44,11 +44,12 @@ export function DetailViewSidebar({
 }: DetailViewSidebarProps) {
   const headerSection = sections.find((s) => s.variant === "header");
   const subheaderSection = sections.find((s) => s.variant === "subheader");
-  const highlight1Section = sections.find((s) => s.variant === "highlight-1");
+  // const highlight1Section = sections.find((s) => s.variant === "highlight-1");
 
   const otherSections = sections.filter(
     (s) =>
-      s !== headerSection && s !== subheaderSection && s !== highlight1Section,
+      s !== headerSection &&
+      s !== subheaderSection /* && s !== highlight1Section */,
   );
 
   // const fieldsInSections = sections.flatMap((s) => s.fields);
@@ -103,7 +104,7 @@ export function DetailViewSidebar({
             />
           )}
 
-          {highlight1Section && (
+          {/* {highlight1Section && (
             <SidebarSectionItem
               variant="highlight-1"
               section={highlight1Section}
@@ -112,7 +113,7 @@ export function DetailViewSidebar({
               openPopoverId={openPopoverId}
               setOpenPopoverId={setOpenPopoverId}
             />
-          )}
+          )} */}
 
           <Box h={1} bg="var(--border-color)" />
 
