@@ -18,12 +18,9 @@ import { IconWrapper } from "metabase/search/components/SearchResult/components/
 import { Box, Group, Icon, Popover, Text } from "metabase/ui";
 import type {
   RecentItem,
-  RegularCollectionId,
   SearchModel,
   UnrestrictedLinkEntity,
 } from "metabase-types/api";
-
-import { useDocumentCardSave } from "../../hooks/use-document-card-save";
 
 const COMMAND_MODELS_TO_SEARCH: SearchModel[] = ["card", "dataset"];
 
@@ -86,15 +83,10 @@ const MetabotMenuItem = ({ isSelected, onClick }: ExtraItemProps) => (
 
 interface CommandPluginProps {
   editor: Editor;
-  documentCollectionId: RegularCollectionId | null;
 }
 
-export const CommandPlugin = ({
-  editor,
-  documentCollectionId,
-}: CommandPluginProps) => {
+export const CommandPlugin = ({ editor }: CommandPluginProps) => {
   const dispatch = useDispatch();
-  const { saveCard } = useDocumentCardSave(documentCollectionId);
   const [showPopover, setShowPopover] = useState(false);
   const [modal, setModal] = useState<"question-picker" | null>(null);
   const [query, setQuery] = useState("");
@@ -239,12 +231,7 @@ export const CommandPlugin = ({
         throw new Error("Failed to fetch card data");
       }
 
-      const { card_id } = await saveCard({
-        card: originalCard,
-        modifiedCardData: {},
-        editor,
-      });
-
+      // Simply insert the original card ID - backend will handle cloning when saving document
       editor
         .chain()
         .focus()
@@ -252,7 +239,7 @@ export const CommandPlugin = ({
         .insertContentAt(insertPosition, {
           type: "cardEmbed",
           attrs: {
-            id: card_id,
+            id: originalCard.id,
           },
         })
         .setTextSelection(insertPosition + 1)

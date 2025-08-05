@@ -1,5 +1,4 @@
 import { createSelector } from "@reduxjs/toolkit";
-import _ from "underscore";
 
 import { canonicalCollectionId } from "metabase/collections/utils";
 import type { Card, CardId, RegularCollectionId } from "metabase-types/api";
@@ -30,59 +29,6 @@ export const getSelectedEmbedIndex = createSelector(
   (documents): number | null => documents.selectedEmbedIndex,
 );
 
-// Get draft card for the currently selected embed
-export const getDraftCard = createSelector(
-  getDocumentsState,
-  (documents) => documents.draftCard,
-);
-
-// Get card with draft settings merged for the currently selected embed
-export const getDocumentCardWithDraftSettings = createSelector(
-  [
-    (_state: any, _cardId: CardId, card?: Card) => card,
-    (state: any) => getDocumentsState(state).draftCard,
-  ],
-  (card, draftCard) => {
-    if (!card) {
-      return undefined;
-    }
-
-    // If we have a draftCard for this cardId, return it
-    if (draftCard && draftCard.id === card.id) {
-      return draftCard;
-    }
-
-    // Otherwise return the original card
-    return card;
-  },
-);
-
-// Check if there are pending draft changes
-export const getHasDraftChanges = createSelector(
-  [
-    (state: any) => getDocumentsState(state).draftCard,
-    (_state: any, originalCard?: Card) => originalCard,
-  ],
-  (draftCard, originalCard) => {
-    if (!draftCard) {
-      return false;
-    }
-
-    if (!originalCard) {
-      return true; // If we have a draft but no original, consider it a change
-    }
-
-    // Check if display or visualization_settings have changed
-    return (
-      draftCard.display !== originalCard.display ||
-      !_.isEqual(
-        draftCard.visualization_settings,
-        originalCard.visualization_settings,
-      )
-    );
-  },
-);
-
 export const getCurrentDocument = createSelector(
   getDocumentsState,
   (documents) => documents?.currentDocument,
@@ -101,3 +47,32 @@ export const getShowNavigateBackToDocumentButton = createSelector(
 
 // For backwards compatibility with DocumentBackButton
 export const getDocument = getCurrentDocument;
+
+// Get all draft cards
+export const getDraftCards = createSelector(
+  getDocumentsState,
+  (documents) => documents?.draftCards ?? {},
+);
+
+// Get a specific draft card by ID
+export const getDraftCardById = createSelector(
+  [getDraftCards, (_state: any, cardId: number) => cardId],
+  (draftCards, cardId) => draftCards[cardId],
+);
+
+// Get card with draft settings merged
+export const getCardWithDraft = createSelector(
+  [
+    getDraftCards,
+    (_state: any, cardId: CardId) => cardId,
+    (_state: any, _cardId: CardId, card?: Card) => card,
+  ],
+  (draftCards, cardId, card) => {
+    // Check if we have a draft card for this ID
+    const draftCard = draftCards[cardId];
+    if (draftCard) {
+      return draftCard;
+    }
+    return card;
+  },
+);

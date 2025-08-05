@@ -6,11 +6,7 @@ import { usePrevious } from "react-use";
 import useBeforeUnload from "react-use/lib/useBeforeUnload";
 import { t } from "ttag";
 
-import {
-  skipToken,
-  useGetCardQuery,
-  useGetCollectionQuery,
-} from "metabase/api";
+import { skipToken, useGetCollectionQuery } from "metabase/api";
 import { canonicalCollectionId } from "metabase/collections/utils";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { CollectionPickerModal } from "metabase/common/components/Pickers/CollectionPicker";
@@ -36,16 +32,17 @@ import type { RegularCollectionId } from "metabase-types/api";
 
 import {
   closeSidebar,
+  openVizSettingsSidebar,
   resetDocuments,
   setCurrentDocument,
 } from "../documents.slice";
-import {
-  useDocumentActions,
-  useDocumentState,
-  useRegisterDocumentMetabotContext,
-} from "../hooks";
+import { useDocumentState, useRegisterDocumentMetabotContext } from "../hooks";
 import { useDocumentsSelector } from "../redux-utils";
-import { getSelectedEmbedIndex, getSelectedQuestionId } from "../selectors";
+import {
+  getDraftCards,
+  getSelectedEmbedIndex,
+  getSelectedQuestionId,
+} from "../selectors";
 
 import styles from "./DocumentPage.module.css";
 import { Editor } from "./Editor";
@@ -64,6 +61,7 @@ export const DocumentPage = ({
   const dispatch = useDispatch();
   const selectedQuestionId = useDocumentsSelector(getSelectedQuestionId);
   const selectedEmbedIndex = useDocumentsSelector(getSelectedEmbedIndex);
+  const draftCards = useDocumentsSelector(getDraftCards);
   const [editorInstance, setEditorInstance] = useState<any>(null);
   const [isDownloading, setIsDownloading] = useState(false);
   const [currentContent, setCurrentContent] = useState<string>("");
@@ -95,10 +93,6 @@ export const DocumentPage = ({
       : skipToken,
   );
 
-  const { data: selectedCard } = useGetCardQuery(
-    selectedQuestionId ? { id: selectedQuestionId } : skipToken,
-  );
-
   const canWrite = isNewDocument ? true : collection?.can_write;
 
   const {
@@ -126,8 +120,6 @@ export const DocumentPage = ({
     documentContent,
   ]);
 
-  const { commitVisualizationChanges, commitAllPendingChanges } =
-    useDocumentActions();
   useRegisterDocumentMetabotContext();
   useBeforeUnload(() => {
     // warn if you try to navigate away with unsaved changes
@@ -200,17 +192,37 @@ export const DocumentPage = ({
       }
 
       try {
-        // Commit all pending visualization changes before saving
-        await commitAllPendingChanges(editorInstance);
+        // Extract cards that need to be saved (draft cards and cards with report_id)
+        const cardsToSave: any[] = [];
+        const processedCardIds = new Set<number>();
+
+        // Walk through the editor to find all card embeds
+        editorInstance.state.doc.descendants((node: any) => {
+          if (node.type.name === "cardEmbed") {
+            const cardId = node.attrs.id;
+            if (!processedCardIds.has(cardId)) {
+              processedCardIds.add(cardId);
+
+              // If it's a draft card (negative ID)
+              if (cardId < 0 && draftCards[cardId]) {
+                const draftCard = draftCards[cardId];
+                // Keep the negative ID so backend can match to prosemirror AST
+                cardsToSave.push(draftCard);
+              }
+              // If it's a card with report_id, we might need to include it for updates
+              // Backend will handle this case
+            }
+          }
+        });
 
         // Use the current content (already in JSON AST format)
-        const newDocumentData = {
+        const newDocumentData: any = {
           name: documentTitle,
           document: currentContent,
-          card_ids: [...new Set(cardEmbeds.map((embed) => embed.id))],
+          cards: cardsToSave,
         };
 
-        const result = await (isNewDocument && documentData?.id
+        const result = await (documentData?.id
           ? updateDocument({ ...newDocumentData, id: documentData.id }).then(
               (response) => {
                 if (response.data) {
@@ -252,11 +264,9 @@ export const DocumentPage = ({
     },
     [
       editorInstance,
-      commitAllPendingChanges,
       documentTitle,
       currentContent,
-      cardEmbeds,
-      isNewDocument,
+      draftCards,
       documentData?.id,
       updateDocument,
       createDocument,
@@ -286,20 +296,17 @@ export const DocumentPage = ({
     };
   }, [hasUnsavedChanges, handleSave, isNewDocument, showCollectionPicker]);
 
-  const handleQuestionSelect = useCallback(async () => {
-    if (selectedEmbedIndex !== null && selectedCard) {
-      await commitVisualizationChanges(
-        selectedEmbedIndex,
-        editorInstance,
-        selectedCard,
-      );
-    }
-  }, [
-    selectedEmbedIndex,
-    commitVisualizationChanges,
-    editorInstance,
-    selectedCard,
-  ]);
+  const handleQuestionSelect = useCallback(
+    (cardId: number | null) => {
+      if (selectedEmbedIndex !== null && cardId !== null) {
+        const embedIndex = cardEmbeds.findIndex((embed) => embed.id === cardId);
+        if (embedIndex !== -1) {
+          dispatch(openVizSettingsSidebar({ embedIndex }));
+        }
+      }
+    },
+    [selectedEmbedIndex, cardEmbeds, dispatch],
+  );
 
   const handleDownloadMarkdown = useCallback(() => {
     if (!editorInstance) {

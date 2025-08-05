@@ -5,7 +5,11 @@ import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
-import { useGetCardQuery, useGetCardQueryQuery } from "metabase/api";
+import { skipToken, useGetCardQuery, useGetCardQueryQuery } from "metabase/api";
+import {
+  useGetAdhocQueryMetadataQuery,
+  useGetAdhocQueryQuery,
+} from "metabase/api/dataset";
 import { useDispatch } from "metabase/lib/redux";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { getMetadata } from "metabase/selectors/metadata";
@@ -21,10 +25,7 @@ import {
   setShowNavigateBackToDocumentButton,
 } from "../../../../documents.slice";
 import { useDocumentsSelector } from "../../../../redux-utils";
-import {
-  getDocumentCardWithDraftSettings,
-  getSelectedEmbedIndex,
-} from "../../../../selectors";
+import { getCardWithDraft } from "../../../../selectors";
 import { EDITOR_STYLE_BOUNDARY_CLASS } from "../../constants";
 import { formatCardEmbed } from "../markdown/card-embed-format";
 
@@ -135,29 +136,45 @@ export const CardEmbedComponent = memo(
 
     const { data: card, isLoading: isLoadingCard } = useGetCardQuery(
       { id },
-      { skip: !id },
-    );
-    const { data: dataset, isLoading: isLoadingDataset } = useGetCardQueryQuery(
-      { cardId: id },
-      { skip: !id || !card },
+      { skip: !id || id < 0 }, // Skip if draft card (negative ID)
     );
 
-    const selectedEmbedIndex = useDocumentsSelector(getSelectedEmbedIndex);
-    const isCurrentlyEditing =
-      selectedEmbedIndex === embedIndex && embedIndex !== -1;
-
-    // Use draft settings if this embed is currently being edited
+    // Get card with draft if available
     const cardWithDraft = useDocumentsSelector((state) =>
-      isCurrentlyEditing && card
-        ? getDocumentCardWithDraftSettings(state, id, card)
-        : card,
+      getCardWithDraft(state, id, card),
     );
+
+    // Use the draft card if available, otherwise use the fetched card
+    const cardToUse = cardWithDraft ?? card;
+
+    // Use different endpoints for draft vs regular cards
+    const { data: regularDataset, isLoading: isLoadingRegularDataset } =
+      useGetCardQueryQuery(
+        { cardId: id },
+        { skip: !id || id < 0 || !card }, // Skip for draft cards
+      );
+
+    const { data: draftDataset, isLoading: isLoadingDraftDataset } =
+      useGetAdhocQueryQuery(
+        id < 0 && cardToUse?.dataset_query
+          ? {
+              ...cardToUse.dataset_query,
+              database: cardToUse.database_id ?? null,
+              parameters: [],
+            }
+          : skipToken,
+      );
+
+    // Use appropriate dataset based on card type
+    const dataset = id < 0 ? draftDataset : regularDataset;
+    const isLoadingDataset =
+      id < 0 ? isLoadingDraftDataset : isLoadingRegularDataset;
 
     const rawSeries =
-      cardWithDraft && dataset?.data
+      cardToUse && dataset?.data
         ? [
             {
-              card: cardWithDraft,
+              card: cardToUse,
               started_at: dataset.started_at,
               data: dataset.data,
             },
@@ -170,15 +187,15 @@ export const CardEmbedComponent = memo(
     const titleInputRef = useRef<HTMLInputElement>(null);
     const [isModifyModalOpen, setIsModifyModalOpen] = useState(false);
 
-    const displayName = name || cardWithDraft?.name;
-    const isGuiQuestion = cardWithDraft?.dataset_query?.type !== "native";
+    const displayName = name || cardToUse?.name;
+    const isGuiQuestion = cardToUse?.dataset_query?.type !== "native";
     const isLoading = isLoadingCard || isLoadingDataset;
 
     // Only show error if we've tried to load and failed, not if we haven't tried yet
     const hasTriedToLoad =
-      card !== undefined || isLoadingCard || isLoadingDataset;
+      cardToUse !== undefined || isLoadingCard || isLoadingDataset;
     const error =
-      hasTriedToLoad && !isLoading && id && !card
+      hasTriedToLoad && !isLoading && id && !cardToUse
         ? "Failed to load question"
         : null;
 
@@ -191,7 +208,7 @@ export const CardEmbedComponent = memo(
 
     const handleTitleSave = () => {
       const trimmedTitle = editedTitle.trim();
-      if (trimmedTitle && trimmedTitle !== cardWithDraft?.name) {
+      if (trimmedTitle && trimmedTitle !== cardToUse?.name) {
         updateAttributes({ name: trimmedTitle });
       } else {
         updateAttributes({ name: null });
@@ -210,23 +227,29 @@ export const CardEmbedComponent = memo(
       }
     };
 
+    // Load metadata for the card
+    const { data: adhocMetadata } = useGetAdhocQueryMetadataQuery(
+      id < 0 && cardToUse?.dataset_query ? cardToUse.dataset_query : skipToken,
+    );
+
     useEffect(() => {
-      if (card) {
-        dispatch(loadMetadataForCard(card));
+      if (cardToUse && id >= 0) {
+        // For regular cards, use the loadMetadataForCard action
+        dispatch(loadMetadataForCard(cardToUse));
       }
-    }, [card, dispatch]);
+    }, [cardToUse, dispatch, adhocMetadata, id]);
 
     const handleEditVisualizationSettings = () => {
-      if (embedIndex !== -1 && card) {
-        dispatch(openVizSettingsSidebar({ embedIndex, card }));
+      if (embedIndex !== -1) {
+        dispatch(openVizSettingsSidebar({ embedIndex }));
       }
     };
 
     const handleTitleClick = () => {
-      if (cardWithDraft && metadata) {
+      if (cardToUse && metadata) {
         try {
           dispatch(setShowNavigateBackToDocumentButton(true));
-          const question = new Question(cardWithDraft, metadata);
+          const question = new Question(cardToUse, metadata);
           const url = getUrl(question, { includeDisplayIsLocked: true });
           dispatch(push(url));
         } catch (error) {
@@ -286,7 +309,7 @@ export const CardEmbedComponent = memo(
       [dispatch, metadata],
     );
 
-    if (isLoadingCard && !card) {
+    if (isLoadingCard && !cardToUse) {
       return (
         <NodeViewWrapper className={styles.embedWrapper}>
           <Box
@@ -339,7 +362,7 @@ export const CardEmbedComponent = memo(
             [styles.selected]: selected,
           })}
         >
-          {card && (
+          {cardToUse && (
             <Box className={styles.questionHeader}>
               <Box
                 style={{
@@ -473,13 +496,13 @@ export const CardEmbedComponent = memo(
             </>
           ) : (
             <Box className={styles.questionResults}>
-              <ChartSkeleton display={card?.display || "table"} />
+              <ChartSkeleton display={cardToUse?.display || "table"} />
             </Box>
           )}
         </Box>
-        {isModifyModalOpen && card && (
+        {isModifyModalOpen && cardToUse && (
           <ModifyQuestionModal
-            card={card}
+            card={cardToUse}
             isOpen={isModifyModalOpen}
             onClose={() => setIsModifyModalOpen(false)}
             editor={editor}

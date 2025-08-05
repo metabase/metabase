@@ -18,9 +18,6 @@ import { useSelector } from "metabase/lib/redux";
 import { getSetting } from "metabase/selectors/settings";
 import { Box, Loader } from "metabase/ui";
 
-import { useDocumentsSelector } from "../../redux-utils";
-import { getDocumentCollectionId } from "../../selectors";
-
 import { CommandPlugin } from "./CommandPlugin";
 import styles from "./Editor.module.css";
 import { MentionPlugin } from "./MentionPlugin";
@@ -52,7 +49,6 @@ export const Editor: React.FC<EditorProps> = ({
   onQuestionSelect,
   isLoading = false,
 }) => {
-  const documentCollectionId = useDocumentsSelector(getDocumentCollectionId);
   const siteUrl = useSelector((state) => getSetting(state, "site-url"));
   const editor = useEditor(
     {
@@ -207,10 +203,7 @@ export const Editor: React.FC<EditorProps> = ({
       >
         <EditorContent editor={editor} />
         <MentionPlugin editor={editor} />
-        <CommandPlugin
-          editor={editor}
-          documentCollectionId={documentCollectionId}
-        />
+        <CommandPlugin editor={editor} />
       </Box>
     </Box>
   );
