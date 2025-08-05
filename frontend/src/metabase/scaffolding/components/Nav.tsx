@@ -61,7 +61,10 @@ export const Nav = ({
     })
     .join(" ");
 
-  const showValues = headerText.length > 0 || (!rowName && !rowId);
+  const showValues = headerText.trim().length > 0;
+  const isDefaultValid =
+    (rowName != null && !Number.isNaN(rowName)) ||
+    (rowId != null && !Number.isNaN(rowId));
 
   return (
     <Group
@@ -93,7 +96,7 @@ export const Nav = ({
           </>
         )}
 
-        {!showValues && (
+        {!showValues && isDefaultValid && (
           <>
             <Separator />
 
@@ -108,9 +111,11 @@ export const Nav = ({
               c="text-primary"
               fw="bold"
             >
-              {rowId != null && <Box>{rowId}</Box>}
+              {rowId != null && !Number.isNaN(rowId) && <Box>{rowId}</Box>}
 
-              {rowId != null && <Box>{rowName}</Box>}
+              {rowName != null && !Number.isNaN(rowName) && (
+                <Box>{rowName}</Box>
+              )}
             </Group>
           </>
         )}
