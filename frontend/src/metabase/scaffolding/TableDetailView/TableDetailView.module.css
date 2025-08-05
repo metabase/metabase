@@ -3,12 +3,12 @@
 }
 
 .ObjectViewSection {
+  border-radius: var(--default-border-radius);
+  padding: 0 var(--mantine-spacing-md);
+  position: relative;
+
   &:hover .ObjectViewSectionActions {
     visibility: visible;
-  }
-
-  .Field {
-    align-items: center;
   }
 
   .SectionTitle {
@@ -17,10 +17,15 @@
   .SectionContent {
     gap: var(--mantine-spacing-md);
   }
-  .FieldName {
-    display: flex;
-    gap: var(--mantine-spacing-sm);
+  .Field {
     align-items: center;
+    overflow: hidden;
+
+    .FieldName {
+      display: flex;
+      gap: var(--mantine-spacing-sm);
+      align-items: center;
+    }
   }
 
   &.normal {
@@ -51,7 +56,7 @@
     }
     .SectionContent {
       gap: 1rem;
-      flex-wrap: wrap;
+      /* flex-wrap: wrap; */
     }
     .FieldName {
       display: none;
@@ -59,7 +64,7 @@
     .FieldValue {
       font-size: 3.125rem;
       font-weight: 700;
-      display: flex;
+      /* display: flex; */
     }
   }
 
@@ -121,6 +126,7 @@
         .FieldName,
         .FieldValue {
           text-align: center;
+          justify-content: center;
         }
 
         .FieldName {
@@ -138,6 +144,7 @@
         align-content: start;
       }
       .FieldName {
+        text-align: center;
         font-size: 0.875rem;
       }
 

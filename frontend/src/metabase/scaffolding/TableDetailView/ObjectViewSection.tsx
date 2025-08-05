@@ -46,20 +46,50 @@ export function ObjectViewSection({
   // const pkIndex = columns.findIndex(isPK); // TODO: handle multiple PKs
   const tc = useTranslateContent();
 
+  if (variant === "header") {
+    // Merging header values in 1 element to handle text-overflow: ellipsis correctly.
+    const headerText = section.fields
+      .map(({ field_id }) => {
+        const columnIndex = columns.findIndex(
+          (column) => column.id === field_id,
+        );
+        const column = columns[columnIndex];
+
+        if (!column) {
+          return null;
+        }
+
+        const value = row[columnIndex];
+        return renderValue(tc, value, column);
+      })
+      .join(" ");
+
+    return (
+      <Box className={cx(S.ObjectViewSection, S.header)}>
+        <Flex className={S.SectionContent}>
+          <Text
+            variant="primary"
+            truncate
+            lh="inherit"
+            c="var(--mb-color-text-primary)"
+            className={S.FieldValue}
+          >
+            {headerText}
+          </Text>
+        </Flex>
+      </Box>
+    );
+  }
+
   return (
     <Box
       className={cx(S.ObjectViewSection, {
         [S.normal]: variant === "normal",
-        [S.header]: variant === "header",
+        // [S.header]: variant === "header",
         [S.subheader]: variant === "subheader",
         [S.highlight1]: variant === "highlight-1",
         [S.highlight2]: variant === "highlight-2",
       })}
-      pos="relative"
-      px="md"
-      style={{
-        borderRadius: "var(--default-border-radius)",
-      }}
     >
       {onUpdateSection && (
         <Group gap="xs">
