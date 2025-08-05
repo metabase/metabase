@@ -177,47 +177,55 @@
   use [[metabase.util.malli/disable-enforcement]] to bind this only in Clojure code."
   true)
 
-(defn- validate [error-context schema explain-fn value error-type]
-  (when *enforce*
-    (when-let [error (explain-fn value)]
-      (let [humanized (me/humanize error {:wrap (core/fn humanize-include-value
-                                                  [{:keys [value message]}]
-                                                  (str message ", got: " (pr-str value)))})
-            details   (merge
-                       {:type      error-type
-                        :error     error
-                        :humanized humanized
-                        :schema    schema
-                        :value     value}
-                       error-context)]
-        (if (or config/is-dev?
-                config/is-test?)
-          ;; In dev and test, throw an exception.
-          (throw (ex-info (case error-type
-                            ::invalid-input  (i18n/tru "Invalid input: {0}" (pr-str humanized))
-                            ::invalid-output (i18n/tru "Invalid output: {0}" (pr-str humanized)))
-                          details))
-          ;; In prod, log a warning.
-          (log/warn
-           (case error-type
-             ::invalid-input  (format "Invalid input - Please report this as an issue on Github: %s"
-                                      (pr-str humanized))
-             ::invalid-output (format "Invalid output - Please report this as an issue on Github: %s"
-                                      (pr-str humanized)))
-           details))))))
+(defn- validate
+  ([error-context schema value error-type]
+   (validate error-context schema (mr/explainer schema) value error-type))
+  ([error-context schema explain-fn value error-type]
+   (when *enforce*
+     (when-let [error (explain-fn value)]
+       (let [humanized (me/humanize error {:wrap (core/fn humanize-include-value
+                                                   [{:keys [value message]}]
+                                                   (str message ", got: " (pr-str value)))})
+             details   (merge
+                        {:type      error-type
+                         :error     error
+                         :humanized humanized
+                         :schema    schema
+                         :value     value}
+                        error-context)]
+         (if (or config/is-dev?
+                 config/is-test?)
+           ;; In dev and test, throw an exception.
+           (throw (ex-info (case error-type
+                             ::invalid-input  (i18n/tru "Invalid input: {0}" (pr-str humanized))
+                             ::invalid-output (i18n/tru "Invalid output: {0}" (pr-str humanized)))
+                           details))
+           ;; In prod, log a warning.
+           (log/warn
+            (case error-type
+              ::invalid-input  (format "Invalid input - Please report this as an issue on Github: %s"
+                                       (pr-str humanized))
+              ::invalid-output (format "Invalid output - Please report this as an issue on Github: %s"
+                                       (pr-str humanized)))
+            details)))))))
 
 (defn validate-input
   "Impl for [[metabase.util.malli.fn/fn]]; validates an input argument with `value` against `schema` using a cached
   explainer and throws an exception if the check fails. 2"
-  [error-context schema explainer-fn value]
-  (validate error-context schema explainer-fn value ::invalid-input))
+  ([error-context schema value]
+   (validate error-context schema value ::invalid-input))
+  ([error-context schema explainer-fn value]
+   (validate error-context schema explainer-fn value ::invalid-input)))
 
 (defn validate-output
   "Impl for [[metabase.util.malli.fn/fn]]; validates function output `value` against `schema` using a cached explainer
   and throws an exception if the check fails. Returns validated value. 2"
-  [error-context schema explainer-fn value]
-  (validate error-context schema explainer-fn value ::invalid-output)
-  value)
+  ([error-context schema value]
+   (validate error-context schema value ::invalid-output)
+   value)
+  ([error-context schema explainer-fn value]
+   (validate error-context schema explainer-fn value ::invalid-output)
+   value))
 
 (defn- varargs-type [input-schema]
   (-> input-schema meta :varargs/type))
