@@ -1,46 +1,20 @@
-// This convoluted way of emulating paste is necessary due to how React and Cypress are not
-//  using native events. We're triggering here React onChange events to let know React and Formik of
-//  the new value.
-
 Cypress.Commands.add(
   "paste",
   { prevSubject: "element" },
   (subject, text: string) => {
     cy.wrap(subject).then(($element) => {
-      const element = $element[0] as HTMLInputElement | HTMLTextAreaElement;
+      const clipboardData = new DataTransfer();
+      clipboardData.setData("text/plain", text);
 
-      // Get React's internal props to trigger proper onChange
-      const reactPropsKey = Object.keys(element).find(
-        (key) =>
-          key.startsWith("__reactProps") ||
-          key.startsWith("__reactInternalInstance"),
-      );
+      const pasteEvent = new ClipboardEvent("paste", {
+        bubbles: true,
+        cancelable: true,
+        clipboardData,
+      });
 
-      if (reactPropsKey && reactPropsKey in element) {
-        const reactProps = (element as { [key: string]: any })[reactPropsKey];
-        const onChange =
-          reactProps?.onChange || reactProps?.memoizedProps?.onChange;
+      console.log({ $element, element: $element[0], pasteEvent });
 
-        if (onChange) {
-          // Create a synthetic event that mimics React's SyntheticEvent
-          const syntheticEvent = {
-            target: { value: text },
-            currentTarget: element,
-            preventDefault: () => {},
-            stopPropagation: () => {},
-            nativeEvent: new Event("input"),
-          };
-
-          // Set the value and call onChange
-          element.value = text;
-          onChange(syntheticEvent);
-          return;
-        }
-      }
-
-      element.value = text;
-      element.dispatchEvent(new Event("input", { bubbles: true }));
-      element.dispatchEvent(new Event("change", { bubbles: true }));
+      $element[0].dispatchEvent(pasteEvent);
     });
 
     return cy.wrap(subject);
