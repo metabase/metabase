@@ -561,7 +561,7 @@
 (defn- check-update-result-metadata-data-perms
   [card-before-updates card-updates]
   (when (api/column-will-change? :result_metadata card-before-updates card-updates)
-    (let [database-id ((some-fn :database_id) card-before-updates card-updates)
+    (let [database-id (some :database_id [card-before-updates card-updates])
           result-metadata (:result_metadata card-updates)]
       (query-perms/check-result-metadata-data-perms database-id result-metadata))))
 

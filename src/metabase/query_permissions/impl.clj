@@ -312,7 +312,7 @@
         table-ids (into #{} (concat (keep (some-fn :table-id :table_id) result-metadata)
                                     (when (seq field-ids)
                                       (t2/select-fn-set :table_id :model/Field :id [:in field-ids]))))]
-    (some #(when-not (perms/user-has-permission-for-table?
+    (run! #(when-not (perms/user-has-permission-for-table?
                       api/*current-user-id*
                       :perms/view-data
                       :unrestricted
