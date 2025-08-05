@@ -24,6 +24,7 @@ export type SdkDispatch = ThunkDispatch<SdkStoreState, void, AnyAction>;
 
 export type SdkState = {
   metabaseInstanceUrl: MetabaseAuthConfig["metabaseInstanceUrl"];
+  metabaseInstanceVersion: string | null;
   token: EmbeddingSessionTokenState;
   loginStatus: LoginStatus;
   plugins: null | MetabasePluginsConfig;

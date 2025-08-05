@@ -268,3 +268,19 @@
         (testing "Should use column-specific GBP currency, not global AUD currency"
           (is (str/starts-with? result "£")
               (str "Expected GBP symbol (£) but got: " result)))))))
+
+(deftest scalar-flag-inserts-currency-inline
+  (testing "When the scalar flag is passed to `number-formatter` it puts the currency inline"
+    (let [column {:id 1
+                  :name "SUBTOTAL"
+                  :field_ref [:field 1 nil]
+                  :effective_type :type/Currency}
+          viz-settings {::mb.viz/column-settings
+                        {{::mb.viz/field-id 1} {::mb.viz/currency "GBP"
+                                                ::mb.viz/currency-style "symbol"
+                                                ::mb.viz/number-style "currency"}}}
+          formatter-fn (formatter/number-formatter column viz-settings true)
+          result (str (formatter-fn 1234.56))]
+      (testing "Should use column-specific GBP currency, not global AUD currency"
+        (is (str/starts-with? result "£")
+            (str "Expected GBP symbol (£) but got: " result))))))
