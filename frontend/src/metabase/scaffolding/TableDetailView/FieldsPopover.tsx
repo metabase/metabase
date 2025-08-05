@@ -98,6 +98,7 @@ interface FieldsPopoverProps {
   section: Section;
   fieldsLimit?: number;
   usedFieldIds: Set<string>;
+  usedFieldIdsAnywhere: Set<string>;
   columns: DatasetColumn[];
   onUpdateSection: (sectionId: number, update: Partial<Section>) => void;
   onClose: () => void;
@@ -107,6 +108,7 @@ export function FieldsPopover({
   section,
   fieldsLimit,
   usedFieldIds,
+  usedFieldIdsAnywhere,
   columns,
   onUpdateSection,
   onClose,
@@ -119,8 +121,13 @@ export function FieldsPopover({
   );
 
   // Filter columns to get available fields
-  const availableFields = columns.filter(
-    (col: DatasetColumn) => !usedFieldIds.has(String(col.id)),
+  const notShownAnywhere = columns.filter(
+    (col: DatasetColumn) => !usedFieldIdsAnywhere.has(String(col.id)),
+  );
+  const shownSomewhereElse = columns.filter(
+    (col: DatasetColumn) =>
+      !usedFieldIds.has(String(col.id)) &&
+      usedFieldIdsAnywhere.has(String(col.id)),
   );
 
   const handleRemoveItem = (fieldId: number) => {
@@ -148,7 +155,7 @@ export function FieldsPopover({
       {section.fields.length > 0 && (
         <>
           <Text size="xs" fw="bold" c="text-medium" mb="sm" tt="uppercase">
-            {t`Showing`} {fieldsLimit != null ? t`(Max ${fieldsLimit})` : null}
+            {t`Shown`} {fieldsLimit != null ? t`(Max ${fieldsLimit})` : null}
           </Text>
           <DndContext
             sensors={sensors}
@@ -198,14 +205,62 @@ export function FieldsPopover({
         </>
       )}
 
-      {availableFields.length > 0 && (
+      {notShownAnywhere.length > 0 && (
         <>
           <Text size="xs" fw="bold" c="text-medium" mb="sm" tt="uppercase">
-            {t`Not showing`}
+            {t`Not shown`}
+          </Text>
+
+          <Stack gap="xs" mb="md">
+            {notShownAnywhere.map((column) => (
+              <Group
+                key={column.id}
+                px="md"
+                py="xs"
+                h={38}
+                gap="sm"
+                align="center"
+                style={{
+                  border: "1px solid var(--border-color)",
+                  borderRadius: "var(--default-border-radius)",
+                  backgroundColor: "var(--mb-color-bg-white)",
+                  cursor: limitReached ? undefined : "pointer",
+                }}
+                onClick={() => {
+                  if (limitReached) {
+                    return;
+                  }
+
+                  // Add field to current section
+                  const newField = {
+                    field_id: column.id as number,
+                  };
+
+                  // Update parent
+                  onUpdateSection(section.id, {
+                    fields: [...section.fields, newField],
+                  });
+                }}
+              >
+                {!limitReached && <Icon name="add" size={12} />}
+
+                <Icon name={getIconForField(column) as IconName} />
+
+                <Text>{column.display_name}</Text>
+              </Group>
+            ))}
+          </Stack>
+        </>
+      )}
+
+      {shownSomewhereElse.length > 0 && (
+        <>
+          <Text size="xs" fw="bold" c="text-medium" mb="sm" tt="uppercase">
+            {t`Shown in other sections`}
           </Text>
 
           <Stack gap="xs">
-            {availableFields.map((column) => (
+            {shownSomewhereElse.map((column) => (
               <Group
                 key={column.id}
                 px="md"

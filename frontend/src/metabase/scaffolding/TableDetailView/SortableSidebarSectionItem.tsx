@@ -9,6 +9,7 @@ import { SidebarSectionItem } from "./SidebarSectionItem";
 
 interface SortableSidebarSectionItemProps {
   section: ObjectViewSectionSettings;
+  sections: ObjectViewSectionSettings[];
   columns: DatasetColumn[];
   fieldsLimit?: number;
   onUpdateSection?: (
@@ -24,6 +25,7 @@ interface SortableSidebarSectionItemProps {
 
 export function SortableSidebarSectionItem({
   section,
+  sections,
   columns,
   fieldsLimit,
   onUpdateSection,
@@ -38,6 +40,7 @@ export function SortableSidebarSectionItem({
       {({ dragHandleRef, dragHandleListeners }) => (
         <SidebarSectionItem
           section={section}
+          sections={sections}
           columns={columns}
           fieldsLimit={fieldsLimit}
           onUpdateSection={onUpdateSection}

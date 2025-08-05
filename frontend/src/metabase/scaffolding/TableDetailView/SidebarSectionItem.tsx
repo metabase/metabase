@@ -28,6 +28,7 @@ type Section = ObjectViewSectionSettings;
 
 interface SidebarSectionItemProps {
   section: Section;
+  sections: Section[];
   columns: DatasetColumn[];
   fieldsLimit?: number;
   onUpdateSection?: (sectionId: number, update: Partial<Section>) => void;
@@ -42,6 +43,7 @@ interface SidebarSectionItemProps {
 
 export function SidebarSectionItem({
   section,
+  sections,
   columns,
   fieldsLimit,
   onUpdateSection,
@@ -56,6 +58,11 @@ export function SidebarSectionItem({
   const usedFieldIds = useMemo(() => {
     return new Set(section.fields.map((f) => String(f.field_id)));
   }, [section.fields]);
+  const usedFieldIdsAnywhere = useMemo(() => {
+    return new Set(
+      sections.flatMap((s) => s.fields).map((f) => String(f.field_id)),
+    );
+  }, [sections]);
 
   return (
     <Stack gap="xs" maw="330px">
@@ -155,6 +162,7 @@ export function SidebarSectionItem({
             <FieldsPopover
               section={section}
               usedFieldIds={usedFieldIds}
+              usedFieldIdsAnywhere={usedFieldIdsAnywhere}
               columns={columns}
               onUpdateSection={onUpdateSection}
               onClose={() => setOpenPopoverId(null)}

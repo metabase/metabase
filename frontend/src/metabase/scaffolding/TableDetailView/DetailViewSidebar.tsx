@@ -118,6 +118,7 @@ export function DetailViewSidebar({
               fieldsLimit={3}
               variant="header"
               section={headerSection}
+              sections={sections}
               columns={columns}
               onUpdateSection={onUpdateSection}
               openPopoverId={openPopoverId}
@@ -130,6 +131,7 @@ export function DetailViewSidebar({
               variant="subheader"
               fieldsLimit={4}
               section={subheaderSection}
+              sections={sections}
               columns={columns}
               onUpdateSection={onUpdateSection}
               openPopoverId={openPopoverId}
@@ -170,6 +172,7 @@ export function DetailViewSidebar({
                 key={section.id}
                 variant={section.variant}
                 section={section}
+                sections={sections}
                 columns={columns}
                 onUpdateSection={onUpdateSection}
                 onRemoveSection={onRemoveSection}
