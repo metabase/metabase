@@ -445,6 +445,7 @@
                       [:= :c.archived_directly false]])
                    (when-not show-dashboard-questions?
                      [:= :c.dashboard_id nil])
+                   [:= :c.document_id nil]
                    [:= :archived (boolean archived?)]
                    (case card-type
                      :model

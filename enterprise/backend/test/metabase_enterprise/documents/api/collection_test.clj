@@ -9,7 +9,7 @@
                    :model/Document {doc-id :id} {}
                    :model/Card {normal-card-id :id} {:collection_id coll-id}
                    :model/Card _ {:collection_id coll-id
-                                  :document-id doc-id}
+                                  :document_id doc-id}
                    :model/Dashboard {dash-id :id} {:collection_id coll-id}]
       (testing "Normal cards and dashboards appear, but in_document cards do not"
         (is (= #{[normal-card-id "card"]
