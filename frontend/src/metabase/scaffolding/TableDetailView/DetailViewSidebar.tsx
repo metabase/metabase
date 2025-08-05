@@ -175,7 +175,8 @@ export function DetailViewSidebar({
                 openPopoverId={openPopoverId}
                 setOpenPopoverId={setOpenPopoverId}
                 showDragHandle={
-                  otherSections.filter((s) => s.fields.length > 0).length > 1
+                  otherSections.filter((s) => s.fields.length > 0).length > 1 &&
+                  section.fields.length > 0
                 }
               />
             )}

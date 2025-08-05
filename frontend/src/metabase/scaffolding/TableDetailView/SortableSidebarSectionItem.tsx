@@ -46,7 +46,7 @@ export function SortableSidebarSectionItem({
           setOpenPopoverId={setOpenPopoverId}
           variant={variant}
           showDragHandle={showDragHandle}
-          dragHandleRef={dragHandleRef}
+          dragHandleRef={dragHandleRef as React.RefObject<HTMLDivElement>}
           dragHandleListeners={dragHandleListeners}
         />
       )}
