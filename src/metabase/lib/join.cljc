@@ -248,22 +248,33 @@
    stage-number :- :int
    col          :- [:map
                     [:lib/type [:= :metadata/column]]]
-   join-alias   :- [:maybe ::lib.schema.join/alias]]
+   join-alias   :- ::lib.schema.join/alias]
   (-> col
       (assoc
+       ;; TODO (Cam 6/19/25) -- we need to get rid of `:source-alias` it's just causing confusion; don't need two
+       ;; keys for join aliases.
+       :source-alias              join-alias
+       :lib/original-join-alias   join-alias
        :lib/source                :source/joins
+       ::join-alias               join-alias
        :lib/original-name         ((some-fn :lib/original-name :name) col)
        :lib/original-display-name (or (:lib/original-display-name col)
                                       (lib.metadata.calculation/display-name query stage-number (dissoc col ::join-alias :lib/original-join-alias :source-alias))))
-      (merge (if join-alias
-               ;; TODO (Cam 6/19/25) -- we need to get rid of `:source-alias` it's just causing confusion; don't need
-               ;; two keys for join aliases.
-               {:source-alias            join-alias
-                :lib/original-join-alias join-alias
-                ::join-alias             join-alias}
-               {::incomplete-join? true})) ; HACK NOCOMMIT
       (set/rename-keys {:lib/expression-name :lib/original-expression-name})
       (as-> $col (assoc $col :display-name (lib.metadata.calculation/display-name query stage-number $col)))))
+
+(defn- HACK-column-from-incomplete-join
+  "Hack until I can figure out a better way to fix this. Once I made `::join-alias` required for columns with
+  `:source/join`, [[metabase.lib.column-group/column-group-info-method]] in combination
+  with [[join-condition-rhs-columns]] when joining Cards stopped working, because it relies on columns coming back
+  with `:source/joins` even tho the join does not yet have an alias.
+
+  `::HACK-from-incomplete-join?` is used to disable the requirement that this column have a join alias."
+  [col]
+  (-> col
+      (assoc :lib/source                  :source/joins
+             ::HACK-from-incomplete-join? true)
+      (set/rename-keys {:lib/expression-name :lib/original-expression-name})))
 
 (defmethod lib.metadata.calculation/display-name-method :option/join.strategy
   [_query _stage-number {:keys [strategy]} _style]
@@ -888,7 +899,10 @@
                                ;; Drop the :join-alias from the RHS if the joinable doesn't have one either.
                                (not join-alias) (lib.options/update-options dissoc :join-alias)))]
      (->> (lib.metadata.calculation/visible-columns query stage-number joinable {:include-implicitly-joinable? false})
-          (map #(column-from-join query stage-number % join-alias))
+          (map (fn [col]
+                 (if join-alias
+                   (column-from-join query stage-number col join-alias)
+                   (HACK-column-from-incomplete-join col))))
           (mark-selected-column query stage-number rhs-column-or-nil)
           sort-join-condition-columns))))
 

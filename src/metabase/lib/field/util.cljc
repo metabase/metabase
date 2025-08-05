@@ -103,12 +103,8 @@
              :lib/source-column-alias ((some-fn :lib/desired-column-alias :lib/source-column-alias :name) col)
              :lib/source :source/previous-stage)
       ;;
-      ;; Remove `:lib/desired-column-alias`, which needs to be recalculated in the context of what is returned by the
-      ;; current stage, to prevent any confusion; its value is likely wrong now and we don't want people to get
-      ;; confused by them. `visible-columns` is not supposed to return these, since we can't know their value without
-      ;; knowing what is actually returned.
-      ;;
-      ;; `:lib/deduplicated-name` SHOULD get propagated to subsequent stages for legacy compatibility; if a column was
-      ;; called `CREATED_AT_2` at some point it should get that deduplicated name in subsequent stages even if there
-      ;; is no longer another `CREATED_AT` column.
-      (dissoc :lib/desired-column-alias)))
+      ;; Remove `:lib/desired-column-alias` and `:lib/deduplicated-name`, which need to be recalculated in the context
+      ;; of what is returned by the current stage, to prevent any confusion; their values are likely wrong now and we
+      ;; don't want people to get confused by them. `visible-columns` is not supposed to return these, since we can't
+      ;; know their value without knowing what is actually returned.
+      (dissoc :lib/desired-column-alias :lib/deduplicated-name)))
