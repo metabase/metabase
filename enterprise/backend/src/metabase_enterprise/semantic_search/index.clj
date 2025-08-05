@@ -124,15 +124,25 @@
     (catch Exception e
       (log/warn e "Failed to set :metabase-search/semantic-index-size metric"))))
 
+(defn- count-batch-model-freqs
+  [db-records]
+  (->> db-records (map :model) frequencies))
+
 (defn- batch-update!
   [connectable table-name records->sql documents embeddings]
   (when (seq documents)
-    (u/profile (str "Semantic index database update of " (count documents) " documents " (->> documents (map :model) frequencies))
-      (doseq [batch (->> (map vector documents embeddings)
-                         (map (fn [[doc embedding]] (doc->db-record embedding doc)))
-                         (partition-all *batch-size*))]
-        (jdbc/execute! connectable (records->sql batch)))
-      (analytics-set-index-size! connectable table-name))))
+    (u/profile (str "Semantic index database update of " (count documents) " documents " (count-batch-model-freqs documents))
+      (u/prog1 (transduce (comp (map (fn [[doc embedding]] (doc->db-record embedding doc)))
+                                (partition-all *batch-size*)
+                                (map (fn [db-record-batch]
+                                       (jdbc/execute! connectable (records->sql db-record-batch))
+                                       ;; TODO should this return (or at least log) the number of docs actually
+                                       ;; updated, not just the number in the batch?
+                                       (count-batch-model-freqs db-record-batch))))
+                          (partial merge-with +)
+                          (map vector documents embeddings))
+        (log/info "semantic search processed" (count documents) "total documents with frequencies" <>)
+        (analytics-set-index-size! connectable table-name)))))
 
 (defn- batch-delete-ids!
   [connectable table-name model ids->sql ids]
