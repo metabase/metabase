@@ -6,6 +6,16 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]))
 
+(defn- text->prose-mirror-ast
+  "Convert plain text to a ProseMirror AST structure."
+  [text]
+  (if (empty? text)
+    {:type "doc" :content []}
+    {:type "doc"
+     :content [{:type "paragraph"
+                :content [{:type "text"
+                           :text text}]}]}))
+
 (use-fixtures :once (fixtures/initialize :db :test-users))
 
 (defn card-with-name-and-query
@@ -23,7 +33,7 @@
           regular-card-name (str card-name "-regular")]
       (search.tu/with-temp-index-table
         (mt/with-temp [:model/Document document {:name "Test Document"
-                                                 :document ""}
+                                                 :document (text->prose-mirror-ast "")}
                        :model/Card document-card (-> (card-with-name-and-query card-name)
                                                      (assoc :document_id (u/the-id document)))
                        :model/Card regular-card (card-with-name-and-query regular-card-name)]

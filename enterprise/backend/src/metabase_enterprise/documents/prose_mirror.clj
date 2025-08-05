@@ -11,6 +11,14 @@
   "The vendored 'mime-type' for documents saved using the prose-mirror ast."
   "application/json+vnd.prose-mirror")
 
+(defn- assert-prose-mirror
+  "Asserts the content-type is correct for the document or throw"
+  [{:keys [content_type]}]
+  (when-not (= content_type prose-mirror-content-type)
+    (throw (ex-info "Document does not have the prose mirror content-type"
+                    {:content-type content_type
+                     :status-code 400}))))
+
 (defn update-ast
   "Update a node that matches a predicate using a post-walk.
 
@@ -21,14 +29,25 @@
 
   Returns:
   - the updated prose-mirror ast"
-  [{:keys [document content_type] :as doc} predicate updater]
-  (when-not (= content_type prose-mirror-content-type)
-    (throw (ex-info "Document does not have the prose mirror content-type"
-                    {:content-type content_type
-                     :status-code 400})))
+  [{:keys [document] :as doc} predicate updater]
+  (assert-prose-mirror doc)
   (assoc doc :document
          (walk/postwalk (fn ast-walker
                           [node]
                           (cond-> node
                             (predicate node) updater))
                         document)))
+
+(defn collect-ast
+  "Collect values from the ast lazily removes nils
+
+  Args:
+  - document - a :model/Document, this will check that the content-type is valid for prose mirror
+  - collector - a function that extracts values from a given node
+
+  Returns:
+  - a lazy seq of results from collector"
+  [{:keys [document] :as doc} collector]
+  (assert-prose-mirror doc)
+  (->> (tree-seq :content :content document)
+       (keep collector)))

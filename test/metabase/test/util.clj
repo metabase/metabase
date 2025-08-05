@@ -251,7 +251,13 @@
    :model/Document
    (fn [_] (default-timestamped
             {:name (u.random/random-name)
-             :document (u.random/random-name)
+             :document {:type "doc"
+                        :content [{:type "paragraph"
+                                   :content [{:type "text"
+                                              :text "Hello"}]}
+                                  {:type "paragraph"
+                                   :content [{:type "text"
+                                              :text "World"}]}]}
              :content_type "application/json+vnd.prose-mirror"
              :creator_id (rasta-id)}))
 
