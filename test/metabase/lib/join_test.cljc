@@ -817,7 +817,7 @@
           lhs-columns       (lib/join-condition-lhs-columns query products nil nil)
           lhs-custom-column (m/find-first (comp #{"expr"} :name) lhs-columns)
           rhs-columns       (lib/join-condition-rhs-columns query products nil nil)
-          rhs-product-price (m/find-first (comp #{"ID"} :name) rhs-columns)
+          rhs-product-price (m/find-first (comp #{"PRICE"} :name) rhs-columns)
           query             (lib/join query (lib/join-clause products [(lib/= lhs-custom-column rhs-product-price)]))]
       (is (=? [{:name "ID"}
                {:name "USER_ID"}
