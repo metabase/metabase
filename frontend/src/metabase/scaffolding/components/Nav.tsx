@@ -81,7 +81,7 @@ export const Nav = ({
         align="flex-end"
         gap={0}
         wrap="nowrap"
-        flex="1"
+        // flex="1"
         miw={0}
         style={{
           fontSize: 20,
@@ -93,7 +93,7 @@ export const Nav = ({
           <>
             <Separator />
 
-            <Ellipsified c="text-primary" fw="bold" flex="1">
+            <Ellipsified c="text-primary" fw="bold" flex="1" miw={0}>
               {headerText}
             </Ellipsified>
           </>
