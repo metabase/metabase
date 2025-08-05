@@ -92,7 +92,7 @@
                      result-count *min-results-threshold* fallback)
           (let [fallback-results (search.engine/results (assoc search-ctx :search-engine fallback))
                 combined-results (concat semantic-results fallback-results)
-                deduped-results (m/distinct-by (juxt :model :id) combined-results)]
+                deduped-results  (m/distinct-by (juxt :model :id) combined-results)]
             (take *max-combined-results* deduped-results)))))
     (catch Exception e
       (log/error e "Error executing semantic search")

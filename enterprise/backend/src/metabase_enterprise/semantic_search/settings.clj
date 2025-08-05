@@ -50,4 +50,13 @@
   :encryption :no
   :export? false
   :visibility :internal
-  :description "Maximum number of texts per batch for embedding.")
+  :doc "Maximum number of texts per batch for embedding.")
+
+(defsetting semantic-search-results-limit
+  (deferred-tru "Maximum number of results to return from a single semantic search query.")
+  :type :integer
+  :default 1000
+  :encryption :no
+  :export? false
+  :visibility :internal
+  :doc "Maximum number of results to return from a single semantic search query.")

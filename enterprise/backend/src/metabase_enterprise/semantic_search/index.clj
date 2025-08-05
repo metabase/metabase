@@ -4,6 +4,7 @@
    [honey.sql :as sql]
    [honey.sql.helpers :as sql.helpers]
    [metabase-enterprise.semantic-search.embedding :as embedding]
+   [metabase-enterprise.semantic-search.settings :as semantic-settings]
    [metabase.analytics.core :as analytics]
    [metabase.models.interface :as mi]
    [metabase.search.core :as search]
@@ -338,7 +339,7 @@
                 (into [:and ts-query-filter] [filters])
                 ts-query-filter))
      :order-by [[:keyword_rank :asc]]
-     :limit 100}))
+     :limit (semantic-settings/semantic-search-results-limit)}))
 
 (defn- semantic-search-query
   "Build a semantic search query using vector similarity with post-filtering to enable HNSW index usage."
@@ -365,7 +366,7 @@
                              [[:raw (str "embedding <=> " embedding-literal)] :distance]]
                     :from   [(keyword (:table-name index))]
                     :order-by [[[:raw (str "embedding <=> " embedding-literal)] :asc]]
-                    :limit  100}
+                    :limit  (semantic-settings/semantic-search-results-limit)}
         base-query {:with [[:vector_candidates hnsw-query]]
                     :select [[:id :id]
                              [:model_id :model_id]
@@ -409,7 +410,7 @@
                     :from [[:vector_results :v]]
                     :full-join [[:text_results :t] [:= :v.id :t.id]]
                     :order-by [[:rrf_rank :desc]]
-                    :limit 100}]
+                    :limit (semantic-settings/semantic-search-results-limit)}]
     full-query))
 
 (defn- legacy-input-with-score
