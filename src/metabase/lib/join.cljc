@@ -817,7 +817,8 @@
                       (contains? join-aliases-to-ignore col-join-alias))))
           (mark-selected-column query
                                 stage-number
-                                (when (lib.util/field-clause? lhs-expression-or-nil)
+                                (when (or (lib.util/clause-of-type? lhs-expression-or-nil :field)
+                                          (lib.util/clause-of-type? lhs-expression-or-nil :expression))
                                   lhs-expression-or-nil))
           sort-join-condition-columns))))
 
