@@ -9,9 +9,13 @@ import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
 import { Button, Flex, Icon, Text, Tooltip } from "metabase/ui";
-import MetabotThinkingStyles from "metabase-enterprise/metabot/components/MetabotChat/MetabotThinking.module.css";
-
 import { useLazyMetabotDocumentNodeQuery } from "metabase-enterprise/api/metabot";
+import {
+  createDraftCard,
+  generateDraftCardId,
+} from "metabase-enterprise/documents/documents.slice";
+import { useDocumentsDispatch } from "metabase-enterprise/documents/redux-utils";
+import MetabotThinkingStyles from "metabase-enterprise/metabot/components/MetabotChat/MetabotThinking.module.css";
 
 import Styles from "./MetabotEmbed.module.css";
 
@@ -72,6 +76,7 @@ export const MetabotNode = Node.create<{
 
 export const MetabotComponent = memo(
   ({ editor, getPos, deleteNode, updateAttributes, node }: NodeViewProps) => {
+    const documentsDispatch = useDocumentsDispatch();
     const inputRef = useRef<HTMLTextAreaElement>(null);
     const controllerRef = useRef<AbortController | null>(null);
     const [isLoading, setIsLoading] = useState(false);
@@ -109,13 +114,21 @@ export const MetabotComponent = memo(
         setErrorText(t`Could not find Metabot block`);
         return;
       }
+      const newCardId = generateDraftCardId();
+      documentsDispatch(
+        createDraftCard({
+          originalCard: data.card,
+          modifiedData: {},
+          draftId: newCardId,
+        }),
+      );
 
       editor
         .chain()
         .insertContentAt(nodePosition, {
           type: "cardEmbed",
           attrs: {
-            id: data.card.id,
+            id: newCardId,
           },
         })
         .insertContentAt(
@@ -126,7 +139,7 @@ export const MetabotComponent = memo(
         .run();
 
       deleteNode();
-    }, [prompt, editor, queryMetabot, deleteNode, getPos]);
+    }, [prompt, editor, queryMetabot, deleteNode, getPos, documentsDispatch]);
 
     const handleStopMetabot = () => {
       controllerRef.current?.abort();
