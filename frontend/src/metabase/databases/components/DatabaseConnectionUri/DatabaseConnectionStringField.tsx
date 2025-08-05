@@ -210,13 +210,7 @@ function ConnectionStringDescription({
     </Transition>
   );
   return (
-    <Group
-      h="lg"
-      pos="relative"
-      style={{
-        justifyContent: "flex-start",
-      }}
-    >
+    <Group h="lg" pos="relative">
       {failureMessage}
       {defaultDescription}
       {successMessage}
