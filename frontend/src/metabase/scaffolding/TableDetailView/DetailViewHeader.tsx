@@ -5,12 +5,20 @@ import { useUpdateTableComponentSettingsMutation } from "metabase/api";
 import { Box, Flex, Group, Tooltip } from "metabase/ui/components";
 import { Button } from "metabase/ui/components/buttons";
 import { Icon } from "metabase/ui/components/icons";
-import type { Table } from "metabase-types/api";
+import type {
+  DatasetColumn,
+  ObjectViewSectionSettings,
+  RowValue,
+  Table,
+} from "metabase-types/api";
 
 import { Nav } from "../components/Nav";
 
 interface DetailViewHeaderProps {
   table: Table;
+  row: RowValue[];
+  columns: DatasetColumn[];
+  sections: ObjectViewSectionSettings[];
   rowId?: string | number;
   rowName?: ReactNode;
   isEdit: boolean;
@@ -25,9 +33,12 @@ interface DetailViewHeaderProps {
 
 export function DetailViewHeader({
   table,
+  row,
   rowId,
   rowName,
   isEdit,
+  columns,
+  sections,
   canOpenPreviousItem,
   canOpenNextItem,
   onPreviousItemClick,
@@ -49,7 +60,14 @@ export function DetailViewHeader({
     useUpdateTableComponentSettingsMutation();
 
   return (
-    <Nav rowId={rowId} rowName={rowName} table={table}>
+    <Nav
+      columns={columns}
+      sections={sections}
+      row={row}
+      rowId={rowId}
+      rowName={rowName}
+      table={table}
+    >
       <Flex align="center" gap="md">
         <Tooltip label={t`Debug: reset settings to default`}>
           <Button

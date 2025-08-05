@@ -1,20 +1,67 @@
 import type { ReactNode } from "react";
 
 import { createMockMetadata } from "__support__/metadata";
+import { useTranslateContent } from "metabase/i18n/hooks";
 import { Box, Group, Text } from "metabase/ui";
 import * as ML_Urls from "metabase-lib/v1/urls";
-import type { Table } from "metabase-types/api";
+import type {
+  DatasetColumn,
+  ObjectViewSectionSettings,
+  RowValue,
+  Table,
+} from "metabase-types/api";
+
+import { renderValue } from "../utils";
 
 import { TableBreadcrumbs } from "./TableBreadcrumbs";
 
 interface Props {
+  columns: DatasetColumn[];
+  sections: ObjectViewSectionSettings[];
   children?: ReactNode;
+  row: RowValue[];
   rowName?: ReactNode;
   rowId?: number | string;
   table: Table;
 }
 
-export const Nav = ({ children, rowId, rowName, table }: Props) => {
+export const Nav = ({
+  columns,
+  sections,
+  children,
+  row,
+  rowId,
+  rowName,
+  table,
+}: Props) => {
+  const tc = useTranslateContent();
+  const headerSection = sections.find((s) => s.variant === "header")!;
+
+  // const values = headerSection.fields
+  //   .map(({ field_id }) => {
+  //     const columnIndex = columns.findIndex((column) => column.id === field_id);
+  //     const column = columns[columnIndex];
+  //     const value = row[columnIndex];
+  //     return value;
+  //   })
+  //   .filter((value) => value != null && value !== "");
+
+  const headerText = headerSection.fields
+    .map(({ field_id }) => {
+      const columnIndex = columns.findIndex((column) => column.id === field_id);
+      const column = columns[columnIndex];
+
+      if (!column) {
+        return null;
+      }
+
+      const value = row[columnIndex];
+      return renderValue(tc, value, column, { jsx: false });
+    })
+    .join(" ");
+
+  const showValues = headerText.length > 0 || (!rowName && !rowId);
+
   return (
     <Group
       align="center"
@@ -35,7 +82,17 @@ export const Nav = ({ children, rowId, rowName, table }: Props) => {
       >
         <TableBreadcrumbs tableId={table.id} />
 
-        {(rowName ?? rowId) != null && (
+        {showValues && (
+          <>
+            <Separator />
+
+            <Group c="text-primary" fw="bold">
+              {headerText}
+            </Group>
+          </>
+        )}
+
+        {!showValues && (
           <>
             <Separator />
 

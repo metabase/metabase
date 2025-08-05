@@ -1,6 +1,6 @@
 import { getNextId } from "__support__/utils";
 import type { ContentTranslationFunction } from "metabase/i18n/types";
-import { formatValue, OptionsType } from "metabase/lib/formatting";
+import { type OptionsType, formatValue } from "metabase/lib/formatting";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { getComputedSettings } from "metabase/visualizations/lib/settings";
 import {

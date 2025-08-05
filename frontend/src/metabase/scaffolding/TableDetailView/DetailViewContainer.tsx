@@ -90,6 +90,9 @@ export function DetailViewContainer({
       }}
     >
       <DetailViewHeader
+        columns={columns}
+        sections={sections}
+        row={rows[currentRowIndex]}
         rowId={rowId}
         rowName={rowName}
         table={table}
