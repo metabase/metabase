@@ -96,8 +96,8 @@
       (t2/update! :sequences {:name seq-name} {:next_val (inc batch-num)})
       batch-num)
     (do
-      (t2/insert! :sequences {:name seq-name :next_val 1})
-      0)))
+      (t2/insert! :sequences {:name seq-name :next_val 2})
+      1)))
 
 (defn track-change!
   "Insert some snapshot data based on edits made to the given table."
