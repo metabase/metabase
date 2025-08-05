@@ -9,11 +9,11 @@ export type Transform = {
   description: string | null;
   source: TransformSource;
   target: TransformTarget;
-  table?: Table | null;
-  execution_status: TransformExecutionStatus;
   execution_trigger: TransformExecutionTrigger;
-  last_started_at: string | null;
-  last_ended_at: string | null;
+
+  // hydrated fields
+  table?: Table | null;
+  last_execution?: TransformExecution | null;
 };
 
 export type TransformSource = {
@@ -29,13 +29,17 @@ export type TransformTarget = {
   schema: string | null;
 };
 
+export type TransformExecution = {
+  status: TransformExecutionStatus;
+  start_time: string;
+  end_time: string | null;
+};
+
 export type TransformExecutionStatus =
-  | "never-executed"
   | "started"
-  | "exec-succeeded"
-  | "sync-succeeded"
-  | "exec-failed"
-  | "sync-failed";
+  | "succeeded"
+  | "failed"
+  | "timeout";
 
 export type TransformExecutionTrigger = "none" | "global-schedule";
 
