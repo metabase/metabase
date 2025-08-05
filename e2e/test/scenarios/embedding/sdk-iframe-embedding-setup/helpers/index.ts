@@ -28,7 +28,7 @@ export const visitNewEmbedPage = ({
     params.append("locale", locale);
   }
 
-  cy.visit("/embed-js?" + params);
+  cy.visit("/embed-iframe?" + params);
 
   if (dismissEmbedTerms) {
     cy.log("simple embedding terms card should be shown");

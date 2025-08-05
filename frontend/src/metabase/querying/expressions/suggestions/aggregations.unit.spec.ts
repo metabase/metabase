@@ -58,6 +58,7 @@ describe("suggestAggregations", () => {
     const RESULTS = {
       from: 0,
       to: 4,
+      filter: false,
       options: [
         {
           apply: expect.any(Function),
@@ -123,6 +124,7 @@ describe("suggestAggregations", () => {
         from: 0,
         to: 11,
         options: [],
+        filter: false,
       });
     });
 
@@ -135,6 +137,7 @@ describe("suggestAggregations", () => {
       expect(results).toEqual({
         from: 0,
         to: 11,
+        filter: false,
         options: [
           {
             label: "StandardDeviation",

@@ -341,6 +341,7 @@ export function QueryColumnPicker({
         width={width}
         globalSearch={!disableSearch}
         searchable={!disableSearch}
+        fuzzySearch
       />
     </DelayGroup>
   );

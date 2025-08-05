@@ -102,7 +102,7 @@ const NewItemMenuView = ({
         <Menu.Item
           key="embed"
           component={ForwardRefLink}
-          to="/embed-js"
+          to="/embed-iframe"
           leftSection={<Icon name="embed" />}
           rightSection={<Badge size="xs">{t`Beta`}</Badge>}
         >

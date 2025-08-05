@@ -42,6 +42,7 @@ type Props<
   role?: string;
   searchProp?: SearchProps<TItem>;
   searchable?: boolean | ((section: Section) => boolean | undefined);
+  fuzzySearch?: boolean;
   sections: TSection[];
   style?: CSSProperties;
 
@@ -265,6 +266,7 @@ export class AccordionList<
         section?.items && section.items.length > 10,
       sections,
       searchProp,
+      fuzzySearch,
     } = this.props;
     const { searchText } = this.state;
 
@@ -289,6 +291,7 @@ export class AccordionList<
     const sortedSections = searchFilter({
       sections,
       searchText,
+      fuzzySearch,
       searchProp,
     });
 

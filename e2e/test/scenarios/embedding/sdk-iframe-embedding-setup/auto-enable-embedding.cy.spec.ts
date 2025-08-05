@@ -16,7 +16,7 @@ describe(suiteTitle, () => {
   });
 
   it("auto-enables the enable-embedding-simple settings", () => {
-    cy.visit("/embed-js");
+    cy.visit("/embed-iframe");
 
     cy.log("simple embedding toast should be shown");
     H.undoToast()

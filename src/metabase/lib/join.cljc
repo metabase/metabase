@@ -811,14 +811,14 @@
                                       (joins query stage-number))]
      (->> (lib.metadata.calculation/visible-columns query stage-number
                                                     (lib.util/query-stage query stage-number)
-                                                    {:include-implicitly-joinable? false})
+                                                    {:include-expressions?         false
+                                                     :include-implicitly-joinable? false})
           (remove (fn [col]
                     (when-let [col-join-alias (lib.join.util/current-join-alias col)]
                       (contains? join-aliases-to-ignore col-join-alias))))
           (mark-selected-column query
                                 stage-number
-                                (when (or (lib.util/clause-of-type? lhs-expression-or-nil :field)
-                                          (lib.util/clause-of-type? lhs-expression-or-nil :expression))
+                                (when (lib.util/field-clause? lhs-expression-or-nil)
                                   lhs-expression-or-nil))
           sort-join-condition-columns))))
 

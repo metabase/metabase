@@ -154,6 +154,7 @@ export function FilterColumnPicker({
         itemTestId="dimension-list-item"
         searchProp={SEARCH_PROP}
         globalSearch
+        fuzzySearch
       />
     </DelayGroup>
   );

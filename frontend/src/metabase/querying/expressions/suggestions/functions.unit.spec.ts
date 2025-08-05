@@ -35,6 +35,7 @@ describe("suggestFunctions", () => {
   const RESULTS = {
     from: 0,
     to: 4,
+    filter: false,
     options: [
       {
         label: "concat",

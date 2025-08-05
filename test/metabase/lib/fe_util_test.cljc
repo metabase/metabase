@@ -900,18 +900,15 @@
       (lib/+ rhs-product-price rhs-product-price))))
 
 (deftest ^:parallel join-condition-lhs-or-rhs-column?-test
-  (let [query             (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
-                              (lib/expression "double-total" (lib/* (meta/field-metadata :orders :total) 2)))
+  (let [query             (lib/query meta/metadata-provider (meta/table-metadata :orders))
         products          (meta/table-metadata :products)
         lhs-columns       (lib/join-condition-lhs-columns query products nil nil)
         lhs-order-tax     (m/find-first (comp #{"TAX"} :name) lhs-columns)
         rhs-columns       (lib/join-condition-rhs-columns query products nil nil)
-        rhs-product-price (m/find-first (comp #{"PRICE"} :name) rhs-columns)
-        lhs-custom-column (m/find-first (comp #{"double-total"} :name) lhs-columns)]
+        rhs-product-price (m/find-first (comp #{"PRICE"} :name) rhs-columns)]
     (are [lhs-or-rhs] (true? (lib.fe-util/join-condition-lhs-or-rhs-column? lhs-or-rhs))
       (lib/ref lhs-order-tax)
-      (lib/ref rhs-product-price)
-      (lib/ref lhs-custom-column))
+      (lib/ref rhs-product-price))
     (are [lhs-or-rhs] (false? (lib.fe-util/join-condition-lhs-or-rhs-column? lhs-or-rhs))
       (lib.expression/value 1)
       (lib/+ lhs-order-tax 1)
