@@ -192,11 +192,19 @@ describe("scenarios > embedding > sdk iframe embedding > authentication", () => 
     });
 
     cy.log("must fail to login via SAML as the SAML endpoint does not exist");
+
+    // If the error message returns a 500 (internal server error) status code,
+    // we should show a generic error message.
+    // This happens because the SAML endpoint is not mocked in this test.
     cy.wait("@authSso").its("response.statusCode").should("eq", 500);
+
     frame.within(() => {
       cy.findByTestId("sdk-error-container")
         .should("be.visible")
-        .and("contain", "Backend returned an error when refreshing the token.");
+        .and(
+          "contain",
+          "Unable to connect to instance at http://localhost:4000 (status: 500)",
+        );
     });
   });
 });

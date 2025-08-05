@@ -16,13 +16,16 @@ export function CANNOT_CONNECT_TO_INSTANCE({
   status?: number;
   message?: string;
 }) {
-  const defaultMessage = `Unable to connect to instance at ${instanceUrl}${status ? ` (status: ${status})` : ""}`;
+  // If error status is 500 (internal server error) or no message is provided,
+  // we provide a generic error message.
+  const errorMessage =
+    !message || status === 500
+      ? `Unable to connect to instance at ${instanceUrl}${status ? ` (status: ${status})` : ""}`
+      : message;
 
-  return new MetabaseError(
-    "CANNOT_CONNECT_TO_INSTANCE",
-    message ?? defaultMessage,
-    { status },
-  );
+  return new MetabaseError("CANNOT_CONNECT_TO_INSTANCE", errorMessage, {
+    status,
+  });
 }
 
 export function INVALID_AUTH_METHOD({ method }: { method: string }) {
