@@ -1805,7 +1805,7 @@
       (testing "RHS columns"
         (let [cols (lib.join/join-condition-rhs-columns q2 card-2 (lib/ref lhs) nil)]
           (is (=? [{:name                         "CREATED_AT"
-                    :display-name                 "Products → Created At: Month" #_"Created At: Month"
+                    :display-name                 "Created At: Month"
                     :lib/card-id                  2
                     :lib/source                   :source/joins ; not really sure if this makes sense or not
                     :lib/original-join-alias      "Products"
