@@ -117,7 +117,7 @@ export const SelectEmbedOptionsStep = () => {
               onClick={resetColors}
               aria-label={t`Reset colors`}
             >
-              <Icon name="refresh" />
+              <Icon name="revert" c="brand" />
             </ActionIcon>
           </Tooltip>
         </Group>
