@@ -45,3 +45,7 @@ Admins can also create unsecured public links or embeds of questions and dashboa
 ## [Securing embedded Metabase](./securing-embeds.md)
 
 How to make sure the right people can see the right data in your embedded Metabase.
+
+## [Translating questions and dashboards](./translations.md)
+
+Upload a translation dictionary to translate questions and dashboards (only in static embeds).

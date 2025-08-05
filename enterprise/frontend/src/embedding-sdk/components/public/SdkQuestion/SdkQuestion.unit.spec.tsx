@@ -20,8 +20,8 @@ import {
   within,
 } from "__support__/ui";
 import {
-  InteractiveQuestionDefaultView,
-  type InteractiveQuestionDefaultViewProps,
+  SdkQuestionDefaultView,
+  type SdkQuestionDefaultViewProps,
 } from "embedding-sdk/components/private/SdkQuestionDefaultView";
 import { renderWithSDKProviders } from "embedding-sdk/test/__support__/ui";
 import { createMockSdkConfig } from "embedding-sdk/test/mocks/config";
@@ -43,7 +43,7 @@ import { createMockEntityId } from "metabase-types/api/mocks/entity-id";
 
 import { useSdkQuestionContext } from "../../private/SdkQuestion/context";
 
-import { type BaseInteractiveQuestionProps, SdkQuestion } from "./SdkQuestion";
+import { type BaseSdkQuestionProps, SdkQuestion } from "./SdkQuestion";
 const TEST_PARAM = createMockParameter({
   type: "number/=",
   slug: "product_id",
@@ -82,7 +82,7 @@ function InteractiveQuestionCustomLayout({
   return (
     <div>
       <button onClick={resetQuestion}>Run Query</button>
-      <InteractiveQuestionDefaultView title={title} />
+      <SdkQuestionDefaultView title={title} />
     </div>
   );
 }
@@ -102,11 +102,8 @@ const setup = ({
   initialSqlParameters,
   cardId = TEST_CARD_ID,
 }: Partial<
-  Pick<BaseInteractiveQuestionProps, "initialSqlParameters"> &
-    Pick<
-      InteractiveQuestionDefaultViewProps,
-      "withChartTypeSelector" | "title"
-    > & {
+  Pick<BaseSdkQuestionProps, "initialSqlParameters"> &
+    Pick<SdkQuestionDefaultViewProps, "withChartTypeSelector" | "title"> & {
       isValidCard?: boolean;
       withCustomLayout?: boolean;
     } & { cardId: BaseEntityId | CardId }

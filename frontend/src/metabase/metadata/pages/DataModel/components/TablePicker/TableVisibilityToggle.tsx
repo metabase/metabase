@@ -68,6 +68,7 @@ export function TableVisibilityToggle({ className, table, onUpdate }: Props) {
 
   const handleClick = (event: MouseEvent<HTMLButtonElement>) => {
     event.stopPropagation();
+    event.preventDefault();
 
     if (isHidden) {
       unhide();

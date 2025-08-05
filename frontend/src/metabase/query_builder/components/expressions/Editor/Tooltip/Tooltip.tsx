@@ -8,9 +8,9 @@ import {
   useState,
 } from "react";
 
+import { enclosingFunction } from "metabase/querying/expressions";
 import { Popover } from "metabase/ui";
 import type * as Lib from "metabase-lib";
-import { enclosingFunction } from "metabase-lib/v1/expressions";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 
 import { HelpText } from "../HelpText";

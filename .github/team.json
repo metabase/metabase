@@ -8,19 +8,9 @@
         "romeovs",
         "bshepherdson",
         "metamben",
-        "uladzimirdev",
         "wzimrin",
         "ericnormand",
         "galdre"
-      ]
-    },
-    {
-      "name": "Semantic Layer",
-      "label": ".Team/SemanticLayer",
-      "members": [
-        "kamilmielnik",
-        "lbrdnk",
-        "bronsa"
       ]
     },
     {
@@ -36,7 +26,6 @@
       "label": ".Team/Embedding",
       "members": [
         "WiNloSt",
-        "oisincoveney",
         "npretto",
         "heypoom",
         "sanex3339",
@@ -50,9 +39,11 @@
         "qnkhuat",
         "piranha",
         "crisptrutski",
-        "deniskaber",
         "spalt08",
-        "stasgavrylov"
+        "stasgavrylov",
+        "uladzimirdev",
+        "kulyk",
+        "kamilmielnik"
       ]
     },
     {
@@ -61,20 +52,11 @@
       "members": [
         "npfitz",
         "johnswanson",
-        "rafpaf",
         "iethree",
         "nvoxland",
-        "fraserdrops",
-        "edpaget"
-      ]
-    },
-    {
-      "name": "DashViz",
-      "label": ".Team/DashViz",
-      "members": [
+        "edpaget",
+        "deniskaber",
         "alxnddr",
-        "kulyk",
-        "tsplude",
         "bpander"
       ]
     },
@@ -95,7 +77,10 @@
         "retro",
         "sloansparger",
         "somtom",
-        "wotbrew"
+        "wotbrew",
+        "tsplude",
+        "lbrdnk",
+        "bronsa"
       ]
     },
     {
@@ -108,6 +93,13 @@
       "label": "cloud",
       "members": [
         "filipesilva"
+      ]
+    },
+    {
+      "name": "DashViz",
+      "label": ".Team/DashViz",
+      "members": [
+        "eliotmetabase"
       ]
     }
   ]

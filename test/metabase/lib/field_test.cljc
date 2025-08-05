@@ -45,21 +45,18 @@
                      :name         "grandparent"
                      :display-name "Grandparent"
                      :id           (grandparent-parent-child-id :grandparent)
-                     :ident        (u/generate-nano-id)
                      :base-type    :type/Text}
         parent      {:lib/type     :metadata/column
                      :name         "parent"
                      :display-name "Parent"
                      :parent-id    (grandparent-parent-child-id :grandparent)
                      :id           (grandparent-parent-child-id :parent)
-                     :ident        (u/generate-nano-id)
                      :base-type    :type/Text}
         child       {:lib/type     :metadata/column
                      :name         "child"
                      :display-name "Child"
                      :parent-id    (grandparent-parent-child-id :parent)
                      :id           (grandparent-parent-child-id :child)
-                     :ident        (u/generate-nano-id)
                      :base-type    :type/Text}]
     (lib.tu/mock-metadata-provider
      {:database meta/database
@@ -75,9 +72,13 @@
     (testing  "simple queries"
       (doseq [query [base (lib/append-stage base)]
               :let  [cols (lib/visible-columns query)]]
-        (is (= ["Grandparent: Parent: Child" "Grandparent" "Grandparent: Parent"]
+        (is (= ["Grandparent: Parent: Child"
+                "Grandparent"
+                "Grandparent: Parent"]
                (map #(lib/display-name query %) cols)))
-        (is (= ["Grandparent: Parent: Child" "Grandparent" "Grandparent: Parent"]
+        (is (= ["Grandparent: Parent: Child"
+                "Grandparent"
+                "Grandparent: Parent"]
                (map #(lib/display-name query -1 % :long) cols)))
         (is (=? [{:display-name      "Grandparent: Parent: Child"
                   :long-display-name "Grandparent: Parent: Child"}
@@ -85,7 +86,10 @@
                   :long-display-name "Grandparent"}
                  {:display-name      "Grandparent: Parent"
                   :long-display-name "Grandparent: Parent"}]
-                (map #(lib/display-info query -1 %) cols)))))
+                (map #(lib/display-info query -1 %) cols)))))))
+
+(deftest ^:parallel nested-field-display-name-test-2
+  (let [base (lib/query grandparent-parent-child-metadata-provider (meta/table-metadata :venues))]
     (testing "breakout"
       (is (=? [{:display-name      "Grandparent: Parent: Child"
                 :long-display-name "Grandparent: Parent: Child"}]
@@ -95,7 +99,10 @@
                    (lib/breakout base)
                    lib/append-stage
                    lib/visible-columns
-                   (map #(lib/display-info base -1 %))))))
+                   (map #(lib/display-info base -1 %))))))))
+
+(deftest ^:parallel nested-field-display-name-test-3
+  (let [base (lib/query grandparent-parent-child-metadata-provider (meta/table-metadata :venues))]
     (testing "join"
       (let [join-column (second (lib/visible-columns base))
             base        (-> base
@@ -439,7 +446,6 @@
                                                  :condition    [:=
                                                                 [:field (meta/id :venues :category-id) nil]
                                                                 [:field (meta/id :categories :id) {:join-alias "Cat"}]]
-                                                 :ident        "khQz-1AxQ4MVUfynQFnUw"
                                                  :alias        "Cat"}]}}
         query        (lib/query meta/metadata-provider legacy-query)]
     (is (=? [{:lib/desired-column-alias "ID"}
@@ -1454,12 +1460,10 @@
                            (-> (meta/field-metadata :people col)
                                (assoc :lib/source :source/implicitly-joinable)))
           sorted         #(sort-by (juxt :name :join-alias :id :table-id) %)]
-      (is (=? (map #(dissoc % :ident)
-                   (sorted (concat order-cols join-cols)))
+      (is (=? (sorted (concat order-cols join-cols))
               (sorted (lib.metadata.calculation/returned-columns query))))
       (testing "visible-columns returns implicitly joinable People, but does not return two copies of Product.CATEGORY"
-        (is (=? (map #(dissoc % :ident)
-                     (sorted (concat order-cols join-cols implicit-cols)))
+        (is (=? (sorted (concat order-cols join-cols implicit-cols))
                 (sorted (lib.metadata.calculation/visible-columns query))))))))
 
 (deftest ^:parallel nested-query-implicit-join-fields-test
@@ -1631,7 +1635,6 @@
                             {:lib/type :metadata/column
                              :id 1
                              :name "search"
-                             :ident "pu_Pfm-Oe2cnFTsRgmYM3"
                              :display-name "Search"
                              :base-type :type/Text})
                  lib/visible-columns
@@ -1646,7 +1649,6 @@
                            {:lib/type :metadata/column
                             :id 1
                             :name "num"
-                            :ident "pu_Pfm-Oe2cnFTsRgmYM3"
                             :display-name "Random number"
                             :base-type :type/Integer})
                 lib/visible-columns
@@ -1909,6 +1911,32 @@
               ["CATEGORY" "Category"]                      ; products.category
               ["TITLE_2"  "Orders → Title"]                ; orders.title
               ["sum"      "Orders → Sum of Quantity"]]     ; sum(orders.quantity)
+             (map (juxt :lib/deduplicated-name :display-name)
+                  (lib.metadata.result-metadata/returned-columns query)))))))
+
+(deftest ^:parallel remapped-columns-in-joined-source-queries-display-names-test-2
+  (testing "if :fields already includes a column from the join make sure the display name is still calculated correctly"
+    (let [mp    (lib.tu/remap-metadata-provider meta/metadata-provider (meta/id :orders :product-id) (meta/id :products :title))
+          query (lib/query
+                 mp
+                 (lib.tu.macros/mbql-query products
+                   {:joins    [{:source-query {:source-table $$orders
+                                               :breakout     [$orders.product-id]
+                                               :aggregation  [[:sum $orders.quantity]]}
+                                :alias        "Orders"
+                                :condition    [:= $id &Orders.orders.product-id]
+                                ;; we can get title since product-id is remapped to title
+                                :fields       [&Orders.title
+                                               &Orders.*sum/Integer]}]
+                    :fields   [$title
+                               $category
+                               [:field "sum" {:base-type :type/Integer, :join-alias "Orders"}]]
+                    :order-by [[:asc $id]]
+                    :limit    3}))]
+      (is (= [["TITLE"    "Title"]                    ; products.title
+              ["CATEGORY" "Category"]                 ; products.category
+              ["sum"      "Orders → Sum of Quantity"] ; sum(orders.quantity)
+              ["TITLE_2"  "Orders → Title"]]          ; orders.title
              (map (juxt :lib/deduplicated-name :display-name)
                   (lib.metadata.result-metadata/returned-columns query)))))))
 

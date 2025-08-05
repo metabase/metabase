@@ -233,7 +233,7 @@
         "Vary"                        "Origin"})
      {"Access-Control-Allow-Headers"  "*"
       "Access-Control-Allow-Methods"  "*"
-      "Access-Control-Expose-Headers" "X-Metabase-Anti-CSRF-Token"
+      "Access-Control-Expose-Headers" "X-Metabase-Anti-CSRF-Token, X-Metabase-Version"
       ;; Needed for Embedding SDK. Should cache preflight requests for the specified number of seconds.
       "Access-Control-Max-Age"  "60"})))
 
@@ -246,7 +246,9 @@
    strict-transport-security-header
    (content-security-policy-header-with-frame-ancestors allow-iframes? nonce)
    (access-control-headers origin
-                           (setting/get-value-of-type :boolean :enable-embedding-sdk)
+                           (or
+                            (setting/get-value-of-type :boolean :enable-embedding-sdk)
+                            (setting/get-value-of-type :boolean :enable-embedding-simple))
                            (embedding.settings/embedding-app-origins-sdk))
    (when-not allow-iframes?
      ;; Tell browsers not to render our site as an iframe (prevent clickjacking)

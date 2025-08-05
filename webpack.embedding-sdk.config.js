@@ -44,7 +44,9 @@ const BABEL_CONFIG = {
 const CSS_CONFIG = {
   modules: {
     auto: (filename) =>
-      !filename.includes("node_modules") && !filename.includes("vendor.css"),
+      ["node_modules", "vendor.css", "vendor.module.css"].every(
+        (excludedPattern) => !filename.includes(excludedPattern),
+      ),
     localIdentName: isDevMode
       ? "[name]__[local]___[hash:base64:5]"
       : "[hash:base64:5]",

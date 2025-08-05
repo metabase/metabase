@@ -25,7 +25,7 @@
   [:map
    [:source-query    mbql.s/SourceQuery]
    [:database        ::mbql.s/DatabaseID]
-   [:source-metadata [:maybe [:sequential mbql.s/SourceQueryMetadata]]]
+   [:source-metadata [:maybe [:sequential ::mbql.s/legacy-column-metadata]]]
    [:source-query/model?   {:optional true} :boolean]
    [:persisted-info/native {:optional true} :string]])
 

@@ -61,6 +61,10 @@
   (when-let [cached-provider (first (cached-providers metadata-providers))]
     (metadata.protocols/cache-value! cached-provider k v)))
 
+(defn- has-cache? [metadata-providers]
+  (some metadata.protocols/has-cache?
+        (cached-providers metadata-providers)))
+
 (defn- store-metadata! [metadata-providers metadata]
   (when-first [provider (cached-providers metadata-providers)]
     (metadata.protocols/store-metadata! provider metadata)))
@@ -113,6 +117,8 @@
     (cached-value metadata-providers k not-found))
   (cache-value! [_this k v]
     (cache-value! metadata-providers k v))
+  (has-cache? [_this]
+    (has-cache? metadata-providers))
 
   metadata.protocols/InvocationTracker
   (invoked-ids [_this metadata-type]

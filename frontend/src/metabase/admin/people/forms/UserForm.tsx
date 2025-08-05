@@ -13,7 +13,7 @@ import {
 import * as Errors from "metabase/lib/errors";
 import { PLUGIN_ADMIN_USER_FORM_FIELDS } from "metabase/plugins";
 import { Button } from "metabase/ui";
-import type { User } from "metabase-types/api";
+import type { User, UserId } from "metabase-types/api";
 
 const localUserSchema = Yup.object({
   first_name: Yup.string().nullable().max(100, Errors.maxLength).default(null),
@@ -26,6 +26,7 @@ interface UserFormProps {
   onSubmit: (val: Partial<User>) => void;
   onCancel: () => void;
   submitText?: string;
+  userId?: UserId | null;
 }
 
 export const UserForm = ({
@@ -33,6 +34,7 @@ export const UserForm = ({
   onSubmit,
   onCancel,
   submitText = t`Update`,
+  userId,
 }: UserFormProps) => {
   return (
     <FormProvider
@@ -67,7 +69,7 @@ export const UserForm = ({
             mb="md"
           />
           <FormGroupsWidget name="user_group_memberships" />
-          <PLUGIN_ADMIN_USER_FORM_FIELDS.FormLoginAttributes />
+          <PLUGIN_ADMIN_USER_FORM_FIELDS.FormLoginAttributes userId={userId} />
           <FormFooter>
             <FormErrorMessage inline />
             <Button type="button" onClick={onCancel}>{t`Cancel`}</Button>

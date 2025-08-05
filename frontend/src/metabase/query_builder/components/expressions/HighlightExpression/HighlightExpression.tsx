@@ -2,8 +2,8 @@ import cx from "classnames";
 import { type HTMLAttributes, useMemo } from "react";
 import { useAsync } from "react-use";
 
+import { formatExpressionParts } from "metabase/querying/expressions";
 import type * as Lib from "metabase-lib";
-import { formatExpressionParts } from "metabase-lib/v1/expressions";
 
 import S from "./HighlightExpression.module.css";
 import { highlight } from "./utils";

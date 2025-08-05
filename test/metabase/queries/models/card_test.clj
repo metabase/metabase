@@ -113,24 +113,20 @@
     (testing "when updating a model to include any clauses will disable implicit actions if they exist\n"
       (testing "happy paths\n"
         (let [base (mt/mbql-query users)]
-          (doseq [query-change [{:limit              1}
-                                {:expressions        {"id + 1" [:+ (mt/$ids $users.id) 1]}
-                                 :expression-idents  {"id + 1" (lib/random-ident)}}
-                                {:filter             [:> (mt/$ids $users.id) 2]}
-                                {:breakout           [(mt/$ids !month.users.last_login)]
-                                 :breakout-idents    {0 (lib/random-ident)}}
-                                {:aggregation        [[:count]]
-                                 :aggregation-idents {0 (lib/random-ident)}}
-                                {:joins              [{:fields       :all
-                                                       :source-table (mt/id :checkins)
-                                                       :condition    [:= (mt/$ids $users.id) (mt/$ids $checkins.user_id)]
-                                                       :ident        (lib/random-ident)
-                                                       :alias        "People"}]}
-                                {:order-by           [[(mt/$ids $users.id) :asc]]}
-                                {:fields             [(mt/$ids $users.id)]}]]
+          (doseq [query-change [{:limit 1}
+                                {:expressions {"id + 1" [:+ (mt/$ids $users.id) 1]}}
+                                {:filter [:> (mt/$ids $users.id) 2]}
+                                {:breakout [(mt/$ids !month.users.last_login)]}
+                                {:aggregation [[:count]]}
+                                {:joins [{:fields       :all
+                                          :source-table (mt/id :checkins)
+                                          :condition    [:= (mt/$ids $users.id) (mt/$ids $checkins.user_id)]
+                                          :alias        "People"}]}
+                                {:order-by [[(mt/$ids $users.id) :asc]]}
+                                {:fields [(mt/$ids $users.id)]}]]
             (testing (format "when adding %s to the query" (first (keys query-change)))
               (mt/with-actions [{model-id :id
-                                 query :dataset_query}   {:type :model, :dataset_query base}
+                                 query    :dataset_query}   {:type :model, :dataset_query base}
                                 {action-id-1 :action-id} {:type :implicit
                                                           :kind "row/create"}
                                 {action-id-2 :action-id} {:type :implicit

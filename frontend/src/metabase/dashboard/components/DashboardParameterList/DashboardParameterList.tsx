@@ -11,19 +11,18 @@ import { DASHBOARD_PARAMETERS_PDF_EXPORT_NODE_CLASSNAME } from "metabase/dashboa
 import { useDashboardContext } from "metabase/dashboard/context";
 import { useDispatch } from "metabase/lib/redux";
 import { ParametersList } from "metabase/parameters/components/ParametersList";
-import type { Parameter } from "metabase-types/api";
+import type { UiParameter } from "metabase-lib/v1/parameters/types";
 
 export interface DashboardParameterListProps
   extends Pick<
     ComponentProps<typeof ParametersList>,
-    | "widgetsVariant"
     | "widgetsWithinPortal"
     | "widgetsPopoverPosition"
     | "vertical"
     | "hasTestIdProps"
   > {
   className?: string;
-  parameters: Array<Parameter & { value: unknown }>;
+  parameters: UiParameter[];
   isSortable?: boolean;
 }
 
@@ -35,7 +34,6 @@ export const DashboardParameterList = forwardRef<
     className,
     parameters,
     isSortable = true,
-    widgetsVariant = "subtle",
     widgetsWithinPortal,
     widgetsPopoverPosition,
     vertical,
@@ -73,7 +71,6 @@ export const DashboardParameterList = forwardRef<
         dispatch(setParameterValueToDefault(id))
       }
       enableParameterRequiredBehavior
-      widgetsVariant={widgetsVariant}
       widgetsWithinPortal={widgetsWithinPortal}
       widgetsPopoverPosition={widgetsPopoverPosition}
       vertical={vertical}

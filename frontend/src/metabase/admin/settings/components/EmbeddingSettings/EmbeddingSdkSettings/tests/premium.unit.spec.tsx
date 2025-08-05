@@ -8,7 +8,7 @@ import { type SetupOpts, setup as baseSetup } from "./setup";
 const setup = (opts: SetupOpts = {}) =>
   baseSetup({
     hasEnterprisePlugins: true,
-    tokenFeatures: { embedding_sdk: true },
+    tokenFeatures: { embedding_sdk: opts.isEmbeddingSdkEnabled },
     ...opts,
   });
 
