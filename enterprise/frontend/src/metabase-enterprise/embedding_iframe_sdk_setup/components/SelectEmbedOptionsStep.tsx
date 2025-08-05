@@ -6,7 +6,17 @@ import { useSetting } from "metabase/common/hooks";
 import type { MetabaseColors } from "metabase/embedding-sdk/theme";
 import { colors as defaultMetabaseColors } from "metabase/lib/colors";
 import type { ColorName } from "metabase/lib/colors/types";
-import { Card, Checkbox, Divider, Group, Stack, Text } from "metabase/ui";
+import {
+  ActionIcon,
+  Card,
+  Checkbox,
+  Divider,
+  Group,
+  Icon,
+  Stack,
+  Text,
+  Tooltip,
+} from "metabase/ui";
 
 import { useSdkIframeEmbedSetupContext } from "../context";
 
@@ -34,6 +44,12 @@ export const SelectEmbedOptionsStep = () => {
     },
     [theme, updateSettings],
   );
+
+  const resetColors = useCallback(() => {
+    updateSettings({
+      theme: { ...theme, colors: undefined },
+    });
+  }, [theme, updateSettings]);
 
   const isDashboardOrInteractiveQuestion =
     settings.dashboardId || (settings.questionId && settings.drills);
@@ -90,9 +106,21 @@ export const SelectEmbedOptionsStep = () => {
       )}
 
       <Card p="md">
-        <Text size="lg" fw="bold" mb="lg">
-          {t`Appearance`}
-        </Text>
+        <Group justify="space-between" align="center" mb="lg">
+          <Text size="lg" fw="bold">
+            {t`Appearance`}
+          </Text>
+          <Tooltip label={t`Reset colors`}>
+            <ActionIcon
+              variant="subtle"
+              size="sm"
+              onClick={resetColors}
+              aria-label={t`Reset colors`}
+            >
+              <Icon name="refresh" />
+            </ActionIcon>
+          </Tooltip>
+        </Group>
 
         <Group align="start" gap="xl" mb="lg">
           {getConfigurableThemeColors().map(
