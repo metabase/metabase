@@ -9,6 +9,7 @@
    [metabase.driver.util :as driver.u]
    [metabase.lib.schema.common :as schema.common]
    [metabase.sync.core :as sync]
+   [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2])
@@ -94,7 +95,7 @@
      (let [db (get-in source [:query :database])
            {driver :engine :as database} (t2/select-one :model/Database db)
            feature (transforms.util/required-database-feature transform)
-           run-id (str (random-uuid))
+           run-id (str (u/generate-nano-id))
            transform-details {:transform-type (keyword (:type target))
                               :connection-details (driver/connection-details driver database)
                               :query (transforms.util/compile-source source)
@@ -138,7 +139,7 @@
 
 (comment
   (t2/insert! :model/WorkerRun
-              {:run_id (str (random-uuid))
+              {:run_id (str (u/generate-nano-id))
                :work_id 1
                :work_type :transform
                :run_method :remote
