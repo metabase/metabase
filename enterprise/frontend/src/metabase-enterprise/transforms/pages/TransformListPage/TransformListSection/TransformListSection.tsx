@@ -41,12 +41,12 @@ function TransformList() {
       columnTitles={[t`Name`, t`Target`, t`Last run at`, `Last run status`]}
     >
       {transforms.map((transform) => (
-        <td key={transform.id}>
+        <tr key={transform.id}>
           <td>{transform.name}</td>
           <td>{transform.target.name}</td>
           <td>1</td>
           <td>2</td>
-        </td>
+        </tr>
       ))}
     </AdminContentTable>
   );
