@@ -109,7 +109,7 @@ export function DetailViewHeader({
 
         <Group gap="sm">
           <Tooltip
-            label={t`Debug: reset settings to default. This button is not meant to make it to production.`}
+            label={t`PLEASE IGNORE THIS BUTTON. It resets settings to default. Useful when settings schema changes.`}
           >
             <Button
               w={32}
