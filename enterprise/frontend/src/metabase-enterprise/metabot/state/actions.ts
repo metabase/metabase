@@ -232,7 +232,7 @@ export const sendStreamedAgentRequest = createAsyncThunk<
 
     try {
       const body = { ...req, conversation_id: sessionId };
-      const state = { ...body.state };
+      let state = {};
       let error: unknown = undefined;
 
       const response = await aiStreamingQuery(
@@ -246,9 +246,8 @@ export const sendStreamedAgentRequest = createAsyncThunk<
         {
           onDataPart: (part) => {
             match(part)
-              // ignore state updates, we'll save it to the state when once we've
-              // streamed the full response and know we have a successful request
-              .with({ type: "state" }, () => {})
+              // only update the convo state if the request is successful
+              .with({ type: "state" }, (part) => (state = part.value))
               .with({ type: "navigate_to" }, (part) => {
                 dispatch(push(part.value) as UnknownAction);
               })

@@ -1,6 +1,5 @@
 import { compose } from "@reduxjs/toolkit";
 import { getIn } from "icepick";
-import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 import { normalize } from "normalizr";
 import _ from "underscore";
 
@@ -16,28 +15,6 @@ import {
 // convenience
 export { combineReducers, compose } from "@reduxjs/toolkit";
 export { handleActions, createAction } from "redux-actions";
-
-// turns string timestamps into moment objects
-export function momentifyTimestamps(
-  object,
-  keys = ["created_at", "updated_at"],
-) {
-  object = { ...object };
-  for (const timestamp of keys) {
-    if (object[timestamp]) {
-      object[timestamp] = moment(object[timestamp]);
-    }
-  }
-  return object;
-}
-
-export function momentifyObjectsTimestamps(objects, keys) {
-  return _.mapObject(objects, (o) => momentifyTimestamps(o, keys));
-}
-
-export function momentifyArraysTimestamps(array, keys) {
-  return _.map(array, (o) => momentifyTimestamps(o, keys));
-}
 
 // turns into id indexed map
 export const resourceListToMap = (resources) =>

@@ -2138,10 +2138,6 @@ describe("scenarios > question > custom column > aggregation", () => {
               },
             ],
           ],
-          "aggregation-idents": {
-            0: "S9C0DETiO434MYRP83IwM",
-            1: "EHbjfRmmyZ8Xd2WNrh4wq",
-          },
         },
       }).then((res) => {
         H.visitQuestionAdhoc(
@@ -2290,10 +2286,6 @@ describe("scenarios > question > custom column > aggregation", () => {
                 },
               ],
             ],
-            "aggregation-idents": {
-              0: "S9C0DETiO434MYRP83IwM",
-              1: "EHbjfRmmyZ8Xd2WNrh4wq",
-            },
           },
         },
         { visitQuestion: true },
@@ -2393,10 +2385,6 @@ describe("scenarios > question > custom column > aggregation", () => {
                 },
               ],
             ],
-            "aggregation-idents": {
-              0: "S9C0DETiO434MYRP83IwM",
-              1: "EHbjfRmmyZ8Xd2WNrh4wq",
-            },
             breakout: [
               [
                 "field",

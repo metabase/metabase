@@ -22,9 +22,9 @@ describe("ParameterWidget (EE with token, in static embedding)", () => {
         ],
       });
       await waitFor(() => {
-        expect(screen.getByTestId("field-set-legend")).toHaveTextContent(
-          "Text enthält",
-        );
+        expect(
+          screen.getByTestId("parameter-value-widget-target"),
+        ).toHaveTextContent("Text enthält");
       });
       expect(translateContentStringSpy()).toHaveBeenCalled();
     });

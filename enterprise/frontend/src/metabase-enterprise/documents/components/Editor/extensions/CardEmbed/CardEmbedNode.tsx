@@ -36,9 +36,9 @@ export interface CardEmbedAttributes {
   id: number;
   name?: string;
 }
-export const CardEmbedNode = Node.create<{
-  HTMLAttributes: Record<string, any>;
-}>({
+export const CardEmbedNode: Node<{
+  HTMLAttributes: CardEmbedAttributes;
+}> = Node.create({
   name: "cardEmbed",
   group: "block",
   atom: true,
@@ -84,12 +84,12 @@ export const CardEmbedNode = Node.create<{
         },
         this.options.HTMLAttributes,
       ),
-      formatCardEmbed(node.attrs),
+      formatCardEmbed(node.attrs as CardEmbedAttributes),
     ];
   },
 
   renderText({ node }) {
-    return formatCardEmbed(node.attrs);
+    return formatCardEmbed(node.attrs as CardEmbedAttributes);
   },
 
   addNodeView() {

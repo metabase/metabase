@@ -295,14 +295,18 @@ describe(
         );
         cy.findByRole("menuitem", { name: /People/ }).click();
         cy.log("Modify the sandboxing policy for the 'data' group");
-        H.modifyPermission("data", 0, "Sandboxed");
+        H.modifyPermission("data", 0, "Row and column security");
 
         H.modal().within(() => {
-          cy.findByText(/Change access to this database to .*Sandboxed.*?/);
+          cy.findByText(
+            /Change access to this database to .*Row and column security.*?/,
+          );
           cy.button("Change").click();
         });
 
-        H.modal().findByText(/Restrict access to this table/);
+        H.modal().findByText(
+          /Configure row and column security for this table/,
+        );
         cy.findByRole("radio", {
           name: /Filter by a column in the table/,
         }).should("be.checked");
@@ -311,7 +315,7 @@ describe(
           .click();
         cy.findByRole("option", { name: "State" }).click();
         H.modal()
-          .findByRole("button", { name: /Pick a user attribute/ })
+          .findByPlaceholderText(/Pick a user attribute/)
           .click();
         cy.findByRole("option", { name: "state" }).click();
         cy.log("Save the sandboxing modal");

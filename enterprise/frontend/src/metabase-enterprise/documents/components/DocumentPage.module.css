@@ -126,3 +126,10 @@
     box-shadow: none;
   }
 }
+
+.metadataItem {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  color: var(--mb-color-text-secondary);
+}

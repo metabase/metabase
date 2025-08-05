@@ -938,14 +938,14 @@
   [{:keys [num-fields]}]
   (mt/dataset-definition
    (format "no-laziness-%d" num-fields)
-   ["lots-of-fields"
-    (concat
-     [{:field-name "a", :base-type :type/Integer}
-      {:field-name "b", :base-type :type/Integer}]
-     (for [field (no-laziness-dataset-definition-field-names num-fields)]
-       {:field-name (name field), :base-type :type/Integer}))
-    ;; one row
-    [(range (+ num-fields 2))]]))
+   [["lots-of-fields"
+     (concat
+      [{:field-name "a", :base-type :type/Integer}
+       {:field-name "b", :base-type :type/Integer}]
+      (for [field (no-laziness-dataset-definition-field-names num-fields)]
+        {:field-name (name field), :base-type :type/Integer}))
+     ;; one row
+     [(range (+ num-fields 2))]]]))
 
 (defn- no-laziness-dataset-definition [num-fields]
   (->NoLazinessDatasetDefinition num-fields))

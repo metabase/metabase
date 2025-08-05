@@ -60,14 +60,15 @@
                  (get-in % [:details :value])))))
 
 (defmethod notification.send/do-after-notification-sent :notification/dashboard
-  [{:keys [id creator_id handlers] :as notification-info} notification-payload]
+  [{:keys [id creator_id handlers] :as notification-info} notification-payload skipped?]
   ;; clean up all the temp files that we created for this notification
   (try
     (run! #(some-> % :result :data :rows notification.payload/cleanup!) (->> notification-payload :payload :dashboard_parts))
     (catch Exception e
       (log/warn e "Error cleaning up temp files for notification" id)))
-  (events/publish-event! :event/subscription-send
-                         {:id      id
-                          :user-id creator_id
-                          :object  {:recipients (handlers->audit-recipients handlers)
-                                    :filters    (-> notification-info :dashboard_subscription :parameters)}}))
+  (when-not skipped?
+    (events/publish-event! :event/subscription-send
+                           {:id      id
+                            :user-id creator_id
+                            :object  {:recipients (handlers->audit-recipients handlers)
+                                      :filters    (-> notification-info :dashboard_subscription :parameters)}})))

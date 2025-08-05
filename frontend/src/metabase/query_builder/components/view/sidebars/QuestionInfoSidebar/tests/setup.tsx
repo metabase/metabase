@@ -5,6 +5,7 @@ import {
   setupAuditInfoEndpoint,
   setupCardEndpoints,
   setupRevisionsEndpoints,
+  setupTokenStatusEndpoint,
   setupUsersEndpoints,
 } from "__support__/server-mocks";
 import { setupPerformanceEndpoints } from "__support__/server-mocks/performance";
@@ -38,7 +39,7 @@ export const setup = async ({
   card = createMockCard(),
   settings = createMockSettings(),
   user,
-  hasEnterprisePlugins,
+  hasEnterprisePlugins = false,
 }: SetupOpts = {}) => {
   const currentUser = createMockUser(user);
   setupCardEndpoints(card);
@@ -63,6 +64,8 @@ export const setup = async ({
   if (hasEnterprisePlugins) {
     setupEnterprisePlugins();
   }
+
+  setupTokenStatusEndpoint(hasEnterprisePlugins);
 
   const TestQuestionInfoSidebar = () => (
     <QuestionInfoSidebar question={question} onSave={onSave} />

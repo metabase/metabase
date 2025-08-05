@@ -33,7 +33,8 @@ export function modelToUrl(item: UrlableModel) {
     case "collection":
       return collection(item);
     case "report":
-      return `/report/${item.id}`;
+    case "document":
+      return `/document/${item.id}`;
     default:
       return null;
   }

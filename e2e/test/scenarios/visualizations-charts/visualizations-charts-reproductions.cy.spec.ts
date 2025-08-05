@@ -6,7 +6,7 @@ import type { StructuredQuestionDetails } from "e2e/support/helpers";
 const { PRODUCTS, PRODUCTS_ID, ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
 describe("issue 43075", () => {
-  const questionDetails: H.StructuredQuestionDetails = {
+  const questionDetails: StructuredQuestionDetails = {
     query: {
       "source-table": PRODUCTS_ID,
       aggregation: [["count"]],
@@ -37,7 +37,7 @@ describe("issue 43075", () => {
 });
 
 describe("issue 41133", () => {
-  const questionDetails: H.StructuredQuestionDetails = {
+  const questionDetails: StructuredQuestionDetails = {
     query: {
       "source-table": PRODUCTS_ID,
     },

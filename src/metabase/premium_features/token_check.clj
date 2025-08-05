@@ -94,7 +94,8 @@
   [_embedded-dashboard-count _embedded-question-count]
   {:enabled-embedding-static      false
    :enabled-embedding-interactive false
-   :enabled-embedding-sdk         false})
+   :enabled-embedding-sdk         false
+   :enabled-embedding-simple      false})
 
 (defn- stats-for-token-request
   []

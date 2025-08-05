@@ -4,16 +4,20 @@
    as a checksum in the API response."
   (:require
    [clojure.string :as str]
+   [malli.error :as me]
    [metabase.analyze.core :as analyze]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
+   [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.query-processor.reducible :as qp.reducible]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2]))
 
@@ -21,9 +25,9 @@
 ;;; |                                                   Middleware                                                   |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- comparable-metadata
+(mu/defn- comparable-metadata :- [:sequential :map]
   "Smooth out any unimportant differences in metadata so we can do an easy equality check."
-  [metadata]
+  [metadata :- [:maybe [:sequential ::lib.schema.metadata/lib-or-legacy-column]]]
   (letfn [(remove-underscore-nil-keys
             ;; Sometimes we get an underscore version of a key with a nil value which is a duplicate of a key with a
             ;; dash. Remove the nil value
@@ -42,18 +46,23 @@
             (cond
               (keyword? m) (u/qualified-name m)
               (map? m) (-> (update-vals m standardize-metadata)
-                           (dissoc :ident)
+                           (dissoc :ident) ; `:ident` is deprecated and should no longer be present, but better safe than sorry.
                            (remove-underscore-nil-keys))
               (sequential? m) (mapv standardize-metadata m)
               (set? m) (into #{} (map standardize-metadata) m)
               :else m))]
-    (standardize-metadata metadata)))
+    (mapv standardize-metadata metadata)))
 
-(defn- record-metadata! [{{:keys [card-id]} :info, :as query} metadata]
+(mu/defn- record-metadata!
+  [{{:keys [card-id]} :info, :as query} :- ::mbql.s/Query
+   metadata                             :- [:maybe [:sequential ::lib.schema.metadata/lib-or-legacy-column]]]
   (try
     ;; At the very least we can skip the Extra DB call to update this Card's metadata results
     ;; if its DB doesn't support nested queries in the first place
-    (let [actual-metadata (get-in query [:info :pivot/result-metadata] metadata)]
+    (let [actual-metadata (or (when-let [pivot-metadata (get-in query [:info :pivot/result-metadata])]
+                                (when (sequential? pivot-metadata)
+                                  pivot-metadata))
+                              metadata)]
       (when (and actual-metadata
                  driver/*driver*
                  ;; pivot queries can run multiple queries, only record metadata for the main query
@@ -64,6 +73,8 @@
                  (not (:qp/source-card-id query))
                  ;; Only update changed metadata
                  (not= (comparable-metadata actual-metadata) (comparable-metadata (qp.store/miscellaneous-value [::card-stored-metadata]))))
+        (when-let [error (me/humanize (mr/explain [:sequential ::lib.schema.metadata/lib-or-legacy-column] actual-metadata))]
+          (throw (ex-info "Invalid result metadata!" {:error error, :metadata actual-metadata})))
         (t2/update! :model/Card card-id {:result_metadata actual-metadata
                                          :updated_at      :updated_at})))
     ;; if for some reason we weren't able to record results metadata for this query then just proceed as normal
@@ -83,7 +94,7 @@
   (mapv
    (fn [{final-base-type :base_type, :as final-col} {our-base-type :base_type, :as insights-col}]
      (merge
-      (select-keys final-col [:id :ident :description :display_name :semantic_type :fk_target_field_id
+      (select-keys final-col [:id :description :display_name :semantic_type :fk_target_field_id
                               :settings :field_ref :base_type :effective_type :database_type
                               :remapped_from :remapped_to :coercion_strategy :visibility_type
                               :was_binned :table_id])
@@ -123,7 +134,12 @@
       (fn record-and-return-metadata!-rff* [metadata]
         (insights-xform metadata record! (rff metadata))))))
 
-(defn store-previous-result-metadata!
+(mu/defn store-previous-result-metadata!
   "Store the previous value of a card's result metadata in the qp.store"
-  [card]
-  (qp.store/store-miscellaneous-value! [::card-stored-metadata] (:result_metadata card)))
+  [card :- [:maybe
+            [:map
+             [:result_metadata {:optional true} [:maybe [:sequential ::lib.schema.metadata/lib-or-legacy-column]]]]]]
+  (when-let [result-metadata (:result_metadata card)]
+    (if-let [error (me/humanize (mr/explain [:sequential ::lib.schema.metadata/lib-or-legacy-column] result-metadata))]
+      (log/errorf "Invalid card result metadata, ignoring  it: %s" (pr-str error))
+      (qp.store/store-miscellaneous-value! [::card-stored-metadata] result-metadata))))

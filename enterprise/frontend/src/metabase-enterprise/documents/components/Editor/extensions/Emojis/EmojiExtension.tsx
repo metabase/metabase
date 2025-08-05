@@ -1,4 +1,4 @@
-import { computePosition } from "@floating-ui/dom";
+import { type VirtualElement, computePosition } from "@floating-ui/dom";
 import Emoji, { gitHubEmojis } from "@tiptap/extension-emoji";
 import { ReactRenderer } from "@tiptap/react";
 
@@ -25,12 +25,12 @@ export const EmojiExtension = Emoji.configure({
     render: () => {
       let component: ReactRenderer | undefined;
 
-      function repositionComponent(clientRect) {
+      function repositionComponent(clientRect: DOMRect | null) {
         if (!component || !component.element) {
           return;
         }
 
-        const virtualElement = {
+        const virtualElement: VirtualElement = {
           getBoundingClientRect() {
             return clientRect;
           },

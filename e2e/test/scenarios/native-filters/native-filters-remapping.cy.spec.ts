@@ -56,10 +56,6 @@ function addExternalRemapping() {
   });
 }
 
-function findWidget(name: string) {
-  return cy.findByText(name).parents("fieldset");
-}
-
 function createQuestion() {
   const questionDetails: NativeQuestionDetails = {
     name: "Orders native question",
@@ -132,28 +128,28 @@ function createQuestion() {
 
 function testWidgetsRemapping() {
   cy.log("internal remapping");
-  findWidget("Internal").click();
+  H.filterWidget({ name: "Internal" }).click();
   H.popover().within(() => {
     cy.findByText("N5").click();
     cy.button("Add filter").click();
   });
-  findWidget("Internal").should("contain.text", "N5");
+  H.filterWidget({ name: "Internal" }).should("contain.text", "N5");
 
   cy.log("FK remapping");
-  findWidget("FK").click();
+  H.filterWidget({ name: "FK" }).click();
   H.popover().within(() => {
     cy.findByPlaceholderText("Enter an ID").type("1,");
     cy.findByText("Rustic Paper Wallet").should("exist");
     cy.button("Add filter").click();
   });
-  findWidget("FK").should("contain.text", "Rustic Paper Wallet");
+  H.filterWidget({ name: "FK" }).should("contain.text", "Rustic Paper Wallet");
 
   cy.log("PK->Name remapping");
-  findWidget("PK->Name").click();
+  H.filterWidget({ name: "PK->Name" }).click();
   H.popover().within(() => {
     cy.findByPlaceholderText("Enter an ID").type("1,");
     cy.findByText("Hudson Borer").should("exist");
     cy.button("Add filter").click();
   });
-  findWidget("PK->Name").should("contain.text", "Hudson Borer");
+  H.filterWidget({ name: "PK->Name" }).should("contain.text", "Hudson Borer");
 }

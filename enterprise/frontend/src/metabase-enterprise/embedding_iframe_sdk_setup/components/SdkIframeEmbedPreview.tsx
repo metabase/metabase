@@ -3,25 +3,26 @@ import { useSearchParam } from "react-use";
 import _ from "underscore";
 
 import { useSetting } from "metabase/common/hooks";
-import { Box } from "metabase/ui";
-import type { MetabaseEmbed } from "metabase-enterprise/embedding_iframe_sdk/embed";
+import { Card } from "metabase/ui";
+import type { MetabaseEmbedElement } from "metabase-enterprise/embedding_iframe_sdk/embed";
+import type { SdkIframeEmbedBaseSettings } from "metabase-enterprise/embedding_iframe_sdk/types/embed";
 
 import { useSdkIframeEmbedSetupContext } from "../context";
-
-import S from "./SdkIframeEmbedSetup.module.css";
+import { getEmbedCustomElementSnippet } from "../utils/embed-snippet";
 
 declare global {
   interface Window {
-    "metabase.embed": { MetabaseEmbed: typeof MetabaseEmbed };
+    metabaseConfig: Partial<SdkIframeEmbedBaseSettings>;
   }
 }
 
 export const SdkIframeEmbedPreview = () => {
   const [isIframeLoaded, setIsIframeLoaded] = useState(false);
 
-  const { settings, isEmbedSettingsLoaded } = useSdkIframeEmbedSetupContext();
+  const { settings, isEmbedSettingsLoaded, experience } =
+    useSdkIframeEmbedSetupContext();
 
-  const embedJsRef = useRef<MetabaseEmbed | null>(null);
+  const embedRef = useRef<MetabaseEmbedElement | null>(null);
   const localeOverride = useSearchParam("locale");
   const scriptRef = useRef<HTMLScriptElement | null>(null);
 
@@ -35,21 +36,38 @@ export const SdkIframeEmbedPreview = () => {
         script.src = `${instanceUrl}/app/embed.js`;
         document.body.appendChild(script);
 
+        const defineMetabaseConfig = (args: SdkIframeEmbedBaseSettings) => {
+          window.metabaseConfig = args;
+        };
+
         script.onload = () => {
-          const { MetabaseEmbed } = window["metabase.embed"];
-
-          embedJsRef.current = new MetabaseEmbed({
-            ...settings,
-
-            target: "#iframe-embed-container",
-            iframeClassName: S.EmbedPreviewIframe,
-            useExistingUserSession: true,
+          defineMetabaseConfig({
             instanceUrl,
-
+            useExistingUserSession: true,
+            theme: settings.theme,
             ...(localeOverride ? { locale: localeOverride } : {}),
           });
 
-          embedJsRef.current.addEventListener("ready", () =>
+          const wrapperDiv = document.getElementById("iframe-embed-container");
+          if (!wrapperDiv) {
+            console.error("#iframe-embed-container not found");
+            return;
+          }
+
+          wrapperDiv.innerHTML = getEmbedCustomElementSnippet({
+            settings,
+            experience,
+            id: "custom-element-id",
+          });
+
+          const customElement = document.getElementById(
+            "custom-element-id",
+          ) as MetabaseEmbedElement;
+          embedRef.current = customElement;
+
+          customElement.style.height = "100%";
+
+          embedRef.current.addEventListener("ready", () =>
             setIsIframeLoaded(true),
           );
         };
@@ -58,18 +76,17 @@ export const SdkIframeEmbedPreview = () => {
       }
 
       return () => {
-        embedJsRef.current?.destroy();
         scriptRef.current?.remove();
       };
     },
 
     // eslint-disable-next-line react-hooks/exhaustive-deps -- settings are synced via useEffect below
-    [isEmbedSettingsLoaded],
+    [isEmbedSettingsLoaded, experience],
   );
 
   useEffect(() => {
-    if (embedJsRef.current && isIframeLoaded) {
-      embedJsRef.current.updateSettings({
+    if (embedRef.current) {
+      embedRef.current.updateSettings({
         // Clear the existing experiences.
         // This is necessary as `updateSettings` merges new settings with existing ones.
         template: undefined,
@@ -84,8 +101,11 @@ export const SdkIframeEmbedPreview = () => {
   }, [settings, isIframeLoaded]);
 
   return (
-    <div>
-      <Box id="iframe-embed-container" data-iframe-loaded={isIframeLoaded} />
-    </div>
+    <Card
+      id="iframe-embed-container"
+      data-iframe-loaded={isIframeLoaded}
+      bg={settings.theme?.colors?.background}
+      h="100%"
+    />
   );
 };

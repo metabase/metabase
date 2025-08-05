@@ -8,6 +8,7 @@ import { t } from "ttag";
 
 import { skipToken, useGetCollectionQuery } from "metabase/api";
 import { canonicalCollectionId } from "metabase/collections/utils";
+import DateTime from "metabase/common/components/DateTime";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { CollectionPickerModal } from "metabase/common/components/Pickers/CollectionPicker";
 import { useToast } from "metabase/common/hooks";
@@ -21,6 +22,7 @@ import {
   Icon,
   Loader,
   Menu,
+  Text,
   TextInput,
 } from "metabase/ui";
 import {
@@ -240,7 +242,7 @@ export const DocumentPage = ({
             )
           : createDocument({
               ...newDocumentData,
-              collection_id: collectionId,
+              collection_id: collectionId || undefined,
             }).then((response) => {
               if (response.data) {
                 scheduleNavigation(() => {
@@ -343,12 +345,8 @@ export const DocumentPage = ({
         <Box className={styles.mainContent}>
           <Box className={styles.documentContainer}>
             <Box className={styles.header} mt="xl" pt="xl">
-              <Flex
-                gap="sm"
-                align="center"
-                h="2.5rem"
-                style={{ width: "100%" }}
-              >
+              {/* <Flex gap="sm" align="center" style={{ width: "100%" }}> */}
+              <Flex direction="column">
                 <TextInput
                   autoFocus={isNewDocument}
                   value={documentTitle}
@@ -367,6 +365,20 @@ export const DocumentPage = ({
                     },
                   }}
                 />
+                {documentData && (
+                  <Flex gap="md">
+                    <Text className={styles.metadataItem}>
+                      <Icon name="person" />
+                      {t`Someone`}{" "}
+                    </Text>
+                    <Text className={styles.metadataItem}>
+                      <Icon name="clock" />
+                      <DateTime value={documentData.updated_at} unit="day" />
+                    </Text>
+                  </Flex>
+                )}
+              </Flex>
+              <Flex gap="md" align="center">
                 {showSaveButton && (
                   <Button
                     onClick={() => {

@@ -45,10 +45,7 @@ describe("formatting > whitelabel", { tags: "@EE" }, () => {
         "https://www.metabase.com/docs/latest/configuring-metabase/appearance",
       )
       .and("include", "utm_");
-    cy.findByRole("link", { name: "Try for free" })
-      .should("have.attr", "href")
-      .and("include", "https://www.metabase.com/upgrade")
-      .and("include", "utm_");
+    cy.findByRole("button", { name: "Try for free" });
 
     cy.log("Upsell icon should now be visible in the sidebar link");
     cy.findAllByTestId("settings-sidebar-link")
