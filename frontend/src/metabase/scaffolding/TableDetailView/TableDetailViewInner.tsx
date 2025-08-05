@@ -11,19 +11,16 @@ import {
   sortableKeyboardCoordinates,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import { push } from "react-router-redux";
 import { useMount } from "react-use";
-import { t } from "ttag";
 
 import { useUpdateTableComponentSettingsMutation } from "metabase/api/table";
 import { useDispatch } from "metabase/lib/redux";
 import { question } from "metabase/lib/urls";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { closeNavbar } from "metabase/redux/app";
-import { Divider, Flex, Stack, Tooltip } from "metabase/ui/components";
-import { Button } from "metabase/ui/components/buttons";
-import { Icon } from "metabase/ui/components/icons";
+import { Divider, Stack } from "metabase/ui/components";
 import type ForeignKey from "metabase-lib/v1/metadata/ForeignKey";
 import { isEntityName, isPK } from "metabase-lib/v1/types/utils/isa";
 import type {
@@ -281,9 +278,8 @@ export function TableDetailViewInner({
             strategy={verticalListSortingStrategy}
           >
             {notEmptySections.map((section, index) => (
-              <>
+              <Fragment key={section.id}>
                 <SortableSection
-                  key={section.id}
                   section={section}
                   variant={section.variant}
                   columns={columns}
@@ -298,7 +294,7 @@ export function TableDetailViewInner({
                   !!uncategorizedSection.fields.length) &&
                   (section.variant === "normal" ||
                     section.variant === "highlight-2") && <Divider mt="md" />}
-              </>
+              </Fragment>
             ))}
 
             <SortableSection
