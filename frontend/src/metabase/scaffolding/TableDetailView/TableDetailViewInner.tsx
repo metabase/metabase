@@ -293,7 +293,9 @@ export function TableDetailViewInner({
                 {(index < notEmptySections.length - 1 ||
                   !!uncategorizedSection.fields.length) &&
                   (section.variant === "normal" ||
-                    section.variant === "highlight-2") && <Divider mt="md" />}
+                    section.variant === "highlight-2") && (
+                    <Divider mt="md" mx="md" />
+                  )}
               </Fragment>
             ))}
 

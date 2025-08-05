@@ -123,7 +123,7 @@ export function ObjectViewSection({
           const value = row[columnIndex];
 
           return (
-            <Flex key={field_id} gap="md" className={S.Field}>
+            <Flex key={field_id} className={S.Field}>
               <Box className={S.FieldName} w="100%">
                 <Tooltip label={column.description} position="top">
                   <Text c="var(--mb-color-text-secondary)" fw="bold" truncate>

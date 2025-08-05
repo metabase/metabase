@@ -20,6 +20,7 @@
   .Field {
     align-items: center;
     overflow: hidden;
+    gap: var(--mantine-spacing-md);
 
     .FieldName {
       display: flex;
@@ -139,6 +140,7 @@
       .Field {
         align-items: start;
         align-content: start;
+        gap: var(--mantine-spacing-sm);
       }
       .FieldName {
         text-align: center;
