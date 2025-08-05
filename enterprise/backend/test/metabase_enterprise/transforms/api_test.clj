@@ -28,27 +28,48 @@
 
 (deftest create-transform-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
-    (with-transform-cleanup! [table-name "gadget_products"]
-      (mt/user-http-request :crowberto :post 200 "ee/transform"
-                            {:name "Gadget Products"
-                             :source {:type "query"
-                                      :query {:database (mt/id)
-                                              :type "native"
-                                              :native {:query (make-query "Gadget")
-                                                       :template-tags {}}}}
-                             ;; for clickhouse (and other dbs where we do merge into), we will
-                             ;; want a primary key
-                             ;;:primary-key-column "id"
-                             :target {:type "table"
-                                      ;; leave out schema for now
-                                      ;;:schema (str (rand-int 10000))
-                                      :name table-name}}))))
+    (mt/with-premium-features #{:transforms}
+      (with-transform-cleanup! [table-name "gadget_products"]
+        (mt/user-http-request :crowberto :post 200 "ee/transform"
+                              {:name "Gadget Products"
+                               :source {:type "query"
+                                        :query {:database (mt/id)
+                                                :type "native"
+                                                :native {:query (make-query "Gadget")
+                                                         :template-tags {}}}}
+                               ;; for clickhouse (and other dbs where we do merge into), we will
+                               ;; want a primary key
+                               ;;:primary-key-column "id"
+                               :target {:type "table"
+                                        ;; leave out schema for now
+                                        ;;:schema (str (rand-int 10000))
+                                        :name table-name}})))))
 
 (deftest list-transforms-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
     (testing "Can list without query parameters"
-      (mt/user-http-request :crowberto :get 200 "ee/transform"))
+      (mt/with-premium-features #{:transforms}
+        (mt/user-http-request :crowberto :get 200 "ee/transform")))
     (testing "Can list with query parameters"
+      (mt/with-premium-features #{:transforms}
+        (with-transform-cleanup! [table-name "gadget_products"]
+          (let [body {:name "Gadget Products"
+                      :description "Desc"
+                      :source {:type "query"
+                               :query {:database (mt/id)
+                                       :type "native"
+                                       :native {:query (make-query "Gadget")
+                                                :template-tags {}}}}
+                      :target {:type "table"
+                               ;;:schema "transforms"
+                               :name table-name}}
+                _ (mt/user-http-request :crowberto :post 200 "ee/transform" body)
+                list-resp (mt/user-http-request :crowberto :get 200 "ee/transform")]
+            (is (seq list-resp))))))))
+
+(deftest get-transforms-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+    (mt/with-premium-features #{:transforms}
       (with-transform-cleanup! [table-name "gadget_products"]
         (let [body {:name "Gadget Products"
                     :description "Desc"
@@ -60,122 +81,109 @@
                     :target {:type "table"
                              ;;:schema "transforms"
                              :name table-name}}
-              _ (mt/user-http-request :crowberto :post 200 "ee/transform" body)
-              list-resp (mt/user-http-request :crowberto :get 200 "ee/transform")]
-          (is (seq list-resp)))))))
-
-(deftest get-transforms-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
-    (with-transform-cleanup! [table-name "gadget_products"]
-      (let [body {:name "Gadget Products"
-                  :description "Desc"
-                  :source {:type "query"
-                           :query {:database (mt/id)
-                                   :type "native"
-                                   :native {:query (make-query "Gadget")
-                                            :template-tags {}}}}
-                  :target {:type "table"
-                           ;;:schema "transforms"
-                           :name table-name}}
-            resp (mt/user-http-request :crowberto :post 200 "ee/transform" body)]
-        (is (=? (assoc body
-                       :execution_trigger "none"
-                       :last_execution nil)
-                (mt/user-http-request :crowberto :get 200 (format "ee/transform/%s" (:id resp)))))))))
+              resp (mt/user-http-request :crowberto :post 200 "ee/transform" body)]
+          (is (=? (assoc body
+                         :execution_trigger "none"
+                         :last_execution nil)
+                  (mt/user-http-request :crowberto :get 200 (format "ee/transform/%s" (:id resp))))))))))
 
 (deftest put-transforms-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
-    (with-transform-cleanup! [table-name "gadget_products"]
-      (let [query2 (make-query "None")
-            resp (mt/user-http-request :crowberto :post 200 "ee/transform"
-                                       {:name "Gadget Products"
-                                        :source {:type "query"
-                                                 :query {:database (mt/id)
-                                                         :type "native"
-                                                         :native {:query (make-query "Gadget")
-                                                                  :template-tags {}}}}
-                                        :target {:type "table"
-                                                 ;;:schema "transforms"
-                                                 :name table-name}})]
-        (is (=? {:name "Gadget Products 2"
-                 :description "Desc"
-                 :source {:type "query"
-                          :query {:database (mt/id)
-                                  :type "native",
-                                  :native {:query query2
-                                           :template-tags {}}}}
-                 :target {:type "table"
-                          :name table-name}
-                 :execution_trigger "global-schedule"}
-                (mt/user-http-request :crowberto :put 200 (format "ee/transform/%s" (:id resp))
-                                      {:name "Gadget Products 2"
-                                       :description "Desc"
-                                       :source {:type "query"
-                                                :query {:database (mt/id)
-                                                        :type "native"
-                                                        :native {:query query2
-                                                                 :template-tags {}}}}
-                                       :execution_trigger "global-schedule"})))))))
+    (mt/with-premium-features #{:transforms}
+      (with-transform-cleanup! [table-name "gadget_products"]
+        (let [query2 (make-query "None")
+              resp (mt/user-http-request :crowberto :post 200 "ee/transform"
+                                         {:name "Gadget Products"
+                                          :source {:type "query"
+                                                   :query {:database (mt/id)
+                                                           :type "native"
+                                                           :native {:query (make-query "Gadget")
+                                                                    :template-tags {}}}}
+                                          :target {:type "table"
+                                                   ;;:schema "transforms"
+                                                   :name table-name}})]
+          (is (=? {:name "Gadget Products 2"
+                   :description "Desc"
+                   :source {:type "query"
+                            :query {:database (mt/id)
+                                    :type "native",
+                                    :native {:query query2
+                                             :template-tags {}}}}
+                   :target {:type "table"
+                            :name table-name}
+                   :execution_trigger "global-schedule"}
+                  (mt/user-http-request :crowberto :put 200 (format "ee/transform/%s" (:id resp))
+                                        {:name "Gadget Products 2"
+                                         :description "Desc"
+                                         :source {:type "query"
+                                                  :query {:database (mt/id)
+                                                          :type "native"
+                                                          :native {:query query2
+                                                                   :template-tags {}}}}
+                                         :execution_trigger "global-schedule"}))))))))
 
 (deftest change-target-table-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
-    (with-transform-cleanup! [table1-name "dookey_products"
-                              table2-name "doohickey_products"]
-      (let [query2 (make-query "Doohickey")
-            original {:name "Gadget Products"
-                      :source {:type "query"
-                               :query {:database (mt/id)
-                                       :type "native"
-                                       :native {:query (make-query "Gadget")
-                                                :template-tags {}}}}
-                      :target {:type "table"
-                               ;;:schema "transforms"
-                               :name table1-name}}
-            resp (mt/user-http-request :crowberto :post 200 "ee/transform"
-                                       original)
-            updated {:name "Doohickey Products"
-                     :description "Desc"
-                     :source {:type "query"
-                              :query {:database (mt/id)
-                                      :type "native",
-                                      :native {:query query2
-                                               :template-tags {}}}}
-                     :target {:type "table"
-                              :name table2-name}}]
-        (is (=? updated
-                (mt/user-http-request :crowberto :put 200 (format "ee/transform/%s" (:id resp)) updated)))
-        (is (false? (transforms.util/target-table-exists? original)))))))
+    (mt/with-premium-features #{:transforms}
+      (with-transform-cleanup! [table1-name "dookey_products"
+                                table2-name "doohickey_products"]
+        (let [query2 (make-query "Doohickey")
+              original {:name "Gadget Products"
+                        :source {:type "query"
+                                 :query {:database (mt/id)
+                                         :type "native"
+                                         :native {:query (make-query "Gadget")
+                                                  :template-tags {}}}}
+                        :target {:type "table"
+                                 ;;:schema "transforms"
+                                 :name table1-name}}
+              resp (mt/user-http-request :crowberto :post 200 "ee/transform"
+                                         original)
+              updated {:name "Doohickey Products"
+                       :description "Desc"
+                       :source {:type "query"
+                                :query {:database (mt/id)
+                                        :type "native",
+                                        :native {:query query2
+                                                 :template-tags {}}}}
+                       :target {:type "table"
+                                :name table2-name}}]
+          (is (=? updated
+                  (mt/user-http-request :crowberto :put 200 (format "ee/transform/%s" (:id resp)) updated)))
+          (is (false? (transforms.util/target-table-exists? original))))))))
 
 (deftest delete-transforms-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
-    (with-transform-cleanup! [table-name "gadget_products"]
-      (let [resp (mt/user-http-request :crowberto :post 200 "ee/transform"
-                                       {:name "Gadget Products"
-                                        :source {:type "query"
-                                                 :query {:database (mt/id)
-                                                         :type "native"
-                                                         :native {:query (make-query "Gadget")
-                                                                  :template-tags {}}}}
-                                        :target {:type "table"
-                                                 ;;:schema "transforms"
-                                                 :name table-name}})]
-        (mt/user-http-request :crowberto :delete 204 (format "ee/transform/%s" (:id resp)))
-        (mt/user-http-request :crowberto :get 404 (format "ee/transform/%s" (:id resp)))))))
+    (mt/with-premium-features #{:transforms}
+      (with-transform-cleanup! [table-name "gadget_products"]
+        (let [resp (mt/user-http-request :crowberto :post 200 "ee/transform"
+                                         {:name "Gadget Products"
+                                          :source {:type "query"
+                                                   :query {:database (mt/id)
+                                                           :type "native"
+                                                           :native {:query (make-query "Gadget")
+                                                                    :template-tags {}}}}
+                                          :target {:type "table"
+                                                   ;;:schema "transforms"
+                                                   :name table-name}})]
+          (mt/user-http-request :crowberto :delete 204 (format "ee/transform/%s" (:id resp)))
+          (mt/user-http-request :crowberto :get 404 (format "ee/transform/%s" (:id resp))))))))
 
 (deftest delete-table-transforms-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
-    (with-transform-cleanup! [table-name "gadget_products"]
-      (let [resp (mt/user-http-request :crowberto :post 200 "ee/transform"
-                                       {:name "Gadget Products"
-                                        :source {:type "query"
-                                                 :query {:database (mt/id)
-                                                         :type "native"
-                                                         :native {:query (make-query "Gadget")
-                                                                  :template-tags {}}}}
-                                        :target {:type "table"
-                                                 ;;:schema "transforms"
-                                                 :name table-name}})]
-        (mt/user-http-request :crowberto :delete 204 (format "ee/transform/%s/table" (:id resp)))))))
+    (mt/with-premium-features #{:transforms}
+      (with-transform-cleanup! [table-name "gadget_products"]
+        (let [resp (mt/user-http-request :crowberto :post 200 "ee/transform"
+                                         {:name "Gadget Products"
+                                          :source {:type "query"
+                                                   :query {:database (mt/id)
+                                                           :type "native"
+                                                           :native {:query (make-query "Gadget")
+                                                                    :template-tags {}}}}
+                                          :target {:type "table"
+                                                   ;;:schema "transforms"
+                                                   :name table-name}})]
+          (mt/user-http-request :crowberto :delete 204 (format "ee/transform/%s/table" (:id resp))))))))
 
 (defn- test-execution
   [transform-id]
@@ -213,38 +221,39 @@
           :let [feature (keyword "transforms" target-type)]]
     (testing (str "transform execution with " target-type " target")
       (mt/test-drivers (mt/normal-drivers-with-feature feature)
-        (let [schema (t2/select-one-fn :schema :model/Table (mt/id :products))]
-          (with-transform-cleanup! [{table1-name :name :as target1} {:type target-type
-                                                                     :schema schema
-                                                                     :name "gadget_products"}
-                                    {table2-name :name :as target2} {:type target-type
-                                                                     :schema schema
-                                                                     :name "doohickey_products"}]
-            (let [query2 (make-query "Doohickey")
-                  original {:name "Gadget Products"
-                            :source {:type "query"
-                                     :query {:database (mt/id)
-                                             :type "native"
-                                             :native {:query (make-query "Gadget")
-                                                      :template-tags {}}}}
-                            :target target1}
-                  {transform-id :id} (mt/user-http-request :crowberto :post 200 "ee/transform"
-                                                           original)
-                  _ (test-execution transform-id)
-                  _ (is (true? (transforms.util/target-table-exists? original)))
-                  _ (check-query-results table1-name [5 11 16] "Gadget")
-                  updated {:name "Doohickey Products"
-                           :description "Desc"
-                           :source {:type "query"
-                                    :query {:database (mt/id)
-                                            :type "native",
-                                            :native {:query query2
-                                                     :template-tags {}}}}
-                           :target target2}]
-              (is (=? (assoc updated
-                             :execution_trigger "none")
-                      (mt/user-http-request :crowberto :put 200 (format "ee/transform/%s" transform-id) updated)))
-              (test-execution transform-id)
-              (is (true? (transforms.util/target-table-exists? original)))
-              (is (true? (transforms.util/target-table-exists? updated)))
-              (check-query-results table2-name [2 3 4] "Doohickey"))))))))
+        (mt/with-premium-features #{:transforms}
+          (let [schema (t2/select-one-fn :schema :model/Table (mt/id :products))]
+            (with-transform-cleanup! [{table1-name :name :as target1} {:type target-type
+                                                                       :schema schema
+                                                                       :name "gadget_products"}
+                                      {table2-name :name :as target2} {:type target-type
+                                                                       :schema schema
+                                                                       :name "doohickey_products"}]
+              (let [query2 (make-query "Doohickey")
+                    original {:name "Gadget Products"
+                              :source {:type "query"
+                                       :query {:database (mt/id)
+                                               :type "native"
+                                               :native {:query (make-query "Gadget")
+                                                        :template-tags {}}}}
+                              :target target1}
+                    {transform-id :id} (mt/user-http-request :crowberto :post 200 "ee/transform"
+                                                             original)
+                    _ (test-execution transform-id)
+                    _ (is (true? (transforms.util/target-table-exists? original)))
+                    _ (check-query-results table1-name [5 11 16] "Gadget")
+                    updated {:name "Doohickey Products"
+                             :description "Desc"
+                             :source {:type "query"
+                                      :query {:database (mt/id)
+                                              :type "native",
+                                              :native {:query query2
+                                                       :template-tags {}}}}
+                             :target target2}]
+                (is (=? (assoc updated
+                               :execution_trigger "none")
+                        (mt/user-http-request :crowberto :put 200 (format "ee/transform/%s" transform-id) updated)))
+                (test-execution transform-id)
+                (is (true? (transforms.util/target-table-exists? original)))
+                (is (true? (transforms.util/target-table-exists? updated)))
+                (check-query-results table2-name [2 3 4] "Doohickey")))))))))

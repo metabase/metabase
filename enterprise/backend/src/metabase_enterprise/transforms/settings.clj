@@ -11,7 +11,7 @@
   :type       :string
   :visibility :settings-manager
   :default    "0 0 0 * * ? *"
-  #_#_:feature    :transform
+  :feature    :transforms
   :doc        false
   :export?    true
   :encryption :no
