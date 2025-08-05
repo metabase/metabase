@@ -1,5 +1,4 @@
 import { useMemo, useState } from "react";
-import { match } from "ts-pattern";
 import { jt, t } from "ttag";
 import * as Yup from "yup";
 
@@ -9,7 +8,6 @@ import {
   Form,
   FormErrorMessage,
   FormProvider,
-  FormSegmentedControl,
   FormSelect,
   FormSubmitButton,
   FormTextInput,
@@ -20,12 +18,7 @@ import {
   useDeleteTransformTargetMutation,
   useUpdateTransformMutation,
 } from "metabase-enterprise/api";
-import type {
-  Transform,
-  TransformTarget,
-  TransformTargetType,
-  UpdateTransformRequest,
-} from "metabase-types/api";
+import type { Transform, UpdateTransformRequest } from "metabase-types/api";
 
 type UpdateTargetModalProps = {
   transform: Transform;
@@ -55,16 +48,13 @@ export function UpdateTargetModal({
 }
 
 type EditTransformValues = {
-  type: TransformTargetType;
   name: string;
   schema: string | null;
 };
 
 const EDIT_TRANSFORM_SCHEMA = Yup.object({
-  type: Yup.string().oneOf(["view", "table"]),
   name: Yup.string().required(Errors.required),
   schema: Yup.string().nullable(),
-  action: Yup.string().oneOf(["keep-target", "delete-target"]),
 });
 
 type UpdateTargetFormProps = {
@@ -114,11 +104,6 @@ function UpdateTargetForm({
       {({ dirty }) => (
         <Form>
           <Stack gap="lg">
-            <FormSegmentedControl
-              name="type"
-              label={t`Should this transform create a view or a table in the database?`}
-              data={getTypeOptions()}
-            />
             <FormTextInput
               name="name"
               label={t`What should it be called in the database?`}
@@ -133,7 +118,7 @@ function UpdateTargetForm({
             {table != null && (
               <Radio.Group
                 value={shouldDeleteTarget.toString()}
-                label={getActionLabel(target)}
+                label={t`Keep the old target table, or delete it?`}
                 description={jt`You can keep or delete ${(
                   <strong>{target.name}</strong>
                 )}. Deleting it can’t be undone, and will break queries that used it. Please be careful!`}
@@ -164,24 +149,9 @@ function UpdateTargetForm({
 
 function getInitialValues({ target }: Transform): EditTransformValues {
   return {
-    type: target.type,
     name: target.name,
     schema: target.schema,
   };
-}
-
-function getTypeOptions() {
-  return [
-    { value: "view", label: t`View` },
-    { value: "table", label: t`Table` },
-  ];
-}
-
-function getActionLabel(target: TransformTarget) {
-  return match(target.type)
-    .with("view", () => t`Keep the old target view, or delete it?`)
-    .with("table", () => t`Keep the old target table, or delete it?`)
-    .exhaustive();
 }
 
 function getSubmitButtonLabel(shouldDeleteTarget: boolean) {
@@ -196,12 +166,12 @@ function getSubmitButtonColor(shouldDeleteTarget: boolean) {
 
 function getUpdateRequest(
   { id }: Transform,
-  { type, name, schema }: EditTransformValues,
+  { name, schema }: EditTransformValues,
 ): UpdateTransformRequest {
   return {
     id,
     target: {
-      type,
+      type: "table",
       name,
       schema,
     },

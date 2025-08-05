@@ -308,8 +308,8 @@ databaseChangeLog:
             columns:
               - column:
                   name: run_id
-                  type: varchar(36)
-                  remarks: 'UUID-4 identifier for the worker run'
+                  type: char(21)
+                  remarks: 'NanoID identifier for the worker run'
                   constraints:
                     primaryKey: true
                     nullable: false

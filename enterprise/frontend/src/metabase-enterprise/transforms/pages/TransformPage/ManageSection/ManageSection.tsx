@@ -5,9 +5,10 @@ import { t } from "ttag";
 
 import { useDispatch } from "metabase/lib/redux";
 import { useMetadataToasts } from "metabase/metadata/hooks";
-import { Button, Group, Icon, Title } from "metabase/ui";
+import { Button, Group, Icon } from "metabase/ui";
+import { TitleSection } from "metabase-enterprise/transforms/components/TitleSection";
 import {
-  getOverviewUrl,
+  getTransformListUrl,
   getTransformQueryUrl,
 } from "metabase-enterprise/transforms/urls";
 import type { Transform } from "metabase-types/api";
@@ -20,11 +21,15 @@ type ManageSectionProps = {
 
 export function ManageSection({ transform }: ManageSectionProps) {
   return (
-    <Group>
-      <Title flex={1} order={4}>{t`Query`}</Title>
-      <EditQueryButton transform={transform} />
-      <DeleteTransformButton transform={transform} />
-    </Group>
+    <TitleSection
+      label={t`Query`}
+      rightSection={
+        <Group>
+          <EditQueryButton transform={transform} />
+          <DeleteTransformButton transform={transform} />
+        </Group>
+      }
+    />
   );
 }
 
@@ -56,7 +61,7 @@ function DeleteTransformButton({ transform }: DeleteTransformButtonProps) {
 
   const handleDelete = () => {
     sendSuccessToast(t`Transform deleted`);
-    dispatch(push(getOverviewUrl()));
+    dispatch(push(getTransformListUrl()));
   };
 
   return (

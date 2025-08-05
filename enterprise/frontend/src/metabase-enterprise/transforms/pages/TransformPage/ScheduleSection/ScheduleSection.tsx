@@ -15,8 +15,9 @@ import {
   useExecuteTransformMutation,
   useUpdateTransformMutation,
 } from "metabase-enterprise/api";
-import { CardSection } from "metabase-enterprise/transforms/components/CardSection";
 import type { Transform, TransformExecutionTrigger } from "metabase-types/api";
+
+import { SplitSection } from "../../../components/SplitSection";
 
 type ScheduleSectionProps = {
   transform: Transform;
@@ -24,7 +25,7 @@ type ScheduleSectionProps = {
 
 export function ScheduleSection({ transform }: ScheduleSectionProps) {
   return (
-    <CardSection
+    <SplitSection
       label={t`When to run this transform`}
       description={t`Run it on a schedule, or only when you click “Run now.”`}
     >
@@ -36,7 +37,7 @@ export function ScheduleSection({ transform }: ScheduleSectionProps) {
         <ExecuteStatus transform={transform} />
         <ExecuteButton transform={transform} />
       </Group>
-    </CardSection>
+    </SplitSection>
   );
 }
 
@@ -89,7 +90,7 @@ type ExecuteStatusProps = {
 };
 
 function ExecuteStatus({ transform }: ExecuteStatusProps) {
-  const isFailed = isStatusFailed(transform);
+  const isFailed = transform?.last_execution?.status === "failed";
 
   return (
     <Group gap="sm">
@@ -102,34 +103,28 @@ function ExecuteStatus({ transform }: ExecuteStatusProps) {
   );
 }
 
-function isStatusFailed({ execution_status: status }: Transform) {
-  return status === "exec-failed" || status === "sync-failed";
-}
+function getStatusText({ last_execution }: Transform) {
+  if (last_execution == null) {
+    return t`This transform hasn’t run yet.`;
+  }
 
-function getStatusText({
-  execution_status: status,
-  last_ended_at: lastEndedAt,
-}: Transform) {
-  const lastEndedAtText =
-    lastEndedAt != null
-      ? dayjs.parseZone(lastEndedAt).local().format("lll")
-      : null;
+  const { status, end_time } = last_execution;
+  const endTimeText =
+    end_time != null ? dayjs.parseZone(end_time).local().format("lll") : null;
 
   switch (status) {
-    case "never-executed":
-      return t`This transform hasn’t run yet.`;
     case "started":
       return t`In progress…`;
-    case "exec-succeeded":
-    case "sync-succeeded":
-      return lastEndedAtText
-        ? t`Last run ${lastEndedAtText}`
-        : t`Last run succeeded`;
-    case "exec-failed":
-    case "sync-failed":
-      return lastEndedAtText
-        ? t`Last run failed at ${lastEndedAtText}`
+    case "succeeded":
+      return endTimeText ? t`Last run ${endTimeText}` : t`Last run succeeded`;
+    case "failed":
+      return endTimeText
+        ? t`Last run failed at ${endTimeText}`
         : t`Last run failed`;
+    case "timeout":
+      return endTimeText
+        ? t`Last run timed out at ${endTimeText}`
+        : t`Last run timed out`;
   }
 }
 
@@ -139,7 +134,7 @@ type ExecuteButtonProps = {
 
 function ExecuteButton({ transform }: ExecuteButtonProps) {
   const [executeTransform] = useExecuteTransformMutation();
-  const isRunning = transform.execution_status === "started";
+  const isRunning = transform.last_execution?.status === "started";
   const { sendErrorToast } = useMetadataToasts();
 
   const handleRun = async () => {

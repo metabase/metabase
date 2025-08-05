@@ -13,6 +13,7 @@
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.sync.core :as sync]
    [metabase.task.core :as task]
+   [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2])
@@ -49,7 +50,7 @@
       (log/error "Remote execution failed.")
       (t2/update! :model/WorkerRun run-id
                   :status :started
-                  {:status :exec-failed
+                  {:status :failed
                    :end_time :%now
                    :is_active nil
                    :message (.getMessage t)})
@@ -61,26 +62,10 @@
          db (get-in source [:query :database])
          database (t2/select-one :model/Database db)]
      (sync-target! target database run-id)))
-  ([target database run-id]
+  ([target database _run-id]
    ;; sync the new table (note that even a failed sync status means that the execution succeeded)
-   (try
-     (log/info "Syncing target" (pr-str target) "for transform")
-     (t2/update! :model/WorkerRun
-                 :run_id run-id
-                 :status [:= :exec-succeeded]
-                 {:status :sync-started})
-     (sync-table! database target)
-     (t2/update! :model/WorkerRun
-                 :run_id run-id
-                 :status [:= :sync-started]
-                 {:status :sync-succeeded})
-     (catch Throwable t
-       (log/error "Syncing target" (pr-str target) "failed.")
-       (t2/update! :model/WorkerRun
-                   :run_id run-id
-                   :status [:= :sync-started]
-                   {:status :sync-failed})
-       (throw t)))))
+   (log/info "Syncing target" (pr-str target) "for transform")
+   (sync-table! database target)))
 
 ;; register that we need to run sync after a transform is finished remotely
 (defmethod transforms.sync/post-success :transform
@@ -136,13 +121,13 @@
       (swap! connections dissoc run-id)
       (t2/update! :model/WorkerRun
                   :run_id run-id
-                  {:status :exec-succeeded
+                  {:status :succeeded
                    :end_time :%now
                    :is_active nil}))
     (catch Throwable t
       (t2/update! :model/WorkerRun
                   :run_id run-id
-                  {:status :exec-failed
+                  {:status :failed
                    :end-time :%now
                    :is_active nil
                    :message (.getMessage t)})
@@ -160,7 +145,7 @@
      (let [db (get-in source [:query :database])
            {driver :engine :as database} (t2/select-one :model/Database db)
            feature (transforms.util/required-database-feature transform)
-           run-id (str (random-uuid))
+           run-id (str (u/generate-nano-id))
            transform-details {:transform-type (keyword (:type target))
                               :connection-details (driver/connection-details driver database)
                               :query (transforms.util/compile-source source)
@@ -204,7 +189,7 @@
 
 (comment
   (t2/insert! :model/WorkerRun
-              {:run_id (str (random-uuid))
+              {:run_id (str (u/generate-nano-id))
                :work_id 1
                :work_type :transform
                :run_method :remote
@@ -251,32 +236,39 @@
           (recur)))))
 
 (defn execute-transforms!
-  "Execute `transforms` and sync their target tables in dependency order."
+  "Execute `transforms` and sync their target tables in dependency order.
+  The function returns as soon as all transforms have started."
   [transforms opts]
   (let [ordering (transforms.ordering/transform-ordering transforms)
         _ (when-let [cycle (transforms.ordering/find-cycle ordering)]
             (let [id->name (into {} (map (juxt :id :name)) transforms)]
               (throw (ex-info (str "Cyclic transform definitions detected: "
                                    (str/join " → " (map id->name cycle)))
-                              {:cycle cycle}))))
-        id->transform (m/index-by :id transforms)]
-    (loop [to-start (into #{} (map :id) transforms)
+                              {:cycle cycle}))))]
+    (loop [id->transform (m/index-by :id transforms)
+           to-start (into #{} (map :id) transforms)
            running #{}
            complete #{}]
       (when (seq to-start)
         (if-let [available-ids (not-empty (transforms.ordering/available-transforms ordering running complete))]
           ;; there are transforms to start
           (let [{:keys [started failed]} (start-transforms! (map id->transform available-ids) opts)
+                id->transform (reduce (fn [m transform]
+                                        (assoc m (:id transform) transform))
+                                      id->transform
+                                      started)
                 running' (into running (map :id) started)
                 complete' (into complete (map :id) failed)
                 to-start' (reduce disj to-start available-ids)
                 completed (poll-transforms (map id->transform running'))]
-            (recur to-start'
+            (recur id->transform
+                   to-start'
                    (reduce disj running' completed)
                    (reduce conj complete' completed)))
           ;; nothing to start yet, poll for transforms to finish
           (if-let [completed (poll-transforms (map id->transform running))]
-            (recur to-start
+            (recur id->transform
+                   to-start
                    (reduce disj running completed)
                    (reduce conj complete completed))
             (throw (ex-info "There are transforms to start, but nothing can be started and nothing is running!"

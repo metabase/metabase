@@ -14,7 +14,6 @@ import {
   Loader,
   Text,
 } from "metabase/ui";
-import { CardSection } from "metabase-enterprise/transforms/components/CardSection";
 import {
   getBrowseDatabaseUrl,
   getBrowseSchemaUrl,
@@ -22,6 +21,8 @@ import {
   getTableMetadataUrl,
 } from "metabase-enterprise/transforms/urls";
 import type { Transform } from "metabase-types/api";
+
+import { SplitSection } from "../../../components/SplitSection";
 
 import { UpdateTargetModal } from "./UpdateTargetModal";
 
@@ -31,7 +32,7 @@ type TargetSectionProps = {
 
 export function TargetSection({ transform }: TargetSectionProps) {
   return (
-    <CardSection
+    <SplitSection
       label={t`Generated table`}
       description={t`Change what this transform generates and where.`}
     >
@@ -43,7 +44,7 @@ export function TargetSection({ transform }: TargetSectionProps) {
         <EditTargetButton transform={transform} />
         <EditMetadataButton transform={transform} />
       </Group>
-    </CardSection>
+    </SplitSection>
   );
 }
 

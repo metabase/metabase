@@ -8,6 +8,7 @@ import { Stack } from "metabase/ui";
 import { useGetTransformQuery } from "metabase-enterprise/api";
 import type { Transform, TransformId } from "metabase-types/api";
 
+import { HeaderSection } from "./HeaderSection";
 import { ManageSection } from "./ManageSection";
 import { NameSection } from "./NameSection";
 import { ScheduleSection } from "./ScheduleSection";
@@ -51,8 +52,11 @@ export function TransformPage({ params }: TransformPageProps) {
   }
 
   return (
-    <Stack gap="3.5rem">
-      <NameSection transform={transform} />
+    <Stack gap="xl">
+      <Stack>
+        <HeaderSection transform={transform} />
+        <NameSection transform={transform} />
+      </Stack>
       <TargetSection transform={transform} />
       <ScheduleSection transform={transform} />
       <ManageSection transform={transform} />
@@ -69,5 +73,5 @@ export function getParsedParams({
 }
 
 export function isPollingNeeded(transform?: Transform) {
-  return transform != null && transform.execution_status === "started";
+  return transform?.last_execution?.status === "started";
 }

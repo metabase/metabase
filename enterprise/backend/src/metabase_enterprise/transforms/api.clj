@@ -88,20 +88,12 @@
   (let [{:keys [target] :as transform} (api/check-404 (t2/select-one :model/Transform id))
         database-id (source-database-id transform)
         target-table (transforms.util/target-table database-id target :active true)
-        execution-status (or (t2/select-one-fn :status :model/WorkerRun :work_type :transform :work_id id
-                                               {:order-by [[:start_time :desc]]
-                                                :limit 1})
-                             :never-executed)]
+        last-execution (t2/select-one :model/WorkerRun :work_type :transform :work_id id
+                                      {:order-by [[:start_time :desc]]
+                                       :limit 1})]
     (assoc transform
            :table target-table
-           :execution_status execution-status)))
-
-(def ^:private status->status
-  {:exec-succeeded :success
-   :sync-succeeded :success
-   :sync-failed    :success
-   :exec-failed    :failed
-   :started        :started})
+           :last_execution last-execution)))
 
 (comment
 
@@ -122,23 +114,26 @@
     [:sort_column    {:optional true} [:enum "started_at" "ended_at"]]
     [:sort_direction {:optional true} [:enum "asc" "desc"]]
     [:transform_id   {:optional true} ms/IntGreaterThanOrEqualToZero]
-    [:status         {:optional true} [:enum "started" "succeeded" "failed"]]]]
+    [:status         {:optional true} [:enum "started" "succeeded" "failed" "timeout"]]]]
   (log/info "get executions")
   (api/check-superuser)
   (let [offset (or offset 0)
         limit  (or limit 20)
         sort-direction (or (keyword sort_direction) :desc)
-        order-by (if sort_column
-                   [[(keyword sort_column) sort-direction]]
-                   [[:start_time (keyword sort-direction)]
-                    [:end_time   (keyword sort-direction)]])
+        nulls-sort (if (= sort-direction :asc)
+                     :nulls-last
+                     :nulls-first)
+        sort-column (keyword sort_column)
+        order-by (case sort_column
+                   :started_at [[sort-column sort-direction]]
+                   :ended_at   [[sort-column sort-direction nulls-sort]]
+                   [[:start_time sort-direction]
+                    [:end_time   sort-direction nulls-sort]])
         conditions (concat [:work_type :transform]
                            (when transform_id
                              [:work_id transform_id])
                            (when status
-                             [:in :status (into #{} (keep #(when (= (val %) status)
-                                                             (key %)))
-                                                status->status)])
+                             [:= :status status])
                            (when (= status "started")
                              [:is_active true]))
         conditions-with-sort-and-pagination (concat conditions [{:order-by order-by
@@ -151,8 +146,7 @@
                                          :work_id    :transform_id
                                          :run_method :trigger
                                          :start_time :started_at
-                                         :end_time   :ended_at})
-                       (update :status status->status :unknown)))
+                                         :end_time   :ended_at})))
                  (t2/hydrate runs :transform))
      :limit limit
      :offset offset
