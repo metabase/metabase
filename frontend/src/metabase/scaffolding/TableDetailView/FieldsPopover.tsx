@@ -12,7 +12,6 @@ import {
   useSortable,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
-import { useEffect, useRef } from "react";
 import { t } from "ttag";
 
 import { ActionIcon, Box, Group, Stack, Text } from "metabase/ui/components";
@@ -93,59 +92,28 @@ function SortableFieldItem({
 }
 
 interface FieldsPopoverProps {
-  isOpen: boolean;
   section: Section;
   fieldsLimit?: number;
   usedFieldIds: Set<string>;
   columns: DatasetColumn[];
   onUpdateSection: (sectionId: number, update: Partial<Section>) => void;
   onClose: () => void;
-  triggerRef?: React.RefObject<HTMLElement>;
 }
 
 export function FieldsPopover({
-  isOpen,
   section,
   fieldsLimit,
   usedFieldIds,
   columns,
   onUpdateSection,
   onClose,
-  triggerRef,
 }: FieldsPopoverProps) {
-  const popoverRef = useRef<HTMLDivElement>(null);
-
   const sensors = useSensors(
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
     }),
   );
-
-  // Handle clicks outside the popover
-  useEffect(() => {
-    if (!isOpen) {
-      return;
-    }
-
-    const handleClickOutside = (event: MouseEvent) => {
-      const target = event.target as Node;
-
-      // Don't close if clicking on the trigger element
-      if (triggerRef?.current?.contains(target)) {
-        return;
-      }
-
-      if (popoverRef.current && !popoverRef.current.contains(target)) {
-        onClose();
-      }
-    };
-
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, [isOpen, onClose, triggerRef]);
 
   // Filter columns to get available fields
   const availableFields = columns.filter(
@@ -162,26 +130,7 @@ export function FieldsPopover({
     fieldsLimit != null && section.fields.length >= fieldsLimit;
 
   return (
-    <Box
-      ref={popoverRef}
-      pos="absolute"
-      top="100%"
-      left={0}
-      mt="xs"
-      bg="white"
-      style={{
-        border: "1px solid var(--border-color)",
-        borderRadius: "var(--default-border-radius)",
-        boxShadow: "var(--mb-shadow-lg)",
-        zIndex: 1000,
-        minWidth: 300,
-        maxHeight: 400,
-        overflowY: "auto",
-        display: isOpen ? "block" : "none",
-        cursor: "default",
-      }}
-      p="md"
-    >
+    <Box p="lg" w="25rem">
       <Group justify="space-between">
         <Text fw={600} mb="sm">{t`Fields for ${section.title}`}</Text>
         <ActionIcon

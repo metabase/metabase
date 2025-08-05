@@ -1,4 +1,4 @@
-import { useMemo, useRef } from "react";
+import { useMemo } from "react";
 import { t } from "ttag";
 
 import EditableText from "metabase/common/components/EditableText";
@@ -7,6 +7,7 @@ import {
   Button,
   Group,
   Icon,
+  Popover,
   Stack,
   Switch,
   Text,
@@ -45,8 +46,6 @@ export function SidebarSectionItem({
   setOpenPopoverId,
   variant,
 }: SidebarSectionItemProps) {
-  const rootTriggerRef = useRef<HTMLDivElement>(null);
-  const textTriggerRef = useRef<HTMLDivElement>(null);
   const usedFieldIds = useMemo(() => {
     return new Set(section.fields.map((f) => String(f.field_id)));
   }, [section.fields]);
@@ -87,61 +86,65 @@ export function SidebarSectionItem({
         )}
       </Group>
 
-      <Box
-        key={section.id}
-        px="md"
-        py="sm"
-        bg="bg-medium"
-        style={{
-          border: "1px solid var(--border-color)",
-          borderRadius: "var(--default-border-radius)",
-          cursor: setOpenPopoverId ? "pointer" : undefined,
-        }}
-        ref={rootTriggerRef}
-        onClick={(event) => {
-          if (!setOpenPopoverId) {
-            return;
+      {onUpdateSection && setOpenPopoverId && (
+        <Popover
+          opened={openPopoverId === section.id}
+          onChange={
+            openPopoverId === section.id
+              ? () => setOpenPopoverId(null)
+              : undefined
           }
+          position="bottom-start"
+          offset={4}
+        >
+          <Popover.Target>
+            <Box
+              key={section.id}
+              px="md"
+              py="sm"
+              bg="bg-medium"
+              style={{
+                border: "1px solid var(--border-color)",
+                borderRadius: "var(--default-border-radius)",
+                cursor: "pointer",
+              }}
+              onClick={() => {
+                if (!setOpenPopoverId) {
+                  return;
+                }
 
-          const target = event.target as HTMLElement;
-          // popover is open
-          if (openPopoverId === section.id) {
-            // do not close popover when we click inside it e.g. add section
-            if (
-              rootTriggerRef.current?.contains(target) &&
-              !textTriggerRef.current?.contains(target)
-            ) {
-              return;
-            }
+                if (openPopoverId === section.id) {
+                  setOpenPopoverId(null);
+                } else {
+                  setOpenPopoverId(section.id);
+                }
+              }}
+            >
+              <Group justify="space-between" align="flex-start">
+                <Stack gap="xs" flex="1" pos="relative">
+                  <Text c="text-medium">
+                    {section.fields.length === 0
+                      ? t`No fields`
+                      : t`${section.fields.length} fields`}
+                  </Text>
+                </Stack>
+              </Group>
+            </Box>
+          </Popover.Target>
+          <Popover.Dropdown>
+            <FieldsPopover
+              section={section}
+              usedFieldIds={usedFieldIds}
+              columns={columns}
+              onUpdateSection={onUpdateSection}
+              onClose={() => setOpenPopoverId(null)}
+              fieldsLimit={fieldsLimit}
+            />
+          </Popover.Dropdown>
+        </Popover>
+      )}
 
-            setOpenPopoverId(null);
-          } else {
-            setOpenPopoverId(section.id);
-          }
-        }}
-      >
-        <Group justify="space-between" align="flex-start">
-          <Stack gap="xs" flex="1" pos="relative">
-            <Text c="text-medium" ref={textTriggerRef}>
-              {section.fields.length === 0
-                ? t`No fields`
-                : t`${section.fields.length} fields`}
-            </Text>
-
-            {onUpdateSection && setOpenPopoverId && (
-              <FieldsPopover
-                isOpen={openPopoverId === section.id}
-                section={section}
-                usedFieldIds={usedFieldIds}
-                columns={columns}
-                fieldsLimit={fieldsLimit}
-                onUpdateSection={onUpdateSection}
-                onClose={() => setOpenPopoverId(null)}
-                triggerRef={rootTriggerRef}
-              />
-            )}
-          </Stack>
-          {/* {sections.length > 1 && onRemoveSection && (
+      {/* {sections.length > 1 && onRemoveSection && (
             <Button
               size="xs"
               variant="subtle"
@@ -151,8 +154,6 @@ export function SidebarSectionItem({
               {t`Remove`}
             </Button>
           )} */}
-        </Group>
-      </Box>
 
       {HIGHLIGHTABLE_VARIANTS.includes(variant) && onUpdateSection && (
         <Switch
