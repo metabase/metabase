@@ -185,7 +185,7 @@
     (filter some? [header-section filter-section link-section])))
 
 (mu/defmethod channel/render-notification [:channel/slack :notification/dashboard] :- [:sequential SlackMessage]
-  [_channel-type {:keys [payload creator]} _template recipients]
+  [_channel-type {:keys [payload creator]} {:keys [recipients]}]
   (let [all-params       (:parameters payload)
         top-level-params (impl.util/remove-inline-parameters all-params (:dashboard_parts payload))
         dashboard        (:dashboard payload)

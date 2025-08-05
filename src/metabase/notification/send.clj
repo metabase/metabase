@@ -167,9 +167,7 @@
                               messages     (channel/render-notification
                                             channel-type
                                             notification-payload
-                                            handler
-                                            #_(:template handler)
-                                            #_(:recipients handler))]
+                                            handler)]
                           (log/debugf "Got %d messages for channel %s with template %d"
                                       (count messages)
                                       (handler->channel-name handler)
