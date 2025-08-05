@@ -22,23 +22,28 @@
 (deftest ^:parallel cache-handle-composed-regexes-test
   (testing (str "For things that aren't ever equal when you re-evaluate them (like Regex literals) maybe sure we do"
                 " something smart to avoid creating infinite cache entries")
-    (let [unique-schema [:and {:id (rand)} :string [:re #"\d{4}"]]]
+    (let [unique-id (rand)]
       (is (= 1 (with-returning-cache-miss-count
-                 (mr/validate unique-schema "1234"))))
-      (is (contains? (set (keys (:validator @@#'mr/cache))) (#'mr/schema-cache-key unique-schema)))
-      (is (not (contains? (set (keys (:validator @@#'mr/cache))) unique-schema)))
+                 (mr/validate [:and {:id unique-id} :string [:re #"\d{4}"]] "1234"))))
+      (let [validator-key-set (set (keys (:validator @@#'mr/cache)))]
+        (is (contains? validator-key-set
+                       (#'mr/schema-cache-key [:and {:id unique-id} :string [:re #"\d{4}"]])))
+        (is (not (contains? validator-key-set
+                            [:and {:id unique-id} :string [:re #"\d{4}"]]))))
       (is (= 0
              (with-returning-cache-miss-count
-               (mr/validate unique-schema "1234")
-               (mr/validate unique-schema "1234")))
-          "Calling validate with a previously cached schema does not miss cache"))
-    (is (= 3
-           (with-returning-cache-miss-count
-             (dotimes [_ 10]
-               (mr/validate [:and :string [:re #"\d{1}"]] "1234")
-               (mr/validate [:and :string [:re #"\d{2}"]] "1234")
-               (mr/validate [:and :string [:re #"\d{3}"]] "1234"))))
-        "Calling validate multiple times with the 'same' schema does not miss cache")))
+               (mr/validate [:and {:id unique-id} :string [:re #"\d{4}"]] "1234")
+               (mr/validate [:and {:id unique-id} :string [:re #"\d{4}"]] "1234")))
+          "Calling validate with a previously cached schema does not miss cache")
+      (is (= 3
+             (with-returning-cache-miss-count
+               (mr/validate [:and {:id unique-id} [:re #"\d{1}"] :string] "1234")
+               (mr/validate [:and {:id unique-id} [:re #"\d{1}"] :string] "1234")
+               (mr/validate [:and {:id unique-id} [:re #"\d{2}"] :string] "1234")
+               (mr/validate [:and {:id unique-id} [:re #"\d{2}"] :string] "1234")
+               (mr/validate [:and {:id unique-id} [:re #"\d{3}"] :string] "1234")
+               (mr/validate [:and {:id unique-id} [:re #"\d{3}"] :string] "1234")))
+          "Calling validate multiple times with the 'same' schema does not miss cache"))))
 
 (mr/def ::int
   :int)
