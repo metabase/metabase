@@ -37,15 +37,17 @@ export function renderValue(
     },
   );
 
+  const NO_VALUE = "-";
+
   if (value === undefined) {
-    return "";
+    return NO_VALUE;
   }
 
   if (!column) {
-    return String(value);
+    return String(value) || NO_VALUE;
   }
 
-  return formatValue(tc(value), {
+  const formattedValue = formatValue(tc(value), {
     ...column.settings,
     ...finalSettings,
     column,
@@ -53,6 +55,8 @@ export function renderValue(
     jsx: true,
     rich: true,
   });
+
+  return formattedValue != undefined ? formattedValue : NO_VALUE;
 }
 
 export function getDefaultObjectViewSettings(
