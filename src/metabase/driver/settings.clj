@@ -177,3 +177,11 @@
   :getter     (fn []
                 ((requiring-resolve 'metabase.driver.util/available-drivers-info)))
   :doc        false)
+
+(defsetting mongodb-sync-field-limit
+  "Maximum number of leaf fields of Mongo collection considered during field sync."
+  :visibility :internal
+  :export? true
+  :setter :none
+  :type :integer
+  :default 1000)
