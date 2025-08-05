@@ -52,13 +52,24 @@ export function useDetailViewSections(
       ]);
     } else {
       setSections([
+        ...sections.filter(
+          (s) =>
+            s.variant === "header" ||
+            s.variant === "subheader" ||
+            s.variant === "highlight-1",
+        ),
         {
           id: generateId(),
           title,
           variant: "normal",
           fields: [],
         },
-        ...sections,
+        ...sections.filter(
+          (s) =>
+            s.variant !== "header" &&
+            s.variant !== "subheader" &&
+            s.variant !== "highlight-1",
+        ),
       ]);
     }
   };
