@@ -37,6 +37,7 @@ export const TableBreadcrumbs = ({ hideTableName, tableId }: Props) => {
         to={`/browse/databases/${table.db_id}`}
         c="text-light"
         align="center"
+        flex="0 0 auto"
         gap={10}
         className={S.breadcrumb}
         wrap="nowrap"
@@ -61,6 +62,7 @@ export const TableBreadcrumbs = ({ hideTableName, tableId }: Props) => {
             to={`/browse/databases/${table.db_id}/schema/${table.schema}`}
             c="text-light"
             align="center"
+            flex="0 0 auto"
             gap={10}
             className={S.breadcrumb}
             wrap="nowrap"
@@ -83,6 +85,7 @@ export const TableBreadcrumbs = ({ hideTableName, tableId }: Props) => {
             to={getExploreTableUrl(table)}
             c="text-light"
             align="center"
+            flex="0 0 auto"
             gap={10}
             className={S.breadcrumb}
             wrap="nowrap"

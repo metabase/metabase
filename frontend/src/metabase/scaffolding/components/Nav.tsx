@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 
 import { createMockMetadata } from "__support__/metadata";
+import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { useTranslateContent } from "metabase/i18n/hooks";
 import { Box, Group, Text } from "metabase/ui";
 import * as ML_Urls from "metabase-lib/v1/urls";
@@ -90,9 +91,9 @@ export const Nav = ({
           <>
             <Separator />
 
-            <Group c="text-primary" fw="bold">
+            <Ellipsified c="text-primary" fw="bold" flex="1">
               {headerText}
-            </Group>
+            </Ellipsified>
           </>
         )}
 
@@ -101,6 +102,7 @@ export const Nav = ({
             <Separator />
 
             <Group
+              flex="1"
               align="flex-end"
               // component={Link}
               gap="sm"
@@ -121,7 +123,7 @@ export const Nav = ({
         )}
       </Group>
 
-      <Group align="center" gap="md">
+      <Group flex="0 0 auto" align="center" gap="md">
         {children}
       </Group>
     </Group>
