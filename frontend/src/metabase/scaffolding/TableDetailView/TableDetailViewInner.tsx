@@ -294,7 +294,8 @@ export function TableDetailViewInner({
                     updateSection(section.id, update)
                   }
                 />
-                {index < notEmptySections.length - 1 &&
+                {(index < notEmptySections.length - 1 ||
+                  !!uncategorizedSection.fields.length) &&
                   (section.variant === "normal" ||
                     section.variant === "highlight-2") && <Divider mt="md" />}
               </>
