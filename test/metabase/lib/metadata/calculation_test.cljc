@@ -223,8 +223,8 @@
        (sort-by :position)))
 
 (deftest ^:parallel self-join-visible-columns-test
-  (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
-                  (lib/with-fields (for [field [:id :tax]]
+  (let [query       (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                        (lib/with-fields (for [field [:id :tax]]
                                      (lib/ref (meta/field-metadata :orders field))))
                   (lib/join (-> (lib/join-clause (meta/table-metadata :orders)
                                                  [(lib/= (meta/field-metadata :orders :id)
@@ -233,15 +233,16 @@
                                                         (lib/ref (meta/field-metadata :orders field)))))))
         orders-cols (for [field-name ["ID" "USER_ID" "PRODUCT_ID" "SUBTOTAL" "TAX"
                                       "TOTAL" "DISCOUNT" "CREATED_AT" "QUANTITY"]]
-                      {:name field-name
-                       :lib/desired-column-alias field-name
-                       :lib/source :source/table-defaults})
+                      {:name                    field-name
+                       :lib/source-column-alias field-name
+                       :lib/source              :source/table-defaults})
         joined-cols (for [field-key [:id :user-id :product-id :subtotal :tax
                                      :total :discount :created-at :quantity]
-                          :let [field (meta/field-metadata :orders field-key)]]
-                      {:name (:name field)
-                       :lib/desired-column-alias (str "Orders__" (:name field))
-                       :lib/source :source/joins})]
+                          :let      [field (meta/field-metadata :orders field-key)]]
+                      {:name                         (:name field)
+                       :metabase.lib.join/join-alias "Orders"
+                       :lib/source-column-alias      (:name field)
+                       :lib/source                   :source/joins})]
     (testing "just own columns"
       (is (=? (concat orders-cols joined-cols)
               (lib/visible-columns query -1 (lib.util/query-stage query -1) {:include-implicitly-joinable? false}))))

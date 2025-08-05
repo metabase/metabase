@@ -886,7 +886,7 @@
                                (not join-alias) (lib.options/update-options dissoc :join-alias)))]
      (->> (lib.metadata.calculation/visible-columns query stage-number joinable {:include-implicitly-joinable? false})
           (map (if join-alias
-                 column-from-join
+                 #(column-from-join query stage-number % join-alias)
                  identity))
           (mark-selected-column query stage-number rhs-column-or-nil)
           sort-join-condition-columns))))
