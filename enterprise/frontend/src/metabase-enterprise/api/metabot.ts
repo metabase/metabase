@@ -3,6 +3,8 @@ import type {
   MetabotAgentRequest,
   MetabotAgentResponse,
   MetabotApiEntity,
+  MetabotDocumentNodeRequest,
+  MetabotDocumentNodeResponse,
   MetabotEntity,
   MetabotId,
   MetabotInfo,
@@ -120,6 +122,16 @@ export const metabotApi = EnterpriseApi.injectEndpoints({
       invalidatesTags: (_, error, metabot_id) =>
         !error ? [idTag("metabot-prompt-suggestions", metabot_id)] : [],
     }),
+    metabotDocumentNode: builder.query<
+      MetabotDocumentNodeResponse,
+      MetabotDocumentNodeRequest
+    >({
+      query: (params) => ({
+        method: "POST",
+        url: "/api/ee/metabot-v3/document/generate-node",
+        params,
+      }),
+    }),
   }),
 });
 
@@ -133,4 +145,5 @@ export const {
   useGetSuggestedMetabotPromptsQuery,
   useDeleteSuggestedMetabotPromptMutation,
   useRegenerateSuggestedMetabotPromptsMutation,
+  useLazyMetabotDocumentNodeQuery,
 } = metabotApi;

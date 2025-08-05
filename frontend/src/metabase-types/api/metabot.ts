@@ -1,4 +1,5 @@
 import type {
+  Card,
   CardDisplayType,
   CardId,
   CardType,
@@ -216,3 +217,14 @@ export type MetabotEntity = {
 export type MetabotApiEntity = Omit<MetabotEntity, "id"> & {
   model_id: MetabotEntity["id"];
 };
+
+/* Metabot v3 - Document Types */
+
+export interface MetabotDocumentNodeRequest {
+  prompt: string;
+}
+
+export interface MetabotDocumentNodeResponse {
+  card: Card | null;
+  message: string;
+}

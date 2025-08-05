@@ -11,7 +11,7 @@ import CS from "metabase/css/core/index.css";
 import { Button, Flex, Icon, Text, Tooltip } from "metabase/ui";
 import MetabotThinkingStyles from "metabase-enterprise/metabot/components/MetabotChat/MetabotThinking.module.css";
 
-import { useMetabotDocumentQuery } from "../../hooks/useMetabotDocumentQuery";
+import { useLazyMetabotDocumentNodeQuery } from "metabase-enterprise/api/metabot";
 
 import Styles from "./MetabotEmbed.module.css";
 
@@ -76,7 +76,7 @@ export const MetabotComponent = memo(
     const controllerRef = useRef<AbortController | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [errorText, setErrorText] = useState("");
-    const queryMetabot = useMetabotDocumentQuery();
+    const [queryMetabot] = useLazyMetabotDocumentNodeQuery();
     const { text: prompt } = node.attrs;
 
     const handleRunMetabot = useCallback(async () => {
@@ -89,18 +89,17 @@ export const MetabotComponent = memo(
       setErrorText("");
       editor.commands.focus();
 
-      const { cardId, description, error } = await queryMetabot({
-        prompt: prompt.trim(),
-        signal: controller.signal,
-      });
-      if (controller.signal.aborted) {
-        return;
-      }
+      const res = queryMetabot({ prompt: prompt.trim() });
+      // TODO: Wire up "Stop generating" with res.abort();
+      const { data, error } = await res;
 
       setIsLoading(false);
 
-      if (error) {
-        setErrorText(error);
+      // TODO: Figure out actual error handling
+      if (error || !data?.card) {
+        setErrorText(
+          data?.message || t`There was a problem connecting to Metabot`,
+        );
         return;
       }
 
@@ -116,14 +115,14 @@ export const MetabotComponent = memo(
         .insertContentAt(nodePosition, {
           type: "cardEmbed",
           attrs: {
-            id: cardId,
+            id: data.card.id,
           },
         })
         .insertContentAt(
           nodePosition + 1,
           createTextNode(`🤖 Created with Metabot 💙`),
         )
-        .insertContentAt(nodePosition + 1, createTextNode(description))
+        .insertContentAt(nodePosition + 1, createTextNode(data.message))
         .run();
 
       deleteNode();
