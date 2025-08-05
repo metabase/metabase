@@ -16,6 +16,7 @@
    [metabase-enterprise.metabot-v3.settings :as metabot-v3.settings]
    [metabase-enterprise.metabot-v3.tools.create-dashboard-subscription
     :as metabot-v3.tools.create-dashboard-subscription]
+   [metabase-enterprise.metabot-v3.tools.create-question :as metabot-v3.tools.create-question]
    [metabase-enterprise.metabot-v3.tools.field-stats :as metabot-v3.tools.field-stats]
    [metabase-enterprise.metabot-v3.tools.filters :as metabot-v3.tools.filters]
    [metabase-enterprise.metabot-v3.tools.find-metric :as metabot-v3.tools.find-metric]
@@ -27,13 +28,17 @@
    [metabase.api.response :as api.response]
    [metabase.api.routes.common :as api.routes.common]
    [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.search.core :as search.core]
+   [metabase.search.impl :as search.impl]
+   [clojure.string :as str]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.request.core :as request]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli.schema :as ms]
+   [toucan2.core :as t2]))
 
 (defn- get-ai-service-token
   [user-id metabot-id]
@@ -855,6 +860,145 @@
                          (metabot-v3.tools.filters/query-model arguments)
                          (mtx/transformer {:name :tool-api-response}))
               (assoc :conversation_id conversation_id))
+      (metabot-v3.context/log :llm.log/be->llm))))
+
+(api.macros/defendpoint :post "/create-question" :- [:merge
+                                                      [:map
+                                                       [:id [:maybe :int]]
+                                                       [:message :string]]
+                                                      ::tool-request]
+  "Create a question/card in Metabase from a dataset query."
+  [_route-params
+   _query-params
+   {:keys [arguments conversation_id] :as body} :- [:merge
+                                                    [:map [:arguments [:map
+                                                                      [:name :string]
+                                                                      [:description {:optional true} [:maybe :string]]
+                                                                      [:dataset_query :map]
+                                                                      [:display {:optional true} [:maybe :string]]
+                                                                      [:visualization_settings {:optional true} [:maybe :map]]]]]
+                                                    ::tool-request]]
+  (metabot-v3.context/log (assoc body :api :create-question) :llm.log/llm->be)
+  (let [card-args (-> arguments
+                     (update-keys metabot-v3.u/safe->kebab-case-en)
+                     (assoc :collection-id nil))  ; Put in root collection by default
+        result (metabot-v3.tools.create-question/create-question card-args)]
+    (doto (assoc result :conversation_id conversation_id)
+      (metabot-v3.context/log :llm.log/be->llm))))
+
+(api.macros/defendpoint :post "/get-database-tables" :- [:merge
+                                                       [:map
+                                                        [:structured_output :map]
+                                                        [:output {:optional true} [:maybe :string]]]
+                                                       ::tool-request]
+  "Get all tables from a specific database."
+  [_route-params
+   _query-params
+   {:keys [arguments conversation_id] :as body} :- [:merge
+                                                    [:map [:arguments [:map
+                                                                      [:database_id :int]]]]
+                                                    ::tool-request]]
+  (metabot-v3.context/log (assoc body :api :get-database-tables) :llm.log/llm->be)
+  (let [{:keys [database_id]} arguments
+        _ (log/infof "Getting all tables from database: %d" database_id)
+
+        ;; Get all tables from the database
+        tables (t2/select :model/Table
+                         {:where [:and
+                                 [:= :db_id database_id]
+                                 [:= :active true]]
+                          :limit 100}) ; Limit to prevent overwhelming context
+
+        _ (log/infof "Found %d tables in database %d" (count tables) database_id)
+
+        ;; Format tables with basic field information
+        formatted-tables (for [table tables]
+                          (let [table-id (:id table)
+                                ;; Get table fields using the same method as get-table-details
+                                table-details (metabot-v3.dummy-tools/get-table-details
+                                              {:table-id table-id
+                                               :with-fields? true
+                                               :with-metrics? false
+                                               :with-field-values? false})
+                                fields (when (map? table-details)
+                                        (get-in table-details [:structured-output :fields]))]
+                            {:id table-id
+                             :name (:name table)
+                             :type "table"
+                             :display_name (:display_name table)
+                             :description (:description table)
+                             :fields (or fields [])}))]
+    (doto {:structured_output {:tables formatted-tables}
+           :conversation_id conversation_id}
+      (metabot-v3.context/log :llm.log/be->llm))))
+
+(api.macros/defendpoint :post "/search-data-sources" :- [:merge
+                                                         [:map
+                                                          [:structured_output [:map
+                                                                               [:data [:sequential [:map
+                                                                                                   [:id :int]
+                                                                                                   [:name :string]
+                                                                                                   [:type [:enum "table" "model" "metric" "dashboard" "question"]]
+                                                                                                   [:display_name {:optional true} [:maybe :string]]
+                                                                                                   [:description {:optional true} [:maybe :string]]]]]
+                                                                               [:total_count :int]]]
+                                                          [:output {:optional true} [:maybe :string]]]
+                                                         ::tool-request]
+  "Search for data sources (tables, models, metrics, dashboards, questions)."
+  [_route-params
+   _query-params
+   {:keys [arguments conversation_id] :as body} :- [:merge
+                                                    [:map [:arguments [:map
+                                                                      [:database_id {:optional true} [:maybe :int]]
+                                                                      [:description {:optional true} [:maybe :string]]
+                                                                      [:entity_types [:sequential [:enum "table" "model" "metric" "dashboard" "question"]]]
+                                                                      [:keywords [:sequential :string]]
+                                                                      [:limit {:optional true} [:maybe :int]]]]]
+                                                    ::tool-request]]
+  (metabot-v3.context/log (assoc body :api :search-data-sources) :llm.log/llm->be)
+  (let [{:keys [entity_types keywords limit description]} arguments
+        search-query (or description (str/join " " keywords) "")
+        ;; Map AI service model names to Metabase search model names
+        model-mapping {"model" "dataset" "question" "card" "table" "table" "metric" "metric"}
+        ;; ONLY map the entity types we actually want - exclude dashboard completely
+        models (set (keep #(get model-mapping %) (filter #(not= % "dashboard") entity_types)))
+        _ (log/infof "Search request: entity_types=%s, mapped models=%s, search-query='%s'" entity_types models search-query)
+
+        ;; Ensure we only search for dataset and table, never dashboard
+        filtered-models (set (filter #(contains? #{"dataset" "table" "metric"} %) models))
+        _ (log/infof "Filtered models for search: %s" filtered-models)
+
+        search-ctx (search.impl/search-context
+                    {:search-string search-query
+                     :models filtered-models  ; Use filtered models
+                     :limit (or limit 50)
+                     :current-user-id api/*current-user-id*
+                     :is-superuser? api/*is-superuser?*
+                     :current-user-perms @api/*current-user-permissions-set*})
+        results (search.core/search search-ctx)
+        _ (log/infof "Search results count: %d, models in results: %s"
+                     (count (:data results))
+                     (distinct (map :model (:data results))))
+
+        ;; Double-check: remove any dashboards that somehow got through
+        filtered-results (filter (fn [result]
+                                   (let [model-type (name (:model result))]
+                                     (log/infof "Checking result: model-type='%s', id=%d, name='%s'" model-type (:id result) (:name result))
+                                     (boolean (contains? #{"dataset" "table" "metric"} model-type))))
+                                 (:data results))
+        _ (log/infof "Final filtered results count: %d (dashboards completely excluded)" (count filtered-results))
+        ;; Map Metabase model names back to AI service model names (no dashboards)
+        reverse-model-mapping {"dataset" "model" "card" "question" "table" "table" "metric" "metric"}
+        formatted-results (map (fn [result]
+                                 {:id (:id result)
+                                  :name (:name result)
+                                  :type (get reverse-model-mapping (name (:model result)) (name (:model result)))  ; Use :type instead of :model
+                                  :display_name (:display_name result)
+                                  :description (:description result)})
+                               filtered-results)]
+    (doto {:structured_output {:data formatted-results
+                               :total_count (count formatted-results)}
+           :conversation_id conversation_id}
       (metabot-v3.context/log :llm.log/be->llm))))
 
 (defn- enforce-authentication

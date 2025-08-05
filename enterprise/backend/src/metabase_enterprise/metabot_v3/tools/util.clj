@@ -56,6 +56,7 @@
   (let [semantic-type (some-> (:semantic-type column) name u/->snake_case_en)]
     (-> {:field-id (str field-id-prefix index)
          :name (lib/display-name query column)
+         :column_name (:name column)  ; Add the actual database column name
          :type (convert-field-type column)}
         (m/assoc-some :description (:description column)
                       :semantic-type semantic-type

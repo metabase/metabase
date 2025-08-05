@@ -4,6 +4,7 @@
    [malli.core :as mc]
    [malli.transform :as mtx]
    [metabase-enterprise.metabot-v3.api.metabot]
+   [metabase-enterprise.metabot-v3.agentic-question-creation :as metabot-v3.agentic-question-creation]
    [metabase-enterprise.metabot-v3.client.schema :as metabot-v3.client.schema]
    [metabase-enterprise.metabot-v3.config :as metabot-v3.config]
    [metabase-enterprise.metabot-v3.context :as metabot-v3.context]
@@ -87,6 +88,15 @@
             [:state :map]]]
   (metabot-v3.context/log body :llm.log/fe->be)
   (streaming-request body))
+
+(api.macros/defendpoint :post "/agentic-question-creation"
+  "Create a question from a natural language prompt using agentic workflow."
+  [_route-params
+   _query-params
+   body :- [:map
+            [:prompt ms/NonBlankString]
+            [:auto_execute {:optional true} :boolean]]]
+  (metabot-v3.agentic-question-creation/create-question-from-prompt body))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/metabot-v3` routes."
