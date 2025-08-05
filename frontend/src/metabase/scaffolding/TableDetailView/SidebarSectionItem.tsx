@@ -52,13 +52,13 @@ export function SidebarSectionItem({
   return (
     <Stack gap={4}>
       <Group justify="space-between">
-        {!onUpdateSection && (
+        {(!onUpdateSection || !onRemoveSection) && (
           <Text fw="bold" c="text-primary" size="md">
             {section.title}
           </Text>
         )}
 
-        {onUpdateSection && (
+        {onRemoveSection && onUpdateSection && (
           <EditableText
             initialValue={section.title}
             onChange={(title) => onUpdateSection(section.id, { title })}
