@@ -57,6 +57,9 @@ export function setupDeleteUploadManagementDeleteEndpoint(failureId?: number) {
       ? {
           throws: { data: { message: "It's dead Jim" } },
         }
-      : true;
+      : // fetch-mock doesn't like returning true directly
+        new Response(JSON.stringify(true), {
+          status: 200,
+        });
   });
 }

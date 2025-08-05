@@ -93,7 +93,7 @@ describe("useUserKeyValue", () => {
 
   describe("setValue", () => {
     it("should optimistically update the value and skip refetching", async () => {
-      const mockedFetch = setupGetUserKeyValueEndpoint({
+      setupGetUserKeyValueEndpoint({
         namespace: "test",
         key: "test",
         value: "before-value",
@@ -128,15 +128,18 @@ describe("useUserKeyValue", () => {
       });
       expect(result.current?.isLoading).toBe(false);
       expect(
-        fetchMock.callHistory.calls(`path:/api/user-key-value/namespace/test/key/test`, {
-          method: "GET",
-        }),
+        fetchMock.callHistory.calls(
+          `path:/api/user-key-value/namespace/test/key/test`,
+          {
+            method: "GET",
+          },
+        ),
       ).toHaveLength(1);
       expect(result.current.value).toBe("after-value");
     });
 
     it("should revert optimisitic update if update fails", async () => {
-      const mockedFetch = setupGetUserKeyValueEndpoint({
+      setupGetUserKeyValueEndpoint({
         namespace: "test",
         key: "test",
         value: "before-value",
@@ -167,9 +170,12 @@ describe("useUserKeyValue", () => {
       });
       expect(result.current?.isLoading).toBe(false);
       expect(
-        fetchMock.callHistory.calls(`path:/api/user-key-value/namespace/test/key/test`, {
-          method: "GET",
-        }),
+        fetchMock.callHistory.calls(
+          `path:/api/user-key-value/namespace/test/key/test`,
+          {
+            method: "GET",
+          },
+        ),
       ).toHaveLength(1);
       expect(result.current.value).toBe("before-value");
     });
@@ -177,7 +183,7 @@ describe("useUserKeyValue", () => {
 
   describe("clearValue", () => {
     it("should optimistically delete a key and skip refetching its value", async () => {
-      const mockedFetch = setupGetUserKeyValueEndpoint({
+      setupGetUserKeyValueEndpoint({
         namespace: "test",
         key: "test",
         value: "value",
@@ -208,15 +214,18 @@ describe("useUserKeyValue", () => {
       });
       expect(result.current?.isLoading).toBe(false);
       expect(
-        fetchMock.callHistory.calls(`path:/api/user-key-value/namespace/test/key/test`, {
-          method: "GET",
-        }),
+        fetchMock.callHistory.calls(
+          `path:/api/user-key-value/namespace/test/key/test`,
+          {
+            method: "GET",
+          },
+        ),
       ).toHaveLength(1);
       expect(result.current.value).toBe(undefined);
     });
 
     it("should revert optimisitic delete if deletion fails", async () => {
-      const mockedFetch = setupGetUserKeyValueEndpoint({
+      setupGetUserKeyValueEndpoint({
         namespace: "test",
         key: "test",
         value: "before-value",
@@ -247,9 +256,12 @@ describe("useUserKeyValue", () => {
       });
       expect(result.current?.isLoading).toBe(false);
       expect(
-        fetchMock.callHistory.calls(`path:/api/user-key-value/namespace/test/key/test`, {
-          method: "GET",
-        }),
+        fetchMock.callHistory.calls(
+          `path:/api/user-key-value/namespace/test/key/test`,
+          {
+            method: "GET",
+          },
+        ),
       ).toHaveLength(1);
       expect(result.current.value).toBe("before-value");
     });
