@@ -69,26 +69,6 @@ export function DetailViewHeader({
       table={table}
     >
       <Flex align="center" gap="md">
-        <Tooltip label={t`Debug: reset settings to default`}>
-          <Button
-            w={32}
-            h={32}
-            c="text-dark"
-            variant="subtle"
-            leftSection={<Icon name="refresh" />}
-            onClick={() => {
-              if (window.confirm("The change will persist. Are you sure?")) {
-                updateTableComponentSettings({
-                  id: table.id,
-                  component_settings: null,
-                });
-              }
-            }}
-          />
-        </Tooltip>
-
-        <Box h={20} w={1} bg="var(--border-color)" />
-
         {(canOpenPreviousItem || canOpenNextItem) && (
           <>
             <Group gap="sm">
@@ -128,6 +108,26 @@ export function DetailViewHeader({
         )}
 
         <Group gap="sm">
+          <Tooltip
+            label={t`Debug: reset settings to default. This button is not meant to make it to production.`}
+          >
+            <Button
+              w={32}
+              h={32}
+              c="text-dark"
+              variant="subtle"
+              leftSection={<Icon name="refresh" />}
+              onClick={() => {
+                if (window.confirm("The change will persist. Are you sure?")) {
+                  updateTableComponentSettings({
+                    id: table.id,
+                    component_settings: null,
+                  });
+                }
+              }}
+            />
+          </Tooltip>
+
           <Tooltip label={linkCopied ? t`Copied!` : t`Copy link to this row`}>
             <Button
               w={32}
