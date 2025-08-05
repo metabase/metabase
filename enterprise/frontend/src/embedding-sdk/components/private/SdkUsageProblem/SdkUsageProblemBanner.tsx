@@ -4,6 +4,8 @@ import { useState } from "react";
 
 import wrenchImage from "assets/img/sdk-banner-wrench.svg";
 import { DEFAULT_FONT } from "embedding-sdk/config";
+import { useSdkDispatch } from "embedding-sdk/store";
+import { setUsageProblem } from "embedding-sdk/store/reducer";
 import type { SdkUsageProblem } from "embedding-sdk/types/usage-problem";
 import ExternalLink from "metabase/common/components/ExternalLink";
 import LogoIcon from "metabase/common/components/LogoIcon";
@@ -25,12 +27,13 @@ export const SdkUsageProblemBanner = ({
   problem,
 }: SdkUsageProblemBannerProps) => {
   const [expanded, setExpanded] = useState(false);
+  const dispatch = useSdkDispatch();
 
   if (!problem) {
     return null;
   }
 
-  const { title } = problem;
+  const { title, severity } = problem;
 
   // When the font family cannot be loaded from the MB instance,
   // due to MB instance outage or missing CORS header,
@@ -89,6 +92,20 @@ export const SdkUsageProblemBanner = ({
             </Text>
 
             <Flex w="100%" justify="end" mt="sm" columnGap="sm">
+              <Button
+                fz="sm"
+                ff={fontFamily}
+                fs="normal"
+                size="md"
+                radius="md"
+                variant="subtle"
+                color="var(--mb-color-text-brand)"
+                onClick={() => {
+                  dispatch(setUsageProblem(null));
+                }}
+              >
+                Hide {severity === "error" ? "error" : "warning"}
+              </Button>
               <ExternalLink role="link" href={problem.documentationUrl}>
                 <Button
                   fz="sm"

@@ -7,7 +7,7 @@ show_title_breadcrumb: true
 category: "Cloud"
 layout: new-docs
 redirect_from:
-- /cloud/docs/migrate/heroku
+  - /cloud/docs/migrate/heroku
 ---
 
 # Migrating from Heroku to Metabase Cloud

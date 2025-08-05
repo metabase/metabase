@@ -46,7 +46,6 @@ export const QuestionVisualization = ({
     navigateToNewCard,
     onNavigateBack,
     updateQuestion,
-    variant,
     originalId,
   } = useSdkQuestionContext();
 
@@ -87,9 +86,7 @@ export const QuestionVisualization = ({
         result={result}
         noHeader
         mode={mode}
-        navigateToNewCardInsideQB={
-          variant === "static" ? undefined : navigateToNewCard
-        }
+        navigateToNewCardInsideQB={navigateToNewCard}
         onNavigateBack={onNavigateBack}
         onUpdateQuestion={(question: Question) =>
           updateQuestion(question, { run: false })

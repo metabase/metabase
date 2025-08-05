@@ -6458,10 +6458,10 @@ databaseChangeLog:
   - changeSet:
       id: v49.2024-06-27T00:00:00
       author: calherries
+      dbms: mysql,mariadb
       comment: Make metabase_field.name use case-sensitive collation for MySQL
       changes:
         - sql:
-            dbms: mysql,mariadb
             sql: >-
               ALTER TABLE metabase_field MODIFY
               name VARCHAR(254)
@@ -6469,7 +6469,6 @@ databaseChangeLog:
               COLLATE utf8mb4_bin;
       rollback:
         - sql:
-            dbms: mysql,mariadb
             sql: >-
               ALTER TABLE metabase_field MODIFY
               name VARCHAR(254)
@@ -6602,10 +6601,10 @@ databaseChangeLog:
   - changeSet:
       id: v49.2024-06-27T00:00:06
       author: calherries
+      dbms: postgresql
       comment: Remove the idx_uniq_field_table_id_parent_id_name_2col unique index because it blocks load-from-h2
       changes:
         - sql:
-            dbms: postgresql
             sql: DROP INDEX IF EXISTS idx_uniq_field_table_id_parent_id_name_2col;
       rollback: # We deliberately don't restore this constraint because otherwise it can block downgrading to 48 after load-from-h2
 
@@ -8254,10 +8253,10 @@ databaseChangeLog:
   - changeSet:
       id: v50.2024-05-29T14:05:03
       author: johnswanson
+      dbms: postgresql
       comment: Populate `archived_directly` and `archive_operation_id` (Postgres)
       changes:
         - sqlFile:
-            dbms: postgresql
             path: trash/postgres.sql
             relativeToChangelogFile: true
       rollback: # not needed, columns will be deleted
@@ -8265,10 +8264,10 @@ databaseChangeLog:
   - changeSet:
       id: v50.2024-05-29T18:42:13
       author: johnswanson
+      dbms: h2
       comment: Populate `archived_directly` and `archive_operation_id` (H2)
       changes:
         - sqlFile:
-            dbms: h2
             path: trash/h2.sql
             relativeToChangelogFile: true
       rollback: # not needed, columns will be deleted
@@ -8276,11 +8275,11 @@ databaseChangeLog:
   - changeSet:
       id: v50.2024-05-29T18:42:14
       author: johnswanson
+      dbms: mysql
       comment: Populate `archived_directly` and `archive_operation_id` (MySQL)
       validCheckSum: ANY
       changes:
         - sqlFile:
-            dbms: mysql
             path: trash/mysql.sql
             relativeToChangelogFile: true
       rollback: # not needed, columns will be deleted
@@ -8288,10 +8287,10 @@ databaseChangeLog:
   - changeSet:
       id: v50.2024-05-29T18:42:15
       author: johnswanson
+      dbms: mariadb
       comment: Populate `archived_directly` and `archive_operation_id` (MariaDB)
       changes:
         - sqlFile:
-            dbms: mariadb
             path: trash/mariadb.sql
             relativeToChangelogFile: true
       rollback: # not needed, columns will be deleted
@@ -11361,10 +11360,10 @@ databaseChangeLog:
       id: v55.2025-05-19T01:00:00
       validCheckSum: ANY
       author: ranquild
+      dbms: mysql,mariadb
       comment: Make metabase_table.name and schema use case-sensitive collation for MySQL
       changes:
         - sql:
-            dbms: mysql,mariadb
             sql: >-
               ALTER TABLE metabase_table MODIFY
               `name` varchar(254)
@@ -11377,7 +11376,6 @@ databaseChangeLog:
               COLLATE utf8mb4_bin;
       rollback:
         - sql:
-            dbms: mysql,mariadb
             sql: >-
               ALTER TABLE metabase_table MODIFY
               `name` VARCHAR(254)

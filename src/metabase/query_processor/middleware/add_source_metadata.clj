@@ -27,7 +27,7 @@
                   (every? #(lib.util.match/match-one % [:field (_ :guard string?) _])
                           fields))))))
 
-(mu/defn- native-source-query->metadata :- [:maybe [:sequential mbql.s/SourceQueryMetadata]]
+(mu/defn- native-source-query->metadata :- [:maybe [:sequential ::mbql.s/legacy-column-metadata]]
   "Given a `source-query`, return the source metadata that should be added at the parent level (i.e., at the same
   level where this `source-query` was present.) This metadata is used by other middleware to determine what Fields to
   expect from the source query."
@@ -44,7 +44,7 @@
                   {:source-query source-query}))
       nil)))
 
-(mu/defn mbql-source-query->metadata :- [:maybe [:sequential mbql.s/SourceQueryMetadata]]
+(mu/defn mbql-source-query->metadata :- [:maybe [:sequential ::mbql.s/legacy-column-metadata]]
   "Preprocess a `source-query` so we can determine the result columns."
   [source-query :- mbql.s/MBQLQuery]
   (try
@@ -63,7 +63,7 @@
 (mu/defn- add-source-metadata :- [:map
                                   [:source-metadata
                                    {:optional true}
-                                   [:maybe [:sequential mbql.s/SourceQueryMetadata]]]]
+                                   [:maybe [:sequential ::mbql.s/legacy-column-metadata]]]]
   [{{native-source-query? :native, :as source-query} :source-query, :as inner-query} :- :map]
   (let [metadata ((if native-source-query?
                     native-source-query->metadata
@@ -118,7 +118,7 @@
 (defn- add-source-metadata-at-all-levels [inner-query]
   (walk/postwalk maybe-add-source-metadata inner-query))
 
-(defn add-source-metadata-for-source-queries
+(mu/defn add-source-metadata-for-source-queries :- ::mbql.s/Query
   "Middleware that attempts to recursively add `:source-metadata`, if not already present, to any maps with a
   `:source-query`.
 
@@ -126,7 +126,7 @@
   query; this is added automatically for source queries added via the `card__id` source table form, but for *explicit*
   source queries that do not specify this information, we can often infer it by looking at the shape of the source
   query."
-  [{query-type :type, :as query}]
+  [{query-type :type, :as query} :- ::mbql.s/Query]
   (if-not (= query-type :query)
     query
     (update query :query add-source-metadata-at-all-levels)))

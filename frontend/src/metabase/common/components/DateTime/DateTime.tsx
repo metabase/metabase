@@ -1,5 +1,3 @@
-// eslint-disable-next-line no-restricted-imports -- legacy usage
-import type { Moment } from "moment-timezone";
 import { forwardRef } from "react";
 
 import { formatDateTimeWithUnit } from "metabase/lib/formatting";
@@ -7,7 +5,7 @@ import MetabaseSettings from "metabase/lib/settings";
 import type { DatetimeUnit } from "metabase-types/api";
 
 type DateTimeProps = {
-  value: string | Date | number | Moment;
+  value: string | Date | number;
   componentProps?: React.ComponentProps<"span">;
   unit?: DatetimeUnit;
 };

@@ -96,7 +96,7 @@
 (defmethod driver/database-supports? [:mysql :nested-field-columns] [_driver _feat db]
   (driver.common/json-unfolding-default db))
 
-(doseq [feature [:actions :actions/custom]]
+(doseq [feature [:actions :actions/custom :actions/data-editing]]
   (defmethod driver/database-supports? [:mysql feature]
     [driver _feat _db]
     ;; Only supported for MySQL right now. Revise when a child driver is added.

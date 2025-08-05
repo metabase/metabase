@@ -69,8 +69,6 @@ export interface DatasetColumn {
   binning_info?: BinningMetadata | null;
   settings?: Record<string, any>;
   fingerprint?: FieldFingerprint | null;
-  ident?: string;
-  "model/inner_ident"?: string;
 
   // model with customized metadata
   fk_target_field_id?: FieldId | null;

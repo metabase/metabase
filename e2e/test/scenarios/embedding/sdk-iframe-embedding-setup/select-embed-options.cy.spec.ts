@@ -19,6 +19,7 @@ H.describeWithSnowplow(suiteTitle, () => {
     cy.signInAsAdmin();
     H.activateToken("bleeding-edge");
     H.enableTracking();
+    H.updateSetting("enable-embedding-simple", true);
 
     cy.intercept("GET", "/api/dashboard/**").as("dashboard");
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
@@ -39,7 +40,7 @@ H.describeWithSnowplow(suiteTitle, () => {
       .should("be.checked");
 
     cy.log("drill-through should be enabled in the preview");
-    H.getIframeBody().within(() => {
+    H.getSimpleEmbedIframeContent().within(() => {
       cy.findByText("110.93").click();
       cy.findByText("Filter by this value").should("be.visible");
     });
@@ -52,18 +53,18 @@ H.describeWithSnowplow(suiteTitle, () => {
 
     H.expectUnstructuredSnowplowEvent({
       event: "embed_wizard_option_changed",
-      event_detail: "isDrillThroughEnabled",
+      event_detail: "drills",
     });
 
     cy.log("drill-through should be disabled in the preview");
-    H.getIframeBody().within(() => {
+    H.getSimpleEmbedIframeContent().within(() => {
       cy.findByText("110.93").click();
       cy.findByText("Filter by this value").should("not.exist");
     });
 
     cy.log("snippet should be updated");
     getEmbedSidebar().findByText("Get Code").click();
-    codeBlock().should("contain", '"isDrillThroughEnabled": false');
+    codeBlock().should("contain", 'drills="false"');
   });
 
   it("toggles downloads for dashboard", () => {
@@ -76,7 +77,9 @@ H.describeWithSnowplow(suiteTitle, () => {
       .findByLabelText("Allow downloads")
       .should("not.be.checked");
 
-    H.getIframeBody().findByTestId("export-as-pdf-button").should("not.exist");
+    H.getSimpleEmbedIframeContent()
+      .findByTestId("export-as-pdf-button")
+      .should("not.exist");
 
     cy.log("turn on downloads");
     getEmbedSidebar()
@@ -89,11 +92,13 @@ H.describeWithSnowplow(suiteTitle, () => {
       event_detail: "withDownloads",
     });
 
-    H.getIframeBody().findByTestId("export-as-pdf-button").should("be.visible");
+    H.getSimpleEmbedIframeContent()
+      .findByTestId("export-as-pdf-button")
+      .should("be.visible");
 
     cy.log("snippet should be updated");
     getEmbedSidebar().findByText("Get Code").click();
-    codeBlock().should("contain", '"withDownloads": true');
+    codeBlock().should("contain", 'with-downloads="true"');
   });
 
   it("toggles dashboard title for dashboards", () => {
@@ -106,7 +111,9 @@ H.describeWithSnowplow(suiteTitle, () => {
       .findByLabelText("Show dashboard title")
       .should("be.checked");
 
-    H.getIframeBody().findByText("Orders in a dashboard").should("be.visible");
+    H.getSimpleEmbedIframeContent()
+      .findByText("Orders in a dashboard")
+      .should("be.visible");
 
     cy.log("turn off title");
     getEmbedSidebar()
@@ -119,11 +126,13 @@ H.describeWithSnowplow(suiteTitle, () => {
       event_detail: "withTitle",
     });
 
-    H.getIframeBody().findByText("Orders in a dashboard").should("not.exist");
+    H.getSimpleEmbedIframeContent()
+      .findByText("Orders in a dashboard")
+      .should("not.exist");
 
     cy.log("snippet should be updated");
     getEmbedSidebar().findByText("Get Code").click();
-    codeBlock().should("contain", '"withTitle": false');
+    codeBlock().should("contain", 'with-title="false"');
   });
 
   it("toggles drill-through for charts", () => {
@@ -137,7 +146,7 @@ H.describeWithSnowplow(suiteTitle, () => {
       .should("be.checked");
 
     cy.log("drill-through should be disabled by default in chart preview");
-    H.getIframeBody().within(() => {
+    H.getSimpleEmbedIframeContent().within(() => {
       cy.findByText("18,760").click();
       cy.findByText("See these Orders").should("exist");
     });
@@ -150,18 +159,18 @@ H.describeWithSnowplow(suiteTitle, () => {
 
     H.expectUnstructuredSnowplowEvent({
       event: "embed_wizard_option_changed",
-      event_detail: "isDrillThroughEnabled",
+      event_detail: "drills",
     });
 
     cy.log("drill-through should be disabled in chart preview");
-    H.getIframeBody().within(() => {
+    H.getSimpleEmbedIframeContent().within(() => {
       cy.findByText("18,760").click();
       cy.findByText("See these Orders").should("not.exist");
     });
 
     cy.log("snippet should be updated");
     getEmbedSidebar().findByText("Get Code").click();
-    codeBlock().should("contain", '"isDrillThroughEnabled": false');
+    codeBlock().should("contain", 'drills="false"');
   });
 
   it("toggles downloads for charts", () => {
@@ -174,7 +183,7 @@ H.describeWithSnowplow(suiteTitle, () => {
       .findByLabelText("Allow downloads")
       .should("not.be.checked");
 
-    H.getIframeBody()
+    H.getSimpleEmbedIframeContent()
       .findByTestId("question-download-widget-button")
       .should("not.exist");
 
@@ -189,13 +198,13 @@ H.describeWithSnowplow(suiteTitle, () => {
       event_detail: "withDownloads",
     });
 
-    H.getIframeBody()
+    H.getSimpleEmbedIframeContent()
       .findByTestId("question-download-widget-button")
       .should("be.visible");
 
     cy.log("snippet should be updated");
     getEmbedSidebar().findByText("Get Code").click();
-    codeBlock().should("contain", '"withDownloads": true');
+    codeBlock().should("contain", 'with-downloads="true"');
   });
 
   it("toggles chart title for charts", () => {
@@ -206,11 +215,14 @@ H.describeWithSnowplow(suiteTitle, () => {
 
     cy.log("chart title should be visible by default");
     getEmbedSidebar().findByLabelText("Show chart title").should("be.checked");
-    H.getIframeBody().findByText("Orders, Count").should("be.visible");
+    H.getSimpleEmbedIframeContent()
+      .findByText("Orders, Count")
+      .should("be.visible");
 
     cy.log("turn off title");
     getEmbedSidebar()
       .findByLabelText("Show chart title")
+      .should("be.checked")
       .click()
       .should("not.be.checked");
 
@@ -219,17 +231,59 @@ H.describeWithSnowplow(suiteTitle, () => {
       event_detail: "withTitle",
     });
 
-    H.getIframeBody().findByText("Orders, Count").should("not.exist");
+    H.getSimpleEmbedIframeContent()
+      .findByText("Orders, Count")
+      .should("not.exist");
+
+    cy.log("set drills to false");
+    getEmbedSidebar()
+      .findByLabelText("Allow users to drill through on data points")
+      .should("be.checked")
+      .click()
+      .should("not.be.checked");
+
+    cy.log("chart title state should remain unchecked");
+    getEmbedSidebar()
+      .findByLabelText("Show chart title")
+      .should("not.be.checked");
+
+    cy.log("chart title should remain hidden");
+    H.getSimpleEmbedIframeContent()
+      .findByText("Orders, Count")
+      .should("not.exist");
 
     cy.log("snippet should be updated");
     getEmbedSidebar().findByText("Get Code").click();
-    codeBlock().should("contain", '"withTitle": false');
+    codeBlock().should("contain", 'with-title="false"');
+
+    cy.log("go back to embed options step");
+    getEmbedSidebar().findByText("Back").click();
+
+    cy.log("show the chart title");
+    getEmbedSidebar()
+      .findByLabelText("Show chart title")
+      .should("not.be.checked")
+      .click()
+      .should("be.checked");
+
+    cy.log("chart title should be visible again");
+    H.getSimpleEmbedIframeContent()
+      .findByText("Orders, Count")
+      .should("be.visible");
+
+    H.expectUnstructuredSnowplowEvent(
+      {
+        event: "embed_wizard_option_changed",
+        event_detail: "withTitle",
+      },
+      2,
+    );
   });
 
   it("toggles save button for exploration", () => {
     navigateToEmbedOptionsStep({ experience: "exploration" });
 
-    H.getIframeBody().within(() => {
+    H.getSimpleEmbedIframeContent().within(() => {
       cy.findByText("Orders").click();
       cy.findByText("Visualize").click();
     });
@@ -239,7 +293,7 @@ H.describeWithSnowplow(suiteTitle, () => {
       .should("be.checked");
 
     cy.log("save button should be visible by default");
-    H.getIframeBody().findByText("Save").should("be.visible");
+    H.getSimpleEmbedIframeContent().findByText("Save").should("be.visible");
 
     cy.log("turn off save option");
     getEmbedSidebar()
@@ -252,11 +306,11 @@ H.describeWithSnowplow(suiteTitle, () => {
       event_detail: "isSaveEnabled",
     });
 
-    H.getIframeBody().findByText("Save").should("not.exist");
+    H.getSimpleEmbedIframeContent().findByText("Save").should("not.exist");
 
     cy.log("snippet should be updated");
     getEmbedSidebar().findByText("Get Code").click();
-    codeBlock().should("contain", '"isSaveEnabled": false');
+    codeBlock().should("contain", 'is-save-enabled="false"');
   });
 
   it("can change brand color", () => {
@@ -287,13 +341,16 @@ H.describeWithSnowplow(suiteTitle, () => {
     });
 
     cy.log("table header cell should now be red");
-    H.getIframeBody()
+    H.getSimpleEmbedIframeContent()
       .findAllByTestId("cell-data")
       .first()
       .should("have.css", "color", "rgb(255, 0, 0)");
 
     cy.log("snippet should be updated");
     getEmbedSidebar().findByText("Get Code").click();
+
+    codeBlock().should("contain", '"theme": {');
+    codeBlock().should("contain", '"colors": {');
     codeBlock().should("contain", '"brand": "#FF0000"');
   });
 });

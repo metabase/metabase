@@ -563,10 +563,16 @@ describe("scenarios > admin > permissions > view data > sandboxed", () => {
 
     H.selectSidebarItem("Orders");
 
-    H.modifyPermission("All Users", DATA_ACCESS_PERM_IDX, "Sandboxed");
+    H.modifyPermission(
+      "All Users",
+      DATA_ACCESS_PERM_IDX,
+      "Row and column security",
+    );
 
     H.modal().within(() => {
-      cy.findByText("Change access to this database to “Sandboxed”?");
+      cy.findByText(
+        "Change access to this database to “Row and column security”?",
+      );
       cy.button("Change").click();
     });
 
@@ -575,7 +581,7 @@ describe("scenarios > admin > permissions > view data > sandboxed", () => {
       `/admin/permissions/data/database/${SAMPLE_DB_ID}/schema/PUBLIC/table/${ORDERS_ID}/segmented/group/${ALL_USERS_GROUP}`,
     );
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Restrict access to this table");
+    cy.findByText("Configure row and column security for this table");
     cy.button("Save").should("be.disabled");
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -583,8 +589,7 @@ describe("scenarios > admin > permissions > view data > sandboxed", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("User ID").click();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Pick a user attribute").click();
+    cy.findByPlaceholderText("Pick a user attribute").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("attr_uid").click();
     cy.button("Save").click();
@@ -598,7 +603,13 @@ describe("scenarios > admin > permissions > view data > sandboxed", () => {
         "Yes",
       ],
       // expect that the view data permissions has been automatically droped to query builder only
-      ["All Users", "Sandboxed", "Query builder only", "1 million rows", "No"],
+      [
+        "All Users",
+        "Row and column security",
+        "Query builder only",
+        "1 million rows",
+        "No",
+      ],
       ["collection", "Can view", "No", "1 million rows", "No"],
       ["data", "Can view", "Query builder and native", "1 million rows", "No"],
       ["nosql", "Can view", "Query builder only", "1 million rows", "No"],
@@ -609,7 +620,7 @@ describe("scenarios > admin > permissions > view data > sandboxed", () => {
     H.modifyPermission(
       "All Users",
       DATA_ACCESS_PERM_IDX,
-      "Edit sandboxed access",
+      "Edit row and column security",
     );
 
     cy.url().should(
@@ -617,11 +628,13 @@ describe("scenarios > admin > permissions > view data > sandboxed", () => {
       `/admin/permissions/data/database/${SAMPLE_DB_ID}/schema/PUBLIC/table/${ORDERS_ID}/segmented/group/${ALL_USERS_GROUP}`,
     );
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Restrict access to this table");
+    cy.findByText("Configure row and column security for this table");
 
     cy.button("Save").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Restrict access to this table").should("not.exist");
+    cy.findByText("Configure row and column security for this table").should(
+      "not.exist",
+    );
 
     cy.button("Save changes").click();
 
@@ -642,10 +655,16 @@ describe("scenarios > admin > permissions > view data > sandboxed", () => {
 
     cy.get("a").contains("Sample Database").click();
 
-    H.modifyPermission("Orders", DATA_ACCESS_PERM_IDX, "Sandboxed");
+    H.modifyPermission(
+      "Orders",
+      DATA_ACCESS_PERM_IDX,
+      "Row and column security",
+    );
 
     H.modal().within(() => {
-      cy.findByText("Change access to this database to “Sandboxed”?");
+      cy.findByText(
+        "Change access to this database to “Row and column security”?",
+      );
       cy.button("Change").click();
     });
 
@@ -654,13 +673,13 @@ describe("scenarios > admin > permissions > view data > sandboxed", () => {
       `/admin/permissions/data/group/${ALL_USERS_GROUP}/database/${SAMPLE_DB_ID}/schema/PUBLIC/${ORDERS_ID}/segmented`,
     );
     H.modal().within(() => {
-      cy.findByText("Restrict access to this table");
+      cy.findByText("Configure row and column security for this table");
       cy.button("Save").should("be.disabled");
       cy.findByText("Pick a column").click();
     });
 
     H.popover().findByText("User ID").click();
-    H.modal().findByText("Pick a user attribute").click();
+    H.modal().findByPlaceholderText("Pick a user attribute").click();
     H.popover().findByText("attr_uid").click();
     H.modal().button("Save").click();
 
@@ -675,7 +694,13 @@ describe("scenarios > admin > permissions > view data > sandboxed", () => {
       ],
       ["Feedback", "Can view", "Query builder only", "1 million rows", "No"],
       ["Invoices", "Can view", "Query builder only", "1 million rows", "No"],
-      ["Orders", "Sandboxed", "Query builder only", "1 million rows", "No"],
+      [
+        "Orders",
+        "Row and column security",
+        "Query builder only",
+        "1 million rows",
+        "No",
+      ],
       ["People", "Can view", "Query builder only", "1 million rows", "No"],
       ["Products", "Can view", "Query builder only", "1 million rows", "No"],
       ["Reviews", "Can view", "Query builder only", "1 million rows", "No"],
@@ -683,14 +708,18 @@ describe("scenarios > admin > permissions > view data > sandboxed", () => {
 
     H.assertPermissionTable(expectedFinalPermissions);
 
-    H.modifyPermission("Orders", DATA_ACCESS_PERM_IDX, "Edit sandboxed access");
+    H.modifyPermission(
+      "Orders",
+      DATA_ACCESS_PERM_IDX,
+      "Edit row and column security",
+    );
 
     cy.url().should(
       "include",
       `/admin/permissions/data/group/${ALL_USERS_GROUP}/database/${SAMPLE_DB_ID}/schema/PUBLIC/${ORDERS_ID}/segmented`,
     );
 
-    H.modal().findByText("Restrict access to this table");
+    H.modal().findByText("Configure row and column security for this table");
 
     cy.button("Save").click();
 
@@ -735,16 +764,20 @@ describe("scenarios > admin > permissions > view data > reproductions", () => {
 
     cy.get("a").contains("Sample Database").click();
 
-    H.modifyPermission("Orders", DATA_ACCESS_PERM_IDX, "Sandboxed");
+    H.modifyPermission(
+      "Orders",
+      DATA_ACCESS_PERM_IDX,
+      "Row and column security",
+    );
 
     H.modal().within(() => {
-      cy.findByText("Restrict access to this table");
+      cy.findByText("Configure row and column security for this table");
       cy.button("Save").should("be.disabled");
       cy.findByText("Pick a column").click();
     });
 
     H.popover().findByText("User ID").click();
-    H.modal().findByText("Pick a user attribute").click();
+    H.modal().findByPlaceholderText("Pick a user attribute").click();
     H.popover().findByText("attr_uid").click();
     H.modal().button("Save").click();
 
@@ -756,7 +789,11 @@ describe("scenarios > admin > permissions > view data > reproductions", () => {
       expect(response.statusCode).to.equal(200);
     });
 
-    H.assertPermissionForItem("Orders", DATA_ACCESS_PERM_IDX, "Sandboxed");
+    H.assertPermissionForItem(
+      "Orders",
+      DATA_ACCESS_PERM_IDX,
+      "Row and column security",
+    );
     H.assertPermissionForItem(
       "Orders",
       CREATE_QUERIES_PERM_IDX,
@@ -959,20 +996,20 @@ function removeCollectionGroupPermissions() {
 }
 
 function makeOrdersSandboxed() {
-  H.modifyPermission("Orders", DATA_ACCESS_PERM_IDX, "Sandboxed");
+  H.modifyPermission("Orders", DATA_ACCESS_PERM_IDX, "Row and column security");
 
   cy.url().should(
     "include",
     `/admin/permissions/data/group/${ALL_USERS_GROUP}/database/${SAMPLE_DB_ID}/schema/PUBLIC/${ORDERS_ID}/segmented`,
   );
 
-  cy.findByText("Restrict access to this table");
+  cy.findByText("Configure row and column security for this table");
   cy.button("Save").should("be.disabled");
 
   cy.findByText("Pick a column").click();
   cy.findByText("User ID").click();
 
-  cy.findByText("Pick a user attribute").click();
+  cy.findByPlaceholderText("Pick a user attribute").click();
   cy.findByText("attr_uid").click();
   cy.button("Save").click();
 }
