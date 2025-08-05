@@ -811,14 +811,14 @@
                                                    (lib/+ (meta/field-metadata :venues :id) 1)
                                                    (lib/+ (meta/field-metadata :categories :id) 1)))))))
   (testing "should mark custom columns from LHS columns as selected"
-    (let [query       (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
-                          (lib/expression "expr" (lib/* (meta/field-metadata :orders :total) 2)))
-          products    (meta/table-metadata :products)
-          lhs-columns (lib/join-condition-lhs-columns query products nil nil)
-          lhs-column  (m/find-first (comp #{"expr"} :name) lhs-columns)
-          rhs-columns (lib/join-condition-rhs-columns query products nil nil)
-          rhs-column  (m/find-first (comp #{"ID"} :name) rhs-columns)
-          query       (lib/join query (lib/join-clause products [(lib/= lhs-column rhs-column)]))]
+    (let [query             (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                                (lib/expression "expr" (lib/* (meta/field-metadata :orders :total) 2)))
+          products          (meta/table-metadata :products)
+          lhs-columns       (lib/join-condition-lhs-columns query products nil nil)
+          lhs-custom-column (m/find-first (comp #{"expr"} :name) lhs-columns)
+          rhs-columns       (lib/join-condition-rhs-columns query products nil nil)
+          rhs-product-price (m/find-first (comp #{"ID"} :name) rhs-columns)
+          query             (lib/join query (lib/join-clause products [(lib/= lhs-custom-column rhs-product-price)]))]
       (is (=? [{:name "ID"}
                {:name "USER_ID"}
                {:name "PRODUCT_ID"}
@@ -832,8 +832,8 @@
               (map (partial lib/display-info query)
                    (lib/join-condition-lhs-columns query
                                                    (first (lib/joins query))
-                                                   (lib/ref lhs-column)
-                                                   (lib/ref rhs-column))))))))
+                                                   (lib/ref lhs-custom-column)
+                                                   (lib/ref rhs-product-price))))))))
 
 (deftest ^:parallel join-condition-rhs-columns-join-table-test
   (testing "RHS columns when building a join against a Table"
