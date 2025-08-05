@@ -9,20 +9,11 @@
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
-(defmethod mi/can-read? :model/Document
-  ([instance]
-   (mi/current-user-has-full-permissions? (perms/perms-objects-set-for-parent-collection instance :read)))
-  ([_ pk]
-   (mi/can-read? (t2/select-one :model/Document :id pk))))
-
-(defmethod mi/can-write? :model/Document
-  ([_instance] api/*is-superuser?*)
-  ([_ _pk] api/*is-superuser?*))
-
 (methodical/defmethod t2/table-name :model/Document [_model] :document)
 
 (doto :model/Document
   (derive :metabase/model)
+  (derive :perms/use-parent-collection-perms)
   (derive :hook/timestamped?))
 
 (defn validate-collection-move-permissions

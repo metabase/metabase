@@ -16,72 +16,6 @@
         (is (pos? (:id result)))
         (is (partial= {:name "Document 1" :document "Doc 1"} document-row))))))
 
-(deftest post-document-invalid-card-ids-test
-  (testing "POST /api/ee/document/ - should reject invalid card-ids"
-    (mt/with-model-cleanup [:model/Document]
-      (testing "non-integer values"
-        (mt/user-http-request :crowberto
-                              :post 400 "ee/document/"
-                              {:name "Document"
-                               :document "Doc"
-                               :card_ids ["invalid"]}))
-
-      (testing "negative integers"
-        (mt/user-http-request :crowberto
-                              :post 400 "ee/document/"
-                              {:name "Document"
-                               :document "Doc"
-                               :card_ids [-1 2]}))
-
-      (testing "zero values"
-        (mt/user-http-request :crowberto
-                              :post 400 "ee/document/"
-                              {:name "Document"
-                               :document "Doc"
-                               :card_ids [0 1]})))))
-
-(deftest post-document-nonexistent-card-ids-test
-  (testing "POST /api/ee/document/ - should reject non-existent card-ids"
-    (mt/with-model-cleanup [:model/Document]
-      (let [non-existent-id 999999]
-        (mt/user-http-request :crowberto
-                              :post 404 "ee/document/"
-                              {:name "Document with Missing Cards"
-                               :document "Doc"
-                               :card_ids [non-existent-id]})))))
-
-(deftest post-document-wrong-card-type-test
-  (testing "POST /api/ee/document/ - should reject cards with wrong type"
-    (mt/with-model-cleanup [:model/Document :model/Card]
-      (mt/with-temp [:model/Card wrong-type-card {:name "Wrong Type Card"
-                                                  :type :question
-                                                  :dataset_query (mt/mbql-query venues)}]
-        (is (=? {:message #"The following cards cannot be used in documents because they have the wrong type:.*"}
-                (mt/user-http-request :crowberto
-                                      :post 400 "ee/document/"
-                                      {:name "Document with Wrong Type Cards"
-                                       :document "Doc"
-                                       :card_ids [(:id wrong-type-card)]})))))))
-
-(deftest post-document-nil-card-ids-test
-  (testing "POST /api/ee/document/ - should error on nil card-ids"
-    (mt/with-model-cleanup [:model/Document]
-      (mt/user-http-request :crowberto
-                            :post 400 "ee/document/"
-                            {:name "Document with Nil Cards"
-                             :document "Doc with nil cards"
-                             :card_ids nil}))))
-
-(deftest post-document-empty-card-ids-test
-  (testing "POST /api/ee/document/ - should handle empty card-ids gracefully"
-    (mt/with-model-cleanup [:model/Document]
-      (let [result (mt/user-http-request :crowberto
-                                         :post 200 "ee/document/"
-                                         {:name "Document with Empty Cards"
-                                          :document "Doc with empty cards"
-                                          :card_ids []})]
-        (is (pos? (:id result)))))))
-
 (deftest put-document-basic-update-test
   (testing "PUT /api/ee/document/id - basic document update"
     (mt/with-temp [:model/Document {document-id :id} {:name "Test Document"
@@ -90,59 +24,6 @@
                                          :put 200 (format "ee/document/%s" document-id) {:name "Document 2" :document "Doc 2"})]
         (is (partial= {:name "Document 2"
                        :document "Doc 2"} result))))))
-
-(deftest put-document-reject-nonexistent-card-ids-test
-  (testing "PUT /api/ee/document/id - should reject non-existent card-ids"
-    (mt/with-temp [:model/Document {document-id :id} {:name "Test Document"
-                                                      :document "Initial Doc"}]
-      (let [non-existent-id 999999]
-        (is (=? {:message #"The following card IDs do not exist.*"}
-                (mt/user-http-request :crowberto
-                                      :put 404 (format "ee/document/%s" document-id)
-                                      {:name "Document with Missing Cards"
-                                       :document "Doc"
-                                       :card_ids [non-existent-id]})))))))
-
-(deftest put-document-reject-wrong-card-type-test
-  (testing "PUT /api/ee/document/id - should reject cards with wrong type"
-    (mt/with-temp [:model/Document {document-id :id} {:name "Test Document"
-                                                      :document "Initial Doc"}]
-      (mt/with-model-cleanup [:model/Card]
-        (mt/with-temp [:model/Card wrong-type-card {:name "Wrong Type Card"
-                                                    :type :question
-                                                    :dataset_query (mt/mbql-query venues)}]
-          (is (=? {:message #"The following cards cannot be used in documents.*"}
-                  (mt/user-http-request :crowberto
-                                        :put 400 (format "ee/document/%s" document-id)
-                                        {:name "Document with Wrong Type Cards"
-                                         :document "Doc"
-                                         :card_ids [(:id wrong-type-card)]}))))))))
-
-(deftest put-document-handle-empty-card-ids-test
-  (testing "PUT /api/ee/document/id - should handle empty card-ids gracefully"
-    (mt/with-temp [:model/Document {document-id :id} {:name "Test Document"
-                                                      :document "Initial Doc"}]
-      (let [result (mt/user-http-request :crowberto
-                                         :put 200 (format "ee/document/%s" document-id)
-                                         {:name "Document with Empty Cards"
-                                          :document "Doc with empty cards"
-                                          :card_ids []})]
-        (is (= document-id (:id result)))))))
-
-(deftest put-document-transaction-rollback-test
-  (testing "PUT /api/ee/document/id - transaction rollback when card update fails"
-    (mt/with-temp [:model/Document {document-id :id} {:name "Test Document"
-                                                      :document "Initial Doc"}]
-      (let [initial-document (t2/select-one :model/Document :id document-id)
-            invalid-card-id 999999]
-        (mt/user-http-request :crowberto
-                              :put 404 (format "ee/document/%s" document-id)
-                              {:name "Document That Should Rollback"
-                               :document "Doc that should rollback"
-                               :card_ids [invalid-card-id]})
-              ;; Verify the document name wasn't updated
-        (let [unchanged-document (t2/select-one :model/Document :id document-id)]
-          (is (= (:name initial-document) (:name unchanged-document))))))))
 
 (deftest put-document-nonexistent-document-test
   (testing "PUT /api/ee/document/id - should return 404 for non-existent document"
@@ -304,3 +185,229 @@
           ;; Verify nothing changed
           (is (= collection1-id (:collection_id (t2/select-one :model/Document :id document-id))))
           (is (= collection1-id (:collection_id (t2/select-one :model/Card :id card-id)))))))))
+
+(deftest post-document-with-cards-to-create-test
+  (testing "POST /api/ee/document/ - create document with new cards via cards"
+    (mt/with-model-cleanup [:model/Document :model/Card]
+      (mt/with-temp [:model/Collection {col-id :id} {}]
+        (let [cards-to-create {-1 {:name "Generated Card 1"
+                                   :type :question
+                                   :dataset_query (mt/mbql-query venues)
+                                   :display :table
+                                   :visualization_settings {}}
+                               -2 {:name "Generated Card 2"
+                                   :type :question
+                                   :dataset_query (mt/mbql-query users)
+                                   :display :scalar
+                                   :visualization_settings {}}}
+              result (mt/user-http-request :crowberto
+                                           :post 200 "ee/document/"
+                                           {:name "Document with Generated Cards"
+                                            :document "Doc with generated cards"
+                                            :collection_id col-id
+                                            :cards cards-to-create})]
+
+          (testing "should create document successfully"
+            (is (pos? (:id result)))
+            (is (= "Document with Generated Cards" (:name result))))
+
+          (testing "should not return created cards mapping"
+            (is (not (contains? result :created_cards))))
+
+          (testing "should create cards with correct properties"
+            (let [created-cards (t2/select :model/Card :document_id (:id result))
+                  card1 (first (filter #(= "Generated Card 1" (:name %)) created-cards))
+                  card2 (first (filter #(= "Generated Card 2" (:name %)) created-cards))]
+
+              (testing "should have created exactly 2 cards"
+                (is (= 2 (count created-cards))))
+
+              (testing "card1 inherits document's collection_id"
+                (is (some? card1))
+                (is (= "Generated Card 1" (:name card1)))
+                (is (= :question (:type card1)))
+                (is (= (:id result) (:document_id card1)))
+                (is (= col-id (:collection_id card1))))
+
+              (testing "card2 uses explicit collection_id"
+                (is (some? card2))
+                (is (= "Generated Card 2" (:name card2)))
+                (is (= :question (:type card2)))
+                (is (= (:id result) (:document_id card2)))
+                (is (= col-id (:collection_id card2))))))
+
+          (testing "document should have correct properties"
+            (let [document (t2/select-one :model/Document :id (:id result))]
+              (is (= "Document with Generated Cards" (:name document)))
+              (is (= "Doc with generated cards" (:document document)))
+              (is (= col-id (:collection_id document))))))))))
+
+(deftest post-document-with-empty-cards-to-create-test
+  (testing "POST /api/ee/document/ - handle empty cards gracefully"
+    (mt/with-model-cleanup [:model/Document]
+      (let [result (mt/user-http-request :crowberto
+                                         :post 200 "ee/document/"
+                                         {:name "Document with Empty Cards To Create"
+                                          :document "Doc with empty cards"
+                                          :cards {}})]
+        (is (pos? (:id result)))
+        (is (not (contains? result :created_cards)))))))
+
+(deftest post-document-with-nil-cards-to-create-test
+  (testing "POST /api/ee/document/ - handle nil cards gracefully"
+    (mt/with-model-cleanup [:model/Document]
+      (let [result (mt/user-http-request :crowberto
+                                         :post 200 "ee/document/"
+                                         {:name "Document with Nil Cards To Create"
+                                          :document "Doc with nil cards"
+                                          :cards nil})]
+        (is (pos? (:id result)))
+        (is (not (contains? result :created_cards)))))))
+
+(deftest put-document-with-cards-to-create-test
+  (testing "PUT /api/ee/document/:id - update document with new cards via cards"
+    (mt/with-temp [:model/Collection {col-id :id} {}
+                   :model/Document {document-id :id} {:name "Test Document"
+                                                      :document "Initial Doc"
+                                                      :collection_id col-id}]
+      (let [cards-to-create {-10 {:name "Updated Generated Card 1"
+                                  :type :question
+                                  :dataset_query (mt/mbql-query venues)
+                                  :display :table
+                                  :visualization_settings {}}
+                             -20 {:name "Updated Generated Card 2"
+                                  :type :question
+                                  :dataset_query (mt/mbql-query users)
+                                  :display :bar
+                                  :visualization_settings {}}}
+            result (mt/user-http-request :crowberto
+                                         :put 200 (format "ee/document/%s" document-id)
+                                         {:name "Updated Document with Generated Cards"
+                                          :document "Updated doc with generated cards"
+                                          :collection_id col-id
+                                          :cards cards-to-create})]
+
+        (testing "should update document successfully"
+          (is (= document-id (:id result)))
+          (is (= "Updated Document with Generated Cards" (:name result)))
+          (is (= col-id (:collection_id result))))
+
+        (testing "should not return created cards mapping"
+          (is (not (contains? result :created_cards))))
+
+        (testing "should create cards with correct properties"
+          (let [created-cards (t2/select :model/Card :document_id document-id)
+                card1 (first (filter #(= "Updated Generated Card 1" (:name %)) created-cards))
+                card2 (first (filter #(= "Updated Generated Card 2" (:name %)) created-cards))]
+
+            (testing "should have created exactly 2 cards"
+              (is (= 2 (count created-cards))))
+
+            (testing "card1 inherits document's updated collection_id"
+              (is (some? card1))
+              (is (= "Updated Generated Card 1" (:name card1)))
+              (is (= :question (:type card1)))
+              (is (= document-id (:document_id card1)))
+              (is (= col-id (:collection_id card1))))
+
+            (testing "card2 uses explicit collection_id"
+              (is (some? card2))
+              (is (= "Updated Generated Card 2" (:name card2)))
+              (is (= :question (:type card2)))
+              (is (= document-id (:document_id card2)))
+              (is (= col-id (:collection_id card2))))))
+
+        (testing "document should have updated properties"
+          (let [document (t2/select-one :model/Document :id document-id)]
+            (is (= "Updated Document with Generated Cards" (:name document)))
+            (is (= "Updated doc with generated cards" (:document document)))
+            (is (= col-id (:collection_id document)))))))))
+
+(deftest cards-to-create-schema-validation-test
+  (testing "POST /api/ee/document/ - cards schema validation"
+    (mt/with-model-cleanup [:model/Document]
+      (testing "should reject non-negative integer keys"
+        (mt/user-http-request :crowberto
+                              :post 400 "ee/document/"
+                              {:name "Document with Invalid Keys"
+                               :document "Doc"
+                               :cards {1 {:name "Invalid Key Card"
+                                          :type :question
+                                          :dataset_query (mt/mbql-query venues)
+                                          :display :table
+                                          :visualization_settings {}}}}))
+
+      (testing "should reject missing required card fields"
+        (mt/user-http-request :crowberto
+                              :post 400 "ee/document/"
+                              {:name "Document with Invalid Card"
+                               :document "Doc"
+                               :cards {-1 {:name "Incomplete Card"}}})) ; missing required fields
+
+      (testing "should reject non-map card data"
+        (mt/user-http-request :crowberto
+                              :post 400 "ee/document/"
+                              {:name "Document with Invalid Card Data"
+                               :document "Doc"
+                               :cards {-1 "not a map"}})))))
+
+(deftest cards-to-create-transaction-rollback-test
+  (testing "POST /api/ee/document/ - transaction rollback on card creation failure"
+    (mt/with-model-cleanup [:model/Document :model/Card]
+      (let [invalid-cards {-1 {:name "Card with Invalid Query"
+                               :type :question
+                               :dataset_query {:type :invalid-type} ; invalid query
+                               :display :table
+                               :visualization_settings {}}}]
+        (mt/user-http-request :crowberto
+                              :post 500 "ee/document/"
+                              {:name "Document That Should Rollback"
+                               :document "Doc that should rollback"
+                               :cards invalid-cards})
+
+        ;; Verify no document was created
+        (is (zero? (t2/count :model/Document :name "Document That Should Rollback")))))))
+
+(deftest put-document-cards-to-create-transaction-rollback-test
+  (testing "PUT /api/ee/document/:id - transaction rollback on card creation failure"
+    (mt/with-temp [:model/Document {document-id :id} {:name "Test Document"
+                                                      :document "Initial Doc"}]
+      (let [initial-document (t2/select-one :model/Document :id document-id)
+            invalid-cards {-1 {:name "Card with Invalid Query"
+                               :type :question
+                               :dataset_query {:type :invalid-type} ; invalid query
+                               :display :table
+                               :visualization_settings {}}}]
+
+        (mt/user-http-request :crowberto
+                              :put 500 (format "ee/document/%s" document-id)
+                              {:name "Document That Should Rollback"
+                               :document "Doc that should rollback"
+                               :cards invalid-cards})
+
+        ;; Verify document wasn't updated
+        (let [unchanged-document (t2/select-one :model/Document :id document-id)]
+          (is (= (:name initial-document) (:name unchanged-document)))
+          (is (= (:document initial-document) (:document unchanged-document))))))))
+
+(deftest cards-to-create-collection-inheritance-edge-cases-test
+  (testing "Collection inheritance edge cases for cards"
+    (mt/with-model-cleanup [:model/Document :model/Card]
+      (testing "cards inherit from document when document has nil collection_id"
+        (let [cards-to-create {-1 {:name "Root Collection Card"
+                                   :type :question
+                                   :dataset_query (mt/mbql-query venues)
+                                   :display :table
+                                   :visualization_settings {}}}
+              result (mt/user-http-request :crowberto
+                                           :post 200 "ee/document/"
+                                           {:name "Root Collection Document"
+                                            :document "Doc in root collection"
+                                            :collection_id nil
+                                            :cards cards-to-create})]
+
+          (let [created-cards (t2/select :model/Card :document_id (:id result))
+                card (first created-cards)]
+            (is (= 1 (count created-cards)))
+            (is (nil? (:collection_id card))) ; should inherit nil from document
+            (is (= (:id result) (:document_id card)))))))))

@@ -5,26 +5,59 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.collections.models.collection :as collection]
+   [metabase.models.interface :as mi]
+   [metabase.queries.models.card :as card]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(defn- validate-cards-for-document
-  "Validates that all provided card-ids exist.
-   Returns the card records if all are valid, throws exception otherwise."
-  [card-ids]
-  (when (seq card-ids)
-    (let [cards (t2/select :model/Card :id [:in card-ids])]
-      ;; Check all cards were found
-      (when (not= (count cards) (count card-ids))
-        (let [found-ids (set (map :id cards))
-              missing-ids (remove found-ids card-ids)]
-          (throw (ex-info (tru "The following card IDs do not exist: {0}. Please verify the card IDs are correct and the cards have not been deleted." (vec missing-ids))
-                          {:status-code 404
-                           :error-type :cards-not-found
-                           :missing-card-ids missing-ids}))))
-      cards)))
+(def ^:private CardCreateSchema
+  "Schema for creating a new card - simplified version to avoid circular dependencies"
+  [:map
+   [:name ms/NonBlankString]
+   [:type {:optional true} [:maybe [:= "question"]]]
+   [:dataset_query ms/Map]
+   [:entity_id {:optional true} [:maybe ms/NonBlankString]]
+   [:parameters {:optional true} [:maybe [:sequential ms/Map]]]
+   [:parameter_mappings {:optional true} [:maybe [:sequential ms/Map]]]
+   [:description {:optional true} [:maybe ms/NonBlankString]]
+   [:display ms/NonBlankString]
+   [:visualization_settings ms/Map]
+   [:result_metadata {:optional true} [:maybe [:sequential ms/Map]]]
+   [:cache_ttl {:optional true} [:maybe ms/PositiveInt]]])
+
+(mu/defn- create-cards-for-document! :- [:map-of [:int {:max -1}] ms/PositiveInt]
+  "Creates cards for a document from the cards map.
+   Returns a mapping from the original negative integer keys to the newly created card IDs.
+
+   Args:
+   - cards-to-create: Map of negative-int -> CardCreateSchema data
+   - document-id: ID of the document these cards belong to
+   - document-collection-id: Collection ID of the document (for inheritance)
+   - creator: User creating the cards
+
+   Returns:
+   - Map of negative-int -> actual-card-id"
+  [cards-to-create :- [:map-of [:int {:max -1}] CardCreateSchema]
+   document-id :- ms/PositiveInt
+   document-collection-id :- [:or :nil ms/PositiveInt]
+   creator :- [:map [:id ms/PositiveInt]]]
+  (when (seq cards-to-create)
+    (reduce-kv
+     (fn [result-map original-key card-data]
+       (let [;; Merge document info into card data
+             ;; Cards inherit document's collection_id if not explicitly specified
+             merged-card-data (-> card-data
+                                  (assoc :document_id document-id)
+                                  (cond-> (nil? (:collection_id card-data))
+                                    (assoc :collection_id document-collection-id)))
+             ;; Create the card using the queries core function
+             new-card (card/create-card! merged-card-data creator)]
+         (assoc result-map original-key (:id new-card))))
+     {}
+     cards-to-create)))
 
 (defn get-document
   "Get document by id checking if the current user has permission to access and if the document exists."
@@ -45,25 +78,26 @@
   "Create a new `Document`."
   [_route-params
    _query-params
-   {:keys [name document collection_id card_ids]}
+   {:keys [name document collection_id cards]}
    :- [:map
        [:name :string]
        [:document :string]
        [:collection_id {:optional true} [:maybe ms/PositiveInt]]
-       [:card_ids {:optional true} [:vector ms/PositiveInt]]]]
+       [:cards {:optional true} [:maybe [:map-of [:int {:max -1}] CardCreateSchema]]]]]
   (collection/check-write-perms-for-collection collection_id)
-  (get-document (t2/with-transaction [_conn]
-                ;; Validate cards first if provided
-                  (let [validated-cards (validate-cards-for-document card_ids)]
-                    (u/prog1 (t2/insert-returning-pk! :model/Document {:name name
-                                                                       :collection_id collection_id
-                                                                       :document document
-                                                                       :content_type prose-mirror-content-type
-                                                                       :creator_id api/*current-user-id*})
-                  ;; Update cards with the new document-id if cards were validated
-                      (when (seq validated-cards)
-                        (t2/update! :model/Card :id [:in (map u/the-id validated-cards)] {:document_id <>})
-                        (m.document/sync-document-cards-collection! <> collection_id)))))))
+  (let [result (t2/with-transaction [_conn]
+                 ;; Validate existing cards first if provided
+                 (let [document-id (t2/insert-returning-pk! :model/Document {:name name
+                                                                             :collection_id collection_id
+                                                                             :document document
+                                                                             :content_type prose-mirror-content-type
+                                                                             :creator_id api/*current-user-id*})
+                       ;; Create new cards if provided
+                       _created-cards-mapping (when-not (empty? cards) (create-cards-for-document! cards document-id collection_id @api/*current-user*))]
+                   ;; Return document ID only
+                   {:document_id document-id}))]
+    ;; Return the document without created cards mapping
+    (get-document (:document_id result))))
 
 (api.macros/defendpoint :get "/:document-id"
   "Returns an existing Document by ID."
@@ -75,23 +109,24 @@
   [{:keys [document-id]} :- [:map
                              [:document-id ms/PositiveInt]]
    _query-params
-   {:keys [name document collection_id card_ids] :as body} :- [:map
-                                                               [:name {:optional true} :string]
-                                                               [:document {:optional true} :string]
-                                                               [:collection_id {:optional true} [:maybe ms/PositiveInt]]
-                                                               [:card_ids {:optional true} [:vector ms/PositiveInt]]]]
+   {:keys [name document collection_id cards] :as body} :- [:map
+                                                            [:name {:optional true} :string]
+                                                            [:document {:optional true} :string]
+                                                            [:collection_id {:optional true} [:maybe ms/PositiveInt]]
+                                                            [:cards {:optional true} [:maybe [:map-of :int CardCreateSchema]]]]]
   (let [existing-document (api/check-404 (get-document document-id))]
+    (api/check-403 (mi/can-write? existing-document))
     (when (api/column-will-change? :collection_id existing-document body)
       (m.document/validate-collection-move-permissions (:collection_id existing-document) collection_id))
     (t2/with-transaction [_conn]
-       ;; Validate cards first if provided
-      (let [validated-cards (validate-cards-for-document card_ids)]
-        (when (seq validated-cards)
-          (t2/update! :model/Card :id [:in (map u/the-id validated-cards)] {:document_id document-id}))
+      (let [;; Create new cards if provided
+            _created-cards-mapping (when-not (empty? cards) (create-cards-for-document! cards document-id collection_id @api/*current-user*))]
+        ;; Update the document itself
         (t2/update! :model/Document document-id (cond-> {}
                                                   document (assoc :document document)
                                                   name (assoc :name name)
                                                   (contains? body :collection_id) (assoc :collection_id collection_id)))))
+    ;; Return the document without created cards mapping
     (get-document document-id)))
 
 (def ^{:arglists '([request respond raise])} routes
