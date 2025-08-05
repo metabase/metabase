@@ -2,8 +2,7 @@ import { c, t } from "ttag";
 
 import { useAdminSetting } from "metabase/api/utils";
 import { Schedule } from "metabase/common/components/Schedule";
-import { Group } from "metabase/ui";
-import { CardSection } from "metabase-enterprise/transforms/components/CardSection";
+import { Button, Card, Group, Icon, Stack, Title } from "metabase/ui";
 import type { ScheduleType } from "metabase-types/api";
 
 export const DEFAULT_SCHEDULE = "0 0 0 * * ? *";
@@ -23,11 +22,12 @@ export function ScheduleSection() {
   };
 
   return (
-    <CardSection
-      label={t`Schedule`}
-      description={t`Pick when your transforms should run.`}
-    >
-      <Group p="lg">
+    <Stack>
+      <Group>
+        <Title flex={1} order={4}>{t`Schedule for running transforms`}</Title>
+        <Button leftSection={<Icon name="play" />}>{t`Run all now`}</Button>
+      </Group>
+      <Card p="lg" shadow="none" withBorder>
         <Schedule
           cronString={value ?? DEFAULT_SCHEDULE}
           scheduleOptions={SCHEDULE_OPTIONS}
@@ -35,7 +35,7 @@ export function ScheduleSection() {
           minutesOnHourPicker
           onScheduleChange={handleChange}
         />
-      </Group>
-    </CardSection>
+      </Card>
+    </Stack>
   );
 }

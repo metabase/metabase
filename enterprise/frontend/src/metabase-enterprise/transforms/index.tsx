@@ -5,10 +5,9 @@ import { createAdminRouteGuard } from "metabase/admin/utils";
 import { Route } from "metabase/hoc/Title";
 import { PLUGIN_TRANSFORMS } from "metabase/plugins";
 
-import { NewTransformPage } from "./pages/NewTransformPage";
 import { NewTransformQueryPage } from "./pages/NewTransformQueryPage";
-import { OverviewPage } from "./pages/OverviewPage";
 import { RunsPage } from "./pages/RunsPage";
+import { TransformListPage } from "./pages/TransformListPage";
 import { TransformPage } from "./pages/TransformPage";
 import { TransformPageLayout } from "./pages/TransformPageLayout";
 import { TransformQueryPage } from "./pages/TransformQueryPage";
@@ -21,8 +20,7 @@ PLUGIN_TRANSFORMS.getAdminRoutes = () => (
   <Route path="transforms" component={createAdminRouteGuard("transforms")}>
     <Route title={t`Transforms`}>
       <Route component={TransformPageLayout}>
-        <IndexRoute component={OverviewPage} />
-        <Route path="new" component={NewTransformPage} />
+        <IndexRoute component={TransformListPage} />
         <Route path="runs" component={RunsPage} />
         <Route path=":transformId" component={TransformPage} />
       </Route>

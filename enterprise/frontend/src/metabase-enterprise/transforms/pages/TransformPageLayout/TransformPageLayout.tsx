@@ -8,7 +8,7 @@ import {
 import { AdminSettingsLayout } from "metabase/common/components/AdminLayout/AdminSettingsLayout";
 import {
   getRunsUrl,
-  getTransformsUrl,
+  getTransformListUrl,
 } from "metabase-enterprise/transforms/urls";
 
 type TransformPageLayoutProps = {
@@ -28,7 +28,7 @@ function TransformSidebar() {
     <AdminNavWrapper>
       <AdminNavItem
         label={t`Transforms`}
-        path={getTransformsUrl()}
+        path={getTransformListUrl()}
         icon="refresh_downstream"
       />
       <AdminNavItem label={t`Runs`} path={getRunsUrl()} icon="play_outlined" />

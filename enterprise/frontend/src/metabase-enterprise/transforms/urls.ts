@@ -8,12 +8,8 @@ import type {
 
 export const ROOT_URL = "/admin/transforms";
 
-export function getTransformsUrl() {
+export function getTransformListUrl() {
   return ROOT_URL;
-}
-
-export function getnewTransformUrl() {
-  return `${ROOT_URL}/new`;
 }
 
 export function getNewTransformFromTypeUrl(type: DatasetQuery["type"]) {
