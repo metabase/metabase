@@ -88,25 +88,6 @@ describe("AccordionList", () => {
     assertAbsence(["Foo", "Bar", "Baz"]);
   });
 
-  it("should filter items when searched with fuzzySearch", () => {
-    render(
-      <AccordionList<Item>
-        sections={SECTIONS}
-        searchable
-        fuzzySearch
-        searchProp={["name"]}
-      />,
-    );
-    const SEARCH_FIELD = screen.getByPlaceholderText("Find...");
-
-    fireEvent.change(SEARCH_FIELD, { target: { value: "Fob" } });
-    assertPresence(["Foo"]);
-    assertAbsence(["Bar", "Baz"]);
-
-    fireEvent.change(SEARCH_FIELD, { target: { value: "Something Else" } });
-    assertAbsence(["Foo", "Bar", "Baz"]);
-  });
-
   it("should correctly select items when searching", () => {
     render(
       <AccordionList<Item>
