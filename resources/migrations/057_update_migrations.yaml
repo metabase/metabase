@@ -1,0 +1,290 @@
+databaseChangeLog:
+  - objectQuotingStrategy: QUOTE_ALL_OBJECTS
+
+  - changeSet:
+      id: v57.2025-07-29T15:55:38
+      author: metamben
+      comment: Create transform table
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: transform
+      changes:
+        - createTable:
+            tableName: transform
+            remarks: The main table for Transform entities
+            columns:
+              - column:
+                  name: id
+                  remarks: Unique ID
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: name
+                  remarks: Name
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+              - column:
+                  name: description
+                  type: ${text.type}
+                  remarks: the description of the transform
+                  constraints:
+                    nullable: true
+              - column:
+                  name: source
+                  remarks: JSON of source
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+              - column:
+                  name: target
+                  remarks: JSON of target
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+              - column:
+                  name: entity_id
+                  type: char(21)
+                  remarks: Random NanoID tag for unique identity.
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  remarks: The timestamp of when the transform was created
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: The timestamp of when the transform was updated
+                  name: updated_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: execution_trigger
+                  type: varchar(32)
+                  remarks: The type of automatic trigger (e.g., 'global-schedule') or 'none'
+                  defaultValue: none
+                  constraints:
+                    nullable:  false
+
+  - changeSet:
+      id: v57.2025-07-31-worker-runs-app-db
+      author: eric
+      comment: Create worker_run table in app database to track worker execution
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: worker_run
+      changes:
+        - createTable:
+            tableName: worker_run
+            remarks: Table to track worker job executions and their status in the app database
+            columns:
+              - column:
+                  name: run_id
+                  type: char(21)
+                  remarks: 'NanoID identifier for the worker run'
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: work_id
+                  type: bigint
+                  remarks: 'Identifier for the unit of work (transform, sync, etc.)'
+                  constraints:
+                    nullable: false
+              - column:
+                  name: work_type
+                  type: varchar(255)
+                  remarks: 'Type/category of the worker job'
+                  constraints:
+                    nullable: false
+              - column:
+                  name: run_method
+                  type: varchar(255)
+                  remarks: 'Method used to execute the worker job'
+                  constraints:
+                    nullable: false
+              - column:
+                  name: is_local
+                  type: boolean
+                  remarks: 'Is this run local?'
+                  constraints:
+                    nullable: false
+              - column:
+                  name: status
+                  type: varchar(50)
+                  remarks: 'Current status of the worker job (running, completed, failed, etc.)'
+                  constraints:
+                    nullable: false
+              - column:
+                  name: is_active
+                  type: boolean
+                  remarks: 'True only for currently running jobs, null for the others'
+                  constraints:
+                    nullable: true
+                    defaultValue: true
+              - column:
+                  name: start_time
+                  type: ${timestamp_type}
+                  remarks: 'When the worker job started'
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: end_time
+                  type: ${timestamp_type}
+                  remarks: 'When the worker job completed (null if still running)'
+                  constraints:
+                    nullable: true
+              - column:
+                  name: message
+                  type: text
+                  remarks: 'Human-readable message about the run; may contain error message in case status is error'
+                  constraints:
+                    nullable: true
+
+
+  - changeSet:
+      id: v57.2025-08-04T10:53:00
+      author: metamben
+      comment: Add last run index on worker_run
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: worker_run
+                indexName: idx_worker_run_last_run_idx
+      changes:
+        - createIndex:
+            tableName: worker_run
+            indexName: idx_worker_run_last_run_idx
+            columns:
+              - column:
+                  name: work_type
+              - column:
+                  name: work_id
+              - column:
+                  name: start_time
+                  descending: true
+
+  - changeSet:
+      id: v57.2025-08-04T10:54:00
+      author: metamben
+      comment: Add unique index to make sure at most one run can be active
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: worker_run
+                indexName: idx_unique_active_worker_run
+      changes:
+        - addUniqueConstraint:
+            tableName: worker_run
+            constraintName: idx_unique_active_worker_run
+            columnNames: work_type, work_id, is_active
+
+  - changeSet:
+      id: v57.2025-08-04T10:55:00
+      author: metamben
+      comment: Add partial index for querying active runs
+      dbms: postgresql
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: worker_run
+                indexName: idx_worker_run_active_runs
+      changes:
+        - createIndex:
+            tableName: worker_run
+            indexName: idx_worker_run_active_runs
+            columns:
+              - column:
+                  name: work_type
+              - column:
+                  name: work_id
+            where: "is_active = true"
+
+  - changeSet:
+      id: v57.2025-08-04T10:55:01
+      author: metamben
+      comment: Add index for querying active runs
+      dbms: mysql, h2
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: worker_run
+                indexName: idx_worker_run_active_runs
+      changes:
+        - createIndex:
+            tableName: worker_run
+            indexName: idx_worker_run_active_runs
+            columns:
+              - column:
+                  name: is_active
+              - column:
+                  name: work_type
+              - column:
+                  name: work_id
+
+# >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
+
+########################################################################################################################
+#
+# ADVICE:
+#
+# 1) Think through some of these points when writing a migration, learn from our past mistakes:
+#    - Do you really need a migration? Could the feature work without it? Prefer not to if possible.
+#      Data in the wild can be vastly different from what you expect, and it's hard to get right.
+#    - Make sure your migration is backward compatible: it might not be possible to add a constraint back
+#      if you drop it in a migration.
+#    - Postgres, MySQL and H2 have their differences. Make sure your migration works for all.
+#    - Database encryption is a major issue:
+#      - Fields like `metabase_database.details` or `setting.value` can be encrypted, so you need to decrypt them in
+#        your migration. See #42617, #44048.
+#      - Database could be partially encrypted, see https://www.notion.so/72575933ef2a446bafd16909e05a7387
+#    - Custom migrations:
+#      - Prefer SQL migrations when possible.
+#      - Never use application code: it can change and *will* break your migration.
+#      - Do not use Toucan models - refer table names directly.
+#      - If it's a big change, consider using Quartz, see #42279
+#      - More in `metabase.app_db.custom_migrations` namespace doc.
+#    - Never delete a migration: users won't be able to downgrade. If you really need to, see #44908
+#    - Migration id (`vXX.<date>`) must match its earliest released version:
+#      - Do not backport `v51....` to version 50, Metabase will try to downgrade it.
+#      - Instead, write a migration with an oldest target you plan to backport to in mind.
+#
+# 2) Migrations should go in the ###_update_migrations.yaml file for the target version.
+#
+# 3) Run mage lint-migrations-file to run core.spec checks against any changes you make here. Liquibase is pretty
+#    forgiving and won't complain if you accidentally mix up things like deleteCascade and onDelete: CASCADE. CI runs
+#    this check but it's nicer to know now instead of waiting for CI.
+#
+# 3) Migration IDs should follow the format
+#
+#    vMM.TIMESTAMP
+#
+#    Where
+#
+#    M         = major version
+#    TIMESTAMP = the current timestamp with format `yyyy-MM-dd'T'HH:mm:ss`
+#                To get this timestamp, evaluate this in your REPL: `(dev/migration-timestamp)`
+#
+#    E.g: You're adding a new migration for version 49, And it's 10:30:00AM on April 1, 2023 (UTC),
+#    your migration id should be: `v49.2023-04-01T10:30:00`.
+#
+# PLEASE KEEP THIS MESSAGE AT THE BOTTOM OF THIS FILE!!!!! Add new migrations above the message.
+#
+########################################################################################################################
