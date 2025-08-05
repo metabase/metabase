@@ -31,38 +31,55 @@
 (defn- database-id->connection-id [conns database-id]
   (->> database-id kw-id (get conns) :connection-id))
 
+(defn- prepare-filter
+  [filter-type schema-filters]
+  (some->> schema-filters
+           (filter (comp #{filter-type} :type))
+           (map (comp #(str/replace % #"(^|[^\\\\])\*" "$1.*") str/trim :pattern))
+           not-empty
+           (str/join "|")
+           re-pattern))
+
+(defn- schema-filters->fn [schema-filters]
+  (let [include-pattern (prepare-filter "include" schema-filters)
+        include-fn      #(re-matches include-pattern %)
+        exclude-pattern (prepare-filter "exclude" schema-filters)
+        exclude-fn      #(not (re-matches exclude-pattern %))]
+    (cond
+      (and (not include-pattern)
+           (not exclude-pattern))
+      (constantly true)
+
+      (and include-pattern
+           exclude-pattern)
+      (every-pred include-fn exclude-fn)
+
+      include-pattern
+      include-fn
+
+      exclude-pattern
+      exclude-fn)))
+
 (defn- token-check-quotas-info
   "Predicate that signals if replication looks right from the quota perspective.
 
    This predicate checks that the quotas we got from the latest tokencheck have enough space for the database to be
   replicated."
-  [database schemas]
+  [database schema-filters]
   (let [all-quotas                (quotas)
         free-quota                (or
                                    (some->> (m/find-first (comp #{"clickhouse-dwh"} :hosting-feature) all-quotas)
                                             ((juxt :soft-limit :usage))
                                             (apply -))
                                    -1)
-        include-patterns          (->> schemas
-                                       (filter (comp #{"include"} :type))
-                                       (map (comp re-pattern :pattern)))
-        exclude-patterns          (->> schemas
-                                       (filter (comp #{"exclude"} :type))
-                                       (map (comp re-pattern :pattern)))
+        filter-schema             (schema-filters->fn schema-filters)
         db-tables                 (some->> (t2/hydrate database [:tables :fields]) :tables) ; sanitized name
         sanitized-tables          (some->> db-tables
                                            (filter (comp (fn [x] (re-matches #"^[A-Za-z0-9_]+$" x)) :name))
-                                           (filter (fn [{:keys [schema]}]
-                                                     (cond
-                                                       (empty? schemas)
-                                                       true
-                                                       (not-empty include-patterns)
-                                                       (some #(re-matches % schema) include-patterns)
-                                                       (not-empty exclude-patterns)
-                                                       (not (some #(re-matches % schema) exclude-patterns))))))
+                                           (filter (comp filter-schema :schema)))
         {tables-without-pk false
          tables-with-pk    true}  (group-by (fn [t] (boolean (some (comp #{:type/PK} :semantic_type) (:fields t))))
-                                          sanitized-tables)
+                                            sanitized-tables)
         total-estimated-row-count (or
                                    (some->>
                                     tables-with-pk
@@ -96,29 +113,29 @@
   ;; FIXME: First arg is route params, 2nd arg is query params, 3rd arg is body params:
   [{:keys [database-id]} :- [:map [:database-id ms/PositiveInt]]
    _query-params
-   {:keys [schemas]} :- [:map
-                         [:schemas {:optional true} [:sequential
-                                                     [:map
-                                                      [:type [:enum "include" "exclude"]]
-                                                      [:pattern :string]]]]]]
+   {:keys [schema-filters]} :- [:map
+                                [:schema-filters {:optional true} [:sequential
+                                                                   [:map
+                                                                    [:type [:enum "include" "exclude"]]
+                                                                    [:pattern :string]]]]]]
   (api/check-400 (database-replication.settings/database-replication-enabled) "PG replication integration is not enabled.")
   (let [database (t2/select-one :model/Database :id database-id)]
     (api/check-404 database)
     (api/check-400 (= :postgres (:engine database)) "PG replication is only supported for PostgreSQL databases.")
     (let [conns (pruned-database-replication-connections)]
       (api/check-400 (not (database-id->connection-id conns database-id)) "Database already has an active replication connection.")
-      (let [credentials (-> (:details database)
-                            (select-keys [:dbname :host :user :password :port])
-                            (update :port #(or % 5432))) ;; port is required in the API, but optional in MB
+      (let [credentials    (-> (:details database)
+                               (select-keys [:dbname :host :user :password :port])
+                               (update :port #(or % 5432))) ;; port is required in the API, but optional in MB
             {:keys [schema-filters-type schema-filters-patterns]} (:details database)
-            schemas     (-> (when-some [k ({"inclusion" :include, "exclusion" :exclude} schema-filters-type)]
-                              (for [pattern (str/split schema-filters-patterns #",")]
-                                {:type k :pattern pattern}))
-                            (concat (map #(select-keys % [:type :pattern]) schemas))
-                            not-empty)
-            secret      {:credentials (merge {:dbtype "postgresql"} credentials)
-                         :schemas     schemas}]
-        (if (can-set-replication? database schemas)
+            schema-filters (-> (when-some [k ({"inclusion" :include, "exclusion" :exclude} schema-filters-type)]
+                                 (for [pattern (str/split schema-filters-patterns #",")]
+                                   {:type k :pattern pattern}))
+                               (concat (map #(select-keys % [:type :pattern]) schema-filters))
+                               not-empty)
+            secret         {:credentials    (merge {:dbtype "postgresql"} credentials)
+                            :schema-filters schema-filters}]
+        (if (can-set-replication? database schema-filters)
           (let [{:keys [id]} (hm.client/call :create-connection, :type "pg_replication", :secret secret)
                 conn         {:connection-id id}]
             (database-replication.settings/database-replication-connections! (assoc conns (kw-id database-id) conn))
