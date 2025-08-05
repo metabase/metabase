@@ -252,7 +252,7 @@
    (fn [_] (default-timestamped
             {:name (u.random/random-name)
              :document (u.random/random-name)
-             :content_type "text/markdown"
+             :content_type "application/json+vnd.prose-mirror"
              :creator_id (rasta-id)}))
 
    :model/Revision

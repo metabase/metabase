@@ -203,16 +203,20 @@
               result (mt/user-http-request :crowberto
                                            :post 200 "ee/document/"
                                            {:name "Document with Generated Cards"
-                                            :document "Doc with generated cards"
+                                            :document {:type "doc"
+                                                       :content [{:type "cardEmbed"
+                                                                  :attrs {:id -1
+                                                                          :name nil}},
+                                                                 {:type "cardEmbed"
+                                                                  :attrs {:id -2
+                                                                          :name nil}}
+                                                                 {:type "paragraph"}]}
                                             :collection_id col-id
                                             :cards cards-to-create})]
 
           (testing "should create document successfully"
             (is (pos? (:id result)))
             (is (= "Document with Generated Cards" (:name result))))
-
-          (testing "should not return created cards mapping"
-            (is (not (contains? result :created_cards))))
 
           (testing "should create cards with correct properties"
             (let [created-cards (t2/select :model/Card :document_id (:id result))
@@ -234,12 +238,18 @@
                 (is (= "Generated Card 2" (:name card2)))
                 (is (= :question (:type card2)))
                 (is (= (:id result) (:document_id card2)))
-                (is (= col-id (:collection_id card2))))))
+                (is (= col-id (:collection_id card2))))
+
+              (testing "should update the doc with the substituted card ids"
+                (let [[card1-embed card2-embed] (get-in result [:document :content])]
+                  (is (= (:id card1)
+                         (get-in card1-embed [:attrs :id])))
+                  (is (= (:id card2)
+                         (get-in card2-embed [:attrs :id])))))))
 
           (testing "document should have correct properties"
             (let [document (t2/select-one :model/Document :id (:id result))]
               (is (= "Document with Generated Cards" (:name document)))
-              (is (= "Doc with generated cards" (:document document)))
               (is (= col-id (:collection_id document))))))))))
 
 (deftest post-document-with-empty-cards-to-create-test
@@ -250,8 +260,7 @@
                                          {:name "Document with Empty Cards To Create"
                                           :document "Doc with empty cards"
                                           :cards {}})]
-        (is (pos? (:id result)))
-        (is (not (contains? result :created_cards)))))))
+        (is (pos? (:id result)))))))
 
 (deftest post-document-with-nil-cards-to-create-test
   (testing "POST /api/ee/document/ - handle nil cards gracefully"
@@ -261,8 +270,7 @@
                                          {:name "Document with Nil Cards To Create"
                                           :document "Doc with nil cards"
                                           :cards nil})]
-        (is (pos? (:id result)))
-        (is (not (contains? result :created_cards)))))))
+        (is (pos? (:id result)))))))
 
 (deftest put-document-with-cards-to-create-test
   (testing "PUT /api/ee/document/:id - update document with new cards via cards"
@@ -283,7 +291,14 @@
             result (mt/user-http-request :crowberto
                                          :put 200 (format "ee/document/%s" document-id)
                                          {:name "Updated Document with Generated Cards"
-                                          :document "Updated doc with generated cards"
+                                          :document {:type "doc"
+                                                     :content [{:type "cardEmbed"
+                                                                :attrs {:id -10
+                                                                        :name nil}},
+                                                               {:type "cardEmbed"
+                                                                :attrs {:id -20
+                                                                        :name nil}}
+                                                               {:type "paragraph"}]}
                                           :collection_id col-id
                                           :cards cards-to-create})]
 
@@ -291,9 +306,6 @@
           (is (= document-id (:id result)))
           (is (= "Updated Document with Generated Cards" (:name result)))
           (is (= col-id (:collection_id result))))
-
-        (testing "should not return created cards mapping"
-          (is (not (contains? result :created_cards))))
 
         (testing "should create cards with correct properties"
           (let [created-cards (t2/select :model/Card :document_id document-id)
@@ -315,12 +327,18 @@
               (is (= "Updated Generated Card 2" (:name card2)))
               (is (= :question (:type card2)))
               (is (= document-id (:document_id card2)))
-              (is (= col-id (:collection_id card2))))))
+              (is (= col-id (:collection_id card2))))
+
+            (testing "should update the doc with the substituted card ids"
+              (let [[card1-embed card2-embed] (get-in result [:document :content])]
+                (is (= (:id card1)
+                       (get-in card1-embed [:attrs :id])))
+                (is (= (:id card2)
+                       (get-in card2-embed [:attrs :id])))))))
 
         (testing "document should have updated properties"
           (let [document (t2/select-one :model/Document :id document-id)]
             (is (= "Updated Document with Generated Cards" (:name document)))
-            (is (= "Updated doc with generated cards" (:document document)))
             (is (= col-id (:collection_id document)))))))))
 
 (deftest cards-to-create-schema-validation-test

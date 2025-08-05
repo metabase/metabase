@@ -11,6 +11,9 @@
 
 (methodical/defmethod t2/table-name :model/Document [_model] :document)
 
+(t2/deftransforms :model/Document
+  {:document mi/transform-json})
+
 (doto :model/Document
   (derive :metabase/model)
   (derive :perms/use-parent-collection-perms)

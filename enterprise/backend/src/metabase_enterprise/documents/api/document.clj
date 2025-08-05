@@ -1,6 +1,7 @@
 (ns metabase-enterprise.documents.api.document
   (:require
    [metabase-enterprise.documents.models.document :as m.document]
+   [metabase-enterprise.documents.prose-mirror :as prose-mirror]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
@@ -27,6 +28,21 @@
    [:visualization_settings ms/Map]
    [:result_metadata {:optional true} [:maybe [:sequential ms/Map]]]
    [:cache_ttl {:optional true} [:maybe ms/PositiveInt]]])
+
+(mu/defn- update-cards-in-ast :- [:map [:document :any]
+                                  [:content_type :string]]
+
+  [document :- [:map
+                [:document :any]
+                [:content_type :string]]
+   card-id-map :- [:maybe [:map-of ms/NegativeInt ms/PositiveInt]]]
+  (cond-> document
+    (map? document)
+    (prose-mirror/update-ast (fn match-card-to-update [{:keys [type attrs]}]
+                               (and (= type prose-mirror/card-embed-type)
+                                    (neg? (:id attrs))))
+                             (fn update-card-id [embed]
+                               (update-in embed [:attrs :id] card-id-map)))))
 
 (mu/defn- create-cards-for-document! :- [:map-of [:int {:max -1}] ms/PositiveInt]
   "Creates cards for a document from the cards map.
@@ -72,8 +88,6 @@
    _query-params]
   (t2/hydrate (t2/select :model/Document {:where (collection/visible-collection-filter-clause)}) :creator))
 
-(def ^:private prose-mirror-content-type "application/json+vnd.prose-mirro")
-
 (api.macros/defendpoint :post "/"
   "Create a new `Document`."
   [_route-params
@@ -81,23 +95,26 @@
    {:keys [name document collection_id cards]}
    :- [:map
        [:name :string]
-       [:document :string]
+       [:document :any]
        [:collection_id {:optional true} [:maybe ms/PositiveInt]]
        [:cards {:optional true} [:maybe [:map-of [:int {:max -1}] CardCreateSchema]]]]]
   (collection/check-write-perms-for-collection collection_id)
-  (let [result (t2/with-transaction [_conn]
-                 ;; Validate existing cards first if provided
-                 (let [document-id (t2/insert-returning-pk! :model/Document {:name name
-                                                                             :collection_id collection_id
-                                                                             :document document
-                                                                             :content_type prose-mirror-content-type
-                                                                             :creator_id api/*current-user-id*})
-                       ;; Create new cards if provided
-                       _created-cards-mapping (when-not (empty? cards) (create-cards-for-document! cards document-id collection_id @api/*current-user*))]
-                   ;; Return document ID only
-                   {:document_id document-id}))]
-    ;; Return the document without created cards mapping
-    (get-document (:document_id result))))
+  (get-document
+   (t2/with-transaction [_conn]
+            ;; Validate existing cards first if provided
+     (let [document-id (t2/insert-returning-pk! :model/Document {:name name
+                                                                 :collection_id collection_id
+                                                                 :document document
+                                                                 :content_type prose-mirror/prose-mirror-content-type
+                                                                 :creator_id api/*current-user-id*})]
+       ;; Create new cards if provided
+       (when-not (empty? cards)
+         (t2/update! :model/Document :id document-id
+                     (update-cards-in-ast
+                      {:document document
+                       :content_type prose-mirror/prose-mirror-content-type}
+                      (create-cards-for-document! cards document-id collection_id @api/*current-user*))))
+       document-id))))
 
 (api.macros/defendpoint :get "/:document-id"
   "Returns an existing Document by ID."
@@ -111,7 +128,7 @@
    _query-params
    {:keys [name document collection_id cards] :as body} :- [:map
                                                             [:name {:optional true} :string]
-                                                            [:document {:optional true} :string]
+                                                            [:document {:optional true} :any]
                                                             [:collection_id {:optional true} [:maybe ms/PositiveInt]]
                                                             [:cards {:optional true} [:maybe [:map-of :int CardCreateSchema]]]]]
   (let [existing-document (api/check-404 (get-document document-id))]
@@ -119,14 +136,14 @@
     (when (api/column-will-change? :collection_id existing-document body)
       (m.document/validate-collection-move-permissions (:collection_id existing-document) collection_id))
     (t2/with-transaction [_conn]
-      (let [;; Create new cards if provided
-            _created-cards-mapping (when-not (empty? cards) (create-cards-for-document! cards document-id collection_id @api/*current-user*))]
+      (let [created-cards-mapping (when-not (empty? cards) (create-cards-for-document! cards document-id collection_id @api/*current-user*))]
         ;; Update the document itself
         (t2/update! :model/Document document-id (cond-> {}
-                                                  document (assoc :document document)
+                                                  document (merge (update-cards-in-ast {:document document
+                                                                                        :content_type (:content_type existing-document)}
+                                                                                       created-cards-mapping))
                                                   name (assoc :name name)
                                                   (contains? body :collection_id) (assoc :collection_id collection_id)))))
-    ;; Return the document without created cards mapping
     (get-document document-id)))
 
 (def ^{:arglists '([request respond raise])} routes
