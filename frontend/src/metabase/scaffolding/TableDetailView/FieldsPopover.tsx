@@ -68,9 +68,14 @@ function SortableFieldItem({
       {...attributes}
       {...listeners}
     >
-      <Group gap="xs" align="center">
-        <Icon name="grabber" size={12} />
-        <Text size="sm">{column?.display_name || String(field.field_id)}</Text>
+      <Group gap="xs" align="center" justify="space-between">
+        <Group gap="xs" align="center">
+          <Icon name="grabber" size={12} />
+          <Text size="sm">
+            {column?.display_name || String(field.field_id)}
+          </Text>
+        </Group>
+
         {!!onRemoveItem && (
           <ActionIcon
             onClick={() => {
@@ -90,6 +95,7 @@ function SortableFieldItem({
 interface FieldsPopoverProps {
   isOpen: boolean;
   section: Section;
+  fieldsLimit?: number;
   usedFieldIds: Set<string>;
   columns: DatasetColumn[];
   onUpdateSection: (sectionId: number, update: Partial<Section>) => void;
@@ -100,6 +106,7 @@ interface FieldsPopoverProps {
 export function FieldsPopover({
   isOpen,
   section,
+  fieldsLimit = Number.MAX_SAFE_INTEGER,
   usedFieldIds,
   columns,
   onUpdateSection,
@@ -151,6 +158,8 @@ export function FieldsPopover({
     });
   };
 
+  const limitReached = section.fields.length >= fieldsLimit;
+
   return (
     <Box
       ref={popoverRef}
@@ -168,6 +177,7 @@ export function FieldsPopover({
         maxHeight: 400,
         overflowY: "auto",
         display: isOpen ? "block" : "none",
+        cursor: "default",
       }}
       p="md"
     >
@@ -185,7 +195,7 @@ export function FieldsPopover({
       {section.fields.length > 0 && (
         <>
           <Text size="xs" fw={600} c="text-medium" mb="sm" tt="uppercase">
-            {t`Showing`}
+            {t`Showing`} {fieldsLimit != null ? t`(Max ${fieldsLimit})` : null}
           </Text>
           <DndContext
             sensors={sensors}
@@ -250,9 +260,13 @@ export function FieldsPopover({
                   border: "1px solid var(--border-color)",
                   borderRadius: "var(--default-border-radius)",
                   backgroundColor: "var(--mb-color-bg-white)",
-                  cursor: "pointer",
+                  cursor: limitReached ? undefined : "pointer",
                 }}
                 onClick={() => {
+                  if (limitReached) {
+                    return;
+                  }
+
                   // Add field to current section
                   const newField = {
                     field_id: column.id as number,
@@ -265,7 +279,7 @@ export function FieldsPopover({
                 }}
               >
                 <Group gap="xs" align="center">
-                  <Icon name="add" size={12} />
+                  {!limitReached && <Icon name="add" size={12} />}
                   <Text size="sm">{column.display_name}</Text>
                 </Group>
               </Box>

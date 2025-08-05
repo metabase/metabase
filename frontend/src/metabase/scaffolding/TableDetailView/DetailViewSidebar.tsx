@@ -84,6 +84,7 @@ export function DetailViewSidebar({
         <Stack gap="lg">
           {headerSection && (
             <SidebarSectionItem
+              fieldsLimit={3}
               variant="header"
               section={headerSection}
               columns={columns}

@@ -27,6 +27,7 @@ type Section = ObjectViewSectionSettings;
 interface SidebarSectionItemProps {
   section: Section;
   columns: DatasetColumn[];
+  fieldsLimit?: number;
   onUpdateSection?: (sectionId: number, update: Partial<Section>) => void;
   onRemoveSection?: (sectionId: number) => void;
   openPopoverId: number | null;
@@ -37,6 +38,7 @@ interface SidebarSectionItemProps {
 export function SidebarSectionItem({
   section,
   columns,
+  fieldsLimit,
   onUpdateSection,
   onRemoveSection,
   openPopoverId,
@@ -132,6 +134,7 @@ export function SidebarSectionItem({
                 section={section}
                 usedFieldIds={usedFieldIds}
                 columns={columns}
+                fieldsLimit={fieldsLimit}
                 onUpdateSection={onUpdateSection}
                 onClose={() => setOpenPopoverId(null)}
                 triggerRef={rootTriggerRef}
