@@ -1,11 +1,10 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useState } from "react";
 import { t } from "ttag";
 
 import { ColorPillPicker } from "metabase/common/components/ColorPicker";
 import { useSetting } from "metabase/common/hooks";
 import type { MetabaseColors } from "metabase/embedding-sdk/theme";
 import { colors as defaultMetabaseColors } from "metabase/lib/colors";
-import type { ColorName } from "metabase/lib/colors/types";
 import { ActionIcon, Group, Icon, Stack, Text, Tooltip } from "metabase/ui";
 
 import { getConfigurableThemeColors } from "../utils/theme-colors";
@@ -23,32 +22,19 @@ export const ColorCustomizationSection = ({
 }: ColorCustomizationSectionProps) => {
   const applicationColors = useSetting("application-colors");
 
-  // Undebounced previews to keep color preview fast.
+  // Undebounced color values to keep color selection fast.
   const [colorPreviewValues, setColorPreviewValues] = useState<
     Record<string, string>
   >({});
-
-  const getOriginalColor = useCallback(
-    (colorKey: ColorName) =>
-      applicationColors?.[colorKey] ?? defaultMetabaseColors[colorKey],
-    [applicationColors],
-  );
 
   const resetColors = useCallback(() => {
     setColorPreviewValues({});
     onColorReset?.();
   }, [onColorReset]);
 
-  // Check if any colors have been changed from their defaults
-  const hasColorChanged = useMemo(() => {
-    return getConfigurableThemeColors().some(({ key, originalColorKey }) => {
-      const currentColor = theme?.colors?.[key];
-
-      return (
-        currentColor && currentColor !== getOriginalColor(originalColorKey)
-      );
-    });
-  }, [theme?.colors, getOriginalColor]);
+  // If some of the colors are set, then `theme.colors` would be no longer empty.
+  // This also matches when the `theme` key is shown in the code snippets.
+  const hasColorChanged = !!theme?.colors;
 
   return (
     <>
@@ -74,7 +60,10 @@ export const ColorCustomizationSection = ({
       <Group align="start" gap="xl" mb="lg">
         {getConfigurableThemeColors().map(({ key, name, originalColorKey }) => {
           // Use the default from appearance settings. If not set, use the default Metabase color.
-          const originalColor = getOriginalColor(originalColorKey);
+          const originalColor =
+            applicationColors?.[originalColorKey] ??
+            defaultMetabaseColors[originalColorKey];
+
           const previewValue = colorPreviewValues[key] ?? theme?.colors?.[key];
 
           return (
