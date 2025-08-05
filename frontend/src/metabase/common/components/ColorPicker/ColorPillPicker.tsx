@@ -19,9 +19,7 @@ export interface ColorPillPickerProps extends ColorPickerAttributes {
    **/
   originalColor: string;
 
-  /**
-   * Current preview value - this component is always controlled.
-   */
+  /** Undebounced preview value of the color. */
   previewValue: string;
 
   /**
@@ -46,18 +44,19 @@ export const ColorPillPicker = forwardRef(function ColorPillPicker(
   ref: Ref<HTMLDivElement>,
 ) {
   const debouncedUpdate = useDebouncedCallback(onChange, debounceMs);
+  const color = previewValue ?? originalColor;
 
   return (
     <TippyPopoverWithTrigger
       disableContentSandbox
       renderTrigger={({ onClick }) => (
         <Group {...props} ref={ref} wrap="nowrap">
-          <ColorPill color={previewValue} onClick={onClick} />
+          <ColorPill color={color} onClick={onClick} />
         </Group>
       )}
       popoverContent={
         <ColorPickerContent
-          value={previewValue}
+          value={color}
           onChange={(nextColor) => {
             // Fallback to the original color if the value is cleared.
             const colorWithDefault = nextColor ?? originalColor;

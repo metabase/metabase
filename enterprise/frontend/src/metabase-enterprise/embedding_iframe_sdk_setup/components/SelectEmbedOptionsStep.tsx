@@ -2,7 +2,7 @@ import { useCallback } from "react";
 import { t } from "ttag";
 
 import type { MetabaseColors } from "metabase/embedding-sdk/theme";
-import { Card, Checkbox, Stack, Text } from "metabase/ui";
+import { Card, Checkbox, Divider, Stack, Text } from "metabase/ui";
 
 import { useSdkIframeEmbedSetupContext } from "../context";
 
@@ -84,17 +84,25 @@ export const SelectEmbedOptionsStep = () => {
         </Card>
       )}
 
-      <ColorCustomizationSection theme={theme} onColorChange={updateColors} />
+      <Card p="md">
+        <ColorCustomizationSection
+          theme={theme}
+          onColorChange={updateColors}
+          onColorReset={() => updateSettings({ theme: undefined })}
+        />
 
-      {isQuestionOrDashboardEmbed && (
-        <Card p="md">
-          <Checkbox
-            label={t`Show ${experience} title`}
-            checked={settings.withTitle}
-            onChange={(e) => updateSettings({ withTitle: e.target.checked })}
-          />
-        </Card>
-      )}
+        {isQuestionOrDashboardEmbed && (
+          <>
+            <Divider mb="md" />
+
+            <Checkbox
+              label={t`Show ${experience} title`}
+              checked={settings.withTitle}
+              onChange={(e) => updateSettings({ withTitle: e.target.checked })}
+            />
+          </>
+        )}
+      </Card>
     </Stack>
   );
 };

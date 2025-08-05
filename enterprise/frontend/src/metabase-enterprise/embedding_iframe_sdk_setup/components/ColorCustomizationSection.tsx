@@ -6,24 +6,18 @@ import { useSetting } from "metabase/common/hooks";
 import type { MetabaseColors } from "metabase/embedding-sdk/theme";
 import { colors as defaultMetabaseColors } from "metabase/lib/colors";
 import type { ColorName } from "metabase/lib/colors/types";
-import {
-  ActionIcon,
-  Card,
-  Group,
-  Icon,
-  Stack,
-  Text,
-  Tooltip,
-} from "metabase/ui";
+import { ActionIcon, Group, Icon, Stack, Text, Tooltip } from "metabase/ui";
 
 interface ColorCustomizationSectionProps {
   theme?: { colors?: Partial<MetabaseColors> };
   onColorChange: (colors: Partial<MetabaseColors>) => void;
+  onColorReset?: () => void;
 }
 
 export const ColorCustomizationSection = ({
   theme,
   onColorChange,
+  onColorReset,
 }: ColorCustomizationSectionProps) => {
   const applicationColors = useSetting("application-colors");
 
@@ -39,15 +33,9 @@ export const ColorCustomizationSection = ({
   );
 
   const resetColors = useCallback(() => {
-    const colors: Record<string, string> = {};
-
-    for (const color of getConfigurableThemeColors()) {
-      colors[color.key] = getOriginalColor(color.originalColorKey);
-    }
-
-    setColorPreviewValues(colors);
-    onColorChange(colors);
-  }, [getOriginalColor, onColorChange]);
+    setColorPreviewValues({});
+    onColorReset?.();
+  }, [onColorReset]);
 
   // Check if any colors have been changed from their defaults
   const hasColorChanged = useMemo(() => {
@@ -61,7 +49,7 @@ export const ColorCustomizationSection = ({
   }, [theme?.colors, getOriginalColor]);
 
   return (
-    <Card p="md">
+    <>
       <Group justify="space-between" align="center" mb="lg">
         <Text size="lg" fw="bold">
           {t`Appearance`}
@@ -83,8 +71,7 @@ export const ColorCustomizationSection = ({
 
       <Group align="start" gap="xl" mb="lg">
         {getConfigurableThemeColors().map(({ key, name, originalColorKey }) => {
-          // Use the default from appearance settings.
-          // If not set, use the default Metabase color.
+          // Use the default from appearance settings. If not set, use the default Metabase color.
           const originalColor = getOriginalColor(originalColorKey);
           const previewValue = colorPreviewValues[key] ?? theme?.colors?.[key];
 
@@ -99,17 +86,14 @@ export const ColorCustomizationSection = ({
                 originalColor={originalColor}
                 previewValue={previewValue}
                 onPreviewChange={(color: string) =>
-                  setColorPreviewValues((prev) => ({
-                    ...prev,
-                    [key]: color,
-                  }))
+                  setColorPreviewValues((prev) => ({ ...prev, [key]: color }))
                 }
               />
             </Stack>
           );
         })}
       </Group>
-    </Card>
+    </>
   );
 };
 

@@ -313,7 +313,7 @@ H.describeWithSnowplow(suiteTitle, () => {
     codeBlock().should("contain", 'is-save-enabled="false"');
   });
 
-  it("can change brand color", () => {
+  it("can change brand color and reset colors", () => {
     navigateToEmbedOptionsStep({
       experience: "dashboard",
       resourceName: DASHBOARD_NAME,
@@ -323,6 +323,9 @@ H.describeWithSnowplow(suiteTitle, () => {
     getEmbedSidebar().within(() => {
       cy.findByText("Brand Color").should("be.visible");
     });
+
+    cy.log("reset button should not be visible initially");
+    getEmbedSidebar().findByLabelText("Reset colors").should("not.exist");
 
     cy.log("click on brand color picker");
     cy.findByLabelText("#509EE3").click();
@@ -346,11 +349,38 @@ H.describeWithSnowplow(suiteTitle, () => {
       .first()
       .should("have.css", "color", "rgb(255, 0, 0)");
 
+    cy.log("reset button should now be visible");
+    getEmbedSidebar().findByLabelText("Reset colors").should("be.visible");
+
     cy.log("snippet should be updated");
     getEmbedSidebar().findByText("Get Code").click();
 
     codeBlock().should("contain", '"theme": {');
     codeBlock().should("contain", '"colors": {');
     codeBlock().should("contain", '"brand": "#FF0000"');
+
+    cy.log("go back to embed options step");
+    getEmbedSidebar().findByText("Back").click();
+
+    cy.log("click reset button");
+    getEmbedSidebar().findByLabelText("Reset colors").click();
+
+    H.expectUnstructuredSnowplowEvent({
+      event: "embed_wizard_option_changed",
+      event_detail: "theme",
+    });
+
+    cy.log("table header should be back to default blue");
+    H.getSimpleEmbedIframeContent()
+      .findAllByTestId("cell-data")
+      .first()
+      .should("have.css", "color", "rgb(80, 158, 227)");
+
+    cy.log("reset button should be hidden again");
+    getEmbedSidebar().findByLabelText("Reset colors").should("not.exist");
+
+    cy.log("snippet should not contain theme colors");
+    getEmbedSidebar().findByText("Get Code").click();
+    codeBlock().should("not.contain", '"theme": {');
   });
 });
