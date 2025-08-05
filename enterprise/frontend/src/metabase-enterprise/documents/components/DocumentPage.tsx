@@ -305,11 +305,18 @@ export const DocumentPage = ({
 
   const handleQuestionSelect = useCallback(
     (cardId: number | null, embedIndex?: number | null) => {
-      if (cardId !== null && embedIndex !== null && embedIndex >= 0) {
+      if (
+        cardId !== null &&
+        embedIndex !== null &&
+        embedIndex !== undefined &&
+        embedIndex >= 0 &&
+        selectedEmbedIndex !== null
+      ) {
+        // Only update the selected embed index if the sidebar is already open
         dispatch(openVizSettingsSidebar({ embedIndex }));
       }
     },
-    [dispatch],
+    [dispatch, selectedEmbedIndex],
   );
 
   const handleDownloadMarkdown = useCallback(() => {
