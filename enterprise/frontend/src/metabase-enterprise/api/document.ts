@@ -11,11 +11,10 @@ import { idTag } from "./tags";
 
 export const documentApi = EnterpriseApi.injectEndpoints({
   endpoints: (builder) => ({
-    getDocument: builder.query<Document, { id: DocumentId; version?: number }>({
-      query: ({ id, version }) => ({
+    getDocument: builder.query<Document, { id: DocumentId }>({
+      query: ({ id }) => ({
         method: "GET",
         url: `/api/ee/document/${id}`,
-        params: { version },
       }),
       providesTags: (result, error, { id }) =>
         !error ? [idTag("document", id)] : [],

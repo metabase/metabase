@@ -4,6 +4,7 @@ import { useAsync } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { skipToken } from "metabase/api";
 import { useGetAdhocQueryMetadataQuery } from "metabase/api/dataset";
 import { useDispatch, useStore } from "metabase/lib/redux";
 import { Notebook } from "metabase/querying/notebook/components/Notebook";
@@ -16,8 +17,7 @@ import type { Card } from "metabase-types/api";
 
 import {
   createDraftCard,
-  getNextDraftCardId,
-  updateDraftCard,
+  generateDraftCardId,
 } from "../../../../documents.slice";
 import {
   useDocumentsDispatch,
@@ -47,17 +47,13 @@ export const ModifyQuestionModal = ({
     null,
   );
 
-  // Check if this is a draft card
   const isDraftCard = card.id < 0;
-
-  // For draft cards, use adhoc metadata query
   const { data: adhocMetadata, isLoading: isAdhocMetadataLoading } =
     useGetAdhocQueryMetadataQuery(
-      isDraftCard && card.dataset_query ? card.dataset_query : undefined,
+      isDraftCard && card.dataset_query ? card.dataset_query : skipToken,
       { skip: !isDraftCard || !card.dataset_query },
     );
 
-  // For regular cards, use the existing metadata loading approach
   const metadataState = useAsync(async () => {
     if (isOpen && card && !isDraftCard) {
       await dispatch(loadMetadataForCard(card));
@@ -114,7 +110,6 @@ export const ModifyQuestionModal = ({
     );
 
     if (!_.isEqual(currentDependencies, nextDependencies)) {
-      // For draft cards, we don't need to reload metadata as it's already loaded via adhoc query
       if (!isDraftCard) {
         await dispatch(loadMetadataForCard(newQuestion.card()));
         const freshMetadata = getMetadata(store.getState());
@@ -144,31 +139,15 @@ export const ModifyQuestionModal = ({
           modifiedQuestion.card().visualization_settings ?? {},
       };
 
-      // Check if card is a document-specific card
-      const isDocumentCard = card.type === "in_document";
+      const newCardId = generateDraftCardId();
 
-      let newCardId: number;
-      if (isDocumentCard) {
-        // If card has report_id, keep the same ID and update it in Redux
-        documentsDispatch(
-          updateDraftCard({
-            id: card.id,
-            modifiedData,
-          }),
-        );
-        newCardId = card.id;
-      } else {
-        // If card doesn't have report_id, create a draft with negative ID
-        const nextDraftId = getNextDraftCardId();
-
-        documentsDispatch(
-          createDraftCard({
-            originalCard: card,
-            modifiedData,
-          }),
-        );
-        newCardId = nextDraftId;
-      }
+      documentsDispatch(
+        createDraftCard({
+          originalCard: card,
+          modifiedData,
+          draftId: newCardId,
+        }),
+      );
 
       onSave({ card_id: newCardId, name: card.name });
       onClose();

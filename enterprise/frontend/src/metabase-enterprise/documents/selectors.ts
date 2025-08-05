@@ -68,7 +68,6 @@ export const getCardWithDraft = createSelector(
     (_state: any, _cardId: CardId, card?: Card) => card,
   ],
   (draftCards, cardId, card) => {
-    // Check if we have a draft card for this ID
     const draftCard = draftCards[cardId];
     if (draftCard) {
       return draftCard;

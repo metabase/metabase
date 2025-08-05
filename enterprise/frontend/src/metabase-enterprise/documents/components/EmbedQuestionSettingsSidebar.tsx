@@ -80,7 +80,12 @@ export const EmbedQuestionSettingsSidebar = ({
           ...baseCard?.visualization_settings,
           ...settings,
         };
-        ensureDraftCard({ visualization_settings: newSettings }, true); // true = viz settings only
+        const actualCardId = ensureDraftCard(
+          { visualization_settings: newSettings },
+          true,
+        );
+        // Use the returned ID (might be different if this was a duplicate)
+        dispatch(updateVizSettings({ cardId: actualCardId, settings }));
       } else {
         // Draft already exists, just update it
         dispatch(updateVizSettings({ cardId, settings }));
@@ -92,7 +97,9 @@ export const EmbedQuestionSettingsSidebar = ({
     if (selectedEmbedIndex !== null) {
       // If no draft exists, create one with the current display change
       if (!draftCard) {
-        ensureDraftCard({ display }, true); // true = viz settings only
+        const actualCardId = ensureDraftCard({ display }, true);
+        // Use the returned ID (might be different if this was a duplicate)
+        dispatch(updateVisualizationType({ cardId: actualCardId, display }));
       } else {
         // Draft already exists, just update it
         dispatch(updateVisualizationType({ cardId, display }));

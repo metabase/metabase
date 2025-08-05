@@ -15,10 +15,6 @@ interface CardSaveResult {
   name: string;
 }
 
-/**
- * Hook that determines whether to update an existing card or create a new one
- * based on card type and occurrence count in the editor
- */
 export const useDocumentCardSave = (
   documentCollectionId: RegularCollectionId | null,
 ) => {
@@ -52,10 +48,7 @@ export const useDocumentCardSave = (
       const cardName = modifiedCardData.name || card.name;
       const cardOccurrences = countCardOccurrences(editor, card.id);
 
-      // If card is "in_document" type and appears only once in the editor, update it
-      // Otherwise, create a new card (for regular cards or duplicated in_document cards)
-      if (card.type === "in_document" && cardOccurrences <= 1) {
-        // Card is already an in_document type and appears only once, just update it
+      if (card.document_id && cardOccurrences <= 1) {
         await updateCard({
           id: card.id,
           ...modifiedCardData,
@@ -66,15 +59,10 @@ export const useDocumentCardSave = (
           name: cardName,
         };
       } else {
-        // Card is either:
-        // 1. A regular card (not in_document type), or
-        // 2. An in_document card that appears multiple times (was copy-pasted)
-        // In both cases, create a new in_document card
         const { id, created_at, updated_at, ...cardData } = card;
         const savedCard = await createCard({
           ...cardData,
           ...modifiedCardData,
-          type: "in_document",
           collection_id: documentCollectionId,
           dashboard_id: null,
         }).unwrap();

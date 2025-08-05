@@ -31,6 +31,7 @@ import {
 import type { Card, RegularCollectionId } from "metabase-types/api";
 
 import {
+  clearDraftCards,
   closeSidebar,
   openVizSettingsSidebar,
   resetDocuments,
@@ -202,30 +203,22 @@ export const DocumentPage = ({
       }
 
       try {
-        // Extract cards that need to be saved (draft cards and cards with report_id)
         const cardsToSave: Record<number, Card> = {};
         const processedCardIds = new Set<number>();
 
-        // Walk through the editor to find all card embeds
         editorInstance.state.doc.descendants((node: any) => {
           if (node.type.name === "cardEmbed") {
             const cardId = node.attrs.id;
             if (!processedCardIds.has(cardId)) {
               processedCardIds.add(cardId);
 
-              // If it's a draft card (negative ID)
               if (cardId < 0 && draftCards[cardId]) {
-                const draftCard = draftCards[cardId];
-                // Keep the negative ID as key so backend can match to prosemirror AST
-                cardsToSave[cardId] = draftCard;
+                cardsToSave[cardId] = draftCards[cardId];
               }
-              // If it's a card with report_id, we might need to include it for updates
-              // Backend will handle this case
             }
           }
         });
 
-        // Parse the current content from string to JSON AST
         const documentAst = currentContent ? JSON.parse(currentContent) : null;
 
         const newDocumentData: any = {
@@ -239,11 +232,7 @@ export const DocumentPage = ({
               (response) => {
                 if (response.data) {
                   scheduleNavigation(() => {
-                    dispatch(
-                      push(
-                        `/document/${response.data.id}?version=${response.data.version}`,
-                      ),
-                    );
+                    dispatch(push(`/document/${response.data.id}`));
                   });
                 }
                 return response.data;
@@ -265,7 +254,7 @@ export const DocumentPage = ({
           sendToast({
             message: documentData?.id ? t`Document saved` : t`Document created`,
           });
-          // Content will be updated automatically when the new document data loads
+          dispatch(clearDraftCards());
         }
       } catch (error) {
         console.error("Failed to save document:", error);
@@ -313,15 +302,12 @@ export const DocumentPage = ({
   ]);
 
   const handleQuestionSelect = useCallback(
-    (cardId: number | null) => {
-      if (selectedEmbedIndex !== null && cardId !== null) {
-        const embedIndex = cardEmbeds.findIndex((embed) => embed.id === cardId);
-        if (embedIndex !== -1) {
-          dispatch(openVizSettingsSidebar({ embedIndex }));
-        }
+    (cardId: number | null, embedIndex?: number | null) => {
+      if (cardId !== null && embedIndex !== null && embedIndex >= 0) {
+        dispatch(openVizSettingsSidebar({ embedIndex }));
       }
     },
-    [selectedEmbedIndex, cardEmbeds, dispatch],
+    [dispatch],
   );
 
   const handleDownloadMarkdown = useCallback(() => {

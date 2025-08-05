@@ -58,6 +58,7 @@ export interface Card<Q extends DatasetQuery = DatasetQuery>
   collection_position: number | null;
   dashboard: Pick<Dashboard, "id" | "name"> | null;
   dashboard_id: DashboardId | null;
+  document_id?: DocumentId;
   dashboard_count: number | null;
 
   result_metadata: Field[];
@@ -372,11 +373,11 @@ export interface CreateCardRequest {
   visualization_settings: VisualizationSettings;
   type?: CardType;
   parameters?: Parameter[];
-  document_id?: DocumentId;
   parameter_mappings?: unknown;
   description?: string;
   collection_id?: CollectionId;
   dashboard_id?: DashboardId;
+  document_id?: DocumentId | null;
   dashboard_tab_id?: DashboardTabId;
   collection_position?: number;
   result_metadata?: Field[];
@@ -402,6 +403,7 @@ export interface UpdateCardRequest {
   embedding_params?: EmbeddingParameters;
   collection_id?: CollectionId | null;
   dashboard_id?: DashboardId | null;
+  document_id?: DocumentId | null;
   collection_position?: number;
   result_metadata?: Field[];
   cache_ttl?: number;
