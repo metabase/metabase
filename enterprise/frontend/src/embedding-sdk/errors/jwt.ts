@@ -27,7 +27,7 @@ export function REFRESH_TOKEN_BACKEND_ERROR(params: {
   message?: string;
 }) {
   const errorMessage =
-    params.message ??
+    params.message ||
     `Backend returned an error when refreshing the token.${params.status ? ` Status: ${params.status}` : ""}`;
 
   return new MetabaseError("BACKEND_ERROR_STATUS", errorMessage, params);
