@@ -1,3 +1,7 @@
+import { QA_MYSQL_PORT, QA_POSTGRES_PORT } from "e2e/support/cypress_data";
+
+import { waitForDbSync } from "./helpers/e2e-database-helpers";
+
 beforeEach(() => {
   cy.H.restore();
   cy.signInAsAdmin();
@@ -250,5 +254,109 @@ describe("Database connection strings", () => {
 
     cy.findByLabelText("Port").should("have.value", "1111");
     cy.findByLabelText("Database type").should("have.text", "PostgreSQL");
+  });
+
+  describe("actual database connections", { tags: "@external" }, () => {
+    beforeEach(() => {
+      cy.intercept("POST", "/api/database").as("createDatabase");
+      cy.intercept("GET", "/api/database").as("getDatabases");
+    });
+
+    it("should successfully connect to MySQL using connection string", () => {
+      cy.visit("/admin/databases/create");
+
+      chooseDatabase("MySQL");
+
+      const connectionString = `jdbc:mysql://metabase:metasample123@localhost:${QA_MYSQL_PORT}/sample?allowPublicKeyRetrieval=true`;
+
+      cy.findByLabelText("Connection string (optional)").paste(
+        connectionString,
+      );
+
+      cy.findByLabelText("Host").should("have.value", "localhost");
+      cy.findByLabelText("Port").should("have.value", QA_MYSQL_PORT.toString());
+      cy.findByLabelText("Database name").should("have.value", "sample");
+      cy.findByLabelText("Username").should("have.value", "metabase");
+      cy.findByLabelText("Password").should("have.value", "metasample123");
+
+      cy.button("Save").should("be.enabled").click();
+
+      cy.wait("@createDatabase").then(({ response }) => {
+        expect(response?.statusCode).to.equal(200);
+        expect(response?.body.name).to.equal("sample");
+      });
+
+      cy.url().should("match", /\/admin\/databases\/\d/);
+      waitForDbSync();
+
+      cy.findByRole("dialog").within(() => {
+        cy.findByText(
+          "Your database was added! Want to configure permissions?",
+        ).should("exist");
+        cy.button("Maybe later").click();
+      });
+    });
+
+    it("should successfully connect to PostgreSQL using connection string", () => {
+      cy.visit("/admin/databases/create");
+
+      chooseDatabase("PostgreSQL");
+
+      const connectionString = `jdbc:postgresql://metabase:metasample123@localhost:${QA_POSTGRES_PORT}/sample`;
+
+      cy.findByLabelText("Connection string (optional)").paste(
+        connectionString,
+      );
+
+      cy.findByTextEnsureVisible("Connection details pre-filled below.").should(
+        "exist",
+      );
+
+      cy.findByLabelText("Host").should("have.value", "localhost");
+      cy.findByLabelText("Port").should(
+        "have.value",
+        QA_POSTGRES_PORT.toString(),
+      );
+      cy.findByLabelText("Database name").should("have.value", "sample");
+      cy.findByLabelText("Username").should("have.value", "metabase");
+      cy.findByLabelText("Password").should("have.value", "metasample123");
+
+      cy.button("Save").should("be.enabled").click();
+
+      cy.wait("@createDatabase").then(({ response }) => {
+        expect(response?.statusCode).to.equal(200);
+        expect(response?.body.name).to.equal("sample");
+      });
+
+      cy.url().should("match", /\/admin\/databases\/\d/);
+      waitForDbSync();
+
+      cy.findByRole("dialog").within(() => {
+        cy.findByText(
+          "Your database was added! Want to configure permissions?",
+        ).should("exist");
+        cy.button("Maybe later").click();
+      });
+    });
+
+    it("should handle connection failures gracefully", () => {
+      cy.visit("/admin/databases/create");
+
+      chooseDatabase("PostgreSQL");
+
+      const invalidConnectionString = `jdbc:postgresql://baduser:wrongpass@localhost:${QA_POSTGRES_PORT}/nonexistent`;
+
+      cy.findByLabelText("Connection string (optional)").paste(
+        invalidConnectionString,
+      );
+
+      cy.button("Save").should("be.enabled").click();
+
+      cy.wait("@createDatabase").then(({ response }) => {
+        expect(response?.statusCode).to.not.equal(200);
+      });
+
+      cy.button("Failed").should("exist");
+    });
   });
 });
