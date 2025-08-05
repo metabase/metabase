@@ -2,6 +2,7 @@
   (:require
    [clojure.set :as set]
    [clojure.test :refer :all]
+   [metabase.permissions.core :as perms]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -386,7 +387,7 @@
                                :display :table
                                :visualization_settings {}}}]
         (mt/user-http-request :crowberto
-                              :post 500 "ee/document/"
+                              :post 403 "ee/document/"
                               {:name "Document That Should Rollback"
                                :document (text->prose-mirror-ast "Doc that should rollback")
                                :cards invalid-cards})
@@ -406,7 +407,7 @@
                                :visualization_settings {}}}]
 
         (mt/user-http-request :crowberto
-                              :put 500 (format "ee/document/%s" document-id)
+                              :put 403 (format "ee/document/%s" document-id)
                               {:name "Document That Should Rollback"
                                :document (text->prose-mirror-ast "Doc that should rollback")
                                :cards invalid-cards})
@@ -952,3 +953,218 @@
             (testing "document AST remains with the same card ID"
               (let [card-embed (first (get-in second-result [:document :content]))]
                 (is (= first-cloned-id (get-in card-embed [:attrs :id])))))))))))
+
+(deftest rasta-document-create-permissions-test
+  (mt/with-non-admin-groups-no-root-collection-perms
+    (testing "Document creation permissions for non-admin user :rasta"
+      (mt/with-temp [:model/Collection {read-only-col :id} {:name "Read Only Collection"}
+                     :model/Collection {write-col :id} {:name "Write Collection"}
+                     :model/Collection {no-access-col :id} {:name "No Access Collection"}]
+
+        ;; Set up permissions for :rasta user
+        (mt/with-group-for-user [group :rasta {:name "Rasta Group"}]
+          ;; Grant read-only access to read-only-col
+          (perms/grant-collection-read-permissions! group read-only-col)
+          ;; Grant write access to write-col
+          (perms/grant-collection-readwrite-permissions! group write-col)
+          ;; No permissions for no-access-col (implicitly)
+
+          (testing "POST /api/ee/document/ - :rasta can create documents in collections with write access"
+            (mt/with-model-cleanup [:model/Document]
+              (let [result (mt/user-http-request :rasta
+                                                 :post 200 "ee/document/"
+                                                 {:name "Rasta's Document"
+                                                  :document (text->prose-mirror-ast "Created by Rasta")
+                                                  :collection_id write-col})]
+                (is (pos? (:id result)))
+                (is (= "Rasta's Document" (:name result)))
+                (is (= write-col (:collection_id result))))))
+
+          (testing "POST /api/ee/document/ - :rasta cannot create documents in read-only collections"
+            (mt/user-http-request :rasta
+                                  :post 403 "ee/document/"
+                                  {:name "Should Fail"
+                                   :document (text->prose-mirror-ast "Should not be created")
+                                   :collection_id read-only-col}))
+
+          (testing "POST /api/ee/document/ - :rasta cannot create documents in no-access collections"
+            (mt/user-http-request :rasta
+                                  :post 403 "ee/document/"
+                                  {:name "Should Fail"
+                                   :document (text->prose-mirror-ast "Should not be created")
+                                   :collection_id no-access-col})))))))
+
+(deftest rasta-document-update-permissions-test
+  (testing "Document update permissions for non-admin user :rasta"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/Collection {read-only-col :id} {:name "Read Only Collection"}
+                     :model/Collection {write-col :id} {:name "Write Collection"}
+                     :model/Collection {no-access-col :id} {:name "No Access Collection"}]
+
+        ;; Set up permissions for :rasta user
+        (mt/with-group-for-user [group :rasta {:name "Rasta Group"}]
+          ;; Grant read-only access to read-only-col
+          (perms/grant-collection-read-permissions! group read-only-col)
+          ;; Grant write access to write-col
+          (perms/grant-collection-readwrite-permissions! group write-col)
+          ;; No permissions for no-access-col (implicitly)
+
+          (testing "PUT /api/ee/document/:id - :rasta can update documents in collections with write access"
+            (mt/with-temp [:model/Document {doc-id :id} {:name "Original Document"
+                                                         :document (text->prose-mirror-ast "Original content")
+                                                         :collection_id write-col}]
+              (let [result (mt/user-http-request :rasta
+                                                 :put 200 (format "ee/document/%s" doc-id)
+                                                 {:name "Updated by Rasta"
+                                                  :document (text->prose-mirror-ast "Updated content")})]
+                (is (= doc-id (:id result)))
+                (is (= "Updated by Rasta" (:name result)))
+                (is (= (text->prose-mirror-ast "Updated content") (:document result))))))
+
+          (testing "PUT /api/ee/document/:id - :rasta cannot update documents in read-only collections"
+            (mt/with-temp [:model/Document {doc-id :id} {:name "Read Only Document"
+                                                         :document (text->prose-mirror-ast "Read only content")
+                                                         :collection_id read-only-col}]
+              (mt/user-http-request :rasta
+                                    :put 403 (format "ee/document/%s" doc-id)
+                                    {:name "Should not update"})))
+
+          (testing "PUT /api/ee/document/:id - :rasta cannot update documents in no-access collections"
+            (mt/with-temp [:model/Document {doc-id :id} {:name "No Access Document"
+                                                         :document (text->prose-mirror-ast "No access content")
+                                                         :collection_id no-access-col}]
+              (mt/user-http-request :rasta
+                                    :put 403 (format "ee/document/%s" doc-id)
+                                    {:name "Should not update"}))))))))
+
+(deftest rasta-document-move-permissions-test
+  (testing "Document move permissions for non-admin user :rasta"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/Collection {read-only-col :id} {:name "Read Only Collection"}
+                     :model/Collection {write-col :id} {:name "Write Collection"}
+                     :model/Collection {destination-col :id} {:name "Destination Collection"}]
+
+        ;; Set up permissions for :rasta user
+        (mt/with-group-for-user [group :rasta {:name "Rasta Group"}]
+          ;; Grant read-only access to read-only-col
+          (perms/grant-collection-read-permissions! group read-only-col)
+          ;; Grant write access to write-col
+          (perms/grant-collection-readwrite-permissions! group write-col)
+          ;; Grant write access to destination-col
+          (perms/grant-collection-readwrite-permissions! group destination-col)
+
+          (testing "PUT /api/ee/document/:id - :rasta can move documents between collections with write access to both"
+            (mt/with-temp [:model/Document {doc-id :id} {:name "Document to Move"
+                                                         :document (text->prose-mirror-ast "Moving document")
+                                                         :collection_id write-col}]
+              (let [result (mt/user-http-request :rasta
+                                                 :put 200 (format "ee/document/%s" doc-id)
+                                                 {:collection_id destination-col})]
+                (is (= doc-id (:id result)))
+                (is (= destination-col (:collection_id result)))
+                ;; Verify document was actually moved
+                (is (= destination-col (:collection_id (t2/select-one :model/Document :id doc-id)))))))
+
+          (testing "PUT /api/ee/document/:id - :rasta cannot move documents from collections without write access"
+            (mt/with-temp [:model/Document {doc-id :id} {:name "Cannot Move From Here"
+                                                         :document (text->prose-mirror-ast "No permission to move")
+                                                         :collection_id read-only-col}]
+              (mt/user-http-request :rasta
+                                    :put 403 (format "ee/document/%s" doc-id)
+                                    {:collection_id destination-col})
+              ;; Verify document wasn't moved
+              (is (= read-only-col (:collection_id (t2/select-one :model/Document :id doc-id))))))
+
+          (testing "PUT /api/ee/document/:id - :rasta cannot move documents to collections without write access"
+            (mt/with-temp [:model/Document {doc-id :id} {:name "Cannot Move To There"
+                                                         :document (text->prose-mirror-ast "No permission for destination")
+                                                         :collection_id write-col}]
+              (mt/user-http-request :rasta
+                                    :put 403 (format "ee/document/%s" doc-id)
+                                    {:collection_id read-only-col})
+              ;; Verify document wasn't moved
+              (is (= write-col (:collection_id (t2/select-one :model/Document :id doc-id)))))))))))
+
+(deftest rasta-document-read-permissions-test
+  (testing "Document read permissions for non-admin user :rasta"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/Collection {read-only-col :id} {:name "Read Only Collection"}
+                     :model/Collection {write-col :id} {:name "Write Collection"}
+                     :model/Collection {no-access-col :id} {:name "No Access Collection"}]
+
+        ;; Set up permissions for :rasta user
+        (mt/with-group-for-user [group :rasta {:name "Rasta Group"}]
+          ;; Grant read-only access to read-only-col
+          (perms/grant-collection-read-permissions! group read-only-col)
+          ;; Grant write access to write-col
+          (perms/grant-collection-readwrite-permissions! group write-col)
+          ;; No permissions for no-access-col (implicitly)
+
+          (testing "GET /api/ee/document/:id - :rasta can read documents from collections with write access"
+            (mt/with-temp [:model/Document {doc-id :id} {:name "Write Access Document"
+                                                         :document (text->prose-mirror-ast "Can read with write access")
+                                                         :collection_id write-col}]
+              (let [result (mt/user-http-request :rasta
+                                                 :get 200 (format "ee/document/%s" doc-id))]
+                (is (= "Write Access Document" (:name result)))
+                (is (= (text->prose-mirror-ast "Can read with write access") (:document result)))
+                (testing "includes can_write=true for collections with write access"
+                  (is (true? (get result :can_write)))))))
+
+          (testing "GET /api/ee/document/:id - :rasta can read documents from collections with read access"
+            (mt/with-temp [:model/Document {doc-id :id} {:name "Read Access Document"
+                                                         :document (text->prose-mirror-ast "Can read with read access")
+                                                         :collection_id read-only-col}]
+              (let [result (mt/user-http-request :rasta
+                                                 :get 200 (format "ee/document/%s" doc-id))]
+                (is (= "Read Access Document" (:name result)))
+                (is (= (text->prose-mirror-ast "Can read with read access") (:document result)))
+                (testing "includes can_write=false for collections with only read access"
+                  (is (false? (get result :can_write)))))))
+
+          (testing "GET /api/ee/document/:id - :rasta cannot read documents from collections without access"
+            (mt/with-temp [:model/Document {doc-id :id} {:name "No Access Document"
+                                                         :document (text->prose-mirror-ast "Cannot read this")
+                                                         :collection_id no-access-col}]
+              (mt/user-http-request :rasta
+                                    :get 403 (format "ee/document/%s" doc-id)))))))))
+
+(deftest rasta-document-list-permissions-test
+  (testing "Document list permissions for non-admin user :rasta"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/Collection {read-only-col :id} {:name "Read Only Collection"}
+                     :model/Collection {write-col :id} {:name "Write Collection"}
+                     :model/Collection {no-access-col :id} {:name "No Access Collection"}]
+
+        ;; Set up permissions for :rasta user
+        (mt/with-group-for-user [group :rasta {:name "Rasta Group"}]
+          ;; Grant read-only access to read-only-col
+          (perms/grant-collection-read-permissions! group read-only-col)
+          ;; Grant write access to write-col
+          (perms/grant-collection-readwrite-permissions! group write-col)
+          ;; No permissions for no-access-col (implicitly)
+
+          (testing "GET /api/ee/document - :rasta only sees documents from accessible collections"
+            (mt/with-temp [:model/Document _ {:name "Doc in Write Collection"
+                                              :document (text->prose-mirror-ast "In write collection")
+                                              :collection_id write-col}
+                           :model/Document _ {:name "Doc in Read Collection"
+                                              :document (text->prose-mirror-ast "In read collection")
+                                              :collection_id read-only-col}
+                           :model/Document _ {:name "Doc in No Access Collection"
+                                              :document (text->prose-mirror-ast "In no access collection")
+                                              :collection_id no-access-col}]
+              (let [result (mt/user-http-request :rasta :get 200 "ee/document/")
+                    doc-names (set (map :name result))]
+                (testing "includes documents from write-access collections"
+                  (is (contains? doc-names "Doc in Write Collection")))
+                (testing "includes documents from read-access collections"
+                  (is (contains? doc-names "Doc in Read Collection")))
+                (testing "excludes documents from no-access collections"
+                  (is (not (contains? doc-names "Doc in No Access Collection"))))
+                (testing "each document includes can_write attribute"
+                  (doseq [doc result]
+                    (when (= "Doc in Write Collection" (:name doc))
+                      (is (true? (get doc :can_write))))
+                    (when (= "Doc in Read Collection" (:name doc))
+                      (is (false? (get doc :can_write))))))))))))))

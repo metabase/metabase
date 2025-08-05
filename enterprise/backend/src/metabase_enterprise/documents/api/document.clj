@@ -8,6 +8,7 @@
    [metabase.collections.models.collection :as collection]
    [metabase.models.interface :as mi]
    [metabase.queries.models.card :as card]
+   [metabase.query-permissions.core :as query-perms]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
@@ -28,6 +29,12 @@
    [:visualization_settings ms/Map]
    [:result_metadata {:optional true} [:maybe [:sequential ms/Map]]]
    [:cache_ttl {:optional true} [:maybe ms/PositiveInt]]])
+
+(defn- create-card!
+  "Checks that the query is runnable by the current user then saves"
+  [{query :dataset_query :as card} creator]
+  (query-perms/check-run-permissions-for-query query)
+  (card/create-card! card creator))
 
 (mu/defn- update-cards-in-ast :- [:map [:document :any]
                                   [:content_type :string]]
@@ -70,7 +77,7 @@
                                   (cond-> (nil? (:collection_id card-data))
                                     (assoc :collection_id document-collection-id)))
              ;; Create the card using the queries core function
-             new-card (card/create-card! merged-card-data creator)]
+             new-card (create-card! merged-card-data creator)]
          (assoc result-map original-key (:id new-card))))
      {}
      cards-to-create)))
@@ -95,8 +102,8 @@
               (api/read-check card)
               (assoc accum
                      (:id card)
-                     (:id (card/create-card! (assoc card :document_id id :collection_id collection_id)
-                                             @api/*current-user*))))
+                     (:id (create-card! (assoc card :document_id id :collection_id collection_id)
+                                        @api/*current-user*))))
             {}
             to-clone)))
 
@@ -105,13 +112,13 @@
   [id]
   (api/check-404
    (api/read-check
-    (t2/hydrate (t2/select-one :model/Document :id id) :creator))))
+    (t2/hydrate (t2/select-one :model/Document :id id) :creator :can_write))))
 
 (api.macros/defendpoint :get "/"
   "Gets existing `Documents`."
   [_route-params
    _query-params]
-  (t2/hydrate (t2/select :model/Document {:where (collection/visible-collection-filter-clause)}) :creator))
+  (t2/hydrate (t2/select :model/Document {:where (collection/visible-collection-filter-clause)}) :creator :can_write))
 
 (api.macros/defendpoint :post "/"
   "Create a new `Document`."
@@ -150,7 +157,7 @@
 (api.macros/defendpoint :get "/:document-id"
   "Returns an existing Document by ID."
   [{:keys [document-id]} :- [:map [:document-id ms/PositiveInt]]]
-  (get-document document-id))
+  (api/read-check (get-document document-id)))
 
 (api.macros/defendpoint :put "/:document-id"
   "Updates an existing `Document`."
