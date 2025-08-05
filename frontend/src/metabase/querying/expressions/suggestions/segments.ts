@@ -43,6 +43,7 @@ export function suggestSegments({ query, stageIndex }: Options) {
         from: token.start,
         to: token.end,
         options: segments,
+        filter: false,
       };
     }
 

@@ -44,6 +44,7 @@ export function suggestMetrics({ expressionMode, query, stageIndex }: Options) {
         from: token.start,
         to: token.end,
         options: metrics,
+        filter: false,
       };
     }
 
