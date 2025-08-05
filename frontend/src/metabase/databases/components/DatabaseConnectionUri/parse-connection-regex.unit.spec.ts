@@ -52,7 +52,7 @@ describe("parseConnectionUriRegex - Amazon Redshift", () => {
     );
   });
 
-  it("should parse a Amazon Redshift connection string", () => {
+  it("should parse a Amazon Redshift connection string with username and password", () => {
     const connectionString =
       "jdbc:redshift://a.b.us-west-2.redshift.amazonaws.com:5439/dbname;UID=amazon;PWD=password%3Apassword";
     const result = parseConnectionUriRegex(connectionString, "redshift");
@@ -203,6 +203,7 @@ describe("parseConnectionUriRegex - Oracle", () => {
       }),
     );
   });
+
   it("should parse a Oracle connection string with username and password", () => {
     const connectionString =
       "jdbc:oracle:thin:john/pass1234@mydbhost:1521/mydbservice?ssl_server_cert_dn=ServerDN";
@@ -374,6 +375,7 @@ describe("parseConnectionUriRegex - SQL Server", () => {
       }),
     );
   });
+
   it("should parse a SQL Server connection string with username and password", () => {
     const connectionString =
       "jdbc:sqlserver://localhost:1433;encrypt=true;databaseName=AdventureWorks;integratedSecurity=true;username=john;password=password";
@@ -433,6 +435,7 @@ describe("parseConnectionUriRegex - Vertica", () => {
       }),
     );
   });
+
   it("should parse a Vertica connection string with username and password", () => {
     const connectionString =
       "jdbc:vertica://vertica.example.com:1234/databaseName?user=jane&password=pass1234";
