@@ -92,8 +92,8 @@
 (def ^:private next-batch-number-hsql
   [:coalesce
    [:+
-    {:select [[:%max.batch_num]]
-     :from [[{:select [:batch_num] :from [:data_edit_undo_chain]} :dumb_alias]]}
+    {:select [:%max.batch_num]
+     :from   [[{:select [:*] :from [:data_edit_undo_chain]} :dumb_alias]]}
     [:inline 1]]
    [:inline 1]])
 
