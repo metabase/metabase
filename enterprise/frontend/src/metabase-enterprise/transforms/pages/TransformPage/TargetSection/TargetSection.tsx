@@ -1,5 +1,4 @@
 import { useDisclosure } from "@mantine/hooks";
-import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import { skipToken, useGetDatabaseQuery } from "metabase/api";
@@ -22,7 +21,7 @@ import {
   getQueryBuilderUrl,
   getTableMetadataUrl,
 } from "metabase-enterprise/transforms/urls";
-import type { Transform, TransformTarget } from "metabase-types/api";
+import type { Transform } from "metabase-types/api";
 
 import { UpdateTargetModal } from "./UpdateTargetModal";
 
@@ -33,7 +32,7 @@ type TargetSectionProps = {
 export function TargetSection({ transform }: TargetSectionProps) {
   return (
     <CardSection
-      label={getSectionLabel(transform.target)}
+      label={t`Generated table`}
       description={t`Change what this transform generates and where.`}
     >
       <Group p="lg">
@@ -46,13 +45,6 @@ export function TargetSection({ transform }: TargetSectionProps) {
       </Group>
     </CardSection>
   );
-}
-
-function getSectionLabel({ type }: TransformTarget) {
-  return match(type)
-    .with("view", () => t`Generated view`)
-    .with("table", () => t`Generated table`)
-    .exhaustive();
 }
 
 type TargetInfoProps = {
@@ -160,7 +152,7 @@ type EditMetadataButtonProps = {
 };
 
 function EditMetadataButton({ transform }: EditMetadataButtonProps) {
-  const { table, target } = transform;
+  const { table } = transform;
   if (table == null) {
     return null;
   }
@@ -171,14 +163,7 @@ function EditMetadataButton({ transform }: EditMetadataButtonProps) {
       to={getTableMetadataUrl(table.id, table.schema, table.db_id)}
       leftSection={<Icon name="label" />}
     >
-      {getEditButtonLabel(target)}
+      {t`Edit this table’s metadata`}
     </Button>
   );
-}
-
-function getEditButtonLabel({ type }: TransformTarget) {
-  return match(type)
-    .with("view", () => t`Edit this view’s metadata`)
-    .with("table", () => t`Edit this table’s metadata`)
-    .exhaustive();
 }

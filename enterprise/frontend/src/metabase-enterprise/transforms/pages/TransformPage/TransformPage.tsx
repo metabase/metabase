@@ -53,9 +53,9 @@ export function TransformPage({ params }: TransformPageProps) {
   return (
     <Stack gap="3.5rem">
       <NameSection transform={transform} />
-      <ManageSection transform={transform} />
-      <ScheduleSection transform={transform} />
       <TargetSection transform={transform} />
+      <ScheduleSection transform={transform} />
+      <ManageSection transform={transform} />
     </Stack>
   );
 }
