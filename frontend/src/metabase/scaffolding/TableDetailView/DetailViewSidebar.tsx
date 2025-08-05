@@ -1,6 +1,5 @@
 import { t } from "ttag";
 
-import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { Box, Button, Group, Stack, Text } from "metabase/ui/components";
 import { Icon } from "metabase/ui/components/icons";
 import type {
@@ -32,7 +31,7 @@ interface DetailViewSidebarProps {
 export function DetailViewSidebar({
   columns,
   sections,
-  table,
+  // table,
   onCreateSection,
   onUpdateSection,
   onUpdateSections: _onUpdateSections,
@@ -52,20 +51,20 @@ export function DetailViewSidebar({
       s !== headerSection && s !== subheaderSection && s !== highlight1Section,
   );
 
-  const fieldsInSections = sections.flatMap((s) => s.fields);
-  const fieldsInSectionsIds = fieldsInSections.map((f) => f.field_id);
-  const fields = table?.fields ?? [];
-  const fieldIds = fields.map(getRawTableFieldId);
-  const uncategorizedSection: ObjectViewSectionSettings = {
-    id: -1,
-    title: "Uncategorized",
-    variant: "normal",
-    fields: fieldIds
-      .filter((id) => {
-        return !fieldsInSectionsIds.includes(id);
-      })
-      .map((field_id) => ({ field_id })),
-  };
+  // const fieldsInSections = sections.flatMap((s) => s.fields);
+  // const fieldsInSectionsIds = fieldsInSections.map((f) => f.field_id);
+  // const fields = table?.fields ?? [];
+  // const fieldIds = fields.map(getRawTableFieldId);
+  // const uncategorizedSection: ObjectViewSectionSettings = {
+  //   id: -1,
+  //   title: "Uncategorized",
+  //   variant: "normal",
+  //   fields: fieldIds
+  //     .filter((id) => {
+  //       return !fieldsInSectionsIds.includes(id);
+  //     })
+  //     .map((field_id) => ({ field_id })),
+  // };
 
   return (
     <Stack gap={0} h="100%">
@@ -141,7 +140,7 @@ export function DetailViewSidebar({
               setOpenPopoverId={setOpenPopoverId}
             />
           ))}
-
+          {/*
           <SidebarSectionItem
             variant={uncategorizedSection.variant}
             section={uncategorizedSection}
@@ -150,7 +149,7 @@ export function DetailViewSidebar({
             // onRemoveSection={onRemoveSection}
             // openPopoverId={openPopoverId}
             // setOpenPopoverId={setOpenPopoverId}
-          />
+          /> */}
         </Stack>
       </Box>
 
