@@ -245,13 +245,17 @@
                                                 :texts (calc-token-metrics texts)})
         (if (= "openai" provider)
           (let [max-tokens-per-batch (semantic-settings/openai-max-tokens-per-batch)
-                batches (create-batches max-tokens-per-batch count-tokens texts)]
-            (doseq [[batch-idx batch-texts] (map-indexed vector batches)]
-              (let [embeddings (u/profile (format "Embedding batch %d/%d %s"
-                                                  (inc batch-idx) (count batches) (str (calc-token-metrics batch-texts)))
-                                 (openai-get-embeddings-batch model-name batch-texts))
-                    text-embedding-map (zipmap batch-texts embeddings)]
-                (process-fn text-embedding-map))))
+                batches (create-batches max-tokens-per-batch count-tokens texts)
+
+                process-batch
+                (fn [batch-idx batch-texts]
+                  (let [embeddings (u/profile (format "Embedding batch %d/%d %s"
+                                                      (inc batch-idx) (count batches) (str (calc-token-metrics batch-texts)))
+                                     (openai-get-embeddings-batch model-name batch-texts))
+                        text-embedding-map (zipmap batch-texts embeddings)]
+                    (process-fn text-embedding-map)))]
+
+            (transduce (map-indexed process-batch) (partial merge-with +) batches))
 
           ;; No batching for other providers
           (let [embeddings (get-embeddings-batch embedding-model texts)

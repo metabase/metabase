@@ -127,12 +127,13 @@
 (defn- batch-update!
   [connectable table-name records->sql documents embeddings]
   (when (seq documents)
-    (u/profile (str "Semantic index database update of " (count documents) " documents " (->> documents (map :model) frequencies))
-      (doseq [batch (->> (map vector documents embeddings)
-                         (map (fn [[doc embedding]] (doc->db-record embedding doc)))
-                         (partition-all *batch-size*))]
-        (jdbc/execute! connectable (records->sql batch)))
-      (analytics-set-index-size! connectable table-name))))
+    (u/prog1 (->> documents (map :model) frequencies)
+      (u/profile (str "Semantic index database update of " (count documents) " documents " <>)
+        (doseq [batch (->> (map vector documents embeddings)
+                           (map (fn [[doc embedding]] (doc->db-record embedding doc)))
+                           (partition-all *batch-size*))]
+          (jdbc/execute! connectable (records->sql batch)))
+        (analytics-set-index-size! connectable table-name)))))
 
 (defn- batch-delete-ids!
   [connectable table-name model ids->sql ids]

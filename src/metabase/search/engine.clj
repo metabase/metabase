@@ -44,7 +44,8 @@
     search-engine))
 
 (defmulti init!
-  "Ensure that the search index exists, and is ready to take search queries."
+  "Ensure that the search index exists, and is ready to take search queries.
+   Returns a map of the number of documents indexed in each model"
   {:arglists '([engine opts])}
   (fn [engine _opts]
     engine))
