@@ -1,8 +1,10 @@
 (ns metabase-enterprise.database-replication.api-test
   (:require
    [clojure.test :refer [deftest is testing]]
+   [metabase-enterprise.database-replication.api :as api]
    [metabase-enterprise.database-replication.settings :as database-replication.settings]
    [metabase-enterprise.harbormaster.client :as hm.client]
+   [metabase.premium-features.token-check :as tc]
    [metabase.test :as mt]
    [metabase.util :as u]))
 
@@ -88,3 +90,15 @@
                 (is (= {} (database-replication.settings/database-replication-connections))))
               (testing "idempotent delete"
                 (mt/user-http-request :crowberto :delete 204 url)))))))))
+
+(deftest token-check-quotas-info-test
+  (with-redefs [tc/quotas
+                (constantly [{:usage 499990, :locked false, :updated-at "2025-08-05T08:48:11Z", :quota-type "rows", :hosting-feature "clickhouse-dwh", :soft-limit 500000}])]
+   (mt/with-temp [:model/Database {db-id :id :as db} {:engine :postgres :name "Test DB"}
+                  :model/Table {table1-id :id} {:db_id db-id :name "yes_pk" :schema "s1" :estimated_row_count 9}
+                  :model/Table {_table2-id :id} {:db_id db-id :name "no_pk" :schema "s2" :estimated_row_count 9}
+                  :model/Field {_field-id :id} {:table_id table1-id :name "test_field" :semantic_type :type/PK}]
+     (let [info (#'api/token-check-quotas-info db nil)]
+       (is (= 10 (:free-quota info)))
+       (is (= 9 (:total-estimated-row-count info)))
+       (is (= "no_pk" (-> info :tables-without-pk first :name)))))))
