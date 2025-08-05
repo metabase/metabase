@@ -118,15 +118,10 @@
                   :undone true))
 
     ;; Pruning. Fairly naive implementation. Doesn't assume we were fully pruned before this update.
-
     (prune-from-batch! (max (batch-to-prune-from-for-rows retention-total-rows)
                             (batch-to-prune-from retention-total-batches)))
-
-    (let [where-scope [:= :scope scope]]
-      (prune-batches! retention-batches-per-scope where-scope))
-
-    (let [where-user [:= :user_id user-id]]
-      (prune-batches! retention-batches-per-user where-user))))
+    (prune-batches! retention-batches-per-scope [:= :scope scope])
+    (prune-batches! retention-batches-per-user [:= :user_id user-id])))
 
 (defn next-batch-num
   "Return the batch number of the new change that we would (un-)revert.

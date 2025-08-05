@@ -92,7 +92,7 @@ databaseChangeLog:
                   constraints:
                     nullable: false
 
- - changeSet:
+  - changeSet:
       id: v57.2025-08-01T10:02:00
       author: qnkhuat
       comment: A table for generating atomic sequence numbers
