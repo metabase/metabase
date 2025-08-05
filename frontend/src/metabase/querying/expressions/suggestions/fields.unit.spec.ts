@@ -107,6 +107,7 @@ describe("suggestFields", () => {
   const ALL_RESULTS = {
     from: 0,
     to: 1,
+    filter: false,
     options: [
       {
         label: "[Email]",

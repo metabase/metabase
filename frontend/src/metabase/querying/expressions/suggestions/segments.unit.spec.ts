@@ -79,6 +79,7 @@ describe("suggestSegments", () => {
   const ALL_RESULTS = {
     from: 0,
     to: 1,
+    filter: false,
     options: [
       {
         label: "[Foo]",
