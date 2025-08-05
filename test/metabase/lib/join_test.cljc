@@ -702,15 +702,16 @@
                 (lib/join-condition-lhs-columns query nil nil rhs)))))))
 
 (deftest ^:parallel join-condition-lhs-columns-expression-test
-  (testing "Should not include expressions in LHS columns"
+  (testing "Should include expressions in LHS columns"
     (let [query (-> (lib.tu/venues-query)
                     (lib/expression "double-price" (lib/* (meta/field-metadata :venues :price) 2)))]
-      (is (=? [{:lib/desired-column-alias "ID"}
-               {:lib/desired-column-alias "CATEGORY_ID"}
-               {:lib/desired-column-alias "NAME"}
-               {:lib/desired-column-alias "LATITUDE"}
-               {:lib/desired-column-alias "LONGITUDE"}
-               {:lib/desired-column-alias "PRICE"}]
+      (is (=? [{:name "ID"}
+               {:name "CATEGORY_ID"}
+               {:name "NAME"}
+               {:name "LATITUDE"}
+               {:name "LONGITUDE"}
+               {:name "PRICE"}
+               {:name "double-price"}]
               (lib/join-condition-lhs-columns query nil nil nil))))))
 
 (deftest ^:parallel join-condition-lhs-columns-with-previous-join-test
