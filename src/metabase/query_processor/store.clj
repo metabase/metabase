@@ -16,6 +16,8 @@
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.cached-provider :as lib.metadata.cached-provider]
+   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.query-processor.error-type :as qp.error-type]
@@ -116,22 +118,26 @@
    ::lib.schema.id/database
    ::lib.schema.metadata/metadata-providerable])
 
+(defn- ensure-cached-metadata-provider [mp]
+  (if (lib.metadata.protocols/cached-metadata-provider-with-cache? mp)
+    mp
+    (lib.metadata.cached-provider/cached-metadata-provider mp)))
+
 (mu/defn- ->metadata-provider :- ::lib.schema.metadata/metadata-provider
   [database-id-or-metadata-providerable :- ::database-id-or-metadata-providerable]
-  (if (integer? database-id-or-metadata-providerable)
-    (lib.metadata.jvm/application-database-metadata-provider database-id-or-metadata-providerable)
-    database-id-or-metadata-providerable))
+  (let [mp (if (pos-int? database-id-or-metadata-providerable)
+             (lib.metadata.jvm/application-database-metadata-provider database-id-or-metadata-providerable)
+             (lib.metadata/->metadata-provider database-id-or-metadata-providerable))]
+    (ensure-cached-metadata-provider mp)))
 
 (mu/defn- validate-existing-provider
   "Impl for [[with-metadata-provider]]; if there's already a provider, just make sure we're not trying to change the
   Database. We don't need to replace it."
   [database-id-or-metadata-providerable :- ::database-id-or-metadata-providerable]
   (let [old-provider (miscellaneous-value [::metadata-provider])]
-    (when-not (identical? old-provider database-id-or-metadata-providerable)
-      (let [new-database-id      (if (integer? database-id-or-metadata-providerable)
-                                   database-id-or-metadata-providerable
-                                   (throw (ex-info "Cannot replace MetadataProvider with another one after it has been bound"
-                                                   {:old-provider old-provider, :new-provider database-id-or-metadata-providerable})))
+    (if (pos-int? database-id-or-metadata-providerable)
+      ;; Database ID
+      (let [new-database-id      database-id-or-metadata-providerable
             existing-database-id (u/the-id (lib.metadata/database old-provider))]
         (when-not (= new-database-id existing-database-id)
           (throw (ex-info (tru "Attempting to initialize metadata provider with new Database {0}. Queries can only reference one Database. Already referencing: {1}"
@@ -139,7 +145,15 @@
                                (pr-str existing-database-id))
                           {:existing-id existing-database-id
                            :new-id      new-database-id
-                           :type        qp.error-type/invalid-query})))))))
+                           :type        qp.error-type/invalid-query}))))
+
+      ;; Metadata Providerable
+      (let [new-provider (-> database-id-or-metadata-providerable
+                             lib.metadata/->metadata-provider
+                             ensure-cached-metadata-provider)]
+        (when-not (= new-provider old-provider)
+          (throw (ex-info "Cannot replace MetadataProvider with another one after it has been bound"
+                          {:old-provider old-provider, :new-provider database-id-or-metadata-providerable})))))))
 
 (mu/defn- set-metadata-provider!
   "Create a new metadata provider and save it."
