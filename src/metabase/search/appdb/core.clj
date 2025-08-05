@@ -41,8 +41,10 @@
   #{:postgres :h2})
 
 (defmethod search.engine/supported-engine? :search.engine/appdb [_]
-  (and (or (not config/is-prod?)
-           (= "appdb" (some-> (search.settings/search-engine) name)))
+  (and (or config/is-dev?
+           ;; if the default engine is semantic we want appdb to be available,
+           ;; as we want to mix results
+           (#{"appdb" "semantic"} (some-> (search.settings/search-engine) name)))
        (supported-db? (mdb/db-type))))
 
 (defn- parse-datetime [s]
