@@ -26,7 +26,7 @@ describe("EmbeddingSdkSettings (OSS)", () => {
         alertInfo.getByText("upgrade to Metabase Pro"),
       ).toBeInTheDocument();
       expect(
-        alertInfo.getByText("implement JWT and SAML SSO"),
+        alertInfo.getByText("implement JWT or SAML SSO"),
       ).toBeInTheDocument();
     });
   });
@@ -40,7 +40,7 @@ describe("EmbeddingSdkSettings (OSS)", () => {
         });
 
         expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-        await userEvent.click(screen.getByRole("switch"));
+        await userEvent.click(screen.getAllByRole("switch")[0]);
         assertLegaleseModal();
 
         await userEvent.click(screen.getByText("Agree and continue"));
@@ -63,7 +63,7 @@ describe("EmbeddingSdkSettings (OSS)", () => {
         });
 
         expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-        await userEvent.click(screen.getByRole("switch"));
+        await userEvent.click(screen.getAllByRole("switch")[0]);
         assertLegaleseModal();
 
         await userEvent.click(screen.getByText("Decline and go back"));
@@ -83,7 +83,7 @@ describe("EmbeddingSdkSettings (OSS)", () => {
         });
 
         expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-        await userEvent.click(screen.getByRole("switch"));
+        await userEvent.click(screen.getAllByRole("switch")[0]);
         expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
 
         const puts = await findRequests("PUT");

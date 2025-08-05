@@ -102,12 +102,12 @@ export function EmbeddingSdkSettings() {
     .with(
       { needsToSwitchBinaries: true },
       () =>
-        jt`You can test Embedded analytics SDK on localhost quickly by using API keys. To use the SDK on other sites, ${SwitchBinariesLink}, ${(<UpsellSdkLink />)} and ${ImplementJwtLink}.`,
+        jt`You can test Embedded analytics SDK on localhost quickly by using API keys. To use the SDK on other sites, ${SwitchBinariesLink}, ${(<UpsellSdkLink key="upsell-sdk-link" />)} and ${ImplementJwtLink}.`,
     )
     .with(
       { needsToUpgrade: true },
       () =>
-        jt`You can test Embedded analytics SDK on localhost quickly by using API keys. To use the SDK on other sites, ${(<UpsellSdkLink />)} and ${ImplementJwtLink}.`,
+        jt`You can test Embedded analytics SDK on localhost quickly by using API keys. To use the SDK on other sites, ${(<UpsellSdkLink key="upsell-sdk-link" />)} and ${ImplementJwtLink}.`,
     )
     .with(
       { needsToImplementJwt: true },
@@ -221,7 +221,7 @@ export function EmbeddingSdkSettings() {
               <Text c="text-medium" fz="md">
                 {isEmbeddingAvailable
                   ? t`Enter the origins for the websites or apps where you want to allow SDK embedding.`
-                  : jt`Try out the SDK on localhost. To enable other sites, ${(<UpsellSdkLink />)} and enter the origins for the websites or apps where you want to allow SDK and Embedded Analytics JS.`}
+                  : jt`Try out the SDK on localhost. To enable other sites, ${(<UpsellSdkLink key="upsell-sdk-link" />)} and enter the origins for the websites or apps where you want to allow SDK and Embedded Analytics JS.`}
               </Text>
 
               {isEmbeddingAvailable && (

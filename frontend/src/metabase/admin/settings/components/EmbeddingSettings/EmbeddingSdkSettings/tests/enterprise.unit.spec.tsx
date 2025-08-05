@@ -28,7 +28,7 @@ describe("EmbeddingSdkSettings (EE)", () => {
     ).not.toBeInTheDocument();
     expect(alertInfo.getByText("upgrade to Metabase Pro")).toBeInTheDocument();
     expect(
-      alertInfo.getByText("implement JWT and SAML SSO"),
+      alertInfo.getByText("implement JWT or SAML SSO"),
     ).toBeInTheDocument();
   });
 });
