@@ -10,6 +10,7 @@ import * as Urls from "metabase/lib/urls";
 import { useListTransformsQuery } from "metabase-enterprise/api";
 import {
   getOverviewUrl,
+  getRunsUrl,
   getnewTransformUrl,
 } from "metabase-enterprise/transforms/urls";
 import type { TransformId } from "metabase-types/api";
@@ -64,6 +65,7 @@ function TransformSidebar({ transformId }: TransformSidebarProps) {
           icon="refresh_downstream"
         />
       )}
+      <AdminNavItem label={t`Runs`} path={getRunsUrl()} icon="play_outlined" />
     </AdminNavWrapper>
   );
 }

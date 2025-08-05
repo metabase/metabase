@@ -20,8 +20,15 @@
    [metabase.util.yaml :as yaml]
    [ring.adapter.jetty :as ring-jetty]
    [ring.middleware.keyword-params :refer [wrap-keyword-params]]
+   [ring.middleware.params :refer [wrap-params]]
    [ring.util.response :as response])
-  (:import (java.util.concurrent Executors ExecutorService Semaphore)
+  (:import (java.util.concurrent
+            Executors
+            ExecutorService
+            Future
+            ScheduledExecutorService
+            Semaphore
+            TimeUnit)
            (org.eclipse.jetty.util.thread QueuedThreadPool)))
 
 (set! *warn-on-reflection* true)
@@ -30,6 +37,8 @@
 (defonce ^:private ^Semaphore semaphore (Semaphore. 1000 true))
 
 (defonce ^:private ^ExecutorService executor (Executors/newVirtualThreadPerTaskExecutor))
+
+(defonce ^:private ^ScheduledExecutorService scheduler (Executors/newScheduledThreadPool 1))
 
 (mr/def ::transform-api-request
   [:map
@@ -66,9 +75,9 @@
         (response/status 429))))
 
 (defn- handle-status-get
-  [run-id]
+  [run-id mb-source]
   (log/info "Handling status GET request")
-  (if-let [resp (tracking/get-status run-id "mb-1")]
+  (if-let [resp (tracking/get-status run-id mb-source)]
     (response/response resp)
     (-> (response/response "Not found")
         (response/status 404))))
@@ -77,7 +86,7 @@
   (compojure/routes
    (compojure/GET "/api/health" [] "healthy")
    (compojure/PUT "/transform/:run-id" request (handle-transform-put request))
-   (compojure/GET "/status/:run-id" [run-id] (handle-status-get run-id))
+   (compojure/GET "/status/:run-id" [run-id mb-source] (handle-status-get run-id mb-source))
    (route/not-found "Page not found")))
 
 (def ^:private handler
@@ -86,7 +95,8 @@
           routes
           [server/wrap-json-body
            server/wrap-streamed-json-response
-           wrap-keyword-params]))
+           wrap-keyword-params
+           wrap-params]))
 
 (defn ^:private port []
   (if-let [port (config/config-str :mb-worker-jetty-port)]
@@ -94,17 +104,31 @@
     3030))
 
 (defonce ^:private instance (atom nil))
+(defonce ^:private tasks (atom []))
 
 (defn stop! []
   (when @instance
     (log/info "Stopping worker server")
     (.stop ^QueuedThreadPool @instance)
-    (reset! instance nil)))
+    (reset! instance nil))
+  (doseq [^Future task @tasks]
+    (try
+      (.cancel task false)
+      (catch Throwable t
+        (log/error t "Error while canceling scheduled futures for worker task runner."))))
+  (reset! tasks [])
+  nil)
 
 (defn start!
   ([] (start! {}))
   ([opts]
    (stop!)
+   (let [task (.scheduleAtFixedRate scheduler (fn []
+                                                (try
+                                                  (tracking/timeout-old-tasks)
+                                                  (catch Throwable t
+                                                    (log/error t "Error while running timeout on worker.")))) 0 20 TimeUnit/SECONDS)]
+     (swap! tasks conj task))
    (let [thread-pool (doto (new QueuedThreadPool)
                        (.setVirtualThreadsExecutor (Executors/newVirtualThreadPerTaskExecutor)))
          jetty-port (port)]

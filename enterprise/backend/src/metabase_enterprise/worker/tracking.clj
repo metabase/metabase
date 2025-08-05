@@ -75,6 +75,14 @@ WHERE NOT EXISTS (
        (zipmap [:run-id :status :start-time :end-time :note])
        not-empty))
 
+(defn timeout-old-tasks
+  []
+  (run-update! :postgres (config/config-str :mb-worker-db)
+               "UPDATE worker_runs
+                  SET status = ?, end_time = NOW(), note = ?
+                  WHERE status = 'running' AND start_time < NOW() - INTERVAL '4 hours'"
+               ["timeout" "Timed out by worker"]))
+
 (comment
 
   (let [driver :postgres

@@ -13,28 +13,24 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- qualified-table-name
-  [driver {:keys [schema table]}]
-  (cond->> (driver/escape-alias driver table)
-    (string? schema) (str (driver/escape-alias driver schema) ".")))
-
-(defn- drop-table!
-  [table]
-  (let [target (if (map? table)
-                 table
-                 {:name table})
+(defn- drop-target!
+  [target]
+  (let [target (if (map? target)
+                 target
+                 ;; assume this is just a plain table name
+                 {:type :table, :name target})
         driver driver/*driver*]
     (binding [api/*is-superuser?* true
               api/*current-user-id* (mt/user->id :crowberto)]
-      (-> (driver/drop-table! driver (mt/id) (qualified-table-name driver target))
+      (-> (driver/drop-transform-target! driver (mt/db) target)
           u/ignore-exceptions))))
 
-;; Eventually this can be extended to generate {:schema "s", :name "t"} shapes
-;; depending on prefix.  For now it just generates unique names with the given
-;; prefix.
 (defn- gen-table-name
-  [prefix]
-  (str prefix \_ (str/replace (str (random-uuid)) \- \_)))
+  [table-name-prefix]
+  (if (map? table-name-prefix)
+    ;; table-name-prefix is a whole target, randomize the name
+    (update table-name-prefix :name gen-table-name)
+    (str table-name-prefix \_ (str/replace (str (random-uuid)) \- \_))))
 
 (defmacro with-transform-cleanup!
   "Execute `body`, then delete any new :model/Transform instances and drop tables generated from `table-gens`."
@@ -47,7 +43,7 @@
        (try
          (with-transform-cleanup! ~more-gens ~@body)
          (finally
-           (drop-table! target#))))
+           (drop-target! target#))))
     `(mt/with-model-cleanup [:model/Transform :model/Table]
        ~@body)))
 
@@ -119,9 +115,7 @@
             resp (mt/user-http-request :crowberto :post 200 "ee/transform" body)]
         (is (=? (assoc body
                        :execution_trigger "none"
-                       :execution_status "never-executed"
-                       :last_started_at nil
-                       :last_ended_at nil)
+                       :execution_status "never-executed")
                 (mt/user-http-request :crowberto :get 200 (format "ee/transform/%s" (:id resp)))))))))
 
 (deftest put-transforms-test
@@ -147,10 +141,7 @@
                                            :template-tags {}}}}
                  :target {:type "table"
                           :name table-name}
-                 :execution_trigger "global-schedule"
-                 :execution_status "never-executed"
-                 :last_started_at nil
-                 :last_ended_at nil}
+                 :execution_trigger "global-schedule"}
                 (mt/user-http-request :crowberto :put 200 (format "ee/transform/%s" (:id resp))
                                       {:name "Gadget Products 2"
                                        :description "Desc"
@@ -233,12 +224,11 @@
         (throw (ex-info (str "Transfer execution timed out after " timeout-s " seconds") {})))
       (let [resp (mt/user-http-request :crowberto :get 200 (format "ee/transform/%s" transform-id))
             status (-> resp :execution_status keyword)]
-        (when-not (contains? #{:started :exec-succeeded :sync-succeeded} status)
+        (when-not (contains? #{:started :exec-succeeded :sync-started :sync-succeeded} status)
           (throw (ex-info (str "Transfer execution failed with status " status) {})))
         (if (= status :sync-succeeded)
           (is (some? (:table resp)))
           (do
-            (is (nil? (:table resp)))
             (Thread/sleep 100)
             (recur)))))))
 
@@ -258,40 +248,40 @@
 (deftest execute-test
   (doseq [target-type ["table" "view"]
           :let [feature (keyword "transforms" target-type)]]
-    (mt/test-drivers (mt/normal-drivers-with-feature feature)
-      (with-transform-cleanup! [table1-name "dookey_products"
-                                table2-name "doohickey_products"]
-        (let [query2 (make-query "Doohickey")
-              original {:name "Gadget Products"
-                        :source {:type "query"
-                                 :query {:database (mt/id)
-                                         :type "native"
-                                         :native {:query (make-query "Gadget")
-                                                  :template-tags {}}}}
-                        :target {:type target-type
-                                 ;;:schema "transforms"
-                                 :name table1-name}}
-              {transform-id :id} (mt/user-http-request :crowberto :post 200 "ee/transform"
-                                                       original)
-              _ (test-execution transform-id)
-              _ (is (true? (transforms.util/target-table-exists? original)))
-              _ (check-query-results table1-name [5 11 16] "Gadget")
-              updated {:name "Doohickey Products"
-                       :description "Desc"
-                       :source {:type "query"
-                                :query {:database (mt/id)
-                                        :type "native",
-                                        :native {:query query2
-                                                 :template-tags {}}}}
-                       :target {:type target-type
-                                :name table2-name}}]
-          (is (=? (assoc updated
-                         :execution_trigger "none"
-                         :execution_status "sync-succeeded"
-                         :last_started_at string?
-                         :last_ended_at string?)
-                  (mt/user-http-request :crowberto :put 200 (format "ee/transform/%s" transform-id) updated)))
-          (test-execution transform-id)
-          (is (true? (transforms.util/target-table-exists? original)))
-          (is (true? (transforms.util/target-table-exists? updated)))
-          (check-query-results table2-name [2 3 4] "Doohickey"))))))
+    (testing (str "transform execution with " target-type " target")
+      (mt/test-drivers (mt/normal-drivers-with-feature feature)
+        (let [schema (t2/select-one-fn :schema :model/Table (mt/id :products))]
+          (with-transform-cleanup! [{table1-name :name :as target1} {:type target-type
+                                                                     :schema schema
+                                                                     :name "gadget_products"}
+                                    {table2-name :name :as target2} {:type target-type
+                                                                     :schema schema
+                                                                     :name "doohickey_products"}]
+            (let [query2 (make-query "Doohickey")
+                  original {:name "Gadget Products"
+                            :source {:type "query"
+                                     :query {:database (mt/id)
+                                             :type "native"
+                                             :native {:query (make-query "Gadget")
+                                                      :template-tags {}}}}
+                            :target target1}
+                  {transform-id :id} (mt/user-http-request :crowberto :post 200 "ee/transform"
+                                                           original)
+                  _ (test-execution transform-id)
+                  _ (is (true? (transforms.util/target-table-exists? original)))
+                  _ (check-query-results table1-name [5 11 16] "Gadget")
+                  updated {:name "Doohickey Products"
+                           :description "Desc"
+                           :source {:type "query"
+                                    :query {:database (mt/id)
+                                            :type "native",
+                                            :native {:query query2
+                                                     :template-tags {}}}}
+                           :target target2}]
+              (is (=? (assoc updated
+                             :execution_trigger "none")
+                      (mt/user-http-request :crowberto :put 200 (format "ee/transform/%s" transform-id) updated)))
+              (test-execution transform-id)
+              (is (true? (transforms.util/target-table-exists? original)))
+              (is (true? (transforms.util/target-table-exists? updated)))
+              (check-query-results table2-name [2 3 4] "Doohickey"))))))))

@@ -12,5 +12,15 @@
 (t2/deftransforms :model/Transform
   {:source mi/transform-json
    :target mi/transform-json
-   :execution_status mi/transform-keyword
    :execution_trigger mi/transform-keyword})
+
+(mi/define-batched-hydration-method add-transform
+  :transform
+  "Add transform to a WorkRun"
+  [runs]
+  (if-not (seq runs)
+    runs
+    (let [work-ids (into #{} (map :work_id) runs)
+          id->transform (t2/select-pk->fn identity [:model/Transform :id :name] :id [:in work-ids])]
+      (for [run runs]
+        (assoc run :transform (get id->transform (:work_id run)))))))

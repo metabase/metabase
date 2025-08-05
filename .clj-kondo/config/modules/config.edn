@@ -1858,6 +1858,7 @@
            config
            driver
            events
+           lib
            models
            permissions
            query-processor
@@ -1865,7 +1866,8 @@
            sync
            task
            task-history
-           util}}
+           util
+           enterprise/worker}}
 
   enterprise/upload-management
   {:team "Admin Webapp"

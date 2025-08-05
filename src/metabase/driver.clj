@@ -1129,6 +1129,17 @@
     [(dispatch-on-initialized-driver driver) (:transform-type transform-details)])
   :hierarchy #'hierarchy)
 
+(defmulti drop-transform-target!
+  "Drops the target of a transform.
+
+  Drivers that support any of the `:transforms/...` features must implement this method for the appropriate transform
+  types."
+  {:added "0.57.0",
+   :arglists '([driver database {:keys [type schema name] :as _transform-details}])}
+  (fn [driver _database transform-details]
+    [(dispatch-on-initialized-driver driver) (:type transform-details)])
+  :hierarchy #'hierarchy)
+
 (defmulti connection-details
   "Get connection details for a given driver and db object"
   {:added "0.56.0", :arglists '([driver db])}

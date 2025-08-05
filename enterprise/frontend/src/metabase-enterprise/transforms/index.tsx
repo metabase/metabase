@@ -8,6 +8,7 @@ import { PLUGIN_TRANSFORMS } from "metabase/plugins";
 import { NewTransformPage } from "./pages/NewTransformPage";
 import { NewTransformQueryPage } from "./pages/NewTransformQueryPage";
 import { OverviewPage } from "./pages/OverviewPage";
+import { RunsPage } from "./pages/RunsPage";
 import { TransformPage } from "./pages/TransformPage";
 import { TransformPageLayout } from "./pages/TransformPageLayout";
 import { TransformQueryPage } from "./pages/TransformQueryPage";
@@ -22,6 +23,7 @@ PLUGIN_TRANSFORMS.getAdminRoutes = () => (
       <Route component={TransformPageLayout}>
         <IndexRoute component={OverviewPage} />
         <Route path="new" component={NewTransformPage} />
+        <Route path="runs" component={RunsPage} />
         <Route path=":transformId" component={TransformPage} />
       </Route>
       <Route path="new/:type" component={NewTransformQueryPage} />
