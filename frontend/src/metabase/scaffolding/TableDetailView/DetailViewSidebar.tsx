@@ -123,7 +123,7 @@ export function DetailViewSidebar({
               size="xs"
               variant="subtle"
               leftSection={<Icon name="add" />}
-              onClick={() => onCreateSection({ position: "end" })}
+              onClick={() => onCreateSection({ position: "start" })}
             >
               {t`Add section`}
             </Button>

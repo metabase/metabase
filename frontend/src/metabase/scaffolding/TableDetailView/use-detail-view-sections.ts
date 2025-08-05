@@ -1,11 +1,26 @@
 import type { DragEndEvent } from "@dnd-kit/core";
 import { arrayMove } from "@dnd-kit/sortable";
 import { useEffect, useState } from "react";
+import { t } from "ttag";
 
 import type { ObjectViewSectionSettings } from "metabase-types/api";
 
 function generateId() {
   return new Date().getTime();
+}
+
+function getSectionName(sections: ObjectViewSectionSettings[]) {
+  let nextName = t`Section`;
+  let nextId = 1;
+  let isUsed = sections.find((s) => s.title === nextName);
+
+  while (isUsed) {
+    ++nextId;
+    nextName = t`Section ${nextId}`;
+    isUsed = sections.find((s) => s.title === nextName);
+  }
+
+  return nextName;
 }
 
 export function useDetailViewSections(
@@ -19,16 +34,18 @@ export function useDetailViewSections(
   }, [initialSections]);
 
   const createSection = ({
-    position = "end",
+    position = "start",
   }: {
     position?: "start" | "end";
   } = {}) => {
+    const title = getSectionName(sections);
+
     if (position === "end") {
       setSections([
         ...sections,
         {
           id: generateId(),
-          title: "Section",
+          title,
           variant: "normal",
           fields: [],
         },
@@ -37,7 +54,7 @@ export function useDetailViewSections(
       setSections([
         {
           id: generateId(),
-          title: "Section",
+          title,
           variant: "normal",
           fields: [],
         },
