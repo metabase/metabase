@@ -21,7 +21,7 @@ export type TransformSource = {
   query: DatasetQuery;
 };
 
-export type TransformTargetType = "view" | "table";
+export type TransformTargetType = "table";
 
 export type TransformTarget = {
   type: TransformTargetType;

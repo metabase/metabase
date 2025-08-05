@@ -1,5 +1,4 @@
 import dayjs from "dayjs";
-import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import { useMetadataToasts } from "metabase/metadata/hooks";
@@ -8,6 +7,7 @@ import {
   Divider,
   Group,
   Icon,
+  Loader,
   SegmentedControl,
   Text,
 } from "metabase/ui";
@@ -26,7 +26,7 @@ export function ScheduleSection({ transform }: ScheduleSectionProps) {
   return (
     <CardSection
       label={t`When to run this transform`}
-      description={t`It can either be run on the schedule you set on the overview page, or only when you click the “run now” button.`}
+      description={t`Run it on a schedule, or only when you click “Run now.”`}
     >
       <Group p="lg">
         <ExecutionTriggerControl transform={transform} />
@@ -79,8 +79,8 @@ function ExecutionTriggerControl({ transform }: ExecutionTriggerControlProps) {
 
 function getExecutionTriggerOptions() {
   return [
-    { value: "global-schedule" as const, label: t`On the schedule` },
-    { value: "none" as const, label: t`Manually only` },
+    { value: "global-schedule" as const, label: t`Scheduled` },
+    { value: "none" as const, label: t`Manually` },
   ];
 }
 
@@ -115,18 +115,22 @@ function getStatusText({
       ? dayjs.parseZone(lastEndedAt).local().format("lll")
       : null;
 
-  return match(status)
-    .with("never-executed", () => t`This transform hasn’t run yet.`)
-    .with("started", () => t`In progress…`)
-    .with("exec-succeeded", "sync-succeeded", () =>
-      lastEndedAtText ? t`Last run ${lastEndedAtText}` : t`Last run succeeded`,
-    )
-    .with("exec-failed", "sync-failed", () =>
-      lastEndedAtText
+  switch (status) {
+    case "never-executed":
+      return t`This transform hasn’t run yet.`;
+    case "started":
+      return t`In progress…`;
+    case "exec-succeeded":
+    case "sync-succeeded":
+      return lastEndedAtText
+        ? t`Last run ${lastEndedAtText}`
+        : t`Last run succeeded`;
+    case "exec-failed":
+    case "sync-failed":
+      return lastEndedAtText
         ? t`Last run failed at ${lastEndedAtText}`
-        : t`Last run failed`,
-    )
-    .otherwise(() => null);
+        : t`Last run failed`;
+  }
 }
 
 type ExecuteButtonProps = {
@@ -134,10 +138,9 @@ type ExecuteButtonProps = {
 };
 
 function ExecuteButton({ transform }: ExecuteButtonProps) {
-  const [executeTransform, { isLoading }] = useExecuteTransformMutation();
+  const [executeTransform] = useExecuteTransformMutation();
+  const isRunning = transform.execution_status === "started";
   const { sendErrorToast } = useMetadataToasts();
-  const isStarted = transform.execution_status === "started";
-  const isRunning = isLoading || isStarted;
 
   const handleRun = async () => {
     const { error } = await executeTransform(transform.id);
@@ -148,12 +151,13 @@ function ExecuteButton({ transform }: ExecuteButtonProps) {
 
   return (
     <Button
-      loading={isRunning}
-      leftSection={<Icon name="play_outlined" />}
+      leftSection={
+        isRunning ? <Loader size="sm" /> : <Icon name="play_outlined" />
+      }
       disabled={isRunning}
       onClick={handleRun}
     >
-      {t`Run now`}
+      {isRunning ? t`Running now…` : t`Run now`}
     </Button>
   );
 }

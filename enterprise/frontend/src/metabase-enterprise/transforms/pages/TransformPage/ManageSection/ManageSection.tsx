@@ -5,8 +5,7 @@ import { t } from "ttag";
 
 import { useDispatch } from "metabase/lib/redux";
 import { useMetadataToasts } from "metabase/metadata/hooks";
-import { Button, Group, Icon } from "metabase/ui";
-import { CardSection } from "metabase-enterprise/transforms/components/CardSection";
+import { Button, Group, Icon, Title } from "metabase/ui";
 import {
   getOverviewUrl,
   getTransformQueryUrl,
@@ -21,15 +20,11 @@ type ManageSectionProps = {
 
 export function ManageSection({ transform }: ManageSectionProps) {
   return (
-    <CardSection
-      label={t`Manage this transform`}
-      description={t`Edit the query this transform runs, or delete the transform completely.`}
-    >
-      <Group p="lg">
-        <EditQueryButton transform={transform} />
-        <DeleteTransformButton transform={transform} />
-      </Group>
-    </CardSection>
+    <Group>
+      <Title flex={1} order={4}>{t`Query`}</Title>
+      <EditQueryButton transform={transform} />
+      <DeleteTransformButton transform={transform} />
+    </Group>
   );
 }
 
