@@ -4,6 +4,7 @@
    [honey.sql :as sql]
    [honey.sql.helpers :as sql.helpers]
    [metabase-enterprise.semantic-search.embedding :as embedding]
+   [metabase-enterprise.semantic-search.scoring :as scoring]
    [metabase-enterprise.semantic-search.settings :as semantic-settings]
    [metabase.analytics.core :as analytics]
    [metabase.models.interface :as mi]
@@ -388,6 +389,24 @@
     (when (seq conditions)
       (into [:and] conditions))))
 
+(def ^:private common-search-columns
+  [[:id :id]
+   [:model_id :model_id]
+   [:model :model]
+   [:name :name]
+   [:content :content]
+   [:verified :verified]
+   [:metadata :metadata]
+   [:archived :archived]
+   [:creator_id :creator_id]
+   [:last_editor_id :last_editor_id]
+   [:last_viewed_at :last_viewed_at]
+   [:database_id :database_id]
+   [:display_type :display_type]
+   [:model_created_at :model_created_at]
+   [:model_updated_at :model_updated_at]
+   [:collection_id :collection_id]])
+
 (defn- keyword-search-query [index search-context]
   (let [filters (search-filters search-context)
         ts-search-expr (search/to-tsquery-expr (:search-string search-context))
@@ -395,14 +414,9 @@
         vector-column (if (:search-native-query search-context)
                         :text_search_with_native_query_vector
                         :text_search_vector)]
-    {:select [[:id :id]
-              [:model_id :model_id]
-              [:model :model]
-              [:content :content]
-              [:verified :verified]
-              [:metadata :metadata]
-              [[:raw (format "row_number() OVER (ORDER BY ts_rank_cd(%s, query) DESC)" (name vector-column))]
-               :keyword_rank]]
+    {:select (into common-search-columns
+                   [[[:raw (format "row_number() OVER (ORDER BY ts_rank_cd(%s, query) DESC)" (name vector-column))]
+                     :keyword_rank]])
      :from [(keyword (:table-name index))]
      ;; Using a join allows us to share the query expression between our SELECT and WHERE clauses.
      ;; This follows the same secure pattern as metabase.search.appdb.specialization.postgres/base-query
@@ -423,33 +437,31 @@
         max-cosine-distance 0.7
         ;; Inner query: pure vector search to better trigger HNSW index vs. seqscan
         ;; TODO: only pull in necessary extra columns from configured filters
-        hnsw-query {:select [[:id :id]
-                             [:model_id :model_id]
-                             [:model :model]
-                             [:content :content]
-                             [:verified :verified]
-                             [:metadata :metadata]
-                             [:archived :archived]
-                             [:creator_id :creator_id]
-                             [:last_editor_id :last_editor_id]
-                             [:database_id :database_id]
-                             [:display_type :display_type]
-                             [:model_created_at :model_created_at]
-                             [:model_updated_at :model_updated_at]
-                             [:collection_id :collection_id]
-                             [[:raw (str "embedding <=> " embedding-literal)] :distance]]
+        common-search-columns [[:id :id]
+                               [:model_id :model_id]
+                               [:model :model]
+                               [:name :name]
+                               [:content :content]
+                               [:verified :verified]
+                               [:metadata :metadata]
+                               [:archived :archived]
+                               [:creator_id :creator_id]
+                               [:last_editor_id :last_editor_id]
+                               [:last_viewed_at :last_viewed_at]
+                               [:database_id :database_id]
+                               [:display_type :display_type]
+                               [:model_created_at :model_created_at]
+                               [:model_updated_at :model_updated_at]
+                               [:collection_id :collection_id]]
+        hnsw-query {:select (into common-search-columns
+                                  [[[:raw (str "embedding <=> " embedding-literal)] :distance]])
                     :from   [(keyword (:table-name index))]
                     :order-by [[[:raw (str "embedding <=> " embedding-literal)] :asc]]
                     :limit  (semantic-settings/semantic-search-results-limit)}
         base-query {:with [[:vector_candidates hnsw-query]]
-                    :select [[:id :id]
-                             [:model_id :model_id]
-                             [:model :model]
-                             [:content :content]
-                             [:verified :verified]
-                             [:metadata :metadata]
-                             [[:raw "row_number() OVER (ORDER BY distance ASC)"] :semantic_rank]
-                             [:distance :semantic_score]]
+                    :select (into common-search-columns
+                                  [[[:raw "row_number() OVER (ORDER BY distance ASC)"] :semantic_rank]
+                                   [:distance :semantic_score]])
                     :from [:vector_candidates]
                     :where [:<= :distance max-cosine-distance]
                     :order-by [[:semantic_rank :asc]]}]
@@ -483,7 +495,7 @@
                               :rrf_rank]]
                     :from [[:vector_results :v]]
                     :full-join [[:text_results :t] [:= :v.id :t.id]]
-                    :order-by [[:rrf_rank :desc]]
+                    :order-by [[:rrf_total_score :desc]]
                     :limit (semantic-settings/semantic-search-results-limit)}]
     full-query))
 
@@ -492,7 +504,7 @@
   embedding distance."
   [row]
   (-> (get-in row [:metadata :legacy_input])
-      (assoc :score (:rrf_rank row 1.0))))
+      (assoc :score (:rrf_total_score row 1.0))))
 
 (defn- decode-metadata
   "Decode `row`s `:metadata`."
@@ -657,7 +669,9 @@
             embedding-time-ms (u/since-ms timer)
 
             db-timer (u/start-timer)
-            query (hybrid-search-query index embedding search-context)
+            scorers (scoring/scorers search-context)
+            query (->> (hybrid-search-query index embedding search-context)
+                       (scoring/with-scores search-context scorers))
             xform (comp (map decode-metadata)
                         (map legacy-input-with-score))
             reducible (jdbc/plan db (sql-format-quoted query) {:builder-fn jdbc.rs/as-unqualified-lower-maps})
