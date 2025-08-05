@@ -1,5 +1,6 @@
-import { useTimeout } from "@mantine/hooks";
+import { usePrevious, useTimeout } from "@mantine/hooks";
 import type { FormikErrors } from "formik";
+import { useField } from "formik";
 import { type SetStateAction, useEffect, useState } from "react";
 import { c, t } from "ttag";
 
@@ -32,59 +33,68 @@ export function DatabaseConnectionStringField({
   engineKey: string | undefined;
   location: "admin" | "setup" | "embedding_setup";
 }) {
-  const [connectionString, setConnectionString] = useState("");
   const [status, setStatus] = useState<"success" | "failure" | null>(null);
   const { start: delayedClearStatus, clear: clearTimeout } = useTimeout(
     () => setStatus(null),
     FEEDBACK_TIMEOUT,
   );
+  const previousEngineKey = usePrevious(engineKey);
+  const [{ value: connectionString }, , { setValue: setConnectionString }] =
+    useField("connection-string");
 
   useEffect(() => {
-    setConnectionString("");
-  }, [engineKey]);
-
-  useEffect(
-    () => {
-      async function handleConnectionStringChange() {
-        if (!connectionString || !isEngineKey(engineKey)) {
-          delayedClearStatus();
-          return () => clearTimeout();
-        }
-
-        const parsedValues = parseConnectionUriRegex(connectionString);
-
-        // it was not possible to parse the connection string
-        if (!parsedValues) {
-          setStatus("failure");
-          delayedClearStatus();
-          connectionStringParsedFailed(location);
-          return () => clearTimeout();
-        }
-
-        const fieldsMap = mapDatabaseValues(parsedValues, engineKey);
-        const fields = mapFieldsToNestedObject(fieldsMap) as DatabaseData;
-        await setValues((previousValues) =>
-          setDatabaseFormValues(previousValues, fields),
-        );
-
-        // if there are no values, we couldn't get any details from the connection string
-        const hasValues = hasNonUndefinedValue(fieldsMap);
-        setStatus(hasValues ? "success" : "failure");
-
+    async function handleConnectionStringChange() {
+      if (!connectionString || !isEngineKey(engineKey)) {
         delayedClearStatus();
-        connectionStringParsedSuccess(location);
-
-        return () => {
-          clearTimeout();
-        };
+        return () => clearTimeout();
       }
 
-      handleConnectionStringChange();
-    },
+      const parsedValues = parseConnectionUriRegex(connectionString);
+
+      // it was not possible to parse the connection string
+      if (!parsedValues) {
+        setStatus("failure");
+        delayedClearStatus();
+        connectionStringParsedFailed(location);
+        return () => clearTimeout();
+      }
+
+      const fieldsMap = mapDatabaseValues(parsedValues, engineKey);
+      const fields = mapFieldsToNestedObject(fieldsMap) as DatabaseData;
+      await setValues((previousValues) =>
+        setDatabaseFormValues(previousValues, fields),
+      );
+
+      // if there are no values, we couldn't get any details from the connection string
+      const hasValues = hasNonUndefinedValue(fieldsMap);
+      setStatus(hasValues ? "success" : "failure");
+
+      delayedClearStatus();
+      connectionStringParsedSuccess(location);
+
+      return () => {
+        clearTimeout();
+      };
+    }
+
     // We don't want to rerun this effect when engineKey changes
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [connectionString, setValues, delayedClearStatus, clearTimeout, setStatus],
-  );
+    // The connection string field is cleared on the engine change
+    if (previousEngineKey !== engineKey) {
+      return;
+    }
+
+    handleConnectionStringChange();
+  }, [
+    connectionString,
+    setValues,
+    delayedClearStatus,
+    clearTimeout,
+    setStatus,
+    previousEngineKey,
+    engineKey,
+    location,
+    setConnectionString,
+  ]);
 
   if (!isEngineKey(engineKey)) {
     return null;

@@ -37,6 +37,7 @@ export const getValidationSchema = (
     is_sample: Yup.boolean().default(false),
     is_full_sync: Yup.boolean().default(true),
     is_on_demand: Yup.boolean().default(false),
+    "connection-string": Yup.string().default(""),
   });
 };
 
@@ -64,15 +65,19 @@ export const getSubmitValues = (
   engine: Engine | undefined,
   values: DatabaseData,
   isAdvanced: boolean,
-) => {
+): DatabaseData => {
   const fields = getVisibleFields(engine, values, isAdvanced);
   const entries = fields
     .filter((field) => isDetailField(field))
     .filter((field) => isFieldVisible(field, values.details))
     .map((field) => [field.name, values.details?.[field.name]]);
 
+  const submitValues = Object.entries(values).filter(
+    ([key]) => key !== "connection-string",
+  );
+
   return {
-    ...values,
+    ...(Object.fromEntries(submitValues) as DatabaseData),
     details: Object.fromEntries(entries),
   };
 };
