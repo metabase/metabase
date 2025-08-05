@@ -92,6 +92,34 @@ databaseChangeLog:
                   constraints:
                     nullable: false
 
+ - changeSet:
+      id: v57.2025-08-01T10:02:00
+      author: qnkhuat
+      comment: A table for generating atomic sequence numbers
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: sequences
+      changes:
+        - createTable:
+            tableName: sequences
+            remarks: A table for generating atomic sequence numbers
+            columns:
+              - column:
+                  name: name
+                  type: varchar(50)
+                  remarks: The name of the sequence
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: next_val
+                  remarks: The next value in this sequence
+                  type: bigint
+                  constraints:
+                    nullable: false
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
