@@ -256,7 +256,7 @@ export function FieldsPopover({
       {shownSomewhereElse.length > 0 && (
         <>
           <Text size="xs" fw="bold" c="text-medium" mb="sm" tt="uppercase">
-            {t`Shown in other sections`}
+            {t`Shown in other groups`}
           </Text>
 
           <Stack gap="xs">
