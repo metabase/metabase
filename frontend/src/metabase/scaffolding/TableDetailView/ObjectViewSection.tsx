@@ -1,6 +1,6 @@
 import cx from "classnames";
 
-import EditableText from "metabase/common/components/EditableText";
+// import EditableText from "metabase/common/components/EditableText";
 import { useTranslateContent } from "metabase/i18n/hooks";
 import { Box, Flex, Group, Text, Tooltip } from "metabase/ui/components";
 import { isDate } from "metabase-lib/v1/types/utils/isa";
@@ -33,7 +33,7 @@ export function ObjectViewSection({
   columns,
   row,
   // tableId,
-  isEdit,
+  // isEdit,
   onUpdateSection,
   // dragHandleProps,
 }: ObjectViewSectionProps) {
@@ -85,7 +85,7 @@ export function ObjectViewSection({
       })}
     >
       {onUpdateSection && (
-        <Group gap="xs">
+        <Group gap="md">
           {/* {isEdit && (
           <Icon
           name="grabber"
@@ -95,17 +95,9 @@ export function ObjectViewSection({
           {...dragHandleProps}
           />
         )} */}
-          <EditableText
-            className={S.SectionTitle}
-            initialValue={section.title}
-            isDisabled={!isEdit}
-            onChange={(title) => onUpdateSection({ title })}
-            style={{
-              fontWeight: 700,
-              fontSize: "1.25rem",
-              marginBottom: "2rem",
-            }}
-          />
+          <Text p={0} fw={700} fz="1.25rem" mb="xl">
+            {section.title}
+          </Text>
         </Group>
       )}
       <Flex

@@ -269,7 +269,7 @@ export function TableDetailViewInner({
       onSubmit={handleSaveClick}
       onFollowForeignKey={handleFollowForeignKey}
     >
-      <Stack gap="md" mt="md" mb="sm" py="md" bg="transparent">
+      <Stack gap="xl" mt="md" mb="sm" py="md" bg="transparent">
         <DndContext
           sensors={sensors}
           collisionDetection={closestCenter}
