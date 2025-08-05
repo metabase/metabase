@@ -8,7 +8,7 @@ import type {
 
 export const ROOT_URL = "/admin/transforms";
 
-export function getOverviewUrl() {
+export function getTransformsUrl() {
   return ROOT_URL;
 }
 

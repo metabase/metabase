@@ -7,8 +7,8 @@ import { useDispatch } from "metabase/lib/redux";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Button, Group, Icon, Title } from "metabase/ui";
 import {
-  getOverviewUrl,
   getTransformQueryUrl,
+  getTransformsUrl,
 } from "metabase-enterprise/transforms/urls";
 import type { Transform } from "metabase-types/api";
 
@@ -56,7 +56,7 @@ function DeleteTransformButton({ transform }: DeleteTransformButtonProps) {
 
   const handleDelete = () => {
     sendSuccessToast(t`Transform deleted`);
-    dispatch(push(getOverviewUrl()));
+    dispatch(push(getTransformsUrl()));
   };
 
   return (

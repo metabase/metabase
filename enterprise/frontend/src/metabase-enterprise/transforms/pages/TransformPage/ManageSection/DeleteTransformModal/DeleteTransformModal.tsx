@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { match } from "ts-pattern";
 import { jt, t } from "ttag";
 
 import {
@@ -77,7 +76,10 @@ function DeleteTransformForm({
             >
               <Stack gap="sm">
                 <Radio value="false" label={t`Delete the transform only`} />
-                <Radio value="true" label={getRadioLabel(transform)} />
+                <Radio
+                  value="true"
+                  label={t`Delete the transform and the table`}
+                />
               </Stack>
             </Radio.Group>
           )}
@@ -96,64 +98,27 @@ function DeleteTransformForm({
   );
 }
 
-function getModalTitle({ target, table }: Transform) {
-  return match({ type: target.type, hasTarget: table != null })
-    .with({ hasTarget: false }, () => t`Delete this transform?`)
-    .with(
-      { type: "view" },
-      () => t`Delete only the transform, or the view it generates, too?`,
-    )
-    .with(
-      { type: "table" },
-      () => t`Delete only the transform, or the table it generates, too?`,
-    )
-    .exhaustive();
-}
-
-function getRadioLabel({ target }: Transform) {
-  return match(target.type)
-    .with("view", () => t`Delete the transform and the view`)
-    .with("table", () => t`Delete the transform and the table`)
-    .exhaustive();
+function getModalTitle({ table }: Transform) {
+  return table != null
+    ? t`Delete only the transform, or the table it generates, too?`
+    : t`Delete this transform?`;
 }
 
 function getFormMessage({ target, table }: Transform) {
   const tableName = <strong key="name">{target.name}</strong>;
-
-  return match({ type: target.type, hasTarget: table != null })
-    .with(
-      { type: "view", hasTarget: false },
-      () => jt`The target view, ${tableName}, has not been generated yet.`,
-    )
-    .with(
-      { type: "view", hasTarget: true },
-      () =>
-        jt`If you want you can additionally delete the view this transform generated, ${tableName}. Deleting the view will break queries that used it. This can’t be undone, so please be careful.`,
-    )
-    .with(
-      { type: "table", hasTarget: false },
-      () => jt`The target table, ${tableName}, has not been generated yet.`,
-    )
-    .with(
-      { type: "table", hasTarget: true },
-      () =>
-        jt`If you want you can additionally delete the table this transform generated, ${tableName}. Deleting the table will break queries that used it. This can’t be undone, so please be careful.`,
-    )
-    .exhaustive();
+  return table != null
+    ? jt`If you want you can additionally delete the table this transform generated, ${tableName}. Deleting the table will break queries that used it. This can’t be undone, so please be careful.`
+    : jt`The target table, ${tableName}, has not been generated yet.`;
 }
 
 function getSubmitButtonLabel(
-  { target, table }: Transform,
+  { table }: Transform,
   shouldDeleteTarget: boolean,
 ) {
-  return match({
-    type: target.type,
-    hasTarget: table != null,
-    shouldDeleteTarget,
-  })
-    .with({ hasTarget: false }, () => t`Delete transform`)
-    .with({ shouldDeleteTarget: false }, () => t`Delete transform only`)
-    .with({ type: "view" }, () => t`Delete transform and view`)
-    .with({ type: "table" }, () => t`Delete transform and table`)
-    .exhaustive();
+  if (table == null) {
+    return t`Delete transform`;
+  }
+  return shouldDeleteTarget
+    ? t`Delete transform and table`
+    : t`Delete transform only`;
 }

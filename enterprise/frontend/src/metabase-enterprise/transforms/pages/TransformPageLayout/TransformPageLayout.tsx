@@ -9,8 +9,8 @@ import { AdminSettingsLayout } from "metabase/common/components/AdminLayout/Admi
 import * as Urls from "metabase/lib/urls";
 import { useListTransformsQuery } from "metabase-enterprise/api";
 import {
-  getOverviewUrl,
   getRunsUrl,
+  getTransformsUrl,
   getnewTransformUrl,
 } from "metabase-enterprise/transforms/urls";
 import type { TransformId } from "metabase-types/api";
@@ -55,7 +55,7 @@ function TransformSidebar({ transformId }: TransformSidebarProps) {
 
   return (
     <AdminNavWrapper>
-      <AdminNavItem label={t`Overview`} path={getOverviewUrl()} icon="home" />
+      <AdminNavItem label={t`Overview`} path={getTransformsUrl()} icon="home" />
       {transforms.length > 0 ? (
         <TransformList transforms={transforms} transformId={transformId} />
       ) : (
