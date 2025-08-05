@@ -229,7 +229,7 @@ export const DocumentPage = ({
             )
           : createDocument({
               ...newDocumentData,
-              collection_id: collectionId,
+              collection_id: collectionId || undefined,
             }).then((response) => {
               if (response.data) {
                 scheduleNavigation(() => {
