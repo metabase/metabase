@@ -106,7 +106,7 @@ interface FieldsPopoverProps {
 export function FieldsPopover({
   isOpen,
   section,
-  fieldsLimit = Number.MAX_SAFE_INTEGER,
+  fieldsLimit,
   usedFieldIds,
   columns,
   onUpdateSection,
@@ -158,7 +158,8 @@ export function FieldsPopover({
     });
   };
 
-  const limitReached = section.fields.length >= fieldsLimit;
+  const limitReached =
+    fieldsLimit != null && section.fields.length >= fieldsLimit;
 
   return (
     <Box
