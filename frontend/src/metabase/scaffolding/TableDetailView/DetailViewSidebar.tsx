@@ -128,6 +128,7 @@ export function DetailViewSidebar({
           {subheaderSection && (
             <SidebarSectionItem
               variant="subheader"
+              fieldsLimit={4}
               section={subheaderSection}
               columns={columns}
               onUpdateSection={onUpdateSection}
