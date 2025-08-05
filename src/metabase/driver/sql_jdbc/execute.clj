@@ -851,7 +851,7 @@
 
 (defn- create-and-execute-statement!
   [driver conn sql params]
-  (with-open [stmt (statement-or-prepared-statement driver conn sql params nil)]
+  (with-open [stmt (statement-or-prepared-statement driver conn sql params (driver-api/canceled-chan))]
     {:rows-affected (if (instance? PreparedStatement stmt)
                       (.executeUpdate ^PreparedStatement stmt)
                       (.executeUpdate stmt sql))}))

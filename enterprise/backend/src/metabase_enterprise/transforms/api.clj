@@ -196,6 +196,14 @@
   (transforms.util/delete-target-table-by-id! id)
   nil)
 
+(api.macros/defendpoint :post "/cancel/:run-id"
+  [{:keys [run-id]} :- [:map
+                        [:id :string]]]
+  (log/info "canceling run " run-id)
+  (api/check-superuser)
+  (transforms.execute/mark-cancel-run! run-id)
+  nil)
+
 (api.macros/defendpoint :post "/:id/execute"
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
