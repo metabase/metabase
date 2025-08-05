@@ -1,7 +1,16 @@
 import { useMemo, useRef } from "react";
 import { t } from "ttag";
 
-import { Box, Group, Stack, Switch, Text } from "metabase/ui/components";
+import {
+  Box,
+  Button,
+  Group,
+  Icon,
+  Stack,
+  Switch,
+  Text,
+  Tooltip,
+} from "metabase/ui/components";
 import type {
   DatasetColumn,
   ObjectViewSectionSettings,
@@ -28,7 +37,7 @@ export function SidebarSectionItem({
   section,
   columns,
   onUpdateSection,
-  onRemoveSection: _onRemoveSection,
+  onRemoveSection,
   openPopoverId,
   setOpenPopoverId,
   variant,
@@ -41,9 +50,24 @@ export function SidebarSectionItem({
 
   return (
     <Stack gap={4}>
-      <Text fw="bold" c="text-primary" size="md">
-        {section.title}
-      </Text>
+      <Group justify="space-between">
+        <Text fw="bold" c="text-primary" size="md">
+          {section.title}
+        </Text>
+
+        {onRemoveSection && (
+          <Tooltip label={t`Remove section`}>
+            <Button
+              c="text-dark"
+              variant="subtle"
+              leftSection={<Icon name="close" />}
+              w={32}
+              h={32}
+              onClick={() => onRemoveSection(section.id)}
+            />
+          </Tooltip>
+        )}
+      </Group>
 
       <Box
         key={section.id}
