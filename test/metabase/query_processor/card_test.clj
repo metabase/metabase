@@ -21,6 +21,8 @@
    [jakarta.servlet ServletOutputStream AsyncContext]
    [jakarta.servlet.http HttpServletResponse]))
 
+(set! *warn-on-reflection* true)
+
 (defn run-query-for-card
   "Run query for Card synchronously."
   [card-id]
