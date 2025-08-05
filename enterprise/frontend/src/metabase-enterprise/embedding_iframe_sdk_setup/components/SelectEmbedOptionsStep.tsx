@@ -45,11 +45,24 @@ export const SelectEmbedOptionsStep = () => {
     [theme, updateSettings],
   );
 
+  const getOriginalColor = useCallback(
+    (colorKey: ColorName) => {
+      return applicationColors?.[colorKey] ?? defaultMetabaseColors[colorKey];
+    },
+    [applicationColors],
+  );
+
   const resetColors = useCallback(() => {
-    updateSettings({
-      theme: { ...theme, colors: undefined },
-    });
-  }, [theme, updateSettings]);
+    const colors: Record<string, string> = {};
+
+    for (const color of getConfigurableThemeColors()) {
+      colors[color.key] = getOriginalColor(color.originalColorKey);
+    }
+
+    // FIXME: setting the colors to `undefined` does not work here as there is a
+    // visual artifact where the date range picker does not update its background color.
+    updateSettings({ theme: { ...theme, colors } });
+  }, [getOriginalColor, theme, updateSettings]);
 
   const isDashboardOrInteractiveQuestion =
     settings.dashboardId || (settings.questionId && settings.drills);
@@ -127,9 +140,7 @@ export const SelectEmbedOptionsStep = () => {
             ({ key, name, originalColorKey }) => {
               // Use the default from appearance settings.
               // If not set, use the default Metabase color.
-              const originalColor =
-                applicationColors?.[originalColorKey] ??
-                defaultMetabaseColors[originalColorKey];
+              const originalColor = getOriginalColor(originalColorKey);
 
               return (
                 <Stack gap="xs" align="start" key={key}>
