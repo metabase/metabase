@@ -62,18 +62,9 @@ export function SidebarSectionItem({
       <Group align="center" wrap="nowrap" gap="xs">
         {showDragHandle && (
           <Flex
-            p="sm"
-            align="center"
-            justify="center"
-            w="xl"
-            h="xl"
-            ref={dragHandleRef as React.RefObject<HTMLDivElement>}
-            style={{
-              cursor: "grab",
-              borderRadius: "var(--default-border-radius)",
-              border: "1px solid var(--border-color)",
-            }}
+            ref={dragHandleRef}
             {...dragHandleListeners}
+            style={{ cursor: "grab" }}
           >
             <Icon name="grabber" size={16} />
           </Flex>
