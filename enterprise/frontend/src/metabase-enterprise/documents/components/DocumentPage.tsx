@@ -263,9 +263,7 @@ export const DocumentPage = ({
 
         if (result) {
           sendToast({
-            message: documentData?.id
-              ? t`Document v${result?.version} saved`
-              : t`Document created`,
+            message: documentData?.id ? t`Document saved` : t`Document created`,
           });
           // Content will be updated automatically when the new document data loads
         }
