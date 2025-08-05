@@ -3,6 +3,7 @@ import { t } from "ttag";
 import { Flex, Stack, Text, Title } from "metabase/ui";
 
 import { ScheduleSection } from "./ScheduleSection";
+import { TransformListSection } from "./TransformListSection";
 
 export function TransformListPage() {
   return (
@@ -13,6 +14,7 @@ export function TransformListPage() {
           <Text>{t`Create custom tables with transforms, and run them on a schedule.`}</Text>
         </Stack>
         <ScheduleSection />
+        <TransformListSection />
       </Stack>
     </Flex>
   );
