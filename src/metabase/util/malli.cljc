@@ -150,11 +150,11 @@
   (mc/walk
    schema
    (mc/schema-walker
-    (fn [schema]
+    (core/fn [schema]
       (case (mc/type schema)
         :map
         (mc/-set-children schema
-                          (mapv (fn [[k p s]]
+                          (mapv (core/fn [[k p s]]
                                   [k (dissoc p :optional) s]) (mc/children schema)))
         :maybe
         (first (mc/children schema))
@@ -166,10 +166,10 @@
   [schema]
   (mc/walk
    schema
-   (mc/schema-walker (fn [schema]
+   (mc/schema-walker (core/fn [schema]
                        (if (= :map (mc/type schema))
                          (mc/-set-children schema
-                                           (mapv (fn [[k p s]]
+                                           (mapv (core/fn [[k p s]]
                                                    [(u/->snake_case_en k) p s]) (mc/children schema)))
 
                          schema)))))
