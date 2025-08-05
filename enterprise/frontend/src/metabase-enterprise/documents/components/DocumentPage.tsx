@@ -87,9 +87,14 @@ export const DocumentPage = ({
         : skipToken,
     );
 
+  // For root collection (collection_id: null), we need to query with id: "root"
+  const shouldFetchCollection = documentData && !isNewDocument;
+  const collectionQueryId =
+    documentData?.collection_id === null ? "root" : documentData?.collection_id;
+
   const { data: collection } = useGetCollectionQuery(
-    documentData?.collection_id
-      ? { id: documentData.collection_id }
+    shouldFetchCollection && collectionQueryId !== undefined
+      ? { id: collectionQueryId }
       : skipToken,
   );
 
