@@ -125,7 +125,11 @@ export function ObjectViewSection({
           return (
             <Flex key={field_id} className={S.Field}>
               <Box className={S.FieldName} w="100%">
-                <Tooltip label={column.description} position="top">
+                <Tooltip
+                  disabled={!column.description}
+                  label={column.description}
+                  position="top"
+                >
                   <Text c="var(--mb-color-text-secondary)" fw="bold" truncate>
                     {column.display_name}
                   </Text>
