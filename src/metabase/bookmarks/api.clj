@@ -26,11 +26,10 @@
 
 (def ^:private lookup
   "Lookup map from model as a string to [model bookmark-model item-id-key]."
-  (cond-> {"card" [:model/Card :model/CardBookmark :card_id]
-           "dashboard"  [:model/Dashboard  :model/DashboardBookmark  :dashboard_id]
-           "collection" [:model/Collection :model/CollectionBookmark :collection_id]}
-    (premium-features/has-feature? :documents)
-    (assoc "document" [:model/Document :model/DocumentBookmark :document_id])))
+  {"card" [:model/Card :model/CardBookmark :card_id]
+   "dashboard"  [:model/Dashboard  :model/DashboardBookmark  :dashboard_id]
+   "collection" [:model/Collection :model/CollectionBookmark :collection_id]
+   "document" [:model/Document :model/DocumentBookmark :document_id]})
 
 (api.macros/defendpoint :get "/"
   "Fetch all bookmarks for the user"
