@@ -86,7 +86,8 @@
     :mine                1
     :exact               5
     :prefix              0
-    :rrf                 5}
+    ;; TODO figure out a better way to blend these scorers with wildly different scale.
+    :rrf                 5000}
    :command-palette
    {:prefix               5
     :model/collection     1

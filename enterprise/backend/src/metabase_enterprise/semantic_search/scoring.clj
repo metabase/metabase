@@ -27,15 +27,13 @@
 
 (def ^:private rrf-rank-exp
   (let [k 60
-        scale 100
         keyword-weight 0.51
         semantic-weight 0.49]
-    [:* scale
-     [:+
-      [:* [:cast semantic-weight :float]
-       [:coalesce [:/ 1.0 [:+ k [:. :v :semantic_rank]]] 0]]
-      [:* [:cast keyword-weight :float]
-       [:coalesce [:/ 1.0 [:+ k [:. :t :keyword_rank]]] 0]]]]))
+    [:+
+     [:* [:cast semantic-weight :float]
+      [:coalesce [:/ 1.0 [:+ k [:. :v :semantic_rank]]] 0]]
+     [:* [:cast keyword-weight :float]
+      [:coalesce [:/ 1.0 [:+ k [:. :t :keyword_rank]]] 0]]]))
 
 (defn base-scorers
   "The default constituents of the search ranking scores."

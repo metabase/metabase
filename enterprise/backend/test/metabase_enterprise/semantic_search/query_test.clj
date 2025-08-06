@@ -257,8 +257,8 @@
         (binding [semantic.index/*batch-size* 1]
           (semantic.tu/with-index!
             (testing "Horse-related query finds horse content"
-              (let [results (semantic.tu/query-index {:search-string "equine"})]
-                (is (= "Horse Racing Analysis" (-> results first :name)))))
+              (let [results (semantic.tu/query-index {:search-string "marine mammal"})]
+                (is (= "Whale Communication" (-> results first :name)))))
 
             (testing "Tiger-related query finds tiger content"
               (let [results (semantic.tu/query-index {:search-string "endangered species"})]
