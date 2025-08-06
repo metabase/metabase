@@ -67,11 +67,7 @@
 
 (defmethod search.engine/results :search.engine/semantic
   [search-ctx]
-  (try
-    (results search-ctx)
-    (catch Exception e
-      (log/error e "Error executing semantic search")
-      [])))
+  (results search-ctx))
 
 (defmethod search.engine/model-set :search.engine/semantic
   [_search-ctx]
