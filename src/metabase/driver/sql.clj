@@ -174,6 +174,18 @@
         (str/replace #"\"\"" "\""))
     (str/lower-case name-str)))
 
+(defmulti default-schema
+  "Returns the default schema for a given database driver.
+
+  Drivers that support any of the `:transforms/...` features must implement this method."
+  {:added "0.57.0" :arglists '([driver])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod default-schema :sql
+  [_]
+  "public")
+
 (defmulti find-table
   "Finds the table matching a given name and schema.
 
@@ -186,14 +198,14 @@
 (defmethod find-table :sql
   [driver {:keys [table schema]}]
   (let [normalized-table (normalize-name driver table)
-        normalized-schema (when (seq schema)
-                            (normalize-name driver schema))]
+        normalized-schema (if (seq schema)
+                            (normalize-name driver schema)
+                            (default-schema driver))]
     (->> (driver-api/metadata-provider)
          driver-api/tables
          (some (fn [{db-table :name db-schema :schema id :id}]
                  (and (= normalized-table db-table)
-                      (or (nil? normalized-schema)
-                          (= normalized-schema db-schema))
+                      (= normalized-schema db-schema)
                       id))))))
 
 (defmethod driver/native-query-deps :sql
