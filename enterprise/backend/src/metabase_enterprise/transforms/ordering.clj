@@ -2,7 +2,9 @@
   (:require
    [clojure.core.match]
    [clojure.set :as set]
+   [clojure.string :as str]
    [flatland.ordered.set :refer [ordered-set]]
+   [macaw.core :as macaw]
    [metabase-enterprise.transforms.util :as transforms.util]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.util :as lib.util]
@@ -10,16 +12,36 @@
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]))
 
+(defn- clean-name [str]
+  (-> str
+      (str/replace #"['\"`]" "")
+      str/lower-case))
+
+(defn- get-table [{:keys [table schema]}]
+  (->> (qp.store/metadata-provider)
+       lib.metadata/tables
+       (some (fn [{cur-table :name cur-schema :schema id :id}]
+               (and (= (clean-name cur-table) (clean-name table))
+                    (or (nil? schema)
+                        (= (clean-name cur-schema) (clean-name schema)))
+                    id)))))
+
 (defn- transform-deps [transform]
   (let [query (-> (get-in transform [:source :query])
                   transforms.util/massage-sql-query
                   qp.preprocess/preprocess)]
-    (into #{}
-          (keep #(clojure.core.match/match %
-                   [:source-table source] (when (int? source)
-                                            source)
-                   _ nil))
-          (tree-seq coll? seq query))))
+    (case (:type query)
+      :native (->> (get-in query [:native :query])
+                   macaw/parsed-query
+                   macaw/query->components
+                   :tables
+                   (into #{} (keep (comp get-table :component))))
+      :query (into #{}
+                   (keep #(clojure.core.match/match %
+                            [:source-table source] (when (int? source)
+                                                     source)
+                            _ nil))
+                   (tree-seq coll? seq query)))))
 
 (defn- transform-deps-for-db [db-id transforms]
   (qp.store/with-metadata-provider db-id
