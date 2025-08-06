@@ -1140,6 +1140,14 @@
     [(dispatch-on-initialized-driver driver) (:type transform-details)])
   :hierarchy #'hierarchy)
 
+(defmulti name-matches?
+  "Returns whether query-name is equivalent to canonical-name.
+
+  Drivers that support any of the `:transforms/...` features must implement this method."
+  {:added "0.57.0" :arglists '([driver canonical-name query-name])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
 (defmulti connection-details
   "Get connection details for a given driver and db object"
   {:added "0.56.0", :arglists '([driver db])}

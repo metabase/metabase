@@ -6,6 +6,7 @@
    [flatland.ordered.set :refer [ordered-set]]
    [macaw.core :as macaw]
    [metabase-enterprise.transforms.util :as transforms.util]
+   [metabase.driver :as driver]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.util :as lib.util]
    [metabase.query-processor.preprocess :as qp.preprocess]
@@ -17,25 +18,28 @@
       (str/replace #"['\"`]" "")
       str/lower-case))
 
-(defn- get-table [{:keys [table schema]}]
+(defn- get-table [driver {:keys [table schema]}]
   (->> (qp.store/metadata-provider)
        lib.metadata/tables
-       (some (fn [{cur-table :name cur-schema :schema id :id}]
-               (and (= (clean-name cur-table) (clean-name table))
+       (some (fn [{db-table :name db-schema :schema id :id}]
+               (and (driver/name-matches? driver db-table table)
                     (or (nil? schema)
-                        (= (clean-name cur-schema) (clean-name schema)))
+                        (driver/name-matches? driver db-schema schema))
                     id)))))
 
 (defn- transform-deps [transform]
   (let [query (-> (get-in transform [:source :query])
                   transforms.util/massage-sql-query
-                  qp.preprocess/preprocess)]
+                  qp.preprocess/preprocess)
+        driver (-> (qp.store/metadata-provider)
+                   lib.metadata/database
+                   :engine)]
     (case (:type query)
       :native (->> (get-in query [:native :query])
                    macaw/parsed-query
                    macaw/query->components
                    :tables
-                   (into #{} (keep (comp get-table :component))))
+                   (into #{} (keep #(->> % :component (get-table driver)))))
       :query (into #{}
                    (keep #(clojure.core.match/match %
                             [:source-table source] (when (int? source)
