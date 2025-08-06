@@ -1,9 +1,11 @@
+import { render } from "@testing-library/react";
+
 import {
   setupCurrentUserEndpoint,
   setupPropertiesEndpoints,
 } from "__support__/server-mocks";
 import { waitForLoaderToBeRemoved } from "__support__/ui";
-import { renderWithInitData } from "embedding-sdk/test/__support__/ui";
+import { MetabaseProvider } from "embedding-sdk/components/public";
 import {
   createMockSettings,
   createMockTokenFeatures,
@@ -42,11 +44,11 @@ const setup = async ({
   );
   setupCurrentUserEndpoint(createMockUser({ id: 1 }));
 
-  renderWithInitData(<div>Hello</div>, {
-    sdkProviderProps: {
-      authConfig: defaultAuthConfig,
-    },
-  });
+  render(
+    <MetabaseProvider authConfig={defaultAuthConfig}>
+      <div>Hello</div>
+    </MetabaseProvider>,
+  );
   await waitForLoaderToBeRemoved();
 };
 

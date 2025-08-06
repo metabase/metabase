@@ -3,14 +3,10 @@ import type * as React from "react";
 import _ from "underscore";
 
 import { getStore } from "__support__/entities-store";
-import {
-  MetabaseProvider,
-  MetabaseProviderInternal,
-} from "embedding-sdk/components/public/MetabaseProvider";
+import { MetabaseProviderInternal } from "embedding-sdk/components/public/MetabaseProvider";
 import { ensureMetabaseProviderPropsStore } from "embedding-sdk/sdk-shared/lib/ensure-metabase-provider-props-store";
 import { sdkReducers } from "embedding-sdk/store";
 import type { SdkStore, SdkStoreState } from "embedding-sdk/store/types";
-import { InitDataWrapper } from "embedding-sdk/test/InitDataWrapper";
 import { createMockSdkState } from "embedding-sdk/test/mocks/state";
 import type { MetabaseProviderProps } from "embedding-sdk/types/metabase-provider";
 import { Api } from "metabase/api";
@@ -80,10 +76,6 @@ export function renderWithSDKProviders(
       <MetabaseReduxProvider store={store}>
         {/* If we try to inject CSS variables to `.mb-wrapper`, it will slow the Jest tests down like crazy. */}
         <themeProviderContext.Provider value={{ withCssVariables: false }}>
-          {sdkProviderProps?.authConfig && (
-            <InitDataWrapper authConfig={sdkProviderProps.authConfig} />
-          )}
-
           <MetabaseProviderInternal
             {...props}
             {...sdkProviderProps}
@@ -104,21 +96,4 @@ export function renderWithSDKProviders(
     store,
     history,
   };
-}
-
-export function renderWithInitData(
-  children: React.ReactElement,
-  {
-    sdkProviderProps: props,
-  }: {
-    sdkProviderProps: Omit<MetabaseProviderProps, "children">;
-  },
-) {
-  return render(
-    <MetabaseProvider {...props}>
-      <InitDataWrapper authConfig={props.authConfig} />
-
-      {children}
-    </MetabaseProvider>,
-  );
 }
