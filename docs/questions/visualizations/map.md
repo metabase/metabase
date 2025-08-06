@@ -191,7 +191,6 @@ Currently, Metabase uses a single tile server per instance. You can't specify di
 - You need to use category (not location) dashboard filter types when connecting custom region maps to dashboard filters.
 - You can't specify different background tiles for different maps.
 
-
 ## When NOT to use a map to visualize geographic data
 
 If the relative locations of regions on the map aren't the main focus of your visualization, consider using a bar or row chart instead. For example, sales by state are often better represented as a row or bar chart rather than a region map.

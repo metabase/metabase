@@ -61,12 +61,12 @@ To do math on timestamp columns, you can use [Date functions](expressions-list.m
 ## Conditional operators
 
 - `AND`
-- `OR`  
+- `OR`
 - `NOT`
-- `>` 
+- `>`
 - `>=` (greater than or equal to)
 - `<`
-- `<=` (less than or equal to) 
+- `<=` (less than or equal to)
 - `=`
 - `!=` (not equal to)
 
