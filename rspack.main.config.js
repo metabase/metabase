@@ -3,14 +3,22 @@
 /* eslint-disable import/no-commonjs */
 const fs = require("fs");
 
-const ReactRefreshPlugin = require("@pmmmwh/react-refresh-webpack-plugin");
+const rspack = require("@rspack/core");
+const ReactRefreshPlugin = require("@rspack/plugin-react-refresh");
 const HtmlWebpackPlugin = require("html-webpack-plugin");
-const MiniCssExtractPlugin = require("mini-css-extract-plugin");
 const NodePolyfillPlugin = require("node-polyfill-webpack-plugin");
-const path = require("path");
-const TerserPlugin = require("terser-webpack-plugin");
-const webpack = require("webpack");
 const WebpackNotifierPlugin = require("webpack-notifier");
+
+const {
+  IS_DEV_MODE,
+  LICENSE_TEXT,
+  WEBPACK_BUNDLE,
+} = require("./frontend/build/shared/constants");
+const { BABEL_CONFIG } = require("./frontend/build/shared/rspack/babel-config");
+const { CSS_CONFIG } = require("./frontend/build/shared/rspack/css-config");
+const {
+  getBannerOptions,
+} = require("./frontend/build/shared/rspack/get-banner-options");
 
 const ASSETS_PATH = __dirname + "/resources/frontend_client/app/assets";
 const FONTS_PATH = __dirname + "/resources/frontend_client/app/fonts";
@@ -27,23 +35,14 @@ const TEST_SUPPORT_PATH = __dirname + "/frontend/test/__support__";
 const BUILD_PATH = __dirname + "/resources/frontend_client";
 const E2E_PATH = __dirname + "/e2e";
 
-// default WEBPACK_BUNDLE to development
-const WEBPACK_BUNDLE = process.env.WEBPACK_BUNDLE || "development";
-const devMode = WEBPACK_BUNDLE !== "production";
-const useFilesystemCache = process.env.FS_CACHE === "true";
-const edition = process.env.MB_EDITION || "oss";
+const PORT = process.env.PORT || 8080;
+const isDevMode = IS_DEV_MODE;
 const shouldEnableHotRefresh = WEBPACK_BUNDLE === "hot";
-
-// Babel:
-const BABEL_CONFIG = {
-  cacheDirectory: process.env.BABEL_DISABLE_CACHE ? false : ".babel_cache",
-  plugins: ["@emotion"],
-};
 
 const BABEL_LOADER = { loader: "babel-loader", options: BABEL_CONFIG };
 
 const SWC_LOADER = {
-  loader: "swc-loader",
+  loader: "builtin:swc-loader",
   options: {
     jsc: {
       loose: true,
@@ -58,7 +57,7 @@ const SWC_LOADER = {
         tsx: true,
       },
       experimental: {
-        plugins: [["@swc/plugin-emotion", { sourceMap: devMode }]],
+        plugins: [["@swc/plugin-emotion", { sourceMap: isDevMode }]],
       },
     },
 
@@ -68,17 +67,6 @@ const SWC_LOADER = {
       targets: ["defaults"],
     },
   },
-};
-
-const CSS_CONFIG = {
-  modules: {
-    auto: (filename) =>
-      !filename.includes("node_modules") && !filename.includes("vendor.css"),
-    localIdentName: devMode
-      ? "[name]__[local]___[hash:base64:5]"
-      : "[hash:base64:5]",
-  },
-  importLoaders: 1,
 };
 
 class OnScriptError {
@@ -99,9 +87,14 @@ class OnScriptError {
   }
 }
 
-/** @type {import('webpack').Configuration} */
+const resolveEnterprisePathOrNoop = (path) =>
+  process.env.MB_EDITION === "ee"
+    ? ENTERPRISE_SRC_PATH + path
+    : SRC_PATH + "/lib/noop";
+
+/** @type {import('@rspack/cli').Configuration} */
 const config = {
-  mode: devMode ? "development" : "production",
+  mode: isDevMode ? "development" : "production",
   context: SRC_PATH,
 
   // output a bundle for the app JS and a bundle for styles
@@ -110,6 +103,7 @@ const config = {
     "app-main": "./app-main.js",
     "app-public": "./app-public.js",
     "app-embed": "./app-embed.js",
+    "app-embed-sdk": "./app-embed-sdk.tsx",
     "vendor-styles": "./css/vendor.css",
     styles: "./css/index.module.css",
   },
@@ -128,8 +122,8 @@ const config = {
     // for production, dev mode is overridden below
     filename: "[name].[contenthash].js",
     publicPath: "app/dist/",
-    hashFunction: "sha256",
-    clean: !devMode,
+    hashFunction: "xxhash64",
+    clean: !isDevMode,
   },
 
   module: {
@@ -144,6 +138,7 @@ const config = {
         test: /\.(tsx?|jsx?)$/,
         exclude: /node_modules|cljs|css\/core\/fonts\.styled\.ts/,
         use: [SWC_LOADER],
+        type: "javascript/auto",
       },
       {
         test: /\.(svg|png)$/,
@@ -154,14 +149,13 @@ const config = {
         test: /\.css$/,
         use: [
           {
-            loader: MiniCssExtractPlugin.loader,
-            options: {
-              publicPath: "./",
-            },
+            loader: rspack.CssExtractRspackPlugin.loader,
+            options: { publicPath: "./" },
           },
           { loader: "css-loader", options: CSS_CONFIG },
           { loader: "postcss-loader" },
         ],
+        type: "javascript/auto",
       },
       {
         test: /\.js$/,
@@ -201,20 +195,14 @@ const config = {
       ".svg",
     ],
     alias: {
-      /**
-       * These aliases are used by Eslint import/resolver rule.
-       * @see {@link https://github.com/metabase/metabase/blob/a59d8af558e6e0977fa02863a14611330c3489b0/.eslintrc.js#L155-L159}
-       *
-       * And by the SDK's webpack config {@link file://./webpack.embedding-sdk.config.js}
-       */
       assets: ASSETS_PATH,
       fonts: FONTS_PATH,
       metabase: SRC_PATH,
       "metabase-lib": LIB_SRC_PATH,
       "metabase-enterprise": ENTERPRISE_SRC_PATH,
       "metabase-types": TYPES_SRC_PATH,
-      "metabase-dev": `${SRC_PATH}/dev${devMode ? "" : "-noop"}.js`,
-      cljs: devMode ? CLJS_SRC_PATH_DEV : CLJS_SRC_PATH,
+      "metabase-dev": `${SRC_PATH}/dev${isDevMode ? "" : "-noop"}.js`,
+      cljs: isDevMode ? CLJS_SRC_PATH_DEV : CLJS_SRC_PATH,
       __support__: TEST_SUPPORT_PATH,
       e2e: E2E_PATH,
       style: SRC_PATH + "/css/core/index",
@@ -223,37 +211,17 @@ const config = {
       // with ie11 point to the minified version
       icepick: __dirname + "/node_modules/icepick/icepick.min",
       // conditionally load either the EE plugins file or a empty file in the CE code tree
-      "ee-plugins":
-        process.env.MB_EDITION === "ee"
-          ? ENTERPRISE_SRC_PATH + "/plugins"
-          : SRC_PATH + "/lib/noop",
-      "ee-overrides":
-        process.env.MB_EDITION === "ee"
-          ? ENTERPRISE_SRC_PATH + "/overrides"
-          : SRC_PATH + "/lib/noop",
+      "ee-plugins": resolveEnterprisePathOrNoop("/plugins"),
+      "ee-overrides": resolveEnterprisePathOrNoop("/overrides"),
       embedding: EMBEDDING_SRC_PATH,
       "embedding-sdk": SDK_SRC_PATH,
+      "sdk-iframe-embedding-ee-plugins": resolveEnterprisePathOrNoop(
+        "/sdk-iframe-embedding-plugins",
+      ),
+      "sdk-ee-plugins": resolveEnterprisePathOrNoop("/sdk-plugins"),
       "sdk-specific-imports": SRC_PATH + "/lib/noop",
-      "sdk-iframe-embedding-ee-plugins":
-        process.env.MB_EDITION === "ee"
-          ? ENTERPRISE_SRC_PATH + "/sdk-iframe-embedding-plugins"
-          : SRC_PATH + "/lib/noop",
     },
   },
-  cache: useFilesystemCache
-    ? {
-        type: "filesystem",
-        cacheDirectory: path.resolve(
-          __dirname,
-          "node_modules/.cache/",
-          edition === "oss" ? "webpack-oss" : "webpack-ee",
-        ),
-        buildDependencies: {
-          // invalidates the cache on configuration change
-          config: [__filename],
-        },
-      }
-    : undefined,
   optimization: {
     runtimeChunk: "single",
     splitChunks: {
@@ -280,20 +248,14 @@ const config = {
         },
       },
     },
-    minimizer: [
-      new TerserPlugin({
-        minify: TerserPlugin.swcMinify,
-        parallel: true,
-        test: /\.(tsx?|jsx?)($|\?)/i,
-      }),
-    ],
+    minimizer: [new rspack.SwcJsMinimizerRspackPlugin()],
   },
 
   plugins: [
     // Extracts initial CSS into a standard stylesheet that can be loaded in parallel with JavaScript
-    new MiniCssExtractPlugin({
-      filename: devMode ? "[name].css" : "[name].[contenthash].css",
-      chunkFilename: devMode ? "[id].css" : "[id].[contenthash].css",
+    new rspack.CssExtractRspackPlugin({
+      filename: isDevMode ? "[name].css" : "[name].[contenthash].css",
+      chunkFilename: isDevMode ? "[id].css" : "[id].[contenthash].css",
 
       // We use CSS modules to scope styles, so this is safe to ignore according to the docs:
       // https://webpack.js.org/plugins/mini-css-extract-plugin/#remove-order-warnings
@@ -319,17 +281,21 @@ const config = {
       chunks: ["vendor", "vendor-styles", "styles", "app-embed"],
       template: __dirname + "/resources/frontend_client/index_template.html",
     }),
-    new webpack.BannerPlugin({
-      banner:
-        "/*\n* This file is subject to the terms and conditions defined in\n * file 'LICENSE.txt', which is part of this source code package.\n */\n",
+    new HtmlWebpackPlugin({
+      filename: "../../embed-sdk.html",
+      chunksSortMode: "manual",
+      chunks: ["vendor", "vendor-styles", "styles", "app-embed-sdk"],
+      template: __dirname + "/resources/frontend_client/index_template.html",
     }),
+    new rspack.BannerPlugin(getBannerOptions(LICENSE_TEXT)),
     new NodePolyfillPlugin(), // for crypto, among others
-    new webpack.EnvironmentPlugin({
+    new rspack.EnvironmentPlugin({
       WEBPACK_BUNDLE: "development",
       MB_LOG_ANALYTICS: "false",
+      ENABLE_CLJS_HOT_RELOAD: process.env.ENABLE_CLJS_HOT_RELOAD ?? "false",
     }),
     // https://github.com/remarkjs/remark/discussions/903
-    new webpack.ProvidePlugin({ process: "process/browser.js" }),
+    new rspack.ProvidePlugin({ process: "process/browser.js" }),
   ],
 };
 
@@ -345,9 +311,10 @@ if (shouldEnableHotRefresh) {
 
   // point the publicPath (inlined in index.html by HtmlWebpackPlugin) to the hot-reloading server
   config.output.publicPath =
-    "http://localhost:8080/" + config.output.publicPath;
+    `http://localhost:${PORT}/` + config.output.publicPath;
 
   config.devServer = {
+    port: PORT, // make the port explicit so it errors if it's already in use
     hot: true,
     client: {
       progress: false,
@@ -358,7 +325,7 @@ if (shouldEnableHotRefresh) {
     },
     // tweak stats to make the output in the console more legible
     devMiddleware: {
-      stats: "errors-warnings",
+      stats: { preset: "errors-warnings", timings: true },
       writeToDisk: true,
       // if webpack doesn't reload UI after code change in development
       // watchOptions: {
@@ -368,10 +335,14 @@ if (shouldEnableHotRefresh) {
       // if you want to reduce stats noise
       // stats: 'minimal' // values: none, errors-only, minimal, normal, verbose
     },
+    host: "0.0.0.0",
   };
 
   config.watchOptions = {
-    ignored: ["**/node_modules", CLJS_SRC_PATH_DEV + "/**"],
+    // Shadow's live reload does not work. I assume it could be related to rspack migration.  Namely, the compiled cljs
+    // is loaded on save. On page reload however, the compiled cljs that was used on rspack initialization is used
+    // again. The following exception fixes that, for the cost of always reloading the page when compiled cljs changes.
+    ignored: ["**/node_modules" /*, CLJS_SRC_PATH_DEV + "/**" */],
   };
 
   config.plugins.unshift(
@@ -381,7 +352,7 @@ if (shouldEnableHotRefresh) {
   );
 }
 
-if (devMode) {
+if (isDevMode) {
   if (!config.output || !config.resolve || !config.plugins) {
     throw new Error("webpack config is missing configuration");
   }

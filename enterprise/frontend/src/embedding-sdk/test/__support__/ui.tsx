@@ -1,4 +1,3 @@
-import type { Store } from "@reduxjs/toolkit";
 import { render } from "@testing-library/react";
 import type * as React from "react";
 import _ from "underscore";
@@ -9,7 +8,7 @@ import {
   type MetabaseProviderProps,
 } from "embedding-sdk/components/public/MetabaseProvider";
 import { sdkReducers } from "embedding-sdk/store";
-import type { SdkStoreState } from "embedding-sdk/store/types";
+import type { SdkStore, SdkStoreState } from "embedding-sdk/store/types";
 import { createMockSdkState } from "embedding-sdk/test/mocks/state";
 import { Api } from "metabase/api";
 import { MetabaseReduxProvider } from "metabase/lib/redux";
@@ -55,7 +54,7 @@ export function renderWithSDKProviders(
     sdkReducers,
     initialState,
     storeMiddleware,
-  ) as unknown as Store<State>;
+  ) as unknown as SdkStore;
 
   // Prevent spamming the console during tests
   if (sdkProviderProps) {

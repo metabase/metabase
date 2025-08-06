@@ -852,8 +852,8 @@
                                           (lib/with-join-fields :all))))))]
       (qp.store/with-metadata-provider mp
         (driver/with-driver :h2
-          (let [preprocessed (metabase.util/profile (-> question qp.preprocess/preprocess))
-                expected     (metabase.util/profile (add/add-alias-info preprocessed))]
+          (let [preprocessed (-> question qp.preprocess/preprocess)
+                expected     (add/add-alias-info preprocessed)]
             (testing ":source-query -> :source-query -> :joins"
               (is (=? [{:alias "Reviews"
                         :condition [:=

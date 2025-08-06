@@ -47,13 +47,23 @@ export const AlertRoot = styled.div<AlertRootProps>`
   background-color: ${(props) => colorsByVariant.background[props.variant]};
 `;
 
-interface AlertIconProps {
+interface BaseIconProps {
   variant: AlertVariant;
 }
 
-export const AlertIcon = styled(Icon)<AlertIconProps>`
+const BaseIcon = styled(Icon)<BaseIconProps>`
   box-sizing: content-box;
   flex-shrink: 0;
-  padding: 0.5rem 1rem 0.5rem 0.5rem;
+  padding: 0.5rem;
   color: ${(props) => colorsByVariant.icon[props.variant]};
+`;
+
+export const AlertIcon = styled(BaseIcon)<BaseIconProps>`
+  padding: 0.5rem 1rem 0.5rem 0.5rem;
+`;
+
+export const CloseIcon = styled(BaseIcon)<BaseIconProps>`
+  margin-left: auto;
+  padding: 0.5rem 0.5rem 0.5rem 1rem;
+  cursor: pointer;
 `;
