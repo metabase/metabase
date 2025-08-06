@@ -6,6 +6,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.collections.models.collection :as collection]
+   [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.queries.models.card :as card]
    [metabase.query-permissions.core :as query-perms]
@@ -131,28 +132,33 @@
        [:collection_id {:optional true} [:maybe ms/PositiveInt]]
        [:cards {:optional true} [:maybe [:map-of [:int {:max -1}] CardCreateSchema]]]]]
   (collection/check-write-perms-for-collection collection_id)
-  (get-document
-   (t2/with-transaction [_conn]
+  (let [document-id (t2/with-transaction [_conn]
             ;; Validate existing cards first if provided
-     (let [document-id (t2/insert-returning-pk! :model/Document {:name name
-                                                                 :collection_id collection_id
-                                                                 :document document
-                                                                 :content_type prose-mirror/prose-mirror-content-type
-                                                                 :creator_id api/*current-user-id*})
-           cards-to-update-in-ast (merge (clone-cards-in-document! {:id document-id
-                                                                    :collection_id collection_id
-                                                                    :document document
-                                                                    :content_type prose-mirror/prose-mirror-content-type})
-                                         (when-not (empty? cards)
-                                           (create-cards-for-document! cards document-id collection_id @api/*current-user*)))]
+                      (let [document-id (t2/insert-returning-pk! :model/Document {:name name
+                                                                                  :collection_id collection_id
+                                                                                  :document document
+                                                                                  :content_type prose-mirror/prose-mirror-content-type
+                                                                                  :creator_id api/*current-user-id*})
+                            cards-to-update-in-ast (merge (clone-cards-in-document! {:id document-id
+                                                                                     :collection_id collection_id
+                                                                                     :document document
+                                                                                     :content_type prose-mirror/prose-mirror-content-type})
+                                                          (when-not (empty? cards)
+                                                            (create-cards-for-document! cards document-id collection_id @api/*current-user*)))]
        ;; Create new cards if provided
-       (when (seq cards-to-update-in-ast)
-         (t2/update! :model/Document :id document-id
-                     (update-cards-in-ast
-                      {:document document
-                       :content_type prose-mirror/prose-mirror-content-type}
-                      cards-to-update-in-ast)))
-       document-id))))
+                        (when (seq cards-to-update-in-ast)
+                          (t2/update! :model/Document :id document-id
+                                      (update-cards-in-ast
+                                       {:document document
+                                        :content_type prose-mirror/prose-mirror-content-type}
+                                       cards-to-update-in-ast)))
+                        document-id))
+        created-document (get-document document-id)]
+    ;; Publish event after successful creation
+    (events/publish-event! :event/document-create
+                           {:object created-document
+                            :user-id api/*current-user-id*})
+    created-document))
 
 (api.macros/defendpoint :get "/:document-id"
   "Returns an existing Document by ID."
@@ -183,7 +189,12 @@
                                                                   (when-not (empty? cards) (create-cards-for-document! cards document-id collection_id @api/*current-user*)))))
                                                 name (assoc :name name)
                                                 (contains? body :collection_id) (assoc :collection_id collection_id))))
-    (get-document document-id)))
+    (let [updated-document (get-document document-id)]
+      ;; Publish event after successful update
+      (events/publish-event! :event/document-update
+                             {:object updated-document
+                              :user-id api/*current-user-id*})
+      updated-document)))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/document/` routes."
