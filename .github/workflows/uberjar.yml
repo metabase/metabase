@@ -115,7 +115,7 @@ jobs:
     timeout-minutes: 5
     name: Get container info
     # Skip if this is a PR without the build-docker-uberjar label
-    if: github.ref == 'refs/heads/master' || contains(github.event.pull_request.labels.*.name, 'build-docker-uberjar')
+    if: github.ref_name == 'master' || contains(github.event.pull_request.labels.*.name, 'build-docker-uberjar')
     outputs:
       editions: ${{ toJson(fromJson(steps.info.outputs.result).editions) }}
       ee: ${{ toJson(fromJson(steps.info.outputs.result).ee) }}
