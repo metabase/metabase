@@ -1,3 +1,4 @@
+import { getSdkLoaderCss } from "embedding/sdk-common/lib/get-sdk-loader-css";
 import { useMetabaseProviderPropsStore } from "embedding-sdk/sdk-shared/hooks/use-metabase-provider-props-store";
 import type { CommonStylingProps } from "embedding-sdk/types/props";
 
@@ -6,45 +7,17 @@ type SpinnerProps = {
   color?: string;
 };
 
+const SPINNER_CLASS_NAME = "metabase-spinner-loader";
+
 // eslint-disable-next-line no-color-literals
 const Spinner = ({ size = "1.5rem", color = "#509EE3" }: SpinnerProps) => {
   return (
     <div>
       <style>
-        {`
-          @keyframes metabase-spinner-loader-animation {
-            0% {
-              transform: rotate(0deg);
-            }
-
-            100% {
-              transform: rotate(360deg);
-            }
-          }
-
-          .metabase-spinner-loader {
-            display: inline-block;
-            box-sizing: border-box;
-            width: ${size};
-            height: ${size};
-          }
-
-          .metabase-spinner-loader::after {
-            content: "";
-            display: block;
-            box-sizing: border-box;
-            width: ${size};
-            height: ${size};
-            border-radius: 10000px;
-            border-width: calc(${size} / 8);
-            border-style: solid;
-            border-color: ${color} ${color} ${color} transparent;
-            animation: metabase-spinner-loader-animation 1.2s linear infinite;
-          }
-        `}
+        {getSdkLoaderCss({ className: SPINNER_CLASS_NAME, size, color })}
       </style>
 
-      <span className="metabase-spinner-loader" />
+      <span className={SPINNER_CLASS_NAME} />
     </div>
   );
 };
