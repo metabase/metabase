@@ -31,3 +31,32 @@
 .SectionContent {
   overflow-x: auto;
 }
+
+.ListViewContainer {
+  /* flex-direction: row; */
+  border: 1px solid var(--border-color);
+  border-radius: var(--default-border-radius);
+  display: grid;
+  grid-template-columns: repeat(var(--sections-count, 1), 1fr);
+  gap: var(--mantine-spacing-xl);
+}
+
+.ListViewSection {
+  display: flex;
+  flex-direction: column;
+  border: none;
+
+  .SectionContent {
+    /* flex-direction: column; */
+    display: grid;
+    grid-template-columns: auto 1fr;
+    align-items: start;
+    /* line-height: 1; */
+  }
+
+  .ListViewField {
+    /* display: grid;
+    grid-template-columns: auto 1fr;
+    align-items: center; */
+  }
+}

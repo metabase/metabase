@@ -1,3 +1,4 @@
+import cx from "classnames";
 import {
   DndContext,
   KeyboardSensor,
@@ -19,6 +20,7 @@ import {
   useEffect,
   useMemo,
   useState,
+  Fragment,
 } from "react";
 import { Link } from "react-router";
 import { push } from "react-router-redux";
@@ -428,7 +430,16 @@ export function TableDetailViewInner({
         </Flex>
       )} */}
 
-      <Stack gap="md" mt={isListView ? 0 : "md"} mb={isListView ? 0 : "sm"}>
+      <Stack
+        gap="md"
+        mt={isListView ? 0 : "md"}
+        mb={isListView ? 0 : "sm"}
+        className={cx({ [S.ListViewContainer]: isListView })}
+        style={{
+          "--sections-count": notEmptySections.length,
+          // gridTemplateColumns: `repeat(3, 1fr)`,
+        }}
+      >
         <DndContext
           sensors={sensors}
           collisionDetection={closestCenter}
@@ -534,39 +545,44 @@ function ObjectViewSection({
 
   return (
     <Box
-      className={S.ObjectViewSection}
+      className={cx(S.ObjectViewSection, {
+        [S.ListViewSection]: isListView,
+      })}
       pos="relative"
       bg={isEdit && !isListView ? "bg-medium" : "bg-white"}
       px="md"
       py="sm"
       style={{
-        border: "1px solid var(--border-color)",
+        border: isListView ? "none" : "1px solid var(--border-color)",
         borderRadius: "var(--default-border-radius)",
       }}
     >
-      <Group gap="xs">
-        {isEdit && !isListView && (
-          <Icon
-            name="grabber"
-            style={{ cursor: "grab" }}
-            role="button"
-            tabIndex={0}
-            {...dragHandleProps}
+      {!isListView && (
+        <Group gap="xs">
+          {isEdit && (
+            <Icon
+              name="grabber"
+              style={{ cursor: "grab" }}
+              role="button"
+              tabIndex={0}
+              {...dragHandleProps}
+            />
+          )}
+          <EditableText
+            initialValue={section.title}
+            isDisabled={!isEdit}
+            onChange={(title) => onUpdateSection({ title })}
+            style={{ fontWeight: 700 }}
           />
-        )}
-        <EditableText
-          initialValue={section.title}
-          isDisabled={!isEdit}
-          onChange={(title) => onUpdateSection({ title })}
-          style={{ fontWeight: 700 }}
-        />
-      </Group>
+        </Group>
+      )}
       <Flex
         direction={section.direction === "vertical" ? "column" : "row"}
         gap="md"
         mt={isListView ? 0 : "sm"}
         px="xs"
         className={S.SectionContent}
+        // sty
       >
         {section.fields.map(({ field_id, style }) => {
           const columnIndex = columns.findIndex(
@@ -581,11 +597,11 @@ function ObjectViewSection({
           const value = row[columnIndex];
 
           return (
-            <Box key={field_id}>
+            <Fragment key={field_id}>
               <Text
                 c="text-dark"
                 fw={600}
-                size="sm"
+                size="md"
                 style={{
                   whiteSpace: "nowrap",
                 }}
@@ -601,7 +617,7 @@ function ObjectViewSection({
               >
                 {formatValue(value, { column })}
               </Text>
-            </Box>
+            </Fragment>
           );
         })}
       </Flex>

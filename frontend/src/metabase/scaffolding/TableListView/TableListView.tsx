@@ -59,6 +59,7 @@ import {
   getExploreTableUrl,
   parseRouteParams,
 } from "./utils";
+import { getNextId } from "__support__/utils";
 
 interface Props {
   location: Location;
@@ -116,6 +117,7 @@ export const TableListView = ({ location, params }: Props) => {
   const [settings, setSettings] = useState(
     table?.component_settings ?? getDefaultComponentSettings(table),
   );
+  // console.log({ table });
   const [searchQuery, setSearchQuery] = useState("");
   const [isFilterPickerOpen, setIsFilterPickerOpen] = useState(false);
 
@@ -385,10 +387,6 @@ export const TableListView = ({ location, params }: Props) => {
                 value: "list",
                 label: <Label icon="list" tooltip={t`List`} />,
               },
-              // {
-              //   value: "gallery",
-              //   label: <Label icon="grid" tooltip={t`Gallery`} />,
-              // },
             ]}
             value={settings.list_view.view}
             onChange={handleViewChange}
@@ -513,7 +511,7 @@ export const TableListView = ({ location, params }: Props) => {
             </Stack>
           )}
 
-          {settings.list_view.view === "gallery" && (
+          {/* {settings.list_view.view === "gallery" && (
             <Box
               maw={1200}
               w="100%"
@@ -540,7 +538,7 @@ export const TableListView = ({ location, params }: Props) => {
                 );
               })}
             </Box>
-          )}
+          )} */}
         </Stack>
 
         {isEditing && (
@@ -616,8 +614,45 @@ export const TableListView = ({ location, params }: Props) => {
                   <DetailViewSidebar
                     columns={columns}
                     sections={settings.list_view.list.sections}
-                    tableId={table.id}
                     hideAIButton={true}
+                    onCreateSection={
+                      settings.list_view.list.sections.length < 3
+                        ? () => {
+                            setSettings((settings) => ({
+                              ...settings,
+                              list_view: {
+                                ...settings.list_view,
+                                list: {
+                                  ...settings.list_view.list,
+                                  sections: [
+                                    ...settings.list_view.list.sections,
+                                    {
+                                      id: getNextId(),
+                                      title: "Section",
+                                      direction: "vertical",
+                                      fields: [],
+                                    },
+                                  ],
+                                },
+                              },
+                            }));
+                          }
+                        : undefined
+                    }
+                    onRemoveSection={(id) => {
+                      setSettings((settings) => ({
+                        ...settings,
+                        list_view: {
+                          ...settings.list_view,
+                          list: {
+                            ...settings.list_view.list,
+                            sections: settings.list_view.list.sections.filter(
+                              (s) => s.id !== id,
+                            ),
+                          },
+                        },
+                      }));
+                    }}
                     onUpdateSection={(id, update) => {
                       setSettings((settings) => ({
                         ...settings,
@@ -646,7 +681,7 @@ export const TableListView = ({ location, params }: Props) => {
                   />
                 )}
 
-                {settings.list_view.view === "gallery" && (
+                {/* {settings.list_view.view === "gallery" && (
                   <DetailViewSidebar
                     columns={columns}
                     sections={settings.list_view.gallery.sections}
@@ -678,7 +713,7 @@ export const TableListView = ({ location, params }: Props) => {
                       }));
                     }}
                   />
-                )}
+                )} */}
               </Stack>
             </Box>
 

@@ -188,7 +188,7 @@ export function getDefaultListViewListSettings(
       {
         id: getNextId(),
         title: "Info",
-        direction: "horizontal",
+        direction: "vertical",
         fields: bestFields.map((field) => ({
           field_id: getRawTableFieldId(field),
           style: isEntityName(field) ? "bold" : "normal",

@@ -50,7 +50,7 @@ import S from "./TableDetailView.module.css";
 interface DetailViewSidebarProps {
   columns: DatasetColumn[];
   sections: ObjectViewSectionSettings[];
-  onCreateSection: () => void;
+  onCreateSection?: () => void;
   onUpdateSection: (
     id: number,
     update: Partial<ObjectViewSectionSettings>,
@@ -276,7 +276,7 @@ function DetailViewSidebar({
           items={sections.map((section) => section.id)}
           strategy={verticalListSortingStrategy}
         >
-          {onCreateSection && (
+          {/* {onCreateSection && (
             <Button
               variant="subtle"
               size="compact-sm"
@@ -284,9 +284,9 @@ function DetailViewSidebar({
               mt="md"
               onClick={() => onCreateSection({ position: "start" })}
             >{t`Add section`}</Button>
-          )}
+          )} */}
 
-          <Divider mt="lg" mb="sm" />
+          {/* <Divider mt="lg" mb="sm" /> */}
           {sections.map((section) => (
             <SortableSectionSettings
               key={section.id}
@@ -476,23 +476,6 @@ function SectionSettings({
           />
         </Group>
         <Group gap="xs" className={S.ObjectViewSidebarSectionActions}>
-          <Button
-            variant="inverse"
-            size="compact-sm"
-            onClick={() => {
-              onUpdateSection({
-                direction:
-                  section.direction === "vertical" ? "horizontal" : "vertical",
-              });
-            }}
-            style={{
-              aspectRatio: 1,
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            {section.direction === "vertical" ? "↓" : "→"}
-          </Button>
           {onRemoveSection && (
             <Button
               variant="inverse"
