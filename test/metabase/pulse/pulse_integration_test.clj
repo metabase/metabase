@@ -37,7 +37,6 @@
                                                                                 :expressions  {"Tax Rate" [:/
                                                                                                            [:field (mt/id :orders :tax) {:base-type :type/Float}]
                                                                                                            [:field (mt/id :orders :total) {:base-type :type/Float}]]},
-                                                                                :expression-idents {"Tax Rate" "BDpp6yH1r645cmTpDov7e"}
                                                                                 :fields       [[:field (mt/id :orders :tax) {:base-type :type/Float}]
                                                                                                [:field (mt/id :orders :total) {:base-type :type/Float}]
                                                                                                [:expression "Tax Rate"]]

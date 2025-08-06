@@ -728,9 +728,10 @@
   (lib.util/clause-of-type? lhs-or-rhs :value))
 
 (mu/defn join-condition-lhs-or-rhs-column? :- :boolean
-  "Whether this LHS or RHS expression is a `:field` reference."
+  "Whether this LHS or RHS expression is a `:field` or `:expression` reference."
   [lhs-or-rhs :- [:maybe ::lib.schema.expression/expression]]
-  (lib.util/field-clause? lhs-or-rhs))
+  (or (lib.util/clause-of-type? lhs-or-rhs :field)
+      (lib.util/clause-of-type? lhs-or-rhs :expression)))
 
 (mu/defn filter-args-display-name :- :string
   "Provides a reasonable display name for the `filter-clause` excluding the column-name.

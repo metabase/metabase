@@ -1,1 +1,1 @@
-export { InteractiveAdHocQuestion } from "./SdkAdHocQuestion";
+export { SdkAdHocQuestion } from "./SdkAdHocQuestion";

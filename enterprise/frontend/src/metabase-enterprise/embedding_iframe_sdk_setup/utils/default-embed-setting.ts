@@ -20,7 +20,7 @@ export const getDefaultSdkIframeEmbedSettings = (
       "dashboard",
       (): DashboardEmbedOptions => ({
         dashboardId: defaultResourceId,
-        isDrillThroughEnabled: true,
+        drills: true,
         withDownloads: false,
         withTitle: true,
       }),
@@ -29,7 +29,7 @@ export const getDefaultSdkIframeEmbedSettings = (
       "chart",
       (): QuestionEmbedOptions => ({
         questionId: defaultResourceId,
-        isDrillThroughEnabled: true,
+        drills: true,
         withDownloads: false,
         withTitle: true,
       }),

@@ -46,7 +46,7 @@
             (cond
               (keyword? m) (u/qualified-name m)
               (map? m) (-> (update-vals m standardize-metadata)
-                           (dissoc :ident)
+                           (dissoc :ident) ; `:ident` is deprecated and should no longer be present, but better safe than sorry.
                            (remove-underscore-nil-keys))
               (sequential? m) (mapv standardize-metadata m)
               (set? m) (into #{} (map standardize-metadata) m)
@@ -94,11 +94,10 @@
   (mapv
    (fn [{final-base-type :base_type, :as final-col} {our-base-type :base_type, :as insights-col}]
      (merge
-      final-col
-      #_(select-keys final-col [:id :ident :description :display_name :semantic_type :fk_target_field_id
-                                :settings :field_ref :base_type :effective_type :database_type
-                                :remapped_from :remapped_to :coercion_strategy :visibility_type
-                                :was_binned :table_id])
+      (select-keys final-col [:id :description :display_name :semantic_type :fk_target_field_id
+                              :settings :field_ref :base_type :effective_type :database_type
+                              :remapped_from :remapped_to :coercion_strategy :visibility_type
+                              :was_binned :table_id])
       insights-col
       {:name (:name final-col)}   ; The final cols have correctly disambiguated ID_2 names, but the insights cols don't.
       (when (= our-base-type :type/*)

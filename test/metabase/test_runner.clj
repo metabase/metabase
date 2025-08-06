@@ -12,8 +12,12 @@
    [metabase.core.bootstrap]
    [metabase.test-runner.assert-exprs]
    [metabase.test.data.env :as tx.env]
+   [metabase.test.fixtures :as fixtures]
+   [metabase.test.initialize :as initialize]
+   [metabase.util :as u]
    [metabase.util.date-2]
    [metabase.util.i18n.impl]
+   [metabase.util.log :as log]
    [pjstadig.humane-test-output :as humane-test-output]))
 
 (set! *warn-on-reflection* true)
@@ -95,12 +99,21 @@
   ([options]
    (hawk/find-tests-with-options (merge (default-options) options))))
 
+(defn- initialize-all-fixtures []
+  (let [steps (initialize/all-components)]
+    (u/with-timer-ms [duration-ms]
+      (doseq [init-step steps]
+        (fixtures/initialize init-step))
+      (log/info (str "Initialized " (count steps) " fixtures in " (duration-ms) "ms")))))
+
 (defn find-and-run-tests-repl
   "Find and run tests from the REPL."
   [options]
+  (initialize-all-fixtures)
   (hawk/find-and-run-tests-repl (merge (default-options) options)))
 
 (defn find-and-run-tests-cli
   "Entrypoint for `clojure -X:test`."
   [options]
+  (initialize-all-fixtures)
   (hawk/find-and-run-tests-cli (merge (default-options) options)))

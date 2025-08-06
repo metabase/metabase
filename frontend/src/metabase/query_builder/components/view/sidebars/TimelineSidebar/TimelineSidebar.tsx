@@ -1,4 +1,4 @@
-import type { Moment } from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
+import type { Dayjs } from "dayjs";
 import { useCallback } from "react";
 import { t } from "ttag";
 
@@ -14,7 +14,7 @@ export interface TimelineSidebarProps {
   timelines: Timeline[];
   visibleTimelineEventIds: number[];
   selectedTimelineEventIds: number[];
-  xDomain?: [Moment, Moment];
+  xDomain?: [Dayjs, Dayjs];
   onShowTimelineEvents: (timelineEvent: TimelineEvent[]) => void;
   onHideTimelineEvents: (timelineEvent: TimelineEvent[]) => void;
   onSelectTimelineEvents?: (timelineEvents: TimelineEvent[]) => void;
@@ -83,13 +83,13 @@ const TimelineSidebar = ({
   );
 };
 
-const formatTitle = (xDomain?: [Moment, Moment]) => {
+const formatTitle = (xDomain?: [Dayjs, Dayjs]) => {
   return xDomain
     ? t`Events between ${formatDate(xDomain[0])} and ${formatDate(xDomain[1])}`
     : t`Events`;
 };
 
-const formatDate = (date: Moment) => {
+const formatDate = (date: Dayjs) => {
   return date.format("ll");
 };
 

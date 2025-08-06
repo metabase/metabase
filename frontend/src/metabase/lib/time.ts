@@ -1,4 +1,3 @@
-import type { DurationInputArg2 } from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 import { t } from "ttag";
 
@@ -75,39 +74,6 @@ function addAbbreviatedLocale() {
   moment.locale(initialLocale);
 }
 
-export function isValidTimeInterval(interval: number, unit: DurationInputArg2) {
-  if (!interval) {
-    return false;
-  }
-
-  const now = moment();
-  const newTime = moment().add(interval, unit);
-  const diff = now.diff(newTime, "years");
-
-  return !Number.isNaN(diff);
-}
-
-export function getDateStyleFromSettings() {
-  const customFormattingSettings = MetabaseSettings.get("custom-formatting");
-  return customFormattingSettings?.["type/Temporal"]?.date_style;
-}
-
-export function getRelativeTime(timestamp: string) {
-  return moment(timestamp).fromNow();
-}
-
-export function getRelativeTimeAbbreviated(timestamp: string) {
-  const locale = moment().locale();
-
-  if (locale === "en") {
-    const ts = moment(timestamp);
-    ts.locale("en-abbreviated");
-    return ts.fromNow();
-  }
-
-  return getRelativeTime(timestamp);
-}
-
 export function getTimeStyleFromSettings() {
   const customFormattingSettings = MetabaseSettings.get("custom-formatting");
   return customFormattingSettings?.["type/Temporal"]?.time_style;
@@ -116,23 +82,6 @@ export function getTimeStyleFromSettings() {
 export function has24HourModeSetting() {
   const timeStyle = getTimeStyleFromSettings();
   return timeStyle === TIME_FORMAT_24_HOUR;
-}
-
-export function hoursToSeconds(hours: number) {
-  return hours * 60 * 60;
-}
-
-export function msToHours(ms: number) {
-  const hours = msToMinutes(ms) / 60;
-  return hours;
-}
-
-export function msToMinutes(ms: number) {
-  return msToSeconds(ms) / 60;
-}
-
-export function msToSeconds(ms: number) {
-  return ms / 1000;
 }
 
 export function parseTime(value: moment.Moment | string) {

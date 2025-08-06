@@ -43,7 +43,16 @@ const FilteringPreviewBase = ({ databaseId, fieldId, table }: Props) => {
 
 function getPreviewQuery(table: Table, databaseId: number): Lib.Query {
   const metadata = createMockMetadata({
-    tables: table ? [table] : [],
+    tables: table
+      ? [
+          {
+            ...table,
+            // When table is hidden metabase-lib will give an empty list of columns for it.
+            // We need to pretend it is visible so that FilterPickerBody can know about it.
+            visibility_type: null,
+          },
+        ]
+      : [],
   });
   const metadataProvider = Lib.metadataProvider(databaseId, metadata);
 

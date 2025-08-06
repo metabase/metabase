@@ -23,7 +23,7 @@ export type SaveQuestionFormProps = {
 /**
  * Form for saving a question, including title and description. When saved:
  *
- * - For existing questions: Calls {@link InteractiveQuestionProps.onSave}
+ * - For existing questions: Calls {@link SdkQuestionProps.onSave}
  * - Both callbacks receive the updated question object
  * - Form can be cancelled via the {@link InteractiveQuestionSaveQuestionFormProps.onCancel}
  *

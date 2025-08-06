@@ -106,8 +106,12 @@
 (defn- orders-count-with-breakouts-and-join [breakout-values]
   (orders-count-with-breakouts*
    (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
-       (lib/join (meta/table-metadata :products)))
-   breakout-values))
+       (lib/join (-> (lib/join-clause (meta/table-metadata :products))
+                     (lib/with-join-alias "P"))))
+   (for [[col v] breakout-values]
+     [(cond-> col
+        (= (:table-id col) (meta/id :products)) (lib/with-join-alias "P"))
+      v])))
 
 (def ^:private bv-date
   [(meta/field-metadata :orders :created-at)
@@ -120,6 +124,7 @@
 (def ^:private bv-category1
   [(meta/field-metadata :products :category)
    "Gadget"])
+
 (def ^:private bv-category2
   [(meta/field-metadata :people :source)
    "Twitter"])

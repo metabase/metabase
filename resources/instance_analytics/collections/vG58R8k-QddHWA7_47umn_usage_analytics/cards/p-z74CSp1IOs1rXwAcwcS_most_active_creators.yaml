@@ -25,8 +25,6 @@ dataset_query:
   query:
     aggregation:
     - - count
-    aggregation-idents:
-      0: aggregation_p-z74CSp1IOs1rXwAcwcS@0__0
     breakout:
     - - field
       - - Internal Metabase Database
@@ -41,9 +39,6 @@ dataset_query:
         - v_audit_log
         - user_id
       - base-type: type/Integer
-    breakout-idents:
-      0: breakout_p-z74CSp1IOs1rXwAcwcS@0__0
-      1: breakout_p-z74CSp1IOs1rXwAcwcS@0__1
     filter:
     - =
     - - field

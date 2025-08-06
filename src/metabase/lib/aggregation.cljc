@@ -235,8 +235,7 @@
      ;; This might be an inner aggregation expression without an ident of its own, but that's fine since we're only
      ;; here for its type!
      (select-keys (lib.metadata.calculation/metadata query stage-number first-arg) [:settings :semantic-type]))
-   ((get-method lib.metadata.calculation/metadata-method :default) query stage-number clause)
-   {:ident (lib.options/ident clause)}))
+   ((get-method lib.metadata.calculation/metadata-method :default) query stage-number clause)))
 
 (lib.common/defop count       [] [x])
 (lib.common/defop cum-count   [] [x])

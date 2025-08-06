@@ -1,6 +1,6 @@
 (ns metabase.config.core
   (:require
-   #_{:clj-kondo/ignore [:discouraged-namespace]}
+   ^{:clj-kondo/ignore [:discouraged-namespace]}
    [cheshire.core :as json]
    [clojure.java.io :as io]
    [clojure.string :as str]
@@ -16,6 +16,14 @@
   (try
     #_{:clj-kondo/ignore [:metabase/modules]}
     (require 'metabase-enterprise.core.dummy-namespace)
+    true
+    (catch Throwable _
+      false)))
+
+(def ^{:doc "Indicates whether Dev extensions are available" :added "0.56.0"} dev-available?
+  (try
+    #_{:clj-kondo/ignore [:metabase/modules]}
+    (require 'dev.dummy-namespace)
     true
     (catch Throwable _
       false)))

@@ -102,7 +102,7 @@ function _CartesianChart(props: VisualizationProps) {
         const svg = containerRef.current?.querySelector("svg");
         if (svg) {
           const clipPaths = svg.querySelectorAll('defs > clipPath[id^="zr"]');
-          clipPaths.forEach((cp) => cp.remove());
+          clipPaths.forEach((cp) => cp.setAttribute("id", ""));
         }
       });
     }

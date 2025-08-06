@@ -14,6 +14,7 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.expression.conditional :as lib.schema.expression.conditional]
+   [metabase.lib.schema.expression.temporal :as lib.schema.expression.temporal]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
@@ -94,7 +95,6 @@
           :display-name        (lib.metadata.calculation/display-name query stage-number expression-ref-clause)
           :base-type           (lib.metadata.calculation/type-of query stage-number expression-ref-clause)
           :lib/source          :source/expressions}
-         {:ident (lib.options/ident (resolve-expression query stage-number expression-name))}
          (when-let [unit (lib.temporal-bucket/raw-temporal-bucket expression-ref-clause)]
            {:metabase.lib.field/temporal-unit unit})
          (when lib.metadata.calculation/*propagate-binning-and-bucketing*
@@ -335,7 +335,6 @@
 (lib.common/defop round [x])
 (lib.common/defop power [n expo])
 (lib.common/defop interval [n unit])
-(lib.common/defop relative-datetime [t unit])
 (lib.common/defop time [t unit])
 (lib.common/defop absolute-datetime [t unit])
 (lib.common/defop now [])
@@ -385,6 +384,15 @@
                      :mode mode}]
          (map lib.common/->op-arg) [value])))
 
+(mu/defn relative-datetime :- :mbql.clause/relative-datetime
+  "Create a standalone `:relative-datetime` clause."
+  ([t :- [:= :current]]
+   [:relative-datetime {:lib/uuid (str (random-uuid))} t])
+
+  ([t    :- ::lib.schema.expression.temporal/relative-datetime.amount
+    unit :- ::lib.schema.temporal-bucketing/unit.date-time.interval]
+   [:relative-datetime {:lib/uuid (str (random-uuid))} t unit]))
+
 (mu/defn value :- ::lib.schema.expression/expression
   "Creates a `:value` clause for the `literal`. Converts bigint literals to strings for serialization purposes."
   [literal :- [:or :string number? :boolean [:fn u.number/bigint?]]]
@@ -408,8 +416,7 @@
                       :lib/source-column-alias :lib/source-uuid :lib/type])
         (assoc :lib/source   :source/expressions
                :name         expression-name
-               :display-name expression-name
-               :ident        (lib.options/ident expression-definition)))))
+               :display-name expression-name))))
 
 (mu/defn expressions-metadata :- [:maybe [:sequential ::lib.schema.metadata/column]]
   "Get metadata about the expressions in a given stage of a `query`."
