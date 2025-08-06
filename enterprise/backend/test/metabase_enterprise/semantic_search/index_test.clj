@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase-enterprise.semantic-search.embedding :as semantic.embedding]
    [metabase-enterprise.semantic-search.index :as semantic.index]
    [metabase-enterprise.semantic-search.test-util :as semantic.tu]
    [metabase.analytics.core :as analytics]
@@ -141,6 +142,40 @@
                      (semantic.tu/delete-from-index! "dashboard" (into ["456"] extra-ids))))
               (semantic.tu/check-index-has-no-mock-docs))))))))
 
+(defn- only-first-call [r f]
+  (let [is-first (atom true)]
+    (fn [& args]
+      (when @is-first
+        (is (= @r semantic.index/*batch-size*))
+        (reset! is-first false)
+        (apply f args)))))
+
+(deftest reducible-is-respected-test
+  (mt/with-premium-features #{:semantic-search}
+    (with-open [_ (semantic.tu/open-temp-index!)]
+      (binding [semantic.index/*batch-size* 2]
+        (let [docs (semantic.tu/mock-documents)
+              realized (atom 0)
+              mock-docs (eduction (comp (map str)
+                                        (map (fn [id]
+                                               (swap! realized inc)
+                                               (assoc (first docs) :id id))))
+                                  (range 123 500))]
+
+          (testing "ensure upsert! and delete! don't realize the full reducible at once"
+            (semantic.tu/check-index-has-no-mock-docs)
+
+            (testing "upsert-index!"
+              (with-redefs [semantic.index/upsert-index-batch! (only-first-call realized @#'semantic.index/upsert-index-batch!)]
+                (is (= {"card" 2} (semantic.tu/upsert-index! mock-docs))))
+              (semantic.tu/check-index-has-mock-card))
+
+            (reset! realized 0)
+            (testing "delete-from-index!"
+              (with-redefs [semantic.index/delete-from-index-batch-sql (only-first-call realized @#'semantic.index/delete-from-index-batch-sql)]
+                (is (= {"card" 2} (semantic.tu/delete-from-index! "card" (eduction (map :id) mock-docs)))))
+              (semantic.tu/check-index-has-no-mock-docs))))))))
+
 (deftest upsert-index-batched-embeddings-pairing-test
   (mt/with-premium-features #{:semantic-search}
     (with-open [_ (semantic.tu/open-temp-index!)]
@@ -182,6 +217,50 @@
                        :content "Tiger Conservation"
                        :embedding (semantic.tu/get-mock-embedding "Tiger Conservation")}]
                      (semantic.tu/query-embeddings {:model "card" :model_id "3"}))))))))))
+
+(deftest upsert-index-batched-embeddings-dedupe-test
+  (mt/with-premium-features #{:semantic-search}
+    (with-open [_ (semantic.tu/open-temp-index!)]
+      (testing "Documents with identical searchable texts lead to deduped embedding calc"
+        (let [test-documents [{:model "card"
+                               :id "1"
+                               :searchable_text "Dog Training Guide"
+                               :creator_id 1
+                               :legacy_input {:model "card" :id "1"}
+                               :metadata {}}
+                              {:model "card"
+                               :id "2"
+                               :searchable_text "Elephant Migration"
+                               :creator_id 2
+                               :legacy_input {:model "card" :id "2"}
+                               :metadata {}}
+                              {:model "card"
+                               :id "3"
+                               :searchable_text "Dog Training Guide"
+                               :creator_id 3
+                               :legacy_input {:model "card" :id "3"}
+                               :metadata {}}]]
+          (binding [semantic.index/*batch-size* 5]
+            (let [{:keys [calls proxy]} (semantic.tu/spy semantic.embedding/process-embeddings-streaming)]
+              (with-redefs [semantic.embedding/process-embeddings-streaming proxy]
+                (semantic.tu/upsert-index! test-documents))
+              (is (= 1 (count @calls)))
+              (is (= ["Dog Training Guide" "Elephant Migration"]
+                     (second (:args (first @calls))))))
+            (is (= [{:model "card" :model_id "1" :creator_id 1
+                     :content "Dog Training Guide"
+                     :embedding (semantic.tu/get-mock-embedding "Dog Training Guide")}]
+                   (semantic.tu/query-embeddings {:model "card" :model_id "1"})))
+
+            (is (= [{:model "card" :model_id "2" :creator_id 2
+                     :content "Elephant Migration"
+                     :embedding (semantic.tu/get-mock-embedding "Elephant Migration")}]
+                   (semantic.tu/query-embeddings {:model "card" :model_id "2"})))
+
+            (is (= [{:model "card" :model_id "3" :creator_id 3
+                     :content "Dog Training Guide"
+                     :embedding (semantic.tu/get-mock-embedding "Dog Training Guide")}]
+                   (semantic.tu/query-embeddings {:model "card" :model_id "3"})))))))))
 
 (deftest prometheus-metrics-test
   (mt/with-premium-features #{:semantic-search}

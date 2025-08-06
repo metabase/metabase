@@ -143,7 +143,14 @@
        (eduction (map #(assoc % :model search-model)))))
 
 (defn- search-items-reducible []
-  (reduce u/rconcat [] (map spec-index-reducible search.spec/search-models)))
+  (let [models search.spec/search-models
+        ;; we're pushing indexed entities last in the search items reducible
+        ;; so that more important models gets indexed first, making the partial
+        ;; index more usable earlier
+        sorted-models (cond-> models
+                        (contains? models "indexed-entity")
+                        (-> (disj "indexed-entity") (concat ["indexed-entity"])))]
+    (reduce u/rconcat [] (map spec-index-reducible sorted-models))))
 
 (defn- query->documents [query-reducible]
   (->> query-reducible

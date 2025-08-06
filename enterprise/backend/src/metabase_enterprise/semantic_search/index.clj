@@ -136,20 +136,26 @@
           (jdbc/execute! connectable (records->sql batch)))
         (analytics-set-index-size! connectable table-name)))))
 
+(defn- execute-with-counts [connectable model ids sql]
+  (jdbc/execute! connectable sql)
+  (u/prog1 (count ids)
+    (log/debug "semantic search deleted a batch of" <>
+               "documents with model type" model)))
+
 (defn- batch-delete-ids!
   [connectable table-name model ids->sql ids]
-  (when (seq ids)
-    (u/prog1 (->> (transduce (comp (partition-all *batch-size*)
-                                   (map (fn [ids]
-                                          (jdbc/execute! connectable (ids->sql ids))
-                                          (u/prog1 (count ids)
-                                            (log/debug "semantic search deleted a batch of" <>
-                                                       "documents with model type" model)))))
-                             +
-                             ids)
-                  (array-map model))
-      (log/info "semantic search deleted" (get <> model) "total documents with model type" model)
-      (analytics-set-index-size! connectable table-name))))
+  (let [deleted (transduce
+                 (comp (partition-all *batch-size*)
+                       (map (fn [ids]
+                              (-> ids
+                                  (some->> ids->sql (execute-with-counts connectable model ids))
+                                  (or 0)))))
+                 +
+                 ids)]
+    (when (pos? deleted)
+      (log/info "semantic search deleted" deleted "total documents with model type" model)
+      (analytics-set-index-size! connectable table-name)
+      {model deleted})))
 
 (defn- db-records->update-set
   [db-records]
@@ -168,13 +174,11 @@
      :table-name table-name
      :version 0}))
 
-(defn upsert-index!
-  "Inserts or updates documents in the index table. If a document with the same
-  model + model_id already exists, it will be replaced."
+(defn- upsert-index-batch!
   [connectable index documents]
   (when (seq documents)
     (let [text->docs         (group-by :searchable_text documents)
-          searchable-texts   (map :searchable_text documents)]
+          searchable-texts   (keys text->docs)]
       (u/profile (str "Semantic search embedding generation and db update for " {:docs (count documents) :texts (count searchable-texts)})
         (embedding/process-embeddings-streaming
          (:embedding-model index)
@@ -200,6 +204,15 @@
                     sql-format-quoted))
               batch-documents
               (map :embedding batch-documents)))))))))
+
+(defn upsert-index!
+  "Inserts or updates documents in the index table. If a document with the same
+  model + model_id already exists, it will be replaced."
+  [connectable index documents-reducible]
+  (transduce (comp (partition-all *batch-size*)
+                   (map #(upsert-index-batch! connectable index %)))
+             (partial merge-with +)
+             documents-reducible))
 
 (defn- drop-index-table-sql
   [{:keys [table-name]}]
@@ -655,6 +668,15 @@
 
   (query-index db index search-ctx))
 
+(defn- delete-from-index-batch-sql
+  [model table-name batch-ids]
+  (when (seq batch-ids)
+    (-> (sql.helpers/delete-from table-name)
+        (sql.helpers/where [:and
+                            [:= :model model]
+                            [:in :model_id (map str batch-ids)]])
+        sql-format-quoted)))
+
 (defn delete-from-index!
   "Deletes documents from the index table based on model and model_ids."
   [db index model model-ids]
@@ -662,12 +684,7 @@
    db
    (:table-name index)
    model
-   (fn [batch-ids]
-     (-> (sql.helpers/delete-from (keyword (:table-name index)))
-         (sql.helpers/where [:and
-                             [:= :model model]
-                             [:in :model_id batch-ids]])
-         sql-format-quoted))
+   (partial delete-from-index-batch-sql model (keyword (:table-name index)))
    model-ids))
 
 (comment
