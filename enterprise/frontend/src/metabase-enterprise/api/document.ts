@@ -7,7 +7,7 @@ import type {
 } from "metabase-types/api";
 
 import { EnterpriseApi } from "./api";
-import { idTag } from "./tags";
+import { idTag, listTag } from "./tags";
 
 export const documentApi = EnterpriseApi.injectEndpoints({
   endpoints: (builder) => ({
@@ -25,7 +25,7 @@ export const documentApi = EnterpriseApi.injectEndpoints({
         url: "/api/ee/document",
         body,
       }),
-      invalidatesTags: (_, error) => (error ? [] : []), // TODO: invalidate parent collection?
+      invalidatesTags: (_, error) => (error ? [] : [listTag("document")]), // TODO: invalidate parent collection?
     }),
     updateDocument: builder.mutation<
       Document,
@@ -40,7 +40,7 @@ export const documentApi = EnterpriseApi.injectEndpoints({
         body: document,
       }),
       invalidatesTags: (_, error, { id }) =>
-        !error ? [idTag("document", id)] : [],
+        !error ? [listTag("document"), idTag("document", id)] : [],
     }),
   }),
 });
