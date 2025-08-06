@@ -62,9 +62,7 @@ export function setupModelActionsEndpoints(
   fetchMock.get({
     url: "path:/api/action",
     query: { "model-id": modelId },
-    response: {
-      actions,
-    },
+    response: actions,
   });
 
   setupActionPostEndpoint();
