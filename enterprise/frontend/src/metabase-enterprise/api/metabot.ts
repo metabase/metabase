@@ -128,7 +128,7 @@ export const metabotApi = EnterpriseApi.injectEndpoints({
     >({
       query: (params) => ({
         method: "POST",
-        url: "/api/ee/metabot-v3/document/generate-node",
+        url: "/api/ee/metabot-v3/document/generate-content",
         params,
       }),
     }),

@@ -221,7 +221,7 @@ export type MetabotApiEntity = Omit<MetabotEntity, "id"> & {
 /* Metabot v3 - Document Types */
 
 export interface MetabotDocumentNodeRequest {
-  prompt: string;
+  instructions: string;
 }
 
 export interface MetabotDocumentNodeResponse {

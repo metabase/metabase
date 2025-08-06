@@ -95,7 +95,7 @@ export const MetabotComponent = memo(
       setErrorText("");
       editor.commands.focus();
 
-      const res = queryMetabot({ prompt: prompt.trim() });
+      const res = queryMetabot({ instructions: prompt.trim() });
       controller.signal.addEventListener("abort", () => res.abort());
       const { data, error } = await res;
       if (controller.signal.aborted) {
