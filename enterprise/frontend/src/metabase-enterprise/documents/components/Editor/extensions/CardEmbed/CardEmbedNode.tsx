@@ -260,17 +260,14 @@ export const CardEmbedComponent = memo(
     };
 
     const handleReplaceQuestion = () => {
-      // Get the position of this node in the editor
-      const pos = editor.state.doc.nodeAt(0) ? getPos() : 0;
+      const pos = getPos();
 
       if (typeof pos === "number") {
-        editor
-          .chain()
-          .focus()
-          .setTextSelection({ from: pos, to: pos + node.nodeSize })
-          .deleteSelection()
-          .insertContent("/")
-          .run();
+        editor.commands.insertContentAt(
+          { from: pos, to: pos + node.nodeSize },
+          "/",
+        );
+        editor.commands.focus();
       }
     };
 
