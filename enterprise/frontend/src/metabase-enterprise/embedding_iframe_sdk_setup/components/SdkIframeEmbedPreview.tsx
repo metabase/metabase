@@ -32,9 +32,9 @@ export const SdkIframeEmbedPreview = () => {
   const instanceUrl = useSetting("site-url");
   const applicationColors = useSetting("application-colors");
 
-  // TODO: There is a bug in the SDK where if we set the theme back to undefined,
+  // TODO(EMB-696): There is a bug in the SDK where if we set the theme back to undefined,
   // some color will not be reset to the default (e.g. text color, CSS variables).
-  // We can remove this block once the bug is fixed.
+  // We can remove this block once EMB-696 is fixed.
   const defaultTheme: MetabaseTheme = useMemo(() => {
     const colors = Object.fromEntries(
       getConfigurableThemeColors().map((color) => [
