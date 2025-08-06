@@ -74,3 +74,8 @@
   [search-ctx scorers qry]
   (-> (search.scoring/with-scores search-ctx scorers qry)
       (sql.helpers/order-by [:total_score :desc])))
+
+(defn all-scores
+  "Score stats for each scorer"
+  [weights scorers index-row]
+  (search.scoring/all-scores weights scorers index-row))

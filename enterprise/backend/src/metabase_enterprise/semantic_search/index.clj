@@ -8,6 +8,7 @@
    [metabase-enterprise.semantic-search.settings :as semantic-settings]
    [metabase.analytics.core :as analytics]
    [metabase.models.interface :as mi]
+   [metabase.search.config :as search.config]
    [metabase.search.core :as search]
    [metabase.util :as u]
    [metabase.util.json :as json]
@@ -479,10 +480,11 @@
 (defn- legacy-input-with-score
   "Fetches the legacy_input field from a result's metadata and attaches a score based on the
   embedding distance."
-  [row]
+  [weights scorers row]
   (-> (get-in row [:metadata :legacy_input])
-      ;; TODO all-scorers?
-      (assoc :score (:total_score row 1.0))))
+      (assoc
+       :score (:total_score row 1.0)
+       :all-scores (scoring/all-scores weights scorers row))))
 
 (defn- decode-metadata
   "Decode `row`s `:metadata`."
@@ -647,11 +649,12 @@
             embedding-time-ms (u/since-ms timer)
 
             db-timer (u/start-timer)
+            weights (search.config/weights (:context search-context))
             scorers (scoring/semantic-scorers search-context)
             query (->> (hybrid-search-query index embedding search-context)
                        (scoring/with-scores search-context scorers))
             xform (comp (map decode-metadata)
-                        (map legacy-input-with-score))
+                        (map (partial legacy-input-with-score weights (keys scorers))))
             reducible (jdbc/plan db (sql-format-quoted query) {:builder-fn jdbc.rs/as-unqualified-lower-maps})
             raw-results (into [] xform reducible)
             db-query-time-ms (u/since-ms db-timer)

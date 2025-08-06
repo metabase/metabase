@@ -11,6 +11,11 @@
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
+(defn all-scores
+  "Score stats for each scorer"
+  [weights scorers index-row]
+  (search.scoring/all-scores weights scorers index-row))
+
 ;; TODO move these to the spec definitions
 (def ^:private bookmarked-models [:card :collection :dashboard])
 
