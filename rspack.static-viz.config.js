@@ -1,6 +1,8 @@
-const YAML = require("json-to-pretty-yaml");
 const rspack = require("@rspack/core");
+const YAML = require("json-to-pretty-yaml");
 const { StatsWriterPlugin } = require("webpack-stats-plugin");
+
+const { WEBPACK_BUNDLE } = require("./frontend/build/shared/constants");
 
 const ASSETS_PATH = __dirname + "/resources/frontend_client/app/assets";
 const SRC_PATH = __dirname + "/frontend/src/metabase";
@@ -14,7 +16,6 @@ const SDK_SRC_PATH = __dirname + "/enterprise/frontend/src/embedding-sdk";
 const ENTERPRISE_SRC_PATH =
   __dirname + "/enterprise/frontend/src/metabase-enterprise";
 
-const WEBPACK_BUNDLE = process.env.WEBPACK_BUNDLE || "development";
 const devMode = WEBPACK_BUNDLE !== "production";
 
 module.exports = (env) => {
