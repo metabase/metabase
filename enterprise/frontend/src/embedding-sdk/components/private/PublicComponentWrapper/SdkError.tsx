@@ -1,23 +1,71 @@
+import { type CSSProperties, type PropsWithChildren, useState } from "react";
 import { jt, t } from "ttag";
 
 import { useSdkSelector } from "embedding-sdk/store";
 import { getErrorComponent } from "embedding-sdk/store/selectors";
 import type { SdkErrorComponentProps } from "embedding-sdk/types";
 import Alert from "metabase/common/components/Alert";
+import { EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID } from "metabase/embedding-sdk/config";
 import { color } from "metabase/lib/colors";
-import { Box, Center, Code } from "metabase/ui";
+import { Box, Center, Code, Flex, Portal } from "metabase/ui";
 
-export const SdkError = ({ message }: SdkErrorComponentProps) => {
+export const SdkError = ({
+  message,
+  type = "default",
+}: SdkErrorComponentProps) => {
+  const [visible, setVisible] = useState(true);
+
   const CustomError = useSdkSelector(getErrorComponent);
+
+  if (!visible) {
+    return null;
+  }
+
+  const handleBannerClose = () => {
+    setVisible(false);
+  };
 
   const ErrorMessageComponent = CustomError || DefaultErrorMessage;
 
-  return (
+  const errorMessageElement = (
     <Center h="100%" w="100%" mx="auto" data-testid="sdk-error-container">
-      <ErrorMessageComponent message={message} />
+      <ErrorMessageComponent
+        type={type}
+        message={message}
+        {...(type === "floating" && {
+          onClose: handleBannerClose,
+        })}
+      />
     </Center>
   );
+
+  return (
+    <>
+      {type === "default" && errorMessageElement}
+
+      {type === "floating" && (
+        <SdkFloatingErrorWrapper>{errorMessageElement}</SdkFloatingErrorWrapper>
+      )}
+    </>
+  );
 };
+
+export function SdkFloatingErrorWrapper({ children }: PropsWithChildren) {
+  return (
+    <Portal target={`#${EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID}`}>
+      <Flex
+        pos="fixed"
+        bottom="1rem"
+        left="1rem"
+        right="1rem"
+        style={{ zIndex: 500 }}
+        align="center"
+      >
+        {children}
+      </Flex>
+    </Portal>
+  );
+}
 
 const FORCE_DARK_TEXT_COLOR = {
   // The Alert component has a light background, we need to force a dark text
@@ -25,11 +73,11 @@ const FORCE_DARK_TEXT_COLOR = {
   // is a light color, making the text un-readable
   "--mb-color-text-dark": color("text-dark"),
   "--mb-color-text-medium": color("text-medium"),
-} as React.CSSProperties;
+} as CSSProperties;
 
-const DefaultErrorMessage = ({ message }: SdkErrorComponentProps) => (
+const DefaultErrorMessage = ({ message, onClose }: SdkErrorComponentProps) => (
   <Box p="sm" style={FORCE_DARK_TEXT_COLOR}>
-    <Alert variant="error" icon="warning">
+    <Alert variant="error" icon="warning" onClose={onClose}>
       {message}
     </Alert>
   </Box>
