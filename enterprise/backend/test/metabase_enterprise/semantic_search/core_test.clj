@@ -11,9 +11,10 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]))
 
-(use-fixtures :once (compose-fixtures
-                     #'semantic.tu/once-fixture
-                     (fixtures/initialize :db)))
+(use-fixtures :once #'semantic.tu/once-fixture
+  #_(compose-fixtures
+     #'semantic.tu/once-fixture
+     (fixtures/initialize :db)))
 
 (deftest appdb-available-with-semantic
   (is (= 1 1))
