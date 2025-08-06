@@ -177,14 +177,20 @@ export function SidebarSectionItem({
               </Group>
             </Box>
           </Popover.Target>
-          <Popover.Dropdown>
+          <Popover.Dropdown
+            onMouseEnter={onHoverStart}
+            onMouseLeave={onHoverEnd}
+          >
             <FieldsPopover
               section={section}
               usedFieldIds={usedFieldIds}
               usedFieldIdsAnywhere={usedFieldIdsAnywhere}
               columns={columns}
               onUpdateSection={onUpdateSection}
-              onClose={() => setOpenPopoverId(null)}
+              onClose={() => {
+                setOpenPopoverId(null);
+                onHoverEnd?.();
+              }}
               fieldsLimit={fieldsLimit}
             />
           </Popover.Dropdown>
