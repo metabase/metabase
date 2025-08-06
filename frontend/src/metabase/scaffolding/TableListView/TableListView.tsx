@@ -193,7 +193,6 @@ export const TableListView = ({ location, params }: Props) => {
     setDataQuery(newQuery);
   };
 
-
   useMount(() => {
     dispatch(closeNavbar());
   });
@@ -286,7 +285,7 @@ export const TableListView = ({ location, params }: Props) => {
           }}
         />
 
-        {settings.list_view.view !== "table" && (
+        {settings?.list_view?.view !== "table" && (
           <Group align="flex-end" gap="xs" justify="flex-end" wrap="nowrap">
             <Tooltip disabled={!sortState} label={t`Sort by`}>
               <Select

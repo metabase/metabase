@@ -289,7 +289,6 @@ export function TableDetailViewInner({
     });
   }, [dispatch, rows, tableId, isEdit]);
 
-
   const nameIndex = columns.findIndex(isEntityName);
   // const nameColumn = columns[nameIndex];
   const rowName = nameIndex == null ? null : row[nameIndex];
@@ -297,7 +296,7 @@ export function TableDetailViewInner({
   const pkIndex = columns.findIndex(isPK); // TODO: handle multiple PKs
 
   // Check if we have relationships to show
-  const hasRelationships = tableForeignKeys.length > 0;
+  const hasRelationships = tableForeignKeys?.length > 0;
 
   const DetailContainer = ({ children }: { children: ReactNode }) => (
     <Stack
@@ -384,7 +383,12 @@ export function TableDetailViewInner({
               overflowY: "auto",
             }}
           >
-            <Text fw={600} size="lg" mb="xs" pb="sm">{t`Detail view settings`}</Text>
+            <Text
+              fw={600}
+              size="lg"
+              mb="xs"
+              pb="sm"
+            >{t`Detail view settings`}</Text>
 
             <DetailViewSidebar
               columns={columns}
