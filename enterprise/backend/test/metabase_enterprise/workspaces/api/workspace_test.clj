@@ -225,7 +225,12 @@
 
 (deftest create-workspace-test
   (testing "Creating a workspace with valid data using mt/with-temp"
-    (mt/with-temp [:model/Workspace {workspace-id :id} {:name "Test Workspace"
-                                                        :description "A test workspace"}]
+    (mt/with-temp [:model/Workspace {workspace-id :id :as wksp} {:name        "Test Workspace"
+                                                                 :description "A test workspace"}]
       (is (pos? workspace-id))
-      (is (= "Test Workspace" (:name (t2/select-one :model/Workspace :id workspace-id)))))))
+      (is (= "Test Workspace"
+             (:name (t2/select-one :model/Workspace :id workspace-id))))
+      (is (= [:name :description :created_at :updated_at :plans :transforms :documents :permissions :id]
+             (keys (m.workspace/sort-workspace wksp)))))))
+
+(comment)

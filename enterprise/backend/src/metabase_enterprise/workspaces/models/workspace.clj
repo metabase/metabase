@@ -118,7 +118,7 @@
     (compare (get order k1 Integer/MAX_VALUE)
              (get order k2 Integer/MAX_VALUE))))
 
-(defn- sort-workspace
+(defn sort-workspace
   "Required for a stable diff in a yaml view"
   [workspace]
   (let [top-level-sorted (into (sorted-map-by sort-workspace-keys) workspace)
