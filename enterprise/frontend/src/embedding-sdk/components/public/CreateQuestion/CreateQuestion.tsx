@@ -1,7 +1,7 @@
 import {
   InteractiveQuestion,
   type InteractiveQuestionProps,
-} from "embedding-sdk";
+} from "../InteractiveQuestion";
 
 /**
  * @interface
