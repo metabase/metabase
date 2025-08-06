@@ -178,8 +178,10 @@
                 ((requiring-resolve 'metabase.driver.util/available-drivers-info)))
   :doc        false)
 
-(defsetting mongodb-sync-field-limit
-  "Maximum number of leaf fields of Mongo collection considered during field sync."
+(defsetting sync-leaf-fields-limit
+  (str "Maximum number of leaf fields synced per collection of document database. Currently relevant for Mongo."
+       " Not to be confused with total number of synced fields. For every chosen leaf field, all intermediate fields"
+       " from root to leaf are synced as well.")
   :visibility :internal
   :export? true
   :setter :none

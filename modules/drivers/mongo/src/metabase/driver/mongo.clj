@@ -358,9 +358,9 @@
   Reason for doing this in 2 steps is that for adding database-position the structure has to be fully constructed
   first.
 
-  The resulting structure will hold at most [[driver.settings/mongodb-sync-field-limit]] leaf fields. That translates to at most
-  [[driver.settings/mongodb-sync-field-limit]] * [[describe-table-query-depth]]. That is 7K fields at the time of writing hence safe
-  to reside in memory for further operation."
+  The resulting structure will hold at most [[driver.settings/sync-leaf-fields-limit]] leaf fields. That translates
+  to at most [[driver.settings/sync-leaf-fields-limit]] * [[describe-table-query-depth]]. That is 7K fields at the 
+  time of writing hence safe to reside in memory for further operation."
   [dbfields]
   (-> dbfields dbfields->ftree* ftree-reconcile-nodes))
 
@@ -397,7 +397,7 @@
   (let [pipeline (describe-table-pipeline {:collection-name (:name table)
                                            :sample-size (* table-rows-sample/nested-field-sample-limit 2)
                                            :document-sample-depth describe-table-query-depth
-                                           :leaf-limit (driver.settings/mongodb-sync-field-limit)})
+                                           :leaf-limit (driver.settings/sync-leaf-fields-limit)})
         query {:database (:id database)
                :type     "native"
                :native   {:collection (:name table)
