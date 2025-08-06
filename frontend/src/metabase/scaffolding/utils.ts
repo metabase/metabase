@@ -17,6 +17,49 @@ import type {
 } from "metabase-types/api";
 import { createMockCard } from "metabase-types/api/mocks";
 
+// Process remapping metadata similar to extractRemappedColumns in visualizations
+export function processRemappedColumns(
+  columns: DatasetColumn[],
+  rows: RowValue[][],
+) {
+  const processedColumns: (DatasetColumn & { remapping?: Map<any, any> })[] =
+    columns.map((col) => ({
+      ...col,
+      remapping: col.remapped_to != null ? new Map() : undefined,
+    }));
+
+  const processedRows = rows.map((row) =>
+    row.filter((value, colIndex) => {
+      const col = processedColumns[colIndex];
+      if (col.remapped_from != null) {
+        const remappedFromIndex = processedColumns.findIndex(
+          (c) => c.name === col.remapped_from,
+        );
+        if (
+          remappedFromIndex === -1 ||
+          !processedColumns[remappedFromIndex] ||
+          !processedColumns[remappedFromIndex].remapping
+        ) {
+          console.warn("Invalid remapped_from", col);
+          return true;
+        }
+        processedColumns[remappedFromIndex].remapping?.set(
+          row[remappedFromIndex],
+          row[colIndex],
+        );
+        return false;
+      } else {
+        return true;
+      }
+    }),
+  );
+
+  return {
+    columns: processedColumns.filter((col) => col.remapped_from == null),
+    rows: processedRows,
+  };
+}
+
 export function renderValue(
   tc: ContentTranslationFunction,
   value: RowValue,
@@ -48,13 +91,20 @@ export function renderValue(
     return String(value) || NO_VALUE;
   }
 
-  const formattedValue = formatValue(tc(value), {
+  let translatedValue = tc(value);
+
+  if (column.settings?.view_as === "link") {
+    translatedValue = column.settings.link_url ?? translatedValue;
+  }
+
+  const formattedValue = formatValue(translatedValue, {
     ...column.settings,
     ...finalSettings,
     column,
     type: "cell",
     jsx: true,
     rich: true,
+    remap: true,
     ...optionsOverride,
   });
 
