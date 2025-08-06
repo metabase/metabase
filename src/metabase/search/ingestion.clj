@@ -143,7 +143,11 @@
        (eduction (map #(assoc % :model search-model)))))
 
 (defn- search-items-reducible []
-  (reduce u/rconcat [] (map spec-index-reducible search.spec/search-models)))
+  (let [models search.spec/search-models
+        sorted-models (cond-> models
+                        (contains? models "indexed-entity")
+                        (-> (disj "indexed-entity") (concat ["indexed-entity"])))]
+    (reduce u/rconcat [] (map spec-index-reducible sorted-models))))
 
 (defn- query->documents [query-reducible]
   (->> query-reducible
