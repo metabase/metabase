@@ -1029,6 +1029,7 @@
           metabase.search.appdb.scoring
           metabase.search.config
           metabase.search.core
+          metabase.search.engine
           metabase.search.in-place.scoring
           metabase.search.ingestion
           metabase.search.init
