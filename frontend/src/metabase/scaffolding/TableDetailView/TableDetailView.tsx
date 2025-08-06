@@ -63,6 +63,8 @@ import { DetailViewSidebar } from "./DetailViewSidebar";
 import S from "./TableDetailView.module.css";
 import { useDetailViewSections } from "./use-detail-view-sections";
 import { useForeignKeyReferences } from "./use-foreign-key-references";
+import { renderValue } from "../utils";
+import { useTranslateContent } from "metabase/i18n/hooks";
 
 interface TableDetailViewLoaderProps {
   params: {
@@ -542,7 +544,7 @@ function ObjectViewSection({
   dragHandleProps,
 }: ObjectViewSectionProps) {
   // const pkIndex = columns.findIndex(isPK); // TODO: handle multiple PKs
-  console.log({ section });
+  const tc = useTranslateContent();
 
   return (
     <Box
@@ -612,16 +614,22 @@ function ObjectViewSection({
               >
                 {column.display_name}
               </Text>
-              <Text
-                {...getStyleProps(style)}
-                lineClamp={5}
-                style={{
-                  ...(isDate(column) ? { whiteSpace: "nowrap" } : {}),
-                }}
-                className={S.FieldValue}
+              <Tooltip
+                label={column.display_name}
+                disabled={section.variant !== "main"}
+                position="left"
               >
-                {formatValue(value, { column })}
-              </Text>
+                <Text
+                  {...getStyleProps(style)}
+                  lineClamp={5}
+                  style={{
+                    ...(isDate(column) ? { whiteSpace: "nowrap" } : {}),
+                  }}
+                  className={S.FieldValue}
+                >
+                  {renderValue(tc, value, column)}
+                </Text>
+              </Tooltip>
             </Fragment>
           );
         })}

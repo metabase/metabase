@@ -1,5 +1,6 @@
 import type { ContentTranslationFunction } from "metabase/i18n/types";
 import { formatValue } from "metabase/lib/formatting";
+import type { OptionsType } from "metabase/lib/formatting/types";
 import { getComputedSettings } from "metabase/visualizations/lib/settings";
 import {
   getGlobalSettingsForColumn,
@@ -12,6 +13,7 @@ export function renderValue(
   tc: ContentTranslationFunction,
   value: RowValue,
   column: DatasetColumn,
+  optionsOverride?: OptionsType,
 ) {
   const mockSeries = [{ data: { cols: [column] }, card: createMockCard() }];
   const settingDefs = getSettingDefinitionsForColumn(mockSeries, column);
@@ -28,20 +30,27 @@ export function renderValue(
     },
   );
 
+  const NO_VALUE = "-";
+
   if (value === undefined) {
-    return "";
+    return NO_VALUE;
   }
 
   if (!column) {
-    return String(value);
+    return String(value) || NO_VALUE;
   }
 
-  return formatValue(tc(value), {
+  const formattedValue = formatValue(tc(value), {
     ...column.settings,
     ...finalSettings,
     column,
     type: "cell",
     jsx: true,
     rich: true,
+    ...optionsOverride,
   });
+
+  return formattedValue != null && formattedValue !== ""
+    ? formattedValue
+    : NO_VALUE;
 }
