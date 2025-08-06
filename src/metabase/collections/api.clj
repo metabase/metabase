@@ -333,8 +333,18 @@
   {:select [:document.id
             :document.name
             :document.collection_id
+            [:u.id :last_edit_user]
+            [:u.email :last_edit_email]
+            [:u.first_name :last_edit_first_name]
+            [:u.last_name :last_edit_last_name]
+            [:r.timestamp :last_edit_timestamp]
             [(h2x/literal "document") :model]]
    :from [[:document :document]]
+   :left-join [[:revision :r] [:and
+                               [:= :r.model_id :document.id]
+                               [:= :r.most_recent true]
+                               [:= :r.model (h2x/literal "Document")]]
+               [:core_user :u] [:= :u.id :r.user_id]]
    :where [:and
            [:= :document.collection_id (:id collection)]
            (if archived?

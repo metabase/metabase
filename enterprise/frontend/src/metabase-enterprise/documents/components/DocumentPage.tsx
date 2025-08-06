@@ -376,7 +376,7 @@ export const DocumentPage = ({
                   <Flex gap="md">
                     <Text className={styles.metadataItem}>
                       <Icon name="person" />
-                      {t`Someone`}{" "}
+                      {documentData.creator.common_name}{" "}
                     </Text>
                     <Text className={styles.metadataItem}>
                       <Icon name="clock" />
