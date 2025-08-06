@@ -2,7 +2,7 @@ import { useDisclosure } from "@mantine/hooks";
 import { useCallback, useEffect, useState } from "react";
 import type { Route } from "react-router";
 import { push, replace } from "react-router-redux";
-import { usePrevious } from "react-use";
+import { usePrevious, useUnmount } from "react-use";
 import useBeforeUnload from "react-use/lib/useBeforeUnload";
 import { t } from "ttag";
 
@@ -100,6 +100,11 @@ export const DocumentPage = ({
     cardEmbeds,
     updateCardEmbeds,
   } = useDocumentState(documentData);
+
+  // This is important as it will affect collection breadcrumbs in the appbar
+  useUnmount(() => {
+    dispatch(resetDocuments());
+  });
 
   // Reset current content when document changes
   useEffect(() => {
