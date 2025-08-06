@@ -1,21 +1,21 @@
 import { t } from "ttag";
 
-import { Flex, Stack, Text, Title } from "metabase/ui";
+import { Group, Stack, Text, Title } from "metabase/ui";
 
-import { ScheduleSection } from "./ScheduleSection";
-import { TransformListSection } from "./TransformListSection";
+import { NewTransformMenu } from "./NewTransformMenu";
+import { TransformList } from "./TransformList";
 
 export function TransformListPage() {
   return (
-    <Flex direction="column" align="center">
-      <Stack gap="3.5rem">
-        <Stack gap="sm">
+    <Stack gap="xl">
+      <Group>
+        <Stack gap="sm" flex={1}>
           <Title order={1}>{t`Transforms`}</Title>
-          <Text>{t`Create custom tables with transforms, and run them on a schedule.`}</Text>
+          <Text>{t`Create custom tables with transforms.`}</Text>
         </Stack>
-        <ScheduleSection />
-        <TransformListSection />
-      </Stack>
-    </Flex>
+        <NewTransformMenu />
+      </Group>
+      <TransformList />
+    </Stack>
   );
 }
