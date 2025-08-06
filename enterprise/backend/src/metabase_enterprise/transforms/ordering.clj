@@ -19,13 +19,16 @@
       str/lower-case))
 
 (defn- get-table [driver {:keys [table schema]}]
-  (->> (qp.store/metadata-provider)
-       lib.metadata/tables
-       (some (fn [{db-table :name db-schema :schema id :id}]
-               (and (driver/name-matches? driver db-table table)
-                    (or (nil? schema)
-                        (driver/name-matches? driver db-schema schema))
-                    id)))))
+  (let [normalized-table (driver/normalize-name driver table)
+        normalized-schema (when (seq schema)
+                            (driver/normalize-name driver schema))]
+    (->> (qp.store/metadata-provider)
+         lib.metadata/tables
+         (some (fn [{db-table :name db-schema :schema id :id}]
+                 (and (= normalized-table db-table)
+                      (or (nil? normalized-schema)
+                          (= normalized-schema db-schema))
+                      id))))))
 
 (defn- transform-deps [transform]
   (let [query (-> (get-in transform [:source :query])

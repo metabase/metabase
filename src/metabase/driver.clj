@@ -1140,11 +1140,12 @@
     [(dispatch-on-initialized-driver driver) (:type transform-details)])
   :hierarchy #'hierarchy)
 
-(defmulti name-matches?
-  "Returns whether query-name is equivalent to canonical-name.
+(defmulti normalize-name
+  "Normalizes the (primarily table/column) name passed in.
 
-  Drivers that support any of the `:transforms/...` features must implement this method."
-  {:added "0.57.0" :arglists '([driver canonical-name query-name])}
+  Should return a value that matches the name listed in the appdb. Drivers that support any of the `:transforms/...`
+  features must implement this method."
+  {:added "0.57.0" :arglists '([driver name-str])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 

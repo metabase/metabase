@@ -155,15 +155,14 @@
         sql (sql.qp/format-honeysql driver {:drop-view [(qualified-name target)]})]
     (driver/execute-raw-queries! driver (driver/connection-details driver database) [sql])))
 
-(defmethod driver/name-matches? :sql
-  [driver canonical-name query-name]
-  (= (if (and (= (first query-name) \")
-              (= (last query-name) \"))
-       (-> query-name
-           (subs 1 (dec (count query-name)))
-           (str/replace #"\"\"" "\""))
-       (str/lower-case query-name))
-     canonical-name))
+(defmethod driver/normalize-name :sql
+  [driver name-str]
+  (if (and (= (first name-str) \")
+           (= (last name-str) \"))
+    (-> name-str
+        (subs 1 (dec (count name-str)))
+        (str/replace #"\"\"" "\""))
+    (str/lower-case name-str)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Convenience Imports                                               |
