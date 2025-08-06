@@ -2,6 +2,7 @@
   (:require
    [metabase-enterprise.worker.api]
    [metabase-enterprise.worker.models.worker-run]
+   [metabase-enterprise.worker.models.worker-run-cancelation]
    [metabase-enterprise.worker.server]
    [metabase-enterprise.worker.sync]
    [metabase-enterprise.worker.tracking]
@@ -18,15 +19,18 @@
   fail-started-run!
   inactive-runs
   latest-runs
-  mark-cancel-started-run!
   model->work-type
   paged-executions
-  reducible-canceled-local-runs
   reducible-active-remote-runs
   start-run!
   succeed-started-run!
   timeout-old-runs!
   timeout-run!]
+ [metabase-enterprise.worker.models.worker-run-cancelation
+  mark-cancel-started-run!
+  reducible-canceled-local-runs
+  delete-cancelation!
+  delete-old-canceling-runs!]
  [metabase-enterprise.worker.server
   start!
   stop!]

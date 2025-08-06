@@ -224,7 +224,7 @@
 
 ;; TODO (eric)
 ;;
-;; Can I do this?
+;; Move to worker module
 (defmethod task/init! ::CancelLostRuns [_]
   (.scheduleAtFixedRate scheduler
                         #(try

@@ -358,6 +358,40 @@ databaseChangeLog:
               - column:
                   name: work_id
 
+  - changeSet:
+      id: v57.2025-08-06-worker_run_cancelation-app-db
+      author: eric
+      comment: Create worker_run_cancelation table to track cancelation.
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: worker_run_cancelation
+      changes:
+        - createTable:
+            tableName: worker_run_cancelation
+            remarks: Table to track the cancelation of worker job executions
+            columns:
+              - column:
+                  name: run_id
+                  type: char(21)
+                  remarks: 'NanoID identifier for the worker run'
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+                    referencedTableName: worker_run
+                    referencedColumnNames: run_id
+                    foreignKeyName: fk_worker_run_cancelation_worker_run_run_id
+                    deleteCascade: true
+              - column:
+                  name: time
+                  type: ${timestamp_type}
+                  remarks: 'The time of the request'
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
