@@ -758,3 +758,21 @@
   (testing "Should be able to create a :relative-datetime clause with one arg (:current)"
     (is (=? [:relative-datetime {:lib/uuid string?} :current]
             (lib.expression/relative-datetime :current)))))
+
+(deftest ^:parallel extracted-datetimes-correct-types-test
+  (testing "a :year breakout in stage 0 has :type/Integer in stage 1"
+    (let [base  (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                    (lib/aggregate (lib/count))
+                    (lib/breakout (lib/with-temporal-bucket (meta/field-metadata :orders :created-at) :year))
+                    (lib/breakout (lib/with-temporal-bucket (meta/field-metadata :orders :created-at) :year-of-era))
+                    lib/append-stage)
+          cols  (m/index-by :inherited-temporal-unit (lib/expressionable-columns base 0))
+          query (-> base
+                    (lib/expression "Expr Year of Era" (lib/+ (:year-of-era cols) 1))
+                    (lib/expression "Expr Year" (lib/datetime-add (:year cols) 1 :year)))]
+      ;; XXX: START HERE: Need to make `:year` a truncation unit only, and expose `:year-of-era` in the UI as the
+      ;; corresponding extraction unit. It's unsound to treat it as both types when we specify an explicit single type.
+      ;; Trying to treat it like a date (eg. expression `datetimeAdd([Created At: Year], 1, "year")`) is a type error
+      ;; (doing date things to an `:effective-type :type/Integer`) but the QP generates SQL that truncates by year,
+      ;; so `[Created At: Year] + 1` is a legal expression but it gets treated as + 1 day in SQL.
+      query)))

@@ -93,7 +93,8 @@
 
   Returns the original `:effective-type` if the special handling doesn't apply, even if it is nil."
   [metadata-or-options]
-  (let [temporal-unit ((some-fn :metabase.lib.field/temporal-unit :temporal-unit) metadata-or-options)]
+  (let [temporal-unit ((some-fn :metabase.lib.field/temporal-unit :temporal-unit :inherited-temporal-unit)
+                       metadata-or-options)]
     (if (and temporal-unit
              (contains? lib.schema.temporal-bucketing/datetime-extraction-units temporal-unit))
       :type/Integer
