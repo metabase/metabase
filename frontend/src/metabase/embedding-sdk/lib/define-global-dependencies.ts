@@ -4,7 +4,7 @@ import * as ReactDOM from "react-dom";
 import * as ReactDOMClient from "react-dom/client";
 import * as ReactDOMServer from "react-dom/server";
 
-import type { EXTERNAL_DEPENDENCIES } from "../../../../../../../frontend/build/embedding-sdk/constants/external-dependencies";
+import type { EXTERNAL_DEPENDENCIES } from "../../../../build/embedding-sdk/constants/external-dependencies";
 
 type ExternalDependenciesGlobalName =
   (typeof EXTERNAL_DEPENDENCIES)[keyof typeof EXTERNAL_DEPENDENCIES];
