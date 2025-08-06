@@ -37,7 +37,7 @@ const {
 } = USER_GROUPS;
 const { admin } = USERS;
 
-describe.skip("snapshots", () => {
+describe("snapshots", () => {
   describe("default", () => {
     it("default", () => {
       snapshot("blank");
