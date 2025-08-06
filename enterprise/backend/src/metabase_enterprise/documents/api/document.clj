@@ -130,7 +130,7 @@
    _query-params
    {:keys [name document collection_id cards]}
    :- [:map
-       [:name :string]
+       [:name ms/NonBlankString]
        [:document :any]
        [:collection_id {:optional true} [:maybe ms/PositiveInt]]
        [:cards {:optional true} [:maybe [:map-of [:int {:max -1}] CardCreateSchema]]]]]
@@ -174,7 +174,7 @@
                              [:document-id ms/PositiveInt]]
    _query-params
    {:keys [name document collection_id cards archived] :as body} :- [:map
-                                                                     [:name {:optional true} :string]
+                                                                     [:name {:optional true} ms/NonBlankString]
                                                                      [:document {:optional true} :any]
                                                                      [:collection_id {:optional true} [:maybe ms/PositiveInt]]
                                                                      [:cards {:optional true} [:maybe [:map-of :int CardCreateSchema]]]

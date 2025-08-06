@@ -29,6 +29,13 @@
         (is (pos? (:id result)))
         (is (partial= {:name "Document 1" :document (text->prose-mirror-ast "Doc 1")} document-row))))))
 
+(deftest post-document-creation-non-blank-name-test
+  (testing "POST /api/ee/document/ - basic document creation"
+    (mt/with-model-cleanup [:model/Document]
+      (mt/user-http-request :crowberto
+                            :post 400 "ee/document/" {:name ""
+                                                      :document (text->prose-mirror-ast "Doc 1")}))))
+
 (deftest put-document-basic-update-test
   (testing "PUT /api/ee/document/id - basic document update"
     (mt/with-temp [:model/Document {document-id :id} {:name "Test Document"
@@ -37,6 +44,15 @@
                                          :put 200 (format "ee/document/%s" document-id) {:name "Document 2" :document (text->prose-mirror-ast "Doc 2")})]
         (is (partial= {:name "Document 2"
                        :document (text->prose-mirror-ast "Doc 2")} result))))))
+
+(deftest post-document-creation-non-blank-name-test
+  (testing "PUT /api/ee/document/id - basic document update"
+    (mt/with-temp [:model/Document {document-id :id} {:name "Test Document"
+                                                      :document (text->prose-mirror-ast "Initial Doc")}]
+      (mt/user-http-request :crowberto
+                            :put 400 (format "ee/document/%s" document-id)
+                            {:name ""
+                             :document (text->prose-mirror-ast "Doc 1")}))))
 
 (deftest put-document-nonexistent-document-test
   (testing "PUT /api/ee/document/id - should return 404 for non-existent document"
