@@ -1,7 +1,5 @@
 (ns metabase-enterprise.database-replication.api
   (:require
-   [camel-snake-kebab.core :as csk]
-   [camel-snake-kebab.extras :as cske]
    [clojure.string :as str]
    [medley.core :as m]
    [metabase-enterprise.database-replication.settings :as database-replication.settings]
@@ -10,6 +8,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.premium-features.core :refer [quotas]]
+   [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -100,12 +99,12 @@
   "Return info about pg-replication connection that is about to be created."
   [{:keys [database-id]} :- [:map [:database-id ms/PositiveInt]]
    _query-params
-   {:keys [schemaFilters] :as body-params} :- [:map
-                                               [:schemaFilters {:optional true} [:sequential
-                                                                                 [:map
-                                                                                  [:type [:enum "include" "exclude"]]
-                                                                                  [:pattern :string]]]]]]
-  (cske/transform-keys csk/->camelCaseKeyword (token-check-quotas-info (t2/select-one :model/Database :id database-id) schemaFilters)))
+   {:keys [schemaFilters]} :- [:map
+                               [:schemaFilters {:optional true} [:sequential
+                                                                 [:map
+                                                                  [:type [:enum "include" "exclude"]]
+                                                                  [:pattern :string]]]]]]
+  (u/recursive-map-keys u/->camelCaseEn (token-check-quotas-info (t2/select-one :model/Database :id database-id) schemaFilters)))
 
 (defn can-set-replication?
   "Predicate that signals if replication looks right from the quota perspective.
