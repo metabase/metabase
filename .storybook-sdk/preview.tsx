@@ -4,7 +4,7 @@ import { initialize, mswLoader } from "msw-storybook-addon";
 import { storybookThemeOptions } from "embedding-sdk/test/storybook-themes";
 
 import { availableLocales } from "./constants";
-import { defineGlobalDependencies } from "../enterprise/frontend/src/embedding-sdk/sdk-package/lib/private/define-global-dependencies";
+import { defineGlobalDependencies } from "../frontend/src/metabase/embedding-sdk/lib/define-global-dependencies";
 
 // To run initialization side effects like Mantine styles, dayjs plugins, etc
 // Also to properly watch and recompile when the SDK code is updated
