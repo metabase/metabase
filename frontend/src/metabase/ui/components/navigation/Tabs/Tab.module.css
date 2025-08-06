@@ -8,6 +8,12 @@
   [data-orientation="vertical"] {
     padding: 0.6875rem 0.9375rem 0.6875rem 0.5rem;
   }
+
+  &[data-grow="true"][data-orientation="horizontal"] {
+    .tabLabel {
+      text-align: center;
+    }
+  }
 }
 
 .tab {
