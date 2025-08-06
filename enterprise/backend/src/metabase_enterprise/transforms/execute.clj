@@ -1,21 +1,30 @@
 (ns metabase-enterprise.transforms.execute
   (:require
+   [clojure.core.async :as a]
    [clojure.string :as str]
    [medley.core :as m]
    [metabase-enterprise.transforms.ordering :as transforms.ordering]
+   [metabase-enterprise.transforms.sync :as transforms.sync]
    [metabase-enterprise.transforms.util :as transforms.util]
    [metabase-enterprise.worker.core :as worker]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.lib.schema.common :as schema.common]
+   [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.sync.core :as sync]
+   [metabase.task.core :as task]
+   [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2])
   (:import
-   (java.util.concurrent Executors ExecutorService)))
+   (java.util.concurrent Executors ExecutorService Future ScheduledExecutorService TimeUnit)))
 
 (set! *warn-on-reflection* true)
+
+(defonce ^:private ^ScheduledExecutorService scheduler (Executors/newScheduledThreadPool 1))
+
+(defonce ^:private ^ExecutorService executor (Executors/newVirtualThreadPerTaskExecutor))
 
 (mr/def ::transform-details
   [:map
@@ -59,20 +68,62 @@
    (sync-table! database target)))
 
 ;; register that we need to run sync after a transform is finished remotely
-(defmethod worker/post-success :transform
+(defmethod transforms.sync/post-success :transform
   [{:keys [run_id work_id]}]
   (sync-target! work_id run_id))
+
+(defonce ^:private connections (atom {}))
+
+(defn cancel-run! [run-id]
+  (when-some [cancel-chan (a/promise-chan) #_(get @connections run-id)]
+    (swap! connections dissoc run-id)
+    (a/put! cancel-chan :cancel!)
+    (t2/update! :model/WorkerRun
+                :run_id run-id
+                [:or
+                 [:= :status "started"]
+                 [:= :status "canceling"]] true
+                {:status :canceled
+                 :end_time :%now
+                 :is_active nil
+                 :message "Canceled by user"})))
+
+(defn mark-cancel-run! [run-id]
+  (t2/update! :model/WorkerRun
+              :run_id run-id
+              :status "started"
+              {:status :canceling
+               :end_time :%now
+               :message "Canceled by user"}))
 
 (defn- execute-mbl-transform-local!
   [run-id driver transform-details opts]
   ;; local run is responsible for status
+
+  ;; start a timeout vthread
+  (.submit executor ^Runnable (fn []
+                                (Thread/sleep (* 4 60 60 1000)) ;; 4 hours
+                                (when-some [cancel-chan (get @connections run-id)]
+                                  (swap! connections dissoc run-id)
+                                  (a/put! cancel-chan :cancel!)
+                                  (t2/update! :model/WorkerRun
+                                              :run_id run-id
+                                              :status "started"
+                                              {:status :timeout
+                                               :end_time :%now
+                                               :is_active nil
+                                               :message "Timed out"}))))
   (try
-    (driver/execute-transform! driver transform-details opts)
-    (t2/update! :model/WorkerRun
-                :run_id run-id
-                {:status :succeeded
-                 :end_time :%now
-                 :is_active nil})
+    (binding [qp.pipeline/*canceled-chan* (a/promise-chan)]
+      (swap! connections assoc run-id qp.pipeline/*canceled-chan*)
+      (driver/execute-transform! driver transform-details opts))
+    (when (get @connections run-id)
+      (swap! connections dissoc run-id)
+      (t2/update! :model/WorkerRun
+                  :run_id run-id
+                  {:status :succeeded
+                   :end_time :%now
+                   :is_active nil}))
     (catch Throwable t
       (t2/update! :model/WorkerRun
                   :run_id run-id
@@ -94,7 +145,7 @@
      (let [db (get-in source [:query :database])
            {driver :engine :as database} (t2/select-one :model/Database db)
            feature (transforms.util/required-database-feature transform)
-           run-id (str (random-uuid))
+           run-id (str (u/generate-nano-id))
            transform-details {:transform-type (keyword (:type target))
                               :connection-details (driver/connection-details driver database)
                               :query (transforms.util/compile-source source)
@@ -138,7 +189,7 @@
 
 (comment
   (t2/insert! :model/WorkerRun
-              {:run_id (str (random-uuid))
+              {:run_id (str (u/generate-nano-id))
                :work_id 1
                :work_type :transform
                :run_method :remote
@@ -147,8 +198,6 @@
                :is_active true})
   (sync-worker-runs!)
   -)
-
-(defonce ^:private ^ExecutorService executor (Executors/newVirtualThreadPerTaskExecutor))
 
 (def ^:private ^Long scheduled-execution-poll-delay-millis 2000)
 
@@ -227,3 +276,22 @@
                              :ordering ordering
                              :running  running
                              :complete complete}))))))))
+
+;; TODO (eric)
+;;
+;; Can I do this?
+(defmethod task/init! ::CancelLostRuns [_]
+  (.scheduleAtFixedRate scheduler
+                        #(try
+                           (log/trace "Checking for canceling items.")
+                           (let [runs (t2/reducible-select :model/WorkerRun
+                                                           :is_local true
+                                                           :status "canceling")]
+                             (reduce (fn [_ run]
+                                       (try
+                                         (cancel-run! (:run_id run))
+                                         (catch Throwable t
+                                           (log/error t (str "Error canceling " (:run_id run))))))
+                                     nil runs))
+                           (catch Throwable t
+                             (log/error t "Error while canceling on worker."))) 0 20 TimeUnit/SECONDS))

@@ -1140,6 +1140,15 @@
     [(dispatch-on-initialized-driver driver) (:type transform-details)])
   :hierarchy #'hierarchy)
 
+(defmulti normalize-name
+  "Normalizes the (primarily table/column) name passed in.
+
+  Should return a value that matches the name listed in the appdb. Drivers that support any of the `:transforms/...`
+  features must implement this method."
+  {:added "0.57.0" :arglists '([driver name-str])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
 (defmulti connection-details
   "Get connection details for a given driver and db object"
   {:added "0.56.0", :arglists '([driver db])}

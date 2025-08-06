@@ -2,6 +2,7 @@
   "Shared code for all drivers that use SQL under the hood."
   (:require
    [clojure.set :as set]
+   [clojure.string :as str]
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
    [metabase.driver.common.parameters.parse :as params.parse]
@@ -153,6 +154,15 @@
   (let [driver (keyword driver)
         sql (sql.qp/format-honeysql driver {:drop-view [(qualified-name target)]})]
     (driver/execute-raw-queries! driver (driver/connection-details driver database) [sql])))
+
+(defmethod driver/normalize-name :sql
+  [driver name-str]
+  (if (and (= (first name-str) \")
+           (= (last name-str) \"))
+    (-> name-str
+        (subs 1 (dec (count name-str)))
+        (str/replace #"\"\"" "\""))
+    (str/lower-case name-str)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Convenience Imports                                               |

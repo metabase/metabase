@@ -62,7 +62,7 @@
   [_route-params
    _query-params]
   (api/check-superuser)
-  (t2/select :model/Transform))
+  (t2/hydrate (t2/select :model/Transform) :last_execution))
 
 (api.macros/defendpoint :post "/"
   [_route-params
@@ -87,19 +87,17 @@
   (api/check-superuser)
   (let [{:keys [target] :as transform} (api/check-404 (t2/select-one :model/Transform id))
         database-id (source-database-id transform)
-        target-table (transforms.util/target-table database-id target :active true)
-        last-execution (t2/select-one :model/WorkerRun :work_type :transform :work_id id
-                                      {:order-by [[:start_time :desc]]
-                                       :limit 1})]
-    (assoc transform
-           :table target-table
-           :last_execution last-execution)))
+        target-table (transforms.util/target-table database-id target :active true)]
+    (-> transform
+        (t2/hydrate :last_execution)
+        (assoc :table target-table))))
 
 (comment
 
   (ttt {:offset 0 :limit 20})
 
-  (t2/hydrate (t2/select :model/WorkerRun) :transform))
+  (t2/hydrate (t2/select :model/WorkerRun) :transform)
+  -)
 
 (api.macros/defendpoint :get "/execution"
   [{:keys [offset
@@ -188,6 +186,14 @@
   (log/info "delete transform target table" id)
   (api/check-superuser)
   (transforms.util/delete-target-table-by-id! id)
+  nil)
+
+(api.macros/defendpoint :post "/cancel/:run-id"
+  [{:keys [run-id]} :- [:map
+                        [:id :string]]]
+  (log/info "canceling run " run-id)
+  (api/check-superuser)
+  (transforms.execute/mark-cancel-run! run-id)
   nil)
 
 (api.macros/defendpoint :post "/:id/execute"

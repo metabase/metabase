@@ -1,4 +1,4 @@
-(ns  metabase-enterprise.worker.sync
+(ns  metabase-enterprise.transforms.sync
   (:require
    [clojurewerkz.quartzite.conversion :as conversion]
    [clojurewerkz.quartzite.jobs :as jobs]
@@ -13,11 +13,18 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.task.core :as task]
    [metabase.util.log :as log]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (java.util.concurrent
+    Executors
+    ExecutorService
+    Future
+    ScheduledExecutorService
+    TimeUnit)))
 
 (set! *warn-on-reflection* true)
 
-(def ^:private job-key "metabase-enterprise.worker.sync")
+(def ^:private job-key "metabase-enterprise.transforms.sync")
 
 (defmulti post-success
   "What to run after successful remote run is synced locally. Dispatches on work_type."
@@ -45,6 +52,21 @@
               (try
                 (let [resp (api/get-status (:run_id run))]
                   (case (:status resp)
+                    "started"
+                    :do-nothing
+                    "canceling"
+                    (t2/update! :model/WorkerRun
+                                :run_id (:run_id run)
+                                {:status :canceling
+                                 :end_time (t/instant (:end-time resp))
+                                 :message (:note resp)})
+                    "canceled"
+                    (t2/update! :model/WorkerRun
+                                :run_id (:run_id run)
+                                {:status :canceled
+                                 :end_time (t/instant (:end-time resp))
+                                 :is_active nil
+                                 :message (:note resp)})
                     "success"
                     (do
                       (t2/update! :model/WorkerRun
@@ -70,15 +92,27 @@
                 (catch Throwable t
                   (log/error t (str "Error syncing " (:run_id run))))))
             nil runs))
+
   (log/trace "Timing out old runs.")
   (t2/update! :model/WorkerRun
               :is_active true
               [:< :start_time
                (sql.qp/add-interval-honeysql-form (mdb/db-type) [:now] -4 :hour)] true
               {:status :timeout
-               :end_time [:now]
+               :end_time :%now
                :is_active nil
-               :message "Timed out by metabase"}))
+               :message "Timed out by metabase"})
+
+  (log/trace "Canceling items that haven't been marked canceled.")
+  (t2/update! :model/WorkerRun
+              :status "canceling"
+              [:< :end_time
+               (sql.qp/add-interval-honeysql-form (mdb/db-type)
+                                                  :%now -1 :minute)]
+              {:status :canceled
+               :end_time :%now
+               :is_active nil
+               :message "Canceled by user but could not guarantee run stopped."}))
 
 (task/defjob  ^{:doc "Syncs remote execution information with local table."
                 org.quartz.DisallowConcurrentExecution true}
@@ -103,3 +137,4 @@
   (when (api/run-remote?)
     (log/info "Scheduling worker sync.")
     (start-job!)))
+
