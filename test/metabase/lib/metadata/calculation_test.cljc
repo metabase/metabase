@@ -5,6 +5,7 @@
    [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.field.util :as lib.field.util]
+   [metabase.lib.join :as lib.join]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.cache :as lib.metadata.cache]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
@@ -12,10 +13,9 @@
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
    [metabase.lib.util :as lib.util]
-   [metabase.util :as u]
-   [metabase.util.malli :as mu]
    [metabase.lib.walk :as lib.walk]
-   [metabase.lib.join :as lib.join]))
+   [metabase.util :as u]
+   [metabase.util.malli :as mu]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
@@ -82,7 +82,7 @@
           field-id   (inc (apply max (map :id (lib/visible-columns query))))]
       (mu/disable-enforcement
         (is (=? {:name              "Unknown Field"
-                 :display-name      "join → Unknown Field" #_"Unknown Field" ; either answer can be considered correct I guess
+                 :display-name      "Unknown Field" #_"join → Unknown Field" ; either answer can be considered correct I guess
                  :long-display-name "join → Unknown Field"}
                 (lib/display-info query [:field {:join-alias "join"} field-id])))))))
 
@@ -225,12 +225,12 @@
 (deftest ^:parallel self-join-visible-columns-test
   (let [query       (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
                         (lib/with-fields (for [field [:id :tax]]
-                                     (lib/ref (meta/field-metadata :orders field))))
-                  (lib/join (-> (lib/join-clause (meta/table-metadata :orders)
-                                                 [(lib/= (meta/field-metadata :orders :id)
-                                                         (meta/field-metadata :orders :id))])
-                                (lib/with-join-fields (for [field [:id :tax]]
-                                                        (lib/ref (meta/field-metadata :orders field)))))))
+                                           (lib/ref (meta/field-metadata :orders field))))
+                        (lib/join (-> (lib/join-clause (meta/table-metadata :orders)
+                                                       [(lib/= (meta/field-metadata :orders :id)
+                                                               (meta/field-metadata :orders :id))])
+                                      (lib/with-join-fields (for [field [:id :tax]]
+                                                              (lib/ref (meta/field-metadata :orders field)))))))
         orders-cols (for [field-name ["ID" "USER_ID" "PRODUCT_ID" "SUBTOTAL" "TAX"
                                       "TOTAL" "DISCOUNT" "CREATED_AT" "QUANTITY"]]
                       {:name                    field-name
@@ -926,18 +926,18 @@
     (let [query (lib/query
                  meta/metadata-provider
                  (lib.tu.macros/mbql-5-query venues
-                   {:stages [{:source-table $$venues
-                              :joins        [{:strategy   :left-join
-                                              :stages     [{:source-table $$categories}]
-                                              :alias      "Cat"
-                                              :conditions [[:= {} $category-id &Cat.categories.id]]
-                                              :fields     [&Cat.categories.name]}]
-                              :fields       [$id
-                                             &Cat.categories.name]}
-                             { ;; THIS REF IS WRONG -- it should not be using `Cat` because the join is in the source
+                                             {:stages [{:source-table $$venues
+                                                        :joins        [{:strategy   :left-join
+                                                                        :stages     [{:source-table $$categories}]
+                                                                        :alias      "Cat"
+                                                                        :conditions [[:= {} $category-id &Cat.categories.id]]
+                                                                        :fields     [&Cat.categories.name]}]
+                                                        :fields       [$id
+                                                                       &Cat.categories.name]}
+                                                       {;; THIS REF IS WRONG -- it should not be using `Cat` because the join is in the source
                               ;; query rather than in the current stage. However, we should be smart enough to try to
                               ;; figure out what they meant.
-                              :breakout [&Cat.categories.name]}]}))]
+                                                        :breakout [&Cat.categories.name]}]}))]
       (testing `lib/returned-columns
         (testing "stage 1 of 2"
           (is (=? [{:id                           (meta/id :venues :id)
@@ -995,25 +995,25 @@
     (let [query         (lib/query
                          meta/metadata-provider
                          (lib.tu.macros/mbql-5-query orders
-                           {:stages [{:joins  [{:alias     "Q2"
-                                                :stages    [{:source-table $$reviews
-                                                             :aggregation  [[:avg {:name "avg"} $reviews.rating]]
-                                                             :breakout     [&P2.products.category]
-                                                             :joins        [{:alias      "P2"
-                                                                             :strategy   :left-join
-                                                                             :stages     [{:source-table $$products}]
-                                                                             :conditions [[:= {}
-                                                                                           $reviews.product-id
-                                                                                           &P2.products.id]]}]}]
-                                                :strategy  :left-join
-                                                :condition [:= {} &Q2.products.category 1]}]
+                                                     {:stages [{:joins  [{:alias     "Q2"
+                                                                          :stages    [{:source-table $$reviews
+                                                                                       :aggregation  [[:avg {:name "avg"} $reviews.rating]]
+                                                                                       :breakout     [&P2.products.category]
+                                                                                       :joins        [{:alias      "P2"
+                                                                                                       :strategy   :left-join
+                                                                                                       :stages     [{:source-table $$products}]
+                                                                                                       :conditions [[:= {}
+                                                                                                                     $reviews.product-id
+                                                                                                                     &P2.products.id]]}]}]
+                                                                          :strategy  :left-join
+                                                                          :condition [:= {} &Q2.products.category 1]}]
                                       ;; busted field ref, should probably be something like
                                       ;;
                                       ;;    [:field {:join-alias "Q2", :base-type :type/Integer} "P2__CATEGORY"]
                                       ;;
                                       ;; but we should still be able to resolve it correctly.
-                                      :fields [[:field {:join-alias "Q2"} (meta/id :products :category)]
-                                               [:field {:base-type :type/Integer, :join-alias "Q2"} "avg"]]}]}))
+                                                                :fields [[:field {:join-alias "Q2"} (meta/id :products :category)]
+                                                                         [:field {:base-type :type/Integer, :join-alias "Q2"} "avg"]]}]}))
           relevant-keys (fn [cols]
                           (map #(select-keys % [:name
                                                 :lib/source

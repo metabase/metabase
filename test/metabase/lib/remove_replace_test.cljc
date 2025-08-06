@@ -14,8 +14,7 @@
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
-   [metabase.lib.test-util.macros :as lib.tu.macros]
-   #?(:clj [clojure.string :as str])))
+   [metabase.lib.test-util.macros :as lib.tu.macros]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 

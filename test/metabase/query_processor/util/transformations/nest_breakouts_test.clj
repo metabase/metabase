@@ -125,7 +125,7 @@
                                       lib/->legacy-MBQL
                                       add/add-alias-info
                                       lib/->pMBQL)))]
-        (is (=? {:stages [{ ;; join alias is escaped:
+        (is (=? {:stages [{;; join alias is escaped:
                            ;;
                            ;;    (metabase.driver/escape-alias :oracle "test_data_products__via__product_id")
                            ;;    =>

@@ -11,8 +11,8 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
-   #?(:cljs (:require-macros [metabase.lib.metadata.cache]))))
+   [metabase.util.malli.registry :as mr])
+  #?(:cljs (:require-macros [metabase.lib.metadata.cache])))
 
 (def ^:private ^:dynamic *cache-depth*
   "For debug logging purposes. Keep track of recursive call depth so we can print stuff in a tree."
@@ -36,22 +36,42 @@
     stage-number :- :int
     x            :- :any
     options      :- :any]
-   (letfn [(update-map [m]
-             (let [;; use the hash of the metadata provider so only two queries with identical metadata providers get
-                   ;; the exact same cache key (see tests). This is mostly to satisfy tests that do crazy stuff and swap
-                   ;; out a query's metadata provider so we don't end up returning the wrong cached results for the same
-                   ;; query with a different MP
-                   m (m/update-existing m :lib/metadata hash)]
-               (case (:lib/type m)
-                 ;; For tables, cards and metrics being used as keys, these came from the metadata itself, so replace
-                 ;; them with stubs referencing them by :id.
-                 (:metadata/table :metadata/card :metadata/metric)
-                 [(:lib/type m) (:id m)]
-                 ;; Otherwise, return the original map.
-                 (not-empty m))))]
+   (let [stage-number        (lib.util/canonical-stage-index query stage-number)
+         ;; Optimization: replace all stages beyond what we're calculating metadata for with just a single additional
+         ;; blank stage. The only way later stages can possibly affect metadata for previous stages is the mega hack
+         ;; for stage returned-columns that deduplicates `:name` only if the stage in question is the last stage of a
+         ;; query (see [[metabase.lib.stage-test/returned-columns-deduplicate-names-test]]). I'd rather just figure
+         ;; out how to get rid of the need for this hack in the first place (seems crazy that later stages can affect
+         ;; the metadata of previous stages) but sometimes you just have to live with haxx.
+         ;;
+         ;; This will allow us to hit the cache much more often.
+         num-stages          (count (:stages query))
+         num-relevant-stages (inc stage-number)
+         query               (if (> num-stages num-relevant-stages)
+                               (update query :stages (fn [stages]
+                                                       (-> (into []
+                                                                 (take num-relevant-stages)
+                                                                 stages)
+                                                           ;; replace all 'irrelevant stages' with a single additional
+                                                           ;; blank stage.
+                                                           (conj {:lib/type :mbql.stage/mbql}))))
+                               query)
+         update-map (fn [m]
+                      (let [;; use the hash of the metadata provider so only two queries with identical metadata
+                            ;; providers get the exact same cache key (see tests). This is mostly to satisfy tests
+                            ;; that do crazy stuff and swap out a query's metadata provider so we don't end up
+                            ;; returning the wrong cached results for the same query with a different MP
+                            m (m/update-existing m :lib/metadata hash)]
+                        (case (:lib/type m)
+                          ;; For tables, cards and metrics being used as keys, these came from the metadata itself, so replace
+                          ;; them with stubs referencing them by :id.
+                          (:metadata/table :metadata/card :metadata/metric)
+                          [(:lib/type m) (:id m)]
+                          ;; Otherwise, return the original map.
+                          (not-empty m))))]
      [unique-key
       (update-map query)
-      (lib.util/canonical-stage-index query stage-number)
+      stage-number
       ;; don't want `nil` versus `{}` to result in cache misses.
       (cond-> x (map? x) update-map)
       (cond-> options (map? options) update-map)])))

@@ -391,80 +391,80 @@
               breakoutables'))
       (is (= 2 (count (filter :breakout-positions breakoutables'))))
       #_(is (=? [{:table {:name "VENUES", :display-name "Venues", :is-source-table true}
-                :semantic-type :type/PK
-                :name "ID"
-                :effective-type :type/BigInteger
-                :is-from-join false
-                :display-name "ID"
-                :is-from-previous-stage false
-                :is-calculated false
-                :is-implicitly-joinable false}
-               {:table {:name "VENUES", :display-name "Venues", :is-source-table true}
-                :semantic-type :type/Name
-                :name "NAME"
-                :effective-type :type/Text
-                :is-from-join false
-                :display-name "Name"
-                :is-from-previous-stage false
-                :is-calculated false
-                :is-implicitly-joinable false}
-               {:table {:name "VENUES", :display-name "Venues", :is-source-table true}
-                :semantic-type :type/FK
-                :name "CATEGORY_ID"
-                :effective-type :type/Integer
-                :is-from-join false
-                :display-name "Category ID"
-                :is-from-previous-stage false
-                :is-calculated false
-                :is-implicitly-joinable false}
-               {:table {:name "VENUES", :display-name "Venues", :is-source-table true}
-                :semantic-type :type/Latitude
-                :name "LATITUDE"
-                :effective-type :type/Float
-                :is-from-join false
-                :display-name "Latitude"
-                :is-from-previous-stage false
-                :is-calculated false
-                :is-implicitly-joinable false}
-               {:table {:name "VENUES", :display-name "Venues", :is-source-table true}
-                :semantic-type :type/Longitude
-                :name "LONGITUDE"
-                :effective-type :type/Float
-                :is-from-join false
-                :display-name "Longitude"
-                :is-from-previous-stage false
-                :is-calculated false
-                :is-implicitly-joinable false}
-               {:table {:name "VENUES", :display-name "Venues", :is-source-table true}
-                :semantic-type :type/Category
-                :name "PRICE"
-                :effective-type :type/Integer
-                :is-from-join false
-                :display-name "Price"
-                :is-from-previous-stage false
-                :is-calculated false
-                :is-implicitly-joinable false
-                :breakout-positions [1]}
-               {:table {:name "CATEGORIES", :display-name "Categories", :is-source-table false}
-                :semantic-type :type/PK
-                :name "ID"
-                :effective-type :type/BigInteger
-                :is-from-join false
-                :display-name "ID"
-                :is-from-previous-stage false
-                :is-calculated false
-                :is-implicitly-joinable true}
-               {:table {:name "CATEGORIES", :display-name "Categories", :is-source-table false}
-                :semantic-type :type/Name
-                :name "NAME"
-                :effective-type :type/Text
-                :is-from-join false
-                :display-name "Name"
-                :is-from-previous-stage false
-                :is-calculated false
-                :is-implicitly-joinable true
-                :breakout-positions [0]}]
-              (map #(lib/display-info query' %) breakoutables'))))))
+                  :semantic-type :type/PK
+                  :name "ID"
+                  :effective-type :type/BigInteger
+                  :is-from-join false
+                  :display-name "ID"
+                  :is-from-previous-stage false
+                  :is-calculated false
+                  :is-implicitly-joinable false}
+                 {:table {:name "VENUES", :display-name "Venues", :is-source-table true}
+                  :semantic-type :type/Name
+                  :name "NAME"
+                  :effective-type :type/Text
+                  :is-from-join false
+                  :display-name "Name"
+                  :is-from-previous-stage false
+                  :is-calculated false
+                  :is-implicitly-joinable false}
+                 {:table {:name "VENUES", :display-name "Venues", :is-source-table true}
+                  :semantic-type :type/FK
+                  :name "CATEGORY_ID"
+                  :effective-type :type/Integer
+                  :is-from-join false
+                  :display-name "Category ID"
+                  :is-from-previous-stage false
+                  :is-calculated false
+                  :is-implicitly-joinable false}
+                 {:table {:name "VENUES", :display-name "Venues", :is-source-table true}
+                  :semantic-type :type/Latitude
+                  :name "LATITUDE"
+                  :effective-type :type/Float
+                  :is-from-join false
+                  :display-name "Latitude"
+                  :is-from-previous-stage false
+                  :is-calculated false
+                  :is-implicitly-joinable false}
+                 {:table {:name "VENUES", :display-name "Venues", :is-source-table true}
+                  :semantic-type :type/Longitude
+                  :name "LONGITUDE"
+                  :effective-type :type/Float
+                  :is-from-join false
+                  :display-name "Longitude"
+                  :is-from-previous-stage false
+                  :is-calculated false
+                  :is-implicitly-joinable false}
+                 {:table {:name "VENUES", :display-name "Venues", :is-source-table true}
+                  :semantic-type :type/Category
+                  :name "PRICE"
+                  :effective-type :type/Integer
+                  :is-from-join false
+                  :display-name "Price"
+                  :is-from-previous-stage false
+                  :is-calculated false
+                  :is-implicitly-joinable false
+                  :breakout-positions [1]}
+                 {:table {:name "CATEGORIES", :display-name "Categories", :is-source-table false}
+                  :semantic-type :type/PK
+                  :name "ID"
+                  :effective-type :type/BigInteger
+                  :is-from-join false
+                  :display-name "ID"
+                  :is-from-previous-stage false
+                  :is-calculated false
+                  :is-implicitly-joinable true}
+                 {:table {:name "CATEGORIES", :display-name "Categories", :is-source-table false}
+                  :semantic-type :type/Name
+                  :name "NAME"
+                  :effective-type :type/Text
+                  :is-from-join false
+                  :display-name "Name"
+                  :is-from-previous-stage false
+                  :is-calculated false
+                  :is-implicitly-joinable true
+                  :breakout-positions [0]}]
+                (map #(lib/display-info query' %) breakoutables'))))))
 
 (deftest ^:parallel breakoutable-columns-with-source-card-e2e-test
   (testing "A column that comes from a source Card (Saved Question/Model/etc) can be broken out by."

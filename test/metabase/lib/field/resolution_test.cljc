@@ -523,7 +523,7 @@
                                                     [(lib/= (meta/field-metadata :orders :product-id)
                                                             (meta/field-metadata :products :id))])))
           broken-ref [:field {:lib/uuid "00000000-0000-0000-0000-000000000000", :base-type :type/Text} "CATEGORY"]]
-        (is (=? {:id                           (meta/id :products :category)
+      (is (=? {:id                           (meta/id :products :category)
                :table-id                     (meta/id :products)
                :name                         "CATEGORY"
                :lib/source                   :source/joins
@@ -746,10 +746,10 @@
                                                               [:field (meta/id :venues :longitude) nil]
                                                               [:field (meta/id :venues :price) nil]]}})
             field-ref [:field {:lib/uuid (str (random-uuid))} (meta/id :venues :name)]]
-        (testing `lib.field.resolution/resolve-column-in-metadata
+        (testing `lib.field.resolution/resolve-column-in-previous-stage-metadata
           (let [stage-cols (get-in (lib.util/query-stage query 0) [:lib/stage-metadata :columns])]
             (is (=? {:name "NAME", :description "user description", :display-name "user display name"}
-                    (#'lib.field.resolution/resolve-column-in-metadata query field-ref stage-cols)))))
+                    (#'lib.field.resolution/resolve-column-in-previous-stage-metadata query field-ref stage-cols)))))
         (testing `lib.field.resolution/resolve-field-ref
           (is (=? {:name "NAME", :description "user description", :display-name "user display name"}
                   (lib.field.resolution/resolve-field-ref query -1 field-ref))))))))

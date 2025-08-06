@@ -2,6 +2,7 @@
   "Method implementations for a stage of a query."
   (:require
    [clojure.string :as str]
+   [medley.core :as m]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.binning :as lib.binning]
@@ -22,8 +23,7 @@
    [metabase.lib.util.match :as lib.util.match]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
-   [metabase.util.malli :as mu]
-   [medley.core :as m]))
+   [metabase.util.malli :as mu]))
 
 (lib.hierarchy/derive :mbql.stage/mbql   ::stage)
 (lib.hierarchy/derive :mbql.stage/native ::stage)
@@ -311,7 +311,7 @@
                         ;; there is no `:fields` or summary columns (aggregtions or breakouts) which means we return
                         ;; all the visible columns from the source or previous stage plus all the expressions. We
                         ;; return only the `:fields` from any joins
-                        (let [ ;; we don't want to include all visible joined columns, so calculate that separately
+                        (let [;; we don't want to include all visible joined columns, so calculate that separately
                               source-cols (previous-stage-or-source-visible-columns
                                            query stage-number
                                            {:include-implicitly-joinable? false

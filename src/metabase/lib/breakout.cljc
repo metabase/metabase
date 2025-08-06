@@ -14,8 +14,7 @@
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.util :as lib.util]
    [metabase.util.i18n :as i18n]
-   [metabase.util.malli :as mu]
-   [metabase.lib.test-metadata :as meta]))
+   [metabase.util.malli :as mu]))
 
 (defmethod lib.metadata.calculation/describe-top-level-key-method :breakout
   [query stage-number _k]

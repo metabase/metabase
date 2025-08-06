@@ -469,9 +469,9 @@
                             [:field (merge {:lib/uuid       (str (random-uuid))
                                             :base-type      coltype
                                             :effective-type coltype}
-                                     (when join-alias
-                                       {:join-alias join-alias}))
-                       (meta/id :orders column)])
+                                           (when join-alias
+                                             {:join-alias join-alias}))
+                             (meta/id :orders column)])
               exp-4       [{:display-name "ID"}
                            {:display-name "Tax"}
                            {:display-name "Orders → ID"}

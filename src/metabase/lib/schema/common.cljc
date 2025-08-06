@@ -5,8 +5,7 @@
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.memoize :as u.memo]
-   [medley.core :as m]))
+   [metabase.util.memoize :as u.memo]))
 
 (comment metabase.types.core/keep-me)
 

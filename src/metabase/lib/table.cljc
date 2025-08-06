@@ -7,8 +7,7 @@
    [metabase.util :as u]
    [metabase.util.humanization :as u.humanization]
    [metabase.util.i18n :as i18n]
-   [metabase.util.malli :as mu]
-   [metabase.lib.schema.metadata :as lib.schema.metadata]))
+   [metabase.util.malli :as mu]))
 
 (defmethod lib.metadata.calculation/display-name-method :metadata/table
   [_query _stage-number table-metadata _style]

@@ -1024,7 +1024,8 @@
           implied-query    (-> query
                                (lib/add-field -1 (first implicit-columns))
                                (lib/add-field -1 (second implicit-columns)))
-          _                (is (= (count (get-in implied-query [:stages 0 :fields])) 11)
+          _                (is (= 11
+                                  (count (get-in implied-query [:stages 0 :fields])))
                                "Sanity check: implied-query should now have 11 :fields")
           table-fields     (map clean-ref table-columns)
           implied1         (clean-ref (first implicit-columns))

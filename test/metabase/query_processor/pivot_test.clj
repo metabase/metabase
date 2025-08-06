@@ -10,17 +10,17 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.query-processor :as qp]
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.query-processor.pivot.test-util :as qp.pivot.test-util]
+   [metabase.query-processor.store :as qp.store]
    [metabase.test :as mt]
    [metabase.test.data :as data]
    [metabase.util :as u]
-   [metabase.util.malli.registry :as mr]
-   [metabase.lib.test-util :as lib.tu]
-   [metabase.query-processor.store :as qp.store]))
+   [metabase.util.malli.registry :as mr]))
 
 (set! *warn-on-reflection* true)
 

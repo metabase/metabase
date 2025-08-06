@@ -234,24 +234,12 @@
   "Create a cache key to use with [[lib.metadata.cache]]. This includes a few extra keys for the three dynamic variables
   that can affect metadata calculation."
   [unique-key query stage-number x options]
-  (let [stage-number        (lib.util/canonical-stage-index query stage-number)
-        ;; optimization: ignore stages beyond what we're calculating metadata for, this cannot affect the metadata and
-        ;; this will allow us to hit the cache more often. Only update `query` if we have too many stages to avoid
-        ;; unnecessary object allocation
-        num-stages          (count (:stages query))
-        num-relevant-stages (inc stage-number)
-        query               (if (> num-stages num-relevant-stages)
-                              (update query :stages (fn [stages]
-                                                      (into []
-                                                            (take num-relevant-stages)
-                                                            stages)))
-                              query)]
-    (lib.metadata.cache/cache-key
-     unique-key query stage-number x
-     (assoc options
-            ::display-name-style              *display-name-style*
-            ::propagate-binning-and-bucketing (boolean *propagate-binning-and-bucketing*)
-            ::ref-style                       lib.ref/*ref-style*))))
+  (lib.metadata.cache/cache-key
+   unique-key query stage-number x
+   (assoc options
+          ::display-name-style              *display-name-style*
+          ::propagate-binning-and-bucketing (boolean *propagate-binning-and-bucketing*)
+          ::ref-style                       lib.ref/*ref-style*)))
 
 (defmulti metadata-method
   "Impl for [[metadata]]. Implementations that call [[display-name]] should use the `:default` display name style."

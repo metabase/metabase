@@ -323,6 +323,7 @@
                 {:breakout [$price]
                  :fields   [$price]})))))))
 
+;;; TODO (Cam 8/6/25) -- move this and other binning-related tests to `binning-test`
 (deftest ^:parallel binning-with-source-card-with-explicit-joins-test
   (testing "Make sure binning works with a source card that contains explicit joins"
     (mt/test-drivers (mt/normal-drivers-with-feature :binning :nested-queries :left-join)
@@ -350,4 +351,16 @@
                   _                (is (some? binning-strategy))
                   query            (-> query
                                        (lib/breakout (lib/with-binning people-longitude binning-strategy)))]
-              (mt/rows (qp/process-query query)))))))))
+              (is (=? {:stages [{:source-card 1
+                                 :aggregation [[:count {}]]
+                                 :breakout    [[:field
+                                                {:binning {:strategy :bin-width, :bin-width 20.0}}
+                                                "People__LONGITUDE"]]}]}
+                      query))
+              (is (= [[-180.0 75]
+                      [-160.0 383]
+                      [-140.0 879]
+                      [-120.0 3803]
+                      [-100.0 11345]
+                      [-80.0  2275]]
+                     (mt/formatted-rows [1.0 int] (qp/process-query query)))))))))))

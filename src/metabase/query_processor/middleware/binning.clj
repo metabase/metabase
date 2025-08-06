@@ -4,9 +4,7 @@
   (:require
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.binning.util :as lib.binning.util]
-   [metabase.lib.card :as lib.card]
    [metabase.lib.field.resolution :as lib.field.resolution]
-   [metabase.lib.join.util :as lib.join.util]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -16,8 +14,7 @@
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.store :as qp.store]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.malli :as mu]
-   [metabase.lib.field.util :as lib.field.util]))
+   [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
 
@@ -66,13 +63,6 @@
   [:map
    [:name :string]])
 
-;;; TODO (Cam 6/12/25) -- Mega HACK -- we should be using higher-level Lib methods that return metadata with
-;;; desired aliases in the first place instead of trying to calculate it ourselves.
-(defn- add-desired-column-aliases [cols]
-  (into []
-        (lib.field.util/add-source-and-desired-aliases-xform (qp.store/metadata-provider))
-        cols))
-
 (mu/defn- matching-metadata-from-source-metadata :- ::lib.schema.metadata/column
   [field-name      :- ::lib.schema.common/non-blank-string
    source-metadata :- [:maybe [:sequential PossiblyLegacyColumnMetadata]]]
@@ -82,16 +72,13 @@
       (throw (ex-info (tru "Cannot update binned field: query is missing source-metadata")
                       {:field field-name})))
     ;; try to find field in source-metadata with matching name
-    (let [mlv2-metadatas (for [col (lib.card/->card-metadata-columns (qp.store/metadata-provider) source-metadata)]
-                           (assoc col :lib/source :source/previous-stage))
-          mlv2-metadatas (cond-> mlv2-metadatas
-                           (not (every? :lib/source-column-alias mlv2-metadatas)) add-desired-column-aliases)
-          field-ref      [:field {:lib/uuid (str (random-uuid)), :base-type :type/*} field-name]]
+    (let [lib-cols  (:columns (lib.util/->stage-metadata source-metadata))
+          field-ref [:field {:lib/uuid (str (random-uuid)), :base-type :type/*} field-name]]
       (or
-       (lib.field.resolution/resolve-column-in-metadata (qp.store/metadata-provider) field-ref mlv2-metadatas)
+       (lib.field.resolution/resolve-column-in-previous-stage-metadata (qp.store/metadata-provider) field-ref lib-cols)
        (throw (ex-info (tru "Cannot update binned field: could not find matching source metadata for Field {0}"
                             (pr-str field-name))
-                       {:field field-name, :resolved-metadata mlv2-metadatas}))))))
+                       {:field field-name, :resolved-metadata lib-cols}))))))
 
 (mu/defn- matching-metadata :- ::lib.schema.metadata/column
   [field-id-or-name :- [:or ::lib.schema.id/field ::lib.schema.common/non-blank-string]
@@ -129,11 +116,15 @@
   [{filters :filter, :as inner-query}]
   (let [field-id-or-name->filters (filter->field-map filters)]
     (lib.util.match/replace inner-query
+      ;; do not recurse into source-metadata
+      (_ :guard (constantly (contains? (set &parents) :source-metadata)))
+      &match
+
       [:field _ (_ :guard :binning)]
       (try
         (update-binned-field inner-query field-id-or-name->filters &match)
         (catch Throwable e
-          (throw (ex-info (.getMessage e) {:clause &match} e)))))))
+          (throw (ex-info (ex-message e) {:clause &match} e)))))))
 
 (defn update-binning-strategy
   "When a binned field is found, it might need to be updated if a relevant query criteria affects the min/max value of

@@ -196,7 +196,7 @@
   "Schemas to use to validate columns with a given `:lib/source`. Since a lot of these schemas are applicable to
   everything BUT one specific source it made more sense to write them out like this and use a bit of glue to build the
   schemas in [[column-validate-for-source-schema]]."
-  [ ;; Only allow `:lib/expression-name` when `:lib/source` is `:source/expressions`. If it's anything else, it
+  [;; Only allow `:lib/expression-name` when `:lib/source` is `:source/expressions`. If it's anything else, it
    ;; probably means it's getting incorrectly propagated from a previous stage (QUE-1342).
    {:exclude :source/expressions
     :schema  [:fn
