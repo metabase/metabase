@@ -77,10 +77,15 @@
                                 [:name :string]
                                 [:email :string]
                                 ;; api-key?
+                                ;; db creds?
                                 ]]
-       [:database [:map
-                   [:id :int]
-                   [:name :string]]]
+       [:dwh {:optional true}
+        [:map-of
+         [:int {:description "dwh id"}]
+         [:map
+          [:credentials :map]
+          [:name :string]
+          [:type [:enum :postgres :mysql :bigquery :redshift :snowflake]]]]]
        ;; For permissions, we could keep a set of tables with read/write permissions
        [:permissions {:optional true}
         [:sequential
@@ -110,7 +115,13 @@
 (methodical/defmethod t2/table-name :model/Workspace [_model] :workspace)
 
 (t2/deftransforms :model/Workspace
-  {:data mi/transform-json})
+  {:plans mi/transform-json
+   :activity-logs mi/transform-json
+   :transforms mi/transform-json
+   :documents mi/transform-json
+   :user mi/transform-json
+   :dwh mi/transform-json
+   :permissions mi/transform-json})
 
 (doto :model/Workspace
   (derive :metabase/model)
