@@ -1,14 +1,22 @@
 (ns metabase-enterprise.semantic-search.core
   "Enterprise implementations of semantic search core functions using defenterprise."
   (:require
+   [medley.core :as m]
    [metabase-enterprise.semantic-search.db :as semantic.db]
    [metabase-enterprise.semantic-search.embedding :as semantic.embedding]
    [metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]
    [metabase-enterprise.semantic-search.pgvector-api :as semantic.pgvector-api]
    [metabase-enterprise.semantic-search.settings :as semantic.settings]
    [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.search.engine :as search.engine]
    [metabase.util.log :as log]
    [next.jdbc :as jdbc]))
+
+(defn- fallback-engine
+  "Find the highest priority search engine available for fallback."
+  []
+  (first (filter search.engine/supported-engine?
+                 search.engine/fallback-engine-priority)))
 
 (defn- get-pgvector-datasource! []
   (or @semantic.db/data-source (semantic.db/init-db!)))
@@ -31,13 +39,27 @@
    (semantic.settings/semantic-search-enabled)))
 
 (defenterprise results
-  "Enterprise implementation of semantic search results."
+  "Enterprise implementation of semantic search results with fallback logic."
   :feature :semantic-search
   [search-ctx]
-  (semantic.pgvector-api/query
-   (get-pgvector-datasource!)
-   (get-index-metadata)
-   search-ctx))
+  (try
+    (let [semantic-results (semantic.pgvector-api/query
+                            (get-pgvector-datasource!)
+                            (get-index-metadata)
+                            search-ctx)
+          result-count (count semantic-results)]
+      (if (>= result-count (semantic.settings/semantic-search-min-results-threshold))
+        semantic-results
+        (let [fallback (fallback-engine)]
+          (log/debugf "Semantic search returned %d results (< %d), supplementing with %s search"
+                      result-count (semantic.settings/semantic-search-min-results-threshold) fallback)
+          (let [fallback-results (search.engine/results (assoc search-ctx :search-engine fallback))
+                combined-results (concat semantic-results fallback-results)
+                deduped-results  (m/distinct-by (juxt :model :id) combined-results)]
+            (take (semantic.settings/semantic-search-results-limit) deduped-results)))))
+    (catch Exception e
+      (log/error e "Error executing semantic search")
+      [])))
 
 (defenterprise update-index!
   "Enterprise implementation of semantic index updating."

@@ -20,7 +20,6 @@
   :visibility :settings-manager
   :default nil
   :export? false
-  :description "test"
   :doc "This feature is experimental. Leave empty to use provider defaults.")
 
 (defn openai-api-base-url
@@ -61,3 +60,12 @@
   :export? false
   :visibility :internal
   :doc "Maximum number of results to return from a single semantic search query.")
+
+(defsetting semantic-search-min-results-threshold
+  (deferred-tru "Minimum number of semantic search results required before falling back to other engines.")
+  :type :integer
+  :default 100
+  :encryption :no
+  :export? false
+  :visibility :internal
+  :doc "Minimum number of semantic search results required before falling back to other engines.")

@@ -1,19 +1,10 @@
 (ns metabase.search.semantic.core
   (:require
-   [medley.core :as m]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.search.config :as search.config]
    [metabase.search.engine :as search.engine]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.util.log :as log]))
-
-(def ^:dynamic *min-results-threshold*
-  "Minimum number of semantic search results required before falling back to other engines."
-  100)
-
-(def ^:dynamic *max-combined-results*
-  "Maximum number of combined results to return when supplementing semantic search with fallback engines."
-  1000)
 
 (defn- oss-semantic-search-error
   "Helper function to throw semantic search enterprise feature error."
@@ -74,29 +65,9 @@
       (log/warn e "Semantic search engine not supported")
       false)))
 
-(defn- fallback-engine
-  "Find the highest priority search engine available for fallback."
-  []
-  (first (filter search.engine/supported-engine?
-                 search.engine/fallback-engine-priority)))
-
 (defmethod search.engine/results :search.engine/semantic
   [search-ctx]
-  (try
-    (let [semantic-results (results search-ctx)
-          result-count (count semantic-results)]
-      (if (>= result-count *min-results-threshold*)
-        semantic-results
-        (let [fallback (fallback-engine)]
-          (log/infof "Semantic search returned %d results (< %d), supplementing with %s search"
-                     result-count *min-results-threshold* fallback)
-          (let [fallback-results (search.engine/results (assoc search-ctx :search-engine fallback))
-                combined-results (concat semantic-results fallback-results)
-                deduped-results  (m/distinct-by (juxt :model :id) combined-results)]
-            (take *max-combined-results* deduped-results)))))
-    (catch Exception e
-      (log/error e "Error executing semantic search")
-      [])))
+  (results search-ctx))
 
 (defmethod search.engine/model-set :search.engine/semantic
   [_search-ctx]
