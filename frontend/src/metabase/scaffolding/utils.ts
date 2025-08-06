@@ -14,6 +14,7 @@ import {
 import {
   isCurrency,
   isEntityName,
+  isFK,
   isLocation,
   isNumeric,
   isPK,
@@ -145,7 +146,6 @@ function notEmpty<T>(xs: T[]): T[] | null {
     return null;
   }
 }
-
 function fieldsIfPresent(
   fieldsByName: Record<string, Field>,
   ...names: string[]
@@ -202,8 +202,23 @@ export function getDefaultObjectViewSettings(
     fieldsIfPresent(fieldsByName, "title") ||
     [];
 
+  // If there's only promising option, use that.
   if (nameFields.length === 0) {
-    // If there's only one kind of entity name, let's go with that.
+    const nonPkFields = fields.filter((f) => !isPK(f));
+    if (nonPkFields.length === 1) {
+      nameFields = nonPkFields;
+    } else {
+      const stringFields = nonPkFields.filter(
+        (f) => !isPK(f) && f.base_type === "type/Text",
+      );
+      if (stringFields.length === 1) {
+        nameFields = stringFields;
+      }
+    }
+  }
+
+  // If there's only one kind of prefixed name, let's go with that.
+  if (nameFields.length === 0) {
     const somethingNameFields = fields.filter((f) =>
       f.name.toLowerCase().endsWith("name"),
     );
@@ -215,7 +230,7 @@ export function getDefaultObjectViewSettings(
 
   // Is there any overlap between the primary key and the name fields?
   // This is O(n^2) so sue me.
-  const pkInName = pkFields.filter((f) =>
+  const pkInName = pkFields.some((f) =>
     nameFields.some((nf) => nf.name === f.name),
   );
 
@@ -234,11 +249,17 @@ export function getDefaultObjectViewSettings(
     fields: sectionFields(headerFields),
   });
 
+  const subtitleFields: Field[] =
+    fieldsIfPresent(leftoverFields, "subtitle") ||
+    fieldsIfPresent(leftoverFields, "description") ||
+    fieldsIfPresent(leftoverFields, "status") ||
+    [];
+
   sections.push({
     id: getNextId(),
     title: "Subtitle",
     variant: "subheader",
-    fields: [],
+    fields: sectionFields(subtitleFields),
   });
 
   // Even if there was only partial overlap, skip the pk section entirely.
@@ -272,6 +293,63 @@ export function getDefaultObjectViewSettings(
     }
   }
 
+  // Check for fields grouped on a common prefix, treat them as their own sections.
+  const remainingFields = Object.values(leftoverFields) as Field[];
+  if (remainingFields.length > 0) {
+    const groupedFields = remainingFields.reduce<Record<string, Field[]>>(
+      (acc: Record<string, Field[]>, field: Field) => {
+        // test all the possible prefixes if there are multiple underscores or dashes
+        // e.g. for "contact_user_name" try first "contact_user" as a common prefix, then "contact".
+        // this is a simple heuristic, but it should work for most cases
+        // if the field name is camelCase, split on the first uppercase letter
+        // e.g. for "contactUserName" try "contactUser" and then "contact"
+        let parts = field.name.split(/[_-]/);
+        if (parts.length === 1) {
+          parts = field.name.split(/(?=[A-Z])/);
+        }
+        const prefixes = parts
+          .slice(0, -2)
+          .map((_part, index) => parts.slice(0, index + 1).join("_"))
+          .reverse();
+
+        // find the longest prefix which has multiple fields
+        for (const prefix of prefixes) {
+          // stop words
+          if (["has", "is", "latest", "current"].includes(prefix)) {
+            continue;
+          }
+          const fields = remainingFields.filter((f) =>
+            f.name.startsWith(prefix),
+          );
+          if (fields.length > 1) {
+            acc[prefix] = fields;
+          }
+        }
+        return acc;
+      },
+      {},
+    );
+
+    Object.entries(groupedFields).forEach(([prefix, fields]) => {
+      let title = prefix
+        .split(/[_-]/)
+        .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+        .join(" ");
+
+      if (title === "Cancel") {
+        title = "Cancellation";
+      }
+
+      sections.push({
+        id: getNextId(),
+        title: title,
+        variant: "normal",
+        fields: sectionFields(fields),
+      });
+      deleteFields(leftoverFields, fields);
+    });
+  }
+
   addPotentialSectionHelper("Location", "highlight-2", (fs) =>
     fs.filter(isLocation),
   );
@@ -279,6 +357,15 @@ export function getDefaultObjectViewSettings(
   addPotentialSectionHelper("Financial", "normal", (fs) =>
     fs.filter(isCurrency),
   );
+
+  addPotentialSectionHelper("Metadata", "normal", (fs) =>
+    fs.filter((f) => f.name === "created_at" || f.name === "updated_at"),
+  );
+
+  addPotentialSectionHelper("Related entities", "normal", (fs) => {
+    const fields = fs.filter(isFK);
+    fields.length > 1 ? fields : [];
+  });
 
   // {
   //   id: getNextId(),
