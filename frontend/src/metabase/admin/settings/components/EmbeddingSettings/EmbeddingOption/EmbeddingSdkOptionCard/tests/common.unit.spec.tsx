@@ -12,7 +12,7 @@ describe("EmbeddingSdkOptionCard (OSS)", () => {
   it("should display the correct title and badges", async () => {
     await setup();
 
-    expect(screen.getByText("Embedded Analytics SDK")).toBeInTheDocument();
+    expect(screen.getByText("Modular embedding")).toBeInTheDocument();
     expect(screen.queryByText("Beta")).not.toBeInTheDocument();
   });
 
@@ -22,44 +22,46 @@ describe("EmbeddingSdkOptionCard (OSS)", () => {
     expect(screen.getByText("Try it out")).toBeInTheDocument();
   });
 
-  it("should show disabled icon when neither embedding type is enabled", async () => {
-    await setup({
+  it.each([
+    {
+      description:
+        "should disable both icons when both embedding types are disabled",
       isEmbeddingSdkEnabled: false,
       isEmbeddingSimpleEnabled: false,
-    });
-
-    const icon = screen.getByTestId("sdk-icon");
-    expect(icon).toBeInTheDocument();
-    expect(icon).toHaveAttribute("fill", "none");
-  });
-
-  it("should show enabled icon when SDK embedding is enabled", async () => {
-    await setup({
+    },
+    {
+      description: "should enable the react sdk embedding icon when enabled",
       isEmbeddingSdkEnabled: true,
       isEmbeddingSimpleEnabled: false,
-    });
-
-    const icon = screen.getByTestId("sdk-icon");
-    expect(icon).toBeInTheDocument();
-  });
-
-  it("should show enabled icon when simple embedding is enabled", async () => {
-    await setup({
+    },
+    {
+      description: "should enable the simple embedding icon when enabled",
       isEmbeddingSdkEnabled: false,
       isEmbeddingSimpleEnabled: true,
-    });
-
-    const icon = screen.getByTestId("sdk-icon");
-    expect(icon).toBeInTheDocument();
-  });
-
-  it("should show enabled icon when both embedding types are enabled", async () => {
-    await setup({
+    },
+    {
+      description:
+        "should enable both icons when both embedding types are enabled",
       isEmbeddingSdkEnabled: true,
       isEmbeddingSimpleEnabled: true,
-    });
+    },
+  ])(
+    "$description",
+    async ({ isEmbeddingSdkEnabled, isEmbeddingSimpleEnabled }) => {
+      await setup({
+        isEmbeddingSdkEnabled,
+        isEmbeddingSimpleEnabled,
+      });
 
-    const icon = screen.getByTestId("sdk-icon");
-    expect(icon).toBeInTheDocument();
-  });
+      expect(screen.getByTestId("sdk-icon")).toHaveAttribute(
+        "data-disabled",
+        String(!isEmbeddingSdkEnabled),
+      );
+
+      expect(screen.getByTestId("sdk-js-icon")).toHaveAttribute(
+        "data-disabled",
+        String(!isEmbeddingSimpleEnabled),
+      );
+    },
+  );
 });

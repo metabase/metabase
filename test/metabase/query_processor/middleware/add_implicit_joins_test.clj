@@ -1,11 +1,9 @@
 (ns metabase.query-processor.middleware.add-implicit-joins-test
   (:require
    [clojure.test :refer :all]
-   [malli.error :as me]
    [medley.core :as m]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.core :as lib]
-   [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.join :as lib.schema.join]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
@@ -18,80 +16,7 @@
    [metabase.query-processor.store :as qp.store]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]))
-
-(deftest ^:parallel distinct-fields-test
-  (testing "distinct-fields should consider type information unimportant for determining whether two Fields are the same"
-    (is (=? [[:field {:join-alias "X"} 1]
-             [:field {:base-type :type/Integer} 1]
-             [:field {:base-type :type/Integer} "bird"]]
-            (#'qp.add-implicit-joins/distinct-fields
-             [[:field {:lib/uuid (str (random-uuid)), :join-alias "X"} 1]
-              [:field {:lib/uuid (str (random-uuid)), :join-alias "X", ::whatever true} 1]
-              [:field {:lib/uuid (str (random-uuid)), :base-type :type/Integer} 1]
-              [:field {:lib/uuid (str (random-uuid))} 1]
-              [:field {:lib/uuid (str (random-uuid)), :effective-type :type/Number} 1]
-              [:field {:lib/uuid (str (random-uuid)), :effective-type :type/Integer} 1]
-              [:field {:lib/uuid (str (random-uuid)), :base-type :type/Integer} "bird"]
-              [:field {:lib/uuid (str (random-uuid)), :base-type :type/Number} "bird"]])))))
-
-(deftest ^:parallel distinct-fields-test-2
-  (let [fields [[:field {:lib/uuid       "67cbb4b0-346b-4087-a5b4-2cb0e33879f7"
-                         :base-type      :type/BigInteger
-                         :effective-type :type/BigInteger}
-                 68848]
-                [:field {:lib/uuid       "f65fb0e8-2752-4e1b-8341-0c94c1f51957"
-                         :base-type      :type/Integer
-                         :effective-type :type/Integer}
-                 68846]
-                [:field {:lib/uuid       "fe4d8fb0-ef9b-4ffe-813a-ae9d4f0ec64a"
-                         :base-type      :type/Integer
-                         :effective-type :type/Integer}
-                 68847]
-                [:field {:lib/uuid       "d8af125d-f6b2-480d-9eea-1b60f32a6b5d"
-                         :base-type      :type/Float
-                         :effective-type :type/Float}
-                 68845]
-                [:field {:lib/uuid       "8070e6e8-28e2-4fb2-a8e2-7a8142d5b19b"
-                         :base-type      :type/Float
-                         :effective-type :type/Float}
-                 68844]
-                [:field {:lib/uuid       "8171d47d-e76e-4dd5-9e01-4368639bfede"
-                         :base-type      :type/Float
-                         :effective-type :type/Float}
-                 68851]
-                [:field {:lib/uuid       "e4196c22-5788-4091-8b98-f0f489402eba"
-                         :base-type      :type/Float
-                         :effective-type :type/Float}
-                 68852]
-                [:field {:lib/uuid       "945058d5-5669-40cb-9590-58f88d1d9987"
-                         :base-type      :type/DateTimeWithLocalTZ
-                         :effective-type :type/DateTimeWithLocalTZ}
-                 68850]
-                [:field {:lib/uuid       "580ac20d-8567-444d-905f-a4f81ded4d53"
-                         :base-type      :type/Integer
-                         :effective-type :type/Integer}
-                 68849]
-                [:field {:source-field   68847
-                         :join-alias     "PRODUCTS__via__PRODUCT_ID"
-                         :lib/uuid       "8f5b747e-bb36-4639-826b-dd40ff394fdf"
-                         :base-type      :type/Text
-                         :effective-type :type/Text}
-                 68861]
-                [:field {:source-field   68847
-                         :lib/uuid       "615c7a01-e368-430a-a3ab-0b7be86570e4"
-                         :base-type      :type/Text
-                         :effective-type :type/Text
-                         :join-alias     "PRODUCTS__via__PRODUCT_ID"}
-                 68867]
-                [:field {:source-field   68847
-                         :lib/uuid       "01237181-caba-40ae-8c37-a12fdba7400f"
-                         :base-type      :type/Text
-                         :effective-type :type/Text
-                         :join-alias     "PRODUCTS__via__PRODUCT_ID"}
-                 68867]]]
-    (is (not (me/humanize (mr/explain ::lib.schema/fields (#'qp.add-implicit-joins/distinct-fields fields)))))))
+   [metabase.util.malli :as mu]))
 
 (deftest ^:parallel fk-field-infos->joins-test
   (is (=? [{:lib/type    :mbql/join

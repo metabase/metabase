@@ -45,6 +45,12 @@ export function ensureDashboardCardHasText(text: string, index = 0) {
   cy.findAllByTestId("dashcard").eq(index).should("contain", text);
 }
 
+export function getEmbeddedDashboardCardMenu(index = 0) {
+  return getDashboardCard(index).findByTestId(
+    "public-or-embedded-dashcard-menu",
+  );
+}
+
 export function getDashboardCardMenu(index = 0) {
   return getDashboardCard(index).findByTestId("dashcard-menu");
 }

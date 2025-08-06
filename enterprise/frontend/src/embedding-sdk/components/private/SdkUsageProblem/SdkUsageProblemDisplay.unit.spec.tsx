@@ -175,7 +175,7 @@ describe("SdkUsageProblemDisplay", () => {
 
     expect(
       within(card).getByText(
-        /The embedding SDK is not enabled for this instance. Please enable it in settings to start using the SDK./,
+        /Embedding is not enabled for this instance. Please enable it in settings./,
       ),
     ).toBeInTheDocument();
 

@@ -178,6 +178,10 @@
       (set/union aliases (implicit-join-aliases query previous-stage-number))
       aliases)))
 
+;;; TODO (Cam 7/30/25) -- I have no real idea why we're doing this. It seems dumb and broken; a column from a reified
+;;; explicit join that gets `:source/joins` should always have a join aliases -- see my notes on
+;;; `:metabase.lib.metadata.result-metadata/column.validate-join-alias`. Can we just remove `:source-alias` (which is
+;;; used by the FE for mysterious/unknown purposes) and leave the Lib keys in the correct shape?
 (defn- remove-implicit-join-aliases
   [query cols]
   (let [implicit-aliases (implicit-join-aliases query -1)]

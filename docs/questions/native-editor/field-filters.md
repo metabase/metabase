@@ -56,7 +56,7 @@ You can only map a field filter to a database field. If you can't use a field fi
 
 ## Specifying the table and field alias
 
-If you map a filter to a field from an aliased table, you'll need to tell Metabase about that alias, or the filter won't work. 
+If you map a filter to a field from an aliased table, you'll need to tell Metabase about that alias, or the filter won't work.
 
 For example, let's say you want to map a field filter to the `category` field from the `products` table, but in your query you use the alias `p` for the `products` table, like so:
 
