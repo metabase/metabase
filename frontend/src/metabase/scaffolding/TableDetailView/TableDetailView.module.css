@@ -63,14 +63,17 @@
 
       .FieldName {
         white-space: nowrap;
-        min-width: 40%;
-        max-width: 40%;
+        min-width: 33%;
+        max-width: 33%;
         flex-shrink: 0;
-        font-size: 1rem;
+
+        > * {
+          font-size: 1.0625rem;
+        }
       }
 
       .FieldValue {
-        font-size: 1rem;
+        font-size: 1.0625rem;
         text-align: left;
       }
     }

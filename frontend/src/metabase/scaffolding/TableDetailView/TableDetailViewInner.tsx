@@ -290,7 +290,7 @@ export function TableDetailViewInner({
                 {index > 0 &&
                   (section.variant === "normal" ||
                     section.variant === "highlight-2") && (
-                    <Divider my="md" mx="md" />
+                    <Divider mb={0} mt="md" mx="md" />
                   )}
                 <SortableSection
                   section={section}
@@ -316,7 +316,7 @@ export function TableDetailViewInner({
 
             {notEmptySections.length > 0 &&
               uncategorizedSection.fields.length > 0 && (
-                <Divider my="md" mx="md" />
+                <Divider mb={0} mt="md" mx="md" />
               )}
             <SortableSection
               section={uncategorizedSection}
