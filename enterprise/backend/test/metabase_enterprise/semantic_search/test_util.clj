@@ -36,9 +36,7 @@
   "Proxies the semantic.db/data-source, avoids the deref and prettifies a little"
   ;; proxy because semantic.db/data-source is not initialised until the fixture runs
   (reify jdbc.protocols/Sourceable
-    (get-datasource [_]
-      @init-delay
-      (jdbc.protocols/get-datasource @semantic.db/data-source))))
+    (get-datasource [_] (jdbc.protocols/get-datasource @semantic.db/data-source))))
 
 (comment
   (jdbc/execute! db ["select 1"]))
