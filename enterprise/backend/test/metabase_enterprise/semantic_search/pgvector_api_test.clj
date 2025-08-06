@@ -65,14 +65,6 @@
     ;; not defined specific exception behaviour here yet, but best not to return empty or something silly like that
     (is (thrown? Exception (apply sut args)))))
 
-(defn- spy [f]
-  (let [calls (atom [])]
-    {:calls calls
-     :proxy (fn [& args]
-              (let [ret (apply f args)]
-                (swap! calls conj {:args args, :ret ret})
-                ret))}))
-
 (deftest index-documents!-test
   (let [pgvector       semantic.tu/db
         index-metadata (semantic.tu/unique-index-metadata)
@@ -83,7 +75,7 @@
     (with-open [index-ref (open-semantic-search! pgvector index-metadata model1)]
       ;; no specific behaviour, only proxies the active index to the index search
       (testing "is only a proxy for the active index call"
-        (let [{:keys [proxy calls]} (spy semantic.index/upsert-index!)
+        (let [{:keys [proxy calls]} (semantic.tu/spy semantic.index/upsert-index!)
               documents (semantic.tu/mock-documents)]
           (with-redefs [semantic.index/upsert-index! proxy]
             (testing "check proxies correct args and ret is untouched"
@@ -115,7 +107,7 @@
       ;; no specific behaviour, only proxies the active index to the index search
       (testing "is only a proxy for the active index call"
         (semantic.pgvector-api/index-documents! pgvector index-metadata documents)
-        (let [{:keys [calls proxy]} (spy semantic.index/delete-from-index!)]
+        (let [{:keys [calls proxy]} (semantic.tu/spy semantic.index/delete-from-index!)]
           (with-redefs [semantic.index/delete-from-index! proxy]
             (testing "check proxies correct args and ret is untouched"
               (let [ret1 (sut pgvector index-metadata dash dash-ids)

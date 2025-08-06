@@ -381,3 +381,11 @@
 (defn check-index-has-mock-docs []
   (check-index-has-mock-card)
   (check-index-has-mock-dashboard))
+
+(defn spy [f]
+  (let [calls (atom [])]
+    {:calls calls
+     :proxy (fn [& args]
+              (let [ret (apply f args)]
+                (swap! calls conj {:args args, :ret ret})
+                ret))}))
