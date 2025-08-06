@@ -79,13 +79,14 @@ export const MetabaseProviderInternal = ({
       <SdkThemeProvider theme={theme}>
         <LocaleProvider locale={locale || instanceLocale}>
           {children}
+
+          <SdkIncompatibilityWithInstanceBanner />
         </LocaleProvider>
 
         <RenderSingleCopy id="component-level-providers">
           <Global styles={SCOPED_CSS_RESET} />
           <SdkFontsGlobalStyles baseUrl={authConfig.metabaseInstanceUrl} />
 
-          <SdkIncompatibilityWithInstanceBanner />
           <SdkUsageProblemDisplay
             authConfig={authConfig}
             allowConsoleLog={allowConsoleLog}

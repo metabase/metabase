@@ -8,6 +8,8 @@ import {
   SdkLoadingState,
 } from "embedding-sdk/sdk-shared/types/sdk-loading";
 
+const ERROR_MESSAGE = "Failed to load Embedding SDK bundle";
+
 const loadSdkBundle = (
   metabaseInstanceUrl: string,
   loadingPromise: Promise<void> | null | undefined,
@@ -22,7 +24,7 @@ const loadSdkBundle = (
     if (existingScript) {
       existingScript.addEventListener("load", () => resolve());
       existingScript.addEventListener("error", () =>
-        reject(new Error("Failed to load Embedding SDK bundle")),
+        reject(new Error(ERROR_MESSAGE)),
       );
 
       return;
@@ -37,9 +39,7 @@ const loadSdkBundle = (
     }/app/embedding-sdk.js`;
 
     script.addEventListener("load", () => resolve());
-    script.addEventListener("error", () =>
-      reject(new Error("Failed to load Embedding SDK bundle")),
-    );
+    script.addEventListener("error", () => reject(new Error(ERROR_MESSAGE)));
 
     document.body.appendChild(script);
   });
