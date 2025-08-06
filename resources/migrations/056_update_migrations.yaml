@@ -323,6 +323,86 @@ databaseChangeLog:
             constraintName: fk_report_card_document_id
             onDelete: CASCADE
 
+- changeSet:
+      id: v56.2025-08-06T13:00:00
+      author: escherize
+      comment: Create workspaces table
+      changes:
+        - createTable:
+            tableName: workspace
+            remarks: Workspaces table
+            columns:
+              - column:
+                  name: id
+                  remarks: Unique ID
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: name
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+              - column:
+                  name: description
+                  type: ${text.type}
+                  constraints:
+                    nullable: true
+              - column:
+                  name: created_at
+                  remarks: The timestamp of when the document was created
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  remarks: The timestamp of when the document was updated
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              # Json cols:
+              - column:
+                  name: plans
+                  remarks: JSON object containing plans, keyed by path
+                  type: ${text.type}
+                  constraints:
+                    nullable: true
+              - column:
+                  name: transforms
+                  remarks: JSON object containing transforms
+                  type: ${text.type}
+                  constraints:
+                    nullable: true
+              - column:
+                  name: activity_log
+                  remarks: JSON object containing activity_logs, keyed by run-id
+                  type: ${text.type}
+                  constraints:
+                    nullable: true
+              - column:
+                  name: permissions
+                  remarks: JSON object containing permissions
+                  type: ${text.type}
+                  constraints:
+                    nullable: true
+              - column:
+                  name: user
+                  remarks: JSON object containing workspace-user's info
+                  type: ${text.type}
+                  constraints:
+                    nullable: true
+              - column:
+                  name: documents
+                  remarks: seq of document ids linked to this workspace
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
