@@ -169,11 +169,7 @@
   [:and
    {:default {}}
    [:map
-    {:decode/normalize normalize-options-map
-     :encode/cache-key (fn [m]
-                         (m/filter-keys #(and (simple-keyword? %)
-                                              (not (#{:base-type :effective-type} %)))
-                                        m))}
+    {:decode/normalize normalize-options-map}
     [:lib/uuid ::uuid]
     ;; these options aren't required for any clause in particular, but if they're present they must follow these schemas.
     [:base-type      {:optional true} [:maybe ::base-type]]
