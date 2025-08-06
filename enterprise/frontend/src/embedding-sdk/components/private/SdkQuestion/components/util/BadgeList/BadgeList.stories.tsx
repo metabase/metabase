@@ -1,8 +1,7 @@
 import { useState } from "react";
 
-import { PublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
 import { CommonSdkStoryWrapper } from "embedding-sdk/test/CommonSdkStoryWrapper";
-import { Box } from "metabase/ui";
+import { Box, Stack } from "metabase/ui";
 
 import { BadgeList } from "./BadgeList";
 
@@ -53,7 +52,7 @@ export const DefaultLayoutBadgeList = {
     };
 
     return (
-      <PublicComponentWrapper>
+      <Stack>
         <BadgeList
           items={items}
           onSelectItem={onSelectItem}
@@ -66,7 +65,7 @@ export const DefaultLayoutBadgeList = {
             ? `The selected element is ${selectedItem.item} at index ${selectedItem.index}`
             : "No element has been selected"}
         </Box>
-      </PublicComponentWrapper>
+      </Stack>
     );
   },
 };

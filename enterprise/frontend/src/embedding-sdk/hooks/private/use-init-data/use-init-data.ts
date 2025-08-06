@@ -63,7 +63,6 @@ export const useInitData = ({
     registerVisualizationsOnce();
 
     const isAuthUninitialized =
-      reduxStore &&
       reduxStore.getState().sdk.loginStatus.status === "uninitialized";
 
     if (!isAuthUninitialized) {

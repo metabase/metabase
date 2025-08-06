@@ -345,10 +345,6 @@ export class Api extends EventEmitter {
             this.emit(status, url);
           }
 
-          if (this.onResponse) {
-            this.onResponse({ body, status, metabaseVersion });
-          }
-
           if (status >= 200 && status <= 299) {
             if (options.transformResponse) {
               body = options.transformResponse({
