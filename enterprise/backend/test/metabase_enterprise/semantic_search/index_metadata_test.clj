@@ -6,7 +6,7 @@
    [metabase-enterprise.semantic-search.test-util :as semantic.tu]
    [metabase.util :as u]))
 
-(use-fixtures :each #'semantic.tu/once-fixture)
+(use-fixtures :once #'semantic.tu/once-fixture)
 
 ;; NOTE: isolation tests are absent, in prod there is only one index-metadata
 
