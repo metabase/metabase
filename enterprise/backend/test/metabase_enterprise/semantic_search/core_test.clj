@@ -1,6 +1,5 @@
 (ns metabase-enterprise.semantic-search.core-test
   (:require
-   #_[metabase.test.fixtures :as fixtures]
    [clojure.test :refer :all]
    [metabase-enterprise.semantic-search.core :as semantic.core]
    [metabase-enterprise.semantic-search.pgvector-api :as semantic.pgvector-api]
@@ -9,13 +8,12 @@
    [metabase.search.core :as search]
    [metabase.search.engine :as search.engine]
    [metabase.search.settings :as search.settings]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]))
 
-#_(use-fixtures :once (compose-fixtures
-                       (fixtures/initialize :db)
-                       #'semantic.tu/once-fixture))
-
-(use-fixtures :once #'semantic.tu/once-fixture)
+(use-fixtures :once (compose-fixtures
+                     (fixtures/initialize :db)
+                     #'semantic.tu/once-fixture))
 
 (deftest appdb-available-with-semantic
   (mt/with-premium-features #{:semantic-search}
