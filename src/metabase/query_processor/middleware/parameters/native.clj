@@ -39,20 +39,26 @@
 (mu/defn expand-stage :- ::lib.schema/stage
   "Expand parameters inside an *inner* native `query`. Not recursive -- recursive transformations are handled in
   the `middleware.parameters` functions that invoke this function."
-  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
-   stage                 :- ::lib.schema/stage]
-  (if-not (driver.u/supports? driver/*driver* :native-parameters (lib.metadata/database metadata-providerable))
-    stage
-    (let [thunk             (^:once fn* []
-                             (-> stage
-                                 (set/rename-keys {:native :query})
-                                 (m/update-existing :parameters (fn [parameters]
-                                                                  (mapv lib/->legacy-MBQL parameters)))
-                                 (m/update-existing :template-tags update-vals lib/->legacy-MBQL)
-                                 (->> (driver/substitute-native-parameters driver/*driver*))
-                                 (set/rename-keys {:query :native})))
-          substituted-stage (if (qp.store/initialized?)
-                              (thunk)
-                              (qp.store/with-metadata-provider (lib.metadata/->metadata-provider metadata-providerable)
-                                (thunk)))]
-      (dissoc substituted-stage :parameters :template-tags))))
+  ([stage]
+   (expand-stage (qp.store/metadata-provider) stage))
+
+  ([metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+    stage                 :- ::lib.schema/stage]
+   (if-not (driver.u/supports? driver/*driver* :native-parameters (lib.metadata/database metadata-providerable))
+     stage
+     (let [thunk             (^:once fn* []
+                               (-> stage
+                                   (set/rename-keys {:native :query})
+                                   (m/update-existing :parameters (fn [parameters]
+                                                                    (mapv lib/->legacy-MBQL parameters)))
+                                   (m/update-existing :template-tags update-vals lib/->legacy-MBQL)
+                                  ;; TODO (Cam 8/6/25) -- shouldn't we at least TRY to use
+                                  ;; `substitute-native-parameters-mbql-5` here?
+                                   #_{:clj-kondo/ignore [:deprecated-var]}
+                                   (->> (driver/substitute-native-parameters driver/*driver*))
+                                   (set/rename-keys {:query :native})))
+           substituted-stage (if (qp.store/initialized?)
+                               (thunk)
+                               (qp.store/with-metadata-provider (lib.metadata/->metadata-provider metadata-providerable)
+                                 (thunk)))]
+       (dissoc substituted-stage :parameters :template-tags)))))

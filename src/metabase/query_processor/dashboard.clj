@@ -17,6 +17,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [steffan-westcott.clj-otel.api.trace.span :as span]
+   ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2]))
 
 (defn- check-card-and-dashcard-are-in-dashboard

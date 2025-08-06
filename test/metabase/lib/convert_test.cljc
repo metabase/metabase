@@ -1410,7 +1410,7 @@
                         :source-table 33040}}
             (lib/->legacy-MBQL query)))))
 
-(deftest ^:parallel join-native-source-query->legacy-test
+(deftest ^:parallel join-native-source-query->legacy-test-2
   (testing "join :source-query should rename :query to :native for native stages"
     (let [query {:lib/type :mbql/query
                  :stages   [{:lib/type :mbql.stage/mbql
