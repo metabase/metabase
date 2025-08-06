@@ -100,7 +100,15 @@
       [:ref ::location])))
 
 (deftest ^:parallel with-key-stabilizes-cache-keys
-  (are [input expected] (= expected (#'mr/schema-cache-key (mr/with-key input)))
+  (are [input expected] (=
+                         {:single-wrap true
+                          :double-wrap true
+                          :no-wrap true}
+                         {:single-wrap (= expected (#'mr/schema-cache-key (mr/with-key input)))
+                          ;; wrapping multiple times with `with-key` should not change the cache key
+                          :double-wrap (= expected (#'mr/schema-cache-key (mr/with-key (mr/with-key input))))
+                          ;; without wrapping with-key, these are not equal
+                          :no-wrap (not= expected (#'mr/schema-cache-key input))})
 
     ;; higher order function
     (constantly true)
