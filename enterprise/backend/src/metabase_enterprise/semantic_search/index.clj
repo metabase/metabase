@@ -672,7 +672,7 @@
      (-> (sql.helpers/delete-from (keyword (:table-name index)))
          (sql.helpers/where [:and
                              [:= :model model]
-                             [:in :model_id batch-ids]])
+                             [:in :model_id (map str batch-ids)]])
          sql-format-quoted))
    model-ids))
 
