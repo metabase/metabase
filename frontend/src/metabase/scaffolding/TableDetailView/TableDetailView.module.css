@@ -39,8 +39,8 @@
   border-radius: var(--default-border-radius);
   display: grid;
   grid-template-columns: repeat(var(--sections-count, 1), 1fr);
-  gap: var(--mantine-spacing-xl);
-  padding: var(--mantine-spacing-sm) var(--mantine-spacing-md);
+  gap: 0;
+  padding: var(--mantine-spacing-sm);
 }
 
 .ListViewSection {
