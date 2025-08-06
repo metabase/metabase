@@ -16,6 +16,7 @@ import {
 } from "metabase-enterprise/documents/documents.slice";
 import { useDocumentsDispatch } from "metabase-enterprise/documents/redux-utils";
 import MetabotThinkingStyles from "metabase-enterprise/metabot/components/MetabotChat/MetabotThinking.module.css";
+import type { Card } from "metabase-types/api";
 
 import Styles from "./MetabotEmbed.module.css";
 
@@ -117,9 +118,38 @@ export const MetabotComponent = memo(
         return;
       }
       const newCardId = generateDraftCardId();
+      const card: Card = {
+        ...data.draft_card,
+        database_id: data.draft_card.dataset_query.database || -1,
+        id: newCardId,
+        entity_id: "entity_id" as Card["entity_id"],
+        created_at: "",
+        updated_at: "",
+        name: "Exploration",
+        description: null,
+        type: "question",
+        public_uuid: null,
+        enable_embedding: false,
+        embedding_params: null,
+        can_write: false,
+        can_restore: false,
+        can_delete: false,
+        can_manage_db: false,
+        initially_published_at: null,
+        collection_id: null,
+        collection_position: null,
+        dashboard: null,
+        dashboard_id: null,
+        dashboard_count: null,
+        result_metadata: [],
+        last_query_start: null,
+        average_query_time: null,
+        cache_ttl: null,
+        archived: false,
+      };
       documentsDispatch(
         createDraftCard({
-          originalCard: data.draft_card,
+          originalCard: card,
           modifiedData: {},
           draftId: newCardId,
         }),

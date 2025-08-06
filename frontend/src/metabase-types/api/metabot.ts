@@ -1,5 +1,4 @@
 import type {
-  Card,
   CardDisplayType,
   CardId,
   CardType,
@@ -9,6 +8,7 @@ import type {
   PaginationResponse,
   RowValue,
   SearchModel,
+  UnsavedCard,
 } from ".";
 
 export type MetabotFeedbackType =
@@ -225,7 +225,7 @@ export interface MetabotDocumentNodeRequest {
 }
 
 export interface MetabotDocumentNodeResponse {
-  draft_card: Card | null;
+  draft_card: UnsavedCard | null;
   description: string;
   error: string | null;
 }
