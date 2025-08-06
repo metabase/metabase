@@ -385,10 +385,10 @@ export const TableListView = ({ location, params }: Props) => {
                 value: "list",
                 label: <Label icon="list" tooltip={t`List`} />,
               },
-              {
-                value: "gallery",
-                label: <Label icon="grid" tooltip={t`Gallery`} />,
-              },
+              // {
+              //   value: "gallery",
+              //   label: <Label icon="grid" tooltip={t`Gallery`} />,
+              // },
             ]}
             value={settings.list_view.view}
             onChange={handleViewChange}
@@ -596,7 +596,7 @@ export const TableListView = ({ location, params }: Props) => {
                     data={[
                       { value: "table", label: t`Table` },
                       { value: "list", label: t`List` },
-                      { value: "gallery", label: t`Gallery` },
+                      // { value: "gallery", label: t`Gallery` },
                     ]}
                     value={settings.list_view.view}
                     onChange={handleViewChange}
