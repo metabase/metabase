@@ -86,53 +86,56 @@
 
 (deftest test-semantic-search-fallback-supplementation
   (testing "semantic search results below threshold are supplemented with appdb results"
-    (mt/with-temporary-setting-values [semantic-search-min-results-threshold 3]
-      (let [semantic-result (make-card-result 1 "semantic-card" :score 0.9)
-            appdb-results   [(make-card-result 1 "appdb-card-1")
-                             (make-card-result 2 "appdb-card-2")
-                             (make-card-result 3 "appdb-card-3")
-                             (make-card-result 4 "appdb-dashboard" :model "dashboard")]
-            search-ctx      search-context]
-        (with-search-engine-mocks! [semantic-result] appdb-results
-          (fn []
-            (let [results (semantic.core/results search-ctx)]
-              (testing "semantic result comes first"
-                (is (= semantic-result (first results))))
+    (mt/with-premium-features #{:semantic-search}
+      (mt/with-temporary-setting-values [semantic-search-min-results-threshold 3]
+        (let [semantic-result (make-card-result 1 "semantic-card" :score 0.9)
+              appdb-results   [(make-card-result 1 "appdb-card-1")
+                               (make-card-result 2 "appdb-card-2")
+                               (make-card-result 3 "appdb-card-3")
+                               (make-card-result 4 "appdb-dashboard" :model "dashboard")]
+              search-ctx      search-context]
+          (with-search-engine-mocks! [semantic-result] appdb-results
+            (fn []
+              (let [results (semantic.core/results search-ctx)]
+                (testing "semantic result comes first"
+                  (is (= semantic-result (first results))))
 
-              (testing "appdb results are appended, and duplicate model/id pairs are removed"
-                (is (= (rest appdb-results)
-                       (rest results)))))))))))
+                (testing "appdb results are appended, and duplicate model/id pairs are removed"
+                  (is (= (rest appdb-results)
+                         (rest results))))))))))))
 
 (deftest test-semantic-search-above-threshold-no-fallback
   (testing "semantic search results above threshold are not supplemented"
-    (mt/with-temporary-setting-values [semantic-search-min-results-threshold 3]
-      (let [semantic-results [(make-card-result 1 "semantic-card-1" :score 0.9)
-                              (make-card-result 2 "semantic-card-2" :score 0.8)
-                              (make-card-result 3 "semantic-card-3" :score 0.7)
-                              (make-card-result 4 "semantic-card-4" :score 0.6)]
-            search-ctx       search-context
-            fallback-fn      (fn [ctx] (throw (ex-info "Should not call fallback engine" {:engine (:search-engine ctx)})))]
-        (with-search-engine-mocks! semantic-results fallback-fn
-          (fn []
-            (let [results (semantic.core/results search-ctx)]
-              (testing "returns only semantic results without fallback"
-                (is (= semantic-results results))
-                (is (= 4 (count results)))))))))))
+    (mt/with-premium-features #{:semantic-search}
+      (mt/with-temporary-setting-values [semantic-search-min-results-threshold 3]
+        (let [semantic-results [(make-card-result 1 "semantic-card-1" :score 0.9)
+                                (make-card-result 2 "semantic-card-2" :score 0.8)
+                                (make-card-result 3 "semantic-card-3" :score 0.7)
+                                (make-card-result 4 "semantic-card-4" :score 0.6)]
+              search-ctx       search-context
+              fallback-fn      (fn [ctx] (throw (ex-info "Should not call fallback engine" {:engine (:search-engine ctx)})))]
+          (with-search-engine-mocks! semantic-results fallback-fn
+            (fn []
+              (let [results (semantic.core/results search-ctx)]
+                (testing "returns only semantic results without fallback"
+                  (is (= semantic-results results))
+                  (is (= 4 (count results))))))))))))
 
 (deftest test-semantic-search-max-combined-results-limit
   (testing "combined results are limited by semantic-search-results-limit"
-    (mt/with-temporary-setting-values [semantic-search-min-results-threshold 3
-                                       semantic-search-results-limit 5]
-      (let [semantic-result (make-card-result 1 "semantic-card" :score 0.9)
-            appdb-results   (for [i (range 2 10)]
-                              (make-card-result i (str "appdb-card-" i)))
-            search-ctx      search-context]
-        (with-search-engine-mocks! [semantic-result] appdb-results
-          (fn []
-            (let [results (semantic.core/results search-ctx)]
-              (testing "semantic result is included first"
-                (is (= semantic-result (first results))))
-              (testing "remaining slots filled with appdb results"
-                (let [remaining (rest results)]
-                  (is (= 4 (count remaining)))
-                  (is (every? #(contains? (set appdb-results) %) remaining)))))))))))
+    (mt/with-premium-features #{:semantic-search}
+      (mt/with-temporary-setting-values [semantic-search-min-results-threshold 3
+                                         semantic-search-results-limit 5]
+        (let [semantic-result (make-card-result 1 "semantic-card" :score 0.9)
+              appdb-results   (for [i (range 2 10)]
+                                (make-card-result i (str "appdb-card-" i)))
+              search-ctx      search-context]
+          (with-search-engine-mocks! [semantic-result] appdb-results
+            (fn []
+              (let [results (semantic.core/results search-ctx)]
+                (testing "semantic result is included first"
+                  (is (= semantic-result (first results))))
+                (testing "remaining slots filled with appdb results"
+                  (let [remaining (rest results)]
+                    (is (= 4 (count remaining)))
+                    (is (every? #(contains? (set appdb-results) %) remaining))))))))))))
