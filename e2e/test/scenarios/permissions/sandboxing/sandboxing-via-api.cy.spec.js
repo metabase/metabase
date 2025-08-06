@@ -27,38 +27,42 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
     beforeEach(() => {
       H.restore();
       cy.signInAsAdmin();
-      H.setTokenFeatures("all");
+      H.activateToken("pro-self-hosted");
       preparePermissions();
       cy.visit("/admin/people");
     });
 
     it("should add key attributes to an existing user", () => {
-      cy.icon("ellipsis").first().click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Edit user").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Add an attribute").click();
-      cy.findByPlaceholderText("Key").type("User ID");
-      cy.findByPlaceholderText("Value").type("3");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Update").click();
+      cy.findByTestId("admin-people-list-table")
+        .icon("ellipsis")
+        .first()
+        .click();
+      H.popover().findByText("Edit user").click();
+      H.modal().within(() => {
+        cy.findByText("Attributes").click();
+        cy.findByText("Add an attribute").click();
+        cy.findByPlaceholderText("Key").type("User ID");
+        cy.findByPlaceholderText("Value").type("3");
+        cy.findByText("Update").click();
+      });
     });
 
     it("should add key attributes to a new user", () => {
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Invite someone").click();
-      cy.findByPlaceholderText("Johnny").type("John");
-      cy.findByPlaceholderText("Appleseed").type("Smith");
-      cy.findByPlaceholderText("nicetoseeyou@email.com").type(
-        "john@smith.test",
-      );
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Add an attribute").click();
-      cy.findByPlaceholderText("Key").type("User ID");
-      cy.findByPlaceholderText("Value").type("1");
-      cy.findAllByText("Create").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Done").click();
+      cy.button("Invite someone").click();
+      H.modal().within(() => {
+        cy.findByPlaceholderText("Johnny").type("John");
+        cy.findByPlaceholderText("Appleseed").type("Smith");
+        cy.findByPlaceholderText("nicetoseeyou@email.com").type(
+          "john@smith.test",
+        );
+
+        cy.findByText("Attributes").click();
+        cy.findByText("Add an attribute").click();
+        cy.findByPlaceholderText("Key").type("User ID");
+        cy.findByPlaceholderText("Value").type("1");
+        cy.findAllByText("Create").click();
+        cy.button("Done").click();
+      });
     });
   });
 
@@ -71,7 +75,7 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
     beforeEach(() => {
       H.restore();
       cy.signInAsAdmin();
-      H.setTokenFeatures("all");
+      H.activateToken("pro-self-hosted");
       preparePermissions();
 
       // Add user attribute to existing ("normal" / id:2) user
@@ -200,7 +204,7 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
     beforeEach(() => {
       H.restore();
       cy.signInAsAdmin();
-      H.setTokenFeatures("all");
+      H.activateToken("pro-self-hosted");
       preparePermissions();
     });
 
@@ -224,10 +228,10 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
       cy.visit(
         `/admin/permissions/data/database/${SAMPLE_DB_ID}/schema/PUBLIC/table/${PRODUCTS_ID}`,
       );
-      H.modifyPermission("collection", 0, "Sandboxed");
+      H.modifyPermission("collection", 0, "Row and column security");
       H.modal().findByText("Pick a column").click();
       H.popover().findByText("Category").click();
-      H.modal().findByText("Pick a user attribute").click();
+      H.modal().findByPlaceholderText("Pick a user attribute").click();
       H.popover().findByText("attr_cat").click();
       H.modal().button("Save").click();
       H.savePermissions();
@@ -265,7 +269,7 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
     beforeEach(() => {
       H.restore();
       cy.signInAsAdmin();
-      H.setTokenFeatures("all");
+      H.activateToken("pro-self-hosted");
       preparePermissions();
     });
 
@@ -933,7 +937,7 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
       cy.icon("eye")
         .eq(1) // No better way of doing this, unfortunately (see table above)
         .click();
-      H.popover().findByText("Sandboxed").click();
+      H.popover().findByText("Row and column security").click();
       cy.button("Change").click();
       H.modal()
         .findByText(
@@ -1259,7 +1263,7 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
           `/admin/permissions/data/database/${SAMPLE_DB_ID}/schema/PUBLIC/table/${PRODUCTS_ID}`,
         );
         H.selectPermissionRow("data", VIEW_DATA_PERMISSION_INDEX);
-        H.popover().findByText("Edit sandboxed access").click();
+        H.popover().findByText("Edit row and column security").click();
         H.modal().findAllByTestId("select-button").contains("Category").click();
         H.popover()
           .findByLabelText("Category")

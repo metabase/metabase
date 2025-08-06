@@ -1,9 +1,9 @@
 import { Global } from "@emotion/react";
 import { useMemo } from "react";
 
-import type { MetabaseTheme } from "embedding-sdk";
 import { DEFAULT_FONT } from "embedding-sdk/config";
 import { getEmbeddingThemeOverride } from "embedding-sdk/lib/theme";
+import type { MetabaseTheme } from "embedding-sdk/types/ui";
 import { setGlobalEmbeddingColors } from "metabase/embedding-sdk/theme/embedding-color-palette";
 import { useSelector } from "metabase/lib/redux";
 import { getSettings } from "metabase/selectors/settings";

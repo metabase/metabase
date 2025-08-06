@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import cx from "classnames";
 import PropTypes from "prop-types";
 import { forwardRef } from "react";
@@ -25,6 +26,8 @@ const propTypes = {
 const getOverflow = (isResizing) => (isResizing ? "hidden" : "auto");
 
 const Handle = forwardRef(function Handle(props, ref) {
+  const { handleAxis, ...rest } = props;
+
   return (
     <Flex
       align="center"
@@ -37,7 +40,7 @@ const Handle = forwardRef(function Handle(props, ref) {
         cursor: "row-resize",
       }}
       ref={ref}
-      {...props}
+      {...rest}
     >
       <Box
         w="6.25rem"

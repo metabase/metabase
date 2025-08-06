@@ -1,4 +1,5 @@
 import userEvent from "@testing-library/user-event";
+import dayjs from "dayjs";
 import fetchMock from "fetch-mock";
 
 import {
@@ -17,6 +18,7 @@ import {
   createMockSettings,
   createMockTokenFeatures,
 } from "metabase-types/api/mocks";
+import { createMockSettingsState } from "metabase-types/store/mocks";
 
 import { getBillingInfoId } from "../BillingInfo/utils";
 
@@ -25,13 +27,16 @@ import { LicenseAndBillingSettings } from "./LicenseAndBillingSettings";
 const setup = async ({
   token = "token",
   is_env_setting = false,
+  airgapEnabled = false,
   features = {},
 }: {
   token?: string | null;
   is_env_setting?: boolean;
+  airgapEnabled?: boolean;
   features?: Partial<TokenFeatures> & { "metabase-store-managed"?: boolean };
 }) => {
   const settings = createMockSettings({
+    "airgap-enabled": airgapEnabled,
     "premium-embedding-token": token,
     "token-features": createMockTokenFeatures(features),
   });
@@ -43,6 +48,10 @@ const setup = async ({
       env_name: "MB_PREMIUM_EMBEDDING_TOKEN",
       value: token,
     },
+    {
+      key: "airgap-enabled",
+      value: airgapEnabled,
+    },
   ]);
 
   setupPropertiesEndpoints(settings);
@@ -52,12 +61,20 @@ const setup = async ({
   );
   setupUpdateSettingEndpoint();
 
-  renderWithProviders(<LicenseAndBillingSettings />);
+  renderWithProviders(<LicenseAndBillingSettings />, {
+    storeInitialState: {
+      settings: createMockSettingsState(settings),
+    },
+  });
 
   await screen.findByTestId("license-and-billing-content");
 };
 
 describe("LicenseAndBilling", () => {
+  beforeEach(() => {
+    jest.spyOn(dayjs.prototype, "diff").mockReturnValue(27209);
+  });
+
   afterEach(() => {
     jest.restoreAllMocks();
   });
@@ -254,6 +271,24 @@ describe("LicenseAndBilling", () => {
       screen.getByText(
         "Your license is active until Dec 31, 2099! Hope you’re enjoying it.",
       ),
+    ).toBeInTheDocument();
+  });
+
+  it("renders settings for airgapped token", async () => {
+    await setup({ token: "valid", airgapEnabled: true });
+
+    expect(
+      await screen.findByText(
+        "To manage your billing preferences, please email",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByText("billing@metabase.com")).toHaveAttribute(
+      "href",
+      "mailto:billing@metabase.com",
+    );
+
+    expect(
+      screen.getByText("Your token expires in 27209 days."),
     ).toBeInTheDocument();
   });
 

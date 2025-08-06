@@ -5,6 +5,7 @@
    [clojure.test :refer :all]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+   [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
    [metabase.driver.util :as driver.u]
@@ -59,16 +60,27 @@
 
 (deftest fast-active-tables-test
   (is (= ["CATEGORIES" "CHECKINS" "ORDERS" "PEOPLE" "PRODUCTS" "REVIEWS" "USERS" "VENUES"]
-         (with-redefs [sql-jdbc.describe-database/all-schemas (constantly #{"PUBLIC"})]
-           (->> (into [] (sql-jdbc.describe-database/fast-active-tables (or driver/*driver* :h2) (mt/db) nil nil))
-                (map :name)
-                sort)))))
+         (sql-jdbc.execute/do-with-connection-with-options
+          (or driver/*driver* :h2)
+          (mt/db)
+          nil
+          (fn [^Connection conn]
+            ;; We have to mock this to make it work with all DBs
+            (with-redefs [sql-jdbc.describe-database/all-schemas (constantly #{"PUBLIC"})]
+              (->> (into [] (sql-jdbc.describe-database/fast-active-tables (or driver/*driver* :h2) conn nil nil))
+                   (map :name)
+                   sort)))))))
 
 (deftest post-filtered-active-tables-test
   (is (= ["CATEGORIES" "CHECKINS" "ORDERS" "PEOPLE" "PRODUCTS" "REVIEWS" "USERS" "VENUES"]
-         (->> (into [] (sql-jdbc.describe-database/post-filtered-active-tables :h2 (mt/db) nil nil))
-              (map :name)
-              sort))))
+         (sql-jdbc.execute/do-with-connection-with-options
+          :h2
+          (mt/db)
+          nil
+          (fn [^Connection conn]
+            (->> (into [] (sql-jdbc.describe-database/post-filtered-active-tables :h2 conn nil nil))
+                 (map :name)
+                 sort))))))
 
 (deftest describe-database-test
   (is (= {:tables #{{:name "USERS", :schema "PUBLIC", :description nil}
@@ -196,9 +208,8 @@
     (let [default-have-select-privilege?
           #(identical? (get-method sql-jdbc.sync.interface/have-select-privilege? :sql-jdbc)
                        (get-method sql-jdbc.sync.interface/have-select-privilege? %))]
-      (mt/test-drivers (into #{}
-                             (filter default-have-select-privilege?)
-                             (descendants driver/hierarchy :sql-jdbc))
+      (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc
+                                                 :+fns [default-have-select-privilege?]})
         (let [{schema :schema, table-name :name} (t2/select-one :model/Table (mt/id :checkins))]
           (qp.store/with-metadata-provider (mt/id)
             (testing (sql-jdbc.describe-database/simple-select-probe-query driver/*driver* schema table-name)
@@ -208,7 +219,7 @@
                    driver/*driver*
                    (mt/db)
                    nil
-                   (fn [^java.sql.Connection conn]
+                   (fn [^Connection conn]
                      ;; Databricks does not support setting auto commit to false. Catching the setAutoCommit
                      ;; exception results in testing the true value only.
                      (try
@@ -243,23 +254,64 @@
 
 (deftest resilient-to-conn-close?-test
   (testing "checking sync is resilient to connections being closed during [have-select-privilege?]"
-    (let [have-select-privilege? (get-method sql-jdbc.sync.interface/have-select-privilege? :sql-jdbc)
-          default-have-select-privilege? #(identical? have-select-privilege? (get-method sql-jdbc.sync.interface/have-select-privilege? %))
-          jdbc-describe-database #(identical? (get-method driver/describe-database :sql-jdbc) (get-method driver/describe-database %))]
-      (mt/test-drivers (into #{}
-                             (comp (filter default-have-select-privilege?)
-                                   (filter jdbc-describe-database)
-                                   (filter #(not (driver/database-supports? % :table-privileges nil))))
-                             (descendants driver/hierarchy :sql-jdbc))
-        (let [closed-first (volatile! nil)
+    (let [jdbc-describe-database #(identical? (get-method driver/describe-database :sql-jdbc)
+                                              (get-method driver/describe-database %))]
+      (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc
+                                                 :+fns [jdbc-describe-database]
+                                                 :-features [:table-privileges]})
+        (let [closed-first (volatile! false)
+              execute-select-probe-query @#'sql-jdbc.describe-database/execute-select-probe-query
               all-tables (driver/describe-database driver/*driver* (mt/id))]
-          (with-redefs [sql-jdbc.sync.interface/have-select-privilege?
-                        (fn [driver ^Connection conn schema tbl-name]
+          (with-redefs [sql-jdbc.describe-database/execute-select-probe-query
+                        (fn [driver ^Connection conn query]
                           (when-not @closed-first
-                            (vreset! closed-first tbl-name)
+                            (vreset! closed-first true)
                             (.close conn))
-                          (have-select-privilege? driver conn schema tbl-name))]
+                          (execute-select-probe-query driver conn query))]
             (let [table-names #(->> % :tables (map :name) set)
-                  all-tables-sans-first (table-names (driver/describe-database driver/*driver* (mt/id)))]
-              (is (or (= (-> all-tables table-names (disj @closed-first)) all-tables-sans-first)
-                      (= (-> all-tables table-names) all-tables-sans-first))))))))))
+                  all-tables-sans-one (table-names (driver/do-with-resilient-connection driver/*driver* (mt/id) driver/describe-database))]
+              ;; there is at maximum one missing table
+              (is (>= 1 (count (set/difference all-tables all-tables-sans-one)))))))))))
+
+(defn- run-retry-have-select-privilege!
+  [probe-errors query-canceled probe-error-fn]
+  (let [{schema :schema, table-name :name} (t2/select-one :model/Table (mt/id :checkins))]
+    (sql-jdbc.execute/do-with-connection-with-options
+     driver/*driver* (mt/db) nil
+     (fn [^Connection conn]
+       (let [select-probes (atom 0)]
+         (with-redefs [sql-jdbc.describe-database/execute-select-probe-query
+                       (fn [_driver conn' [sql]]
+                         (let [n (swap! select-probes inc)]
+                           (when (< n probe-errors)
+                             (probe-error-fn conn' sql))))
+                       driver/query-canceled? (constantly query-canceled)]
+           [(sql-jdbc.sync/have-select-privilege? driver/*driver* conn schema table-name)
+            @select-probes]))))))
+
+(deftest retry-have-select-privilege-test
+  (mt/test-drivers (mt/normal-driver-select
+                    {:+parent :sql-jdbc
+                     :+fns [#(identical? (get-method sql-jdbc.sync/have-select-privilege? :sql-jdbc)
+                                         (get-method sql-jdbc.sync/have-select-privilege? %))]
+                     :-features [:table-privileges]})
+    (letfn [(probe-error-fn [conn sql]
+              (.close conn)
+              (.prepareStatement conn sql))]
+      (testing "we will retry syncing a table once if the connection is closed"
+        (let [[result probes] (run-retry-have-select-privilege! 2 false probe-error-fn)]
+          (is (true? result))
+          (is (= 2 probes))))
+      (testing "we will only retry syncing a table if the connection is closed"
+        (let [[result probes] (run-retry-have-select-privilege! 2 false (fn [_conn _sql]
+                                                                          (throw (ex-info "not connection closed error" {}))))]
+          (is (false? result))
+          (is (= 1 probes))))
+      (testing "we won't retry syncing a table more than once if the connection is closed"
+        (let [[result probes] (run-retry-have-select-privilege! 3 false probe-error-fn)]
+          (is (false? result))
+          (is (= 2 probes))))
+      (testing "we won't retry syncing a table if the probe query was canceled"
+        (let [[result probes] (run-retry-have-select-privilege! 3 true probe-error-fn)]
+          (is (true? result))
+          (is (= 1 probes)))))))

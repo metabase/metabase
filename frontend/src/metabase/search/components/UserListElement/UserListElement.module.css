@@ -1,0 +1,5 @@
+.Root {
+  &:hover {
+    background-color: var(--mb-color-brand-lighter) !important;
+  }
+}

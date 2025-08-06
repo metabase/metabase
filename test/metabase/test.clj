@@ -120,7 +120,6 @@
   driver-select
   format-name
   id
-  ident
   mbql-query
   metadata-provider
   native-query
@@ -129,7 +128,7 @@
   run-mbql-query
   with-db
   with-temp-copy-of-db
-  with-empty-h2-app-db]
+  with-empty-h2-app-db!]
 
  [data.impl
   *db-is-temp-copy?*]
@@ -245,6 +244,7 @@
   user->id
   user-descriptor
   user-http-request
+  user-http-request-full-response
   user-real-request
   with-group
   with-group-for-user
@@ -281,7 +281,7 @@
   with-discarded-collections-perms-changes
   with-discard-model-updates!
   with-env-keys-renamed-by
-  with-locale
+  with-locale!
   with-model-cleanup
   with-non-admin-groups-no-root-collection-for-namespace-perms
   with-non-admin-groups-no-root-collection-perms
@@ -326,8 +326,10 @@
   with-system-timezone-id!]
 
  [tx
+  arbitrary-select-query
   count-with-template-tag-query
   count-with-field-filter-query
+  make-alias
   dataset-definition
   db-qualified-table-name
   db-test-env-var

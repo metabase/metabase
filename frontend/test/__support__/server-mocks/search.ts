@@ -1,6 +1,8 @@
 import fetchMock, { type MockOptionsMethodGet } from "fetch-mock";
+import { match } from "ts-pattern";
 
 import type { CollectionItem, SearchResult } from "metabase-types/api";
+import type { EmbeddingDataPicker } from "metabase-types/store/embedding-data-picker";
 
 export function setupSearchEndpoints(
   items: (CollectionItem | SearchResult)[],
@@ -40,5 +42,28 @@ export function setupSearchEndpoints(
       };
     },
     options,
+  );
+}
+
+export function setupEmbeddingDataPickerDecisionEndpoints(
+  dataPicker: EmbeddingDataPicker,
+) {
+  const mockEntityCount = match(dataPicker)
+    .with("flat", () => 10)
+    .with("staged", () => 100)
+    .exhaustive();
+
+  fetchMock.get(
+    {
+      name: "entity-count",
+      url: "path:/api/search",
+      query: {
+        models: ["dataset", "table"],
+        limit: 0,
+      },
+    },
+    {
+      total: mockEntityCount,
+    },
   );
 }

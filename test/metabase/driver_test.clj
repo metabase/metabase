@@ -350,3 +350,36 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; End tests for `describe-*` methods used in sync
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; TODO: Uncomment when https://github.com/metabase/metabase/pull/60263 is merged
+#_(deftest data-editing-requires-describe-features-test
+    (testing "Drivers supporting :actions/data-editing must support relevant describe-X features"
+      (mt/test-drivers (mt/normal-drivers-with-feature :actions/data-editing)
+        (testing "describe-default-expr feature"
+          (is (driver/database-supports? driver/*driver* :describe-default-expr (mt/db))
+              (str driver/*driver* " must support :describe-default-expr to support :actions/data-editing")))
+        (testing "describe-is-generated feature"
+          (is (driver/database-supports? driver/*driver* :describe-is-generated (mt/db))
+              (str driver/*driver* " must support :describe-is-generated to support :actions/data-editing")))
+        (testing "describe-is-nullable feature"
+          (is (driver/database-supports? driver/*driver* :describe-is-nullable (mt/db))
+              (str driver/*driver* " must support :describe-is-nullable to support :actions/data-editing"))))))
+
+(deftest query-driver-success-metrics-test
+  (mt/test-drivers (mt/normal-drivers)
+    (testing "the number of successful and failed queries should be tracked correctly"
+      (let [success-query (assoc-in (mt/mbql-query venues) [:middleware :userland-query?] true)
+            failure-query (assoc-in (mt/native-query {:query "bad query"})
+                                    [:middleware :userland-query?] true)]
+        (mt/with-prometheus-system! [_ system]
+          (qp/process-query success-query)
+          (try
+            (qp/process-query failure-query)
+            (catch Exception _))
+          (qp/process-query success-query)
+          (try
+            (qp/process-query failure-query)
+            (catch Exception _))
+          (qp/process-query success-query)
+          (is (= 3.0 (mt/metric-value system :metabase-query-processor/query {:driver driver/*driver* :status "success"})))
+          (is (= 2.0 (mt/metric-value system :metabase-query-processor/query {:driver driver/*driver* :status "failure"}))))))))

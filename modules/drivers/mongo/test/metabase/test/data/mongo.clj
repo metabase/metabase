@@ -124,6 +124,10 @@
                   {:$project {"_id" false, "count" true}}])
    :collection  (name table-name)})
 
+(defmethod tx/make-alias :mongo
+  ([_driver alias]
+   alias))
+
 (defmethod tx/aggregate-column-info :mongo
   ([driver ag-type]
    (merge ((get-method tx/aggregate-column-info ::tx/test-extensions) driver ag-type)

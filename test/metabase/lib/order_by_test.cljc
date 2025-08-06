@@ -129,22 +129,17 @@
               (lib/order-by $q (lib/expression-ref $q "expr2"))
               (lib/order-bys $q))))))
 
-;; malli schemas for funcs are not enforced on cljs
-#?(:clj
-   (deftest ^:parallel duplicate-order-bys-test
-     (are [query] (thrown-with-msg?
-                   clojure.lang.ExceptionInfo
-                   #"Invalid output:.*Duplicate values ignoring uuids"
-                   query)
-       (-> (lib.tu/venues-query)
-           (lib/order-by (meta/field-metadata :venues :id))
-           (lib/order-by (meta/field-metadata :venues :id))
-           lib/order-bys)
-
-       (as-> (lib.tu/query-with-expression) $q
-         (lib/order-by $q (lib/expression-ref $q "expr"))
-         (lib/order-by $q (lib/expression-ref $q "expr"))
-         (lib/order-bys $q)))))
+(deftest ^:parallel duplicate-order-bys-test
+  (is (=? [[:asc {} [:field {} (meta/id :venues :id)]]]
+          (-> (lib.tu/venues-query)
+              (lib/order-by (meta/field-metadata :venues :id))
+              (lib/order-by (meta/field-metadata :venues :id))
+              lib/order-bys)))
+  (is (=? [[:asc {} [:expression {} "expr"]]]
+          (as-> (lib.tu/query-with-expression) $q
+            (lib/order-by $q (lib/expression-ref $q "expr"))
+            (lib/order-by $q (lib/expression-ref $q "expr"))
+            (lib/order-bys $q)))))
 
 ;;; the following tests use raw legacy MBQL because they're direct ports of JavaScript tests from MLv1 and I wanted to
 ;;; make sure that given an existing query the expected description was generated correctly.
@@ -184,7 +179,8 @@
                   :table-id           (meta/id :venues)
                   :name               "CATEGORY_ID"
                   :has-field-values   :none
-                  :lib/source         :source/breakouts
+                  :lib/source         :source/table-defaults
+                  :lib/breakout?      true
                   :fk-target-field-id (meta/id :categories :id)
                   :effective-type     :type/Integer
                   :id                 (meta/id :venues :category-id)
@@ -208,11 +204,13 @@
                     (lib/expression "Category ID + 1"  (lib/+ (meta/field-metadata :venues :category-id) 1))
                     (lib/breakout [:expression {:lib/uuid (str (random-uuid))} "Category ID + 1"]))]
       (testing (lib.util/format "Query =\n%s" (u/pprint-to-str query))
-        (is (=? [{:lib/type     :metadata/column
-                  :name         "Category ID + 1"
-                  :display-name "Category ID + 1"
-                  :base-type    :type/Integer
-                  :lib/source   :source/breakouts}]
+        (is (=? [{:lib/type            :metadata/column
+                  :name                "Category ID + 1"
+                  :display-name        "Category ID + 1"
+                  :base-type           :type/Integer
+                  :lib/source          :source/expressions
+                  :lib/expression-name "Category ID + 1"
+                  :lib/breakout?       true}]
                 (lib/orderable-columns query)))))))
 
 (deftest ^:parallel order-by-breakout-expression-test
@@ -234,69 +232,63 @@
 (deftest ^:parallel orderable-columns-test
   (let [query (lib.tu/venues-query)]
     (testing (lib.util/format "Query =\n%s" (u/pprint-to-str query))
-      (is (=? [{:lib/type                 :metadata/column
-                :name                     "ID"
-                :display-name             "ID"
-                :id                       (meta/id :venues :id)
-                :table-id                 (meta/id :venues)
-                :base-type                :type/BigInteger
-                :lib/source-column-alias  "ID"
-                :lib/desired-column-alias "ID"}
-               {:lib/type                 :metadata/column
-                :name                     "NAME"
-                :display-name             "Name"
-                :id                       (meta/id :venues :name)
-                :table-id                 (meta/id :venues)
-                :base-type                :type/Text
-                :lib/source-column-alias  "NAME"
-                :lib/desired-column-alias "NAME"}
-               {:lib/type                 :metadata/column
-                :name                     "CATEGORY_ID"
-                :display-name             "Category ID"
-                :id                       (meta/id :venues :category-id)
-                :table-id                 (meta/id :venues)
-                :lib/source-column-alias  "CATEGORY_ID"
-                :lib/desired-column-alias "CATEGORY_ID"}
-               {:lib/type                 :metadata/column
-                :name                     "LATITUDE"
-                :display-name             "Latitude"
-                :id                       (meta/id :venues :latitude)
-                :table-id                 (meta/id :venues)
-                :base-type                :type/Float
-                :lib/source-column-alias  "LATITUDE"
-                :lib/desired-column-alias "LATITUDE"}
-               {:lib/type                 :metadata/column
-                :name                     "LONGITUDE"
-                :display-name             "Longitude"
-                :id                       (meta/id :venues :longitude)
-                :table-id                 (meta/id :venues)
-                :base-type                :type/Float
-                :lib/source-column-alias  "LONGITUDE"
-                :lib/desired-column-alias "LONGITUDE"}
-               {:lib/type                 :metadata/column
-                :name                     "PRICE"
-                :display-name             "Price"
-                :id                       (meta/id :venues :price)
-                :table-id                 (meta/id :venues)
-                :base-type                :type/Integer
-                :lib/source-column-alias  "PRICE"
-                :lib/desired-column-alias "PRICE"}
-               {:lib/type                 :metadata/column
-                :name                     "ID"
-                :display-name             "ID"
-                :id                       (meta/id :categories :id)
-                :table-id                 (meta/id :categories)
-                :base-type                :type/BigInteger
-                :lib/source-column-alias  "ID"
-                :lib/desired-column-alias "CATEGORIES__via__CATEGORY_ID__ID"}
-               {:lib/type                 :metadata/column
-                :name                     "NAME"
-                :display-name             "Name"
-                :id                       (meta/id :categories :name)
-                :table-id                 (meta/id :categories)
-                :base-type                :type/Text
-                :lib/source-column-alias  "NAME"
-                :lib/desired-column-alias "CATEGORIES__via__CATEGORY_ID__NAME"}]
+      (is (=? [{:lib/type                :metadata/column
+                :name                    "ID"
+                :display-name            "ID"
+                :id                      (meta/id :venues :id)
+                :table-id                (meta/id :venues)
+                :base-type               :type/BigInteger
+                :lib/source-column-alias "ID"}
+               {:lib/type                :metadata/column
+                :name                    "NAME"
+                :display-name            "Name"
+                :id                      (meta/id :venues :name)
+                :table-id                (meta/id :venues)
+                :base-type               :type/Text
+                :lib/source-column-alias "NAME"}
+               {:lib/type                :metadata/column
+                :name                    "CATEGORY_ID"
+                :display-name            "Category ID"
+                :id                      (meta/id :venues :category-id)
+                :table-id                (meta/id :venues)
+                :lib/source-column-alias "CATEGORY_ID"}
+               {:lib/type                :metadata/column
+                :name                    "LATITUDE"
+                :display-name            "Latitude"
+                :id                      (meta/id :venues :latitude)
+                :table-id                (meta/id :venues)
+                :base-type               :type/Float
+                :lib/source-column-alias "LATITUDE"}
+               {:lib/type                :metadata/column
+                :name                    "LONGITUDE"
+                :display-name            "Longitude"
+                :id                      (meta/id :venues :longitude)
+                :table-id                (meta/id :venues)
+                :base-type               :type/Float
+                :lib/source-column-alias "LONGITUDE"}
+               {:lib/type                :metadata/column
+                :name                    "PRICE"
+                :display-name            "Price"
+                :id                      (meta/id :venues :price)
+                :table-id                (meta/id :venues)
+                :base-type               :type/Integer
+                :lib/source-column-alias "PRICE"}
+               {:lib/type                :metadata/column
+                :name                    "ID"
+                :display-name            "ID"
+                :id                      (meta/id :categories :id)
+                :table-id                (meta/id :categories)
+                :base-type               :type/BigInteger
+                :lib/source-column-alias "ID"
+                :fk-field-id             (meta/id :venues :category-id)}
+               {:lib/type                :metadata/column
+                :name                    "NAME"
+                :display-name            "Name"
+                :id                      (meta/id :categories :name)
+                :table-id                (meta/id :categories)
+                :base-type               :type/Text
+                :lib/source-column-alias "NAME"
+                :fk-field-id             (meta/id :venues :category-id)}]
               (lib/orderable-columns query))))))
 
 (deftest ^:parallel orderable-expressions-test
@@ -376,31 +368,26 @@
       (is (=? [{:name                     "USER_ID"
                 :display-name             "User ID"
                 :base-type                :type/Integer
-                :lib/source               :source/card
-                :lib/desired-column-alias "USER_ID"}
+                :lib/source               :source/card}
                {:name                     "count"
                 :display-name             "Count"
                 :base-type                :type/Integer
-                :lib/source               :source/card
-                :lib/desired-column-alias "count"}
+                :lib/source               :source/card}
                ;; Implicitly joinable columns
                {:name                     "ID"
                 :display-name             "ID"
                 :base-type                :type/BigInteger
                 :lib/source               :source/implicitly-joinable
-                :lib/desired-column-alias "USERS__via__USER_ID__ID"
                 :fk-field-id              (meta/id :checkins :user-id)}
                {:name                     "NAME"
                 :display-name             "Name"
                 :base-type                :type/Text
                 :lib/source               :source/implicitly-joinable
-                :lib/desired-column-alias "USERS__via__USER_ID__NAME"
                 :fk-field-id              (meta/id :checkins :user-id)}
                {:name                     "LAST_LOGIN"
                 :display-name             "Last Login"
                 :base-type                :type/DateTime
                 :lib/source               :source/implicitly-joinable
-                :lib/desired-column-alias "USERS__via__USER_ID__LAST_LOGIN"
                 :fk-field-id              (meta/id :checkins :user-id)}]
               (lib/orderable-columns query)))
       (testing `lib/display-info
@@ -811,6 +798,27 @@
         (testing "description"
           (is (= "Venues, Sorted by expr ascending"
                  (lib/describe-query updated-query))))))))
+
+(deftest ^:parallel order-by-ignore-duplicates-test
+  (testing "lib/order-by should ignore the new order by if a duplicate already exists (QUE-1604)"
+    (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+                    (lib/order-by (meta/field-metadata :venues :id))
+                    (lib/order-by (meta/field-metadata :venues :name)))]
+      (is (=? {:stages [{:order-by [[:asc {} [:field {} (meta/id :venues :id)]]
+                                    [:asc {} [:field {} (meta/id :venues :name)]]]}]}
+              query))
+      (testing "ignore duplicate order by with same direction"
+        (let [query' (-> query
+                         ;; should be a no-op
+                         (lib/order-by (meta/field-metadata :venues :id)))]
+          (is (= query
+                 query'))))
+      (testing "ignore duplicate order by with different direction"
+        (let [query' (-> query
+                         ;; should be a no-op
+                         (lib/order-by (meta/field-metadata :venues :id) :desc))]
+          (is (= query
+                 query')))))))
 
 (deftest ^:parallel orderable-columns-display-info-test
   (let [query (lib.tu/venues-query)]

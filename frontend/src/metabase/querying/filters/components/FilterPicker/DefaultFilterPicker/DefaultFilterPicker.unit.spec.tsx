@@ -32,12 +32,14 @@ function setup({
 
   renderWithProviders(
     <DefaultFilterPicker
+      autoFocus
       query={query}
       stageIndex={stageIndex}
       column={column}
       filter={filter}
       isNew={!filter}
       withAddButton={withAddButton}
+      withSubmitButton
       onChange={onChange}
       onBack={onBack}
     />,

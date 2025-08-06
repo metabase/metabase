@@ -1,5 +1,5 @@
 import { getLocalizationNoticeText } from "metabase/common/components/CommunityLocalizationNotice";
-import LogoIcon from "metabase/components/LogoIcon";
+import LogoIcon from "metabase/common/components/LogoIcon";
 import { useSelector } from "metabase/lib/redux";
 import { getIsEmbeddingUseCase, getSteps } from "metabase/setup/selectors";
 import type { SetupStep } from "metabase/setup/types";

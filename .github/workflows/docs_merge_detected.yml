@@ -1,35 +1,43 @@
 name: Docs Merge Detected
 
 on:
-  push:
+  pull_request:
+    types:
+      - closed
     branches:
-      - master
+      - 'master'
+      - 'release-x.[0-9]+.x'
     paths:
       - 'docs/**'
 
 jobs:
-  push_workflow_to_docs_metabase_github_io_job_merge:
+  push_and_merge_workflow_to_docs_metabase_github_io_job:
+    if: github.event.pull_request.merged == true
     runs-on: ubuntu-latest
+    env:
+      SOURCE_BRANCH: ${{ github.head_ref || github.ref  }}
+      TARGET_BRANCH: ${{ github.event.pull_request.base.ref }}
+      PR_NUMBER: ${{ github.event.pull_request.number }}
     steps:
       - name: Report changed docs files exist
         run: |
-          echo "A change in the docs directory was detected on merge."
+          echo "A PR with changes to the docs directory was merged."
+          echo "Sending workflow trigger to merge corresponding PR in docs repo."
+          echo "source branch: $SOURCE_BRANCH"
+          echo "target branch: $TARGET_BRANCH"
+          echo "pr number: $PR_NUMBER"
 
       - name: Trigger repo dispatch
         uses: actions/github-script@v7
-        env:
-          BRANCH_NAME: ${{ github.head_ref || github.ref  }}
         with:
           github-token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
           script: | #js
-            if (process.env.BRANCH_NAME === "master" ||
-                /^release-x\.\d+\.x$/.test(process.env.BRANCH_NAME)) {
-              github.rest.repos.createDispatchEvent({
+            github.rest.repos.createDispatchEvent({
                 owner: "${{ github.repository_owner }}",
                 repo: "docs.metabase.github.io",
                 event_type: "docs_merge",
-                client_payload: { branch_name: process.env.BRANCH_NAME }
-              });
-            } else {
-              console.log("Branch name is not to be published: ", process.env.BRANCH_NAME);
-            }
+                client_payload: {
+                  dispatch_type: "docs_merge",
+                  source_branch: process.env.SOURCE_BRANCH,
+                  target_branch: process.env.TARGET_BRANCH,
+                  pr_number: process.env.PR_NUMBER}});

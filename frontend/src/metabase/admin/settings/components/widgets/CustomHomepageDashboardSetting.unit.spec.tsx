@@ -10,7 +10,7 @@ import {
   setupUpdateSettingEndpoint,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import { UndoListing } from "metabase/containers/UndoListing";
+import { UndoListing } from "metabase/common/components/UndoListing";
 import {
   createMockDashboard,
   createMockRecentCollectionItem,
@@ -86,7 +86,7 @@ const setup = (
 describe("CustomHomepageDashboardSetting", () => {
   it("should render a Custom homepage toggle", async () => {
     setup();
-    expect(await screen.findByText("Custom Homepage")).toBeInTheDocument();
+    expect(await screen.findByText("Custom homepage")).toBeInTheDocument();
     expect(
       await screen.findByText(/Pick one of your dashboards/),
     ).toBeInTheDocument();

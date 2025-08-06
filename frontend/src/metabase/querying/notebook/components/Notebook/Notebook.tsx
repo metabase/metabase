@@ -1,4 +1,4 @@
-import type { DataPickerValue } from "metabase/common/components/DataPicker";
+import type { DataPickerValue } from "metabase/common/components/Pickers/DataPicker";
 import { useDispatch } from "metabase/lib/redux";
 import { setUIControls } from "metabase/query_builder/actions";
 import { Box } from "metabase/ui";

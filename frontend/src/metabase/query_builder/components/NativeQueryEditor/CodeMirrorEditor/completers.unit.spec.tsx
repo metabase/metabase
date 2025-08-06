@@ -6,7 +6,7 @@ import { EditorState } from "@codemirror/state";
 import fetchMock from "fetch-mock";
 
 import { mockSettings } from "__support__/settings";
-import { act, renderWithProviders, waitFor } from "__support__/ui";
+import { renderWithProviders, waitFor } from "__support__/ui";
 import { isNotNull } from "metabase/lib/types";
 import type {
   AutocompleteMatchStyle,
@@ -43,27 +43,26 @@ function completer(
     storeInitialState: state,
   });
 
-  return (doc: string) =>
-    act(function () {
-      if (!completer) {
-        return null;
-      }
+  return (doc: string) => {
+    if (!completer) {
+      return null;
+    }
 
-      const cur = doc.indexOf("|");
-      if (cur === -1) {
-        throw new Error("Please use | to indicate the position of the cursor");
-      }
+    const cur = doc.indexOf("|");
+    if (cur === -1) {
+      throw new Error("Please use | to indicate the position of the cursor");
+    }
 
-      doc = doc.slice(0, cur) + doc.slice(cur + 1);
+    doc = doc.slice(0, cur) + doc.slice(cur + 1);
 
-      const state = EditorState.create({
-        doc,
-        selection: { anchor: cur },
-      });
-
-      const ctx = new CompletionContext(state, cur, false);
-      return completer(ctx);
+    const state = EditorState.create({
+      doc,
+      selection: { anchor: cur },
     });
+
+    const ctx = new CompletionContext(state, cur, false);
+    return completer(ctx);
+  };
 }
 
 describe("useSchemaCompletion", () => {

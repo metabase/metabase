@@ -1,6 +1,7 @@
 (ns metabase.driver.sql-jdbc
   "Shared code for drivers for SQL databases using their respective JDBC drivers under the hood."
   (:require
+   [clojure.core.memoize :as memoize]
    [clojure.java.jdbc :as jdbc]
    [honey.sql :as sql]
    [metabase.driver :as driver]
@@ -81,7 +82,8 @@
 
 (defmethod driver/notify-database-updated :sql-jdbc
   [_ database]
-  (sql-jdbc.conn/invalidate-pool-for-db! database))
+  (sql-jdbc.conn/invalidate-pool-for-db! database)
+  (memoize/memo-clear! driver-api/secret-value-as-file!))
 
 (defmethod driver/dbms-version :sql-jdbc
   [driver database]
@@ -227,8 +229,14 @@
 
 (defmethod driver/syncable-schemas :sql-jdbc
   [driver database]
-  (let [[inclusion-patterns exclusion-patterns] (driver.s/db-details->schema-filter-patterns database)]
-    (sql-jdbc.sync/filtered-syncable-schemas driver database inclusion-patterns exclusion-patterns)))
+  (sql-jdbc.execute/do-with-connection-with-options
+   driver
+   database
+   nil
+   (fn [^java.sql.Connection conn]
+     (let [[inclusion-patterns
+            exclusion-patterns] (driver.s/db-details->schema-filter-patterns database)]
+       (into #{} (sql-jdbc.sync/filtered-syncable-schemas driver conn (.getMetaData conn) inclusion-patterns exclusion-patterns))))))
 
 (defmethod driver/set-role! :sql-jdbc
   [driver conn role]

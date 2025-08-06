@@ -8,7 +8,7 @@ import { AUTH_PROVIDER_URL } from "e2e/support/helpers";
 import { visitFullAppEmbeddingUrl } from "e2e/support/helpers/e2e-embedding-helpers";
 import {
   EMBEDDING_SDK_STORY_HOST,
-  getSdkRoot,
+  getStorybookSdkRoot,
 } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
 import {
   JWT_SHARED_SECRET,
@@ -21,7 +21,7 @@ describe("scenarios > embedding-sdk > static-dashboard", () => {
   beforeEach(() => {
     H.restore();
     cy.signIn("admin", { skipCache: true });
-    H.setTokenFeatures("all");
+    H.activateToken("pro-self-hosted");
     enableJwtAuth();
 
     const textCard = H.getTextCardDetails({ col: 16, text: "Text text card" });
@@ -81,7 +81,7 @@ describe("scenarios > embedding-sdk > static-dashboard", () => {
       });
     });
 
-    getSdkRoot().within(() => {
+    getStorybookSdkRoot().within(() => {
       cy.findByText(
         "Unable to connect to instance at http://localhost:4000",
       ).should("be.visible");
@@ -112,7 +112,7 @@ describe("scenarios > embedding-sdk > static-dashboard", () => {
       expect(response?.statusCode).to.equal(200);
     });
 
-    getSdkRoot().within(() => {
+    getStorybookSdkRoot().within(() => {
       cy.findByText("Embedding Sdk Test Dashboard").should("be.visible"); // dashboard title
 
       cy.findByText("Text text card").should("be.visible"); // text card content
@@ -141,7 +141,7 @@ describe("scenarios > embedding-sdk > static-dashboard", () => {
       });
     });
 
-    getSdkRoot().within(() => {
+    getStorybookSdkRoot().within(() => {
       cy.findByText(
         "Unable to connect to instance at http://localhost:4000",
       ).should("be.visible");
@@ -173,7 +173,7 @@ describe("scenarios > embedding-sdk > static-dashboard", () => {
       expect(response?.statusCode).to.equal(200);
     });
 
-    getSdkRoot().within(() => {
+    getStorybookSdkRoot().within(() => {
       cy.findByText("Embedding Sdk Test Dashboard").should("be.visible"); // dashboard title
 
       cy.findByText("Text text card").should("be.visible"); // text card content

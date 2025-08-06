@@ -2,12 +2,12 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import {
+  findRequests,
   setupPropertiesEndpoints,
   setupSettingsEndpoints,
   setupUpdateSettingsEndpoint,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, within } from "__support__/ui";
-import { findRequests } from "__support__/utils";
 import { createMockGroup, createMockSettings } from "metabase-types/api/mocks";
 
 import { type JWTFormValues, SettingsJWTForm } from "./SettingsJWTForm";
@@ -44,6 +44,7 @@ describe("SettingsJWTForm", () => {
     "jwt-attribute-email": "john@example.com",
     "jwt-attribute-firstname": "John",
     "jwt-attribute-lastname": "Doe",
+    "jwt-attribute-groups": "grouper",
     "jwt-enabled": true,
     "jwt-group-sync": true,
   };
@@ -72,6 +73,12 @@ describe("SettingsJWTForm", () => {
     await userEvent.type(
       await screen.findByRole("textbox", { name: /Last name attribute/ }),
       ATTRS["jwt-attribute-lastname"],
+    );
+    await userEvent.type(
+      await screen.findByRole("textbox", {
+        name: /Group assignment attribute/,
+      }),
+      ATTRS["jwt-attribute-groups"],
     );
     const groupSchema = await screen.findByTestId("jwt-group-schema");
     await userEvent.click(within(groupSchema).getByRole("switch")); // checkbox for "jwt-group-sync"

@@ -5,6 +5,7 @@ import {
   setupPropertiesEndpoints,
   setupSettingsEndpoints,
   setupUpdateSettingEndpoint,
+  setupUserKeyValueEndpoints,
 } from "__support__/server-mocks";
 import { fireEvent, renderWithProviders, screen } from "__support__/ui";
 import { createMockSettings } from "metabase-types/api/mocks";
@@ -19,6 +20,11 @@ const setup = async ({ enabled }: { enabled: boolean }) => {
   setupPropertiesEndpoints(settings);
   setupSettingsEndpoints([]);
   setupUpdateSettingEndpoint();
+  setupUserKeyValueEndpoints({
+    namespace: "user_acknowledgement",
+    key: "upsell-dev_instances",
+    value: true,
+  });
 
   renderWithProviders(<InteractiveEmbeddingSettings />);
 
@@ -30,13 +36,13 @@ describe("InteractiveEmbeddingSettings", () => {
     await setup({ enabled: true });
 
     expect(
-      await screen.findByText("Enable Interactive embedding"),
+      await screen.findByText("Enable interactive embedding"),
     ).toBeInTheDocument();
   });
 
   it("should toggle interactive embedding on", async () => {
     await setup({ enabled: false });
-    const toggle = await screen.findByText("Enable Interactive embedding");
+    const toggle = await screen.findByText("Enable interactive embedding");
 
     await userEvent.click(toggle);
     const puts = await findRequests("PUT");

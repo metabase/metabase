@@ -136,6 +136,7 @@
    :has_sample_data                      (t2/exists? :model/Database, :is_sample true)
    :enable_embedding                     #_{:clj-kondo/ignore [:deprecated-var]} (setting/get :enable-embedding)
    :enable_embedding_sdk                 (setting/get :enable-embedding-sdk)
+   :enable_embedding_simple              (setting/get :enable-embedding-simple)
    :enable_embedding_interactive         (setting/get :enable-embedding-interactive)
    :enable_embedding_static              (setting/get :enable-embedding-static)
    :embedding_app_origin_set             (boolean
@@ -821,6 +822,9 @@
    {:name      :config-text-file
     :available (premium-features/enable-config-text-file?)
     :enabled   (some? (get env/env :mb-config-file-path))}
+   {:name      :content-translation
+    :available (premium-features/enable-content-translation?)
+    :enabled   (premium-features/enable-content-translation?)}
    {:name      :content-verification
     :available (premium-features/enable-content-verification?)
     :enabled   (t2/exists? :model/ModerationReview)}
@@ -845,6 +849,9 @@
    {:name      :metabot-v3
     :available (premium-features/enable-metabot-v3?)
     :enabled   (premium-features/enable-metabot-v3?)}
+   {:name      :ai-entity-analysis
+    :available (premium-features/enable-ai-entity-analysis?)
+    :enabled   (premium-features/enable-ai-entity-analysis?)}
    {:name      :ai-sql-fixer
     :available (premium-features/enable-ai-sql-fixer?)
     :enabled   (premium-features/enable-ai-sql-fixer?)}
@@ -858,7 +865,10 @@
     :available true
     :enabled   (->> (t2/select-fn-set (comp :impersonation :details) :model/Database :engine "starburst")
                     (some identity)
-                    boolean)}])
+                    boolean)}
+   {:name      :table-data-editing
+    :available (premium-features/table-data-editing?)
+    :enabled   (premium-features/table-data-editing?)}])
 
 (defn- snowplow-features
   []

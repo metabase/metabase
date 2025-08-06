@@ -4,8 +4,8 @@ import { useFormik } from "formik";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 
-import List from "metabase/components/List";
-import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
+import List from "metabase/common/components/List";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
 import { connect } from "metabase/lib/redux";
 import * as metadataActions from "metabase/redux/metadata";

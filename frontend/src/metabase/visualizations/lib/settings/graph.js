@@ -702,7 +702,7 @@ export const GRAPH_AXIS_SETTINGS = {
       return t`X-axis`;
     },
     get title() {
-      return t`Show lines and marks`;
+      return t`Show lines and tick marks`;
     },
     index: 3,
     widget: "select",
@@ -747,7 +747,7 @@ export const GRAPH_AXIS_SETTINGS = {
       return t`Axes`;
     },
     get title() {
-      return t`Show lines and marks`;
+      return t`Show lines and tick marks`;
     },
     index: 9,
     get group() {
@@ -918,7 +918,7 @@ export const GRAPH_AXIS_SETTINGS = {
       return t`Y-axis`;
     },
     get title() {
-      return t`Number of lines`;
+      return t`Number of tick marks`;
     },
     widget: "number",
     placeholder: "auto",

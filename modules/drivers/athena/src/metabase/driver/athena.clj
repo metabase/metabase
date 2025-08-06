@@ -46,7 +46,8 @@
                               :expression-literals           true
                               :identifiers-with-spaces       false
                               :metadata/key-constraints      false
-                              :test/jvm-timezone-setting     false}]
+                              :test/jvm-timezone-setting     false
+                              :database-routing              false}]
   (defmethod driver/database-supports? [:athena feature] [_driver _feature _db] supported?))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -308,6 +309,10 @@
 (defmethod sql.qp/cast-temporal-string [:athena :Coercion/ISO8601->Time]
   [_driver _semantic-type expr]
   (h2x/->time expr))
+
+(defmethod sql.qp/cast-temporal-string [:athena :Coercion/YYYYMMDDHHMMSSString->Temporal]
+  [_driver _coercion-strategy expr]
+  [:date_parse expr (h2x/literal "%Y%m%d%H%i%S")])
 
 (defmethod sql.qp/->honeysql [:athena :datetime-diff]
   [driver [_ x y unit]]

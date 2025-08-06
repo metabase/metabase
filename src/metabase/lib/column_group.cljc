@@ -89,7 +89,7 @@
   (merge
    (or
     (when join-alias
-      (when-let [join (lib.join/resolve-join query stage-number join-alias)]
+      (when-let [join (lib.join/maybe-resolve-join query stage-number join-alias)]
         (lib.metadata.calculation/display-info query stage-number join)))
     (when table-id
       (when-let [table (lib.metadata/table query table-id)]
@@ -141,7 +141,7 @@
    :fk-join-alias (:fk-join-alias column-metadata)})
 
 (defmethod column-group-info-method :source/joins
-  [{:keys [table-id], :lib/keys [card-id], :as column-metadata}]
+  [{:keys [table-id], card-id :lib/card-id, :as column-metadata}]
   (merge
    {::group-type :group-type/join.explicit}
    ;; if we're in the process of BUILDING a join and using this in combination

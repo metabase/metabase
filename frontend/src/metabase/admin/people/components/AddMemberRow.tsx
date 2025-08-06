@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { useListUsersQuery } from "metabase/api";
-import UserAvatar from "metabase/components/UserAvatar";
+import UserAvatar from "metabase/common/components/UserAvatar";
 import { Flex, Pill, Popover, Text, UnstyledButton } from "metabase/ui";
 import type { Member, User } from "metabase-types/api";
 

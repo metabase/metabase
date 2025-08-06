@@ -1,8 +1,7 @@
 import { t } from "ttag";
 
 import PinnedItemCard from "metabase/collections/components/PinnedItemCard";
-import { Box, Text } from "metabase/ui";
-import { Repeat } from "metabase/ui/components/feedback/Skeleton/Repeat";
+import { Box, Repeat, Text } from "metabase/ui";
 import type { RecentCollectionItem } from "metabase-types/api";
 
 import { RecentModelsGrid } from "./RecentModels.styled";

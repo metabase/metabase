@@ -60,8 +60,7 @@
         query
         stage-number
         (lib.util/query-stage query stage-number)
-        {:unique-name-fn                               (lib.util/unique-name-generator)
-         :include-joined?                              false
+        {:include-joined?                              false
          :include-expressions?                         false
          :include-implicitly-joinable?                 false
          :include-implicitly-joinable-for-source-card? false})
@@ -105,7 +104,7 @@
 (mu/defn- card-sourced-name-based-breakout-column? :- :boolean
   [query  :- ::lib.schema/query
    column :- ::lib.schema.metadata/column]
-  (let [breakout-sourced? (= :source/breakouts (:lib/source column))
+  (let [breakout-sourced? (boolean (:lib/breakout? column))
         card-sourced? (boolean (lib.util/source-card-id query))
         has-id? (boolean (:id column))]
     (and breakout-sourced? card-sourced? (not has-id?))))
@@ -113,7 +112,7 @@
 (mu/defn- possible-model-mapped-breakout-column? :- :boolean
   [query  :- ::lib.schema/query
    column :- ::lib.schema.metadata/column]
-  (let [breakout-sourced? (= :source/breakouts (:lib/source column))
+  (let [breakout-sourced? (boolean (:lib/breakout? column))
         model-sourced? (lib.card/source-card-is-model? query)
         has-id? (boolean (:id column))]
     (and breakout-sourced? model-sourced? has-id?)))
@@ -121,14 +120,14 @@
 (mu/defn- possible-expression-breakout-column? :- :boolean
   [query  :- ::lib.schema/query
    column :- ::lib.schema.metadata/column]
-  (let [breakout-sourced?   (= :source/breakouts (:lib/source column))
+  (let [breakout-sourced?   (boolean (:lib/breakout? column))
         has-id?             (boolean (:id column))
         matching-expression (lib.expression/maybe-resolve-expression query -1 (:name column))]
     (and breakout-sourced? (boolean matching-expression) (not has-id?))))
 
 (mu/defn- day-bucketed-breakout-column? :- :boolean
   [column :- ::lib.schema.metadata/column]
-  (let [breakout-sourced? (= :source/breakouts (:lib/source column))
+  (let [breakout-sourced? (boolean (:lib/breakout? column))
         day-bucketed? (= (:metabase.lib.field/temporal-unit column) :day)]
     (and breakout-sourced? day-bucketed?)))
 
@@ -157,10 +156,10 @@
    ;; If a breakout-sourced column comes from a model based on a native query that renames the column with an "AS"
    ;; alias, AND where the column has been mapped to a real DB field, then we can't use the breakout column directly
    ;; and must instead lookup the equivalent "resolved" column metadata. This results in a (hopefully) equivalent
-   ;; column where the :lib/source is no longer :source/breakouts, but rather :source/card, which allows
-   ;; column-metadata->field-ref to recognize that it needs to generate a named-based ref. This is required because an
-   ;; id-based ref will wind up generating SQL that matches the underlying mapped column's name, not the name of the
-   ;; column from the model's native query (which was renamed via "AS").
+   ;; column where `:lib/breakout?` is no longer true, and the `:lib/source` is now `:source/card`, which
+   ;; allows [[metabase.lib.field/column-metadata->field-ref]] to recognize that it needs to generate a named-based
+   ;; ref. This is required because an id-based ref will wind up generating SQL that matches the underlying mapped
+   ;; column's name, not the name of the column from the model's native query (which was renamed via "AS").
    ;;
    ;; When a breakout column is bucketed by day, it is cast to type/Date. If we create filters for such a column,
    ;; the QP will assume that there is no time component and, for example, it can generate a simple equality clause

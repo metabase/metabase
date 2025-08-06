@@ -60,7 +60,7 @@ If you need to use a certificate, connect via the [default method](#using-metaba
 
 ### Whitelist IP addresses
 
-If you are using Metabase Cloud, you'll need to whitelist [Metabase Cloud IP addresses](https://www.metabase.com/docs/latest/cloud/ip-addresses-to-whitelist) in your Atlas cluster. If you are using self-hosted Metabase, you'll need to whitelist the IP of your Metabase instance.
+If you are using Metabase Cloud, you'll need to whitelist [Metabase Cloud IP addresses](../../cloud/ip-addresses-to-whitelist.md) in your Atlas cluster. If you are using self-hosted Metabase, you'll need to whitelist the IP of your Metabase instance.
 
 1. Log into your [Atlas cluster](https://cloud.mongodb.com)
 2. Go to **Network Access**
@@ -114,7 +114,7 @@ Learn more about [configuring SSL with MongoDB](http://mongodb.github.io/mongo-j
 
 ## How Metabase syncs data in MongoDB
 
-Because MongoDB contains unstructured data, Metabase takes a different approach to syncing your database's metadata. To get a sense of the schema, Metabase will query the first and last 500 documents (most of the calculation is done in MongoDB). This sampling helps Metabase do things like differentiate datetime fields from string fields, and provide people with pre-populated filters. The reason Metabase only scans a sample of the documents is because scanning every document in every collection on every sync would put too much strain on your database. And while the sampling does a pretty good job keeping Metabase up to date, it can also mean that new fields can sometimes fall through the cracks, leading to visualization issues, or even fields failing to appear in your results. For more info, check out our [troubleshooting guide](../../troubleshooting-guide/db-connection.md).
+Because MongoDB contains unstructured data, Metabase takes a different approach to syncing your database's metadata. To get a sense of the schema, Metabase will query the first and last 500 documents (most of the calculation is done in MongoDB). This sampling helps Metabase do things like differentiate datetime fields from string fields, and provide people with pre-populated filters. Metabase also syncs 1,000 leaf fields (fields at the deepest nesting level) per MongoDB collection. The reason Metabase only scans a sample of the documents is because scanning every document in every collection on every sync would put too much strain on your database. And while the sampling does a pretty good job keeping Metabase up to date, it can also mean that new fields can sometimes fall through the cracks, leading to visualization issues, or even fields failing to appear in your results. For more info, check out our [troubleshooting guide](../../troubleshooting-guide/db-connection.md).
 
 ## General connectivity concerns
 

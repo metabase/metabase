@@ -21,7 +21,7 @@
    data))
 
 (deftest seed-notification!-is-idempotent
-  (mt/with-empty-h2-app-db
+  (mt/with-empty-h2-app-db!
     (let [get-notifications-data #(-> (t2/select :model/Notification)
                                       models.notification/hydrate-notification
                                       nullify-timestamp)

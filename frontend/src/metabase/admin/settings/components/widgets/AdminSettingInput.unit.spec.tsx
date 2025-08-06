@@ -12,7 +12,7 @@ import {
   screen,
   waitFor,
 } from "__support__/ui";
-import { UndoListing } from "metabase/containers/UndoListing";
+import { UndoListing } from "metabase/common/components/UndoListing";
 import type { SettingKey } from "metabase-types/api";
 import {
   createMockSettingDefinition,

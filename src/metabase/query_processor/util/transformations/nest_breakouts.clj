@@ -43,6 +43,8 @@
                       lib.util/fresh-uuids
                       (fields-used-in-breakouts-aggregations-or-expressions stage)))))
 
+;;; TODO (Cam 7/7/25) -- update this to use [[metabase.lib.field.util/update-keys-for-col-from-previous-stage]] instead
+;;; of its own weird bespoke version of the same thing.
 (mu/defn- update-metadata-from-previous-stage-to-produce-correct-ref-in-current-stage :- ::lib.schema.metadata/column
   "Force a `[:field {} <name>]` ref. Must manually escape field refs here, since `escape-join-aliases` mw is already run."
   [col :- ::lib.schema.metadata/column]
@@ -58,10 +60,8 @@
                                   ;; for other columns: remove temporal type, it should be nil anyway but remove it to
                                   ;; be safe.
                                   nil))
-      (lib/with-binning nil)))
-
-(defn- copy-ident [to from]
-  (lib.options/update-options to m/assoc-some :ident (lib.options/ident from)))
+      (lib/with-binning nil)
+      (dissoc :lib/expression-name)))
 
 (mu/defn- update-second-stage-refs :- ::lib.schema/stage
   [stage            :- ::lib.schema/stage
@@ -73,8 +73,7 @@
       (-> col
           update-metadata-from-previous-stage-to-produce-correct-ref-in-current-stage
           lib/ref
-          (cond-> (:lib/external-remap col) (lib.options/update-options assoc ::externally-remapped-field true))
-          (cond-> (some #{:breakout} &parents) (copy-ident &match)))
+          (cond-> (:lib/external-remap col) (lib.options/update-options assoc ::externally-remapped-field true)))
       (lib.util/fresh-uuids &match))))
 
 (def ^:private granularity
@@ -145,9 +144,9 @@
                            breakouts)
           explicit-order-bys (vec (:order-by stage))
           explicit-order-by-exprs (set (for [[_dir _opts col-ref] explicit-order-bys]
-                                         (lib.schema.util/remove-randomized-idents col-ref)))
+                                         (lib.schema.util/remove-lib-uuids col-ref)))
           order-bys (into explicit-order-bys
-                          (comp (map lib.schema.util/remove-randomized-idents)
+                          (comp (map lib.schema.util/remove-lib-uuids)
                                 (remove explicit-order-by-exprs)
                                 (map (fn [expr]
                                        (lib.options/ensure-uuid [:asc (lib.options/ensure-uuid expr)]))))

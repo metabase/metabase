@@ -279,10 +279,8 @@
   "Return a sequence of 'virtual' fields metadata for the 'virtual' table for a Card in the Saved Questions 'virtual'
    database.
   `metadata-fields` can be nil."
-  [card-id database-or-id metadata metadata-fields]
-  (let [db (cond->> database-or-id
-             (int? database-or-id) (t2/select-one :model/Database :id))
-        underlying (m/index-by :id (or metadata-fields
+  [card-id database metadata metadata-fields]
+  (let [underlying (m/index-by :id (or metadata-fields
                                        (when-let [ids (seq (keep :id metadata))]
                                          (-> (t2/select :model/Field :id [:in ids])
                                              (t2/hydrate [:target :has_field_values] :has_field_values :dimensions :name_field)))))
@@ -300,7 +298,7 @@
                       ;; decisions about what kind of dimension options should be added. PK/FK values will be removed
                       ;; after we've added the dimension options
                       :semantic_type (keyword (:semantic_type col)))
-                     (assoc-field-dimension-options db)))]
+                     (assoc-field-dimension-options database)))]
     fields))
 
 (defn root-collection-schema-name
@@ -312,10 +310,13 @@
 (defn card->virtual-table
   "Return metadata for a 'virtual' table for a `card` in the Saved Questions 'virtual' database. Optionally include
   'virtual' fields as well."
-  [{:keys [database_id] :as card} & {:keys [include-fields? databases card-id->metadata-fields]}]
+  [{:keys [database_id] :as card} & {:keys [include-database? include-fields? databases card-id->metadata-fields]}]
   ;; if collection isn't already hydrated then do so
-  (let [card-type (:type card)
-        dataset-query (:dataset_query card)]
+  (let [card-type     (:type card)
+        dataset-query (:dataset_query card)
+        database      (when (int? database_id)
+                        (or (get databases database_id)
+                            (t2/select-one :model/Database :id database_id)))]
     (cond-> {:id               (str "card__" (u/the-id card))
              :db_id            (:database_id card)
              :display_name     (:name card)
@@ -329,10 +330,12 @@
            dataset-query)
       (assoc :dataset_query dataset-query)
 
+      include-database?
+      (assoc :db (when (and database (mi/can-read? database)) database))
+
       include-fields?
       (assoc :fields (card-result-metadata->virtual-fields (u/the-id card)
-                                                           (cond-> database_id
-                                                             databases databases)
+                                                           database
                                                            (:result_metadata card)
                                                            (when card-id->metadata-fields
                                                              (card-id->metadata-fields (u/the-id card))))))))
@@ -353,7 +356,7 @@
 
 (defn batch-fetch-card-query-metadatas
   "Return metadata for the 'virtual' tables for a Cards. Unreadable cards are silently skipped."
-  [ids]
+  [ids {:keys [include-database?]}]
   (when (seq ids)
     (let [cards (t2/select :model/Card
                            {:select    [:c.id :c.dataset_query :c.result_metadata :c.name
@@ -394,7 +397,8 @@
         (let [trust-semantic-keys? (and (= (:type card) :model)
                                         (= (-> card :dataset_query :type) :native))]
           (-> card
-              (card->virtual-table :include-fields? true
+              (card->virtual-table :include-database? include-database?
+                                   :include-fields? true
                                    :databases dbs
                                    :card-id->metadata-fields card-id->metadata-fields)
               (assoc-dimension-options (-> card :database_id dbs))

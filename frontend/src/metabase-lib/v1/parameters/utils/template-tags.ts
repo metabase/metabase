@@ -6,7 +6,6 @@ import type {
   Card,
   Parameter,
   ParameterTarget,
-  ParameterValuesConfig,
   TemplateTag,
 } from "metabase-types/api";
 
@@ -16,28 +15,36 @@ function getParameterType(tag: TemplateTag) {
   }
 
   const { type } = tag;
+
   if (type === "date") {
     return "date/single";
   }
   // @ts-expect-error -- preserving preexisting incorrect types (for now)
-  if (type === "string") {
+  if (type === "string" || type === "text") {
     return "string/=";
   }
   if (type === "number") {
     return "number/=";
   }
+  if (type === "boolean") {
+    return "boolean/=";
+  }
+  if (type === "temporal-unit") {
+    return "temporal-unit";
+  }
+
   return "category";
 }
 
 function getParameterTarget(tag: TemplateTag): ParameterTarget {
-  return tag.type === "dimension"
+  return tag.type === "dimension" || tag.type === "temporal-unit"
     ? ["dimension", ["template-tag", tag.name]]
     : ["variable", ["template-tag", tag.name]];
 }
 
 export function getTemplateTagParameter(
   tag: TemplateTag,
-  config?: ParameterValuesConfig,
+  oldParameter?: Parameter,
 ): ParameterWithTarget {
   return {
     id: tag.id,
@@ -48,9 +55,11 @@ export function getTemplateTagParameter(
     default: tag.default,
     required: tag.required,
     options: tag.options,
-    values_query_type: config?.values_query_type,
-    values_source_type: config?.values_source_type,
-    values_source_config: config?.values_source_config,
+    isMultiSelect: oldParameter?.isMultiSelect ?? tag.type === "dimension",
+    values_query_type: oldParameter?.values_query_type,
+    values_source_type: oldParameter?.values_source_type,
+    values_source_config: oldParameter?.values_source_config,
+    temporal_units: oldParameter?.temporal_units,
   };
 }
 
@@ -68,8 +77,9 @@ export function getTemplateTagParameters(
         tag.type != null &&
         tag.type !== "card" &&
         tag.type !== "snippet" &&
-        ((tag["widget-type"] && tag["widget-type"] !== "none") ||
-          tag.type !== "dimension"),
+        ((tag.type !== "dimension" && tag.type !== "temporal-unit") ||
+          tag.dimension != null ||
+          (tag["widget-type"] && tag["widget-type"] !== "none")),
     )
     .map((tag) => getTemplateTagParameter(tag, parametersById[tag.id]));
 }
@@ -90,9 +100,9 @@ export function getParametersFromCard(
 
   if (card.parameters && !_.isEmpty(card.parameters)) {
     return card.parameters;
-  } else {
-    return getTemplateTagParametersFromCard(card);
   }
+
+  return getTemplateTagParametersFromCard(card);
 }
 
 export function getTemplateTagParametersFromCard(card: Card) {
@@ -103,7 +113,7 @@ export function getTemplateTagParametersFromCard(card: Card) {
 // when navigating from dashboard --> saved native question,
 // we are given dashboard parameters and a map of dashboard parameter ids to parameter values
 // we need to transform this into a map of template tag ids to parameter values
-// so that we popoulate the template tags in the native editor
+// so that we populate the template tags in the native editor
 export function remapParameterValuesToTemplateTags(
   templateTags: TemplateTag[],
   dashboardParameters: ParameterWithTarget[],

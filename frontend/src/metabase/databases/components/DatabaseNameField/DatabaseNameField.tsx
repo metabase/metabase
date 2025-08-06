@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import FormInput from "metabase/core/components/FormInput";
+import FormInput from "metabase/common/components/FormInput";
 import { PLUGIN_DB_ROUTING } from "metabase/plugins";
 import type { Engine } from "metabase-types/api";
 

@@ -401,6 +401,14 @@
   dispatch-on-uninitialized-driver
   :hierarchy #'hierarchy)
 
+(defmulti extra-info
+  "extra driver info"
+  {:added "0.56.0" :arglists '([driver])}
+  dispatch-on-uninitialized-driver
+  :hierarchy #'hierarchy)
+
+(defmethod extra-info ::driver [_] nil)
+
 (defmulti execute-reducible-query
   "Execute a native query against that database and return rows that can be reduced using `transduce`/`reduce`.
 
@@ -600,6 +608,9 @@
     ;; implement [[execute-write-query!]]
     :actions/custom
 
+    ;; Does the driver support editing data within database tables.
+    :actions/data-editing
+
     ;; Does changing the JVM timezone allow producing correct results? (See #27876 for details.)
     :test/jvm-timezone-setting
 
@@ -688,6 +699,12 @@
     ;; Does this driver support casting text to floats? (`float()` custom expression function)
     :expressions/float
 
+    ;; Does this driver support returning the current date? (`today()` custom expression function)
+    :expressions/today
+
+    ;; Does this driver support "temporal-unit" template tags in native queries?
+    :native-temporal-units
+
     ;; Whether the driver supports loading dynamic test datasets on each test run. Eg. datasets with names like
     ;; `checkins:4-per-minute` are created dynamically in each test run. This should be truthy for every driver we test
     ;; against except for Athena and Databricks which currently require test data to be loaded separately.
@@ -699,7 +716,16 @@
 
     ;; For some cloud DBs the test database is never created, and can't or shouldn't be destroyed.
     ;; This is to allow avoiding destroying the test DBs of such cloud DBs.
-    :test/cannot-destroy-db})
+    :test/cannot-destroy-db
+
+    ;; There are drivers that support uuids in queries, but not in create table as eg. Athena.
+    :test/uuids-in-create-table-statements
+
+    ;; Does this driver support Metabase's database routing feature?
+    :database-routing
+
+    ;; Does this driver support replication?
+    :database-replication})
 
 (defmulti database-supports?
   "Does this driver and specific instance of a database support a certain `feature`?
@@ -741,7 +767,8 @@
                               :fingerprint                            true
                               :upload-with-auto-pk                    true
                               :saved-question-sandboxing              true
-                              :test/dynamic-dataset-loading           true}]
+                              :test/dynamic-dataset-loading           true
+                              :test/uuids-in-create-table-statements  true}]
   (defmethod database-supports? [::driver feature] [_driver _feature _db] supported?))
 
 ;;; By default a driver supports `:native-parameter-card-reference` if it supports `:native-parameters` AND
@@ -1327,3 +1354,22 @@
   :hierarchy #'hierarchy)
 
 (defmethod table-known-to-not-exist? ::driver [_ _] false)
+
+(defmulti set-database-used!
+  "Sets the database to be used on a connection. Called prior to query execution for drivers that support USE DATABASE like commands."
+  {:added "0.56.0" :arglists '([driver conn db])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmethod set-database-used! ::driver [_driver _conn _db] nil)
+
+(defmulti do-with-resilient-connection
+  "Execute function `f` within a context that may recover (on-demand) from connection failures.
+  `f` must be eager."
+  {:added "0.55.9" :arglists '([driver database f])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmethod do-with-resilient-connection
+  ::driver
+  [driver database f] (f driver database))

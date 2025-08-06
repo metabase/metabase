@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
 
-import IconButtonWrapper from "metabase/components/IconButtonWrapper";
+import IconButtonWrapper from "metabase/common/components/IconButtonWrapper";
 
 interface HeaderCellProps {
   isSortable?: boolean;

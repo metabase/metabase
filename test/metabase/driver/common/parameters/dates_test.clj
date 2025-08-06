@@ -26,6 +26,11 @@
             [:field "field" {:base-type :type/DateTime, :temporal-unit :day}]
             "2019-04-01"]
            (params.dates/date-string->filter "2019-04-01" [:field "field" {:base-type :type/DateTime}]))))
+  (testing "single minute"
+    (is (= [:=
+            [:field "field" {:base-type :type/DateTime, :temporal-unit :minute}]
+            "2019-04-01T09:33:00"]
+           (params.dates/date-string->filter "2019-04-01T09:33:00" [:field "field" {:base-type :type/DateTime}]))))
   (testing "day range"
     (is (= [:between
             [:field "field" {:base-type :type/DateTime, :temporal-unit :day}]

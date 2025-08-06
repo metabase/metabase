@@ -10,20 +10,22 @@ interface InputContainerProps {
   isEmpty: boolean;
 }
 
+// TODO move this to CSS module
 export const InputContainer = styled.div<InputContainerProps>`
   display: flex;
-  flex-direction: column;
   width: 100%;
   height: 100%;
-  justify-content: center;
+  justify-content: space-between;
+  align-items: center;
   overflow: hidden;
   padding-left: 0.75rem;
+  padding-right: 0.75rem;
   pointer-events: auto;
   border-radius: 8px;
+  border: 1px solid transparent;
 
-  &:hover {
-    /* adjust for border on hover */
-    padding-left: calc(0.75rem - 1px);
+  * {
+    pointer-events: auto;
   }
 
   .${DashboardS.DashCard}:hover &,
@@ -32,7 +34,7 @@ export const InputContainer = styled.div<InputContainerProps>`
   }
 
   .${DashboardS.DashCard}.resizing & {
-    border: 1px solid var(--mb-color-brand);
+    border-color: var(--mb-color-brand);
   }
 
   ${({ isPreviewing, isEmpty }) =>
@@ -48,7 +50,7 @@ export const InputContainer = styled.div<InputContainerProps>`
     `}
 `;
 
-export const TextInput = styled.input`
+const TextInput = styled.input`
   border: none;
   background: none;
   max-height: 100%;
@@ -65,26 +67,21 @@ export const TextInput = styled.input`
   width: 100%;
 `;
 
-export const HeadingContainer = styled.div`
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  justify-content: center;
-  overflow: hidden;
-  padding-left: 0.75rem;
-  width: 100%;
-`;
-
 interface HeadingContentProps {
   isEditing?: boolean;
+  hasFilters?: boolean;
 }
 
+export const HEADING_FONT_SIZE = "1.375rem";
+export const HEADING_FONT_WEIGHT = 700;
+
 export const HeadingContent = styled.h2<HeadingContentProps>`
+  flex: 1;
   max-height: 100%;
-  max-width: 100%;
   overflow-x: hidden;
   overflow-y: auto;
-  font-size: 1.375rem;
+  font-size: ${HEADING_FONT_SIZE};
+  font-weight: ${HEADING_FONT_WEIGHT};
   padding: 0;
   margin: 0.25rem 0;
   pointer-events: all;
@@ -94,4 +91,16 @@ export const HeadingContent = styled.h2<HeadingContentProps>`
     css`
       cursor: text;
     `}
+
+  ${({ hasFilters }) =>
+    hasFilters &&
+    css`
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    `}
+`;
+
+export const HeadingTextInput = styled(TextInput)`
+  flex: 1;
+  text-overflow: ellipsis;
 `;

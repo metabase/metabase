@@ -15,7 +15,7 @@ import {
   waitFor,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-import { BEFORE_UNLOAD_UNSAVED_MESSAGE } from "metabase/hooks/use-before-unload";
+import { BEFORE_UNLOAD_UNSAVED_MESSAGE } from "metabase/common/hooks/use-before-unload";
 import { checkNotNull } from "metabase/lib/types";
 import type { Engine } from "metabase-types/api";
 import {
@@ -35,6 +35,7 @@ const ENGINES_MOCK: Record<string, Engine> = {
     "driver-name": "H2",
     "superseded-by": null,
     source: createMockEngineSource(),
+    "extra-info": null,
   },
   sqlite: {
     "details-fields": [
@@ -44,6 +45,7 @@ const ENGINES_MOCK: Record<string, Engine> = {
     "driver-name": "SQLite",
     "superseded-by": null,
     source: createMockEngineSource(),
+    "extra-info": null,
   },
 };
 

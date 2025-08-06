@@ -11,6 +11,8 @@
    [metabase.lib.binning :as lib.binning]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+   [metabase.lib.normalize :as lib.normalize]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.models.dispatch :as models.dispatch]
    [metabase.models.json-migration :as jm]
@@ -277,17 +279,21 @@
   {:in  json-in
    :out (comp (catch-normalization-exceptions mbql.normalize/normalize-field-ref) json-out-with-keywordization)})
 
+(defn- normalize-result-metadata-column [col]
+  (if (:lib/type col)
+    (lib.normalize/normalize ::lib.schema.metadata/column col)
+    (-> col
+        mbql.normalize/normalize-source-metadata
+        ;; This is necessary, because in the wild, there may be cards created prior to this change.
+        lib.temporal-bucket/ensure-temporal-unit-in-display-name
+        lib.binning/ensure-binning-in-display-name)))
+
 (defn- result-metadata-out
   "Transform the Card result metadata as it comes out of the DB. Convert columns to keywords where appropriate."
   [metadata]
   ;; TODO -- can we make this whole thing a lazy seq?
   (when-let [metadata (not-empty (json-out-with-keywordization metadata))]
-    (not-empty (mapv #(-> %
-                          mbql.normalize/normalize-source-metadata
-                          ;; This is necessary, because in the wild, there may be cards created prior to this change.
-                          lib.temporal-bucket/ensure-temporal-unit-in-display-name
-                          lib.binning/ensure-binning-in-display-name)
-                     metadata))))
+    (not-empty (mapv normalize-result-metadata-column metadata))))
 
 (def transform-result-metadata
   "Transform for card.result_metadata like columns."
@@ -709,13 +715,6 @@
   `:write` and passed to [[perms-objects-set]]; you'll usually want to partially bind it in the implementation map)."
   (partial check-perms-with-fn 'metabase.permissions.models.permissions/set-has-full-permissions-for-set?))
 
-(def ^{:arglists '([read-or-write model object-id] [read-or-write object] [perms-set])}
-  current-user-has-partial-permissions?
-  "Implementation of [[can-read?]]/[[can-write?]] for the old permissions system. `true` if the current user has *partial*
-  permissions for the paths returned by its implementation of [[perms-objects-set]]. (`read-or-write` is either `:read` or
-  `:write` and passed to [[perms-objects-set]]; you'll usually want to partially bind it in the implementation map)."
-  (partial check-perms-with-fn 'metabase.permissions.models.permissions/set-has-partial-permissions-for-set?))
-
 (defmethod can-read? ::read-policy.always-allow
   ([_instance]
    true)
@@ -728,23 +727,11 @@
   ([_model _pk]
    true))
 
-(defmethod can-read? ::read-policy.partial-perms-for-perms-set
-  ([instance]
-   (current-user-has-partial-permissions? :read instance))
-  ([model pk]
-   (current-user-has-partial-permissions? :read model pk)))
-
 (defmethod can-read? ::read-policy.full-perms-for-perms-set
   ([instance]
    (current-user-has-full-permissions? :read instance))
   ([model pk]
    (current-user-has-full-permissions? :read model pk)))
-
-(defmethod can-write? ::write-policy.partial-perms-for-perms-set
-  ([instance]
-   (current-user-has-partial-permissions? :write instance))
-  ([model pk]
-   (current-user-has-partial-permissions? :write model pk)))
 
 (defmethod can-write? ::write-policy.full-perms-for-perms-set
   ([instance]

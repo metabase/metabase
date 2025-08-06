@@ -21,7 +21,7 @@ export async function connectToInstanceAuthSso(
     });
   }
 
-  const ssoUrl = new URL("/auth/sso", url);
+  const ssoUrl = new URL(`${url}/auth/sso`);
 
   if (preferredAuthMethod) {
     ssoUrl.searchParams.set("preferred_method", preferredAuthMethod);

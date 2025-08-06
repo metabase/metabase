@@ -21,6 +21,8 @@ yarn dev
 
 This runs both the [frontend](#frontend) and [backend](#backend). Alternatively, you can run them separately in two terminal sessions below.
 
+To use any other database beside the default ones please take a look at [Building Drivers](#building-drivers) further down in this document.
+
 ### Frontend
 
 Metabase depends on third-party libraries to run, so you'll need to keep those up to date. The Clojure CLI will automatically fetch the dependencies when needed. With JavaScript dependencies, however, you'll need to kick off the installation process manually.
@@ -79,7 +81,7 @@ There is also an option to reload changes on save without hot reloading if you p
 $ yarn build-watch
 ```
 
-Some systems may have trouble detecting changes to frontend files. You can enable filesystem polling by uncommenting the `watchOptions` clause in `webpack.config.js`. If you do this it may be worth making git ignore changes to webpack config, using `git update-index --assume-unchanged webpack.config.js`
+Some systems may have trouble detecting changes to frontend files. You can enable filesystem polling by uncommenting the `watchOptions` clause in `rspack.main.config.js`. If you do this it may be worth making git ignore changes to webpack config, using `git update-index --assume-unchanged rspack.main.config.js`
 
 We exclude ESLint loader in dev mode for seven times quicker initial builds by default. You can enable it by exporting an environment variable:
 

@@ -48,7 +48,7 @@ const setup = async () => {
 
   renderWithProviders(<UploadManagementTable />, { withUndos: true });
 
-  await screen.findByText("Uploaded Tables");
+  await screen.findByText("Uploaded tables");
 };
 
 describe("uploadManagementTable", () => {

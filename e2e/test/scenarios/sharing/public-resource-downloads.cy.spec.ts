@@ -23,7 +23,7 @@ H.describeWithSnowplowEE(
       before(() => {
         H.restore("default");
         cy.signInAsAdmin();
-        H.setTokenFeatures("all");
+        H.activateToken("pro-self-hosted");
 
         cy.visit(`/dashboard/${ORDERS_DASHBOARD_ID}`);
 
@@ -53,9 +53,7 @@ H.describeWithSnowplowEE(
         );
 
         // we should not have any dashcard action in a public/embed scenario, so the menu should not be there
-        cy.findByRole("button", { name: "Download results" }).should(
-          "not.exist",
-        );
+        H.getEmbeddedDashboardCardMenu().should("not.exist");
       });
 
       it("#downloads=pdf should enable only PDF downloads", () => {
@@ -65,9 +63,7 @@ H.describeWithSnowplowEE(
         cy.get("header")
           .findByRole("button", { name: "Download as PDF" })
           .should("exist");
-        cy.findByRole("button", { name: "Download results" }).should(
-          "not.exist",
-        );
+        H.getEmbeddedDashboardCardMenu().should("not.exist");
       });
 
       it("#downloads=results should enable only dashcard results downloads", () => {
@@ -79,9 +75,8 @@ H.describeWithSnowplowEE(
           .should("not.exist");
 
         H.main().realHover();
-        cy.findByRole("button", { name: "Download results" }).should(
-          "be.visible",
-        );
+        H.getEmbeddedDashboardCardMenu().click();
+        cy.findByLabelText("Download results").should("be.visible");
       });
 
       it("#downloads=pdf,results should enable both PDF and results downloads", () => {
@@ -93,9 +88,8 @@ H.describeWithSnowplowEE(
           .should("exist");
 
         H.main().realHover();
-        cy.findByRole("button", { name: "Download results" }).should(
-          "be.visible",
-        );
+        H.getEmbeddedDashboardCardMenu().should("exist").click();
+        cy.findByLabelText("Download results").should("be.visible");
       });
 
       it("#downloads=results,pdf should enable both PDF and results downloads (order agnostic)", () => {
@@ -107,9 +101,8 @@ H.describeWithSnowplowEE(
           .should("exist");
 
         H.main().realHover();
-        cy.findByRole("button", { name: "Download results" }).should(
-          "be.visible",
-        );
+        H.getEmbeddedDashboardCardMenu().click();
+        cy.findByLabelText("Download results").should("be.visible");
       });
 
       it("#downloads=results, pdf should handle whitespace between parameters", () => {
@@ -121,9 +114,8 @@ H.describeWithSnowplowEE(
           .should("exist");
 
         H.main().realHover();
-        cy.findByRole("button", { name: "Download results" }).should(
-          "be.visible",
-        );
+        H.getEmbeddedDashboardCardMenu().click();
+        cy.findByLabelText("Download results").should("be.visible");
       });
 
       it("should be able to download a public dashboard as PDF", () => {
@@ -176,7 +168,7 @@ H.describeWithSnowplowEE(
       before(() => {
         H.restore("default");
         cy.signInAsAdmin();
-        H.setTokenFeatures("all");
+        H.activateToken("pro-self-hosted");
 
         cy.visit(`/question/${ORDERS_BY_YEAR_QUESTION_ID}`);
 
@@ -238,9 +230,7 @@ H.describeWithSnowplowEE(
         waitLoading();
 
         H.main().realHover();
-        cy.findByRole("button", { name: "Download results" }).should(
-          "be.visible",
-        );
+        cy.findByLabelText("Download results").should("be.visible");
 
         const uuid = publicLink.split("/").at(-1);
 
@@ -268,7 +258,7 @@ H.describeWithSnowplowEE(
       before(() => {
         H.restore("default");
         cy.signInAsAdmin();
-        H.setTokenFeatures("all");
+        H.activateToken("pro-self-hosted");
 
         H.createNativeQuestion(
           {
@@ -319,9 +309,7 @@ H.describeWithSnowplowEE(
         waitLoading();
 
         H.main().realHover();
-        cy.findByRole("button", { name: "Download results" }).should(
-          "be.visible",
-        );
+        cy.findByLabelText("Download results").should("be.visible");
 
         cy.location("pathname").then((pathname) => {
           const uuid = pathname.split("/").at(-1);

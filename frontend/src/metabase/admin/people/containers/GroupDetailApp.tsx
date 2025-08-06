@@ -1,8 +1,11 @@
+import { t } from "ttag";
+
+import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
 import {
   useGetPermissionsGroupQuery,
   useListUserMembershipsQuery,
 } from "metabase/api";
-import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useSelector } from "metabase/lib/redux";
 import { getUser } from "metabase/selectors/user";
 
@@ -19,14 +22,16 @@ export const GroupDetailApp = (props: any) => {
     getGroupReq.isLoading ?? membershipsByUserReq.isLoading ?? !currentUser;
 
   return (
-    <LoadingAndErrorWrapper error={error} loading={isLoading}>
-      {currentUser && (
-        <GroupDetail
-          membershipsByUser={membershipsByUserReq.data ?? {}}
-          group={getGroupReq.data!}
-          currentUser={currentUser}
-        />
-      )}
-    </LoadingAndErrorWrapper>
+    <SettingsPageWrapper title={t`Groups`}>
+      <LoadingAndErrorWrapper error={error} loading={isLoading}>
+        {currentUser && (
+          <GroupDetail
+            membershipsByUser={membershipsByUserReq.data ?? {}}
+            group={getGroupReq.data!}
+            currentUser={currentUser}
+          />
+        )}
+      </LoadingAndErrorWrapper>
+    </SettingsPageWrapper>
   );
 };
