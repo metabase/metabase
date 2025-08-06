@@ -102,6 +102,8 @@ export function SidebarSectionItem({
           <Box px="xs" style={{ flexGrow: 1, overflow: "hidden" }}>
             <EditableText
               initialValue={section.title}
+              placeholder={t`Unnamed group`}
+              isOptional
               maxLength={240}
               onChange={(title) => onUpdateSection(section.id, { title })}
               style={{

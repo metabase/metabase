@@ -101,7 +101,7 @@ export function ObjectViewSection({
         [S.hovered]: isHovered,
       })}
     >
-      {onUpdateSection && (
+      {onUpdateSection && section.title.trim().length > 0 && (
         <Group gap="md" className={S.SectionTitle}>
           {/* {isEdit && (
           <Icon
