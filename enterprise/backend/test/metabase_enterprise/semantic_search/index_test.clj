@@ -141,6 +141,40 @@
                      (semantic.tu/delete-from-index! "dashboard" (into ["456"] extra-ids))))
               (semantic.tu/check-index-has-no-mock-docs))))))))
 
+(defn- only-first-call [r f]
+  (let [is-first (atom true)]
+    (fn [& args]
+      (when @is-first
+        (is (= @r semantic.index/*batch-size*))
+        (reset! is-first false)
+        (apply f args)))))
+
+(deftest reducible-is-respected-test
+  (mt/with-premium-features #{:semantic-search}
+    (with-open [_ (semantic.tu/open-temp-index!)]
+      (binding [semantic.index/*batch-size* 2]
+        (let [docs (semantic.tu/mock-documents)
+              realized (atom 0)
+              mock-docs (eduction (comp (map str)
+                                        (map (fn [id]
+                                               (swap! realized inc)
+                                               (assoc (first docs) :id id))))
+                                  (range 123 500))]
+
+          (testing "ensure upsert! and delete! don't realize the full reducible at once"
+            (semantic.tu/check-index-has-no-mock-docs)
+
+            (testing "upsert-index!"
+              (with-redefs [semantic.index/upsert-index-batch! (only-first-call realized @#'semantic.index/upsert-index-batch!)]
+                (is (= {"card" 2} (semantic.tu/upsert-index! mock-docs))))
+              (semantic.tu/check-index-has-mock-card))
+
+            (reset! realized 0)
+            (testing "delete-from-index!"
+              (with-redefs [semantic.index/delete-from-index-batch-sql (only-first-call realized @#'semantic.index/delete-from-index-batch-sql)]
+                (is (= {"card" 2} (semantic.tu/delete-from-index! "card" (eduction (map :id) mock-docs)))))
+              (semantic.tu/check-index-has-no-mock-docs))))))))
+
 (deftest upsert-index-batched-embeddings-pairing-test
   (mt/with-premium-features #{:semantic-search}
     (with-open [_ (semantic.tu/open-temp-index!)]
