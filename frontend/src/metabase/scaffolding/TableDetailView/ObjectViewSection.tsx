@@ -148,9 +148,9 @@ export function ObjectViewSection({
                   <Ellipsified
                     alwaysShowTooltip={variant === "subheader"}
                     variant="primary"
-                    truncate={variant !== "highlight-2"}
+                    truncate={false}
                     c="var(--mb-color-text-primary)"
-                    lines={3}
+                    lines={variant === "highlight-2" ? 3 : 0}
                     style={{
                       flexGrow: 1,
                     }}
@@ -169,9 +169,9 @@ export function ObjectViewSection({
                 <Ellipsified
                   alwaysShowTooltip={variant === "subheader"}
                   variant="primary"
-                  truncate={variant !== "highlight-2"}
+                  truncate={false}
                   c="var(--mb-color-text-primary)"
-                  lines={3}
+                  lines={variant === "highlight-2" ? 3 : 0}
                   style={{
                     flexGrow: 1,
                   }}

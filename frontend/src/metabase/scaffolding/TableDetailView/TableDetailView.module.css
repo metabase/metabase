@@ -36,7 +36,7 @@
       flex-direction: column;
 
       .Field {
-        align-items: center;
+        align-items: start;
       }
 
       .FieldName {
