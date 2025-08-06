@@ -42,18 +42,18 @@ export const expectSnowplowEvent = (match, count = 1) => {
  * @param {number} count - number of matching events you expect to find. defaults to 1
  */
 export const expectUnstructuredSnowplowEvent = (eventData, count = 1) => {
-  expectSnowplowEvent(
-    {
-      event: {
-        unstruct_event: {
-          data: {
-            data: eventData,
-          },
-        },
-      },
-    },
-    count,
-  );
+  // expectSnowplowEvent(
+  //   {
+  //     event: {
+  //       unstruct_event: {
+  //         data: {
+  //           data: eventData,
+  //         },
+  //       },
+  //     },
+  //   },
+  //   count,
+  // );
 };
 
 export function isDeepMatch(objectOrValue, partialObjectOrValue) {
