@@ -263,7 +263,7 @@
           (create-document-revision! doc-id false :rasta)
 
           (let [revisions (get-document-revisions doc-id)
-                content-revision #p (first revisions)]
+                content-revision (first revisions)]
             (is (= {:content [{:content [{:text "Original content"}]}]}
                    (get-in content-revision [:diff :before :document])))
             (is (= {:content [{:content [{:text "New content"}]}]}

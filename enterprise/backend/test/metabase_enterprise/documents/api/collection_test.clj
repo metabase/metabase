@@ -88,8 +88,8 @@
     (mt/with-premium-features #{}
       (mt/with-temp [:model/Collection {coll-id :id} {}
                      :model/Card {card-id :id} {:collection_id coll-id}
-                     :model/Document {doc-id :id} {:collection_id coll-id
-                                                   :name "Test Document"}
+                     :model/Document _ {:collection_id coll-id
+                                        :name "Test Document"}
                      :model/Dashboard {dash-id :id} {:collection_id coll-id}]
         (testing "Only cards and dashboards appear, no documents"
           (is (= #{[card-id "card"]
@@ -121,8 +121,8 @@
     (mt/with-premium-features #{}
       (mt/with-temp [:model/Card {card-id :id} {:collection_id nil
                                                 :name "Root Card"}
-                     :model/Document {doc-id :id} {:collection_id nil
-                                                   :name "Test Document"}
+                     :model/Document _ {:collection_id nil
+                                        :name "Test Document"}
                      :model/Dashboard {dash-id :id} {:collection_id nil
                                                      :name "Root Dashboard"}]
         (testing "Only cards and dashboards appear in root, no documents"
@@ -165,10 +165,10 @@
 (deftest archived-documents-do-not-appear-in-trash-items-without-premium
   (testing "GET /api/collection/trash/items excludes documents when documents feature is disabled"
     (mt/with-premium-features #{}
-      (mt/with-temp [:model/Document {archived-doc-id :id} {:collection_id nil
-                                                            :name "Archived Document"
-                                                            :archived true
-                                                            :archived_directly true}
+      (mt/with-temp [:model/Document _ {:collection_id nil
+                                        :name "Archived Document"
+                                        :archived true
+                                        :archived_directly true}
                      :model/Card {archived-card-id :id} {:collection_id nil
                                                          :name "Archived Card"
                                                          :archived true

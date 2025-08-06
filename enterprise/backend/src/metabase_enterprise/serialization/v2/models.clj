@@ -57,6 +57,8 @@
    "DatabaseRouter"
    "DashboardBookmark"
    "DataPermissions"
+   "Document"
+   "DocumentBookmark"
    "GroupTableAccessPolicy"
    "HTTPAction"
    "ImplicitAction"

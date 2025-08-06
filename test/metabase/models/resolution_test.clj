@@ -17,7 +17,8 @@
   "Load all Metabase namespaces so we can make sure all models are accounted for in the map."
   []
   ;; Use the model->namespace map which already contains all the model namespaces we need to load.
-  (doseq [[_model nspace] models.resolution/model->namespace]
+  (doseq [[_model nspace] models.resolution/model->namespace
+          :when (or config/ee-available? (not (str/starts-with? (str nspace) "metabase-enterprise")))]
     ;; classloader/require for thread safety
     (classloader/require nspace)))
 

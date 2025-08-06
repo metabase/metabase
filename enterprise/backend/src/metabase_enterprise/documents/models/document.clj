@@ -3,9 +3,7 @@
    [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
    [metabase.models.interface :as mi]
-   [metabase.permissions.core :as perms]
    [metabase.users.models.user]
-   [metabase.util.log :as log]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 

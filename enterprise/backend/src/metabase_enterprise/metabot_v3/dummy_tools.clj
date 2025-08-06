@@ -1,7 +1,7 @@
 (ns metabase-enterprise.metabot-v3.dummy-tools
   (:require
    [medley.core :as m]
-   [metabase-enterprise.documents.api.document :as documents.api]
+   [metabase-enterprise.documents.core :as documents]
    [metabase-enterprise.metabot-v3.tools.util :as metabot-v3.tools.u]
    [metabase.api.common :as api]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
@@ -14,6 +14,8 @@
    [metabase.util.humanization :as u.humanization]
    [metabase.warehouse-schema.models.field-values :as field-values]
    [toucan2.core :as t2]))
+
+(set! *warn-on-reflection* true)
 
 (defn get-current-user
   "Get information about the current user."
@@ -295,11 +297,10 @@
   [{:keys [document-id]}]
   (if (int? document-id)
     (try
-      (if-let [doc (documents.api/get-document document-id nil)]
-        (do
-          {:structured-output {:id (:id doc)
-                               :name (:name doc)
-                               :document (:document doc)}})
+      (if-let [doc (documents/get-document document-id)]
+        {:structured-output {:id (:id doc)
+                             :name (:name doc)
+                             :document (:document doc)}}
         {:output "report not found"})
       (catch Exception e
         {:output (str "error fetching report: " (.getMessage e))}))

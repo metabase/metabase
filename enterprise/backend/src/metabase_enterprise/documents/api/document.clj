@@ -9,9 +9,8 @@
    [metabase.collections.models.collection :as collection]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
-   [metabase.queries.models.card :as card]
+   [metabase.queries.core :as card]
    [metabase.query-permissions.core :as query-perms]
-   [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -174,12 +173,12 @@
   [{:keys [document-id]} :- [:map
                              [:document-id ms/PositiveInt]]
    _query-params
-   {:keys [name document collection_id cards archived] :as body} :- [:map
-                                                                     [:name {:optional true} ms/NonBlankString]
-                                                                     [:document {:optional true} :any]
-                                                                     [:collection_id {:optional true} [:maybe ms/PositiveInt]]
-                                                                     [:cards {:optional true} [:maybe [:map-of :int CardCreateSchema]]]
-                                                                     [:archived {:optional true} [:maybe :boolean]]]]
+   {:keys [name document collection_id cards] :as body} :- [:map
+                                                            [:name {:optional true} ms/NonBlankString]
+                                                            [:document {:optional true} :any]
+                                                            [:collection_id {:optional true} [:maybe ms/PositiveInt]]
+                                                            [:cards {:optional true} [:maybe [:map-of :int CardCreateSchema]]]
+                                                            [:archived {:optional true} [:maybe :boolean]]]]
   (let [existing-document (api/check-404 (get-document document-id))]
     (api/check-403 (mi/can-write? existing-document))
     (when (api/column-will-change? :collection_id existing-document body)
