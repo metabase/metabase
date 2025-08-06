@@ -42,8 +42,11 @@
 
 (deftest test-connection-before-init-test
   (testing "test-connection! throws exception when pool not initialized"
-    (reset! semantic.db/data-source nil)
-    (is (thrown-with-msg?
-         clojure.lang.ExceptionInfo
-         #"Semantic search connection pool is not initialized"
-         (semantic.db/test-connection!)))))
+    (try
+      (reset! semantic.db/data-source nil)
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"Semantic search connection pool is not initialized"
+           (semantic.db/test-connection!)))
+      (finally
+        (semantic.db/init-db!)))))
