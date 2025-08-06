@@ -705,6 +705,15 @@
     ;; Does this driver support "temporal-unit" template tags in native queries?
     :native-temporal-units
 
+    ;; Does this driver support transforms with a table as the target?
+    :transforms/table
+
+    ;; Does this driver support transforms with a view as the target?
+    :transforms/view
+
+    ;; Does this driver support transforms with a materialized view as the target?
+    :transforms/materialized-view
+
     ;; Whether the driver supports loading dynamic test datasets on each test run. Eg. datasets with names like
     ;; `checkins:4-per-minute` are created dynamically in each test run. This should be truthy for every driver we test
     ;; against except for Athena and Databricks which currently require test data to be loaded separately.
@@ -1091,6 +1100,58 @@
   "Execute a writeback query e.g. one powering a custom `QueryAction` (see [[metabase.actions.models]]).
   Drivers that support `:actions/custom` must implement this method."
   {:changelog-test/ignore true, :added "0.44.0", :arglists '([driver query])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmulti compile-transform dispatch-on-initialized-driver :hierarchy #'hierarchy)
+
+(defmulti compile-drop-table dispatch-on-initialized-driver :hierarchy #'hierarchy)
+
+(defmulti execute-raw-queries!
+  "Executes a series of 'raw' queries.  A raw query is a vector of a sql string and arguments, in the case of sql
+  drivers.
+
+  Drivers that support any of the `:transforms/...` features must implement this method."
+  {:added "0.57.0", :arglists '([driver connection-details queries])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmulti execute-transform!
+  "Executes a transform.
+
+  Drivers that support any of the `:transforms/...` features must implement this method for the appropriate transform
+  types."
+  {:added "0.57.0",
+   :arglists '([driver
+                {:keys [transform-type connection-details query output-table] :as _transform-details}
+                {:keys [overwrite?] :as _opts}])}
+  (fn [driver transform-details _opts]
+    [(dispatch-on-initialized-driver driver) (:transform-type transform-details)])
+  :hierarchy #'hierarchy)
+
+(defmulti drop-transform-target!
+  "Drops the target of a transform.
+
+  Drivers that support any of the `:transforms/...` features must implement this method for the appropriate transform
+  types."
+  {:added "0.57.0",
+   :arglists '([driver database {:keys [type schema name] :as _transform-details}])}
+  (fn [driver _database transform-details]
+    [(dispatch-on-initialized-driver driver) (:type transform-details)])
+  :hierarchy #'hierarchy)
+
+(defmulti normalize-name
+  "Normalizes the (primarily table/column) name passed in.
+
+  Should return a value that matches the name listed in the appdb. Drivers that support any of the `:transforms/...`
+  features must implement this method."
+  {:added "0.57.0" :arglists '([driver name-str])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmulti connection-details
+  "Get connection details for a given driver and db object"
+  {:added "0.56.0", :arglists '([driver db])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 

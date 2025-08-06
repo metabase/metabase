@@ -804,3 +804,13 @@ export const PLUGIN_SMTP_OVERRIDE: {
   CloudSMTPConnectionCard: PluginPlaceholder,
   SMTPOverrideConnectionForm: PluginPlaceholder,
 };
+
+export type TransformsPlugin = {
+  getAdminPaths(): AdminPath[];
+  getAdminRoutes(): ReactNode;
+};
+
+export const PLUGIN_TRANSFORMS: TransformsPlugin = {
+  getAdminPaths: () => [],
+  getAdminRoutes: () => null,
+};

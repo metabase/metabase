@@ -1,0 +1,50 @@
+(ns metabase-enterprise.worker.api
+  (:require
+   [clj-http.client :as http]
+   [metabase.config.core :as config]
+   [metabase.system.core :as system]
+   [metabase.util.json :as json]))
+
+(set! *warn-on-reflection* true)
+
+(defn- mb-id []
+  (system/site-uuid))
+
+(defn- json-body [{:keys [body]}]
+  (json/decode+kw body))
+
+(defn- worker-uri []
+  (config/config-str :mb-transform-worker-uri))
+
+(defn- worker-route [^String path]
+  (when-let [base-uri (worker-uri)]
+    (-> base-uri
+        java.net.URI.
+        (.resolve path)
+        str)))
+
+(defn run-remote?
+  "Should this metabase instance run work remotely?"
+  []
+  (boolean (worker-uri)))
+
+(defn execute-transform!
+  "Execute a transform on the remote worker."
+  [run-id driver transform-details opts]
+  (json-body (http/put (worker-route (str "/transform/" run-id))
+                       {:form-params {:driver driver
+                                      :transform-details transform-details
+                                      :opts opts
+                                      :mb-source (mb-id)}
+                        :content-type :json})))
+
+(defn get-status [run-id]
+  (json-body (http/get (worker-route (str "/status/" run-id "?mb-source=" (mb-id)))
+                       {:content-type :json})))
+
+(defn health-check []
+  (:body (http/get (worker-route "/api/health"))))
+
+(comment
+
+  (health-check))

@@ -603,6 +603,7 @@ export interface EnterpriseSettings extends Settings {
   "saml-group-mappings": Record<string, GroupId[]> | null;
   "database-replication-enabled": boolean | null;
   "database-replication-connections"?: DatabaseReplicationConnections | null;
+  "transform-schedule"?: string;
   /**
    * @deprecated
    */
