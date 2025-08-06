@@ -11,6 +11,7 @@
    [metabase.server.settings :as server.settings]
 
    [metabase.settings.core :as setting]
+   [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [ring.util.codec :refer [base64-encode]])
@@ -215,7 +216,7 @@
   (when raw-origin
     (let [origin (parse-url raw-origin)]
       (and origin
-           (= (str/lower-case (:domain origin)) "localhost")))))
+           (= (u/lower-case-en (:domain origin)) "localhost")))))
 
 (mu/defn approved-origin?
   "Returns true if `origin` should be allowed for CORS based on the `approved-origins`"
