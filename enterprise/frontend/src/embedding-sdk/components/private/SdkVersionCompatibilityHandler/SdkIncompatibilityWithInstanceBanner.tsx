@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { jt, t } from "ttag";
+import { c, t } from "ttag";
 
 import { SdkError } from "embedding-sdk/components/private/PublicComponentWrapper";
 import { getEmbeddingSdkVersion } from "embedding-sdk/config";
@@ -41,9 +41,11 @@ export function SdkIncompatibilityWithInstanceBanner() {
 
   return (
     <SdkError
-      type="floating"
+      type="fixed"
+      withCloseButton
       message={
-        <span>{jt`The analytics server is undergoing maintenance. ${(
+        <span>{c("{0} is the button to reload the page")
+          .jt`The analytics server is undergoing maintenance. ${(
           <Anchor
             key="reload-page-button"
             data-testid="reload-page-button"

@@ -3,14 +3,11 @@ import {
   MetabaseProvider,
 } from "@metabase/embedding-sdk-react";
 
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import * as H from "e2e/support/helpers";
+import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
 import { DEFAULT_SDK_AUTH_PROVIDER_CONFIG } from "e2e/support/helpers/embedding-sdk-component-testing";
 import { signInAsAdminAndEnableEmbeddingSdk } from "e2e/support/helpers/embedding-sdk-testing";
 import { mockAuthProviderAndJwtSignIn } from "e2e/support/helpers/embedding-sdk-testing/embedding-sdk-helpers";
-
-const { ORDERS_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > embedding-sdk > incompatibility-with-instance-banner", () => {
   beforeEach(() => {
@@ -19,27 +16,6 @@ describe("scenarios > embedding-sdk > incompatibility-with-instance-banner", () 
     );
 
     signInAsAdminAndEnableEmbeddingSdk();
-
-    H.createDashboardWithQuestions({
-      questions: [
-        {
-          name: "Test Question",
-          display: "table",
-          query: {
-            "source-table": ORDERS_ID,
-            aggregation: [["count"]],
-          },
-          visualization_settings: {
-            "graph.dimensions": ["CREATED_AT", "STATE"],
-            "graph.metrics": ["count", "sum"],
-          },
-        },
-      ],
-      cards: [{ col: 0, row: 0, size_x: 24, size_y: 6 }],
-    }).then(({ dashboard, questions }) => {
-      cy.wrap(dashboard.id).as("dashboardId");
-      cy.wrap(questions[0].id).as("questionId");
-    });
 
     cy.signOut();
 
@@ -50,7 +26,7 @@ describe("scenarios > embedding-sdk > incompatibility-with-instance-banner", () 
     it("should show an error with a close button", () => {
       cy.mount(
         <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}>
-          <InteractiveQuestion questionId={1} />
+          <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />
         </MetabaseProvider>,
       );
 
@@ -101,7 +77,7 @@ describe("scenarios > embedding-sdk > incompatibility-with-instance-banner", () 
             </div>
           )}
         >
-          <InteractiveQuestion questionId={1} />
+          <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />
         </MetabaseProvider>,
       );
 

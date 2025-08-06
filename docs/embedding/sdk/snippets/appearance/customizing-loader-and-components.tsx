@@ -18,13 +18,13 @@ const Example = () => {
       loaderComponent={() => <div>Analytics is loading...</div>}
       errorComponent={({ type, message, onClose }) => {
         switch (type) {
-          case "floating":
+          case "fixed":
             return (
               <div style={{ position: "fixed", left: 0, right: 0, bottom: 0 }}>
                 There was an error: {message}. <span onClick={onClose}>X</span>
               </div>
             );
-          case "default":
+          case "relative":
           default:
             return <div>There was an error: {message}</div>;
         }

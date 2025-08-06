@@ -1,4 +1,5 @@
-import { type CSSProperties, type PropsWithChildren, useState } from "react";
+import { useDisclosure } from "@mantine/hooks";
+import type { CSSProperties, PropsWithChildren } from "react";
 import { jt, t } from "ttag";
 
 import { useSdkSelector } from "embedding-sdk/store";
@@ -11,9 +12,10 @@ import { Box, Center, Code, Flex, Portal } from "metabase/ui";
 
 export const SdkError = ({
   message,
-  type = "default",
-}: SdkErrorComponentProps) => {
-  const [visible, setVisible] = useState(true);
+  type = "relative",
+  withCloseButton = false,
+}: Omit<SdkErrorComponentProps, "onClose">) => {
+  const [visible, { close }] = useDisclosure(true);
 
   const CustomError = useSdkSelector(getErrorComponent);
 
@@ -22,7 +24,7 @@ export const SdkError = ({
   }
 
   const handleBannerClose = () => {
-    setVisible(false);
+    close();
   };
 
   const ErrorMessageComponent = CustomError || DefaultErrorMessage;
@@ -32,7 +34,7 @@ export const SdkError = ({
       <ErrorMessageComponent
         type={type}
         message={message}
-        {...(type === "floating" && {
+        {...(withCloseButton && {
           onClose: handleBannerClose,
         })}
       />
@@ -41,16 +43,16 @@ export const SdkError = ({
 
   return (
     <>
-      {type === "default" && errorMessageElement}
+      {type === "relative" && errorMessageElement}
 
-      {type === "floating" && (
-        <SdkFloatingErrorWrapper>{errorMessageElement}</SdkFloatingErrorWrapper>
+      {type === "fixed" && (
+        <SdkPortalErrorWrapper>{errorMessageElement}</SdkPortalErrorWrapper>
       )}
     </>
   );
 };
 
-export function SdkFloatingErrorWrapper({ children }: PropsWithChildren) {
+export function SdkPortalErrorWrapper({ children }: PropsWithChildren) {
   return (
     <Portal target={`#${EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID}`}>
       <Flex
