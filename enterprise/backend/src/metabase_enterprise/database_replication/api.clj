@@ -31,44 +31,65 @@
 (defn- database-id->connection-id [conns database-id]
   (->> database-id kw-id (get conns) :connection-id))
 
-(defn- can-set-replication?
+(defn- token-check-quotas-info
   "Predicate that signals if replication looks right from the quota perspective.
 
    This predicate checks that the quotas we got from the latest tokencheck have enough space for the database to be
   replicated."
   [database schemas]
-  (let [free-quota      (or
-                         (some->> (m/find-first (comp #{"clickhouse-dwh"} :hosting-feature) (quotas))
-                                  ((juxt :soft-limit :usage))
-                                  (apply -))
-                         -1)
-        include-patterns (->> schemas
-                              (filter (comp #{"include"} :type))
-                              (map (comp re-pattern :pattern)))
-        exclude-patterns (->> schemas
-                              (filter (comp #{"exclude"} :type))
-                              (map (comp re-pattern :pattern)))
-        total-row-count (or
-                         (some->>
-                          (t2/hydrate database [:tables :fields])
-                          :tables
-                          (filter (comp (fn [x] (re-matches #"^[A-Za-z0-9_]+$" x)) :name))       ; sanitized name
-                          (filter (fn [t] (some (comp #{:type/PK} :semantic_type) (:fields t)))) ; has-pkey
-                          (filter (fn [{:keys [schema]}]
-                                    (cond
-                                      (empty? schemas)
-                                      true
-                                      (not-empty include-patterns)
-                                      (some #(re-matches % schema) include-patterns)
-                                      (not-empty exclude-patterns)
-                                      (not (some #(re-matches % schema) exclude-patterns)))))
-                          (map :estimated_row_count)
-                          ;; FIXME: `estimated_row_count` might be `nil`, in which case we should tell the user:
-                          ;;  "we don't know yet whether this will work, wait or try your luck"
-                          (reduce +))
-                         0)]
-    (log/infof "Quota left: %s. Estimate db row count: %s" free-quota total-row-count)
-    (< total-row-count free-quota)))
+  (let [all-quotas                (quotas)
+        free-quota                (or
+                                   (some->> (m/find-first (comp #{"clickhouse-dwh"} :hosting-feature) all-quotas)
+                                            ((juxt :soft-limit :usage))
+                                            (apply -))
+                                   -1)
+        include-patterns          (->> schemas
+                                       (filter (comp #{"include"} :type))
+                                       (map (comp re-pattern :pattern)))
+        exclude-patterns          (->> schemas
+                                       (filter (comp #{"exclude"} :type))
+                                       (map (comp re-pattern :pattern)))
+        db-tables                 (some->> (t2/hydrate database [:tables :fields]) :tables) ; sanitized name
+        sanitized-tables          (some->> db-tables
+                                           (filter (comp (fn [x] (re-matches #"^[A-Za-z0-9_]+$" x)) :name))
+                                           (filter (fn [{:keys [schema]}]
+                                                     (cond
+                                                       (empty? schemas)
+                                                       true
+                                                       (not-empty include-patterns)
+                                                       (some #(re-matches % schema) include-patterns)
+                                                       (not-empty exclude-patterns)
+                                                       (not (some #(re-matches % schema) exclude-patterns))))))
+        {tables-without-pk false
+         tables-with-pk    true}  (group-by (fn [t] (boolean (some (comp #{:type/PK} :semantic_type) (:fields t))))
+                                          sanitized-tables)
+        total-estimated-row-count (or
+                                   (some->>
+                                    tables-with-pk
+                                    (map :estimated_row_count)
+                                    (remove nil?)
+                                    (reduce +))
+                                   0)]
+    (log/infof "Quota left: %s. Estimate db row count: %s" free-quota total-estimated-row-count)
+    {:free-quota                free-quota
+     :total-estimated-row-count total-estimated-row-count
+     :can-set-replication       (< total-estimated-row-count free-quota)
+     :all-quotas                all-quotas
+     :tables-without-pk         (map #(select-keys % [:name]) tables-without-pk)}))
+
+(api.macros/defendpoint :get "/connection/:database-id/preview"
+  "Return info about pg-replication connection that is about to be created."
+  [{:keys [database-id]} :- [:map [:database-id ms/PositiveInt]]
+   query-params]
+  (token-check-quotas-info (t2/select-one :model/Database :id database-id) (:parameters query-params)))
+
+(defn can-set-replication?
+  "Predicate that signals if replication looks right from the quota perspective.
+
+   This predicate checks that the quotas we got from the latest tokencheck have enough space for the database to be
+  replicated."
+  [database schemas]
+  (:can-set-replication (token-check-quotas-info database schemas)))
 
 (api.macros/defendpoint :post "/connection/:database-id"
   "Create a new PG replication connection for the specified database."
