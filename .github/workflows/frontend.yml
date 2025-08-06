@@ -9,6 +9,24 @@ on:
       skip-lint:
         type: boolean
         default: false
+  workflow_dispatch:
+    inputs:
+      skip:
+        description: "Skip main frontend jobs (type-check, unit tests, timezone tests)"
+        type: boolean
+        default: false
+      skip-lint:
+        description: "Skip linting jobs (prettier, eslint, css variables check)"
+        type: boolean
+        default: false
+      skip-type-check:
+        description: "Skip type check"
+        type: boolean
+        default: false
+      skip-timezones:
+        description: "Skip timezone tests"
+        type: boolean
+        default: false
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}-frontend
@@ -44,7 +62,7 @@ jobs:
         run: yarn run lint-eslint-pure
 
   fe-type-check:
-    if: ${{ !inputs.skip }}
+    if: ${{ !inputs.skip && !inputs.skip-type-check }}
     runs-on: ubuntu-22.04
     timeout-minutes: 10
     steps:
@@ -67,7 +85,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2]
+        shard: [1, 2]hards for parallel execution
     env:
       SHARDS: 2 # should match matrix above
       JEST_JUNIT_OUTPUT_DIR: ./target/junit
@@ -84,7 +102,7 @@ jobs:
         run: yarn run test-unit --silent --shard=${{ matrix.shard }}/${{ env.SHARDS }}
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results
-        if: always()
+        if: always() && github.event_name != 'workflow_dispatch'
         with:
           input-path: ./target/junit
           output-name: frontend-unit
@@ -95,7 +113,7 @@ jobs:
           trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
 
   fe-tests-timezones:
-    if: ${{ !inputs.skip }}
+    if: ${{ !inputs.skip && !inputs.skip-timezones }}
     runs-on: ubuntu-22.04
     timeout-minutes: 20
     steps:
