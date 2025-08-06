@@ -327,6 +327,41 @@ describe("scenarios > dashboard > subscriptions", () => {
         });
     });
 
+    it("should send only attachments without email content when 'Send only attachments' is enabled", () => {
+      assignRecipient();
+
+      cy.findByLabelText("Attach results").click();
+      H.sidebar().within(() => {
+        cy.findByText("Questions to attach").click();
+      });
+      cy.findAllByRole("listitem")
+        .contains("Orders")
+        .closest("li")
+        .within(() => {
+          cy.findByRole("checkbox").click();
+        });
+
+      cy.findByLabelText("Send only attachments (no charts)").click();
+      cy.findByLabelText("Send only attachments (no charts)").should(
+        "be.checked",
+      );
+
+      clickButton("Done");
+      H.sidebar().within(() => {
+        H.clickSend();
+      });
+
+      H.sendEmailAndAssert((email) => {
+        expect(email.attachments).to.not.be.empty;
+        expect(email.attachments[0].filename).to.include("Orders");
+        expect(email.html).to.not.include("Orders chart");
+        expect(email.html).to.include(
+          "Dashboard content available in attached files",
+        );
+        expect(email.html).to.include("Orders in a dashboard");
+      });
+    });
+
     it("should not display 'null' day of the week (metabase#14405)", () => {
       assignRecipient();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
