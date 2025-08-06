@@ -95,8 +95,11 @@ export const MetabotComponent = memo(
       editor.commands.focus();
 
       const res = queryMetabot({ prompt: prompt.trim() });
-      // TODO: Wire up "Stop generating" with res.abort();
+      controller.signal.addEventListener("abort", () => res.abort());
       const { data, error } = await res;
+      if (controller.signal.aborted) {
+        return;
+      }
 
       setIsLoading(false);
 
