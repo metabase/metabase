@@ -113,10 +113,14 @@ const setup = async (
   setupRecentViewsAndSelectionsEndpoints(seedData.recents as RecentItem[]);
 
   metabots.forEach((mb) =>
-    setupMetabotPromptSuggestionsEndpoint(mb.id, [], {
-      offset: 0,
-      limit: 10,
-      total: 0,
+    setupMetabotPromptSuggestionsEndpoint({
+      metabotId: mb.id,
+      prompts: [],
+      paginationContext: {
+        offset: 0,
+        limit: 10,
+        total: 0,
+      },
     }),
   );
 

@@ -52,20 +52,34 @@ export function setupMetabotPromptSuggestionsEndpointError(
   );
 }
 
-export function setupMetabotPromptSuggestionsEndpoint(
-  metabotId: MetabotId,
-  prompts: SuggestedMetabotPromptsResponse["prompts"],
+type SuggestionsEndpointOptions = {
+  metabotId: MetabotId;
+  prompts: SuggestedMetabotPromptsResponse["prompts"];
   paginationContext: {
     offset: number;
     limit: number;
     total: number;
-  },
-  options?: UserRouteConfig,
-) {
+  };
+  delay?: UserRouteConfig["delay"];
+  overwriteRoute?: boolean;
+};
+
+export function setupMetabotPromptSuggestionsEndpoint({
+  metabotId,
+  prompts,
+  paginationContext,
+  delay,
+  overwriteRoute,
+}: SuggestionsEndpointOptions) {
   const { total, limit, offset } = paginationContext;
 
   const page = prompts.slice(offset, offset + limit);
   const body = { prompts: page, limit, offset, total };
+  if (overwriteRoute) {
+    try {
+      fetchMock.removeRoute(`metabot-${metabotId}-prompt-suggestions-get`);
+    } catch {}
+  }
   fetchMock.get({
     url: `path:/api/ee/metabot-v3/metabot/${metabotId}/prompt-suggestions`,
     query: { limit, offset },
@@ -73,7 +87,8 @@ export function setupMetabotPromptSuggestionsEndpoint(
       status: 200,
       body,
     },
-    ...options,
+    name: `metabot-${metabotId}-prompt-suggestions-get`,
+    delay,
   });
 
   return {
