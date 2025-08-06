@@ -11,6 +11,7 @@ import {
   undo,
 } from "metabase/lib/entities";
 import * as Urls from "metabase/lib/urls";
+import { DocumentSchema } from "metabase/schema";
 import { documentApi, useGetDocumentQuery } from "metabase-enterprise/api";
 import type { Document } from "metabase-types/api";
 
@@ -21,6 +22,7 @@ const Documents = createEntity({
   name: "documents",
   nameOne: "document",
   path: "/api/ee/documents",
+  schema: DocumentSchema,
 
   // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
   displayNameOne: t`document`,
