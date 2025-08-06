@@ -4,6 +4,7 @@
   easy to cache things like `visible-columns`."
   (:require
    [clojure.string :as str]
+   [clojure.walk :as walk]
    [medley.core :as m]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
@@ -11,8 +12,8 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr])
-  #?(:cljs (:require-macros [metabase.lib.metadata.cache])))
+   [metabase.util.malli.registry :as mr]
+   #?(:cljs (:require-macros [metabase.lib.metadata.cache]))))
 
 (def ^:private ^:dynamic *cache-depth*
   "For debug logging purposes. Keep track of recursive call depth so we can print stuff in a tree."
@@ -22,6 +23,19 @@
   [:cat
    qualified-keyword?
    [:+ :any]])
+
+(defn ->cache-key
+  "Get the cache key for `x` using the `:encode/cache-key` functions for `schema`."
+  [_schema x]
+  (walk/postwalk
+   (fn [form]
+     (if (map? form)
+       (m/filter-keys #(or (and (simple-keyword? %)
+                                (not (#{:base-type :effective-type} %)))
+                           (#{:lib/type :lib/metadata} %))
+                      form)
+       form))
+   x))
 
 (mu/defn cache-key :- ::cache-key
   "Calculate a cache key to use with [[with-cached-value]]. Prefer the 5 arity, which ensures unserializable keys

@@ -2,9 +2,9 @@
   (:require
    [flatland.ordered.set :as ordered-set]
    [medley.core :as m]
-   [metabase.driver :as driver]
    [metabase.lib.core :as lib]
    [metabase.lib.equality :as lib.equality]
+   [metabase.lib.field.util :as lib.field.util]
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
@@ -43,25 +43,15 @@
                       lib.util/fresh-uuids
                       (fields-used-in-breakouts-aggregations-or-expressions stage)))))
 
-;;; TODO (Cam 7/7/25) -- update this to use [[metabase.lib.field.util/update-keys-for-col-from-previous-stage]] instead
-;;; of its own weird bespoke version of the same thing.
-(mu/defn- update-metadata-from-previous-stage-to-produce-correct-ref-in-current-stage :- ::lib.schema.metadata/column
-  "Force a `[:field {} <name>]` ref. Must manually escape field refs here, since `escape-join-aliases` mw is already run."
-  [col :- ::lib.schema.metadata/column]
-  (-> col
-      (update :lib/desired-column-alias #(driver/escape-alias driver/*driver* %))
-      (assoc :lib/source              :source/previous-stage
-             :lib/source-column-alias (driver/escape-alias driver/*driver* (:lib/desired-column-alias col)))
-      (lib/with-temporal-bucket (if (isa? ((some-fn :effective-type :base-type) col) :type/Temporal)
+(defn- update-temporal-bucket [col]
+  (lib/with-temporal-bucket col (if (isa? ((some-fn :effective-type :base-type) col) :type/Temporal)
                                   ;; for temporal columns: set temporal type to `:default` to
                                   ;; prevent [[metabase.query-processor.middleware.auto-bucket-datetimes]] from
                                   ;; trying to mess with it.
                                   :default
                                   ;; for other columns: remove temporal type, it should be nil anyway but remove it to
                                   ;; be safe.
-                                  nil))
-      (lib/with-binning nil)
-      (dissoc :lib/expression-name)))
+                                  nil)))
 
 (mu/defn- update-second-stage-refs :- ::lib.schema/stage
   [stage            :- ::lib.schema/stage
@@ -71,7 +61,8 @@
     (if-let [col (when-not (some #{:expressions} &parents)
                    (lib.equality/find-matching-column &match first-stage-cols))]
       (-> col
-          update-metadata-from-previous-stage-to-produce-correct-ref-in-current-stage
+          lib.field.util/update-keys-for-col-from-previous-stage
+          update-temporal-bucket
           lib/ref
           (cond-> (:lib/external-remap col) (lib.options/update-options assoc ::externally-remapped-field true)))
       (lib.util/fresh-uuids &match))))

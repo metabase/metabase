@@ -348,7 +348,7 @@
                                              (log/warnf "Failed to find matching column in join %s for ref %s, found:\n%s"
                                                         (pr-str join-alias)
                                                         (pr-str field-ref)
-                                                        (u/pprint-to-str (map :lib/desired-column-alias cols))))]
+                                                        (pr-str (map (juxt :id :lib/source-column-alias) cols))))]
                         :when     match]
                     (-> match
                         (assoc :lib/source-uuid (lib.options/uuid field-ref))

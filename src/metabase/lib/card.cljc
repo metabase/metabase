@@ -95,6 +95,7 @@
                      field-metadata
                      (m/filter-vals some? source-metadata-col)
                      {:lib/type                :metadata/column
+                      ;; TODO (Cam 8/5/25) -- should we be setting this if `card-id` is nil?
                       :lib/source              :source/card
                       :lib/source-column-alias ((some-fn :lib/source-column-alias :name) source-metadata-col)})
               card-id

@@ -5,7 +5,8 @@
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.memoize :as u.memo]))
+   [metabase.util.memoize :as u.memo]
+   [medley.core :as m]))
 
 (comment metabase.types.core/keep-me)
 
@@ -168,7 +169,11 @@
   [:and
    {:default {}}
    [:map
-    {:decode/normalize normalize-options-map}
+    {:decode/normalize normalize-options-map
+     :encode/cache-key (fn [m]
+                         (m/filter-keys #(and (simple-keyword? %)
+                                              (not (#{:base-type :effective-type} %)))
+                                        m))}
     [:lib/uuid ::uuid]
     ;; these options aren't required for any clause in particular, but if they're present they must follow these schemas.
     [:base-type      {:optional true} [:maybe ::base-type]]

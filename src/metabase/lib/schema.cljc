@@ -251,7 +251,14 @@
                                :params
                                :parameters
                                :lib/stage-metadata
-                               :middleware)}
+                               ;; wait a minute, `:middleware` is not supposed to be added here, it's supposed to be
+                               ;; added to the top level.
+                               :middleware)
+    :encode/cache-key (fn [m]
+                        (m/filter-keys #(and (or (simple-keyword? %)
+                                                 (= % :lib/type))
+                                             (not (#{:base-type :effective-type} %)))
+                                       m))}
    [:map
     [:lib/type [:ref ::stage.type]]]
    [:multi {:dispatch      lib-type
@@ -392,7 +399,12 @@
   [:and
    [:map
     {:decode/normalize common/normalize-map
-     :encode/serialize serialize-query}
+     :encode/serialize serialize-query
+     :encode/cache-key (fn [m]
+                         (m/filter-keys #(and (or (simple-keyword? %)
+                                                  (#{:lib/type :lib/metadata} %))
+                                              (not= % :info))
+                                        m))}
     [:lib/type [:=
                 {:decode/normalize common/normalize-keyword, :default :mbql/query}
                 :mbql/query]]

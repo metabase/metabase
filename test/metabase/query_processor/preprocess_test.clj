@@ -314,9 +314,11 @@
                  {:aggregation [[:count]]
                   :breakout    [[:field %products.created-at {:source-field %product-id, :temporal-unit :month}]
                                 [:field %products.category {:source-field %product-id}]]}))]
+    ;; actually, ok just to not return `:source-alias`, which is used for mysterious FE legacy historical purposes. We
+    ;; can go ahead and return various Lib keys for Lib purposes.
     (doseq [col (qp.preprocess/query->expected-cols query)]
       (testing (pr-str (:name col))
-        (is (empty? (m/filter-vals #(= % "PRODUCTS__via__PRODUCT_ID") col)))))
+        (is (not (contains? col :source-alias)))))
     (testing "result metadata should still contain fk_field_id"
       (is (=? [{:fk_field_id (meta/id :orders :product-id)}
                {:fk_field_id (meta/id :orders :product-id)}

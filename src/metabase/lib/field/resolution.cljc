@@ -464,7 +464,11 @@
    stage-number                                                    :- :int
    [_tag {:keys [source-field join-alias], :as opts} id-or-name, :as field-ref] :- :mbql.clause/field]
   ;; this is just for easier debugging
-  (let [stage-number (lib.util/canonical-stage-index query stage-number)]
+  (let [stage-number (lib.util/canonical-stage-index query stage-number)
+        query        (update query :stages (fn [stages]
+                                             (into []
+                                                   (take (inc stage-number))
+                                                   stages)))]
     (log/debugf "Resolving %s in stage %s" (pr-str id-or-name) (pr-str stage-number))
     (-> (merge-metadata
          {:lib/type :metadata/column}
@@ -475,7 +479,8 @@
              (merge
               (fallback-metadata id-or-name)
               (when join-alias
-                {:metabase.lib.join/join-alias join-alias})))
+                {:lib/source                   :source/joins
+                 :metabase.lib.join/join-alias join-alias})))
          (options-metadata opts)
          {:lib/original-ref field-ref})
         (as-> $col (assoc $col :display-name (lib.metadata.calculation/display-name query stage-number $col)))

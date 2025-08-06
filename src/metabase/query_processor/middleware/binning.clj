@@ -16,7 +16,8 @@
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.store :as qp.store]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.lib.field.util :as lib.field.util]))
 
 (set! *warn-on-reflection* true)
 
@@ -68,18 +69,9 @@
 ;;; TODO (Cam 6/12/25) -- Mega HACK -- we should be using higher-level Lib methods that return metadata with
 ;;; desired aliases in the first place instead of trying to calculate it ourselves.
 (defn- add-desired-column-aliases [cols]
-  (let [unique-name-fn (lib.util/unique-name-generator)]
-    (for [col cols]
-      (assoc col :lib/desired-column-alias (unique-name-fn
-                                            (lib.join.util/desired-alias
-                                             (qp.store/metadata-provider)
-                                             ;; add in join alias info just for desired column alias purposes.
-                                             (merge
-                                              ;; this is an even bigger MEGA HACK -- why does our 'source metadata' lose
-                                              ;; the join alias information ??
-                                              (when-let [source-alias (:source-alias col)]
-                                                {:metabase.lib.join/join-alias source-alias})
-                                              col)))))))
+  (into []
+        (lib.field.util/add-source-and-desired-aliases-xform (qp.store/metadata-provider))
+        cols))
 
 (mu/defn- matching-metadata-from-source-metadata :- ::lib.schema.metadata/column
   [field-name      :- ::lib.schema.common/non-blank-string
@@ -90,9 +82,10 @@
       (throw (ex-info (tru "Cannot update binned field: query is missing source-metadata")
                       {:field field-name})))
     ;; try to find field in source-metadata with matching name
-    (let [mlv2-metadatas (lib.card/->card-metadata-columns (qp.store/metadata-provider) source-metadata)
+    (let [mlv2-metadatas (for [col (lib.card/->card-metadata-columns (qp.store/metadata-provider) source-metadata)]
+                           (assoc col :lib/source :source/previous-stage))
           mlv2-metadatas (cond-> mlv2-metadatas
-                           (not (every? :lib/desired-column-alias mlv2-metadatas)) add-desired-column-aliases)
+                           (not (every? :lib/source-column-alias mlv2-metadatas)) add-desired-column-aliases)
           field-ref      [:field {:lib/uuid (str (random-uuid)), :base-type :type/*} field-name]]
       (or
        (lib.field.resolution/resolve-column-in-metadata (qp.store/metadata-provider) field-ref mlv2-metadatas)
