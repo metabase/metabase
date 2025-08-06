@@ -4,7 +4,6 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase-enterprise.transforms.ordering :as transforms.ordering]
-   [metabase-enterprise.transforms.sync :as transforms.sync]
    [metabase-enterprise.transforms.util :as transforms.util]
    [metabase-enterprise.worker.core :as worker]
    [metabase.driver :as driver]
@@ -63,7 +62,7 @@
    (sync-table! database target)))
 
 ;; register that we need to run sync after a transform is finished remotely
-(defmethod transforms.sync/post-success :transform
+(defmethod worker/post-success :transform
   [{:keys [run_id work_id]}]
   (sync-target! work_id run_id))
 

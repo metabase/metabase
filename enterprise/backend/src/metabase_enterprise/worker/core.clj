@@ -3,6 +3,7 @@
    [metabase-enterprise.worker.api]
    [metabase-enterprise.worker.models.worker-run]
    [metabase-enterprise.worker.server]
+   [metabase-enterprise.worker.sync]
    [metabase-enterprise.worker.tracking]
    [potemkin :as p]))
 
@@ -27,4 +28,6 @@
   timeout-run!]
  [metabase-enterprise.worker.server
   start!
-  stop!])
+  stop!]
+ [metabase-enterprise.worker.sync
+  post-success])

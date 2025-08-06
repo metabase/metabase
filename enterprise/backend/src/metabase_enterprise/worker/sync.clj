@@ -1,4 +1,4 @@
-(ns  metabase-enterprise.transforms.sync
+(ns metabase-enterprise.worker.sync
   (:require
    [clojurewerkz.quartzite.conversion :as conversion]
    [clojurewerkz.quartzite.jobs :as jobs]
@@ -7,8 +7,7 @@
    [clojurewerkz.quartzite.triggers :as triggers]
    [java-time.api :as t]
    [metabase-enterprise.worker.api :as api]
-   [metabase-enterprise.worker.core :as worker]
-   [metabase-enterprise.worker.models.worker-run]
+   [metabase-enterprise.worker.models.worker-run :as worker-run]
    [metabase.app-db.core :as mdb]
    [metabase.driver :as driver]
    [metabase.driver.sql.query-processor :as sql.qp]
@@ -23,9 +22,11 @@
     ScheduledExecutorService
     TimeUnit)))
 
+;; TODO (eric): make cancelation table
+
 (set! *warn-on-reflection* true)
 
-(def ^:private job-key "metabase-enterprise.transforms.sync")
+(def ^:private job-key "metabase-enterprise.worker.sync")
 
 (defmulti post-success
   "What to run after successful remote run is synced locally. Dispatches on work_type."
@@ -38,7 +39,7 @@
 
 (defn- sync-worker-runs! [_ctx]
   (log/trace "Syncing worker runs.")
-  (let [runs (worker/reducible-active-remote-runs)]
+  (let [runs (worker-run/reducible-active-remote-runs)]
     (run! (fn [run]
             (try
               (let [resp (api/get-status (:run_id run))]
@@ -46,30 +47,30 @@
                   "started"
                   :do-nothing
                   "canceling"
-                  (worker/mark-cancel-started-run! (:run_id run) {:end_time (t/instant (:end-time resp))
-                                                                  :message (:note resp)})
+                  (worker-run/mark-cancel-started-run! (:run_id run) {:end_time (t/instant (:end-time resp))
+                                                                      :message (:note resp)})
                   "canceled"
-                  (worker/cancel-run! (:run_id run) {:end_time (t/instant (:end-time resp))
-                                                     :message (:note resp)})
+                  (worker-run/cancel-run! (:run_id run) {:end_time (t/instant (:end-time resp))
+                                                         :message (:note resp)})
                   "success"
                   (do
-                    (worker/succeed-started-run! (:run_id run) {:end_time (t/instant (:end-time resp))})
+                    (worker-run/succeed-started-run! (:run_id run) {:end_time (t/instant (:end-time resp))})
                     (post-success run))
                   "error"
-                  (worker/fail-started-run! (:run_id run) {:end_time (t/instant (:end-time resp))
-                                                           :message (:note resp)})
+                  (worker-run/fail-started-run! (:run_id run) {:end_time (t/instant (:end-time resp))
+                                                               :message (:note resp)})
                   "timeout"
-                  (worker/timeout-run! (:run_id run) {:end_time (t/instant (:end-time resp))
-                                                      :message (:note resp)})))
+                  (worker-run/timeout-run! (:run_id run) {:end_time (t/instant (:end-time resp))
+                                                          :message (:note resp)})))
               (catch Throwable t
                 (log/error t (str "Error syncing " (:run_id run))))))
           runs))
 
   (log/trace "Timing out old runs.")
-  (worker/timeout-old-runs! 4 :hour)
+  (worker-run/timeout-old-runs! 4 :hour)
 
   (log/trace "Canceling items that haven't been marked canceled.")
-  (worker/cancel-old-canceling-runs! 1 :minute))
+  (worker-run/cancel-old-canceling-runs! 1 :minute))
 
 (task/defjob  ^{:doc "Syncs remote execution information with local table."
                 org.quartz.DisallowConcurrentExecution true}

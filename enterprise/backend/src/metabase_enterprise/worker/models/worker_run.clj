@@ -16,8 +16,13 @@
    :status mi/transform-keyword
    :run_method mi/transform-keyword})
 
+;; TODO (eric)
+;; should be a multimethod
 (def ^:private model->work-type
   {:model/Transform :transform})
+
+;; TODO (eric)
+;; add toucan invariant for :is_active
 
 (mi/define-simple-hydration-method add-worker-runs
   :worker-runs
