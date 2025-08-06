@@ -820,7 +820,7 @@
    :boolean       :type/Boolean
    :box           :type/*
    :bpchar        :type/Text ; "blank-padded char" is the internal name of "character"
-   :bytea         :type/*    ; byte array
+   :bytea         :type/PostgresBytea ; byte array
    :cidr          :type/Structured ; IPv4/IPv6 network address
    :circle        :type/*
    :citext        :type/Text ; case-insensitive text

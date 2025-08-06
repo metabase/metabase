@@ -268,6 +268,31 @@
 
 (derive :type/Interval :type/Temporal)
 
+;;; Binary Types
+
+;; Base type for binary data (byte arrays, BLOBs, bytea, etc.)
+(derive :type/Binary :type/*)
+(derive :type/Binary :type/field-values-unsupported) ; Binary data typically shouldn't be cached for field values
+
+;; Specific binary types for different databases
+(derive :type/MySQLBlob :type/Binary)
+(derive :type/MySQLBlob :type/Large) ; BLOBs can be large
+
+(derive :type/PostgresBytea :type/Binary)
+
+(derive :type/OracleBlob :type/Binary)
+(derive :type/OracleBlob :type/Large)
+
+;; Binary data that serves as identifiers (PKs/FKs)
+(derive :type/BinaryID :type/Binary)
+(derive :type/BinaryID :Semantic/*)
+
+;; Hash values stored as binary
+(derive :type/Hash :type/Binary)
+(derive :type/Hash :Semantic/*)
+(derive :type/SHA256 :type/Hash)
+(derive :type/MD5 :type/Hash)
+
 ;;; Other
 
 (derive :type/Boolean :type/*)
@@ -370,6 +395,11 @@
 
 (derive :Coercion/String->Integer :Coercion/String->Number)
 (derive :Coercion/Float->Integer  :Coercion/*)
+
+;; Binary coercion strategies
+(derive :Coercion/Binary->String :Coercion/*)
+(derive :Coercion/Binary->Base64String :Coercion/Binary->String)
+(derive :Coercion/Binary->HexString :Coercion/Binary->String)
 
 ;;; ---------------------------------------------------- Util Fns ----------------------------------------------------
 

@@ -26,6 +26,7 @@
    [metabase.query-processor.util.persisted-cache :as qp.persistence]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
@@ -318,6 +319,10 @@
   [_metadata-providerable tag params]
   (param-value-for-raw-value-tag tag params))
 
+(defmethod parse-tag :binary
+  [_metadata-providerable tag params]
+  (param-value-for-raw-value-tag tag params))
+
 ;;; Parsing Values
 
 (mu/defn- parse-number :- number?
@@ -348,6 +353,31 @@
     (string? value)
     (u/many-or-one (mapv parse-number (str/split value #",")))))
 
+(mu/defn- parse-binary-value
+  "Parse a binary field value from a string. Supports base64 and hex formats."
+  [value]
+  (cond
+    ;; Handle base64 strings (most common format from JSON)
+    (and (string? value) (not (re-matches #"^0x[0-9a-fA-F]+$" value)))
+    (try
+      (json/base64->bytes value)
+      (catch Exception _
+        ;; If base64 decoding fails, return the string as-is
+        value))
+    
+    ;; Handle hex strings (e.g., "0x48656c6c6f")
+    (and (string? value) (re-matches #"^0x[0-9a-fA-F]+$" value))
+    (try
+      (let [hex-str (subs value 2)] ; Remove "0x" prefix
+        (byte-array (map #(unchecked-byte (Integer/parseInt (apply str %) 16))
+                         (partition 2 hex-str))))
+      (catch Exception _
+        ;; If hex decoding fails, return the string as-is
+        value))
+    
+    :else
+    value))
+
 (mu/defn- parse-value-for-field-type :- :any
   "Do special parsing for value for a (presumably textual) FieldFilter (`:type` = `:dimension`) param (i.e., attempt
   to parse it as appropriate based on the base type and semantic type of the Field associated with it). These are
@@ -360,6 +390,9 @@
 
     (isa? effective-type :type/Number)
     (value->number value)
+
+    (isa? effective-type :type/Binary)
+    (parse-binary-value value)
 
     :else
     value))
