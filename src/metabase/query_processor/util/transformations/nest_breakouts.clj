@@ -4,8 +4,6 @@
    [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.equality :as lib.equality]
-   [metabase.lib.field.util :as lib.field.util]
-   [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.util :as lib.schema.util]
@@ -43,14 +41,14 @@
                       lib.util/fresh-uuids
                       (fields-used-in-breakouts-aggregations-or-expressions stage)))))
 
-(defn- update-temporal-bucket [col]
+(defn- update-temporal-bucket
+  "For temporal columns: set temporal type to `:default` to
+  prevent [[metabase.query-processor.middleware.auto-bucket-datetimes]] from trying to mess with it.
+
+  For other columns: remove temporal type, it should be nil anyway but remove it to be safe."
+  [col]
   (lib/with-temporal-bucket col (if (isa? ((some-fn :effective-type :base-type) col) :type/Temporal)
-                                  ;; for temporal columns: set temporal type to `:default` to
-                                  ;; prevent [[metabase.query-processor.middleware.auto-bucket-datetimes]] from
-                                  ;; trying to mess with it.
                                   :default
-                                  ;; for other columns: remove temporal type, it should be nil anyway but remove it to
-                                  ;; be safe.
                                   nil)))
 
 (mu/defn- update-second-stage-refs :- ::lib.schema/stage
@@ -61,10 +59,10 @@
     (if-let [col (when-not (some #{:expressions} &parents)
                    (lib.equality/find-matching-column &match first-stage-cols))]
       (-> col
-          lib.field.util/update-keys-for-col-from-previous-stage
+          lib/update-keys-for-col-from-previous-stage
           update-temporal-bucket
           lib/ref
-          (cond-> (:lib/external-remap col) (lib.options/update-options assoc ::externally-remapped-field true)))
+          (cond-> (:lib/external-remap col) (lib/update-options assoc ::externally-remapped-field true)))
       (lib.util/fresh-uuids &match))))
 
 (def ^:private granularity
@@ -93,6 +91,7 @@
     (if (and (some? temporal-unit) (not= temporal-unit :default))
       temporal-unit
       (or (:original-temporal-unit temporal-attributes)
+          (:inherited-temporal-unit temporal-attributes)
           (:metabase.lib.field/original-temporal-unit temporal-attributes)
           temporal-unit))))
 
@@ -125,7 +124,7 @@
           (recur (next bs) (inc i) granularity     i)
           (recur (next bs) (inc i) min-granularity finest-index))))))
 
-(defn- add-implicit-breakouts
+(defn- add-implicit-breakout-order-bys
   [stage]
   (if-let [breakouts (not-empty (:breakout stage))]
     (let [finest-temp-breakout (finest-temporal-breakout-index breakouts 1)
@@ -140,7 +139,7 @@
                           (comp (map lib.schema.util/remove-lib-uuids)
                                 (remove explicit-order-by-exprs)
                                 (map (fn [expr]
-                                       (lib.options/ensure-uuid [:asc (lib.options/ensure-uuid expr)]))))
+                                       (lib/ensure-uuid [:asc (lib/ensure-uuid expr)]))))
                           breakout-exprs)]
       (assoc stage :order-by order-bys))
     stage))
@@ -158,7 +157,7 @@
         (dissoc :joins :source-table :source-card :lib/stage-metadata :filters)
         (update-second-stage-refs first-stage-cols)
         (dissoc :expressions)
-        add-implicit-breakouts)))
+        add-implicit-breakout-order-bys)))
 
 (mu/defn- nest-breakouts-in-stage :- [:maybe [:sequential {:min 2, :max 2} ::lib.schema/stage]]
   [query :- ::lib.schema/query
