@@ -103,10 +103,9 @@ export const MetabotComponent = memo(
 
       setIsLoading(false);
 
-      // TODO: Figure out actual error handling
-      if (error || !data?.card) {
+      if (error || !data?.draft_card) {
         setErrorText(
-          data?.message || t`There was a problem connecting to Metabot`,
+          data?.error || t`There was a problem connecting to Metabot`,
         );
         return;
       }
@@ -120,7 +119,7 @@ export const MetabotComponent = memo(
       const newCardId = generateDraftCardId();
       documentsDispatch(
         createDraftCard({
-          originalCard: data.card,
+          originalCard: data.draft_card,
           modifiedData: {},
           draftId: newCardId,
         }),
@@ -138,7 +137,7 @@ export const MetabotComponent = memo(
           nodePosition + 1,
           createTextNode(`🤖 Created with Metabot 💙`),
         )
-        .insertContentAt(nodePosition + 1, createTextNode(data.message))
+        .insertContentAt(nodePosition + 1, createTextNode(data.description))
         .run();
 
       deleteNode();
