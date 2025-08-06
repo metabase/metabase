@@ -120,7 +120,8 @@
          :config {:dialect "postgresql"
                   :schema "analytics"
                   :create_indexes ["email", "signup_date", "plan_type"]
-                  :description "Standardized customer data with cleaned emails and filled missing values"}}
+                  :description "Standardized customer data with cleaned emails and filled missing values"}
+         :created-at now}
 
         churn-features-transform
         {:name "Churn Prediction Features"
@@ -135,19 +136,23 @@
          :config {:dialect "postgresql"
                   :schema "ml_features"
                   :create_indexes ["customer_id", "plan_type", "inactive_30d"]
-                  :description "Feature table for churn prediction with usage, engagement, and risk indicators"}}
+                  :description "Feature table for churn prediction with usage, engagement, and risk indicators"}
+         :created-at now}
 
         ;; Sample users for the workspace
         workspace-users
         [{:id 1001
           :name "Transform Writer"
           :email "transform.writer@company.com"
-          :type "writer"}
+          :type "writer"
+          :created-at now}
          {:id 1002
           :name "Transform Reader"
           :email "transform.reader@company.com"
-          :type "reader"}]
+          :type "reader"
+          :created-at now}]
 
+        ;; Data warehouse configurations
         ;; Data warehouse configurations
         dwh-connections
         [{:id 1
@@ -157,7 +162,8 @@
                         :port 5432
                         :database "analytics"
                         :username "workspace_readonly"
-                        :ssl true}}
+                        :ssl true}
+          :created-at now}
          {:id 2
           :name "ML Feature Store"
           :type :read-write
@@ -165,17 +171,18 @@
                         :port 5432
                         :database "features"
                         :username "workspace_ml"
-                        :ssl true}}]
+                        :ssl true}
+          :created-at now}]
 
         ;; Permissions for tables
         table-permissions
-        [{:table "customers" :permission :read}
-         {:table "subscriptions" :permission :read}
-         {:table "usage_logs" :permission :read}
-         {:table "support_tickets" :permission :read}
-         {:table "customers_clean" :permission :write}
-         {:table "churn_features" :permission :write}
-         {:table "churn_analysis" :permission :write}]]
+        [{:table "customers" :permission :read :created-at now}
+         {:table "subscriptions" :permission :read :created-at now}
+         {:table "usage_logs" :permission :read :created-at now}
+         {:table "support_tickets" :permission :read :created-at now}
+         {:table "customers_clean" :permission :write :created-at now}
+         {:table "churn_features" :permission :write :created-at now}
+         {:table "churn_analysis" :permission :write :created-at now}]]
 
     ;; Create the workspace with all components
     (let [workspace-data {:name "Customer Churn Analysis Workspace"
@@ -244,11 +251,12 @@
                                              :template-tags {}}}}
                    :target {:name "attribution_weights"
                             :type "table"}
-                   :config {:dialect "postgresql"}}]
-     :users [{:id 2001 :name "Jessica Park" :email "jessica.park@company.com" :type "marketing-analyst"}]
-     :dwh [{:id 3 :name "Marketing Data Warehouse" :type :read-only :credentials {:host "marketing-dw.company.com"}}]
+                   :config {:dialect "postgresql"}
+                   :created-at now}]
+     :users [{:id 2001 :name "Jessica Park" :email "jessica.park@company.com" :type "marketing-analyst" :created-at now}]
+     :dwh [{:id 3 :name "Marketing Data Warehouse" :type :read-only :credentials {:host "marketing-dw.company.com"} :created-at now}]
      :documents []
-     :permissions [{:table "campaigns" :permission :read} {:table "conversions" :permission :read}]
+     :permissions [{:table "campaigns" :permission :read :created-at now} {:table "conversions" :permission :read :created-at now}]
      :activity_log []
      :archived false}))
 

@@ -326,7 +326,7 @@ databaseChangeLog:
   - changeSet:
       id: v56.2025-08-06T13:00:00
       author: escherize
-      comment: Create workspaces table
+      comment: Create workspace table
       changes:
         - createTable:
             tableName: workspace
@@ -390,8 +390,8 @@ databaseChangeLog:
                   constraints:
                     nullable: true
               - column:
-                  name: user
-                  remarks: JSON object containing workspace-user's info
+                  name: users
+                  remarks: JSON object containing workspace-users' info
                   type: ${text.type}
                   constraints:
                     nullable: true

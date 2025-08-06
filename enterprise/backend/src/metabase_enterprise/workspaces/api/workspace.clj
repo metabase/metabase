@@ -58,8 +58,7 @@
                         :activity_log []
                         :permissions []
                         :documents []
-                        :dwh []
-                        :archived false}]
+                        :dwh []}]
     (t2/insert-returning-instance! :model/Workspace workspace-data)))
 
 (api.macros/defendpoint :put "/:id"
@@ -145,7 +144,8 @@
                        :description description
                        :source source
                        :target target
-                       :config config}
+                       :config config
+                       :created-at (str (java.time.Instant/now))}
         updated-transforms (conj current-transforms new-transform)]
     (t2/update! :model/Workspace id
                 {:transforms updated-transforms
@@ -197,7 +197,8 @@
         new-dwh {:id dwh_id
                  :name name
                  :type (keyword type)
-                 :credentials credentials}
+                 :credentials credentials
+                 :created-at (str (java.time.Instant/now))}
         updated-dwh (conj current-dwh new-dwh)]
     (t2/update! :model/Workspace id
                 {:dwh updated-dwh
@@ -227,10 +228,36 @@
         new-user {:id user_id
                   :name name
                   :email email
-                  :type type}
+                  :type type
+                  :created-at (str (java.time.Instant/now))}
         updated-users (conj current-users new-user)]
     (t2/update! :model/Workspace id
                 {:users updated-users
+                 :updated_at (str (java.time.Instant/now))})
+    (t2/select-one :model/Workspace :id id)))
+
+(api.macros/defendpoint :put "/:id/permission"
+  "Add a permission to the workspace.
+   
+   Request body:
+   - table (required): Table name
+   - permission (required): Permission type (read or write)"
+  [id
+   _route-params
+   _query-params
+   {:keys [table permission]}
+   :- [:map
+       [:table ms/NonBlankString]
+       [:permission [:enum "read" "write"]]]]
+  {id ms/PositiveInt}
+  (let [workspace (api/check-404 (t2/select-one :model/Workspace :id id))
+        current-permissions (or (:permissions workspace) [])
+        new-permission {:table table
+                        :permission (keyword permission)
+                        :created-at (str (java.time.Instant/now))}
+        updated-permissions (conj current-permissions new-permission)]
+    (t2/update! :model/Workspace id
+                {:permissions updated-permissions
                  :updated_at (str (java.time.Instant/now))})
     (t2/select-one :model/Workspace :id id)))
 
