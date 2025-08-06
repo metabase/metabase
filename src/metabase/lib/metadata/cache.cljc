@@ -4,7 +4,6 @@
   easy to cache things like `visible-columns`."
   (:require
    [clojure.string :as str]
-   [clojure.walk :as walk]
    [medley.core :as m]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
@@ -23,19 +22,6 @@
   [:cat
    qualified-keyword?
    [:+ :any]])
-
-(defn ->cache-key
-  "Get the cache key for `x` using the `:encode/cache-key` functions for `schema`."
-  [_schema x]
-  (walk/postwalk
-   (fn [form]
-     (if (map? form)
-       (m/filter-keys #(or (and (simple-keyword? %)
-                                (not (#{:base-type :effective-type} %)))
-                           (#{:lib/type :lib/metadata} %))
-                      form)
-       form))
-   x))
 
 (mu/defn cache-key :- ::cache-key
   "Calculate a cache key to use with [[with-cached-value]]. Prefer the 5 arity, which ensures unserializable keys
@@ -57,9 +43,10 @@
                    ;; query with a different MP
                    m (m/update-existing m :lib/metadata hash)]
                (case (:lib/type m)
-                 ;; For cards and metrics being used as keys, these came from the metadata itself, so replace them
-                 ;; with stubs referencing them by :id.
-                 (:metadata/card :metadata/metric) [(:lib/type m) (:id m)]
+                 ;; For tables, cards and metrics being used as keys, these came from the metadata itself, so replace
+                 ;; them with stubs referencing them by :id.
+                 (:metadata/table :metadata/card :metadata/metric)
+                 [(:lib/type m) (:id m)]
                  ;; Otherwise, return the original map.
                  (not-empty m))))]
      [unique-key
