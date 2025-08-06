@@ -70,11 +70,9 @@
     :model/Collection
     :model/CollectionPermissionGraphRevision
     :model/Dashboard
-    :model/Document
     :model/Card
     :model/CardBookmark
     :model/DashboardBookmark
-    :model/DocumentBookmark
     :model/DataPermissions
     :model/CollectionBookmark
     :model/BookmarkOrdering
@@ -119,7 +117,9 @@
       :model/ConnectionImpersonation
       :model/Metabot
       :model/MetabotEntity
-      :model/MetabotPrompt])))
+      :model/MetabotPrompt
+      :model/Document
+      :model/DocumentBookmark])))
 
 (defn- objects->colums+values
   "Given a sequence of objects/rows fetched from the H2 DB, return a the `columns` that should be used in the `INSERT`
