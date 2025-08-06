@@ -135,18 +135,22 @@
           (jdbc/execute! connectable (records->sql batch)))
         (analytics-set-index-size! connectable table-name)))))
 
+(defn- execute-with-counts [connectable model ids sql]
+  (jdbc/execute! connectable sql)
+  (u/prog1 (count ids)
+    (log/debug "semantic search deleted a batch of" <>
+               "documents with model type" model)))
+
 (defn- batch-delete-ids!
   [connectable table-name model ids->sql ids]
-  (let [deleted (transduce (comp (partition-all *batch-size*)
-                                 (map (fn [ids]
-                                        (if-let [sql (ids->sql ids)]
-                                          (do (jdbc/execute! connectable sql)
-                                              (u/prog1 (count ids)
-                                                (log/debug "semantic search deleted a batch of" <>
-                                                           "documents with model type" model)))
-                                          0))))
-                           +
-                           ids)]
+  (let [deleted (transduce
+                 (comp (partition-all *batch-size*)
+                       (map (fn [ids]
+                              (-> ids
+                                  (some->> ids->sql (execute-with-counts connectable model ids))
+                                  (or 0)))))
+                 +
+                 ids)]
     (when (pos? deleted)
       (log/info "semantic search deleted" deleted "total documents with model type" model)
       (analytics-set-index-size! connectable table-name)
