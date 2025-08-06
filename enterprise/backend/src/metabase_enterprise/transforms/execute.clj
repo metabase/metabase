@@ -66,6 +66,7 @@
   [{:keys [run_id work_id]}]
   (sync-target! work_id run_id))
 
+;; TODO (eric): shouldn't be just for workers
 (defonce ^:private connections (atom {}))
 
 (defn- cancel-run! [run-id]

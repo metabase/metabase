@@ -16,10 +16,17 @@
    :status mi/transform-keyword
    :run_method mi/transform-keyword})
 
-;; TODO (eric)
-;; should be a multimethod
-(def ^:private model->work-type
-  {:model/Transform :transform})
+(defmulti model->work-type
+  "Convert the toucan model name to a keyword representing the type of work."
+  {:arglists '([model-name])}
+  identity)
+
+(defmethod model->work-type :default
+  [model-name]
+  (throw (ex-info "No implementation of model->work-type for this model name."
+                  {:model-name model-name})))
+
+;; TODO (eric): make cancelation table
 
 ;; TODO (eric)
 ;; add toucan invariant for :is_active

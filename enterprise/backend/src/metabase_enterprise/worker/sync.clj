@@ -22,8 +22,6 @@
     ScheduledExecutorService
     TimeUnit)))
 
-;; TODO (eric): make cancelation table
-
 (set! *warn-on-reflection* true)
 
 (def ^:private job-key "metabase-enterprise.worker.sync")

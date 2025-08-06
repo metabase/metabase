@@ -37,3 +37,7 @@
           last-executions (m/index-by :work_id (worker/latest-runs :transform transform-ids))]
       (for [transform transforms]
         (assoc transform :last_execution (get last-executions (:id transform)))))))
+
+(defmethod worker/model->work-type :model/Transform
+  [_]
+  :transform)

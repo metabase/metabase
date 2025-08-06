@@ -19,6 +19,7 @@
   inactive-runs
   latest-runs
   mark-cancel-started-run!
+  model->work-type
   paged-executions
   reducible-canceled-local-runs
   reducible-active-remote-runs
