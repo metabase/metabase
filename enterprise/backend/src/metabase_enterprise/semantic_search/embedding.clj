@@ -1,6 +1,7 @@
 (ns metabase-enterprise.semantic-search.embedding
   (:require
    [clj-http.client :as http]
+   [clojure.string :as str]
    [metabase-enterprise.metabot-v3.client :as metabot-v3.client]
    [metabase-enterprise.metabot-v3.settings :as metabot-v3.settings]
    [metabase-enterprise.semantic-search.settings :as semantic-settings]
@@ -14,17 +15,26 @@
 
 (set! *warn-on-reflection* true)
 
-;; TODO: find better way to abbrev given model names can be dynamic
+(defn ^:private clean-model-name
+  "Clean up a model name to make it friendly for use in index names."
+  [model-name]
+  (-> model-name
+      (str/split #"/")
+      last
+      (str/replace #"[-:.]" "_")))
 
-(def model->abbrev
-  "Map of supported models to a unique abbreviation for use in index names."
-  {"all-minilm" "all_minilm"
-   "mxbai-embed-large" "mxbai_embed_lg"
-   "nomic-embed-text" "nomic_embed_txt"
-   "snowflake-arctic-embed2:568m" "snwflk_arc_embed2_568m"
-   "text-embedding-ada-002" "txt_embed_ada_2"
-   "text-embedding-3-small" "txt_embed_3_sm"
-   "Snowflake/snowflake-arctic-embed-l-v2.0" "snwflk_arc_embedl2"})
+(def ^:private model-abbreviations {"small" "sm" "medium" "md" "large" "lg" "tiny" "tn"})
+
+(defn abbrev-model-name
+  "Abbreviate long model names for use in index names. Does not ensure uniqueness."
+  [model-name max-len]
+  (-> model-name
+      clean-model-name
+      (str/replace #"embedding|embed" "")
+      ((fn [s] (reduce-kv str/replace s model-abbreviations)))
+      (str/replace #"_{2,}" "_")
+      (#(subs % 0 (min (count %) max-len)))
+      (str/replace #"^_+|_+$" "")))
 
 ;;; Token Counting for OpenAI Models
 
@@ -43,6 +53,23 @@
   "Count the total number of tokens across multiple text strings."
   [texts]
   (reduce + 0 (map count-tokens texts)))
+
+;;; Decode OpenAI base64 response
+
+(defn- extract-base64-response-embeddings
+  "Decode and extract the base64 encoded embedding from an /v1/embeddings OpenAI response"
+  [response]
+  (->> response
+       :data
+       (map (comp vec
+                  (fn [^String base64-str]
+                    (let [bytes (.decode (java.util.Base64/getDecoder) base64-str)
+                          buffer (java.nio.ByteBuffer/wrap bytes)
+                          _ (.order buffer java.nio.ByteOrder/LITTLE_ENDIAN)
+                          float-count (/ (count bytes) 4)]
+                      (repeatedly float-count #(.getFloat buffer))))
+                  :embedding))
+       vec))
 
 ;;; Batching Logic
 
@@ -147,18 +174,7 @@
       (analytics/inc! :metabase-search/semantic-embedding-tokens
                       {:provider "openai", :model model-name}
                       (->> response :usage :total_tokens))
-      (->> response
-           :data
-             ;; Decode base64 encoded embedding
-           (map (comp vec
-                      (fn [^String base64-str]
-                        (let [bytes (.decode (java.util.Base64/getDecoder) base64-str)
-                              buffer (java.nio.ByteBuffer/wrap bytes)
-                              _ (.order buffer java.nio.ByteOrder/LITTLE_ENDIAN)
-                              float-count (/ (count bytes) 4)]
-                          (repeatedly float-count #(.getFloat buffer))))
-                      :embedding))
-           vec))
+      (extract-base64-response-embeddings response))
     (catch Exception e
       (log/error e "OpenAI embeddings API call failed" {:documents (count texts) :tokens (count-tokens-batch texts)})
       (throw e))))
@@ -194,18 +210,7 @@
         (analytics/inc! :metabase-search/semantic-embedding-tokens
                         {:provider "openai", :model model-name}
                         (->> response :usage :total_tokens))
-        (->> response
-             :data
-             ;; Decode base64 encoded embedding
-             (map (comp vec
-                        (fn [^String base64-str]
-                          (let [bytes (.decode (java.util.Base64/getDecoder) base64-str)
-                                buffer (java.nio.ByteBuffer/wrap bytes)
-                                _ (.order buffer java.nio.ByteOrder/LITTLE_ENDIAN)
-                                float-count (/ (count bytes) 4)]
-                            (repeatedly float-count #(.getFloat buffer))))
-                        :embedding))
-             vec))
+        (extract-base64-response-embeddings response))
       (catch Exception e
         (log/error e "OpenAI embeddings API call failed" {:documents (count texts) :tokens (count-tokens-batch texts)})
         (throw e)))))
@@ -278,7 +283,6 @@
   ;; MB_EE_OPENAI_API_KEY your OpenAI API key
 
   (def embedding-model (get-configured-model))
-
   embedding-model
   (pull-model embedding-model)
   (get-embedding embedding-model "hello"))

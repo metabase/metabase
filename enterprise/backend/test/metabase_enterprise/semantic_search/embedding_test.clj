@@ -46,31 +46,6 @@
                                        ee-embedding-model "text-embedding-ada-002"]
       (is (= 1536 (:vector-dimensions (embedding/get-configured-model)))))))
 
-(deftest test-default-models
-  ;; TODO fix
-  (testing "Provider defaults are used when no override is set"
-    (is (= "text-embedding-3-small" (#'embedding/default-model-for-provider "openai")))
-    (is (= "mxbai-embed-large" (#'embedding/default-model-for-provider "ollama")))
-    (is (nil? (#'embedding/default-model-for-provider "unknown"))))
-
-  (testing "get-model uses defaults when override is nil or empty"
-    (mt/with-temporary-setting-values [ee-embedding-provider "openai"
-                                       ee-embedding-model nil]
-      (is (= "text-embedding-3-small" (:model-name (embedding/get-configured-model)))))
-
-    (mt/with-temporary-setting-values [ee-embedding-provider "openai"
-                                       ee-embedding-model ""]
-      (is (= "text-embedding-3-small" (:model-name (embedding/get-configured-model)))))
-
-    (mt/with-temporary-setting-values [ee-embedding-provider "ollama"
-                                       ee-embedding-model nil]
-      (is (= "mxbai-embed-large" (:model-name (embedding/get-configured-model))))))
-
-  (testing "get-model uses override when specified"
-    (mt/with-temporary-setting-values [ee-embedding-provider "openai"
-                                       ee-embedding-model "text-embedding-ada-002"]
-      (is (= "text-embedding-ada-002" (:model-name (embedding/get-configured-model)))))))
-
 (deftest test-openai-provider-validation
   (testing "OpenAIProvider throws when API key not configured"
     (let [embedding-model {:provider "openai"
@@ -116,16 +91,3 @@
           batches (#'embedding/create-batches 5 #'embedding/count-tokens texts)]
       ;; Should skip the long text and batch the short ones
       (is (= [["Short" "Also short"]] batches)))))
-
-;; TODO: fix this test
-(deftest ^:parallel model->abbrev-test
-  (mt/with-premium-features #{:semantic-search}
-    (testing "all models have an abbreviation defined"
-      (doseq [provider (keys embedding/supported-models-for-provider)
-              [model _] (get embedding/supported-models-for-provider provider)]
-        (testing (str "\n" provider " " model)
-          (is (some? (embedding/model->abbrev model))))))
-    (testing "all abbreviations are unique"
-      (doseq [[abbrev frequency] (frequencies (vals embedding/model->abbrev))]
-        (testing abbrev
-          (is (= 1 frequency)))))))

@@ -160,9 +160,11 @@
   "Returns the default index spec for a model."
   [embedding-model]
   (let [{:keys [model-name provider vector-dimensions]} embedding-model
-        ;; This is a hack to ensure we don't exceed postgres' limit of 63 chars for identifier names.
-        abbreviated-model-name (embedding/model->abbrev model-name model-name)
-        table-name (str "index_table_" provider "_" abbreviated-model-name "_" vector-dimensions)]
+        provider-name (str/replace provider #"[-:.]" "_")
+        ;; calculate remaining space to ensure we don't exceed postgres' limit of 63 chars for identifier names.
+        model-max-name-len (- 63 14 (count provider-name) (count (str vector-dimensions)))
+        abbreviated-model-name (embedding/abbrev-model-name model-name model-max-name-len)
+        table-name (str "index_table_" provider-name "_" abbreviated-model-name "_" vector-dimensions)]
     {:embedding-model embedding-model
      :table-name table-name
      :version 0}))
