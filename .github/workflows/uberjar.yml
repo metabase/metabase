@@ -170,7 +170,7 @@ jobs:
     env:
       MB_EDITION: ${{ matrix.edition }}
       INTERACTIVE: false
-      SKIP_LICENSES: ${{ github.event_name == 'pull_request' }}
+      SKIP_LICENSES: ${{ github.event_name == 'pull_request' }}  # faster builds for dev
     steps:
       - name: Check out the code
         uses: actions/checkout@v4
