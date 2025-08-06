@@ -14,7 +14,7 @@
 (set! *warn-on-reflection* true)
 
 ;; API endpoints for workspace management
-;; Implements the tech spec requirements:
+;; Implements the tech spec requirements with updated schema:
 ;; - POST /api/ee/workspace
 ;; - PUT /api/ee/workspace/:id
 ;; - DELETE /api/ee/workspace/:id
@@ -22,6 +22,7 @@
 ;; - PUT /api/ee/workspace/:id/transform
 ;; - PUT /api/ee/workspace/:id/document
 ;; - PUT /api/ee/workspace/:id/dwh
+;; - PUT /api/ee/workspace/:id/user
 
 (api.macros/defendpoint :get "/"
   "List all workspaces for the current user"
@@ -51,12 +52,14 @@
                         :description description
                         :created_at now
                         :updated_at now
-                        :user nil
+                        :users []
                         :plans []
                         :transforms []
                         :activity_log []
                         :permissions []
-                        :documents []}]
+                        :documents []
+                        :dwh []
+                        :archived false}]
     (t2/insert-returning-instance! :model/Workspace workspace-data)))
 
 (api.macros/defendpoint :put "/:id"
@@ -89,44 +92,61 @@
   api/generic-204-no-content)
 
 (api.macros/defendpoint :put "/:id/plan"
-  "Add or update a plan in the workspace.
+  "Add a plan to the workspace.
    
    Request body:
-   - plan_id (required): Unique identifier for the plan
-   - details (required): Plan details object"
+   - title (required): Plan title
+   - description (required): Plan description  
+   - content (required): Plan content object"
   [id
    _route-params
    _query-params
-   {:keys [plan_id details]}
+   {:keys [title description content]}
    :- [:map
-       [:plan_id ms/NonBlankString]
-       [:details :map]]]
+       [:title ms/NonBlankString]
+       [:description ms/NonBlankString]
+       [:content :map]]]
   {id ms/PositiveInt}
   (let [workspace (api/check-404 (t2/select-one :model/Workspace :id id))
-        current-plans (or (:plans workspace) {})
-        updated-plans (assoc current-plans plan_id details)]
+        current-plans (or (:plans workspace) [])
+        new-plan {:title title
+                  :description description
+                  :content content
+                  :created-at (str (java.time.Instant/now))}
+        updated-plans (conj current-plans new-plan)]
     (t2/update! :model/Workspace id
                 {:plans updated-plans
                  :updated_at (str (java.time.Instant/now))})
     (t2/select-one :model/Workspace :id id)))
 
 (api.macros/defendpoint :put "/:id/transform"
-  "Add or update a transform in the workspace.
+  "Add a transform to the workspace.
    
    Request body:
-   - transform_path (required): Path/filename for the transform
-   - transform_data (required): Transform configuration object"
+   - name (required): Transform name
+   - description (required): Transform description
+   - source (required): Source configuration
+   - target (required): Target configuration  
+   - config (optional): Transform configuration"
   [id
    _route-params
    _query-params
-   {:keys [transform_path transform_data]}
+   {:keys [name description source target config]}
    :- [:map
-       [:transform_path ms/NonBlankString]
-       [:transform_data :map]]]
+       [:name ms/NonBlankString]
+       [:description ms/NonBlankString]
+       [:source :map]
+       [:target :map]
+       [:config {:optional true} [:maybe :map]]]]
   {id ms/PositiveInt}
   (let [workspace (api/check-404 (t2/select-one :model/Workspace :id id))
-        current-transforms (or (:transforms workspace) {})
-        updated-transforms (assoc current-transforms transform_path transform_data)]
+        current-transforms (or (:transforms workspace) [])
+        new-transform {:name name
+                       :description description
+                       :source source
+                       :target target
+                       :config config}
+        updated-transforms (conj current-transforms new-transform)]
     (t2/update! :model/Workspace id
                 {:transforms updated-transforms
                  :updated_at (str (java.time.Instant/now))})
@@ -155,33 +175,62 @@
     (t2/select-one :model/Workspace :id id)))
 
 (api.macros/defendpoint :put "/:id/dwh"
-  "Attach a data warehouse to the workspace.
+  "Add a data warehouse to the workspace.
    
    Request body:
-   - database_id (required): ID of the database
-   - database_name (required): Name of the database  
-   - database_user (optional): Database user info
-   - schema_details (optional): Schema configuration
-   - tables (optional): Table permissions"
+   - dwh_id (required): ID of the data warehouse
+   - name (required): Name of the data warehouse
+   - type (required): Access type (read-only or read-write)
+   - credentials (required): Credentials object"
   [id
    _route-params
    _query-params
-   {:keys [database_id database_name database_user schema_details tables]}
+   {:keys [dwh_id name type credentials]}
    :- [:map
-       [:database_id ms/PositiveInt]
-       [:database_name ms/NonBlankString]
-       [:database_user {:optional true} [:maybe :map]]
-       [:schema_details {:optional true} [:maybe :map]]
-       [:tables {:optional true} [:maybe [:sequential :string]]]]]
+       [:dwh_id ms/PositiveInt]
+       [:name ms/NonBlankString]
+       [:type [:enum "read-only" "read-write"]]
+       [:credentials :map]]]
   {id ms/PositiveInt}
-  (let [_workspace (api/check-404 (t2/select-one :model/Workspace :id id))
-        dwh-config {:id database_id
-                    :name database_name
-                    :user database_user
-                    :schema_details schema_details
-                    :tables tables}]
+  (let [workspace (api/check-404 (t2/select-one :model/Workspace :id id))
+        current-dwh (or (:dwh workspace) [])
+        new-dwh {:id dwh_id
+                 :name name
+                 :type (keyword type)
+                 :credentials credentials}
+        updated-dwh (conj current-dwh new-dwh)]
     (t2/update! :model/Workspace id
-                {:database dwh-config
+                {:dwh updated-dwh
+                 :updated_at (str (java.time.Instant/now))})
+    (t2/select-one :model/Workspace :id id)))
+
+(api.macros/defendpoint :put "/:id/user"
+  "Add a user to the workspace.
+   
+   Request body:
+   - user_id (required): User ID
+   - name (required): User name
+   - email (required): User email
+   - type (required): User type (e.g., 'workspace-user')"
+  [id
+   _route-params
+   _query-params
+   {:keys [user_id name email type]}
+   :- [:map
+       [:user_id ms/PositiveInt]
+       [:name ms/NonBlankString]
+       [:email ms/NonBlankString]
+       [:type ms/NonBlankString]]]
+  {id ms/PositiveInt}
+  (let [workspace (api/check-404 (t2/select-one :model/Workspace :id id))
+        current-users (or (:users workspace) [])
+        new-user {:id user_id
+                  :name name
+                  :email email
+                  :type type}
+        updated-users (conj current-users new-user)]
+    (t2/update! :model/Workspace id
+                {:users updated-users
                  :updated_at (str (java.time.Instant/now))})
     (t2/select-one :model/Workspace :id id)))
 
@@ -190,7 +239,7 @@
   +auth)
 
 (comment
-
+  ;; Example transform from existing test
   (require '[metabase.test :as mt])
   (defn- make-transform [target-table-name]
     {:name "Gadget Products"
@@ -198,10 +247,9 @@
      :source {:type "query"
               :query {:database (mt/id)
                       :type "native"
-                      :native {:query (#'metabase-enterprise.transforms.api-test/make-query "Gadget")
+                      :native {:query "SELECT * FROM products WHERE category = 'Gadget'"
                                :template-tags {}}}}
      :target {:type "table"
-              ;;:schema "transforms"
               :name target-table-name}})
 
   (make-transform "my-table"))

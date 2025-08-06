@@ -111,13 +111,20 @@
 
 (t2/deftransforms :model/Workspace
   {:plans mi/transform-json
-   :activity-logs mi/transform-json
+   :activity_log mi/transform-json
    :transforms mi/transform-json
    :documents mi/transform-json
-   :user mi/transform-json
+   :users mi/transform-json
    :dwh mi/transform-json
    :permissions mi/transform-json})
 
 (doto :model/Workspace
   (derive :metabase/model)
   (derive :hook/timestamped?))
+
+;; TODO:
+;; 1. create a workspace with a transform (sketch), plan (sketch), user
+;; 2. update the workspace
+;; 3. setup a way to show the diff
+
+;; note: transforms are done for pg. see how they look, see what it takes to hook them to a db, how to store them etc.
