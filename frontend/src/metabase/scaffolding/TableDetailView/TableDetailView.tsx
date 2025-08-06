@@ -9,9 +9,9 @@ import {
 } from "metabase/api/table";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/LoadingAndErrorWrapper";
 import { useDispatch } from "metabase/lib/redux";
-import type { RowValues, StructuredDatasetQuery } from "metabase-types/api";
+import type { StructuredDatasetQuery } from "metabase-types/api";
 
-import { getTableQuery } from "../utils";
+import { getObjectQuery, getTableQuery } from "../utils";
 
 import { TableDetailViewInner } from "./TableDetailViewInner";
 
@@ -38,26 +38,46 @@ export function TableDetailView({
     return table ? getTableQuery(table) : undefined;
   }, [table]);
 
-  const { data: dataset } = useGetAdhocQueryQuery(query ? query : skipToken);
+  const objectQuery = useMemo<StructuredDatasetQuery | undefined>(() => {
+    return table ? getObjectQuery(table, rowId) : undefined;
+  }, [table, rowId]);
 
-  const [currentRowIndex, setCurrentRowIndex] = useState(0);
+  const { data: dataset, isFetching } = useGetAdhocQueryQuery(
+    query ? query : skipToken,
+  );
+
+  const [currentRowIndex, setCurrentRowIndex] = useState<number>();
 
   const rows = useMemo(() => dataset?.data?.rows || [], [dataset]);
   const columns = dataset?.data?.results_metadata?.columns ?? [];
-  const row: RowValues = rows[currentRowIndex] || [];
+  const rowFromList =
+    typeof currentRowIndex === "undefined" ? undefined : rows[currentRowIndex];
+
+  const { data: objectDataset } = useGetAdhocQueryQuery(
+    objectQuery && typeof currentRowIndex === "undefined" && !isFetching
+      ? objectQuery
+      : skipToken,
+  );
+  const rowFromObject = useMemo(
+    () => (objectDataset?.data?.rows ?? [])[0],
+    [objectDataset],
+  );
+
+  const row = rowFromList ?? rowFromObject;
 
   // Handle row selection based on rowId
   useEffect(() => {
-    if (!rows.length) {
+    if (!row) {
       return;
     }
+
     if (rowId !== undefined) {
       const idx = rows.findIndex((row) => String(row[0]) === String(rowId));
-      setCurrentRowIndex(idx >= 0 ? idx : 0);
+      setCurrentRowIndex(idx >= 0 ? idx : undefined);
     } else {
-      setCurrentRowIndex(0);
+      setCurrentRowIndex(undefined);
     }
-  }, [rowId, rows]);
+  }, [rowId, rows, row]);
 
   const handleViewPreviousObjectDetail = useCallback(() => {
     setCurrentRowIndex((i) => {
@@ -85,7 +105,7 @@ export function TableDetailView({
     });
   }, [dispatch, rows, tableId, isEdit]);
 
-  if (!table || !dataset) {
+  if (!table || !dataset || !row) {
     return <LoadingAndErrorWrapper loading />;
   }
 
@@ -99,12 +119,16 @@ export function TableDetailView({
       tableForeignKeys={tableForeignKeys}
       isEdit={isEdit}
       onPreviousItemClick={
-        rows.length > 1 && currentRowIndex > 0
+        rows.length > 1 &&
+        typeof currentRowIndex === "number" &&
+        currentRowIndex > 0
           ? handleViewPreviousObjectDetail
           : undefined
       }
       onNextItemClick={
-        rows.length > 1 && currentRowIndex < rows.length - 1
+        rows.length > 1 &&
+        typeof currentRowIndex === "number" &&
+        currentRowIndex < rows.length - 1
           ? handleViewNextObjectDetail
           : undefined
       }

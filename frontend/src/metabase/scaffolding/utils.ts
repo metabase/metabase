@@ -7,7 +7,7 @@ import {
   getGlobalSettingsForColumn,
   getSettingDefinitionsForColumn,
 } from "metabase/visualizations/lib/settings/column";
-import { isEntityName, isPK } from "metabase-lib/v1/types/utils/isa";
+import { isEntityName, isNumeric, isPK } from "metabase-lib/v1/types/utils/isa";
 import type {
   DatasetColumn,
   ObjectViewSettings,
@@ -119,6 +119,38 @@ export function getTableQuery(
     database: table.db_id,
     query: {
       "source-table": table.id,
+    },
+    type: "query",
+  };
+}
+
+export function getObjectQuery(
+  table: Table,
+  objectId: string | number,
+): StructuredDatasetQuery | undefined {
+  const pk = (table.fields ?? []).find(isPK);
+
+  if (!pk) {
+    return getTableQuery(table);
+  }
+
+  return {
+    database: table.db_id,
+    query: {
+      "source-table": table.id,
+      filter: [
+        "=",
+        [
+          "field",
+          getRawTableFieldId(pk),
+          {
+            "base-type": pk.base_type,
+          },
+        ],
+        isNumeric(pk) && typeof objectId === "string"
+          ? parseFloat(objectId)
+          : objectId,
+      ],
     },
     type: "query",
   };
