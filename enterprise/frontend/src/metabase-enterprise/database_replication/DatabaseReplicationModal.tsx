@@ -1,12 +1,17 @@
+import { useCallback } from "react";
 import { t } from "ttag";
 
 import { Modal } from "metabase/ui";
-import { useCreateDatabaseReplicationMutation } from "metabase-enterprise/api/database-replication";
+import {
+  type PreviewDatabaseReplicationResponse,
+  useCreateDatabaseReplicationMutation,
+  usePreviewDatabaseReplicationMutation,
+} from "metabase-enterprise/api/database-replication";
 import type { Database } from "metabase-types/api";
 
 import {
-  type DWHReplicationFormFields,
   DatabaseReplicationForm,
+  type DatabaseReplicationFormFields,
   handleFieldError as handleDWHReplicationFieldError,
 } from "./DatabaseReplicationForm";
 
@@ -19,6 +24,17 @@ interface IRTKQueryError {
 const isRTKQueryError = (error: unknown): error is IRTKQueryError =>
   error instanceof Object && "status" in error && "data" in error;
 
+const transformSchemaFilters = (
+  schemaSelect: DatabaseReplicationFormFields["schemaSelect"],
+  schemaFilters: DatabaseReplicationFormFields["schemaFilters"],
+) =>
+  schemaSelect === "all"
+    ? undefined
+    : schemaFilters
+        .split(",")
+        .map((pattern) => pattern.trim())
+        .map((pattern) => ({ type: schemaSelect, pattern }));
+
 export const DatabaseReplicationModal = ({
   isOpen,
   onClose,
@@ -29,26 +45,38 @@ export const DatabaseReplicationModal = ({
   database: Database;
 }) => {
   const [createDatabaseReplication] = useCreateDatabaseReplicationMutation();
+  const [previewDatabaseReplication] = usePreviewDatabaseReplicationMutation();
+  const preview = useCallback(
+    (
+      { schemaSelect, schemaFilters }: DatabaseReplicationFormFields,
+      handleResponse: (response: PreviewDatabaseReplicationResponse) => void,
+    ) => {
+      previewDatabaseReplication({
+        databaseId: database.id,
+        schemaFilters: transformSchemaFilters(schemaSelect, schemaFilters),
+      })
+        .unwrap()
+        .then(handleResponse)
+        .catch((error) => {
+          isRTKQueryError(error) && handleDWHReplicationFieldError(error.data);
+        });
+    },
+    [previewDatabaseReplication, database.id],
+  );
 
-  const onSubmit = async ({
-    schemaSelect,
-    schemaFilters,
-  }: DWHReplicationFormFields) =>
-    createDatabaseReplication({
-      databaseId: database.id,
-      schemaFilters:
-        schemaSelect === "all"
-          ? undefined
-          : schemaFilters
-              .split(",")
-              .map((pattern) => pattern.trim())
-              .map((pattern) => ({ type: schemaSelect, pattern })),
-    })
-      .unwrap()
-      .then(onClose)
-      .catch((error) => {
-        isRTKQueryError(error) && handleDWHReplicationFieldError(error.data);
-      });
+  const onSubmit = useCallback(
+    async ({ schemaSelect, schemaFilters }: DatabaseReplicationFormFields) =>
+      createDatabaseReplication({
+        databaseId: database.id,
+        schemaFilters: transformSchemaFilters(schemaSelect, schemaFilters),
+      })
+        .unwrap()
+        .then(onClose)
+        .catch((error) => {
+          isRTKQueryError(error) && handleDWHReplicationFieldError(error.data);
+        }),
+    [createDatabaseReplication, database.id, onClose],
+  );
 
   return (
     <Modal
@@ -61,6 +89,7 @@ export const DatabaseReplicationModal = ({
       <DatabaseReplicationForm
         database={database}
         onSubmit={onSubmit}
+        preview={preview}
         initialValues={{
           databaseId: database.id,
           schemaSelect: "all",

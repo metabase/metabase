@@ -4,11 +4,18 @@ import type { DatabaseId } from "metabase-types/api";
 import { EnterpriseApi } from "./api";
 
 export interface PreviewDatabaseReplicationResponse {
-  free_quota: any;
-  total_estimated_row_count: any;
-  can_set_replication: boolean;
-  all_quotas: any;
-  tables_without_pk: { schema: string; name: string }[];
+  allQuotas: {
+    hostingFeature: string;
+    locked: boolean;
+    quotaType: string;
+    softLimit: number;
+    updatedAt: string;
+    usage: number;
+  }[];
+  canSetReplication: boolean;
+  freeQuota: number;
+  tablesWithoutPk: { name: string; schema: string }[];
+  totalEstimatedRowCount: number;
 }
 
 export const DatabaseReplicationApi = EnterpriseApi.injectEndpoints({

@@ -10,11 +10,8 @@ import {
   FormTextInput,
 } from "metabase/forms";
 import { colors } from "metabase/lib/colors";
-import { Flex, Group, Progress, Text } from "metabase/ui";
-import {
-  type PreviewDatabaseReplicationResponse,
-  usePreviewDatabaseReplicationMutation,
-} from "metabase-enterprise/api/database-replication";
+import { Box, Flex, Group, List, Progress, Text } from "metabase/ui";
+import type { PreviewDatabaseReplicationResponse } from "metabase-enterprise/api/database-replication";
 import type { Database, DatabaseId } from "metabase-types/api";
 
 const styles = {
@@ -27,7 +24,7 @@ const styles = {
   },
 };
 
-export interface DWHReplicationFormFields {
+export interface DatabaseReplicationFormFields {
   databaseId: DatabaseId;
   schemaSelect: "all" | "include" | "exclude";
   schemaFilters: string;
@@ -68,67 +65,89 @@ export const handleFieldError = (error: unknown) => {
   }
 };
 
+const compactEnglishNumberFormat = new Intl.NumberFormat("en", {
+  notation: "compact",
+  maximumFractionDigits: 1,
+});
+
 export const DatabaseReplicationForm = ({
   database,
   onSubmit,
+  preview,
   initialValues,
 }: {
   database: Database;
-  onSubmit: (_: DWHReplicationFormFields) => void;
-  onBlurSchemaFilters: (_: string) => void;
-  initialValues: DWHReplicationFormFields;
+  onSubmit: (_: DatabaseReplicationFormFields) => void;
+  preview: (
+    fields: DatabaseReplicationFormFields,
+    handleResponse: (_: PreviewDatabaseReplicationResponse) => void,
+  ) => void;
+  initialValues: DatabaseReplicationFormFields;
 }) => {
-  const [schemaFilters, setSchemaFilters] = useState<string>("");
-  const [previewDatabaseReplication] = usePreviewDatabaseReplicationMutation();
-  const [
-    previewDatabaseReplicationResponse,
-    setPreviewDatabaseReplicationResponse,
-  ] = useState<PreviewDatabaseReplicationResponse>();
-  useEffect(() => {
-    previewDatabaseReplication({ databaseId: database.id })
-      .unwrap()
-      .then(setPreviewDatabaseReplicationResponse);
-  }, [database.id, previewDatabaseReplication, schemaFilters]);
+  // FIXME: Can we get all values of the form at once?
+  const [schemaSelect, setSchemaSelect] = useState(initialValues.schemaSelect);
+  const [schemaFilters, setSchemaFilters] = useState("");
 
-  const freeQuota = previewDatabaseReplicationResponse?.free_quota;
-  const totalEstimatedRowCount =
-    previewDatabaseReplicationResponse?.total_estimated_row_count;
-  const tablesWithoutPK = previewDatabaseReplicationResponse?.tables_without_pk;
-  const canSetReplication =
-    previewDatabaseReplicationResponse?.can_set_replication;
+  const [previewResponse, setPreviewResponse] =
+    useState<PreviewDatabaseReplicationResponse>();
+  useEffect(
+    () =>
+      preview(
+        { databaseId: database.id, schemaSelect, schemaFilters },
+        setPreviewResponse,
+      ),
+    [preview, database.id, schemaFilters, schemaSelect],
+  );
 
   return (
     <>
-      {/* FIXME: Get values from Store API and fix the layout to look like the UI design. */}
-      <div>
-        <Text c="text-light">{database.name}</Text>
-        <Text
-          style={{ "font-weight": "bold" }}
-        >{t`${totalEstimatedRowCount} rows`}</Text>
-      </div>
-      <div>
-        <Text c="text-light">{t`Available Cloud Storage`}</Text>
-        <Text style={{ "font-weight": "bold" }}>{t`${freeQuota} rows`}</Text>
-      </div>
+      <Box bg={colors["bg-medium"]}>
+        <Group justify="space-between">
+          <div>
+            <Text c="text-light">{database.name}</Text>
+            <Text style={{ fontWeight: "bold" }}>
+              {typeof previewResponse?.totalEstimatedRowCount === "number"
+                ? t`${compactEnglishNumberFormat.format(previewResponse.totalEstimatedRowCount)} rows`
+                : "…"}
+            </Text>
+          </div>
+          <div>
+            <Text c="text-light">{t`Available Cloud Storage`}</Text>
+            <Text style={{ fontWeight: "bold" }}>
+              {typeof previewResponse?.freeQuota === "number"
+                ? t`${compactEnglishNumberFormat.format(previewResponse.freeQuota)} rows`
+                : "…"}
+            </Text>
+          </div>
+        </Group>
+      </Box>
       <Progress
         value={
-          totalEstimatedRowCount && freeQuota && freeQuota > 0
-            ? ((totalEstimatedRowCount * 1000) / freeQuota) * 100
+          typeof previewResponse?.totalEstimatedRowCount === "number" &&
+          typeof previewResponse?.freeQuota === "number" &&
+          previewResponse.freeQuota > 0
+            ? (previewResponse.totalEstimatedRowCount /
+                previewResponse.freeQuota) *
+              100
             : 0
         }
-        color={canSetReplication ? colors.success : colors.error}
+        color={
+          previewResponse?.canSetReplication ? colors.success : colors.error
+        }
       />
       <FormProvider
         initialValues={initialValues}
         onSubmit={onSubmit}
         validationSchema={validationSchema}
       >
-        {({ dirty, values, setFieldValue }) => (
+        {({ dirty, values }) => (
           <Form>
             <FormSelect
               name="schemaSelect"
               label={t`Select schemas to replicate`}
-              onChange={() => setFieldValue("excludeSchemas", null)}
+              onChange={(value) =>
+                setSchemaSelect(value as typeof initialValues.schemaSelect)
+              }
               data={[
                 { value: "all", label: t`All` },
                 { value: "include", label: t`Only these…` },
@@ -140,11 +159,26 @@ export const DatabaseReplicationForm = ({
               <>
                 <Text c="text-light">{t`Comma separated names of schemas that should ${values.schemaSelect === "exclude" ? "NOT " : ""}be replicated`}</Text>
                 <FormTextInput
-                  name="schemas"
+                  name="schemaFilters"
                   placeholder="e.g. public, auth"
                   onBlur={({ target: { value } }) => setSchemaFilters(value)}
                   {...styles}
                 />
+              </>
+            ) : undefined}
+            {(previewResponse?.tablesWithoutPk?.length ?? 0) > 0 ? (
+              <>
+                <Text c="text-light">
+                  {t`Tables without primary keys`}{" "}
+                  <b>{t`will not be replicated`}</b>.
+                </Text>
+                <List>
+                  {previewResponse?.tablesWithoutPk?.map(({ schema, name }) => (
+                    <List.Item key={`${schema}.${name}`} c="text-light">
+                      {schema}.{name}
+                    </List.Item>
+                  ))}
+                </List>
               </>
             ) : undefined}
             <Text c="text-light">{t`You will get an email once your data is ready to use.`}</Text>
@@ -160,20 +194,6 @@ export const DatabaseReplicationForm = ({
           </Form>
         )}
       </FormProvider>
-      {(tablesWithoutPK?.length ?? 0) > 0 ? (
-        <>
-          <Text>
-            {t`Tables without primary keys <b>will not be replicated</b>.`}
-          </Text>
-          <ul>
-            {tablesWithoutPK?.map(({ schema, name }) => (
-              <li key={`${schema}.${name}`}>
-                {schema}.{name}
-              </li>
-            ))}
-          </ul>
-        </>
-      ) : undefined}
     </>
   );
 };

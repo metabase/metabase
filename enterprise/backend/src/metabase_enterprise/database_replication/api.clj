@@ -1,6 +1,7 @@
 (ns metabase-enterprise.database-replication.api
   (:require
    [camel-snake-kebab.core :as csk]
+   [camel-snake-kebab.extras :as cske]
    [clojure.string :as str]
    [medley.core :as m]
    [metabase-enterprise.database-replication.settings :as database-replication.settings]
@@ -99,13 +100,12 @@
   "Return info about pg-replication connection that is about to be created."
   [{:keys [database-id]} :- [:map [:database-id ms/PositiveInt]]
    _query-params
-   {:keys [schema-filters]} :- [:map
-                                [:schema-filters {:optional true} [:sequential
-                                                                   [:map
-                                                                    [:type [:enum "include" "exclude"]]
-                                                                    [:pattern :string]]]]]]
-  (update-keys (token-check-quotas-info (t2/select-one :model/Database :id database-id) schema-filters)
-               csk/->snake_case_keyword))
+   {:keys [schemaFilters] :as body-params} :- [:map
+                                               [:schemaFilters {:optional true} [:sequential
+                                                                                 [:map
+                                                                                  [:type [:enum "include" "exclude"]]
+                                                                                  [:pattern :string]]]]]]
+  (cske/transform-keys csk/->camelCaseKeyword (token-check-quotas-info (t2/select-one :model/Database :id database-id) schemaFilters)))
 
 (defn can-set-replication?
   "Predicate that signals if replication looks right from the quota perspective.
@@ -120,11 +120,11 @@
   ;; FIXME: First arg is route params, 2nd arg is query params, 3rd arg is body params:
   [{:keys [database-id]} :- [:map [:database-id ms/PositiveInt]]
    _query-params
-   {:keys [schema-filters]} :- [:map
-                                [:schema-filters {:optional true} [:sequential
-                                                                   [:map
-                                                                    [:type [:enum "include" "exclude"]]
-                                                                    [:pattern :string]]]]]]
+   {:keys [schemaFilters]} :- [:map
+                               [:schemaFilters {:optional true} [:sequential
+                                                                 [:map
+                                                                  [:type [:enum "include" "exclude"]]
+                                                                  [:pattern :string]]]]]]
   (api/check-400 (database-replication.settings/database-replication-enabled) "PG replication integration is not enabled.")
   (let [database (t2/select-one :model/Database :id database-id)]
     (api/check-404 database)
@@ -138,7 +138,7 @@
             schema-filters (-> (when-some [k ({"inclusion" :include, "exclusion" :exclude} schema-filters-type)]
                                  (for [pattern (str/split schema-filters-patterns #",")]
                                    {:type k :pattern pattern}))
-                               (concat (map #(select-keys % [:type :pattern]) schema-filters))
+                               (concat (map #(select-keys % [:type :pattern]) schemaFilters))
                                not-empty)
             secret         {:credentials    (merge {:dbtype "postgresql"} credentials)
                             :schema-filters schema-filters}]
