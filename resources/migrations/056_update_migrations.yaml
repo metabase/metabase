@@ -323,7 +323,7 @@ databaseChangeLog:
             constraintName: fk_report_card_document_id
             onDelete: CASCADE
 
-- changeSet:
+  - changeSet:
       id: v56.2025-08-06T13:00:00
       author: escherize
       comment: Create workspaces table

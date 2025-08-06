@@ -1,11 +1,15 @@
 (ns metabase-enterprise.workspaces.api.workspace
   #_{:clj-kondo/ignore [:metabase/modules]}
   (:require
+   [metabase-enterprise.workspaces.models.workspace :as m.workspace]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
+
+(comment
+  m.workspace/keep-me)
 
 (set! *warn-on-reflection* true)
 
@@ -42,15 +46,16 @@
    :- [:map
        [:name ms/NonBlankString]
        [:description {:optional true} [:maybe :string]]]]
-  (let [workspace-data {:name name
+  (let [now (str (java.time.Instant/now))
+        workspace-data {:name name
                         :description description
-                        :created_at (str (java.time.Instant/now))
-                        :updated_at (str (java.time.Instant/now))
-                        :plans {}
-                        :transforms {}
-                        :activity_log {}
-                        :permissions []
+                        :created_at now
+                        :updated_at now
                         :user nil
+                        :plans []
+                        :transforms []
+                        :activity_log []
+                        :permissions []
                         :documents []}]
     (t2/insert-returning-instance! :model/Workspace workspace-data)))
 
@@ -183,3 +188,20 @@
 (def ^{:arglists '([request respond raise])} routes
   "API routes for workspace management"
   +auth)
+
+(comment
+
+  (require '[metabase.test :as mt])
+  (defn- make-transform [target-table-name]
+    {:name "Gadget Products"
+     :description "Desc"
+     :source {:type "query"
+              :query {:database (mt/id)
+                      :type "native"
+                      :native {:query (#'metabase-enterprise.transforms.api-test/make-query "Gadget")
+                               :template-tags {}}}}
+     :target {:type "table"
+              ;;:schema "transforms"
+              :name target-table-name}})
+
+  (make-transform "my-table"))

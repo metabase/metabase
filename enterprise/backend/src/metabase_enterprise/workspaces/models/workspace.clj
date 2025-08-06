@@ -5,8 +5,6 @@
    is used to store information that the LLM can use to answer questions or perform tasks. It is not a database, but
    rather a way to manage state in a way that is secure and controlled.
 
-
-
   There's also a concept of a workspace having a user and a workspace having a database. The user has limited access to the database so that they can only
    access the data that is relevant to them. The workspace is a way to manage this access and control what the user can do with the data.
 
@@ -30,62 +28,68 @@
          '[metabase.util.malli.describe :as umd] '[malli.provider :as mp] '[malli.generator :as mg]
          '[malli.transform :as mtx] '[metabase.util.malli.registry :as mr] '[malli.json-schema :as mjs])
 
+;; Sort these with :created-at
 (do (mr/def ::workspace
       [:map
        [:name [:string {:min 1}]]
        [:description {:optional true} [:maybe :string]]
-       [:created-at [:string {:description "The date and time the workspace was created"}]]
-       [:updated-at [:string {:description "The date and time the workspace was last updated"}]]
+       [:created_at [:string {:description "The date and time the workspace was created"}]]
+       [:updated_at [:string {:description "The date and time the workspace was last updated"}]]
        ;; each plan, transofrm, and document(<-unsure) is basically an abstract file
-       [:plans {:optional true} [:map-of
-                                 [:string {:description "The path to the plan" :min 1}]
-                                 [:map
-                                  [:title :string]
-                                  [:description :string]
-                                  [:features [:sequential
-                                              [:map
-                                               [:title :string]
-                                               [:description :string]]]]]]]
-       [:activity-logs {:optional true} [:map-of
-                                         [:int {:description "ID of the activity log" :min 1}]
-                                         [:map
-                                          [:name [:string {:min 1}]]
-                                          ;; needs a plan?
-                                          [:steps [:sequential
-                                                   [:map
-                                                    [:step-id :int]
-                                                    [:description :string]
-                                                    [:status [:enum :pending :running :completed :failed]]
-                                                    [:outcome {:optional true} [:enum :success :error :warning]]
-                                                    [:error-message {:optional true} :string]
-                                                    [:start-time [:string {:description "When the step started"}]]
-                                                    [:end-time {:optional true} [:maybe {:description "When the step ended"} :string]]
-                                                    [:created-at [:string {:description "When the step was created"}]]
-                                                    [:updated-at [:string {:description "When the step was last updated"}]]]]]]]]
-       [:transforms {:optional true} [:map-of
-                                      [:string {:min 1
-                                                :description "The path/filename to the transform"}]
-                                      [:map
-                                       [:title :string]
-                                       [:description :string]
-                                       [:type [:enum :text :code :file]]
-                                       [:config {:optional true} [:map]]]]]
+       [:plans {:optional true} [:sequential [:map
+                                              [:title :string]
+                                              [:description :string]
+                                              [:content :map]
+                                              [:created-at [:string {:description "When the plan was created"}]]]]]
+       ;; maybe another table?
+       [:activity_logs {:optional true} [:sequential [:map
+                                                      [:name [:string {:min 1}]]
+                                                      ;; needs a plan?
+                                                      [:steps [:sequential
+                                                               [:map
+                                                                [:step-id :int]
+                                                                [:description :string]
+                                                                [:status [:enum :pending :running :completed :failed]]
+                                                                [:outcome {:optional true} [:enum :success :error :warning]]
+                                                                [:error-message {:optional true} :string]
+                                                                [:start-time [:string {:description "When the step started"}]]
+                                                                [:end-time {:optional true} [:maybe {:description "When the step ended"} :string]]
+                                                                [:created-at [:string {:description "When the step was created"}]]
+                                                                [:updated-at [:string {:description "When the step was last updated"}]]]]]]]]
+       ;; look at transforms, make it match
+       [:transforms {:optional true}
+        [:sequential [:map
+                      [:name :string]
+                      [:description :string]
+                      [:source [:map
+                                [:type [:or :string]] #_[:enum "query" "table"]
+                                [:query {:optional true} [:map
+                                                          [:database {:description "ID of the source database"} :int]
+                                                          [:type :string] ;; native or query
+                                                          [:native {:optional true} [:map
+                                                                                     [:query :string]
+                                                                                     [:template-tags {:optional true} [:map]]]]]]]]
+                      [:target [:map
+                                [:name :string]
+                                [:type :string]]]
+                      [:config {:optional true} [:map]]]]]
+       ;; wip
        [:documents {:optional true} [:sequential
                                      [:int {:description "ID of a document in app-db" :min 1}]]]
-       [:user {:optional true} [:map
-                                [:id :int]
-                                [:name :string]
-                                [:email :string]
-                                ;; api-key?
-                                ;; db creds?
-                                ]]
-       [:dwh {:optional true}
-        [:map-of
-         [:int {:description "dwh id"}]
-         [:map
-          [:credentials :map]
-          [:name :string]
-          [:type [:enum :postgres :mysql :bigquery :redshift :snowflake]]]]]
+       [:users {:optional true} [:sequential [:map
+                                              [:id :int]
+                                              [:type :string] ;; workspace-user
+                                              [:name :string]
+                                              [:email :string]
+                                              ;; api-key?
+                                              ;; db creds?
+                                              ]]]
+       [:dwh {:optional true} [:sequential
+                               [:map
+                                [:id [:int {:min 1}]]
+                                [:type [:enum :read-only :read-write]]
+                                [:credentials :map]
+                                [:name :string]]]]
        ;; For permissions, we could keep a set of tables with read/write permissions
        [:permissions {:optional true}
         [:sequential
@@ -99,18 +103,9 @@
          '[metabase.util.malli.describe :as umd] '[malli.provider :as mp] '[malli.generator :as mg]
          '[malli.transform :as mtx] '[metabase.util.malli.registry :as mr] '[malli.json-schema :as mjs])
 
-(mut/keys (mr/resolve-schema ::workspace))
-;; => (:name
-;;     :description
-;;     :created-at
-;;     :updated-at
-;;     :plans
-;;     :activity-logs
-;;     :transforms
-;;     :documents
-;;     :user
-;;     :databases
-;;     :permissions)
+(comment
+
+  (mut/keys (mr/resolve-schema ::workspace)))
 
 (methodical/defmethod t2/table-name :model/Workspace [_model] :workspace)
 
