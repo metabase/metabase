@@ -126,29 +126,27 @@
 
 (defn- batch-update!
   [connectable table-name records->sql documents embeddings]
-  (when (seq documents)
-    (u/prog1 (->> documents (map :model) frequencies)
-      (u/profile (str "Semantic index database update of " (count documents) " documents " <>)
-        (doseq [batch (->> (map vector documents embeddings)
-                           (map (fn [[doc embedding]] (doc->db-record embedding doc)))
-                           (partition-all *batch-size*))]
-          (jdbc/execute! connectable (records->sql batch)))
-        (analytics-set-index-size! connectable table-name)))))
+  (u/prog1 (->> documents (map :model) frequencies)
+    (u/profile (str "Semantic index database update of " (count documents) " documents " <>)
+      (doseq [batch (->> (map vector documents embeddings)
+                         (map (fn [[doc embedding]] (doc->db-record embedding doc)))
+                         (partition-all *batch-size*))]
+        (jdbc/execute! connectable (records->sql batch)))
+      (analytics-set-index-size! connectable table-name))))
 
 (defn- batch-delete-ids!
   [connectable table-name model ids->sql ids]
-  (when (seq ids)
-    (u/prog1 (->> (transduce (comp (partition-all *batch-size*)
-                                   (map (fn [ids]
-                                          (jdbc/execute! connectable (ids->sql ids))
-                                          (u/prog1 (count ids)
-                                            (log/debug "semantic search deleted a batch of" <>
-                                                       "documents with model type" model)))))
-                             +
-                             ids)
-                  (array-map model))
-      (log/info "semantic search deleted" (get <> model) "total documents with model type" model)
-      (analytics-set-index-size! connectable table-name))))
+  (let [deleted (transduce (comp (partition-all *batch-size*)
+                                 (map (fn [ids]
+                                        (jdbc/execute! connectable (ids->sql ids))
+                                        (u/prog1 (count ids)
+                                          (log/debug "semantic search deleted a batch of" <>
+                                                     "documents with model type" model)))))
+                           +
+                           ids)]
+    (log/info "semantic search deleted" deleted "total documents with model type" model)
+    (analytics-set-index-size! connectable table-name)
+    {model deleted}))
 
 (defn- db-records->update-set
   [db-records]

@@ -50,7 +50,7 @@
       (semantic.pgvector-api/index-documents!
        pgvector
        index-metadata
-       (vec document-reducible)))))
+       document-reducible))))
 
 (defenterprise delete-from-index!
   "Enterprise implementation of semantic index deletion."
@@ -64,7 +64,7 @@
        pgvector
        index-metadata
        model
-       (vec ids)))))
+       ids))))
 
 ;; TODO: add reindexing/table-swapping logic when index is detected as stale
 (defenterprise init!
@@ -76,7 +76,7 @@
         embedding-model (get-configured-embedding-model)]
     (jdbc/with-transaction [tx pgvector]
       (semantic.pgvector-api/init-semantic-search! tx index-metadata embedding-model))
-    (semantic.pgvector-api/index-documents! pgvector index-metadata (vec searchable-documents))))
+    (semantic.pgvector-api/index-documents! pgvector index-metadata searchable-documents)))
 
 (defenterprise reindex!
   "Reindex the semantic search index."
@@ -88,7 +88,7 @@
     ;; todo force a new index
     (jdbc/with-transaction [tx pgvector]
       (semantic.pgvector-api/init-semantic-search! tx index-metadata embedding-model))
-    (semantic.pgvector-api/index-documents! pgvector index-metadata (vec searchable-documents))))
+    (semantic.pgvector-api/index-documents! pgvector index-metadata searchable-documents)))
 
 ;; TODO: implement
 (defenterprise reset-tracking!
