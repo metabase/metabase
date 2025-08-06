@@ -51,7 +51,7 @@ describe("TableSection", () => {
     const table = createMockTable();
     setup({ table });
 
-    const tableLink = screen.getByLabelText("Explore this table");
+    const tableLink = screen.getByLabelText("Go to this table");
     expect(tableLink).toBeInTheDocument();
     expect(tableLink).toHaveAttribute(
       "href",

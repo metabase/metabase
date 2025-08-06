@@ -216,7 +216,7 @@ function getTableNameInput() {
 }
 
 function getTableQueryBuilderLink() {
-  return getTableSection().findByLabelText("Explore this table");
+  return getTableSection().findByLabelText("Go to this table");
 }
 
 function getTableDescriptionInput() {

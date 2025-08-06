@@ -171,7 +171,7 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
                 color="text-light"
                 size="sm"
                 mr="sm"
-                aria-label={t`Explore this table`}
+                aria-label={t`Go to this table`}
               >
                 <Icon name="external" size={16} />
               </ActionIcon>
