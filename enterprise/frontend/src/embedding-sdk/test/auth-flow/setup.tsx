@@ -5,8 +5,11 @@ import {
   setupCardQueryEndpoints,
   setupCardQueryMetadataEndpoint,
 } from "__support__/server-mocks";
-import { StaticQuestion } from "embedding-sdk/components/public";
-import { renderWithSDKProviders } from "embedding-sdk/test/__support__/ui";
+import { renderWithProviders } from "__support__/ui";
+import {
+  MetabaseProvider,
+  StaticQuestion,
+} from "embedding-sdk/components/public";
 import type { MetabaseProviderProps } from "embedding-sdk/types/metabase-provider";
 import {
   createMockCard,
@@ -54,13 +57,14 @@ export const setup = ({
     fetchMock.lastCall(`${MOCK_INSTANCE_URL}/api/card/${MOCK_CARD.id}/query`);
 
   return {
-    ...renderWithSDKProviders(<StaticQuestion questionId={1} />, {
-      sdkProviderProps: {
-        authConfig,
-        locale,
+    ...renderWithProviders(
+      <MetabaseProvider authConfig={authConfig} locale={locale}>
+        <StaticQuestion questionId={1} />
+      </MetabaseProvider>,
+      {
+        storeInitialState: state,
       },
-      storeInitialState: state,
-    }),
+    ),
     getLastUserApiCall,
     getLastCardQueryApiCall,
   };
