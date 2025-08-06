@@ -155,10 +155,10 @@
           (let [items (mt/user-http-request :rasta :get 200 (format "collection/%d/items" (collection/trash-collection-id)))
                 trash-test-items (filter #(#{archived-doc-id normal-doc-id archived-card-id archived-dash-id} (:id %))
                                          (:data items))]
-            (is (= #{[archived-doc-id "document"]
-                     [archived-card-id "card"]
-                     [archived-dash-id "dashboard"]}
-                   (set (map (juxt :id :model) trash-test-items))))
+            (is (= #{[archived-doc-id "document" true true]
+                     [archived-card-id "card" true true]
+                     [archived-dash-id "dashboard" true true]}
+                   (set (map (juxt :id :model :can_delete :can_restore) trash-test-items))))
             (testing "Non-archived documents do not appear in trash"
               (is (not (some #(= normal-doc-id (:id %)) trash-test-items))))))))))
 

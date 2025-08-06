@@ -328,11 +328,24 @@
   [_ _ _ rows]
   rows)
 
+(defmethod ^:private post-process-collection-children :document
+  [_ _ collection rows]
+  (t2/hydrate (for [document rows]
+                (-> (t2/instance :model/Document document)
+                    (assoc :location (or (when collection
+                                           (collection/children-location collection))
+                                         "/"))
+                    (update :archived api/bit->boolean)
+                    (update :archived_directly api/bit->boolean)))
+              :can_write :can_restore :can_delete))
+
 (defmethod collection-children-query :document
   [_ collection {:keys [archived?]}]
   {:select [:document.id
             :document.name
             :document.collection_id
+            :document.archived
+            :document.archived_directly
             [:u.id :last_edit_user]
             [:u.email :last_edit_email]
             [:u.first_name :last_edit_first_name]
