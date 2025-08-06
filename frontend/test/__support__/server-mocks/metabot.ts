@@ -22,9 +22,13 @@ export function setupMetabotEntitiesEndpoint(
   metabotId: MetabotId,
   entities: MetabotApiEntity[],
 ) {
-  fetchMock.get(`path:/api/ee/metabot-v3/metabot/${metabotId}/entities`, {
-    items: entities,
-  });
+  fetchMock.get(
+    `path:/api/ee/metabot-v3/metabot/${metabotId}/entities`,
+    {
+      items: entities,
+    },
+    { name: `metabot-${metabotId}-entities-get` },
+  );
 }
 
 export function setupMetabotAddEntitiesEndpoint(metabotId: MetabotId) {

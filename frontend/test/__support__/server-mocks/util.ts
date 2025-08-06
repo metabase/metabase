@@ -16,7 +16,6 @@ export async function findRequests(
   await fetchMock.callHistory.flush();
 
   const calls = fetchMock.callHistory.calls();
-  console.log("CALLS", calls);
 
   // In fetch-mock v12+, the method is stored on the request object
   const filteredCalls = calls.filter((call) => call.request?.method === method);

@@ -163,8 +163,9 @@ describe("MetabotAdminPage", () => {
     await setup(1);
 
     expect(
-      fetchMock.callHistory.calls(`path:/api/ee/metabot-v3/metabot/1/prompt-suggestions`)
-        .length,
+      fetchMock.callHistory.calls(
+        `path:/api/ee/metabot-v3/metabot/1/prompt-suggestions`,
+      ).length,
     ).toEqual(1); // should have loaded prompt suggestions
 
     expect(await screen.findByText("Collection One")).toBeInTheDocument();
@@ -193,8 +194,9 @@ describe("MetabotAdminPage", () => {
     ).toBeTruthy();
 
     expect(
-      fetchMock.callHistory.calls(`path:/api/ee/metabot-v3/metabot/1/prompt-suggestions`)
-        .length,
+      fetchMock.callHistory.calls(
+        `path:/api/ee/metabot-v3/metabot/1/prompt-suggestions`,
+      ).length,
     ).toEqual(3); // +1 refetch for DELETE, +1 for PUT
   });
 
@@ -233,12 +235,17 @@ describe("MetabotAdminPage", () => {
   });
 
   it("should delete the selected collection", async () => {
-    await setup(1);
+    const metabotId = 1;
+    await setup(metabotId);
 
     expect(await screen.findByText("Collection One")).toBeInTheDocument();
     expect(await screen.findByText("Prompt suggestions")).toBeInTheDocument();
     const [deleteButton] = await screen.findAllByLabelText("trash icon");
-    setupMetabotEntitiesEndpoint(1, []);
+
+    // simulte the response after a delete
+    fetchMock.modifyRoute(`metabot-${metabotId}-entities-get`, {
+      response: { items: [] },
+    });
     await userEvent.click(deleteButton);
 
     const [{ url: deleteUrl }, ...rest] = await findRequests("DELETE");
