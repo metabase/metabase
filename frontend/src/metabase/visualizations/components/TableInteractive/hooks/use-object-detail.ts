@@ -48,7 +48,7 @@ export const useObjectDetail = (
         objectId = rowIndexToPkMap?.[rowIndex] ?? rowIndex;
       }
 
-      if (tableId == null) {
+      if (tableId == null || !primaryKeyColumn) {
         dispatch(zoomInRow({ objectId }));
       } else {
         dispatch(push(`/table/${tableId}/detail/${objectId}`));
