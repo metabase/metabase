@@ -2,6 +2,7 @@
   (:require
    [clojure.set :as set]
    [clojure.test :refer :all]
+   [metabase.queries.core :as queries]
    [metabase.queries.models.card :as card]
    [metabase.revisions.impl.card :as impl.card]
    [metabase.revisions.init]
@@ -199,8 +200,7 @@
                                             {:order-by [[:id :desc]]})
                 ;; The after-select should have added `:card_schema`
                 revision-obj (:object revision)]
-            (is (= impl.card/legacy-card-schema-version
-                   (:card_schema revision-obj)))))
+            (is (= queries/starting-card-schema-version (:card_schema revision-obj)))))
 
         (testing "Card object from revision can go through upgrade-card-schema-to-latest"
           ;; Actual regression test; this used to throw:
@@ -208,5 +208,4 @@
           (let [revision (first (revision/revisions :model/Card card-id))
                 card-obj (:object revision)]
             (is (some? (#'card/upgrade-card-schema-to-latest card-obj)))
-            (is (= impl.card/legacy-card-schema-version
-                   (:card_schema card-obj)))))))))
+            (is (= queries/starting-card-schema-version (:card_schema card-obj)))))))))
