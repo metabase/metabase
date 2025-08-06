@@ -12,8 +12,8 @@
    [metabase.test.fixtures :as fixtures]))
 
 (use-fixtures :once (compose-fixtures
-                     #'semantic.tu/once-fixture
-                     (fixtures/initialize :db)))
+                     (fixtures/initialize :db)
+                     #'semantic.tu/once-fixture))
 
 (deftest appdb-available-with-semantic
   (mt/with-premium-features #{:semantic-search}
