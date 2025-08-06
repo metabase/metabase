@@ -17,11 +17,11 @@
   (config/config-str :mb-transform-worker-uri))
 
 (defn- worker-route [^String path]
-  (when-let [base-uri (worker-uri)]
-    (-> base-uri
-        java.net.URI.
-        (.resolve path)
-        str)))
+  (assert (worker-uri) "Env var MB_TRANSFORM_WORKER_URI must be set.")
+  (-> (worker-uri)
+      java.net.URI.
+      (.resolve path)
+      str))
 
 (defn run-remote?
   "Should this metabase instance run work remotely?"

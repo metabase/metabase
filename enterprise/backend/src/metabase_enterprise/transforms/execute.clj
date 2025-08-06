@@ -70,7 +70,7 @@
 (defonce ^:private connections (atom {}))
 
 (defn- cancel-run! [run-id]
-  (when-some [cancel-chan (a/promise-chan) #_(get @connections run-id)]
+  (when-some [cancel-chan (get @connections run-id)]
     (swap! connections dissoc run-id)
     (a/put! cancel-chan :cancel!)
     (worker/cancel-run! run-id)))

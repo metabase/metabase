@@ -154,6 +154,7 @@
   (transforms.util/delete-target-table-by-id! id)
   nil)
 
+;; TODO (eric): this endpoint is not transform-related
 (api.macros/defendpoint :post "/cancel/:run-id"
   [{:keys [run-id]} :- [:map
                         [:id :string]]]
