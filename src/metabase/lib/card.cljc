@@ -90,17 +90,13 @@
                                      (when-some [card (lib.metadata/card metadata-providerable card-id)]
                                        (= (:type card) :model))))
                               (assoc :lib/model-display-name (:display-name source-metadata-col)))
-        col (cond-> (merge
-                     {:base-type :type/*, :lib/type :metadata/column}
-                     field-metadata
-                     (m/filter-vals some? source-metadata-col)
-                     {:lib/type                :metadata/column
-                      ;; TODO (Cam 8/5/25) -- should we be setting this if `card-id` is nil?
-                      :lib/source              :source/card
-                      :lib/source-column-alias ((some-fn :lib/source-column-alias :name) source-metadata-col)})
-              card-id
-              (assoc :lib/card-id card-id)
-
+        col (merge
+             {:base-type :type/*, :lib/type :metadata/column}
+             field-metadata
+             (m/filter-vals some? source-metadata-col)
+             {:lib/type                :metadata/column
+              :lib/source-column-alias ((some-fn :lib/source-column-alias :name) source-metadata-col)})
+        col (cond-> col
               (:metabase.lib.field/temporal-unit source-metadata-col)
               (assoc :inherited-temporal-unit (keyword (:metabase.lib.field/temporal-unit source-metadata-col)))
 
@@ -248,15 +244,15 @@
    card          :- ::lib.schema.metadata/card
    options       :- [:maybe ::lib.metadata.calculation/returned-columns.options]]
   (mapv (fn [col]
-          (assoc col :lib/source :source/card))
+          (assoc col :lib/source :source/card, :lib/card-id (:id card)))
         (if (= (:type card) :metric)
           (let [metric-query (-> card :dataset-query mbql.normalize/normalize lib.convert/->pMBQL
                                  (lib.util/update-query-stage -1 dissoc :aggregation :breakout))]
-            (not-empty (lib.metadata.calculation/returned-columns
-                        (assoc metric-query :lib/metadata (:lib/metadata query))
-                        -1
-                        (lib.util/query-stage metric-query -1)
-                        options)))
+            (lib.metadata.calculation/returned-columns
+             (assoc metric-query :lib/metadata (:lib/metadata query))
+             -1
+             (lib.util/query-stage metric-query -1)
+             options))
           (card-metadata-columns query card))))
 
 (mu/defn source-card-type :- [:maybe ::lib.schema.metadata/card.type]

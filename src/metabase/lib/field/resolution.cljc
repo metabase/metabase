@@ -237,14 +237,15 @@
           ;; card returned columns should be the same regardless of which stage number we pass in, so always use the
           ;; last stage so we can hit the cache more often
           (when-some [card-cols (not-empty (lib.metadata.calculation/returned-columns query 0 card))]
-            (when-some [col (resolve-in-metadata query card-cols id-or-name)]
-              (let [propagated-keys (if (= (:type card) :model)
-                                      model-propagated-keys
-                                      regular-card-propagated-keys)]
-                (-> col
-                    lib.field.util/update-keys-for-col-from-previous-stage
-                    (assoc :lib/card-id card-id)
-                    (select-keys propagated-keys)))))))
+            (let [card-cols (for [col card-cols]
+                              (-> col
+                                  lib.field.util/update-keys-for-col-from-previous-stage
+                                  (assoc :lib/source :source/card, :lib/card-id card-id)))]
+              (when-some [col (resolve-in-previous-stage-metadata query card-cols id-or-name)]
+                (let [propagated-keys (if (= (:type card) :model)
+                                        model-propagated-keys
+                                        regular-card-propagated-keys)]
+                  (select-keys col propagated-keys)))))))
 
       (:qp/stage-is-from-source-card stage)
       (let [card-id (:qp/stage-is-from-source-card stage)]

@@ -589,10 +589,17 @@
    ;;
    [:lib/persisted-info {:optional true} [:maybe [:ref ::persisted-info]]]])
 
+(defn- mock-segment [segment]
+  (cond-> segment
+    (and (not (:name segment))
+         (:id segment))
+    (assoc :name (str "Segment " (:id segment)))))
+
 (mr/def ::segment
   "More or less the same as a [[metabase.segments.models.segment]], but with kebab-case keys."
   [:map
-   {:error/message "Valid Segment metadata"}
+   {:error/message "Valid Segment metadata"
+    :decode/mock   mock-segment}
    [:lib/type   [:= :metadata/segment]]
    [:id         ::lib.schema.id/segment]
    [:name       ::lib.schema.common/non-blank-string]
