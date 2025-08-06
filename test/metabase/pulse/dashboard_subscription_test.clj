@@ -1315,11 +1315,11 @@
     (let [pulse-results (pulse.test-util/with-captured-channel-send-messages!
                           (pulse.send/send-pulse! (t2/select-one :model/Pulse pulse-id)))]
       (is (= (rasta-dashsub-message
-              {:message [{"Aviary KPIs"               true
-                          "Your dashboard has result" true}
+              {:message [{"Aviary KPIs"                                   true
+                          "Dashboard content available in attached files" true}
                          pulse.test-util/png-attachment
                          pulse.test-util/csv-attachment]})
              (mt/summarize-multipart-single-email
               (first (:channel/email pulse-results))
               #"Aviary KPIs"
-              #"Your dashboard has result"))))))
+              #"Dashboard content available in attached files"))))))
