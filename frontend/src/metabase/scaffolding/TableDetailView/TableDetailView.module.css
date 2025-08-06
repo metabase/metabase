@@ -44,6 +44,8 @@
   .Field {
     align-items: center;
     overflow: hidden;
+    flex-wrap: nowrap;
+    min-width: 0;
     gap: var(--mantine-spacing-md);
 
     .FieldName {
@@ -73,6 +75,7 @@
       }
 
       .FieldValue {
+        word-break: break-word;
         font-size: 1.0625rem;
         text-align: left;
       }
