@@ -144,6 +144,9 @@
 
 (defn- search-items-reducible []
   (let [models search.spec/search-models
+        ;; we're pushing indexed entities last in the search items reducible
+        ;; so that more important models gets indexed first, making the partial
+        ;; index more usable earlier
         sorted-models (cond-> models
                         (contains? models "indexed-entity")
                         (-> (disj "indexed-entity") (concat ["indexed-entity"])))]
