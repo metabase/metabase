@@ -31,7 +31,7 @@
   [unique-key query x options]
   [unique-key (hash (:lib/metadata query)) (:lib/type x) (:id x) (not-empty options)])
 
-(defn- cache-key-query
+(defn- cache-key-optimized-query
   "Optimization: replace all stages beyond what we're calculating metadata for with just a single additional blank
   stage. The only way later stages can possibly affect metadata for previous stages is the mega hack for stage
   returned-columns that deduplicates `:name` only if the stage in question is the last stage of a
@@ -44,28 +44,34 @@
   (let [stage-number        (lib.util/canonical-stage-index query stage-number)
         num-stages          (count (:stages query))
         num-relevant-stages (inc stage-number)]
-    (-> (if (> num-stages num-relevant-stages)
-          (update query :stages (fn [stages]
-                                  (-> (into []
-                                            (take num-relevant-stages)
-                                            stages)
-                                      ;; replace all 'irrelevant stages' with a single additional
-                                      ;; blank stage.
-                                      (conj {:lib/type :mbql.stage/mbql}))))
-          query)
-        ;; use the hash of the metadata provider so only two queries with identical metadata providers get the exact
-        ;; same cache key (see tests). This is mostly to satisfy tests that do crazy stuff and swap out a query's
-        ;; metadata provider so we don't end up returning the wrong cached results for the same query with a different
-        ;; MP
-        (m/update-existing query :lib/metadata hash))))
+    (if (> num-stages num-relevant-stages)
+      (update query :stages (fn [stages]
+                              (-> (into []
+                                        (take num-relevant-stages)
+                                        stages)
+                                  ;; replace all 'irrelevant stages' with a single additional
+                                  ;; blank stage.
+                                  (conj {:lib/type :mbql.stage/mbql}))))
+      query)))
 
 (defn- cache-key-for-other [unique-key query stage-number x options]
-  [unique-key
-   (cache-key-query query stage-number)
-   (lib.util/canonical-stage-index query stage-number)
-   ;; don't want `nil` versus `{}` to result in cache misses.
-   (cond-> x (map? x) not-empty)
-   (cond-> options (map? options) not-empty)])
+  (letfn [(prepare-map [m]
+            (cond-> m
+              (map? m) (->
+                        ;; use the hash of the metadata provider so only two queries with identical metadata providers
+                        ;; get the exact same cache key (see tests). This is mostly to satisfy tests that do crazy
+                        ;; stuff and swap out a query's metadata provider so we don't end up returning the wrong
+                        ;; cached results for the same query with a different MP
+                        (m/update-existing :lib/metadata hash)
+                        ;; don't want `nil` versus `{}` to result in cache misses.
+                        not-empty)))]
+    [unique-key
+     (-> query
+         (cache-key-optimized-query stage-number)
+         prepare-map)
+     (lib.util/canonical-stage-index query stage-number)
+     (prepare-map x)
+     (prepare-map options)]))
 
 (mu/defn cache-key :- ::cache-key
   "Calculate a cache key to use with [[with-cached-value]]. Prefer the 5 arity, which ensures unserializable keys
