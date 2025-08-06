@@ -1,24 +1,14 @@
 (ns metabase-enterprise.worker.api
   (:require
    [clj-http.client :as http]
-   [metabase-enterprise.transforms.util :as transforms.util]
    [metabase.config.core :as config]
-   [metabase.driver :as driver]
-   [metabase.driver.util :as driver.u]
-   [metabase.lib.schema.common :as schema.common]
-   [metabase.sync.core :as sync]
-   [metabase.system.settings :as settings]
-   [metabase.util :as u]
-   [metabase.util.json :as json]
-   [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
-   [toucan2.core :as t2]))
+   [metabase.system.core :as system]
+   [metabase.util.json :as json]))
 
 (set! *warn-on-reflection* true)
 
 (defn- mb-id []
-  (settings/site-uuid))
+  (system/site-uuid))
 
 (defn- json-body [{:keys [body]}]
   (json/decode+kw body))

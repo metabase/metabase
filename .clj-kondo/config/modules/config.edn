@@ -1878,6 +1878,14 @@
            models
            premium-features
            upload
+           util}}
+
+  enterprise/worker
+  {:team "Querying"
+   :api  #{metabase-enterprise.transforms.api
+           metabase-enterprise.transforms.core}
+   :uses #{config
+           system
            util}}}
 
  ;; namespaces matching these patterns (with `re-find`) are excluded from the module linter. Since regex literals
