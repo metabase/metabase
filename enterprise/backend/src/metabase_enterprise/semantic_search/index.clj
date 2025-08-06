@@ -126,13 +126,14 @@
 
 (defn- batch-update!
   [connectable table-name records->sql documents embeddings]
-  (u/prog1 (->> documents (map :model) frequencies)
-    (u/profile (str "Semantic index database update of " (count documents) " documents " <>)
-      (doseq [batch (->> (map vector documents embeddings)
-                         (map (fn [[doc embedding]] (doc->db-record embedding doc)))
-                         (partition-all *batch-size*))]
-        (jdbc/execute! connectable (records->sql batch)))
-      (analytics-set-index-size! connectable table-name))))
+  (when (seq documents)
+    (u/prog1 (->> documents (map :model) frequencies)
+      (u/profile (str "Semantic index database update of " (count documents) " documents " <>)
+        (doseq [batch (->> (map vector documents embeddings)
+                           (map (fn [[doc embedding]] (doc->db-record embedding doc)))
+                           (partition-all *batch-size*))]
+          (jdbc/execute! connectable (records->sql batch)))
+        (analytics-set-index-size! connectable table-name)))))
 
 (defn- batch-delete-ids!
   [connectable table-name model ids->sql ids]
@@ -144,9 +145,10 @@
                                                      "documents with model type" model)))))
                            +
                            ids)]
-    (log/info "semantic search deleted" deleted "total documents with model type" model)
-    (analytics-set-index-size! connectable table-name)
-    {model deleted}))
+    (when (pos? deleted)
+      (log/info "semantic search deleted" deleted "total documents with model type" model)
+      (analytics-set-index-size! connectable table-name)
+      {model deleted})))
 
 (defn- db-records->update-set
   [db-records]
@@ -167,33 +169,34 @@
 
 (defn- upsert-index-batch!
   [connectable index documents]
-  (let [text->docs         (group-by :searchable_text documents)
-        searchable-texts   (keys text->docs)]
-    (u/profile (str "Semantic search embedding generation and db update for " {:docs (count documents) :texts (count searchable-texts)})
-      (embedding/process-embeddings-streaming
-       (:embedding-model index)
-       searchable-texts
-       (fn [text->embedding]
-         (let [batch-documents
-               (mapcat (fn [text]
-                         (if-let [embedding (text->embedding text)]
-                           (map #(assoc % :embedding embedding) (get text->docs text))
-                           (when-let [docs (get text->docs text)]
-                             (log/warn "No embedding found for" (count docs) "documents with searchable text:"
-                                       {:searchable_text text
-                                        :document_count (count docs)}))))
-                       (keys text->embedding))]
-           (batch-update!
-            connectable
-            (:table-name index)
-            (fn [db-records]
-              (-> (sql.helpers/insert-into (keyword (:table-name index)))
-                  (sql.helpers/values db-records)
-                  (sql.helpers/on-conflict :model :model_id)
-                  (sql.helpers/do-update-set (db-records->update-set db-records))
-                  sql-format-quoted))
-            batch-documents
-            (map :embedding batch-documents))))))))
+  (when (seq documents)
+    (let [text->docs         (group-by :searchable_text documents)
+          searchable-texts   (keys text->docs)]
+      (u/profile (str "Semantic search embedding generation and db update for " {:docs (count documents) :texts (count searchable-texts)})
+        (embedding/process-embeddings-streaming
+         (:embedding-model index)
+         searchable-texts
+         (fn [text->embedding]
+           (let [batch-documents
+                 (mapcat (fn [text]
+                           (if-let [embedding (text->embedding text)]
+                             (map #(assoc % :embedding embedding) (get text->docs text))
+                             (when-let [docs (get text->docs text)]
+                               (log/warn "No embedding found for" (count docs) "documents with searchable text:"
+                                         {:searchable_text text
+                                          :document_count (count docs)}))))
+                         (keys text->embedding))]
+             (batch-update!
+              connectable
+              (:table-name index)
+              (fn [db-records]
+                (-> (sql.helpers/insert-into (keyword (:table-name index)))
+                    (sql.helpers/values db-records)
+                    (sql.helpers/on-conflict :model :model_id)
+                    (sql.helpers/do-update-set (db-records->update-set db-records))
+                    sql-format-quoted))
+              batch-documents
+              (map :embedding batch-documents)))))))))
 
 (defn upsert-index!
   "Inserts or updates documents in the index table. If a document with the same
