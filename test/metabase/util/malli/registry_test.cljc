@@ -136,8 +136,8 @@
     ;; scoped error fn
     (let [error-fn (fn [{:keys [value]} _] (str "Not valid: " (pr-str value)))]
       [:fn {:error/fn error-fn} number?])
-    (str/join ["(let [error-fn (fn [{:keys [value]} _] (str \"Not valid: \" (pr-str value)))]"
-               " [:fn #:error{:fn error-fn} number?])"])
+    (str/join ["(let [error-fn (fn [{:keys [value]} _] (str \"Not valid: \" (pr-str value)))] "
+               "[:fn #:error{:fn error-fn} number?])"])
 
     ;; inline error fn
     [:fn {:error/fn (fn [{:keys [value]} _] (str "Not valid: " (pr-str value)))} number?]
@@ -158,21 +158,25 @@
     ;; Function with insane arg count
     #(even? (+ 1 %1 %2 %3 %4 %5 %6 %7 %8 %9 %10
                %11 %12 %13 %14 %15 %16 %17 %18 %19 %20))
-    "(fn* [a b c d e f g h i j k l m n o p q r s t] (even? (+ 1 a b c d e f g h i j k l m n o p q r s t)))"
+    (str/join ["(fn* [a b c d e f g h i j k l m n o p q r s t] "
+               "(even? (+ 1 a b c d e f g h i j k l m n o p q r s t)))"])
 
     ;; Function with insane arg count and %&
     #(even? (+ 1 %1 %2 %3 %4 %5 %6 %7 %8 %9 %10
                %11 %12 %13 %14 %15 %16 %17 %18 %19 %20 %& %&))
-    "(fn* [a b c d e f g h i j k l m n o p q r s t & u] (even? (+ 1 a b c d e f g h i j k l m n o p q r s t u u)))"
+    (str/join ["(fn* [a b c d e f g h i j k l m n o p q r s t & u] "
+               "(even? (+ 1 a b c d e f g h i j k l m n o p q r s t u u)))"])
 
     ;; Function resuing args
-    #(even? (+ 1 %1 %1 %1 %2 %2 %2 %3 %3 %3 %4 %4 %4 %5 %5 %5 %6 %6 %6 %7 %7 %7 %8 %8 %8 %9 %9 %9 %10 %10 %10
-               %11 %11 %11 %12 %12 %12 %13 %13 %13 %14 %14 %14 %15 %15 %15 %16 %16 %16 %17 %17 %17 %18 %18 %18 %19 %19 %19 %20 %20 %20 %& %& %& %& %& %&))
-    (str/join ["(fn* [a b c d e f g h i j k l m n o p q r s t & u]"
-               " (even? (+ 1 a a a b b b c c c d d d e e e "
+    #(even? (+ 1 %1 %1 %1 %2 %2 %2 %3 %3 %3 %4 %4 %4 %5 %5 %5
+               %6 %6 %6 %7 %7 %7 %8 %8 %8 %9 %9 %9 %10 %10 %10 %11 %11 %11 %12 %12 %12
+               %13 %13 %13 %14 %14 %14 %15 %15 %15 %16 %16 %16 %17 %17 %17 %18 %18 %18
+               %19 %19 %19 %20 %20 %20 %& %& %&))
+    (str/join ["(fn* [a b c d e f g h i j k l m n o p q r s t & u] "
+               "(even? (+ 1 a a a b b b c c c d d d e e e "
                "f f f g g g h h h i i i j j j k k k l l l "
                "m m m n n n o o o p p p q q q r r r s s s "
-               "t t t u u u u u u)))"])
+               "t t t u u u)))"])
 
     ;; Schema with metadata
     [:fn ^{:doc "checks if odd"} (fn [x] (even? (inc x)))]
