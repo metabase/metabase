@@ -1,6 +1,10 @@
 import { getNextId } from "__support__/utils";
 import type { ContentTranslationFunction } from "metabase/i18n/types";
-import { type OptionsType, formatValue } from "metabase/lib/formatting";
+import {
+  type OptionsType,
+  formatUrl,
+  formatValue,
+} from "metabase/lib/formatting";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { getComputedSettings } from "metabase/visualizations/lib/settings";
 import {
@@ -91,13 +95,24 @@ export function renderValue(
     return String(value) || NO_VALUE;
   }
 
-  let translatedValue = tc(value);
-
   if (column.settings?.view_as === "link") {
-    translatedValue = column.settings.link_url ?? translatedValue;
+    return formatUrl(String(tc(value)), {
+      ...column.settings,
+      ...finalSettings,
+      column,
+      type: "cell",
+      jsx: true,
+      rich: true,
+      remap: true,
+      clicked: {
+        type: "cell",
+        value,
+        column,
+      },
+    });
   }
 
-  const formattedValue = formatValue(translatedValue, {
+  const formattedValue = formatValue(tc(value), {
     ...column.settings,
     ...finalSettings,
     column,
