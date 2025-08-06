@@ -100,11 +100,11 @@ export function DatabaseConnectionStringField({
     return null;
   }
 
-  if (!enginesConfig.has(engineKey ?? "")) {
+  if (!enginesConfig[engineKey ?? ""]) {
     return null;
   }
 
-  const placeholderEngineUri = enginesConfig.get(engineKey ?? "")?.placeholder;
+  const placeholderEngineUri = enginesConfig[engineKey ?? ""];
   const placeholder = c("{0} is the value is a sample URI of engine")
     .t`e.g. ${placeholderEngineUri}`;
 
@@ -171,10 +171,7 @@ function ConnectionStringDescription({
           fz="sm"
         >
           <Group gap="xs">
-            <Icon
-              name="warning_round_filled"
-              style={{ color: "var(--mb-color-danger)" }}
-            />
+            <Icon name="warning_round_filled" c="var(--mb-color-danger)" />
             {t`Couldn’t use this connection string.`}
           </Group>
         </Text>

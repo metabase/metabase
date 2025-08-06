@@ -3,7 +3,7 @@ import { parseConnectionUriRegex } from "./parse-connection-regex";
 
 describe("parseConnectionUriRegex - Amazon Athena", () => {
   it("should parse a basic Amazon Athena connection string", () => {
-    const connectionString = enginesConfig.get("athena")?.placeholder;
+    const connectionString = enginesConfig["athena"];
     const result = parseConnectionUriRegex(connectionString, "athena");
     expect(result).toEqual(
       expect.objectContaining({
@@ -39,7 +39,7 @@ describe("parseConnectionUriRegex - Amazon Athena", () => {
 
 describe("parseConnectionUriRegex - Amazon Redshift", () => {
   it("should parse a Amazon Redshift connection string", () => {
-    const connectionString = enginesConfig.get("redshift")?.placeholder;
+    const connectionString = enginesConfig["redshift"];
     const result = parseConnectionUriRegex(connectionString, "redshift");
     expect(result).toEqual(
       expect.objectContaining({
@@ -74,8 +74,7 @@ describe("parseConnectionUriRegex - Amazon Redshift", () => {
 
 describe("parseConnectionUriRegex - BigQuery", () => {
   it("should parse a BigQuery connection string", () => {
-    const connectionString =
-      enginesConfig.get("bigquery-cloud-sdk")?.placeholder;
+    const connectionString = enginesConfig["bigquery-cloud-sdk"];
     const result = parseConnectionUriRegex(
       connectionString,
       "bigquery-cloud-sdk",
@@ -94,7 +93,7 @@ describe("parseConnectionUriRegex - BigQuery", () => {
 
 describe("parseConnectionUriRegex - Clickhouse", () => {
   it("should parse a Clickhouse connection string", () => {
-    const connectionString = enginesConfig.get("clickhouse")?.placeholder;
+    const connectionString = enginesConfig["clickhouse"];
     const result = parseConnectionUriRegex(connectionString, "clickhouse");
     expect(result).toEqual(
       expect.objectContaining({
@@ -112,7 +111,7 @@ describe("parseConnectionUriRegex - Clickhouse", () => {
 
 describe("parseConnectionUriRegex - Databricks", () => {
   it("should parse a Databricks connection string", () => {
-    const connectionString = enginesConfig.get("databricks")?.placeholder;
+    const connectionString = enginesConfig["databricks"];
     const result = parseConnectionUriRegex(connectionString, "databricks");
     expect(result).toEqual(
       expect.objectContaining({
@@ -150,7 +149,7 @@ describe("parseConnectionUriRegex - Databricks", () => {
 
 describe("parseConnectionUriRegex - Druid", () => {
   it("should parse a Druid connection string", () => {
-    const connectionString = enginesConfig.get("druid")?.placeholder;
+    const connectionString = enginesConfig["druid"];
     const result = parseConnectionUriRegex(connectionString, "druid");
     expect(result).toEqual(
       expect.objectContaining({
@@ -169,7 +168,7 @@ describe("parseConnectionUriRegex - Druid", () => {
 
 describe("parseConnectionUriRegex - MySQL", () => {
   it("should parse a MySQL connection string", () => {
-    const connectionString = enginesConfig.get("mysql")?.placeholder;
+    const connectionString = enginesConfig["mysql"];
     const result = parseConnectionUriRegex(connectionString, "mysql");
     expect(result).toEqual({
       username: "user",
@@ -227,7 +226,7 @@ describe("parseConnectionUriRegex - Oracle", () => {
 
 describe("parseConnectionUriRegex - PostgreSQL", () => {
   it("should parse a PostgreSQL connection string", () => {
-    const connectionString = enginesConfig.get("postgres")?.placeholder;
+    const connectionString = enginesConfig["postgres"];
     const result = parseConnectionUriRegex(connectionString, "postgres");
     expect(result).toEqual({
       host: "localhost",
@@ -292,7 +291,7 @@ describe("parseConnectionUriRegex - Presto", () => {
 
 describe("parseConnectionUriRegex - SQLite", () => {
   it("should parse a SQLite connection string", () => {
-    const connectionString = enginesConfig.get("sqlite")?.placeholder;
+    const connectionString = enginesConfig["sqlite"];
     const result = parseConnectionUriRegex(connectionString, "sqlite");
     expect(result).toEqual(
       expect.objectContaining({
@@ -306,7 +305,7 @@ describe("parseConnectionUriRegex - SQLite", () => {
 
 describe("parseConnectionUriRegex - Snowflake", () => {
   it("should parse a Snowflake connection string", () => {
-    const connectionString = enginesConfig.get("snowflake")?.placeholder;
+    const connectionString = enginesConfig["snowflake"];
     const result = parseConnectionUriRegex(connectionString, "snowflake");
     expect(result).toEqual(
       expect.objectContaining({
@@ -327,7 +326,7 @@ describe("parseConnectionUriRegex - Snowflake", () => {
 
 describe("parseConnectionUriRegex - Spark SQL", () => {
   it("should parse a Spark SQL connection string", () => {
-    const connectionString = enginesConfig.get("sparksql")?.placeholder;
+    const connectionString = enginesConfig["sparksql"];
     const result = parseConnectionUriRegex(connectionString, "sparksql");
     expect(result).toEqual(
       expect.objectContaining({
@@ -361,7 +360,7 @@ describe("parseConnectionUriRegex - Spark SQL", () => {
 
 describe("parseConnectionUriRegex - SQL Server", () => {
   it("should parse a SQL Server connection string", () => {
-    const connectionString = enginesConfig.get("sqlserver")?.placeholder;
+    const connectionString = enginesConfig["sqlserver"];
     const result = parseConnectionUriRegex(connectionString, "sqlserver");
     expect(result).toEqual(
       expect.objectContaining({
@@ -400,7 +399,7 @@ describe("parseConnectionUriRegex - SQL Server", () => {
 
 describe("parseConnectionUriRegex - Starburst", () => {
   it("should parse a Starburst connection string", () => {
-    const connectionString = enginesConfig.get("starburst")?.placeholder;
+    const connectionString = enginesConfig["starburst"];
     const result = parseConnectionUriRegex(connectionString, "starburst");
     expect(result).toEqual(
       expect.objectContaining({
@@ -423,7 +422,7 @@ describe("parseConnectionUriRegex - Starburst", () => {
 
 describe("parseConnectionUriRegex - Vertica", () => {
   it("should parse a Vertica connection strin", () => {
-    const connectionString = enginesConfig.get("vertica")?.placeholder;
+    const connectionString = enginesConfig["vertica"];
     const result = parseConnectionUriRegex(connectionString, "vertica");
     expect(result).toEqual(
       expect.objectContaining({
