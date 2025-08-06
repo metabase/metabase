@@ -125,7 +125,8 @@
   (case model-str
     "Dashboard" (deferred-tru "Dashboard")
     "Card"      (deferred-tru "Card")
-    "Segment"   (deferred-tru "Segment")))
+    "Segment" (deferred-tru "Segment")
+    "Document" (deferred-tru "Document")))
 
 (defn diff-strings*
   "Create a seq of string describing how `o1` is different from `o2`.

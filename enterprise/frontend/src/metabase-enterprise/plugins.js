@@ -40,3 +40,5 @@ import "./clean_up";
 import "./metabot";
 import "./database_replication";
 import "./transforms";
+import "./documents";
+import "./entities";

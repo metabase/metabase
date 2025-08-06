@@ -1096,3 +1096,5 @@
       (t2/update! :model/Card card-id {:name "Updated"
                                        :verified-result-metadata? true})
       (is (= "Updated" (t2/select-one-fn :name :model/Card :id card-id))))))
+
+

@@ -814,3 +814,13 @@ export const PLUGIN_TRANSFORMS: TransformsPlugin = {
   getAdminPaths: () => [],
   getAdminRoutes: () => null,
 };
+
+export const PLUGIN_DOCUMENTS = {
+  getRoutes: () => null as React.ReactElement | null,
+  shouldShowDocumentInNewItemMenu: () => false,
+  DocumentBackButton: PluginPlaceholder as React.ComponentType<any>,
+};
+
+export const PLUGIN_ENTITIES = {
+  entities: {} as Record<string, any>,
+};

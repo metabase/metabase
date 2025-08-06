@@ -186,12 +186,12 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
     }
   };
 
-  focus() {
+  focus = () => {
     if (this.props.readOnly) {
       return;
     }
     this.editor.current?.focus();
-  }
+  };
 
   handleRightClickSelection = () => {
     this.setState({ isSelectedTextPopoverOpen: true });
@@ -231,6 +231,8 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
         variables: true,
         snippets: true,
         promptInput: true,
+        formatQuery: true,
+        aiGeneration: true,
       },
       hasTopBar = true,
       hasEditingSidebar = true,
@@ -293,6 +295,7 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
             isShowingSnippetSidebar={this.props.isShowingSnippetSidebar}
             isNativeEditorOpen={this.props.isNativeEditorOpen}
             toggleEditor={this.props.toggleEditor}
+            toggleDataReference={this.props.toggleDataReference}
             setParameterValue={this.props.setParameterValue}
             setDatasetQuery={this.props.setDatasetQuery}
             onFormatQuery={canFormatQuery ? this.handleFormatQuery : undefined}
