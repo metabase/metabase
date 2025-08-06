@@ -75,6 +75,16 @@ export const getSimpleEmbedIframeContent = (iframeIndex = 0) => {
 };
 
 /**
+ * Waits for the iframe content to be fully ready by ensuring React components have rendered
+ */
+export const waitForIframeContentReady = (iframeIndex = 0) => {
+  return getSimpleEmbedIframeContent(iframeIndex).within(() => {
+    // Wait for React to finish initial render by looking for common metabase elements
+    cy.get("[data-testid], [class*='mb-'], [class*='metabase']", { timeout: 10_000 }).should("exist");
+  });
+};
+
+/**
  * Creates and loads a test fixture for SDK iframe embedding tests
  */
 export function loadSdkIframeEmbedTestPage<T extends BaseEmbedTestPageOptions>({
@@ -154,9 +164,6 @@ function getSdkIframeEmbedHtml({
 
 /**
  * Prepares the testing environment for sdk iframe embedding tests.
- *
- * @param {boolean} withTokenFeatures - Whether to enable token features.
- * @param {EnabledAuthMethods[]} enabledAuthMethods - The authentication methods to enable.
  */
 export function prepareSdkIframeEmbedTest({
   withTokenFeatures = true,

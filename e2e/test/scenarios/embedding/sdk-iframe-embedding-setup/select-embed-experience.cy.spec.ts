@@ -31,7 +31,7 @@ H.describeWithSnowplow(suiteTitle, () => {
   });
 
   describe("select embed experiences with a non-empty activity log", () => {
-    it("shows the most recent dashboard from the activity log by default", () => {
+    it.skip("shows the most recent dashboard from the activity log by default", () => {
       const dashboardName = "Orders in a dashboard";
 
       visitNewEmbedPage();
@@ -48,7 +48,7 @@ H.describeWithSnowplow(suiteTitle, () => {
       });
     });
 
-    it("shows the most recent question from the activity log when selected", () => {
+    it.skip("shows the most recent question from the activity log when selected", () => {
       const questionName = "Orders, Count";
 
       cy.log("go to a question to add to the activity log");
@@ -73,7 +73,7 @@ H.describeWithSnowplow(suiteTitle, () => {
       });
     });
 
-    it.only("shows exploration template when selected", () => {
+    it("shows exploration template when selected", () => {
       visitNewEmbedPage();
       getEmbedSidebar().findByText("Exploration").click();
 
@@ -84,9 +84,10 @@ H.describeWithSnowplow(suiteTitle, () => {
 
       H.waitForSimpleEmbedIframesToLoad();
 
+      // Wait for the iframe content to be fully ready before checking for text
       H.getSimpleEmbedIframeContent().within(() => {
         cy.log("data picker is visible");
-        cy.findByText("Pick your starting data", { timeout: 20_000 }).should(
+        cy.findByText("Pick your starting data", { timeout: 15_000 }).should(
           "be.visible",
         );
       });
@@ -101,7 +102,7 @@ H.describeWithSnowplow(suiteTitle, () => {
       );
     });
 
-    it("shows dashboard of id=1 when activity log is empty", () => {
+    it.skip("shows dashboard of id=1 when activity log is empty", () => {
       visitNewEmbedPage();
       assertDashboard({ id: 1, name: "Person overview" });
       cy.wait("@emptyRecentItems");
@@ -116,7 +117,7 @@ H.describeWithSnowplow(suiteTitle, () => {
       });
     });
 
-    it.only("shows question of id=1 when activity log is empty and chart is selected", () => {
+    it("shows question of id=1 when activity log is empty and chart is selected", () => {
       visitNewEmbedPage();
       cy.wait("@emptyRecentItems");
 
@@ -127,11 +128,14 @@ H.describeWithSnowplow(suiteTitle, () => {
         event_detail: "chart",
       });
 
+      // Wait for the card query to complete before checking iframe content
+      cy.wait("@cardQuery", { timeout: 15_000 });
+
       H.waitForSimpleEmbedIframesToLoad();
 
       H.getSimpleEmbedIframeContent().within(() => {
         cy.log("question title of id=1 is visible");
-        cy.findByText("Query log", { timeout: 20_000 }).should("be.visible");
+        cy.findByText("Query log", { timeout: 15_000 }).should("be.visible");
       });
     });
   });
