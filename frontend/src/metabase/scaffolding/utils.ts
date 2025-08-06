@@ -11,11 +11,21 @@ import {
   getGlobalSettingsForColumn,
   getSettingDefinitionsForColumn,
 } from "metabase/visualizations/lib/settings/column";
-import { isEntityName, isNumeric, isPK } from "metabase-lib/v1/types/utils/isa";
+import {
+  isCurrency,
+  isEntityName,
+  isLocation,
+  isNumeric,
+  isPK,
+  isTitle,
+} from "metabase-lib/v1/types/utils/isa";
 import type {
   DatasetColumn,
+  Field,
+  ObjectViewSectionSettings,
   ObjectViewSettings,
   RowValue,
+  SectionVariant,
   StructuredDatasetQuery,
   Table,
 } from "metabase-types/api";
@@ -128,53 +138,163 @@ export function renderValue(
     : NO_VALUE;
 }
 
+function notEmpty<T>(xs: T[]): T[] | null {
+  if (xs && xs.length > 0) {
+    return xs;
+  } else {
+    return null;
+  }
+}
+
+function fieldsIfPresent(
+  fieldsByName: Record<string, Field>,
+  ...names: string[]
+): Field[] | null {
+  if (names.some((name) => !fieldsByName[name])) {
+    return null;
+  }
+  return names.reduce((acc: Field[], name: string) => {
+    acc.push(fieldsByName[name]);
+    return acc;
+  }, []);
+}
+
+function deleteFields(
+  fieldsByName: Record<string, Field>,
+  fields: Field[],
+): void {
+  fields.forEach((field) => {
+    delete fieldsByName[field.name];
+  });
+}
+
+function sectionFields(fields: Field[]): { field_id: number }[] {
+  return fields.map((field) => ({
+    field_id: getRawTableFieldId(field),
+  }));
+}
+
 export function getDefaultObjectViewSettings(
   table: Table | undefined,
 ): ObjectViewSettings {
   const fields = table?.fields ?? [];
-  const headerFields = fields
-    .filter((f) => isEntityName(f) || isPK(f))
-    .slice(0, 3);
-  // const normalFields = fields.filter((f) => !headerFields.includes(f));
 
-  return {
-    sections: [
-      {
+  const fieldsByName = fields.reduce<Record<string, Field>>((acc, field) => {
+    acc[field.name] = field;
+    return acc;
+  }, {});
+
+  const leftoverFields = JSON.parse(JSON.stringify(fieldsByName));
+
+  const pkFields = fields.filter((f) => isPK(f));
+  deleteFields(leftoverFields, pkFields);
+
+  // Find things that look like part of a name.
+  let nameFields: Field[] =
+    notEmpty(fields.filter((f) => isEntityName(f))) ||
+    fieldsIfPresent(fieldsByName, "name") ||
+    fieldsIfPresent(fieldsByName, "title", "full_name") ||
+    fieldsIfPresent(fieldsByName, "full_name") ||
+    fieldsIfPresent(fieldsByName, "title", "first_name", "last_name") ||
+    fieldsIfPresent(fieldsByName, "first_name", "last_name") ||
+    // Or, failing that, a title.
+    notEmpty(fields.filter((f) => isTitle(f))) ||
+    fieldsIfPresent(fieldsByName, "title") ||
+    [];
+
+  if (nameFields.length === 0) {
+    // If there's only one kind of entity name, let's go with that.
+    const somethingNameFields = fields.filter((f) =>
+      f.name.toLowerCase().endsWith("name"),
+    );
+    if (somethingNameFields.length === 1) {
+      nameFields = somethingNameFields;
+    }
+  }
+  deleteFields(leftoverFields, nameFields);
+
+  // Is there any overlap between the primary key and the name fields?
+  // This is O(n^2) so sue me.
+  const pkInName = pkFields.filter((f) =>
+    nameFields.some((nf) => nf.name === f.name),
+  );
+
+  const headerFields =
+    !pkInName && pkFields.length > 0 && pkFields.length + nameFields.length <= 3
+      ? [...pkFields, ...nameFields]
+      : // if you have more than 3 entity name or title fields, we'll use them *all*
+        nameFields;
+
+  const sections: ObjectViewSectionSettings[] = [];
+
+  sections.push({
+    id: getNextId(),
+    title: "Title",
+    variant: "header",
+    fields: sectionFields(headerFields),
+  });
+
+  sections.push({
+    id: getNextId(),
+    title: "Subtitle",
+    variant: "subheader",
+    fields: [],
+  });
+
+  // Even if there was only partial overlap, skip the pk section entirely.
+  if (!pkInName) {
+    // If we skipped the primary key, let's give it its own section.
+    const skippedPk = pkFields.length + nameFields.length > headerFields.length;
+    if (skippedPk) {
+      sections.push({
         id: getNextId(),
-        title: "Title",
-        variant: "header",
-        fields: headerFields.map((field) => ({
-          field_id: getRawTableFieldId(field),
-        })),
-      },
-      {
+        title: "Primary Key",
+        variant: "normal",
+        fields: sectionFields(pkFields),
+      });
+    }
+  }
+
+  function addPotentialSectionHelper(
+    title: string,
+    variant: SectionVariant,
+    selectFieldsFn: (fields: Field[]) => Field[] | null,
+  ): void {
+    const fields = selectFieldsFn(Object.values(leftoverFields));
+    if (fields && fields.length > 0) {
+      deleteFields(leftoverFields, fields);
+      sections.push({
         id: getNextId(),
-        title: "Subtitle",
-        variant: "subheader",
-        fields: [],
-      },
-      // {
-      //   id: getNextId(),
-      //   title: "Data Highlight",
-      //   variant: "highlight-1",
-      //   fields: [],
-      // },
-      // {
-      //   id: getNextId(),
-      //   title: "Highlight level 2",
-      //   variant: "highlight-2",
-      //   fields: [],
-      // },
-      // {
-      //   id: getNextId(),
-      //   title: "Info",
-      //   variant: "normal",
-      //   fields: normalFields.map((field) => ({
-      //     field_id: getRawTableFieldId(field),
-      //   })),
-      // },
-    ],
-  };
+        title: title,
+        variant: variant,
+        fields: sectionFields(fields),
+      });
+    }
+  }
+
+  addPotentialSectionHelper("Location", "highlight-2", (fs) =>
+    fs.filter(isLocation),
+  );
+
+  addPotentialSectionHelper("Financial", "normal", (fs) =>
+    fs.filter(isCurrency),
+  );
+
+  // {
+  //   id: getNextId(),
+  //   title: "Data Highlight",
+  //   variant: "highlight-1",
+  //   fields: [],
+  // },
+
+  // {
+  //   id: getNextId(),
+  //   title: "Highlight level 2",
+  //   variant: "highlight-2",
+  //   fields: [],
+  // },
+
+  return { sections: sections };
 }
 
 export function getTableQuery(
