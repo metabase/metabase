@@ -294,7 +294,7 @@ function DetailViewSidebar({
               section={section}
               onUpdateSection={(update) => onUpdateSection(section.id, update)}
               onRemoveSection={
-                sections.length > 1
+                sections.length > 1 && section.variant !== "header"
                   ? () => onRemoveSection(section.id)
                   : undefined
               }
@@ -461,12 +461,15 @@ function SectionSettings({
     <Box mt="sm" className={S.ObjectViewSidebarSection}>
       <Flex align="center" justify="space-between" w="100%">
         <Group gap="xs">
-          <Icon
-            name="grabber"
-            style={{ cursor: "grab" }}
-            {...dragHandleProps}
-          />
+          {section.variant !== "header" && (
+            <Icon
+              name="grabber"
+              style={{ cursor: "grab" }}
+              {...dragHandleProps}
+            />
+          )}
           <EditableText
+            isDisabled={section.variant === "header"}
             initialValue={section.title}
             onChange={(title) => onUpdateSection({ title })}
             style={{
@@ -475,52 +478,50 @@ function SectionSettings({
             }}
           />
         </Group>
-        <Group gap="xs" className={S.ObjectViewSidebarSectionActions}>
-          <ActionIcon
-            color="text-medium"
-            onClick={() =>
-              onUpdateSection({
-                variant: section.variant === "main" ? "normal" : "main",
-              })
-            }
-          >
-            <Icon
-              name={section.variant === "main" ? "star_filled" : "star"}
-              tooltip={t`Toggle highlight`}
-            />
-          </ActionIcon>
-          <ActionIcon
-            color="text-medium"
-            onClick={() =>
-              onUpdateSection({
-                variant:
-                  section.variant === "unlabeled" ? "normal" : "unlabeled",
-              })
-            }
-          >
-            <Icon
-              name={section.variant === "unlabeled" ? "list" : "burger"}
-              tooltip={
-                section.variant === "unlabeled"
-                  ? t`Display field names`
-                  : t`Hide field names`
+        {section.variant !== "header" && (
+          <Group gap="xs" className={S.ObjectViewSidebarSectionActions}>
+            <ActionIcon
+              color="text-medium"
+              onClick={() =>
+                onUpdateSection({
+                  variant: section.variant === "main" ? "normal" : "main",
+                })
               }
-            />
-          </ActionIcon>
-          {onRemoveSection && (
-            <Button
-              variant="inverse"
-              leftSection={
-                <Icon
-                  name="close"
-                  style={{ color: "var(--mb-color-text-medium)" }}
-                />
+            >
+              <Icon
+                name={section.variant === "main" ? "star_filled" : "star"}
+                tooltip={t`Toggle highlight`}
+              />
+            </ActionIcon>
+            <ActionIcon
+              color="text-medium"
+              onClick={() =>
+                onUpdateSection({
+                  variant:
+                    section.variant === "unlabeled" ? "normal" : "unlabeled",
+                })
               }
-              size="compact-sm"
-              onClick={onRemoveSection}
-            />
-          )}
-        </Group>
+            >
+              <Icon
+                name={section.variant === "unlabeled" ? "list" : "burger"}
+                tooltip={
+                  section.variant === "unlabeled"
+                    ? t`Display field names`
+                    : t`Hide field names`
+                }
+              />
+            </ActionIcon>
+            {onRemoveSection && (
+              <ActionIcon
+                color="text-medium"
+                // size="compact-sm"
+                onClick={onRemoveSection}
+              >
+                <Icon name="close" tooltip={t`Remove section`} />
+              </ActionIcon>
+            )}
+          </Group>
+        )}
       </Flex>
       {columnIds.length === 0 ? (
         <EmptyDropZone sectionId={String(section.id)} />

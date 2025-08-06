@@ -175,9 +175,10 @@ export function TableDetailViewInner({
     ? (sectionsOverride ?? sections)
     : sections;
 
-  const notEmptySections = isEdit
-    ? sectionsOrOverride
-    : sectionsOrOverride.filter((section) => section.fields.length > 0);
+  const notEmptySections =
+    isEdit && !isListView
+      ? sectionsOrOverride
+      : sectionsOrOverride.filter((section) => section.fields.length > 0);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -438,7 +439,7 @@ export function TableDetailViewInner({
         mb={isListView ? 0 : "sm"}
         className={cx({ [S.ListViewContainer]: isListView })}
         style={{
-          "--sections-count": notEmptySections.length,
+          "--sections-count": Math.max(sectionsOrOverride.length - 1, 1),
           // gridTemplateColumns: `repeat(3, 1fr)`,
         }}
       >
@@ -508,6 +509,9 @@ function SortableSection(props: SortableSectionProps) {
     transform: CSS.Translate.toString(transform),
     transition,
     opacity: isDragging ? 0.5 : 1,
+    ...(props.section.variant === "header"
+      ? { gridColumn: "span var(--sections-count)" }
+      : {}),
   };
 
   return (
@@ -546,6 +550,41 @@ function ObjectViewSection({
   // const pkIndex = columns.findIndex(isPK); // TODO: handle multiple PKs
   const tc = useTranslateContent();
 
+  if (section.variant === "header") {
+    // Merging header values in 1 element to handle text-overflow: ellipsis correctly.
+
+    // keep in sync with equivalent implementation in Nav
+    const headerText = section.fields
+      .map(({ field_id }) => {
+        const columnIndex = columns.findIndex(
+          (column) => column.id === field_id,
+        );
+        const column = columns[columnIndex];
+
+        if (!column) {
+          return null;
+        }
+
+        const value = row[columnIndex];
+        return renderValue(tc, value, column, { jsx: false });
+      })
+      .join(" ");
+
+    return (
+      <Box
+        className={cx(S.ObjectViewSection, {
+          [S.ListViewSection]: isListView,
+        })}
+      >
+        <Flex className={cx(S.SectionContent, S.Header)}>
+          <Text lineClamp={5} className={S.FieldValue}>
+            {headerText}
+          </Text>
+        </Flex>
+      </Box>
+    );
+  }
+
   return (
     <Box
       className={cx(S.ObjectViewSection, {
@@ -562,7 +601,7 @@ function ObjectViewSection({
     >
       {!isListView && (
         <Group gap="xs">
-          {isEdit && (
+          {isEdit && section.variant !== "header" && (
             <Icon
               name="grabber"
               style={{ cursor: "grab" }}
@@ -584,7 +623,7 @@ function ObjectViewSection({
         mt={isListView ? 0 : "sm"}
         px="xs"
         className={cx(S.SectionContent, {
-          [S.MainSection]: section.variant === "main",
+          [S.HighlightSection]: section.variant === "main",
           [S.NormalSection]: section.variant === "normal",
           [S.UnlabeledSection]: section.variant === "unlabeled",
         })}
@@ -604,7 +643,7 @@ function ObjectViewSection({
           return (
             <Fragment key={field_id}>
               <Text
-                c="text-dark"
+                // c="text-dark"
                 fw={600}
                 size="md"
                 style={{

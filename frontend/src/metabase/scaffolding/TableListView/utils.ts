@@ -182,19 +182,25 @@ export function getDefaultListViewListSettings(
 ): ObjectViewSettings {
   const fields = table?.fields ?? [];
   const bestFields = getBestFields(fields);
-  console.log({ bestFields });
 
   return {
     sections: [
       {
         id: getNextId(),
-        title: "Main",
-        direction: "vertical",
+        title: "Title",
+        direction: "horizontal",
         fields: bestFields.map((field) => ({
           field_id: getRawTableFieldId(field),
           style: isEntityName(field) ? "bold" : "normal",
         })),
-        variant: "main",
+        variant: "header",
+      },
+      {
+        id: getNextId(),
+        title: "Info",
+        direction: "vertical",
+        fields: [],
+        variant: "normal",
       },
       // {
       //   id: getNextId(),

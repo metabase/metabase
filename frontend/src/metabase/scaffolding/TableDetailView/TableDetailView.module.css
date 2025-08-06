@@ -34,7 +34,6 @@
 }
 
 .ListViewContainer {
-  /* flex-direction: row; */
   border: 1px solid var(--border-color);
   border-radius: var(--default-border-radius);
   display: grid;
@@ -48,6 +47,10 @@
   flex-direction: column;
   border: none;
 
+  .FieldName {
+    color: var(--mb-color-text-tertiary);
+  }
+
   .SectionContent {
     /* flex-direction: column; */
     display: grid;
@@ -56,14 +59,25 @@
     /* line-height: 1; */
     /* background-color: green; */
 
-    &.MainSection {
+    &.Header {
+      display: flex;
+      padding: var(--mantine-spacing-sm) var(--mantine-spacing-md);
+
+      .FieldValue {
+        font-weight: 700;
+        font-size: var(--mantine-font-size-lg);
+      }
+    }
+
+    &.HighlightSection {
       grid-template-columns: 1fr;
+      grid-row-gap: var(--mantine-spacing-xs);
       .FieldName {
         display: none;
       }
       .FieldValue {
         font-weight: 700;
-        font-size: var(--mantine-font-size-xl);
+        font-size: var(--mantine-font-size-lg);
       }
     }
 
@@ -78,11 +92,5 @@
         display: none;
       }
     }
-  }
-
-  .ListViewField {
-    /* display: grid;
-    grid-template-columns: auto 1fr;
-    align-items: center; */
   }
 }
