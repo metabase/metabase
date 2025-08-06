@@ -71,6 +71,10 @@
                        (getMetaData []
                          (reify DatabaseMetaData
                            (supportsTransactionIsolationLevel [_ _] false)))
+                       (createStatement []
+                         (reify java.sql.Statement
+                           (execute [_ _] true)
+                           (close [_] nil)))
                        (setReadOnly [read-only]
                          (vswap! connection-option-calls conj [:setReadOnly read-only]))
                        (setAutoCommit [auto-commit]

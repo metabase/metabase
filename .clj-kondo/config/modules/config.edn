@@ -591,6 +591,7 @@
           metabase.lib.metadata.result-metadata
           metabase.lib.normalize
           metabase.lib.options
+          metabase.lib.parse
           metabase.lib.query
           metabase.lib.schema
           metabase.lib.schema.actions
@@ -1449,6 +1450,7 @@
            api
            driver
            lib
+           models
            query-processor
            util
            warehouse-schema}}
@@ -1603,6 +1605,7 @@
    :api  #{metabase-enterprise.data-editing.api}
    :uses #{actions
            api
+           models
            util}}
 
   enterprise/database-replication

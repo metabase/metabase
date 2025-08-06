@@ -1,6 +1,8 @@
+import cx from "classnames";
 import { t } from "ttag";
 
 import ExternalLink from "metabase/common/components/ExternalLink";
+import CS from "metabase/css/core/index.css";
 import linkStyles from "metabase/css/core/link.module.css";
 import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_ADMIN_SETTINGS } from "metabase/plugins";
@@ -37,7 +39,11 @@ export function UpsellSdkLink() {
   }
 
   return (
-    <ExternalLink key="upgrade-url" href={upgradeUrl}>
+    <ExternalLink
+      key="upgrade-url"
+      href={upgradeUrl}
+      className={cx(CS.textBold, linkStyles.link)}
+    >
       {t`upgrade to Metabase Pro`}
     </ExternalLink>
   );
