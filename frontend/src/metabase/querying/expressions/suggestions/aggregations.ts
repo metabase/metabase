@@ -35,7 +35,7 @@ export function suggestAggregations({
     (agg) => expressionClauseCompletion(agg, { type: "aggregation" }),
   );
 
-  const matcher = fuzzyMatcher({ options: aggregations });
+  const matcher = fuzzyMatcher(aggregations);
 
   return function (context: CompletionContext) {
     const source = context.state.doc.toString();
@@ -56,7 +56,6 @@ export function suggestAggregations({
       from: token.start,
       to: token.end,
       options,
-      filter: false,
     };
   };
 }
