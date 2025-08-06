@@ -1,4 +1,5 @@
 import cx from "classnames";
+import { Fragment } from "react";
 import { Link } from "react-router";
 
 import { Ellipsified } from "metabase/common/components/Ellipsified";
@@ -137,8 +138,8 @@ export function ObjectViewSection({
             : undefined;
 
           return (
-            <>
-              <Flex key={field_id} className={S.Field}>
+            <Fragment key={field_id}>
+              <Flex className={S.Field}>
                 <Box className={S.FieldName} w="100%">
                   <Tooltip
                     disabled={!column.description}
@@ -197,7 +198,7 @@ export function ObjectViewSection({
               {index < section.fields.length - 1 && variant === "subheader" && (
                 <div className={S.separator} />
               )}
-            </>
+            </Fragment>
           );
         })}
       </Flex>
