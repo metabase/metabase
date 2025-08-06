@@ -38,6 +38,7 @@
     :model/DatabaseRouter                    metabase-enterprise.database-routing.model
     :model/Dimension                         metabase.warehouse-schema.models.dimension
     :model/Document                          metabase-enterprise.documents.models.document
+    :model/DocumentBookmark                  metabase-enterprise.bookmarks.models.bookmark
     :model/Field                             metabase.warehouse-schema.models.field
     :model/FieldUserSettings                 metabase.warehouse-schema.models.field-user-settings
     :model/FieldValues                       metabase.warehouse-schema.models.field-values

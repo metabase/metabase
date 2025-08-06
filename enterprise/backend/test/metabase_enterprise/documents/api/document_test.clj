@@ -8,6 +8,8 @@
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
+(use-fixtures :each (fn [f] (mt/with-premium-features #{:documents} (f))))
+
 (defn- text->prose-mirror-ast
   "Convert plain text to a ProseMirror AST structure."
   [text]
@@ -57,6 +59,15 @@
                             {:name "Foo"
                              :document (text->prose-mirror-ast "Bar")
                              :collection_id coll-id}))))
+
+(deftest get-document-test-requires-documents-feature
+  (testing "GET /api/ee/document/id"
+    (mt/with-premium-features #{}
+      (mt/with-temp [:model/Document {document-id :id} {:name "Test Document"
+                                                        :document (text->prose-mirror-ast "Doc 1")}]
+        (testing "should not get the document"
+          (mt/user-http-request :crowberto
+                                :get 402 (format "ee/document/%s" document-id)))))))
 
 (deftest get-document-test
   (testing "GET /api/ee/document/id"
