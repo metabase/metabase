@@ -31,6 +31,7 @@ import { formatCardEmbed } from "../markdown/card-embed-format";
 
 import styles from "./CardEmbedNode.module.css";
 import { ModifyQuestionModal } from "./ModifyQuestionModal";
+import { NativeQueryModal } from "./NativeQueryModal";
 
 export interface CardEmbedAttributes {
   id: number;
@@ -188,7 +189,7 @@ export const CardEmbedComponent = memo(
     const [isModifyModalOpen, setIsModifyModalOpen] = useState(false);
 
     const displayName = name || cardToUse?.name;
-    const isGuiQuestion = cardToUse?.dataset_query?.type !== "native";
+    const isNativeQuestion = cardToUse?.dataset_query?.type === "native";
     const isLoading = isLoadingCard || isLoadingDataset;
 
     // Only show error if we've tried to load and failed, not if we haven't tried yet
@@ -458,15 +459,18 @@ export const CardEmbedComponent = memo(
                       >
                         {t`Edit Visualization`}
                       </Menu.Item>
-                      {isGuiQuestion && (
-                        <Menu.Item
-                          onClick={() => setIsModifyModalOpen(true)}
-                          disabled={!canWrite}
-                          leftSection={<Icon name="notebook" size={14} />}
-                        >
-                          {t`Edit Query`}
-                        </Menu.Item>
-                      )}
+                      <Menu.Item
+                        onClick={() => setIsModifyModalOpen(true)}
+                        disabled={!canWrite}
+                        leftSection={
+                          <Icon
+                            name={isNativeQuestion ? "sql" : "notebook"}
+                            size={14}
+                          />
+                        }
+                      >
+                        {t`Edit Query`}
+                      </Menu.Item>
                       <Menu.Item
                         onClick={handleReplaceQuestion}
                         disabled={!canWrite}
@@ -500,21 +504,38 @@ export const CardEmbedComponent = memo(
             </Box>
           )}
         </Box>
-        {isModifyModalOpen && cardToUse && (
-          <ModifyQuestionModal
-            card={cardToUse}
-            isOpen={isModifyModalOpen}
-            onClose={() => setIsModifyModalOpen(false)}
-            editor={editor}
-            onSave={(result) => {
-              updateAttributes({
-                id: result.card_id,
-                name: null,
-              });
-              setIsModifyModalOpen(false);
-            }}
-          />
-        )}
+        {isModifyModalOpen &&
+          cardToUse &&
+          (isNativeQuestion ? (
+            <NativeQueryModal
+              card={cardToUse}
+              isOpen={isModifyModalOpen}
+              onClose={() => setIsModifyModalOpen(false)}
+              editor={editor}
+              initialDataset={dataset}
+              onSave={(result) => {
+                updateAttributes({
+                  id: result.card_id,
+                  name: null,
+                });
+                setIsModifyModalOpen(false);
+              }}
+            />
+          ) : (
+            <ModifyQuestionModal
+              card={cardToUse}
+              isOpen={isModifyModalOpen}
+              onClose={() => setIsModifyModalOpen(false)}
+              editor={editor}
+              onSave={(result) => {
+                updateAttributes({
+                  id: result.card_id,
+                  name: null,
+                });
+                setIsModifyModalOpen(false);
+              }}
+            />
+          ))}
       </NodeViewWrapper>
     );
   },

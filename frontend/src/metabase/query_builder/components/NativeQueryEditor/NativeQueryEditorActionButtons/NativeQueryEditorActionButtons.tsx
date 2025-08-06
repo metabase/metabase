@@ -31,6 +31,7 @@ interface NativeQueryEditorActionButtonsProps {
   isShowingSnippetSidebar: boolean;
   runQuery?: () => void;
   cancelQuery?: () => void;
+  toggleDataReference?: () => void;
   onOpenModal: (modalType: QueryModalType) => void;
   onFormatQuery?: () => void;
   onGenerateQuery: (queryText: string) => void;
@@ -45,6 +46,7 @@ export const NativeQueryEditorActionButtons = (
     snippetCollections,
     snippets,
     features,
+    toggleDataReference,
     onFormatQuery,
     onGenerateQuery,
   } = props;
@@ -62,6 +64,10 @@ export const NativeQueryEditorActionButtons = (
   const canGenerateQuery =
     engine != null && getEngineNativeType(engine) === "sql";
 
+  // Default to true if not explicitly set to false
+  const showFormatButton = features.formatQuery !== false;
+  const showAiGeneration = features.aiGeneration !== false;
+
   return (
     <Flex
       component="aside"
@@ -73,7 +79,11 @@ export const NativeQueryEditorActionButtons = (
         <PreviewQueryButton {...props} />
       )}
       {features.dataReference && (
-        <DataReferenceButton {...props} size={ICON_SIZE} />
+        <DataReferenceButton
+          {...props}
+          size={ICON_SIZE}
+          onClick={toggleDataReference}
+        />
       )}
       {features.snippets && showSnippetSidebarButton && (
         <SnippetSidebarButton {...props} size={ICON_SIZE} />
@@ -81,7 +91,7 @@ export const NativeQueryEditorActionButtons = (
       {features.variables && (
         <NativeVariablesButton {...props} size={ICON_SIZE} />
       )}
-      {onFormatQuery && (
+      {showFormatButton && onFormatQuery && (
         <Tooltip label={t`Auto-format`}>
           <Button
             variant="subtle"
@@ -93,7 +103,7 @@ export const NativeQueryEditorActionButtons = (
           />
         </Tooltip>
       )}
-      {canGenerateQuery && (
+      {showAiGeneration && canGenerateQuery && (
         <PLUGIN_AI_SQL_GENERATION.GenerateSqlQueryButton
           query={query}
           selectedQueryText={nativeEditorSelectedText}
