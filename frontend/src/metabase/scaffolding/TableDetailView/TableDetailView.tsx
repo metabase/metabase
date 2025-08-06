@@ -9,11 +9,17 @@ import {
 } from "metabase/api/table";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/LoadingAndErrorWrapper";
 import { useDispatch } from "metabase/lib/redux";
-import type { StructuredDatasetQuery } from "metabase-types/api";
+import type { DatasetColumn, StructuredDatasetQuery } from "metabase-types/api";
 
-import { getObjectQuery, getTableQuery } from "../utils";
+import {
+  getObjectQuery,
+  getTableQuery,
+  processRemappedColumns,
+} from "../utils";
 
 import { TableDetailViewInner } from "./TableDetailViewInner";
+
+const emptyColumns: DatasetColumn[] = [];
 
 interface TableDetailViewLoaderProps {
   params: {
@@ -47,9 +53,19 @@ export function TableDetailView({
   const [currentRowIndex, setCurrentRowIndex] = useState<number>();
 
   const rows = useMemo(() => dataset?.data?.rows || [], [dataset]);
-  const columns = dataset?.data?.results_metadata?.columns ?? [];
+  const columns = dataset?.data?.results_metadata?.columns ?? emptyColumns;
+
+  const { columns: processedColumns, rows: processedRows } = useMemo(() => {
+    if (columns.length > 0 && rows.length > 0) {
+      return processRemappedColumns(columns, rows);
+    }
+    return { columns, rows };
+  }, [columns, rows]);
+
   const rowFromList =
-    typeof currentRowIndex === "undefined" ? undefined : rows[currentRowIndex];
+    typeof currentRowIndex === "undefined"
+      ? undefined
+      : processedRows[currentRowIndex];
 
   const { data: objectDataset } = useGetAdhocQueryQuery(
     objectQuery ? objectQuery : skipToken,
@@ -110,7 +126,7 @@ export function TableDetailView({
       tableId={tableId}
       rowId={rowId}
       row={row}
-      columns={columns}
+      columns={processedColumns}
       table={table}
       tableForeignKeys={tableForeignKeys}
       isEdit={isEdit}
