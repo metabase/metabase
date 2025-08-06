@@ -41,8 +41,10 @@
   #{:postgres :h2})
 
 (defmethod search.engine/supported-engine? :search.engine/appdb [_]
-  (and (or (not config/is-prod?)
-           (= "appdb" (some-> (search.settings/search-engine) name)))
+  (and (or config/is-dev?
+           ;; if the default engine is semantic we want appdb to be available,
+           ;; as we want to mix results
+           (#{"appdb" "semantic"} (some-> (search.settings/search-engine) name)))
        (supported-db? (mdb/db-type))))
 
 (defn- parse-datetime [s]
@@ -102,7 +104,7 @@
       true (sql.helpers/where (or-null permitted-clause))
       personal-clause (sql.helpers/where (or-null personal-clause)))))
 
-(defmethod search.engine/results :search.engine/appdb
+(defn- results
   [{:keys [search-engine search-string] :as search-ctx}]
   ;; Check whether there is a query-able index.
   (when-not (search.index/active-table)
@@ -152,6 +154,10 @@
       ;; Rule out the error coming from stale index metadata.
       (#'search.index/sync-tracking-atoms!)
       (throw e))))
+
+(defmethod search.engine/results :search.engine/appdb
+  [search-ctx]
+  (results search-ctx))
 
 (defmethod search.engine/model-set :search.engine/appdb
   [search-ctx]
