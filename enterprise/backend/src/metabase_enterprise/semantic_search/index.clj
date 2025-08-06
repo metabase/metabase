@@ -168,7 +168,7 @@
 (defn- upsert-index-batch!
   [connectable index documents]
   (let [text->docs         (group-by :searchable_text documents)
-        searchable-texts   (map :searchable_text documents)]
+        searchable-texts   (keys text->docs)]
     (u/profile (str "Semantic search embedding generation and db update for " {:docs (count documents) :texts (count searchable-texts)})
       (embedding/process-embeddings-streaming
        (:embedding-model index)
