@@ -76,6 +76,7 @@ export type ObjectViewSectionSettings = {
     field_id: FieldId;
     style: "normal" | "bold" | "dim" | "title";
   }>;
+  variant?: "main" | "normal" | "unlabeled";
 };
 
 export type ObjectViewSettings = {

@@ -182,18 +182,40 @@ export function getDefaultListViewListSettings(
 ): ObjectViewSettings {
   const fields = table?.fields ?? [];
   const bestFields = getBestFields(fields);
+  console.log({ bestFields });
 
   return {
     sections: [
       {
         id: getNextId(),
-        title: "Info",
+        title: "Main",
         direction: "vertical",
         fields: bestFields.map((field) => ({
           field_id: getRawTableFieldId(field),
           style: isEntityName(field) ? "bold" : "normal",
         })),
+        variant: "main",
       },
+      // {
+      //   id: getNextId(),
+      //   title: "General",
+      //   direction: "vertical",
+      //   fields: bestFields.map((field) => ({
+      //     field_id: getRawTableFieldId(field),
+      //     style: isEntityName(field) ? "bold" : "normal",
+      //   })),
+      //   variant: "normal",
+      // },
+      // {
+      //   id: getNextId(),
+      //   title: "Extra",
+      //   direction: "vertical",
+      //   fields: bestFields.map((field) => ({
+      //     field_id: getRawTableFieldId(field),
+      //     style: isEntityName(field) ? "bold" : "normal",
+      //   })),
+      //   variant: "unlabeled",
+      // },
     ],
   };
 }
@@ -206,41 +228,41 @@ function getBestFields(fields: Field[]): Field[] {
     ...fields.filter((field) => field.name.toLowerCase().includes("name")),
   );
   bestFields.push(...fields.filter(isEntityName));
-  bestFields.push(
-    ...fields.filter((field) => field.semantic_type === "type/Title"),
-  );
-  bestFields.push(...fields.filter(isEmail));
-  bestFields.push(
-    ...fields.filter((field) => field.semantic_type === "type/Description"),
-  );
-  bestFields.push(...fields.filter(isAvatarURL));
-  bestFields.push(...fields.filter(isImageURL));
-  bestFields.push(...fields.filter(isCountry));
-  bestFields.push(...fields.filter(isState));
-  bestFields.push(...fields.filter(isAddress));
-  bestFields.push(
-    ...fields.filter((field) => field.semantic_type === "type/Category"),
-  );
-  bestFields.push(
-    ...fields.filter((field) => isString(field) || isStringLike(field)),
-  );
-  bestFields.push(...fields.filter(isDateWithoutTime));
-  bestFields.push(...fields.filter(isDate));
-  bestFields.push(...fields.filter(isURL));
-  bestFields.push(
-    ...fields.filter(
-      (field) => field.semantic_type != null && !isCoordinate(field),
-    ),
-  );
+  // bestFields.push(
+  //   ...fields.filter((field) => field.semantic_type === "type/Title"),
+  // );
+  // bestFields.push(...fields.filter(isEmail));
+  // bestFields.push(
+  //   ...fields.filter((field) => field.semantic_type === "type/Description"),
+  // );
+  // bestFields.push(...fields.filter(isAvatarURL));
+  // bestFields.push(...fields.filter(isImageURL));
+  // bestFields.push(...fields.filter(isCountry));
+  // bestFields.push(...fields.filter(isState));
+  // bestFields.push(...fields.filter(isAddress));
+  // bestFields.push(
+  //   ...fields.filter((field) => field.semantic_type === "type/Category"),
+  // );
+  // bestFields.push(
+  //   ...fields.filter((field) => isString(field) || isStringLike(field)),
+  // );
+  // bestFields.push(...fields.filter(isDateWithoutTime));
+  // bestFields.push(...fields.filter(isDate));
+  // bestFields.push(...fields.filter(isURL));
+  // bestFields.push(
+  //   ...fields.filter(
+  //     (field) => field.semantic_type != null && !isCoordinate(field),
+  //   ),
+  // );
 
   bestFields = _.uniq(bestFields);
 
-  const missingFieldsCount = 7 - bestFields.length;
+  // const missingFieldsCount = 7 - bestFields.length;
 
-  if (missingFieldsCount > 0) {
-    const otherFields = fields.filter((field) => !bestFields.includes(field));
-    bestFields.push(...otherFields.slice(0, missingFieldsCount));
-  }
+  // if (missingFieldsCount > 0) {
+  //   const otherFields = fields.filter((field) => !bestFields.includes(field));
+  //   bestFields.push(...otherFields.slice(0, missingFieldsCount));
+  // }
 
   return bestFields.slice(0, 7);
 }

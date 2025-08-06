@@ -30,6 +30,7 @@
 
 .SectionContent {
   overflow-x: auto;
+  gap: var(--mantine-spacing-md);
 }
 
 .ListViewContainer {
@@ -39,6 +40,7 @@
   display: grid;
   grid-template-columns: repeat(var(--sections-count, 1), 1fr);
   gap: var(--mantine-spacing-xl);
+  padding: var(--mantine-spacing-sm) var(--mantine-spacing-md);
 }
 
 .ListViewSection {
@@ -52,6 +54,30 @@
     grid-template-columns: auto 1fr;
     align-items: start;
     /* line-height: 1; */
+    /* background-color: green; */
+
+    &.MainSection {
+      grid-template-columns: 1fr;
+      .FieldName {
+        display: none;
+      }
+      .FieldValue {
+        font-weight: 700;
+        font-size: var(--mantine-font-size-xl);
+      }
+    }
+
+    &.NormalSection {
+      grid-row-gap: var(--mantine-spacing-xs);
+    }
+
+    &.UnlabeledSection {
+      grid-template-columns: 1fr;
+      grid-row-gap: var(--mantine-spacing-xs);
+      .FieldName {
+        display: none;
+      }
+    }
   }
 
   .ListViewField {

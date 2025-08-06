@@ -476,6 +476,37 @@ function SectionSettings({
           />
         </Group>
         <Group gap="xs" className={S.ObjectViewSidebarSectionActions}>
+          <ActionIcon
+            color="text-medium"
+            onClick={() =>
+              onUpdateSection({
+                variant: section.variant === "main" ? "normal" : "main",
+              })
+            }
+          >
+            <Icon
+              name={section.variant === "main" ? "star_filled" : "star"}
+              tooltip={t`Toggle highlight`}
+            />
+          </ActionIcon>
+          <ActionIcon
+            color="text-medium"
+            onClick={() =>
+              onUpdateSection({
+                variant:
+                  section.variant === "unlabeled" ? "normal" : "unlabeled",
+              })
+            }
+          >
+            <Icon
+              name={section.variant === "unlabeled" ? "list" : "burger"}
+              tooltip={
+                section.variant === "unlabeled"
+                  ? t`Display field names`
+                  : t`Hide field names`
+              }
+            />
+          </ActionIcon>
           {onRemoveSection && (
             <Button
               variant="inverse"

@@ -542,6 +542,7 @@ function ObjectViewSection({
   dragHandleProps,
 }: ObjectViewSectionProps) {
   // const pkIndex = columns.findIndex(isPK); // TODO: handle multiple PKs
+  console.log({ section });
 
   return (
     <Box
@@ -578,11 +579,13 @@ function ObjectViewSection({
       )}
       <Flex
         direction={section.direction === "vertical" ? "column" : "row"}
-        gap="md"
         mt={isListView ? 0 : "sm"}
         px="xs"
-        className={S.SectionContent}
-        // sty
+        className={cx(S.SectionContent, {
+          [S.MainSection]: section.variant === "main",
+          [S.NormalSection]: section.variant === "normal",
+          [S.UnlabeledSection]: section.variant === "unlabeled",
+        })}
       >
         {section.fields.map(({ field_id, style }) => {
           const columnIndex = columns.findIndex(
@@ -605,6 +608,7 @@ function ObjectViewSection({
                 style={{
                   whiteSpace: "nowrap",
                 }}
+                className={S.FieldName}
               >
                 {column.display_name}
               </Text>
@@ -614,6 +618,7 @@ function ObjectViewSection({
                 style={{
                   ...(isDate(column) ? { whiteSpace: "nowrap" } : {}),
                 }}
+                className={S.FieldValue}
               >
                 {formatValue(value, { column })}
               </Text>

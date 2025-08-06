@@ -631,6 +631,7 @@ export const TableListView = ({ location, params }: Props) => {
                                       title: "Section",
                                       direction: "vertical",
                                       fields: [],
+                                      variant: "normal",
                                     },
                                   ],
                                 },
