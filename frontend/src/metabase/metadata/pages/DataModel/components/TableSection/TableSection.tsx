@@ -167,7 +167,6 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
               <ActionIcon
                 component={Link}
                 to={getQueryBuilderUrl(table)}
-                target="_blank"
                 variant="subtle"
                 color="text-light"
                 size="sm"
