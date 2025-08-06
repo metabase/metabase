@@ -1650,8 +1650,8 @@
            queries
            query-permissions
            revisions
-           util
-           users}}
+           users
+           util}}
 
   enterprise/email
   {:team "UX West"
