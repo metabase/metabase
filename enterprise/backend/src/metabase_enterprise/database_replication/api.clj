@@ -1,5 +1,6 @@
 (ns metabase-enterprise.database-replication.api
   (:require
+   [camel-snake-kebab.core :as csk]
    [clojure.string :as str]
    [medley.core :as m]
    [metabase-enterprise.database-replication.settings :as database-replication.settings]
@@ -92,13 +93,19 @@
      :total-estimated-row-count total-estimated-row-count
      :can-set-replication       (< total-estimated-row-count free-quota)
      :all-quotas                all-quotas
-     :tables-without-pk         (map #(select-keys % [:name]) tables-without-pk)}))
+     :tables-without-pk         (map #(select-keys % [:schema :name]) tables-without-pk)}))
 
-(api.macros/defendpoint :get "/connection/:database-id/preview"
+(api.macros/defendpoint :post "/connection/:database-id/preview"
   "Return info about pg-replication connection that is about to be created."
   [{:keys [database-id]} :- [:map [:database-id ms/PositiveInt]]
-   query-params]
-  (token-check-quotas-info (t2/select-one :model/Database :id database-id) (:parameters query-params)))
+   _query-params
+   {:keys [schema-filters]} :- [:map
+                                [:schema-filters {:optional true} [:sequential
+                                                                   [:map
+                                                                    [:type [:enum "include" "exclude"]]
+                                                                    [:pattern :string]]]]]]
+  (update-keys (token-check-quotas-info (t2/select-one :model/Database :id database-id) schema-filters)
+               csk/->snake_case_keyword))
 
 (defn can-set-replication?
   "Predicate that signals if replication looks right from the quota perspective.
