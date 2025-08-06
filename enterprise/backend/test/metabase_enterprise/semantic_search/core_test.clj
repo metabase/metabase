@@ -27,39 +27,41 @@
   (mt/with-premium-features #{:semantic-search}
     (mt/with-temporary-setting-values [search.settings/search-engine "semantic"]
       (with-open [_ (semantic.tu/open-temp-index!)]
-        (testing "API defaults to semantic engine when configured"
-          (let [semantic-called? (atom false)
-                appdb-called? (atom false)]
-            (with-redefs [semantic.pgvector-api/query
-                          (fn [& _]
-                            (reset! semantic-called? true)
-                            [{:id 1 :name "semantic-result" :model "card" :collection_id 1  :score 0}])
-                          appdb/results
-                          (fn [_]
-                            (reset! appdb-called? true)
-                            [{:id 2 :name "appdb-result" :model "card" :collection_id 1 :score 0.9}])]
+        ;; Disable falling back to appdb search engine when not enough semantic results are returned
+        (mt/with-temporary-setting-values [semantic-search-min-results-threshold 0]
+          (testing "API defaults to semantic engine when configured"
+            (let [semantic-called? (atom false)
+                  appdb-called? (atom false)]
+              (with-redefs [semantic.pgvector-api/query
+                            (fn [& _]
+                              (reset! semantic-called? true)
+                              [{:id 1 :name "semantic-result" :model "card" :collection_id 1  :score 0}])
+                            appdb/results
+                            (fn [_]
+                              (reset! appdb-called? true)
+                              [{:id 2 :name "appdb-result" :model "card" :collection_id 1 :score 0.9}])]
 
-              (let [response (mt/user-http-request :crowberto :get 200 "search" :q "test")]
-                (is @semantic-called? "Semantic search should be called by default")
-                (is (not @appdb-called?) "AppDB search should not be called by default")
-                (is (= "search.engine/semantic" (:engine response)))))))
+                (let [response (mt/user-http-request :crowberto :get 200 "search" :q "test")]
+                  (is @semantic-called? "Semantic search should be called by default")
+                  (is (not @appdb-called?) "AppDB search should not be called by default")
+                  (is (= "search.engine/semantic" (:engine response)))))))
 
-        (testing "API can override engine with search_engine=appdb parameter"
-          (let [semantic-called? (atom false)
-                appdb-called? (atom false)]
-            (with-redefs [semantic.pgvector-api/query
-                          (fn [& _]
-                            (reset! semantic-called? true)
-                            [{:id 1 :name "semantic-result" :model "card" :collection_id 1  :score 0.8}])
-                          appdb/results
-                          (fn [_]
-                            (reset! appdb-called? true)
-                            [{:id 2 :name "appdb-result" :model "card" :collection_id 1 :score 0.9}])]
+          (testing "API can override engine with search_engine=appdb parameter"
+            (let [semantic-called? (atom false)
+                  appdb-called? (atom false)]
+              (with-redefs [semantic.pgvector-api/query
+                            (fn [& _]
+                              (reset! semantic-called? true)
+                              [{:id 1 :name "semantic-result" :model "card" :collection_id 1  :score 0.8}])
+                            appdb/results
+                            (fn [_]
+                              (reset! appdb-called? true)
+                              [{:id 2 :name "appdb-result" :model "card" :collection_id 1 :score 0.9}])]
 
-              (let [response (mt/user-http-request :crowberto :get 200 "search" :q "test" :search_engine "appdb")]
-                (is (not @semantic-called?) "Semantic search should not be called when overridden")
-                (is @appdb-called? "AppDB search should be called when specified")
-                (is (= "search.engine/appdb" (:engine response)))))))))))
+                (let [response (mt/user-http-request :crowberto :get 200 "search" :q "test" :search_engine "appdb")]
+                  (is (not @semantic-called?) "Semantic search should not be called when overridden")
+                  (is @appdb-called? "AppDB search should be called when specified")
+                  (is (= "search.engine/appdb" (:engine response))))))))))))
 
 (def ^:private search-context
   {:query "test" :search-engine :search.engine/semantic})
