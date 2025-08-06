@@ -599,19 +599,20 @@
         (is (lib.metadata.protocols/cached-metadata-provider? (lib.metadata/->metadata-provider query)))))))
 
 (deftest ^:parallel automatically-wrap-metadata-providers-in-cached-metadata-provider-test-2
-  (testing "Don't re-wrap things that are already CachedMetadataProviders"
+  (testing "Re-wrap things that are CachedMetadataProviders IF they do not have a cache"
     (let [mp (lib.metadata.invocation-tracker/invocation-tracker-provider
               (lib.metadata.cached-provider/cached-metadata-provider
                (lib.tu/mock-metadata-provider {})))]
       (is (lib.metadata.protocols/cached-metadata-provider? mp))
-      (is (identical? mp
-                      (:lib/metadata (#'lib.query/ensure-cached-metadata-provider {:lib/metadata mp})))))))
+      (is (not (lib.metadata.protocols/cached-metadata-provider-with-cache? mp)))
+      (is (= (lib.metadata.cached-provider/cached-metadata-provider mp)
+             (:lib/metadata (#'lib.query/ensure-cached-metadata-provider {:lib/metadata mp})))))))
 
 (deftest ^:parallel automatically-wrap-metadata-providers-in-cached-metadata-provider-test-3
-  (testing "DO re-wrap them if they don't support caching (`has-cache?` is false)"
+  (testing "Do-not re-wrap things that already have a cache"
     (let [mp (lib.metadata.invocation-tracker/invocation-tracker-provider
-              (lib.tu/mock-metadata-provider {}))]
-      (is (not (lib.metadata.protocols/has-cache? mp)))
-      (let [mp' (:lib/metadata (#'lib.query/ensure-cached-metadata-provider {:lib/metadata mp}))]
-        (is (not (identical? mp' mp)))
-        (is (lib.metadata.protocols/has-cache? mp'))))))
+              (lib.metadata.cached-provider/cached-metadata-provider
+               (lib.tu/mock-metadata-provider {})))]
+      (is (lib.metadata.protocols/cached-metadata-provider? mp))
+      (is (lib.metadata.protocols/cached-metadata-provider-with-cache? mp))
+      (is (identical? mp (:lib/metadata (#'lib.query/ensure-cached-metadata-provider {:lib/metadata mp})))))))

@@ -191,7 +191,7 @@
       (let [details (mt/dbdef->connection-details :postgres :db {:database-name "hyphen-names-test"})
             spec    (sql-jdbc.conn/connection-details->spec :postgres details)]
         ;; create the postgres DB
-        (tx/drop-if-exists-and-create-db! driver/*driver*  "hyphen-names-test")
+        (tx/drop-if-exists-and-create-db! driver/*driver* "hyphen-names-test")
         ;; create the DB object
         (mt/with-temp [:model/Database database {:engine :postgres, :details (assoc details :dbname "hyphen-names-test")}]
           (let [sync! #(sync/sync-database! database)]
@@ -261,7 +261,7 @@
   (mt/test-driver :postgres
     (testing (str "Check that we properly fetch materialized views. As discussed in #2355 they don't come back from "
                   "JDBC `DatabaseMetadata` so we have to fetch them manually.")
-      (tx/drop-if-exists-and-create-db! driver/*driver*  "materialized_views_test")
+      (tx/drop-if-exists-and-create-db! driver/*driver* "materialized_views_test")
       (let [details (mt/dbdef->connection-details :postgres :db {:database-name "materialized_views_test"})]
         (jdbc/execute! (sql-jdbc.conn/connection-details->spec :postgres details)
                        ["DROP MATERIALIZED VIEW IF EXISTS test_mview;
@@ -274,7 +274,7 @@
 (deftest foreign-tables-test
   (mt/test-driver :postgres
     (testing "Check that we properly fetch foreign tables."
-      (tx/drop-if-exists-and-create-db! driver/*driver*  "fdw_test")
+      (tx/drop-if-exists-and-create-db! driver/*driver* "fdw_test")
       (let [details (mt/dbdef->connection-details :postgres :db {:database-name "fdw_test"})]
         ;; You need to set `MB_POSTGRESQL_TEST_USER` in order for this to work apparently.
         ;;
@@ -312,7 +312,7 @@
       (let [details (mt/dbdef->connection-details :postgres :db {:database-name "dropped_views_test"})
             spec    (sql-jdbc.conn/connection-details->spec :postgres details)]
         ;; create the postgres DB
-        (tx/drop-if-exists-and-create-db! driver/*driver*  "dropped_views_test")
+        (tx/drop-if-exists-and-create-db! driver/*driver* "dropped_views_test")
         ;; create the DB object
         (mt/with-temp [:model/Database database {:engine :postgres, :details (assoc details :dbname "dropped_views_test")}]
           (let [sync! #(sync/sync-database! database)]
@@ -345,7 +345,7 @@
             details (mt/dbdef->connection-details :postgres :db {:database-name db-name})
             spec    (sql-jdbc.conn/connection-details->spec :postgres details)]
         ;; create the postgres DB
-        (tx/drop-if-exists-and-create-db! driver/*driver*  db-name)
+        (tx/drop-if-exists-and-create-db! driver/*driver* db-name)
         (let [major-v (sql-jdbc.execute/do-with-connection-with-options
                        :postgres
                        spec
@@ -541,7 +541,7 @@
 (deftest describe-nested-field-columns-identifier-test
   (mt/test-driver :postgres
     (testing "sync goes and runs with identifier if there is a schema other than default public one"
-      (tx/drop-if-exists-and-create-db! driver/*driver*  "describe-json-with-schema-test")
+      (tx/drop-if-exists-and-create-db! driver/*driver* "describe-json-with-schema-test")
       (let [details (mt/dbdef->connection-details :postgres :db {:database-name  "describe-json-with-schema-test"
                                                                  :json-unfolding true})
             spec    (sql-jdbc.conn/connection-details->spec :postgres details)]
@@ -566,7 +566,7 @@
 (deftest describe-funky-name-table-nested-field-columns-test
   (mt/test-driver :postgres
     (testing "sync goes and still works with funky schema and table names, including caps and special chars (#23026, #23027)"
-      (tx/drop-if-exists-and-create-db! driver/*driver*  "describe-json-funky-names-test")
+      (tx/drop-if-exists-and-create-db! driver/*driver* "describe-json-funky-names-test")
       (let [details (mt/dbdef->connection-details :postgres :db {:database-name  "describe-json-funky-names-test"
                                                                  :json-unfolding true})
             spec    (sql-jdbc.conn/connection-details->spec :postgres details)]
@@ -715,7 +715,7 @@
                            :filter      [:= $ip "192.168.1.1"]}))))))))
 
 (defn- do-with-money-test-db! [thunk]
-  (tx/drop-if-exists-and-create-db! driver/*driver*  "money_columns_test")
+  (tx/drop-if-exists-and-create-db! driver/*driver* "money_columns_test")
   (let [details (mt/dbdef->connection-details :postgres :db {:database-name "money_columns_test"})]
     (sql-jdbc.execute/do-with-connection-with-options
      :postgres
@@ -803,7 +803,7 @@
   One of those types has a space in the name, which is legal when quoted, to make sure we handle such wackiness
   properly."
   []
-  (tx/drop-if-exists-and-create-db! driver/*driver*  "enums_test")
+  (tx/drop-if-exists-and-create-db! driver/*driver* "enums_test")
   (let [spec (sql-jdbc.conn/connection-details->spec :postgres (enums-test-db-details))]
     (jdbc/execute! spec [enums-db-sql])))
 
@@ -1061,7 +1061,7 @@
             :message "Ranking must have values."
             :errors {"ranking" "You must provide a value."}}
            (sql-jdbc.actions/maybe-parse-sql-error
-            :postgres actions.error/violate-not-null-constraint nil :row/created
+            :postgres actions.error/violate-not-null-constraint nil :model.row/created
             "ERROR: null value in column \"ranking\" violates not-null constraint\n  Detail: Failing row contains (3, admin, null).")))))
 
 (deftest ^:parallel actions-maybe-parse-sql-violate-not-null-constraint-test-2
@@ -1070,7 +1070,7 @@
             :message "Ranking must have values."
             :errors {"ranking" "You must provide a value."}}
            (sql-jdbc.actions/maybe-parse-sql-error
-            :postgres actions.error/violate-not-null-constraint nil :row/created
+            :postgres actions.error/violate-not-null-constraint nil :model.row/created
             "ERROR: null value in column \"ranking\" of relation \"group\" violates not-null constraint\n  Detail: Failing row contains (57, admin, null).")))))
 
 (deftest actions-maybe-parse-sql-error-violate-unique-constraint-test
@@ -1098,7 +1098,7 @@
             :message "Unable to create a new record.",
             :errors {"group-id" "This Group-id does not exist."}}
            (sql-jdbc.actions/maybe-parse-sql-error
-            :postgres actions.error/violate-foreign-key-constraint nil :row/create
+            :postgres actions.error/violate-foreign-key-constraint nil :model.row/create
             "ERROR: insert or update on table \"user\" violates foreign key constraint \"user_group-id_group_-159406530\"\n  Detail: Key (group-id)=(999) is not present in table \"group\".")))))
 
 (deftest ^:parallel actions-maybe-parse-sql-error-violate-fk-constraints-test-2
@@ -1107,7 +1107,7 @@
             :message "Unable to update the record.",
             :errors {"id" "This Id does not exist."}}
            (sql-jdbc.actions/maybe-parse-sql-error
-            :postgres actions.error/violate-foreign-key-constraint nil :row/update
+            :postgres actions.error/violate-foreign-key-constraint nil :model.row/update
             "ERROR: update or delete on table \"group\" violates foreign key constraint \"user_group-id_group_-159406530\" on table \"user\"\n  Detail: Key (id)=(1) is still referenced from table \"user\".")))))
 
 (deftest ^:parallel actions-maybe-parse-sql-error-violate-fk-constraints-test-3
@@ -1116,7 +1116,7 @@
             :message "Other tables rely on this row so it cannot be deleted.",
             :errors {}}
            (sql-jdbc.actions/maybe-parse-sql-error
-            :postgres actions.error/violate-foreign-key-constraint nil :row/delete
+            :postgres actions.error/violate-foreign-key-constraint nil :model.row/delete
             "ERROR: update or delete on table \"group\" violates foreign key constraint \"user_group-id_group_-159406530\" on table \"user\"\n  Detail: Key (id)=(1) is still referenced from table \"user\".")))))
 
 ;; this contains specical tests case for postgres
@@ -1124,7 +1124,7 @@
 (deftest action-error-handling-test
   (mt/test-driver :postgres
     (testing "violate not-null constraints with multiple columns"
-      (tx/drop-if-exists-and-create-db! driver/*driver*  "not-null-constraint-on-multiple-cols")
+      (tx/drop-if-exists-and-create-db! driver/*driver* "not-null-constraint-on-multiple-cols")
       (let [details (mt/dbdef->connection-details :postgres :db {:database-name "not-null-constraint-on-multiple-cols"})]
         (doseq [stmt ["CREATE TABLE mytable (id serial PRIMARY KEY,
                       column1 VARCHAR(50),
@@ -1145,12 +1145,12 @@
                         :status-code 400
                         :type        actions.error/violate-unique-constraint}
                        (sql-jdbc.actions-test/perform-action-ex-data
-                        :row/create (mt/$ids {:create-row {"id"      3
-                                                           "column1" "A"
-                                                           "column2" "A"}
-                                              :database   (:id database)
-                                              :query      {:source-table $$mytable}
-                                              :type       :query})))))
+                        :model.row/create (mt/$ids {:create-row {"id"      3
+                                                                 "column1" "A"
+                                                                 "column2" "A"}
+                                                    :database   (:id database)
+                                                    :query      {:source-table $$mytable}
+                                                    :type       :query})))))
               (testing "when updating"
                 (is (= {:errors      {"column1" "This Column1 value already exists."
                                       "column2" "This Column2 value already exists."}
@@ -1158,12 +1158,12 @@
                         :status-code 400
                         :type        actions.error/violate-unique-constraint}
                        (sql-jdbc.actions-test/perform-action-ex-data
-                        :row/update (mt/$ids {:update-row {"column1" "A"
-                                                           "column2" "A"}
-                                              :database   (:id database)
-                                              :query      {:source-table $$mytable
-                                                           :filter       [:= $mytable.id 2]}
-                                              :type       :query}))))))))))))
+                        :model.row/update (mt/$ids {:update-row {"column1" "A"
+                                                                 "column2" "A"}
+                                                    :database   (:id database)
+                                                    :query      {:source-table $$mytable
+                                                                 :filter       [:= $mytable.id 2]}
+                                                    :type       :query}))))))))))))
 
 ;;; ------------------------------------------------ Timezone-related ------------------------------------------------
 
@@ -1190,7 +1190,7 @@
 (deftest fingerprint-time-fields-test
   (mt/test-driver :postgres
     (testing "Make sure we're able to fingerprint TIME fields (#5911)"
-      (tx/drop-if-exists-and-create-db! driver/*driver*  "time_field_test")
+      (tx/drop-if-exists-and-create-db! driver/*driver* "time_field_test")
       (let [details (mt/dbdef->connection-details :postgres :db {:database-name "time_field_test"})]
         (jdbc/execute! (sql-jdbc.conn/connection-details->spec :postgres details)
                        [(str "CREATE TABLE toucan_sleep_schedule ("
@@ -1275,7 +1275,7 @@
 (deftest dont-sync-tables-with-no-select-permissions-test
   (testing "Make sure we only sync databases for which the current user has SELECT permissions"
     (mt/test-driver :postgres
-      (tx/drop-if-exists-and-create-db! driver/*driver*  "no-select-test")
+      (tx/drop-if-exists-and-create-db! driver/*driver* "no-select-test")
       (let [details (mt/dbdef->connection-details :postgres :db {:database-name "no-select-test"})
             spec    (sql-jdbc.conn/connection-details->spec :postgres details)]
         (doseq [statement ["CREATE TABLE PUBLIC.table_with_perms (x INTEGER NOT NULL);"
@@ -1296,22 +1296,22 @@
                  (t2/select-fn-set :name :model/Table :db_id (:id database)))))))))
 
 (deftest json-operator-?-works
-  (mt/test-driver :postgres
-    (tx/drop-if-exists-and-create-db! driver/*driver*  "json-test")
-    (let [details (mt/dbdef->connection-details :postgres :db {:database-name "json-test"})
-          spec    (sql-jdbc.conn/connection-details->spec :postgres details)]
-      (doseq [statement ["DROP TABLE IF EXISTS PUBLIC.json_table;"
-                         "CREATE TABLE PUBLIC.json_table (json_val JSON NOT NULL);"
-                         "INSERT INTO PUBLIC.json_table (json_val) VALUES ('{\"a\": 1, \"b\": 2}');"]]
-        (jdbc/execute! spec [statement])))
-    (let [json-db-details (mt/dbdef->connection-details :postgres :db {:database-name "json-test"})
-          query           (str "SELECT json_val::jsonb ? 'a',"
-                               "json_val::jsonb ?| array['c', 'd'],"
-                               "json_val::jsonb ?& array['a', 'b']"
-                               "FROM \"json_table\";")]
-      (mt/with-temp [:model/Database database {:engine :postgres, :details json-db-details}]
-        (mt/with-db database (sync/sync-database! database)
-          (testing "Make sure the Postgres ? operators (for JSON types) work in native queries"
+  (testing "Make sure the Postgres ? operators (for JSON types) work in native queries"
+    (mt/test-driver :postgres
+      (tx/drop-if-exists-and-create-db! driver/*driver* "json-test")
+      (let [details (mt/dbdef->connection-details :postgres :db {:database-name "json-test"})
+            spec    (sql-jdbc.conn/connection-details->spec :postgres details)]
+        (doseq [statement ["DROP TABLE IF EXISTS PUBLIC.json_table;"
+                           "CREATE TABLE PUBLIC.json_table (json_val JSON NOT NULL);"
+                           "INSERT INTO PUBLIC.json_table (json_val) VALUES ('{\"a\": 1, \"b\": 2}');"]]
+          (jdbc/execute! spec [statement])))
+      (let [json-db-details (mt/dbdef->connection-details :postgres :db {:database-name "json-test"})
+            query           (str "SELECT json_val::jsonb ? 'a',"
+                                 "json_val::jsonb ?| array['c', 'd'],"
+                                 "json_val::jsonb ?& array['a', 'b']"
+                                 "FROM \"json_table\";")]
+        (mt/with-temp [:model/Database database {:engine :postgres, :details json-db-details}]
+          (mt/with-db database (sync/sync-database! database)
             (is (= [[true false true]]
                    (-> {:query query}
                        (mt/native-query)
@@ -1337,7 +1337,7 @@
 (deftest sync-json-with-composite-pks-test
   (testing "Make sure sync a table with json columns that have composite pks works"
     (mt/test-driver :postgres
-      (tx/drop-if-exists-and-create-db! driver/*driver*  "composite-pks-test")
+      (tx/drop-if-exists-and-create-db! driver/*driver* "composite-pks-test")
       (with-redefs [table-rows-sample/nested-field-sample-limit 4]
         (let [details (mt/dbdef->connection-details driver/*driver* :db {:database-name "composite-pks-test"})
               spec    (sql-jdbc.conn/connection-details->spec driver/*driver* details)]

@@ -31,7 +31,7 @@
   #_{:clj-kondo/ignore [:discouraged-var]}
   (-> (u/qualified-name token)
       str/lower-case
-      (str/replace #"_" "-")
+      (str/replace \_ \-)
       keyword))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

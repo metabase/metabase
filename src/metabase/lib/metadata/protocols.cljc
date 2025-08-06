@@ -87,7 +87,7 @@
 (mr/def ::metadata-type-excluding-database
   "Database metadata is stored separately/in a special way. These are the types of metadata that are stored with the
   other non-Database methods."
-  [:enum :metadata/table :metadata/column :metadata/card :metadata/segment])
+  [:enum :metadata/table :metadata/column :metadata/card :metadata/segment :metadata/native-query-snippet])
 
 (mr/def ::metadata
   [:map
@@ -121,6 +121,12 @@
   [metadata-provider :- ::metadata-provider
    card-id           :- ::lib.schema.id/card]
   (metadata metadata-provider :metadata/card card-id))
+
+(mu/defn native-query-snippet :- [:maybe ::lib.schema.metadata/native-query-snippet]
+  "Get metadata for a NativeQuerySnippet with `snippet-id` if it can be found."
+  [metadata-provider :- ::metadata-provider
+   snippet-id        :- ::lib.schema.id/native-query-snippet]
+  (metadata metadata-provider :metadata/native-query-snippet snippet-id))
 
 (mu/defn segment :- [:maybe ::lib.schema.metadata/segment]
   "Return metadata for a particular captial-S Segment, i.e. something from the `segment` table in the application
@@ -166,7 +172,8 @@
   metadata provider.)"))
 
 (defn cached-metadata-provider?
-  "Whether `x` is a valid [[CachedMetadataProvider]]."
+  "Whether `x` satisfies the [[CachedMetadataProvider]] protocol. This does not necessarily mean it actually caches
+  anything! Check [[cached-metadata-provider-with-cache?]] if that's what you want to know."
   [x]
   #?(:clj (extends? CachedMetadataProvider (class x))
      :cljs (satisfies? CachedMetadataProvider x)))
@@ -175,6 +182,17 @@
   [:fn
    {:error/message "A CachedMetadataProvider"}
    #'cached-metadata-provider?])
+
+(defn cached-metadata-provider-with-cache?
+  "Whether `x` is a [[CachedMetadataProvider]] that [[has-cache?]]."
+  [x]
+  (and (cached-metadata-provider? x)
+       (has-cache? x)))
+
+(mr/def ::cached-metadata-provider-with-cache
+  [:fn
+   {:error/message "A CachedMetadataProvider with a cache"}
+   #'cached-metadata-provider-with-cache?])
 
 (mu/defn store-metadatas!
   "Convenience. Store several metadata maps at once."

@@ -4,6 +4,17 @@ import { getTileUrl } from "../lib/map";
 
 import LeafletMap from "./LeafletMap";
 
+// When base-type is present in the field ref (usually due to a breakout) the call to get
+// tiles will fail because its value of type/Float (for example) gets encoded as test%2FFloat
+// Jetty URL decodes this to `/` before attempting to parse the URI which results in Jetty
+// reporting an ambiguous path identifier.
+//
+// There may be other problematic field ref options, but this one causes the immediate bug
+const stringifyFieldRef = ([type, key, opts]) => {
+  const { ["base-type"]: _, ...restOpts } = !opts ? {} : opts;
+  return encodeURIComponent(JSON.stringify([type, key, restOpts]));
+};
+
 export default class LeafletTilePinMap extends LeafletMap {
   componentDidMount() {
     super.componentDidMount();
@@ -22,7 +33,6 @@ export default class LeafletTilePinMap extends LeafletMap {
         pinTileLayer.setUrl(newUrl);
       }
     } catch (err) {
-      console.error(err);
       this.props.onRenderError(err.message || err);
     }
   }
@@ -43,12 +53,8 @@ export default class LeafletTilePinMap extends LeafletMap {
       return;
     }
 
-    const latFieldParam = encodeURIComponent(
-      JSON.stringify(latitudeField.field_ref),
-    );
-    const lonFieldParam = encodeURIComponent(
-      JSON.stringify(longitudeField.field_ref),
-    );
+    const latFieldParam = stringifyFieldRef(latitudeField.field_ref);
+    const lonFieldParam = stringifyFieldRef(longitudeField.field_ref);
 
     const { dashboard, dashcard, uuid, token } = this.props;
 

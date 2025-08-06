@@ -284,6 +284,7 @@
   metabase.upload.impl-test/with-upload-table!                                           [[:inner 0]]
   metabase.upload.types/with-currency                                                    [[:default]]
   metabase.upload.types/with-parens                                                      [[:default]]
+  metabase.util/for-map                                                                  [[:block 1]]
   metabase.util.async/cancelable-thread                                                  [[:block 0]]
   metabase.util.date-2/with-time-zone-same-instant                                       [[:default]]
   metabase.util.encryption-test/with-secret-key                                          [[:block 1]]

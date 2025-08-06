@@ -483,7 +483,9 @@
                 query'      (update query :stages (fn [[original-stage]]
                                                     [(-> (first (:stages model-query))
                                                          (assoc :qp/stage-is-from-source-card 1))
-                                                     (dissoc original-stage :source-card)]))]
+                                                     (-> original-stage
+                                                         (dissoc :source-card)
+                                                         (assoc :qp/stage-had-source-card 1))]))]
             (is (=? [(assoc expected
                             :lib/source-column-alias "C__NAME"
                             :lib/source              :source/previous-stage)]
@@ -1166,3 +1168,51 @@
                 (lib.field.resolution/resolve-field-ref
                  query 1
                  (lib/normalize :mbql.clause/field [:field {:base-type :type/Integer} "Category__ID"]))))))))
+
+(deftest ^:parallel propagate-card-fingerprint-test
+  (testing "fingerprints in card metadata should get propagated when resolving fields"
+    (let [card-query (lib.tu.macros/mbql-query orders
+                       {:aggregation [[:avg $subtotal]]
+                        :breakout    [$user-id]})
+          mp         (lib.tu/mock-metadata-provider
+                      meta/metadata-provider
+                      {:cards [{:id              1
+                                :dataset-query   card-query
+                                :result-metadata [(meta/field-metadata :orders :user-id)
+                                                  {:base_type                :type/Float
+                                                   :display_name             "Average of Subtotal"
+                                                   :effective_type           :type/Float
+                                                   :fingerprint              {:global {:distinct-count 1721, :nil% 0.0}
+                                                                              :type   {:type/Number {:min 30.5
+                                                                                                     :q1  69.3417689663785
+                                                                                                     :q3  84.32617784582509
+                                                                                                     :max 148.17
+                                                                                                     :sd  14.270332033504152
+                                                                                                     :avg 77.17596365762961}}}
+                                                   :name                     "avg"
+                                                   :semantic_type            nil
+                                                   :lib/deduplicated-name    "avg"
+                                                   :lib/desired-column-alias "avg"
+                                                   :lib/original-name        "avg"
+                                                   :lib/source               :source/aggregations
+                                                   :lib/source-column-alias  "avg"}]}]})
+          card       (lib.metadata/card mp 1)
+          card-cols  (lib/returned-columns (lib/query mp card-query) card)
+          _          (is (=? {:name         "avg"
+                              :display-name "Average of Subtotal"
+                              :lib/source   :source/card
+                              :fingerprint  {:type {:type/Number {:min number?, :max number?}}}}
+                             (m/find-first #(= (:name %) "avg") card-cols))
+                         "Sanity check: card metadata should have fingerprint")
+          ;; simulate a preprocessed query where the card source is inlined.
+          query      (-> (lib/query mp card-query)
+                         lib/append-stage
+                         (lib/update-query-stage 0 assoc :qp/stage-is-from-source-card 1)
+                         (lib/update-query-stage 1 assoc :qp/stage-had-source-card 1))]
+      (is (=? {:name         "avg"
+               :display-name "Average of Subtotal"
+               :lib/source   :source/previous-stage
+               :fingerprint  {:type {:type/Number {:min number?, :max number?}}}}
+              (lib.field.resolution/resolve-field-ref
+               query -1
+               [:field {:lib/uuid "00000000-0000-0000-0000-000000000000", :base-type :type/Float} "avg"]))))))

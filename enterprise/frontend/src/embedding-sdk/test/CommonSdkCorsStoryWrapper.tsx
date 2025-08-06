@@ -1,6 +1,7 @@
 import type { StoryFn } from "@storybook/react";
 
-import { type MetabaseAuthConfig, MetabaseProvider } from "embedding-sdk";
+import { MetabaseProvider } from "embedding-sdk/components/public";
+import type { MetabaseAuthConfig } from "embedding-sdk/types";
 
 const METABASE_INSTANCE_URL =
   (window as any).METABASE_INSTANCE_URL || "http://localhost:3000";

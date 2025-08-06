@@ -287,9 +287,7 @@
   facilities; wrap the current metadata in one that adds caching if needed."
   [a-query]
   (let [mp         (:lib/metadata a-query)
-        cached-mp? (and mp
-                        (lib.metadata.protocols/cached-metadata-provider? mp)
-                        (lib.metadata.protocols/has-cache? mp))]
+        cached-mp? (lib.metadata.protocols/cached-metadata-provider-with-cache? mp)]
     (cond-> a-query
       (and mp (not cached-mp?)) (update :lib/metadata lib.metadata.cached-provider/cached-metadata-provider))))
 

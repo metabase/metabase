@@ -238,7 +238,7 @@
                                         {:database (assoc (mt/db)
                                                           :details {:db     " "
                                                                     :dbname "dbname"})})
-        (is (= ["SELECT TRUE AS \"_\" FROM \"dbname\".\"PUBLIC\".\"table\" WHERE 1 <> 1 LIMIT 0"]
+        (is (= ["SELECT TRUE AS \"_\" FROM \"PUBLIC\".\"table\" WHERE 1 <> 1 LIMIT 0"]
                (sql-jdbc.describe-database/simple-select-probe-query :snowflake "PUBLIC" "table")))))))
 
 (deftest ^:parallel have-select-privilege?-test

@@ -133,8 +133,8 @@ const { H } = cy;
             H.openSharingMenu();
 
             H.sharingMenu().within(() => {
-              cy.findByText("Public links are off").should("be.visible");
-              cy.findByText("Enable them in settings").should("be.visible");
+              cy.findByText("Public link").should("be.visible");
+              cy.findByText("Enable").should("be.visible");
             });
 
             cy.findByTestId("embed-menu-embed-modal-item").click();
@@ -206,30 +206,34 @@ describe("embed modal display", () => {
   });
 
   describe("when the user has an OSS instance", () => {
-    it("should display a link to the product page for embedded analytics", () => {
-      cy.signInAsAdmin();
-      H.visitDashboard("@dashboardId");
-      H.openSharingMenu("Embed");
+    it(
+      "should display a link to the product page for embedded analytics",
+      { tags: "@OSS" },
+      () => {
+        cy.signInAsAdmin();
+        H.visitDashboard("@dashboardId");
+        H.openSharingMenu("Embed");
 
-      H.getEmbedModalSharingPane().within(() => {
-        cy.findByText("Static embedding").should("be.visible");
-        cy.findByText("Interactive embedding").should("be.visible");
+        H.getEmbedModalSharingPane().within(() => {
+          cy.findByText("Static embedding").should("be.visible");
+          cy.findByText("Interactive embedding").should("be.visible");
 
-        cy.findByRole("link", { name: "Interactive embedding" }).should(
-          "have.attr",
-          "href",
-          "https://www.metabase.com/product/embedded-analytics?utm_source=product&utm_medium=upsell&utm_campaign=embedding-interactive&utm_content=static-embed-popover&source_plan=oss",
-        );
+          cy.findByRole("link", { name: "Interactive embedding" }).should(
+            "have.attr",
+            "href",
+            "https://www.metabase.com/product/embedded-analytics?utm_source=product&utm_medium=upsell&utm_campaign=embedding-interactive&utm_content=static-embed-popover&source_plan=oss",
+          );
 
-        cy.findByRole("article", { name: "Interactive embedding" }).within(
-          () => {
-            cy.findByText("Learn more").should("be.visible");
-            cy.findByText("Disabled.").should("not.exist");
-            cy.findByText("Enable in admin settings").should("not.exist");
-          },
-        );
-      });
-    });
+          cy.findByRole("article", { name: "Interactive embedding" }).within(
+            () => {
+              cy.findByText("Learn more").should("be.visible");
+              cy.findByText("Disabled.").should("not.exist");
+              cy.findByText("Enable in admin settings").should("not.exist");
+            },
+          );
+        });
+      },
+    );
   });
 });
 

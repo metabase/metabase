@@ -158,8 +158,8 @@
    ;; specific columns.
    (ensure-pmbql #'resolve-joins/resolve-joins)
    (ensure-pmbql #'qp.add-remaps/add-remapped-columns)
-   #'qp.resolve-fields/resolve-fields   ; this middleware actually works with either MBQL 5 or legacy
-   (ensure-legacy #'binning/update-binning-strategy)
+   #'qp.resolve-fields/resolve-fields ; this middleware actually works with either MBQL 5 or legacy
+   (ensure-pmbql #'binning/update-binning-strategy)
    (ensure-legacy #'desugar/desugar)
    (ensure-legacy #'qp.add-default-temporal-unit/add-default-temporal-unit)
    (ensure-pmbql #'qp.add-implicit-joins/add-implicit-joins)
@@ -178,6 +178,12 @@
    (ensure-legacy #'qp.middleware.enterprise/apply-download-limit)
    (ensure-legacy #'check-features/check-features)])
 
+(def ^:private ^Long slow-middleware-warning-threshold-ms
+  "Warn about slow middleware if it takes longer than this many milliseconds."
+  (if config/is-prod?
+    1000 ; this is egregious but we don't want to spam the logs with stuff like this in prod
+    100))
+
 (mu/defn preprocess :- [:map
                         [:database ::lib.schema.id/database]]
   "Fully preprocess a query, but do not compile it to a native query or execute it."
@@ -193,16 +199,12 @@
        ([query middleware-fn]
         (try
           (assert (ifn? middleware-fn))
-          (let [start-ns (System/nanoTime)]
-            ;; in dev, log warnings if a piece of middleware takes a long time.
+          (let [start-timer (u/start-timer)]
+            ;; make sure the middleware returns a valid query... this should be dev-facing only so no need to i18n
             (u/prog1 (middleware-fn query)
-              (when config/is-dev?
-                (let [duration-ns (- (System/nanoTime) start-ns)]
-                  (when (> duration-ns (* 50 1000 1000)) ; 50 milliseconds
-                    (log/warn (u/format-color :red
-                                              "%s took %s"
-                                              (middleware-fn-name middleware-fn)
-                                              (u/format-nanoseconds duration-ns))))))
+              (let [duration-ms (u/since-ms start-timer)]
+                (when (> duration-ms slow-middleware-warning-threshold-ms)
+                  (log/warnf "Slow middleware: %s took %s" (middleware-fn-name middleware-fn) (u/format-milliseconds duration-ms))))
               (qp.debug/debug>
                 (when-not (= <> query)
                   (let [middleware-fn-name (middleware-fn-name middleware-fn)]
