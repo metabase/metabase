@@ -139,6 +139,7 @@ export function EmbeddingSdkSettings() {
             label={t`Enabled`}
             settingKey="enable-embedding-sdk"
             labelPosition="right"
+            aria-label={t`SDK for React toggle`}
           />
 
           <Group gap="md">
@@ -183,6 +184,7 @@ export function EmbeddingSdkSettings() {
               labelPosition="right"
               settingKey="enable-embedding-simple"
               disabled={!isSimpleEmbedFeatureEnabled}
+              aria-label={t`Embedded Analytics JS toggle`}
             />
 
             {isSimpleEmbedFeatureEnabled ? (
