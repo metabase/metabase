@@ -11,7 +11,7 @@ import {
   sortableKeyboardCoordinates,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
-import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
+import { Fragment, useCallback, useMemo, useState } from "react";
 import { push } from "react-router-redux";
 import { useMount } from "react-use";
 
@@ -24,9 +24,9 @@ import { Divider, Stack } from "metabase/ui/components";
 import type ForeignKey from "metabase-lib/v1/metadata/ForeignKey";
 import { isEntityName, isPK } from "metabase-lib/v1/types/utils/isa";
 import type {
-  Dataset,
   DatasetColumn,
   ObjectViewSectionSettings,
+  RowValues,
 } from "metabase-types/api";
 
 import { getDefaultObjectViewSettings } from "../utils";
@@ -39,23 +39,26 @@ import { useForeignKeyReferences } from "./use-foreign-key-references";
 interface TableDetailViewProps {
   tableId: number;
   rowId: number | string;
-  dataset: Dataset;
+  row: RowValues;
+  columns: DatasetColumn[];
   table: any;
   tableForeignKeys: any[];
   isEdit: boolean;
+  onPreviousItemClick?: () => void;
+  onNextItemClick?: () => void;
 }
 
-const emptyColumns: DatasetColumn[] = [];
-const defaultRow = {};
 export function TableDetailViewInner({
   tableId,
   rowId,
-  dataset,
+  row,
+  columns,
   table,
   tableForeignKeys,
   isEdit = false,
+  onPreviousItemClick,
+  onNextItemClick,
 }: TableDetailViewProps) {
-  const [currentRowIndex, setCurrentRowIndex] = useState(0);
   const [openPopoverId, setOpenPopoverId] = useState<number | null>(null);
   const [hoveredSectionIdMain, setHoveredSectionIdMain] = useState<
     number | null
@@ -66,11 +69,6 @@ export function TableDetailViewInner({
   const dispatch = useDispatch();
   const [updateTableComponentSettings] =
     useUpdateTableComponentSettingsMutation();
-
-  const columns = dataset?.data?.results_metadata?.columns ?? emptyColumns;
-
-  const rows = useMemo(() => dataset?.data?.rows || [], [dataset]);
-  const row = rows[currentRowIndex] || defaultRow;
 
   const { tableForeignKeyReferences } = useForeignKeyReferences({
     tableForeignKeys,
@@ -115,10 +113,10 @@ export function TableDetailViewInner({
     title: "",
     variant: "normal",
     fields: fieldIds
-      .filter((id) => {
+      .filter((id: number) => {
         return !fieldsInSectionsIds.includes(id);
       })
-      .map((field_id) => ({ field_id })),
+      .map((field_id: number) => ({ field_id })),
   };
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -200,46 +198,8 @@ export function TableDetailViewInner({
     dispatch(closeNavbar());
   });
 
-  useEffect(() => {
-    if (!rows.length) {
-      return;
-    }
-    if (rowId !== undefined) {
-      const idx = rows.findIndex((row) => String(row[0]) === String(rowId));
-      setCurrentRowIndex(idx >= 0 ? idx : 0);
-    } else {
-      setCurrentRowIndex(0);
-    }
-  }, [rowId, rows]);
-
-  const handleViewPreviousObjectDetail = useCallback(() => {
-    setCurrentRowIndex((i) => {
-      const newIndex = i - 1;
-      const rowId = rows[newIndex]?.[0];
-      if (rowId !== undefined) {
-        dispatch(
-          push(`/table/${tableId}/detail/${rowId}${isEdit ? "/edit" : ""}`),
-        );
-      }
-      return newIndex;
-    });
-  }, [dispatch, rows, tableId, isEdit]);
-
-  const handleViewNextObjectDetail = useCallback(() => {
-    setCurrentRowIndex((i) => {
-      const newIndex = i + 1;
-      const rowId = rows[newIndex]?.[0];
-      if (rowId !== undefined) {
-        dispatch(
-          push(`/table/${tableId}/detail/${rowId}${isEdit ? "/edit" : ""}`),
-        );
-      }
-      return newIndex;
-    });
-  }, [dispatch, rows, tableId, isEdit]);
-
   const nameIndex = columns.findIndex(isEntityName);
-  const rowName = nameIndex == null ? null : row[nameIndex];
+  const rowName = nameIndex == null ? null : String(row[nameIndex] || "");
 
   const hasRelationships = tableForeignKeys.length > 0;
 
@@ -248,9 +208,8 @@ export function TableDetailViewInner({
       rowId={rowId}
       rowName={rowName}
       table={table}
+      row={row}
       isEdit={isEdit}
-      rows={rows}
-      currentRowIndex={currentRowIndex}
       columns={columns}
       sections={sections}
       tableForeignKeys={tableForeignKeys}
@@ -259,8 +218,8 @@ export function TableDetailViewInner({
       setOpenPopoverId={setOpenPopoverId}
       hasRelationships={hasRelationships}
       onEditClick={handleEditClick}
-      onPreviousItemClick={handleViewPreviousObjectDetail}
-      onNextItemClick={handleViewNextObjectDetail}
+      onPreviousItemClick={onPreviousItemClick}
+      onNextItemClick={onNextItemClick}
       onCloseClick={handleCloseClick}
       onSaveClick={handleSaveClick}
       onCreateSection={createSection}

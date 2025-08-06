@@ -8,6 +8,7 @@ import type ForeignKey from "metabase-lib/v1/metadata/ForeignKey";
 import type {
   DatasetColumn,
   ObjectViewSectionSettings,
+  RowValues,
   Table,
 } from "metabase-types/api";
 
@@ -21,8 +22,7 @@ interface DetailViewContainerProps {
   rowName: ReactNode;
   table: Table;
   isEdit: boolean;
-  rows: any[];
-  currentRowIndex: number;
+  row: RowValues;
   columns: DatasetColumn[];
   sections: ObjectViewSectionSettings[];
   tableForeignKeys: ForeignKey[];
@@ -31,8 +31,8 @@ interface DetailViewContainerProps {
   setOpenPopoverId: (id: number | null) => void;
   hasRelationships: boolean;
   onEditClick: () => void;
-  onPreviousItemClick: () => void;
-  onNextItemClick: () => void;
+  onPreviousItemClick?: () => void;
+  onNextItemClick?: () => void;
   onCloseClick: () => void;
   onSaveClick: () => void;
   onCreateSection: (options?: { position?: "start" | "end" }) => void;
@@ -56,8 +56,7 @@ export function DetailViewContainer({
   rowName,
   table,
   isEdit,
-  rows,
-  currentRowIndex,
+  row,
   columns,
   sections,
   tableForeignKeys,
@@ -96,16 +95,16 @@ export function DetailViewContainer({
       <DetailViewHeader
         columns={columns}
         sections={sections}
-        row={rows[currentRowIndex]}
+        row={row}
         rowId={rowId}
         rowName={rowName}
         table={table}
         isEdit={isEdit}
-        canOpenPreviousItem={rows.length > 1 && currentRowIndex > 0}
-        canOpenNextItem={rows.length > 1 && currentRowIndex < rows.length - 1}
+        canOpenPreviousItem={onPreviousItemClick != null}
+        canOpenNextItem={onNextItemClick != null}
         onEditClick={onEditClick}
-        onPreviousItemClick={onPreviousItemClick}
-        onNextItemClick={onNextItemClick}
+        onPreviousItemClick={onPreviousItemClick || (() => {})}
+        onNextItemClick={onNextItemClick || (() => {})}
         onCloseClick={onCloseClick}
         onSaveClick={onSaveClick}
       />
