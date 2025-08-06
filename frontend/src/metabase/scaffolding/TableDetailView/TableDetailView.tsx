@@ -42,9 +42,7 @@ export function TableDetailView({
     return table ? getObjectQuery(table, rowId) : undefined;
   }, [table, rowId]);
 
-  const { data: dataset, isFetching } = useGetAdhocQueryQuery(
-    query ? query : skipToken,
-  );
+  const { data: dataset } = useGetAdhocQueryQuery(query ? query : skipToken);
 
   const [currentRowIndex, setCurrentRowIndex] = useState<number>();
 
@@ -54,9 +52,7 @@ export function TableDetailView({
     typeof currentRowIndex === "undefined" ? undefined : rows[currentRowIndex];
 
   const { data: objectDataset } = useGetAdhocQueryQuery(
-    objectQuery && typeof currentRowIndex === "undefined" && !isFetching
-      ? objectQuery
-      : skipToken,
+    objectQuery ? objectQuery : skipToken,
   );
   const rowFromObject = useMemo(
     () => (objectDataset?.data?.rows ?? [])[0],
