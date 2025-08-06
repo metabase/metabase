@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { Modal, Progress, Text } from "metabase/ui";
+import { Modal } from "metabase/ui";
 import { useCreateDatabaseReplicationMutation } from "metabase-enterprise/api/database-replication";
 import type { Database } from "metabase-types/api";
 
@@ -32,14 +32,14 @@ export const DatabaseReplicationModal = ({
 
   const onSubmit = async ({
     schemaSelect,
-    schemas,
+    schemaFilters,
   }: DWHReplicationFormFields) =>
     createDatabaseReplication({
       databaseId: database.id,
-      schemas:
+      schemaFilters:
         schemaSelect === "all"
           ? undefined
-          : schemas
+          : schemaFilters
               .split(",")
               .map((pattern) => pattern.trim())
               .map((pattern) => ({ type: schemaSelect, pattern })),
@@ -58,21 +58,13 @@ export const DatabaseReplicationModal = ({
       padding="2.5rem"
       title={t`Set up database replication`}
     >
-      <>
-        {/* FIXME: Get values from Store API and fix the layout to look like the UI design. */}
-        <Text c="text-light">{database.name}</Text>
-        <Text style={{ "font-weight": "bold" }}>{t`12,345,678 rows`}</Text>
-        <Text c="text-light">{t`Available Cloud Storage`}</Text>
-        <Text style={{ "font-weight": "bold" }}>{t`20M rows`}</Text>
-        <Progress value={(12_345_678 / 20_000_000) * 100} />
-      </>
       <DatabaseReplicationForm
+        database={database}
         onSubmit={onSubmit}
-        onCancel={onClose}
         initialValues={{
           databaseId: database.id,
           schemaSelect: "all",
-          schemas: "",
+          schemaFilters: "",
         }}
       />
     </Modal>

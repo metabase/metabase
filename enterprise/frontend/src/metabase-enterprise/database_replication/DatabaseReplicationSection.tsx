@@ -69,11 +69,13 @@ export function DatabaseReplicationSection({
             onClick={() => setShowDWHReplicationModal(true)}
           >{t`Replicate to Data Warehouse`}</Button>
         )}
-        <DatabaseReplicationModal
-          database={database}
-          isOpen={showDWHReplicationModal}
-          onClose={() => setShowDWHReplicationModal(false)}
-        />
+        {showDWHReplicationModal ? (
+          <DatabaseReplicationModal
+            database={database}
+            isOpen={showDWHReplicationModal}
+            onClose={() => setShowDWHReplicationModal(false)}
+          />
+        ) : undefined}
       </Flex>
 
       {engineInfo && (
