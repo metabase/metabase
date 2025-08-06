@@ -5,7 +5,6 @@
    [metabase-enterprise.semantic-search.pgvector-api :as semantic.pgvector-api]
    [metabase-enterprise.semantic-search.test-util :as semantic.tu]
    [metabase.search.appdb.core :as appdb]
-   [metabase.search.core :as search]
    [metabase.search.engine :as search.engine]
    [metabase.search.settings :as search.settings]
    [metabase.test :as mt]
@@ -20,8 +19,8 @@
     (mt/with-temporary-setting-values [search.settings/search-engine "semantic"]
       (with-open [_ (semantic.tu/open-temp-index!)]
         (semantic.tu/cleanup-index-metadata! semantic.tu/db semantic.tu/mock-index-metadata)
-        (search/init-index! {:force-reset? false, :re-populate? false})
-        (is (search.engine/supported-engine? :search.engine/appdb))))))
+        (semantic.tu/with-index!
+          (is (search.engine/supported-engine? :search.engine/appdb)))))))
 
 (deftest api-engine-switching-test
   (mt/with-premium-features #{:semantic-search}
