@@ -2,8 +2,11 @@
   "Functions and utilities for faster processing. This namespace is compatible with both Clojure and ClojureScript.
   However, some functions are either not only available in CLJS, or offer passthrough non-improved functions."
   (:refer-clojure :exclude [reduce mapv run! some every? concat select-keys #?(:cljs clj->js)])
-  #?(:cljs (:require [cljs.core :as core]
-                     [goog.object :as gobject]))
+  (:require
+   #?@(:clj [[potemkin :as p]
+             [metabase.util.performance.jvm]]
+       :cljs [[cljs.core :as core]
+              [goog.object :as gobject]]))
   #?@(:clj [(:import (clojure.lang ITransientCollection LazilyPersistentVector RT)
                      java.util.Iterator)]
       :default ()))
@@ -122,40 +125,38 @@
      (^long [c1 c2 c3] (min (count c1) (count c2) (count c3)))
      (^long [c1 c2 c3 c4] (min (count c1) (count c2) (count c3) (count c4)))))
 
-#?(:clj
-   (defn mapv
-     "Like `clojure.core/mapv`, but iterates multiple collections more efficiently and uses Java iterators under the hood."
-     ([f coll1]
-      (let [n (count coll1)]
-        (cond (= n 0) []
-              (<= n 32) (small-persistent! (reduce apply-and-small-conj! (small-transient n f) coll1))
-              :else (persistent! (reduce #(conj! %1 (f %2)) (transient []) coll1)))))
-     ([f coll1 coll2]
+(defn mapv
+  "Like `clojure.core/mapv`, but iterates multiple collections more efficiently and uses Java iterators under the
+  hood (the CLJ version). CLJS version is only optimized for a single collection arity."
+  ([f coll1]
+   (let [n (count coll1)]
+     (cond (= n 0) []
+           (<= n 32) (small-persistent! (reduce apply-and-small-conj! (small-transient n f) coll1))
+           :else (persistent! (reduce #(conj! %1 (f %2)) (transient []) coll1)))))
+  ([f coll1 coll2]
+   #?(:clj
       (let [n (smallest-count coll1 coll2)]
         (cond (= n 0) []
               (<= n 32) (small-persistent! (reduce apply-and-small-conj! (small-transient n f) coll1 coll2))
-              :else (persistent! (reduce #(conj! %1 (f %2 %3)) (transient []) coll1 coll2)))))
-     ([f coll1 coll2 coll3]
+              :else (persistent! (reduce #(conj! %1 (f %2 %3)) (transient []) coll1 coll2))))
+      :cljs
+      (core/mapv f coll1 coll2)))
+  ([f coll1 coll2 coll3]
+   #?(:clj
       (let [n (smallest-count coll1 coll2 coll3)]
         (cond (= n 0) []
               (<= n 32) (small-persistent! (reduce apply-and-small-conj! (small-transient n f) coll1 coll2 coll3))
-              :else (persistent! (reduce #(conj! %1 (f %2 %3 %4)) (transient []) coll1 coll2 coll3)))))
-     ([f coll1 coll2 coll3 coll4]
+              :else (persistent! (reduce #(conj! %1 (f %2 %3 %4)) (transient []) coll1 coll2 coll3))))
+      :cljs
+      (core/mapv f coll1 coll2 coll3)))
+  ([f coll1 coll2 coll3 coll4]
+   #?(:clj
       (let [n (smallest-count coll1 coll2 coll3 coll4)]
         (cond (= n 0) []
               (<= n 32) (small-persistent! (reduce apply-and-small-conj! (small-transient n f) coll1 coll2 coll3 coll4))
-              :else (persistent! (reduce #(conj! %1 (f %2 %3 %4 %5)) (transient []) coll1 coll2 coll3 coll4))))))
-
-   :cljs
-   (defn mapv
-     "Like `clojure.core/mapv`, but is more efficient for small vectors."
-     ([f coll1]
-      (let [n (count coll1)]
-        (cond (= n 0) []
-              (<= n 32) (small-persistent! (reduce apply-and-small-conj! (small-transient n f) coll1))
-              :else (persistent! (reduce #(conj! %1 (f %2)) (transient []) coll1)))))
-     ;; Fallback arities
-     ([f coll1 & colls] (apply core/mapv f coll1 colls))))
+              :else (persistent! (reduce #(conj! %1 (f %2 %3 %4 %5)) (transient []) coll1 coll2 coll3 coll4))))
+      :cljs
+      (core/mapv f coll1 coll2 coll3 coll4))))
 
 (defn run!
   "Like `clojure.core/run!`, but iterates collections more efficiently and uses Java iterators under the hood."
@@ -231,99 +232,6 @@
        (mapv (fn [_] (mapv #(.next ^Iterator %) its))
              (first coll-of-colls)))))
 
-;; clojure.walk reimplementation. Partially adapted from https://github.com/tonsky/clojure-plus.
-
-#?(:clj
-   (do
-     (defn- editable? [coll]
-       (instance? clojure.lang.IEditableCollection coll))
-
-     (defn- transient? [coll]
-       (instance? clojure.lang.ITransientCollection coll))
-
-     (defn- assoc+ [coll key value]
-       (cond
-         (transient? coll) (assoc! coll key value)
-         (editable? coll)  (assoc! (transient coll) key value)
-         :else             (assoc  coll key value)))
-
-     (defn- dissoc+ [coll key]
-       (cond
-         (transient? coll) (dissoc! coll key)
-         (editable? coll)  (dissoc! (transient coll) key)
-         :else             (dissoc  coll key)))
-
-     (defn- maybe-persistent! [coll]
-       (cond-> coll
-         (transient? coll) persistent!))
-
-     (defn walk
-       "Like `clojure.walk/walk`, but optimized for efficiency and has the following behavior differences:
-  - Doesn't walk over map entries. When descending into a map, walks keys and values separately.
-  - Uses transients and reduce where possible and tries to return the same input `form` if no changes were made."
-       [inner outer form]
-       (cond
-         (map? form)
-         (let [new-keys (volatile! (transient #{}))]
-           (-> (reduce-kv (fn [m k v]
-                            (let [k' (inner k)
-                                  v' (inner v)]
-                              (if (identical? k' k)
-                                (if (identical? v' v)
-                                  m
-                                  (assoc+ m k' v'))
-                                (do (vswap! new-keys conj! k')
-                                    (if (contains? @new-keys k)
-                                      (assoc+ m k' v')
-                                      (-> m (dissoc+ k) (assoc+ k' v')))))))
-                          form form)
-               maybe-persistent!
-               (with-meta (meta form))
-               outer))
-
-         (vector? form)
-         (-> (reduce-kv (fn [v idx el]
-                          (let [el' (inner el)]
-                            (if (identical? el' el)
-                              v
-                              (assoc+ v idx el'))))
-                        form form)
-             maybe-persistent!
-             (with-meta (meta form))
-             outer)
-
-         ;; Don't care much about optimizing seq and generic coll cases. When efficiency is required, use vectors.
-         (seq? form) (outer (with-meta (seq (mapv inner form)) (meta form))) ;;
-         (coll? form) (outer (with-meta (into (empty form) (map inner) form) (meta form)))
-         :else (outer form)))
-
-     (defn prewalk
-       "Like `clojure.walk/prewalk`, but uses a more efficient `metabase.util.performance/walk` underneath."
-       [f form]
-       (walk (fn prewalker [form] (walk prewalker identity (f form))) identity (f form)))
-
-     (defn postwalk
-       "Like `clojure.walk/postwalk`, but uses a more efficient `metabase.util.performance/walk` underneath."
-       [f form]
-       (walk (fn postwalker [form] (walk postwalker f form)) f form))
-
-     (defn keywordize-keys
-       "Like `clojure.walk/keywordize-keys`, but uses a more efficient `metabase.util.performance/walk` underneath and
-  preserves original metadata on the transformed maps."
-       [m]
-       (postwalk
-        (fn [form]
-          (if (map? form)
-            (-> (reduce-kv (fn [m k v]
-                             (if (string? k)
-                               (-> m (dissoc+ k) (assoc+ (keyword k) v))
-                               m))
-                           form form)
-                maybe-persistent!
-                (with-meta (meta form)))
-            form))
-        m))))
-
 (defn select-keys
   "Like `clojure.walk/select-keys`, but much more efficient."
   [m keyseq]
@@ -334,6 +242,8 @@
                                acc
                                (assoc! acc k v))))
                          (transient {}) keyseq))))
+
+#?(:clj (p/import-vars [metabase.util.performance.jvm keywordize-keys postwalk prewalk walk]))
 
 ;;;; Faster clj->js implementation
 
