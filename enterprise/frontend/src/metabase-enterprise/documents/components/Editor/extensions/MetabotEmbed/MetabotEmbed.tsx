@@ -80,6 +80,9 @@ export const MetabotComponent = memo(
     const { text: prompt } = node.attrs;
 
     const handleRunMetabot = useCallback(async () => {
+      if (!prompt?.trim()) {
+        return;
+      }
       const controller = new AbortController();
       controllerRef.current = controller;
       setIsLoading(true);
