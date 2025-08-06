@@ -7,6 +7,7 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { useDispatch } from "metabase/lib/redux";
 import { Card } from "metabase/ui";
 import { useListTransformsQuery } from "metabase-enterprise/api";
+import { ListEmptyState } from "metabase-enterprise/transforms/components/ListEmptyState";
 import { getTransformUrl } from "metabase-enterprise/transforms/urls";
 import type { Transform, TransformExecution } from "metabase-types/api";
 
@@ -20,6 +21,10 @@ export function TransformList() {
 
   if (isLoading || error != null) {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
+  }
+
+  if (transforms.length === 0) {
+    return <ListEmptyState label={t`No transforms yet`} />;
   }
 
   return (
