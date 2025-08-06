@@ -195,8 +195,7 @@
                           :dwh dwh-connections
                           :documents [] ; Could add document IDs here
                           :permissions table-permissions
-                          :activity_log []
-                          :archived false}]
+                          :activity_log []}]
 
       (println "🚀 Creating Customer Churn Analysis Workspace...")
       (println "📋 Plan: Customer Churn Analysis with 3 stages and 6 tasks")
@@ -257,8 +256,7 @@
      :dwh [{:id 3 :name "Marketing Data Warehouse" :type :read-only :credentials {:host "marketing-dw.company.com"} :created-at now}]
      :documents []
      :permissions [{:table "campaigns" :permission :read :created-at now} {:table "conversions" :permission :read :created-at now}]
-     :activity_log []
-     :archived false}))
+     :activity_log []}))
 
 (defn demo-workspace-creation
   "Demonstrates creating realistic workspaces and shows the structure"
