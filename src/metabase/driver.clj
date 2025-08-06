@@ -714,6 +714,9 @@
     ;; Does this driver support transforms with a materialized view as the target?
     :transforms/materialized-view
 
+    ;; Does this driver properly support the table-exists? method for checking table existence?
+    :table-existence-checking
+
     ;; Whether the driver supports loading dynamic test datasets on each test run. Eg. datasets with names like
     ;; `checkins:4-per-minute` are created dynamically in each test run. This should be truthy for every driver we test
     ;; against except for Athena and Databricks which currently require test data to be loaded separately.
@@ -777,7 +780,8 @@
                               :upload-with-auto-pk                    true
                               :saved-question-sandboxing              true
                               :test/dynamic-dataset-loading           true
-                              :test/uuids-in-create-table-statements  true}]
+                              :test/uuids-in-create-table-statements true
+                              :table-existence-checking false}]
   (defmethod database-supports? [::driver feature] [_driver _feature _db] supported?))
 
 ;;; By default a driver supports `:native-parameter-card-reference` if it supports `:native-parameters` AND
@@ -1414,6 +1418,27 @@
   :hierarchy #'hierarchy)
 
 (defmethod table-known-to-not-exist? ::driver [_ _] false)
+
+(defmulti table-exists?
+  "Check if a table exists in the database. Returns true if the table exists, false otherwise.
+
+   If you need proactively to check for table existence, this is the preferred method.
+   The default implementation uses describe-table and catches exceptions, but drivers can override
+   this with more efficient implementations for databases that support them.."
+  ;; TSD TODO: how do we handle `:added`?
+  {:added "" :arglists '([driver database table])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmethod table-exists? ::driver
+  [driver database table]
+  (try
+    (let [table-info (describe-table driver database table)]
+      ;; Some drivers (e.g., BigQuery) return nil for non-existent tables. Others return a map with fields.
+      (boolean (seq (:fields table-info))))
+    (catch Exception e
+      ;; If an exception was thrown, check if it's because the table doesn't exist
+      (not (table-known-to-not-exist? driver e)))))
 
 (defmulti set-database-used!
   "Sets the database to be used on a connection. Called prior to query execution for drivers that support USE DATABASE like commands."

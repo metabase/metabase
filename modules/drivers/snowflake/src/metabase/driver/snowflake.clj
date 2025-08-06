@@ -65,7 +65,8 @@
                               :split-part                             true
                               :now                                    true
                               :database-routing                       true
-                              :transforms/view                        true}]
+                              :transforms/view true
+                              :table-existence-checking true}]
   (defmethod driver/database-supports? [:snowflake feature] [_driver _feature _db] supported?))
 
 (defmethod driver/humanize-connection-error-message :snowflake
@@ -845,6 +846,10 @@
 
 (defmethod sql-jdbc/impl-query-canceled? :snowflake [_ e]
   (= (sql-jdbc/get-sql-state e) "57014"))
+
+(defmethod sql-jdbc/impl-table-known-to-not-exist? :snowflake
+  [_ e]
+  (= (sql-jdbc/get-sql-state e) "42S02"))
 
 (defmethod driver/set-database-used! :snowflake [_driver conn db]
   (let [sql (format "USE DATABASE \"%s\"" (db-name db))]

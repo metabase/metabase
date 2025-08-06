@@ -56,7 +56,8 @@
                               :now                                    true
                               :regex                                  false
                               :test/jvm-timezone-setting              false
-                              :transforms/view                        true}]
+                              :transforms/view true
+                              :table-existence-checking true}]
   (defmethod driver/database-supports? [:sqlserver feature] [_driver _feature _db] supported?))
 
 (defmethod driver/database-supports? [:sqlserver :percentile-aggregations]
@@ -931,3 +932,7 @@
   [_driver role]
   ;; REVERT to handle the case where the users role attribute has changed
   (format "REVERT; EXECUTE AS USER = '%s';" role))
+
+(defmethod sql-jdbc/impl-table-known-to-not-exist? :sqlserver
+  [_ e]
+  (= (sql-jdbc/get-sql-state e) "S0002"))

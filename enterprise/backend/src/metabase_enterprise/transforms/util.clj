@@ -17,15 +17,8 @@
   "Test if the target table of a transform already exists."
   [{:keys [source target] :as _transform}]
   (let [db-id (-> source :query :database)
-        database (t2/select-one :model/Database db-id)
-        driver (:engine database)]
-    (try
-      (-> (driver/describe-table driver database target)
-          :fields
-          seq
-          boolean)
-      (catch Exception e
-        (not (driver/table-known-to-not-exist? driver e))))))
+        {driver :engine :as database} (t2/select-one :model/Database db-id)]
+    (driver/table-exists? driver database target)))
 
 (defn target-table
   "Load the `target` table of a transform from the database specified by `database-id`."
