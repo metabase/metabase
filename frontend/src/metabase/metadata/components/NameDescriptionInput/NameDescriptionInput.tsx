@@ -1,4 +1,5 @@
 import { useElementSize } from "@mantine/hooks";
+import type { ReactNode } from "react";
 
 import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { Box, Group, Icon, type IconName, Text, rem } from "metabase/ui";
@@ -15,9 +16,9 @@ interface Props {
   nameMaxLength?: number;
   namePlaceholder: string;
   namePrefix?: string;
+  nameRightSection?: ReactNode;
   onDescriptionChange: (description: string) => void;
   onNameChange: (name: string) => void;
-  rightSection?: React.ReactNode;
 }
 
 export const NameDescriptionInput = ({
@@ -28,9 +29,9 @@ export const NameDescriptionInput = ({
   nameMaxLength,
   namePlaceholder,
   namePrefix,
+  nameRightSection,
   onDescriptionChange,
   onNameChange,
-  rightSection,
 }: Props) => {
   const { ref, width } = useElementSize();
   const { ref: sectionRef, width: sectionWidth } = useElementSize();
@@ -102,8 +103,7 @@ export const NameDescriptionInput = ({
         maxLength={nameMaxLength}
         placeholder={namePlaceholder}
         required
-        rightSection={rightSection}
-        rightSectionWidth={rightSection ? 40 : 0}
+        rightSection={nameRightSection}
         size="lg"
         styles={{
           section: {

@@ -1,4 +1,5 @@
 import { memo, useState } from "react";
+import { Link } from "react-router";
 import { t } from "ttag";
 
 import {
@@ -6,7 +7,6 @@ import {
   useUpdateTableMutation,
 } from "metabase/api";
 import EmptyState from "metabase/common/components/EmptyState";
-import Link from "metabase/common/components/Link";
 import {
   FieldOrderPicker,
   NameDescriptionInput,
@@ -23,8 +23,6 @@ import {
   Text,
   Tooltip,
 } from "metabase/ui";
-import Question from "metabase-lib/v1/Question";
-import * as ML_Urls from "metabase-lib/v1/urls";
 import type { FieldId, Table, TableFieldOrder } from "metabase-types/api";
 
 import type { RouteParams } from "../../types";
@@ -145,12 +143,6 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
     }
   };
 
-  const question = Question.create({
-    databaseId: table.db_id,
-    tableId: table.id,
-  });
-  const questionUrl = ML_Urls.getUrl(question);
-
   return (
     <Stack data-testid="table-section" gap={0} pb="xl">
       <Stack
@@ -170,24 +162,24 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
           nameIcon="table2"
           nameMaxLength={254}
           namePlaceholder={t`Give this table a name`}
-          onDescriptionChange={handleDescriptionChange}
-          onNameChange={handleNameChange}
-          rightSection={
-            <div style={{ marginRight: 16 }}>
-              <Link to={questionUrl}>
-                <Tooltip label={t`Go to this table`} position="top">
-                  <ActionIcon
-                    aria-label={t`Explore this table`}
-                    color="text-light"
-                    size="sm"
-                    variant="subtle"
-                  >
-                    <Icon name="external" size={16} />
-                  </ActionIcon>
-                </Tooltip>
-              </Link>
-            </div>
+          nameRightSection={
+            <Tooltip label={t`Go to this table`} position="top">
+              <ActionIcon
+                component={Link}
+                to={getQueryBuilderUrl(table)}
+                target="_blank"
+                variant="subtle"
+                color="text-light"
+                size="sm"
+                mr="sm"
+                aria-label={t`Explore this table`}
+              >
+                <Icon name="external" size={16} />
+              </ActionIcon>
+            </Tooltip>
           }
+          onNameChange={handleNameChange}
+          onDescriptionChange={handleDescriptionChange}
         />
 
         <Group
@@ -275,5 +267,9 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
     </Stack>
   );
 };
+
+function getQueryBuilderUrl(table: Table) {
+  return `/question#?db=${table.db_id}&table=${table.id}`;
+}
 
 export const TableSection = memo(TableSectionBase);
