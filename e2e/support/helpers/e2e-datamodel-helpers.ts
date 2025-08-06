@@ -22,6 +22,7 @@ export const DataModel = {
     get: getTableSection,
     getNameInput: getTableNameInput,
     getDescriptionInput: getTableDescriptionInput,
+    getQueryBuilderLink: getTableQueryBuilderLink,
     getSortButton: getTableSortButton,
     getSortDoneButton: getTableSortDoneButton,
     getSortOrderInput: getTableSortOrderInput,
@@ -212,6 +213,10 @@ function getTableSection() {
 
 function getTableNameInput() {
   return getTableSection().findByPlaceholderText("Give this table a name");
+}
+
+function getTableQueryBuilderLink() {
+  return getTableSection().findByLabelText("Go to this table");
 }
 
 function getTableDescriptionInput() {
