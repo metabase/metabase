@@ -3,7 +3,7 @@ import { useMount } from "react-use";
 import _ from "underscore";
 
 import { getEmbeddingSdkVersion } from "embedding-sdk/config";
-import { useLazySelector } from "embedding-sdk/sdk-wrapper/hooks/private/use-lazy-selector";
+import { useLazySelector } from "embedding-sdk/sdk-package/hooks/private/use-lazy-selector";
 import { initAuth } from "embedding-sdk/store/auth";
 import {
   setFetchRefreshTokenFn,

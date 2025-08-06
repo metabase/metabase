@@ -10,7 +10,7 @@ export function getPublicComponents() {
     "enterprise/frontend/src/embedding-sdk/index.ts",
   );
   project.addSourceFilesAtPaths(
-    "enterprise/frontend/src/embedding-sdk/sdk-wrapper/components/public/**/*{.ts,.tsx}",
+    "enterprise/frontend/src/embedding-sdk/sdk-package/components/public/**/*{.ts,.tsx}",
   );
 
   const componentForNextJsCompatList: ComponentDefinition[] = [];
