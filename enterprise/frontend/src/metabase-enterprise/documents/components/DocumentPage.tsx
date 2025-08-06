@@ -6,7 +6,7 @@ import { usePrevious } from "react-use";
 import useBeforeUnload from "react-use/lib/useBeforeUnload";
 import { t } from "ttag";
 
-import { skipToken, useGetCollectionQuery } from "metabase/api";
+import { skipToken } from "metabase/api";
 import { canonicalCollectionId } from "metabase/collections/utils";
 import DateTime from "metabase/common/components/DateTime";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
@@ -90,18 +90,7 @@ export const DocumentPage = ({
         : skipToken,
     );
 
-  // For root collection (collection_id: null), we need to query with id: "root"
-  const shouldFetchCollection = documentData && !isNewDocument;
-  const collectionQueryId =
-    documentData?.collection_id === null ? "root" : documentData?.collection_id;
-
-  const { data: collection } = useGetCollectionQuery(
-    shouldFetchCollection && collectionQueryId !== undefined
-      ? { id: collectionQueryId }
-      : skipToken,
-  );
-
-  const canWrite = isNewDocument ? true : collection?.can_write;
+  const canWrite = isNewDocument ? true : documentData?.can_write;
 
   const {
     documentTitle,

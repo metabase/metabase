@@ -35,7 +35,7 @@ export const modelIconMap: Record<IconModel, IconName> = {
   segment: "segment",
   metric: "metric",
   snippet: "unknown",
-  report: "document",
+  document: "document",
 };
 
 export type IconData = {

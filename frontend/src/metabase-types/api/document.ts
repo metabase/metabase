@@ -1,5 +1,6 @@
 import type { Card } from "./card";
 import type { CollectionId } from "./collection";
+import type { BaseUser, UserId } from "./user";
 
 export type DocumentId = number;
 export type DocumentContent = Record<string, unknown>; // ProseMirror AST
@@ -17,6 +18,9 @@ export type Document = {
   collection_id: CollectionId;
   created_at: string;
   updated_at: string;
+  can_write: boolean;
+  creator_id: UserId;
+  creator: BaseUser;
 };
 
 export type DocumentVersions = Document[];

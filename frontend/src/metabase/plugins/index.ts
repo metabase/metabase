@@ -810,3 +810,7 @@ export const PLUGIN_DOCUMENTS = {
   shouldShowDocumentInNewItemMenu: () => false,
   DocumentBackButton: PluginPlaceholder as React.ComponentType<any>,
 };
+
+export const PLUGIN_ENTITIES = {
+  entities: {} as Record<string, any>,
+};
