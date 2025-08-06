@@ -3,6 +3,7 @@ import type { Action, Store } from "@reduxjs/toolkit";
 import { type JSX, type ReactNode, memo, useEffect, useRef } from "react";
 
 import { SdkThemeProvider } from "embedding-sdk/components/private/SdkThemeProvider";
+import { SdkIncompatibilityWithInstanceBanner } from "embedding-sdk/components/private/SdkVersionCompatibilityHandler/SdkIncompatibilityWithInstanceBanner";
 import { useInitData } from "embedding-sdk/hooks";
 import { getSdkStore } from "embedding-sdk/store";
 import {
@@ -144,7 +145,10 @@ export const MetabaseProviderInternal = ({
           <Box className={className} id={EMBEDDING_SDK_ROOT_ELEMENT_ID}>
             <LocaleProvider locale={locale || instanceLocale}>
               {children}
+
+              <SdkIncompatibilityWithInstanceBanner />
             </LocaleProvider>
+
             <SdkUsageProblemDisplay
               authConfig={authConfig}
               allowConsoleLog={allowConsoleLog}

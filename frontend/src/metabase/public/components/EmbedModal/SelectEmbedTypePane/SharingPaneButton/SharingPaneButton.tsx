@@ -45,8 +45,8 @@ export const SharingPaneButton = ({
       <Stack pb={isDisabled ? "md" : undefined}>
         <Center mb={32}>{illustration}</Center>
         <Group align="center" gap="sm">
-          <Title order={2}>{title}</Title>
           {badge}
+          <Title order={2}>{title}</Title>
         </Group>
         {children}
       </Stack>

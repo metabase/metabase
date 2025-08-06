@@ -99,7 +99,7 @@
                           col)))))))]
     (u/prog1 (resolve* id-or-name)
       (if <>
-        (log/debugf "Found match\n%s"
+        (log/debugf "Found match %s"
                     (pr-str (select-keys <> [:id :lib/desired-column-alias :lib/deduplicated-name])))
         (log/debugf "Failed to find match for %s. Found:\n%s"
                     (pr-str id-or-name)
@@ -223,13 +223,32 @@
     :table-id
     :visibility-type})
 
-(defn- model-metadata [query stage-number]
+(def ^:private regular-card-propagated-keys
+  #{:lib/card-id
+    :fingerprint})
+
+(defn- additional-metadata-from-source-card
+  [query stage-number id-or-name]
   (let [stage (lib.util/query-stage query stage-number)]
-    (when-some [card-id (:qp/stage-is-from-source-card stage)]
-      (when-some [card (lib.metadata/card query card-id)]
-        (when (= (:type card) :model)
-          (for [col (lib.metadata.calculation/returned-columns query stage-number card)]
-            (assoc col :lib/source :source/card, :lib/card-id card-id)))))))
+    (cond
+      (:qp/stage-had-source-card stage)
+      (let [card-id (:qp/stage-had-source-card stage)]
+        (when-some [card (lib.metadata/card query card-id)]
+          ;; card returned columns should be the same regardless of which stage number we pass in, so always use the
+          ;; last stage so we can hit the cache more often
+          (when-some [card-cols (not-empty (lib.metadata.calculation/returned-columns query 0 card))]
+            (when-some [col (resolve-in-metadata query card-cols id-or-name)]
+              (let [propagated-keys (if (= (:type card) :model)
+                                      model-propagated-keys
+                                      regular-card-propagated-keys)]
+                (-> col
+                    lib.field.util/update-keys-for-col-from-previous-stage
+                    (assoc :lib/card-id card-id)
+                    (select-keys propagated-keys)))))))
+
+      (:qp/stage-is-from-source-card stage)
+      (let [card-id (:qp/stage-is-from-source-card stage)]
+        {:lib/card-id card-id}))))
 
 (defn- resolve-in-previous-stage-cols [query previous-stage-columns id-or-name]
   (log/tracef "Previous stage columns: %s" (pr-str (map (juxt :id :lib/desired-column-alias) previous-stage-columns)))
@@ -448,11 +467,7 @@
            (assoc col ::fallback-metadata? true)))
        ;; if we STILL can't find a match, return made-up fallback metadata.
        (fallback-metadata id-or-name))
-   (when-some [model-cols (not-empty (model-metadata query stage-number))]
-     (when-some [col (resolve-in-previous-stage-metadata query model-cols id-or-name)]
-       (-> col
-           lib.field.util/update-keys-for-col-from-previous-stage
-           (select-keys model-propagated-keys))))))
+   (additional-metadata-from-source-card query stage-number id-or-name)))
 
 (mu/defn resolve-field-ref :- ::lib.metadata.calculation/visible-column
   "Resolve metadata for a `:field` ref. This is part of the implementation
