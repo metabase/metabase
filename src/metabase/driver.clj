@@ -1140,12 +1140,11 @@
     [(dispatch-on-initialized-driver driver) (:type transform-details)])
   :hierarchy #'hierarchy)
 
-(defmulti normalize-name
-  "Normalizes the (primarily table/column) name passed in.
+(defmulti native-query-deps
+  "Gets the table dependencies of a given sql string (or equivalent).
 
-  Should return a value that matches the name listed in the appdb. Drivers that support any of the `:transforms/...`
-  features must implement this method."
-  {:added "0.57.0" :arglists '([driver name-str])}
+  Drivers that support any of the `:transforms/...` features must implement this method."
+  {:added "0.57.0" :arglists '([driver query])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
