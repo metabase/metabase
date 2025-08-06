@@ -161,10 +161,12 @@
   [embedding-model]
   (let [{:keys [model-name provider vector-dimensions]} embedding-model
         provider-name (str/replace provider #"[-:.]" "_")
+        table-name-prefix (str "index_table_" provider-name "_")
+        table-name-suffix (str "_" vector-dimensions)
         ;; calculate remaining space to ensure we don't exceed postgres' limit of 63 chars for identifier names.
-        model-max-name-len (- 63 14 (count provider-name) (count (str vector-dimensions)))
+        model-max-name-len (- 63 (count table-name-prefix) (count table-name-suffix))
         abbreviated-model-name (embedding/abbrev-model-name model-name model-max-name-len)
-        table-name (str "index_table_" provider-name "_" abbreviated-model-name "_" vector-dimensions)]
+        table-name (str table-name-prefix abbreviated-model-name table-name-suffix)]
     {:embedding-model embedding-model
      :table-name table-name
      :version 0}))
