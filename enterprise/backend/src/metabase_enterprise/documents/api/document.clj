@@ -208,6 +208,20 @@
                                   :user-id api/*current-user-id*}))
         updated-document))))
 
+(api.macros/defendpoint :delete "/:document-id"
+  "Permanently deletes an archived Document."
+  [{:keys [document-id]} :- [:map [:document-id ms/PositiveInt]]]
+  (let [document (api/check-404 (t2/select-one :model/Document :id document-id))]
+    (api/check-403 (mi/can-write? document))
+    (when-not (:archived document)
+      (let [msg (tru "Document must be archived before it can be deleted.")]
+        (throw (ex-info msg {:status-code 400, :errors {:archived msg}}))))
+    (t2/delete! :model/Document :id document-id)
+    (events/publish-event! :event/document-delete
+                           {:object document
+                            :user-id api/*current-user-id*})
+    api/generic-204-no-content))
+
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/document/` routes."
   (api.macros/ns-handler *ns* +auth))

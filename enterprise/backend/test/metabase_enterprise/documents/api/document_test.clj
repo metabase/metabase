@@ -1598,3 +1598,114 @@
           (is (true? (:archived result)))
           (is (= "Updated Name" (:name result)))
           (is (= (text->prose-mirror-ast "Updated content") (:document result))))))))
+
+(deftest delete-document-basic-test
+  (testing "DELETE /api/ee/document/:id - basic document deletion"
+    (mt/with-temp [:model/Document {doc-id :id} {:name "Test Document"
+                                                 :document (text->prose-mirror-ast "Test content")
+                                                 :archived true}]
+      (testing "can delete archived document"
+        (mt/user-http-request :crowberto :delete (format "ee/document/%s" doc-id))
+
+        ;; Verify document is actually deleted from database
+        (is (nil? (t2/select-one :model/Document :id doc-id))))
+
+      (testing "cannot delete same document twice"
+        (mt/user-http-request :crowberto :delete 404 (format "ee/document/%s" doc-id))))))
+
+(deftest delete-document-not-archived-test
+  (testing "DELETE /api/ee/document/:id - cannot delete non-archived document"
+    (mt/with-temp [:model/Document {doc-id :id} {:name "Active Document"
+                                                 :document (text->prose-mirror-ast "Active content")
+                                                 :archived false}]
+      (testing "returns 400 error when trying to delete non-archived document"
+        (mt/user-http-request :crowberto :delete 400 (format "ee/document/%s" doc-id))
+
+        ;; Verify document still exists
+        (is (some? (t2/select-one :model/Document :id doc-id)))))))
+
+(deftest delete-document-permissions-test
+  (testing "DELETE /api/ee/document/:id - permission requirements"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/Collection {read-only-col :id} {}
+                     :model/Collection {write-col :id} {}
+                     :model/Document {read-only-doc-id :id} {:name "Read Only Document"
+                                                             :document (text->prose-mirror-ast "Read only")
+                                                             :collection_id read-only-col
+                                                             :archived true}
+                     :model/Document {write-doc-id :id} {:name "Write Document"
+                                                         :document (text->prose-mirror-ast "Writable")
+                                                         :collection_id write-col
+                                                         :archived true}]
+
+        (mt/with-group-for-user [group :rasta]
+          ;; Grant read-only access to read-only collection
+          (perms/grant-collection-read-permissions! group read-only-col)
+          ;; Grant write access to write collection
+          (perms/grant-collection-readwrite-permissions! group write-col)
+
+          (testing "user with write permissions can delete archived document"
+            (mt/user-http-request :rasta :delete (format "ee/document/%s" write-doc-id))
+
+            ;; Verify document is deleted
+            (is (nil? (t2/select-one :model/Document :id write-doc-id))))
+
+          (testing "user without write permissions cannot delete archived document"
+            (mt/user-http-request :rasta :delete 403 (format "ee/document/%s" read-only-doc-id))
+
+            ;; Verify document still exists
+            (is (some? (t2/select-one :model/Document :id read-only-doc-id)))))))))
+
+(deftest delete-document-with-cards-test
+  (testing "DELETE /api/ee/document/:id - deletes document with associated cards"
+    (mt/with-temp [:model/Collection {coll-id :id} {}
+                   :model/Document {doc-id :id} {:name "Document with Cards"
+                                                 :document (text->prose-mirror-ast "Doc with cards")
+                                                 :collection_id coll-id
+                                                 :archived true}
+                   :model/Card {card1-id :id} {:name "Associated Card 1"
+                                               :document_id doc-id
+                                               :collection_id coll-id
+                                               :dataset_query (mt/mbql-query venues)
+                                               :archived true}
+                   :model/Card {card2-id :id} {:name "Associated Card 2"
+                                               :document_id doc-id
+                                               :collection_id coll-id
+                                               :dataset_query (mt/mbql-query users)
+                                               :archived true}
+                   :model/Card {other-card-id :id} {:name "Other Card"
+                                                    :collection_id coll-id
+                                                    :dataset_query (mt/mbql-query venues)}]
+
+      (testing "deleting document also deletes associated cards via cascade"
+        (mt/user-http-request :crowberto :delete (format "ee/document/%s" doc-id))
+
+        ;; Verify document is deleted
+        (is (nil? (t2/select-one :model/Document :id doc-id)))
+
+        ;; Verify associated cards are deleted (assuming CASCADE DELETE in schema)
+        (is (nil? (t2/select-one :model/Card :id card1-id)))
+        (is (nil? (t2/select-one :model/Card :id card2-id)))
+
+        ;; Verify non-associated card still exists
+        (is (some? (t2/select-one :model/Card :id other-card-id)))))))
+
+(deftest delete-document-nonexistent-test
+  (testing "DELETE /api/ee/document/:id - returns 404 for nonexistent document"
+    (mt/user-http-request :crowberto :delete 404 "ee/document/999999")))
+
+(deftest delete-document-events-test
+  (testing "DELETE /api/ee/document/:id - publishes delete event"
+    (mt/with-temp [:model/Document {doc-id :id} {:name "Event Test Document"
+                                                 :document (text->prose-mirror-ast "Event test")
+                                                 :archived true}]
+      (let [events (atom [])]
+        (with-redefs [events/publish-event! (fn [topic event]
+                                              (swap! events conj {:topic topic :event event}))]
+          (mt/user-http-request :crowberto :delete 204 (format "ee/document/%s" doc-id))
+
+          ;; Should have published document-delete event
+          (is (some #(= :event/document-delete (:topic %)) @events))
+          (let [delete-event (first (filter #(= :event/document-delete (:topic %)) @events))]
+            (is (= "Event Test Document" (get-in delete-event [:event :object :name])))
+            (is (= (mt/user->id :crowberto) (get-in delete-event [:event :user-id])))))))))
