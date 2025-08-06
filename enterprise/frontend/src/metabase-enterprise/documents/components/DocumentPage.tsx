@@ -341,8 +341,7 @@ export const DocumentPage = ({
         <Box className={styles.mainContent}>
           <Box className={styles.documentContainer}>
             <Box className={styles.header} mt="xl" pt="xl">
-              {/* <Flex gap="sm" align="center" style={{ width: "100%" }}> */}
-              <Flex direction="column">
+              <Flex direction="column" w="100%">
                 <TextInput
                   autoFocus={isNewDocument}
                   value={documentTitle}
