@@ -27,7 +27,6 @@ export function setupRecentViewsAndSelectionsEndpoints(
     response: {
       status: 200,
       body: { recents: recentItems },
-      ...mockOptions,
     },
     ...mockOptions,
   });
