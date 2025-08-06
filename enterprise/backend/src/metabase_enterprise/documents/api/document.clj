@@ -1,4 +1,5 @@
 (ns metabase-enterprise.documents.api.document
+  "`/api/ee/document/` routes"
   (:require
    [metabase-enterprise.documents.models.document :as m.document]
    [metabase-enterprise.documents.prose-mirror :as prose-mirror]

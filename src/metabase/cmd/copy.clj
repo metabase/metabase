@@ -70,9 +70,11 @@
     :model/Collection
     :model/CollectionPermissionGraphRevision
     :model/Dashboard
+    :model/Document
     :model/Card
     :model/CardBookmark
     :model/DashboardBookmark
+    :model/DocumentBookmark
     :model/DataPermissions
     :model/CollectionBookmark
     :model/BookmarkOrdering

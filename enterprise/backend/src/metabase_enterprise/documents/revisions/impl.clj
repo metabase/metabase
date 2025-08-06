@@ -8,10 +8,10 @@
 
 (def ^:private excluded-columns-for-document-revision
   "Columns to exclude from Document revision serialization.
-  
+
   Excludes metadata columns (timestamps, IDs, collection_id, creator_id, etc.)
   following the same pattern established for Card revisions.
-  
+
   The :document field contains the actual content and is preserved."
   #{:id
     :creator_id

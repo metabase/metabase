@@ -108,4 +108,3 @@
           (is (= ["card" "collection" "dashboard"]
                  (map :type
                       (mt/user-http-request :rasta :get 200 "bookmark")))))))))
-

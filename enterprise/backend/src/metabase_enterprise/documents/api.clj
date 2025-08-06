@@ -7,7 +7,6 @@
    [metabase.api.util.handlers :as handlers]))
 
 (def ^{:arglists '([request respond raise])} routes
-  "`/api/ee/document` routes."
+  "`/api/ee/document/` routes."
   (handlers/routes
-   (api.macros/ns-handler *ns* +auth)
    metabase-enterprise.documents.api.document/routes))
