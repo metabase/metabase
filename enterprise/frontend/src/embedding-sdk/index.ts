@@ -1,5 +1,5 @@
-import { defineGlobalDependencies } from "embedding-sdk/sdk-package/lib/private/define-global-dependencies";
 import { EMBEDDING_SDK_CONFIG } from "metabase/embedding-sdk/config";
+import { defineGlobalDependencies } from "metabase/embedding-sdk/lib/define-global-dependencies";
 
 // Enable SDK mode as we are in the SDK bundle
 // This applies to SDK derivatives such as new iframe embedding.
