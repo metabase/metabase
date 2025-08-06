@@ -187,7 +187,7 @@ describe("parseConnectionUriRegex - MySQL", () => {
 
 describe("parseConnectionUriRegex - Oracle", () => {
   it("should parse a Oracle connection string", () => {
-    const connectionString = enginesConfig.get("oracle")?.placeholder;
+    const connectionString = enginesConfig["oracle"];
     const result = parseConnectionUriRegex(connectionString, "oracle");
     expect(result).toEqual(
       expect.objectContaining({
