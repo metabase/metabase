@@ -432,7 +432,7 @@ databaseChangeLog:
                   constraints:
                     nullable: true
               - columns:
-                  name: dwh
+                  name: data_warehouses
                   remarks: JSON object containing data warehouses
                   type: ${text.type}
                   constraints:

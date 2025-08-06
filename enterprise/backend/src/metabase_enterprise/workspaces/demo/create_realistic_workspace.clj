@@ -192,7 +192,7 @@
                           :plans [churn-analysis-plan]
                           :transforms [data-cleanup-transform churn-features-transform]
                           :users workspace-users
-                          :dwh dwh-connections
+                          :data_warehouses dwh-connections
                           :documents [] ; Could add document IDs here
                           :permissions table-permissions
                           :activity_log []}]
@@ -253,7 +253,7 @@
                    :config {:dialect "postgresql"}
                    :created-at now}]
      :users [{:id 2001 :name "Jessica Park" :email "jessica.park@company.com" :type "marketing-analyst" :created-at now}]
-     :dwh [{:id 3 :name "Marketing Data Warehouse" :type :read-only :credentials {:host "marketing-dw.company.com"} :created-at now}]
+     :data_warehouses [{:id 3 :name "Marketing Data Warehouse" :type :read-only :credentials {:host "marketing-dw.company.com"} :created-at now}]
      :documents []
      :permissions [{:table "campaigns" :permission :read :created-at now} {:table "conversions" :permission :read :created-at now}]
      :activity_log []}))
@@ -270,7 +270,7 @@
     (println (str "   Plans: " (count (:plans churn-workspace))))
     (println (str "   Transforms: " (count (:transforms churn-workspace))))
     (println (str "   Users: " (count (:users churn-workspace))))
-    (println (str "   DWH Connections: " (count (:dwh churn-workspace))))
+    (println (str "   DWH Connections: " (count (:data_warehouses churn-workspace))))
     (println (str "   Table Permissions: " (count (:permissions churn-workspace))))
 
     ;; Show plan structure

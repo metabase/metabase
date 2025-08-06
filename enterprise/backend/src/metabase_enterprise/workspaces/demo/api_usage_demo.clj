@@ -15,7 +15,7 @@
         plan (first (:plans churn-workspace))
         transform (first (:transforms churn-workspace))
         user (first (:users churn-workspace))
-        dwh (first (:dwh churn-workspace))]
+        dwh (first (:data_warehouses churn-workspace))]
 
     (println "🌟 Here are the API calls you would make to create this workspace:\n")
 
@@ -62,7 +62,7 @@
     (println "5️⃣ ADD DATA WAREHOUSE")
     (println "PUT /api/ee/workspace/1/dwh")
     (println "Content-Type: application/json")
-    (println (json/write-str {:dwh_id (:id dwh)
+    (println (json/write-str {:data_warehouses_id (:id dwh)
                               :name (:name dwh)
                               :type (name (:type dwh))
                               :credentials (:credentials dwh)} :indent true))
@@ -167,7 +167,7 @@
     (assert (vector? (:plans workspace)) "Plans should be an array")
     (assert (vector? (:transforms workspace)) "Transforms should be an array")
     (assert (vector? (:users workspace)) "Users should be an array")
-    (assert (vector? (:dwh workspace)) "DWH should be an array")
+    (assert (vector? (:data_warehouses workspace)) "DWH should be an array")
     (assert (vector? (:documents workspace)) "Documents should be an array")
     (assert (vector? (:permissions workspace)) "Permissions should be an array")
     (assert (vector? (:activity_log workspace)) "Activity log should be an array")
@@ -212,7 +212,7 @@
       (assert (:type user) "User missing type"))
 
     ;; DWH structure
-    (let [dwh (first (:dwh workspace))]
+    (let [dwh (first (:data_warehouses workspace))]
       (assert (:id dwh) "DWH missing id")
       (assert (:name dwh) "DWH missing name")
       (assert (:type dwh) "DWH missing type")
@@ -223,7 +223,7 @@
     (println (str "   - " (count (:plans workspace)) " plans"))
     (println (str "   - " (count (:transforms workspace)) " transforms"))
     (println (str "   - " (count (:users workspace)) " users"))
-    (println (str "   - " (count (:dwh workspace)) " data warehouses"))
+    (println (str "   - " (count (:data_warehouses workspace)) " data warehouses"))
     (println (str "   - " (count (:permissions workspace)) " permissions"))
     (println (str "   - Plan has " (count (get-in workspace [:plans 0 :content :analysis_plan :stages])) " stages"))
     (println (str "   - Plan has " (->> (get-in workspace [:plans 0 :content :analysis_plan :stages])

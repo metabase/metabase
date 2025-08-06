@@ -53,7 +53,7 @@
                                                  :schema "analytics"}
                                         :created-at "2024-01-15T10:30:00Z"}]
                           :users []
-                          :dwh []
+                          :data_warehouses []
                           :documents []
                           :permissions []
                           :activity_log []
@@ -158,7 +158,7 @@
                            :activity_log []
                            :permissions []
                            :users []
-                           :dwh []
+                           :data_warehouses []
                            :documents []}]
       (is (map? valid-workspace))
       (is (vector? (:plans valid-workspace)))
@@ -186,11 +186,11 @@
                                         :email "test@example.com"
                                         :type "workspace-user"
                                         :created-at "2023-08-06T15:00:00Z"}]
-                               :dwh [{:id 1
-                                      :name "Test DWH"
-                                      :type :read-only
-                                      :credentials {:username "user" :password "pass"}
-                                      :created-at "2023-08-06T15:00:00Z"}]
+                               :data_warehouses [{:id 1
+                                                  :name "Test DWH"
+                                                  :type :read-only
+                                                  :credentials {:username "user" :password "pass"}
+                                                  :created-at "2023-08-06T15:00:00Z"}]
                                :documents [1 2 3]
                                :permissions [{:table "users" :permission :read :created-at "2023-08-06T15:00:00Z"}]}]
 
@@ -198,7 +198,7 @@
       (is (vector? (:plans workspace-with-data)))
       (is (vector? (:transforms workspace-with-data)))
       (is (vector? (:users workspace-with-data)))
-      (is (vector? (:dwh workspace-with-data)))
+      (is (vector? (:data_warehouses workspace-with-data)))
       (is (vector? (:documents workspace-with-data)))
       (is (vector? (:permissions workspace-with-data)))
 
@@ -217,7 +217,7 @@
                   (:users workspace-with-data)))
       (is (every? #(and (contains? % :credentials)
                         (contains? % :created-at))
-                  (:dwh workspace-with-data)))
+                  (:data_warehouses workspace-with-data)))
       (is (every? #(and (contains? % :table)
                         (contains? % :permission)
                         (contains? % :created-at))
@@ -232,5 +232,3 @@
              (:name (t2/select-one :model/Workspace :id workspace-id))))
       (is (= [:name :description :created_at :updated_at :plans :transforms :documents :permissions :id]
              (keys (m.workspace/sort-workspace wksp)))))))
-
-(comment)

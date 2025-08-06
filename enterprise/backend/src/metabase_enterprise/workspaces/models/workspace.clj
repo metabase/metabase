@@ -21,7 +21,9 @@
    [clj-yaml.core :as yaml]
    [clojure.string :as str]
    [lambdaisland.deep-diff2 :as ddiff]
+   [malli.util :as mut]
    [metabase.models.interface :as mi]
+   [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -81,13 +83,13 @@
                                           ;; api-key?
                                           ;; db creds?
                                           ]]]
-   [:dwh {:optional true} [:sequential
-                           [:map
-                            [:id [:int {:min 1}]]
-                            [:created-at :string]
-                            [:type [:enum :read-only :read-write]]
-                            [:credentials :map]
-                            [:name :string]]]]
+   [:data_warehouses {:optional true} [:sequential
+                                       [:map
+                                        [:id [:int {:min 1}]]
+                                        [:created-at :string]
+                                        [:type [:enum :read-only :read-write]]
+                                        [:credentials :map]
+                                        [:name :string]]]]
    ;; For permissions, we could keep a set of tables with read/write permissions
    [:permissions {:optional true}
     [:sequential
@@ -104,7 +106,7 @@
    :transforms mi/transform-json
    :documents mi/transform-json
    :users mi/transform-json
-   :dwh mi/transform-json
+   :data_warehouses mi/transform-json
    :permissions mi/transform-json})
 
 (doto :model/Workspace
@@ -122,7 +124,7 @@
   "Required for a stable diff in a yaml view"
   [workspace]
   (let [top-level-sorted (into (sorted-map-by sort-workspace-keys) workspace)
-        json-cols [:plans :activity-logs :transforms :documents :user :dwh :permissions]]
+        json-cols [:plans :activity-logs :transforms :documents :user :data_warehouses :permissions]]
     ;; sort each json column value by :created-at
     (reduce (fn [acc col]
               (if-let [col-data (get top-level-sorted col)]
@@ -149,7 +151,7 @@
 
   (def cw2 (-> cw
                (assoc :name "Customer Churn Workspace 2")
-               (update :dwh #(drop 1 %))
+               (update :data_warehouses #(drop 1 %))
                (update :users conj {:id 1003
                                     :name "Extra Reader"
                                     :email "extra.reader@company.com"
@@ -161,7 +163,8 @@
   (ddiff/pretty-print (ddiff/diff cw cw2))
 
   ;; TODO: insert it
+  (t2/insert! :model/Workspace cw2)
   (t2/insert! :model/Workspace cw)
 
-  (write-yaml cw)
-  (write-yaml cw2))
+  (do (write-yaml cw)
+      (write-yaml cw2)))

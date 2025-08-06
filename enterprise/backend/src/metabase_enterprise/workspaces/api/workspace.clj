@@ -58,7 +58,7 @@
                         :activity_log []
                         :permissions []
                         :documents []
-                        :dwh []}]
+                        :data_warehouses []}]
     (t2/insert-returning-instance! :model/Workspace workspace-data)))
 
 (api.macros/defendpoint :put "/:id"
@@ -187,13 +187,13 @@
    _query-params
    {:keys [dwh_id name type credentials]}
    :- [:map
-       [:dwh_id ms/PositiveInt]
+       [:data_warehouses_id ms/PositiveInt]
        [:name ms/NonBlankString]
        [:type [:enum "read-only" "read-write"]]
        [:credentials :map]]]
   {id ms/PositiveInt}
   (let [workspace (api/check-404 (t2/select-one :model/Workspace :id id))
-        current-dwh (or (:dwh workspace) [])
+        current-dwh (or (:data_warehouses workspace) [])
         new-dwh {:id dwh_id
                  :name name
                  :type (keyword type)
@@ -201,7 +201,7 @@
                  :created-at (str (java.time.Instant/now))}
         updated-dwh (conj current-dwh new-dwh)]
     (t2/update! :model/Workspace id
-                {:dwh updated-dwh
+                {:data_warehouses updated-dwh
                  :updated_at (str (java.time.Instant/now))})
     (t2/select-one :model/Workspace :id id)))
 
