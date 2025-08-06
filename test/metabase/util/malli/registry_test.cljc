@@ -2,6 +2,7 @@
   (:require
    #?@(:clj
        ([metabase.util.i18n :as i18n]))
+   [clojure.string :as str]
    [clojure.test :refer [are deftest is testing]]
    [malli.core :as mc]
    [malli.error :as me]
@@ -97,3 +98,114 @@
                      (mc/form (mr/resolve-schema schema)))
       ::location
       [:ref ::location])))
+
+(deftest ^:parallel with-key-stabilizes-cache-keys
+  (are [input expected] (= expected (#'mr/schema-cache-key (mr/with-key input)))
+
+    ;; higher order function
+    (constantly true)
+    "(constantly true)"
+
+    ;; higher order function as a malli schema
+    [:fn (constantly true)]
+    "[:fn (constantly true)]"
+
+    ;; Simple function literals
+    #_:clj-kondo/ignore
+    #(odd? %)
+    "(fn* [a] (odd? a))"
+
+    ;; Simple function literals as a malli schema
+    #_:clj-kondo/ignore
+    [:fn #(odd? %)]
+    "[:fn (fn* [a] (odd? a))]"
+
+    ;; Multiple arity function
+    #_:clj-kondo/ignore
+    #(+ %1 %2)
+    "(fn* [a b] (+ a b))"
+
+    ;; scoped error fn
+    (let [error-fn (fn [{:keys [value]} _] (str "Not valid: " (pr-str value)))]
+      [:fn {:error/fn error-fn} number?])
+    (str/join ["(let [error-fn (fn [{:keys [value]} _] (str \"Not valid: \" (pr-str value)))]"
+               " [:fn #:error{:fn error-fn} number?])"])
+
+    ;; inline error fn
+    [:fn {:error/fn (fn [{:keys [value]} _] (str "Not valid: " (pr-str value)))} number?]
+    "[:fn #:error{:fn (fn [{:keys [value]} _] (str \"Not valid: \" (pr-str value)))} number?]"
+
+    ;; Functions with nested calls
+    #(-> % inc (* 2) str)
+    "(fn* [a] (-> a inc (* 2) str))"
+
+    ;; Functions with threading macros
+    #(->> % (map inc) (filter even?))
+    "(fn* [a] (->> a (map inc) (filter even?)))"
+
+    ;; Function with multiple arguments
+    #(even? (+ 1 %1 %2 %3))
+    "(fn* [a b c] (even? (+ 1 a b c)))"
+
+    ;; Function with insane arg count
+    #(even? (+ 1 %1 %2 %3 %4 %5 %6 %7 %8 %9 %10
+               %11 %12 %13 %14 %15 %16 %17 %18 %19 %20))
+    "(fn* [a b c d e f g h i j k l m n o p q r s t] (even? (+ 1 a b c d e f g h i j k l m n o p q r s t)))"
+
+    ;; Function with insane arg count and %&
+    #(even? (+ 1 %1 %2 %3 %4 %5 %6 %7 %8 %9 %10
+               %11 %12 %13 %14 %15 %16 %17 %18 %19 %20 %& %&))
+    "(fn* [a b c d e f g h i j k l m n o p q r s t & u] (even? (+ 1 a b c d e f g h i j k l m n o p q r s t u u)))"
+
+    ;; Function resuing args
+    #(even? (+ 1 %1 %1 %1 %2 %2 %2 %3 %3 %3 %4 %4 %4 %5 %5 %5 %6 %6 %6 %7 %7 %7 %8 %8 %8 %9 %9 %9 %10 %10 %10
+               %11 %11 %11 %12 %12 %12 %13 %13 %13 %14 %14 %14 %15 %15 %15 %16 %16 %16 %17 %17 %17 %18 %18 %18 %19 %19 %19 %20 %20 %20 %& %& %& %& %& %&))
+    (str/join ["(fn* [a b c d e f g h i j k l m n o p q r s t & u]"
+               " (even? (+ 1 a a a b b b c c c d d d e e e "
+               "f f f g g g h h h i i i j j j k k k l l l "
+               "m m m n n n o o o p p p q q q r r r s s s "
+               "t t t u u u u u u)))"])
+
+    ;; Schema with metadata
+    [:fn ^{:doc "checks if odd"} (fn [x] (even? (inc x)))]
+    "[:fn (fn [x] (even? (inc x)))]"
+
+    ;; Nested predicates
+    [:fn (fn [x] ((some-fn string? keyword?) x))]
+    "[:fn (fn [x] ((some-fn string? keyword?) x))]"
+
+    ;; Complex predicate composition
+    [:fn (fn [x] ((comp not zero? count) x))]
+    "[:fn (fn [x] ((comp not zero? count) x))]"
+
+    ;; Function with destructuring
+    #(let [{:keys [a b]} %] (+ a b))
+    "(fn* [a] (let [{:keys [a b]} a] (+ a b)))"
+
+    ;; Function with multiple args and destructuring
+    #(let [[x y] %1] (+ x y %2))
+    "(fn* [a b] (let [[x y] a] (+ x y b)))"
+
+    ;; Anonymous function with conditional
+    #(if (pos? %) (inc %) (dec %))
+    "(fn* [a] (if (pos? a) (inc a) (dec a)))"
+
+    ;; Function with local bindings
+    #(let [doubled (* 2 %)] (str doubled))
+    "(fn* [a] (let [doubled (* 2 a)] (str doubled)))"
+
+    ;; Quoted function
+    ;; (we don't use these a lot, but they are valid, (and serializiable))
+    [:fn '(fn [x] (even? x))]
+    "[:fn (quote (fn [x] (even? x)))]"
+
+    ;; Schema with custom key and complex function
+    [:fn {:validator :custom}
+     (fn [m] (and (map? m) (contains? m :id)))]
+    "[:fn {:validator :custom} (fn [m] (and (map? m) (contains? m :id)))]"
+
+    [:fn {:my-odd :fn} (fn [x] (even? (inc x)))]
+    "[:fn {:my-odd :fn} (fn [x] (even? (inc x)))]"
+
+    [:fn (fn [x] ((every-pred even? number? #(= 1 (count (str %)))) x))]
+    "[:fn (fn [x] ((every-pred even? number? (fn* [a] (= 1 (count (str a))))) x))]"))
