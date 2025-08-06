@@ -20,7 +20,7 @@ When viewing tables, you can click on the **gear** icon in the bottom left to br
 
 ![Adding or removing columns](../images/column-selection.png)
 
-Admins (and people in groups with access to table metadata) can hide columns across your entire Metabase by marking them as hidden in the [table metadata settings](../../data-modeling/metadata-editing.md#column-visibility).
+Admins (and people in groups with access to table metadata) can hide columns across your entire Metabase by marking them as hidden in the [table metadata settings](../../data-modeling/metadata-editing.md#field-visibility).
 
 > **Hiding columns should _not_ be used to secure sensitive information**. Hiding columns in table visualization settings only affects the visibility of the columns _in the visualization_, not in the query results. Even people with view-only permissions to the question will be able to change the visualization settings and unhide columns. To exclude a column from the results of a specific query, uncheck the column in the "Data" block of the query builder.
 

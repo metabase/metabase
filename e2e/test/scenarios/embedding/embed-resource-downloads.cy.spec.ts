@@ -106,6 +106,7 @@ H.describeWithSnowplowEE(
         waitLoading();
 
         H.getDashboardCard().realHover();
+        H.getEmbeddedDashboardCardMenu().click();
         H.exportFromDashcard(".csv");
         cy.verifyDownload(".csv", { contains: true });
 
@@ -187,6 +188,7 @@ H.describeWithSnowplowEE(
           waitLoading();
 
           H.getDashboardCard().realHover();
+          H.getEmbeddedDashboardCardMenu().click();
           H.exportFromDashcard(".csv");
           cy.verifyDownload(".csv", { contains: true });
 

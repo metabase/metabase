@@ -14,7 +14,6 @@ export type TitleProps = CommonStylingProps;
  *
  * - The question's display name if it's saved
  * - An auto-generated description for ad-hoc questions (non-native queries)
- * - "New question" as fallback or for new/native queries
  *
  * @function
  * @category InteractiveQuestion

@@ -1,13 +1,6 @@
-import {
-  assertNoUnstructuredSnowplowEvent,
-  describeWithSnowplowEE,
-  expectUnstructuredSnowplowEvent,
-  main,
-} from "e2e/support/helpers";
-
 const { H } = cy;
 
-describeWithSnowplowEE("scenarios > setup embedding (EMB-477)", () => {
+H.describeWithSnowplowEE("scenarios > setup embedding (EMB-477)", () => {
   beforeEach(() => {
     H.resetSnowplow();
     H.restore("blank");
@@ -24,7 +17,7 @@ describeWithSnowplowEE("scenarios > setup embedding (EMB-477)", () => {
     );
 
     // `/setup` should not be rendered and its events should not be sent to not add noise to events
-    assertNoUnstructuredSnowplowEvent({
+    H.assertNoUnstructuredSnowplowEvent({
       event: "step_seen", // `step_seen` event is sent on `/setup`, on `/setup/embedding` we send `embedding_setup_step_seen`
     });
   });
@@ -77,7 +70,7 @@ describeWithSnowplowEE("scenarios > setup embedding (EMB-477)", () => {
     cy.wait("@setting");
     cy.visit("/");
 
-    main()
+    H.main()
       .findByText("Get started with Embedding Metabase in your app")
       .should("be.visible");
   });
@@ -95,7 +88,7 @@ describeWithSnowplowEE("scenarios > setup embedding (EMB-477)", () => {
     cy.log("0: Welcome step");
     assertEmbeddingOnboardingPageLoaded();
 
-    expectUnstructuredSnowplowEvent({
+    H.expectUnstructuredSnowplowEvent({
       event: "embedding_setup_step_seen",
       event_detail: "welcome",
     });
@@ -119,7 +112,7 @@ describeWithSnowplowEE("scenarios > setup embedding (EMB-477)", () => {
         "be.visible",
       );
 
-      expectUnstructuredSnowplowEvent({
+      H.expectUnstructuredSnowplowEvent({
         event: "embedding_setup_step_seen",
         event_detail: "user-creation",
       });

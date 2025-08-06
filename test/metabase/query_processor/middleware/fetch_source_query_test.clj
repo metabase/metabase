@@ -193,11 +193,9 @@
                         :query    {:source-table "card__1"
                                    :limit        50}}]))
         card     (lib.metadata/card base 1)
-        eid      (lib/random-ident)
         metadata (:result-metadata card)]
     (lib.tu/merged-mock-metadata-provider base {:cards [{:id              1
                                                          :type            :model
-                                                         :entity-id       eid
                                                          :result-metadata metadata}]})))
 
 (deftest ^:parallel nested-nested-queries-test-2

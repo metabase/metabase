@@ -46,11 +46,12 @@
   If this clause is 'selected', this is the position the clause will appear in the results (i.e. the corresponding
   column index)."
   (:require
-   [clojure.walk :as walk]
    [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.lib.core :as lib]
+   [metabase.lib.field.resolution :as lib.field.resolution]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -58,12 +59,14 @@
    [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.query-processor.middleware.annotate.legacy-helper-fns :as annotate.legacy-helper-fns]
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.performance :as perf]))
 
 (defn- prefix-field-alias
   "Generate a field alias by applying `prefix` to `field-alias`. This is used for automatically-generated aliases for
@@ -89,21 +92,22 @@
 ;; [[unique-alias-fn]] below.
 
 (defn- remove-namespaced-options [options]
-  (when options
-    (not-empty (into {}
-                     (remove (fn [[k _]]
-                               (qualified-keyword? k)))
-                     options))))
+  (not-empty
+   (reduce-kv (fn [m k _]
+                (if (qualified-keyword? k)
+                  (dissoc m k)
+                  m))
+              options options)))
 
 (defn normalize-clause
   "Normalize a `:field`/`:expression`/`:aggregation` clause by removing extra info so it can serve as a key for
   `:qp/refs`. This removes `:source-field` if it is present -- don't use the output of this for anything but internal
   key/distinct comparison purposes."
   [clause]
-  (lib.util.match/match-one clause
+  (lib.util.match/match-lite clause
     ;; optimization: don't need to rewrite a `:field` clause without any options
     [:field _ nil]
-    &match
+    clause
 
     [:field id-or-name opts]
     ;; this doesn't use [[mbql.u/update-field-options]] because this gets called a lot and the overhead actually adds up
@@ -125,7 +129,7 @@
       [:aggregation index])
 
     _
-    &match))
+    clause))
 
 (defn- selected-clauses
   "Get all the clauses that are returned by this level of the query as a map of normalized-clause -> index of that
@@ -179,6 +183,27 @@
 (defn- field-table-id [field-clause]
   (:table-id (field-instance field-clause)))
 
+(defn- resolve-field-source-table-alias-with-lib-field-resolution
+  "This is only an absolute last resort -- use Lib `resolve-field-ref` to resolve a field ref if the code we have here
+  can't do it.
+
+  We should actually rewrite this entire namespace to just use Lib in the first place for everything, but that's a
+  project for another day. (See #59589)"
+  [inner-query field-ref]
+  (try
+    (let [lib-query (annotate.legacy-helper-fns/legacy-inner-query->mlv2-query inner-query)]
+      (when-let [resolved (lib.field.resolution/resolve-field-ref lib-query -1 (lib/->pMBQL field-ref))]
+        (cond
+          (= (:lib/source resolved) :source/previous-stage)
+          ::source
+
+          (= (:lib/source resolved) :source/joins)
+          (when-let [join-alias (:metabase.lib.join/join-alias resolved)]
+            (get-in inner-query [::join-alias->escaped join-alias] join-alias)))))
+    (catch Throwable e
+      (log/error e "Failed to convert inner query to Lib query, unable to do fallback matching" (pr-str inner-query))
+      nil)))
+
 (mu/defn- field-source-table-alias :- [:or
                                        ::lib.schema.common/non-blank-string
                                        ::lib.schema.id/table
@@ -192,10 +217,11 @@
       (and table-id (= table-id source-table)) table-id
       source-query                             ::source
       :else
-      (throw (ex-info (trs "Cannot determine the source table or query for Field clause {0}" (pr-str field-clause))
-                      {:type   qp.error-type/invalid-query
-                       :clause field-clause
-                       :query  inner-query})))))
+      (or (resolve-field-source-table-alias-with-lib-field-resolution inner-query field-clause)
+          (throw (ex-info (trs "Cannot determine the source table or query for Field clause {0}" (pr-str field-clause))
+                          {:type   qp.error-type/invalid-query
+                           :clause field-clause
+                           :query  inner-query}))))))
 
 (mr/def ::exported-clause
   [:or ::mbql.s/field ::mbql.s/expression ::mbql.s/aggregation-options])
@@ -299,11 +325,11 @@
         ;; otherwise we failed to find a match! This is expected for native queries but if the source query was MBQL
         ;; there's probably something wrong.
         (when-not (:native source-query)
-          (log/warnf "Failed to find matching field for\n\n%s\n\nin MBQL source query, query may not work! Found:\n\n%s"
-                     (pr-str field-clause)
-                     (u/pprint-to-str (into #{}
-                                            (map (some-fn ::desired-alias :name identity))
-                                            all-exports)))))))
+          (log/debugf "Failed to find matching field for\n\n%s\n\nin MBQL source query, query may not work! Found:\n\n%s"
+                      (pr-str field-clause)
+                      (u/pprint-to-str (into #{}
+                                             (map (some-fn ::desired-alias :name identity))
+                                             all-exports)))))))
 
 (defn- matching-field-in-join-at-this-level
   "If `field-clause` is the result of a join *at this level* with a `:source-query`, return the 'source' `:field` clause
@@ -538,7 +564,8 @@
                                            (add-info-to-aggregation-definition inner-query unique-alias-fn aggregation i)))
                             aggregations)))))
 
-(defn- add-alias-info* [inner-query]
+(mu/defn- add-alias-info* :- ::mbql.s/SourceQuery
+  [inner-query :- ::mbql.s/SourceQuery]
   (assert (not (:strategy inner-query)) "add-alias-info* should not be called on a join") ; not user-facing
   (let [unique-alias-fn (make-unique-alias-fn)]
     (-> (lib.util.match/replace inner-query
@@ -588,7 +615,7 @@
                                                  lib.util/unique-name-generator)]
      (as-> query-or-inner-query $q
        ;; first escape all the join aliases
-       (walk/postwalk
+       (perf/postwalk
         (fn [form]
           (if (and (map? form)
                    (seq (:joins form)))
@@ -603,7 +630,7 @@
             form))
         $q)
        ;; then add alias info
-       (walk/postwalk
+       (perf/postwalk
         (fn [form]
           (if (and (map? form)
                    ((some-fn :source-query :source-table) form)

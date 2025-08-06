@@ -52,7 +52,7 @@
 (deftest sync-table-update-info-of-new-table-added-during-sync-test
   (testing "during sync, if a table is reactivated, we should update the table info if needed"
     (let [dbdef (mt/dataset-definition "sync-retired-table"
-                                       ["user" [{:field-name "name" :base-type :type/Text}] [["Ngoc"]]])]
+                                       [["user" [{:field-name "name" :base-type :type/Text}] [["Ngoc"]]]])]
       (mt/dataset dbdef
         (t2/update! :model/Table (mt/id :user) {:active false})
         ;; table description is changed

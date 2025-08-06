@@ -302,7 +302,9 @@
                               [:id        ms/PositiveInt]
                               [:search-id ms/PositiveInt]]
    {:keys [value]} :- [:map
-                       [:value ms/NonBlankString]]]
+                       [:value {:optional true} ms/NonBlankString]]]
+  (when-not value
+    (api/check-400 (request/limit) "Limit required if value is omitted"))
   (let [field        (api/check-404 (t2/select-one :model/Field :id id))
         search-field (api/check-404 (t2/select-one :model/Field :id search-id))]
     (api/check-403 (mi/can-read? field))

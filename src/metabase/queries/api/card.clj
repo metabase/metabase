@@ -558,6 +558,13 @@
     (check-allowed-to-remove-from-existing-dashboards card-before-update))
   (collection/check-allowed-to-change-collection card-before-update card-updates))
 
+(defn- check-update-result-metadata-data-perms
+  [card-before-updates card-updates]
+  (when (api/column-will-change? :result_metadata card-before-updates card-updates)
+    (let [database-id (some :database_id [card-before-updates card-updates])
+          result-metadata (:result_metadata card-updates)]
+      (query-perms/check-result-metadata-data-perms database-id result-metadata))))
+
 (def ^:private CardUpdateSchema
   [:map
    [:name                   {:optional true} [:maybe ms/NonBlankString]]
@@ -613,7 +620,8 @@
                                  (card/model? card-before-update)
                                  (card/model? card-updates))]
     ;; Do various permissions checks
-    (doseq [f [check-allowed-to-move
+    (doseq [f [check-update-result-metadata-data-perms
+               check-allowed-to-move
                check-allowed-to-modify-query
                check-allowed-to-change-embedding]]
       (f card-before-update card-updates))

@@ -1,12 +1,11 @@
 import cx from "classnames";
 import { useMount } from "react-use";
 
-import ExternalLink from "metabase/common/components/ExternalLink";
-import Link from "metabase/common/components/Link";
 import { Box, Flex, Image, Stack, Text, Title } from "metabase/ui";
 
 import { UPGRADE_URL } from "../constants";
 
+import { UpsellCta } from "./UpsellCta";
 import { UpsellGem } from "./UpsellGem";
 import { UpsellWrapper } from "./UpsellWrapper";
 import S from "./Upsells.module.css";
@@ -42,6 +41,7 @@ export type UpsellCardProps = {
   children: React.ReactNode;
   large?: boolean;
   style?: React.CSSProperties;
+  onClick?: () => void;
 } & CardWidthProps &
   CardLinkProps;
 
@@ -57,9 +57,10 @@ export const _UpsellCard: React.FC<UpsellCardProps> = ({
   fullWidth,
   maxWidth,
   large = false,
+  onClick,
   ...props
 }: UpsellCardProps) => {
-  const url = useUpsellLink({
+  const urlWithParams = useUpsellLink({
     url: buttonLink ?? UPGRADE_URL,
     campaign,
     location,
@@ -97,27 +98,13 @@ export const _UpsellCard: React.FC<UpsellCardProps> = ({
             {children}
           </Text>
           <Box mx="md" mb="lg">
-            {buttonLink !== undefined ? (
-              <ExternalLink
-                onClickCapture={() =>
-                  trackUpsellClicked({ location, campaign })
-                }
-                href={url}
-                className={S.UpsellCTALink}
-              >
-                {buttonText}
-              </ExternalLink>
-            ) : (
-              <Link
-                onClickCapture={() =>
-                  trackUpsellClicked({ location, campaign })
-                }
-                to={internalLink}
-                className={S.UpsellCTALink}
-              >
-                {buttonText}
-              </Link>
-            )}
+            <UpsellCta
+              onClick={onClick}
+              url={buttonLink ? urlWithParams : undefined}
+              internalLink={internalLink}
+              buttonText={buttonText}
+              onClickCapture={() => trackUpsellClicked({ location, campaign })}
+            />
           </Box>
         </Stack>
       </Stack>

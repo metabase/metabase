@@ -97,7 +97,7 @@
     (testing "admin sees useful error when uploaded file has invalid csv"
       (ct-utils/with-clean-translations!
         (mt/with-premium-features #{:content-translation}
-          (is (=? {:errors ["Row 3: CSV error (unexpected character: !)"]}
+          (is (=? {:errors ["Error Parsing CSV at Row 4: CSV error (unexpected character: !)"]}
                   (mt/user-http-request :crowberto :post 422 "ee/content-translation/upload-dictionary"
                                         {:request-options {:headers {"content-type" "multipart/form-data"}}}
                                         {:file invalid-csv}))))))

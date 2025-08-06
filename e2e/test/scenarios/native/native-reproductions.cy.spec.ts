@@ -103,12 +103,12 @@ describe("issue 38083", () => {
       visitQuestion: true,
     });
 
-    cy.get("legend")
-      .contains(QUESTION.native["template-tags"].state["display-name"])
-      .parent("fieldset")
-      .within(() => {
-        cy.icon("revert").should("not.exist");
-      });
+    H.filterWidget()
+      .filter(
+        `:contains("${QUESTION.native["template-tags"].state["display-name"]}")`,
+      )
+      .icon("revert")
+      .should("not.exist");
   });
 });
 

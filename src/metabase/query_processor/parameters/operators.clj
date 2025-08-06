@@ -8,9 +8,7 @@
                {:source-field 5}]]
      :value [3 5]}"
   (:require
-   [metabase.lib.convert :as lib.convert]
-   [metabase.lib.normalize :as lib.normalize]
-   [metabase.lib.options :as lib.options]
+   [metabase.lib.core :as lib]
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.lib.util.match :as lib.util.match]
@@ -21,14 +19,6 @@
 (mu/defn- operator-arity :- [:maybe [:enum :unary :binary :variadic]]
   [param-type]
   (get-in lib.schema.parameter/types [param-type :operator]))
-
-(defn- operator-options-fn
-  [param-type]
-  (get-in lib.schema.parameter/types [param-type :options-fn]
-          ;; Default is to conj on the end if options are provided.
-          (fn [clause options]
-            (cond-> clause
-              options (conj options)))))
 
 (defn operator?
   "Returns whether param-type is an \"operator\" type."
@@ -68,9 +58,17 @@
                        :field-id    (last field)
                        :type        qp.error-type/invalid-parameter})))))
 
+;;; TODO (Cam 7/23/25) -- we should probably move this logic into [[metabase.lib.schema.parameter]] as normal
+;;; `:decode/normalize` logic
 (defn- normalize-param
   [param]
-  (lib.normalize/normalize ::lib.schema.parameter/parameter param))
+  (case (keyword (:type param))
+    :number/between
+    (let [[l u] (:value param)]
+      (cond-> param
+        (nil? u) (assoc :type :number/>=, :value [l])
+        (nil? l) (assoc :type :number/<=, :value [u])))
+    param))
 
 (mu/defn to-clause :- ::lib.schema.expression/boolean
   "Convert an operator style parameter into an mbql clause. Will also do arity checks and throws an ex-info with
@@ -79,7 +77,7 @@
   (let [{param-type :type, [a b :as param-value] :value, target :target, options :options} (normalize-param param)
         field-ref (or (lib.util.match/match-one target
                         :field
-                        (lib.convert/->pMBQL &match))
+                        (lib/->pMBQL &match))
                       (throw (ex-info (format "Invalid target: expected :field ref, got: %s" (pr-str target))
                                       {:target target, :type qp.error-type/invalid-parameter})))
         options   (or options {})]
@@ -94,4 +92,4 @@
                            :param-value param-value
                            :field-id    (last field-ref)
                            :type        qp.error-type/invalid-parameter})))
-        lib.normalize/normalize)))
+        lib/normalize)))

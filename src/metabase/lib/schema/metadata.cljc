@@ -12,9 +12,7 @@
 
 (defn- kebab-cased-key? [k]
   (and (keyword? k)
-       (or (contains? lib.schema.common/HORRIBLE-keys k)
-           ;; apparently `str/includes?` doesn't work on keywords in ClojureScript ??
-           (not (str/includes? (str k) "_")))))
+       (not (str/includes? (str k) "_"))))
 
 (defn- kebab-cased-map? [m]
   (and (map? m)
@@ -89,7 +87,7 @@
 ;;; The way FieldValues/remapping works is hella confusing, because it involves the FieldValues table and Dimension
 ;;; table, and the `has_field_values` column, nobody knows why life is like this TBH. The docstrings
 ;;; in [[metabase.warehouse-schema.models.field-values]], [[metabase.parameters.chain-filter]],
-;;; and [[metabase.query-processor.middleware.add-dimension-projections]] explain this stuff in more detail, read
+;;; and [[metabase.query-processor.middleware.add-remaps]] explain this stuff in more detail, read
 ;;; those and then maybe you will understand what the hell is going on.
 
 (def column-has-field-values-options
@@ -137,7 +135,7 @@
 (mr/def ::column.remapping.external
   "External remapping (Dimension) for a column. From the [[metabase.warehouse-schema.models.dimension]] with `type =
   external` associated with a `Field` in the application database.
-  See [[metabase.query-processor.middleware.add-dimension-projections]] for what this means."
+  See [[metabase.query-processor.middleware.add-remaps]] for what this means."
   [:map
    [:lib/type [:= {:decode/normalize lib.schema.common/normalize-keyword} :metadata.column.remapping/external]]
    [:id       ::lib.schema.id/dimension]
@@ -150,7 +148,7 @@
 (mr/def ::column.remapping.internal
   "Internal remapping (FieldValues) for a column. From [[metabase.warehouse-schema.models.dimension]] with `type =
   internal` and the [[metabase.warehouse-schema.models.field-values]] associated with a `Field` in the application
-  database. See [[metabase.query-processor.middleware.add-dimension-projections]] for what this means."
+  database. See [[metabase.query-processor.middleware.add-remaps]] for what this means."
   [:map
    [:lib/type              [:= {:decode/normalize lib.schema.common/normalize-keyword} :metadata.column.remapping/internal]]
    [:id                    ::lib.schema.id/dimension]
@@ -190,7 +188,9 @@
         ;; these busted "IDs"
         (as-> m (cond-> m
                   (and (:id m) (not (pos-int? (:id m))))
-                  (dissoc :id))))))
+                  (dissoc :id)))
+        ;; remove deprecated `:ident` and `:model/inner_ident` keys (normalized to `:model/inner-ident`)
+        (dissoc :ident :model/inner-ident))))
 
 (mr/def ::column.validate-expression-source
   "Only allow `:lib/expression-name` when `:lib/source` is `:source/expressions`. If it's anything else, it probably
@@ -231,14 +231,33 @@
        true))])
 
 ;;; TODO (Cam 7/1/25) -- disabled for now because of bugs like QUE-1496; once that's fixed we should re-enable this.
+;;; Note we probably also need to remove [[metabase.lib.metadata.result-metadata/remove-implicit-join-aliases]]
 #_(mr/def ::column.validate-join-alias
-    "`:metabase.lib.join/join-alias` SHOULD ONLY be set when `:lib/source` = `:source/joins`."
-    [:fn
-     {:error/message "current stage join alias (:metabase.lib.join/join-alias) should only be set for columns whose :lib/source is :source/joins"}
-     (fn [m]
-       (if (:metabase.lib.join/join-alias m)
-         (= (:lib/source m) :source/joins)
-         true))])
+    "* Current stage join alias (`:metabase.lib.join/join-alias`) should only be set for columns whose `:lib/source` is
+     `:source/joins`
+
+  * If source is `:source/joins` column must specify a current stage join alias."
+    [:and
+     [:fn
+      {:error/message (str "Current stage join alias (:metabase.lib.join/join-alias) should only be set for columns"
+                           " whose :lib/source is :source/joins.")}
+      (fn [m]
+        (if (:metabase.lib.join/join-alias m)
+          (= (:lib/source m) :source/joins)
+          true))]
+     [:fn
+      {:error/message (str "If source is :source/joins the column must specify current stage join"
+                           " alias (:metabase.lib.join/join-alias).")}
+      (fn [m]
+        (if (= (:lib/source m) :source/joins)
+          (:metabase.lib.join/join-alias m)
+          true))]])
+
+;;; TODO (Cam 7/30/25) -- we should also validate that if `:lib/source` is `:source/implicitly-joinable` it includes
+;;; `:fk-field-id`, and vice-versa (actually this is also allowed if source is `:source/joins` as well.) The implicit
+;;; join could have only happened if the was a `:field` ref with `:source-field` (the mapped key in this case).
+;;; `:fk-field-id` should not be allowed for columns from `:source/previous-stage` or whatever... in that case we
+;;; should be using `:lib/original-fk-field-id` instead.
 
 (def column-visibility-types
   "Possible values for column `:visibility-type`."

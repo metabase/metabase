@@ -123,6 +123,7 @@
   (metadata metadata-provider :metadata/card card-id))
 
 (mu/defn native-query-snippet :- [:maybe ::lib.schema.metadata/native-query-snippet]
+  "Get metadata for a NativeQuerySnippet with `snippet-id` if it can be found."
   [metadata-provider :- ::metadata-provider
    snippet-id        :- ::lib.schema.id/native-query-snippet]
   (metadata metadata-provider :metadata/native-query-snippet snippet-id))
@@ -164,10 +165,15 @@
   (cached-value [cached-metadata-provider k not-found]
     "Fetch a general cached value stored by [[cache-value!]] with the key `k`.")
   (cache-value! [cached-metadata-provider k v]
-    "Store a general cached value `v` under the key `k`."))
+    "Store a general cached value `v` under the key `k`.")
+  (has-cache? [cached-metadata-provider]
+    "Whether this metadata provider actually has a cache or not. (Some metadata providers like
+  ComposedMetadataProvider implement this method but can only cache stuff if one of the providers they wrap is a cached
+  metadata provider.)"))
 
 (defn cached-metadata-provider?
-  "Whether `x` is a valid [[CachedMetadataProvider]]."
+  "Whether `x` satisfies the [[CachedMetadataProvider]] protocol. This does not necessarily mean it actually caches
+  anything! Check [[cached-metadata-provider-with-cache?]] if that's what you want to know."
   [x]
   #?(:clj (extends? CachedMetadataProvider (class x))
      :cljs (satisfies? CachedMetadataProvider x)))
@@ -176,6 +182,17 @@
   [:fn
    {:error/message "A CachedMetadataProvider"}
    #'cached-metadata-provider?])
+
+(defn cached-metadata-provider-with-cache?
+  "Whether `x` is a [[CachedMetadataProvider]] that [[has-cache?]]."
+  [x]
+  (and (cached-metadata-provider? x)
+       (has-cache? x)))
+
+(mr/def ::cached-metadata-provider-with-cache
+  [:fn
+   {:error/message "A CachedMetadataProvider with a cache"}
+   #'cached-metadata-provider-with-cache?])
 
 (mu/defn store-metadatas!
   "Convenience. Store several metadata maps at once."

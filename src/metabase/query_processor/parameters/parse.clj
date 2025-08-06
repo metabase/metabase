@@ -1,6 +1,7 @@
 (ns metabase.query-processor.parameters.parse
   (:require
    [clojure.core.match :refer [match]]
+   [clojure.string :as str]
    [metabase.lib.parse :as lib.parse]
    [metabase.query-processor.parameters :as params]
    [metabase.util.malli :as mu]
@@ -20,16 +21,16 @@
 
     [{:type :metabase.lib.parse/param
       :name param-name}]
-    (params/param param-name)
+    (params/param {:k (str/trim param-name)})
 
     [{:type :metabase.lib.parse/function-param
       :name param-name
       :args args}]
-    (params/function-param param-name (mapv ->param args))
+    (params/function-param {:function-name param-name, :args (mapv ->param args)})
 
     [{:type     :metabase.lib.parse/optional
       :contents contents}]
-    (params/optional (mapv ->param contents))))
+    (params/optional {:args (mapv ->param contents)})))
 
 (mu/defn parse :- [:sequential ::parsed-token]
   "Attempts to parse parameters in string `s`. Parses any optional clauses or parameters found, and returns a sequence

@@ -1,18 +1,19 @@
 name: Auto-Optimize Docs PNG Images
 
 on:
-  push:
-    paths:
-      - 'docs/**/*.png'
+  pull_request:
+    types:
+      - labeled
 
 jobs:
   optimize-images:
     runs-on: ubuntu-latest
-
+    if: ${{ contains(github.event.pull_request.labels.*.name,'Type:Documentation') }}
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
       with:
+        ref: ${{ github.head_ref }}
         token: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Install pngcrush and bc
@@ -31,8 +32,8 @@ jobs:
       if: steps.changed-files.outputs.any_changed == 'true'
       id: optimize
       run: |
-        echo "Optimizing PNG files with pngcrush..."
-        echo "Branch:" $(git_current_branch)
+        echo "Optimizing new PNG files with pngcrush..."
+        echo "Branch: $(git_current_branch)"
 
         # Initialize tracking variables
         total_files=0

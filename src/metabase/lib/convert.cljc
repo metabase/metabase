@@ -7,6 +7,7 @@
    [malli.error :as me]
    [medley.core :as m]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.lib.convert.metadata-to-legacy :as lib.convert.metadata-to-legacy]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.normalize :as lib.normalize]
@@ -219,46 +220,27 @@
           (= converted (:converted state))        (throw (ex-info "Couldn't index clauses" {:clauses clauses}))
           :else                                   (recur state'))))))
 
-(defn- from-indexed-idents [stage list-key idents-key]
-  (let [idents (get stage idents-key)
-        clauses (get stage list-key)]
-    (->> (index-ref-clauses->pMBQL clauses)
-         (map-indexed (fn [i x]
-                        (if-let [ident (or (get idents i)
-                                           ;; Conversion from JSON keywordizes all keys, including these numbers!
-                                           (get idents (keyword (str i))))]
-                          (lib.options/update-options x assoc :ident ident)
-                          x)))
-         vec
-         not-empty)))
-
 (defmethod ->pMBQL :mbql.stage/mbql
   [stage]
-  (let [aggregations (from-indexed-idents stage :aggregation :aggregation-idents)
-        expr-idents  (:expression-idents stage)
+  (let [stage        (m/update-existing stage :aggregation index-ref-clauses->pMBQL)
         expressions  (->> stage
                           :expressions
                           (mapv (fn [[k v]]
-                                  (let [expr (-> v
-                                                 ->pMBQL
-                                                 (lib.util/top-level-expression-clause k))]
-                                    (if-let [ident (get expr-idents k)]
-                                      (lib.options/update-options expr assoc :ident ident)
-                                      expr))))
+                                  (-> v
+                                      ->pMBQL
+                                      (lib.util/top-level-expression-clause k))))
                           not-empty)]
-    (metabase.lib.convert/with-aggregation-list aggregations
+    (metabase.lib.convert/with-aggregation-list (:aggregation stage)
       (let [stage (-> stage
                       stage-source-card-id->pMBQL
-                      (m/assoc-some :expressions expressions
-                                    :aggregation aggregations
-                                    :breakout    (from-indexed-idents stage :breakout :breakout-idents)))
+                      (m/assoc-some :expressions expressions))
             stage (reduce
                    (fn [stage k]
                      (if-not (get stage k)
                        stage
                        (update stage k ->pMBQL)))
-                   (dissoc stage :aggregation-idents :breakout-idents :expression-idents)
-                   (disj stage-keys :aggregation :breakout :expressions))]
+                   stage
+                   (disj stage-keys :expressions :aggregation))]
         (cond-> stage
           (:joins stage) (update :joins deduplicate-join-aliases))))))
 
@@ -429,10 +411,10 @@
   "Map of option keys in pMBQL to their legacy names. Keys are renamed before [[disqualify]] drops all namespaced keys."
   {:metabase.lib.field/original-temporal-unit :original-temporal-unit})
 
-(defn- options->legacy-MBQL
+(mu/defn- options->legacy-MBQL :- [:maybe [:map {:min 1}]]
   "Convert an options map in an MBQL clause to the equivalent shape for legacy MBQL. Remove `:lib/*` keys and
   `:effective-type`, which is not used in options maps in legacy MBQL."
-  [m]
+  [m :- [:maybe :map]]
   (->> (cond-> m
          ;; Following construct ensures that transformation mbql -> pmbql -> mbql, does not add base-type where those
          ;; were not present originally. Base types are added in [[metabase.lib.query/add-types-to-fields]].
@@ -508,17 +490,15 @@
              :length :trim :ltrim :rtrim :upper :lower :text :integer :today]]
   (lib.hierarchy/derive tag ::expression))
 
-;; TODO: aggregation->legacy-MBQL can wrap things in :aggregation-options which only makes sense for aggregations, so why should expression go through that as well?
+;; TODO: aggregation->legacy-MBQL can wrap things in :aggregation-options which only makes sense for aggregations, so
+;; why should expression go through that as well?
 (defmethod ->legacy-MBQL ::aggregation-or-expression
   [input]
   (aggregation->legacy-MBQL input))
 
+;;; TODO (Cam 7/29/25) -- consider moving into [[lib.convert.metadata-to-legacy]]
 (defn- stage-metadata->legacy-metadata [stage-metadata]
-  (into []
-        (comp (map #(update-keys % (fn [k]
-                                     (cond-> k
-                                       (simple-keyword? k) u/->snake_case_en))))
-              (map #(dissoc % :lib/type)))
+  (mapv lib.convert.metadata-to-legacy/lib-metadata-column->legacy-metadata-column
         (:columns stage-metadata)))
 
 (mu/defn- chain-stages
@@ -626,7 +606,11 @@
 
 (defmethod ->legacy-MBQL :mbql/join [join]
   (let [base     (cond-> (disqualify join)
-                   (and *clean-query* (str/starts-with? (:alias join) legacy-default-join-alias)) (dissoc :alias))
+                   (and *clean-query*
+                        (str/starts-with? (:alias join) legacy-default-join-alias)
+                        ;; added by [[metabase.query-processor.middleware.resolve-joins]]
+                        (not (:qp/keep-default-join-alias join)))
+                   (dissoc :alias))
         metadata (:lib/stage-metadata (last (:stages join)))]
     (merge (-> base
                (dissoc :stages :conditions)
@@ -636,10 +620,12 @@
                (update-list->legacy-boolean-expression :conditions :condition))
            (when (seq (:columns metadata))
              {:source-metadata (stage-metadata->legacy-metadata metadata)})
-           (let [inner-query (chain-stages base {:top-level? false})]
+           (let [inner-query (chain-stages
+                              (dissoc base :fields :conditions)
+                              {:top-level? false})]
              ;; if [[chain-stages]] returns any additional keys like `:filter` at the top-level then we need to wrap
-             ;; it all in `:source-query` (QUE-1566)
-             (if (seq (set/difference (set (keys inner-query)) #{:source-table :source-query :fields :source-metadata}))
+             ;; it all in `:source-query` (QUE-1566, QUE-1603)
+             (if (seq (set/difference (set (keys inner-query)) #{:source-table :source-query :source-metadata}))
                {:source-query inner-query}
                inner-query)))))
 
@@ -664,12 +650,6 @@
              (second legacy-clause)
              legacy-clause)])))
 
-(defn- idents-by-index [clause-list]
-  (when (seq clause-list)
-    (into {} (map-indexed (fn [i clause]
-                            [i (lib.options/ident clause)]))
-          clause-list)))
-
 (defmethod ->legacy-MBQL :mbql.stage/mbql
   [stage]
   (metabase.lib.convert/with-aggregation-list (:aggregation stage)
@@ -677,16 +657,8 @@
             (-> stage
                 disqualify
                 source-card->legacy-source-table
-
-                (m/assoc-some :aggregation-idents (idents-by-index (:aggregation stage)))
                 (m/update-existing :aggregation #(mapv aggregation->legacy-MBQL %))
-                (m/assoc-some :breakout-idents (idents-by-index (:breakout stage)))
                 (m/update-existing :breakout #(mapv ->legacy-MBQL %))
-
-                (m/assoc-some :expression-idents (->> (:expressions stage)
-                                                      (into {} (map (juxt lib.util/expression-name
-                                                                          lib.options/ident)))
-                                                      not-empty))
                 (m/update-existing :expressions stage-expressions->legacy-MBQL)
                 (update-list->legacy-boolean-expression :filters :filter))
             (disj stage-keys :aggregation :breakout :filters :expressions))))

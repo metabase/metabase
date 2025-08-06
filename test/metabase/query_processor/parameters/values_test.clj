@@ -18,7 +18,6 @@
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.parameters :as params]
    [metabase.query-processor.parameters.values :as params.values]
-   [metabase.query-processor.store :as qp.store]
    [metabase.system.core :as system]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -390,7 +389,7 @@
   (mt/with-test-user :rasta
     (testing "Persisted Models are substituted"
       ;; legacy test -- don't hardcode driver names in new tests going forward.
-      #_{:clj-kondo/ignore [:metadata/disallow-hardcoded-driver-names-in-test]}
+      #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
       (mt/test-driver :postgres
         ;; TODO (Cam 7/16/25) -- rework this to use metadata providers -- we support model persisted info directly from
         ;; the metadata provider
@@ -423,7 +422,7 @@
                                                left join {{#%d}} c_cached
                                                on c_orig.id = c_cached.id
                                                order by c_orig.id desc limit 3"
-                                              (u/the-id model))
+                                                   (u/the-id model))
                           tag-name         (format "#%d" (u/the-id model))]
                       (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
                                      [update-query])

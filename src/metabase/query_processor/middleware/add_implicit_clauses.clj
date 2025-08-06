@@ -217,6 +217,8 @@
        form))
    form))
 
+;;; TODO (Cam 7/25/25) -- once this is converted to use Lib we can
+;;; remove [[metabase.query-processor.middleware.ensure-joins-use-source-query/ensure-joins-use-source-query]]
 (defn add-implicit-clauses
   "Add an implicit `fields` clause to queries with no `:aggregation`, `breakout`, or explicit `:fields` clauses.
    Add implicit `:order-by` clauses for fields specified in a `:breakout`."

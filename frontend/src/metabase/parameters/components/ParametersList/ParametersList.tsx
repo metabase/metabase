@@ -40,7 +40,6 @@ export const ParametersList = forwardRef<HTMLDivElement, ParametersListProps>(
       setParameterIndex,
       setEditingParameter,
       enableParameterRequiredBehavior,
-      widgetsVariant = "default",
       widgetsWithinPortal,
       widgetsPopoverPosition,
 
@@ -72,7 +71,6 @@ export const ParametersList = forwardRef<HTMLDivElement, ParametersListProps>(
     }: RenderItemProps<Parameter>) => (
       <ParameterWidget
         key={`sortable-${id}`}
-        variant={widgetsVariant}
         fullWidth={vertical}
         withinPortal={widgetsWithinPortal}
         popoverPosition={widgetsPopoverPosition}
