@@ -72,6 +72,7 @@ export const getSubmitValues = (
     .filter((field) => isFieldVisible(field, values.details))
     .map((field) => [field.name, values.details?.[field.name]]);
 
+  // "connection-string" is a FE only field. It's used to prefill the database form and we're not sending it to or storing it in the BE.
   const submitValues = Object.entries(values).filter(
     ([key]) => key !== "connection-string",
   );
