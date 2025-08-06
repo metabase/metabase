@@ -29,6 +29,8 @@ interface DetailViewSidebarProps {
   onSubmit: () => void;
   openPopoverId: number | null;
   setOpenPopoverId: (id: number | null) => void;
+  hoveredSectionId: number | null;
+  setHoveredSectionId: (id: number | null) => void;
 }
 
 export function DetailViewSidebar({
@@ -44,6 +46,8 @@ export function DetailViewSidebar({
   onSubmit,
   openPopoverId,
   setOpenPopoverId,
+  hoveredSectionId,
+  setHoveredSectionId,
 }: DetailViewSidebarProps) {
   const headerSection = sections.find((s) => s.variant === "header");
   const subheaderSection = sections.find((s) => s.variant === "subheader");
@@ -123,6 +127,9 @@ export function DetailViewSidebar({
               onUpdateSection={onUpdateSection}
               openPopoverId={openPopoverId}
               setOpenPopoverId={setOpenPopoverId}
+              isHovered={hoveredSectionId === headerSection.id}
+              onHoverStart={() => setHoveredSectionId(headerSection.id)}
+              onHoverEnd={() => setHoveredSectionId(null)}
             />
           )}
 
@@ -136,6 +143,9 @@ export function DetailViewSidebar({
               onUpdateSection={onUpdateSection}
               openPopoverId={openPopoverId}
               setOpenPopoverId={setOpenPopoverId}
+              isHovered={hoveredSectionId === subheaderSection.id}
+              onHoverStart={() => setHoveredSectionId(subheaderSection.id)}
+              onHoverEnd={() => setHoveredSectionId(null)}
             />
           )}
 
@@ -182,6 +192,9 @@ export function DetailViewSidebar({
                   otherSections.filter((s) => s.fields.length > 0).length > 1 &&
                   section.fields.length > 0
                 }
+                isHovered={hoveredSectionId === section.id}
+                onHoverStart={() => setHoveredSectionId(section.id)}
+                onHoverEnd={() => setHoveredSectionId(null)}
               />
             )}
             onSortEnd={handleSortEnd}

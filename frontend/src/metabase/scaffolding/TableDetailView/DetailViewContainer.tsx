@@ -17,7 +17,7 @@ import { Relationships } from "./ObjectRelations";
 
 interface DetailViewContainerProps {
   children: ReactNode;
-  rowId: number;
+  rowId: number | string;
   rowName: ReactNode;
   table: Table;
   isEdit: boolean;
@@ -46,6 +46,8 @@ interface DetailViewContainerProps {
   onCancel: () => void;
   onSubmit: () => void;
   onFollowForeignKey: (fk: ForeignKey) => void;
+  hoveredSectionId: number | null;
+  setHoveredSectionId: (id: number | null) => void;
 }
 
 export function DetailViewContainer({
@@ -76,6 +78,8 @@ export function DetailViewContainer({
   onCancel,
   onSubmit,
   onFollowForeignKey,
+  hoveredSectionId,
+  setHoveredSectionId,
 }: DetailViewContainerProps) {
   return (
     <Stack
@@ -156,6 +160,8 @@ export function DetailViewContainer({
                 onSubmit={onSubmit}
                 openPopoverId={openPopoverId}
                 setOpenPopoverId={setOpenPopoverId}
+                hoveredSectionId={hoveredSectionId}
+                setHoveredSectionId={setHoveredSectionId}
               />
             )}
 

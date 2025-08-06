@@ -21,6 +21,9 @@ type SortableSectionProps = {
   isEdit: boolean;
   onUpdateSection?: (section: Partial<ObjectViewSectionSettings>) => void;
   variant: SectionVariant;
+  isHovered?: boolean;
+  onHoverStart?: () => void;
+  onHoverEnd?: () => void;
 };
 
 export function SortableSection(props: SortableSectionProps) {
@@ -40,7 +43,12 @@ export function SortableSection(props: SortableSectionProps) {
   };
 
   return (
-    <div ref={setNodeRef} style={style}>
+    <div
+      ref={setNodeRef}
+      style={style}
+      onMouseEnter={props.onHoverStart}
+      onMouseLeave={props.onHoverEnd}
+    >
       <ObjectViewSection
         {...props}
         dragHandleProps={{ ...attributes, ...listeners }}

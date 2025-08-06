@@ -21,6 +21,9 @@ interface SortableSidebarSectionItemProps {
   setOpenPopoverId?: (id: number | null) => void;
   variant: SectionVariant;
   showDragHandle?: boolean;
+  isHovered?: boolean;
+  onHoverStart?: () => void;
+  onHoverEnd?: () => void;
 }
 
 export function SortableSidebarSectionItem({
@@ -34,6 +37,9 @@ export function SortableSidebarSectionItem({
   setOpenPopoverId,
   variant,
   showDragHandle,
+  isHovered,
+  onHoverStart,
+  onHoverEnd,
 }: SortableSidebarSectionItemProps) {
   return (
     <Sortable id={section.id}>
@@ -51,6 +57,9 @@ export function SortableSidebarSectionItem({
           showDragHandle={showDragHandle}
           dragHandleRef={dragHandleRef as React.RefObject<HTMLDivElement>}
           dragHandleListeners={dragHandleListeners}
+          isHovered={isHovered}
+          onHoverStart={onHoverStart}
+          onHoverEnd={onHoverEnd}
         />
       )}
     </Sortable>

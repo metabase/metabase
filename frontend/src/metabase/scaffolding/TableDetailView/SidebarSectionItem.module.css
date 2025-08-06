@@ -1,0 +1,20 @@
+.hovered {
+  position: relative;
+
+  &:after {
+    content: "";
+    border-radius: 8px;
+    position: absolute;
+    top: -4px;
+    right: -8px;
+    bottom: -8px;
+    left: -8px;
+    /* border: 2px solid var(--mb-color-brand); */
+    background-color: var(--mb-color-brand);
+    opacity: 0.2;
+    pointer-events: none;
+    user-select: none;
+  }
+  /* background-color: var(--mb-color-brand-0); */
+  /* box-shadow: 0 0 0 1px var(--mb-color-brand); */
+}

@@ -57,6 +57,12 @@ export function TableDetailViewInner({
 }: TableDetailViewProps) {
   const [currentRowIndex, setCurrentRowIndex] = useState(0);
   const [openPopoverId, setOpenPopoverId] = useState<number | null>(null);
+  const [hoveredSectionIdMain, setHoveredSectionIdMain] = useState<
+    number | null
+  >(null);
+  const [hoveredSectionIdSidebar, setHoveredSectionIdSidebar] = useState<
+    number | null
+  >(null);
   const dispatch = useDispatch();
   const [updateTableComponentSettings] =
     useUpdateTableComponentSettingsMutation();
@@ -265,6 +271,8 @@ export function TableDetailViewInner({
       onCancel={handleCloseClick}
       onSubmit={handleSaveClick}
       onFollowForeignKey={handleFollowForeignKey}
+      hoveredSectionId={hoveredSectionIdMain}
+      setHoveredSectionId={setHoveredSectionIdSidebar}
     >
       <Stack gap="md" mt="md" mb="sm" py="md" bg="transparent">
         <DndContext
@@ -295,6 +303,13 @@ export function TableDetailViewInner({
                     updateSection(section.id, update)
                   }
                   table={table}
+                  isHovered={
+                    isEdit &&
+                    (hoveredSectionIdMain === section.id ||
+                      hoveredSectionIdSidebar === section.id)
+                  }
+                  onHoverStart={() => setHoveredSectionIdMain(section.id)}
+                  onHoverEnd={() => setHoveredSectionIdMain(null)}
                 />
               </Fragment>
             ))}

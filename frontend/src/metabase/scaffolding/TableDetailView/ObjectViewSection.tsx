@@ -28,6 +28,7 @@ type ObjectViewSectionProps = {
   onUpdateSection?: (section: Partial<ObjectViewSectionSettings>) => void;
   dragHandleProps?: any;
   variant: SectionVariant;
+  isHovered?: boolean;
 };
 
 export function ObjectViewSection({
@@ -40,6 +41,7 @@ export function ObjectViewSection({
   // isEdit,
   onUpdateSection,
   // dragHandleProps,
+  isHovered = false,
 }: ObjectViewSectionProps) {
   // const pkIndex = columns.findIndex(isPK); // TODO: handle multiple PKs
   const tc = useTranslateContent();
@@ -65,7 +67,11 @@ export function ObjectViewSection({
       .join(" ");
 
     return (
-      <Box className={cx(S.ObjectViewSection, S.header)}>
+      <Box
+        className={cx(S.ObjectViewSection, S.header, {
+          [S.hovered]: isHovered,
+        })}
+      >
         <Flex className={S.SectionContent}>
           <Ellipsified
             variant="primary"
@@ -91,6 +97,7 @@ export function ObjectViewSection({
         [S.subheader]: variant === "subheader",
         [S.highlight1]: variant === "highlight-1",
         [S.highlight2]: variant === "highlight-2",
+        [S.hovered]: isHovered,
       })}
     >
       {onUpdateSection && (

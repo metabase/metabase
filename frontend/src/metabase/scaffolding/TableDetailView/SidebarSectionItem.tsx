@@ -1,3 +1,4 @@
+import cx from "classnames";
 import { useMemo } from "react";
 import { t } from "ttag";
 
@@ -21,6 +22,7 @@ import type {
 } from "metabase-types/api";
 
 import { FieldsPopover } from "./FieldsPopover";
+import S from "./SidebarSectionItem.module.css";
 
 const HIGHLIGHTABLE_VARIANTS = ["highlight-2", "normal"];
 
@@ -39,6 +41,9 @@ interface SidebarSectionItemProps {
   showDragHandle?: boolean;
   dragHandleRef?: React.RefObject<HTMLDivElement>;
   dragHandleListeners?: React.HTMLAttributes<HTMLDivElement>;
+  isHovered?: boolean;
+  onHoverStart?: () => void;
+  onHoverEnd?: () => void;
 }
 
 export function SidebarSectionItem({
@@ -54,6 +59,9 @@ export function SidebarSectionItem({
   showDragHandle,
   dragHandleRef,
   dragHandleListeners,
+  isHovered = false,
+  onHoverStart,
+  onHoverEnd,
 }: SidebarSectionItemProps) {
   const usedFieldIds = useMemo(() => {
     return new Set(section.fields.map((f) => String(f.field_id)));
@@ -65,7 +73,15 @@ export function SidebarSectionItem({
   }, [sections]);
 
   return (
-    <Stack gap="xs" maw="330px">
+    <Stack
+      gap="xs"
+      maw="330px"
+      className={cx({
+        [S.hovered]: isHovered,
+      })}
+      onMouseEnter={onHoverStart}
+      onMouseLeave={onHoverEnd}
+    >
       <Group align="center" wrap="nowrap" gap="xs">
         {showDragHandle && (
           <Flex
@@ -126,6 +142,9 @@ export function SidebarSectionItem({
         >
           <Popover.Target>
             <Box
+              // className={cx({
+              //   [S.hovered]: isHovered,
+              // })}
               key={section.id}
               px="md"
               py="sm"

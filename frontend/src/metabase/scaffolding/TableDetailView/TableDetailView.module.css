@@ -6,9 +6,31 @@
   border-radius: var(--default-border-radius);
   padding: 0 var(--mantine-spacing-md);
   position: relative;
+  transition: all 0.2s ease;
 
   &:hover .ObjectViewSectionActions {
     visibility: visible;
+  }
+
+  &.hovered {
+    position: relative;
+
+    &:after {
+      content: "";
+      border-radius: 8px;
+      position: absolute;
+      top: -12px;
+      right: 0;
+      bottom: -12px;
+      left: 0;
+      /* border: 2px solid var(--mb-color-brand); */
+      background-color: var(--mb-color-brand);
+      opacity: 0.2;
+      pointer-events: none;
+      user-select: none;
+    }
+    /* background-color: var(--mb-color-brand-0); */
+    /* box-shadow: 0 0 0 1px var(--mb-color-brand); */
   }
 
   .SectionTitle {
