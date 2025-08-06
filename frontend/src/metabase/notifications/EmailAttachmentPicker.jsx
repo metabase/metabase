@@ -287,23 +287,6 @@ export default class EmailAttachmentPicker extends Component {
         </Group>
         {isEnabled && (
           <div>
-            <Group justify="space-between" pb="1rem">
-              <Group position="left" gap="0">
-                <Text fw="bold">{t`Include attachments only`}</Text>
-                <Icon
-                  name="info"
-                  className={cx(CS.textMedium, CS.ml1)}
-                  size={12}
-                  tooltip={t`When enabled, only file attachments will be sent (no email content).`}
-                />
-              </Group>
-              <Toggle
-                aria-label={t`Include attachments only`}
-                value={isAttachmentOnly}
-                onChange={this.onToggleAttachmentOnly}
-              />
-            </Group>
-
             <Box py="1rem">
               <ExportSettingsWidget
                 selectedFormat={selectedAttachmentType}
@@ -363,6 +346,22 @@ export default class EmailAttachmentPicker extends Component {
                 ))}
               </ul>
             </div>
+            <Group justify="space-between" pt="1rem">
+              <Group position="left" gap="0">
+                <Text fw="bold">{t`Send only attachments (no charts)`}</Text>
+                <Icon
+                  name="info"
+                  className={cx(CS.textMedium, CS.ml1)}
+                  size={12}
+                  tooltip={t`When enabled, only file attachments will be sent (no email content).`}
+                />
+              </Group>
+              <Toggle
+                aria-label={t`Send only attachments (no charts)`}
+                value={isAttachmentOnly}
+                onChange={this.onToggleAttachmentOnly}
+              />
+            </Group>
           </div>
         )}
       </div>
