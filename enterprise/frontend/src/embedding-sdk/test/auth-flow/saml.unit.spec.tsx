@@ -7,7 +7,7 @@ import {
   MetabaseProvider,
   StaticQuestion,
 } from "embedding-sdk/components/public";
-import { defineMetabaseAuthConfig } from "embedding-sdk/sdk-wrapper/lib/public/define-metabase-auth-config";
+import { defineMetabaseAuthConfig } from "embedding-sdk/sdk-package/lib/public/define-metabase-auth-config";
 import type { MetabaseProviderProps } from "embedding-sdk/types/metabase-provider";
 
 import {

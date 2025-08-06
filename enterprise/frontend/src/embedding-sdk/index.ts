@@ -1,4 +1,4 @@
-import { defineGlobalDependencies } from "embedding-sdk/sdk-wrapper/lib/private/define-global-dependencies";
+import { defineGlobalDependencies } from "embedding-sdk/sdk-package/lib/private/define-global-dependencies";
 import { EMBEDDING_SDK_CONFIG } from "metabase/embedding-sdk/config";
 
 // Enable SDK mode as we are in the SDK bundle
@@ -7,25 +7,25 @@ EMBEDDING_SDK_CONFIG.isEmbeddingSdk = true;
 
 defineGlobalDependencies();
 
-export { CollectionBrowser } from "./sdk-wrapper/components/public/CollectionBrowser";
-export { CreateQuestion } from "./sdk-wrapper/components/public/CreateQuestion";
-export { CreateDashboardModal } from "./sdk-wrapper/components/public/CreateDashboardModal";
-export { EditableDashboard } from "./sdk-wrapper/components/public/dashboard/EditableDashboard";
-export { InteractiveDashboard } from "./sdk-wrapper/components/public/dashboard/InteractiveDashboard";
-export { StaticDashboard } from "./sdk-wrapper/components/public/dashboard/StaticDashboard";
-export { InteractiveQuestion } from "./sdk-wrapper/components/public/InteractiveQuestion";
-export { StaticQuestion } from "./sdk-wrapper/components/public/StaticQuestion";
-export { MetabaseProvider } from "./sdk-wrapper/components/public/MetabaseProvider";
-export { MetabotQuestion } from "./sdk-wrapper/components/public/MetabotQuestion";
+export { CollectionBrowser } from "embedding-sdk/sdk-package/components/public/CollectionBrowser";
+export { CreateQuestion } from "embedding-sdk/sdk-package/components/public/CreateQuestion";
+export { CreateDashboardModal } from "embedding-sdk/sdk-package/components/public/CreateDashboardModal";
+export { EditableDashboard } from "embedding-sdk/sdk-package/components/public/dashboard/EditableDashboard";
+export { InteractiveDashboard } from "embedding-sdk/sdk-package/components/public/dashboard/InteractiveDashboard";
+export { StaticDashboard } from "embedding-sdk/sdk-package/components/public/dashboard/StaticDashboard";
+export { InteractiveQuestion } from "embedding-sdk/sdk-package/components/public/InteractiveQuestion";
+export { StaticQuestion } from "embedding-sdk/sdk-package/components/public/StaticQuestion";
+export { MetabaseProvider } from "embedding-sdk/sdk-package/components/public/MetabaseProvider";
+export { MetabotQuestion } from "embedding-sdk/sdk-package/components/public/MetabotQuestion";
 
-export { useApplicationName } from "./sdk-wrapper/hooks/public/use-application-name";
-export { useAvailableFonts } from "./sdk-wrapper/hooks/public/use-available-fonts";
-export { useCurrentUser } from "./sdk-wrapper/hooks/public/use-current-user";
-export { useCreateDashboardApi } from "./sdk-wrapper/hooks/public/use-create-dashboard-api";
-export { useMetabaseAuthStatus } from "./sdk-wrapper/hooks/public/use-metabase-auth-status";
+export { useApplicationName } from "embedding-sdk/sdk-package/hooks/public/use-application-name";
+export { useAvailableFonts } from "embedding-sdk/sdk-package/hooks/public/use-available-fonts";
+export { useCurrentUser } from "embedding-sdk/sdk-package/hooks/public/use-current-user";
+export { useCreateDashboardApi } from "embedding-sdk/sdk-package/hooks/public/use-create-dashboard-api";
+export { useMetabaseAuthStatus } from "embedding-sdk/sdk-package/hooks/public/use-metabase-auth-status";
 
-export * from "./sdk-wrapper/lib/public/define-metabase-auth-config";
-export * from "./sdk-wrapper/lib/public/define-metabase-theme";
+export * from "embedding-sdk/sdk-package/lib/public/define-metabase-auth-config";
+export * from "embedding-sdk/sdk-package/lib/public/define-metabase-theme";
 
 export {
   type CollectionBrowserProps,
