@@ -118,6 +118,14 @@
       .FieldValue {
         display: flex;
       }
+
+      .FieldValue::before {
+        display: block;
+        content: "•";
+        margin: 0 0.75rem;
+        color: var(--mb-color-text-secondary);
+        font-size: 1em;
+      }
     }
   }
 
@@ -219,12 +227,4 @@
   &:hover {
     text-decoration: underline;
   }
-}
-
-.separator::before {
-  display: block;
-  content: "•";
-  margin: 0 0.75rem;
-  color: var(--mb-color-text-secondary);
-  font-size: 1em;
 }

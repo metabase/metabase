@@ -117,7 +117,7 @@ export function ObjectViewSection({
         </Group>
       )}
       <Flex className={S.SectionContent}>
-        {section.fields.map(({ field_id }, index) => {
+        {section.fields.map(({ field_id }) => {
           const columnIndex = columns.findIndex(
             (column) => column.id === field_id,
           );
@@ -137,43 +137,21 @@ export function ObjectViewSection({
             : undefined;
 
           return (
-            <>
-              <Flex key={field_id} className={S.Field}>
-                <Box className={S.FieldName} w="100%">
-                  <Tooltip
-                    disabled={!column.description}
-                    label={column.description}
-                    position="top"
-                  >
-                    <Text c="var(--mb-color-text-secondary)" fw="bold" truncate>
-                      {column.display_name}
-                    </Text>
-                  </Tooltip>
-                </Box>
+            <Flex key={field_id} className={S.Field}>
+              <Box className={S.FieldName} w="100%">
+                <Tooltip
+                  disabled={!column.description}
+                  label={column.description}
+                  position="top"
+                >
+                  <Text c="var(--mb-color-text-secondary)" fw="bold" truncate>
+                    {column.display_name}
+                  </Text>
+                </Tooltip>
+              </Box>
 
-                {link && (
-                  <Link to={link} className={S.link}>
-                    <Ellipsified
-                      alwaysShowTooltip={variant === "subheader"}
-                      variant="primary"
-                      truncate={false}
-                      c="var(--mb-color-text-primary)"
-                      lines={variant === "highlight-2" ? 3 : 0}
-                      style={{
-                        flexGrow: 1,
-                      }}
-                      className={S.FieldValue}
-                      fz={undefined}
-                      {...(variant === "subheader" && {
-                        tooltip: column.display_name,
-                      })}
-                    >
-                      {renderValue(tc, value, column)}
-                    </Ellipsified>
-                  </Link>
-                )}
-
-                {!link && (
+              {link && (
+                <Link to={link} className={S.link}>
                   <Ellipsified
                     alwaysShowTooltip={variant === "subheader"}
                     variant="primary"
@@ -191,13 +169,29 @@ export function ObjectViewSection({
                   >
                     {renderValue(tc, value, column)}
                   </Ellipsified>
-                )}
-              </Flex>
-
-              {index < section.fields.length - 1 && (
-                <div className={S.separator} />
+                </Link>
               )}
-            </>
+
+              {!link && (
+                <Ellipsified
+                  alwaysShowTooltip={variant === "subheader"}
+                  variant="primary"
+                  truncate={false}
+                  c="var(--mb-color-text-primary)"
+                  lines={variant === "highlight-2" ? 3 : 0}
+                  style={{
+                    flexGrow: 1,
+                  }}
+                  className={S.FieldValue}
+                  fz={undefined}
+                  {...(variant === "subheader" && {
+                    tooltip: column.display_name,
+                  })}
+                >
+                  {renderValue(tc, value, column)}
+                </Ellipsified>
+              )}
+            </Flex>
           );
         })}
       </Flex>
