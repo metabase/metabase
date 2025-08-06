@@ -3,6 +3,7 @@
   (:require
    [clojure.test :refer :all]
    [medley.core :as m]
+   [metabase.driver :as driver]
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.card :as lib.card]
    [metabase.lib.core :as lib]
@@ -351,12 +352,14 @@
                   _                (is (some? binning-strategy))
                   query            (-> query
                                        (lib/breakout (lib/with-binning people-longitude binning-strategy)))]
-              (is (=? {:stages [{:source-card 1
-                                 :aggregation [[:count {}]]
-                                 :breakout    [[:field
-                                                {:binning {:strategy :bin-width, :bin-width 20.0}}
-                                                "People__LONGITUDE"]]}]}
-                      query))
+              ;; only check the query for H2; other databases might name `LONGITUDE` differently
+              (when (= driver/*driver* :h2)
+                (is (=? {:stages [{:source-card 1
+                                   :aggregation [[:count {}]]
+                                   :breakout    [[:field
+                                                  {:binning {:strategy :bin-width, :bin-width 20.0}}
+                                                  "People__LONGITUDE"]]}]}
+                        query)))
               (is (= [[-180.0 75]
                       [-160.0 383]
                       [-140.0 879]
