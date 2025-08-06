@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [metabase.app-db.core :as mdb]
+   [metabase.premium-features.core :as premium-features]
    [metabase.queries.schema :as queries.schema]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
@@ -89,7 +90,7 @@
                                 :created_at]
                        :from   [:collection_bookmark]
                        :where [:= :user_id user-id]}]]
-    {:union-all (if ((requiring-resolve 'metabase.premium-features.token-check/has-feature?) :documents)
+    {:union-all (if (premium-features/has-feature? :documents)
                   (conj base-queries
                         {:select [[as-null :card_id]
                                   [as-null :dashboard_id]
@@ -106,7 +107,7 @@
   "Get all bookmarks for a user. Each bookmark will have a string id made of the model and model-id, a type, and
   item_id, name, and description from the underlying bookmarked item."
   [user-id]
-  (let [has-documents? ((requiring-resolve 'metabase.premium-features.token-check/has-feature?) :documents)
+  (let [has-documents? (premium-features/has-feature? :documents)
         select-fields (cond-> [[:bookmark.created_at :created_at]
                                [:bookmark.type              :type]
                                [:bookmark.item_id           :item_id]

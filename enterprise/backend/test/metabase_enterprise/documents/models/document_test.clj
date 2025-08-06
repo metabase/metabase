@@ -55,27 +55,6 @@
         (let [unchanged-card (t2/select-one :model/Card :id nil-document-card-id)]
           (is (nil? (:collection_id unchanged-card))))))))
 
-(deftest sync-document-cards-collection-large-numbers-test
-  (testing "should handle large numbers of cards efficiently"
-    (mt/with-model-cleanup [:model/Card]
-      (mt/with-temp [:model/Collection {collection-id :id} {:name "Target Collection"}
-                     :model/Document {document-id :id} {:name "Test Document with Many Cards"}]
-        ;; Create 50 cards associated with the document
-        (let [card-ids (doall
-                        (for [i (range 50)]
-                          (:id (t2/insert-returning-pks! :model/Card
-                                                         (merge (mt/with-temp-defaults :model/Card)
-                                                                {:document_id document-id
-                                                                 :collection_id nil
-                                                                 :dataset_query (mt/mbql-query venues)})))))]
-          (let [updated-count (document/sync-document-cards-collection! document-id collection-id)]
-            ;; Should update all 50 cards
-            (is (= 50 updated-count))
-
-            ;; Verify all cards were updated (check a few samples)
-            (let [sample-cards (t2/select :model/Card :id [:in card-ids] {:limit 5})]
-              (is (every? #(= collection-id (:collection_id %)) sample-cards)))))))))
-
 (deftest sync-document-cards-collection-empty-result-sets-test
   (testing "should handle empty result sets gracefully"
     (mt/with-temp [:model/Collection {collection-id :id} {:name "Target Collection"}

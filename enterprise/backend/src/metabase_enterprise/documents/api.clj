@@ -2,8 +2,6 @@
   "`/api/ee/document/` routes"
   (:require
    [metabase-enterprise.documents.api.document]
-   [metabase.api.macros :as api.macros]
-   [metabase.api.routes.common :refer [+auth]]
    [metabase.api.util.handlers :as handlers]))
 
 (def ^{:arglists '([request respond raise])} routes

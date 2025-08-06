@@ -45,7 +45,7 @@
         (is (partial= {:name "Document 2"
                        :document (text->prose-mirror-ast "Doc 2")} result))))))
 
-(deftest post-document-creation-non-blank-name-test
+(deftest put-document-creation-non-blank-name-test
   (testing "PUT /api/ee/document/id - basic document update"
     (mt/with-temp [:model/Document {document-id :id} {:name "Test Document"
                                                       :document (text->prose-mirror-ast "Initial Doc")}]
