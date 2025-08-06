@@ -18,6 +18,8 @@
   "
   #_{:clj-kondo/ignore [:metabase/modules]}
   (:require
+   [clj-yaml.core :as yaml]
+   [clojure.string :as str]
    [metabase.models.interface :as mi]
    [metabase.util.malli.registry :as mr]
    [methodical.core :as methodical]
@@ -69,9 +71,8 @@
                                                           [:native {:optional true} [:map
                                                                                      [:query :string]
                                                                                      [:template-tags {:optional true} [:map]]]]]]]]
-                      [:target [:map
-                                [:name :string]
-                                [:type :string]]]
+                      [:target [:map [:name :string] [:type :string]]]
+                      [:created-at :string]
                       [:config {:optional true} [:map]]]]]
        ;; wip
        [:documents {:optional true} [:sequential
@@ -81,12 +82,14 @@
                                               [:type :string] ;; workspace-user
                                               [:name :string]
                                               [:email :string]
+                                              [:created-at :string]
                                               ;; api-key?
                                               ;; db creds?
                                               ]]]
        [:dwh {:optional true} [:sequential
                                [:map
                                 [:id [:int {:min 1}]]
+                                [:created-at :string]
                                 [:type [:enum :read-only :read-write]]
                                 [:credentials :map]
                                 [:name :string]]]]
@@ -95,6 +98,7 @@
         [:sequential
          [:map
           [:table :string]
+          [:created-at :string]
           [:permission [:enum :read :write]]]]]])
     (mr/resolve-schema ::workspace))
 
@@ -128,3 +132,36 @@
 ;; 3. setup a way to show the diff
 
 ;; note: transforms are done for pg. see how they look, see what it takes to hook them to a db, how to store them etc.
+
+(defn- sort-workspace-keys [k1 k2]
+  (let [order (zipmap (mut/keys (mr/resolve-schema ::workspace)) (range))]
+    (compare (get order k1 Integer/MAX_VALUE)
+             (get order k2 Integer/MAX_VALUE))))
+
+(mut/keys (mr/resolve-schema ::workspace))
+;; => (:name :description :created_at :updated_at :plans :activity_logs :transforms :documents :users :dwh :permissions)
+
+(defn- sort-workspace [workspace]
+  (let [top-level-sorted (into (sorted-map-by sort-workspace-keys) workspace)
+        json-cols [:plans :activity-logs :transforms :documents :user :dwh :permissions]]
+    ;; sort each json column value by :created-at
+    (reduce (fn [acc col]
+              (if-let [col-data (get top-level-sorted col)]
+                (assoc acc col
+                       (into (sorted-map-by #(compare (:created-at %1) (:created-at %2)))
+                             col-data)))
+              acc)
+            top-level-sorted
+            json-cols)))
+
+(mu/defn write-yaml [workspace :- ::workspace]
+  (let [file-name (str (str/replace (:name workspace) " " "_") ".yaml")
+        sorted-workspace (into (sorted-map-by sort-workspace-keys) workspace)]
+    (spit file-name
+          (yaml/generate-string sorted-workspace :dumper-options {:flow-style :block}))))
+
+(comment
+  ;; ZZZ
+  (def cw (metabase-enterprise.workspaces.demo.create-realistic-workspace/create-customer-churn-workspace))
+
+  (write-yaml cw))
