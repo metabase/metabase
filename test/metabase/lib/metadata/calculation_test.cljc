@@ -13,7 +13,8 @@
    [metabase.lib.test-util.macros :as lib.tu.macros]
    [metabase.lib.util :as lib.util]
    [metabase.util :as u]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.lib.walk :as lib.walk]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
@@ -916,3 +917,47 @@
               "Q2__BIRTH_DATE"
               "Q2__count"]
              (mapv :lib/desired-column-alias cols))))))
+
+(deftest ^:parallel join-source-query-join-test
+  (testing "lib/returned-columns calculates incorrect :source-column-aliases for columns coming from nested joins (QUE-1373)"
+    (let [query         (lib/query
+                         meta/metadata-provider
+                         (lib.tu.macros/mbql-5-query orders
+                           {:stages [{:joins  [{:alias     "Q2"
+                                                :stages    [{:source-table $$reviews
+                                                             :aggregation  [[:avg {:name "avg"} $reviews.rating]]
+                                                             :breakout     [&P2.products.category]
+                                                             :joins        [{:alias      "P2"
+                                                                             :strategy   :left-join
+                                                                             :stages     [{:source-table $$products}]
+                                                                             :conditions [[:= {}
+                                                                                           $reviews.product-id
+                                                                                           &P2.products.id]]}]}]
+                                                :strategy  :left-join
+                                                :condition [:= {} &Q2.products.category 1]}]
+                                      ;; busted field ref, should probably be something like
+                                      ;;
+                                      ;;    [:field {:join-alias "Q2", :base-type :type/Integer} "P2__CATEGORY"]
+                                      ;;
+                                      ;; but we should still be able to resolve it correctly.
+                                      :fields [[:field {:join-alias "Q2"} (meta/id :products :category)]
+                                               [:field {:base-type :type/Integer, :join-alias "Q2"} "avg"]]}]}))
+          relevant-keys (fn [cols]
+                          (map #(select-keys % [:name
+                                                :lib/source
+                                                :metabase.lib.join/join-alias
+                                                :lib/source-column-alias
+                                                :lib/desired-column-alias])
+                               cols))]
+      (testing "query (last stage) returned columns"
+        (is (= [{:name                         "CATEGORY"
+                 :lib/source                   :source/joins
+                 :metabase.lib.join/join-alias "Q2"
+                 :lib/source-column-alias      "P2__CATEGORY"
+                 :lib/desired-column-alias     "Q2__P2__CATEGORY"}
+                {:name                         "avg"
+                 :lib/source                   :source/joins
+                 :metabase.lib.join/join-alias "Q2"
+                 :lib/source-column-alias      "avg"
+                 :lib/desired-column-alias     "Q2__avg"}]
+               (relevant-keys (lib/returned-columns query))))))))
