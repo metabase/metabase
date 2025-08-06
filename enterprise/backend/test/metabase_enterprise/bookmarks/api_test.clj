@@ -63,7 +63,8 @@
 
         (testing "document model not included in allowed models"
           (let [response (mt/user-http-request :rasta :post 402 (str "bookmark/document/" (u/the-id document)))]
-            (is (= "Documents feature is not available" response))))))))
+            (is (=? {:message #"Documents is a paid feature.*"}
+                    response))))))))
 
 (deftest document-bookmarks-archived-test
   (testing "Document bookmarks on archived documents"

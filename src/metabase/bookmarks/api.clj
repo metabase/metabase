@@ -9,6 +9,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.bookmarks.models.bookmark :as bookmark]
    [metabase.premium-features.core :as premium-features]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -44,8 +45,7 @@
                           [:model Models]
                           [:id    ms/PositiveInt]]]
   (when (= model "document")
-    (api/check (premium-features/has-feature? :documents)
-               [402 "Documents feature is not available"]))
+    (premium-features/assert-has-feature :documents (tru "Documents")))
   (let [[item-model bookmark-model item-key] (lookup model)]
     (api/read-check item-model id)
     (api/check (not (t2/exists? bookmark-model item-key id
@@ -59,8 +59,7 @@
                           [:model Models]
                           [:id    ms/PositiveInt]]]
   (when (= model "document")
-    (api/check (premium-features/has-feature? :documents)
-               [402 "Documents feature is not available"]))
+    (premium-features/assert-has-feature :documents (tru "Documents")))
   ;; todo: allow admins to include an optional user id to delete for so they can delete other's bookmarks.
   (let [[_ bookmark-model item-key] (lookup model)]
     (t2/delete! bookmark-model
