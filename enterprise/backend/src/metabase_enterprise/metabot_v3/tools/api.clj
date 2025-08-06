@@ -3,7 +3,6 @@
   (:require
    [buddy.core.hash :as buddy-hash]
    [buddy.sign.jwt :as jwt]
-   [clj-time.core :as time]
    [clojure.set :as set]
    [malli.core :as mc]
    [malli.transform :as mtx]
@@ -35,14 +34,6 @@
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
-(defn- get-ai-service-token
-  [user-id metabot-id]
-  (let [secret (buddy-hash/sha256 (metabot-v3.settings/site-uuid-for-metabot-tools))
-        claims {:user user-id
-                :exp (time/plus (time/now) (time/seconds (metabot-v3.settings/metabot-ai-service-token-ttl)))
-                :metabot-id metabot-id}]
-    (jwt/encrypt claims secret {:alg :dir, :enc :a128cbc-hs256})))
-
 (defn- decode-ai-service-token
   [token]
   (try
@@ -55,7 +46,7 @@
 (defn handle-envelope
   "Executes the AI loop in the context of a new session. Returns the response of the AI service."
   [{:keys [metabot-id] :as e}]
-  (let [session-id (get-ai-service-token api/*current-user-id* metabot-id)]
+  (let [session-id (metabot-v3.client/get-ai-service-token api/*current-user-id* metabot-id)]
     (try
       (metabot-v3.client/request (assoc e :session-id session-id))
       (catch Exception ex
@@ -69,7 +60,7 @@
 (defn streaming-handle-envelope
   "Executes the AI loop in the context of a new session. Returns the response of the AI service."
   [{:keys [metabot-id] :as e}]
-  (let [session-id (get-ai-service-token api/*current-user-id* metabot-id)]
+  (let [session-id (metabot-v3.client/get-ai-service-token api/*current-user-id* metabot-id)]
     (metabot-v3.client/streaming-request (assoc e :session-id session-id))))
 
 (mr/def ::bucket
