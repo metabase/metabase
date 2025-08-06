@@ -43,12 +43,15 @@
 
 (defn sync-document-cards-collection!
   "Updates all cards associated with a document to match the document's collection.
+  If the document is archived, also archives all associated cards.
   Returns the number of cards updated."
-  [document-id collection-id]
-  (t2/update! :model/Card
-              :document_id document-id
-              {:collection_id collection-id}))
+  [document-id collection-id & {:keys [archived archived-directly]}]
+  (let [update-map {:collection_id collection-id :archived archived :archived_directly (boolean archived-directly)}]
+    (t2/update! :model/Card
+                :document_id document-id
+                update-map)))
 
 (t2/define-after-update :model/Document
-  [{:keys [id collection_id]}]
-  (sync-document-cards-collection! id collection_id))
+  [{:keys [id collection_id archived archived_directly]}]
+  ;; Sync cards to match document's collection and archival status
+  (sync-document-cards-collection! id collection_id :archived archived :archived-directly archived_directly))

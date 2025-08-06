@@ -346,10 +346,14 @@
                                [:= :r.model (h2x/literal "Document")]]
                [:core_user :u] [:= :u.id :r.user_id]]
    :where [:and
-           [:= :document.collection_id (:id collection)]
+           (if (collection/is-trash? collection)
+             [:= :document.archived_directly true]
+             [:and
+              [:= :collection_id (:id collection)]
+              [:= :document.archived_directly false]])
            (if archived?
-             [:= [:inline 0] [:inline 1]]
-             [:= [:inline 1] [:inline 1]])]})
+             [:= :document.archived true]
+             [:= :document.archived false])]})
 
 (defmethod collection-children-query :pulse
   [_ collection {:keys [archived? pinned-state]}]

@@ -119,7 +119,10 @@
   "Gets existing `Documents`."
   [_route-params
    _query-params]
-  (t2/hydrate (t2/select :model/Document {:where (collection/visible-collection-filter-clause)}) :creator :can_write))
+  {:items (t2/hydrate (t2/select :model/Document {:where [:and
+                                                          (collection/visible-collection-filter-clause)
+                                                          [:= :archived false]]})
+                      :creator :can_write)})
 
 (api.macros/defendpoint :post "/"
   "Create a new `Document`."
@@ -170,31 +173,40 @@
   [{:keys [document-id]} :- [:map
                              [:document-id ms/PositiveInt]]
    _query-params
-   {:keys [name document collection_id cards] :as body} :- [:map
-                                                            [:name {:optional true} :string]
-                                                            [:document {:optional true} :any]
-                                                            [:collection_id {:optional true} [:maybe ms/PositiveInt]]
-                                                            [:cards {:optional true} [:maybe [:map-of :int CardCreateSchema]]]]]
+   {:keys [name document collection_id cards archived] :as body} :- [:map
+                                                                     [:name {:optional true} :string]
+                                                                     [:document {:optional true} :any]
+                                                                     [:collection_id {:optional true} [:maybe ms/PositiveInt]]
+                                                                     [:cards {:optional true} [:maybe [:map-of :int CardCreateSchema]]]
+                                                                     [:archived {:optional true} [:maybe :boolean]]]]
   (let [existing-document (api/check-404 (get-document document-id))]
     (api/check-403 (mi/can-write? existing-document))
     (when (api/column-will-change? :collection_id existing-document body)
       (m.document/validate-collection-move-permissions (:collection_id existing-document) collection_id))
-    (t2/with-transaction [_conn]
-      (t2/update! :model/Document document-id (cond-> {}
-                                                document (merge (update-cards-in-ast
-                                                                 {:document document
-                                                                  :content_type (:content_type existing-document)}
-                                                                 (merge
-                                                                  (clone-cards-in-document! (assoc existing-document :document document))
-                                                                  (when-not (empty? cards) (create-cards-for-document! cards document-id collection_id @api/*current-user*)))))
-                                                name (assoc :name name)
-                                                (contains? body :collection_id) (assoc :collection_id collection_id))))
-    (let [updated-document (get-document document-id)]
-      ;; Publish event after successful update
-      (events/publish-event! :event/document-update
-                             {:object updated-document
-                              :user-id api/*current-user-id*})
-      updated-document)))
+
+    ;; Handle archiving logic
+    (let [document-updates (dissoc (api/updates-with-archived-directly existing-document body) :cards)]
+      (t2/with-transaction [_conn]
+        (t2/update! :model/Document document-id
+                    (cond-> document-updates
+                      document (merge (update-cards-in-ast
+                                       {:document document
+                                        :content_type (:content_type existing-document)}
+                                       (merge
+                                        (clone-cards-in-document! (assoc existing-document :document document))
+                                        (when-not (empty? cards) (create-cards-for-document! cards document-id collection_id @api/*current-user*)))))
+                      name (assoc :name name)
+                      (contains? body :collection_id) (assoc :collection_id collection_id))))
+      (let [updated-document (get-document document-id)]
+        ;; Publish appropriate events
+        (if (:archived document-updates)
+          (events/publish-event! :event/document-delete
+                                 {:object updated-document
+                                  :user-id api/*current-user-id*})
+          (events/publish-event! :event/document-update
+                                 {:object updated-document
+                                  :user-id api/*current-user-id*}))
+        updated-document))))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/document/` routes."

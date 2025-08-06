@@ -1,6 +1,7 @@
 (ns metabase-enterprise.documents.api.collection-test
   (:require
    [clojure.test :refer :all]
+   [metabase.collections.models.collection :as collection]
    [metabase.test :as mt]))
 
 (deftest document-cards-do-not-appear-in-collection-items
@@ -80,3 +81,31 @@
                    [card-id "card"]
                    [dash-id "dashboard"]}
                  (set (map (juxt :id :model) root-test-items)))))))))
+
+(deftest archived-documents-appear-in-trash-items
+  (testing "GET /api/collection/trash/items includes documents with archived_directly true"
+    (mt/with-temp [:model/Document {archived-doc-id :id} {:collection_id nil
+                                                          :name "Archived Document"
+                                                          :archived true
+                                                          :archived_directly true}
+                   :model/Document {normal-doc-id :id} {:collection_id nil
+                                                        :name "Normal Document"
+                                                        :archived_directly false}
+                   :model/Card {archived-card-id :id} {:collection_id nil
+                                                       :name "Archived Card"
+                                                       :archived true
+                                                       :archived_directly true}
+                   :model/Dashboard {archived-dash-id :id} {:collection_id nil
+                                                            :name "Archived Dashboard"
+                                                            :archived true
+                                                            :archived_directly true}]
+      (testing "Archived documents appear alongside other archived items in trash"
+        (let [items (mt/user-http-request :rasta :get 200 (format "collection/%d/items" (collection/trash-collection-id)))
+              trash-test-items (filter #(#{archived-doc-id normal-doc-id archived-card-id archived-dash-id} (:id %))
+                                       (:data items))]
+          (is (= #{[archived-doc-id "document"]
+                   [archived-card-id "card"]
+                   [archived-dash-id "dashboard"]}
+                 (set (map (juxt :id :model) trash-test-items))))
+          (testing "Non-archived documents do not appear in trash"
+            (is (not (some #(= normal-doc-id (:id %)) trash-test-items)))))))))

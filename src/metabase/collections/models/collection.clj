@@ -45,7 +45,7 @@
    {:error/message "an instance of the root Collection"}
    #'collection.root/is-root-collection?])
 
-(def ^:private ^:const archived-directly-models #{:model/Card :model/Dashboard})
+(def ^:private ^:const archived-directly-models #{:model/Card :model/Dashboard :model/Document})
 (def ^:private ^:const collectable-models
   (set/union archived-directly-models
              #{:model/Pulse :model/NativeQuerySnippet :model/Timeline}))

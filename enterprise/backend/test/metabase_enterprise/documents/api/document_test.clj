@@ -2,6 +2,8 @@
   (:require
    [clojure.set :as set]
    [clojure.test :refer :all]
+   [metabase.collections.models.collection :as collection]
+   [metabase.events.core :as events]
    [metabase.permissions.core :as perms]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
@@ -77,8 +79,8 @@
                    :model/Document _ {:name "Document 2"
                                       :document (text->prose-mirror-ast "Initial Doc 2")}]
       (testing "should get existing documents"
-        (let [result (mt/user-http-request :crowberto
-                                           :get 200 "ee/document/")]
+        (let [result (:items (mt/user-http-request :crowberto
+                                                   :get 200 "ee/document/"))]
           (is (set/subset? #{"Document 1" "Document 2"} (set (map :name result))))
           (is (set/subset? #{(text->prose-mirror-ast "Initial Doc 1") (text->prose-mirror-ast "Initial Doc 2")} (set (map :document result))))
           result))))
@@ -1155,7 +1157,7 @@
                                               :document (text->prose-mirror-ast "In no access collection")
                                               :collection_id no-access-col}]
               (let [result (mt/user-http-request :rasta :get 200 "ee/document/")
-                    doc-names (set (map :name result))]
+                    doc-names (set (map :name (:items result)))]
                 (testing "includes documents from write-access collections"
                   (is (contains? doc-names "Doc in Write Collection")))
                 (testing "includes documents from read-access collections"
@@ -1168,3 +1170,420 @@
                       (is (true? (get doc :can_write))))
                     (when (= "Doc in Read Collection" (:name doc))
                       (is (false? (get doc :can_write))))))))))))))
+
+(deftest document-archive-basic-test
+  (testing "PUT /api/ee/document/:id - basic document archiving"
+    (mt/with-temp [:model/Collection {coll-id :id} {}
+                   :model/Document {doc-id :id} {:name "Test Document"
+                                                 :document (text->prose-mirror-ast "Test content")
+                                                 :collection_id coll-id}]
+      (testing "can archive document with archived=true"
+        (let [result (mt/user-http-request :crowberto
+                                           :put 200 (format "ee/document/%s" doc-id)
+                                           {:archived true})]
+          (is (true? (:archived result)))
+
+          ;; Verify document is actually archived in database
+          (is (true? (:archived (t2/select-one :model/Document :id doc-id))))))
+
+      (testing "archived document doesn't appear in normal listings"
+        (let [documents (mt/user-http-request :crowberto :get 200 "ee/document/")]
+          (is (not (some #(= doc-id (:id %)) (:items documents))))))
+
+      (testing "can unarchive document with archived=false"
+        (let [result (mt/user-http-request :crowberto
+                                           :put 200 (format "ee/document/%s" doc-id)
+                                           {:archived false})]
+          (is (false? (:archived result)))
+
+          ;; Verify document is actually unarchived in database
+          (is (false? (:archived (t2/select-one :model/Document :id doc-id)))))))))
+
+(deftest document-archive-with-cards-test
+  (testing "Document archiving includes associated cards"
+    (mt/with-temp [:model/Collection {coll-id :id} {}
+                   :model/Document {doc-id :id} {:name "Document with Cards"
+                                                 :document (text->prose-mirror-ast "Doc with cards")
+                                                 :collection_id coll-id}
+                   :model/Card {card1-id :id} {:name "Associated Card 1"
+                                               :document_id doc-id
+                                               :collection_id coll-id
+                                               :dataset_query (mt/mbql-query venues)}
+                   :model/Card {card2-id :id} {:name "Associated Card 2"
+                                               :document_id doc-id
+                                               :collection_id coll-id
+                                               :dataset_query (mt/mbql-query users)}
+                   :model/Card {other-card-id :id} {:name "Other Card"
+                                                    :collection_id coll-id
+                                                    :dataset_query (mt/mbql-query venues)}]
+
+      (testing "archiving document archives associated cards"
+        (mt/user-http-request :crowberto
+                              :put 200 (format "ee/document/%s" doc-id)
+                              {:archived true})
+
+        ;; Verify document is archived
+        (is (true? (:archived (t2/select-one :model/Document :id doc-id))))
+
+        ;; Verify associated cards are archived
+        (is (true? (:archived (t2/select-one :model/Card :id card1-id))))
+        (is (true? (:archived (t2/select-one :model/Card :id card2-id))))
+
+        ;; Verify non-associated card is NOT archived
+        (is (false? (:archived (t2/select-one :model/Card :id other-card-id)))))
+
+      (testing "unarchiving document unarchives associated cards"
+        (mt/user-http-request :crowberto
+                              :put 200 (format "ee/document/%s" doc-id)
+                              {:archived false})
+
+        ;; Verify document is unarchived
+        (is (false? (:archived (t2/select-one :model/Document :id doc-id))))
+
+        ;; Verify associated cards are unarchived
+        (is (false? (:archived (t2/select-one :model/Card :id card1-id))))
+        (is (false? (:archived (t2/select-one :model/Card :id card2-id))))
+
+        ;; Verify other card remains unchanged
+        (is (false? (:archived (t2/select-one :model/Card :id other-card-id))))))))
+
+(deftest document-archive-permissions-test
+  (testing "Document archiving permission requirements"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/Collection {read-only-col :id} {}
+                     :model/Collection {write-col :id} {}
+                     :model/Document {read-only-doc-id :id} {:name "Read Only Document"
+                                                             :document (text->prose-mirror-ast "Read only")
+                                                             :collection_id read-only-col}
+                     :model/Document {write-doc-id :id} {:name "Write Document"
+                                                         :document (text->prose-mirror-ast "Writable")
+                                                         :collection_id write-col}]
+
+        (mt/with-group-for-user [group :rasta]
+          ;; Grant read-only access to read-only collection
+          (perms/grant-collection-read-permissions! group read-only-col)
+          ;; Grant write access to write collection
+          (perms/grant-collection-readwrite-permissions! group write-col)
+
+          (testing "user with write permissions can archive document"
+            (let [result (mt/user-http-request :rasta
+                                               :put 200 (format "ee/document/%s" write-doc-id)
+                                               {:archived true})]
+              (is (true? (:archived result)))))
+
+          (testing "user without write permissions cannot archive document"
+            (mt/user-http-request :rasta
+                                  :put 403 (format "ee/document/%s" read-only-doc-id)
+                                  {:archived true})
+
+            ;; Verify document wasn't archived
+            (is (false? (:archived (t2/select-one :model/Document :id read-only-doc-id)))))
+
+          (testing "user with write permissions can unarchive document"
+            (let [result (mt/user-http-request :rasta
+                                               :put 200 (format "ee/document/%s" write-doc-id)
+                                               {:archived false})]
+              (is (false? (:archived result))))))))))
+
+(deftest collection-archive-includes-documents-test
+  (testing "Collection archiving includes documents and associated cards"
+    (mt/with-temp [:model/Collection {coll-id :id} {:name "Collection to Archive"}
+                   :model/Document {doc1-id :id} {:name "Document 1"
+                                                  :document (text->prose-mirror-ast "Doc 1")
+                                                  :collection_id coll-id}
+                   :model/Document {doc2-id :id} {:name "Document 2"
+                                                  :document (text->prose-mirror-ast "Doc 2")
+                                                  :collection_id coll-id}
+                   :model/Card {card1-id :id} {:name "Associated Card 1"
+                                               :document_id doc1-id
+                                               :collection_id coll-id
+                                               :dataset_query (mt/mbql-query venues)}
+                   :model/Card {card2-id :id} {:name "Associated Card 2"
+                                               :document_id doc2-id
+                                               :collection_id coll-id
+                                               :dataset_query (mt/mbql-query users)}
+                   :model/Card {standalone-card-id :id} {:name "Standalone Card"
+                                                         :collection_id coll-id
+                                                         :dataset_query (mt/mbql-query venues)}]
+
+      (testing "archiving collection archives documents and all cards"
+        (mt/user-http-request :crowberto
+                              :put 200 (format "collection/%s" coll-id)
+                              {:archived true})
+
+        ;; Verify collection is archived
+        (is (true? (:archived (t2/select-one :model/Collection :id coll-id))))
+
+        ;; Verify documents are archived (not directly)
+        (is (true? (:archived (t2/select-one :model/Document :id doc1-id))))
+        (is (false? (:archived_directly (t2/select-one :model/Document :id doc1-id))))
+        (is (true? (:archived (t2/select-one :model/Document :id doc2-id))))
+        (is (false? (:archived_directly (t2/select-one :model/Document :id doc2-id))))
+
+        ;; Verify all cards are archived (not directly)
+        (is (true? (:archived (t2/select-one :model/Card :id card1-id))))
+        (is (false? (:archived_directly (t2/select-one :model/Card :id card1-id))))
+        (is (true? (:archived (t2/select-one :model/Card :id card2-id))))
+        (is (false? (:archived_directly (t2/select-one :model/Card :id card2-id))))
+        (is (true? (:archived (t2/select-one :model/Card :id standalone-card-id))))
+        (is (false? (:archived_directly (t2/select-one :model/Card :id standalone-card-id)))))
+
+      (testing "unarchiving collection restores documents and cards"
+        (mt/user-http-request :crowberto
+                              :put 200 (format "collection/%s" coll-id)
+                              {:archived false})
+
+        ;; Verify collection is unarchived
+        (is (false? (:archived (t2/select-one :model/Collection :id coll-id))))
+
+        ;; Verify documents are unarchived
+        (is (false? (:archived (t2/select-one :model/Document :id doc1-id))))
+        (is (false? (:archived (t2/select-one :model/Document :id doc2-id))))
+
+        ;; Verify cards are unarchived
+        (is (false? (:archived (t2/select-one :model/Card :id card1-id))))
+        (is (false? (:archived (t2/select-one :model/Card :id card2-id))))
+        (is (false? (:archived (t2/select-one :model/Card :id standalone-card-id))))))))
+
+(deftest document-archived-directly-flag-test
+  (testing "Document archived_directly flag behavior"
+    (mt/with-temp [:model/Collection {coll-id :id} {}
+                   :model/Document {doc-id :id} {:name "Test Document"
+                                                 :document (text->prose-mirror-ast "Test")
+                                                 :collection_id coll-id}
+                   :model/Card {card-id :id} {:name "Associated Card"
+                                              :document_id doc-id
+                                              :collection_id coll-id
+                                              :dataset_query (mt/mbql-query venues)}]
+
+      (testing "directly archiving document sets archived_directly=true"
+        (mt/user-http-request :crowberto
+                              :put 200 (format "ee/document/%s" doc-id)
+                              {:archived true})
+
+        (let [doc (t2/select-one :model/Document :id doc-id)
+              card (t2/select-one :model/Card :id card-id)]
+          (is (true? (:archived doc)))
+          (is (true? (:archived_directly doc)))
+          (is (true? (:archived card)))
+          (is (true? (:archived_directly card)))))
+
+      (testing "unarchiving directly archived document works"
+        (mt/user-http-request :crowberto
+                              :put 200 (format "ee/document/%s" doc-id)
+                              {:archived false})
+
+        (let [doc (t2/select-one :model/Document :id doc-id)
+              card (t2/select-one :model/Card :id card-id)]
+          (is (false? (:archived doc)))
+          (is (false? (:archived_directly doc)))
+          (is (false? (:archived card)))
+          (is (false? (:archived_directly card)))))
+
+      ;; Archive via collection to test indirect archiving
+      (testing "indirectly archiving via collection sets archived_directly=false"
+        (mt/user-http-request :crowberto
+                              :put 200 (format "collection/%s" coll-id)
+                              {:archived true})
+
+        (let [doc (t2/select-one :model/Document :id doc-id)
+              card (t2/select-one :model/Card :id card-id)]
+          (is (true? (:archived doc)))
+          (is (false? (:archived_directly doc)))
+          (is (true? (:archived card)))
+          (is (false? (:archived_directly card)))))
+
+      (testing "directly archived documents stay archived when collection is unarchived"
+        ;; First, directly archive the document
+        (mt/user-http-request :crowberto
+                              :put 200 (format "ee/document/%s" doc-id)
+                              {:archived false})
+        (mt/user-http-request :crowberto
+                              :put 200 (format "ee/document/%s" doc-id)
+                              {:archived true})
+
+        ;; Then unarchive the collection
+        (mt/user-http-request :crowberto
+                              :put 200 (format "collection/%s" coll-id)
+                              {:archived false})
+
+        ;; Document should remain archived because it was archived directly
+        (let [doc (t2/select-one :model/Document :id doc-id)
+              card (t2/select-one :model/Card :id card-id)]
+          (is (true? (:archived doc)))
+          (is (true? (:archived_directly doc)))
+          (is (true? (:archived card)))
+          (is (true? (:archived_directly card))))))))
+
+(deftest archived-documents-filtering-test
+  (testing "Archived documents are properly filtered from various endpoints"
+    (mt/with-temp [:model/Collection {coll-id :id} {}
+                   :model/Document {active-doc-id :id} {:name "Active Document"
+                                                        :document (text->prose-mirror-ast "Active")
+                                                        :collection_id coll-id}
+                   :model/Document {archived-doc-id :id} {:name "Archived Document"
+                                                          :document (text->prose-mirror-ast "Archived")
+                                                          :collection_id coll-id
+                                                          :archived true}]
+
+      (testing "GET /api/ee/document/ excludes archived documents"
+        (let [documents (mt/user-http-request :crowberto :get 200 "ee/document/")
+              document-names (set (map :name (:items documents)))]
+          (is (contains? document-names "Active Document"))
+          (is (not (contains? document-names "Archived Document")))))
+
+      (testing "GET /api/ee/document/:id returns 200 for archived documents"
+        ;; Active document should be accessible
+        (mt/user-http-request :crowberto :get 200 (format "ee/document/%s" active-doc-id))
+
+        ;; Archived document should return 404
+        (mt/user-http-request :crowberto :get 200 (format "ee/document/%s" archived-doc-id)))
+
+      (testing "Collection items endpoint excludes archived documents"
+        (let [items (mt/user-http-request :crowberto :get 200 (format "collection/%s/items" coll-id))
+              item-names (set (map :name (:data items)))]
+          (is (contains? item-names "Active Document"))
+          (is (not (contains? item-names "Archived Document"))))))))
+
+(deftest document-archive-events-test
+  (testing "Document archiving publishes appropriate events"
+    (mt/with-temp [:model/Document {doc-id :id} {:name "Event Test Document"
+                                                 :document (text->prose-mirror-ast "Event test")}]
+
+      (testing "archiving document publishes archive event"
+        (mt/with-model-cleanup [:model/Document]
+          (let [events (atom [])]
+            (with-redefs [events/publish-event! (fn [topic event]
+                                                  (swap! events conj {:topic topic :event event}))]
+              (mt/user-http-request :crowberto
+                                    :put 200 (format "ee/document/%s" doc-id)
+                                    {:archived true})
+
+              ;; Should have published document-archive event
+              (is (some #(= :event/document-delete (:topic %)) @events))))))
+
+      (testing "unarchiving document publishes update event"
+        (mt/with-model-cleanup [:model/Document]
+          (let [events (atom [])]
+            (with-redefs [events/publish-event! (fn [topic event]
+                                                  (swap! events conj {:topic topic :event event}))]
+              (mt/user-http-request :crowberto
+                                    :put 200 (format "ee/document/%s" doc-id)
+                                    {:archived false})
+
+              ;; Should have published document-update event (not archive event)
+              (is (some #(= :event/document-update (:topic %)) @events))
+              (is (not (some #(= :event/document-delete (:topic %)) @events))))))))))
+
+(deftest document-archive-transaction-rollback-test
+  (testing "Document archiving transaction rollback on failure"
+    (mt/with-temp [:model/Document {doc-id :id} {:name "Transaction Test Document"
+                                                 :document (text->prose-mirror-ast "Transaction test")}
+                   :model/Card {card-id :id} {:name "Associated Card"
+                                              :document_id doc-id
+                                              :dataset_query (mt/mbql-query venues)}]
+
+      ;; Simulate a failure during card archiving
+      (testing "failure during card archiving rolls back document archiving"
+        (with-redefs [t2/update! (fn [model id updates]
+                                   (if (and (= model :model/Card) (:archived updates))
+                                     (throw (ex-info "Simulated card archive failure" {}))
+                                     (t2/update! model id updates)))]
+          (mt/user-http-request :crowberto
+                                :put 500 (format "ee/document/%s" doc-id)
+                                {:archived true})
+
+          ;; Verify document wasn't archived due to rollback
+          (is (false? (:archived (t2/select-one :model/Document :id doc-id))))
+          (is (false? (:archived (t2/select-one :model/Card :id card-id)))))))))
+
+(deftest document-archive-mixed-scenarios-test
+  (testing "Mixed archiving scenarios - documents with different archival states"
+    (mt/with-temp [:model/Collection {coll-id :id} {}
+                   :model/Document {directly-archived-doc :id} {:name "Directly Archived Document"
+                                                                :document (text->prose-mirror-ast "Direct")
+                                                                :collection_id coll-id
+                                                                :archived true
+                                                                :archived_directly true}
+                   :model/Document {collection-archived-doc :id} {:name "Collection Archived Document"
+                                                                  :document (text->prose-mirror-ast "Collection")
+                                                                  :collection_id coll-id
+                                                                  :archived false
+                                                                  :archived_directly false}
+                   :model/Document {active-doc :id} {:name "Active Document"
+                                                     :document (text->prose-mirror-ast "Active")
+                                                     :collection_id coll-id}]
+
+      (testing "unarchiving collection only restores collection-archived documents"
+        (mt/user-http-request :crowberto
+                              :put 200 (format "collection/%s" coll-id)
+                              {:archived true})
+        (mt/user-http-request :crowberto
+                              :put 200 (format "collection/%s" coll-id)
+                              {:archived false})
+
+        ;; Directly archived document should remain archived
+        (is (true? (:archived (t2/select-one :model/Document :id directly-archived-doc))))
+        (is (true? (:archived_directly (t2/select-one :model/Document :id directly-archived-doc))))
+
+        ;; Collection archived document should be unarchived
+        (is (false? (:archived (t2/select-one :model/Document :id collection-archived-doc))))
+        (is (false? (:archived_directly (t2/select-one :model/Document :id collection-archived-doc))))
+
+        ;; Active document should remain active
+        (is (false? (:archived (t2/select-one :model/Document :id active-doc))))))))
+
+(deftest document-archive-edge-cases-test
+  (testing "Document archiving edge cases"
+
+    (testing "archiving already archived document is idempotent"
+      (mt/with-temp [:model/Document {doc-id :id} {:name "Already Archived"
+                                                   :document (text->prose-mirror-ast "Already archived")
+                                                   :archived true
+                                                   :archived_directly true}]
+        (let [result (mt/user-http-request :crowberto
+                                           :put 200 (format "ee/document/%s" doc-id)
+                                           {:archived true})]
+          (is (true? (:archived result)))
+          (is (true? (:archived_directly (t2/select-one :model/Document :id doc-id)))))))
+
+    (testing "unarchiving already active document is idempotent"
+      (mt/with-temp [:model/Document {doc-id :id} {:name "Already Active"
+                                                   :document (text->prose-mirror-ast "Already active")}]
+        (let [result (mt/user-http-request :crowberto
+                                           :put 200 (format "ee/document/%s" doc-id)
+                                           {:archived false})]
+          (is (false? (:archived result))))))
+
+    (testing "archiving document in trash collection"
+      (let [trash-collection-id (collection/trash-collection-id)]
+        (mt/with-temp [:model/Document {doc-id :id} {:name "Document in Trash"
+                                                     :document (text->prose-mirror-ast "In trash")
+                                                     :collection_id trash-collection-id}]
+          ;; Should be able to archive document in trash
+          (let [result (mt/user-http-request :crowberto
+                                             :put 200 (format "ee/document/%s" doc-id)
+                                             {:archived true})]
+            (is (true? (:archived result)))))))
+
+    (testing "document with no associated cards"
+      (mt/with-temp [:model/Document {doc-id :id} {:name "No Cards Document"
+                                                   :document (text->prose-mirror-ast "No cards")}]
+        (let [result (mt/user-http-request :crowberto
+                                           :put 200 (format "ee/document/%s" doc-id)
+                                           {:archived true})]
+          (is (true? (:archived result)))
+          ;; Should not fail even with no associated cards
+          (is (zero? (t2/count :model/Card :document_id doc-id))))))
+
+    (testing "archiving and updating other fields simultaneously"
+      (mt/with-temp [:model/Document {doc-id :id} {:name "Original Name"
+                                                   :document (text->prose-mirror-ast "Original")}]
+        (let [result (mt/user-http-request :crowberto
+                                           :put 200 (format "ee/document/%s" doc-id)
+                                           {:archived true
+                                            :name "Updated Name"
+                                            :document (text->prose-mirror-ast "Updated content")})]
+          (is (true? (:archived result)))
+          (is (= "Updated Name" (:name result)))
+          (is (= (text->prose-mirror-ast "Updated content") (:document result))))))))

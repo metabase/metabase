@@ -281,6 +281,20 @@ databaseChangeLog:
                   type: int
                   constraints:
                     nullable: true
+              - column:
+                  name: archived
+                  remarks: Has this document been archived?
+                  type: ${boolean.type}
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+              - column:
+                  name: archived_directly
+                  remarks: Was this thing trashed directly
+                  type: ${boolean.type}
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: true
 
   - changeSet:
       id: v56.2025-07-21T12:00:59
