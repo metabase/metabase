@@ -95,6 +95,8 @@ import cloud_component from "./cloud.svg?component";
 import cloud_source from "./cloud.svg?source";
 import cloud_filled_component from "./cloud_filled.svg?component";
 import cloud_filled_source from "./cloud_filled.svg?source";
+import code_block_component from "./code_block.svg?component";
+import code_block_source from "./code_block.svg?source";
 import combine_component from "./combine.svg?component";
 import combine_source from "./combine.svg?source";
 import compare_component from "./compare.svg?component";
@@ -311,6 +313,8 @@ import pulse_component from "./pulse.svg?component";
 import pulse_source from "./pulse.svg?source";
 import question_component from "./question.svg?component";
 import question_source from "./question.svg?source";
+import quote_component from "./quote.svg?component";
+import quote_source from "./quote.svg?source";
 import recents_component from "./recents.svg?component";
 import recents_source from "./recents.svg?source";
 import redo_component from "./redo.svg?component";
@@ -397,6 +401,12 @@ import table_component from "./table.svg?component";
 import table_source from "./table.svg?source";
 import table2_component from "./table2.svg?component";
 import table2_source from "./table2.svg?source";
+import text_bold_component from "./text_bold.svg?component";
+import text_bold_source from "./text_bold.svg?source";
+import text_italic_component from "./text_italic.svg?component";
+import text_italic_source from "./text_italic.svg?source";
+import text_strike_component from "./text_strike.svg?component";
+import text_strike_source from "./text_strike.svg?source";
 import time_history_component from "./time_history.svg?component";
 import time_history_source from "./time_history.svg?source";
 import trash_component from "./trash.svg?component";
@@ -579,6 +589,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
     check_filled: {
       component: check_filled_component,
       source: check_filled_source,
+    },
+    code_block: {
+      component: code_block_component,
+      source: code_block_source,
     },
     chevrondown: {
       component: chevrondown_component,
@@ -1112,6 +1126,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
       component: question_component,
       source: question_source,
     },
+    quote: {
+      component: quote_component,
+      source: quote_source,
+    },
     return: {
       component: return_component,
       source: return_source,
@@ -1229,6 +1247,18 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
       // for questions with table visualizations
       component: table2_component,
       source: table2_source,
+    },
+    text_bold: {
+      component: text_bold_component,
+      source: text_bold_source,
+    },
+    text_italic: {
+      component: text_italic_component,
+      source: text_italic_source,
+    },
+    text_strike: {
+      component: text_strike_component,
+      source: text_strike_source,
     },
     time_history: {
       component: time_history_component,
@@ -1383,6 +1413,7 @@ export type IconName =
   | "calendar"
   | "check"
   | "check_filled"
+  | "code_block"
   | "chevrondown"
   | "chevronleft"
   | "chevronright"
@@ -1515,6 +1546,7 @@ export type IconName =
   | "sum"
   | "sync"
   | "question"
+  | "quote"
   | "redo"
   | "return"
   | "reference"
@@ -1545,6 +1577,9 @@ export type IconName =
   | "tab"
   | "table"
   | "table2"
+  | "text_bold"
+  | "text_italic"
+  | "text_strike"
   | "time_history"
   | "trash"
   | "trash_filled"

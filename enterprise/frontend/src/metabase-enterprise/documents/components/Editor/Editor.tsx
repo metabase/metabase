@@ -20,6 +20,7 @@ import { Box, Loader } from "metabase/ui";
 
 import { CommandPlugin } from "./CommandPlugin";
 import styles from "./Editor.module.css";
+import { EditorBubbleMenu } from "./EditorBubbleMenu";
 import { MentionPlugin } from "./MentionPlugin";
 import { CardEmbed } from "./extensions/CardEmbed";
 import { DisableMetabotSidebar } from "./extensions/DisableMetabotSidebar";
@@ -202,6 +203,7 @@ export const Editor: React.FC<EditorProps> = ({
         }}
       >
         <EditorContent editor={editor} />
+        <EditorBubbleMenu editor={editor} />
         <MentionPlugin editor={editor} />
         <CommandPlugin editor={editor} />
       </Box>
