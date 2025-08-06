@@ -59,7 +59,7 @@ describe("scenarios > embedding-sdk > styles", () => {
         expect(response?.statusCode).to.equal(200);
       });
 
-      getSdkRoot().children().should("have.attr", "dir", "ltr");
+      getSdkRoot().get(".mb-wrapper").should("have.attr", "dir", "ltr");
     });
   });
 
