@@ -3,6 +3,7 @@
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
+   [macaw.core :as macaw]
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
    [metabase.driver.common.parameters.parse :as params.parse]
@@ -155,7 +156,16 @@
         sql (sql.qp/format-honeysql driver {:drop-view [(qualified-name target)]})]
     (driver/execute-raw-queries! driver (driver/connection-details driver database) [sql])))
 
-(defmethod driver/normalize-name :sql
+(defmulti normalize-name
+  "Normalizes the (primarily table/column) name passed in.
+
+  Should return a value that matches the name listed in the appdb. Drivers that support any of the `:transforms/...`
+  features must implement this method."
+  {:added "0.57.0" :arglists '([driver name-str])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod normalize-name :sql
   [driver name-str]
   (if (and (= (first name-str) \")
            (= (last name-str) \"))
@@ -163,6 +173,36 @@
         (subs 1 (dec (count name-str)))
         (str/replace #"\"\"" "\""))
     (str/lower-case name-str)))
+
+(defmulti find-table
+  "Finds the table matching a given name and schema.
+
+  Names and schemas are potentially taken from a raw sql query and will be normalized accordingly. Drivers that
+  support any of the `:transforms/...` features must implement this method."
+  {:added "0.57.0" :arglists '([driver {:keys [table schema]}])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod find-table :sql
+  [driver {:keys [table schema]}]
+  (let [normalized-table (normalize-name driver table)
+        normalized-schema (when (seq schema)
+                            (normalize-name driver schema))]
+    (->> (driver-api/metadata-provider)
+         driver-api/tables
+         (some (fn [{db-table :name db-schema :schema id :id}]
+                 (and (= normalized-table db-table)
+                      (or (nil? normalized-schema)
+                          (= normalized-schema db-schema))
+                      id))))))
+
+(defmethod driver/native-query-deps :sql
+  [driver query]
+  (->> query
+       macaw/parsed-query
+       macaw/query->components
+       :tables
+       (into #{} (keep #(->> % :component (find-table driver))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Convenience Imports                                               |

@@ -2,9 +2,7 @@
   (:require
    [clojure.core.match]
    [clojure.set :as set]
-   [clojure.string :as str]
    [flatland.ordered.set :refer [ordered-set]]
-   [macaw.core :as macaw]
    [metabase-enterprise.transforms.util :as transforms.util]
    [metabase.driver :as driver]
    [metabase.lib.metadata :as lib.metadata]
@@ -13,36 +11,15 @@
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]))
 
-(defn- clean-name [str]
-  (-> str
-      (str/replace #"['\"`]" "")
-      str/lower-case))
-
-(defn- get-table [driver {:keys [table schema]}]
-  (let [normalized-table (driver/normalize-name driver table)
-        normalized-schema (when (seq schema)
-                            (driver/normalize-name driver schema))]
-    (->> (qp.store/metadata-provider)
-         lib.metadata/tables
-         (some (fn [{db-table :name db-schema :schema id :id}]
-                 (and (= normalized-table db-table)
-                      (or (nil? normalized-schema)
-                          (= normalized-schema db-schema))
-                      id))))))
-
 (defn- transform-deps [transform]
   (let [query (-> (get-in transform [:source :query])
                   transforms.util/massage-sql-query
-                  qp.preprocess/preprocess)
-        driver (-> (qp.store/metadata-provider)
-                   lib.metadata/database
-                   :engine)]
+                  qp.preprocess/preprocess)]
     (case (:type query)
-      :native (->> (get-in query [:native :query])
-                   macaw/parsed-query
-                   macaw/query->components
-                   :tables
-                   (into #{} (keep #(->> % :component (get-table driver)))))
+      :native (driver/native-query-deps (-> (qp.store/metadata-provider)
+                                            lib.metadata/database
+                                            :engine)
+                                        (get-in query [:native :query]))
       :query (into #{}
                    (keep #(clojure.core.match/match %
                             [:source-table source] (when (int? source)
