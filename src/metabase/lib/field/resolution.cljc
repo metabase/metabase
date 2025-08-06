@@ -228,9 +228,7 @@
     (when-some [card-id (:qp/stage-is-from-source-card stage)]
       (when-some [card (lib.metadata/card query card-id)]
         (when (= (:type card) :model)
-          ;; card returned columns should be the same regardless of which stage number we pass in, so always use the
-          ;; last stage so we can hit the cache more often
-          (for [col (lib.metadata.calculation/returned-columns query 0 card)]
+          (for [col (lib.metadata.calculation/returned-columns query stage-number card)]
             (assoc col :lib/source :source/card, :lib/card-id card-id)))))))
 
 (defn- resolve-in-previous-stage-cols [query previous-stage-columns id-or-name]

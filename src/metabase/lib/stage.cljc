@@ -3,11 +3,9 @@
   (:require
    [clojure.string :as str]
    [medley.core :as m]
-   [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.binning :as lib.binning]
    [metabase.lib.breakout :as lib.breakout]
-   [metabase.lib.convert :as lib.convert]
    [metabase.lib.expression :as lib.expression]
    [metabase.lib.field.util :as lib.field.util]
    [metabase.lib.hierarchy :as lib.hierarchy]
@@ -15,6 +13,7 @@
    [metabase.lib.join.util :as lib.join.util]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
+   [metabase.lib.query :as lib.query]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
@@ -123,12 +122,13 @@
     (when-let [card (lib.metadata/card query card-id)]
       (not-empty (lib.metadata.calculation/visible-columns query stage-number card options)))))
 
-(mu/defn- metric-metadata :- [:maybe ::lib.metadata.calculation/returned-columns]
+;;; TODO (Cam 8/6/25) -- this should probably live in [[metabase.lib.metric]]
+(mu/defn- metric-visible-columns :- [:maybe ::lib.metadata.calculation/visible-columns]
   [query         :- ::lib.schema/query
    _stage-number :- :int
    card          :- ::lib.schema.metadata/card
    options       :- ::lib.metadata.calculation/visible-columns.options]
-  (let [metric-query (-> card :dataset-query mbql.normalize/normalize lib.convert/->pMBQL
+  (let [metric-query (-> (lib.query/query (lib.metadata/->metadata-provider query) (:dataset-query card))
                          (lib.util/update-query-stage -1 dissoc :aggregation :breakout))]
     (not-empty (lib.metadata.calculation/visible-columns
                 (assoc metric-query :lib/metadata (:lib/metadata query))
@@ -193,7 +193,7 @@
           (lib.metadata.calculation/visible-columns query stage-number table-metadata options)))
       ;; 1e. Metadata associated with a Metric
       (when metric-based?
-        (metric-metadata query stage-number card options))
+        (metric-visible-columns query stage-number card options))
       ;; 1c. Metadata associated with a saved Question
       (when source-card
         (when-let [cols (not-empty (saved-question-visible-columns query stage-number source-card
