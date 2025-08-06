@@ -1,6 +1,7 @@
 (ns metabase-enterprise.worker.core
   (:require
    [metabase-enterprise.worker.api]
+   [metabase-enterprise.worker.canceling]
    [metabase-enterprise.worker.models.worker-run]
    [metabase-enterprise.worker.models.worker-run-cancelation]
    [metabase-enterprise.worker.server]
@@ -13,6 +14,11 @@
   execute-transform!
   get-status
   run-remote?]
+ [metabase-enterprise.worker.canceling
+  chan-end-run!
+  chan-signal-cancel!
+  chan-start-run!
+  chan-start-timeout-vthread!]
  [metabase-enterprise.worker.models.worker-run
   cancel-old-canceling-runs!
   cancel-run!

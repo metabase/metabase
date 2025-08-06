@@ -44,9 +44,6 @@
                 (case (:status resp)
                   "started"
                   :do-nothing
-                  "canceling"
-                  (worker-run/mark-cancel-started-run! (:run_id run) {:end_time (t/instant (:end-time resp))
-                                                                      :message (:note resp)})
                   "canceled"
                   (worker-run/cancel-run! (:run_id run) {:end_time (t/instant (:end-time resp))
                                                          :message (:note resp)})

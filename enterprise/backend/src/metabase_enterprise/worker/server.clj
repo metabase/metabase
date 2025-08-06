@@ -7,6 +7,7 @@
    [malli.core :as mc]
    [malli.transform :as mtx]
    [metabase-enterprise.transforms.core :as transforms]
+   [metabase-enterprise.worker.canceling :as canceling]
    [metabase-enterprise.worker.tracking :as tracking]
    [metabase.api.util.handlers :as handlers]
    [metabase.config.core :as config]
@@ -102,12 +103,16 @@
     3030))
 
 (defonce ^:private instance (atom nil))
+(defonce ^:private cancel-runs (atom nil))
 
 (defn stop! []
   (when @instance
     (log/info "Stopping worker server")
     (.stop ^QueuedThreadPool @instance)
     (reset! instance nil))
+  (when @cancel-runs
+    (.cancel ^Future @cancel-runs true)
+    (reset! cancel-runs nil))
   nil)
 
 (defn start!
@@ -122,6 +127,7 @@
                                             {:port jetty-port
                                              :thread-pool thread-pool
                                              :join? (not (:dev opts))})))
+   (reset! cancel-runs (canceling/schedule-cancel-runs!))
    nil))
 
 (comment

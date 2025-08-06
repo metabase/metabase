@@ -11,7 +11,6 @@
    [metabase.lib.schema.common :as schema.common]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.sync.core :as sync]
-   [metabase.task.core :as task]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
@@ -20,8 +19,6 @@
    (java.util.concurrent Executors ExecutorService Future ScheduledExecutorService TimeUnit)))
 
 (set! *warn-on-reflection* true)
-
-(defonce ^:private ^ScheduledExecutorService scheduler (Executors/newScheduledThreadPool 1))
 
 (defonce ^:private ^ExecutorService executor (Executors/newVirtualThreadPerTaskExecutor))
 
@@ -66,36 +63,20 @@
   [{:keys [run_id work_id]}]
   (sync-target! work_id run_id))
 
-;; TODO (eric): shouldn't be just for workers
-(defonce ^:private connections (atom {}))
-
-(defn- cancel-run! [run-id]
-  (when-some [cancel-chan (get @connections run-id)]
-    (swap! connections dissoc run-id)
-    (a/put! cancel-chan :cancel!)
-    (worker/cancel-run! run-id)))
-
 (defn- execute-mbl-transform-local!
   [run-id driver transform-details opts]
+  (worker/chan-start-timeout-vthread! run-id)
   ;; local run is responsible for status
-
-  ;; start a timeout vthread
-  (.submit executor ^Runnable (fn []
-                                (Thread/sleep (* 4 60 60 1000)) ;; 4 hours
-                                (when-some [cancel-chan (get @connections run-id)]
-                                  (swap! connections dissoc run-id)
-                                  (a/put! cancel-chan :cancel!)
-                                  (worker/timeout-run! run-id))))
   (try
     (binding [qp.pipeline/*canceled-chan* (a/promise-chan)]
-      (swap! connections assoc run-id qp.pipeline/*canceled-chan*)
+      (worker/chan-start-run! run-id qp.pipeline/*canceled-chan*)
       (driver/execute-transform! driver transform-details opts))
-    (when (get @connections run-id)
-      (swap! connections dissoc run-id)
-      (worker/succeed-started-run! run-id))
+    (worker/succeed-started-run! run-id)
     (catch Throwable t
       (worker/fail-started-run! run-id {:message (.getMessage t)})
-      (throw t))))
+      (throw t))
+    (finally
+      (worker/chan-end-run! run-id))))
 
 (defn execute-mbql-transform!
   "Execute `transform` and sync its target table.
@@ -221,20 +202,3 @@
                              :ordering ordering
                              :running  running
                              :complete complete}))))))))
-
-;; TODO (eric)
-;;
-;; Move to worker module
-(defmethod task/init! ::CancelLostRuns [_]
-  (.scheduleAtFixedRate scheduler
-                        #(try
-                           (log/trace "Checking for canceling items.")
-                           (let [runs (worker/reducible-canceled-local-runs)]
-                             (reduce (fn [_ run]
-                                       (try
-                                         (cancel-run! (:run_id run))
-                                         (catch Throwable t
-                                           (log/error t (str "Error canceling " (:run_id run))))))
-                                     nil runs))
-                           (catch Throwable t
-                             (log/error t "Error while canceling on worker."))) 0 20 TimeUnit/SECONDS))
