@@ -27,7 +27,9 @@ export function NewTransformMenu() {
     <>
       <Menu>
         <Menu.Target>
-          <Button variant="filled">{t`Create a transform`}</Button>
+          <Button variant="filled" leftSection={<Icon name="add" />}>
+            {t`Create a transform`}
+          </Button>
         </Menu.Target>
         <Menu.Dropdown>
           <Menu.Label>{t`Create your transform with…`}</Menu.Label>
