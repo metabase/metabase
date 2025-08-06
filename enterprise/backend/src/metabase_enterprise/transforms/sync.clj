@@ -7,6 +7,7 @@
    [clojurewerkz.quartzite.triggers :as triggers]
    [java-time.api :as t]
    [metabase-enterprise.worker.api :as api]
+   [metabase-enterprise.worker.core :as worker]
    [metabase-enterprise.worker.models.worker-run]
    [metabase.app-db.core :as mdb]
    [metabase.driver :as driver]
@@ -35,84 +36,40 @@
   [_]
   #_do-nothing)
 
-(comment
-
-  (t2/hydrate (t2/select-one :model/Transform 1) :worker-runs)
-
-  (reduce conj
-          []
-          (t2/reducible-select :model/WorkerRun :is_local false :is_active true))
-
-  (t2/select :model/WorkerRun))
-
 (defn- sync-worker-runs! [_ctx]
   (log/trace "Syncing worker runs.")
-  (let [runs (t2/reducible-select :model/WorkerRun :is_local false :is_active true)]
-    (reduce (fn [_ run]
-              (try
-                (let [resp (api/get-status (:run_id run))]
-                  (case (:status resp)
-                    "started"
-                    :do-nothing
-                    "canceling"
-                    (t2/update! :model/WorkerRun
-                                :run_id (:run_id run)
-                                {:status :canceling
-                                 :end_time (t/instant (:end-time resp))
-                                 :message (:note resp)})
-                    "canceled"
-                    (t2/update! :model/WorkerRun
-                                :run_id (:run_id run)
-                                {:status :canceled
-                                 :end_time (t/instant (:end-time resp))
-                                 :is_active nil
-                                 :message (:note resp)})
-                    "success"
-                    (do
-                      (t2/update! :model/WorkerRun
-                                  :run_id (:run_id run)
-                                  {:status :succeeded
-                                   :end_time (t/instant (:end-time resp))
-                                   :is_active nil})
-                      (post-success run))
-                    "error"
-                    (t2/update! :model/WorkerRun
-                                :run_id (:run_id run)
-                                {:status :failed
-                                 :end_time (t/instant (:end-time resp))
-                                 :is_active nil
-                                 :message (:note resp)})
-                    "timeout"
-                    (t2/update! :model/WorkerRun
-                                :run_id (:run_id run)
-                                {:status :timeout
-                                 :end_time (t/instant (:end-time resp))
-                                 :is_active nil
-                                 :message (:note resp)})))
-                (catch Throwable t
-                  (log/error t (str "Error syncing " (:run_id run))))))
-            nil runs))
+  (let [runs (worker/reducible-active-remote-runs)]
+    (run! (fn [run]
+            (try
+              (let [resp (api/get-status (:run_id run))]
+                (case (:status resp)
+                  "started"
+                  :do-nothing
+                  "canceling"
+                  (worker/mark-cancel-started-run! (:run_id run) {:end_time (t/instant (:end-time resp))
+                                                                  :message (:note resp)})
+                  "canceled"
+                  (worker/cancel-run! (:run_id run) {:end_time (t/instant (:end-time resp))
+                                                     :message (:note resp)})
+                  "success"
+                  (do
+                    (worker/succeed-started-run! (:run_id run) {:end_time (t/instant (:end-time resp))})
+                    (post-success run))
+                  "error"
+                  (worker/fail-started-run! (:run_id run) {:end_time (t/instant (:end-time resp))
+                                                           :message (:note resp)})
+                  "timeout"
+                  (worker/timeout-run! (:run_id run) {:end_time (t/instant (:end-time resp))
+                                                      :message (:note resp)})))
+              (catch Throwable t
+                (log/error t (str "Error syncing " (:run_id run))))))
+          runs))
 
   (log/trace "Timing out old runs.")
-  (t2/update! :model/WorkerRun
-              :is_active true
-              [:< :start_time
-               (sql.qp/add-interval-honeysql-form (mdb/db-type) [:now] -4 :hour)] true
-              {:status :timeout
-               :end_time :%now
-               :is_active nil
-               :message "Timed out by metabase"})
+  (worker/timeout-old-runs! 4 :hour)
 
   (log/trace "Canceling items that haven't been marked canceled.")
-  (t2/update! :model/WorkerRun
-              :status "canceling"
-              [:< :end_time
-               (sql.qp/add-interval-honeysql-form (mdb/db-type)
-                                                  :%now -1 :minute)]
-              {:status :canceled
-               :end_time :%now
-               :is_active nil
-               :message "Canceled by user but could not guarantee run stopped."}))
+  (worker/cancel-old-canceling-runs! 1 :minute))
 
 (task/defjob  ^{:doc "Syncs remote execution information with local table."
                 org.quartz.DisallowConcurrentExecution true}
@@ -137,4 +94,3 @@
   (when (api/run-remote?)
     (log/info "Scheduling worker sync.")
     (start-job!)))
-

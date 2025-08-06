@@ -48,12 +48,7 @@
     (worker/execute-transform! run-id driver transform-details opts)
     (catch Throwable t
       (log/error "Remote execution failed.")
-      (t2/update! :model/WorkerRun run-id
-                  :status :started
-                  {:status :failed
-                   :end_time :%now
-                   :is_active nil
-                   :message (.getMessage t)})
+      (worker/fail-started-run! run-id {:message (.getMessage t)})
       (throw t))))
 
 (defn- sync-target!
@@ -74,27 +69,11 @@
 
 (defonce ^:private connections (atom {}))
 
-(defn cancel-run! [run-id]
+(defn- cancel-run! [run-id]
   (when-some [cancel-chan (a/promise-chan) #_(get @connections run-id)]
     (swap! connections dissoc run-id)
     (a/put! cancel-chan :cancel!)
-    (t2/update! :model/WorkerRun
-                :run_id run-id
-                [:or
-                 [:= :status "started"]
-                 [:= :status "canceling"]] true
-                {:status :canceled
-                 :end_time :%now
-                 :is_active nil
-                 :message "Canceled by user"})))
-
-(defn mark-cancel-run! [run-id]
-  (t2/update! :model/WorkerRun
-              :run_id run-id
-              :status "started"
-              {:status :canceling
-               :end_time :%now
-               :message "Canceled by user"}))
+    (worker/cancel-run! run-id)))
 
 (defn- execute-mbl-transform-local!
   [run-id driver transform-details opts]
@@ -106,31 +85,16 @@
                                 (when-some [cancel-chan (get @connections run-id)]
                                   (swap! connections dissoc run-id)
                                   (a/put! cancel-chan :cancel!)
-                                  (t2/update! :model/WorkerRun
-                                              :run_id run-id
-                                              :status "started"
-                                              {:status :timeout
-                                               :end_time :%now
-                                               :is_active nil
-                                               :message "Timed out"}))))
+                                  (worker/timeout-run! run-id))))
   (try
     (binding [qp.pipeline/*canceled-chan* (a/promise-chan)]
       (swap! connections assoc run-id qp.pipeline/*canceled-chan*)
       (driver/execute-transform! driver transform-details opts))
     (when (get @connections run-id)
       (swap! connections dissoc run-id)
-      (t2/update! :model/WorkerRun
-                  :run_id run-id
-                  {:status :succeeded
-                   :end_time :%now
-                   :is_active nil}))
+      (worker/succeed-started-run! run-id))
     (catch Throwable t
-      (t2/update! :model/WorkerRun
-                  :run_id run-id
-                  {:status :failed
-                   :end-time :%now
-                   :is_active nil
-                   :message (.getMessage t)})
+      (worker/fail-started-run! run-id {:message (.getMessage t)})
       (throw t))))
 
 (defn execute-mbql-transform!
@@ -156,14 +120,9 @@
                          {:driver driver, :database database, :feature feature})))
        ;; mark the execution as started and notify any observers
        (try
-         (t2/insert! :model/WorkerRun
-                     {:run_id run-id
-                      :work_id id
-                      :work_type :transform
-                      :run_method run-method
-                      :is_local (not (worker/run-remote?))
-                      :status :started
-                      :is_active true})
+         (worker/start-run! run-id :transform id
+                            {:run_method run-method
+                             :is_local (not (worker/run-remote?))})
          (catch java.sql.SQLException e
            (if (= (.getSQLState e) "23505")
              (throw (ex-info "Transform is already running"
@@ -186,18 +145,6 @@
          ;; but we assume nobody would catch the exception anyway
          (deliver start-promise t))
        (throw t)))))
-
-(comment
-  (t2/insert! :model/WorkerRun
-              {:run_id (str (u/generate-nano-id))
-               :work_id 1
-               :work_type :transform
-               :run_method :remote
-               :is_local true
-               :status :started
-               :is_active true})
-  (sync-worker-runs!)
-  -)
 
 (def ^:private ^Long scheduled-execution-poll-delay-millis 2000)
 
@@ -230,9 +177,7 @@
   (when-let [run-ids (seq (keep ::run-id transforms))]
     (loop []
       (Thread/sleep scheduled-execution-poll-delay-millis)
-      (or (not-empty (t2/select-fn-vec :work_id :model/WorkerRun
-                                       :run_id [:in run-ids]
-                                       :status [:!= :started]))
+      (or (not-empty (into [] (map :work_id) (worker/inactive-runs run-ids)))
           (recur)))))
 
 (defn execute-transforms!
@@ -284,9 +229,7 @@
   (.scheduleAtFixedRate scheduler
                         #(try
                            (log/trace "Checking for canceling items.")
-                           (let [runs (t2/reducible-select :model/WorkerRun
-                                                           :is_local true
-                                                           :status "canceling")]
+                           (let [runs (worker/reducible-canceled-local-runs)]
                              (reduce (fn [_ run]
                                        (try
                                          (cancel-run! (:run_id run))

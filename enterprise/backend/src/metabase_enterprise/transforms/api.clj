@@ -3,6 +3,7 @@
    [clojure.set :as set]
    [metabase-enterprise.transforms.execute :as transforms.execute]
    [metabase-enterprise.transforms.util :as transforms.util]
+   [metabase-enterprise.worker.core :as worker]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
@@ -92,20 +93,8 @@
         (t2/hydrate :last_execution)
         (assoc :table target-table))))
 
-(comment
-
-  (ttt {:offset 0 :limit 20})
-
-  (t2/hydrate (t2/select :model/WorkerRun) :transform)
-  -)
-
 (api.macros/defendpoint :get "/execution"
-  [{:keys [offset
-           limit
-           sort_column
-           sort_direction
-           transform_id
-           status]} :-
+  [params :-
    [:map
     [:offset                          ms/IntGreaterThanOrEqualToZero]
     [:limit                           ms/IntGreaterThanOrEqualToZero]
@@ -115,40 +104,17 @@
     [:status         {:optional true} [:enum "started" "succeeded" "failed" "timeout"]]]]
   (log/info "get executions")
   (api/check-superuser)
-  (let [offset (or offset 0)
-        limit  (or limit 20)
-        sort-direction (or (keyword sort_direction) :desc)
-        nulls-sort (if (= sort-direction :asc)
-                     :nulls-last
-                     :nulls-first)
-        sort-column (keyword sort_column)
-        order-by (case sort_column
-                   :started_at [[sort-column sort-direction]]
-                   :ended_at   [[sort-column sort-direction nulls-sort]]
-                   [[:start_time sort-direction]
-                    [:end_time   sort-direction nulls-sort]])
-        conditions (concat [:work_type :transform]
-                           (when transform_id
-                             [:work_id transform_id])
-                           (when status
-                             [:= :status status])
-                           (when (= status "started")
-                             [:is_active true]))
-        conditions-with-sort-and-pagination (concat conditions [{:order-by order-by
-                                                                 :offset offset
-                                                                 :limit limit}])
-        runs (apply t2/select :model/WorkerRun conditions-with-sort-and-pagination)]
-    {:data (mapv (fn [run]
-                   (-> run
-                       (set/rename-keys {:run_id     :id
-                                         :work_id    :transform_id
-                                         :run_method :trigger
-                                         :start_time :started_at
-                                         :end_time   :ended_at})))
-                 (t2/hydrate runs :transform))
-     :limit limit
-     :offset offset
-     :total (apply t2/count :model/WorkerRun conditions)}))
+  (update (worker/paged-executions (-> params
+                                       (set/rename-keys {:transform_id :work_id})
+                                       (assoc :work_type "transform")))
+          :data #(mapv (fn [run]
+                         (-> run
+                             (set/rename-keys {:run_id     :id
+                                               :work_id    :transform_id
+                                               :run_method :trigger
+                                               :start_time :started_at
+                                               :end_time   :ended_at})))
+                       %)))
 
 (api.macros/defendpoint :put "/:id"
   [{:keys [id]} :- [:map
@@ -193,7 +159,7 @@
                         [:id :string]]]
   (log/info "canceling run " run-id)
   (api/check-superuser)
-  (transforms.execute/mark-cancel-run! run-id)
+  (worker/mark-cancel-started-run! run-id)
   nil)
 
 (api.macros/defendpoint :post "/:id/execute"
