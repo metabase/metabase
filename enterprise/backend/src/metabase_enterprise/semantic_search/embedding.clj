@@ -172,11 +172,11 @@
     (log/debug "Calling AI Service embeddings API" {:documents (count texts) :tokens (count-tokens-batch texts)})
     (let [response (metabot-v3.client/generate-embeddings model-name texts)]
       (analytics/inc! :metabase-search/semantic-embedding-tokens
-                      {:provider "openai", :model model-name}
+                      {:provider "ai-service", :model model-name}
                       (->> response :usage :total_tokens))
       (extract-base64-response-embeddings response))
     (catch Exception e
-      (log/error e "OpenAI embeddings API call failed" {:documents (count texts) :tokens (count-tokens-batch texts)})
+      (log/error e "AI Service embeddings API call failed" {:documents (count texts) :tokens (count-tokens-batch texts)})
       (throw e))))
 
 (defn- ai-service-get-embedding [model-name text]
