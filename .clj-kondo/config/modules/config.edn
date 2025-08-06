@@ -1026,6 +1026,7 @@
   search
   {:team "Admin Webapp"
    :api #{metabase.search.api
+          metabase.search.appdb.scoring
           metabase.search.config
           metabase.search.core
           metabase.search.engine

@@ -398,9 +398,12 @@
    [:verified :verified]
    [:metadata :metadata]
    [:archived :archived]
+   [:pinned :pinned]
    [:creator_id :creator_id]
    [:last_editor_id :last_editor_id]
    [:last_viewed_at :last_viewed_at]
+   [:dashboardcard_count :dashboardcard_count]
+   [:view_count :view_count]
    [:database_id :database_id]
    [:display_type :display_type]
    [:model_created_at :model_created_at]
@@ -437,22 +440,6 @@
         max-cosine-distance 0.7
         ;; Inner query: pure vector search to better trigger HNSW index vs. seqscan
         ;; TODO: only pull in necessary extra columns from configured filters
-        common-search-columns [[:id :id]
-                               [:model_id :model_id]
-                               [:model :model]
-                               [:name :name]
-                               [:content :content]
-                               [:verified :verified]
-                               [:metadata :metadata]
-                               [:archived :archived]
-                               [:creator_id :creator_id]
-                               [:last_editor_id :last_editor_id]
-                               [:last_viewed_at :last_viewed_at]
-                               [:database_id :database_id]
-                               [:display_type :display_type]
-                               [:model_created_at :model_created_at]
-                               [:model_updated_at :model_updated_at]
-                               [:collection_id :collection_id]]
         hnsw-query {:select (into common-search-columns
                                   [[[:raw (str "embedding <=> " embedding-literal)] :distance]])
                     :from   [(keyword (:table-name index))]
@@ -474,9 +461,6 @@
   [index embedding search-context]
   (let [semantic-results (semantic-search-query index embedding search-context)
         keyword-results (keyword-search-query index search-context)
-        k 60
-        keyword-weight 0.51
-        semantic-weight 0.49
         full-query {:with [[:vector_results semantic-results]
                            [:text_results keyword-results]]
                     :select [[[:coalesce :v.id :t.id] :id]
@@ -486,16 +470,9 @@
                              [[:coalesce :v.verified :t.verified] :verified]
                              [[:coalesce :v.metadata :t.metadata] :metadata]
                              [[:coalesce :v.semantic_rank -1] :semantic_rank]
-                             [[:coalesce :t.keyword_rank -1] :keyword_rank]
-                             [[:+
-                               [:* [:cast semantic-weight :float]
-                                [:coalesce [:/ 1.0 [:+ k [:. :v :semantic_rank]]] 0]]
-                               [:* [:cast keyword-weight :float]
-                                [:coalesce [:/ 1.0 [:+ k [:. :t :keyword_rank]]] 0]]]
-                              :rrf_rank]]
+                             [[:coalesce :t.keyword_rank -1] :keyword_rank]]
                     :from [[:vector_results :v]]
                     :full-join [[:text_results :t] [:= :v.id :t.id]]
-                    :order-by [[:rrf_total_score :desc]]
                     :limit (semantic-settings/semantic-search-results-limit)}]
     full-query))
 
@@ -504,7 +481,8 @@
   embedding distance."
   [row]
   (-> (get-in row [:metadata :legacy_input])
-      (assoc :score (:rrf_total_score row 1.0))))
+      ;; TODO all-scorers?
+      (assoc :score (:total_score row 1.0))))
 
 (defn- decode-metadata
   "Decode `row`s `:metadata`."
@@ -669,7 +647,7 @@
             embedding-time-ms (u/since-ms timer)
 
             db-timer (u/start-timer)
-            scorers (scoring/scorers search-context)
+            scorers (scoring/semantic-scorers search-context)
             query (->> (hybrid-search-query index embedding search-context)
                        (scoring/with-scores search-context scorers))
             xform (comp (map decode-metadata)

@@ -85,7 +85,8 @@
     :text                5
     :mine                1
     :exact               5
-    :prefix              0}
+    :prefix              0
+    :rrf                 5}
    :command-palette
    {:prefix               5
     :model/collection     1

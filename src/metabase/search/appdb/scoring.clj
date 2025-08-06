@@ -3,6 +3,7 @@
    [clojure.core.memoize :as memoize]
    [honey.sql.helpers :as sql.helpers]
    [metabase.config.core :as config]
+   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.search.appdb.index :as search.index]
    [metabase.search.appdb.specialization.api :as specialization]
    [metabase.search.config :as search.config]
@@ -23,6 +24,18 @@
                                [:!= nil (keyword (str m "_bookmark." m "_id"))]]
                               [:inline 1]])]
     (into [:case] (concat (mapcat (comp match-clause name) bookmarked-models) [:else [:inline 0]]))))
+
+(defn- user-recency-expr [{:keys [current-user-id]}]
+  {:select [[[:max :recent_views.timestamp] :last_viewed_at]]
+   :from   [:recent_views]
+   :where  [:and
+            [:= :recent_views.user_id current-user-id]
+            [:= [:cast :recent_views.model_id :text] :search_index.model_id]
+            [:= :recent_views.model
+             [:case
+              [:= :search_index.model [:inline "dataset"]] [:inline "card"]
+              [:= :search_index.model [:inline "metric"]] [:inline "card"]
+              :else :search_index.model]]]})
 
 (defn- view-count-percentiles*
   [p-value]
@@ -47,15 +60,48 @@
                                        (into [:case] cat cases)
                                        1))))
 
-(defn scorers
-  "Return the select-item expressions used to calculate the score for appdb search results."
-  [{:keys [limit-int] :as search-ctx}]
-  (merge
-   (search.scoring/scorers search-ctx)
-   (when-not (and limit-int (zero? limit-int))
-     {:text         (specialization/text-score)
-      :view-count   (view-count-expr search.config/view-count-scaling-percentile)
-      :bookmarked   bookmark-score-expr})))
+(defn- model-rank-exp [{:keys [context]}]
+  (let [search-order search.config/models-search-order
+        n            (double (count search-order))
+        cases        (map-indexed (fn [i sm]
+                                    [[:= :search_index.model sm]
+                                     (or (search.config/scorer-param context :model sm)
+                                         [:inline (/ (- n i) n)])])
+                                  search-order)]
+    (-> (into [:case] cat (concat cases))
+        ;; if you're not listed, get a very poor score
+        (into [:else [:inline 0.01]]))))
+
+(defn base-scorers
+  "The default constituents of the search ranking scores."
+  [{:keys [search-string limit-int] :as search-ctx}]
+  (if (and limit-int (zero? limit-int))
+    {:model       [:inline 1]}
+    ;; NOTE: we calculate scores even if the weight is zero, so that it's easy to consider how we could affect any
+    ;; given set of results. At some point, we should optimize away the irrelevant scores for any given context.
+    {:text         (specialization/text-score)
+     :view-count   (view-count-expr search.config/view-count-scaling-percentile)
+     :pinned       (search.scoring/truthy :pinned)
+     :bookmarked   bookmark-score-expr
+     :recency      (search.scoring/inverse-duration [:coalesce :last_viewed_at :model_updated_at] [:now] search.config/stale-time-in-days)
+     :user-recency (search.scoring/inverse-duration (user-recency-expr search-ctx) [:now] search.config/stale-time-in-days)
+     :dashboard    (search.scoring/size :dashboardcard_count search.config/dashboard-count-ceiling)
+     :model        (model-rank-exp search-ctx)
+     :mine         (search.scoring/equal :search_index.creator_id (:current-user-id search-ctx))
+     :exact        (if search-string
+                     ;; perform the lower casing within the database, in case it behaves differently to our helper
+                     (search.scoring/equal [:lower :search_index.name] [:lower search-string])
+                     [:inline 0])
+     :prefix       (if search-string
+                     ;; in this case, we need to transform the string into a pattern in code, so forced to use helper
+                     (search.scoring/prefix [:lower :search_index.name] (u/lower-case-en search-string))
+                     [:inline 0])}))
+
+(defenterprise scorers
+  "Return the select-item expressions used to calculate the score for each search result."
+  metabase-enterprise.search.scoring
+  [search-ctx]
+  (base-scorers search-ctx))
 
 (defn- bookmark-join [model user-id]
   (let [model-name (name model)

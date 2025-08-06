@@ -1,6 +1,7 @@
 (ns metabase-enterprise.search.scoring
   (:require
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
+   [metabase.search.appdb.scoring :as appdb.scoring]
    [metabase.search.config :as search.config]
    [metabase.search.in-place.scoring :as scoring]
    [metabase.search.scoring :as search.scoring]))
@@ -24,7 +25,7 @@
   "Return the select-item expressions used to calculate the score for each search result."
   :feature :none
   [search-ctx]
-  (merge (search.scoring/base-scorers search-ctx) (additional-scorers)))
+  (merge (appdb.scoring/base-scorers search-ctx) (additional-scorers)))
 
 ;; ------------ LEGACY ----------
 
