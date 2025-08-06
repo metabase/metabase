@@ -1,6 +1,8 @@
 (ns metabase-enterprise.semantic-search.embedding
   (:require
    [clj-http.client :as http]
+   [metabase-enterprise.metabot-v3.client :as metabot-v3.client]
+   [metabase-enterprise.metabot-v3.settings :as metabot-v3.settings]
    [metabase-enterprise.semantic-search.settings :as semantic-settings]
    [metabase.analytics.core :as analytics]
    [metabase.util :as u]
@@ -12,18 +14,7 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:private ollama-supported-models
-  "Map of supported Ollama models to their embedding dimensions."
-  {"all-minilm" 384
-   "mxbai-embed-large" 1024
-   "nomic-embed-text" 768
-   "snowflake-arctic-embed2:568m" 1024})
-
-(def ^:private openai-supported-models
-  "Map of supported OpenAI models to their embedding dimensions."
-  {"text-embedding-ada-002" 1536
-   "text-embedding-3-small" 1536
-   "Snowflake/snowflake-arctic-embed-l-v2.0" 1024})
+;; TODO: find better way to abbrev given model names can be dynamic
 
 (def model->abbrev
   "Map of supported models to a unique abbreviation for use in index names."
@@ -94,16 +85,6 @@
       (conj batches current-batch)
       batches)))
 
-(def default-model-for-provider
-  "Get the default model for a given provider."
-  {"openai" "text-embedding-3-small"
-   "ollama" "mxbai-embed-large"})
-
-(def supported-models-for-provider
-  "Get all supported models for a give provider."
-  {"openai" openai-supported-models
-   "ollama" ollama-supported-models})
-
 ;;;; Provider SPI
 
 (defn- dispatch-provider [embedding-model & _] (:provider embedding-model))
@@ -126,7 +107,7 @@
   (try
     ;; TODO count ollama tokens into :metabase-search/semantic-embedding-tokens?
     (log/debug "Generating Ollama embedding for text of length:" (count text))
-    (-> (http/post "http://localhost:11434/api/embeddings"
+    (-> (http/post "http://localhost:11434/api/embeddings" ;; TODO: we should make the host configurable
                    {:headers {"Content-Type" "application/json"}
                     :body    (json/encode {:model model-name
                                            :prompt text})})
@@ -146,7 +127,7 @@
 (defn- ollama-pull-model [model-name]
   (try
     (log/debug "Pulling embedding model from Ollama...")
-    (http/post "http://localhost:11434/api/pull"
+    (http/post "http://localhost:11434/api/pull" ;; TODO: make the host configurable
                {:headers {"Content-Type" "application/json"}
                 :body    (json/encode {:model model-name})})
     (catch Exception e
@@ -156,6 +137,42 @@
 (defmethod get-embedding        "ollama" [{:keys [model-name]} text] (ollama-get-embedding model-name text))
 (defmethod get-embeddings-batch "ollama" [{:keys [model-name]} text] (ollama-get-embeddings-batch model-name text))
 (defmethod pull-model           "ollama" [{:keys [model-name]}]      (ollama-pull-model model-name))
+
+;;;; AI Service impl
+
+(defn- ai-service-get-embeddings-batch [model-name texts]
+  (try
+    (log/debug "Calling AI Service embeddings API" {:documents (count texts) :tokens (count-tokens-batch texts)})
+    (let [response (metabot-v3.client/generate-embeddings model-name texts)]
+      (analytics/inc! :metabase-search/semantic-embedding-tokens
+                      {:provider "openai", :model model-name}
+                      (->> response :usage :total_tokens))
+      (->> response
+           :data
+             ;; Decode base64 encoded embedding
+           (map (comp vec
+                      (fn [^String base64-str]
+                        (let [bytes (.decode (java.util.Base64/getDecoder) base64-str)
+                              buffer (java.nio.ByteBuffer/wrap bytes)
+                              _ (.order buffer java.nio.ByteOrder/LITTLE_ENDIAN)
+                              float-count (/ (count bytes) 4)]
+                          (repeatedly float-count #(.getFloat buffer))))
+                      :embedding))
+           vec))
+    (catch Exception e
+      (log/error e "OpenAI embeddings API call failed" {:documents (count texts) :tokens (count-tokens-batch texts)})
+      (throw e))))
+
+(defn- ai-service-get-embedding [model-name text]
+  (try
+    (log/debug "Generating AI Service embedding for text of length:" (count text))
+    (first (ai-service-get-embeddings-batch model-name text))
+    (catch Exception e
+      (log/error e "Failed to generate AI Service embedding for text of length:" (count text))
+      (throw e))))
+
+(defmethod get-embedding        "ai-service" [{:keys [model-name]} text] (ai-service-get-embedding model-name text))
+(defmethod get-embeddings-batch "ai-service" [{:keys [model-name]} text] (ai-service-get-embeddings-batch model-name text))
 
 ;;;; OpenAI impl
 
@@ -208,21 +225,11 @@
 ;;;; Global embedding model
 
 (defn get-configured-model
-  "Get the environments default embedding model according to the ee-embedding-provider / ee-embedding-model settings.
-
-  Requires the model dimensions to be defined in ollama-supported-models or openai-supported-models (throws if not)."
+  "Get the environments default embedding model according to the ee-embedding-provider / ee-embedding-model settings."
   []
-  (let [provider (semantic-settings/ee-embedding-provider)
-        models (case provider
-                 "ollama" ollama-supported-models
-                 "openai" openai-supported-models
-                 (throw (ex-info (format "Unknown embedding provider: %s" provider) {:provider provider})))
-        model-name (or (semantic-settings/ee-embedding-model) (default-model-for-provider provider))
-        vector-dimensions (or (get models model-name)
-                              (throw (ex-info (format "Not a supported model: %s" model-name) {:provider provider, :model-name model-name})))]
-    {:provider provider
-     :model-name model-name
-     :vector-dimensions vector-dimensions}))
+  {:provider (semantic-settings/ee-embedding-provider)
+   :model-name (semantic-settings/ee-embedding-model)
+   :vector-dimensions (semantic-settings/ee-embedding-model-dimensions)})
 
 (defn- calc-token-metrics
   [texts]
@@ -261,16 +268,6 @@
           (let [embeddings (get-embeddings-batch embedding-model texts)
                 text-embedding-map (zipmap texts embeddings)]
             (process-fn text-embedding-map)))))))
-
-(comment
-  ;; This gets loaded after metabase.analytics.prometheus/setup-metrics! so the known labels don't get initialized. If
-  ;; we care about this, we need to ensure this namespace gets loaded before setup-metrics! is called, e.g. by requiring
-  ;; this namespace in the semantic search module's init file. See https://github.com/metabase/metabase/pull/52834
-  (defmethod analytics/known-labels :metabase-search/semantic-embedding-tokens
-    [_]
-    (for [provider (keys supported-models-for-provider)
-          model (keys (supported-models-for-provider provider))]
-      {:provider provider :model model})))
 
 (comment
   ;; Configuration:

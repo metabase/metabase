@@ -47,6 +47,7 @@
       (is (= 1536 (:vector-dimensions (embedding/get-configured-model)))))))
 
 (deftest test-default-models
+  ;; TODO fix
   (testing "Provider defaults are used when no override is set"
     (is (= "text-embedding-3-small" (#'embedding/default-model-for-provider "openai")))
     (is (= "mxbai-embed-large" (#'embedding/default-model-for-provider "ollama")))
@@ -116,6 +117,7 @@
       ;; Should skip the long text and batch the short ones
       (is (= [["Short" "Also short"]] batches)))))
 
+;; TODO: fix this test
 (deftest ^:parallel model->abbrev-test
   (mt/with-premium-features #{:semantic-search}
     (testing "all models have an abbreviation defined"
