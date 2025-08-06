@@ -28,13 +28,15 @@
 (defn abbrev-model-name
   "Abbreviate long model names for use in index names. Does not ensure uniqueness."
   [model-name max-len]
-  (-> model-name
+  (let [clean-model-name (clean-model-name model-name)]
+    (if (<= (count clean-model-name) max-len)
       clean-model-name
-      (str/replace #"embedding|embed" "")
-      ((fn [s] (reduce-kv str/replace s model-abbreviations)))
-      (str/replace #"_{2,}" "_")
-      (#(subs % 0 (min (count %) max-len)))
-      (str/replace #"^_+|_+$" "")))
+      (-> clean-model-name
+          (str/replace #"embedding|embed" "")
+          ((fn [s] (reduce-kv str/replace s model-abbreviations)))
+          (str/replace #"_{2,}" "_")
+          (#(subs % 0 (min (count %) max-len)))
+          (str/replace #"^_+|_+$" "")))))
 
 ;;; Token Counting for OpenAI Models
 
