@@ -139,10 +139,12 @@
   [connectable table-name model ids->sql ids]
   (let [deleted (transduce (comp (partition-all *batch-size*)
                                  (map (fn [ids]
-                                        (jdbc/execute! connectable (ids->sql ids))
-                                        (u/prog1 (count ids)
-                                          (log/debug "semantic search deleted a batch of" <>
-                                                     "documents with model type" model)))))
+                                        (if-let [sql (ids->sql ids)]
+                                          (do (jdbc/execute! connectable sql)
+                                              (u/prog1 (count ids)
+                                                (log/debug "semantic search deleted a batch of" <>
+                                                           "documents with model type" model)))
+                                          0))))
                            +
                            ids)]
     (when (pos? deleted)
@@ -661,6 +663,15 @@
 
   (query-index db index search-ctx))
 
+(defn- delete-from-index-batch-sql
+  [model table-name batch-ids]
+  (when (seq batch-ids)
+    (-> (sql.helpers/delete-from table-name)
+        (sql.helpers/where [:and
+                            [:= :model model]
+                            [:in :model_id (map str batch-ids)]])
+        sql-format-quoted)))
+
 (defn delete-from-index!
   "Deletes documents from the index table based on model and model_ids."
   [db index model model-ids]
@@ -668,12 +679,7 @@
    db
    (:table-name index)
    model
-   (fn [batch-ids]
-     (-> (sql.helpers/delete-from (keyword (:table-name index)))
-         (sql.helpers/where [:and
-                             [:= :model model]
-                             [:in :model_id (map str batch-ids)]])
-         sql-format-quoted))
+   (partial delete-from-index-batch-sql model (keyword (:table-name index)))
    model-ids))
 
 (comment
