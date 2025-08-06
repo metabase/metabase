@@ -385,6 +385,38 @@ databaseChangeLog:
   - changeSet:
       id: v56.2025-08-06T17:42:33
       author: edpaget
+      comment: Add index on document_bookmark.user_id
+      changes:
+        - createIndex:
+            tableName: document_bookmark
+            indexName: idx_document_bookmark_user_id
+            columns:
+              - column:
+                  name: user_id
+      rollback:
+        - dropIndex:
+            tableName: document_bookmark
+            indexName: idx_document_bookmark_user_id
+
+  - changeSet:
+      id: v56.2025-08-06T17:42:34
+      author: edpaget
+      comment: Add index on document_bookmark.document_id
+      changes:
+        - createIndex:
+            tableName: document_bookmark
+            indexName: idx_document_bookmark_document_id
+            columns:
+              - column:
+                  name: document_id
+      rollback:
+        - dropIndex:
+            tableName: document_bookmark
+            indexName: idx_document_bookmark_document_id
+
+  - changeSet:
+      id: v56.2025-08-06T17:42:35
+      author: edpaget
       comment: Add foreign key constraint for document_bookmark.user_id
       changes:
         - addForeignKeyConstraint:
@@ -400,7 +432,7 @@ databaseChangeLog:
             constraintName: fk_document_bookmark_user_id
 
   - changeSet:
-      id: v56.2025-08-06T17:42:34
+      id: v56.2025-08-06T17:42:36
       author: edpaget
       comment: Add foreign key constraint for document_bookmark.document_id
       changes:
@@ -417,7 +449,7 @@ databaseChangeLog:
             constraintName: fk_document_bookmark_document_id
 
   - changeSet:
-      id: v56.2025-08-06T17:42:35
+      id: v56.2025-08-06T17:42:37
       author: edpaget
       comment: Add unique constraint for document_bookmark user_id and document_id
       changes:
@@ -429,38 +461,6 @@ databaseChangeLog:
         - dropUniqueConstraint:
             tableName: document_bookmark
             constraintName: idx_document_bookmark_user_document_unique
-
-  - changeSet:
-      id: v56.2025-08-06T17:42:36
-      author: edpaget
-      comment: Add index on document_bookmark.user_id
-      changes:
-        - createIndex:
-            tableName: document_bookmark
-            indexName: idx_document_bookmark_user_id
-            columns:
-              - column:
-                  name: user_id
-      rollback:
-        - dropIndex:
-            tableName: document_bookmark
-            indexName: idx_document_bookmark_user_id
-
-  - changeSet:
-      id: v56.2025-08-06T17:42:37
-      author: edpaget
-      comment: Add index on document_bookmark.document_id
-      changes:
-        - createIndex:
-            tableName: document_bookmark
-            indexName: idx_document_bookmark_document_id
-            columns:
-              - column:
-                  name: document_id
-      rollback:
-        - dropIndex:
-            tableName: document_bookmark
-            indexName: idx_document_bookmark_document_id
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
