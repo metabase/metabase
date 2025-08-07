@@ -90,6 +90,7 @@
 (defn run!
   "Run migrations for the worker."
   []
+  (assert (config/config-str :mb-worker-db) "Cannot run worker migrations with MB_WORKER_DB env var.")
   (let [worker-db-connection-string (config/config-str :mb-worker-db)]
     (run-migrations-from-resource-with-connection-string! worker-db-connection-string
                                                           "migrations/workers/worker_runs.yaml")))

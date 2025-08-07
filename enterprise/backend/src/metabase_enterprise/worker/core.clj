@@ -11,6 +11,7 @@
 
 (p/import-vars
  [metabase-enterprise.worker.api
+  cancel!
   execute-transform!
   get-status
   run-remote?]
@@ -28,6 +29,7 @@
   model->work-type
   paged-executions
   reducible-active-remote-runs
+  running-execution-for-work-id
   start-run!
   succeed-started-run!
   timeout-old-runs!
@@ -41,4 +43,4 @@
   start!
   stop!]
  [metabase-enterprise.worker.sync
-  post-success])
+  sync-single-run!])

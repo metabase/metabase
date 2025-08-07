@@ -42,6 +42,11 @@
   (json-body (http/get (worker-route (str "/status/" run-id "?mb-source=" (mb-id)))
                        {:content-type :json})))
 
+(defn cancel!
+  "cancel on the remote worker."
+  [run-id]
+  (:body (http/post (worker-route (str "/cancel/" run-id "?mb-source=" (mb-id))))))
+
 (defn health-check []
   (:body (http/get (worker-route "/api/health"))))
 
