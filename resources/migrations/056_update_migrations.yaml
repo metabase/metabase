@@ -229,9 +229,11 @@ databaseChangeLog:
            UPDATE core_user
            SET jwt_attributes = login_attributes, login_attributes = '{}'
            WHERE sso_source = 'jwt';
-      rollback: # there is not a clean way to roll this change back but if an
-                # instance is downgraded on the next jwt login login_attributes
-                # will be set the attributes from the jwt anyway.
+      rollback: >-
+        - sql:
+           UPDATE core_user
+           SET login_attributes = jwt_attributes
+           WHERE sso_source = 'jwt';
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
