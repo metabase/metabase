@@ -69,7 +69,7 @@
    :name           "Sample Job"
    :description    "Sample job description"
    :schedule       "0 0 * * * ? *"
-   :tag_ids        [1 2]
+   :tag_ids        [1]
    :last_execution {:status "succeeded"
                     :trigger "schedule"
                     :start_time "2024-01-01T10:00:00Z"

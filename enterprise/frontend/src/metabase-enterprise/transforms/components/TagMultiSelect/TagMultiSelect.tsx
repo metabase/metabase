@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { jt, t } from "ttag";
 
-import { useMetadataToasts } from "metabase/metadata/hooks";
 import {
   ActionIcon,
   Icon,
@@ -32,25 +31,27 @@ export function TagMultiSelect({ tagIds, onChange }: TagMultiSelectProps) {
   const tagById = getTagById(tags);
   const [searchValue, setSearchValue] = useState("");
   const [modalType, setModalType] = useState<TagModalType>();
+  const [newTagName, setNewTagName] = useState("");
   const [selectedTagId, setSelectedTagId] = useState<TransformTagId>();
-  const { sendSuccessToast } = useMetadataToasts();
 
   const handleModalOpen = (
     modalType: TagModalType,
-    selectedTag?: TransformTag,
+    selectedTag: TransformTag,
   ) => {
     setModalType(modalType);
-    setSelectedTagId(selectedTag?.id);
+    setSelectedTagId(selectedTag.id);
   };
 
   const handleModalClose = () => {
     setModalType(undefined);
+    setNewTagName("");
     setSelectedTagId(undefined);
   };
 
   const handleChange = (value: string[]) => {
     if (value.includes(NEW_VALUE)) {
-      handleModalOpen("create");
+      setNewTagName(searchValue);
+      setModalType("create");
     } else {
       onChange(value.map(getTagId));
     }
@@ -59,17 +60,14 @@ export function TagMultiSelect({ tagIds, onChange }: TagMultiSelectProps) {
   const handleCreate = (tag: TransformTag) => {
     onChange([...tagIds, tag.id]);
     handleModalClose();
-    sendSuccessToast(t`Tag created`);
   };
 
   const handleUpdate = () => {
     handleModalClose();
-    sendSuccessToast(t`Tag renamed`);
   };
 
   const handleDelete = () => {
     handleModalClose();
-    sendSuccessToast(t`Tag deleted`);
   };
 
   return (
@@ -99,7 +97,7 @@ export function TagMultiSelect({ tagIds, onChange }: TagMultiSelectProps) {
       />
       {modalType === "create" && (
         <CreateTagModal
-          initialName={searchValue}
+          initialName={newTagName}
           onCreate={handleCreate}
           onClose={handleModalClose}
         />
@@ -192,7 +190,7 @@ function getOptions(tags: TransformTag[], searchValue: string) {
   }));
 
   if (searchValue.length > 0 && tags.every((tag) => tag.name !== searchValue)) {
-    return [...options, { value: NEW_VALUE, label: NEW_VALUE }];
+    return [...options, { value: NEW_VALUE, label: searchValue }];
   }
 
   return options;
