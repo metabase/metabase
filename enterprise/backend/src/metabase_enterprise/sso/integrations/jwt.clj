@@ -132,7 +132,7 @@
 (defn- throw-simple-embedding-disabled
   []
   (throw
-   (ex-info (tru "Simple Embedding is disabled. Enable it in the embedding settings.")
+   (ex-info (tru "Embedded Analytics JS is disabled. Enable it in the embedding settings.")
             {:status      "error-embedding-simple-disabled"
              :status-code 402})))
 
