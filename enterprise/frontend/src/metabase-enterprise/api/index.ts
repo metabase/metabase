@@ -12,4 +12,5 @@ export * from "./scim";
 export * from "./tags";
 export * from "./transform";
 export * from "./transform-job";
+export * from "./transform-tag";
 export * from "./upload-management";

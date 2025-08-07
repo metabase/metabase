@@ -4,9 +4,16 @@ import { t } from "ttag";
 import { AdminContentTable } from "metabase/common/components/AdminContentTable";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useDispatch } from "metabase/lib/redux";
-import { Card } from "metabase/ui";
-import { useListTransformJobsQuery } from "metabase-enterprise/api";
-import type { TransformJob } from "metabase-types/api";
+import { Card, Group, Pill } from "metabase/ui";
+import {
+  useListTransformJobsQuery,
+  useListTransformTagsQuery,
+} from "metabase-enterprise/api";
+import type {
+  TransformJob,
+  TransformTag,
+  TransformTagId,
+} from "metabase-types/api";
 
 import { ListEmptyState } from "../../../components/ListEmptyState";
 import { getJobUrl } from "../../../urls";
@@ -15,7 +22,19 @@ import { formatStatus, formatTimestamp } from "../../../utils";
 import S from "./JobList.module.css";
 
 export function JobList() {
-  const { data: jobs = [], isLoading, error } = useListTransformJobsQuery();
+  const {
+    data: jobs = [],
+    isLoading: isLoadingJobs,
+    error: jobsError,
+  } = useListTransformJobsQuery();
+  const {
+    data: tags = [],
+    isLoading: isLoadingTags,
+    error: tagsError,
+  } = useListTransformTagsQuery();
+  const tagById = getTagById(tags);
+  const isLoading = isLoadingJobs || isLoadingTags;
+  const error = jobsError ?? tagsError;
   const dispatch = useDispatch();
 
   const handleRowClick = (job: TransformJob) => {
@@ -33,7 +52,7 @@ export function JobList() {
   return (
     <Card p={0} shadow="none" withBorder>
       <AdminContentTable
-        columnTitles={[t`Job`, t`Last run at`, `Last run status`]}
+        columnTitles={[t`Job`, t`Last run at`, t`Last run status`, t`Tags`]}
       >
         {jobs.map((job) => (
           <tr
@@ -52,9 +71,29 @@ export function JobList() {
                 ? formatStatus(job.last_execution.status)
                 : null}
             </td>
+            <td>
+              <Group>
+                {getJobTags(job.tag_ids ?? [], tagById).map((tag) => (
+                  <Pill key={tag.id}>{tag.name}</Pill>
+                ))}
+              </Group>
+            </td>
           </tr>
         ))}
       </AdminContentTable>
     </Card>
   );
+}
+
+function getTagById(
+  tags: TransformTag[],
+): Record<TransformTagId, TransformTag> {
+  return Object.fromEntries(tags.map((tag) => [tag.id, tag]));
+}
+
+function getJobTags(
+  tagIds: TransformTagId[],
+  tagById: Record<TransformTagId, TransformTag>,
+) {
+  return tagIds.map((tagId) => tagById[tagId]).filter((tag) => tag != null);
 }
