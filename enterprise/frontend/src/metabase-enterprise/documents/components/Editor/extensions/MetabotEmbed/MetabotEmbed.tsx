@@ -8,6 +8,8 @@ import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
+import { useDispatch } from "metabase/lib/redux";
+import { loadMetadataForCard } from "metabase/questions/actions";
 import { Button, Flex, Icon, Text, Tooltip } from "metabase/ui";
 import { useLazyMetabotDocumentNodeQuery } from "metabase-enterprise/api/metabot";
 import {
@@ -77,6 +79,7 @@ export const MetabotNode = Node.create<{
 
 export const MetabotComponent = memo(
   ({ editor, getPos, deleteNode, updateAttributes, node }: NodeViewProps) => {
+    const dispatch = useDispatch();
     const documentsDispatch = useDocumentsDispatch();
     const inputRef = useRef<HTMLTextAreaElement>(null);
     const controllerRef = useRef<AbortController | null>(null);
@@ -117,10 +120,12 @@ export const MetabotComponent = memo(
         setErrorText(t`Could not find Metabot block`);
         return;
       }
+
+      await dispatch(loadMetadataForCard(data.draft_card));
+
       const newCardId = generateDraftCardId();
       const card: Card = {
         ...data.draft_card,
-        database_id: data.draft_card.dataset_query.database || -1,
         id: newCardId,
         entity_id: "entity_id" as Card["entity_id"],
         created_at: "",
@@ -147,6 +152,7 @@ export const MetabotComponent = memo(
         cache_ttl: null,
         archived: false,
       };
+
       documentsDispatch(
         createDraftCard({
           originalCard: card,
@@ -171,7 +177,15 @@ export const MetabotComponent = memo(
         .run();
 
       deleteNode();
-    }, [prompt, editor, queryMetabot, deleteNode, getPos, documentsDispatch]);
+    }, [
+      prompt,
+      editor,
+      queryMetabot,
+      deleteNode,
+      getPos,
+      dispatch,
+      documentsDispatch,
+    ]);
 
     const handleStopMetabot = () => {
       controllerRef.current?.abort();
