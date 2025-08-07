@@ -41,7 +41,7 @@
   {:id          job-id
    :name        (or name "Updated Job")
    :description description
-   :schedule    (or schedule "0 0 * * *")
+   :schedule    (or schedule "0 0 * * * ? *")
    :tag_ids     (or tag_ids [])})
 
 (api.macros/defendpoint :delete "/:job-id"
@@ -68,7 +68,7 @@
   {:id             job-id
    :name           "Sample Job"
    :description    "Sample job description"
-   :schedule       "0 0 * * *"
+   :schedule       "0 0 * * * ? *"
    :tag_ids        [1 2]
    :last_execution {:status "succeeded"
                     :trigger "schedule"
@@ -84,7 +84,7 @@
   [{:id             1
     :name           "Sample Job 1"
     :description    "First sample job"
-    :schedule       "0 0 * * *"
+    :schedule       "0 0 * * * ? *"
     :tag_ids        [1]
     :last_execution {:status "succeeded"
                      :trigger "schedule"
