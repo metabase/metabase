@@ -16,6 +16,7 @@ export const SectionAction = forwardRef<HTMLButtonElement, Props>(
         c="text-dark"
         disabled={disabled}
         h={32}
+        variant="subtle"
         leftSection={<Icon name={iconName} />}
         ref={ref}
         w={32}

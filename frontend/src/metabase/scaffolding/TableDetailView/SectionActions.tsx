@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { Box, Tooltip } from "metabase/ui";
+import { Group, Tooltip } from "metabase/ui";
 import type {
   DatasetColumn,
   ObjectViewSectionSettings,
@@ -28,7 +28,15 @@ export function SectionActions({
   onUpdateSection,
 }: ObjectViewSectionProps) {
   return (
-    <Box>
+    <Group
+      bg="bg-white"
+      gap="xs"
+      style={{
+        border: "1px solid var(--border-color)",
+        borderRadius: "var(--mantine-radius-md)",
+        boxShadow: "0 0 1px var(--mb-color-shadow)",
+      }}
+    >
       {onUpdateSection && (
         <ColumnPickerButton
           columns={columns}
@@ -45,7 +53,7 @@ export function SectionActions({
           <SectionAction iconName="close" onClick={onRemoveSection} />
         </Tooltip>
       )}
-    </Box>
+    </Group>
   );
 }
 
