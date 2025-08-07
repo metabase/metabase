@@ -594,6 +594,9 @@
   [query _stage-number stage-number options]
   (visible-columns-method query stage-number (lib.util/query-stage query stage-number) options))
 
+;; TODO (Cam 8/7/25) -- Braden and I are in agreement that `visible-columns` fundamentally does not make sense for
+;; anything other than a specific query stage, and we should probably remove it entirely in the near future and leave
+;; just the stage implementation. See https://github.com/metabase/metabase/pull/61767#discussion_r2260558780
 (mu/defn visible-columns :- ::visible-columns
   "Return a sequence of columns that should be visible *within* a given stage of something, e.g. a query stage or a
   join query. This includes not just the columns that get returned (ones present in [[metadata]], but other columns
