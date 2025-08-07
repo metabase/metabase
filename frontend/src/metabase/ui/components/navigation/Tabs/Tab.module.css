@@ -9,9 +9,9 @@
     padding: 0.6875rem 0.9375rem 0.6875rem 0.5rem;
   }
 
-  &[data-grow="true"][data-orientation="horizontal"] {
+  &[data-orientation="vertical"] {
     .tabLabel {
-      text-align: center;
+      text-align: left; /* "start" for some reason doesn't work properly */
     }
   }
 }
@@ -48,7 +48,7 @@
   white-space: nowrap;
   text-overflow: ellipsis;
   overflow: hidden;
-  text-align: start;
+  text-align: center;
 }
 
 .tabSection[data-position="left"] {
