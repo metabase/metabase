@@ -13,7 +13,7 @@ export const SectionAction = forwardRef<HTMLButtonElement, Props>(
   ({ disabled, iconName, onClick }, ref) => {
     return (
       <Button
-        c="text-dark"
+        c={disabled ? "text-light" : "text-dark"}
         disabled={disabled}
         h={32}
         variant="subtle"
