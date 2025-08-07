@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { t } from "ttag";
 
-import { Button, Icon, Popover, Tooltip } from "metabase/ui";
+import { Popover, Tooltip } from "metabase/ui";
 import type {
   DatasetColumn,
   ObjectViewSectionSettings,
@@ -9,6 +9,7 @@ import type {
 } from "metabase-types/api";
 
 import { ColumnPicker } from "./ColumnPicker";
+import { SectionAction } from "./SectionAction";
 
 interface Props {
   columns: DatasetColumn[];
@@ -72,13 +73,9 @@ export const ColumnPickerButton = ({
                 : t`Add columns`
           }
         >
-          <Button
-            c="text-dark"
+          <SectionAction
             disabled={limitReached || unsectionedColumns.length === 0}
-            h={32}
-            leftSection={<Icon name="add" />}
-            // variant="subtle"
-            w={32}
+            iconName="add"
             onClick={() => setIsOpen(true)}
           />
         </Tooltip>

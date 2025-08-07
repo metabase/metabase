@@ -38,6 +38,7 @@ type ObjectViewSectionProps = {
   tableId: TableId;
   isEdit: boolean;
   table: Table;
+  onRemoveSection?: () => void;
   onUpdateSection?: (section: Partial<ObjectViewSectionSettings>) => void;
   dragHandleProps?: any;
   variant: SectionVariant;
@@ -53,6 +54,7 @@ export function ObjectViewSection({
   // tableId,
   table,
   isEdit,
+  onRemoveSection,
   onUpdateSection,
   // dragHandleProps,
   isHovered = false,
@@ -99,6 +101,7 @@ export function ObjectViewSection({
               section={section}
               sections={sections}
               table={table}
+              onRemoveSection={onRemoveSection}
               onUpdateSection={onUpdateSection}
             />
           </Box>
@@ -160,6 +163,7 @@ export function ObjectViewSection({
             section={section}
             sections={sections}
             table={table}
+            onRemoveSection={onRemoveSection}
             onUpdateSection={onUpdateSection}
           />
         </Box>

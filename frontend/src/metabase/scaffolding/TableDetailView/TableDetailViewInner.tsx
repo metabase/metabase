@@ -274,6 +274,12 @@ export function TableDetailViewInner({
                   onUpdateSection={(update) =>
                     updateSection(section.id, update)
                   }
+                  onRemoveSection={
+                    section.variant === "header" ||
+                    section.variant === "subheader"
+                      ? undefined
+                      : () => removeSection(section.id)
+                  }
                   table={table}
                   isHovered={
                     isEdit &&

@@ -1,4 +1,6 @@
-import { Box } from "metabase/ui/components";
+import { t } from "ttag";
+
+import { Box, Tooltip } from "metabase/ui";
 import type {
   DatasetColumn,
   ObjectViewSectionSettings,
@@ -6,12 +8,14 @@ import type {
 } from "metabase-types/api";
 
 import { ColumnPickerButton } from "./ColumnPickerButton";
+import { SectionAction } from "./SectionAction";
 
 type ObjectViewSectionProps = {
   columns: DatasetColumn[];
   section: ObjectViewSectionSettings;
   sections: ObjectViewSectionSettings[];
   table: Table;
+  onRemoveSection?: () => void;
   onUpdateSection?: (section: Partial<ObjectViewSectionSettings>) => void;
 };
 
@@ -20,6 +24,7 @@ export function SectionActions({
   section,
   sections,
   table,
+  onRemoveSection,
   onUpdateSection,
 }: ObjectViewSectionProps) {
   return (
@@ -33,6 +38,12 @@ export function SectionActions({
           table={table}
           onUpdateSection={onUpdateSection}
         />
+      )}
+
+      {onRemoveSection && (
+        <Tooltip label={t`Remove group`}>
+          <SectionAction iconName="close" onClick={onRemoveSection} />
+        </Tooltip>
       )}
     </Box>
   );

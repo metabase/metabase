@@ -21,6 +21,7 @@ type SortableSectionProps = {
   table: Table;
   isEdit: boolean;
   onUpdateSection?: (section: Partial<ObjectViewSectionSettings>) => void;
+  onRemoveSection?: () => void;
   variant: SectionVariant;
   isHovered?: boolean;
   onHoverStart?: () => void;
