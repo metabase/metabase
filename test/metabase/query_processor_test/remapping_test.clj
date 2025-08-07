@@ -469,19 +469,19 @@
               ;; The order of remaps is not important to the FE. If it changes in the future that is ok.
               ;;
               ;; 2 remaps from the join against `VENUES`
-              "J__NAME_2"
-              "J__NAME_3"
+              "J__CATEGORIES__via__ID__NAME"
+              "J__CATEGORIES__via__CATEGORY_ID__NAME"
               ;; 2 remaps for the top-level query
               "CATEGORIES__via__CATEGORY_ID__NAME"
               "CATEGORIES__via__ID__NAME"
               ;; BROKEN! This is a duplicate and should not be returned. Interestingly enough, both Lib and QP
               ;; incorrectly calculate the set of returned columns and both include this. (Probably because Lib and QP
               ;; use mostly the same code these days.)
-              "J__NAME_4"]
+              "J__CATEGORIES__via__ID__NAME_2"]
              (map :lib/desired-column-alias (mt/cols results))))
       ;; The extra incorrect duplicate column seems to be sorta indetermiate? I've seen it match the value of
-      ;; `J__NAME_2` and `J__NAME_3` in different test runs and I'm not sure why. Not bothering to debug since it's not
-      ;; even supposed to be returned anyway.
+      ;; `J__CATEGORIES__via__ID__NAME` and `J__CATEGORIES__via__CATEGORY_ID__NAME` in different test runs and I'm not
+      ;; sure why. Not bothering to debug since it's not even supposed to be returned anyway.
       ;;
       ;;      <top-level :fields>          <join>                                           <join remaps>       <fields remaps>     <incorrect duplicate>
       (is (=? [[11 2 "Stout Burgers & Beers" 1 "Red Medicine"          4  10.0646 -165.374 3 "African"  "Asian"  "Burger" "American" string?]

@@ -9,7 +9,7 @@ import {
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
-import { visitDatabase } from "./helpers/e2e-database-helpers";
+import { visitDatabase, waitForDbSync } from "./helpers/e2e-database-helpers";
 
 const { H } = cy;
 const { IS_ENTERPRISE } = Cypress.env();
@@ -77,20 +77,6 @@ describe("admin > database > add", () => {
 
     cy.button("Save").click();
     return cy.wait("@createDatabase");
-  }
-
-  // we need to check for an indefinite number of these requests because we don't know how many polls it's going to take
-  function waitForDbSync(maxRetries = 10) {
-    if (maxRetries === 0) {
-      throw new Error("Timed out waiting for database sync");
-    }
-    cy.wait("@getDatabases").then(({ response }) => {
-      if (
-        response.body.data.some((db) => db.initial_sync_status !== "complete")
-      ) {
-        waitForDbSync(maxRetries - 1);
-      }
-    });
   }
 
   beforeEach(() => {

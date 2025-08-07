@@ -63,6 +63,9 @@
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.schema.ref :as lib.schema.ref]))
 
+(def ^:private ^:dynamic ^{:arglists '([driver s])} *escape-alias-fn*
+  #'driver/escape-alias)
+
 (defmulti ^String field-reference-mlv2
   "Generate a reference for the field instance `field-inst` appropriate for the driver `driver`.
   By default this is just the name of the field, but it can be more complicated, e.g., take
@@ -92,7 +95,7 @@
     (fn [s]
       (->> s
            f
-           (driver/escape-alias driver)))))
+           (*escape-alias-fn* driver)))))
 
 (mr/def ::desired-alias->escaped
   [:map-of ::lib.schema.metadata/desired-column-alias ::lib.schema.metadata/desired-column-alias])
@@ -416,7 +419,7 @@
        (if (empty? (:joins stage))
          stage
          (-> stage
-             (update :joins (let [unique (comp (partial driver/escape-alias driver/*driver*)
+             (update :joins (let [unique (comp (partial *escape-alias-fn* driver/*driver*)
                                                (make-join-alias-unique-name-generator))]
                               (fn [joins]
                                 (mapv (mu/fn [join :- [:map
