@@ -1,4 +1,5 @@
 import { useDisclosure } from "@mantine/hooks";
+import dayjs from "dayjs";
 import { useCallback, useEffect, useState } from "react";
 import type { Route } from "react-router";
 import { push, replace } from "react-router-redux";
@@ -219,9 +220,12 @@ export const DocumentPage = ({
         });
 
         const documentAst = currentContent ? JSON.parse(currentContent) : null;
+        const name =
+          documentTitle ||
+          t`Untitled document - ${dayjs().local().format("MMMM D, YYYY")}`;
 
         const newDocumentData: any = {
-          name: documentTitle,
+          name,
           document: documentAst,
           cards: Object.keys(cardsToSave).length > 0 ? cardsToSave : undefined,
         };
