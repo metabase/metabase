@@ -504,9 +504,22 @@
 (mu/defn returned-columns :- [:maybe ::returned-columns]
   "Return a sequence of metadata maps for all the columns expected to be 'returned' at a query, stage of the query, or
   join, and include the `:lib/source` of where they came from. This should only include columns that will be present
-  in the results; DOES NOT include 'expected' columns that are not 'exported' to subsequent stages.
+  in the results; DOES NOT include 'visible' columns that are not 'exported' to subsequent stages.
 
-  See [[::returned-columns.options]] for allowed options."
+  See [[::returned-columns.options]] for allowed options.
+
+  `returned-columns` always returns metadata relative to the source `x`, not subsequent stages or parent stages (for
+  joins)!!!! Take a moment and make sure you understand this concept clearly, it's SUPER IMPORTANT <3
+
+ Examples:
+
+ * `returned-columns` for a join is the same as `returned-columns` for the last stage of the join -- the columns have
+   source and desired aliases appropriate for the join's `:stages` if they were an entirely independent query, and do
+   not include join aliases!
+
+ * `returned-columns` for a stage have source and desired aliases relative to that stage!
+
+ * `returned-columns` for a Card has the same source and desired aliases you'd see in that Card's `:result-metadata`!!"
   ([query]
    (returned-columns query (lib.util/query-stage query -1)))
 
