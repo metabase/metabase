@@ -10,6 +10,7 @@ import type { TransformJobId } from "metabase-types/api";
 import { BreadcrumbsSection } from "./BreadcrumbsSection";
 import { ManageSection } from "./ManageSection";
 import { NameSection } from "./NameSection";
+import { TagSection } from "./TagSection";
 
 type JobPageParams = {
   jobId: string;
@@ -43,6 +44,7 @@ export function JobPage({ params }: JobPageProps) {
     <Stack gap="lg">
       <BreadcrumbsSection job={job} />
       <NameSection job={job} />
+      <TagSection />
       <ManageSection job={job} />
     </Stack>
   );
