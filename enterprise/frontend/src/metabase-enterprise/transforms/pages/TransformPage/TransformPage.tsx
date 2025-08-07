@@ -8,7 +8,7 @@ import { Stack } from "metabase/ui";
 import { useGetTransformQuery } from "metabase-enterprise/api";
 import type { Transform, TransformId } from "metabase-types/api";
 
-import { HeaderSection } from "./HeaderSection";
+import { BreadcrumbsSection } from "./BreadcrumbsSection";
 import { ManageSection } from "./ManageSection";
 import { NameSection } from "./NameSection";
 import { ScheduleSection } from "./ScheduleSection";
@@ -52,9 +52,9 @@ export function TransformPage({ params }: TransformPageProps) {
   }
 
   return (
-    <Stack gap="xl">
-      <Stack>
-        <HeaderSection transform={transform} />
+    <Stack gap="3.5rem">
+      <Stack gap="3rem">
+        <BreadcrumbsSection transform={transform} />
         <NameSection transform={transform} />
       </Stack>
       <TargetSection transform={transform} />

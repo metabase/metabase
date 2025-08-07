@@ -7,11 +7,11 @@ import {
 } from "metabase-enterprise/transforms/urls";
 import type { Transform } from "metabase-types/api";
 
-type HeaderSectionProps = {
+type BreadcrumbsSectionProps = {
   transform: Transform;
 };
 
-export function HeaderSection({ transform }: HeaderSectionProps) {
+export function BreadcrumbsSection({ transform }: BreadcrumbsSectionProps) {
   return (
     <BrowserCrumbs
       crumbs={[

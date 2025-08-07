@@ -1,15 +1,16 @@
 import { t } from "ttag";
 
-import { NameDescriptionInput } from "metabase/metadata/components";
+import EditableText from "metabase/common/components/EditableText";
 import { useMetadataToasts } from "metabase/metadata/hooks";
+import { Stack } from "metabase/ui";
 import { useUpdateTransformMutation } from "metabase-enterprise/api";
 import type { Transform } from "metabase-types/api";
+
+import { NAME_MAX_LENGTH } from "../../../constants";
 
 type NameSectionProps = {
   transform: Transform;
 };
-
-const NAME_MAX_LENGTH = 254;
 
 export function NameSection({ transform }: NameSectionProps) {
   const [updateTransform] = useUpdateTransformMutation();
@@ -55,15 +56,25 @@ export function NameSection({ transform }: NameSectionProps) {
   };
 
   return (
-    <NameDescriptionInput
-      name={transform.name}
-      nameIcon="refresh_downstream"
-      nameMaxLength={NAME_MAX_LENGTH}
-      namePlaceholder={t`Give this transform a name`}
-      description={transform.description ?? ""}
-      descriptionPlaceholder={t`Give this transform a description`}
-      onNameChange={handleNameChange}
-      onDescriptionChange={handleDescriptionChange}
-    />
+    <Stack gap="sm">
+      <EditableText
+        initialValue={transform.name}
+        maxLength={NAME_MAX_LENGTH}
+        placeholder={t`Name`}
+        p={0}
+        fw="bold"
+        fz="h2"
+        lh="1.5rem"
+        onChange={handleNameChange}
+      />
+      <EditableText
+        initialValue={transform.description ?? ""}
+        placeholder={t`No description yet`}
+        p={0}
+        fz="md"
+        lh="1.25rem"
+        onChange={handleDescriptionChange}
+      />
+    </Stack>
   );
 }

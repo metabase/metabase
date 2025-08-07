@@ -59,7 +59,7 @@ type NewTransformValues = {
 
 const NEW_TRANSFORM_SCHEMA = Yup.object({
   name: Yup.string().required(Errors.required),
-  description: Yup.string().required(Errors.required),
+  description: Yup.string().nullable(),
   targetName: Yup.string().required(Errors.required),
   targetSchema: Yup.string().nullable(),
 });
