@@ -29,6 +29,7 @@
   model->work-type
   paged-executions
   reducible-active-remote-runs
+  running-execution-for-work-id
   start-run!
   succeed-started-run!
   timeout-old-runs!

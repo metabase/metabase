@@ -164,10 +164,7 @@
                     [:id :string]]]
   (log/info "canceling transform " id)
   (api/check-superuser)
-  (let [run (api/check-404 (t2/select-one :model/WorkerRun
-                                          :work_id id
-                                          :work_type "transform"
-                                          :is_active true))]
+  (let [run (api/check-404 (worker/running-execution-for-work-id id "transform"))]
     (if (:is_local run)
       (worker/mark-cancel-started-run! (:run_id run))
       (worker/cancel! (:run_id run))))

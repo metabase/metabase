@@ -185,6 +185,14 @@
                         :message "Canceled by user but could not guarantee run stopped."})
     (cancel/delete-old-canceling-runs!)))
 
+(defn running-execution-for-work-id
+  "Return a single active work run or nil."
+  [id work-type]
+  (t2/select-one :model/WorkerRun
+                 :work_id id
+                 :work_type work-type
+                 :is_active true))
+
 (defn paged-executions
   "Return a page of the list of the executions.
 
