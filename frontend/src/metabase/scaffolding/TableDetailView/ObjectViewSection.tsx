@@ -2,6 +2,7 @@ import cx from "classnames";
 import { Fragment } from "react";
 import { Link } from "react-router";
 
+import EditableText from "metabase/common/components/EditableText";
 import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { useTranslateContent } from "metabase/i18n/hooks";
 import { Box, Flex, Group, Text, Tooltip } from "metabase/ui/components";
@@ -39,7 +40,7 @@ export function ObjectViewSection({
   row,
   // tableId,
   table,
-  // isEdit,
+  isEdit,
   onUpdateSection,
   // dragHandleProps,
   isHovered = false,
@@ -115,7 +116,7 @@ export function ObjectViewSection({
       }
     >
       {onUpdateSection && section.title.trim().length > 0 && (
-        <Group gap="md" className={S.SectionTitle}>
+        <Group gap="md" p={0}>
           {/* {isEdit && (
           <Icon
           name="grabber"
@@ -125,9 +126,16 @@ export function ObjectViewSection({
           {...dragHandleProps}
           />
         )} */}
-          <Text p={0} fw={700} fz="1.25rem" mb="xl">
-            {section.title}
-          </Text>
+          <EditableText
+            initialValue={section.title}
+            isDisabled={!isEdit}
+            onChange={(title) => onUpdateSection({ title })}
+            style={{
+              fontWeight: 700,
+              fontSize: "1.25rem",
+              marginBottom: "2rem",
+            }}
+          />
         </Group>
       )}
 

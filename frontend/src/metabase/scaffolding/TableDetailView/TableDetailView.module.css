@@ -33,10 +33,6 @@
     /* box-shadow: 0 0 0 1px var(--mb-color-brand); */
   }
 
-  .SectionTitle {
-    padding: 0;
-  }
-
   .SectionContent {
     gap: var(--mantine-spacing-md);
   }
