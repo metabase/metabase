@@ -20,6 +20,8 @@ import { UpdateTagModal } from "./UpdateTagModal";
 
 const NEW_VALUE = "";
 
+type TagModalType = "create" | "update" | "delete";
+
 type TagMultiSelectProps = {
   tagIds: TransformTagId[];
   onChange: (tagIds: TransformTagId[]) => void;
@@ -29,23 +31,45 @@ export function TagMultiSelect({ tagIds, onChange }: TagMultiSelectProps) {
   const { data: tags = [] } = useListTransformTagsQuery();
   const tagById = getTagById(tags);
   const [searchValue, setSearchValue] = useState("");
-  const [isModalOpened, setIsModalOpened] = useState(false);
+  const [modalType, setModalType] = useState<TagModalType>();
+  const [selectedTagId, setSelectedTagId] = useState<TransformTagId>();
+  const { sendSuccessToast } = useMetadataToasts();
+
+  const handleModalOpen = (
+    modalType: TagModalType,
+    selectedTag?: TransformTag,
+  ) => {
+    setModalType(modalType);
+    setSelectedTagId(selectedTag?.id);
+  };
+
+  const handleModalClose = () => {
+    setModalType(undefined);
+    setSelectedTagId(undefined);
+  };
 
   const handleChange = (value: string[]) => {
     if (value.includes(NEW_VALUE)) {
-      setIsModalOpened(true);
+      handleModalOpen("create");
     } else {
       onChange(value.map(getTagId));
     }
   };
 
   const handleCreate = (tag: TransformTag) => {
-    setIsModalOpened(false);
     onChange([...tagIds, tag.id]);
+    handleModalClose();
+    sendSuccessToast(t`Tag created`);
   };
 
-  const handleModalClose = () => {
-    setIsModalOpened(false);
+  const handleUpdate = () => {
+    handleModalClose();
+    sendSuccessToast(t`Tag renamed`);
+  };
+
+  const handleDelete = () => {
+    handleModalClose();
+    sendSuccessToast(t`Tag deleted`);
   };
 
   return (
@@ -66,16 +90,31 @@ export function TagMultiSelect({ tagIds, onChange }: TagMultiSelectProps) {
             <ExistingTagSelectItem
               tag={tagById[getTagId(item.option.value)]}
               selected={item.checked}
+              onModalOpen={handleModalOpen}
             />
           )
         }
         onChange={handleChange}
         onSearchChange={setSearchValue}
       />
-      {isModalOpened && (
+      {modalType === "create" && (
         <CreateTagModal
           searchValue={searchValue}
           onCreate={handleCreate}
+          onClose={handleModalClose}
+        />
+      )}
+      {modalType === "update" && selectedTagId != null && (
+        <UpdateTagModal
+          tag={tagById[selectedTagId]}
+          onUpdate={handleUpdate}
+          onClose={handleModalClose}
+        />
+      )}
+      {modalType === "delete" && selectedTagId != null && (
+        <DeleteTagModal
+          tag={tagById[selectedTagId]}
+          onDelete={handleDelete}
           onClose={handleModalClose}
         />
       )}
@@ -97,36 +136,16 @@ function NewTagSelectItem({ searchValue, selected }: NewTagSelectItemProps) {
   );
 }
 
-type ExistingTagModalType = "create" | "update" | "delete";
-
 type ExistingTagSelectItemProps = SelectItemProps & {
   tag: TransformTag;
+  onModalOpen: (modalType: TagModalType, selectedTag: TransformTag) => void;
 };
 
-function ExistingTagSelectItem({ tag, selected }: ExistingTagSelectItemProps) {
-  const [modalType, setModalType] = useState<ExistingTagModalType>();
-  const { sendSuccessToast } = useMetadataToasts();
-
-  const handleUpdateClick = () => {
-    setModalType("update");
-  };
-
-  const handleDeleteClick = () => {
-    setModalType("update");
-  };
-
-  const handleUpdateToast = () => {
-    sendSuccessToast(t`Tag renamed`);
-  };
-
-  const handleDeleteToast = () => {
-    sendSuccessToast(t`Tag deleted`);
-  };
-
-  const handleClose = () => {
-    setModalType(undefined);
-  };
-
+function ExistingTagSelectItem({
+  tag,
+  selected,
+  onModalOpen,
+}: ExistingTagSelectItemProps) {
   return (
     <SelectItem selected={selected}>
       <Text c="inherit" lh="inherit">
@@ -141,32 +160,18 @@ function ExistingTagSelectItem({ tag, selected }: ExistingTagSelectItemProps) {
         <Menu.Dropdown>
           <Menu.Item
             leftSection={<Icon name="pencil_lines" />}
-            onClick={handleUpdateClick}
+            onClick={() => onModalOpen("update", tag)}
           >
             {t`Edit`}
           </Menu.Item>
           <Menu.Item
             leftSection={<Icon name="trash" />}
-            onClick={handleDeleteClick}
+            onClick={() => onModalOpen("delete", tag)}
           >
             {t`Delete`}
           </Menu.Item>
         </Menu.Dropdown>
       </Menu>
-      {modalType === "update" && (
-        <UpdateTagModal
-          tag={tag}
-          onUpdate={handleUpdateToast}
-          onClose={handleClose}
-        />
-      )}
-      {modalType === "delete" && (
-        <DeleteTagModal
-          tag={tag}
-          onDelete={handleDeleteToast}
-          onClose={handleClose}
-        />
-      )}
     </SelectItem>
   );
 }
