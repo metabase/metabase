@@ -9,30 +9,50 @@ import { AdminSettingsLayout } from "metabase/common/components/AdminLayout/Admi
 
 import { getJobListUrl, getRunListUrl, getTransformListUrl } from "../../urls";
 
+type TransformPageLayoutParams = {
+  transformId?: string;
+  jobId?: string;
+};
+
 type TransformPageLayoutProps = {
+  params: TransformPageLayoutParams;
   children?: ReactNode;
 };
 
-export function TransformPageLayout({ children }: TransformPageLayoutProps) {
+export function TransformPageLayout({
+  params,
+  children,
+}: TransformPageLayoutProps) {
   return (
-    <AdminSettingsLayout sidebar={<TransformSidebar />} maw="60rem">
+    <AdminSettingsLayout
+      sidebar={<TransformSidebar params={params} />}
+      maw="60rem"
+    >
       {children}
     </AdminSettingsLayout>
   );
 }
 
-function TransformSidebar() {
+type TransformSidebarProps = {
+  params: TransformPageLayoutParams;
+};
+
+function TransformSidebar({ params }: TransformSidebarProps) {
+  const { transformId, jobId } = params;
+
   return (
     <AdminNavWrapper>
       <AdminNavItem
         label={t`Transforms`}
         path={getTransformListUrl()}
         icon="refresh_downstream"
+        {...(transformId != null ? { active: true } : {})}
       />
       <AdminNavItem
         label={t`Jobs`}
         path={getJobListUrl()}
         icon="play_outlined"
+        {...(jobId != null ? { active: true } : {})}
       />
       <AdminNavItem label={t`Runs`} path={getRunListUrl()} icon="list" />
     </AdminNavWrapper>
