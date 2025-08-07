@@ -4,6 +4,7 @@
             [clojurewerkz.quartzite.triggers :as triggers]
             [metabase-enterprise.semantic-search.env :as semantic.env]
             [metabase-enterprise.semantic-search.indexer :as semantic-search.indexer]
+            [metabase.premium-features.core :as premium-features]
             [metabase.task.core :as task]
             [metabase.util.log :as log])
   (:import (java.time Duration Instant)
@@ -47,20 +48,19 @@
 (def ^:private ^Duration startup-delay (Duration/parse "PT10S"))
 (def ^:private ^Duration run-frequency (Duration/parse "PT10S"))
 
-;; TODO skip/do not run if no ee flag - how does this
-;; normally happen with jobs?
 (defmethod task/init! ::SemanticSearchIndexer [_]
-  (let [job         (jobs/build
-                     (jobs/of-type SemanticSearchIndexer)
-                     (jobs/store-durably)
-                     (jobs/with-identity indexer-job-key))
-        trigger-key (triggers/key (str indexer-stem ".trigger"))
-        trigger     (triggers/build
-                     (triggers/with-identity trigger-key)
-                     (triggers/for-job indexer-job-key)
-                     (triggers/start-at (Date/from (.plus (Instant/now) startup-delay)))
-                     (triggers/with-schedule
-                      (simple/schedule
-                       (simple/with-interval-in-milliseconds (.toMillis run-frequency))
-                       (simple/repeat-forever))))]
-    (task/schedule-task! job trigger)))
+  (when (premium-features/has-feature? :semantic-search)
+    (let [job         (jobs/build
+                       (jobs/of-type SemanticSearchIndexer)
+                       (jobs/store-durably)
+                       (jobs/with-identity indexer-job-key))
+          trigger-key (triggers/key (str indexer-stem ".trigger"))
+          trigger     (triggers/build
+                       (triggers/with-identity trigger-key)
+                       (triggers/for-job indexer-job-key)
+                       (triggers/start-at (Date/from (.plus (Instant/now) startup-delay)))
+                       (triggers/with-schedule
+                        (simple/schedule
+                         (simple/with-interval-in-milliseconds (.toMillis run-frequency))
+                         (simple/repeat-forever))))]
+      (task/schedule-task! job trigger))))
