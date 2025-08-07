@@ -28,7 +28,11 @@ export function getTransformQueryUrl(transformId: TransformId) {
   return `${ROOT_URL}/${transformId}/query`;
 }
 
-export function getRunsUrl() {
+export function getJobListUrl() {
+  return `${ROOT_URL}/jobs`;
+}
+
+export function getRunListUrl() {
   return `${ROOT_URL}/runs`;
 }
 

@@ -7,7 +7,8 @@ import {
 } from "metabase/admin/components/AdminNav";
 import { AdminSettingsLayout } from "metabase/common/components/AdminLayout/AdminSettingsLayout";
 import {
-  getRunsUrl,
+  getJobListUrl,
+  getRunListUrl,
   getTransformListUrl,
 } from "metabase-enterprise/transforms/urls";
 
@@ -31,7 +32,12 @@ function TransformSidebar() {
         path={getTransformListUrl()}
         icon="refresh_downstream"
       />
-      <AdminNavItem label={t`Runs`} path={getRunsUrl()} icon="play_outlined" />
+      <AdminNavItem
+        label={t`Jobs`}
+        path={getJobListUrl()}
+        icon="play_outlined"
+      />
+      <AdminNavItem label={t`Runs`} path={getRunListUrl()} icon="list" />
     </AdminNavWrapper>
   );
 }

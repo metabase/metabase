@@ -52,11 +52,9 @@ export function TransformPage({ params }: TransformPageProps) {
   }
 
   return (
-    <Stack gap="3.5rem">
-      <Stack gap="3rem">
-        <BreadcrumbsSection transform={transform} />
-        <NameSection transform={transform} />
-      </Stack>
+    <Stack gap="lg">
+      <BreadcrumbsSection transform={transform} />
+      <NameSection transform={transform} />
       <RunSection transform={transform} />
       <TargetSection transform={transform} />
       <QuerySection transform={transform} />

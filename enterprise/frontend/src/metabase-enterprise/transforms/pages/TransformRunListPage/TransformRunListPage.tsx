@@ -1,11 +1,14 @@
 import { t } from "ttag";
 
-import { Stack, Title } from "metabase/ui";
+import { Box, Stack, Title } from "metabase/ui";
 
 export function TransformRunListPage() {
   return (
     <Stack gap="xl">
-      <Title order={1}>{t`Runs`}</Title>
+      <Stack gap="sm">
+        <Title order={1}>{t`Runs`}</Title>
+        <Box>{t`A list of when each transform ran.`}</Box>
+      </Stack>
     </Stack>
   );
 }

@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { Group, Stack, Text, Title } from "metabase/ui";
+import { Box, Group, Stack, Title } from "metabase/ui";
 
 import { NewTransformMenu } from "./NewTransformMenu";
 import { TransformList } from "./TransformList";
@@ -11,7 +11,7 @@ export function TransformListPage() {
       <Group>
         <Stack gap="sm" flex={1}>
           <Title order={1}>{t`Transforms`}</Title>
-          <Text>{t`Create custom tables with transforms, and run them on a schedule.`}</Text>
+          <Box>{t`Create custom tables with transforms, and run them on a schedule.`}</Box>
         </Stack>
         <NewTransformMenu />
       </Group>
