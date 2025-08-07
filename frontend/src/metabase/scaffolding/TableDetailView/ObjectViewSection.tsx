@@ -29,6 +29,7 @@ import { renderValue } from "../utils";
 import { renderItemIcon } from "./ColumnPicker";
 import { SectionActions } from "./SectionActions";
 import S from "./TableDetailView.module.css";
+import { getUrl } from "metabase/metadata/pages/DataModel/utils";
 
 type ObjectViewSectionProps = {
   section: ObjectViewSectionSettings;
@@ -226,13 +227,21 @@ export function ObjectViewSection({
                   <Text c="var(--mb-color-text-secondary)" fw="bold" truncate>
                     {column.display_name}
                   </Text>
-                  <Box className={S.FieldIcon}>
+                  <Link
+                    to={getUrl({
+                      tableId: table.id,
+                      schemaName: table.schema,
+                      databaseId: table.db_id,
+                      fieldId: column.id,
+                    })}
+                    className={S.FieldIcon}
+                  >
                     {renderItemIcon(table, {
                       name: column.display_name,
                       displayName: column.display_name,
                       column,
                     })}
-                  </Box>
+                  </Link>
                 </Box>
 
                 {link && (
