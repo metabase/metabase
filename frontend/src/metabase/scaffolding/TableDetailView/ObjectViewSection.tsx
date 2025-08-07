@@ -27,7 +27,7 @@ import type {
 
 import { renderValue } from "../utils";
 
-import { ColumnPickerButton } from "./ColumnPickerButton";
+import { SectionActions } from "./SectionActions";
 import S from "./TableDetailView.module.css";
 
 type ObjectViewSectionProps = {
@@ -86,23 +86,22 @@ export function ObjectViewSection({
           [S.hovered]: isHovered,
         })}
       >
-        <Box
-          className={S.ObjectViewSectionActions}
-          pos="absolute"
-          top={-16}
-          right={16}
-        >
-          {onUpdateSection && (
-            <ColumnPickerButton
+        {isEdit && (
+          <Box
+            className={S.ObjectViewSectionActions}
+            pos="absolute"
+            top={-16}
+            right={16}
+          >
+            <SectionActions
               columns={columns}
-              fieldsLimit={3}
               section={section}
               sections={sections}
               table={table}
               onUpdateSection={onUpdateSection}
             />
-          )}
-        </Box>
+          </Box>
+        )}
 
         <Flex className={S.SectionContent}>
           <Ellipsified
@@ -147,23 +146,22 @@ export function ObjectViewSection({
           : {}
       }
     >
-      <Box
-        className={S.ObjectViewSectionActions}
-        pos="absolute"
-        top={-16}
-        right={16}
-      >
-        {onUpdateSection && (
-          <ColumnPickerButton
+      {isEdit && (
+        <Box
+          className={S.ObjectViewSectionActions}
+          pos="absolute"
+          top={-16}
+          right={16}
+        >
+          <SectionActions
             columns={columns}
-            fieldsLimit={variant === "subheader" ? 4 : undefined}
             section={section}
             sections={sections}
             table={table}
             onUpdateSection={onUpdateSection}
           />
-        )}
-      </Box>
+        </Box>
+      )}
 
       {onUpdateSection && (
         <Group gap="md" p={0}>
