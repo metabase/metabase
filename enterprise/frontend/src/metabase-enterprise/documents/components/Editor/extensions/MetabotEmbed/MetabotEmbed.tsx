@@ -130,7 +130,7 @@ export const MetabotComponent = memo(
         entity_id: "entity_id" as Card["entity_id"],
         created_at: "",
         updated_at: "",
-        name: "Exploration",
+        name: data.draft_card.name || t`Exploration`,
         description: null,
         type: "question",
         public_uuid: null,

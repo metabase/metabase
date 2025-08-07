@@ -225,7 +225,7 @@ export interface MetabotDocumentNodeRequest {
 }
 
 export interface MetabotDocumentNodeResponse {
-  draft_card: UnsavedCard | null;
+  draft_card: (UnsavedCard & { name?: string }) | null;
   description: string;
   error: string | null;
 }
