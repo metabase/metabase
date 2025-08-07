@@ -154,8 +154,6 @@ databaseChangeLog:
                   name: document
                   remarks: content of the document
                   type: ${text.type}
-                  constraints:
-                    nullable: false
               - column:
                   name: content_type
                   remarks: the content_type of the document column
