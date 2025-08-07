@@ -5,7 +5,10 @@ import _ from "underscore";
 import { getEmbeddingSdkVersion } from "embedding-sdk/config";
 import { useSdkDispatch, useSdkSelector } from "embedding-sdk/store";
 import { initAuth } from "embedding-sdk/store/auth";
-import { setFetchRefreshTokenFn } from "embedding-sdk/store/reducer";
+import {
+  setFetchRefreshTokenFn,
+  setMetabaseInstanceVersion,
+} from "embedding-sdk/store/reducer";
 import {
   getFetchRefreshTokenFn,
   getLoginStatus,
@@ -66,6 +69,14 @@ export const useInitData = ({
     api.requestClient = {
       name: EMBEDDING_SDK_CONFIG.metabaseClientRequestHeader,
       version: EMBEDDING_SDK_VERSION,
+    };
+
+    api.onResponseError = ({
+      metabaseVersion,
+    }: {
+      metabaseVersion: string;
+    }) => {
+      dispatch(setMetabaseInstanceVersion(metabaseVersion));
     };
 
     if (allowConsoleLog) {

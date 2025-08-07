@@ -6,6 +6,7 @@ import { Box, Flex, Image, Stack, Text, Title } from "metabase/ui";
 
 import { UPGRADE_URL } from "../constants";
 
+import StylesUpsellCtaLink from "./UpsellCta.module.css";
 import { UpsellGem } from "./UpsellGem";
 import { UpsellWrapper } from "./UpsellWrapper";
 import S from "./Upsells.module.css";
@@ -75,7 +76,7 @@ export const _UpsellBigCard: React.FC<UpsellBigCardProps> = ({
             .with(P.nonNullable, () => (
               <Box
                 component="button"
-                className={S.UpsellCTALink}
+                className={StylesUpsellCtaLink.UpsellCTALink}
                 onClickCapture={() =>
                   trackUpsellClicked({ location, campaign })
                 }
@@ -86,7 +87,7 @@ export const _UpsellBigCard: React.FC<UpsellBigCardProps> = ({
             ))
             .otherwise(() => (
               <ExternalLink
-                className={S.UpsellCTALink}
+                className={StylesUpsellCtaLink.UpsellCTALink}
                 href={url}
                 onClickCapture={() =>
                   trackUpsellClicked({ location, campaign })

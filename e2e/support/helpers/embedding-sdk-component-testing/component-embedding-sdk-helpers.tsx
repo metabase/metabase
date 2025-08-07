@@ -15,11 +15,16 @@ export const DEFAULT_SDK_AUTH_PROVIDER_CONFIG = {
 export interface MountSdkContentOptions {
   sdkProviderProps?: Partial<MetabaseProviderProps>;
   strictMode?: boolean;
+  waitForUser?: boolean;
 }
 
 export function mountSdkContent(
   children: JSX.Element,
-  { sdkProviderProps, strictMode = false }: MountSdkContentOptions = {},
+  {
+    sdkProviderProps,
+    strictMode = false,
+    waitForUser = true,
+  }: MountSdkContentOptions = {},
 ) {
   cy.intercept("GET", "/api/user/current").as("getUser");
 
@@ -43,7 +48,9 @@ export function mountSdkContent(
     cy.mount(reactNode);
   }
 
-  cy.wait("@getUser").then(({ response }) => {
-    expect(response?.statusCode).to.equal(200);
-  });
+  if (waitForUser) {
+    cy.wait("@getUser").then(({ response }) => {
+      expect(response?.statusCode).to.equal(200);
+    });
+  }
 }

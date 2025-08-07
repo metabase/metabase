@@ -700,16 +700,19 @@
                                                                  (f conn))))]
                     (is (= default-table-set (tables-set)))))))))))))
 
-(defn do-on-all-connection-in-pool [f]
+(defn do-on-all-connection-in-pool [driver db-id options f]
   (let [max-pool-size (driver.settings/jdbc-data-warehouse-max-connection-pool-size)
         ^CountDownLatch start-latch (java.util.concurrent.CountDownLatch. max-pool-size)
         ^CountDownLatch finish-latch (java.util.concurrent.CountDownLatch. max-pool-size)]
     (doseq [_i (range max-pool-size)]
       (future
         (try
-          (.countDown ^CountDownLatch start-latch)
-          (.await ^CountDownLatch start-latch)
-          (f)
+          (sql-jdbc.execute/do-with-connection-with-options
+           driver db-id options
+           (fn [^Connection conn]
+             (.countDown ^CountDownLatch start-latch)
+             (.await ^CountDownLatch start-latch)
+             (f conn)))
           (finally
             (.countDown ^CountDownLatch finish-latch)))))
     (.await ^CountDownLatch finish-latch)))
@@ -735,12 +738,9 @@
                 (when (driver/database-supports? driver/*driver* :connection-impersonation-requires-role nil)
                   (t2/update! :model/Database :id (mt/id) (assoc-in (mt/db) [:details :role] (impersonation-default-role driver/*driver*))))
                 (sync/sync-database! database {:scan :schema})
-                (do-on-all-connection-in-pool
-                 (fn []
-                   (sql-jdbc.execute/do-with-connection-with-options
-                    driver/*driver* (mt/id) {}
-                    (fn [^Connection conn]
-                      (driver/set-role! driver/*driver* conn role-a)))))
+                (do-on-all-connection-in-pool driver/*driver* (mt/id) {}
+                                              (fn [^Connection conn]
+                                                (driver/set-role! driver/*driver* conn role-a)))
                 (is (= [[1000]]
                        ;; wrapping run-mbql-query in do-with-connection-with-options gets us a recursive connection
                        (sql-jdbc.execute/do-with-connection-with-options
