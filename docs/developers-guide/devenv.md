@@ -81,7 +81,7 @@ There is also an option to reload changes on save without hot reloading if you p
 $ yarn build-watch
 ```
 
-Some systems may have trouble detecting changes to frontend files. You can enable filesystem polling by uncommenting the `watchOptions` clause in `webpack.config.js`. If you do this it may be worth making git ignore changes to webpack config, using `git update-index --assume-unchanged webpack.config.js`
+Some systems may have trouble detecting changes to frontend files. You can enable filesystem polling by uncommenting the `watchOptions` clause in `rspack.main.config.js`. If you do this it may be worth making git ignore changes to webpack config, using `git update-index --assume-unchanged rspack.main.config.js`
 
 We exclude ESLint loader in dev mode for seven times quicker initial builds by default. You can enable it by exporting an environment variable:
 

@@ -4,7 +4,6 @@ import { c, t } from "ttag";
 import { useUserSetting } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import { useSelector } from "metabase/lib/redux";
-import { DEFAULT_EMBEDDING_ENTITY_TYPES } from "metabase/redux/embedding-data-picker";
 import { getIsEmbeddingIframe } from "metabase/selectors/embed";
 import { getEntityTypes } from "metabase/selectors/embedding-data-picker";
 import {
@@ -41,9 +40,7 @@ export const BrowseNavSection = ({
 
   const [opened, { toggle }] = useDisclosure(expandBrowse);
 
-  const userDefinedEntityTypes = useSelector(getEntityTypes);
-  const entityTypes = userDefinedEntityTypes ?? DEFAULT_EMBEDDING_ENTITY_TYPES;
-
+  const entityTypes = useSelector(getEntityTypes);
   const isEmbeddingIframe = useSelector(getIsEmbeddingIframe);
 
   const handleToggle = () => {
