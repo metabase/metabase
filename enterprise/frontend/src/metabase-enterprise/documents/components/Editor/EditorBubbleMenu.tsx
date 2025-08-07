@@ -84,7 +84,7 @@ export const EditorBubbleMenu: React.FC<EditorBubbleMenuProps> = ({
           isActive={editor.isActive("orderedList")}
           onClick={() => editor.chain().focus().toggleOrderedList().run()}
           tooltip="Numbered list"
-          icon="list"
+          icon="ordered_list"
         />
         <FormatButton
           isActive={editor.isActive("blockquote")}

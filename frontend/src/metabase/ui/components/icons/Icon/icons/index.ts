@@ -279,6 +279,8 @@ import number_component from "./number.svg?component";
 import number_source from "./number.svg?source";
 import official_collection_component from "./official_collection.svg?component";
 import official_collection_source from "./official_collection.svg?source";
+import ordered_list_component from "./ordered_list.svg?component";
+import ordered_list_source from "./ordered_list.svg?source";
 import palette_component from "./palette.svg?component";
 import palette_source from "./palette.svg?source";
 import pause_component from "./pause.svg?component";
@@ -1316,6 +1318,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
       component: official_collection_component,
       source: official_collection_source,
     },
+    ordered_list: {
+      component: ordered_list_component,
+      source: ordered_list_source,
+    },
     verified_filled: {
       component: verified_filled_component,
       source: verified_filled_source,
@@ -1594,6 +1600,7 @@ export type IconName =
   | "variable"
   | "verified"
   | "official_collection"
+  | "ordered_list"
   | "verified_filled"
   | "view_archive"
   | "warning"
