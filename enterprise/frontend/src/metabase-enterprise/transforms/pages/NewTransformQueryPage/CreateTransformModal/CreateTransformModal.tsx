@@ -21,31 +21,31 @@ import type {
   Transform,
 } from "metabase-types/api";
 
-type NewTransformModalProps = {
+type CreateTransformModalProps = {
   query: DatasetQuery;
   onSave: (transform: Transform) => void;
   onClose: () => void;
 };
 
-export function NewTransformModal({
+export function CreateTransformModal({
   query,
   onSave,
   onClose,
-}: NewTransformModalProps) {
+}: CreateTransformModalProps) {
   return (
     <Modal title={t`Save your transform`} opened padding="xl" onClose={onClose}>
-      <NewTransformForm query={query} onSave={onSave} onClose={onClose} />
+      <CreateTransformForm query={query} onSave={onSave} onClose={onClose} />
     </Modal>
   );
 }
 
-type NewTransformFormProps = {
+type CreateTransformFormProps = {
   query: DatasetQuery;
   onSave: (transform: Transform) => void;
   onClose: () => void;
 };
 
-type NewTransformValues = {
+type CreateTransformValues = {
   name: string;
   description: string | null;
   targetName: string;
@@ -59,7 +59,11 @@ const NEW_TRANSFORM_SCHEMA = Yup.object({
   targetSchema: Yup.string().nullable(),
 });
 
-function NewTransformForm({ query, onSave, onClose }: NewTransformFormProps) {
+function CreateTransformForm({
+  query,
+  onSave,
+  onClose,
+}: CreateTransformFormProps) {
   const { database: databaseId } = query;
   const {
     data: schemas = [],
@@ -70,7 +74,7 @@ function NewTransformForm({ query, onSave, onClose }: NewTransformFormProps) {
   );
   const [createTransform] = useCreateTransformMutation();
 
-  const initialValues: NewTransformValues = useMemo(
+  const initialValues: CreateTransformValues = useMemo(
     () => getInitialValues(schemas),
     [schemas],
   );
@@ -79,7 +83,7 @@ function NewTransformForm({ query, onSave, onClose }: NewTransformFormProps) {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
   }
 
-  const handleSubmit = async (values: NewTransformValues) => {
+  const handleSubmit = async (values: CreateTransformValues) => {
     const request = getCreateRequest(query, values);
     const transform = await createTransform(request).unwrap();
     onSave(transform);
@@ -122,7 +126,7 @@ function NewTransformForm({ query, onSave, onClose }: NewTransformFormProps) {
   );
 }
 
-function getInitialValues(schemas: string[]): NewTransformValues {
+function getInitialValues(schemas: string[]): CreateTransformValues {
   return {
     name: "",
     description: null,
@@ -133,7 +137,7 @@ function getInitialValues(schemas: string[]): NewTransformValues {
 
 function getCreateRequest(
   query: DatasetQuery,
-  { name, description, targetName, targetSchema }: NewTransformValues,
+  { name, description, targetName, targetSchema }: CreateTransformValues,
 ): CreateTransformRequest {
   return {
     name: name,

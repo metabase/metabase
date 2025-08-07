@@ -12,7 +12,7 @@ import type { Card, CardId, DatasetQuery, Transform } from "metabase-types/api";
 import { QueryEditor } from "../../components/QueryEditor";
 import { getTransformListUrl, getTransformUrl } from "../../urls";
 
-import { NewTransformModal } from "./NewTransformModal";
+import { CreateTransformModal } from "./CreateTransformModal";
 
 type NewTransformQueryPageParams = {
   type?: string;
@@ -75,7 +75,7 @@ function NewTransformPageBody({ initialQuery }: NewTransformPageBodyProps) {
         onCancel={handleCancelClick}
       />
       {isModalOpened && (
-        <NewTransformModal
+        <CreateTransformModal
           query={query}
           onSave={handleSave}
           onClose={closeModal}
