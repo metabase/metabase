@@ -7,11 +7,7 @@ import {
 } from "metabase/admin/components/AdminNav";
 import { AdminSettingsLayout } from "metabase/common/components/AdminLayout/AdminSettingsLayout";
 
-import {
-  getJobListUrl,
-  getRunListUrl,
-  getTransformListUrl,
-} from "../../../urls";
+import { getJobListUrl, getRunListUrl, getTransformListUrl } from "../../urls";
 
 type TransformPageLayoutProps = {
   children?: ReactNode;

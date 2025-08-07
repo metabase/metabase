@@ -12,7 +12,7 @@ const DEFAULT_SCHEDULE = "0 0 * * * ? *";
 
 export function NewJobButton() {
   const [createJob, { isLoading }] = useCreateTransformJobMutation();
-  const { sendErrorToast } = useMetadataToasts();
+  const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
   const dispatch = useDispatch();
 
   const handleCreate = async () => {
@@ -24,6 +24,7 @@ export function NewJobButton() {
     if (error) {
       sendErrorToast(t`Failed to create a job`);
     } else if (job != null) {
+      sendSuccessToast(t`New job created`);
       dispatch(push(getJobUrl(job.id)));
     }
   };
