@@ -143,8 +143,8 @@
    ;; specific columns.
    (ensure-legacy #'resolve-joins/resolve-joins)
    (ensure-pmbql #'qp.add-remaps/add-remapped-columns)
-   #'qp.resolve-fields/resolve-fields   ; this middleware actually works with either MBQL 5 or legacy
-   (ensure-legacy #'binning/update-binning-strategy)
+   #'qp.resolve-fields/resolve-fields ; this middleware actually works with either MBQL 5 or legacy
+   (ensure-pmbql #'binning/update-binning-strategy)
    (ensure-legacy #'desugar/desugar)
    (ensure-legacy #'qp.add-default-temporal-unit/add-default-temporal-unit)
    (ensure-pmbql #'qp.add-implicit-joins/add-implicit-joins)
@@ -210,7 +210,7 @@
                                 {:fn (middleware-fn-name middleware-fn), :query query, :result <>, :type qp.error-type/qp})))))
           (catch Throwable e
             (let [middleware-fn (middleware-fn-name middleware-fn)]
-              (throw (ex-info (i18n/tru "Error preprocessing query in {0}: {1}" middleware-fn (ex-message e))
+              (throw (ex-info (i18n/tru "Error preprocessing query in {0}: {1}" middleware-fn ((some-fn ex-message class) e))
                               {:fn middleware-fn, :query query, :type qp.error-type/qp}
                               e)))))))
      query
