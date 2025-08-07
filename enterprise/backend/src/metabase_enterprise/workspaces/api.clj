@@ -8,6 +8,4 @@
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/workspace` routes."
-  (handlers/routes
-   (api.macros/ns-handler *ns* +auth)
-   metabase-enterprise.workspaces.api.workspace/routes))
+  metabase-enterprise.workspaces.api.workspace/routes)

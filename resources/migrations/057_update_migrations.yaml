@@ -414,7 +414,7 @@ databaseChangeLog:
                   constraints:
                     nullable: true
               - column:
-                  name: activity_log
+                  name: activity_logs
                   remarks: JSON object containing activity_logs, keyed by run-id
                   type: ${text.type}
                   constraints:
@@ -431,18 +431,29 @@ databaseChangeLog:
                   type: ${text.type}
                   constraints:
                     nullable: true
-              - columns:
+              - column:
                   name: data_warehouses
                   remarks: JSON object containing data warehouses
                   type: ${text.type}
                   constraints:
-                    nullable: true
+                    nullable: false
               - column:
                   name: documents
                   remarks: seq of document ids linked to this workspace
                   type: ${text.type}
                   constraints:
                     nullable: false
+              - column:
+                  name: collection_id
+                  type: int
+                  remarks: The collection containing the workspace
+                  constraints:
+                    nullable: false
+                    referencedTableName: collection
+                    referencedColumnNames: id
+                    foreignKeyName: fk_workspace_ref_collection_id
+                    deleteCascade: true
+
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

@@ -20,89 +20,106 @@
   (:require
    [clj-yaml.core :as yaml]
    [clojure.string :as str]
+   [java-time.api :as t]
    [lambdaisland.deep-diff2 :as ddiff]
    [malli.util :as mut]
+   [medley.core :as m]
    [metabase.models.interface :as mi]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
+(mr/def ::plan [:map
+                [:title :string]
+                [:description :string]
+                [:content :map]
+                [:created-at [:string {:description "When the plan was created"}]]])
+;; maybe another table?
+
+(mr/def ::activity-log [:map
+                        [:name [:string {:min 1}]]
+                        ;; needs a plan?
+                        [:steps [:sequential
+                                 [:map
+                                  [:step-id :int]
+                                  [:description :string]
+                                  [:status [:enum :pending :running :completed :failed]]
+                                  [:outcome {:optional true} [:enum :success :error :warning]]
+                                  [:error-message {:optional true} :string]
+                                  [:start-time [:string {:description "When the step started"}]]
+                                  [:end-time {:optional true} [:maybe {:description "When the step ended"} :string]]
+                                  [:created-at [:string {:description "When the step was created"}]]
+                                  [:updated-at [:string {:description "When the step was last updated"}]]]]]])
+
+;; look at transforms, make it match
+(mr/def ::transform
+  [:map
+   [:name :string]
+   [:description :string]
+   [:source [:map
+             [:type [:or :string]] #_[:enum "query" "table"]
+             [:query {:optional true} [:map
+                                       [:database {:description "ID of the source database"} :int]
+                                       [:type :string] ;; native or query
+                                       [:native {:optional true} [:map
+                                                                  [:query :string]
+                                                                  [:template-tags {:optional true} [:map]]]]]]]]
+   [:target [:map [:name :string] [:type :string]]]
+   [:created-at :string]
+   [:config {:optional true} [:map]]])
+
+;; wip
+(mr/def ::document [:int {:description "ID of a document in app-db" :min 1}])
+
+(mr/def ::user
+  [:map
+   [:id :int]
+   [:type :string] ;; workspace-user
+   [:name :string]
+   [:email :string]
+   [:created-at :string]
+   ;; api-key?
+   ;; db creds?
+   ])
+
+(mr/def ::data-warehouse
+  [:map
+   [:id [:int {:min 1}]]
+   [:created-at :string]
+   [:type [:enum "read-only" "read-write"]]
+   [:credentials :map]
+   [:name :string]])
+
+(mr/def ::permission
+  [:map
+   [:table :string]
+   [:created-at :string]
+   [:permission [:enum "read" "write"]]])
+
 (mr/def ::workspace
   [:map
-   [:name [:string {:min 1}]]
-   [:description {:optional true} [:maybe :string]]
-   [:created_at [:string {:description "The date and time the workspace was created"}]]
-   [:updated_at [:string {:description "The date and time the workspace was last updated"}]]
-   ;; each plan, transofrm, and document(<-unsure) is basically an abstract file
-   [:plans {:optional true} [:sequential [:map
-                                          [:title :string]
-                                          [:description :string]
-                                          [:content :map]
-                                          [:created-at [:string {:description "When the plan was created"}]]]]]
-   ;; maybe another table?
-   [:activity_logs {:optional true} [:sequential [:map
-                                                  [:name [:string {:min 1}]]
-                                                  ;; needs a plan?
-                                                  [:steps [:sequential
-                                                           [:map
-                                                            [:step-id :int]
-                                                            [:description :string]
-                                                            [:status [:enum :pending :running :completed :failed]]
-                                                            [:outcome {:optional true} [:enum :success :error :warning]]
-                                                            [:error-message {:optional true} :string]
-                                                            [:start-time [:string {:description "When the step started"}]]
-                                                            [:end-time {:optional true} [:maybe {:description "When the step ended"} :string]]
-                                                            [:created-at [:string {:description "When the step was created"}]]
-                                                            [:updated-at [:string {:description "When the step was last updated"}]]]]]]]]
-   ;; look at transforms, make it match
-   [:transforms {:optional true}
-    [:sequential [:map
-                  [:name :string]
-                  [:description :string]
-                  [:source [:map
-                            [:type [:or :string]] #_[:enum "query" "table"]
-                            [:query {:optional true} [:map
-                                                      [:database {:description "ID of the source database"} :int]
-                                                      [:type :string] ;; native or query
-                                                      [:native {:optional true} [:map
-                                                                                 [:query :string]
-                                                                                 [:template-tags {:optional true} [:map]]]]]]]]
-                  [:target [:map [:name :string] [:type :string]]]
-                  [:created-at :string]
-                  [:config {:optional true} [:map]]]]]
-   ;; wip
-   [:documents {:optional true} [:sequential
-                                 [:int {:description "ID of a document in app-db" :min 1}]]]
-   [:users {:optional true} [:sequential [:map
-                                          [:id :int]
-                                          [:type :string] ;; workspace-user
-                                          [:name :string]
-                                          [:email :string]
-                                          [:created-at :string]
-                                          ;; api-key?
-                                          ;; db creds?
-                                          ]]]
-   [:data_warehouses {:optional true} [:sequential
-                                       [:map
-                                        [:id [:int {:min 1}]]
-                                        [:created-at :string]
-                                        [:type [:enum :read-only :read-write]]
-                                        [:credentials :map]
-                                        [:name :string]]]]
-   ;; For permissions, we could keep a set of tables with read/write permissions
-   [:permissions {:optional true}
-    [:sequential
-     [:map
-      [:table :string]
-      [:created-at :string]
-      [:permission [:enum :read :write]]]]]])
+   [:id              {:optional true} [:maybe [:int {:min 1}]]]
+   [:collection_id   {:optional true} [:maybe [:int {:min 1}]]]
+   [:name                             [:string {:min 1}]]
+   [:description     {:optional true} [:maybe :string]]
+   ;; each plan, transofrm, and document(<-unsure) is basically a file abstraction
+   [:plans           {:optional true} [:sequential ::plan]]
+   ;; This should maybe be another table:
+   [:activity_logs   {:optional true} [:sequential ::activity-log]]
+   [:transforms      {:optional true} [:sequential ::transform]]
+   [:documents       {:optional true} [:sequential ::document]]
+   [:users           {:optional true} [:sequential ::user]]
+   [:data_warehouses {:optional true} [:sequential ::data-warehouse]]
+   [:permissions     {:optional true} [:sequential ::permission]]
+   [:created_at      {:optional true} [:string {:description "The date and time the workspace was created"}]]
+   [:updated_at      {:optional true} [:string {:description "The date and time the workspace was last updated"}]]])
 
 (methodical/defmethod t2/table-name :model/Workspace [_model] :workspace)
 
 (t2/deftransforms :model/Workspace
   {:plans mi/transform-json
-   :activity_log mi/transform-json
+   :activity_logs mi/transform-json
    :transforms mi/transform-json
    :documents mi/transform-json
    :users mi/transform-json
@@ -120,51 +137,29 @@
     (compare (get order k1 Integer/MAX_VALUE)
              (get order k2 Integer/MAX_VALUE))))
 
+(defn- created-at-sort
+  "Sort a collection of workspaces by their `created_at` timestamp."
+  [xs]
+  (vec (sort-by #(t/instant (get % :created-at)) xs)))
+
 (defn sort-workspace
   "Required for a stable diff in a yaml view"
   [workspace]
-  (let [top-level-sorted (into (sorted-map-by sort-workspace-keys) workspace)
-        json-cols [:plans :activity-logs :transforms :documents :user :data_warehouses :permissions]]
-    ;; sort each json column value by :created-at
-    (reduce (fn [acc col]
-              (if-let [col-data (get top-level-sorted col)]
-                (assoc acc col
-                       (into (sorted-map-by #(compare
-                                              (:created-at %1)
-                                              (:created-at %2)))
-                             col-data)))
-              acc)
-            top-level-sorted
-            json-cols)))
+  (-> (into (sorted-map-by sort-workspace-keys) workspace)
+      (update :documents       (fnil (comp vec sort) []))
+      (update :plans           (fnil created-at-sort []))
+      (update :transforms      (fnil created-at-sort []))
+      (update :users           (fnil created-at-sort []))
+      (update :data_warehouses (fnil created-at-sort []))
+      (update :permissions     (fnil created-at-sort []))))
 
-(mu/defn write-yaml [workspace :- ::workspace]
+(mu/defn- ->yaml [workspace :- ::workspace]
   (let [file-name (str (str/replace (:name workspace) " " "_") ".yaml")
         sorted-workspace (sort-workspace workspace)]
     (spit file-name
           (yaml/generate-string sorted-workspace :dumper-options {:flow-style :block}))))
 
-(comment
-
-  (toucan2.tools.with-temp/with-temp-defaults :model/Workspace)
-  ;; ZZZ
-  (def cw (metabase-enterprise.workspaces.demo.create-realistic-workspace/create-customer-churn-workspace))
-
-  (def cw2 (-> cw
-               (assoc :name "Customer Churn Workspace 2")
-               (update :data_warehouses #(drop 1 %))
-               (update :users conj {:id 1003
-                                    :name "Extra Reader"
-                                    :email "extra.reader@company.com"
-                                    :type "reader"
-                                    :created-at (str (java.time.Instant/now))})
-               (update :transforms #(mapv (fn [t] (assoc t :name (str (:name t) " 2"))) %))
-               (update :transforms conj (first (:transforms cw)))))
-
-  (ddiff/pretty-print (ddiff/diff cw cw2))
-
-  ;; TODO: insert it
-  (t2/insert! :model/Workspace cw2)
-  (t2/insert! :model/Workspace cw)
-
-  (do (write-yaml cw)
-      (write-yaml cw2)))
+;; temp for testing
+(mu/defn- write-yaml [workspace :- ::workspace]
+  (let [file-name (str (str/replace (:name workspace) " " "_") ".yaml")]
+    (spit file-name (->yaml workspace))))

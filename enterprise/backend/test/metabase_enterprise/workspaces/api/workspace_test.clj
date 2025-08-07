@@ -3,232 +3,519 @@
   (:require
    [clojure.test :refer :all]
    [malli.core :as mc]
+   [malli.util :as mut]
    [metabase-enterprise.workspaces.models.workspace :as m.workspace]
    [metabase.test :as mt]
+   [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
-
-(deftest workspace-with-plan-and-transform-test
-  (testing "Create workspace with plan and transform matching expected structure"
-    (let [;; Create a workspace with realistic plan and transform data
-          workspace-data {:name "Customer Analysis Workspace"
-                          :description "Workspace for customer churn analysis"
-                          :created_at "2024-01-15T10:30:00Z"
-                          :updated_at "2024-01-15T10:30:00Z"
-                          :plans [{:title "Customer Churn Analysis"
-                                   :description "Comprehensive customer churn analysis plan"
-                                   :content {:analysis_plan
-                                             {:metadata
-                                              {:plan_id "customer_churn_analysis_001"
-                                               :created_at "2024-01-15T10:30:00Z"
-                                               :objective "Identify key factors driving customer churn and segment high-risk customers"
-                                               :estimated_duration "45 minutes"}
-                                              :data_sources
-                                              [{:name "customer_db"
-                                                :type "postgresql"
-                                                :connection "prod_customer_db"
-                                                :tables ["customers" "subscriptions" "usage_logs"]}
-                                               {:name "support_tickets"
-                                                :type "document"
-                                                :path "/data/support_tickets.csv"}]
-                                              :stages
-                                              [{:stage_id "data_ingestion"
-                                                :name "Load and validate source data"
-                                                :tasks
-                                                [{:task_id "load_customers"
-                                                  :type "sql_query"
-                                                  :source "customer_db"
-                                                  :output_table "raw_customers"
-                                                  :query "SELECT * FROM customers WHERE created_at >= '2023-01-01'"}]}]}}
-                                   :created-at "2024-01-15T10:30:00Z"}]
-                          :transforms [{:name "Customer Data Cleanup"
-                                        :description "Clean and standardize customer data"
-                                        :source {:type "query"
-                                                 :query {:database 1
-                                                         :type "native"
-                                                         :native {:query "SELECT customer_id, email, signup_date, last_login FROM customers WHERE email IS NOT NULL"
-                                                                  :template-tags {}}}}
-                                        :target {:name "clean_customers"
-                                                 :type "table"}
-                                        :config {:dialect "postgresql"
-                                                 :schema "analytics"}
-                                        :created-at "2024-01-15T10:30:00Z"}]
-                          :users []
-                          :data_warehouses []
-                          :documents []
-                          :permissions []
-                          :activity_log []
-                          :archived false}]
-
-      ;; Test workspace basic fields
-      (is (= "Customer Analysis Workspace" (:name workspace-data)))
-      (is (= "Workspace for customer churn analysis" (:description workspace-data)))
-      (is (false? (:archived workspace-data)))
-
-      ;; Test plans structure
-      (is (= 1 (count (:plans workspace-data))))
-      (let [plan (first (:plans workspace-data))]
-        (is (= "Customer Churn Analysis" (:title plan)))
-        (is (= "Comprehensive customer churn analysis plan" (:description plan)))
-        (is (contains? plan :content))
-        (is (contains? plan :created-at))
-
-        ;; Test plan content structure matches the YAML example
-        (let [analysis-plan (get-in plan [:content :analysis_plan])]
-          (is (contains? analysis-plan :metadata))
-          (is (contains? analysis-plan :data_sources))
-          (is (contains? analysis-plan :stages))
-
-          ;; Test metadata matches expected structure
-          (let [metadata (:metadata analysis-plan)]
-            (is (= "customer_churn_analysis_001" (:plan_id metadata)))
-            (is (= "2024-01-15T10:30:00Z" (:created_at metadata)))
-            (is (= "Identify key factors driving customer churn and segment high-risk customers" (:objective metadata)))
-            (is (= "45 minutes" (:estimated_duration metadata))))
-
-          ;; Test data sources structure
-          (let [data-sources (:data_sources analysis-plan)]
-            (is (= 2 (count data-sources)))
-            ;; First data source - PostgreSQL database
-            (let [customer-db (first data-sources)]
-              (is (= "customer_db" (:name customer-db)))
-              (is (= "postgresql" (:type customer-db)))
-              (is (= "prod_customer_db" (:connection customer-db)))
-              (is (= ["customers" "subscriptions" "usage_logs"] (:tables customer-db))))
-            ;; Second data source - document/CSV
-            (let [support-tickets (second data-sources)]
-              (is (= "support_tickets" (:name support-tickets)))
-              (is (= "document" (:type support-tickets)))
-              (is (= "/data/support_tickets.csv" (:path support-tickets)))))
-
-          ;; Test stages and tasks structure
-          (let [stages (:stages analysis-plan)]
-            (is (= 1 (count stages)))
-            (let [stage (first stages)]
-              (is (= "data_ingestion" (:stage_id stage)))
-              (is (= "Load and validate source data" (:name stage)))
-              (is (contains? stage :tasks))
-              (let [tasks (:tasks stage)]
-                (is (= 1 (count tasks)))
-                (let [task (first tasks)]
-                  (is (= "load_customers" (:task_id task)))
-                  (is (= "sql_query" (:type task)))
-                  (is (= "customer_db" (:source task)))
-                  (is (= "raw_customers" (:output_table task)))
-                  (is (string? (:query task)))
-                  (is (.contains (:query task) "customers"))))))))
-
-      ;; Test transforms structure matches new schema
-      (is (= 1 (count (:transforms workspace-data))))
-      (let [transform (first (:transforms workspace-data))]
-        (is (= "Customer Data Cleanup" (:name transform)))
-        (is (= "Clean and standardize customer data" (:description transform)))
-        (is (contains? transform :source))
-        (is (contains? transform :target))
-        (is (contains? transform :config))
-
-        ;; Test transform source
-        (let [source (:source transform)]
-          (is (= "query" (:type source)))
-          (is (contains? source :query))
-          (let [query (:query source)]
-            (is (= 1 (:database query)))
-            (is (= "native" (:type query)))
-            (is (string? (get-in query [:native :query])))))
-
-        ;; Test transform target
-        (let [target (:target transform)]
-          (is (= "clean_customers" (:name target)))
-          (is (= "table" (:type target))))
-
-        ;; Test transform config
-        (let [config (:config transform)]
-          (is (= "postgresql" (:dialect config)))
-          (is (= "analytics" (:schema config)))))
-
-      (is (mc/validate ::m.workspace/workspace workspace-data)))))
 
 (deftest workspace-validation-test
   (testing "Workspace validation with updated Malli schema structure"
     (let [valid-workspace {:name "Test"
                            :description "Test workspace"
-                           :created-at "2023-08-06T15:00:00Z"
-                           :updated-at "2023-08-06T15:00:00Z"
+                           :created_at "2023-08-06T15:00:00Z"
+                           :updated_at "2023-08-06T15:00:00Z"
                            :plans []
                            :transforms []
-                           :activity_log []
+                           :activity_logs []
                            :permissions []
                            :users []
                            :data_warehouses []
                            :documents []}]
-      (is (map? valid-workspace))
-      (is (vector? (:plans valid-workspace)))
-      (is (vector? (:transforms valid-workspace)))
-      (is (vector? (:users valid-workspace))))))
-
-(deftest workspace-fields-are-arrays-test
-  (testing "All workspace JSON fields should be arrays in new schema"
-    (let [workspace-with-data {:plans [{:title "Test Plan"
-                                        :description "A test plan"
-                                        :content {:simple_content true}
-                                        :created-at "2023-08-06T15:00:00Z"}]
-                               :transforms [{:name "Test Transform"
-                                             :description "A test transform"
-                                             :source {:type "query"
-                                                      :query {:database 1
-                                                              :type "native"
-                                                              :native {:query "SELECT * FROM table"}}}
-                                             :target {:name "output_table"
-                                                      :type "table"}
-                                             :config {:dialect "postgresql"}
-                                             :created-at "2023-08-06T15:00:00Z"}]
-                               :users [{:id 1
-                                        :name "Test User"
-                                        :email "test@example.com"
-                                        :type "workspace-user"
-                                        :created-at "2023-08-06T15:00:00Z"}]
-                               :data_warehouses [{:id 1
-                                                  :name "Test DWH"
-                                                  :type :read-only
-                                                  :credentials {:username "user" :password "pass"}
-                                                  :created-at "2023-08-06T15:00:00Z"}]
-                               :documents [1 2 3]
-                               :permissions [{:table "users" :permission :read :created-at "2023-08-06T15:00:00Z"}]}]
-
-      ;; Verify all fields are vectors (arrays)
-      (is (vector? (:plans workspace-with-data)))
-      (is (vector? (:transforms workspace-with-data)))
-      (is (vector? (:users workspace-with-data)))
-      (is (vector? (:data_warehouses workspace-with-data)))
-      (is (vector? (:documents workspace-with-data)))
-      (is (vector? (:permissions workspace-with-data)))
-
-      ;; Verify structure of each type
-      (is (every? #(and (contains? % :title)
-                        (contains? % :content)
-                        (contains? % :created-at))
-                  (:plans workspace-with-data)))
-      (is (every? #(and (contains? % :name)
-                        (contains? % :source)
-                        (contains? % :target)
-                        (contains? % :created-at))
-                  (:transforms workspace-with-data)))
-      (is (every? #(and (contains? % :type)
-                        (contains? % :created-at))
-                  (:users workspace-with-data)))
-      (is (every? #(and (contains? % :credentials)
-                        (contains? % :created-at))
-                  (:data_warehouses workspace-with-data)))
-      (is (every? #(and (contains? % :table)
-                        (contains? % :permission)
-                        (contains? % :created-at))
-                  (:permissions workspace-with-data))))))
+      (is (nil? (mc/explain ::m.workspace/workspace valid-workspace))))))
 
 (deftest create-workspace-test
   (testing "Creating a workspace with valid data using mt/with-temp"
-    (mt/with-temp [:model/Workspace {workspace-id :id :as wksp} {:name        "Test Workspace"
-                                                                 :description "A test workspace"}]
+    (mt/with-temp [:model/Collection {collection-id :id} {:name "API Workspace Collection"}
+                   :model/Workspace {workspace-id :id :as wksp} {:name "Test Workspace"
+                                                                 :description "A test workspace"
+                                                                 :collection_id collection-id}]
       (is (pos? workspace-id))
       (is (= "Test Workspace"
              (:name (t2/select-one :model/Workspace :id workspace-id))))
-      (is (= [:name :description :created_at :updated_at :plans :transforms :documents :permissions :id]
+      (is (= (mut/keys (mr/resolve-schema ::m.workspace/workspace))
              (keys (m.workspace/sort-workspace wksp)))))))
+
+ ;;; API Endpoint Tests
+
+(defn- test-workspace-data
+  "Generate test workspace data with a valid collection."
+  ([]
+   (test-workspace-data {}))
+  ([overrides]
+   (merge {:name "Test Workspace"
+           :description "A test workspace"
+           :collection_id 1 ; Will be replaced with actual collection ID in tests
+           :users []
+           :plans []
+           :transforms []
+           :documents []
+           :data_warehouses []
+           :permissions []
+           :activity_logs []}
+          overrides)))
+
+(defn- create-test-collection
+  "Create a test collection for workspace tests."
+  []
+  (mt/user-http-request :crowberto :post 200 "collection/"
+                        {:name "Test Workspace Collection"
+                         :slug "test_workspace_collection"}))
+
+(deftest api-create-workspace-validation-test
+  (testing "POST /api/ee/workspace/ - validation tests"
+    (mt/with-model-cleanup [:model/Workspace]
+      (let [collection (create-test-collection)]
+
+        (testing "should require name"
+          (mt/user-http-request :crowberto :post 400 "ee/workspace/"
+                                {:description "Missing name"
+                                 :collection_id (:id collection)}))
+
+        (testing "should require collection_id"
+          (mt/user-http-request :crowberto :post 400 "ee/workspace/"
+                                {:name "Missing collection"
+                                 :description "Test"}))
+
+        (testing "should reject blank name"
+          (mt/user-http-request :crowberto :post 400 "ee/workspace/"
+                                {:name ""
+                                 :collection_id (:id collection)
+                                 :description "Blank name"}))))))
+
+(deftest api-get-workspaces-test
+  (testing "GET /api/ee/workspace/ - list workspaces"
+    (mt/with-temp [:model/Collection {collection-id :id} {:name "API Workspace Collection"}
+                   :model/Workspace _ {:name "API Workspace 1"
+                                       :collection_id collection-id}
+                   :model/Workspace _ {:name "API Workspace 2"
+                                       :collection_id collection-id}]
+      (let [result (mt/user-http-request :crowberto :get 200 "ee/workspace/")]
+        (is (>= (count result) 2))
+        (is (some #(= "API Workspace 1" (:name %)) result))
+        (is (some #(= "API Workspace 2" (:name %)) result))))))
+
+(deftest api-get-workspace-by-id-test
+  (testing "GET /api/ee/workspace/:id - get specific workspace"
+    (mt/with-temp [:model/Collection {collection-id :id} {:name "Test Workspace Collection"}
+                   :model/Workspace {workspace-id :id :as test-workspace} {:name "Test Workspace"
+                                                                           :collection_id collection-id}]
+      (def tw test-workspace)
+      (testing "should get existing workspace"
+        (let [result (mt/user-http-request :crowberto :get 200 (format "ee/workspace/%s" workspace-id))]
+          (is (= workspace-id (:id result)))))
+      (testing "should return 404 for non-existent workspace"
+        (mt/user-http-request :crowberto :get 404 "ee/workspace/99999")))))
+
+(deftest api-update-workspace-test
+  (testing "PUT /api/ee/workspace/:id - update workspace"
+    (mt/with-temp [:model/Collection {col-id :id} {}
+                   :model/Workspace {workspace-id :id} (test-workspace-data {:collection_id col-id})]
+      (testing "should update workspace successfully"
+        (let [updated-data {:name "Updated Workspace"
+                            :description "Updated description"}
+              result (mt/user-http-request :crowberto :put 200
+                                           (format "ee/workspace/%s" workspace-id)
+                                           updated-data)]
+          (is (partial= updated-data result))
+          (is (= workspace-id (:id result)))
+
+          ;; Verify in database
+          (let [db-workspace (t2/select-one :model/Workspace :id workspace-id)]
+            (is (partial= updated-data db-workspace)))))
+
+      (testing "should return 404 for non-existent workspace"
+        (mt/user-http-request :crowberto :put 404 "ee/workspace/99999"
+                              {:name "Non-existent"})))))
+
+(deftest api-delete-workspace-test
+  (testing "DELETE /api/ee/workspace/:id - delete workspace"
+    (mt/with-model-cleanup [:model/Workspace]
+      (mt/with-temp [:model/Collection {col-id :id} {}
+                     :model/Workspace {workspace-id :id} (test-workspace-data {:collection_id col-id})]
+        (testing "should delete workspace successfully"
+          (mt/user-http-request :crowberto :delete 204
+                                (format "ee/workspace/%s" workspace-id))
+
+          ;; Verify workspace is deleted
+          (is (nil? (t2/select-one :model/Workspace :id workspace-id))))
+
+        (testing "should return 404 for non-existent workspace"
+          (mt/user-http-request :crowberto :delete 404 "ee/workspace/99999"))))))
+
+;;; Workspace Plans API Tests
+
+(deftest api-add-plan-to-workspace-test
+  (testing "PUT /api/ee/workspace/:id/plan - add plan to workspace"
+    (mt/with-model-cleanup [:model/Workspace]
+      (mt/with-temp [:model/Collection {col-id :id} {}
+                     :model/Workspace {workspace-id :id} (test-workspace-data {:collection_id col-id})]
+        (testing "should add plan successfully"
+          (let [plan-data {:title "Test Plan"
+                           :description "Test plan description"
+                           :content {:steps ["Step 1" "Step 2" "Step 3"]
+                                     :timeline "Q1 2025"}}
+                result (mt/user-http-request :crowberto :put 200
+                                             (format "ee/workspace/%s/plan" workspace-id)
+                                             plan-data)]
+            (is (= workspace-id (:id result)))
+            (is (= 1 (count (:plans result))))
+            (let [added-plan (first (:plans result))]
+              (is (partial= plan-data added-plan))
+              (is (contains? added-plan :created-at)))))
+
+        (testing "should add multiple plans"
+          (let [second-plan {:title "Second Plan"
+                             :description "Second plan description"
+                             :content {:steps ["Another step"]}}]
+            (mt/user-http-request :crowberto :put 200
+                                  (format "ee/workspace/%s/plan" workspace-id)
+                                  second-plan)
+            (let [updated-workspace (t2/select-one :model/Workspace :id workspace-id)]
+              (is (= 2 (count (:plans updated-workspace)))))))
+
+        (testing "should validate required fields"
+          (mt/user-http-request :crowberto :put 400
+                                (format "ee/workspace/%s/plan" workspace-id)
+                                {:description "Missing title"
+                                 :content {}}))
+
+        (testing "should return 404 for non-existent workspace"
+          (mt/user-http-request :crowberto :put 404 "ee/workspace/99999/plan"
+                                {:title "Plan" :description "Desc" :content {}}))))))
+
+;;; Workspace Transforms API Tests
+
+(deftest api-add-transform-to-workspace-test
+  (testing "PUT /api/ee/workspace/:id/transform - add transform to workspace"
+    (mt/with-model-cleanup [:model/Workspace]
+      (mt/with-temp [:model/Collection {col-id :id} {}
+                     :model/Workspace {workspace-id :id} (test-workspace-data {:collection_id col-id})]
+        (testing "should add transform successfully"
+          (let [transform-data {:name "ETL Transform"
+                                :description "Transform raw data"
+                                :source {:type "database" :connection "source-db"}
+                                :target {:type "warehouse" :connection "target-db"}
+                                :config {:schedule "daily"}}
+                result (mt/user-http-request :crowberto :put 200
+                                             (format "ee/workspace/%s/transform" workspace-id)
+                                             transform-data)]
+            (is (= workspace-id (:id result)))
+            (is (= 1 (count (:transforms result))))
+            (let [added-transform (first (:transforms result))]
+              (is (partial= transform-data added-transform))
+              (is (contains? added-transform :created-at)))))
+
+        (testing "should validate required fields"
+          (mt/user-http-request :crowberto :put 400
+                                (format "ee/workspace/%s/transform" workspace-id)
+                                {:description "Missing name and source/target"})
+
+          (mt/user-http-request :crowberto :put 400
+                                (format "ee/workspace/%s/transform" workspace-id)
+                                {:name "Transform"
+                                 :description "Missing source"
+                                 :target {}}))))))
+
+(deftest api-add-user-to-workspace-test
+  (testing "PUT /api/ee/workspace/:id/user - add user to workspace"
+    (mt/with-temp [:model/Collection {col-id :id} {}
+                   :model/Workspace {workspace-id :id} (test-workspace-data {:collection_id col-id})]
+      (testing "should add user successfully"
+        (let [user-data {:id 123
+                         :name "John Doe"
+                         :email "john@example.com"
+                         :type "workspace-user"}
+              result (mt/user-http-request :crowberto :put 200
+                                           (format "ee/workspace/%s/user" workspace-id)
+                                           user-data)]
+          result
+          (def result result)
+          (is (= workspace-id (:id result)))
+          (is (= 1 (count (:users result))))
+          (let [added-user (first (:users result))]
+            (is (partial= user-data added-user))
+            (is (contains? added-user :created-at)))))
+
+      (testing "should validate required fields"
+        (mt/user-http-request :crowberto :put 400
+                              (format "ee/workspace/%s/user" workspace-id)
+                              {:name "Missing user_id and email"
+                               :type "user"})))))
+
+(comment
+
+  (def c (t2/insert-returning-instance! :model/Collection {:name "Test Workspace Collection"}))
+
+  (try (def w (t2/insert-returning-instance! :model/Workspace {:name "test workspace"
+                                                               :collection_id (:id c)
+                                                               :data_warehouses []
+                                                               :users []
+                                                               :plans []
+                                                               :activity_logs []
+                                                               :transforms []
+                                                               :documents []}))
+       (catch Exception e (ex-data e)))
+
+  (mt/user-http-request :crowberto :get 200 (str "ee/workspace/" (:id w)))
+
+  (let [id (atom 1000)]
+    (defn next-id [] (swap! id inc)))
+
+  (mt/user-http-request :crowberto :put 200
+                        (str "ee/workspace/" (:id w) "/user")
+                        {:id (next-id) :name "name" :email "email" :type "type"})
+
+  (mt/user-http-request :crowberto :put 200
+                        (str "ee/workspace/" (:id w) "/plan")
+                        {:title "x" :content {}})
+
+  (mt/user-http-request :crowberto :put 400
+                        (str "ee/workspace/" (:id w) "/plan")
+                        {:content {}})
+
+  (mt/user-http-request :crowberto :put 200 (str "ee/workspace/" (:id w) "/document")
+                        {:document_id (next-id)})
+
+  (t2/select-one :model/Workspace))
+
+(deftest api-add-document-to-workspace-test
+  (testing "PUT /api/ee/workspace/:id/document - add document to workspace"
+    (mt/with-temp [:model/Collection {col-id :id} {}
+                   :model/Workspace {workspace-id :id} (test-workspace-data {:collection_id col-id})]
+      (testing "should add document successfully"
+        (let [document-data {:document_id 456}
+              result (mt/user-http-request :crowberto :put 200
+                                           (format "ee/workspace/%s/document" workspace-id)
+                                           document-data)]
+          (is (= workspace-id (:id result)))
+          (is (= [456] (:documents result)))))
+
+      (testing "should add multiple documents"
+        (let [second-document {:document_id 789}]
+          (mt/user-http-request :crowberto :put 200
+                                (format "ee/workspace/%s/document" workspace-id)
+                                second-document)
+          (let [updated-workspace (t2/select-one :model/Workspace :id workspace-id)]
+            (is (= #{456 789} (set (:documents updated-workspace)))))))
+
+      (testing "should not duplicate document IDs"
+        (let [duplicate-document {:document_id 456}]
+          (mt/user-http-request :crowberto :put 200
+                                (format "ee/workspace/%s/document" workspace-id)
+                                duplicate-document)
+          (let [updated-workspace (t2/select-one :model/Workspace :id workspace-id)]
+            (is (= [456 789] (:documents updated-workspace))))))
+
+      (testing "should validate required fields"
+        (is (= {:specific-errors {:document_id ["missing required key, received: nil"]},
+                :errors {:document_id "value must be an integer greater than zero."}}
+               (mt/user-http-request :crowberto :put 400
+                                     (format "ee/workspace/%s/document" workspace-id)
+                                     {:missing "document_id"})))))))
+
+;;; Workspace Data Warehouses API Tests
+
+(deftest api-add-data-warehouse-to-workspace-test
+  (testing "PUT /api/ee/workspace/:id/data_warehouse - add data warehouse to workspace"
+    (mt/with-model-cleanup [:model/Workspace]
+      (mt/with-temp [:model/Collection {col-id :id} {}
+                     :model/Workspace {workspace-id :id} (test-workspace-data {:collection_id col-id})]
+        (testing "should add data warehouse successfully"
+          (let [dwh-data {:data_warehouses_id 101
+                          :name "Production DWH"
+                          :type "read-only"
+                          :credentials {:host "dwh.company.com"
+                                        :port 5432
+                                        :username "analyst"}}
+                result (mt/user-http-request :crowberto :put 200
+                                             (format "ee/workspace/%s/data_warehouse" workspace-id)
+                                             dwh-data)]
+            (is (= workspace-id (:id result)))
+            (is (= 1 (count (:data_warehouses result))))
+            (let [added-dwh (first (:data_warehouses result))]
+              (is (= 101 (:id added-dwh)))
+              (is (= "Production DWH" (:name added-dwh)))
+              (is (= "read-only" (:type added-dwh)))
+              (is (= (:credentials dwh-data) (:credentials added-dwh)))
+              (is (contains? added-dwh :created-at)))))
+
+        (testing "should add multiple data warehouses"
+          (let [second-dwh {:data_warehouses_id 102
+                            :name "Analytics DWH"
+                            :type "read-write"
+                            :credentials {:host "analytics.company.com"}}]
+            (mt/user-http-request :crowberto :put 200
+                                  (format "ee/workspace/%s/data_warehouse" workspace-id)
+                                  second-dwh)
+            (let [updated-workspace (t2/select-one :model/Workspace :id workspace-id)]
+              (is (= 2 (count (:data_warehouses updated-workspace)))))))
+
+        (testing "should validate required fields"
+          (mt/user-http-request :crowberto :put 400
+                                (format "ee/workspace/%s/data_warehouse" workspace-id)
+                                {:name "Missing required fields"})
+
+          (mt/user-http-request :crowberto :put 400
+                                (format "ee/workspace/%s/data_warehouse" workspace-id)
+                                {:data_warehouses_id 103
+                                 :name "Invalid type"
+                                 :type "invalid-type"
+                                 :credentials {}}))
+
+        (testing "should validate type enum"
+          (mt/user-http-request :crowberto :put 400
+                                (format "ee/workspace/%s/data_warehouse" workspace-id)
+                                {:data_warehouses_id 104
+                                 :name "Bad Type"
+                                 :type "write-only"
+                                 :credentials {}}))))))
+
+;;; Workspace Permissions API Tests
+
+(deftest api-add-permission-to-workspace-test
+  (testing "PUT /api/ee/workspace/:id/permission - add permission to workspace"
+    (mt/with-model-cleanup [:model/Workspace]
+      (mt/with-temp [:model/Collection {col-id :id} {}
+                     :model/Workspace {workspace-id :id} (test-workspace-data {:collection_id col-id})]
+        (testing "should add permission successfully"
+          (let [permission-data {:table "customers"
+                                 :permission "read"}
+                result (mt/user-http-request :crowberto :put 200
+                                             (format "ee/workspace/%s/permission" workspace-id)
+                                             permission-data)]
+            (is (= workspace-id (:id result)))
+            (is (= 1 (count (:permissions result))))
+            (let [added-permission (first (:permissions result))]
+              (is (= "customers" (:table added-permission)))
+              (is (= "read" (:permission added-permission)))
+              (is (contains? added-permission :created-at)))))
+
+        (testing "should add multiple permissions"
+          (let [write-permission {:table "orders" :permission "write"}]
+            (mt/user-http-request :crowberto :put 200
+                                  (format "ee/workspace/%s/permission" workspace-id)
+                                  write-permission)
+            (let [updated-workspace (t2/select-one :model/Workspace :id workspace-id)
+                  perm-set (set (mapv #(dissoc % :created-at) (:permissions updated-workspace)))]
+              (def perm-set perm-set)
+              (is (= 2 (count perm-set)))
+              (is (contains? perm-set
+                             {:table "orders" :permission "write"})))))
+
+        (testing "should validate required fields"
+          (mt/user-http-request :crowberto :put 400
+                                (format "ee/workspace/%s/permission" workspace-id)
+                                {:table "products"}))
+
+        (testing "should validate permission enum"
+          (mt/user-http-request :crowberto :put 400
+                                (format "ee/workspace/%s/permission" workspace-id)
+                                {:table "products"
+                                 :permission "execute"}))))))
+
+;;; Authentication Tests
+
+(deftest api-workspace-authentication-test
+  (testing "Workspace API endpoints require authentication"
+    (let [endpoints [["GET" "ee/workspace/"]
+                     ["GET" "ee/workspace/1"]
+                     ["POST" "ee/workspace/"]
+                     ["PUT" "ee/workspace/1"]
+                     ["DELETE" "ee/workspace/1"]
+                     ["PUT" "ee/workspace/1/plan"]
+                     ["PUT" "ee/workspace/1/transform"]
+                     ["PUT" "ee/workspace/1/user"]
+                     ["PUT" "ee/workspace/1/document"]
+                     ["PUT" "ee/workspace/1/dwh"]
+                     ["PUT" "ee/workspace/1/permission"]]]
+      (doseq [[method endpoint] endpoints]
+        (testing (format "%s /api/%s should require authentication" method endpoint)
+          (case method
+            "GET" (mt/client :get 401 endpoint)
+            "POST" (mt/client :post 401 endpoint {})
+            "PUT" (mt/client :put 401 endpoint {})
+            "DELETE" (mt/client :delete 401 endpoint)))))))
+
+;;; Integration Tests
+
+(deftest api-workspace-full-lifecycle-test
+  (testing "Complete workspace lifecycle integration test via API"
+    (mt/with-temp [:model/Collection {col-id :id} {}
+                   :model/Workspace {workspace-id :id
+                                     :as workspace} {:collection_id col-id
+                                                     :name "Test Workspace"}]
+      (testing "Workspace creation"
+        (is (pos? workspace-id))
+        (is (= "Test Workspace" (:name workspace))))
+
+      (testing "Add plan to workspace"
+        (let [plan-result (mt/user-http-request :crowberto :put 200
+                                                (format "ee/workspace/%s/plan" workspace-id)
+                                                {:title "Strategic Plan"
+                                                 :description "2025 strategic initiatives"
+                                                 :content {:goals ["Increase efficiency" "Reduce costs"]}})]
+          (is (= 1 (count (:plans plan-result))))))
+
+      (testing "Add transform to workspace"
+        (let [transform-result (mt/user-http-request :crowberto :put 200
+                                                     (format "ee/workspace/%s/transform" workspace-id)
+                                                     {:name "Daily ETL"
+                                                      :description "Daily data processing"
+                                                      :source {:type "oltp"}
+                                                      :target {:type "olap"}})]
+          (is (= 1 (count (:transforms transform-result))))))
+
+      #_(testing "Add user to workspace"
+          (let [user-result (mt/user-http-request :crowberto :put 200
+                                                  (format "ee/workspace/%s/user" workspace-id)
+                                                  {:user_id 100
+                                                   :name "Alice Smith"
+                                                   :email "alice@company.com"
+                                                   :type "analyst"})]
+            (is (= 1 (count (:users user-result))))))
+
+      (testing "Add document to workspace"
+        (let [document-result (mt/user-http-request :crowberto :put 200
+                                                    (format "ee/workspace/%s/document" workspace-id)
+                                                    {:document_id 999})]
+          (is (= [999] (:documents document-result)))))
+
+      (testing "Add data warehouse to workspace"
+        (let [dwh-result (mt/user-http-request :crowberto :put 200
+                                               (format "ee/workspace/%s/data_warehouse" workspace-id)
+                                               {:data_warehouses_id 200
+                                                :name "Test DWH"
+                                                :type "read-only"
+                                                :credentials {:host "test.db"}})]
+          (is (= 1 (count (:data_warehouses dwh-result))))))
+
+      (testing "Add permission to workspace"
+        (let [permission-result (mt/user-http-request :crowberto :put 200
+                                                      (format "ee/workspace/%s/permission" workspace-id)
+                                                      {:table "test_table"
+                                                       :permission "read"})]
+          (is (= 1 (count (:permissions permission-result))))))
+
+      (testing "Update workspace"
+        (let [update-result (mt/user-http-request :crowberto :put 200
+                                                  (format "ee/workspace/%s" workspace-id)
+                                                  {:name "Updated Strategic Workspace"
+                                                   :description "Updated workspace description"})]
+          (is (= "Updated Strategic Workspace" (:name update-result)))))
+
+      (testing "Get workspace with all components"
+        (let [final-workspace (mt/user-http-request :crowberto :get 200
+                                                    (format "ee/workspace/%s" workspace-id))]
+          (is (= "Updated Strategic Workspace" (:name final-workspace)))
+          (is (= 1 (count (:plans final-workspace))))
+          (is (= 1 (count (:transforms final-workspace))))
+          ;;(is (= 1 (count (:users final-workspace))))
+          (is (= [999] (:documents final-workspace)))
+          (is (= 1 (count (:data_warehouses final-workspace))))
+          (is (= 1 (count (:permissions final-workspace))))))
+
+      (testing "Delete workspace"
+        (mt/user-http-request :crowberto :delete 204
+                              (format "ee/workspace/%s" workspace-id))
+        (is (nil? (t2/select-one :model/Workspace :id workspace-id)))))))

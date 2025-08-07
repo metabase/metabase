@@ -322,7 +322,15 @@
             :updated_at (t/zoned-date-time)})
 
    :model/Workspace
-   (fn [_] {:documents []})})
+   (fn [_] {:name (u.random/random-name)
+            :description (if (> (rand) 0.5) (u.random/random-name) nil)
+            :plans []
+            :activity_logs []
+            :transforms []
+            :documents []
+            :users []
+            :data_warehouses []
+            :permissions []})})
 
 (defn- set-with-temp-defaults! []
   (doseq [[model defaults-fn] with-temp-defaults-fns]
