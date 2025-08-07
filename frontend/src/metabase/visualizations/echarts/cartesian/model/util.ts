@@ -2,7 +2,7 @@ import type { OptionsType } from "metabase/lib/formatting/types";
 import {
   expectedTickCount,
   maxTicksForChartWidth,
-} from "metabase/visualizations/echarts/cartesian/utils/timeseries";
+} from "../utils/timeseries";
 import type {
   ComputedVisualizationSettings,
   RemappingHydratedDatasetColumn,
