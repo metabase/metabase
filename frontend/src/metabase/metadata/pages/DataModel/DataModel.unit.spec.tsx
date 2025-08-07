@@ -879,7 +879,6 @@ describe("DataModel", () => {
       });
       setupDatabaseIdFieldsEndpoints({
         database: SAMPLE_DB,
-        overwriteRoute: true,
       });
 
       expect(screen.getByText("Custom mapping")).toBeInTheDocument();

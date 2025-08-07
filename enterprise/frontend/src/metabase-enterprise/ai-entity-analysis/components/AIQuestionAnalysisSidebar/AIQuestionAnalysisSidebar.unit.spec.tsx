@@ -31,7 +31,7 @@ describe("AIQuestionAnalysisSidebar", () => {
       summary: "Test analysis",
     };
 
-    setupAnalyzeChartEndpoint({ response: mockResponse });
+    setupAnalyzeChartEndpoint(mockResponse);
 
     renderWithProviders(
       <AIQuestionAnalysisSidebar question={question} onClose={jest.fn()} />,
@@ -112,7 +112,7 @@ describe("AIQuestionAnalysisSidebar", () => {
       summary: "Filtered analysis",
     };
 
-    setupAnalyzeChartEndpoint({ response: mockResponse });
+    setupAnalyzeChartEndpoint(mockResponse);
 
     renderWithProviders(
       <AIQuestionAnalysisSidebar

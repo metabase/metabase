@@ -105,10 +105,7 @@ describe("CloudPanel", () => {
     });
     expect((store.getState() as any).undo).toHaveLength(1);
 
-    fetchMockCloudMigrationGetSequence({
-      responses: [CANCELED_RESPONSE],
-      overwriteRoute: true,
-    });
+    fetchMockCloudMigrationGetSequence([CANCELED_RESPONSE]);
 
     await expectInitState();
   });
@@ -139,13 +136,10 @@ describe("CloudPanel", () => {
     await expectStartConfirmationModal();
     await userEvent.click(screen.getByRole("button", { name: /Migrate now/ }));
 
-    fetchMockCloudMigrationGetSequence({
-      responses: [
-        { ...INIT_RESPONSE, id: 2 },
-        { ...SETUP_RESPONSE, id: 2 },
-      ],
-      overwriteRoute: true,
-    });
+    fetchMockCloudMigrationGetSequence([
+      { ...INIT_RESPONSE, id: 2 },
+      { ...SETUP_RESPONSE, id: 2 },
+    ]);
 
     await expectProgressState(metabaseStoreLink);
 
@@ -165,14 +159,11 @@ describe("CloudPanel", () => {
       await screen.findByRole("button", { name: /Restart the process/ }),
     );
 
-    fetchMockCloudMigrationGetSequence({
-      responses: [
-        { ...INIT_RESPONSE, id: 2 },
-        { ...SETUP_RESPONSE, id: 2 },
-        { ...DUMP_RESPONSE, id: 2 },
-      ],
-      overwriteRoute: true,
-    });
+    fetchMockCloudMigrationGetSequence([
+      { ...INIT_RESPONSE, id: 2 },
+      { ...SETUP_RESPONSE, id: 2 },
+      { ...DUMP_RESPONSE, id: 2 },
+    ]);
 
     await expectProgressState(metabaseStoreLink);
 
@@ -283,7 +274,7 @@ const expectErrorState = async () => {
 const startMigration = async (
   migrationResponses: UserRouteConfig["response"][],
 ) => {
-  fetchMockCloudMigrationGetSequence({ responses: migrationResponses });
+  fetchMockCloudMigrationGetSequence(migrationResponses);
   const { mockMigrationStart, store, metabaseStoreLink } = setup();
 
   await expectInitState();
@@ -297,17 +288,10 @@ const startMigration = async (
   return { store, metabaseStoreLink };
 };
 
-function fetchMockCloudMigrationGetSequence({
-  responses,
-  overwriteRoute,
-}: {
-  responses: UserRouteConfig["response"][];
-  overwriteRoute?: boolean;
-}) {
+function fetchMockCloudMigrationGetSequence(
+  responses: UserRouteConfig["response"][],
+) {
   let called = 0;
-  if (overwriteRoute) {
-    fetchMock.removeRoute("cloud-migration-get");
-  }
   fetchMock.removeRoute("cloud-migration-get");
   return fetchMock.get(
     `path:/api/cloud-migration`,

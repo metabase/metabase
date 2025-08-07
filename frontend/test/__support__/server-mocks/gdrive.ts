@@ -3,16 +3,11 @@ import fetchMock from "fetch-mock";
 import type { GdrivePayload } from "metabase-types/api";
 
 export function setupGdriveGetFolderEndpoint({
-  overwriteRoute,
   errorCode,
   ...gdrivePayload
 }: Partial<GdrivePayload> & {
   errorCode?: number;
-  overwriteRoute?: boolean;
 } = {}) {
-  if (overwriteRoute) {
-    fetchMock.removeRoute("gdrive-get-folder");
-  }
   fetchMock.removeRoute("gdrive-get-folder");
 
   if (errorCode) {

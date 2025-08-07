@@ -90,7 +90,6 @@ describe("GsheetsSyncStatus", () => {
     setupGdriveGetFolderEndpoint({
       status: "syncing",
       created_by_id: USER_ID,
-      overwriteRoute: true,
     });
 
     // trigger settings update
@@ -157,7 +156,6 @@ describe("GsheetsSyncStatus", () => {
       status: "active",
       db_id: 1,
       created_by_id: USER_ID,
-      overwriteRoute: true,
     });
 
     await act(() => {
@@ -185,7 +183,6 @@ describe("GsheetsSyncStatus", () => {
 
     setupGdriveGetFolderEndpoint({
       errorCode: 500,
-      overwriteRoute: true,
     });
 
     await act(() => {
@@ -211,7 +208,6 @@ describe("GsheetsSyncStatus", () => {
     setupGdriveGetFolderEndpoint({
       status: "error",
       created_by_id: USER_ID,
-      overwriteRoute: true,
     });
 
     await act(() => {
@@ -236,7 +232,6 @@ describe("GsheetsSyncStatus", () => {
 
     setupGdriveGetFolderEndpoint({
       errorCode: 500,
-      overwriteRoute: true,
     });
 
     await act(() => {
@@ -251,7 +246,6 @@ describe("GsheetsSyncStatus", () => {
     setupGdriveGetFolderEndpoint({
       status: "syncing",
       created_by_id: USER_ID,
-      overwriteRoute: true,
     });
 
     // trigger settings update
@@ -276,7 +270,6 @@ describe("GsheetsSyncStatus", () => {
     setupGdriveGetFolderEndpoint({
       status: "not-connected",
       created_by_id: USER_ID,
-      overwriteRoute: true,
     });
 
     await act(() => {

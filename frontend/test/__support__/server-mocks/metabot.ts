@@ -61,7 +61,6 @@ type SuggestionsEndpointOptions = {
     total: number;
   };
   delay?: UserRouteConfig["delay"];
-  overwriteRoute?: boolean;
 };
 
 export function setupMetabotPromptSuggestionsEndpoint({
@@ -69,15 +68,11 @@ export function setupMetabotPromptSuggestionsEndpoint({
   prompts,
   paginationContext,
   delay,
-  overwriteRoute,
 }: SuggestionsEndpointOptions) {
   const { total, limit, offset } = paginationContext;
 
   const page = prompts.slice(offset, offset + limit);
   const body = { prompts: page, limit, offset, total };
-  if (overwriteRoute) {
-    fetchMock.removeRoute(`metabot-${metabotId}-prompt-suggestions-get`);
-  }
   fetchMock.removeRoute(`metabot-${metabotId}-prompt-suggestions-get`);
   fetchMock.get({
     url: `path:/api/ee/metabot-v3/metabot/${metabotId}/prompt-suggestions`,

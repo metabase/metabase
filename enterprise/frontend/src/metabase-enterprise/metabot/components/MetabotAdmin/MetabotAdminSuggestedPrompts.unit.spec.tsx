@@ -129,7 +129,6 @@ describe("suggested prompts", () => {
       metabotId,
       prompts: defaultMetabotMockedPrompts,
       paginationContext: nextPaginationContext,
-      overwriteRoute: true,
     });
     await nextPage();
     await expectVisiblePrompts(defaultMetabotMockedPrompts.slice(3, 6));
@@ -138,7 +137,6 @@ describe("suggested prompts", () => {
       metabotId,
       prompts: defaultMetabotMockedPrompts,
       paginationContext: nextNextPaginationContext,
-      overwriteRoute: true,
     });
     await nextPage();
     await expectVisiblePrompts(defaultMetabotMockedPrompts.slice(6, 9));
@@ -189,7 +187,6 @@ describe("suggested prompts", () => {
         limit: 1,
         total: defaultMetabotMockedPrompts.length,
       },
-      overwriteRoute: true,
     });
 
     expect(await screen.findByText(firstPrompt.prompt)).toBeInTheDocument();
@@ -201,7 +198,6 @@ describe("suggested prompts", () => {
         limit: 1,
         total: defaultMetabotMockedPrompts.length,
       },
-      overwriteRoute: true,
     });
     await userEvent.click(await screen.findByTestId("prompt-remove"));
 
@@ -224,7 +220,6 @@ describe("suggested prompts", () => {
         limit: 1,
         total: defaultMetabotMockedPrompts.length,
       },
-      overwriteRoute: true,
     });
     // remove a prompt so when we regenerate we can see it came back
     await userEvent.click(await screen.findByTestId("prompt-remove"));
@@ -240,7 +235,6 @@ describe("suggested prompts", () => {
         limit: 1,
         total: defaultMetabotMockedPrompts.length,
       },
-      overwriteRoute: true,
     });
     // add a delay to endpoint so that loading state can be triggered consistently w/o test flakes
     setupRegenerateMetabotPromptSuggestionsEndpoint(metabotId, { delay: 50 });

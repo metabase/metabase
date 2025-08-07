@@ -202,7 +202,6 @@ describe("Google Drive > DB Menu", () => {
     expect(syncButton).toBeEnabled();
 
     setupGdriveGetFolderEndpoint({
-      overwriteRoute: true,
       status: "syncing",
       sync_started_at: dayjs().subtract(3, "minute").unix(),
     });
@@ -221,7 +220,6 @@ describe("Google Drive > DB Menu", () => {
       jest.advanceTimersByTime(6000);
     });
     setupGdriveGetFolderEndpoint({
-      overwriteRoute: true,
       status: "active",
       last_sync_at: dayjs().subtract(2, "second").unix(),
     });

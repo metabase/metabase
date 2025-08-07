@@ -95,7 +95,7 @@ describe("siteUrlWidget", () => {
 
   it("should show error message", async () => {
     setup();
-    setupUpdateSettingEndpoint({ status: 500, overwriteRoute: true });
+    setupUpdateSettingEndpoint({ status: 500 });
 
     const input = await screen.findByDisplayValue("mysite.biz");
     await userEvent.clear(input);

@@ -107,9 +107,7 @@ describe("CustomHomepageDashboardSetting", () => {
   it("should update the toggle value", async () => {
     setup({ "custom-homepage": false });
     const toggle = await screen.findByRole("switch");
-    setupPropertiesEndpoints(createMockSettings({ "custom-homepage": true }), {
-      overwriteRoute: true,
-    });
+    setupPropertiesEndpoints(createMockSettings({ "custom-homepage": true }));
     await userEvent.click(toggle);
     expect(await screen.findByRole("switch")).toBeChecked();
 
@@ -134,7 +132,6 @@ describe("CustomHomepageDashboardSetting", () => {
         "custom-homepage": true,
         "custom-homepage-dashboard": 4242,
       }),
-      { overwriteRoute: true },
     );
     await userEvent.click(screen.getByText("My dashboard"));
     await waitFor(() => {
@@ -156,9 +153,7 @@ describe("CustomHomepageDashboardSetting", () => {
   it("should hide dashboard selector when toggling off", async () => {
     setup({ "custom-homepage": true, "custom-homepage-dashboard": 4242 });
     const toggle = await screen.findByRole("switch");
-    setupPropertiesEndpoints(createMockSettings({ "custom-homepage": false }), {
-      overwriteRoute: true,
-    });
+    setupPropertiesEndpoints(createMockSettings({ "custom-homepage": false }));
     await userEvent.click(toggle);
     expect(await screen.findByRole("switch")).not.toBeChecked();
     expect(screen.queryByText(/my dashboard/i)).not.toBeInTheDocument();

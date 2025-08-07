@@ -4,14 +4,8 @@ import { match } from "ts-pattern";
 import type { CollectionItem, SearchResult } from "metabase-types/api";
 import type { EmbeddingDataPicker } from "metabase-types/store/embedding-data-picker";
 
-export function setupSearchEndpoints(
-  items: (CollectionItem | SearchResult)[],
-  overwriteRoute?: boolean,
-) {
+export function setupSearchEndpoints(items: (CollectionItem | SearchResult)[]) {
   const name = "search";
-  if (overwriteRoute) {
-    fetchMock.removeRoute(name);
-  }
   fetchMock.removeRoute(name);
   fetchMock.get(
     "path:/api/search",

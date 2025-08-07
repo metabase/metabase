@@ -29,10 +29,8 @@ const waitForElevenSeconds = async () => {
 
 const setupRefreshableProperties = ({
   hasRefresh,
-  overwriteRoute,
 }: {
   hasRefresh: boolean;
-  overwriteRoute?: boolean;
 }) => {
   const settings = createMockSettings({
     "site-name": "Test",
@@ -42,9 +40,7 @@ const setupRefreshableProperties = ({
       features: hasRefresh ? ["refresh-token-features"] : [],
     },
   });
-  setupPropertiesEndpoints(settings, {
-    overwriteRoute: Boolean(overwriteRoute),
-  });
+  setupPropertiesEndpoints(settings);
 };
 
 const setup = async (hasRefresh = true) => {
@@ -92,7 +88,7 @@ describe("useTokenRefresh", () => {
     await waitForElevenSeconds();
     await waitForGets(2);
 
-    setupRefreshableProperties({ hasRefresh: false, overwriteRoute: true }); // remove the refresh flag
+    setupRefreshableProperties({ hasRefresh: false }); // remove the refresh flag
     await waitForElevenSeconds();
     await waitForGets(3); // should get one more
 

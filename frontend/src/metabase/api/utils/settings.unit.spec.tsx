@@ -81,7 +81,6 @@ describe("useAdminSetting", () => {
     // should update on refetch
     setupPropertiesEndpoints(
       createMockSettings({ "site-name": "New Site Name" }),
-      { overwriteRoute: true },
     );
 
     await userEvent.click(updateButton);

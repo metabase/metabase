@@ -32,18 +32,10 @@ export function setupSettingEndpoint<K extends EnterpriseSettingKey>({
 }
 
 export function setupUpdateSettingEndpoint(
-  {
-    status,
-    overwriteRoute,
-  }: {
-    status?: number;
-    overwriteRoute?: boolean;
-  } = { status: 204, overwriteRoute: false },
+  { status }: { status?: number } = { status: 204 },
 ) {
   const name = "update-setting";
-  if (overwriteRoute) {
-    fetchMock.removeRoute(name);
-  }
+  fetchMock.removeRoute(name);
   fetchMock.put(new RegExp("/api/setting/"), { status }, { name: name });
 }
 

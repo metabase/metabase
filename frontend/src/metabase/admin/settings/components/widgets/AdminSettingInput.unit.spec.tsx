@@ -403,7 +403,7 @@ describe("AdminSettingInput", () => {
         { label: "Simple", value: "simple" },
       ],
     });
-    setupUpdateSettingEndpoint({ status: 500, overwriteRoute: true });
+    setupUpdateSettingEndpoint({ status: 500 });
 
     const input = await screen.findByRole("textbox");
     await userEvent.click(input);
