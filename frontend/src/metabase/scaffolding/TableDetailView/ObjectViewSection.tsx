@@ -5,7 +5,16 @@ import { Link } from "react-router";
 import EditableText from "metabase/common/components/EditableText";
 import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { useTranslateContent } from "metabase/i18n/hooks";
-import { Box, Flex, Group, Text, Tooltip } from "metabase/ui/components";
+import {
+  ActionIcon,
+  ActionIcon,
+  Box,
+  Flex,
+  Group,
+  Icon,
+  Text,
+  Tooltip,
+} from "metabase/ui/components";
 import { isFK } from "metabase-lib/v1/types/utils/isa";
 import type {
   DatasetColumn,
@@ -136,7 +145,7 @@ export function ObjectViewSection({
             style={{
               fontWeight: 700,
               fontSize: "1.25rem",
-              marginBottom: "2rem",
+              marginBottom: section.variant === "subheader" ? 0 : "2rem",
               opacity: section.variant === "subheader" ? 0.5 : 1,
             }}
           />
@@ -219,11 +228,27 @@ export function ObjectViewSection({
                     {renderValue(tc, value, column)}
                   </Ellipsified>
                 )}
+
+                {isEdit && onUpdateSection && (
+                  <ActionIcon
+                    className={S.FieldRemoveButton}
+                    size="1rem"
+                    onClick={() =>
+                      onUpdateSection({
+                        fields: section.fields.filter(
+                          (f) => f.field_id !== field_id,
+                        ),
+                      })
+                    }
+                  >
+                    <Icon name="close" />
+                  </ActionIcon>
+                )}
               </Flex>
 
-              {index < section.fields.length - 1 && variant === "subheader" && (
-                <div className={S.separator} />
-              )}
+              {index < section.fields.length - 1 &&
+                variant === "subheader" &&
+                !isEdit && <div className={S.separator} />}
             </Fragment>
           );
         })}

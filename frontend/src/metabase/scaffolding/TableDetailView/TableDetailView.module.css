@@ -23,14 +23,11 @@
       right: 0;
       bottom: -12px;
       left: 0;
-      /* border: 2px solid var(--mb-color-brand); */
       background-color: var(--mb-color-brand);
       opacity: 0.2;
       pointer-events: none;
       user-select: none;
     }
-    /* background-color: var(--mb-color-brand-0); */
-    /* box-shadow: 0 0 0 1px var(--mb-color-brand); */
   }
 
   .SectionContent {
@@ -48,6 +45,10 @@
       display: flex;
       gap: var(--mantine-spacing-sm);
       align-items: center;
+    }
+
+    .FieldRemoveButton {
+      align-self: center;
     }
   }
 
@@ -105,7 +106,7 @@
     }
 
     .SectionContent {
-      gap: 0;
+      gap: var(--mantine-spacing-md);
       flex-wrap: wrap;
     }
 
@@ -113,13 +114,20 @@
       display: none;
     }
 
+    .Field {
+      gap: var(--mantine-spacing-xs);
+    }
     .Field + .Field {
       display: flex;
-      line-height: 1.25;
+      line-height: 1;
 
       .FieldValue {
         display: flex;
       }
+    }
+
+    .FieldRemoveButton {
+      margin-top: 0.125rem;
     }
   }
 
@@ -138,36 +146,9 @@
       align-content: start;
     }
 
-    &.highlight1 {
-      .SectionTitle {
-        display: none;
-      }
-
-      .SectionContent {
-        background-color: var(--mb-base-color-gray-5);
-        padding: 1.5rem 1rem;
-        border-radius: var(--default-border-radius);
-      }
-
-      .Field {
-        .FieldName,
-        .FieldValue {
-          text-align: center;
-          justify-content: center;
-        }
-
-        .FieldName {
-          font-size: 0.875rem;
-        }
-
-        .FieldValue {
-          font-size: 2.625rem;
-        }
-      }
-    }
-
     &.highlight2 {
       .Field {
+        position: relative;
         align-items: start;
         align-content: start;
         gap: var(--mantine-spacing-sm);
@@ -176,12 +157,19 @@
       .FieldName {
         text-align: center;
         font-size: 0.875rem;
+        padding-right: 1rem;
       }
 
       .FieldValue {
         font-size: 1.75rem;
         line-height: 1;
         font-weight: 700;
+      }
+
+      .FieldRemoveButton {
+        position: absolute;
+        top: 0.25rem;
+        right: 0.25rem;
       }
     }
 
