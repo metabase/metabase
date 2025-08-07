@@ -12,7 +12,7 @@ import {
   FormTextInput,
 } from "metabase/forms";
 import { colors } from "metabase/lib/colors";
-import { Divider, Flex, Group, List, Progress, Stack, Text } from "metabase/ui";
+import { Box, Button, Divider, Flex, Group, List, Progress, Stack, Text } from "metabase/ui";
 import type { PreviewDatabaseReplicationResponse } from "metabase-enterprise/api/database-replication";
 import type { Database, DatabaseId } from "metabase-types/api";
 
@@ -91,6 +91,7 @@ export const DatabaseReplicationForm = ({
   // FIXME: Can we get all values of the form at once?
   const [schemaSelect, setSchemaSelect] = useState(initialValues.schemaSelect);
   const [schemaFilters, setSchemaFilters] = useState("");
+  const [showTablesWithoutPk, setShowTablesWithoutPk] = useState(false);
 
   const [previewResponse, setPreviewResponse] =
     useState<PreviewDatabaseReplicationResponse>();
@@ -181,19 +182,43 @@ export const DatabaseReplicationForm = ({
               </>
             ) : undefined}
             {(previewResponse?.tablesWithoutPk?.length ?? 0) > 0 ? (
-              <>
+              <Stack 
+                bg={colors["bg-light"]}
+                style={{ borderRadius: "8px", padding: "1rem" }}
+              >
                 <Text c="text-light">
                   {t`Tables without primary keys`}{" "}
                   <b>{t`will not be replicated`}</b>.
                 </Text>
-                <List>
-                  {previewResponse?.tablesWithoutPk?.map(({ schema, name }) => (
-                    <List.Item key={`${schema}.${name}`} c="text-light">
-                      {schema}.{name}
-                    </List.Item>
-                  ))}
-                </List>
-              </>
+                <Button
+                  variant="subtle"
+                  size="xs"
+                  onClick={() => setShowTablesWithoutPk(!showTablesWithoutPk)}
+                  style={{ padding: 0, height: "auto", textDecoration: "underline", alignSelf: "flex-start" }}
+                >
+                  {showTablesWithoutPk 
+                    ? t`Hide tables (${previewResponse.tablesWithoutPk.length})`
+                    : t`Show tables (${previewResponse.tablesWithoutPk.length})`
+                  }
+                </Button>
+                {showTablesWithoutPk && (
+                  <List spacing="xs" size="sm">
+                    {previewResponse?.tablesWithoutPk?.map(({ schema, name }) => (
+                      <List.Item 
+                        key={`${schema}.${name}`} 
+                        c="text-medium"
+                        style={{ 
+                          fontFamily: "Monaco, 'Lucida Console', monospace",
+                          fontSize: "0.875rem"
+                        }}
+                      >
+                        <Box component="span" c="text-dark" fw="500">{schema}</Box>
+                        <Box component="span" c="text-medium">.{name}</Box>
+                      </List.Item>
+                    ))}
+                  </List>
+                )}
+              </Stack>
             ) : undefined}
             <Text c="text-light">{t`You will get an email once your data is ready to use.`}</Text>
             <Flex justify="end">
