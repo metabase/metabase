@@ -1,6 +1,8 @@
 import type { EngineKey } from "metabase-types/api/settings";
 
-export const enginesConfig: Record<EngineKey, string> = {
+type Placeholder = string;
+
+export const enginesConfig: Record<EngineKey, Placeholder> = {
   athena: "jdbc:athena://WorkGroup=primary;Region=us-east-1;",
   "bigquery-cloud-sdk":
     "jdbc:bigquery://https://www.googleapis.com/bigquery/v2:443;ProjectId=MyBigQueryProject;OAuthType=1;",
