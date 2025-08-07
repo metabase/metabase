@@ -286,6 +286,8 @@
   (index-name index "_tswnqv_gin_idx"))
 
 (defn- content-index-name
+  "Returns the name for a B-tree database index on `content` for the given semantic search index configuration.
+   Used for efficient `content IN ..` queries."
   [index]
   (index-name index "_content_idx"))
 
