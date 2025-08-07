@@ -13,7 +13,6 @@ import {
   Group,
   Icon,
   Text,
-  Tooltip,
 } from "metabase/ui/components";
 import { isFK } from "metabase-lib/v1/types/utils/isa";
 import type {
@@ -27,6 +26,7 @@ import type {
 
 import { renderValue } from "../utils";
 
+import { renderItemIcon } from "./ColumnPicker";
 import { SectionActions } from "./SectionActions";
 import S from "./TableDetailView.module.css";
 
@@ -219,15 +219,16 @@ export function ObjectViewSection({
             <Fragment key={field_id}>
               <Flex className={S.Field}>
                 <Box className={S.FieldName} w="100%">
-                  <Tooltip
-                    disabled={!column.description}
-                    label={column.description}
-                    position="top"
-                  >
-                    <Text c="var(--mb-color-text-secondary)" fw="bold" truncate>
-                      {column.display_name}
-                    </Text>
-                  </Tooltip>
+                  <Text c="var(--mb-color-text-secondary)" fw="bold" truncate>
+                    {column.display_name}
+                  </Text>
+                  <Box className={S.FieldIcon}>
+                    {renderItemIcon(table, {
+                      name: column.display_name,
+                      displayName: column.display_name,
+                      column,
+                    })}
+                  </Box>
                 </Box>
 
                 {link && (

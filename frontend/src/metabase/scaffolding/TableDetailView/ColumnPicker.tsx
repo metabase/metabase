@@ -82,7 +82,7 @@ function renderItemName(item: ColumnItem) {
   return item.displayName;
 }
 
-function renderItemIcon(table: Table, item: ColumnItem) {
+export function renderItemIcon(table: Table, item: ColumnItem) {
   const query = getQuery(table);
   const column = Lib.fromLegacyColumn(query, 0, item.column);
 
