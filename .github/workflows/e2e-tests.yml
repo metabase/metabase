@@ -10,17 +10,6 @@ on:
         type: string
         required: false
         default: ""
-  workflow_dispatch:
-    inputs:
-      skip:
-        description: 'Skip e2e tests'
-        type: boolean
-        default: false
-      specs:
-        description: 'Test specs pattern (leave empty for all tests)'
-        type: string
-        required: false
-        default: ""
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}-e2e
