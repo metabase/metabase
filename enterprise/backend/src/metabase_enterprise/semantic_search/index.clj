@@ -207,13 +207,15 @@
   [^PGobject obj]
   (json/decode (unwrap-pgobject obj) true))
 
+(defn- existing-embedding-query [index texts]
+  (-> (sql.helpers/select-distinct-on [:content] :content :embedding)
+      (sql.helpers/from (keyword (:table-name index)))
+      (sql.helpers/where [:in :content texts])))
+
 (defn- partition-existing-embeddings [connectable index texts]
   (let [found-embeddings
         (->> (jdbc/execute! connectable
-                            (-> (sql.helpers/select-distinct-on [:content] :content :embedding)
-                                (sql.helpers/from (keyword (:table-name index)))
-                                (sql.helpers/where [:in :content texts])
-                                sql-format-quoted)
+                            (sql-format-quoted (existing-embedding-query index texts))
                             {:builder-fn jdbc.rs/as-unqualified-lower-maps})
              (into {} (map (fn [{:keys [content embedding]}]
                              [content (decode-pgobject embedding)]))))]
@@ -768,7 +770,11 @@
   (def semantic-sql (sql-format-quoted (semantic-search-query index embedding search-context)))
   (def keyword-sql (sql-format-quoted (keyword-search-query index search-context)))
   (def hybrid-sql (sql-format-quoted (hybrid-search-query index embedding search-context)))
+
   ;; do in repl ->
   #_(explain-analyze-query db semantic-sql)
   #_(explain-analyze-query db keyword-sql)
-  #_(explain-analyze-query db hybrid-sql))
+  #_(explain-analyze-query db hybrid-sql)
+
+  (def existing-sql (sql-format-quoted (existing-embedding-query index ["Some Text"])))
+  #_(explain-analyze-query db existing-sql))
