@@ -6,12 +6,10 @@ import { t } from "ttag";
 import { useDispatch } from "metabase/lib/redux";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Button, Group, Icon } from "metabase/ui";
-import { TitleSection } from "metabase-enterprise/transforms/components/TitleSection";
-import {
-  getTransformListUrl,
-  getTransformQueryUrl,
-} from "metabase-enterprise/transforms/urls";
 import type { Transform } from "metabase-types/api";
+
+import { TitleSection } from "../../../components/TitleSection";
+import { getTransformListUrl, getTransformQueryUrl } from "../../../urls";
 
 import { DeleteTransformModal } from "./DeleteTransformModal";
 
