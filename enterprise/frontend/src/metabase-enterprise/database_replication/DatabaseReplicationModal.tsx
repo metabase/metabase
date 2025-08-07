@@ -7,6 +7,7 @@ import {
   useCreateDatabaseReplicationMutation,
   usePreviewDatabaseReplicationMutation,
 } from "metabase-enterprise/api/database-replication";
+import { DatabaseReplicationSettingUp } from "metabase-enterprise/database_replication/DatabaseReplicationSettingUp";
 import type { Database } from "metabase-types/api";
 
 import {
@@ -14,7 +15,7 @@ import {
   type DatabaseReplicationFormFields,
   handleFieldError as handleDWHReplicationFieldError,
 } from "./DatabaseReplicationForm";
-import { DatabaseReplicationSuccessModal } from "./DatabaseReplicationSuccessModal";
+import { DatabaseReplicationSuccess } from "./DatabaseReplicationSuccess";
 
 interface IRTKQueryError {
   status: unknown;
@@ -45,7 +46,9 @@ export const DatabaseReplicationModal = ({
   onClose: () => void;
   database: Database;
 }) => {
-  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [setupStep, setSetupStep] = useState<"form" | "setting-up" | "success">(
+    "form",
+  );
   const [createDatabaseReplication] = useCreateDatabaseReplicationMutation();
   const [previewDatabaseReplication] = usePreviewDatabaseReplicationMutation();
   const preview = useCallback(
@@ -73,27 +76,14 @@ export const DatabaseReplicationModal = ({
         schemaFilters: transformSchemaFilters(schemaSelect, schemaFilters),
       })
         .unwrap()
-        .then(() => setShowSuccessModal(true))
+        .then(() => {
+          setSetupStep("setting-up");
+        })
         .catch((error) => {
           isRTKQueryError(error) && handleDWHReplicationFieldError(error.data);
         }),
-    [createDatabaseReplication, database.id],
+    [createDatabaseReplication, database.id, setSetupStep],
   );
-
-  const handleSuccessModalClose = useCallback(() => {
-    setShowSuccessModal(false);
-    onClose();
-  }, [onClose]);
-
-  if (showSuccessModal) {
-    return (
-      <DatabaseReplicationSuccessModal
-        isOpen={showSuccessModal}
-        onClose={handleSuccessModalClose}
-        database={database}
-      />
-    );
-  }
 
   return (
     <Modal
@@ -103,16 +93,25 @@ export const DatabaseReplicationModal = ({
       padding="2.5rem"
       title={t`Set up database replication`}
     >
-      <DatabaseReplicationForm
-        database={database}
-        onSubmit={onSubmit}
-        preview={preview}
-        initialValues={{
-          databaseId: database.id,
-          schemaSelect: "all",
-          schemaFilters: "",
-        }}
-      />
+      {setupStep === "form" ? (
+        <DatabaseReplicationForm
+          database={database}
+          onSubmit={onSubmit}
+          preview={preview}
+          initialValues={{
+            databaseId: database.id,
+            schemaSelect: "all",
+            schemaFilters: "",
+          }}
+        />
+      ) : setupStep === "setting-up" ? (
+        <DatabaseReplicationSettingUp
+          database={database}
+          proceed={() => setSetupStep("success")}
+        ></DatabaseReplicationSettingUp>
+      ) : setupStep === "success" ? (
+        <DatabaseReplicationSuccess onClose={onClose} />
+      ) : undefined}
     </Modal>
   );
 };
