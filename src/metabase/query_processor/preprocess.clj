@@ -101,13 +101,22 @@
 (defn- ensure-pmbql-for-unclean-query
   [middleware-fn]
   (-> (fn [query]
-        (mu/disable-enforcement
-          (lib/without-cleaning
-           (fn []
-             (let [query' (-> (cond->> query
-                                (not (:lib/type query)) (lib/query (qp.store/metadata-provider)))
-                              (copy-unconverted-properties query))]
-               (-> query' middleware-fn ->legacy))))))
+        (as-> query query
+          ;; convert to MBQL 5 as needed
+          (letfn [(convert [query]
+                    (lib/without-cleaning
+                     (^:once fn* []
+                       (mu/disable-enforcement
+                         (lib/query (qp.store/metadata-provider) query)))))]
+            (-> (cond->> query
+                  (not (:lib/type query)) convert)
+                (copy-unconverted-properties query)))
+          ;; apply the middleware WITH MALLI ENFORCEMENT ENABLED!
+          (middleware-fn query)
+          ;; now convert back to legacy without cleaning
+          (mu/disable-enforcement
+            (lib/without-cleaning
+             (^:once fn* [] (->legacy query))))))
       (with-meta (meta middleware-fn))))
 
 (def ^:private middleware
@@ -143,8 +152,8 @@
    ;; specific columns.
    (ensure-legacy #'resolve-joins/resolve-joins)
    (ensure-pmbql #'qp.add-remaps/add-remapped-columns)
-   #'qp.resolve-fields/resolve-fields   ; this middleware actually works with either MBQL 5 or legacy
-   (ensure-legacy #'binning/update-binning-strategy)
+   #'qp.resolve-fields/resolve-fields ; this middleware actually works with either MBQL 5 or legacy
+   (ensure-pmbql #'binning/update-binning-strategy)
    (ensure-legacy #'desugar/desugar)
    (ensure-legacy #'qp.add-default-temporal-unit/add-default-temporal-unit)
    (ensure-pmbql #'qp.add-implicit-joins/add-implicit-joins)
@@ -210,7 +219,7 @@
                                 {:fn (middleware-fn-name middleware-fn), :query query, :result <>, :type qp.error-type/qp})))))
           (catch Throwable e
             (let [middleware-fn (middleware-fn-name middleware-fn)]
-              (throw (ex-info (i18n/tru "Error preprocessing query in {0}: {1}" middleware-fn (ex-message e))
+              (throw (ex-info (i18n/tru "Error preprocessing query in {0}: {1}" middleware-fn ((some-fn ex-message class) e))
                               {:fn middleware-fn, :query query, :type qp.error-type/qp}
                               e)))))))
      query
