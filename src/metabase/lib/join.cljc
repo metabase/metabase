@@ -867,8 +867,8 @@
 (mu/defn join-condition-rhs-columns :- [:sequential ::lib.schema.metadata/column]
   "Get a sequence of columns that can be used as the right-hand-side (target column) in a join condition. This column
   is the one that belongs to the thing being joined, `join-or-joinable`, which can be something like a
-  Table (`:metabase.lib.metadata/table`), Saved Question/Model (`:metabase.lib.metadata/card`), another query, etc. --
-  anything you can pass to [[join-clause]]. You can also pass in an existing join.
+  Table (`:metabase.lib.schema.metadata/table`), Saved Question/Model (`:metabase.lib.schema.metadata/card`), another
+  query, etc. -- anything you can pass to [[join-clause]]. You can also pass in an existing join.
 
   If the left-hand-side column has already been chosen (they can be chosen in any order in the Query Builder UI),
   pass in the chosen LHS column. In the future, this may be used to restrict results to compatible columns. (See #31174)

@@ -278,7 +278,6 @@
             (-> col
                 lib.field.util/update-keys-for-col-from-previous-stage
                 (as-> $col (lib.join/column-from-join query stage-number $col join-alias))
-                #_(as-> $col (assoc $col :lib/desired-column-alias (lib.join.util/joined-field-desired-alias join-alias (:lib/source-column-alias $col))))
                 (merge (select-keys join [:fk-field-id]))))))
       ;; a join with this alias does not exist at this stage of the query... try looking recursively in previous stage(s)
       (do
@@ -478,11 +477,7 @@
    stage-number                                                    :- :int
    [_tag {:keys [source-field join-alias], :as opts} id-or-name, :as field-ref] :- :mbql.clause/field]
   ;; this is just for easier debugging
-  (let [stage-number (lib.util/canonical-stage-index query stage-number)
-        query        (update query :stages (fn [stages]
-                                             (into []
-                                                   (take (inc stage-number))
-                                                   stages)))]
+  (let [stage-number (lib.util/canonical-stage-index query stage-number)]
     (log/debugf "Resolving %s in stage %s" (pr-str id-or-name) (pr-str stage-number))
     (-> (merge-metadata
          {:lib/type :metadata/column}
