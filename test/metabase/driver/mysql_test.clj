@@ -624,7 +624,7 @@
             :message "Unable to create a new record."
             :errors {"group-id" "This Group-id does not exist."}}
            (sql-jdbc.actions/maybe-parse-sql-error
-            :mysql actions.error/violate-foreign-key-constraint nil :row/create
+            :mysql actions.error/violate-foreign-key-constraint nil :model.row/create
             "(conn=45) Cannot add or update a child row: a foreign key constraint fails (`action-error-handling`.`user`, CONSTRAINT `user_group-id_group_-159406530` FOREIGN KEY (`group-id`) REFERENCES `group` (`id`))")))))
 
 (deftest ^:parallel actions-maybe-parse-sql-error-test-5
@@ -633,7 +633,7 @@
             :message "Unable to update the record.",
             :errors {"group" "This Group does not exist."}}
            (sql-jdbc.actions/maybe-parse-sql-error
-            :mysql actions.error/violate-foreign-key-constraint nil :row/update
+            :mysql actions.error/violate-foreign-key-constraint nil :model.row/update
             "(conn=21) Cannot delete or update a parent row: a foreign key constraint fails (`action-error-handling`.`user`, CONSTRAINT `user_group-id_group_-159406530` FOREIGN KEY (`group-id`) REFERENCES `group` (`id`))")))))
 
 (deftest ^:parallel actions-maybe-parse-sql-error-test-6
@@ -642,7 +642,7 @@
             :message "Other tables rely on this row so it cannot be deleted."
             :errors {}}
            (sql-jdbc.actions/maybe-parse-sql-error
-            :mysql actions.error/violate-foreign-key-constraint nil :row/delete
+            :mysql actions.error/violate-foreign-key-constraint nil :model.row/delete
             "(conn=21) Cannot delete or update a parent row: a foreign key constraint fails (`action-error-handling`.`user`, CONSTRAINT `user_group-id_group_-159406530` FOREIGN KEY (`group-id`) REFERENCES `group` (`id`))")))))
 
 ;; this contains specical test cases for mysql
@@ -671,12 +671,12 @@
                         :errors      {"column1" "This Column1 value already exists." "column2" "This Column2 value already exists."}
                         :status-code 400}
                        (sql-jdbc.actions-test/perform-action-ex-data
-                        :row/create (mt/$ids {:create-row {"id"      3
-                                                           "column1" "A"
-                                                           "column2" "A"}
-                                              :database   (:id database)
-                                              :query      {:source-table $$mytable}
-                                              :type       :query})))))
+                        :model.row/create (mt/$ids {:create-row {"id"      3
+                                                                 "column1" "A"
+                                                                 "column2" "A"}
+                                                    :database   (:id database)
+                                                    :query      {:source-table $$mytable}
+                                                    :type       :query})))))
               (testing "when updating"
                 (is (= {:errors      {"column1" "This Column1 value already exists."
                                       "column2" "This Column2 value already exists."}
@@ -684,12 +684,12 @@
                         :status-code 400
                         :type        actions.error/violate-unique-constraint}
                        (sql-jdbc.actions-test/perform-action-ex-data
-                        :row/update (mt/$ids {:update-row {"column1" "A"
-                                                           "column2" "A"}
-                                              :database   (:id database)
-                                              :query      {:source-table $$mytable
-                                                           :filter       [:= $mytable.id 2]}
-                                              :type       :query}))))))))))))
+                        :model.row/update (mt/$ids {:update-row {"column1" "A"
+                                                                 "column2" "A"}
+                                                    :database   (:id database)
+                                                    :query      {:source-table $$mytable
+                                                                 :filter       [:= $mytable.id 2]}
+                                                    :type       :query}))))))))))))
 
 (deftest ^:parallel parse-grant-test
   (testing "`parse-grant` should work correctly"

@@ -57,7 +57,8 @@ describe("Auth Flow - SAML", () => {
       fetchMock.callHistory.calls(`begin:${MOCK_INSTANCE_URL}/auth/sso`),
     ).toHaveLength(1);
 
-    expect(screen.queryByText("Initializing...")).not.toBeInTheDocument();
+    const loader = screen.queryByTestId("loading-indicator");
+    expect(loader).not.toBeInTheDocument();
 
     expect(
       // this is just something we know it's on the screen when everything is ok

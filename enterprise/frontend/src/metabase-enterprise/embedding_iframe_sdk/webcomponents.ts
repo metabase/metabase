@@ -1,3 +1,5 @@
+import json5 from "json5";
+
 // Convert kebab-case attribute names to their camelCase setting keys.
 export const attributeToSettingKey = (attr: string): string =>
   attr.replace(/-([a-z])/g, (_, c) => c.toUpperCase());
@@ -31,11 +33,13 @@ export const parseAttributeValue = (value: string | null): unknown => {
   // Attempt to parse JSON arrays/objects for complex attributes
   if (value.startsWith("[") || value.startsWith("{")) {
     try {
-      return JSON.parse(value);
-    } catch {
+      return json5.parse(value);
+    } catch (e) {
       console.error(
-        "Error while trying to parse an attribute as JSON. Complex attributes such as arrays and objects should be valid JSON with keys and values wrapped in double quotes. Received:",
+        "Error while trying to parse an attribute. Received:",
         value,
+        "Caught error:",
+        e,
       );
     }
   }

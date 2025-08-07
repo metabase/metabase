@@ -57,7 +57,8 @@ describe("Auth Flow - JWT", () => {
       fetchMock.callHistory.calls(`${MOCK_JWT_PROVIDER_URI}?response=json`),
     ).toHaveLength(1);
 
-    expect(screen.queryByText("Initializing...")).not.toBeInTheDocument();
+    const loader = screen.queryByTestId("loading-indicator");
+    expect(loader).not.toBeInTheDocument();
 
     expect(
       // this is just something we know it's on the screen when everything is ok
