@@ -1,15 +1,14 @@
 import { t } from "ttag";
 
-import { NameDescriptionInput } from "metabase/metadata/components";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { useUpdateTransformMutation } from "metabase-enterprise/api";
 import type { Transform } from "metabase-types/api";
 
+import { NameDescriptionInput } from "../../../components/NameDescriptionInput";
+
 type NameSectionProps = {
   transform: Transform;
 };
-
-const NAME_MAX_LENGTH = 254;
 
 export function NameSection({ transform }: NameSectionProps) {
   const [updateTransform] = useUpdateTransformMutation();
@@ -35,10 +34,10 @@ export function NameSection({ transform }: NameSectionProps) {
     }
   };
 
-  const handleDescriptionChange = async (description: string) => {
+  const handleDescriptionChange = async (description: string | null) => {
     const { error } = await updateTransform({
       id: transform.id,
-      description: description.length === 0 ? null : description,
+      description,
     });
 
     if (error) {
@@ -57,11 +56,7 @@ export function NameSection({ transform }: NameSectionProps) {
   return (
     <NameDescriptionInput
       name={transform.name}
-      nameIcon="refresh_downstream"
-      nameMaxLength={NAME_MAX_LENGTH}
-      namePlaceholder={t`Give this transform a name`}
-      description={transform.description ?? ""}
-      descriptionPlaceholder={t`Give this transform a description`}
+      description={transform.description}
       onNameChange={handleNameChange}
       onDescriptionChange={handleDescriptionChange}
     />

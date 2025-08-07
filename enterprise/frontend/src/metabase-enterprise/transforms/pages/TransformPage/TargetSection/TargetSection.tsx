@@ -14,15 +14,15 @@ import {
   Loader,
   Text,
 } from "metabase/ui";
+import type { Transform } from "metabase-types/api";
+
+import { SplitSection } from "../../../components/SplitSection";
 import {
   getBrowseDatabaseUrl,
   getBrowseSchemaUrl,
   getQueryBuilderUrl,
   getTableMetadataUrl,
-} from "metabase-enterprise/transforms/urls";
-import type { Transform } from "metabase-types/api";
-
-import { SplitSection } from "../../../components/SplitSection";
+} from "../../../urls";
 
 import { UpdateTargetModal } from "./UpdateTargetModal";
 
@@ -33,7 +33,7 @@ type TargetSectionProps = {
 export function TargetSection({ transform }: TargetSectionProps) {
   return (
     <SplitSection
-      label={t`Generated table`}
+      label={t`Transform target`}
       description={t`Change what this transform generates and where.`}
     >
       <Group p="lg">
@@ -141,7 +141,7 @@ function EditTargetButton({ transform }: EditTargetButtonProps) {
         <UpdateTargetModal
           transform={transform}
           onUpdate={handleUpdate}
-          onCancel={closeModal}
+          onClose={closeModal}
         />
       )}
     </>

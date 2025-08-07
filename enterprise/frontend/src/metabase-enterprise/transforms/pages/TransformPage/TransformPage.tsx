@@ -11,7 +11,7 @@ import type { Transform, TransformId } from "metabase-types/api";
 import { HeaderSection } from "./HeaderSection";
 import { ManageSection } from "./ManageSection";
 import { NameSection } from "./NameSection";
-import { ScheduleSection } from "./ScheduleSection";
+import { RunSection } from "./RunSection";
 import { TargetSection } from "./TargetSection";
 
 const POLLING_INTERVAL = 3000;
@@ -48,17 +48,15 @@ export function TransformPage({ params }: TransformPageProps) {
   }
 
   if (transform == null) {
-    return <LoadingAndErrorWrapper error={t`Transform not found.`} />;
+    return <LoadingAndErrorWrapper error={t`Not found.`} />;
   }
 
   return (
-    <Stack gap="xl">
-      <Stack>
-        <HeaderSection transform={transform} />
-        <NameSection transform={transform} />
-      </Stack>
+    <Stack gap="lg">
+      <HeaderSection transform={transform} />
+      <NameSection transform={transform} />
+      <RunSection transform={transform} />
       <TargetSection transform={transform} />
-      <ScheduleSection transform={transform} />
       <ManageSection transform={transform} />
     </Stack>
   );

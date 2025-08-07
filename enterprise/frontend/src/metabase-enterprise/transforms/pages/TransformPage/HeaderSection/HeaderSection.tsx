@@ -1,11 +1,9 @@
 import { t } from "ttag";
 
 import { BrowserCrumbs } from "metabase/common/components/BrowserCrumbs";
-import {
-  getTransformListUrl,
-  getTransformUrl,
-} from "metabase-enterprise/transforms/urls";
 import type { Transform } from "metabase-types/api";
+
+import { getTransformListUrl, getTransformUrl } from "../../../urls";
 
 type HeaderSectionProps = {
   transform: Transform;

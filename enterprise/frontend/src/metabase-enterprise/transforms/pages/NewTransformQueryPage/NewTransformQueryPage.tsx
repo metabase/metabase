@@ -6,15 +6,13 @@ import { skipToken, useGetCardQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import { TransformQueryEditor } from "metabase-enterprise/transforms/components/TransformQueryEditor";
-import {
-  getTransformListUrl,
-  getTransformUrl,
-} from "metabase-enterprise/transforms/urls";
 import Question from "metabase-lib/v1/Question";
 import type { Card, CardId, DatasetQuery, Transform } from "metabase-types/api";
 
-import { NewTransformModal } from "./NewTransformModal";
+import { QueryEditor } from "../../components/QueryEditor";
+import { getTransformListUrl, getTransformUrl } from "../../urls";
+
+import { CreateTransformModal } from "./CreateTransformModal";
 
 type NewTransformQueryPageParams = {
   type?: string;
@@ -55,7 +53,7 @@ function NewTransformPageBody({ initialQuery }: NewTransformPageBodyProps) {
     useDisclosure();
   const dispatch = useDispatch();
 
-  const handleSave = (transform: Transform) => {
+  const handleCreate = (transform: Transform) => {
     dispatch(push(getTransformUrl(transform.id)));
   };
 
@@ -70,17 +68,17 @@ function NewTransformPageBody({ initialQuery }: NewTransformPageBodyProps) {
 
   return (
     <>
-      <TransformQueryEditor
+      <QueryEditor
         query={query}
         isNew
         onSave={handleSaveClick}
         onCancel={handleCancelClick}
       />
       {isModalOpened && (
-        <NewTransformModal
+        <CreateTransformModal
           query={query}
-          onSave={handleSave}
-          onCancel={closeModal}
+          onCreate={handleCreate}
+          onClose={closeModal}
         />
       )}
     </>

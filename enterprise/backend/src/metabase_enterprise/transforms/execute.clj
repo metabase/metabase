@@ -204,3 +204,7 @@
                              :ordering ordering
                              :running  running
                              :complete complete}))))))))
+
+(defn execute-jobs!
+  [jobs]
+  nil)

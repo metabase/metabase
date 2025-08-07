@@ -1,7 +1,12 @@
+import type { PaginationRequest, PaginationResponse } from "./pagination";
 import type { DatasetQuery } from "./query";
 import type { Table } from "./table";
 
 export type TransformId = number;
+export type TransformTagId = number;
+export type TransformJobId = number;
+export type TransformExecutionId = number;
+export type TransformJobExecutionId = number;
 
 export type Transform = {
   id: TransformId;
@@ -9,9 +14,9 @@ export type Transform = {
   description: string | null;
   source: TransformSource;
   target: TransformTarget;
-  execution_trigger: TransformExecutionTrigger;
 
   // hydrated fields
+  tag_ids?: TransformTagId[];
   table?: Table | null;
   last_execution?: TransformExecution | null;
 };
@@ -30,9 +35,14 @@ export type TransformTarget = {
 };
 
 export type TransformExecution = {
+  id: TransformExecutionId;
   status: TransformExecutionStatus;
+  trigger: TransformExecutionTrigger;
   start_time: string;
   end_time: string | null;
+
+  // hydrated
+  transform?: Transform;
 };
 
 export type TransformExecutionStatus =
@@ -41,13 +51,38 @@ export type TransformExecutionStatus =
   | "failed"
   | "timeout";
 
-export type TransformExecutionTrigger = "none" | "global-schedule";
+export type TransformExecutionTrigger = "manual" | "schedule";
+
+export type TransformTag = {
+  id: TransformTagId;
+  name: string;
+};
+
+export type TransformJob = {
+  id: TransformJobId;
+  name: string;
+  description: string | null;
+  schedule: string;
+
+  // hydrated fields
+  tag_ids?: TransformTagId[];
+  last_execution?: TransformJobExecution | null;
+};
+
+export type TransformJobExecution = {
+  id: TransformJobExecutionId;
+  status: TransformExecutionStatus;
+  trigger: TransformExecutionTrigger;
+  start_time: string;
+  end_time: string | null;
+};
 
 export type CreateTransformRequest = {
   name: string;
+  description?: string | null;
   source: TransformSource;
   target: TransformTarget;
-  execution_trigger: TransformExecutionTrigger;
+  tag_ids?: TransformTagId[];
 };
 
 export type UpdateTransformRequest = {
@@ -56,5 +91,35 @@ export type UpdateTransformRequest = {
   description?: string | null;
   source?: TransformSource;
   target?: TransformTarget;
-  execution_trigger?: TransformExecutionTrigger;
+  tag_ids?: TransformTagId[];
 };
+
+export type CreateTransformJobRequest = {
+  name: string;
+  description?: string | null;
+  schedule: string;
+  tag_ids?: TransformTagId[];
+};
+
+export type UpdateTransformJobRequest = {
+  id: TransformJobId;
+  name?: string;
+  description?: string | null;
+  schedule?: string;
+  tag_ids?: TransformTagId[];
+};
+
+export type CreateTransformTagRequest = {
+  name: string;
+};
+
+export type UpdateTransformTagRequest = {
+  id: TransformJobId;
+  name?: string;
+};
+
+export type ListTransformExecutionsRequest = PaginationRequest;
+
+export type ListTransformExecutionsResponse = {
+  data: TransformExecution[];
+} & PaginationResponse;
