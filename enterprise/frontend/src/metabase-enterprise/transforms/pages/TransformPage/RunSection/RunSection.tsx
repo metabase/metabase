@@ -15,6 +15,7 @@ import { useExecuteTransformMutation } from "metabase-enterprise/api";
 import type { Transform } from "metabase-types/api";
 
 import { SplitSection } from "../../../components/SplitSection";
+import { TransformTagSelect } from "../../../components/TransformTagSelect";
 
 import { getStatusInfo } from "./utils";
 
@@ -33,11 +34,12 @@ export function RunSection({ transform }: RunSectionProps) {
         <RunButton transform={transform} />
       </Group>
       <Divider />
-      <Group p="lg">
+      <Group p="lg" gap="lg">
         <Stack gap="sm">
           <Box fw="bold">{t`Run it on a schedule with tags`}</Box>
           <Box>{t`Jobs will run all transforms with their tags.`}</Box>
         </Stack>
+        <TagInputSection />
       </Group>
     </SplitSection>
   );
@@ -85,5 +87,13 @@ function RunButton({ transform }: RunButtonProps) {
     >
       {isRunning ? t`Running now…` : t`Run now`}
     </Button>
+  );
+}
+
+export function TagInputSection() {
+  return (
+    <Box flex={1}>
+      <TransformTagSelect />
+    </Box>
   );
 }

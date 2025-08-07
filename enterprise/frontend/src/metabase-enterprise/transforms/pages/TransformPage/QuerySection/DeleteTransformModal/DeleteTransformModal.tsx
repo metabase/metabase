@@ -108,7 +108,7 @@ function getFormMessage({ target, table }: Transform) {
   const tableName = <strong key="name">{target.name}</strong>;
   return table != null
     ? jt`If you want you can additionally delete the table this transform generated, ${tableName}. Deleting the table will break queries that used it. This can’t be undone, so please be careful.`
-    : jt`The target table, ${tableName}, has not been generated yet.`;
+    : jt`The target table, ${tableName}, has not been generated yet. Only transform will be deleted.`;
 }
 
 function getSubmitButtonLabel(
