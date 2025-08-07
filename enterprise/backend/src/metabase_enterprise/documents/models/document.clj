@@ -3,6 +3,7 @@
    [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
    [metabase.models.interface :as mi]
+   [metabase.models.serialization :as serdes]
    [metabase.users.models.user]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -15,7 +16,8 @@
 (doto :model/Document
   (derive :metabase/model)
   (derive :perms/use-parent-collection-perms)
-  (derive :hook/timestamped?))
+  (derive :hook/timestamped?)
+  (derive :hook/entity-id))
 
 (defn validate-collection-move-permissions
   "Validates that the current user has write permissions for both old and new collections
@@ -44,7 +46,7 @@
   If the document is archived, also archives all associated cards.
   Returns the number of cards updated."
   [document-id collection-id & {:keys [archived archived-directly]}]
-  (let [update-map {:collection_id collection-id :archived archived :archived_directly (boolean archived-directly)}]
+  (let [update-map {:collection_id collection-id :archived (boolean archived) :archived_directly (boolean archived-directly)}]
     (t2/update! :model/Card
                 :document_id document-id
                 update-map)))
@@ -53,3 +55,9 @@
   [{:keys [id collection_id archived archived_directly]}]
   ;; Sync cards to match document's collection and archival status
   (sync-document-cards-collection! id collection_id :archived archived :archived-directly archived_directly))
+
+;;; ------------------------------------------------ Serdes Hashing -------------------------------------------------
+
+(defmethod serdes/hash-fields :model/Document
+  [_table]
+  [:name (serdes/hydrated-hash :collection) :created-at])

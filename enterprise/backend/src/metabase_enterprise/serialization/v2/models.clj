@@ -16,6 +16,7 @@
    "Card"
    "Collection"
    "Dashboard"
+   "Document"
    "NativeQuerySnippet"
    "Timeline"])
 

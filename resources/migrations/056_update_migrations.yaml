@@ -292,6 +292,13 @@ databaseChangeLog:
                   defaultValueBoolean: false
                   constraints:
                     nullable: true
+              - column:
+                  name: entity_id
+                  type: char(21)
+                  remarks: Random NanoID tag for unique identity
+                  constraints:
+                    nullable: true
+                    unique: true
 
   - changeSet:
       id: v56.2025-07-21T12:00:10
