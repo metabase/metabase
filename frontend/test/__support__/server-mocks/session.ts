@@ -13,6 +13,7 @@ export function setupPropertiesEndpoints(
   if (overwriteRoute) {
     fetchMock.removeRoute("get-session-properties");
   }
+  fetchMock.removeRoute("get-session-properties");
   fetchMock.get("path:/api/session/properties", settings, {
     name: "get-session-properties",
   });

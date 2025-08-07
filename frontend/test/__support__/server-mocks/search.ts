@@ -12,6 +12,7 @@ export function setupSearchEndpoints(
   if (overwriteRoute) {
     fetchMock.removeRoute(name);
   }
+  fetchMock.removeRoute(name);
   fetchMock.get(
     "path:/api/search",
     (call) => {

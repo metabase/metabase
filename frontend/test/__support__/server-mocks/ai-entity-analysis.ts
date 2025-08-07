@@ -13,6 +13,7 @@ export function setupAnalyzeChartEndpoint({
   if (overwriteRoute) {
     fetchMock.removeRoute(name);
   }
+  fetchMock.removeRoute(name);
   fetchMock.post("path:/api/ee/ai-entity-analysis/analyze-chart", response, {
     name,
   });

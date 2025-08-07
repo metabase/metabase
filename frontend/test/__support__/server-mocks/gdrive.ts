@@ -13,6 +13,7 @@ export function setupGdriveGetFolderEndpoint({
   if (overwriteRoute) {
     fetchMock.removeRoute("gdrive-get-folder");
   }
+  fetchMock.removeRoute("gdrive-get-folder");
 
   if (errorCode) {
     fetchMock.get("path:/api/ee/gsheets/connection", errorCode, {

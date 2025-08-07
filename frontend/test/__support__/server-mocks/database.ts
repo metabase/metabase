@@ -106,6 +106,7 @@ export function setupDatabaseIdFieldsEndpoints({
   if (overwriteRoute) {
     fetchMock.removeRoute(name);
   }
+  fetchMock.removeRoute(name);
 
   fetchMock.get(`path:/api/database/${id}/idfields`, fields, {
     name,

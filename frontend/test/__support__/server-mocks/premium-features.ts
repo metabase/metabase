@@ -13,6 +13,7 @@ export const setupTokenStatusEndpoint = ({
   if (overwriteRoute) {
     fetchMock.removeRoute(name);
   }
+  fetchMock.removeRoute(name);
   fetchMock.get(
     "path:/api/premium-features/token/status",
     {

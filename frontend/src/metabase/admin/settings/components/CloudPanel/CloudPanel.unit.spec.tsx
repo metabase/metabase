@@ -308,6 +308,7 @@ function fetchMockCloudMigrationGetSequence({
   if (overwriteRoute) {
     fetchMock.removeRoute("cloud-migration-get");
   }
+  fetchMock.removeRoute("cloud-migration-get");
   return fetchMock.get(
     `path:/api/cloud-migration`,
     () => {
