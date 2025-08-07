@@ -54,7 +54,7 @@ describe("useCreateDashboardApi", () => {
 
     const call = calls[0];
 
-    const requestBody = (await call.options?.body) as string;
+    const requestBody = call.options?.body as string;
     expect(JSON.parse(requestBody)).toMatchObject({
       collection_id: TEST_PERSONAL_COLLECTION_ID,
     });

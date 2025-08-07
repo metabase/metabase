@@ -175,7 +175,7 @@ describe("WebhookForm", () => {
     });
 
     fetchMock.post("path:/api/channel/test", async (call) => {
-      const body = JSON.parse((await call.options?.body) as string);
+      const body = JSON.parse(call.options?.body as string);
       return body.details.url?.endsWith("good") ? { ok: true } : 400;
     });
 

@@ -41,7 +41,7 @@ describe("new collection dialog", () => {
     expect(apiCalls).toHaveLength(1);
 
     const call = apiCalls[0];
-    const body = JSON.parse((await call.options?.body) as string);
+    const body = JSON.parse(call.options?.body as string);
     expect(body.collection_id).toBe(null);
   });
 
@@ -57,7 +57,7 @@ describe("new collection dialog", () => {
     expect(apiCalls).toHaveLength(1);
 
     const call = apiCalls[0];
-    const body = JSON.parse((await call.options?.body) as string);
+    const body = JSON.parse(call.options?.body as string);
     expect(body.collection_id).toBe(12);
   });
 
@@ -73,7 +73,7 @@ describe("new collection dialog", () => {
     expect(apiCalls).toHaveLength(1);
 
     const call = apiCalls[0];
-    const body = JSON.parse((await call.options?.body) as string);
+    const body = JSON.parse(call.options?.body as string);
     expect(body.collection_id).toBe(null);
   });
 });
