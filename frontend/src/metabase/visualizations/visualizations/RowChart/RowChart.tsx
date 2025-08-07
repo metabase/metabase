@@ -335,6 +335,7 @@ RowChartVisualization.identifier = "row";
 RowChartVisualization.iconName = "horizontal_bar";
 // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
 RowChartVisualization.noun = t`row chart`;
+RowChartVisualization.maxDimensionsSupported = 3;
 
 RowChartVisualization.noHeader = true;
 RowChartVisualization.minSize = getMinSize("row");
