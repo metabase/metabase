@@ -6,7 +6,7 @@ import {
   FormProvider,
   FormSubmitButton,
 } from "metabase/forms";
-import { Button, Group, Modal, Stack, Text } from "metabase/ui";
+import { Button, FocusTrap, Group, Modal, Stack, Text } from "metabase/ui";
 import { useDeleteTransformTagMutation } from "metabase-enterprise/api";
 import type { TransformTag } from "metabase-types/api";
 
@@ -23,6 +23,7 @@ export function DeleteTagModal({
 }: DeleteTagModalProps) {
   return (
     <Modal title={t`Delete this tag?`} opened padding="xl" onClose={onClose}>
+      <FocusTrap.InitialFocus />
       <DeleteTagForm tag={tag} onDelete={onDelete} onClose={onClose} />
     </Modal>
   );

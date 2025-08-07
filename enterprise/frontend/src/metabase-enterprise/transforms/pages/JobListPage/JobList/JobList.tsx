@@ -72,9 +72,11 @@ export function JobList() {
                 : null}
             </td>
             <td>
-              <Group>
+              <Group gap="sm">
                 {getJobTags(job.tag_ids ?? [], tagById).map((tag) => (
-                  <Pill key={tag.id}>{tag.name}</Pill>
+                  <Pill key={tag.id} c="text-dark" bg="bg-medium">
+                    {tag.name}
+                  </Pill>
                 ))}
               </Group>
             </td>
