@@ -1,6 +1,5 @@
 import { snippetCompletion } from "@codemirror/autocomplete";
 import Fuse from "fuse.js";
-import _ from "underscore";
 
 import { CALL, FIELD, IDENTIFIER, type Token } from "../pratt";
 import type { MBQLClauseFunctionConfig } from "../types";
@@ -35,15 +34,9 @@ export function expressionClauseSnippet(clause: MBQLClauseFunctionConfig) {
   return `${clause.displayName}(${args})`;
 }
 
-export const fuzzyMatcher = _.memoize(function ({
-  options,
-  keys = ["displayLabel"],
-}: {
-  options: ExpressionSuggestion[];
-  keys?: (string | { name: string; weight?: number })[];
-}) {
+export function fuzzyMatcher(options: ExpressionSuggestion[]) {
   const fuse = new Fuse(options, {
-    keys,
+    keys: ["displayLabel"],
     includeScore: true,
     includeMatches: true,
   });
@@ -51,24 +44,14 @@ export const fuzzyMatcher = _.memoize(function ({
   return function (word: string) {
     return fuse
       .search(word)
-      .filter((result) => (result.score ?? 0) <= 0.6)
       .sort((a, b) => (a.score ?? 0) - (b.score ?? 0))
       .map((result) => {
-        const { item, matches = [] } = result;
-        const key = matches[0]?.key;
-        const indices = matches[0]?.indices;
-
-        // We need to preserve item identity here, so we need to return the original item
-        // possible with updated values for displayLabel and matches
-        // item.displayLabel = displayLabel ?? item.displayLabel;
-        if (key === "displayLabel") {
-          item.matches = Array.from(indices ?? []);
-        }
-
-        return item;
+        result.item.matches =
+          result.matches?.flatMap((match) => match.indices) ?? [];
+        return result.item;
       });
   };
-}, JSON.stringify);
+}
 
 export function isIdentifier(token: Token | null) {
   return token != null && (token.type === IDENTIFIER || token.type === CALL);

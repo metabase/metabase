@@ -16,11 +16,9 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.join :as lib.schema.join]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
-   [metabase.lib.schema.ref :as lib.schema.ref]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.lib.walk :as lib.walk]
    [metabase.query-processor.error-type :as qp.error-type]
-   [metabase.query-processor.schema :as qp.schema]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -46,7 +44,7 @@
   [:map
    {:closed true} ; closed because it is used as a map key
    [:fk-field-id   ::lib.schema.id/field]
-   [:fk-field-name {:optional true} ::lib.schema.common/non-blank-string]
+   [:fk-field-name {:optional true} :string]
    [:fk-join-alias {:optional true} ::lib.schema.join/alias]])
 
 (mr/def ::join
@@ -57,7 +55,7 @@
     [:strategy      [:= :left-join]]
     [:conditions    [:tuple :mbql.clause/=]] ; exactly one condition
     [:fk-field-id   ::lib.schema.id/field]
-    [:fk-field-name {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
+    [:fk-field-name {:optional true} [:maybe :string]]
     [:fk-join-alias {:optional true} [:maybe ::lib.schema.join/alias]]]])
 
 (mu/defn- fk-field-infos->joins :- [:maybe [:sequential ::join]]
@@ -144,14 +142,6 @@
            (let [previous-stage (get-in query previous-path)]
              (visible-joins query previous-path previous-stage)))]))
 
-(mu/defn- distinct-fields :- [:or ::qp.schema/xform ::lib.schema/fields]
-  ([]
-   (m/distinct-by lib/ref-distinct-key))
-  ([fields :- [:sequential ::lib.schema.ref/ref]]
-   (into []
-         (distinct-fields)
-         fields)))
-
 (mu/defn- construct-fk-field-info->join-alias :- [:map-of
                                                   ::fk-field-info
                                                   ::lib.schema.common/non-blank-string]
@@ -201,26 +191,27 @@
   [query :- ::lib.schema/query
    path  :- ::lib.walk/path
    stage :- ::lib.schema/stage]
-  (let [fk-field-info->join-alias (construct-fk-field-info->join-alias query path stage)]
-    (if (empty? fk-field-info->join-alias)
-      stage
-      (cond-> (lib.util.match/replace stage
-                [:field (opts :guard (every-pred :source-field (complement :join-alias))) id-or-name]
-                (if-not (some #{:lib/stage-metadata} &parents)
-                  (let [join-alias (or (fk-field-info->join-alias (field-opts->fk-field-info query opts))
-                                       (throw (ex-info (tru "Cannot find matching FK Table ID for FK Field {0}"
-                                                            (format "%s %s"
-                                                                    (pr-str (:source-field opts))
-                                                                    (let [field (lib.metadata/field
-                                                                                 query
-                                                                                 (:source-field opts))]
-                                                                      (pr-str (:display-name field)))))
-                                                       {:resolving  &match
-                                                        :candidates fk-field-info->join-alias
-                                                        :stage      stage})))]
-                    (lib/with-join-alias &match join-alias))
-                  &match))
-        (sequential? (:fields stage)) (update :fields distinct-fields)))))
+  (or (when-let [fk-field-info->join-alias (not-empty (construct-fk-field-info->join-alias query path stage))]
+        (let [stage' (lib.util.match/replace stage
+                       [:field (opts :guard (every-pred :source-field (complement :join-alias))) id-or-name]
+                       (if-not (some #{:lib/stage-metadata} &parents)
+                         (let [join-alias (or (fk-field-info->join-alias (field-opts->fk-field-info query opts))
+                                              (throw (ex-info (tru "Cannot find matching FK Table ID for FK Field {0}"
+                                                                   (format "%s %s"
+                                                                           (pr-str (:source-field opts))
+                                                                           (let [field (lib.metadata/field
+                                                                                        query
+                                                                                        (:source-field opts))]
+                                                                             (pr-str (:display-name field)))))
+                                                              {:resolving  &match
+                                                               :candidates fk-field-info->join-alias
+                                                               :stage      stage})))]
+                           (lib/with-join-alias &match join-alias))
+                         &match))]
+          (when-not (= stage' stage)
+            ;; normalize the stage to remove any duplicate fields or breakouts
+            (lib/normalize ::lib.schema/stage stage'))))
+      stage))
 
 (mu/defn- already-has-join?
   "Whether the current query level already has a join with the same alias."
@@ -262,13 +253,15 @@
                                                            next-path))]
                   (when-let [needed (not-empty (set/difference needed next-stage-visible-column-ids))]
                     (log/debugf "Adding fields needed for join conditions in next stage: %s" (pr-str needed))
-                    (update stage :fields (fn [existing-fields]
-                                            (into []
-                                                  (comp cat
-                                                        (distinct-fields))
-                                                  [existing-fields
-                                                   (for [field-id needed]
-                                                     [:field {:lib/uuid (str (random-uuid))} field-id])]))))))))))
+                    (let [stage' (update stage :fields (fn [existing-fields]
+                                                         (into []
+                                                               cat
+                                                               [existing-fields
+                                                                (for [field-id needed]
+                                                                  [:field {:lib/uuid (str (random-uuid))} field-id])])))]
+                      (when-not (= stage' stage)
+                        ;; normalize the stage to remove any duplicate fields or breakouts
+                        (lib/normalize ::lib.schema/stage stage'))))))))))
       stage))
 
 (mu/defn- add-referenced-fields-from-next-stage :- ::lib.schema/stage
@@ -284,12 +277,14 @@
                                                  (when (contains? reused-join-aliases (lib/current-join-alias &match))
                                                    &match))))]
               (log/debugf "Adding referenced fields from next stage: %s" (pr-str referenced-fields))
-              (update stage :fields (fn [existing-fields]
-                                      (into []
-                                            (comp cat
-                                                  (distinct-fields))
-                                            [existing-fields
-                                             (map lib/fresh-uuids referenced-fields)])))))))
+              (let [stage' (update stage :fields (fn [existing-fields]
+                                                   (into []
+                                                         cat
+                                                         [existing-fields
+                                                          (map lib/fresh-uuids referenced-fields)])))]
+                (when-not (= stage' stage)
+                  ;; normalize the stage to remove any duplicate fields or breakouts
+                  (lib/normalize ::lib.schema/stage stage')))))))
       stage))
 
 (mu/defn- add-fields-from-next-stage :- ::lib.schema/stage

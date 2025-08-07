@@ -12,7 +12,9 @@ describe("PinnedQuestionCard", () => {
 
     expect(await screen.findByTestId("visualization-root")).toBeInTheDocument();
 
-    expect(fetchMock.calls("path:/api/card/1/query")).toHaveLength(1);
+    expect(fetchMock.callHistory.calls("path:/api/card/1/query")).toHaveLength(
+      1,
+    );
   });
 });
 

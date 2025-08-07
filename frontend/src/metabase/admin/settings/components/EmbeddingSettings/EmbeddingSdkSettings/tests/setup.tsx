@@ -53,7 +53,7 @@ export async function setup({
 
   if (hasEnterprisePlugins) {
     setupEnterprisePlugins();
-    setupTokenStatusEndpoint(true);
+    setupTokenStatusEndpoint({ valid: true });
   }
 
   setupPropertiesEndpoints(settings);
@@ -84,5 +84,5 @@ export async function setup({
     );
   });
 
-  await screen.findByText("Embedded analytics SDK for React");
+  await screen.findByText("SDK for React");
 }

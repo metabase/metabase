@@ -629,5 +629,5 @@ export const assertAllResultsAndValuesAreSandboxed = (
 
 export const assertResponseFailsClosed = (response) => {
   expect(response?.body.data.rows).to.have.length(0);
-  expect(response?.body.error_type).to.contain("invalid-query");
+  expect(response?.body.error_type).to.be.oneOf(["driver", "invalid-query"]);
 };

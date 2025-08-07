@@ -6,7 +6,7 @@ import "react-resizable/css/styles.css";
 
 import { useUpdateSettingsMutation } from "metabase/api";
 import { useSetting, useToast } from "metabase/common/hooks";
-import { Box, Button, Card, Group, Stack } from "metabase/ui";
+import { Box, Button, Group, Stack } from "metabase/ui";
 
 import { useSdkIframeEmbedSetupContext } from "../context";
 import { useSdkIframeEmbedNavigation } from "../hooks";
@@ -38,13 +38,13 @@ const SdkIframeEmbedSetupContent = () => {
   const acceptSimpleEmbedTerms = () =>
     updateSettings({ "show-simple-embed-terms": false });
 
-  // Automatically enable the embedding SDK if it's not already enabled.
+  // Automatically enable embedding if it's not already enabled.
   useEffect(() => {
     if (!isSimpleEmbeddingEnabled) {
       updateSettings({ "enable-embedding-simple": true });
 
       sendToast({
-        message: t`Simple embedding is enabled. You can configure it in admin settings.`,
+        message: t`Embedded Analytics JS is enabled. You can configure it in admin settings.`,
       });
     }
   }, [isSimpleEmbeddingEnabled, sendToast, updateSettings]);
@@ -80,12 +80,10 @@ const SdkIframeEmbedSetupContent = () => {
       </SidebarResizer>
 
       <Box className={S.PreviewPanel}>
-        <Card p="md" h="100%">
-          <Stack h="100%">
-            {/** Only show the embed preview once the embedding is auto-enabled, or already enabled. */}
-            {isSimpleEmbeddingEnabled && <SdkIframeEmbedPreview />}
-          </Stack>
-        </Card>
+        <Stack h="100%">
+          {/** Only show the embed preview once the embedding is auto-enabled, or already enabled. */}
+          {isSimpleEmbeddingEnabled && <SdkIframeEmbedPreview />}
+        </Stack>
       </Box>
 
       {showSimpleEmbedTerms && (

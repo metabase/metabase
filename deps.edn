@@ -238,7 +238,8 @@
   ;;    (dev/start!)
   :dev
   {:extra-deps
-   {clj-http-fake/clj-http-fake  {:mvn/version "1.0.4"
+   {cider/cider-nrepl            {:mvn/version "0.57.0"}                    ; nREPL server for CIDER
+    clj-http-fake/clj-http-fake  {:mvn/version "1.0.4"
                                   :exclusions  [slingshot/slingshot]}
     clj-kondo/clj-kondo          {:mvn/version "2025.04.07"}                ; included here mainly to facilitate working on the stuff in `.clj-kondo/src`
     cloverage/cloverage          {:mvn/version "1.2.4"}
@@ -261,6 +262,7 @@
     peridot/peridot              {:git/url "https://github.com/piranha/peridot.git"
                                   :sha "db627c627db3b527a63caf472f0422e4cbfdf574"} ; mocking Ring requests; waiting for upstream release of commit 0fc7c01 (explicit charset)
     pjstadig/humane-test-output  {:mvn/version "0.11.0"}
+    refactor-nrepl/refactor-nrepl {:mvn/version "3.11.0"}                   ; refactoring helpers for cider
     reifyhealth/specmonstah      {:mvn/version "2.1.0"
                                   :exclusions  [org.clojure/clojure
                                                 org.clojure/clojurescript]} ; lets you write test fixtures that are clear, concise, and easy to maintain (clojure.spec)
@@ -827,8 +829,8 @@
    :main-opts   ["-m" "dev.migrate"]}
 
   ;; run tests against MLv2. Very fast since this is almost all ^:parallel
-  :test/mlv2
-  {:exec-args {:only ["test/metabase/lib"]}}
+  :test/lib
+  {:exec-args {:only ["test/metabase/lib" "test/metabase/lib_be"]}}
 
   ;; test the Query Processor
   ;;
@@ -852,6 +854,7 @@
   :test/mbql
   {:exec-args {:only ["test/mbql"
                       "test/metabase/lib"
+                      "test/metabase/lib_be"
                       "test/metabase/legacy_mbql"
                       "test/metabase/driver"
                       "test/metabase/query_processor"

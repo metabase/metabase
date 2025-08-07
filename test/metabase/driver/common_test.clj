@@ -79,10 +79,10 @@
   (testing "json fields with decimals maintain their decimal places"
     (mt/test-drivers (mt/normal-drivers-with-feature :nested-field-columns)
       (mt/dataset (mt/dataset-definition "json-decimals-db"
-                                         ["json-decimals-table"
-                                          [{:field-name "json-field" :base-type :type/JSON}]
-                                          [["{\"A\": 123, \"B\": 0.456, \"C\": 0.789}"]
-                                           ["{\"A\": 456, \"B\": 0.789, \"C\": 789}"]]])
+                                         [["json-decimals-table"
+                                           [{:field-name "json-field" :base-type :type/JSON}]
+                                           [["{\"A\": 123, \"B\": 0.456, \"C\": 0.789}"]
+                                            ["{\"A\": 456, \"B\": 0.789, \"C\": 789}"]]]])
         (when-not (mysql/mariadb? (mt/db))
           (is (= [[1 123.0 0.456 0.789]
                   [2 456.0 0.789 789.0]]

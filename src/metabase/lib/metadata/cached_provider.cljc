@@ -143,6 +143,8 @@
     (cached-value cache k not-found))
   (cache-value! [_this k v]
     (cache-value! cache k v))
+  (has-cache? [_this]
+    true)
 
   #?(:clj Object :cljs IEquiv)
   (#?(:clj equals :cljs -equiv) [_this another]

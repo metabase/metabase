@@ -12,10 +12,10 @@ import { SdkQuestion } from "./SdkQuestion";
 
 const QUESTION_ID = (window as any).QUESTION_ID || questionIds.numberId;
 
-type InteractiveQuestionComponentProps = ComponentProps<typeof SdkQuestion>;
+type SdkQuestionComponentProps = ComponentProps<typeof SdkQuestion>;
 
 export default {
-  title: "EmbeddingSDK/InteractiveQuestion",
+  title: "EmbeddingSDK/SdkQuestion",
   component: SdkQuestion,
   parameters: {
     layout: "fullscreen",
@@ -64,7 +64,7 @@ export default {
   },
 };
 
-const Template: StoryFn<InteractiveQuestionComponentProps> = (args) => {
+const Template: StoryFn<SdkQuestionComponentProps> = (args) => {
   return (
     <Box bg="var(--mb-color-background)" mih="100vh">
       <SdkQuestion {...args} />
@@ -85,7 +85,7 @@ export const Default = {
 };
 
 export const EditorOnly = {
-  render(args: InteractiveQuestionComponentProps) {
+  render(args: SdkQuestionComponentProps) {
     return (
       <Box bg="var(--mb-color-background)" mih="100vh">
         <SdkQuestion {...args}>
@@ -103,7 +103,7 @@ export const EditorOnly = {
 };
 
 export const CreateQuestion = {
-  render(args: InteractiveQuestionComponentProps) {
+  render(args: SdkQuestionComponentProps) {
     return (
       <Box bg="var(--mb-color-background)" mih="100vh">
         <SdkQuestion {...args} />

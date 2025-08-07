@@ -119,7 +119,6 @@
       (is (=? (->> (cols-of :orders)
                    sort-cols)
               (sort-cols (get-in (lib.tu/mock-cards) [:orders :result-metadata]))))
-
       (is (=? (->> (concat (from :source/card (cols-of :orders))
                            (implicitly-joined (cols-of :people))
                            (implicitly-joined (cols-of :products)))
@@ -234,8 +233,10 @@
           rhs (m/find-first (comp #{"ID"} :name) (lib/join-condition-rhs-columns query 0 people-card nil nil))
           join-clause (lib/join-clause people-card [(lib/= lhs rhs)])
           query (lib/join query join-clause)
-          filter-col (m/find-first (comp #{"Mock people card__ID"} :lib/desired-column-alias)
+          filter-col (m/find-first #(and (= (:metabase.lib.join/join-alias %) "Mock people card")
+                                         (= (:lib/source-column-alias %) "ID"))
                                    (lib/filterable-columns query))
+          _ (assert (some? filter-col) "Failed to find filter column")
           query (-> query
                     (lib/filter (lib/= filter-col 1))
                     (lib/aggregate (lib/distinct filter-col))
@@ -526,12 +527,12 @@
                                :alias        "Products"
                                :fields       :all}]
                 :aggregation [[:distinct &Products.products.id]]
-                :breakout    [&Products.!month.created-at]})
+                :breakout    [&Products.!month.products.created-at]})
         mp   (lib.tu/mock-metadata-provider
               meta/metadata-provider
               {:cards [{:id 1, :dataset-query q1}]})
-        q2   (lib/query mp (meta/table-metadata :reviews))
-        card (lib.metadata/card mp 1)]
+        card (lib.metadata/card mp 1)
+        q2   (lib/query mp card)]
     (doseq [f [#'lib/returned-columns
                #'lib/visible-columns]]
       (testing (str f " for a card should NEVER return `:metabase.lib.join/join-alias`, because the join happened within the Card itself.")

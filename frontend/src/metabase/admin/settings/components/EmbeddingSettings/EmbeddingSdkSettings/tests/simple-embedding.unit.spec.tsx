@@ -27,12 +27,9 @@ describe("EmbeddingSdkSettings (EE with Simple Embedding feature)", () => {
     const toggles = screen.getAllByRole("switch");
     expect(toggles).toHaveLength(2);
 
-    expect(
-      screen.getByText("Embedded analytics SDK for React"),
-    ).toBeInTheDocument();
+    expect(screen.getByText("SDK for React")).toBeInTheDocument();
 
-    expect(screen.getByText("Simple SDK Embedding")).toBeInTheDocument();
-    expect(screen.queryAllByText("Beta")).toHaveLength(1);
+    expect(screen.getByText("Embedded Analytics JS")).toBeInTheDocument();
   });
 
   it("should show legalese modal when Simple Embedding toggle is enabled", async () => {

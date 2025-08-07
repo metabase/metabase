@@ -1826,7 +1826,7 @@
           (is (= 0 (count (filter #{:metabase-search/response-error} @calls)))))
 
         (testing "Bad request (400)"
-          (mt/user-http-request :crowberto :get 400 "/search" :q " ")
+          (mt/user-http-request :crowberto :get 400 "/search" :archived "meow")
           (is (= 1 (count (filter #{:metabase-search/response-ok} @calls))))
           ;; We do not treat client side errors as errors for our alerts.
           (is (= 0 (count (filter #{:metabase-search/response-error} @calls)))))

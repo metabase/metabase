@@ -1,7 +1,4 @@
-import fetchMock, {
-  type MockResponse,
-  type MockResponseFunction,
-} from "fetch-mock";
+import fetchMock from "fetch-mock";
 
 // ===== MOCK CONSTANTS =====
 
@@ -34,7 +31,7 @@ interface BaseMockConfig {
 export interface SamlMockConfig extends BaseMockConfig {}
 
 export interface JwtMockConfig extends BaseMockConfig {
-  providerResponse?: MockResponse | MockResponseFunction;
+  providerResponse?: number | Record<string, any>;
 }
 
 // ===== MOCK SETUP FUNCTIONS =====
@@ -67,8 +64,8 @@ export const setupMockSamlEndpoints = ({
 }: SamlMockConfig = {}) => {
   const ssoUrl = new URL("/auth/sso", instanceUrl);
 
-  const ssoInitMock = fetchMock.get(`begin:${ssoUrl.toString()}`, (url) => {
-    const urlObj = new URL(url);
+  const ssoInitMock = fetchMock.get(`begin:${ssoUrl.toString()}`, (call) => {
+    const urlObj = new URL(call.url);
     const preferredMethod = urlObj.searchParams.get("preferred_method");
 
     if (preferredMethod === "jwt") {
@@ -177,11 +174,11 @@ export const setupMockJwtEndpoints = ({
   const ssoUrl = new URL("/auth/sso", instanceUrl);
 
   const ssoInitMock = fetchMock.get(
-    (url) =>
-      url.startsWith(ssoUrl.toString()) &&
-      (url.includes("preferred_method=") || !url.includes("?")),
-    (url) => {
-      const urlObj = new URL(url);
+    (call) =>
+      call.url.startsWith(ssoUrl.toString()) &&
+      (call.url.includes("preferred_method=") || !call.url.includes("?")),
+    (call) => {
+      const urlObj = new URL(call.url);
       const preferredMethod = urlObj.searchParams.get("preferred_method");
 
       if (preferredMethod === "saml") {
@@ -198,20 +195,17 @@ export const setupMockJwtEndpoints = ({
     },
   );
 
-  const jwtProviderMock = fetchMock.get(
-    (url) => url.startsWith(providerUri),
-    (url) => {
-      const urlObj = new URL(url);
-      const responseParam = urlObj.searchParams.get("response");
+  const jwtProviderMock = fetchMock.get(`begin:${providerUri}`, (call) => {
+    const urlObj = new URL(call.url);
+    const responseParam = urlObj.searchParams.get("response");
 
-      if (responseParam === "json") {
-        return providerResponse;
-      }
+    if (responseParam === "json") {
+      return providerResponse;
+    }
 
-      // Return a default response or error for other cases
-      return { status: 400, body: { error: "Invalid request" } };
-    },
-  );
+    // Return a default response or error for other cases
+    return { status: 400, body: { error: "Invalid request" } };
+  });
 
   const jwtValidationMock = fetchMock.get(
     `${instanceUrl}/auth/sso?jwt=${MOCK_VALID_JWT_RESPONSE}`,

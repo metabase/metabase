@@ -136,6 +136,7 @@
    :has_sample_data                      (t2/exists? :model/Database, :is_sample true)
    :enable_embedding                     #_{:clj-kondo/ignore [:deprecated-var]} (setting/get :enable-embedding)
    :enable_embedding_sdk                 (setting/get :enable-embedding-sdk)
+   :enable_embedding_simple              (setting/get :enable-embedding-simple)
    :enable_embedding_interactive         (setting/get :enable-embedding-interactive)
    :enable_embedding_static              (setting/get :enable-embedding-static)
    :embedding_app_origin_set             (boolean
@@ -864,7 +865,10 @@
     :available true
     :enabled   (->> (t2/select-fn-set (comp :impersonation :details) :model/Database :engine "starburst")
                     (some identity)
-                    boolean)}])
+                    boolean)}
+   {:name      :table-data-editing
+    :available (premium-features/table-data-editing?)
+    :enabled   (premium-features/table-data-editing?)}])
 
 (defn- snowplow-features
   []

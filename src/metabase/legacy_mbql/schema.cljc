@@ -42,11 +42,6 @@
 ;;    the future we will likely add middleware that uses this metadata to automatically validate that a driver has the
 ;;    features needed to run the query in question.
 
-(def ^:private PositiveInt
-  [:schema
-   {:description "Must be a positive integer."}
-   pos-int?])
-
 ;; `:day-of-week` depends on the [[metabase.lib-be.core/start-of-week]] Setting, by default Sunday.
 ;; 1 = first day of the week (e.g. Sunday)
 ;; 7 = last day of the week (e.g. Saturday)
@@ -550,7 +545,7 @@
                      (if (number? x)
                        :number
                        :else))}
-   [:number PositiveInt]
+   [:number pos-int?]
    [:else   NumericExpression]])
 
 (def ^:private IntGreaterThanZeroOrNumericExpression
@@ -1168,9 +1163,9 @@
    [:map
     [:type         [:= :snippet]]
     [:snippet-name ::lib.schema.common/non-blank-string]
-    [:snippet-id   PositiveInt]
+    [:snippet-id   ::lib.schema.id/snippet]
     ;; database to which this Snippet belongs. Doesn't always seen to be specified.
-    [:database {:optional true} PositiveInt]]])
+    [:database {:optional true} ::lib.schema.id/database]]])
 
 ;; Example:
 ;;
@@ -1185,7 +1180,7 @@
    TemplateTag:Common
    [:map
     [:type    [:= :card]]
-    [:card-id PositiveInt]]])
+    [:card-id ::lib.schema.id/card]]])
 
 (def ^:private TemplateTag:Value:Common
   "Stuff shared between the Field filter and raw value template tag schemas."
@@ -1554,6 +1549,9 @@
    {:error/message "Distinct, non-empty sequence of Field clauses"}
    (helpers/distinct [:sequential {:min 1} Field])])
 
+(mr/def ::OrderBys
+  (helpers/distinct [:sequential {:min 1} [:ref ::OrderBy]]))
+
 (mr/def ::Page
   "`page` = page num, starting with 1. `items` = number of items per page.
   e.g.
@@ -1561,8 +1559,8 @@
     {:page 1, :items 10} = items 1-10
     {:page 2, :items 10} = items 11-20"
   [:map
-   [:page  PositiveInt]
-   [:items PositiveInt]])
+   [:page  pos-int?]
+   [:items pos-int?]])
 
 (mr/def ::MBQLQuery
   [:and
@@ -1575,7 +1573,7 @@
     [:fields       {:optional true} Fields]
     [:filter       {:optional true} Filter]
     [:limit        {:optional true} ::lib.schema.common/int-greater-than-or-equal-to-zero]
-    [:order-by     {:optional true} (helpers/distinct [:sequential {:min 1} [:ref ::OrderBy]])]
+    [:order-by     {:optional true} [:ref ::OrderBys]]
     [:page         {:optional true} [:ref ::Page]]
     [:joins        {:optional true} [:ref ::Joins]]
 

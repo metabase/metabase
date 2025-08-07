@@ -31,6 +31,29 @@ export interface CurrencyFormattingSettings {
   currency_in_header?: boolean;
 }
 
+export const engineKeys = [
+  "athena",
+  "bigquery-cloud-sdk",
+  "clickhouse",
+  "databricks",
+  "druid",
+  "druid-jdbc",
+  "databricks",
+  "mysql",
+  "oracle",
+  "postgres",
+  "presto-jdbc",
+  "redshift",
+  "snowflake",
+  "sparksql",
+  "sqlite",
+  "sqlserver",
+  "starburst",
+  "vertica",
+] as const;
+
+export type EngineKey = (typeof engineKeys)[number];
+
 export interface Engine {
   "driver-name": string;
   "details-fields"?: EngineField[];
@@ -436,7 +459,7 @@ interface PublicSettings {
   "enable-password-login": boolean;
   "enable-pivoted-exports": boolean;
   "enable-sandboxes?": boolean;
-  engines: Record<string, Engine>;
+  engines: Record<EngineKey, Engine>;
   "google-auth-client-id": string | null;
   "google-auth-enabled": boolean;
   "has-user-setup": boolean;
@@ -583,6 +606,7 @@ export interface EnterpriseSettings extends Settings {
   "jwt-attribute-email": string | null;
   "jwt-attribute-firstname": string | null;
   "jwt-attribute-lastname": string | null;
+  "jwt-attribute-groups": string | null;
   "jwt-group-sync": boolean | null;
   "saml-enabled": boolean;
   "saml-configured": boolean;
