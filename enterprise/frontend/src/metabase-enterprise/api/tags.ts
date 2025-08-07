@@ -1,7 +1,12 @@
 import type { TagDescription } from "@reduxjs/toolkit/query";
 
 import { TAG_TYPES } from "metabase/api/tags";
-import type { Transform, TransformJob, TransformTag } from "metabase-types/api";
+import type {
+  Transform,
+  TransformExecution,
+  TransformJob,
+  TransformTag,
+} from "metabase-types/api";
 
 export const ENTERPRISE_TAG_TYPES = [
   ...TAG_TYPES,
@@ -13,6 +18,7 @@ export const ENTERPRISE_TAG_TYPES = [
   "transform",
   "transform-tag",
   "transform-job",
+  "transform-execution",
 ] as const;
 
 export type EnterpriseTagType = (typeof ENTERPRISE_TAG_TYPES)[number];
@@ -53,6 +59,24 @@ export function provideTransformListTags(
   transforms: Transform[],
 ): TagDescription<EnterpriseTagType>[] {
   return [listTag("transform"), ...transforms.flatMap(provideTransformTags)];
+}
+
+export function provideTransformExecutionTags(
+  execution: TransformExecution,
+): TagDescription<EnterpriseTagType>[] {
+  return [
+    idTag("transform-execution", execution.id),
+    ...(execution.transform ? provideTransformTags(execution.transform) : []),
+  ];
+}
+
+export function provideTransformExecutionListTags(
+  executions: TransformExecution[],
+): TagDescription<EnterpriseTagType>[] {
+  return [
+    listTag("transform-execution"),
+    ...executions.flatMap(provideTransformExecutionTags),
+  ];
 }
 
 export function provideTransformTagTags(

@@ -1,5 +1,7 @@
 import type {
   CreateTransformRequest,
+  ListTransformExecutionsRequest,
+  ListTransformExecutionsResponse,
   Transform,
   TransformId,
   UpdateTransformRequest,
@@ -10,6 +12,7 @@ import {
   idTag,
   invalidateTags,
   listTag,
+  provideTransformExecutionListTags,
   provideTransformListTags,
   provideTransformTags,
 } from "./tags";
@@ -23,6 +26,18 @@ export const transformApi = EnterpriseApi.injectEndpoints({
         params,
       }),
       providesTags: (transforms = []) => provideTransformListTags(transforms),
+    }),
+    listTransformExecutions: builder.query<
+      ListTransformExecutionsResponse,
+      ListTransformExecutionsRequest
+    >({
+      query: (params) => ({
+        method: "GET",
+        url: "/api/ee/transform/execution",
+        params,
+      }),
+      providesTags: (response) =>
+        response ? provideTransformExecutionListTags(response.data) : [],
     }),
     getTransform: builder.query<Transform, TransformId>({
       query: (id) => ({
@@ -79,6 +94,7 @@ export const transformApi = EnterpriseApi.injectEndpoints({
 
 export const {
   useListTransformsQuery,
+  useListTransformExecutionsQuery,
   useGetTransformQuery,
   useExecuteTransformMutation,
   useCreateTransformMutation,

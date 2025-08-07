@@ -1,9 +1,12 @@
+import type { PaginationRequest, PaginationResponse } from "./pagination";
 import type { DatasetQuery } from "./query";
 import type { Table } from "./table";
 
 export type TransformId = number;
 export type TransformTagId = number;
 export type TransformJobId = number;
+export type TransformExecutionId = number;
+export type TransformJobExecutionId = number;
 
 export type Transform = {
   id: TransformId;
@@ -32,6 +35,7 @@ export type TransformTarget = {
 };
 
 export type TransformExecution = {
+  id: TransformExecutionId;
   status: TransformExecutionStatus;
   trigger: TransformExecutionTrigger;
   start_time: string;
@@ -66,6 +70,7 @@ export type TransformJob = {
 };
 
 export type TransformJobExecution = {
+  id: TransformJobExecutionId;
   status: TransformExecutionStatus;
   trigger: TransformExecutionTrigger;
   start_time: string;
@@ -112,3 +117,9 @@ export type UpdateTransformTagRequest = {
   id: TransformJobId;
   name?: string;
 };
+
+export type ListTransformExecutionsRequest = PaginationRequest;
+
+export type ListTransformExecutionsResponse = {
+  data: TransformExecution[];
+} & PaginationResponse;
