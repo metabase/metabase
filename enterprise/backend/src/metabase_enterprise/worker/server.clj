@@ -50,7 +50,7 @@
 
 (defn- handle-transform-put
   [{:keys [params body]}]
-  (log/info "Handling transform PUT request")
+  (log/info "Handling transform PUT request for run" (pr-str (:run-id params)))
   (if (.tryAcquire semaphore)
     (let [{:keys [run-id]} params
           {:keys [driver transform-details opts mb-source]} (mc/coerce
@@ -81,7 +81,7 @@
 
 (defn- handle-status-get
   [run-id mb-source]
-  (log/info "Handling status GET request")
+  (log/info "Handling status GET request for run" (pr-str run-id))
   (if-let [resp (tracking/get-status run-id mb-source)]
     (response/response resp)
     (-> (response/response "Not found")
@@ -89,7 +89,7 @@
 
 (defn- handle-cancel-post
   [run-id mb-source]
-  (log/info "Handling cancel POST request")
+  (log/info "Handling cancel POST request for run" (pr-str run-id))
   (if (tracking/mark-cancel-started-run! run-id mb-source)
     (-> (response/response "Canceling")
         (response/status 202))

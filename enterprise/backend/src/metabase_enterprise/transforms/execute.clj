@@ -39,10 +39,19 @@
                   (sync/create-table! database (select-keys target [:schema :name])))]
     (sync/sync-table! table)))
 
-;; TODO (eric): Polling loop with timeout
-(defn- execute-mbl-transform-remote! [run-id driver transform-details opts]
+(defn- execute-mbql-transform-remote! [run-id driver transform-details opts]
   (try
+    (log/trace "starting transform run" (pr-str run-id))
     (worker/execute-transform! run-id driver transform-details opts)
+    (let [;; timeout after 4 hours
+          timeout-limit (+ (System/currentTimeMillis) (* 4 60 60 1000))
+          wait 2000]
+      (loop []
+        (Thread/sleep (long (* wait (inc (- (/ (rand) 5) 0.1)))))
+        (log/trace "polling for remote transform" (pr-str run-id) "after wait" wait)
+        (let [result (worker/sync-single-run! run-id)]
+          (when (= result :started)
+            (recur)))))
     (catch Throwable t
       (log/error "Remote execution failed.")
       (worker/fail-started-run! run-id {:message (.getMessage t)})
@@ -59,12 +68,7 @@
    (log/info "Syncing target" (pr-str target) "for transform")
    (sync-table! database target)))
 
-;; register that we need to run sync after a transform is finished remotely
-(defmethod worker/post-success :transform
-  [{:keys [run_id work_id]}]
-  (sync-target! work_id run_id))
-
-(defn- execute-mbl-transform-local!
+(defn- execute-mbql-transform-local!
   [run-id driver transform-details opts]
   (worker/chan-start-timeout-vthread! run-id)
   ;; local run is responsible for status
@@ -78,6 +82,11 @@
       (throw t))
     (finally
       (worker/chan-end-run! run-id))))
+
+(defn- execute-mbql-transform-inner! [run-id driver transform-details opts]
+  (if (worker/run-remote?)
+    (execute-mbql-transform-remote! run-id driver transform-details opts)
+    (execute-mbql-transform-local! run-id driver transform-details opts)))
 
 (defn execute-mbql-transform!
   "Execute `transform` and sync its target table.
@@ -115,12 +124,8 @@
        (when start-promise
          (deliver start-promise [:started run-id]))
        (log/info "Executing transform" id "with target" (pr-str target))
-       (if (worker/run-remote?)
-         ;; TODO (eric): Make this do the polling
-         (execute-mbl-transform-remote! run-id driver transform-details opts)
-         (do
-           (execute-mbl-transform-local! run-id driver transform-details opts)
-           (sync-target! target database run-id))))
+       (execute-mbql-transform-inner! run-id driver transform-details opts)
+       (sync-target! target database run-id))
      (catch Throwable t
        (log/error t "Error executing transform")
        (when start-promise

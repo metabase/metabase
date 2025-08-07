@@ -26,41 +26,35 @@
 
 (def ^:private job-key "metabase-enterprise.worker.sync")
 
-(defmulti post-success
-  "What to run after successful remote run is synced locally. Dispatches on work_type."
-  {:arglists '([run])}
-  :work_type)
+(defn sync-single-run! [run-id]
+  (try
+    (let [resp (api/get-status run-id)]
+      (case (:status resp)
+        "started"
+        :started
+        "canceled"
+        (do (worker-run/cancel-run! run-id {:end_time (t/instant (:end-time resp))
+                                            :message (:note resp)})
+            :canceled)
+        "success"
+        (do
+          (worker-run/succeed-started-run! run-id {:end_time (t/instant (:end-time resp))})
+          :success)
+        "error"
+        (do (worker-run/fail-started-run! run-id {:end_time (t/instant (:end-time resp))
+                                                  :message (:note resp)})
+            :error)
+        "timeout"
+        (do (worker-run/timeout-run! run-id {:end_time (t/instant (:end-time resp))
+                                             :message (:note resp)})
+            :timeout)))
+    (catch Throwable t
+      (log/error t (str "Error syncing " run-id)))))
 
-(defmethod post-success :default
-  [_]
-  #_do-nothing)
-
-;; TODO (eric): Make this a backstop/disaster recovery
 (defn- sync-worker-runs! [_ctx]
   (log/trace "Syncing worker runs.")
   (let [runs (worker-run/reducible-active-remote-runs)]
-    (run! (fn [run]
-            (try
-              (let [resp (api/get-status (:run_id run))]
-                (case (:status resp)
-                  "started"
-                  :do-nothing
-                  "canceled"
-                  (worker-run/cancel-run! (:run_id run) {:end_time (t/instant (:end-time resp))
-                                                         :message (:note resp)})
-                  "success"
-                  (do
-                    (worker-run/succeed-started-run! (:run_id run) {:end_time (t/instant (:end-time resp))})
-                    (post-success run))
-                  "error"
-                  (worker-run/fail-started-run! (:run_id run) {:end_time (t/instant (:end-time resp))
-                                                               :message (:note resp)})
-                  "timeout"
-                  (worker-run/timeout-run! (:run_id run) {:end_time (t/instant (:end-time resp))
-                                                          :message (:note resp)})))
-              (catch Throwable t
-                (log/error t (str "Error syncing " (:run_id run))))))
-          runs))
+    (run! (comp sync-single-run! :run_id) runs))
 
   (log/trace "Timing out old runs.")
   (worker-run/timeout-old-runs! 4 :hour)
@@ -83,7 +77,7 @@
                    (triggers/start-now)
                    (triggers/with-schedule
                     (calendar-interval/schedule
-                     (calendar-interval/with-interval-in-seconds 2) ;; longer (2 minutes?)
+                     (calendar-interval/with-interval-in-minutes 10)
                      (calendar-interval/with-misfire-handling-instruction-do-nothing))))]
       (task/schedule-task! job trigger))))
 
