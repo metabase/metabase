@@ -15,7 +15,7 @@ import { useExecuteTransformMutation } from "metabase-enterprise/api";
 import type { Transform } from "metabase-types/api";
 
 import { SplitSection } from "../../../components/SplitSection";
-import { TagListSelect } from "../../../components/TagListSelect";
+import { TagListInput } from "../../../components/TagListInput";
 
 import { getStatusInfo } from "./utils";
 
@@ -93,7 +93,7 @@ function RunButton({ transform }: RunButtonProps) {
 export function TagInputSection() {
   return (
     <Box flex={1}>
-      <TagListSelect />
+      <TagListInput />
     </Box>
   );
 }
