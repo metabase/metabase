@@ -18,8 +18,7 @@
 (p/import-vars
  [metabase.queries.card
   card-param-values
-  card-param-remapped-value
-  starting-card-schema-version]
+  card-param-remapped-value]
  [metabase.queries.models.card
   create-card!]
  [metabase.queries.metadata
@@ -30,6 +29,7 @@
   model-supports-implicit-actions?
   model?
   sole-dashboard-id
+  starting-card-schema-version
   update-card!
    ;; TODO -- not convinced whether this belongs here or in `permissions`
   with-can-run-adhoc-query]
