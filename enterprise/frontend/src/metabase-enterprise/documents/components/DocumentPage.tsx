@@ -86,13 +86,16 @@ export const DocumentPage = ({
   const [isNavigationScheduled, scheduleNavigation] = useCallbackEffect();
   const isNewDocument = documentId === "new";
 
-  const {
+  let {
     data: documentData,
     isLoading: isDocumentLoading,
     error,
   } = useGetDocumentQuery(
     documentId && !isNewDocument ? { id: documentId } : skipToken,
   );
+  if (documentId !== documentData?.id) {
+    documentData = undefined;
+  }
 
   const canWrite = isNewDocument ? true : documentData?.can_write;
 
