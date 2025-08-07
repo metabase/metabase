@@ -13,6 +13,7 @@ export type Transform = {
   target: TransformTarget;
 
   // hydrated fields
+  tag_ids?: TransformTagId[];
   table?: Table | null;
   last_execution?: TransformExecution | null;
 };
@@ -60,6 +61,7 @@ export type TransformJob = {
   schedule: string;
 
   // hydrated fields
+  tag_ids?: TransformTagId[];
   last_execution?: TransformJobExecution | null;
 };
 
@@ -75,6 +77,7 @@ export type CreateTransformRequest = {
   description?: string | null;
   source: TransformSource;
   target: TransformTarget;
+  tag_ids?: TransformTagId[];
 };
 
 export type UpdateTransformRequest = {
@@ -83,12 +86,14 @@ export type UpdateTransformRequest = {
   description?: string | null;
   source?: TransformSource;
   target?: TransformTarget;
+  tag_ids?: TransformTagId[];
 };
 
 export type CreateTransformJobRequest = {
   name: string;
   description?: string | null;
   schedule: string;
+  tag_ids?: TransformTagId[];
 };
 
 export type UpdateTransformJobRequest = {
@@ -96,6 +101,7 @@ export type UpdateTransformJobRequest = {
   name?: string;
   description?: string | null;
   schedule?: string;
+  tag_ids?: TransformTagId[];
 };
 
 export type CreateTransformTagRequest = {

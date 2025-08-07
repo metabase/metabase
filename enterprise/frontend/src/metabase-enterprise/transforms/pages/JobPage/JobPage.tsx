@@ -7,7 +7,7 @@ import { Stack } from "metabase/ui";
 import { useGetTransformJobQuery } from "metabase-enterprise/api";
 import type { TransformJobId } from "metabase-types/api";
 
-import { BreadcrumbsSection } from "./BreadcrumbsSection";
+import { HeaderSection } from "./HeaderSection";
 import { ManageSection } from "./ManageSection";
 import { NameSection } from "./NameSection";
 import { TagSection } from "./TagSection";
@@ -42,9 +42,9 @@ export function JobPage({ params }: JobPageProps) {
 
   return (
     <Stack gap="lg">
-      <BreadcrumbsSection job={job} />
+      <HeaderSection job={job} />
       <NameSection job={job} />
-      <TagSection />
+      <TagSection job={job} />
       <ManageSection job={job} />
     </Stack>
   );

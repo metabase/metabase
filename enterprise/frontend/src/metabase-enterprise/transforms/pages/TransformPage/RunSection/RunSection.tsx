@@ -11,11 +11,14 @@ import {
   Stack,
   Text,
 } from "metabase/ui";
-import { useExecuteTransformMutation } from "metabase-enterprise/api";
-import type { Transform } from "metabase-types/api";
+import {
+  useExecuteTransformMutation,
+  useUpdateTransformMutation,
+} from "metabase-enterprise/api";
+import type { Transform, TransformTagId } from "metabase-types/api";
 
 import { SplitSection } from "../../../components/SplitSection";
-import { TagListInput } from "../../../components/TagListInput";
+import { TagMultiSelect } from "../../../components/TagMultiSelect";
 
 import { getStatusInfo } from "./utils";
 
@@ -39,7 +42,7 @@ export function RunSection({ transform }: RunSectionProps) {
           <Box fw="bold">{t`Run it on a schedule with tags`}</Box>
           <Box>{t`Jobs will run all transforms with their tags.`}</Box>
         </Stack>
-        <TagInputSection />
+        <TagSection transform={transform} />
       </Group>
     </SplitSection>
   );
@@ -90,10 +93,40 @@ function RunButton({ transform }: RunButtonProps) {
   );
 }
 
-export function TagInputSection() {
+type TagSectionProps = {
+  transform: Transform;
+};
+
+function TagSection({ transform }: TagSectionProps) {
+  const [updateTransform] = useUpdateTransformMutation();
+  const { sendErrorToast, sendSuccessToast, sendUndoToast } =
+    useMetadataToasts();
+
+  const handleTagListChange = async (tagIds: TransformTagId[]) => {
+    const { error } = await updateTransform({
+      id: transform.id,
+      tag_ids: tagIds,
+    });
+
+    if (error) {
+      sendErrorToast(t`Failed to update transform tags`);
+    } else {
+      sendSuccessToast(t`Transform tags updated`, async () => {
+        const { error } = await updateTransform({
+          id: transform.id,
+          tag_ids: transform.tag_ids,
+        });
+        sendUndoToast(error);
+      });
+    }
+  };
+
   return (
     <Box flex={1}>
-      <TagListInput />
+      <TagMultiSelect
+        tagIds={transform.tag_ids ?? []}
+        onChange={handleTagListChange}
+      />
     </Box>
   );
 }

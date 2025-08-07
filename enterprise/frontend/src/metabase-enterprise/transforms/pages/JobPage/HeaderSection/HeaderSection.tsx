@@ -4,11 +4,11 @@ import { BrowserCrumbs } from "metabase/common/components/BrowserCrumbs";
 import { getJobListUrl, getJobUrl } from "metabase-enterprise/transforms/urls";
 import type { TransformJob } from "metabase-types/api";
 
-type BreadcrumbsSectionProps = {
+type HeaderSectionProps = {
   job: TransformJob;
 };
 
-export function BreadcrumbsSection({ job }: BreadcrumbsSectionProps) {
+export function HeaderSection({ job }: HeaderSectionProps) {
   return (
     <BrowserCrumbs
       crumbs={[
