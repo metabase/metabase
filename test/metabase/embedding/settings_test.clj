@@ -74,12 +74,12 @@
     (mt/with-temporary-setting-values [enable-embedding-sdk true]
       (let [origin-value "localhost:*"]
         (embed.settings/embedding-app-origins-sdk! origin-value)
-        (testing "All localhosty origins should be ignored, so the result should be \"localhost:*\""
+        (testing "All localhosty origins should be ignored, so the result should be empty"
           (embed.settings/embedding-app-origins-sdk! (str origin-value " localhost:8080"))
-          (is (= "localhost:*" (embed.settings/embedding-app-origins-sdk))))
+          (is (= "" (embed.settings/embedding-app-origins-sdk))))
         (testing "Normal ips are added to the list"
           (embed.settings/embedding-app-origins-sdk! (str origin-value " " other-ip))
-          (is (= (str "localhost:* " other-ip) (embed.settings/embedding-app-origins-sdk))))))))
+          (is (= other-ip (embed.settings/embedding-app-origins-sdk))))))))
 
 (deftest enable-embedding-SDK-false-returns-nothing
   (mt/with-premium-features #{:embedding :embedding-sdk}
@@ -185,13 +185,13 @@
         (= expected-behavior :no-op)
         (do (is (= (:embedding-app-origins-interactive unsyncd-setting)
                    (embed.settings/embedding-app-origins-interactive)))
-            (is (= (#'embed.settings/add-localhost (:embedding-app-origins-sdk unsyncd-setting))
+            (is (= (:embedding-app-origins-sdk unsyncd-setting)
                    (embed.settings/embedding-app-origins-sdk))))
 
         (= expected-behavior :sets-both)
         (do (is (= (:mb-embedding-app-origin env)
                    (embed.settings/embedding-app-origins-interactive)))
-            (is (= (#'embed.settings/add-localhost (:mb-embedding-app-origin env))
+            (is (= (:mb-embedding-app-origin env)
                    (embed.settings/embedding-app-origins-sdk))))
 
         :else (throw (ex-info "Invalid expected-behavior in test-origin-sync." {:expected-behavior expected-behavior}))))))
