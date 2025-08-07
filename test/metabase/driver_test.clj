@@ -256,7 +256,7 @@
 
 (deftest ^:parallel table-exists-test
   (testing "Make sure checking for table existence works"
-    (mt/test-drivers (mt/normal-drivers-with-feature :table-existence-checking)
+    (mt/test-drivers (mt/normal-drivers-with-feature :metadata/table-existence-check)
       (let [venues-table (t2/select-one :model/Table :id (mt/id :venues))
             fake-table {:name "fake_table_xyz123" :schema (:schema venues-table)}]
         (is (driver/table-exists? driver/*driver* (mt/db) venues-table)

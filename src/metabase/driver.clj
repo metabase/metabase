@@ -715,7 +715,7 @@
     :transforms/materialized-view
 
     ;; Does this driver properly support the table-exists? method for checking table existence?
-    :table-existence-checking
+    :metadata/table-existence-check
 
     ;; Whether the driver supports loading dynamic test datasets on each test run. Eg. datasets with names like
     ;; `checkins:4-per-minute` are created dynamically in each test run. This should be truthy for every driver we test
@@ -781,7 +781,7 @@
                               :saved-question-sandboxing              true
                               :test/dynamic-dataset-loading           true
                               :test/uuids-in-create-table-statements true
-                              :table-existence-checking false}]
+                              :metadata/table-existence-check false}]
   (defmethod database-supports? [::driver feature] [_driver _feature _db] supported?))
 
 ;;; By default a driver supports `:native-parameter-card-reference` if it supports `:native-parameters` AND
@@ -1425,7 +1425,6 @@
    If you need proactively to check for table existence, this is the preferred method.
    The default implementation uses describe-table and catches exceptions, but drivers can override
    this with more efficient implementations for databases that support them.."
-  ;; TSD TODO: how do we handle `:added`?
   {:added "" :arglists '([driver database table])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
@@ -1438,7 +1437,9 @@
       (boolean (seq (:fields table-info))))
     (catch Exception e
       ;; If an exception was thrown, check if it's because the table doesn't exist
-      (not (table-known-to-not-exist? driver e)))))
+      (if (table-known-to-not-exist? driver e)
+        false
+        (throw e)))))
 
 (defmulti set-database-used!
   "Sets the database to be used on a connection. Called prior to query execution for drivers that support USE DATABASE like commands."

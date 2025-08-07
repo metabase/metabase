@@ -44,7 +44,7 @@
                               :test/jvm-timezone-setting false
                               :database-routing          true
                               :transforms/table false
-                              :table-existence-checking true}]
+                              :metadata/table-existence-check true}]
   (defmethod driver/database-supports? [:redshift feature] [_driver _feat _db] supported?))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

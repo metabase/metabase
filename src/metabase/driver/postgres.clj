@@ -79,7 +79,7 @@
                               :database-routing         true
                               :transforms/table         true
                               :transforms/view true
-                              :table-existence-checking true}]
+                              :metadata/table-existence-check true}]
   (defmethod driver/database-supports? [:postgres feature] [_driver _feature _db] supported?))
 
 (defmethod driver/database-supports? [:postgres :nested-field-columns]

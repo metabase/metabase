@@ -749,7 +749,7 @@
                               :set-timezone             true
                               :expression-literals      true
                               :database-routing true
-                              :table-existence-checking true}]
+                              :metadata/table-existence-check true}]
   (defmethod driver/database-supports? [:bigquery-cloud-sdk feature] [_driver _feature _db] supported?))
 
 ;; BigQuery is always in UTC
