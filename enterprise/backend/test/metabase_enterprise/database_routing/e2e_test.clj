@@ -213,7 +213,7 @@
 
 (defmethod router-dataset-name :default [_driver] "db-router-data")
 
-(doseq [driver [:redshift :databricks]]
+(doseq [driver [:redshift :databricks :athena]]
   (defmethod router-dataset-name driver [_driver] "db-routing-data"))
 
 (defmulti routed-dataset-name
@@ -224,12 +224,10 @@
 
 (defmethod routed-dataset-name :default [_driver] "db-routed-data")
 
-(doseq [driver [:redshift :databricks]]
+(doseq [driver [:redshift :databricks :athena]]
   (defmethod routed-dataset-name driver [_driver] "db-routing-data"))
 
 (deftest db-routing-e2e-test
-  ;; todo: this is to quickly get tests against all drivers right now. We probably want to make a
-  ;; few more nice helpers, and remove some of the above tests which are duplicative of the below.
   (mt/test-drivers (mt/normal-driver-select {:+features [:database-routing]})
     (mt/with-premium-features #{:database-routing}
       (binding [tx/*use-routing-dataset* true
