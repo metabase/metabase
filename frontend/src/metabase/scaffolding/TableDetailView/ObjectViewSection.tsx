@@ -100,6 +100,19 @@ export function ObjectViewSection({
         [S.highlight2]: variant === "highlight-2",
         [S.hovered]: isHovered,
       })}
+      mt={variant !== "subheader" ? "sm" : undefined}
+      px={variant !== "subheader" ? "lg" : undefined}
+      py={variant !== "subheader" ? "lg" : undefined}
+      bg={variant !== "subheader" ? "white" : undefined}
+      style={
+        variant !== "subheader"
+          ? {
+              border: "1px solid var(--mb-color-border)",
+              borderRadius: "var(--mantine-radius-md)",
+              overflow: "hidden",
+            }
+          : {}
+      }
     >
       {onUpdateSection && section.title.trim().length > 0 && (
         <Group gap="md" className={S.SectionTitle}>
@@ -117,6 +130,7 @@ export function ObjectViewSection({
           </Text>
         </Group>
       )}
+
       <Flex className={S.SectionContent}>
         {section.fields.map(({ field_id }, index) => {
           const columnIndex = columns.findIndex(

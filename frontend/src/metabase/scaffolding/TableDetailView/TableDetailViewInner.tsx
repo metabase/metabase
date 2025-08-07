@@ -235,14 +235,14 @@ export function TableDetailViewInner({
     >
       <Stack
         gap="md"
-        px="lg"
-        py="xl"
-        bg="white"
-        style={{
-          border: "1px solid var(--mb-color-border)",
-          borderRadius: "var(--mantine-radius-md)",
-          overflow: "hidden",
-        }}
+        // px="lg"
+        // py="xl"
+        // bg="white"
+        // style={{
+        //   border: "1px solid var(--mb-color-border)",
+        //   borderRadius: "var(--mantine-radius-md)",
+        //   overflow: "hidden",
+        // }}
       >
         <DndContext
           sensors={sensors}
@@ -256,11 +256,11 @@ export function TableDetailViewInner({
           >
             {notEmptySections.map((section, index) => (
               <Fragment key={section.id}>
-                {index > 0 &&
+                {/* {index > 0 &&
                   (section.variant === "normal" ||
                     section.variant === "highlight-2") && (
                     <Divider my={0} mx="md" />
-                  )}
+                  )} */}
                 <SortableSection
                   section={section}
                   variant={section.variant}
@@ -283,10 +283,10 @@ export function TableDetailViewInner({
               </Fragment>
             ))}
 
-            {notEmptySections.length > 0 &&
+            {/* {notEmptySections.length > 0 &&
               uncategorizedSection.fields.length > 0 && (
                 <Divider my={0} mx="md" />
-              )}
+              )} */}
             <SortableSection
               section={uncategorizedSection}
               variant={uncategorizedSection.variant}
