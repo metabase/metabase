@@ -647,6 +647,7 @@
        (driver/incorporate-auth-provider-details
         driver
         auth-provider
+        ;; database-id is completely unused here
         (auth-provider/fetch-auth auth-provider database-id db-details)
         db-details))
      db-details)))

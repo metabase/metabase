@@ -1,6 +1,8 @@
 (ns metabase-enterprise.database-routing.model
   (:require
    [metabase-enterprise.database-routing.common :refer [router-db-or-id->destination-db-id]]
+   [metabase.api.common :as api]
+   [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util :as u]
@@ -30,9 +32,3 @@
   [field]
   (when-let [destination-db-id (some->> field u/the-id field/field-id->database-id router-db-or-id->destination-db-id)]
     {:destination-db-id destination-db-id}))
-
-(defenterprise delete-associated-database-router!
-  "Deletes the Database Router associated with this router database."
-  :feature :database-routing
-  [db-id]
-  (t2/delete! :model/DatabaseRouter :database_id db-id))

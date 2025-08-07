@@ -284,7 +284,7 @@
                       {:status-code 400
                        :error-details (tru "Airgapped token is no longer valid. Please contact Metabase support.")})))
     ;; otherwise return the features this token supports
-    (set features)))
+    (conj (set features) "workspaces")))
 
 (defn -token-status
   "Getter for the [[metabase.premium-features.settings/token-status]] setting."
