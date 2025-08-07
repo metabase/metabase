@@ -62,8 +62,8 @@ export function JobList() {
           >
             <td>{job.name}</td>
             <td>
-              {job.last_execution?.end_time
-                ? formatTimestamp(job.last_execution?.end_time)
+              {job.last_execution?.start_time
+                ? formatTimestamp(job.last_execution?.start_time)
                 : null}
             </td>
             <td>
