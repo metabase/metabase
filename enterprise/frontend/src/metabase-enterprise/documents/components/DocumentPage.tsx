@@ -1,4 +1,5 @@
 import { useDisclosure } from "@mantine/hooks";
+import cx from "classnames";
 import dayjs from "dayjs";
 import { useCallback, useEffect, useState } from "react";
 import type { Route } from "react-router";
@@ -394,7 +395,11 @@ export const DocumentPage = ({
                 )}
               </Flex>
               <Flex gap="md" align="center">
-                {showSaveButton && (
+                <Box
+                  className={cx(styles.hidable, {
+                    [styles.visible]: showSaveButton,
+                  })}
+                >
                   <Button
                     onClick={() => {
                       isNewDocument ? showCollectionPicker() : handleSave();
@@ -404,7 +409,7 @@ export const DocumentPage = ({
                   >
                     {t`Save`}
                   </Button>
-                )}
+                </Box>
                 <Menu position="bottom-end">
                   <Menu.Target>
                     <ActionIcon
