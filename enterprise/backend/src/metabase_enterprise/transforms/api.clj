@@ -11,6 +11,7 @@
    [metabase.api.routes.common :refer [+auth]]
    [metabase.api.util.handlers :as handlers]
    [metabase.driver.util :as driver.u]
+   [metabase.request.core :as request]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
@@ -101,8 +102,6 @@
 (api.macros/defendpoint :get "/execution"
   [params :-
    [:map
-    [:offset                          ms/IntGreaterThanOrEqualToZero]
-    [:limit                           ms/IntGreaterThanOrEqualToZero]
     [:sort_column    {:optional true} [:enum "started_at" "ended_at"]]
     [:sort_direction {:optional true} [:enum "asc" "desc"]]
     [:transform_id   {:optional true} ms/IntGreaterThanOrEqualToZero]
@@ -111,14 +110,14 @@
   (api/check-superuser)
   (update (worker/paged-executions (-> params
                                        (set/rename-keys {:transform_id :work_id})
-                                       (assoc :work_type "transform")))
+                                       (assoc :work_type "transform"
+                                              :offset    (request/offset)
+                                              :limit     (request/limit))))
           :data #(mapv (fn [run]
                          (-> run
                              (set/rename-keys {:run_id     :id
                                                :work_id    :transform_id
-                                               :run_method :trigger
-                                               :start_time :started_at
-                                               :end_time   :ended_at})))
+                                               :run_method :trigger})))
                        %)))
 
 (api.macros/defendpoint :put "/:id"
