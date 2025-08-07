@@ -6,7 +6,7 @@ import {
   FormProvider,
   FormSubmitButton,
 } from "metabase/forms";
-import { Button, Group, Modal, Stack, Text } from "metabase/ui";
+import { Button, FocusTrap, Group, Modal, Stack, Text } from "metabase/ui";
 import { useDeleteTransformJobMutation } from "metabase-enterprise/api";
 import type { TransformJob } from "metabase-types/api";
 
@@ -23,6 +23,7 @@ export function DeleteJobModal({
 }: DeleteJobModalProps) {
   return (
     <Modal title={t`Delete this job?`} opened padding="xl" onClose={onClose}>
+      <FocusTrap.InitialFocus />
       <DeleteJobForm job={job} onDelete={onDelete} onClose={onClose} />
     </Modal>
   );

@@ -13,7 +13,7 @@ import {
   FormTextInput,
 } from "metabase/forms";
 import * as Errors from "metabase/lib/errors";
-import { Button, Group, Modal, Stack } from "metabase/ui";
+import { Button, FocusTrap, Group, Modal, Stack } from "metabase/ui";
 import { useCreateTransformMutation } from "metabase-enterprise/api";
 import type {
   CreateTransformRequest,
@@ -34,6 +34,7 @@ export function CreateTransformModal({
 }: CreateTransformModalProps) {
   return (
     <Modal title={t`Save your transform`} opened padding="xl" onClose={onClose}>
+      <FocusTrap.InitialFocus />
       <CreateTransformForm
         query={query}
         onCreate={onCreate}

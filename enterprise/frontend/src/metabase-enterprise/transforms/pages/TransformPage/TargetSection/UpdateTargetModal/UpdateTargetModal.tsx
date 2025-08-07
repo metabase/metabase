@@ -13,7 +13,7 @@ import {
   FormTextInput,
 } from "metabase/forms";
 import * as Errors from "metabase/lib/errors";
-import { Button, Group, Modal, Radio, Stack } from "metabase/ui";
+import { Button, FocusTrap, Group, Modal, Radio, Stack } from "metabase/ui";
 import {
   useDeleteTransformTargetMutation,
   useUpdateTransformMutation,
@@ -38,6 +38,7 @@ export function UpdateTargetModal({
       padding="xl"
       onClose={onClose}
     >
+      <FocusTrap.InitialFocus />
       <UpdateTargetForm
         transform={transform}
         onUpdate={onUpdate}

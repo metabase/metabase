@@ -7,7 +7,15 @@ import {
   FormProvider,
   FormSubmitButton,
 } from "metabase/forms";
-import { Button, Group, Modal, Radio, Stack, Text } from "metabase/ui";
+import {
+  Button,
+  FocusTrap,
+  Group,
+  Modal,
+  Radio,
+  Stack,
+  Text,
+} from "metabase/ui";
 import {
   useDeleteTransformMutation,
   useDeleteTransformTargetMutation,
@@ -32,6 +40,7 @@ export function DeleteTransformModal({
       padding="xl"
       onClose={onClose}
     >
+      <FocusTrap.InitialFocus />
       <DeleteTransformForm
         transform={transform}
         onDelete={onDelete}
