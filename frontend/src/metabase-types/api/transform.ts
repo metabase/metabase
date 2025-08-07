@@ -9,7 +9,6 @@ export type Transform = {
   description: string | null;
   source: TransformSource;
   target: TransformTarget;
-  execution_trigger: TransformExecutionTrigger;
 
   // hydrated fields
   table?: Table | null;
@@ -41,13 +40,11 @@ export type TransformExecutionStatus =
   | "failed"
   | "timeout";
 
-export type TransformExecutionTrigger = "none" | "global-schedule";
-
 export type CreateTransformRequest = {
   name: string;
+  description: string | null;
   source: TransformSource;
   target: TransformTarget;
-  execution_trigger: TransformExecutionTrigger;
 };
 
 export type UpdateTransformRequest = {
@@ -56,5 +53,4 @@ export type UpdateTransformRequest = {
   description?: string | null;
   source?: TransformSource;
   target?: TransformTarget;
-  execution_trigger?: TransformExecutionTrigger;
 };

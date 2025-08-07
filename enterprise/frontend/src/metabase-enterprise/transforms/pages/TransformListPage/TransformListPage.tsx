@@ -11,7 +11,7 @@ export function TransformListPage() {
       <Group>
         <Stack gap="sm" flex={1}>
           <Title order={1}>{t`Transforms`}</Title>
-          <Text>{t`Create custom tables with transforms.`}</Text>
+          <Text>{t`Create custom tables with transforms, and run them on a schedule.`}</Text>
         </Stack>
         <NewTransformMenu />
       </Group>
