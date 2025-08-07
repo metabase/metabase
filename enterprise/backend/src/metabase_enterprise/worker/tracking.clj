@@ -9,6 +9,10 @@
 
 (set! *warn-on-reflection* true)
 
+(defn- worker-db []
+  (assert (config/config-str :mb-worker-db) "Must have env var MB_WORKER_DB set to run this function.")
+  (config/config-str :mb-worker-db))
+
 (defn- run-query! [driver conn-str sql params]
   (with-open [conn (java.sql.DriverManager/getConnection conn-str)
               stmt (sql-jdbc.execute/statement-or-prepared-statement driver
@@ -35,7 +39,7 @@
 
 (defn track-start!
   [run-id mb-source]
-  (-> (run-update! :postgres (config/config-str :mb-worker-db)
+  (-> (run-update! :postgres (worker-db)
                    "
 INSERT INTO worker_runs (run_id, source, status)
 SELECT ?, ?, 'running'
@@ -50,7 +54,7 @@ WHERE NOT EXISTS (
   ([run-id status]
    (set-status! run-id status ""))
   ([run-id status note]
-   (run-update! :postgres (config/config-str :mb-worker-db)
+   (run-update! :postgres (worker-db)
                 "UPDATE worker_runs
                  SET status = ?, end_time = now(), note = ?
                  WHERE run_id = ? AND status = 'running'"
@@ -70,7 +74,7 @@ WHERE NOT EXISTS (
   (set-status! run-id "canceled" msg))
 
 (defn mark-cancel-started-run! [run-id mb-source]
-  (-> (run-update! :postgres (config/config-str :mb-worker-db)
+  (-> (run-update! :postgres (worker-db)
                    "
 INSERT INTO worker_runs_cancelation (run_id)
 SELECT ?
@@ -98,7 +102,7 @@ WHERE EXISTS (
 
 (defn get-status
   [run-id mb-source]
-  (->> (run-query! :postgres (config/config-str :mb-worker-db)
+  (->> (run-query! :postgres (worker-db)
                    "SELECT run_id, status, start_time, end_time, note, EXTRACT(EPOCH FROM now() - start_time) as run_time
                       FROM worker_runs
                       WHERE run_id = ? AND source = ?"
@@ -110,7 +114,7 @@ WHERE EXISTS (
 
 (defn timeout-old-tasks
   [] ;; TODO (eric) :worker db function
-  (run-update! :postgres (config/config-str :mb-worker-db)
+  (run-update! :postgres (worker-db)
                "UPDATE worker_runs
                   SET status = ?, end_time = NOW(), note = ?
                   WHERE status = 'running' AND start_time < NOW() - INTERVAL '4 hours'"
@@ -119,7 +123,7 @@ WHERE EXISTS (
 (defn cancel-old-cancelations!
   []
   ;; update the status of canceled runs > 1 minute old
-  (run-update! :postgres (config/config-str :mb-worker-db)
+  (run-update! :postgres (worker-db)
                "UPDATE worker_runs
                   SET status = 'canceled', end_time = NOW(), note = ?
                   WHERE status = 'running' AND 
