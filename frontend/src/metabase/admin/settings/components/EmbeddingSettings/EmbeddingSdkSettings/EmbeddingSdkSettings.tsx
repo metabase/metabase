@@ -28,6 +28,7 @@ import {
 
 import { SettingHeader } from "../../SettingHeader";
 import { AdminSettingInput } from "../../widgets/AdminSettingInput";
+import { LinkButton } from "../EmbeddingOption/LinkButton";
 import { EmbeddingToggle } from "../EmbeddingToggle";
 
 import S from "./EmbeddingSdkSettings.module.css";
@@ -189,27 +190,14 @@ export function EmbeddingSdkSettings() {
 
             {isSimpleEmbedFeatureEnabled ? (
               <Group gap="md">
-                <Button
+                <LinkButton
                   size="compact-xs"
                   variant="outline"
-                  component={ExternalLink}
-                  href={quickStartUrl}
-                  rightSection={<Icon size={12} name="external" />}
+                  to="/embed-js"
                   fz="sm"
                 >
-                  {t`Quick start`}
-                </Button>
-
-                <Button
-                  size="compact-xs"
-                  variant="outline"
-                  component={ExternalLink}
-                  href={documentationUrl}
-                  rightSection={<Icon size={12} name="external" />}
-                  fz="sm"
-                >
-                  {t`Documentation`}
-                </Button>
+                  {t`Try it out`}
+                </LinkButton>
               </Group>
             ) : (
               <UpsellEmbeddingButton
