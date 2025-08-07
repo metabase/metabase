@@ -18,31 +18,21 @@ export async function findRequests(
   const calls = fetchMock.callHistory.calls();
   const filteredCalls = calls.filter((call) => call.request?.method === method);
 
-  const reqs = await Promise.all(
+  return Promise.all(
     filteredCalls.map(async (call) => {
-      let body = "{}";
+      let bodyText = "";
 
-      // Check if there's a body in the options (for url+options calls)
+      // Try to get body from options first, then from request
       if (call.options?.body) {
-        if (typeof call.options.body === "string") {
-          body = call.options.body;
-        } else {
-          // Handle other body types (FormData, URLSearchParams, etc.)
-          body = call.options.body.toString();
-        }
-      }
-      // Check if there's a Request object with body
-      else if (call.request?.body && !call.request.bodyUsed) {
-        const clonedRequest = call.request.clone();
-        body = await clonedRequest.text();
+        bodyText = call.options.body.toString();
+      } else if (call.request?.body && !call.request.bodyUsed) {
+        bodyText = await call.request.clone().text();
       }
 
       return {
         url: call.url || "",
-        body: JSON.parse(body || "{}"),
+        body: bodyText ? JSON.parse(bodyText) : {},
       };
     }),
   );
-
-  return reqs;
 }
