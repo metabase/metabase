@@ -41,7 +41,7 @@ export function TagSection({ job }: TagSectionProps) {
       label={t`Tags to run`}
       description={t`This job will run all transforms tagged with the tags you pick here.`}
     >
-      <Box p="lg">
+      <Box p="xl">
         <TagMultiSelect
           tagIds={job.tag_ids ?? []}
           onChange={handleTagListChange}

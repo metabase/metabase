@@ -32,7 +32,7 @@ export function ScheduleSection({ job }: ScheduleSectionProps) {
       label={t`Schedule`}
       description={t`Use cron syntax to set this job’s schedule.`}
     >
-      <Box p="lg">
+      <Box px="xl" py="lg">
         <CronSection
           job={job}
           schedule={schedule}
@@ -40,13 +40,15 @@ export function ScheduleSection({ job }: ScheduleSectionProps) {
         />
       </Box>
       <Divider />
-      <Group p="lg" justify={scheduleExplanation ? "space-between" : "end"}>
+      <Group
+        px="xl"
+        py="md"
+        justify={scheduleExplanation ? "space-between" : "end"}
+      >
         {scheduleExplanation != null && (
-          <Group>
+          <Group gap="sm" c="text-secondary">
             <Icon name="calendar" />
-            <Box c="text-secondary">
-              {t`This job will run ${scheduleExplanation}`}
-            </Box>
+            {t`This job will run ${scheduleExplanation}`}
           </Group>
         )}
         <RunButton job={job} />

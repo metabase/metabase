@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { type MouseEvent, useState } from "react";
 import { jt, t } from "ttag";
 
 import {
@@ -144,6 +144,10 @@ function ExistingTagSelectItem({
   selected,
   onModalOpen,
 }: ExistingTagSelectItemProps) {
+  const handleTargetClick = (event: MouseEvent) => {
+    event.stopPropagation();
+  };
+
   return (
     <SelectItem selected={selected}>
       <Text c="inherit" lh="inherit">
@@ -151,7 +155,7 @@ function ExistingTagSelectItem({
       </Text>
       <Menu>
         <Menu.Target>
-          <ActionIcon>
+          <ActionIcon onClick={handleTargetClick}>
             <Icon name="ellipsis" />
           </ActionIcon>
         </Menu.Target>
