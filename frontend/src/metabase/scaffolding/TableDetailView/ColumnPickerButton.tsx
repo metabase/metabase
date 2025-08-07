@@ -34,6 +34,15 @@ export const ColumnPickerButton = ({
   const limitReached =
     typeof fieldsLimit === "number" && section.fields.length >= fieldsLimit;
 
+  const sectionFieldIds = new Set(
+    sections.flatMap((section) => {
+      return section.fields.map((field) => field.field_id);
+    }),
+  );
+  const unsectionedColumns = columns.filter(
+    (column) => column.id && !sectionFieldIds.has(column.id),
+  );
+
   const handleChange = (column: DatasetColumn) => {
     const newField = { field_id: column.id as number };
     const fields = [...section.fields, newField];
@@ -61,7 +70,7 @@ export const ColumnPickerButton = ({
           label={t`This group supports up to ${fieldsLimit} columns`}
         >
           <Button
-            disabled={limitReached}
+            disabled={limitReached || unsectionedColumns.length === 0}
             onClick={() => setIsOpen(true)}
           >{t`Click`}</Button>
         </Tooltip>

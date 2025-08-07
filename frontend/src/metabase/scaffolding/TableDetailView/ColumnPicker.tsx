@@ -1,5 +1,4 @@
 import { type ReactNode, useMemo } from "react";
-import { t } from "ttag";
 
 import { createMockMetadata } from "__support__/metadata";
 import { AccordionList } from "metabase/common/components/AccordionList/AccordionList";
@@ -53,8 +52,6 @@ function getSections(
   columns: DatasetColumn[],
   sections: ObjectViewSectionSettings[],
 ): Section<ColumnItem>[] {
-  const fieldIdToColumn = new Map(columns.map((column) => [column.id, column]));
-
   const sectionFieldIds = new Set(
     sections.flatMap((section) => {
       return section.fields.map((field) => field.field_id);
@@ -67,21 +64,9 @@ function getSections(
 
   return [
     {
-      name: t`Unused columns`,
       items: getSectionItems(unsectionedColumns),
       type: "header" as const,
     },
-    ...sections.map((section) => {
-      const sectionColumns = section.fields
-        .map((field) => fieldIdToColumn.get(field.field_id))
-        .filter((column): column is DatasetColumn => column !== undefined);
-
-      return {
-        name: section.title,
-        items: getSectionItems(sectionColumns),
-        type: "header" as const,
-      };
-    }),
   ].filter((section) => section.items.length > 0);
 }
 
