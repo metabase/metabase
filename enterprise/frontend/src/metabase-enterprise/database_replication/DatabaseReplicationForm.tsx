@@ -165,14 +165,17 @@ export const DatabaseReplicationForm = ({
         onSubmit={onSubmit}
         validationSchema={validationSchema}
       >
-        {({ /*dirty,*/ values }) => (
+        {({ dirty, values, setFieldValue }) => (
           <Form>
             <FormSelect
               name="schemaSelect"
               label={t`Select schemas to replicate`}
-              onChange={(value) =>
-                setSchemaSelect(value as typeof initialValues.schemaSelect)
-              }
+              onChange={(value) => {
+                setSchemaSelect(value as typeof initialValues.schemaSelect);
+                if (value === "all") {
+                  setFieldValue("schemaFields", "");
+                }
+              }}
               data={[
                 { value: "all", label: t`All` },
                 { value: "include", label: t`Only these…` },
@@ -244,9 +247,7 @@ export const DatabaseReplicationForm = ({
             <Flex justify="end">
               <Group>
                 <FormSubmitButton
-                  disabled={
-                    false /*!dirty*/ /* FIXME: form thinks it is 'dirty' when selecting schemaSelect=all */
-                  }
+                  disabled={!dirty}
                   label={t`Start replication`}
                   variant="filled"
                 />
