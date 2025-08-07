@@ -560,7 +560,6 @@ describe("AddToDashSelectDashModal", () => {
       });
     });
 
-
     it("when adding a public question, should not send a personal-only query param", async () => {
       await setup({
         card: CARD_IN_PUBLIC_COLLECTION,

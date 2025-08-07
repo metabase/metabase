@@ -66,7 +66,9 @@ describe("DatabaseConnectionInfoSection", () => {
     it("should show error message if healthcheck returns errors", async () => {
       setup({
         mockEndpointsCb: (database) => {
-          fetchMock.modifyRoute(`database-${database.id}-healthcheck`, { response: { body: { status: "error", message: "Test failure" } } });
+          fetchMock.modifyRoute(`database-${database.id}-healthcheck`, {
+            response: { body: { status: "error", message: "Test failure" } },
+          });
         },
       });
       expect(await screen.findByText("Test failure")).toBeInTheDocument();
@@ -75,7 +77,9 @@ describe("DatabaseConnectionInfoSection", () => {
     it("should show error message if healthcheck HTTP request fails", async () => {
       setup({
         mockEndpointsCb: (database) => {
-          fetchMock.modifyRoute(`database-${database.id}-healthcheck`, { response: { status: 500 } });
+          fetchMock.modifyRoute(`database-${database.id}-healthcheck`, {
+            response: { status: 500 },
+          });
         },
       });
       expect(
@@ -90,7 +94,9 @@ describe("DatabaseConnectionInfoSection", () => {
       await userEvent.click(screen.getByText(/Sync database schema/i));
       await waitFor(() => {
         expect(
-          fetchMock.callHistory.called(`path:/api/database/${database.id}/sync_schema`),
+          fetchMock.callHistory.called(
+            `path:/api/database/${database.id}/sync_schema`,
+          ),
         ).toBe(true);
       });
     });
@@ -100,7 +106,9 @@ describe("DatabaseConnectionInfoSection", () => {
       await userEvent.click(screen.getByText(/Re-scan field values/i));
       await waitFor(() => {
         expect(
-          fetchMock.callHistory.called(`path:/api/database/${database.id}/rescan_values`),
+          fetchMock.callHistory.called(
+            `path:/api/database/${database.id}/rescan_values`,
+          ),
         ).toBe(true);
       });
     });
@@ -138,8 +146,9 @@ describe("DatabaseConnectionInfoSection", () => {
           );
 
           expect(
-            fetchMock.callHistory.calls(`path:/api/database/${database.id}/dismiss_spinner`)
-              .length,
+            fetchMock.callHistory.calls(
+              `path:/api/database/${database.id}/dismiss_spinner`,
+            ).length,
           ).toBe(1);
         });
       });

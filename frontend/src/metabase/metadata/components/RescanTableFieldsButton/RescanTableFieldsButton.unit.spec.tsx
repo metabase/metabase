@@ -100,7 +100,9 @@ describe("RescanTableFieldsButton", () => {
   it("should show error message toast", async () => {
     const { table } = setup();
 
-    fetchMock.modifyRoute(`table-${table.id}-rescan-values`, { response: { status: 500 } });
+    fetchMock.modifyRoute(`table-${table.id}-rescan-values`, {
+      response: { status: 500 },
+    });
 
     const button = screen.getByRole("button");
     expect(button).toHaveTextContent("Re-scan table");

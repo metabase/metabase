@@ -71,7 +71,6 @@ describe("Admin > CollectionPermissionsPage (enterprise)", () => {
       ).toBeInTheDocument();
     });
 
-
     it("should be able to change instance analytics collection permissions", async () => {
       await setup({
         collections: [...defaultCollections, iaCollection],

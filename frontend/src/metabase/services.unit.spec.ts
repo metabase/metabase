@@ -97,7 +97,9 @@ describe("metabase/services > runQuestionQuery", () => {
 
       await setupRunQuestionQuery(question);
 
-      const call = fetchMock.callHistory.lastCall(`path:/api/card/${question.id()}/query`);
+      const call = fetchMock.callHistory.lastCall(
+        `path:/api/card/${question.id()}/query`,
+      );
       expect(await call?.request?.json()).toEqual({
         collection_preview: false,
         ignore_cache: false,
@@ -111,7 +113,6 @@ describe("metabase/services > runQuestionQuery", () => {
       expect(result).toEqual([mockResult]);
     });
 
-
     it("should use the pivot endpoint for pivot tables", async () => {
       const question = createMockSavedQuestion({ display: "pivot" });
       await setupRunQuestionQuery(question);
@@ -124,7 +125,6 @@ describe("metabase/services > runQuestionQuery", () => {
         parameters: [],
       });
     });
-
 
     it("should use the dashboard card query endpoint in dashboard context", async () => {
       const dashboardId = 2;
@@ -142,7 +142,6 @@ describe("metabase/services > runQuestionQuery", () => {
         parameters: [],
       });
     });
-
 
     it("should use the dashboard pivot card query endpoint in dashboard context", async () => {
       const dashboardId = 2;
@@ -178,7 +177,6 @@ describe("metabase/services > runQuestionQuery", () => {
         parameters: [],
       });
     });
-
 
     it("should use the pivot dataset endpoint", async () => {
       const question = createMockAdHocQuestion({ display: "pivot" });

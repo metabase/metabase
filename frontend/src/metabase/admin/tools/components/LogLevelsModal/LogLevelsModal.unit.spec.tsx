@@ -121,7 +121,9 @@ describe("LogLevelsModal", () => {
     await userEvent.click(screen.getByText("Reset to defaults"));
 
     expect(
-      fetchMock.callHistory.calls("path:/api/logger/adjustment", { method: "DELETE" }),
+      fetchMock.callHistory.calls("path:/api/logger/adjustment", {
+        method: "DELETE",
+      }),
     ).toHaveLength(1);
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });

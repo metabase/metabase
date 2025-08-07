@@ -89,9 +89,12 @@ describe("DashboardPublicLinkPopover", () => {
 
     await waitFor(() => {
       expect(
-        fetchMock.callHistory.calls(`path:/api/dashboard/${TEST_DASHBOARD_ID}/public_link`, {
-          method: "POST",
-        }),
+        fetchMock.callHistory.calls(
+          `path:/api/dashboard/${TEST_DASHBOARD_ID}/public_link`,
+          {
+            method: "POST",
+          },
+        ),
       ).toHaveLength(1);
     });
   });
@@ -100,9 +103,12 @@ describe("DashboardPublicLinkPopover", () => {
     setup({ hasPublicLink: true });
     await userEvent.click(screen.getByText("Remove public link"));
     expect(
-      fetchMock.callHistory.calls(`path:/api/dashboard/${TEST_DASHBOARD_ID}/public_link`, {
-        method: "DELETE",
-      }),
+      fetchMock.callHistory.calls(
+        `path:/api/dashboard/${TEST_DASHBOARD_ID}/public_link`,
+        {
+          method: "DELETE",
+        },
+      ),
     ).toHaveLength(1);
   });
 

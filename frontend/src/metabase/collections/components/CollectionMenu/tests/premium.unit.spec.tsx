@@ -183,7 +183,9 @@ describe("CollectionMenu", () => {
       });
 
       await waitFor(() =>
-        expect(fetchMock.callHistory.calls("express:/api/ee/stale/:id")).toHaveLength(1),
+        expect(
+          fetchMock.callHistory.calls("express:/api/ee/stale/:id"),
+        ).toHaveLength(1),
       );
 
       await waitFor(() =>
@@ -230,8 +232,12 @@ describe("CollectionMenu", () => {
       await assertIndicatorHidden();
       await userEvent.click(getIcon("ellipsis"));
 
-      expect(fetchMock.callHistory.calls("path:/api/collection/1/items")).toHaveLength(0);
-      expect(fetchMock.callHistory.calls("express:/api/ee/stale/:id")).toHaveLength(0);
+      expect(
+        fetchMock.callHistory.calls("path:/api/collection/1/items"),
+      ).toHaveLength(0);
+      expect(
+        fetchMock.callHistory.calls("express:/api/ee/stale/:id"),
+      ).toHaveLength(0);
 
       expect(
         screen.queryByRole("menuitem", { name: /Clear out unused items/ }),
@@ -249,7 +255,9 @@ describe("CollectionMenu", () => {
       await assertIndicatorHidden();
       await userEvent.click(getIcon("ellipsis"));
 
-      expect(fetchMock.callHistory.calls("express:/api/ee/stale/:id")).toHaveLength(0);
+      expect(
+        fetchMock.callHistory.calls("express:/api/ee/stale/:id"),
+      ).toHaveLength(0);
 
       expect(
         screen.queryByRole("menuitem", { name: /Clear out unused items/ }),

@@ -131,7 +131,9 @@ async function setup({
 
   await waitFor(() => {
     expect(
-      fetchMock.callHistory.calls(`path:/api/collection/${ROOT_TEST_COLLECTION.id}/items`),
+      fetchMock.callHistory.calls(
+        `path:/api/collection/${ROOT_TEST_COLLECTION.id}/items`,
+      ),
     ).toHaveLength(1);
   });
 }

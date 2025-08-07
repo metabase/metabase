@@ -117,11 +117,14 @@ describe("ManageApiKeys", () => {
     expect(
       await screen.findByText("Copy and save the API key"),
     ).toBeInTheDocument();
-    const calls = fetchMock.callHistory.calls("path:/api/api-key", { method: "POST" });
+    const calls = fetchMock.callHistory.calls("path:/api/api-key", {
+      method: "POST",
+    });
     const lastCall = calls[calls.length - 1];
-    expect(
-      await lastCall?.request?.json(),
-    ).toEqual({ name: "New key", group_id: 5 });
+    expect(await lastCall?.request?.json()).toEqual({
+      name: "New key",
+      group_id: 5,
+    });
 
     await userEvent.click(screen.getByRole("button", { name: "Done" }));
 
@@ -154,7 +157,9 @@ describe("ManageApiKeys", () => {
 
     await screen.findByText("Copy and save the API key");
     expect(
-      await fetchMock.callHistory.lastCall(REGEN_URL, { method: "PUT" })?.request?.json(),
+      await fetchMock.callHistory
+        .lastCall(REGEN_URL, { method: "PUT" })
+        ?.request?.json(),
     ).toEqual({});
     await waitFor(() => {
       expect(
@@ -188,7 +193,9 @@ describe("ManageApiKeys", () => {
     await userEvent.click(screen.getByRole("button", { name: "Save" }));
     await waitFor(async () => {
       expect(
-        await fetchMock.callHistory.lastCall(EDIT_URL, { method: "PUT" })?.request?.json(),
+        await fetchMock.callHistory
+          .lastCall(EDIT_URL, { method: "PUT" })
+          ?.request?.json(),
       ).toEqual({ group_id: 5, name: "My Key" });
     });
     await waitFor(() => {
@@ -214,7 +221,9 @@ describe("ManageApiKeys", () => {
       await screen.findByRole("button", { name: "Delete API key" }),
     );
     await waitFor(() => {
-      expect(fetchMock.callHistory.calls(DELETE_URL, { method: "DELETE" })).toHaveLength(1);
+      expect(
+        fetchMock.callHistory.calls(DELETE_URL, { method: "DELETE" }),
+      ).toHaveLength(1);
     });
     await waitFor(() => {
       expect(

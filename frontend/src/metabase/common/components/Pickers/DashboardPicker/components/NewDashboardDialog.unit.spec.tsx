@@ -45,7 +45,6 @@ describe("new collection dialog", () => {
     expect(body.collection_id).toBe(null);
   });
 
-
   it("should handle a normal parentCollectionId", async () => {
     setup({ parentCollectionId: 12 });
     await userEvent.type(
@@ -61,7 +60,6 @@ describe("new collection dialog", () => {
     const body = JSON.parse((await call.options?.body) as string);
     expect(body.collection_id).toBe(12);
   });
-
 
   it("should handle a parentCollectionId of null", async () => {
     setup({ parentCollectionId: null });

@@ -47,7 +47,9 @@ describe("useCreateDashboardApi", () => {
 
     await userEvent.click(screen.getByText("Create dashboard"));
 
-    const calls = fetchMock.callHistory.calls(`path:/api/dashboard`, { method: "POST" });
+    const calls = fetchMock.callHistory.calls(`path:/api/dashboard`, {
+      method: "POST",
+    });
     expect(calls).toHaveLength(1);
 
     const call = calls[0];

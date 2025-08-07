@@ -379,7 +379,7 @@ describe("Actions > ActionViz > Action", () => {
         response: {
           ...ACTION,
           name: updatedTitle,
-        }
+        },
       });
 
       await userEvent.click(screen.getByText("Click me"));
@@ -397,7 +397,9 @@ describe("Actions > ActionViz > Action", () => {
 
       await userEvent.click(within(editorModal).getByText("Update"));
 
-      expect(fetchMock.callHistory.called(`path:/api/action/${ACTION.id}`)).toBe(true);
+      expect(
+        fetchMock.callHistory.called(`path:/api/action/${ACTION.id}`),
+      ).toBe(true);
 
       await waitFor(() => {
         expect(screen.queryByTestId("action-creator")).not.toBeInTheDocument();

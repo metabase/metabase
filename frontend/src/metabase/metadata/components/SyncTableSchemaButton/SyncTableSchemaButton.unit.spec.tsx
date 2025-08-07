@@ -100,7 +100,9 @@ describe("SyncTableSchemaButton", () => {
   it("should show error message toast", async () => {
     const { table } = setup();
 
-    fetchMock.modifyRoute(`table-${table.id}-sync-schema`, { response: { status: 500 } });
+    fetchMock.modifyRoute(`table-${table.id}-sync-schema`, {
+      response: { status: 500 },
+    });
 
     const button = screen.getByRole("button");
     expect(button).toHaveTextContent("Sync table schema");

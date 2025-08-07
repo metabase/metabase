@@ -101,7 +101,9 @@ describe("RescanFieldButton", () => {
   it("should show error message toast", async () => {
     const { field } = setup();
 
-    fetchMock.modifyRoute(`field-${field.id}-rescan-values`, { response: { status: 500 } });
+    fetchMock.modifyRoute(`field-${field.id}-rescan-values`, {
+      response: { status: 500 },
+    });
 
     const button = screen.getByRole("button");
     expect(button).toHaveTextContent("Re-scan field");

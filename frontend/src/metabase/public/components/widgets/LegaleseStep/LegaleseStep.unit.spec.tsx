@@ -51,7 +51,6 @@ describe("LegaleseStep", () => {
     expect(screen.getByText("Agree and continue")).toBeInTheDocument();
   });
 
-
   it("calls goToNextStep and updates setting on clicking 'Agree and continue'", async () => {
     fetchMock.put("path:/api/setting/show-static-embed-terms", 204);
 
