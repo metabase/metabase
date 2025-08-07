@@ -170,6 +170,7 @@
   (api/check-superuser)
   (let [transform (api/check-404 (t2/select-one :model/Transform id))
         start-promise (promise)]
+    ;; TODO (eric): Not a future, please! vthreads
     (future
       (transforms.execute/execute-mbql-transform! transform {:start-promise start-promise
                                                              :run-method :manual}))

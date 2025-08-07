@@ -39,6 +39,7 @@
                   (sync/create-table! database (select-keys target [:schema :name])))]
     (sync/sync-table! table)))
 
+;; TODO (eric): Polling loop with timeout
 (defn- execute-mbl-transform-remote! [run-id driver transform-details opts]
   (try
     (worker/execute-transform! run-id driver transform-details opts)
@@ -115,6 +116,7 @@
          (deliver start-promise [:started run-id]))
        (log/info "Executing transform" id "with target" (pr-str target))
        (if (worker/run-remote?)
+         ;; TODO (eric): Make this do the polling
          (execute-mbl-transform-remote! run-id driver transform-details opts)
          (do
            (execute-mbl-transform-local! run-id driver transform-details opts)

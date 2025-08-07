@@ -35,6 +35,7 @@
   [_]
   #_do-nothing)
 
+;; TODO (eric): Make this a backstop/disaster recovery
 (defn- sync-worker-runs! [_ctx]
   (log/trace "Syncing worker runs.")
   (let [runs (worker-run/reducible-active-remote-runs)]
@@ -82,7 +83,7 @@
                    (triggers/start-now)
                    (triggers/with-schedule
                     (calendar-interval/schedule
-                     (calendar-interval/with-interval-in-seconds 2)
+                     (calendar-interval/with-interval-in-seconds 2) ;; longer (2 minutes?)
                      (calendar-interval/with-misfire-handling-instruction-do-nothing))))]
       (task/schedule-task! job trigger))))
 

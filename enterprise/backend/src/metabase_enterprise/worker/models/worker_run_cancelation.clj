@@ -40,7 +40,7 @@
   "Delete cancelations that are no longer running."
   []
   (t2/delete! :model/WorkerRunCancelation
-              :run_id [:not [:in {:select :run_id
-                                  :from   [[:worker_run_cancelation :wrc]]
-                                  :join   [[:worker_run :wr] [:= :wr.run_id :wrc.run_id]]
-                                  :where  :wr.is_active}]]))
+              :run_id [:not-in {:select :wrc.run_id
+                                :from   [[:worker_run_cancelation :wrc]]
+                                :join   [[:worker_run :wr] [:= :wr.run_id :wrc.run_id]]
+                                :where  :wr.is_active}]))
