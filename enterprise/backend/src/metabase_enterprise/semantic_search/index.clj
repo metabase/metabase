@@ -293,17 +293,11 @@
   model + model_id already exists, it will be replaced. Parallelizes batch insertion
   using a thread pool with a configurable thread count (default: 2)."
   [connectable index documents-reducible]
-  (cp/with-shutdown! [pool (cp/threadpool (semantic-settings/index-update-thread-count))]
-    (transduce
-     (comp
-      (partition-all *batch-size*)
-      (map #(cp/future pool (upsert-index-batch! connectable index %))))
-     (completing
-      (fn [acc f]
-        (let [result @f]
-          (merge-with + acc result))))
-     {}
-     documents-reducible)))
+  (cp/with-shutdown! [pool (cp/threadpool (semantic-settings/embedding-thread-count))]
+    (->> documents-reducible
+         (partition-all *batch-size*)
+         (cp/pmap pool #(upsert-index-batch! connectable index %))
+         (reduce (partial merge-with +) {}))))
 
 (defn- drop-index-table-sql
   [{:keys [table-name]}]
