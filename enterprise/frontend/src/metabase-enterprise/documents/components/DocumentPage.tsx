@@ -174,7 +174,7 @@ export const DocumentPage = ({
 
     // For new documents, show Save if there's title or content exists or draft cards
     if (isNewDocument) {
-      const emptyDocAst = JSON.stringify({ type: "doc", content: [] });
+      const emptyDocAst = '{"type":"doc","content":[{"type":"paragraph"}]}';
       const hasContent =
         currentContent !== emptyDocAst && currentContent !== "";
       return currentTitle.length > 0 || hasContent || hasDraftCards;
@@ -478,6 +478,9 @@ export const DocumentPage = ({
           />
         )}
         <LeaveRouteConfirmModal
+          // `key` remounts this modal when navigating between different documents or to a new document.
+          // The `route` doesn't change in that scenario which prevents the modal from closing when you confirm you want to discard your changes.
+          key={documentId}
           isEnabled={hasUnsavedChanges() && !isNavigationScheduled}
           route={route}
         />
