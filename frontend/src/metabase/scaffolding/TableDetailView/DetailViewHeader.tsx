@@ -136,7 +136,7 @@ export function DetailViewHeader({
                 opacity: isEdit ? 0.5 : 1,
               }}
             >
-              {t`Display Settings`}
+              {t`Display settings`}
             </Button>
           </Tooltip>
         </Group>
