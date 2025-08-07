@@ -16,7 +16,6 @@ import {
 } from "metabase/plugins";
 import {
   Alert,
-  Badge,
   Box,
   Button,
   Flex,
@@ -174,8 +173,6 @@ export function EmbeddingSdkSettings() {
             <Text fz="h3" fw={600} c="text-dark">
               {t`Embedded Analytics JS`}
             </Text>
-
-            <Badge size="sm">{t`Beta`}</Badge>
           </Group>
 
           <Group gap="sm" align="center" justify="space-between" w="100%">
