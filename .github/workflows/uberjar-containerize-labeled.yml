@@ -1,0 +1,40 @@
+name: Uberjar Containerize labeled
+
+on:
+  pull_request:
+    types: [ labeled ]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  uberjar:
+    if: ${{ github.event.label.name == 'build-docker-uberjar' }}
+    uses: ./.github/workflows/uberjar.yml
+    secrets: inherit
+    with:
+      source_changed: false
+
+  containerize:
+    needs: [uberjar]
+    if: ${{ github.event.label.name == 'build-docker-uberjar' }}
+    uses: ./.github/workflows/containerize-uberjar.yml
+    secrets: inherit
+
+  post-comment:
+    if: ${{ github.event.label.name == 'build-docker-uberjar' }}
+    needs: [uberjar, containerize]
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Post PR comment
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          header: docker-build-status
+          message: |
+            ✅ Docker build completed for commit ${{ github.event.pull_request.head.sha }}
+
+            The uberjar has been built and containerized successfully.
+
+            **Branch:** `${{ github.event.pull_request.head.ref }}`
+            **Triggered by:** @${{ github.actor }}

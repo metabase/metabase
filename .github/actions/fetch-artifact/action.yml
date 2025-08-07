@@ -5,6 +5,14 @@ inputs:
   name:
     description: The name of the artifact to fetch
     required: true
+  output-name:
+    description: Optional custom name for the output jar file (defaults to metabase.jar)
+    required: false
+    default: "metabase.jar"
+  extract-path:
+    description: Directory path where the jar should be extracted (defaults to current directory)
+    required: false
+    default: "."
 
 runs:
   using: "composite"
@@ -45,19 +53,55 @@ runs:
     - name: Move the Uberjar
       shell: bash
       run: | # bash
+        OUTPUT_NAME="${{ inputs.output-name }}"
+        EXTRACT_PATH="${{ inputs.extract-path }}"
+
+        # Create target directory if it doesn't exist
+        if [ "$EXTRACT_PATH" != "." ]; then
+          mkdir -p "$EXTRACT_PATH"
+        fi
+
+        # Find the jar file
         if [ -e "metabase.jar" ]; then
-          echo "metabase.jar is already in the right place"
+          SOURCE_JAR="metabase.jar"
         elif [ -e "target/uberjar/metabase.jar" ]; then
-            echo "moving metabase.jar to current directory"
-          mv target/uberjar/metabase.jar metabase.jar
+          SOURCE_JAR="target/uberjar/metabase.jar"
         else
           echo "Could not find the metabase.jar file"
           exit 1
         fi
 
+        # Move to target path
+        if [ "$EXTRACT_PATH" == "." ]; then
+          # Current directory - use output-name
+          TARGET_PATH="$OUTPUT_NAME"
+        else
+          # Specific directory - always use metabase.jar
+          TARGET_PATH="$EXTRACT_PATH/metabase.jar"
+        fi
+
+        echo "Moving $SOURCE_JAR to $TARGET_PATH"
+        mv "$SOURCE_JAR" "$TARGET_PATH"
+
     - name: Verify that this is a valid JAR file
       shell: bash
-      run: file --mime-type ./metabase.jar
+      run: |
+        EXTRACT_PATH="${{ inputs.extract-path }}"
+        if [ "$EXTRACT_PATH" == "." ]; then
+          JAR_PATH="./${{ inputs.output-name }}"
+        else
+          JAR_PATH="./$EXTRACT_PATH/metabase.jar"
+        fi
+        echo "Verifying JAR at: $JAR_PATH"
+        file --mime-type "$JAR_PATH"
     - name: Reveal its version.properties
       shell: bash
-      run: jar xf metabase.jar version.properties && cat version.properties
+      run: |
+        EXTRACT_PATH="${{ inputs.extract-path }}"
+        if [ "$EXTRACT_PATH" == "." ]; then
+          JAR_PATH="${{ inputs.output-name }}"
+        else
+          JAR_PATH="$EXTRACT_PATH/metabase.jar"
+        fi
+        echo "Extracting version.properties from: $JAR_PATH"
+        jar xf "$JAR_PATH" version.properties && cat version.properties
