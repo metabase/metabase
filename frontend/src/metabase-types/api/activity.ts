@@ -11,6 +11,7 @@ export const ACTIVITY_MODELS = [
   "metric",
   "dashboard",
   "collection",
+  "document",
 ] as const;
 
 export type ActivityModel = (typeof ACTIVITY_MODELS)[number];

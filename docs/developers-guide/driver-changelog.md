@@ -29,10 +29,12 @@ title: Driver interface changelog
 
 - Added the driver multi-method `driver/set-database-used!` for drivers to set a database on the connection with statements like `USE DATABASE`.
 
+- Added the driver features `:transforms/table`, `:transforms/view`, and `:transforms/matarialized-view` for drivers
+  that support transforms with table, view, and materialized view as target, respectively.
+
 ## Metabase 0.55.9
 
 - Add multi-method `driver/do-with-resilient-connection` for executing functions in a context where closed connections may be automatically reopened
-
 
 ## Metabase 0.55.0
 

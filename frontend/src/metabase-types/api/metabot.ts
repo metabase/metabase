@@ -128,10 +128,16 @@ export type MetabotAdhocQueryInfo = {
   error?: any;
 };
 
+export type MetabotReportInfo = {
+  type: "report";
+  id: number;
+};
+
 export type MetabotEntityInfo =
   | MetabotCardInfo
   | MetabotDashboardInfo
-  | MetabotAdhocQueryInfo;
+  | MetabotAdhocQueryInfo
+  | MetabotReportInfo;
 
 /* Metabot v3 - API Request Types */
 
