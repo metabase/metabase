@@ -173,7 +173,10 @@
         false nil "//ls10467.us-east-2.aws.snowflakecomputing.com/"
         false "" "//ls10467.us-east-2.aws.snowflakecomputing.com/"
         false "snowflake.example.com/" "//ls10467.us-east-2.aws.snowflakecomputing.com/"
-        false "snowflake.example.com" "//ls10467.us-east-2.aws.snowflakecomputing.com/"))))
+        false "snowflake.example.com" "//ls10467.us-east-2.aws.snowflakecomputing.com/"))
+    (testing "Application parameter is set to identify Metabase connections"
+      (is (= "Metabase_Metabase"
+             (:application (sql-jdbc.conn/connection-details->spec :snowflake details)))))))
 
 (deftest ^:parallel ddl-statements-test
   (testing "make sure we didn't break the code that is used to generate DDL statements when we add new test datasets"
