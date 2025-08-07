@@ -409,6 +409,7 @@
    [:display_type :display_type]
    [:model_created_at :model_created_at]
    [:model_updated_at :model_updated_at]
+   [:official_collection :official_collection]
    [:collection_id :collection_id]])
 
 (defn- keyword-search-query [index search-context]

@@ -1,6 +1,7 @@
 (ns metabase-enterprise.semantic-search.scoring
   (:require
    [honey.sql.helpers :as sql.helpers]
+   [metabase.premium-features.core :as premium-features]
    [metabase.search.config :as search.config]
    [metabase.search.scoring :as search.scoring]
    [toucan2.util :as u]))
@@ -61,11 +62,26 @@
                      (search.scoring/prefix [:lower (->col-expr :name)] (u/lower-case-en search-string))
                      [:inline 0])}))
 
-;; TODO EE version
+(def ^:private enterprise-scorers
+  {:official-collection {:expr (search.scoring/truthy (->col-expr :official_collection))
+                         :pred #(premium-features/has-feature? :official-collections)}
+   :verified            {:expr (search.scoring/truthy (->col-expr :verified))
+                         :pred #(premium-features/has-feature? :content-verification)}})
+
+(defn- additional-scorers
+  "Which additional scorers are active?"
+  []
+  (into {}
+        (keep (fn [[k {:keys [expr pred]}]]
+                (when (pred)
+                  [k expr])))
+        enterprise-scorers))
+
 (defn semantic-scorers
   "Return the select-item expressions used to calculate the score for semantic search results."
   [search-ctx]
-  (base-scorers search-ctx))
+  (merge (base-scorers search-ctx)
+         (additional-scorers)))
 
 (defn with-scores
   "Add a bunch of SELECT columns for the individual and total scores, and a corresponding ORDER BY."
