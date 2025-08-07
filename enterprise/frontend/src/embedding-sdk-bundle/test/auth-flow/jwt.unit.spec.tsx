@@ -28,7 +28,7 @@ const setup = ({
   return {
     ...baseSetup({ authConfig, locale }),
     getLastAuthProviderApiCall: () =>
-      fetchMock.lastCall(`${MOCK_JWT_PROVIDER_URI}?response=json`),
+      fetchMock.callHistory.lastCall(`${MOCK_JWT_PROVIDER_URI}?response=json`),
   };
 };
 
@@ -42,7 +42,7 @@ describe("Auth Flow - JWT", () => {
 
     await waitForLoaderToBeRemoved();
     expect(
-      fetchMock.calls(`${MOCK_JWT_PROVIDER_URI}?response=json`),
+      fetchMock.callHistory.calls(`${MOCK_JWT_PROVIDER_URI}?response=json`),
     ).toHaveLength(1);
 
     rerender(
@@ -54,7 +54,7 @@ describe("Auth Flow - JWT", () => {
     await waitForLoaderToBeRemoved();
 
     expect(
-      fetchMock.calls(`${MOCK_JWT_PROVIDER_URI}?response=json`),
+      fetchMock.callHistory.calls(`${MOCK_JWT_PROVIDER_URI}?response=json`),
     ).toHaveLength(1);
 
     expect(screen.queryByText("Initializing...")).not.toBeInTheDocument();
@@ -77,21 +77,22 @@ describe("Auth Flow - JWT", () => {
     } = setup({ authConfig });
 
     await waitForRequest(() => getLastCardQueryApiCall());
-
-    expect(getLastAuthProviderApiCall()![1]).toMatchObject({
+    expect(getLastAuthProviderApiCall()?.options).toMatchObject({
       credentials: "include",
-      method: "GET",
+      method: /GET/i,
     });
 
     await waitForRequest(() => getLastUserApiCall());
-    expect(getLastUserApiCall()![1]).toMatchObject({
-      headers: { "X-Metabase-Session": [MOCK_SESSION_TOKEN_ID] },
-    });
+    expect(getLastUserApiCall()?.options.headers).toHaveProperty(
+      "x-metabase-session",
+      MOCK_SESSION_TOKEN_ID,
+    );
 
     await waitForRequest(() => getLastCardQueryApiCall());
-    expect(getLastCardQueryApiCall()![1]).toMatchObject({
-      headers: { "X-Metabase-Session": [MOCK_SESSION_TOKEN_ID] },
-    });
+    expect(getLastCardQueryApiCall()?.options.headers).toHaveProperty(
+      "x-metabase-session",
+      MOCK_SESSION_TOKEN_ID,
+    );
   });
 
   it("should use `fetchRequestToken` if provided", async () => {
@@ -113,37 +114,35 @@ describe("Auth Flow - JWT", () => {
 
     expect(customFetchFunction).toHaveBeenCalled();
 
-    expect(getLastUserApiCall()![1]).toMatchObject({
-      headers: {
-        "X-Metabase-Session": [MOCK_SESSION_TOKEN_ID],
-      },
-    });
+    expect(getLastUserApiCall()?.options.headers).toHaveProperty(
+      "x-metabase-session",
+      MOCK_SESSION_TOKEN_ID,
+    );
 
     await waitForRequest(() => getLastCardQueryApiCall());
-    expect(getLastCardQueryApiCall()![1]).toMatchObject({
-      headers: {
-        "X-Metabase-Session": [MOCK_SESSION_TOKEN_ID],
-      },
-    });
+    expect(getLastCardQueryApiCall()?.options.headers).toHaveProperty(
+      "x-metabase-session",
+      MOCK_SESSION_TOKEN_ID,
+    );
   });
 
   it("should include the subpath when requesting the SSO endpoint", async () => {
     // we can't use the usual mocks here as they use mocks that don't expect the subpath
     const instanceUrlWithSubpath = `${MOCK_INSTANCE_URL}/subpath`;
 
-    fetchMock.mock(`${instanceUrlWithSubpath}/auth/sso`, {
+    fetchMock.get(`${instanceUrlWithSubpath}/auth/sso`, {
       status: 200,
       body: { url: MOCK_JWT_PROVIDER_URI, method: "jwt" },
     });
 
-    fetchMock.mock(`${MOCK_JWT_PROVIDER_URI}?response=json`, {
+    fetchMock.get(`${MOCK_JWT_PROVIDER_URI}?response=json`, {
       status: 200,
       body: {
         jwt: MOCK_VALID_JWT_RESPONSE,
       },
     });
 
-    fetchMock.mock(
+    fetchMock.get(
       `${instanceUrlWithSubpath}/auth/sso?jwt=${MOCK_VALID_JWT_RESPONSE}`,
       {
         status: 200,
@@ -166,12 +165,10 @@ describe("Auth Flow - JWT", () => {
 
     await waitForLoaderToBeRemoved();
 
-    const expectedSsoUrl = `${instanceUrlWithSubpath}/auth/sso`;
-
     // One call is for the initial "configuration", to know which sso method to use
     // The second call is the actual "login"
     expect(
-      fetchMock.calls((url) => url.startsWith(expectedSsoUrl)),
+      fetchMock.callHistory.calls(`begin:${instanceUrlWithSubpath}/auth/sso`),
     ).toHaveLength(2);
   });
 });

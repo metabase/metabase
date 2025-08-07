@@ -1,5 +1,4 @@
 import { render, screen, waitFor } from "@testing-library/react";
-import fetchMock from "fetch-mock";
 
 import {
   setupCardEndpoints,
@@ -32,8 +31,6 @@ const setup = async (
   config: MetabaseAuthConfig,
   jwtProviderResponse?: JwtMockConfig["providerResponse"],
 ) => {
-  fetchMock.reset();
-
   const { jwtProviderMock } = setupMockJwtEndpoints({
     providerResponse: jwtProviderResponse,
   });
@@ -57,7 +54,8 @@ const setup = async (
 
   await waitForLoaderToBeRemoved();
 
-  const getLastAuthProviderApiCall = () => jwtProviderMock.lastCall();
+  const getLastAuthProviderApiCall = () =>
+    jwtProviderMock.callHistory.lastCall();
 
   return { getLastAuthProviderApiCall };
 };
@@ -86,10 +84,6 @@ const expectErrorMessage = async (message: string) => {
 };
 
 describe("SDK auth errors for JWT authentication", () => {
-  afterEach(() => {
-    jest.resetAllMocks();
-  });
-
   it("should show a message when the user's JWT server endpoint doesn't return a json object", async () => {
     const { getLastAuthProviderApiCall } = await setup(defaultAuthConfig, {
       body: "not a json object",

@@ -11,17 +11,12 @@ const setupSaml = (config: MetabaseConfigProps = {}) => {
 };
 
 describe("useInitData - SAML authentication", () => {
-  afterEach(() => {
-    jest.restoreAllMocks();
-    fetchMock.restore();
-  });
-
   it("should send API requests with session token if initialization and login are successful", async () => {
     const { popupMock } = setupSaml();
 
     expect(await screen.findByTestId("test-component")).toBeInTheDocument();
 
-    const lastCallRequest = fetchMock.lastCall(
+    const lastCallRequest = fetchMock.callHistory.lastCall(
       "path:/api/user/current",
     )?.request;
 

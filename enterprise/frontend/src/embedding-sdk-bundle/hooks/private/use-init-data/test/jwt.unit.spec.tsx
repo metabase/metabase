@@ -27,7 +27,6 @@ const setupJwt = ({
 describe("useInitData - JWT authentication", () => {
   afterEach(() => {
     jest.restoreAllMocks();
-    fetchMock.restore();
   });
 
   it("should provide a helpful error if the user can't connect to their server for JWT", async () => {
@@ -73,7 +72,7 @@ describe("useInitData - JWT authentication", () => {
     setupJwt();
     expect(await screen.findByTestId("test-component")).toBeInTheDocument();
 
-    const lastCallRequest = fetchMock.lastCall(
+    const lastCallRequest = fetchMock.callHistory.lastCall(
       "path:/api/user/current",
     )?.request;
 
