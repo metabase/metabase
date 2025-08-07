@@ -228,11 +228,13 @@
           [new-texts stats]
           (u/profile (str "Semantic search embedding caching attempt for " {:docs (count documents) :texts (count searchable-texts)})
             (let [[new-texts existing-embeddings] (partition-existing-embeddings connectable index searchable-texts)]
-              (u/profile (str "Semantic search cached embedding db update for " {:texts (count existing-embeddings)})
-                [new-texts (upsert-embedding! existing-embeddings)])))]
+              (if-not (seq existing-embeddings)
+                [searchable-texts nil]
+                (u/profile (str "Semantic search cached embedding db update for " {:texts (count existing-embeddings)})
+                  [new-texts (upsert-embedding! existing-embeddings)]))))]
       (->>
        (when (seq new-texts)
-         (u/profile (str "Semantic search embedding generation and db update for " {:docs (count documents) :new-texts (count new-texts)})
+         (u/profile (str "Semantic search embedding generation and db update for " {:docs (count documents) :texts (count new-texts)})
            (embedding/process-embeddings-streaming
             (:embedding-model index)
             new-texts
