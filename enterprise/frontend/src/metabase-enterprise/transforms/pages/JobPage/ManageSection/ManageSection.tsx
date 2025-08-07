@@ -4,7 +4,7 @@ import { t } from "ttag";
 
 import { useDispatch } from "metabase/lib/redux";
 import { useMetadataToasts } from "metabase/metadata/hooks";
-import { Button, Icon } from "metabase/ui";
+import { Box, Button, Icon } from "metabase/ui";
 import type { TransformJob } from "metabase-types/api";
 
 import { SplitSection } from "../../../components/SplitSection";
@@ -22,7 +22,9 @@ export function ManageSection({ job }: ManageSectionProps) {
       label={t`Manage this job`}
       description={t`Deleting this job won’t delete any transforms.`}
     >
-      <DeleteJobButton job={job} />
+      <Box p="xl">
+        <DeleteJobButton job={job} />
+      </Box>
     </SplitSection>
   );
 }
