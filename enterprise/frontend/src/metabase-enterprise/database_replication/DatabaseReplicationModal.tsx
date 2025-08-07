@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { t } from "ttag";
 
 import { Modal } from "metabase/ui";
@@ -14,6 +14,7 @@ import {
   type DatabaseReplicationFormFields,
   handleFieldError as handleDWHReplicationFieldError,
 } from "./DatabaseReplicationForm";
+import { DatabaseReplicationSuccessModal } from "./DatabaseReplicationSuccessModal";
 
 interface IRTKQueryError {
   status: unknown;
@@ -44,6 +45,7 @@ export const DatabaseReplicationModal = ({
   onClose: () => void;
   database: Database;
 }) => {
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [createDatabaseReplication] = useCreateDatabaseReplicationMutation();
   const [previewDatabaseReplication] = usePreviewDatabaseReplicationMutation();
   const preview = useCallback(
@@ -71,12 +73,27 @@ export const DatabaseReplicationModal = ({
         schemaFilters: transformSchemaFilters(schemaSelect, schemaFilters),
       })
         .unwrap()
-        .then(onClose)
+        .then(() => setShowSuccessModal(true))
         .catch((error) => {
           isRTKQueryError(error) && handleDWHReplicationFieldError(error.data);
         }),
-    [createDatabaseReplication, database.id, onClose],
+    [createDatabaseReplication, database.id],
   );
+
+  const handleSuccessModalClose = useCallback(() => {
+    setShowSuccessModal(false);
+    onClose();
+  }, [onClose]);
+
+  if (showSuccessModal) {
+    return (
+      <DatabaseReplicationSuccessModal
+        isOpen={showSuccessModal}
+        onClose={handleSuccessModalClose}
+        database={database}
+      />
+    );
+  }
 
   return (
     <Modal
