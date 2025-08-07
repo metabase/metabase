@@ -34,7 +34,7 @@ export const MetabotNode = Node.create<{
   group: "block",
   atom: true,
   draggable: true,
-  selectable: true,
+  selectable: false,
 
   addAttributes() {
     return {
@@ -171,6 +171,7 @@ export const MetabotComponent = memo(
         })
         .insertContentAt(
           nodePosition + 1,
+          // TODO: Internationalize
           createTextNode(`🤖 Created with Metabot 💙`),
         )
         .insertContentAt(nodePosition + 1, createTextNode(data.description))
@@ -212,22 +213,6 @@ export const MetabotComponent = memo(
       }
     }, [inputRef, editor.commands]);
 
-    useEffect(() => {
-      const currentInput = inputRef.current;
-      if (currentInput) {
-        const handleKeyDown = (e: KeyboardEvent) => {
-          if (e.key === "Enter" && e.metaKey) {
-            e.preventDefault();
-            handleRunMetabot();
-          }
-        };
-        currentInput.addEventListener("keydown", handleKeyDown);
-        return () => {
-          currentInput.removeEventListener("keydown", handleKeyDown);
-        };
-      }
-    }, [handleRunMetabot]);
-
     return (
       <NodeViewWrapper as="span">
         <Flex
@@ -235,8 +220,8 @@ export const MetabotComponent = memo(
           bd="1px solid var(--border-color)"
           style={{ borderRadius: "4px" }}
           pos="relative"
-          h={180}
           direction="column"
+          mb="1rem"
         >
           <Button
             variant="subtle"
@@ -257,11 +242,21 @@ export const MetabotComponent = memo(
               ref={inputRef}
               className={Styles.codeBlockTextArea}
               value={prompt || ""}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && e.metaKey) {
+                  e.preventDefault();
+                  handleRunMetabot();
+                }
+                if (e.key === "Escape" && !prompt?.trim()) {
+                  deleteNode();
+                  editor.commands.focus();
+                }
+              }}
               onChange={(e) => updateAttributes({ text: e.target.value })}
               placeholder={t`Can you show me monthly sales data for the past year in a line chart?`}
             />
           </Flex>
-          <Flex px="md" pb="md" pt="xs" gap="sm">
+          <Flex px="md" pb="md" pt="sm" gap="sm">
             <Flex flex={1} my="auto">
               {isLoading ? (
                 <Text
