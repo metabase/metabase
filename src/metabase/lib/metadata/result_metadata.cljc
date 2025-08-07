@@ -178,15 +178,18 @@
       (set/union aliases (implicit-join-aliases query previous-stage-number))
       aliases)))
 
-(defn- remove-source-alias-from-implicitly-joined-columns
-  "We're doing this for legacy compatibility for something in the FE somewhere (not sure what exactly)."
+(defn- remove-implicit-join-aliases
+  "If an implicit join was reified by the QP preprocessor, we need to remove traces of that reification from result
+  metadata, so anyone using it in combination with the un-preprocessed query doesn't accidentally introduce field refs
+  that include generated join aliases for joins that don't exist yet."
   [query cols]
   (let [implicit-aliases (implicit-join-aliases query -1)]
     (map (fn [col]
            (cond-> col
              (when-let [join-alias (any-join-alias col)]
                (contains? implicit-aliases join-alias))
-             (dissoc :source-alias)))
+             (-> (dissoc :metabase.lib.join/join-alias :lib/original-join-alias :source-alias)
+                 (cond-> (= (:lib/source col) :source/joins) (assoc :lib/source :source/implicitly-joinable)))))
          cols)))
 
 (mu/defn- add-legacy-source :- [:sequential
@@ -344,7 +347,7 @@
               (cond-> cols
                 (seq lib-cols) (merge-cols lib-cols))))
            (add-converted-timezone query)
-           (remove-source-alias-from-implicitly-joined-columns query)
+           (remove-implicit-join-aliases query)
            add-source-alias
            add-legacy-source
            deduplicate-names
