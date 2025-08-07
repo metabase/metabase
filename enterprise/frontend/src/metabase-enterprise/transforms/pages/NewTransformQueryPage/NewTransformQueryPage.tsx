@@ -53,7 +53,7 @@ function NewTransformPageBody({ initialQuery }: NewTransformPageBodyProps) {
     useDisclosure();
   const dispatch = useDispatch();
 
-  const handleSave = (transform: Transform) => {
+  const handleCreate = (transform: Transform) => {
     dispatch(push(getTransformUrl(transform.id)));
   };
 
@@ -77,7 +77,7 @@ function NewTransformPageBody({ initialQuery }: NewTransformPageBodyProps) {
       {isModalOpened && (
         <CreateTransformModal
           query={query}
-          onSave={handleSave}
+          onCreate={handleCreate}
           onClose={closeModal}
         />
       )}

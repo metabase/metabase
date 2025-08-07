@@ -23,29 +23,33 @@ import type {
 
 type CreateTransformModalProps = {
   query: DatasetQuery;
-  onSave: (transform: Transform) => void;
+  onCreate: (transform: Transform) => void;
   onClose: () => void;
 };
 
 export function CreateTransformModal({
   query,
-  onSave,
+  onCreate,
   onClose,
 }: CreateTransformModalProps) {
   return (
     <Modal title={t`Save your transform`} opened padding="xl" onClose={onClose}>
-      <CreateTransformForm query={query} onSave={onSave} onClose={onClose} />
+      <CreateTransformForm
+        query={query}
+        onCreate={onCreate}
+        onClose={onClose}
+      />
     </Modal>
   );
 }
 
 type CreateTransformFormProps = {
   query: DatasetQuery;
-  onSave: (transform: Transform) => void;
+  onCreate: (transform: Transform) => void;
   onClose: () => void;
 };
 
-type CreateTransformValues = {
+type NewTransformValues = {
   name: string;
   description: string | null;
   targetName: string;
@@ -61,7 +65,7 @@ const NEW_TRANSFORM_SCHEMA = Yup.object({
 
 function CreateTransformForm({
   query,
-  onSave,
+  onCreate,
   onClose,
 }: CreateTransformFormProps) {
   const { database: databaseId } = query;
@@ -74,7 +78,7 @@ function CreateTransformForm({
   );
   const [createTransform] = useCreateTransformMutation();
 
-  const initialValues: CreateTransformValues = useMemo(
+  const initialValues: NewTransformValues = useMemo(
     () => getInitialValues(schemas),
     [schemas],
   );
@@ -83,10 +87,10 @@ function CreateTransformForm({
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
   }
 
-  const handleSubmit = async (values: CreateTransformValues) => {
+  const handleSubmit = async (values: NewTransformValues) => {
     const request = getCreateRequest(query, values);
     const transform = await createTransform(request).unwrap();
-    onSave(transform);
+    onCreate(transform);
   };
 
   return (
@@ -126,7 +130,7 @@ function CreateTransformForm({
   );
 }
 
-function getInitialValues(schemas: string[]): CreateTransformValues {
+function getInitialValues(schemas: string[]): NewTransformValues {
   return {
     name: "",
     description: null,
@@ -137,7 +141,7 @@ function getInitialValues(schemas: string[]): CreateTransformValues {
 
 function getCreateRequest(
   query: DatasetQuery,
-  { name, description, targetName, targetSchema }: CreateTransformValues,
+  { name, description, targetName, targetSchema }: NewTransformValues,
 ): CreateTransformRequest {
   return {
     name: name,

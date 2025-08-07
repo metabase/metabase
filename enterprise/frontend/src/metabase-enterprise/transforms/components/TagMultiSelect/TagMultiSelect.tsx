@@ -99,7 +99,7 @@ export function TagMultiSelect({ tagIds, onChange }: TagMultiSelectProps) {
       />
       {modalType === "create" && (
         <CreateTagModal
-          searchValue={searchValue}
+          initialName={searchValue}
           onCreate={handleCreate}
           onClose={handleModalClose}
         />
