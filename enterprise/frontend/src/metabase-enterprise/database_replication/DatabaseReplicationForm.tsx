@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { t } from "ttag";
 import * as Yup from "yup";
 
+import ExternalLink from "metabase/common/components/ExternalLink";
+import { useStoreUrl } from "metabase/common/hooks";
 import {
   Form,
   FormProvider,
@@ -10,7 +12,7 @@ import {
   FormTextInput,
 } from "metabase/forms";
 import { colors } from "metabase/lib/colors";
-import { Box, Flex, Group, List, Progress, Text } from "metabase/ui";
+import { Divider, Flex, Group, List, Progress, Stack, Text } from "metabase/ui";
 import type { PreviewDatabaseReplicationResponse } from "metabase-enterprise/api/database-replication";
 import type { Database, DatabaseId } from "metabase-types/api";
 
@@ -84,6 +86,8 @@ export const DatabaseReplicationForm = ({
   ) => void;
   initialValues: DatabaseReplicationFormFields;
 }) => {
+  const storeUrl = useStoreUrl("account/storage");
+
   // FIXME: Can we get all values of the form at once?
   const [schemaSelect, setSchemaSelect] = useState(initialValues.schemaSelect);
   const [schemaFilters, setSchemaFilters] = useState("");
@@ -101,7 +105,10 @@ export const DatabaseReplicationForm = ({
 
   return (
     <>
-      <Box bg={colors["bg-medium"]}>
+      <Stack
+        bg={colors["bg-light"]}
+        style={{ borderRadius: "8px", padding: "1rem" }}
+      >
         <Group justify="space-between">
           <div>
             <Text c="text-light">{database.name}</Text>
@@ -120,21 +127,28 @@ export const DatabaseReplicationForm = ({
             </Text>
           </div>
         </Group>
-      </Box>
-      <Progress
-        value={
-          typeof previewResponse?.totalEstimatedRowCount === "number" &&
-          typeof previewResponse?.freeQuota === "number" &&
-          previewResponse.freeQuota > 0
-            ? (previewResponse.totalEstimatedRowCount /
-                previewResponse.freeQuota) *
-              100
-            : 0
-        }
-        color={
-          previewResponse?.canSetReplication ? colors.success : colors.error
-        }
-      />
+        <Progress
+          value={
+            typeof previewResponse?.totalEstimatedRowCount === "number" &&
+            typeof previewResponse?.freeQuota === "number" &&
+            previewResponse.freeQuota > 0
+              ? (previewResponse.totalEstimatedRowCount /
+                  previewResponse.freeQuota) *
+                100
+              : 0
+          }
+          color={
+            previewResponse?.canSetReplication ? colors.success : colors.error
+          }
+        />
+        {previewResponse && !previewResponse.canSetReplication ? (
+          <>
+            <Divider />
+            <Text>{t`Not enough storage. Please upgrade your plan or modify the replication scope by excluding schemas.`}</Text>
+            <ExternalLink href={storeUrl}>{t`Get more storage`}</ExternalLink>
+          </>
+        ) : undefined}
+      </Stack>
       <FormProvider
         initialValues={initialValues}
         onSubmit={onSubmit}
