@@ -165,7 +165,7 @@ export const DatabaseReplicationForm = ({
         onSubmit={onSubmit}
         validationSchema={validationSchema}
       >
-        {({ dirty, values, setFieldValue }) => (
+        {({ values, setFieldValue }) => (
           <Form>
             <FormSelect
               name="schemaSelect"
@@ -247,7 +247,7 @@ export const DatabaseReplicationForm = ({
             <Flex justify="end">
               <Group>
                 <FormSubmitButton
-                  disabled={!dirty}
+                  disabled={!previewResponse?.canSetReplication}
                   label={t`Start replication`}
                   variant="filled"
                 />
