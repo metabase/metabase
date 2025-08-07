@@ -381,17 +381,17 @@
   [query                         :- ::lib.schema/query
    stage-number                  :- :int
    {join-alias :alias, :as join} :- ::lib.schema.join/join
-   options                       :- ::lib.metadata.calculation/visible-columns.options]
+   options                       :- [:maybe ::lib.metadata.calculation/returned-columns.options]]
   (into []
         (comp (map lib.field.util/update-keys-for-col-from-previous-stage)
               (map #(column-from-join query stage-number % join-alias)))
-        (lib.metadata.calculation/visible-columns query stage-number join options)))
+        (lib.metadata.calculation/returned-columns query stage-number join options)))
 
 (mu/defn all-joins-visible-columns-relative-to-parent-stage :- ::lib.metadata.calculation/visible-columns
-  "Convenience for calling [[lib.metadata.calculation/visible-columns]] on all of the joins in a query stage."
+  "Convenience for calling [[join-visible-columns-relative-to-parent-stage]] on all of the joins in a query stage."
   [query          :- ::lib.schema/query
    stage-number   :- :int
-   options        :- ::lib.metadata.calculation/visible-columns.options]
+   options        :- [:maybe ::lib.metadata.calculation/returned-columns.options]]
   (into []
         (mapcat (fn [join]
                   (join-visible-columns-relative-to-parent-stage query stage-number join options)))
@@ -592,9 +592,10 @@
 (defn default-alias
   "Generate a default `:alias` for a join clause. home-cols should be visible columns for the stage"
   ([query stage-number a-join]
-   (let [stage (lib.util/query-stage query stage-number)
-         home-cols (lib.metadata.calculation/visible-columns query stage-number stage)]
+   (let [stage     (lib.util/query-stage query stage-number)
+         home-cols (lib.metadata.calculation/visible-columns query stage-number)]
      (default-alias query stage-number a-join stage home-cols)))
+
   ([query _stage-number a-join stage home-cols]
    (let [home-cols   home-cols
          cond-fields (into []
@@ -625,7 +626,7 @@
                                                             (dissoc % :alias)
                                                             %)
                                                          joins))))
-          home-cols   (lib.metadata.calculation/visible-columns query stage-number stage)
+          home-cols   (lib.metadata.calculation/visible-columns query stage-number)
           join-alias  (default-alias query stage-number a-join stage home-cols)
           join-cols   (lib.metadata.calculation/returned-columns
                        (lib.query/query-with-stages query (:stages a-join)))]
@@ -848,9 +849,7 @@
                                       (comp (map lib.join.util/current-join-alias)
                                             (drop-while #(not= % existing-join-alias)))
                                       (joins query stage-number))]
-     (->> (lib.metadata.calculation/visible-columns query stage-number
-                                                    (lib.util/query-stage query stage-number)
-                                                    {:include-implicitly-joinable? false})
+     (->> (lib.metadata.calculation/visible-columns query stage-number {:include-implicitly-joinable? false})
           (remove (fn [col]
                     (when-let [col-join-alias (lib.join.util/current-join-alias col)]
                       (contains? join-aliases-to-ignore col-join-alias))))
@@ -895,7 +894,7 @@
                              (cond-> rhs-expression-or-nil
                                ;; Drop the :join-alias from the RHS if the joinable doesn't have one either.
                                (not join-alias) (lib.options/update-options dissoc :join-alias)))]
-     (->> (lib.metadata.calculation/visible-columns query stage-number joinable {:include-implicitly-joinable? false})
+     (->> (lib.metadata.calculation/returned-columns query stage-number joinable)
           (map (fn [col]
                  (if join-alias
                    (column-from-join query stage-number col join-alias)
@@ -924,16 +923,26 @@
                                      ::lib.schema.metadata/column
                                      [:map
                                       [::target ::lib.schema.metadata/column]]]]]
-  "Find FK columns in `source` pointing at a column in `target`. Includes the target column under the `::target` key."
+  "Find FK columns in `source` pointing at a column in `target`. Includes the target column under the `::target` key.
+
+  `source` and `target` are `::current-stage` and a [[Joinable]], in either order; `::current-stage` means use the
+  stage in `query` at `stage-number`."
   [query        :- ::lib.schema/query
    stage-number :- :int
-   source
-   target]
-  (let [target-columns (delay
-                         (lib.metadata.calculation/visible-columns
-                          query stage-number target
-                          {:include-implicitly-joinable?                 false
-                           :include-implicitly-joinable-for-source-card? false}))]
+   source       :- [:or
+                    [:= ::current-stage]
+                    Joinable]
+   target       :- [:or
+                    [:= ::current-stage]
+                    Joinable]]
+  (let [current-stage-cols (fn []
+                             (let [opts {:include-implicitly-joinable?                 false
+                                         :include-implicitly-joinable-for-source-card? false}]
+                               (lib.metadata.calculation/visible-columns query stage-number opts)))
+        target-columns     (delay
+                             (if (= target ::current-stage)
+                               (current-stage-cols)
+                               (lib.metadata.calculation/returned-columns query stage-number target)))]
     (not-empty
      (into []
            (keep (fn [{:keys [fk-target-field-id], :as col}]
@@ -944,9 +953,9 @@
                                                                  (:id target-column)))
                                                             @target-columns)]
                        (assoc col ::target target-column)))))
-           (lib.metadata.calculation/visible-columns query stage-number source
-                                                     {:include-implicitly-joinable?                 false
-                                                      :include-implicitly-joinable-for-source-card? false})))))
+           (if (= source ::current-stage)
+             (current-stage-cols)
+             (lib.metadata.calculation/returned-columns query stage-number source))))))
 
 (mu/defn suggested-join-conditions :- [:maybe [:sequential {:min 1} ::lib.schema.expression/boolean]] ; i.e., a filter clause
   "Return suggested default join conditions when constructing a join against `joinable`, e.g. a Table, Saved
@@ -972,8 +981,7 @@
                       (lib.util/update-query-stage query stage-number
                                                    u/assoc-dissoc :joins new-joins))
                     ;; If this is a new joinable, use the entire current query.
-                    query)
-         stage    (lib.util/query-stage unjoined stage-number)]
+                    query)]
      (letfn [;; only keep one FK to each target column e.g. for
              ;;
              ;;    messages (sender_id REFERENCES user(id),  recipient_id REFERENCES user(id))
@@ -988,13 +996,13 @@
                (lib.filter/filter-clause (lib.filter.operator/operator-def :=) x y))]
        (or
         ;; find cases where we have FK(s) pointing to joinable. Our column goes on the LHS.
-        (when-let [fks (fks stage joinable)]
+        (when-let [fks (fks ::current-stage joinable)]
           (mapv (fn [fk]
                   (filter-clause fk (::target fk)))
                 fks))
         ;; find cases where the `joinable` has FK(s) pointing to us. Note our column is the target this time around --
         ;; keep in on the LHS.
-        (when-let [fks (fks joinable stage)]
+        (when-let [fks (fks joinable ::current-stage)]
           (mapv (fn [fk]
                   (filter-clause (::target fk) fk))
                 fks)))))))
