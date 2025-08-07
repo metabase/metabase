@@ -6,7 +6,8 @@
             [metabase.util.log :as log]
             [next.jdbc :as jdbc]
             [next.jdbc.result-set :as jdbc.rs])
-  (:import (java.time Duration Instant)))
+  (:import (java.time Duration Instant)
+           (java.util Arrays)))
 
 (def ^:private poll-limit 1000)
 
@@ -14,18 +15,24 @@
 
 (defn candidate-filter [capacity]
   {:capacity capacity
-   :tree     (sorted-set)})
+   :tree     (sorted-map)})
 
 (defn remove-redundant-candidates [candidate-filter update-candidates]
   (let [{:keys [tree]} candidate-filter]
-    (remove (fn [{:keys [id gated_at]}] (contains? tree [gated_at id])) update-candidates)))
+    (remove (fn [{:keys [id document_hash gated_at]}]
+              (let [existing-hash (get tree [gated_at id] ::not-found)]
+                (cond
+                  (identical? ::not-found existing-hash) false
+                  (nil? existing-hash) (nil? document_hash)
+                  :else (Arrays/equals ^bytes existing-hash ^bytes document_hash))))
+            update-candidates)))
 
 (defn update-candidate-filter [candidate-filter update-candidates]
   (let [{:keys [capacity tree]} candidate-filter
-        rf (fn [tree {:keys [id gated_at] :as candidate}]
+        rf (fn [tree {:keys [id document_hash gated_at] :as candidate}]
              (if (= capacity (count tree))
-               (recur (disj tree (first tree)) candidate)
-               (conj tree [gated_at id])))]
+               (recur (dissoc tree (ffirst tree)) candidate)
+               (assoc tree [gated_at id] document_hash)))]
     {:capacity capacity
      :tree     (reduce rf tree update-candidates)}))
 
@@ -154,9 +161,22 @@
 (def default-exit-early-cold-duration
   (Duration/ofSeconds 30))
 
+;; this solves a problem where the very last document
+;; will be re-indexed every time the indexer is rescheduled
+(defn- seed-candidate-filter [candidate-filter
+                              {:keys [indexer_last_seen
+                                      indexer_last_seen_id
+                                      indexer_last_seen_hash]
+                               :as _metadata-row}]
+  (if indexer_last_seen_id
+    (update-candidate-filter candidate-filter [{:id            indexer_last_seen_id
+                                                :document_hash indexer_last_seen_hash
+                                                :gated_at      indexer_last_seen}])
+    candidate-filter))
+
 (defn init-indexing-state [metadata-row]
   (volatile! {:watermark                (semantic.gate/resume-watermark metadata-row)
-              :candidate-filter         (candidate-filter poll-limit)
+              :candidate-filter         (seed-candidate-filter (candidate-filter poll-limit) metadata-row)
               :last-indexed-count       0
               :last-poll-count          0
               :max-run-duration         default-max-run-duration
