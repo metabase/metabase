@@ -508,8 +508,7 @@
 
 (def ^:private model->deleted-descendants
   ;; Note that these refer to the table names, not the search-model names.
-  {"collection"        #{"action" "model_index_value" "report_card"}
-   "core_user"         #{"action" "collection" "model_index_value" "report_card" "report_dashboard" "segment"}
+  {"core_user"         #{"action" "collection" "model_index_value" "report_card" "report_dashboard" "segment"}
    "model_index"       #{"model_index_value"}
    "metabase_database" #{"action" "metabase_table" "model_index_value" "report_card" "segment"}
    "metabase_table"    #{"action" "model_index_value" "report_card" "segment"}

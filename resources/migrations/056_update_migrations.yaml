@@ -356,7 +356,7 @@ databaseChangeLog:
             referencedTableName: collection
             referencedColumnNames: id
             constraintName: fk_document_ref_collection_id
-            onDelete: CASCADE
+            onDelete: SET NULL
 
   - changeSet:
       id: v56.2025-07-29T17:23:20
