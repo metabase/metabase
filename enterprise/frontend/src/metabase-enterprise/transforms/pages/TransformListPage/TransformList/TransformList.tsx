@@ -7,9 +7,12 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { useDispatch } from "metabase/lib/redux";
 import { Card } from "metabase/ui";
 import { useListTransformsQuery } from "metabase-enterprise/api";
-import { ListEmptyState } from "metabase-enterprise/transforms/components/ListEmptyState";
-import { getTransformUrl } from "metabase-enterprise/transforms/urls";
 import type { Transform, TransformExecution } from "metabase-types/api";
+
+import { ListEmptyState } from "../../../components/ListEmptyState";
+import { getTransformUrl } from "../../../urls";
+
+import S from "./TransformList.module.css";
 
 export function TransformList() {
   const { data: transforms = [], isLoading, error } = useListTransformsQuery();
@@ -33,7 +36,11 @@ export function TransformList() {
         columnTitles={[t`Name`, t`Target`, t`Last run at`, `Last run status`]}
       >
         {transforms.map((transform) => (
-          <tr key={transform.id} onClick={() => handleRowClick(transform)}>
+          <tr
+            key={transform.id}
+            className={S.row}
+            onClick={() => handleRowClick(transform)}
+          >
             <td>{transform.name}</td>
             <td>{transform.target.name}</td>
             <td>{getLastRunTime(transform.last_execution)}</td>
