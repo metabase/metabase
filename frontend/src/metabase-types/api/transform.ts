@@ -2,6 +2,8 @@ import type { DatasetQuery } from "./query";
 import type { Table } from "./table";
 
 export type TransformId = number;
+export type TransformTagId = number;
+export type TransformJobId = number;
 
 export type Transform = {
   id: TransformId;
@@ -40,9 +42,21 @@ export type TransformExecutionStatus =
   | "failed"
   | "timeout";
 
-export type CreateTransformRequest = {
+export type TransformTag = {
+  id: TransformTagId;
+  name: string;
+};
+
+export type TransformJob = {
+  id: TransformJobId;
   name: string;
   description: string | null;
+  schedule: string;
+};
+
+export type CreateTransformRequest = {
+  name: string;
+  description?: string | null;
   source: TransformSource;
   target: TransformTarget;
 };
@@ -53,4 +67,26 @@ export type UpdateTransformRequest = {
   description?: string | null;
   source?: TransformSource;
   target?: TransformTarget;
+};
+
+export type CreateTransformJobRequest = {
+  name: string;
+  description?: string | null;
+  schedule: string;
+};
+
+export type UpdateTransformJobRequest = {
+  id: TransformJobId;
+  name?: string;
+  description?: string | null;
+  schedule?: string;
+};
+
+export type CreateTransformTagRequest = {
+  name: string;
+};
+
+export type UpdateTransformTagRequest = {
+  id: TransformJobId;
+  name?: string;
 };

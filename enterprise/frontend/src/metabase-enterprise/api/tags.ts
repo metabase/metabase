@@ -1,7 +1,7 @@
 import type { TagDescription } from "@reduxjs/toolkit/query";
 
 import { TAG_TYPES } from "metabase/api/tags";
-import type { Transform } from "metabase-types/api";
+import type { Transform, TransformJob, TransformTag } from "metabase-types/api";
 
 export const ENTERPRISE_TAG_TYPES = [
   ...TAG_TYPES,
@@ -11,6 +11,8 @@ export const ENTERPRISE_TAG_TYPES = [
   "metabot-prompt-suggestions",
   "gsheets-status",
   "transform",
+  "transform-tag",
+  "transform-job",
 ] as const;
 
 export type EnterpriseTagType = (typeof ENTERPRISE_TAG_TYPES)[number];
@@ -51,4 +53,28 @@ export function provideTransformListTags(
   transforms: Transform[],
 ): TagDescription<EnterpriseTagType>[] {
   return [listTag("transform"), ...transforms.flatMap(provideTransformTags)];
+}
+
+export function provideTransformTagTags(
+  tag: TransformTag,
+): TagDescription<EnterpriseTagType>[] {
+  return [idTag("transform-tag", tag.id)];
+}
+
+export function provideTransformTagListTags(
+  tags: TransformTag[],
+): TagDescription<EnterpriseTagType>[] {
+  return [listTag("transform-tag"), ...tags.flatMap(provideTransformTagTags)];
+}
+
+export function provideTransformJobTags(
+  job: TransformJob,
+): TagDescription<EnterpriseTagType>[] {
+  return [idTag("transform-tag", job.id)];
+}
+
+export function provideTransformJobListTags(
+  jobs: TransformJob[],
+): TagDescription<EnterpriseTagType>[] {
+  return [listTag("transform-job"), ...jobs.flatMap(provideTransformJobTags)];
 }

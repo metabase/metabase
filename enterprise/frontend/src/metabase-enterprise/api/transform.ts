@@ -32,7 +32,7 @@ export const transformApi = EnterpriseApi.injectEndpoints({
       providesTags: (transform) =>
         transform ? provideTransformTags(transform) : [],
     }),
-    executeTransform: builder.mutation<Transform, TransformId>({
+    executeTransform: builder.mutation<void, TransformId>({
       query: (id) => ({
         method: "POST",
         url: `/api/ee/transform/${id}/execute`,
@@ -56,9 +56,9 @@ export const transformApi = EnterpriseApi.injectEndpoints({
         body,
       }),
       invalidatesTags: (_, error, { id }) =>
-        invalidateTags(error, [listTag("transform"), idTag("transform", id)]),
+        invalidateTags(error, [idTag("transform", id)]),
     }),
-    deleteTransform: builder.mutation<Transform, TransformId>({
+    deleteTransform: builder.mutation<void, TransformId>({
       query: (id) => ({
         method: "DELETE",
         url: `/api/ee/transform/${id}`,
@@ -66,7 +66,7 @@ export const transformApi = EnterpriseApi.injectEndpoints({
       invalidatesTags: (_, error) =>
         invalidateTags(error, [listTag("transform")]),
     }),
-    deleteTransformTarget: builder.mutation<Transform, TransformId>({
+    deleteTransformTarget: builder.mutation<void, TransformId>({
       query: (id) => ({
         method: "DELETE",
         url: `/api/ee/transform/${id}/table`,
@@ -79,7 +79,6 @@ export const transformApi = EnterpriseApi.injectEndpoints({
 
 export const {
   useListTransformsQuery,
-  useLazyListTransformsQuery,
   useGetTransformQuery,
   useExecuteTransformMutation,
   useCreateTransformMutation,

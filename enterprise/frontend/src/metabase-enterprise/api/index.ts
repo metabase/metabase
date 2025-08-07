@@ -11,4 +11,5 @@ export * from "./saml";
 export * from "./scim";
 export * from "./tags";
 export * from "./transform";
+export * from "./transform-job";
 export * from "./upload-management";
