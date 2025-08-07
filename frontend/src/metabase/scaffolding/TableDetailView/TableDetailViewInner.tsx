@@ -254,7 +254,7 @@ export function TableDetailViewInner({
             items={notEmptySections.map((section) => section.id)}
             strategy={verticalListSortingStrategy}
           >
-            {notEmptySections.map((section, index) => (
+            {(isEdit ? sections : notEmptySections).map((section, index) => (
               <Fragment key={section.id}>
                 {/* {index > 0 &&
                   (section.variant === "normal" ||

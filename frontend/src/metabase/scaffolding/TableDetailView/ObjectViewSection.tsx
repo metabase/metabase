@@ -19,6 +19,7 @@ import type {
 import { renderValue } from "../utils";
 
 import S from "./TableDetailView.module.css";
+import { t } from "ttag";
 
 type ObjectViewSectionProps = {
   section: ObjectViewSectionSettings;
@@ -81,11 +82,12 @@ export function ObjectViewSection({
             c="var(--mb-color-text-primary)"
             style={{
               flexGrow: 1,
+              opacity: headerText ? 1 : 0.5,
             }}
             className={S.FieldValue}
             fz={undefined}
           >
-            {headerText}
+            {headerText || t`Title`}
           </Ellipsified>
         </Flex>
       </Box>
@@ -115,7 +117,7 @@ export function ObjectViewSection({
           : {}
       }
     >
-      {onUpdateSection && section.title.trim().length > 0 && (
+      {onUpdateSection && (
         <Group gap="md" p={0}>
           {/* {isEdit && (
           <Icon
@@ -128,12 +130,14 @@ export function ObjectViewSection({
         )} */}
           <EditableText
             initialValue={section.title}
-            isDisabled={!isEdit}
+            isDisabled={!isEdit || section.variant === "subheader"}
             onChange={(title) => onUpdateSection({ title })}
+            placeholder={t`Section title`}
             style={{
               fontWeight: 700,
               fontSize: "1.25rem",
               marginBottom: "2rem",
+              opacity: section.variant === "subheader" ? 0.5 : 1,
             }}
           />
         </Group>
