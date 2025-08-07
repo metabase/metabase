@@ -237,8 +237,9 @@ export function getDefaultObjectViewSettings(
   const headerFields =
     !pkInName && pkFields.length > 0 && pkFields.length + nameFields.length <= 3
       ? [...pkFields, ...nameFields]
-      : // if you have more than 3 entity name or title fields, we'll use them *all*
-        nameFields;
+      : // it feels wrong to break these up, since they are explicitly grouped by their semantic labels
+        // but, the layout assumes this limitation.
+        nameFields.slice(0, 3);
 
   const sections: ObjectViewSectionSettings[] = [];
 
@@ -298,14 +299,13 @@ export function getDefaultObjectViewSettings(
   if (remainingFields.length > 0) {
     const groupedFields = remainingFields.reduce<Record<string, Field[]>>(
       (acc: Record<string, Field[]>, field: Field) => {
-        // test all the possible prefixes if there are multiple underscores or dashes
-        // e.g. for "contact_user_name" try first "contact_user" as a common prefix, then "contact".
-        // this is a simple heuristic, but it should work for most cases
-        // if the field name is camelCase, split on the first uppercase letter
-        // e.g. for "contactUserName" try "contactUser" and then "contact"
         let parts = field.name.split(/[_-]/);
         if (parts.length === 1) {
-          parts = field.name.split(/(?=[A-Z])/);
+          // split parts by camelCase or PascalCase if no underscores or dashes
+          parts = field.name
+            .split(/(?<!(^|[A-Z]))(?=[A-Z])|(?<!^)(?=[A-Z][a-z])/)
+            // this terrible regex i got off stack overflow leaves some empty matches :-)
+            .filter((s) => s);
         }
         const prefixes = parts
           .slice(0, -2)
