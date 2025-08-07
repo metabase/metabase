@@ -601,7 +601,7 @@
                                                       :last_name  "Toucan"
                                                       :string_attr "valid-string"
                                                       :number_attr 42
-                                                      :boolean_attr true
+                                                      :boolean_attr false
                                                       :array_attr ["item1" "item2"]
                                                       :object_attr {:nested "value"}
                                                       :null_attr nil}
@@ -609,15 +609,15 @@
           (is (saml-test/successful-login? response))
 
           (testing "only string attributes are saved to jwt_attributes"
-            (is (= {"string_attr" "valid-string"}
+            (is (= {"string_attr" "valid-string"
+                    "number_attr" 42
+                    "boolean_attr" false}
                    (t2/select-one-fn :jwt_attributes :model/User :email "rasta@metabase.com"))))
 
-          (testing "warning messages are logged for non-string values"
-            (is (some #(re-find #"Dropping JWT claim 'number_attr' with non-string value: 42" %) (map :message (jwt-log-messages))))
-            (is (some #(re-find #"Dropping JWT claim 'boolean_attr' with non-string value: true" %) (map :message (jwt-log-messages))))
-            (is (some #(re-find #"Dropping JWT claim 'array_attr' with non-string value: \[\"item1\" \"item2\"\]" %) (map :message (jwt-log-messages))))
-            (is (some #(re-find #"Dropping JWT claim 'object_attr' with non-string value: \{:nested \"value\"\}" %) (map :message (jwt-log-messages))))
-            (is (some #(re-find #"Dropping JWT claim 'null_attr' with non-string value: null" %) (map :message (jwt-log-messages)))))
+          (testing "warning messages are logged for non-stringable values"
+            (is (some #(re-find #"Dropping attribute 'array_attr' with non-stringable value: \[\"item1\" \"item2\"\]" %) (map :message (jwt-log-messages))))
+            (is (some #(re-find #"Dropping attribute 'object_attr' with non-stringable value: \{:nested \"value\"\}" %) (map :message (jwt-log-messages))))
+            (is (some #(re-find #"Dropping attribute 'null_attr' with non-stringable value: null" %) (map :message (jwt-log-messages)))))
 
           (testing "no warning for valid string attribute"
             (is (not (some #(re-find #"string_attr" %) (map :message (jwt-log-messages)))))))))))

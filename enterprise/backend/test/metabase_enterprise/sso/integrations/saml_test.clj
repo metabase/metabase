@@ -924,10 +924,6 @@
 
                (testing "only string attributes are saved to login_attributes"
                  (let [user-attrs (t2/select-one-fn :login_attributes :model/User :email "rasta@metabase.com")]
-                   (is (contains? user-attrs "string_attr"))
-                   (is (= "valid-string" (get user-attrs "string_attr")))
-                   (is (not (contains? user-attrs "number_attr")))
-                   (is (not (contains? user-attrs "boolean_attr")))
-                   (is (not (contains? user-attrs "array_attr")))
-                   (is (not (contains? user-attrs "object_attr")))
-                   (is (not (contains? user-attrs "null_attr")))))))))))))
+                   (is (=? {"string_attr" "valid-string"
+                            "number_attr" 42
+                            "boolean_attr" true} user-attrs))))))))))))

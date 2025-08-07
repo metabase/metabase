@@ -157,7 +157,7 @@
                         cell-values (mapcat (fn [col-idx]
                                               (let [values (get-row-section col-idx row-idx)]
                                                 (map :value values)))
-                                            (range (/ col-count measure-count)))]
+                                            (range (/ col-count (max measure-count 1))))]
                     ;; Combine left headers with cell values
                     (into left-row cell-values))))]
     (vec result)))
