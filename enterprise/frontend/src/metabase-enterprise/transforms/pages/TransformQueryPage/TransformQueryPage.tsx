@@ -12,7 +12,7 @@ import {
 } from "metabase-enterprise/api";
 import type { DatasetQuery, Transform } from "metabase-types/api";
 
-import { TransformQueryEditor } from "../../components/TransformQueryEditor";
+import { QueryEditor } from "../../components/QueryEditor";
 import { getTransformUrl } from "../../urls";
 
 type TransformQueryPageParams = {
@@ -75,7 +75,7 @@ export function TransformQueryPageBody({
   };
 
   return (
-    <TransformQueryEditor
+    <QueryEditor
       query={transform.source.query}
       isNew={false}
       isSaving={isLoading}

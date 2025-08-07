@@ -9,7 +9,7 @@ import * as Urls from "metabase/lib/urls";
 import Question from "metabase-lib/v1/Question";
 import type { Card, CardId, DatasetQuery, Transform } from "metabase-types/api";
 
-import { TransformQueryEditor } from "../../components/TransformQueryEditor";
+import { QueryEditor } from "../../components/QueryEditor";
 import { getTransformListUrl, getTransformUrl } from "../../urls";
 
 import { NewTransformModal } from "./NewTransformModal";
@@ -68,7 +68,7 @@ function NewTransformPageBody({ initialQuery }: NewTransformPageBodyProps) {
 
   return (
     <>
-      <TransformQueryEditor
+      <QueryEditor
         query={query}
         isNew
         onSave={handleSaveClick}
