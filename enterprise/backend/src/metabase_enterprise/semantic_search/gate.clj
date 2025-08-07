@@ -134,7 +134,7 @@
 
   Expect to receive a map with:
   - `:poll-time` the postgres clock value as-of this poll
-  - `:update-candidates` a vector of [{:id, :gated_at}] maps.
+  - `:update-candidates` a vector of [{:id, :document_hash, :gated_at}] maps.
 
   Options:
   - :limit (1000)
@@ -146,21 +146,24 @@
                                         :or   {lag-tolerance (.multipliedBy gate-write-timeout 2) ; heuristic: still depends on postgres enforcing timeouts. We might still need a slow-pass over everything occasionally in the future.
                                                limit         1000}}]
   {:pre [(pos? limit)]}
-  (let [confidence-time   (.minus (Instant/ofEpochMilli (inst-ms (:last-poll watermark))) lag-tolerance)
-        gate-min          (if (< (inst-ms confidence-time) (inst-ms (:last-seen watermark)))
+  (let [last-poll-time    (or (:last-poll watermark) Instant/EPOCH)
+        last-seen-time    (or (:gated_at (:last-seen watermark)) Instant/EPOCH)
+        confidence-time   (.minus (Instant/ofEpochMilli (inst-ms last-poll-time)) lag-tolerance)
+        gate-min          (if (< (inst-ms confidence-time) (inst-ms last-seen-time))
                             confidence-time
                             ;; We might not have seen everything with the last poll
                             ;; e.g. maybe there were more than :limit rows
                             ;; For this case - we would expect the last-seen to be behind the confidence window,
                             ;; and we should not skip ahead.
-                            (:last-seen watermark))
+                            last-seen-time)
         poll-q            {:union-all
                            [{:select [[nil :id]
+                                      [nil :document_hash]
                                       [[:clock_timestamp] :gated_at]]} ; return pgs clock value, to use as the :poll-time
-                            {:select [:q.id :q.gated_at]
+                            {:select [:q.id :q.document_hash :q.gated_at]
                              :from
                              ;; subquery is important otherwise :limit is honey-ed into the outer union
-                             [[{:select   [:id, :gated_at]
+                             [[{:select   [:id, :document_hash, :gated_at]
                                 :from     [(keyword (:gate-table-name index-metadata))]
                                 ;; the earliest timestamp where we might expect to find new documents
                                 :where    [:>= :gated_at gate-min]
@@ -178,10 +181,11 @@
 (defn next-watermark
   "Given a poll result and the previous watermark, return next watermark (to be applied to poll at some future time)"
   [watermark {:keys [poll-time update-candidates]}]
-  (let [max-seen-rf (fn [max-seen {:keys [gated_at]}]
-                      (if (< (inst-ms max-seen) (inst-ms gated_at))
-                        gated_at
-                        max-seen))]
+  (let [max-seen-rf (fn [max-seen {:keys [gated_at] :as candidate}]
+                      (cond
+                        (nil? max-seen) candidate
+                        (< (inst-ms (:gated_at max-seen)) (inst-ms gated_at)) candidate
+                        :else max-seen))]
     {:last-poll poll-time
      :last-seen (reduce max-seen-rf (:last-seen watermark) update-candidates)}))
 
@@ -189,9 +193,15 @@
   "Extracts a watermark for resuming indexer processing - assuming the previous watermark was flushed
   to the metadata table."
   [metadata-row]
-  (let [{:keys [indexer_last_poll indexer_last_seen]} metadata-row]
+  (let [{:keys [indexer_last_poll
+                indexer_last_seen
+                indexer_last_seen_id
+                indexer_last_seen_hash]} metadata-row]
     {:last-poll indexer_last_poll
-     :last-seen indexer_last_seen}))
+     :last-seen (when indexer_last_seen_id
+                  {:id            indexer_last_seen_id
+                   :document_hash indexer_last_seen_hash
+                   :gated_at      indexer_last_seen})}))
 
 (defn flush-watermark!
   "Persists an indexer watermark to the corresponding row in the metadata table for resumption after restarts.
@@ -199,8 +209,10 @@
   [pgvector index-metadata index watermark]
   (let [{:keys [last-poll last-seen]} watermark
         update-q {:update [(keyword (:metadata-table-name index-metadata))]
-                  :set    {:indexer_last_poll last-poll
-                           :indexer_last_seen last-seen}
+                  :set    {:indexer_last_poll      last-poll
+                           :indexer_last_seen_id   (:id last-seen)
+                           :indexer_last_seen      (:gated_at last-seen)
+                           :indexer_last_seen_hash (:document_hash last-seen)}
                   :where  [:= :table_name (:table-name index)]}]
     (jdbc/execute! pgvector (sql/format update-q :quoted true))))
 
@@ -231,7 +243,7 @@
 
   (def watermark
     {:last-poll java.time.Instant/EPOCH
-     :last-seen java.time.Instant/EPOCH})
+     :last-seen nil})
 
   (def poll-result (poll pgvector index-metadata watermark))
   poll-result

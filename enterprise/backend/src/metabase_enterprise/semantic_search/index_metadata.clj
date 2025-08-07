@@ -11,8 +11,7 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [next.jdbc :as jdbc]
-   [next.jdbc.result-set :as jdbc.rs])
-  (:import (java.time Instant)))
+   [next.jdbc.result-set :as jdbc.rs]))
 
 ;; metadata and control tables allow multiple indexes to coexist
 ;; while maintaining a single active pointer.
@@ -30,8 +29,10 @@
     [:table_name :text :not-null :unique]
     [:index_version :int :not-null]
     [:index_created_at :timestamp-with-time-zone :not-null]
-    [:indexer_last_poll :timestamp-with-time-zone :not-null]
-    [:indexer_last_seen :timestamp-with-time-zone :not-null]]
+    [:indexer_last_poll :timestamp-with-time-zone :null]
+    [:indexer_last_seen :timestamp-with-time-zone :null]
+    [:indexer_last_seen_id :text :null]
+    [:indexer_last_seen_hash :bytea :null]]
 
    :control
    [[:id :bigint [:primary-key]]                            ;; not auto-inc, only one row - still useful to ensure only one row when inserting.
@@ -316,9 +317,7 @@
                                              :vector_dimensions vector-dimensions
                                              :table_name        index-table-name
                                              :index_version     index-version
-                                             :index_created_at  [:now]
-                                             :indexer_last_poll Instant/EPOCH
-                                             :indexer_last_seen Instant/EPOCH}])
+                                             :index_created_at  [:now]}])
                        (sql.helpers/returning :id)
                        (sql/format :quoted true))
         {:keys [id]} (jdbc/execute-one! pgvector insert-sql {:builder-fn jdbc.rs/as-unqualified-lower-maps})]

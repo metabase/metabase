@@ -225,37 +225,43 @@
                 timestamp-plus #(.plus (.toInstant ^Timestamp %1) %2)]
             (is (= [g1 g2 g3] (poll-times epoch-watermark)))
             (testing "seen everything, but still in lag tolerance window"
-              (is (= [g1 g2 g3] (poll-times {:last-poll g1 :last-seen g3})))
-              (is (= [g1 g2 g3] (poll-times {:last-poll (timestamp-plus g1 lag-tolerance) :last-seen g3}))))
+              (is (= [g1 g2 g3] (poll-times {:last-poll g1 :last-seen {:gated_at g3}})))
+              (is (= [g1 g2 g3] (poll-times {:last-poll (timestamp-plus g1 lag-tolerance) :last-seen {:gated_at g3}}))))
             (testing "entries drop once confidence window slides forwards"
               (is (= [g2 g3] (poll-times {:last-poll (timestamp-plus g1 (.multipliedBy lag-tolerance 2))
-                                          :last-seen g3}))))
+                                          :last-seen {:gated_at g3}}))))
             (testing "if last seen is < confidence, we still pull those entries (no gaps)"
               (is (= [g1 g2 g3] (poll-times {:last-poll (timestamp-plus g1 (.multipliedBy lag-tolerance 2))
-                                             :last-seen g1})))
+                                             :last-seen {:gated_at g1}})))
               (testing "true even for big gaps"
                 (is (= [g2 g3] (poll-times {:last-poll (timestamp-plus g3 (.multipliedBy lag-tolerance 1000))
-                                            :last-seen g2})))))))))))
+                                            :last-seen {:gated_at g2}})))))))))))
 
 (deftest watermark-management-test
   (testing "next-watermark updates watermark based on poll results"
     (let [initial-watermark {:last-poll (Instant/parse "2025-01-01T12:00:00Z")
-                             :last-seen (Instant/parse "2025-01-01T11:00:00Z")}
+                             :last-seen {:id            "card_1"
+                                         :document_hash (byte-array [1 2 3])
+                                         :gated_at      (Instant/parse "2025-01-01T11:00:00Z")}}
           poll-result       {:poll-time         (Instant/parse "2025-01-01T13:00:00Z")
                              :update-candidates [{:id "card_123" :gated_at (Instant/parse "2025-01-01T12:30:00Z")}
                                                  {:id "dashboard_456" :gated_at (Instant/parse "2025-01-01T12:45:00Z")}]}
           next-watermark    (semantic.gate/next-watermark initial-watermark poll-result)]
 
       (is (= (Instant/parse "2025-01-01T13:00:00Z") (:last-poll next-watermark)))
-      (is (= (Instant/parse "2025-01-01T12:45:00Z") (:last-seen next-watermark)))))
+      (is (=? {:gated_at (Instant/parse "2025-01-01T12:45:00Z")
+               :id       "dashboard_456"}
+              (:last-seen next-watermark)))))
 
   (testing "resume-watermark extracts watermark from metadata row"
-    (let [metadata-row {:indexer_last_poll (Instant/parse "2025-01-01T12:00:00Z")
-                        :indexer_last_seen (Instant/parse "2025-01-01T11:30:00Z")}
+    (let [metadata-row {:indexer_last_poll      (Instant/parse "2025-01-01T12:00:00Z")
+                        :indexer_last_seen      (Instant/parse "2025-01-01T11:30:00Z")
+                        :indexer_last_seen_id   "card_1"
+                        :indexer_last_seen_hash (byte-array [1 2 3])}
           watermark    (semantic.gate/resume-watermark metadata-row)]
 
       (is (= (Instant/parse "2025-01-01T12:00:00Z") (:last-poll watermark)))
-      (is (= (Instant/parse "2025-01-01T11:30:00Z") (:last-seen watermark))))))
+      (is (= (Instant/parse "2025-01-01T11:30:00Z") (:gated_at (:last-seen watermark)))))))
 
 (deftest flush-watermark!-test
   (let [pgvector       semantic.tu/db
@@ -265,7 +271,9 @@
         index1         (semantic.index-metadata/qualify-index (semantic.index/default-index model1) index-metadata)
         index2         (semantic.index-metadata/qualify-index (semantic.index/default-index model2) index-metadata)
         watermark      {:last-poll (Instant/parse "2025-01-01T13:00:00Z")
-                        :last-seen (Instant/parse "2025-01-01T12:45:00Z")}]
+                        :last-seen {:id            "card_1"
+                                    :document_hash (byte-array [4 2 0])
+                                    :gated_at      (Instant/parse "2025-01-01T12:45:00Z")}}]
 
     (with-open [_ (open-tables! pgvector index-metadata)]
 
@@ -283,15 +291,28 @@
 
         (semantic.gate/flush-watermark! pgvector index-metadata index2 watermark)
 
-        (is (= [{:id                id1
-                 :indexer_last_poll (Timestamp/from Instant/EPOCH)
-                 :indexer_last_seen (Timestamp/from Instant/EPOCH)}
-                {:id                id2
-                 :indexer_last_poll (Timestamp/from (:last-poll watermark))
-                 :indexer_last_seen (Timestamp/from (:last-seen watermark))}]
-               (->> (jdbc/execute! pgvector
-                                   (-> {:select [:id :indexer_last_poll :indexer_last_seen]
-                                        :from   [(keyword (:metadata-table-name index-metadata))]}
-                                       (sql/format :quoted true))
-                                   {:builder-fn jdbc.rs/as-unqualified-lower-maps})
-                    (sort-by :id))))))))
+        (let [indexer-records
+              (->> (jdbc/execute! pgvector
+                                  (-> {:select [:id
+                                                :indexer_last_poll
+                                                :indexer_last_seen
+                                                :indexer_last_seen_hash
+                                                :indexer_last_seen_id]
+                                       :from   [(keyword (:metadata-table-name index-metadata))]}
+                                      (sql/format :quoted true))
+                                  {:builder-fn jdbc.rs/as-unqualified-lower-maps})
+                   (sort-by :id))
+              [index1-meta index2-meta] indexer-records]
+          (is (= 2 (count indexer-records)))
+          (is (= {:id                     id1
+                  :indexer_last_seen_id   nil
+                  :indexer_last_seen_hash nil
+                  :indexer_last_poll      nil
+                  :indexer_last_seen      nil}
+                 index1-meta))
+          (is (=? {:id                   id2
+                   :indexer_last_poll    (Timestamp/from (:last-poll watermark))
+                   :indexer_last_seen_id "card_1"
+                   :indexer_last_seen    (Timestamp/from (:gated_at (:last-seen watermark)))}
+                  index2-meta))
+          (is (= [4 2 0] (vec (:indexer_last_seen_hash index2-meta)))))))))
