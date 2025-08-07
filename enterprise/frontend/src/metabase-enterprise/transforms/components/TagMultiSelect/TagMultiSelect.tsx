@@ -14,8 +14,11 @@ import {
 import { useListTransformTagsQuery } from "metabase-enterprise/api/transform-tag";
 import type { TransformTag, TransformTagId } from "metabase-types/api";
 
+import { CreateTagModal } from "./CreateTagModal";
 import { DeleteTagModal } from "./DeleteTagModal";
 import { UpdateTagModal } from "./UpdateTagModal";
+
+const NEW_VALUE = "";
 
 type TagMultiSelectProps = {
   tagIds: TransformTagId[];
@@ -26,41 +29,57 @@ export function TagMultiSelect({ tagIds, onChange }: TagMultiSelectProps) {
   const { data: tags = [] } = useListTransformTagsQuery();
   const tagById = getTagById(tags);
   const [searchValue, setSearchValue] = useState("");
+  const [isModalOpened, setIsModalOpened] = useState(false);
 
   const handleChange = (value: string[]) => {
-    onChange(value.map(getTagId));
+    if (value.includes(NEW_VALUE)) {
+      setIsModalOpened(true);
+    } else {
+      onChange(value.map(getTagId));
+    }
+  };
+
+  const handleCreate = (tag: TransformTag) => {
+    setIsModalOpened(false);
+    onChange([...tagIds, tag.id]);
+  };
+
+  const handleModalClose = () => {
+    setIsModalOpened(false);
   };
 
   return (
-    <MultiSelect
-      value={tagIds.map(getValue)}
-      data={getOptions(tags, searchValue)}
-      placeholder={t`Add tags`}
-      searchValue={searchValue}
-      searchable
-      renderOption={(item) => (
-        <TagSelectItem
-          tag={tagById[getTagId(item.option.value)]}
+    <>
+      <MultiSelect
+        value={tagIds.map(getValue)}
+        data={getOptions(tags, searchValue)}
+        placeholder={t`Add tags`}
+        searchValue={searchValue}
+        searchable
+        renderOption={(item) =>
+          item.option.value === NEW_VALUE ? (
+            <NewTagSelectItem
+              searchValue={searchValue}
+              selected={item.checked}
+            />
+          ) : (
+            <ExistingTagSelectItem
+              tag={tagById[getTagId(item.option.value)]}
+              selected={item.checked}
+            />
+          )
+        }
+        onChange={handleChange}
+        onSearchChange={setSearchValue}
+      />
+      {isModalOpened && (
+        <CreateTagModal
           searchValue={searchValue}
-          selected={item.checked}
+          onCreate={handleCreate}
+          onClose={handleModalClose}
         />
       )}
-      onChange={handleChange}
-      onSearchChange={setSearchValue}
-    />
-  );
-}
-
-type TagSelectItemProps = SelectItemProps & {
-  tag?: TransformTag;
-  searchValue: string;
-};
-
-function TagSelectItem({ tag, searchValue, selected }: TagSelectItemProps) {
-  return tag ? (
-    <ExistingTagSelectItem tag={tag} selected={selected} />
-  ) : (
-    <NewTagSelectItem searchValue={searchValue} selected={selected} />
+    </>
   );
 }
 
@@ -78,14 +97,14 @@ function NewTagSelectItem({ searchValue, selected }: NewTagSelectItemProps) {
   );
 }
 
-type TagModalType = "update" | "delete";
+type ExistingTagModalType = "create" | "update" | "delete";
 
 type ExistingTagSelectItemProps = SelectItemProps & {
   tag: TransformTag;
 };
 
 function ExistingTagSelectItem({ tag, selected }: ExistingTagSelectItemProps) {
-  const [modalType, setModalType] = useState<TagModalType>();
+  const [modalType, setModalType] = useState<ExistingTagModalType>();
   const { sendSuccessToast } = useMetadataToasts();
 
   const handleUpdateClick = () => {
@@ -168,7 +187,7 @@ function getOptions(tags: TransformTag[], searchValue: string) {
   }));
 
   if (searchValue.length > 0 && tags.every((tag) => tag.name !== searchValue)) {
-    return [...options, { value: "", label: "" }];
+    return [...options, { value: NEW_VALUE, label: NEW_VALUE }];
   }
 
   return options;
