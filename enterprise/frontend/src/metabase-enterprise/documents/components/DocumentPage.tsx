@@ -17,6 +17,8 @@ import { CollectionPickerModal } from "metabase/common/components/Pickers/Collec
 import { useToast } from "metabase/common/hooks";
 import { useCallbackEffect } from "metabase/common/hooks/use-callback-effect";
 import { useDispatch } from "metabase/lib/redux";
+import { extractEntityId } from "metabase/lib/urls";
+import { setErrorPage } from "metabase/redux/app";
 import {
   ActionIcon,
   Box,
@@ -57,11 +59,10 @@ import { EmbedQuestionSettingsSidebar } from "./EmbedQuestionSettingsSidebar";
 import { downloadFile, getDownloadableMarkdown } from "./exports";
 
 export const DocumentPage = ({
-  params: { id: documentId },
-  location,
+  params: { entityId },
   route,
 }: {
-  params: { id?: number | "new" };
+  params: { entityId?: string };
   location?: { query?: { version?: string } };
   route: Route;
 }) => {
@@ -79,22 +80,27 @@ export const DocumentPage = ({
     { open: showCollectionPicker, close: hideCollectionPicker },
   ] = useDisclosure(false);
   const [sendToast] = useToast();
-  const selectedVersion = location?.query?.version
-    ? Number(location.query.version)
-    : undefined;
+
+  const documentId = entityId === "new" ? "new" : extractEntityId(entityId);
   const previousDocumentId = usePrevious(documentId);
-  const previousVersion = usePrevious(selectedVersion);
   const [isNavigationScheduled, scheduleNavigation] = useCallbackEffect();
   const isNewDocument = documentId === "new";
 
-  const { data: documentData, isLoading: isDocumentLoading } =
-    useGetDocumentQuery(
-      documentId && !isNewDocument
-        ? { id: documentId, version: selectedVersion }
-        : skipToken,
-    );
+  const {
+    data: documentData,
+    isLoading: isDocumentLoading,
+    error,
+  } = useGetDocumentQuery(
+    documentId && !isNewDocument ? { id: documentId } : skipToken,
+  );
 
   const canWrite = isNewDocument ? true : documentData?.can_write;
+
+  useEffect(() => {
+    if (error) {
+      dispatch(setErrorPage(error));
+    }
+  }, [dispatch, error]);
 
   const {
     documentTitle,
@@ -112,19 +118,10 @@ export const DocumentPage = ({
 
   // Reset current content when document changes
   useEffect(() => {
-    if (
-      documentId !== previousDocumentId ||
-      selectedVersion !== previousVersion
-    ) {
+    if (documentId !== previousDocumentId) {
       setCurrentContent(documentContent || "");
     }
-  }, [
-    documentId,
-    previousDocumentId,
-    selectedVersion,
-    previousVersion,
-    documentContent,
-  ]);
+  }, [documentId, previousDocumentId, documentContent]);
 
   useRegisterDocumentMetabotContext();
   useBeforeUnload(() => {
