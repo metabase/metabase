@@ -177,6 +177,15 @@ jobs:
           name: failed-tests-${{ inputs.name }}-${{ inputs.edition }}
           path: ./cypress/test-results
 
+      - name: Upload Timing Data
+        uses: actions/upload-artifact@v4
+        if: always()
+        continue-on-error: true
+        with:
+          name: timing-data-${{ inputs.name }}-${{ inputs.split_index }}
+          path: newTimes.json
+          retention-days: 7
+
       - name: Publish Summary
         if: failure()
         uses: actions/github-script@v7

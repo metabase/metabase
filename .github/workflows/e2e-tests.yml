@@ -87,6 +87,40 @@ jobs:
       name: Flaky
       tags: "@flaky"
 
+  collect-timings:
+    name: Collect E2E Timings
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    needs: e2e-tests
+    if: always() && !cancelled()
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            .github
+          sparse-checkout-cone-mode: false
+      
+      - name: Download all timing artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: timing-data-*
+          path: timing-files
+          merge-multiple: false
+        continue-on-error: true
+
+      - name: List downloaded files
+        run: |
+          echo "Downloaded timing files:"
+          find timing-files -name "*.json" || echo "No timing files found"
+          
+      - name: Upload all timing files
+        uses: actions/upload-artifact@v4
+        with:
+          name: all-e2e-timings-${{ github.run_id }}
+          path: timing-files/
+          retention-days: 30
+        continue-on-error: true
+
   e2e-tests-result:
     needs:
       - e2e-tests
