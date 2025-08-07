@@ -37,7 +37,8 @@
   border: 1px solid var(--border-color);
   border-radius: var(--default-border-radius);
   display: grid;
-  grid-template-columns: repeat(var(--sections-count, 1), 1fr);
+  /* grid-template-columns: repeat(var(--sections-count, 1), 1fr); */
+  grid-template-columns: repeat(4, 1fr);
   gap: 0;
   padding: var(--mantine-spacing-sm);
 }

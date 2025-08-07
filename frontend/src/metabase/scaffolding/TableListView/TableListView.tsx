@@ -388,7 +388,7 @@ export const TableListView = ({ location, params }: Props) => {
                 label: <Label icon="list" tooltip={t`List`} />,
               },
             ]}
-            value={settings.list_view.view}
+            value={settings.list_view?.view}
             onChange={handleViewChange}
           />
         )}
@@ -632,6 +632,7 @@ export const TableListView = ({ location, params }: Props) => {
                                       direction: "vertical",
                                       fields: [],
                                       variant: "normal",
+                                      width: 2,
                                     },
                                   ],
                                 },

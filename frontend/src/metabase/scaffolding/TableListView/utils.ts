@@ -201,6 +201,7 @@ export function getDefaultListViewListSettings(
         direction: "vertical",
         fields: [],
         variant: "normal",
+        width: 2,
       },
       // {
       //   id: getNextId(),

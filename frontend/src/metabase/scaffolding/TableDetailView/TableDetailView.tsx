@@ -65,6 +65,7 @@ import { useDetailViewSections } from "./use-detail-view-sections";
 import { useForeignKeyReferences } from "./use-foreign-key-references";
 import { renderValue } from "../utils";
 import { useTranslateContent } from "metabase/i18n/hooks";
+import { CSSProperties } from "@mantine/core";
 
 interface TableDetailViewLoaderProps {
   params: {
@@ -423,6 +424,7 @@ export function TableDetailViewInner({
   );
 
   const Container = isListView ? ListContainer : DetailContainer;
+  // console.log({ notEmptySections });
   return (
     <Container>
       {/* {isEdit && !isListView && (
@@ -449,10 +451,10 @@ export function TableDetailViewInner({
           onDragEnd={handleDragEnd}
         >
           <SortableContext
-            items={notEmptySections.map((section) => section.id)}
+            items={sectionsOrOverride.map((section) => section.id)}
             strategy={verticalListSortingStrategy}
           >
-            {notEmptySections.map((section) => (
+            {sectionsOrOverride.map((section) => (
               <SortableSection
                 key={section.id}
                 section={section}
@@ -463,10 +465,18 @@ export function TableDetailViewInner({
                 isListView={isListView}
                 onUpdateSection={(update) => updateSection(section.id, update)}
                 onRemoveSection={
-                  notEmptySections.length > 1
+                  sectionsOrOverride.length > 1
                     ? () => removeSection(section.id)
                     : undefined
                 }
+                style={{
+                  gridColumn:
+                    section.variant === "header"
+                      ? "span 4"
+                      : sectionsOrOverride.length > 2
+                        ? `span ${section.width}`
+                        : "span 4",
+                }}
               />
             ))}
           </SortableContext>
@@ -493,6 +503,7 @@ type SortableSectionProps = {
   isListView: boolean;
   onUpdateSection: (section: Partial<ObjectViewSectionSettings>) => void;
   onRemoveSection?: () => void;
+  style?: CSSProperties;
 };
 
 function SortableSection(props: SortableSectionProps) {
@@ -505,13 +516,20 @@ function SortableSection(props: SortableSectionProps) {
     isDragging,
   } = useSortable({ id: props.section.id });
 
+  // const span =
+  //   props.section.variant === "header"
+  //     ? "span 4"
+  //     : "span calc(4 / var(--sections-count))";
   const style = {
     transform: CSS.Translate.toString(transform),
     transition,
     opacity: isDragging ? 0.5 : 1,
-    ...(props.section.variant === "header"
-      ? { gridColumn: "span var(--sections-count)" }
-      : {}),
+    ...props.style,
+    // gridColumn: span,
+    // ...(props.section.variant === "header"
+    //   ? // ? { gridColumn: "span var(--sections-count)" }
+    //     { gridColumn: span }
+    //   : {}),
   };
 
   return (
@@ -621,7 +639,6 @@ function ObjectViewSection({
       <Flex
         direction={section.direction === "vertical" ? "column" : "row"}
         mt={isListView ? 0 : "sm"}
-        px="xs"
         className={cx(S.SectionContent, {
           [S.HighlightSection]: section.variant === "main",
           [S.NormalSection]: section.variant === "normal",

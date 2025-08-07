@@ -20,7 +20,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -36,6 +36,7 @@ import {
   type IconName,
   Portal,
   Text,
+  Tooltip,
 } from "metabase/ui/components";
 import { getIconForField } from "metabase-lib/v1/metadata/utils/fields";
 import type {
@@ -55,6 +56,7 @@ interface DetailViewSidebarProps {
     id: number,
     update: Partial<ObjectViewSectionSettings>,
   ) => void;
+  onUpdateAllSections: (sections: ObjectViewSectionSettings[]) => void;
   onRemoveSection: (id: number) => void;
   onDragEnd: (event: any) => void;
 }
@@ -66,6 +68,7 @@ function DetailViewSidebar({
   sections,
   onCreateSection,
   onUpdateSection,
+  onUpdateAllSections,
   onRemoveSection,
   onDragEnd,
 }: DetailViewSidebarProps) {
@@ -111,143 +114,151 @@ function DetailViewSidebar({
     setIsDraggingSection(isSection);
   };
 
-  const handleDragOver = (event: DragOverEvent) => {
-    const { active, over } = event;
+  const handleDragOver = useCallback(
+    (event: DragOverEvent) => {
+      const { active, over } = event;
 
-    if (!over) {
-      return;
-    }
+      if (!over) {
+        return;
+      }
 
-    const activeFieldId = active.id as number;
-    const overId = over.id;
+      const activeFieldId = active.id as number;
+      const overId = over.id;
 
-    // Find which container the active item is in
-    const activeContainer = findContainer(activeFieldId, sections);
-    const overContainer = over.data.current?.sortable?.containerId || overId;
+      // Find which container the active item is in
+      const activeContainer = findContainer(activeFieldId, sections);
+      const overContainer = over.data.current?.sortable?.containerId || overId;
 
-    if (activeContainer !== overContainer) {
-      // Moving between containers
+      if (activeContainer !== overContainer) {
+        // Moving between containers
 
-      // First, remove the field from ALL sections to prevent duplicates
-      const updatedSections = sections.map((section) => ({
-        ...section,
-        fields: section.fields.filter((f) => f.field_id !== activeFieldId),
-      }));
+        // First, remove the field from ALL sections to prevent duplicates
+        const updatedSections = sections.map((section) => ({
+          ...section,
+          fields: section.fields.filter((f) => f.field_id !== activeFieldId),
+        }));
 
-      if (overContainer === HIDDEN_COLUMNS_ID) {
-        // Moving to hidden - just remove from all sections
-        updatedSections.forEach((section, index) => {
-          if (sections[index].fields.length !== section.fields.length) {
-            onUpdateSection(section.id, { fields: section.fields });
-          }
-        });
-      } else {
-        // Moving to a section
-        const targetSectionId = Number(overContainer);
-        const targetSectionIndex = updatedSections.findIndex(
-          (s) => s.id === targetSectionId,
-        );
-
-        if (targetSectionIndex !== -1) {
-          // Find the active field or create it if dragging from hidden
-          let activeField = sections
-            .find((s) => s.fields.some((f) => f.field_id === activeFieldId))
-            ?.fields.find((f) => f.field_id === activeFieldId);
-
-          if (!activeField) {
-            // Dragging from hidden columns - create a new field
-            activeField = {
-              field_id: activeFieldId,
-              style: "normal" as const,
-            };
-          }
-
-          const newField = {
-            ...activeField,
-          };
-
-          const targetSection = updatedSections[targetSectionIndex];
-          const newFields = [...targetSection.fields];
-
-          if (overId !== overContainer && typeof overId === "number") {
-            // Insert at specific position
-            const overIndex = newFields.findIndex((f) => f.field_id === overId);
-            if (overIndex !== -1) {
-              newFields.splice(overIndex + 1, 0, newField);
-            } else {
-              newFields.push(newField);
-            }
-          } else {
-            // Add to end
-            newFields.push(newField);
-          }
-
-          // Update all sections that changed
+        if (overContainer === HIDDEN_COLUMNS_ID) {
+          // Moving to hidden - just remove from all sections
           updatedSections.forEach((section, index) => {
-            if (section.id === targetSectionId) {
-              onUpdateSection(section.id, { fields: newFields });
-            } else if (
-              sections[index].fields.length !== section.fields.length
-            ) {
+            if (sections[index].fields.length !== section.fields.length) {
               onUpdateSection(section.id, { fields: section.fields });
             }
           });
+        } else {
+          // Moving to a section
+          const targetSectionId = Number(overContainer);
+          const targetSectionIndex = updatedSections.findIndex(
+            (s) => s.id === targetSectionId,
+          );
+
+          if (targetSectionIndex !== -1) {
+            // Find the active field or create it if dragging from hidden
+            let activeField = sections
+              .find((s) => s.fields.some((f) => f.field_id === activeFieldId))
+              ?.fields.find((f) => f.field_id === activeFieldId);
+
+            if (!activeField) {
+              // Dragging from hidden columns - create a new field
+              activeField = {
+                field_id: activeFieldId,
+                style: "normal" as const,
+              };
+            }
+
+            const newField = {
+              ...activeField,
+            };
+
+            const targetSection = updatedSections[targetSectionIndex];
+            const newFields = [...targetSection.fields];
+
+            if (overId !== overContainer && typeof overId === "number") {
+              // Insert at specific position
+              const overIndex = newFields.findIndex(
+                (f) => f.field_id === overId,
+              );
+              if (overIndex !== -1) {
+                newFields.splice(overIndex + 1, 0, newField);
+              } else {
+                newFields.push(newField);
+              }
+            } else {
+              // Add to end
+              newFields.push(newField);
+            }
+
+            // Update all sections that changed
+            updatedSections.forEach((section, index) => {
+              if (section.id === targetSectionId) {
+                onUpdateSection(section.id, { fields: newFields });
+              } else if (
+                sections[index].fields.length !== section.fields.length
+              ) {
+                onUpdateSection(section.id, { fields: section.fields });
+              }
+            });
+          }
         }
       }
-    }
-  };
+    },
+    [sections, onUpdateSection],
+  );
 
-  const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
+  const handleDragEnd = useCallback(
+    (event: DragEndEvent) => {
+      const { active, over } = event;
 
-    if (!over || active.id === over.id) {
-      setActiveId(null);
-      return;
-    }
+      if (!over || active.id === over.id) {
+        setActiveId(null);
+        return;
+      }
 
-    // Check if we're dragging a section (sections have larger IDs that are timestamps)
-    const isSection = sections.some((section) => section.id === active.id);
-    if (isSection) {
-      onDragEnd(event);
+      // Check if we're dragging a section (sections have larger IDs that are timestamps)
+      const isSection = sections.some((section) => section.id === active.id);
+      if (isSection) {
+        onDragEnd(event);
+        setActiveId(null);
+        setIsDraggingSection(false);
+        return;
+      }
+
+      const activeFieldId = active.id as number;
+      const overFieldId = over.id as number;
+
+      // Handle reordering within the same container
+      const activeContainer = findContainer(activeFieldId, sections);
+      const overContainer =
+        over.data.current?.sortable?.containerId ||
+        findContainer(overFieldId, sections);
+
+      if (
+        activeContainer === overContainer &&
+        activeContainer !== HIDDEN_COLUMNS_ID
+      ) {
+        const sectionId = Number(activeContainer);
+        const section = sections.find((s) => s.id === sectionId);
+
+        if (section) {
+          const oldIndex = section.fields.findIndex(
+            (f) => f.field_id === activeFieldId,
+          );
+          const newIndex = section.fields.findIndex(
+            (f) => f.field_id === overFieldId,
+          );
+
+          if (oldIndex !== -1 && newIndex !== -1) {
+            const newFields = arrayMove(section.fields, oldIndex, newIndex);
+            onUpdateSection(sectionId, { fields: newFields });
+          }
+        }
+      }
+
       setActiveId(null);
       setIsDraggingSection(false);
-      return;
-    }
-
-    const activeFieldId = active.id as number;
-    const overFieldId = over.id as number;
-
-    // Handle reordering within the same container
-    const activeContainer = findContainer(activeFieldId, sections);
-    const overContainer =
-      over.data.current?.sortable?.containerId ||
-      findContainer(overFieldId, sections);
-
-    if (
-      activeContainer === overContainer &&
-      activeContainer !== HIDDEN_COLUMNS_ID
-    ) {
-      const sectionId = Number(activeContainer);
-      const section = sections.find((s) => s.id === sectionId);
-
-      if (section) {
-        const oldIndex = section.fields.findIndex(
-          (f) => f.field_id === activeFieldId,
-        );
-        const newIndex = section.fields.findIndex(
-          (f) => f.field_id === overFieldId,
-        );
-
-        if (oldIndex !== -1 && newIndex !== -1) {
-          const newFields = arrayMove(section.fields, oldIndex, newIndex);
-          onUpdateSection(sectionId, { fields: newFields });
-        }
-      }
-    }
-
-    setActiveId(null);
-    setIsDraggingSection(false);
-  };
+    },
+    [sections, onUpdateSection, onDragEnd],
+  );
 
   const handleUnhideField = (fieldId: number) => {
     // TODO: support any section, not just the first one
@@ -262,6 +273,19 @@ function DetailViewSidebar({
       onUpdateSection(firstSection.id, { fields: newFields });
     }
   };
+
+  const onResizeSection = useCallback(
+    (sectionId: number, width: number) => {
+      const MAX_SECTION_WIDTH_COLUMNS = 4;
+      const updatedSections = sections.map((section) =>
+        section.id === sectionId
+          ? { ...section, width }
+          : { ...section, width: MAX_SECTION_WIDTH_COLUMNS - width },
+      );
+      onUpdateAllSections(updatedSections);
+    },
+    [sections, onUpdateAllSections],
+  );
 
   return (
     <DndContext
@@ -294,9 +318,12 @@ function DetailViewSidebar({
               section={section}
               onUpdateSection={(update) => onUpdateSection(section.id, update)}
               onRemoveSection={
-                sections.length > 1 && section.variant !== "header"
+                section.variant !== "header"
                   ? () => onRemoveSection(section.id)
                   : undefined
+              }
+              onResizeSection={
+                sections.length > 2 ? onResizeSection : undefined
               }
               isDraggingSection={isDraggingSection}
             />
@@ -391,6 +418,7 @@ type SectionSettingsProps = {
   columns: DatasetColumn[];
   onUpdateSection: (update: Partial<ObjectViewSectionSettings>) => void;
   onRemoveSection?: () => void;
+  onResizeSection?: (sectionId: number, width: number) => void;
   dragHandleProps?: any;
   isDraggingSection?: boolean;
 };
@@ -429,6 +457,7 @@ function SectionSettings({
   columns,
   onUpdateSection,
   onRemoveSection,
+  onResizeSection,
   dragHandleProps,
   isDraggingSection = false,
 }: SectionSettingsProps) {
@@ -511,6 +540,23 @@ function SectionSettings({
                 }
               />
             </ActionIcon>
+            {onResizeSection ? (
+              <ActionIcon
+                color="text-medium"
+                onClick={() =>
+                  onResizeSection?.(
+                    section.id,
+                    Math.max(1, ((section.width as number) + 1) % 4),
+                  )
+                }
+              >
+                <Tooltip label="Column width">
+                  <Text variant="body" size="sm" fw={600}>
+                    {section.width ? section.width * 25 : 25}%
+                  </Text>
+                </Tooltip>
+              </ActionIcon>
+            ) : null}
             {onRemoveSection && (
               <ActionIcon
                 color="text-medium"

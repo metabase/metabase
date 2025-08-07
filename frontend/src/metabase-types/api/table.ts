@@ -77,6 +77,7 @@ export type ObjectViewSectionSettings = {
     style: "normal" | "bold" | "dim" | "title";
   }>;
   variant?: "main" | "normal" | "unlabeled" | "header";
+  width?: number;
 };
 
 export type ObjectViewSettings = {
