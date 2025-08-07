@@ -46,7 +46,7 @@
 (defenterprise delete-associated-database-router!
   "OSS version, does nothing"
   metabase-enterprise.database-routing.common
-  [_db-id]
+  [_db-id routing-info]
   ;; todo: should this throw?
   nil)
 
@@ -56,3 +56,9 @@
   [_db-id route-info]
   ;; todo: should this throw?
   nil)
+
+(defenterprise router-enabled?
+  "OSS version returns false"
+  metabase-enterprise.database-routing.common
+  [_db-id route-info]
+  false)

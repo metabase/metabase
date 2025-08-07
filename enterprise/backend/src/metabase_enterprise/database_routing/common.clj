@@ -24,6 +24,9 @@
   (api/check-400 (t2/exists? :model/DatabaseRouter :database_id parent-id))
   (api/check-400 (not (t2/exists? :model/Database :router_database_id parent-id :name [:in (map :name destinations)]))
                  "A destination database with that name already exists.")
+  ;; todo: is it important that the details include :destination-database true? i don't think it is? but the FE sends
+  ;; it. The backend never looks at it, and the e2e test succeeds without it. I think the link is :router_database_id
+  ;; poitning at the parent.
   (let [{:keys [engine auto_run_queries is_on_demand] :as router-db} (t2/select-one :model/Database :id parent-id)]
     (if-let [invalid-destinations (and check-connection-details?
                                        (->> destinations
@@ -57,10 +60,17 @@
 
 (defenterprise route-database
   "OSS version throws an error. Enterprise version hooks them up."
-  metabase-enterprise.database-routing.common
   :feature :database-routing
   [parent-id destinations options]
   (route-database* parent-id destinations options))
+
+(mu/defn- validate-routing-info
+  [{:keys [user-attribute workspace-id] :as routing-info} :- [:or
+                                                               [:map [:user-attribute string?]]
+                                                               [:map [:workspace-id int?]]]]
+  (when (or (and (str/blank? user-attribute) (nil? workspace-id))
+            (and user-attribute workspace-id))
+    (throw (ex-info "Must set user attribute or workspace id exclusively, not both" routing-info))))
 
 
 ;; make a database a router
@@ -68,9 +78,7 @@
   [db-id :- ms/PositiveInt {:keys [user-attribute workspace-id] :as routing-info} :- [:or
                                                                                       [:map [:user-attribute string?]]
                                                                                       [:map [:workspace-id int?]]]]
-  (when (or (and (str/blank? user-attribute) (nil? workspace-id))
-            (and user-attribute workspace-id))
-    (throw (ex-info "Must set user attribute or workspace id exclusively, not both" routing-info)))
+  (validate-routing-info routing-info)
   (let [db (t2/select-one :model/Database db-id)]
     (when-not (driver.u/supports? (:engine db) :database-routing db)
       (throw (ex-info "This database does not support DB routing" {:status-code 400})))
@@ -90,19 +98,22 @@
         (when-not (t2/exists? :model/DatabaseRouter {:where [:and [:= :workspace_id workspace-id] [:= :database_id 1]]})
           (t2/insert! :model/DatabaseRouter {:database_id db-id :workspace_id workspace-id}))))))
 
-(comment
-  (dir malli.core)
-  (t2/debug (t2/select-one :model/DatabaseRouter {:where [:and [:not= :user_attribute nil] [:= :database_id 1]]}))
-  (malli.core/validate [:or
-                        [:map [:user-attribute string?]]
-                        [:map [:workspace-id int?]]]
-                       {:user-attribute "foo"})
+(mu/defn- router-enabled?*
+  "Is there already a db_router entry for this database and this routing info (user attribute or workspace id)."
+  [db-id route-info]
+  (validate-routing-info route-info)
+  (if (:user-attribute route-info)
+    (t2/exists? :model/DatabaseRouter {:where [:and [:= :database_id db-id] [:= :user_attribute (:user-attribute route-info)]]})
+    (t2/exists? :model/DatabaseRouter {:where [:and [:= :database_id db-id] [:= :workspace_id (:workspace-id route-info)]]})))
 
-  (malli.core/validate [:or
-                        [:map [:user-attribute string?]]
-                        [:map [:workspace-id int?]]]
-                       {:workspace-id 3})
-  )
+
+(defenterprise router-enabled?
+  "Is routing already enabled for this database and this route-info? (user attribute or workspace id?). There's a
+  create or update which works fine for the single routing in the regular app. But in workspaces it's not a single
+  instance so we want a predicate."
+  :feature :database-routing
+  [db-id route-info]
+  (router-enabled?* db-id route-info))
 
 (defenterprise create-or-update-router
   "OSS version, errors"
@@ -110,21 +121,23 @@
   [db-id route-info]
   (create-or-update-router! db-id route-info))
 
-
-(defn- delete-router!
-  [db-id]
+(mu/defn- delete-router!
+  [db-id {:keys [workspace-id user-attribute] :as routing-info}]
+  (validate-routing-info routing-info)
   (let [db (t2/select-one :model/Database db-id)]
     (events/publish-event! :event/database-update {:object db
                                                    :previous-object db
                                                    :user-id api/*current-user-id*
                                                    :details {:db_routing :disabled}})
-    (t2/delete! :model/DatabaseRouter :database_id db-id)))
+    (if workspace-id
+      (t2/delete! :model/DatabaseRouter {:where [:and [:= :database_id db-id] [:== :workspace_id workspace-id]]})
+      (t2/delete! :model/DatabaseRouter {:where [:and [:= :database_id db-id] [:== :user_attribute user-attribute]]}))))
 
 (defenterprise delete-associated-database-router!
   "Deletes the Database Router associated with this router database."
   :feature :database-routing
-  [db-id]
-  (delete-router! db-id))
+  [db-id routing-info]
+  (delete-router! db-id routing-info))
 
 (defn- user-attribute
   "Which user attribute should we use for this RouterDB?"

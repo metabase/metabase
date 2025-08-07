@@ -6,6 +6,7 @@
    [metabase.api.util.handlers :as handlers]
    [metabase.models.interface :as mi]
    [metabase.util.log :as log]
+   [metabase-enterprise.workspaces.common :as workspaces.common]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
@@ -44,11 +45,14 @@
 (api.macros/defendpoint :post "/"
   [_route-params
    _query-params
-   body :- [:map]]
+   body :- [:map [:name ms/NonBlankString]]]
   (api/check-superuser)
   #_(t2/insert-returning-instance!
    :model/workspace body)
-  (swap! workspaces assoc (next-id) body))
+  (let [id (next-id)
+        new (assoc (workspaces.common/empty-workspace (:name body)) :id id)]
+   (swap! workspaces assoc id new)
+   new))
 
 
 (api.macros/defendpoint :get "/:id"
@@ -76,18 +80,30 @@
 (api.macros/defendpoint :post "/:id/add-database"
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _
-   {:keys [router_database_id destinations]} :- [:map
-                                                 [:router_database_id ms/PositiveInt]
-                                                 [:destinations
-                                                  [:sequential
-                                                   [:map
-                                                    [:name               ms/NonBlankString]
-                                                    [:details            ms/Map]]]]]]
+   {:keys [router_database_id details schema_name]} :- [:map
+                                                        [:router_database_id ms/PositiveInt]
+                                                        [:details            ms/Map]
+                                                        [:schema_name        ms/NonBlankString]]]
   ;; todo: enable db routing (update api to include optional workspace id rather than attribute)
   ;; add children, don't verify
   ;; stick in the database, do these go in the yaml? lets say yes.
-  ()
-  nil)
+  (api/let-404 [workspace (get @workspaces id)]
+    (let [w' (workspaces.common/add-database workspace router_database_id details schema_name)]
+      (swap! workspaces assoc id w')
+      w')))
+
+(api.macros/defendpoint :post "/:id/remove-database"
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+   _
+   {:keys [parent]} :- [:map [:parent ms/PositiveInt]]]
+  (api/let-404 [workspace (get @workspaces id)]
+    (let [w' (workspaces.common/remove-database workspace parent)]
+      (swap! workspaces assoc id w')
+      w')))
+
+(comment
+  (get @workspaces 1)
+  )
 
 
 (api.macros/defendpoint :delete "/:id"

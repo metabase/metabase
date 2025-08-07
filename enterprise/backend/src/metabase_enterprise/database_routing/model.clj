@@ -1,8 +1,18 @@
 (ns metabase-enterprise.database-routing.model
+  "Model for database routing. There is the model :DatabaseRouter backed by the db_router table. Db routing exists once
+  in the 'regular app' and arbitrarily many times connected to workspaces. The constraints are
+
+  - there is one entry per db where user attribute is not null. This is the one routed database in the application.
+
+  - there is one entry per db/workspace id. Each workspace can route a database into it. This allows for special
+  connections in workspaces on existing databases that have restricted permissions: they can be locked down to just a
+  single schema and read-only on the original schema.
+
+  Notable, when database is enabled, and then turned off, it does not remove the routing record, it just blanks out
+  the user_attribute. Need to update this and maintain it. see
+  http://localhost:3000/api/ee/database-routing/router-database/11"
   (:require
    [metabase-enterprise.database-routing.common :refer [router-db-or-id->destination-db-id]]
-   [metabase.api.common :as api]
-   [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util :as u]
