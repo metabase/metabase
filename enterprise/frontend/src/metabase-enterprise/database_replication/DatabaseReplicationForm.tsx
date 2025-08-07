@@ -165,7 +165,7 @@ export const DatabaseReplicationForm = ({
         onSubmit={onSubmit}
         validationSchema={validationSchema}
       >
-        {({ dirty, values }) => (
+        {({ /*dirty,*/ values }) => (
           <Form>
             <FormSelect
               name="schemaSelect"
@@ -244,7 +244,9 @@ export const DatabaseReplicationForm = ({
             <Flex justify="end">
               <Group>
                 <FormSubmitButton
-                  disabled={!dirty}
+                  disabled={
+                    false /*!dirty*/ /* FIXME: form thinks it is 'dirty' when selecting schemaSelect=all */
+                  }
                   label={t`Start replication`}
                   variant="filled"
                 />
