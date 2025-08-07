@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { t } from "ttag";
 
-import { Button, Popover, Tooltip } from "metabase/ui";
+import { Button, Icon, Popover, Tooltip } from "metabase/ui";
 import type {
   DatasetColumn,
   ObjectViewSectionSettings,
@@ -16,10 +16,7 @@ interface Props {
   section: ObjectViewSectionSettings;
   sections: ObjectViewSectionSettings[];
   table: Table;
-  onUpdateSection: (
-    id: number,
-    update: Partial<ObjectViewSectionSettings>,
-  ) => void;
+  onUpdateSection: (update: Partial<ObjectViewSectionSettings>) => void;
 }
 
 export const ColumnPickerButton = ({
@@ -49,30 +46,41 @@ export const ColumnPickerButton = ({
 
     const limitReached =
       typeof fieldsLimit === "number" && fields.length >= fieldsLimit;
+    const wasThisLastColumnToUse = unsectionedColumns.length === 1;
 
-    if (limitReached) {
+    if (limitReached || wasThisLastColumnToUse) {
       setIsOpen(false);
     }
 
-    onUpdateSection(section.id, { fields });
+    onUpdateSection({ fields });
   };
 
   return (
     <Popover
       opened={isOpen}
       onChange={setIsOpen}
-      position="bottom-start"
+      position="bottom-end"
       offset={4}
     >
       <Popover.Target>
         <Tooltip
-          disabled={!limitReached}
-          label={t`This group supports up to ${fieldsLimit} columns`}
+          label={
+            unsectionedColumns.length === 0
+              ? t`All columns are used`
+              : limitReached
+                ? t`This group supports up to ${fieldsLimit} columns`
+                : t`Add columns`
+          }
         >
           <Button
+            c="text-dark"
             disabled={limitReached || unsectionedColumns.length === 0}
+            h={32}
+            leftSection={<Icon name="add" />}
+            // variant="subtle"
+            w={32}
             onClick={() => setIsOpen(true)}
-          >{t`Click`}</Button>
+          />
         </Tooltip>
       </Popover.Target>
 

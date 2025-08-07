@@ -31,7 +31,6 @@ import type {
 
 import { getDefaultObjectViewSettings } from "../utils";
 
-import { ColumnPickerButton } from "./ColumnPickerButton";
 import { DetailViewContainer } from "./DetailViewContainer";
 import { SortableSection } from "./SortableSection";
 import { useDetailViewSections } from "./use-detail-view-sections";
@@ -61,12 +60,14 @@ export function TableDetailViewInner({
   onNextItemClick,
 }: TableDetailViewProps) {
   const [openPopoverId, setOpenPopoverId] = useState<number | null>(null);
-  const [hoveredSectionIdMain, setHoveredSectionIdMain] = useState<
+  const [_hoveredSectionIdMain, setHoveredSectionIdMain] = useState<
     number | null
   >(null);
-  const [hoveredSectionIdSidebar, setHoveredSectionIdSidebar] = useState<
+  const [_hoveredSectionIdSidebar, setHoveredSectionIdSidebar] = useState<
     number | null
   >(null);
+  const hoveredSectionIdMain = null;
+  const hoveredSectionIdSidebar = null;
   const dispatch = useDispatch();
   const [updateTableComponentSettings] =
     useUpdateTableComponentSettingsMutation();
@@ -234,15 +235,6 @@ export function TableDetailViewInner({
       hoveredSectionId={hoveredSectionIdMain}
       setHoveredSectionId={setHoveredSectionIdSidebar}
     >
-      <ColumnPickerButton
-        columns={columns}
-        fieldsLimit={5} // TODO
-        section={sections[3]}
-        sections={sections}
-        table={table}
-        onUpdateSection={updateSection}
-      />
-
       <Stack
         gap="md"
         // px="lg"
@@ -273,6 +265,7 @@ export function TableDetailViewInner({
                   )} */}
                 <SortableSection
                   section={section}
+                  sections={sections}
                   variant={section.variant}
                   columns={columns}
                   row={row}

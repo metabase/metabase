@@ -14,6 +14,7 @@ import { ObjectViewSection } from "./ObjectViewSection";
 
 type SortableSectionProps = {
   section: ObjectViewSectionSettings;
+  sections: ObjectViewSectionSettings[];
   columns: DatasetColumn[];
   row: RowValues;
   tableId: TableId;

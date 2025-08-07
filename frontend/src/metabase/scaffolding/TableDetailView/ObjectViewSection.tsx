@@ -1,12 +1,12 @@
 import cx from "classnames";
 import { Fragment } from "react";
 import { Link } from "react-router";
+import { t } from "ttag";
 
 import EditableText from "metabase/common/components/EditableText";
 import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { useTranslateContent } from "metabase/i18n/hooks";
 import {
-  ActionIcon,
   ActionIcon,
   Box,
   Flex,
@@ -27,11 +27,12 @@ import type {
 
 import { renderValue } from "../utils";
 
+import { ColumnPickerButton } from "./ColumnPickerButton";
 import S from "./TableDetailView.module.css";
-import { t } from "ttag";
 
 type ObjectViewSectionProps = {
   section: ObjectViewSectionSettings;
+  sections: ObjectViewSectionSettings[];
   columns: DatasetColumn[];
   row: RowValues;
   tableId: TableId;
@@ -46,6 +47,7 @@ type ObjectViewSectionProps = {
 export function ObjectViewSection({
   variant = "normal",
   section,
+  sections,
   columns,
   row,
   // tableId,
@@ -84,6 +86,24 @@ export function ObjectViewSection({
           [S.hovered]: isHovered,
         })}
       >
+        <Box
+          className={S.ObjectViewSectionActions}
+          pos="absolute"
+          top={-16}
+          right={16}
+        >
+          {onUpdateSection && (
+            <ColumnPickerButton
+              columns={columns}
+              fieldsLimit={3}
+              section={section}
+              sections={sections}
+              table={table}
+              onUpdateSection={onUpdateSection}
+            />
+          )}
+        </Box>
+
         <Flex className={S.SectionContent}>
           <Ellipsified
             variant="primary"
@@ -116,16 +136,35 @@ export function ObjectViewSection({
       px={variant !== "subheader" ? "lg" : undefined}
       py={variant !== "subheader" ? "lg" : undefined}
       bg={variant !== "subheader" ? "white" : undefined}
+      pos="relative"
       style={
         variant !== "subheader"
           ? {
               border: "1px solid var(--mb-color-border)",
               borderRadius: "var(--mantine-radius-md)",
-              overflow: "hidden",
+              // overflow: "hidden",
             }
           : {}
       }
     >
+      <Box
+        className={S.ObjectViewSectionActions}
+        pos="absolute"
+        top={-16}
+        right={16}
+      >
+        {onUpdateSection && (
+          <ColumnPickerButton
+            columns={columns}
+            fieldsLimit={variant === "subheader" ? 4 : undefined}
+            section={section}
+            sections={sections}
+            table={table}
+            onUpdateSection={onUpdateSection}
+          />
+        )}
+      </Box>
+
       {onUpdateSection && (
         <Group gap="md" p={0}>
           {/* {isEdit && (
