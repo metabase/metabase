@@ -28,56 +28,17 @@ type ColumnItem = {
   column: DatasetColumn;
 };
 
-function mapColumns(columns: DatasetColumn[]): ColumnItem[] {
-  return columns.map((column) => ({
-    name: column.name,
-    displayName: column.display_name,
-    column,
-  }));
-}
-
 export const ColumnPicker = ({ columns, sections, table, onChange }: Props) => {
-  const accordionSections: Section<ColumnItem>[] = useMemo(() => {
-    const fieldIdToColumn = new Map(
-      columns.map((column) => [column.id, column]),
-    );
-
-    const sectionFieldIds = new Set(
-      sections.flatMap((section) => {
-        return section.fields.map((field) => field.field_id);
-      }),
-    );
-
-    const unsectionedColumns = columns.filter(
-      (column) => column.id && !sectionFieldIds.has(column.id),
-    );
-
-    return [
-      {
-        name: t`Unused columns`,
-        items: mapColumns(unsectionedColumns),
-        type: "header" as const,
-      },
-      ...sections.map((section) => {
-        const sectionColumns = section.fields
-          .map((field) => fieldIdToColumn.get(field.field_id))
-          .filter((column): column is DatasetColumn => column !== undefined);
-
-        return {
-          name: section.title,
-          items: mapColumns(sectionColumns),
-          type: "header" as const,
-        };
-      }),
-    ].filter((section) => section.items.length > 0);
+  const accordionSections = useMemo(() => {
+    return getSections(columns, sections);
   }, [columns, sections]);
 
   return (
     <AccordionList
       globalSearch
-      renderItemName={renderItemName}
       renderItemDescription={omitDescription}
       renderItemIcon={(item) => renderItemIcon(table, item)}
+      renderItemName={renderItemName}
       renderItemWrapper={renderItemWrapper}
       sections={accordionSections}
       searchable
@@ -87,6 +48,50 @@ export const ColumnPicker = ({ columns, sections, table, onChange }: Props) => {
     />
   );
 };
+
+function getSections(
+  columns: DatasetColumn[],
+  sections: ObjectViewSectionSettings[],
+): Section<ColumnItem>[] {
+  const fieldIdToColumn = new Map(columns.map((column) => [column.id, column]));
+
+  const sectionFieldIds = new Set(
+    sections.flatMap((section) => {
+      return section.fields.map((field) => field.field_id);
+    }),
+  );
+
+  const unsectionedColumns = columns.filter(
+    (column) => column.id && !sectionFieldIds.has(column.id),
+  );
+
+  return [
+    {
+      name: t`Unused columns`,
+      items: getSectionItems(unsectionedColumns),
+      type: "header" as const,
+    },
+    ...sections.map((section) => {
+      const sectionColumns = section.fields
+        .map((field) => fieldIdToColumn.get(field.field_id))
+        .filter((column): column is DatasetColumn => column !== undefined);
+
+      return {
+        name: section.title,
+        items: getSectionItems(sectionColumns),
+        type: "header" as const,
+      };
+    }),
+  ].filter((section) => section.items.length > 0);
+}
+
+function getSectionItems(columns: DatasetColumn[]): ColumnItem[] {
+  return columns.map((column) => ({
+    name: column.name,
+    displayName: column.display_name,
+    column,
+  }));
+}
 
 function renderItemName(item: ColumnItem) {
   return item.displayName;
