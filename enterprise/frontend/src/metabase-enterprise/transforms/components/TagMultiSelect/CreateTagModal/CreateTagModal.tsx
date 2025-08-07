@@ -71,11 +71,7 @@ function CreateTagForm({ initialName, onCreate, onClose }: CreateTagFormProps) {
     >
       <Form>
         <Stack gap="lg">
-          <FormTextInput
-            name="name"
-            label={t`Name`}
-            placeholder={t`My Great Transform`}
-          />
+          <FormTextInput name="name" label={t`Name`} placeholder={t`My tag`} />
           <FormErrorMessage />
           <Group justify="end">
             <Button variant="subtle" onClick={onClose}>{t`Back`}</Button>
