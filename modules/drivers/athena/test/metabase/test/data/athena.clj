@@ -41,10 +41,6 @@
       "v3_test_data"
       name')))
 
-(comment
-
-  (tap> 1))
-
 (defmethod tx/dbdef->connection-details :athena
   [driver _context {:keys [database-name], :as _dbdef}]
   {:region                        (if tx/*use-routing-details*
