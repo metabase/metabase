@@ -96,7 +96,7 @@ export function DetailViewHeader({
           </>
         )}
 
-        <Group gap="sm">
+        <Group gap={0}>
           <Tooltip
             label={t`PLEASE IGNORE THIS BUTTON. It resets settings to default. Useful when settings schema changes.`}
           >
@@ -118,6 +118,7 @@ export function DetailViewHeader({
           </Tooltip>
 
           <Tooltip
+            disabled
             label={
               isEdit
                 ? t`Button is disabled to prevent losing unsaved changes. We'll have something better for production.`
@@ -125,17 +126,18 @@ export function DetailViewHeader({
             }
           >
             <Button
-              w={32}
               h={32}
               c="text-dark"
               variant="subtle"
               disabled={isEdit}
-              leftSection={<Icon name="pencil" />}
+              leftSection={<Icon name="gear" />}
               onClick={onEditClick}
               style={{
                 opacity: isEdit ? 0.5 : 1,
               }}
-            />
+            >
+              {t`Display Settings`}
+            </Button>
           </Tooltip>
         </Group>
       </Flex>
