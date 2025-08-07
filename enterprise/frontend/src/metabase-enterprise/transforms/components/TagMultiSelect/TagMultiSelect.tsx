@@ -33,7 +33,7 @@ export function TagMultiSelect({ tagIds, onChange }: TagMultiSelectProps) {
   return (
     <MultiSelect
       value={tagIds.map(getValue)}
-      data={tags.map(getOption)}
+      data={tags.map(getTagOption)}
       placeholder={t`Add tags`}
       searchable
       renderOption={(item) => (
@@ -125,12 +125,12 @@ function getValue(tagId: TransformTagId) {
   return String(tagId);
 }
 
-function getOption(tag: TransformTag) {
-  return { tag, value: getValue(tag.id), label: tag.name };
-}
-
 function getTagId(value: string): TransformTagId {
   return parseInt(value, 10);
+}
+
+function getTagOption(tag: TransformTag) {
+  return { tag, value: getValue(tag.id), label: tag.name };
 }
 
 function getTagById(
