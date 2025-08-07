@@ -8,6 +8,16 @@ on:
   pull_request:
     types: [opened, synchronize, reopened]
   merge_group:
+  workflow_dispatch:
+    inputs:
+      run_e2e_tests:
+        description: "Force run e2e tests (ignores file change detection)"
+        type: boolean
+        default: true
+      e2e_only:
+        description: "Only run e2e tests (skip backend, frontend, driver tests)"
+        type: boolean
+        default: true
 
 jobs:
   files-changed:
@@ -74,7 +84,7 @@ jobs:
     secrets: inherit
 
   backend-tests:
-    if: ${{ !cancelled() }}
+    if: ${{ !cancelled() && !inputs.e2e_only }}
     needs: [files-changed, static-viz-files-changed]
     uses: ./.github/workflows/backend.yml
     secrets: inherit
@@ -89,6 +99,7 @@ jobs:
       skip: ${{ needs.files-changed.outputs.backend_all != 'true' }}
 
   app-db-tests:
+    if: ${{ !inputs.e2e_only }}
     needs: files-changed
     uses: ./.github/workflows/app-db.yml
     secrets: inherit
@@ -96,6 +107,7 @@ jobs:
       skip: ${{ needs.files-changed.outputs.backend_all != 'true' }}
 
   driver-tests:
+    if: ${{ !inputs.e2e_only }}
     needs: files-changed
     uses: ./.github/workflows/drivers.yml
     secrets: inherit
@@ -103,6 +115,7 @@ jobs:
       skip: ${{ needs.files-changed.outputs.backend_all != 'true' }}
 
   frontend-tests:
+    if: ${{ !inputs.e2e_only }}
     needs: files-changed
     uses: ./.github/workflows/frontend.yml
     secrets: inherit
@@ -116,7 +129,7 @@ jobs:
     uses: ./.github/workflows/e2e-tests.yml
     secrets: inherit
     with:
-      skip: ${{ needs.files-changed.outputs.e2e_all != 'true' }}
+      skip: ${{ needs.files-changed.outputs.e2e_all != 'true' && !inputs.run_e2e_tests }}
       # here we pass result from files-changed, which is a list of files, comma separated
       # e.g. e2e/test/scenarios/onboarding/command-palette.cy.spec.js,e2e/test/scenarios/question/document-title.cy.spec.js
       # e2e_all_files includes all changes which trigger all e2e tests, if the list of changes files is included in the
