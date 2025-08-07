@@ -101,13 +101,15 @@
   &.subheader {
     margin-top: -0.75rem;
 
-    .SectionTitle {
-      display: none;
+    .SectionContent {
+      gap: var(--mantine-spacing-xs);
+      flex-wrap: wrap;
     }
 
-    .SectionContent {
-      gap: var(--mantine-spacing-md);
-      flex-wrap: wrap;
+    &.EditMode {
+      .SectionContent {
+        gap: var(--mantine-spacing-md);
+      }
     }
 
     .FieldName {
@@ -214,7 +216,7 @@
 .separator::before {
   display: block;
   content: "•";
-  margin: 0 0.75rem;
+  margin: 0 0.25rem;
   color: var(--mb-color-text-secondary);
   font-size: 1em;
 }

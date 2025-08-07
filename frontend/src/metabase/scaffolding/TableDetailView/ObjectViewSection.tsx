@@ -84,6 +84,7 @@ export function ObjectViewSection({
       <Box
         className={cx(S.ObjectViewSection, S.header, {
           [S.hovered]: isHovered,
+          [S.EditMode]: isEdit,
         })}
       >
         {isEdit && (
@@ -130,6 +131,7 @@ export function ObjectViewSection({
         [S.highlight1]: variant === "highlight-1",
         [S.highlight2]: variant === "highlight-2",
         [S.hovered]: isHovered,
+        [S.EditMode]: isEdit,
       })}
       mt={variant !== "subheader" ? "sm" : undefined}
       px={variant !== "subheader" ? "lg" : undefined}
@@ -164,7 +166,7 @@ export function ObjectViewSection({
       )}
 
       {onUpdateSection && (
-        <Group gap="md" p={0}>
+        <Group gap="md" p={0} className={S.SectionTitle}>
           {/* {isEdit && (
           <Icon
           name="grabber"
@@ -184,6 +186,10 @@ export function ObjectViewSection({
               fontSize: "1.25rem",
               marginBottom: section.variant === "subheader" ? 0 : "2rem",
               opacity: section.variant === "subheader" ? 0.5 : 1,
+              ...(section.variant === "subheader" &&
+                !isEdit && {
+                  display: "none",
+                }),
             }}
           />
         </Group>
