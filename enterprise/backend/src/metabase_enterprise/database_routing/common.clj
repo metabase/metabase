@@ -1,11 +1,126 @@
 (ns metabase-enterprise.database-routing.common
   (:require
+   [clojure.string :as str]
    [metabase.api.common :as api]
+   [metabase.app-db.cluster-lock :as cluster-lock]
    [metabase.config.core :as config]
+   [metabase.driver.util :as driver.u]
+   [metabase.events.core :as events]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
+   [metabase.warehouses.api :as api.database]
    [toucan2.core :as t2]))
+
+;;; crud
+;; add a database
+(mu/defn- route-database*
+  [parent-id :- ms/PositiveInt
+   destinations :- [:sequential [:map [:name ms/NonBlankString] [:details ms/Map]]]
+   {:keys [check-connection-details?] :as _options}]
+  (api/check-400 (t2/exists? :model/DatabaseRouter :database_id parent-id))
+  (api/check-400 (not (t2/exists? :model/Database :router_database_id parent-id :name [:in (map :name destinations)]))
+                 "A destination database with that name already exists.")
+  (let [{:keys [engine auto_run_queries is_on_demand] :as router-db} (t2/select-one :model/Database :id parent-id)]
+    (if-let [invalid-destinations (and check-connection-details?
+                                       (->> destinations
+                                            (keep (fn [{details :details n :name}]
+                                                    (let [details-or-error (api.database/test-connection-details (name engine) details)
+                                                          valid?           (not= (:valid details-or-error) false)]
+                                                      (when-not valid?
+                                                        [n (dissoc details-or-error :valid)]))))
+                                            seq))]
+      {:status 400
+       :body   (into {} invalid-destinations)}
+      (u/prog1 (t2/insert-returning-instances!
+                :model/Database
+                (map (fn [{:keys [name details]}]
+                       {:name               name
+                        :engine             engine
+                        :details            details
+                        :auto_run_queries   auto_run_queries
+                        :is_full_sync       false
+                        :is_on_demand       is_on_demand
+                        :cache_ttl          nil
+                        :router_database_id parent-id
+                        :creator_id         api/*current-user-id*})
+                     destinations))
+        (doseq [database <>]
+          (events/publish-event! :event/database-create {:object  database
+                                                         :user-id api/*current-user-id*
+                                                         :details {:slug            name
+                                                                   :primary_db_name (:name router-db)
+                                                                   :primary_db_id   (:id router-db)}}))))))
+
+(defenterprise route-database
+  "OSS version throws an error. Enterprise version hooks them up."
+  metabase-enterprise.database-routing.common
+  :feature :database-routing
+  [parent-id destinations options]
+  (route-database* parent-id destinations options))
+
+;; make a database a router
+(mu/defn- create-or-update-router!
+  [db-id :- ms/PositiveInt {:keys [user-attribute workspace-id] :as routing-info} :- [:or
+                                                                                      [:map [:user-attribute string?]]
+                                                                                      [:map [:workspace-id int?]]]]
+  (when (or (and (str/blank? user-attribute) (nil? workspace-id))
+            (and user-attribute workspace-id))
+    (throw (ex-info "Must set user attribute or workspace id exclusively, not both" routing-info)))
+  (let [db (t2/select-one :model/Database db-id)]
+    (when-not (driver.u/supports? (:engine db) :database-routing db)
+      (throw (ex-info "This database does not support DB routing" {:status-code 400})))
+
+    (events/publish-event! :event/database-update {:object db
+                                                   :previous-object db
+                                                   :user-id api/*current-user-id*
+                                                   :details {:db_routing :enabled
+                                                             :routing_attribute routing-info}})
+    (if user-attribute ;; upsert on the one row with a user_attribute value
+      (cluster-lock/with-cluster-lock ::database-router-lock
+        (if (t2/select-one :model/DatabaseRouter {:where [:and [:not= :user_attribute nil] [:= :database_id 1]]})
+          (t2/update! :model/DatabaseRouter :database_id db-id {:user_attribute user-attribute})
+          (t2/insert! :model/DatabaseRouter {:database_id db-id :user_attribute user-attribute})))
+
+      (cluster-lock/with-cluster-lock ::database-router-lock
+        (when-not (t2/exists? :model/DatabaseRouter {:where [:and [:= :workspace_id workspace-id] [:= :database_id 1]]})
+          (t2/insert! :model/DatabaseRouter {:database_id db-id :workspace_id workspace-id}))))))
+
+(comment
+  (dir malli.core)
+  (t2/debug (t2/select-one :model/DatabaseRouter {:where [:and [:not= :user_attribute nil] [:= :database_id 1]]}))
+  (malli.core/validate [:or
+                        [:map [:user-attribute string?]]
+                        [:map [:workspace-id int?]]]
+                       {:user-attribute "foo"})
+
+  (malli.core/validate [:or
+                        [:map [:user-attribute string?]]
+                        [:map [:workspace-id int?]]]
+                       {:workspace-id 3}))
+
+(defenterprise create-or-update-router
+  "OSS version, errors"
+  :feature :database-routing
+  [db-id route-info]
+  (create-or-update-router! db-id route-info))
+
+(defn- delete-router!
+  [db-id]
+  (let [db (t2/select-one :model/Database db-id)]
+    (events/publish-event! :event/database-update {:object db
+                                                   :previous-object db
+                                                   :user-id api/*current-user-id*
+                                                   :details {:db_routing :disabled}})
+    (t2/delete! :model/DatabaseRouter :database_id db-id)))
+
+(defenterprise delete-associated-database-router!
+  "Deletes the Database Router associated with this router database."
+  :feature :database-routing
+  [db-id]
+  (delete-router! db-id))
 
 (defn- user-attribute
   "Which user attribute should we use for this RouterDB?"

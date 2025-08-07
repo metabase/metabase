@@ -1,13 +1,20 @@
 (ns metabase.database-routing.core
   "The OSS namespace for database routing."
   (:require
-   [metabase.premium-features.core :refer [defenterprise]]))
+   [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.util.i18n :refer [deferred-tru]]))
 
 (defenterprise with-database-routing-on-fn
   "OSS Version, does nothing"
   metabase-enterprise.database-routing.common
   [f]
   (f))
+
+(defenterprise route-database
+  "OSS version throws an error. Enterprise version hooks them up."
+  metabase-enterprise.database-routing.common
+  [_parent-id _destinations _options]
+  (throw (ex-info (deferred-tru "Database routing is not enabled") {})))
 
 (defmacro with-database-routing-on
   "Turns database routing on. Access to a Router Database in this block will be an error (unless things are configured
@@ -38,6 +45,14 @@
 
 (defenterprise delete-associated-database-router!
   "OSS version, does nothing"
-  metabase-enterprise.database-routing.model
+  metabase-enterprise.database-routing.common
   [_db-id]
+  ;; todo: should this throw?
+  nil)
+
+(defenterprise create-or-update-router
+  "OSS version, errors"
+  metabase-enterprise.database-routing.common
+  [_db-id route-info]
+  ;; todo: should this throw?
   nil)

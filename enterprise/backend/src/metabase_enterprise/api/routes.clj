@@ -102,6 +102,7 @@
    "/serialization"                (premium-handler metabase-enterprise.serialization.api/routes :serialization)
    "/stale"                        (premium-handler metabase-enterprise.stale.api/routes :collection-cleanup)
    "/upload-management"            (premium-handler metabase-enterprise.upload-management.api/routes :upload-management)})
+
 ;;; ↑↑↑ KEEP THIS SORTED OR ELSE ↑↑↑
 
 (def ^:private routes-map

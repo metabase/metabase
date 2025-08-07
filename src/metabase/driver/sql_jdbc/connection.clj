@@ -189,6 +189,7 @@
                              (update details :port #(or % (default-ssh-tunnel-target-port driver))))
         details-with-auth   (driver.u/fetch-and-incorporate-auth-provider-details
                              driver
+                             ;; id is completely unused here
                              id
                              details-with-tunnel)
         spec                (connection-details->spec driver details-with-auth)
