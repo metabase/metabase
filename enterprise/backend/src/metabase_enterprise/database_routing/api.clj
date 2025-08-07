@@ -44,7 +44,10 @@
       (api/check-400 (not (setting/get :database-enable-actions)) "Cannot enable database routing for a database with actions enabled")))
   (if (nil? user_attribute)
     ;; delete the DatabaseRouter
-    (database-routing/delete-associated-database-router! id)
+    (let [db-router (t2/select-one :model/DatabaseRouter {:where [:and
+                                                                  [:= :database_id id]
+                                                                  [:not= :user_attribute nil]]})]
+      (database-routing/delete-associated-database-router! id {:user-attribute (:user_attribute db-router)}))
     (database-routing/create-or-update-router id {:user-attribute user_attribute})))
 
 (def ^{:arglists '([request respond raise])} routes
