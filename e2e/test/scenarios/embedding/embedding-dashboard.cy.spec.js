@@ -1134,9 +1134,11 @@ describe("scenarios > embedding > dashboard appearance", () => {
           );
 
           cy.log("pivot table cell background should be transparent");
-          cy.findAllByTestId("pivot-table-cell")
+          cy.findAllByRole("grid")
             .first()
-            .should("have.css", "background-color", "rgba(0, 0, 0, 0)");
+            .findAllByTestId("pivot-table-cell")
+            .first()
+            .should("have.css", "background-color", "rgba(46, 53, 59, 0.1)");
 
           cy.log("pivot table cell color should be white");
           cy.findByText("Row totals")
