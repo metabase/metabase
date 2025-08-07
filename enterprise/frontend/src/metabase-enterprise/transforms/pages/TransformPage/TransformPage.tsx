@@ -9,9 +9,9 @@ import { useGetTransformQuery } from "metabase-enterprise/api";
 import type { Transform, TransformId } from "metabase-types/api";
 
 import { BreadcrumbsSection } from "./BreadcrumbsSection";
-import { ManageSection } from "./ManageSection";
+import { ExecutionSection } from "./ExecutionSection";
 import { NameSection } from "./NameSection";
-import { ScheduleSection } from "./ScheduleSection";
+import { QuerySection } from "./QuerySection";
 import { TargetSection } from "./TargetSection";
 
 const POLLING_INTERVAL = 3000;
@@ -57,9 +57,9 @@ export function TransformPage({ params }: TransformPageProps) {
         <BreadcrumbsSection transform={transform} />
         <NameSection transform={transform} />
       </Stack>
+      <ExecutionSection transform={transform} />
       <TargetSection transform={transform} />
-      <ScheduleSection transform={transform} />
-      <ManageSection transform={transform} />
+      <QuerySection transform={transform} />
     </Stack>
   );
 }

@@ -33,7 +33,7 @@ type TargetSectionProps = {
 export function TargetSection({ transform }: TargetSectionProps) {
   return (
     <SplitSection
-      label={t`Generated table`}
+      label={t`Transform target`}
       description={t`Change what this transform generates and where.`}
     >
       <Group p="lg">
