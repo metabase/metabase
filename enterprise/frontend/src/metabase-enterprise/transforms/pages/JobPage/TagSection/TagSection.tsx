@@ -1,6 +1,7 @@
 import { t } from "ttag";
 
 import { useMetadataToasts } from "metabase/metadata/hooks";
+import { Box } from "metabase/ui";
 import { useUpdateTransformJobMutation } from "metabase-enterprise/api";
 import type { TransformJob, TransformTagId } from "metabase-types/api";
 
@@ -40,10 +41,12 @@ export function TagSection({ job }: TagSectionProps) {
       label={t`Tags to run`}
       description={t`This job will run all transforms tagged with the tags you pick here.`}
     >
-      <TagMultiSelect
-        tagIds={job.tag_ids ?? []}
-        onChange={handleTagListChange}
-      />
+      <Box p="lg">
+        <TagMultiSelect
+          tagIds={job.tag_ids ?? []}
+          onChange={handleTagListChange}
+        />
+      </Box>
     </SplitSection>
   );
 }

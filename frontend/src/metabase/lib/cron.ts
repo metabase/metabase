@@ -85,8 +85,14 @@ export const getScheduleExplanation = memoize(
   },
 );
 
+// Remove seconds and years
 export function formatCronExpressionForUI(cronExpression: string): string {
   const [, ...partsWithoutSeconds] = cronExpression.split(" ");
   const partsWithoutSecondsAndYear = partsWithoutSeconds.slice(0, -1);
   return partsWithoutSecondsAndYear.join(" ");
+}
+
+// Add seconds and years
+export function formatCronExpressionForAPI(cronExpression: string) {
+  return `0 ${cronExpression} *`;
 }
