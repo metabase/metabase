@@ -21,6 +21,7 @@
    [metabase.lib.extraction :as lib.extraction]
    [metabase.lib.fe-util :as lib.fe-util]
    [metabase.lib.field :as lib.field]
+   [metabase.lib.field.util]
    [metabase.lib.filter :as lib.filter]
    [metabase.lib.filter.update :as lib.filter.update]
    [metabase.lib.join :as lib.join]
@@ -63,6 +64,7 @@
          lib.extraction/keep-me
          lib.fe-util/keep-me
          lib.field/keep-me
+         metabase.lib.field.util/keep-me
          lib.filter.update/keep-me
          lib.filter/keep-me
          lib.join/keep-me
@@ -242,6 +244,8 @@
   find-visible-column-for-ref
   remove-field
   with-fields]
+ [metabase.lib.field.util
+  update-keys-for-col-from-previous-stage]
  [lib.filter
   filter
   filters
@@ -329,6 +333,7 @@
   with-native-query
   with-template-tags]
  [metabase.lib.options
+  ensure-uuid
   options
   update-options]
  [lib.order-by
