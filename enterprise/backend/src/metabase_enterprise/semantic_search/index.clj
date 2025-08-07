@@ -1,6 +1,7 @@
 (ns metabase-enterprise.semantic-search.index
   (:require
    [clojure.string :as str]
+   [com.climate.claypoole :as cp]
    [honey.sql :as sql]
    [honey.sql.helpers :as sql.helpers]
    [metabase-enterprise.semantic-search.embedding :as embedding]
@@ -268,8 +269,8 @@
 (defn- upsert-index-batch!
   [connectable index documents]
   (when (seq documents)
-    (let [text->docs         (group-by :searchable_text documents)
-          searchable-texts   (keys text->docs)
+    (let [text->docs        (group-by :searchable_text documents)
+          searchable-texts  (keys text->docs)
           upsert-embedding! (upsert-embedding!-fn connectable index text->docs)
           [new-texts stats]
           (u/profile (str "Semantic search embedding caching attempt for " {:docs (count documents) :texts (count searchable-texts)})
@@ -289,12 +290,14 @@
 
 (defn upsert-index!
   "Inserts or updates documents in the index table. If a document with the same
-  model + model_id already exists, it will be replaced."
+  model + model_id already exists, it will be replaced. Parallelizes batch insertion
+  using a thread pool with a configurable thread count (default: 2)."
   [connectable index documents-reducible]
-  (transduce (comp (partition-all *batch-size*)
-                   (map #(upsert-index-batch! connectable index %)))
-             (partial merge-with +)
-             documents-reducible))
+  (cp/with-shutdown! [pool (cp/threadpool (semantic-settings/embedding-thread-count))]
+    (->> documents-reducible
+         (partition-all *batch-size*)
+         (cp/pmap pool #(upsert-index-batch! connectable index %))
+         (reduce (partial merge-with +) {}))))
 
 (defn- drop-index-table-sql
   [{:keys [table-name]}]
