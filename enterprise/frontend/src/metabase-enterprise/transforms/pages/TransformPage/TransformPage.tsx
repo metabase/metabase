@@ -9,8 +9,8 @@ import { useGetTransformQuery } from "metabase-enterprise/api";
 import type { Transform, TransformId } from "metabase-types/api";
 
 import { BreadcrumbsSection } from "./BreadcrumbsSection";
+import { ManageSection } from "./ManageSection";
 import { NameSection } from "./NameSection";
-import { QuerySection } from "./QuerySection";
 import { RunSection } from "./RunSection";
 import { TargetSection } from "./TargetSection";
 
@@ -48,7 +48,7 @@ export function TransformPage({ params }: TransformPageProps) {
   }
 
   if (transform == null) {
-    return <LoadingAndErrorWrapper error={t`Transform not found.`} />;
+    return <LoadingAndErrorWrapper error={t`Not found.`} />;
   }
 
   return (
@@ -57,7 +57,7 @@ export function TransformPage({ params }: TransformPageProps) {
       <NameSection transform={transform} />
       <RunSection transform={transform} />
       <TargetSection transform={transform} />
-      <QuerySection transform={transform} />
+      <ManageSection transform={transform} />
     </Stack>
   );
 }

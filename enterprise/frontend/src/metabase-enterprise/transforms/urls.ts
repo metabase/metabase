@@ -4,6 +4,7 @@ import type {
   DatasetQuery,
   TableId,
   TransformId,
+  TransformJobId,
 } from "metabase-types/api";
 
 export const ROOT_URL = "/admin/transforms";
@@ -30,6 +31,10 @@ export function getTransformQueryUrl(transformId: TransformId) {
 
 export function getJobListUrl() {
   return `${ROOT_URL}/jobs`;
+}
+
+export function getJobUrl(id: TransformJobId) {
+  return `${ROOT_URL}/jobs/${id}`;
 }
 
 export function getRunListUrl() {

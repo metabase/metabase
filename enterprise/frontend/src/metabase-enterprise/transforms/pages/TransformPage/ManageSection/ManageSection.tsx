@@ -15,11 +15,11 @@ import type { Transform } from "metabase-types/api";
 
 import { DeleteTransformModal } from "./DeleteTransformModal";
 
-type QuerySectionProps = {
+type ManageSectionProps = {
   transform: Transform;
 };
 
-export function QuerySection({ transform }: QuerySectionProps) {
+export function ManageSection({ transform }: ManageSectionProps) {
   return (
     <TitleSection
       label={t`Query`}
