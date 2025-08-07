@@ -1354,3 +1354,22 @@
   :hierarchy #'hierarchy)
 
 (defmethod table-known-to-not-exist? ::driver [_ _] false)
+
+(defmulti set-database-used!
+  "Sets the database to be used on a connection. Called prior to query execution for drivers that support USE DATABASE like commands."
+  {:added "0.56.0" :arglists '([driver conn db])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmethod set-database-used! ::driver [_driver _conn _db] nil)
+
+(defmulti do-with-resilient-connection
+  "Execute function `f` within a context that may recover (on-demand) from connection failures.
+  `f` must be eager."
+  {:added "0.55.9" :arglists '([driver database f])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmethod do-with-resilient-connection
+  ::driver
+  [driver database f] (f driver database))

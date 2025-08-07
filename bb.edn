@@ -130,7 +130,8 @@
                 ["./bin/mage jar-download 1.45.2 -r" "Download and run metabase_1.45.2.jar"]
                 ["./bin/mage jar-download 1.45.2 -d ~/path/to/my/jars" "Download metabase_1.45.2.jar to ~/path/to/my/jars, deleting if it exists"]
                 ["./bin/mage jar-download master --run --port 3001" "Download and run the latest master branch jar on port 3001"]
-                ["JARS=~/my-stuff ./bin/mage jar-download 1.45.2" "Download metabase_1.45.2.jar to ~/my-stuff"]]
+                ["JARS=~/my-stuff ./bin/mage jar-download 1.45.2" "Download metabase_1.45.2.jar to ~/my-stuff"]
+                ["./bin/mage jar-download v1.56.0-beta -r" "Download and run metabase_1.56.0-beta.jar"]]
    :requires   [[mage.jar-download :as jar-download]]
    :options    [["-r" "--run" "run the new jar after downloading it"]
                 ["-e" "--env-file FILE" "you can optionally provide a lein-env file to specify the environment to use when running the jar."]
@@ -145,6 +146,7 @@
                     (str "\n  -" (c/green "1.45.2")  " for a specific version")
                     (str "\n  -" (c/green "master")  " for the latest jar created for master")
                     (str "\n  -" (c/green "any-branch-with-a-pr")  " for the latest uberjar created for that branch")
+                    (str "\n  -" (c/green "1.56.0-beta") " for a specific beta version")
                     (str "\n\nnote: If you get an error about 'Invalid or corrupt jarfile', run this command again with --delete.")))
    :task       (task! (jar-download/jar-download parsed))}
 

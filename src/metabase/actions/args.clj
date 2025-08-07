@@ -21,7 +21,7 @@
 
 (defmulti validate-inputs!
   "Check whether the given action is supported for the given inputs, and if not throw an error."
-  {:arglists '([action inputs]), :added "0.56.0"}
+  {:arglists '([action inputs]), :added "0.57.0"}
   (fn [action _inputs]
     (keyword action)))
 

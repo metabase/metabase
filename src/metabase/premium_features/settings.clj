@@ -271,7 +271,7 @@
   "Does the Metabase Cloud instance have ETL connections with PG?"
   :etl-connections-pg)
 
-(define-premium-feature table-data-editing?
+(define-premium-feature ^{:added "0.57.0"} table-data-editing?
   "Should we allow users to edit the data within tables?"
   :table-data-editing)
 
