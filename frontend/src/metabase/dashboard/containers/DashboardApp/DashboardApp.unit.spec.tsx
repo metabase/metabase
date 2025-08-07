@@ -241,31 +241,32 @@ describe("DashboardApp", () => {
     });
   });
 
-  fetchMock.callHistory.lastCall(
-    "should pass dashboard_load_id to dashboard and query_metadata endpoints",
-    async () => {
-      const { dashboardId } = await setup();
+  /**
+   * passing the same uuid in the URL is required to enable metadata cache
+   * sharing on BE
+   */
+  it("should pass dashboard_load_id to dashboard and query_metadata endpoints", async () => {
+    const { dashboardId } = await setup();
 
-      const dashboardURL = fetchMock.lastUrl(
-        `path:/api/dashboard/${dashboardId}`,
-      );
-      const queryMetadataURL = fetchMock.lastUrl(
-        `path:/api/dashboard/${dashboardId}/query_metadata`,
-      );
+    const dashboardURL = fetchMock.callHistory.lastCall(
+      `path:/api/dashboard/${dashboardId}`,
+    )?.url;
+    const queryMetadataURL = fetchMock.callHistory.lastCall(
+      `path:/api/dashboard/${dashboardId}/query_metadata`,
+    )?.url;
 
-      const dashboardSearchParams = new URLSearchParams(
-        dashboardURL?.split("?")[1],
-      );
-      const queryMetadataSearchParams = new URLSearchParams(
-        queryMetadataURL?.split("?")[1],
-      );
+    const dashboardSearchParams = new URLSearchParams(
+      dashboardURL?.split("?")[1],
+    );
+    const queryMetadataSearchParams = new URLSearchParams(
+      queryMetadataURL?.split("?")[1],
+    );
 
-      expect(dashboardSearchParams.get("dashboard_load_id")).toHaveLength(36); // uuid length
-      expect(queryMetadataSearchParams.get("dashboard_load_id")).toHaveLength(36); // uuid length
+    expect(dashboardSearchParams.get("dashboard_load_id")).toHaveLength(36); // uuid length
+    expect(queryMetadataSearchParams.get("dashboard_load_id")).toHaveLength(36); // uuid length
 
-      expect(queryMetadataSearchParams.get("dashboard_load_id")).toEqual(
-        dashboardSearchParams.get("dashboard_load_id"),
-      );
-    }
-  )?.url
+    expect(queryMetadataSearchParams.get("dashboard_load_id")).toEqual(
+      dashboardSearchParams.get("dashboard_load_id"),
+    );
+  });
 });

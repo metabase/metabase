@@ -167,15 +167,11 @@ describe("WhatsNewNotification", () => {
       });
 
       await waitFor(async () => {
-        const calls = fetchMock.callHistory.calls(LAST_ACK_SETTINGS_URL);
-        const lastCall = calls[calls.length - 1];
-        expect(
-          JSON.parse(await (lastCall?.options?.body as Promise<string>)),
-        ).toEqual({ value: currentVersionTag });
+        const lastCall = fetchMock.callHistory.lastCall(LAST_ACK_SETTINGS_URL);
+        expect(JSON.parse(lastCall?.options?.body as string)).toEqual({
+          value: currentVersionTag,
+        });
       });
-
-      // Clean up fetchMock after the test
-      fetchMock.removeRoutes();
     });
 
     it("should link the most recent eligible release notes", async () => {

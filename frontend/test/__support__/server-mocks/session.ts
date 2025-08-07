@@ -9,13 +9,7 @@ import type {
 export function setupPropertiesEndpoints(
   settings: Settings | EnterpriseSettings,
 ) {
-  const name = "session-properties";
-  try {
-    fetchMock.removeRoute(name);
-  } catch {
-    // Route might not exist, ignore
-  }
-  fetchMock.get("path:/api/session/properties", settings, { name });
+  fetchMock.get("path:/api/session/properties", settings);
 }
 
 export function setupLoginEndpoint() {
@@ -27,15 +21,21 @@ export function setupLogoutEndpoint() {
 }
 
 export function setupForgotPasswordEndpoint() {
-  fetchMock.post("path:/api/session/forgot_password", 204, { name: "session-forgot-password" });
+  fetchMock.post("path:/api/session/forgot_password", 204, {
+    name: "session-forgot-password",
+  });
 }
 
 export function setupResetPasswordEndpoint() {
-  fetchMock.post("path:/api/session/reset_password", 204, { name: "session-reset-password" });
+  fetchMock.post("path:/api/session/reset_password", 204, {
+    name: "session-reset-password",
+  });
 }
 
 export function setupPasswordResetTokenEndpoint(
   status: PasswordResetTokenStatus,
 ) {
-  fetchMock.get("path:/api/session/password_reset_token_valid", status, { name: "session-password-reset-token" });
+  fetchMock.get("path:/api/session/password_reset_token_valid", status, {
+    name: "session-password-reset-token",
+  });
 }

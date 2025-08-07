@@ -80,7 +80,6 @@ describe("Entities > model-indexes > actions", () => {
       expect(calls).toHaveLength(0);
     });
 
-
     it("should make a POST call for a newly-added index field", async () => {
       const pkFieldRef: FieldReference = ["field", 1, null];
       const indexFieldRef: FieldReference = ["field", 2, null];
@@ -97,7 +96,7 @@ describe("Entities > model-indexes > actions", () => {
 
       await updateModelIndexes(model)(dispatch);
 
-      const createCalls = await fetchMock.callHistory.calls("createModelIndex");
+      const createCalls = fetchMock.callHistory.calls("createModelIndex");
 
       expect(createCalls).toHaveLength(1);
 
@@ -106,12 +105,11 @@ describe("Entities > model-indexes > actions", () => {
 
       expect(options?.method).toBe("POST");
       // @ts-expect-error ???
-      const body = JSON.parse(await options?.body) as Partial<ModelIndex>;
+      const body = JSON.parse(options?.body) as Partial<ModelIndex>;
       expect(body.model_id).toBe(model.id());
       expect(body.pk_ref).toEqual(pkFieldRef);
       expect(body.value_ref).toEqual(indexFieldRef);
     });
-
 
     it("should make a DELETE call to remove an index field", async () => {
       const pkFieldRef: FieldReference = ["field", 1, null];
@@ -147,7 +145,6 @@ describe("Entities > model-indexes > actions", () => {
       expect(options?.method).toBe("DELETE");
     });
 
-
     it("should not create a new index if there is already one for the field", async () => {
       const pkFieldRef: FieldReference = ["field", 1, null];
       const indexFieldRef: FieldReference = ["field", 2, null];
@@ -169,15 +166,16 @@ describe("Entities > model-indexes > actions", () => {
 
       await updateModelIndexes(model)(dispatch);
 
-      const fetchCalls = await fetchMock.callHistory.calls(`getModelIndexes-${model.id()}`);
-      const createCalls = await fetchMock.callHistory.calls("createModelIndex");
+      const fetchCalls = fetchMock.callHistory.calls(
+        `getModelIndexes-${model.id()}`,
+      );
+      const createCalls = fetchMock.callHistory.calls("createModelIndex");
 
       // no calls to Create
       expect(createCalls).toHaveLength(0);
       // Made a call to fetch
       expect(fetchCalls).toHaveLength(1);
     });
-
 
     it("should not delete an index if there is no index for the field", async () => {
       const pkFieldRef: FieldReference = ["field", 1, null];
@@ -195,7 +193,9 @@ describe("Entities > model-indexes > actions", () => {
 
       await updateModelIndexes(model)(dispatch);
 
-      const fetchCalls = await fetchMock.callHistory.calls(`getModelIndexes-${model.id()}`);
+      const fetchCalls = fetchMock.callHistory.calls(
+        `getModelIndexes-${model.id()}`,
+      );
       const deleteCalls = fetchMock.callHistory.calls("deleteModelIndex");
 
       // Expect 1 fetch for model indexes

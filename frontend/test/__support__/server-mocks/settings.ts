@@ -24,31 +24,33 @@ export function setupSettingEndpoint<K extends EnterpriseSettingKey>({
   if (settingValue === null || settingValue === undefined) {
     throw new Error("settingValue must be non-null and non-undefined");
   }
-  fetchMock.get("path:/api/setting/" + settingKey, { body: settingValue }, { name: `setting-${settingKey}` });
+  fetchMock.get(
+    "path:/api/setting/" + settingKey,
+    { body: settingValue },
+    { name: `setting-${settingKey}` },
+  );
 }
 
 export function setupUpdateSettingEndpoint(
-  { status }: { status?: number } = { status: 204 },
+  {
+    status,
+    overwriteRoute,
+  }: {
+    status?: number;
+    overwriteRoute?: boolean;
+  } = { status: 204, overwriteRoute: false },
 ) {
-  const name = "setting-update";
-  try {
+  const name = "update-setting";
+  if (overwriteRoute) {
     fetchMock.removeRoute(name);
-  } catch {
-    // Route might not exist, ignore
   }
-  fetchMock.put(new RegExp("/api/setting/"), { status }, { name });
+  fetchMock.put(new RegExp("/api/setting/"), { status }, { name: name });
 }
 
 export function setupUpdateSettingsEndpoint(
   { status }: { status?: number } = { status: 204 },
 ) {
-  const name = "settings-update";
-  try {
-    fetchMock.removeRoute(name);
-  } catch {
-    // Route might not exist, ignore
-  }
-  fetchMock.put("path:/api/setting", { status }, { name });
+  fetchMock.put("path:/api/setting", { status });
 }
 
 export function setupScimEndpoints(

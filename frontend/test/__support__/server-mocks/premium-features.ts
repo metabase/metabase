@@ -10,20 +10,21 @@ export const setupTokenStatusEndpoint = (
   } catch {
     // Route might not exist, ignore
   }
-  fetchMock.get("path:/api/premium-features/token/status", {
-    valid,
-    "valid-thru": valid ? "2099-12-31T12:00:00" : null,
-    features,
-  }, { name });
+  fetchMock.get(
+    "path:/api/premium-features/token/status",
+    {
+      valid,
+      "valid-thru": valid ? "2099-12-31T12:00:00" : null,
+      features,
+    },
+    { name },
+  );
 };
 
 export const setupTokenStatusEndpointEmpty = () => {
-  try {
-    fetchMock.removeRoute("premium-token-status");
-  } catch {
-    // Route might not exist, ignore
-  }
-  fetchMock.get("path:/api/premium-features/token/status", 404, { name: "premium-token-status" });
+  fetchMock.get("path:/api/premium-features/token/status", 404, {
+    name: "premium-token-status",
+  });
 };
 
 export const setupTokenActivationEndpoint = ({
@@ -45,7 +46,7 @@ export const setupTokenActivationEndpoint = ({
     { success, error: success ? undefined : "Invalid token" },
     {
       response: responseStatus,
-      name
+      name,
     },
   );
 };

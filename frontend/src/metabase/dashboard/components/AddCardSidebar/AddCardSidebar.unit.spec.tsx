@@ -232,19 +232,17 @@ describe("AddCardSideBar", () => {
         name: "question in public collection",
         model: "card",
       });
-      fetchMock.get(
-        {
-          url: "path:/api/search",
-          query: {
-            ...baseQuery,
-            q: typedText,
-            filter_items_in_personal_collection: "exclude",
-          },
+      fetchMock.get({
+        url: "path:/api/search",
+        query: {
+          ...baseQuery,
+          q: typedText,
+          filter_items_in_personal_collection: "exclude",
         },
-        {
+        response: {
           data: [questionInPublicCollection],
         },
-      );
+      });
 
       expect(
         await screen.findByText(questionInPublicCollection.name),
@@ -304,19 +302,17 @@ describe("AddCardSideBar", () => {
         name: "question in public collection",
         model: "card",
       });
-      fetchMock.get(
-        {
-          url: "path:/api/search",
-          query: {
-            ...baseQuery,
-            q: typedText,
-            filter_items_in_personal_collection: "exclude",
-          },
+      fetchMock.get({
+        url: "path:/api/search",
+        query: {
+          ...baseQuery,
+          q: typedText,
+          filter_items_in_personal_collection: "exclude",
         },
-        {
+        response: {
           data: [questionInPublicCollection],
         },
-      );
+      });
 
       expect(
         await screen.findByText(questionInPublicCollection.name),
@@ -401,18 +397,16 @@ describe("AddCardSideBar", () => {
         name: "question in personal collection",
         model: "card",
       });
-      fetchMock.get(
-        {
-          url: "path:/api/search",
-          query: {
-            ...baseQuery,
-            q: typedText,
-          },
+      fetchMock.get({
+        url: "path:/api/search",
+        query: {
+          ...baseQuery,
+          q: typedText,
         },
-        {
+        response: {
           data: [questionInPublicCollection, questionInPersonalCollection],
         },
-      );
+      });
 
       expect(
         await screen.findByText(questionInPublicCollection.name),

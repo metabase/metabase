@@ -76,9 +76,7 @@ export function setupMetabotPromptSuggestionsEndpoint({
   const page = prompts.slice(offset, offset + limit);
   const body = { prompts: page, limit, offset, total };
   if (overwriteRoute) {
-    try {
-      fetchMock.removeRoute(`metabot-${metabotId}-prompt-suggestions-get`);
-    } catch {}
+    fetchMock.removeRoute(`metabot-${metabotId}-prompt-suggestions-get`);
   }
   fetchMock.get({
     url: `path:/api/ee/metabot-v3/metabot/${metabotId}/prompt-suggestions`,

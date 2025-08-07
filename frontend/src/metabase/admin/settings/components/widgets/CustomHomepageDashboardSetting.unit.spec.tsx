@@ -2,6 +2,7 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import {
+  findRequests,
   setupCurrentUserEndpoint,
   setupDashboardEndpoints,
   setupPropertiesEndpoints,
@@ -110,9 +111,9 @@ describe("CustomHomepageDashboardSetting", () => {
     await userEvent.click(toggle);
     expect(await screen.findByRole("switch")).toBeChecked();
 
-    const [[putUrl, putDetails]] = await findPuts();
-    expect(putUrl).toContain("/api/setting/custom-homepage");
-    expect(putDetails).toEqual({ value: true });
+    const [{ url, body }] = await findRequests("PUT");
+    expect(url).toContain("/api/setting/custom-homepage");
+    expect(body).toEqual({ value: true });
   });
 
   it("should show selected dashboard name", async () => {
@@ -138,12 +139,12 @@ describe("CustomHomepageDashboardSetting", () => {
       expect(screen.queryByText("Choose a dashboard")).not.toBeInTheDocument();
     });
 
-    const [[putUrl, putDetails], [putUrl2, putDetails2]] = await findPuts();
-
+    const [{ url: putUrl, body: putBody }, { url: putUrl2, body: putBody2 }] =
+      await findRequests("PUT");
     expect(putUrl).toContain("/api/setting/custom-homepage-dashboard");
-    expect(putDetails).toEqual({ value: 4242 });
+    expect(putBody).toEqual({ value: 4242 });
     expect(putUrl2).toContain("/api/setting/dismissed-custom-dashboard-toast");
-    expect(putDetails2).toEqual({ value: true });
+    expect(putBody2).toEqual({ value: true });
 
     // dashboard name should be displayed
     expect(await screen.findByText("My dashboard")).toBeInTheDocument();
@@ -175,17 +176,3 @@ describe("CustomHomepageDashboardSetting", () => {
     });
   });
 });
-
-async function findPuts() {
-  const calls = fetchMock.callHistory.calls();
-  const data = calls.filter((call) => call.request?.method === "PUT") ?? [];
-
-  const puts = data.map(async (call) => {
-    const putUrl = call.request?.url;
-    const body = ((await call.options?.body) as string) ?? "{}";
-
-    return [putUrl, JSON.parse(body ?? "{}")];
-  });
-
-  return Promise.all(puts);
-}

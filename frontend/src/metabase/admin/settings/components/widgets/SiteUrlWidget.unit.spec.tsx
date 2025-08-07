@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
-import fetchMock from "fetch-mock";
 
 import {
+  findRequests,
   setupPropertiesEndpoints,
   setupSettingsEndpoints,
   setupUpdateSettingEndpoint,
@@ -62,9 +62,9 @@ describe("siteUrlWidget", () => {
     await fireEvent.blur(input);
     await screen.findByDisplayValue("newsite.guru");
 
-    const [putUrl, putDetails] = await findPut();
-    expect(putUrl).toMatch(/\/api\/setting\/site-url/);
-    expect(putDetails).toEqual({ value: "http://newsite.guru" });
+    const [{ url, body }] = await findRequests("PUT");
+    expect(url).toMatch(/\/api\/setting\/site-url/);
+    expect(body).toEqual({ value: "http://newsite.guru" });
   });
 
   it("can change from http to https", async () => {
@@ -74,9 +74,9 @@ describe("siteUrlWidget", () => {
     );
     await userEvent.click(await screen.findByText("https://"));
 
-    const [putUrl, putDetails] = await findPut();
-    expect(putUrl).toMatch(/\/api\/setting\/site-url/);
-    expect(putDetails).toEqual({ value: "https://mysite.biz" });
+    const [{ url, body }] = await findRequests("PUT");
+    expect(url).toMatch(/\/api\/setting\/site-url/);
+    expect(body).toEqual({ value: "https://mysite.biz" });
   });
 
   it("should show success toast", async () => {
@@ -95,7 +95,7 @@ describe("siteUrlWidget", () => {
 
   it("should show error message", async () => {
     setup();
-    setupUpdateSettingEndpoint({ status: 500 });
+    setupUpdateSettingEndpoint({ status: 500, overwriteRoute: true });
 
     const input = await screen.findByDisplayValue("mysite.biz");
     await userEvent.clear(input);
@@ -108,14 +108,3 @@ describe("siteUrlWidget", () => {
     ).toBeInTheDocument();
   });
 });
-
-async function findPut() {
-  const calls = fetchMock.callHistory.calls();
-  const putCall = calls.find((call) => call.request?.method === "PUT");
-  if (!putCall) {
-    return [undefined, {}];
-  }
-  const putUrl = putCall.request?.url;
-  const body = ((await putCall.options?.body) as string) ?? "{}";
-  return [putUrl, JSON.parse(body)];
-}

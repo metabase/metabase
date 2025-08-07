@@ -65,8 +65,8 @@ const renderDatasetEditor = async (card: Card | UnsavedCard) => {
   setupNativeQuerySnippetEndpoints();
   const question = new Question(card);
 
-  fetchMock.get("path:/api/search", () => ({ body: { data: [] } }));
-  fetchMock.get("path:/api/model-index", () => ({ body: [] }));
+  fetchMock.get("path:/api/search", { body: { data: [] } });
+  fetchMock.get("path:/api/model-index", { body: [] });
 
   renderWithProviders(
     <DatasetEditor {...defaultDatasetEditorProps} question={question} />,

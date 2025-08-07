@@ -16,7 +16,7 @@ export function setupRecentViewsEndpoints(recentItems: RecentItem[]) {
 export function setupRecentViewsAndSelectionsEndpoints(
   recentItems: RecentItem[],
   context: RecentContexts[] = ["selections", "views"],
-  mockOptions: UserRouteConfig = {},
+  routeConfig: UserRouteConfig = {},
   mockPostRequest: boolean = true,
 ) {
   fetchMock.get({
@@ -28,7 +28,7 @@ export function setupRecentViewsAndSelectionsEndpoints(
       status: 200,
       body: { recents: recentItems },
     },
-    ...mockOptions,
+    ...routeConfig,
   });
 
   if (mockPostRequest) {

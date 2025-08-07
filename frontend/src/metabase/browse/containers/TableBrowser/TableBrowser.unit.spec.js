@@ -34,10 +34,9 @@ describe("TableBrowser", () => {
     // check the loading spinner is present
     expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
     // change the table to have initial_sync_status='complete'
-    fetchMock.removeRoute("database-get-schema");
-    fetchMock.get("path:/api/database/1/schema/public", [
-      { id: 123, name: "foo", initial_sync_status: "complete" },
-    ]);
+    fetchMock.modifyRoute("database-get-schema", {
+      response: [{ id: 123, name: "foo", initial_sync_status: "complete" }],
+    });
     await waitFor(
       () => {
         expect(

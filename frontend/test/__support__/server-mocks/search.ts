@@ -6,15 +6,11 @@ import type { EmbeddingDataPicker } from "metabase-types/store/embedding-data-pi
 
 export function setupSearchEndpoints(
   items: (CollectionItem | SearchResult)[],
-  overwriteRoutes?: boolean,
+  overwriteRoute?: boolean,
 ) {
   const name = "search";
-  if (overwriteRoutes) {
-    try {
-      fetchMock.removeRoute(name);
-    } catch {
-      // Route might not exist, ignore
-    }
+  if (overwriteRoute) {
+    fetchMock.removeRoute(name);
   }
   fetchMock.get(
     "path:/api/search",

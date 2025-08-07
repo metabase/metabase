@@ -202,12 +202,9 @@ async function setup({
   }
 
   if (unauthorizedField) {
-    setupUnauthorizedFieldEndpoint(unauthorizedField, {
-      overwriteRoutes: true,
-    });
+    setupUnauthorizedFieldEndpoint(unauthorizedField);
     setupUnauthorizedFieldValuesEndpoints(
       getRawTableFieldId(unauthorizedField),
-      { overwriteRoutes: true },
     );
   }
 
@@ -880,7 +877,10 @@ describe("DataModel", () => {
         hasFieldValuesAccess: false,
         unauthorizedField: ORDERS_QUANTITY_FIELD,
       });
-      setupDatabaseIdFieldsEndpoints(SAMPLE_DB, true);
+      setupDatabaseIdFieldsEndpoints({
+        database: SAMPLE_DB,
+        overwriteRoute: true,
+      });
 
       expect(screen.getByText("Custom mapping")).toBeInTheDocument();
       expect(

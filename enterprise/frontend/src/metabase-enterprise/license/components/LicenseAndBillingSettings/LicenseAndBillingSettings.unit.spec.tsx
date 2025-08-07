@@ -325,7 +325,7 @@ describe("LicenseAndBilling", () => {
       ),
     ).toBeInTheDocument();
 
-    setupUpdateSettingEndpoint({ status: 400 });
+    setupUpdateSettingEndpoint({ status: 400, overwriteRoute: true });
 
     await userEvent.type(screen.getByTestId("license-input"), "invalid");
     await userEvent.click(await screen.findByTestId("activate-button"));

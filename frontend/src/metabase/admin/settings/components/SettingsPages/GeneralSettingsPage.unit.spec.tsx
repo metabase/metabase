@@ -90,13 +90,12 @@ describe("GeneralSettingsPage", () => {
     });
   });
 
-  it("should make only 4 api calls", async () => {
+  it("should make only 5 api calls", async () => {
     await setup();
 
     await waitFor(() => {
       const calls = fetchMock.callHistory.calls();
-      const urls = calls.map((call) => call.url);
-      expect(urls).toHaveLength(5);
+      expect(calls).toHaveLength(5);
     });
     const calls = fetchMock.callHistory.calls();
     const urls = calls.map((call) => call.url);

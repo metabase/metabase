@@ -32,14 +32,6 @@ import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 import { createMockQueryBuilderState } from "metabase-types/store/mocks";
 
 describe("CreateOrEditQuestionAlertModal", () => {
-  beforeEach(() => {
-    fetchMock.removeRoutes();
-  });
-
-  afterEach(() => {
-    fetchMock.removeRoutes();
-  });
-
   it("should display first available channel by default - Email", async () => {
     setup({
       isAdmin: true,
@@ -238,7 +230,6 @@ describe("CreateOrEditQuestionAlertModal", () => {
     expect(sendOnceSwitch).not.toBeChecked();
   });
 
-
   it("should create a new notification with daily schedule at 8am", async () => {
     // Setup fetchMock for API call - note we use '*' matcher to capture any request to this endpoint
     fetchMock.postOnce("path:/api/notification", { body: { id: 123 } });
@@ -281,7 +272,6 @@ describe("CreateOrEditQuestionAlertModal", () => {
 
     expect(onAlertCreatedMock).toHaveBeenCalledTimes(1);
   });
-
 
   it("should create a new notification with custom schedule", async () => {
     // Setup fetchMock for API call - note we use '*' matcher to capture any request to this endpoint
@@ -327,7 +317,6 @@ describe("CreateOrEditQuestionAlertModal", () => {
 
     expect(onAlertCreatedMock).toHaveBeenCalledTimes(1);
   });
-
 
   it("should update an existing notification when in edit mode", async () => {
     const notificationId = 42;
@@ -375,7 +364,9 @@ describe("CreateOrEditQuestionAlertModal", () => {
     await userEvent.click(saveButton);
 
     // Verify the API was called with the correct cron schedule for Tuesday at 2pm
-    const calls = fetchMock.callHistory.calls(`path:/api/notification/${notificationId}`);
+    const calls = fetchMock.callHistory.calls(
+      `path:/api/notification/${notificationId}`,
+    );
     expect(calls.length).toBe(1);
 
     await waitFor(async () => {

@@ -2,6 +2,7 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import {
+  findRequests,
   setupPropertiesEndpoints,
   setupSettingsEndpoints,
   setupUpdateSettingEndpoint,
@@ -144,22 +145,8 @@ describe("HttpsOnlyWidget", () => {
 
     await userEvent.click(input);
 
-    const [putUrl, putDetails] = await findPut();
-    expect(putUrl).toContain("/api/setting/redirect-all-requests-to-https");
-    expect(putDetails).toEqual({ value: true });
+    const [{ url, body }] = await findRequests("PUT");
+    expect(url).toContain("/api/setting/redirect-all-requests-to-https");
+    expect(body).toEqual({ value: true });
   });
 });
-
-async function findPut() {
-  const calls = fetchMock.callHistory.calls();
-  const putCall = calls.find((call) => call.request?.method === "PUT");
-  
-  if (!putCall) {
-    return [undefined, {}];
-  }
-
-  const putUrl = putCall.request?.url;
-  const body = ((await putCall.options?.body) as string) ?? "{}";
-
-  return [putUrl, JSON.parse(body)];
-}

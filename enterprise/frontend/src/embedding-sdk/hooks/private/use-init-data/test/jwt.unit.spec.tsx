@@ -27,8 +27,6 @@ const setupJwt = ({
 describe("useInitData - JWT authentication", () => {
   afterEach(() => {
     jest.restoreAllMocks();
-    // fetchMock.removeRoutes();
-    // fetchMock.callHistory.clear();
   });
 
   it("should provide a helpful error if the user can't connect to their server for JWT", async () => {

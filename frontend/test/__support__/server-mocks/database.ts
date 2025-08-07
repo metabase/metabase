@@ -21,7 +21,7 @@ export function setupDatabaseEndpoints(db: Database) {
     { name: `database-${db.id}-healthcheck` },
   );
   setupSchemaEndpoints(db);
-  setupDatabaseIdFieldsEndpoints(db);
+  setupDatabaseIdFieldsEndpoints({ database: db });
   db.tables?.forEach((table) => setupTableEndpoints({ ...table, db }));
 
   fetchMock.put(`path:/api/database/${db.id}`, async (call) => {
@@ -89,10 +89,13 @@ export const setupSchemaEndpoints = (db: Database) => {
   });
 };
 
-export function setupDatabaseIdFieldsEndpoints(
-  { id, tables = [] }: Database,
-  overwriteRoutes?: boolean,
-) {
+export function setupDatabaseIdFieldsEndpoints({
+  database: { id, tables = [] },
+  overwriteRoute,
+}: {
+  database: Database;
+  overwriteRoute?: boolean;
+}) {
   const fields = tables.flatMap((table) =>
     (table.fields ?? [])
       .filter((field) => isTypePK(field.semantic_type))
@@ -100,7 +103,7 @@ export function setupDatabaseIdFieldsEndpoints(
   );
 
   const name = `database-${id}-idfields`;
-  if (overwriteRoutes) {
+  if (overwriteRoute) {
     try {
       fetchMock.removeRoute(name);
     } catch {

@@ -11,11 +11,7 @@ export function setupGdriveGetFolderEndpoint({
   overwriteRoute?: boolean;
 } = {}) {
   if (overwriteRoute) {
-    try {
-      fetchMock.removeRoute("gdrive-get-folder");
-    } catch {
-      // Route might not exist, ignore
-    }
+    fetchMock.removeRoute("gdrive-get-folder");
   }
 
   if (errorCode) {

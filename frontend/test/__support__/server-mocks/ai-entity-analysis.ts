@@ -2,12 +2,20 @@ import fetchMock from "fetch-mock";
 
 import type { AIEntityAnalysisResponse } from "metabase-types/api";
 
-export function setupAnalyzeChartEndpoint(response: AIEntityAnalysisResponse) {
+export function setupAnalyzeChartEndpoint({
+  response,
+  overwriteRoute,
+}: {
+  response: AIEntityAnalysisResponse;
+  overwriteRoute?: boolean;
+}) {
   const name = "ai-analyze-chart";
-  try {
-    fetchMock.removeRoute(name);
-  } catch {
-    // Route might not exist, ignore
+  if (overwriteRoute) {
+    try {
+      fetchMock.removeRoute(name);
+    } catch {}
   }
-  fetchMock.post("path:/api/ee/ai-entity-analysis/analyze-chart", response, { name });
+  fetchMock.post("path:/api/ee/ai-entity-analysis/analyze-chart", response, {
+    name,
+  });
 }

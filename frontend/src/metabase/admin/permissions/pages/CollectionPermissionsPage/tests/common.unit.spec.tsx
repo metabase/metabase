@@ -57,7 +57,6 @@ describe("Admin > CollectionPermissionsPage", () => {
       expect(await screen.findByText("No access")).toBeInTheDocument();
     });
 
-
     it("can change group permissions", async () => {
       await setup();
 
@@ -90,9 +89,14 @@ describe("Admin > CollectionPermissionsPage", () => {
       expect(await screen.findAllByText("View")).toHaveLength(2);
       expect(screen.queryByText("No access")).not.toBeInTheDocument();
 
-      const calls = fetchMock.callHistory.calls("path:/api/collection/graph", { method: "PUT" });
-      const lastCall = calls[calls.length - 1];
-      const lastRequest = JSON.parse(await lastCall?.options?.body);
+      const lastCall = fetchMock.callHistory.lastCall(
+        "path:/api/collection/graph",
+        { method: "PUT" },
+      );
+      const lastRequest =
+        typeof lastCall?.options?.body === "string"
+          ? JSON.parse(lastCall?.options?.body)
+          : undefined;
 
       expect(lastRequest).toEqual({
         ...defaultPermissionsGraph,
@@ -104,7 +108,6 @@ describe("Admin > CollectionPermissionsPage", () => {
         },
       });
     });
-
 
     it("can propagate permissions changes to sub-collection", async () => {
       await setup();
@@ -144,9 +147,14 @@ describe("Admin > CollectionPermissionsPage", () => {
       expect(await screen.findAllByText("Curate")).toHaveLength(3);
       expect(screen.queryByText("No access")).not.toBeInTheDocument();
 
-      const calls = fetchMock.callHistory.calls("path:/api/collection/graph", { method: "PUT" });
-      const lastCall = calls[calls.length - 1];
-      const lastRequest = JSON.parse(await lastCall?.options?.body);
+      const lastCall = fetchMock.callHistory.lastCall(
+        "path:/api/collection/graph",
+        { method: "PUT" },
+      );
+      const lastRequest =
+        typeof lastCall?.options?.body === "string"
+          ? JSON.parse(lastCall?.options?.body)
+          : undefined;
 
       expect(lastRequest).toEqual({
         ...defaultPermissionsGraph,

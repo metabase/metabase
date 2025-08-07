@@ -31,7 +31,7 @@ describe("AIDashboardAnalysisSidebar", () => {
       summary: "Test chart analysis",
     };
 
-    setupAnalyzeChartEndpoint(mockResponse);
+    setupAnalyzeChartEndpoint({ response: mockResponse });
 
     const mockCard: Card = createMockCard({
       name: "Test Chart",
@@ -96,7 +96,7 @@ describe("AIDashboardAnalysisSidebar", () => {
       summary: "Second chart analysis",
     };
 
-    setupAnalyzeChartEndpoint(firstChartResponse);
+    setupAnalyzeChartEndpoint({ response: firstChartResponse });
 
     const firstMockCard = createMockCard({
       id: 10,
@@ -162,7 +162,10 @@ describe("AIDashboardAnalysisSidebar", () => {
       expect(screen.getByText("First chart analysis")).toBeInTheDocument();
     });
 
-    setupAnalyzeChartEndpoint(secondChartResponse);
+    setupAnalyzeChartEndpoint({
+      response: secondChartResponse,
+      overwriteRoute: true,
+    });
 
     rerender(
       <MockDashboardContext

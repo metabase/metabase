@@ -14,17 +14,6 @@ export function setupActionEndpoints(action: WritebackAction) {
   const getName = `action-${action.id}-get`;
   const putName = `action-${action.id}-put`;
 
-  try {
-    fetchMock.removeRoute(getName);
-  } catch {
-    // Route might not exist, ignore
-  }
-  try {
-    fetchMock.removeRoute(putName);
-  } catch {
-    // Route might not exist, ignore
-  }
-
   fetchMock.get(`path:/api/action/${action.id}`, action, { name: getName });
   fetchMock.put(`path:/api/action/${action.id}`, action, { name: putName });
   fetchMock.delete(`path:/api/action/${action.id}`, action);
