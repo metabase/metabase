@@ -6,6 +6,7 @@ import { Route } from "metabase/hoc/Title";
 import { PLUGIN_TRANSFORMS } from "metabase/plugins";
 
 import { JobListPage } from "./pages/JobListPage";
+import { JobPage } from "./pages/JobPage";
 import { NewTransformQueryPage } from "./pages/NewTransformQueryPage";
 import { RunListPage } from "./pages/RunListPage";
 import { TransformListPage } from "./pages/TransformListPage";
@@ -23,6 +24,7 @@ PLUGIN_TRANSFORMS.getAdminRoutes = () => (
       <Route component={TransformPageLayout}>
         <IndexRoute component={TransformListPage} />
         <Route path="jobs" component={JobListPage} />
+        <Route path="jobs/:jobId" component={JobPage} />
         <Route path="runs" component={RunListPage} />
         <Route path=":transformId" component={TransformPage} />
       </Route>
