@@ -1,6 +1,7 @@
 import { type MouseEvent, useState } from "react";
 import { jt, t } from "ttag";
 
+import { useMetadataToasts } from "metabase/metadata/hooks";
 import {
   ActionIcon,
   Icon,
@@ -37,16 +38,29 @@ export function TagMultiSelect({ tagIds, onChange }: TagMultiSelectProps) {
   const [searchValue, setSearchValue] = useState("");
   const [modalType, setModalType] = useState<TagModalType>();
   const [selectedTagId, setSelectedTagId] = useState<TransformTagId>();
+  const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
 
-  const handleChange = async (value: string[]) => {
+  const handleSelectionChange = async (value: string[]) => {
     if (value.includes(NEW_VALUE)) {
       const { data: tag } = await createTag({ name: searchValue });
       if (tag) {
         onChange([...tagIds, tag.id]);
+      } else {
+        sendErrorToast(t`Failed to create a tag`);
       }
     } else {
       onChange(value.map(getTagId));
     }
+  };
+
+  const handleTagUpdate = () => {
+    sendSuccessToast(t`Tag renamed`);
+    setModalType(undefined);
+  };
+
+  const handleTagDelete = () => {
+    sendSuccessToast(t`Tag deleted`);
+    setModalType(undefined);
   };
 
   const handleModalOpen = (
@@ -85,20 +99,20 @@ export function TagMultiSelect({ tagIds, onChange }: TagMultiSelectProps) {
             />
           )
         }
-        onChange={handleChange}
+        onChange={handleSelectionChange}
         onSearchChange={setSearchValue}
       />
       {modalType === "update" && selectedTagId != null && (
         <UpdateTagModal
           tag={tagById[selectedTagId]}
-          onUpdate={handleModalClose}
+          onUpdate={handleTagUpdate}
           onClose={handleModalClose}
         />
       )}
       {modalType === "delete" && selectedTagId != null && (
         <DeleteTagModal
           tag={tagById[selectedTagId]}
-          onDelete={handleModalClose}
+          onDelete={handleTagDelete}
           onClose={handleModalClose}
         />
       )}
