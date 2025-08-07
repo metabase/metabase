@@ -477,38 +477,32 @@
                      (lib/display-name query' order-by))))))))))
 
 (deftest ^:parallel orderable-columns-with-join-test
-  (is (=? [{:name                     "ID"
-            :lib/source-column-alias  "ID"
-            :lib/desired-column-alias "ID"
-            :lib/source               :source/table-defaults}
-           {:name                     "NAME"
-            :lib/source-column-alias  "NAME"
-            :lib/desired-column-alias "NAME"
-            :lib/source               :source/table-defaults}
-           {:name                     "CATEGORY_ID"
-            :lib/source-column-alias  "CATEGORY_ID"
-            :lib/desired-column-alias "CATEGORY_ID"
-            :lib/source               :source/table-defaults}
-           {:name                     "LATITUDE"
-            :lib/source-column-alias  "LATITUDE"
-            :lib/desired-column-alias "LATITUDE"
-            :lib/source               :source/table-defaults}
-           {:name                     "LONGITUDE"
-            :lib/source-column-alias  "LONGITUDE"
-            :lib/desired-column-alias "LONGITUDE"
-            :lib/source               :source/table-defaults}
-           {:name                     "PRICE"
-            :lib/source-column-alias  "PRICE"
-            :lib/desired-column-alias "PRICE"
-            :lib/source               :source/table-defaults}
-           {:name                     "ID"
-            :lib/source-column-alias  "ID"
-            :lib/desired-column-alias "Cat__ID"
-            :lib/source               :source/joins}
-           {:name                     "NAME"
-            :lib/source-column-alias  "NAME"
-            :lib/desired-column-alias "Cat__NAME"
-            :lib/source               :source/joins}]
+  (is (=? [{:name                    "ID"
+            :lib/source-column-alias "ID"
+            :lib/source              :source/table-defaults}
+           {:name                    "NAME"
+            :lib/source-column-alias "NAME"
+            :lib/source              :source/table-defaults}
+           {:name                    "CATEGORY_ID"
+            :lib/source-column-alias "CATEGORY_ID"
+            :lib/source              :source/table-defaults}
+           {:name                    "LATITUDE"
+            :lib/source-column-alias "LATITUDE"
+            :lib/source              :source/table-defaults}
+           {:name                    "LONGITUDE"
+            :lib/source-column-alias "LONGITUDE"
+            :lib/source              :source/table-defaults}
+           {:name                    "PRICE"
+            :lib/source-column-alias "PRICE"
+            :lib/source              :source/table-defaults}
+           {:name                         "ID"
+            :lib/source-column-alias      "ID"
+            :metabase.lib.join/join-alias "Cat"
+            :lib/source                   :source/joins}
+           {:name                         "NAME"
+            :lib/source-column-alias      "NAME"
+            :metabase.lib.join/join-alias "Cat"
+            :lib/source                   :source/joins}]
           (-> (lib.tu/venues-query)
               (lib/join (-> (lib/join-clause
                              (meta/table-metadata :categories)
@@ -523,36 +517,33 @@
 
 (deftest ^:parallel order-bys-with-duplicate-column-names-test
   (testing "Order by stuff should work with two different columns named ID (#29702)"
-    (is (=? [{:id                       (meta/id :venues :id)
-              :name                     "ID"
-              :lib/source               :source/previous-stage
-              :lib/type                 :metadata/column
-              :base-type                :type/BigInteger
-              :effective-type           :type/BigInteger
-              :display-name             "ID"
-              :table-id                 (meta/id :venues)
-              :lib/source-column-alias  "ID"
-              :lib/desired-column-alias "ID"}
-             {:id                       (meta/id :categories :id)
-              :name                     "ID"
-              :lib/source               :source/previous-stage
-              :lib/type                 :metadata/column
-              :base-type                :type/BigInteger
-              :effective-type           :type/BigInteger
-              :display-name             "ID"
-              :table-id                 (meta/id :categories)
-              :lib/source-column-alias  "Cat__ID"
-              :lib/desired-column-alias "Cat__ID"}
-             {:id                       (meta/id :categories :name)
-              :name                     "NAME"
-              :lib/source               :source/previous-stage
-              :lib/type                 :metadata/column
-              :base-type                :type/Text
-              :effective-type           :type/Text
-              :display-name             "Name"
-              :table-id                 (meta/id :categories)
-              :lib/source-column-alias  "Cat__NAME"
-              :lib/desired-column-alias "Cat__NAME"}]
+    (is (=? [{:id                      (meta/id :venues :id)
+              :name                    "ID"
+              :lib/source              :source/previous-stage
+              :lib/type                :metadata/column
+              :base-type               :type/BigInteger
+              :effective-type          :type/BigInteger
+              :display-name            "ID"
+              :table-id                (meta/id :venues)
+              :lib/source-column-alias "ID"}
+             {:id                      (meta/id :categories :id)
+              :name                    "ID"
+              :lib/source              :source/previous-stage
+              :lib/type                :metadata/column
+              :base-type               :type/BigInteger
+              :effective-type          :type/BigInteger
+              :display-name            "ID"
+              :table-id                (meta/id :categories)
+              :lib/source-column-alias "Cat__ID"}
+             {:id                      (meta/id :categories :name)
+              :name                    "NAME"
+              :lib/source              :source/previous-stage
+              :lib/type                :metadata/column
+              :base-type               :type/Text
+              :effective-type          :type/Text
+              :display-name            "Name"
+              :table-id                (meta/id :categories)
+              :lib/source-column-alias "Cat__NAME"}]
             (-> (lib.tu/venues-query)
                 (lib/join (-> (lib/join-clause
                                (meta/table-metadata :categories)
@@ -718,15 +709,15 @@
 
 (deftest ^:parallel orderable-columns-include-all-visible-columns-test
   (testing "Include all visible columns, not just projected ones (#31233)"
-    (is (= ["ID"
-            "NAME"
-            "CATEGORY_ID"
-            "LATITUDE"
-            "LONGITUDE"
-            "PRICE"
-            "Categories__ID" ; this column is not projected, but should still be returned.
-            "Categories__NAME"]
-           (map :lib/desired-column-alias
+    (is (= [[nil          "ID"]
+            [nil          "NAME"]
+            [nil          "CATEGORY_ID"]
+            [nil          "LATITUDE"]
+            [nil          "LONGITUDE"]
+            [nil          "PRICE"]
+            ["Categories" "ID"] ; this column is not projected, but should still be returned.
+            ["Categories" "NAME"]]
+           (map (juxt :metabase.lib.join/join-alias :lib/source-column-alias)
                 (-> (lib.tu/venues-query)
                     (lib/join (-> (lib/join-clause
                                    (meta/table-metadata :categories)
