@@ -541,9 +541,10 @@
   "Schema for a column that should be returned by [[visible-columns]]. A visible column is a column metadata that is
   required to also have `:lib/source` and `:lib/source-column-alias`.
 
-  TODO (Cam 8/1/25) -- `:lib/desired-alias` should not be returned by [[visible-columns]] since it needs to be
-  calculated in the context of the columns RETURNED by the stage... I'm not explicitly disallowing it just yet tho. I
-  probably SHOULD, but I don't want to update a ton of code."
+  `:lib/desired-column-alias` should not be returned by [[visible-columns]] since it needs to be calculated in the
+  context of the columns RETURNED by the stage! Do not expect it to be present. You should probably be using
+  `:lib/source-column-alias` for whatever purpose you think you need `:lib/desired-column-alias` for (field refs,
+  etc.)"
   [:merge
    [:ref ::column-metadata-with-source]
    [:map
