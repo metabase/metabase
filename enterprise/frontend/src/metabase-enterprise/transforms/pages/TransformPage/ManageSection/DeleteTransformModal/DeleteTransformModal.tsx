@@ -17,25 +17,25 @@ import type { Transform } from "metabase-types/api";
 type DeleteTransformModalProps = {
   transform: Transform;
   onDelete: () => void;
-  onCancel: () => void;
+  onClose: () => void;
 };
 
 export function DeleteTransformModal({
   transform,
   onDelete,
-  onCancel,
+  onClose,
 }: DeleteTransformModalProps) {
   return (
     <Modal
       title={getModalTitle(transform)}
       opened
       padding="xl"
-      onClose={onCancel}
+      onClose={onClose}
     >
       <DeleteTransformForm
         transform={transform}
         onDelete={onDelete}
-        onCancel={onCancel}
+        onClose={onClose}
       />
     </Modal>
   );
@@ -44,13 +44,13 @@ export function DeleteTransformModal({
 type DeleteTransformFormProps = {
   transform: Transform;
   onDelete: () => void;
-  onCancel: () => void;
+  onClose: () => void;
 };
 
 function DeleteTransformForm({
   transform,
   onDelete,
-  onCancel,
+  onClose,
 }: DeleteTransformFormProps) {
   const [deleteTransform] = useDeleteTransformMutation();
   const [deleteTransformTarget] = useDeleteTransformTargetMutation();
@@ -85,7 +85,7 @@ function DeleteTransformForm({
           )}
           <FormErrorMessage />
           <Group justify="end">
-            <Button onClick={onCancel}>{t`Cancel`}</Button>
+            <Button onClick={onClose}>{t`Cancel`}</Button>
             <FormSubmitButton
               label={getSubmitButtonLabel(transform, shouldDeleteTarget)}
               variant="filled"

@@ -78,7 +78,7 @@ function NewTransformPageBody({ initialQuery }: NewTransformPageBodyProps) {
         <NewTransformModal
           query={query}
           onSave={handleSave}
-          onCancel={closeModal}
+          onClose={closeModal}
         />
       )}
     </>

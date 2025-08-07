@@ -24,22 +24,17 @@ import type {
 type NewTransformModalProps = {
   query: DatasetQuery;
   onSave: (transform: Transform) => void;
-  onCancel: () => void;
+  onClose: () => void;
 };
 
 export function NewTransformModal({
   query,
   onSave,
-  onCancel,
+  onClose,
 }: NewTransformModalProps) {
   return (
-    <Modal
-      title={t`Save your transform`}
-      opened
-      padding="xl"
-      onClose={onCancel}
-    >
-      <NewTransformForm query={query} onSave={onSave} onCancel={onCancel} />
+    <Modal title={t`Save your transform`} opened padding="xl" onClose={onClose}>
+      <NewTransformForm query={query} onSave={onSave} onClose={onClose} />
     </Modal>
   );
 }
@@ -47,7 +42,7 @@ export function NewTransformModal({
 type NewTransformFormProps = {
   query: DatasetQuery;
   onSave: (transform: Transform) => void;
-  onCancel: () => void;
+  onClose: () => void;
 };
 
 type NewTransformValues = {
@@ -64,7 +59,7 @@ const NEW_TRANSFORM_SCHEMA = Yup.object({
   targetSchema: Yup.string().nullable(),
 });
 
-function NewTransformForm({ query, onSave, onCancel }: NewTransformFormProps) {
+function NewTransformForm({ query, onSave, onClose }: NewTransformFormProps) {
   const { database: databaseId } = query;
   const {
     data: schemas = [],
@@ -118,7 +113,7 @@ function NewTransformForm({ query, onSave, onCancel }: NewTransformFormProps) {
           />
           <FormErrorMessage />
           <Group justify="end">
-            <Button variant="subtle" onClick={onCancel}>{t`Back`}</Button>
+            <Button variant="subtle" onClick={onClose}>{t`Back`}</Button>
             <FormSubmitButton label={t`Save`} variant="filled" />
           </Group>
         </Stack>

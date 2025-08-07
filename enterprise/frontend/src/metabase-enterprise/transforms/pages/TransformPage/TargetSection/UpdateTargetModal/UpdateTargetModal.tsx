@@ -23,25 +23,25 @@ import type { Transform, UpdateTransformRequest } from "metabase-types/api";
 type UpdateTargetModalProps = {
   transform: Transform;
   onUpdate: () => void;
-  onCancel: () => void;
+  onClose: () => void;
 };
 
 export function UpdateTargetModal({
   transform,
   onUpdate,
-  onCancel,
+  onClose,
 }: UpdateTargetModalProps) {
   return (
     <Modal
       title={t`Change the target for this transform`}
       opened
       padding="xl"
-      onClose={onCancel}
+      onClose={onClose}
     >
       <UpdateTargetForm
         transform={transform}
         onUpdate={onUpdate}
-        onCancel={onCancel}
+        onClose={onClose}
       />
     </Modal>
   );
@@ -60,13 +60,13 @@ const EDIT_TRANSFORM_SCHEMA = Yup.object({
 type UpdateTargetFormProps = {
   transform: Transform;
   onUpdate: () => void;
-  onCancel: () => void;
+  onClose: () => void;
 };
 
 function UpdateTargetForm({
   transform,
   onUpdate,
-  onCancel,
+  onClose,
 }: UpdateTargetFormProps) {
   const { source, target, table } = transform;
   const { database: databaseId } = source.query;
@@ -132,7 +132,7 @@ function UpdateTargetForm({
             )}
             <FormErrorMessage />
             <Group justify="end">
-              <Button onClick={onCancel}>{t`Cancel`}</Button>
+              <Button onClick={onClose}>{t`Cancel`}</Button>
               <FormSubmitButton
                 label={getSubmitButtonLabel(shouldDeleteTarget)}
                 color={getSubmitButtonColor(shouldDeleteTarget)}

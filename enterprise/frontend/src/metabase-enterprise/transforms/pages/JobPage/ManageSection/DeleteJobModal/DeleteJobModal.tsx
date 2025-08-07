@@ -13,17 +13,17 @@ import type { TransformJob } from "metabase-types/api";
 type DeleteJobModalProps = {
   job: TransformJob;
   onDelete: () => void;
-  onCancel: () => void;
+  onClose: () => void;
 };
 
 export function DeleteJobModal({
   job,
   onDelete,
-  onCancel,
+  onClose,
 }: DeleteJobModalProps) {
   return (
-    <Modal title={t`Delete this job?`} opened padding="xl" onClose={onCancel}>
-      <DeleteJobForm job={job} onDelete={onDelete} onCancel={onCancel} />
+    <Modal title={t`Delete this job?`} opened padding="xl" onClose={onClose}>
+      <DeleteJobForm job={job} onDelete={onDelete} onClose={onClose} />
     </Modal>
   );
 }
@@ -31,10 +31,10 @@ export function DeleteJobModal({
 type DeleteJobFormProps = {
   job: TransformJob;
   onDelete: () => void;
-  onCancel: () => void;
+  onClose: () => void;
 };
 
-function DeleteJobForm({ job, onDelete, onCancel }: DeleteJobFormProps) {
+function DeleteJobForm({ job, onDelete, onClose }: DeleteJobFormProps) {
   const [deleteJob] = useDeleteTransformJobMutation();
 
   const handleSubmit = async () => {
@@ -49,7 +49,7 @@ function DeleteJobForm({ job, onDelete, onCancel }: DeleteJobFormProps) {
           <Text>{t`Deleting this job won’t delete any transforms.`}</Text>
           <FormErrorMessage />
           <Group justify="end">
-            <Button onClick={onCancel}>{t`Cancel`}</Button>
+            <Button onClick={onClose}>{t`Cancel`}</Button>
             <FormSubmitButton
               label={t`Delete job`}
               variant="filled"

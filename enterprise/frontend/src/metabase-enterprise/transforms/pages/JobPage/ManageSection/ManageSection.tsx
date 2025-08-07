@@ -51,7 +51,7 @@ function DeleteJobButton({ job }: DeleteJobButtonProps) {
         <DeleteJobModal
           job={job}
           onDelete={handleDelete}
-          onCancel={closeModal}
+          onClose={closeModal}
         />
       )}
     </>

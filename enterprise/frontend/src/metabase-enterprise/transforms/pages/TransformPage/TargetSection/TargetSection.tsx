@@ -141,7 +141,7 @@ function EditTargetButton({ transform }: EditTargetButtonProps) {
         <UpdateTargetModal
           transform={transform}
           onUpdate={handleUpdate}
-          onCancel={closeModal}
+          onClose={closeModal}
         />
       )}
     </>

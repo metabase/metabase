@@ -71,7 +71,7 @@ function DeleteTransformButton({ transform }: DeleteTransformButtonProps) {
         <DeleteTransformModal
           transform={transform}
           onDelete={handleDelete}
-          onCancel={closeModal}
+          onClose={closeModal}
         />
       )}
     </>
