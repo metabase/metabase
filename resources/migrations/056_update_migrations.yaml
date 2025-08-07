@@ -265,9 +265,6 @@ databaseChangeLog:
                   type: int
                   constraints:
                     nullable: false
-                    referencedTableName: core_user
-                    referencedColumnNames: id
-                    foreignKeyName: fk_document_user_id
               - column:
                   name: updated_at
                   remarks: The timestamp of when the document was updated
@@ -297,6 +294,51 @@ databaseChangeLog:
                     nullable: true
 
   - changeSet:
+      id: v56.2025-07-21T12:00:10
+      author: edpaget
+      comment: Add index on document.creator_id
+      changes:
+        - createIndex:
+            tableName: document
+            indexName: idx_document_creator_id
+            columns:
+              - column:
+                  name: creator_id
+      rollback:
+        - dropIndex:
+            tableName: document
+            indexName: idx_document_creator_id
+
+  - changeSet:
+      id: v56.2025-07-21T12:00:11
+      author: edpaget
+      comment: Add `document.creator_id` foreign key constraint
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: document
+            baseColumnNames: creator_id
+            referencedTableName: core_user
+            referencedColumnNames: id
+            constraintName: fk_document_ref_creator_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v56.2025-07-21T12:00:30
+      author: edpaget
+      comment: Add index on document.collection_id
+      changes:
+        - createIndex:
+            tableName: document
+            indexName: idx_document_collection_id
+            columns:
+              - column:
+                  name: collection_id
+      rollback:
+        - dropIndex:
+            tableName: document
+            indexName: idx_document_collection_id
+
+  - changeSet:
       id: v56.2025-07-21T12:00:59
       author: johnswanson
       comment: Add `document.collection_id` foreign key constraint
@@ -310,7 +352,7 @@ databaseChangeLog:
             onDelete: CASCADE
 
   - changeSet:
-      id: v56.2025-07-29T17:23:32
+      id: v56.2025-07-29T17:23:20
       author: edpaget
       comment: Add document_id column to report_card table
       changes:
@@ -323,6 +365,22 @@ databaseChangeLog:
                   type: int
                   constraints:
                     nullable: true
+
+  - changeSet:
+      id: v56.2025-08-06T17:23:30
+      author: edpaget
+      comment: Add index on report_card.document_id
+      changes:
+        - createIndex:
+            tableName: report_card
+            indexName: idx_repord_card_document_id
+            columns:
+              - column:
+                  name: document_id
+      rollback:
+        - dropIndex:
+            tableName: report_card
+            indexName: idx_repord_card_document_id
 
   - changeSet:
       id: v56.2025-07-29T17:23:33

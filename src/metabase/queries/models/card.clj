@@ -1211,7 +1211,9 @@
           ;; this is data migration column
           :dataset_query_metrics_v2_migration_backup
           ;; this column is not used anymore
-          :cache_ttl]
+          :cache_ttl
+          ;; skip until we implement serdes for documents
+          :document_id]
    :transform
    {:created_at             (serdes/date)
     :database_id            (serdes/fk :model/Database :name)
