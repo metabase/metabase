@@ -1059,6 +1059,93 @@ describe("scenarios > embedding > dashboard appearance", () => {
 
     H.main().should("have.css", "font-family", "Roboto, sans-serif");
   });
+
+  it("should use transparent pivot table cells in static embedding's dark mode (metabase#61741)", () => {
+    const testQuery = {
+      type: "query",
+      query: {
+        "source-table": ORDERS_ID,
+        aggregation: [["count"]],
+        breakout: [
+          [
+            "field",
+            PEOPLE.SOURCE,
+            { "base-type": "type/Text", "source-field": ORDERS.USER_ID },
+          ],
+          [
+            "field",
+            PRODUCTS.CATEGORY,
+            { "base-type": "type/Text", "source-field": ORDERS.PRODUCT_ID },
+          ],
+        ],
+      },
+      database: 1,
+    };
+
+    const pivotQuestionDetails = {
+      name: "Pivot Table Test",
+      query: testQuery.query,
+      display: "pivot",
+    };
+
+    const pivotDashboardDetails = {
+      name: "Pivot Dashboard Test",
+      enable_embedding: true,
+      embedding_params: {},
+    };
+
+    H.createQuestionAndDashboard({
+      questionDetails: pivotQuestionDetails,
+      dashboardDetails: pivotDashboardDetails,
+    }).then(({ body: { dashboard_id } }) => {
+      H.visitDashboard(dashboard_id);
+
+      H.openStaticEmbeddingModal({
+        activeTab: "parameters",
+        previewMode: "preview",
+        acceptTerms: false,
+      });
+
+      H.modal().within(() => {
+        cy.findByRole("tab", { name: "Look and Feel" }).click();
+
+        cy.log("wait until we are at the night theme");
+        cy.findByLabelText("Dark").click({ force: true });
+        H.getIframeBody()
+          .findByTestId("embed-frame")
+          .invoke("attr", "data-embed-theme")
+          .should((embedTheme) => {
+            expect(embedTheme).to.eq("night");
+          });
+
+        H.getIframeBody().findByTestId("pivot-table").should("be.visible");
+
+        H.getIframeBody().within(() => {
+          cy.findAllByTestId("pivot-table-cell").should(
+            "have.length.greaterThan",
+            0,
+          );
+
+          cy.log("dashcard should have dark background");
+          cy.findByTestId("dashcard").should(
+            "have.css",
+            "background-color",
+            "rgb(46, 53, 59)",
+          );
+
+          cy.log("pivot table cell background should be transparent");
+          cy.findAllByTestId("pivot-table-cell")
+            .first()
+            .should("have.css", "background-color", "rgba(0, 0, 0, 0)");
+
+          cy.log("pivot table cell color should be white");
+          cy.findByText("Row totals")
+            .should("be.visible")
+            .should("have.css", "color", "rgb(255, 255, 255)");
+        });
+      });
+    });
+  });
 });
 
 function openFilterOptions(name) {
