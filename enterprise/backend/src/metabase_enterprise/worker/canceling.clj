@@ -48,27 +48,33 @@
   (when (chan-signal-cancel! run-id)
     (worker-run/cancel-run! run-id)))
 
-;; please do not export from module
 (defn- cancel-run-worker-instance! [run-id]
   (when (chan-signal-cancel! run-id)
-    #_(tracking/track-cancel! run-id)))
+    (tracking/track-cancel! run-id "Canceled by user")))
 
 (defn schedule-cancel-runs!
+  "Start a scheduled task (not quartzite) that cancels tasks marked in worker_db. Should run only in the worker server."
   []
   (.scheduleAtFixedRate scheduler
-                        #(try
-                           (log/trace "Checking for canceling items.")
-                           (run! (fn [{:keys [run_id]}]
-                                   (try
-                                     (cancel-run-worker-instance! run_id)
-                                     (catch Throwable t
-                                       (log/error t (str "Error canceling " run_id)))))
-                                 (wr.cancelation/reducible-canceled-local-runs))
-                           (catch Throwable t
-                             (log/error t "Error while canceling on worker."))) 0 20 TimeUnit/SECONDS))
+                        #(do
+                           (try
+                             (log/trace "Checking for canceling items.")
+                             (run! (fn [{:keys [run_id]}]
+                                     (try
+                                       (cancel-run-worker-instance! run_id)
+                                       (catch Throwable t
+                                         (log/error t (str "Error canceling " run_id)))))
+                                   (wr.cancelation/reducible-canceled-local-runs))
+                             (catch Throwable t
+                               (log/error t "Error while canceling on worker.")))
+                           (try
+                             (tracking/cancel-old-cancelations!)
+                             (catch Throwable t
+                               (log/error t "Error canceling old runs."))))
+                        0 20 TimeUnit/SECONDS))
 
 (defmethod task/init! ::CancelRuns [_]
-  ;; does not use the Quartz scheduler, should only run on the instance
+  ;; does not use the Quartz scheduler, should only run on the mb instance
   (.scheduleAtFixedRate scheduler
                         #(try
                            (log/trace "Checking for canceling items.")

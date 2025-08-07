@@ -53,7 +53,7 @@ WHERE NOT EXISTS (
    (run-update! :postgres (config/config-str :mb-worker-db)
                 "UPDATE worker_runs
                  SET status = ?, end_time = now(), note = ?
-                 WHERE run_id = ?"
+                 WHERE run_id = ? AND status = 'running'"
                 [status note run-id])
    :ok))
 
@@ -64,6 +64,24 @@ WHERE NOT EXISTS (
 (defn track-error!
   [run-id msg]
   (set-status! run-id "error" msg))
+
+(defn track-cancel!
+  [run-id msg]
+  (set-status! run-id "canceled" msg))
+
+(defn mark-cancel-started-run! [run-id mb-source]
+  (-> (run-update! :postgres (config/config-str :mb-worker-db)
+                   "
+INSERT INTO worker_runs_cancelation (run_id)
+SELECT ?
+WHERE EXISTS (
+  SELECT 1 FROM worker_runs WHERE run_id = ? AND status = 'running' AND source = ?
+) AND NOT EXISTS (
+  SELECT 1 FROM worker_runs_cancelation WHERE run_id = ?
+)
+"
+                   [run-id run-id mb-source run-id])
+      (= 1)))
 
 (def ^:private timeout-sec (* 4 60 60) #_sec)
 
@@ -91,12 +109,36 @@ WHERE NOT EXISTS (
        not-empty))
 
 (defn timeout-old-tasks
-  []
+  [] ;; TODO (eric) :worker db function
   (run-update! :postgres (config/config-str :mb-worker-db)
                "UPDATE worker_runs
                   SET status = ?, end_time = NOW(), note = ?
                   WHERE status = 'running' AND start_time < NOW() - INTERVAL '4 hours'"
                ["timeout" "Timed out by worker"]))
+
+(defn cancel-old-cancelations!
+  []
+  ;; update the status of canceled runs > 1 minute old
+  (run-update! :postgres (config/config-str :mb-worker-db)
+               "UPDATE worker_runs
+                  SET status = 'canceled', end_time = NOW(), note = ?
+                  WHERE status = 'running' AND 
+                        run_id IN (
+       SELECT run_id 
+       FROM worker_runs_cancelation
+       WHERE time < (NOW() - INTERVAL '1 minute')
+                                  )"
+               ["Canceled by user but could not guarantee run stopped"])
+  ;; delete cancelations of all runs that are not running
+  (run-update! :postgres (config/config-str :mb-worker-db)
+               "DELETE FROM worker_runs_cancelation
+                WHERE run_id NOT IN (
+SELECT wrc.run_id
+FROM   worker_runs_cancelation AS wrc
+JOIN   worker_runs AS wr ON wr.run_id = wrc.run_id
+WHERE  wr.status = 'running'
+)"
+               []))
 
 (comment
 
@@ -134,8 +176,12 @@ WHERE NOT EXISTS (
 
   (alter-var-root #'environ.core/env assoc :mb-worker-db "jdbc:postgresql://localhost:5432/worker")
 
-  (def id (str (random-uuid)))
+  (def id (str (metabase.util/generate-nano-id)))
   (track-start! id "mb-1")
+
+  (mark-cancel-started-run! id "mb-1")
+
+  (cancel-old-cancelations!)
   (track-finish! id)
   (track-error! id "oops")
 

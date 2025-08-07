@@ -116,3 +116,31 @@ databaseChangeLog:
                   defaultValueComputed: "''"
                   constraints:
                     nullable: false
+
+  - changeSet:
+      id: 2025-08-07-workrer-runs-cancelation
+      author: eric
+      comment: Create worker_runs_cancelation table as queue for canceling runs
+      changes:
+        - createTable:
+            tableName: worker_runs_cancelation
+            remarks: Table to track worker job executions and their status
+            columns:
+              - column:
+                  name: run_id
+                  type: char(21)
+                  remarks: 'NanoID identifier for the worker run'
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+                    referencedTableName: worker_runs
+                    referencedColumnNames: run_id
+                    foreignKeyName: fk_worker_runs_cancelation_worker_runs_run_id
+                    deleteCascade: true
+              - column:
+                  name: time
+                  type: timestamp with time zone
+                  remarks: 'The time of the request'
+                  defaultValueComputed: NOW()
+                  constraints:
+                    nullable: false
