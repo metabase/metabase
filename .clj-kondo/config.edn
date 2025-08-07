@@ -643,6 +643,7 @@
 
   :macroexpand
   {clojurewerkz.quartzite.jobs/build                                                       macros.quartz/build-job
+   clojurewerkz.quartzite.schedule.calendar-interval/build                                 macros.quartz/build-job
    clojurewerkz.quartzite.schedule.cron/schedule                                           macros.quartz/schedule
    clojurewerkz.quartzite.schedule.simple/schedule                                         macros.quartz/simple-schedule
    clojurewerkz.quartzite.triggers/build                                                   macros.quartz/build-trigger
