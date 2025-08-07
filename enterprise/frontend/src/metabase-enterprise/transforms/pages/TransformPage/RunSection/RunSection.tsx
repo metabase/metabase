@@ -1,7 +1,16 @@
 import { t } from "ttag";
 
 import { useMetadataToasts } from "metabase/metadata/hooks";
-import { Button, Divider, Group, Icon, Loader, Text } from "metabase/ui";
+import {
+  Box,
+  Button,
+  Divider,
+  Group,
+  Icon,
+  Loader,
+  Stack,
+  Text,
+} from "metabase/ui";
 import { useExecuteTransformMutation } from "metabase-enterprise/api";
 import type { Transform } from "metabase-types/api";
 
@@ -9,30 +18,36 @@ import { SplitSection } from "../../../components/SplitSection";
 
 import { getStatusInfo } from "./utils";
 
-type ScheduleSectionProps = {
+type RunSectionProps = {
   transform: Transform;
 };
 
-export function ExecutionSection({ transform }: ScheduleSectionProps) {
+export function RunSection({ transform }: RunSectionProps) {
   return (
     <SplitSection
       label={t`Run this transform`}
       description={t`This transform will be run whenever the jobs it belongs to are scheduled.`}
     >
       <Group p="lg" justify="space-between">
-        <ExecuteStatus transform={transform} />
-        <ExecuteButton transform={transform} />
+        <RunStatus transform={transform} />
+        <RunButton transform={transform} />
       </Group>
       <Divider />
+      <Group p="lg">
+        <Stack gap="sm">
+          <Box fw="bold">{t`Run it on a schedule with tags`}</Box>
+          <Box>{t`Jobs will run all transforms with their tags.`}</Box>
+        </Stack>
+      </Group>
     </SplitSection>
   );
 }
 
-type ExecuteStatusProps = {
+type RunStatusProps = {
   transform: Transform;
 };
 
-function ExecuteStatus({ transform }: ExecuteStatusProps) {
+function RunStatus({ transform }: RunStatusProps) {
   const { message, icon, color } = getStatusInfo(transform);
 
   return (
@@ -43,11 +58,11 @@ function ExecuteStatus({ transform }: ExecuteStatusProps) {
   );
 }
 
-type ExecuteButtonProps = {
+type RunButtonProps = {
   transform: Transform;
 };
 
-function ExecuteButton({ transform }: ExecuteButtonProps) {
+function RunButton({ transform }: RunButtonProps) {
   const [executeTransform] = useExecuteTransformMutation();
   const isRunning = transform.last_execution?.status === "started";
   const { sendErrorToast } = useMetadataToasts();

@@ -8,6 +8,8 @@ import type { Transform } from "metabase-types/api";
 
 import { NAME_MAX_LENGTH } from "../../../constants";
 
+import S from "./NameSection.module.css";
+
 type NameSectionProps = {
   transform: Transform;
 };
@@ -56,7 +58,7 @@ export function NameSection({ transform }: NameSectionProps) {
   };
 
   return (
-    <Stack gap="sm">
+    <Stack className={S.section} gap="sm" pb="md">
       <EditableText
         initialValue={transform.name}
         maxLength={NAME_MAX_LENGTH}
