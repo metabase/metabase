@@ -1,8 +1,13 @@
 import { t } from "ttag";
 
-import { MultiSelect } from "metabase/ui";
+import {
+  MultiSelect,
+  SelectItem,
+  type SelectItemProps,
+  Text,
+} from "metabase/ui";
 import { useListTransformTagsQuery } from "metabase-enterprise/api/transform-tag";
-import type { TransformTagId } from "metabase-types/api";
+import type { TransformTag, TransformTagId } from "metabase-types/api";
 
 type TagMultiSelectProps = {
   tagIds: TransformTagId[];
@@ -19,16 +24,38 @@ export function TagMultiSelect({ tagIds, onChange }: TagMultiSelectProps) {
   return (
     <MultiSelect
       value={tagIds.map(getValue)}
-      data={tags.map((tag) => ({ value: getValue(tag.id), label: tag.name }))}
+      data={tags.map(getOption)}
       placeholder={t`Add tags`}
       searchable
+      renderOption={(item) => (
+        <TagSelectItem {...item.option} selected={item.checked} />
+      )}
       onChange={handleChange}
     />
   );
 }
 
+type TagSelectItemProps = SelectItemProps & {
+  value: string;
+  label: string;
+};
+
+function TagSelectItem({ label, selected }: TagSelectItemProps) {
+  return (
+    <SelectItem selected={selected}>
+      <Text c="inherit" lh="inherit">
+        {label}
+      </Text>
+    </SelectItem>
+  );
+}
+
 function getValue(tagId: TransformTagId) {
   return String(tagId);
+}
+
+function getOption(tag: TransformTag) {
+  return { value: getValue(tag.id), label: tag.name };
 }
 
 function getTagId(value: string): TransformTagId {
