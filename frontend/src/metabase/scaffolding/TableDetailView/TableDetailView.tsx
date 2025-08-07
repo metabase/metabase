@@ -516,21 +516,16 @@ function SortableSection(props: SortableSectionProps) {
     isDragging,
   } = useSortable({ id: props.section.id });
 
-  // const span =
-  //   props.section.variant === "header"
-  //     ? "span 4"
-  //     : "span calc(4 / var(--sections-count))";
   const style = {
     transform: CSS.Translate.toString(transform),
     transition,
     opacity: isDragging ? 0.5 : 1,
     ...props.style,
-    // gridColumn: span,
-    // ...(props.section.variant === "header"
-    //   ? // ? { gridColumn: "span var(--sections-count)" }
-    //     { gridColumn: span }
-    //   : {}),
   };
+
+  if (props.section.variant === "header" && !props.section.fields.length) {
+    return null;
+  }
 
   return (
     <div ref={setNodeRef} style={style}>

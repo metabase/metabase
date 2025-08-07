@@ -485,6 +485,7 @@ function SectionSettings({
       fields: section.fields.filter((f) => f.field_id !== fieldId),
     });
   };
+  const widthPercentMap = { 1: 33, 2: 50, 3: 66 };
 
   return (
     <Box mt="sm" className={S.ObjectViewSidebarSection}>
@@ -552,7 +553,7 @@ function SectionSettings({
               >
                 <Tooltip label="Column width">
                   <Text variant="body" size="sm" fw={600}>
-                    {section.width ? section.width * 25 : 25}%
+                    {section.width ? widthPercentMap[section.width] : 33}%
                   </Text>
                 </Tooltip>
               </ActionIcon>
