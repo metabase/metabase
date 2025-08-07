@@ -375,9 +375,6 @@
 
 ;;; VISIBLE COLUMNS FOR A JOIN ARE RELATIVE TO THE LAST STAGE OF A JOIN!!!! IF YOU WANT THEM WITH APPROPRIATE METADATA
 ;;; RELATIVE TO THE PARENT STAGE OF A QUERY, USE [[join-visible-columns-relative-to-parent-stage]] INSTEAD!!!
-(mu/defmethod lib.metadata.calculation/visible-columns-method :mbql/join :- ::lib.metadata.calculation/visible-columns
-  [query stage-number join options]
-  (lib.metadata.calculation/returned-columns query stage-number join options))
 
 (mu/defn- join-visible-columns-relative-to-parent-stage :- ::lib.metadata.calculation/visible-columns
   "Convenience for calling [[lib.metadata.calculation/visible-columns]] on all of the joins in a query stage."
