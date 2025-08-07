@@ -233,7 +233,17 @@ export function TableDetailViewInner({
       hoveredSectionId={hoveredSectionIdMain}
       setHoveredSectionId={setHoveredSectionIdSidebar}
     >
-      <Stack gap="md" mt="md" mb="sm" py="md" bg="transparent">
+      <Stack
+        gap="md"
+        px="lg"
+        py="xl"
+        bg="white"
+        style={{
+          border: "1px solid var(--mb-color-border)",
+          borderRadius: "var(--mantine-radius-md)",
+          overflow: "hidden",
+        }}
+      >
         <DndContext
           sensors={sensors}
           collisionDetection={closestCenter}

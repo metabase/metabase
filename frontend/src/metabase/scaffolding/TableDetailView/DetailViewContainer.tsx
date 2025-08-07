@@ -83,6 +83,7 @@ export function DetailViewContainer({
   return (
     <Stack
       bg="bg-white"
+      // bg="#F9FBFC"
       gap={0}
       flex="1"
       miw={0}
@@ -121,7 +122,7 @@ export function DetailViewContainer({
       >
         <Stack
           align="center"
-          bg="bg-white"
+          bg="#F9FBFC"
           h="100%"
           flex="1"
           p="xl"
