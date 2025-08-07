@@ -178,6 +178,7 @@ const getFormValues = (
     "jwt-user-provisioning-enabled?",
     "jwt-identity-provider-uri",
     "jwt-shared-secret",
+    "jwt-group-sync",
     "jwt-attribute-email",
     "jwt-attribute-firstname",
     "jwt-attribute-lastname",
