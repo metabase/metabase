@@ -4,11 +4,11 @@ import { jt, t } from "ttag";
 import {
   ActionIcon,
   Icon,
-  Menu,
   MultiSelect,
   SelectItem,
   type SelectItemProps,
   Text,
+  Tooltip,
 } from "metabase/ui";
 import { useListTransformTagsQuery } from "metabase-enterprise/api/transform-tag";
 import type { TransformTag, TransformTagId } from "metabase-types/api";
@@ -144,36 +144,31 @@ function ExistingTagSelectItem({
   selected,
   onModalOpen,
 }: ExistingTagSelectItemProps) {
-  const handleTargetClick = (event: MouseEvent) => {
+  const handleUpdateClick = (event: MouseEvent) => {
     event.stopPropagation();
+    onModalOpen("update", tag);
+  };
+
+  const handleDeleteClick = (event: MouseEvent) => {
+    event.stopPropagation();
+    onModalOpen("delete", tag);
   };
 
   return (
     <SelectItem selected={selected}>
-      <Text c="inherit" lh="inherit">
+      <Text c="inherit" lh="inherit" flex={1}>
         {tag.name}
       </Text>
-      <Menu>
-        <Menu.Target>
-          <ActionIcon onClick={handleTargetClick}>
-            <Icon name="ellipsis" />
-          </ActionIcon>
-        </Menu.Target>
-        <Menu.Dropdown>
-          <Menu.Item
-            leftSection={<Icon name="pencil_lines" />}
-            onClick={() => onModalOpen("update", tag)}
-          >
-            {t`Edit`}
-          </Menu.Item>
-          <Menu.Item
-            leftSection={<Icon name="trash" />}
-            onClick={() => onModalOpen("delete", tag)}
-          >
-            {t`Delete`}
-          </Menu.Item>
-        </Menu.Dropdown>
-      </Menu>
+      <Tooltip label={t`Rename tag`}>
+        <ActionIcon onClick={handleUpdateClick}>
+          <Icon name="pencil_lines" />
+        </ActionIcon>
+      </Tooltip>
+      <Tooltip label={t`Delete tag`}>
+        <ActionIcon onClick={handleDeleteClick}>
+          <Icon name="trash" />
+        </ActionIcon>
+      </Tooltip>
     </SelectItem>
   );
 }
