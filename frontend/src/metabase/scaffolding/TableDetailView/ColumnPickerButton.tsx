@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { t } from "ttag";
 
-import { Button, Popover } from "metabase/ui";
+import { Button, Popover, Tooltip } from "metabase/ui";
 import type {
   DatasetColumn,
   ObjectViewSectionSettings,
@@ -12,18 +12,41 @@ import { ColumnPicker } from "./ColumnPicker";
 
 interface Props {
   columns: DatasetColumn[];
+  fieldsLimit?: number;
+  section: ObjectViewSectionSettings;
   sections: ObjectViewSectionSettings[];
   table: Table;
-  onChange: (column: DatasetColumn) => void;
+  onUpdateSection: (
+    id: number,
+    update: Partial<ObjectViewSectionSettings>,
+  ) => void;
 }
 
 export const ColumnPickerButton = ({
   columns,
+  fieldsLimit,
+  section,
   sections,
   table,
-  onChange,
+  onUpdateSection,
 }: Props) => {
   const [isOpen, setIsOpen] = useState(false);
+  const limitReached =
+    typeof fieldsLimit === "number" && section.fields.length >= fieldsLimit;
+
+  const handleChange = (column: DatasetColumn) => {
+    const newField = { field_id: column.id as number };
+    const fields = [...section.fields, newField];
+
+    const limitReached =
+      typeof fieldsLimit === "number" && fields.length >= fieldsLimit;
+
+    if (limitReached) {
+      setIsOpen(false);
+    }
+
+    onUpdateSection(section.id, { fields });
+  };
 
   return (
     <Popover
@@ -33,7 +56,15 @@ export const ColumnPickerButton = ({
       offset={4}
     >
       <Popover.Target>
-        <Button onClick={() => setIsOpen(true)}>{t`Click`}</Button>
+        <Tooltip
+          disabled={!limitReached}
+          label={t`This group supports up to ${fieldsLimit} columns`}
+        >
+          <Button
+            disabled={limitReached}
+            onClick={() => setIsOpen(true)}
+          >{t`Click`}</Button>
+        </Tooltip>
       </Popover.Target>
 
       <Popover.Dropdown>
@@ -41,7 +72,7 @@ export const ColumnPickerButton = ({
           columns={columns}
           sections={sections}
           table={table}
-          onChange={onChange}
+          onChange={handleChange}
         />
       </Popover.Dropdown>
     </Popover>

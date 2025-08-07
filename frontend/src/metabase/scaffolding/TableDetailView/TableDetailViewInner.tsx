@@ -236,12 +236,11 @@ export function TableDetailViewInner({
     >
       <ColumnPickerButton
         columns={columns}
-        // fieldsLimit={3} // TODO
+        fieldsLimit={5} // TODO
+        section={sections[3]}
         sections={sections}
         table={table}
-        onChange={(column) => {
-          console.log("onChange", column.display_name);
-        }}
+        onUpdateSection={updateSection}
       />
 
       <Stack
