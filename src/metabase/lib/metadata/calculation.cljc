@@ -492,6 +492,9 @@
                       (str "Expected an options map, got a " (pr-str (:lib/type value))))}
     (complement :lib/type)]])
 
+(def ^:private returned-columns-options-keys
+  (mu/map-schema-keys ::returned-columns.options))
+
 (defmulti returned-columns-method
   "Impl for [[returned-columns]]."
   {:arglists '([query stage-number x options])}
@@ -541,8 +544,12 @@
     x
     options        :- [:maybe ::returned-columns.options]]
    (binding [*propagate-binning-and-bucketing* true]
-     (lib.metadata.cache/with-cached-value query (cache-key ::returned-columns query stage-number x options)
-       (returned-columns-method query stage-number x options)))))
+     ;; minor optimization for caching purposes: only keep the options keys that are actually relevant for
+     ;; `returned-columns` purposes. As a bonus, this means undocumented options keys that aren't part of the schema
+     ;; will effectively be ignored, which sorta forces people to actually go document them.
+     (let [options (select-keys options returned-columns-options-keys)]
+       (lib.metadata.cache/with-cached-value query (cache-key ::returned-columns query stage-number x options)
+         (returned-columns-method query stage-number x options))))))
 
 (mr/def ::visible-column
   "Schema for a column that should be returned by [[visible-columns]]. A visible column is a column metadata that is
@@ -570,6 +577,9 @@
     [:include-expressions?                         {:optional true, :default true} :boolean]
     [:include-implicitly-joinable?                 {:optional true, :default true} :boolean]
     [:include-implicitly-joinable-for-source-card? {:optional true, :default true} :boolean]]])
+
+(def ^:private visible-columns-options-keys
+  (mu/map-schema-keys ::visible-columns.options))
 
 (mu/defn- default-visible-columns-options :- ::visible-columns.options
   []
@@ -612,7 +622,11 @@
   ([query          :- [:maybe ::lib.schema/query]
     stage-number   :- :int
     options        :- [:maybe ::visible-columns.options]]
-   (let [options (merge (default-visible-columns-options) options)]
+   (let [options (-> (merge (default-visible-columns-options) options)
+                     ;; minor caching optimization: only keep the keys that are relevant to `visible-columns` --
+                     ;; ignore any other ones. As a bonus, this means undocumented options keys that aren't part of
+                     ;; the schema will effectively be ignored.
+                     (select-keys visible-columns-options-keys))]
      (lib.metadata.cache/with-cached-value query (cache-key ::visible-columns query stage-number nil options)
        ((#?(:clj requiring-resolve :cljs resolve) 'metabase.lib.stage/-visible-columns)
         query
