@@ -52,6 +52,9 @@ export type TransformJob = {
   name: string;
   description: string | null;
   schedule: string;
+
+  // hydrated fields
+  last_execution?: TransformExecution | null;
 };
 
 export type CreateTransformRequest = {

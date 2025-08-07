@@ -1,4 +1,3 @@
-import dayjs from "dayjs";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
@@ -7,8 +6,9 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { useDispatch } from "metabase/lib/redux";
 import { Card } from "metabase/ui";
 import { useListTransformsQuery } from "metabase-enterprise/api";
-import type { Transform, TransformExecution } from "metabase-types/api";
+import type { Transform } from "metabase-types/api";
 
+import { formatStatus, formatTimestamp } from "../../..//utils";
 import { ListEmptyState } from "../../../components/ListEmptyState";
 import { getTransformUrl } from "../../../urls";
 
@@ -33,7 +33,12 @@ export function TransformList() {
   return (
     <Card p={0} shadow="none" withBorder>
       <AdminContentTable
-        columnTitles={[t`Name`, t`Target`, t`Last run at`, `Last run status`]}
+        columnTitles={[
+          t`Transform`,
+          t`Target`,
+          t`Last run at`,
+          `Last run status`,
+        ]}
       >
         {transforms.map((transform) => (
           <tr
@@ -43,36 +48,19 @@ export function TransformList() {
           >
             <td>{transform.name}</td>
             <td>{transform.target.name}</td>
-            <td>{getLastRunTime(transform.last_execution)}</td>
-            <td>{getLastRunStatus(transform.last_execution)}</td>
+            <td>
+              {transform.last_execution?.status
+                ? formatStatus(transform.last_execution.status)
+                : null}
+            </td>
+            <td>
+              {transform.last_execution?.end_time
+                ? formatTimestamp(transform.last_execution?.end_time)
+                : null}
+            </td>
           </tr>
         ))}
       </AdminContentTable>
     </Card>
   );
-}
-
-function getLastRunTime(execution: TransformExecution | undefined | null) {
-  if (execution?.end_time == null) {
-    return null;
-  }
-
-  return dayjs(execution.end_time).format("lll");
-}
-
-function getLastRunStatus(execution: TransformExecution | undefined | null) {
-  if (execution == null) {
-    return null;
-  }
-
-  switch (execution.status) {
-    case "started":
-      return t`In-progress`;
-    case "succeeded":
-      return t`Success`;
-    case "failed":
-      return `Failed`;
-    case "timeout":
-      return t`Timeout`;
-  }
 }
