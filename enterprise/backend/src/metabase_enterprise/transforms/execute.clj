@@ -238,3 +238,7 @@
                                      nil runs))
                            (catch Throwable t
                              (log/error t "Error while canceling on worker."))) 0 20 TimeUnit/SECONDS))
+
+(defn execute-jobs!
+  [jobs]
+  nil)
