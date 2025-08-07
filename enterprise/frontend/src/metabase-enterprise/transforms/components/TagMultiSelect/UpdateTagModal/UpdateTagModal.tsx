@@ -1,11 +1,80 @@
+import { useMemo } from "react";
+import { t } from "ttag";
+import * as Yup from "yup";
+
+import {
+  Form,
+  FormErrorMessage,
+  FormProvider,
+  FormSubmitButton,
+  FormTextInput,
+} from "metabase/forms";
+import * as Errors from "metabase/lib/errors";
+import { Button, Group, Modal, Stack } from "metabase/ui";
+import { useUpdateTransformTagMutation } from "metabase-enterprise/api";
 import type { TransformTag } from "metabase-types/api";
 
 type UpdateTagModalProps = {
   tag: TransformTag;
-  onUpdate: () => void;
+  onUpdate: (tag: TransformTag) => void;
   onClose: () => void;
 };
 
-export function UpdateTagModal(_props: UpdateTagModalProps) {
-  return null;
+export function UpdateTagModal({
+  tag,
+  onUpdate,
+  onClose,
+}: UpdateTagModalProps) {
+  return (
+    <Modal title={t`Rename tag`} opened padding="xl" onClose={onClose}>
+      <UpdateTagForm tag={tag} onUpdate={onUpdate} onClose={onClose} />
+    </Modal>
+  );
+}
+
+type UpdateTagFormProps = {
+  tag: TransformTag;
+  onUpdate: (tag: TransformTag) => void;
+  onClose: () => void;
+};
+
+type UpdateTagValues = {
+  name: string;
+};
+
+const UPDATE_TAG_SCHEMA = Yup.object({
+  name: Yup.string().required(Errors.required),
+});
+
+function UpdateTagForm({ tag, onUpdate, onClose }: UpdateTagFormProps) {
+  const [updateTag] = useUpdateTransformTagMutation();
+
+  const initialValues: UpdateTagValues = useMemo(
+    () => ({ name: tag.name }),
+    [tag.name],
+  );
+
+  const handleSubmit = async ({ name }: UpdateTagValues) => {
+    const updatedTag = await updateTag({ id: tag.id, name }).unwrap();
+    onUpdate(updatedTag);
+  };
+
+  return (
+    <FormProvider
+      initialValues={initialValues}
+      validationSchema={UPDATE_TAG_SCHEMA}
+      onSubmit={handleSubmit}
+    >
+      <Form>
+        <Stack gap="lg">
+          <FormTextInput name="name" label={t`Name`} placeholder={t`My tag`} />
+          <FormErrorMessage />
+          <Group justify="end">
+            <Button onClick={onClose}>{t`Cancel`}</Button>
+            <FormSubmitButton label={t`Save`} variant="filled" />
+          </Group>
+        </Stack>
+      </Form>
+    </FormProvider>
+  );
 }
