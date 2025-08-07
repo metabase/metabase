@@ -13,6 +13,7 @@
    [metabase.util.log :as log]
    [nano-id.core :as nano-id]
    [next.jdbc :as jdbc]
+   [next.jdbc.result-set :as jdbc.rs]
    [toucan2.core :as t2])
   (:import
    [java.time LocalDate]
@@ -433,11 +434,6 @@
   (-> (get-in row [:metadata :legacy_input])
       (assoc :score (:rrf_rank row 1.0))))
 
-;; TODO: can the query return unqualified keys directly?
-(defn- unqualify-keys
-  "Remove table namespace from namespaced keywords in a result row."
-  [row]
-  (into {} (map (fn [[k v]] [(keyword (name k)) v]) row)))
 
 (defn- unwrap-pgobject
   [^PGobject obj]
@@ -612,10 +608,9 @@
 
             db-timer (u/start-timer)
             query (hybrid-search-query index embedding search-context)
-            xform (comp (map unqualify-keys)
-                        (map decode-metadata)
+            xform (comp (map decode-metadata)
                         (map legacy-input-with-score))
-            reducible (jdbc/plan db (sql-format-quoted query))
+            reducible (jdbc/plan db (sql-format-quoted query) {:builder-fn jdbc.rs/as-unqualified-lower-maps})
             raw-results (into [] xform reducible)
             db-query-time-ms (u/since-ms db-timer)
 
