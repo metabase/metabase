@@ -195,7 +195,7 @@ export const DocumentPage = ({
     draftCards,
   ]);
 
-  const showSaveButton = hasUnsavedChanges() && canWrite;
+  const showSaveButton = (isNewDocument || hasUnsavedChanges()) && canWrite;
 
   const handleSave = useCallback(
     async (collectionId: RegularCollectionId | null = null) => {
