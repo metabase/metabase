@@ -32,8 +32,12 @@ export type TransformTarget = {
 
 export type TransformExecution = {
   status: TransformExecutionStatus;
+  trigger: TransformExecutionTrigger;
   start_time: string;
   end_time: string | null;
+
+  // hydrated
+  transform?: Transform;
 };
 
 export type TransformExecutionStatus =
@@ -41,6 +45,8 @@ export type TransformExecutionStatus =
   | "succeeded"
   | "failed"
   | "timeout";
+
+export type TransformExecutionTrigger = "manual" | "schedule";
 
 export type TransformTag = {
   id: TransformTagId;
@@ -54,7 +60,14 @@ export type TransformJob = {
   schedule: string;
 
   // hydrated fields
-  last_execution?: TransformExecution | null;
+  last_execution?: TransformJobExecution | null;
+};
+
+export type TransformJobExecution = {
+  status: TransformExecutionStatus;
+  trigger: TransformExecutionTrigger;
+  start_time: string;
+  end_time: string | null;
 };
 
 export type CreateTransformRequest = {
