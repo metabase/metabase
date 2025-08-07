@@ -133,23 +133,23 @@
       (testing "if document has newer timestamp and new content, updated"
         (is (= 1 (sut pgvector index-metadata [(version c1 t2)]))))
 
-      (testing "documents are not deleted if timestamp < current"
+      (testing "documents are not deleted if older"
         (let [previous-state (get-gate-rows pgvector index-metadata)]
           (is (= 0 (sut pgvector index-metadata [(delete d1 t0)])))
           (is (= (map comparable-gate-row previous-state)
                  (map comparable-gate-row (get-gate-rows pgvector index-metadata))))))
 
-      (testing "documents are not deleted if timestamp <= current"
+      (testing "documents are deleted if they have the same or newer timestamp"
         (is (= 1 (sut pgvector index-metadata [(delete d1 t1)])))
         (is (= 1 (sut pgvector index-metadata [(delete c1 t3)]))))
 
       (testing "documents are not deleted if already deleted, regardless of timestamp"
         (is (= 0 (sut pgvector index-metadata [(delete d1 t2)]))))
 
-      (testing "documents are not undeleted if timestamp < "
+      (testing "documents are not undeleted if new write is older than the delete"
         (is (= 0 (sut pgvector index-metadata [(version d1 t0)]))))
 
-      (testing "documents are undeleted if timestamp <= current "
+      (testing "documents are undeleted if new write is newer than the delete"
         (is (= 1 (sut pgvector index-metadata [(version d1 t3)]))))
 
       (testing "last logical update is preferred if multiple submitted, regardless of order"
