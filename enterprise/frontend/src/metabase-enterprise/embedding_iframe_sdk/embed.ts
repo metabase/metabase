@@ -383,8 +383,6 @@ class MetabaseEmbed {
           error,
         });
       }
-
-      throw error;
     }
   }
 
