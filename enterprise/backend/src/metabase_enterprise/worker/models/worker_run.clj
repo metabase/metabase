@@ -28,15 +28,15 @@
       (throw (ex-info "If WorkerRun is_active = true, should have started status"
                       {:run run})))))
 
-(t2/define-before-insert :model/WorkerRun
-  [run]
-  (check-is-active run)
-  run)
+#_(t2/define-before-insert :model/WorkerRun
+    [run]
+    (check-is-active run)
+    run)
 
-(t2/define-before-update :model/WorkerRun
-  [run]
-  (check-is-active run)
-  run)
+#_(t2/define-before-update :model/WorkerRun
+    [run]
+    (check-is-active run)
+    run)
 
 (defmulti model->work-type
   "Convert the toucan model name to a keyword representing the type of work."
