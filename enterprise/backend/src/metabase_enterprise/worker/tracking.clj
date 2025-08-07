@@ -113,7 +113,7 @@ WHERE EXISTS (
        not-empty))
 
 (defn timeout-old-tasks
-  [] ;; TODO (eric) :worker db function
+  []
   (run-update! :postgres (worker-db)
                "UPDATE worker_runs
                   SET status = ?, end_time = NOW(), note = ?
