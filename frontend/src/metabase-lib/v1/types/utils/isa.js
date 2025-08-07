@@ -180,12 +180,25 @@ export const isLongitude = (field) =>
 
 export const isLocation = (field) =>
   field &&
-  (isCountry(field) ||
+  (field.name.toLowerCase() === "country" ||
+    isCountry(field) ||
     isCoordinate(field) ||
+    field.name.toLowerCase() === "latitude" ||
     isLatitude(field) ||
+    field.name.toLowerCase() === "longitude" ||
     isLongitude(field) ||
+    field.name.toLowerCase() === "city" ||
     isCity(field) ||
-    isZipCode(field));
+    field.semantic_type === TYPE.City ||
+    field.name.toLowerCase() === "zipcode" ||
+    isZipCode(field) ||
+    field.semantic_type === TYPE.ZipCode ||
+    field.name.toLowerCase() === "state" ||
+    isState(field) ||
+    field.semantic_type === TYPE.State ||
+    field.name.toLowerCase() === "address" ||
+    isAddress(field) ||
+    field.semantic_type === TYPE.Address);
 
 export const isCurrency = (field) =>
   field && isa(field.semantic_type, TYPE.Currency);
