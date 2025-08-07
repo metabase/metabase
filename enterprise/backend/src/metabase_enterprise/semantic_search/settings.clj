@@ -79,11 +79,11 @@
   :visibility :internal
   :doc "Minimum number of semantic search results required before falling back to other engines.")
 
-(defsetting embedding-thread-count
-  (deferred-tru "Number of threads to use for parallel embedding generation.")
+(defsetting index-update-thread-count
+  (deferred-tru "Number of threads to use for batched index updates, including embedding requests")
   :type :integer
   :default 2
   :encryption :no
   :export? false
   :visibility :internal
-  :doc "Number of threads to use for parallel embedding generation. Higher values can improve indexing performance but may increase API costs and resource usage.")
+  :doc "Number of threads to use for batched index updates, including embedding requests")
