@@ -208,15 +208,16 @@
   (json/decode (unwrap-pgobject obj) true))
 
 (defn- partition-existing-embeddings [connectable index texts]
-  (let [results (->> (jdbc/execute! connectable
-                                    (-> (sql.helpers/select :content :embedding)
-                                        (sql.helpers/from (keyword (:table-name index)))
-                                        (sql.helpers/where [:in :content texts])
-                                        sql-format-quoted)
-                                    {:builder-fn jdbc.rs/as-unqualified-lower-maps})
-                     (into {} (map (fn [{:keys [content embedding]}]
-                                     [content (decode-pgobject embedding)]))))]
-    [(remove results texts) results]))
+  (let [found-embeddings
+        (->> (jdbc/execute! connectable
+                            (-> (sql.helpers/select-distinct-on [:content] :content :embedding)
+                                (sql.helpers/from (keyword (:table-name index)))
+                                (sql.helpers/where [:in :content texts])
+                                sql-format-quoted)
+                            {:builder-fn jdbc.rs/as-unqualified-lower-maps})
+             (into {} (map (fn [{:keys [content embedding]}]
+                             [content (decode-pgobject embedding)]))))]
+    [(remove found-embeddings texts) found-embeddings]))
 
 (defn- upsert-index-batch!
   [connectable index documents]
