@@ -229,8 +229,8 @@ databaseChangeLog:
            UPDATE core_user
            SET jwt_attributes = login_attributes, login_attributes = '{}'
            WHERE sso_source = 'jwt';
-      rollback: >-
-        - sql:
+      rollback:
+        - sql: >-
            UPDATE core_user
            SET login_attributes = jwt_attributes
            WHERE sso_source = 'jwt';
