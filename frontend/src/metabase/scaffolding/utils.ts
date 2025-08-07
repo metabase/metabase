@@ -190,7 +190,7 @@ export function getDefaultObjectViewSettings(
   deleteFields(leftoverFields, pkFields);
 
   // Find things that look like part of a name.
-  let nameFields: Field[] =
+  let nameFields: Field[] | null =
     notEmpty(fields.filter((f) => isEntityName(f))) ||
     fieldsIfPresent(fieldsByName, "name") ||
     fieldsIfPresent(fieldsByName, "title", "full_name") ||
@@ -199,11 +199,10 @@ export function getDefaultObjectViewSettings(
     fieldsIfPresent(fieldsByName, "first_name", "last_name") ||
     // Or, failing that, a title.
     notEmpty(fields.filter((f) => isTitle(f))) ||
-    fieldsIfPresent(fieldsByName, "title") ||
-    [];
+    fieldsIfPresent(fieldsByName, "title");
 
   // If there's only promising option, use that.
-  if (nameFields.length === 0) {
+  if (!nameFields) {
     const nonPkFields = fields.filter((f) => !isPK(f));
     if (nonPkFields.length === 1) {
       nameFields = nonPkFields;
@@ -218,7 +217,7 @@ export function getDefaultObjectViewSettings(
   }
 
   // If there's only one kind of prefixed name, let's go with that.
-  if (nameFields.length === 0) {
+  if (!nameFields) {
     const somethingNameFields = fields.filter((f) =>
       f.name.toLowerCase().endsWith("name"),
     );
@@ -226,20 +225,36 @@ export function getDefaultObjectViewSettings(
       nameFields = somethingNameFields;
     }
   }
-  deleteFields(leftoverFields, nameFields);
+  deleteFields(leftoverFields, nameFields || []);
 
   // Is there any overlap between the primary key and the name fields?
   // This is O(n^2) so sue me.
-  const pkInName = pkFields.some((f) =>
-    nameFields.some((nf) => nf.name === f.name),
+  const pkInName = !nameFields
+    ? false
+    : pkFields.some((f) => nameFields.some((nf) => nf.name === f.name));
+
+  const spaceToFitPkWithName =
+    nameFields &&
+    pkFields.length > 0 &&
+    pkFields.length + nameFields.length <= 3;
+
+  const uuidCouldBeKindaLong = pkFields.some(
+    (f) =>
+      f.database_type === "uuid" ||
+      // Also probably a uuid or similarly long string
+      (f.name === "id" && f.database_type === "text"),
   );
 
   const headerFields =
-    !pkInName && pkFields.length > 0 && pkFields.length + nameFields.length <= 3
-      ? [...pkFields, ...nameFields]
-      : // it feels wrong to break these up, since they are explicitly grouped by their semantic labels
-        // but, the layout assumes this limitation.
-        nameFields.slice(0, 3);
+    !nameFields && !uuidCouldBeKindaLong
+      ? pkFields
+      : !pkInName && spaceToFitPkWithName && !uuidCouldBeKindaLong && nameFields
+        ? [...pkFields, ...nameFields]
+        : // it feels wrong to break these up, since they are explicitly grouped by their semantic labels
+          // but, the layout assumes this limitation
+          nameFields
+          ? nameFields.slice(0, 3)
+          : [];
 
   const sections: ObjectViewSectionSettings[] = [];
 
@@ -250,11 +265,15 @@ export function getDefaultObjectViewSettings(
     fields: sectionFields(headerFields),
   });
 
-  const subtitleFields: Field[] =
-    fieldsIfPresent(leftoverFields, "subtitle") ||
-    fieldsIfPresent(leftoverFields, "description") ||
-    fieldsIfPresent(leftoverFields, "status") ||
-    [];
+  const subtitleFields =
+    // If we skipped the PK, now is it's time.
+    nameFields &&
+    !pkInName &&
+    pkFields.length + nameFields.length > headerFields.length
+      ? pkFields
+      : fieldsIfPresent(leftoverFields, "subtitle") ||
+        fieldsIfPresent(leftoverFields, "status") ||
+        [];
 
   sections.push({
     id: getNextId(),
@@ -262,20 +281,6 @@ export function getDefaultObjectViewSettings(
     variant: "subheader",
     fields: sectionFields(subtitleFields),
   });
-
-  // Even if there was only partial overlap, skip the pk section entirely.
-  if (!pkInName) {
-    // If we skipped the primary key, let's give it its own section.
-    const skippedPk = pkFields.length + nameFields.length > headerFields.length;
-    if (skippedPk) {
-      sections.push({
-        id: getNextId(),
-        title: "Primary Key",
-        variant: "normal",
-        fields: sectionFields(pkFields),
-      });
-    }
-  }
 
   function addPotentialSectionHelper(
     title: string,
@@ -308,12 +313,15 @@ export function getDefaultObjectViewSettings(
             .filter((s) => s);
         }
         const prefixes = parts
-          .slice(0, -2)
+          .slice(0, -1)
           .map((_part, index) => parts.slice(0, index + 1).join("_"))
           .reverse();
 
         // find the longest prefix which has multiple fields
         for (const prefix of prefixes) {
+          if (acc[prefix]) {
+            continue;
+          }
           // stop words
           if (
             ["has", "is", "in", "latest", "current"].includes(
@@ -322,8 +330,11 @@ export function getDefaultObjectViewSettings(
           ) {
             continue;
           }
-          const fields = remainingFields.filter((f) =>
-            f.name.startsWith(prefix),
+          const fields = remainingFields.filter(
+            (f) =>
+              f.name.startsWith(prefix) ||
+              f.name.startsWith(prefix + "er") ||
+              f.name.startsWith(prefix + "ed"),
           );
           if (fields.length > 1) {
             acc[prefix] = fields;
@@ -370,6 +381,27 @@ export function getDefaultObjectViewSettings(
   addPotentialSectionHelper("Metadata", "normal", (fs) =>
     fs.filter((f) => f.name === "created_at" || f.name === "updated_at"),
   );
+
+  addPotentialSectionHelper("Highlights", "highlight-2", (fs) => {
+    const numericRemainingFields = fs.filter((f) => isNumeric(f));
+    if (
+      numericRemainingFields.length >= 3 &&
+      numericRemainingFields.length <= 9
+    ) {
+      return numericRemainingFields;
+    } else {
+      return [];
+    }
+  });
+
+  // make sure the Highlights section comes first after the title and subtitle
+  const highlightSectionIndex = sections.findIndex(
+    (section) => section.title === "Highlights",
+  );
+  if (highlightSectionIndex !== -1 && highlightSectionIndex > 2) {
+    const [highlightSection] = sections.splice(highlightSectionIndex, 1);
+    sections.splice(2, 0, highlightSection);
+  }
 
   // {
   //   id: getNextId(),
