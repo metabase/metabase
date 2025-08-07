@@ -1,7 +1,7 @@
 import type { Dayjs } from "dayjs";
 import dayjs from "dayjs";
 
-import { shouldPinInterval } from "metabase/visualizations/echarts/cartesian/model/util";
+import { shouldPinInterval } from "../model/util";
 import type { ContinuousDomain } from "metabase/visualizations/shared/types/scale";
 
 import type {
