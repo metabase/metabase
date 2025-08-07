@@ -13,6 +13,7 @@
    [metabase.util.log :as log]
    [nano-id.core :as nano-id]
    [next.jdbc :as jdbc]
+   [next.jdbc.result-set :as jdbc.rs]
    [toucan2.core :as t2])
   (:import
    [java.time LocalDate]
@@ -174,36 +175,73 @@
      :table-name table-name
      :version 0}))
 
+(defn- upsert-embedding!-fn [connectable index text->docs]
+  (fn [text->embedding]
+    (let [batch-documents
+          (mapcat (fn [[text embedding]]
+                    (if embedding
+                      (map #(assoc % :embedding embedding) (get text->docs text))
+                      (when-let [docs (get text->docs text)]
+                        (log/warn "No embedding found for" (count docs) "documents with searchable text:"
+                                  {:searchable_text text
+                                   :document_count (count docs)}))))
+                  text->embedding)]
+      (batch-update!
+       connectable
+       (:table-name index)
+       (fn [db-records]
+         (-> (sql.helpers/insert-into (keyword (:table-name index)))
+             (sql.helpers/values db-records)
+             (sql.helpers/on-conflict :model :model_id)
+             (sql.helpers/do-update-set (db-records->update-set db-records))
+             sql-format-quoted))
+       batch-documents
+       (map :embedding batch-documents)))))
+
+(defn- unwrap-pgobject
+  [^PGobject obj]
+  (.getValue ^PGobject obj))
+
+(defn- decode-pgobject
+  "Decode a PGObject (returned from a jsonb field) into a Clojure map."
+  [^PGobject obj]
+  (json/decode (unwrap-pgobject obj) true))
+
+(defn- existing-embedding-query [index texts]
+  (-> (sql.helpers/select-distinct-on [:content] :content :embedding)
+      (sql.helpers/from (keyword (:table-name index)))
+      (sql.helpers/where [:in :content texts])))
+
+(defn- partition-existing-embeddings [connectable index texts]
+  (let [found-embeddings
+        (->> (jdbc/execute! connectable
+                            (sql-format-quoted (existing-embedding-query index texts))
+                            {:builder-fn jdbc.rs/as-unqualified-lower-maps})
+             (into {} (map (fn [{:keys [content embedding]}]
+                             [content (decode-pgobject embedding)]))))]
+    [(remove found-embeddings texts) found-embeddings]))
+
 (defn- upsert-index-batch!
   [connectable index documents]
   (when (seq documents)
     (let [text->docs         (group-by :searchable_text documents)
-          searchable-texts   (keys text->docs)]
-      (u/profile (str "Semantic search embedding generation and db update for " {:docs (count documents) :texts (count searchable-texts)})
-        (embedding/process-embeddings-streaming
-         (:embedding-model index)
-         searchable-texts
-         (fn [text->embedding]
-           (let [batch-documents
-                 (mapcat (fn [text]
-                           (if-let [embedding (text->embedding text)]
-                             (map #(assoc % :embedding embedding) (get text->docs text))
-                             (when-let [docs (get text->docs text)]
-                               (log/warn "No embedding found for" (count docs) "documents with searchable text:"
-                                         {:searchable_text text
-                                          :document_count (count docs)}))))
-                         (keys text->embedding))]
-             (batch-update!
-              connectable
-              (:table-name index)
-              (fn [db-records]
-                (-> (sql.helpers/insert-into (keyword (:table-name index)))
-                    (sql.helpers/values db-records)
-                    (sql.helpers/on-conflict :model :model_id)
-                    (sql.helpers/do-update-set (db-records->update-set db-records))
-                    sql-format-quoted))
-              batch-documents
-              (map :embedding batch-documents)))))))))
+          searchable-texts   (keys text->docs)
+          upsert-embedding! (upsert-embedding!-fn connectable index text->docs)
+          [new-texts stats]
+          (u/profile (str "Semantic search embedding caching attempt for " {:docs (count documents) :texts (count searchable-texts)})
+            (let [[new-texts existing-embeddings] (partition-existing-embeddings connectable index searchable-texts)]
+              (if-not (seq existing-embeddings)
+                [searchable-texts nil]
+                (u/profile (str "Semantic search cached embedding db update for " {:texts (count existing-embeddings)})
+                  [new-texts (upsert-embedding! existing-embeddings)]))))]
+      (->>
+       (when (seq new-texts)
+         (u/profile (str "Semantic search embedding generation and db update for " {:docs (count documents) :texts (count new-texts)})
+           (embedding/process-embeddings-streaming
+            (:embedding-model index)
+            new-texts
+            upsert-embedding!)))
+       (merge-with + stats)))))
 
 (defn upsert-index!
   "Inserts or updates documents in the index table. If a document with the same
@@ -249,6 +287,12 @@
   ;; text_search_with_native_query_vector => tswnqv
   (index-name index "_tswnqv_gin_idx"))
 
+(defn- content-index-name
+  "Returns the name for a B-tree database index on `content` for the given semantic search index configuration.
+   Used for efficient `content IN ..` queries."
+  [index]
+  (index-name index "_content_idx"))
+
 (defn create-index-table-if-not-exists!
   "Ensure that the index table exists and is ready to be populated. If
   force-reset? is true, drops and recreates the table if it exists."
@@ -283,6 +327,12 @@
        (-> (sql.helpers/create-index
             [(keyword (fts-native-index-name index)) :if-not-exists]
             [(keyword table-name) :using-gin :text_search_with_native_query_vector])
+           sql-format-quoted))
+      (jdbc/execute!
+       connectable
+       (-> (sql.helpers/create-index
+            [(keyword (content-index-name index)) :if-not-exists]
+            [(keyword table-name) :content])
            sql-format-quoted)))
     (catch Exception e
       (throw (ex-info "Failed to create index table" {} e)))))
@@ -432,21 +482,6 @@
   [row]
   (-> (get-in row [:metadata :legacy_input])
       (assoc :score (:rrf_rank row 1.0))))
-
-;; TODO: can the query return unqualified keys directly?
-(defn- unqualify-keys
-  "Remove table namespace from namespaced keywords in a result row."
-  [row]
-  (into {} (map (fn [[k v]] [(keyword (name k)) v]) row)))
-
-(defn- unwrap-pgobject
-  [^PGobject obj]
-  (.getValue ^PGobject obj))
-
-(defn- decode-pgobject
-  "Decode a PGObject (returned from a jsonb field) into a Clojure map."
-  [^PGobject obj]
-  (json/decode (unwrap-pgobject obj) true))
 
 (defn- decode-metadata
   "Decode `row`s `:metadata`."
@@ -612,10 +647,9 @@
 
             db-timer (u/start-timer)
             query (hybrid-search-query index embedding search-context)
-            xform (comp (map unqualify-keys)
-                        (map decode-metadata)
+            xform (comp (map decode-metadata)
                         (map legacy-input-with-score))
-            reducible (jdbc/plan db (sql-format-quoted query))
+            reducible (jdbc/plan db (sql-format-quoted query) {:builder-fn jdbc.rs/as-unqualified-lower-maps})
             raw-results (into [] xform reducible)
             db-query-time-ms (u/since-ms db-timer)
 
@@ -736,7 +770,11 @@
   (def semantic-sql (sql-format-quoted (semantic-search-query index embedding search-context)))
   (def keyword-sql (sql-format-quoted (keyword-search-query index search-context)))
   (def hybrid-sql (sql-format-quoted (hybrid-search-query index embedding search-context)))
+
   ;; do in repl ->
   #_(explain-analyze-query db semantic-sql)
   #_(explain-analyze-query db keyword-sql)
-  #_(explain-analyze-query db hybrid-sql))
+  #_(explain-analyze-query db hybrid-sql)
+
+  (def existing-sql (sql-format-quoted (existing-embedding-query index ["Some Text"])))
+  #_(explain-analyze-query db existing-sql))

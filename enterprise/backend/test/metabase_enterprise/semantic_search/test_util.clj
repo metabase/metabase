@@ -309,9 +309,9 @@
   (->> (jdbc/execute! db
                       (-> (sql.helpers/select :model :model_id :content :creator_id :embedding)
                           (sql.helpers/from (keyword (:table-name mock-index)))
-                          semantic.index/sql-format-quoted))
-       (mapv (comp decode-embedding
-                   #'semantic.index/unqualify-keys))))
+                          semantic.index/sql-format-quoted)
+                      {:builder-fn jdbc.rs/as-unqualified-lower-maps})
+       (mapv decode-embedding)))
 
 (defn query-embeddings
   "Query the `mock-index` table and return the decoded `:embedding`s for the given `model`"
@@ -322,9 +322,9 @@
                           (sql.helpers/where :and
                                              [:= :model model]
                                              [:= :model_id model_id])
-                          semantic.index/sql-format-quoted))
-       (mapv (comp decode-embedding
-                   #'semantic.index/unqualify-keys))))
+                          semantic.index/sql-format-quoted)
+                      {:builder-fn jdbc.rs/as-unqualified-lower-maps})
+       (mapv decode-embedding)))
 
 (defn query-tsvectors
   "Query the `mock-index` table and return the unwrapped tsvector columns for the given `model`"
@@ -336,9 +336,9 @@
                           (sql.helpers/where :and
                                              [:= :model model]
                                              [:= :model_id model_id])
-                          semantic.index/sql-format-quoted))
-       (mapv (comp unwrap-tsvectors
-                   #'semantic.index/unqualify-keys))))
+                          semantic.index/sql-format-quoted)
+                      {:builder-fn jdbc.rs/as-unqualified-lower-maps})
+       (mapv unwrap-tsvectors)))
 
 (defn check-index-has-no-mock-card []
   (testing "no mock card present"

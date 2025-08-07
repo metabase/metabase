@@ -48,15 +48,12 @@
     (when model-switching
       (log/infof "Configured model does not match active index, switching. Previous active: %s" (u/pprint-to-str active-index)))
     (if model-changed
-      (let [{:keys [index
-                    index-table-exists
-                    metadata-row]}
+      (let [{:keys [index metadata-row]}
             (semantic.index-metadata/find-best-index! pgvector index-metadata embedding-model)]
         ;; Metadata might exist without table (deleted manually) or table without metadata
         ;; (created outside this system). Both cases are handled gracefully.
         ;; We might delete some of this fancyness later once schema / setup etc solidifies
-        (when-not index-table-exists
-          (semantic.index/create-index-table-if-not-exists! pgvector index))
+        (semantic.index/create-index-table-if-not-exists! pgvector index)
         (let [index-id (or (:id metadata-row) (semantic.index-metadata/record-new-index-table! pgvector index-metadata index))]
           (semantic.index-metadata/activate-index! pgvector index-metadata index-id))
         index)
