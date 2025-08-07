@@ -4,22 +4,26 @@ import { jt, t } from "ttag";
 import {
   ActionIcon,
   Icon,
+  Loader,
   MultiSelect,
   SelectItem,
   type SelectItemProps,
   Text,
   Tooltip,
 } from "metabase/ui";
-import { useListTransformTagsQuery } from "metabase-enterprise/api/transform-tag";
+import {
+  useCreateTransformTagMutation,
+  useListTransformTagsQuery,
+} from "metabase-enterprise/api/transform-tag";
 import type { TransformTag, TransformTagId } from "metabase-types/api";
 
-import { CreateTagModal } from "./CreateTagModal";
 import { DeleteTagModal } from "./DeleteTagModal";
+import S from "./TagMultiSelect.module.css";
 import { UpdateTagModal } from "./UpdateTagModal";
 
 const NEW_VALUE = "";
 
-type TagModalType = "create" | "update" | "delete";
+type TagModalType = "update" | "delete";
 
 type TagMultiSelectProps = {
   tagIds: TransformTagId[];
@@ -28,11 +32,22 @@ type TagMultiSelectProps = {
 
 export function TagMultiSelect({ tagIds, onChange }: TagMultiSelectProps) {
   const { data: tags = [] } = useListTransformTagsQuery();
+  const [createTag, { isLoading }] = useCreateTransformTagMutation();
   const tagById = getTagById(tags);
   const [searchValue, setSearchValue] = useState("");
   const [modalType, setModalType] = useState<TagModalType>();
-  const [newTagName, setNewTagName] = useState("");
   const [selectedTagId, setSelectedTagId] = useState<TransformTagId>();
+
+  const handleChange = async (value: string[]) => {
+    if (value.includes(NEW_VALUE)) {
+      const { data: tag } = await createTag({ name: searchValue });
+      if (tag) {
+        onChange([...tagIds, tag.id]);
+      }
+    } else {
+      onChange(value.map(getTagId));
+    }
+  };
 
   const handleModalOpen = (
     modalType: TagModalType,
@@ -44,30 +59,7 @@ export function TagMultiSelect({ tagIds, onChange }: TagMultiSelectProps) {
 
   const handleModalClose = () => {
     setModalType(undefined);
-    setNewTagName("");
     setSelectedTagId(undefined);
-  };
-
-  const handleChange = (value: string[]) => {
-    if (value.includes(NEW_VALUE)) {
-      setNewTagName(searchValue);
-      setModalType("create");
-    } else {
-      onChange(value.map(getTagId));
-    }
-  };
-
-  const handleCreate = (tag: TransformTag) => {
-    onChange([...tagIds, tag.id]);
-    handleModalClose();
-  };
-
-  const handleUpdate = () => {
-    handleModalClose();
-  };
-
-  const handleDelete = () => {
-    handleModalClose();
   };
 
   return (
@@ -78,6 +70,7 @@ export function TagMultiSelect({ tagIds, onChange }: TagMultiSelectProps) {
         placeholder={t`Add tags`}
         searchValue={searchValue}
         searchable
+        rightSection={isLoading ? <Loader size="sm" /> : undefined}
         renderOption={(item) =>
           item.option.value === NEW_VALUE ? (
             <NewTagSelectItem
@@ -95,24 +88,17 @@ export function TagMultiSelect({ tagIds, onChange }: TagMultiSelectProps) {
         onChange={handleChange}
         onSearchChange={setSearchValue}
       />
-      {modalType === "create" && (
-        <CreateTagModal
-          initialName={newTagName}
-          onCreate={handleCreate}
-          onClose={handleModalClose}
-        />
-      )}
       {modalType === "update" && selectedTagId != null && (
         <UpdateTagModal
           tag={tagById[selectedTagId]}
-          onUpdate={handleUpdate}
+          onUpdate={handleModalClose}
           onClose={handleModalClose}
         />
       )}
       {modalType === "delete" && selectedTagId != null && (
         <DeleteTagModal
           tag={tagById[selectedTagId]}
-          onDelete={handleDelete}
+          onDelete={handleModalClose}
           onClose={handleModalClose}
         />
       )}
@@ -126,7 +112,7 @@ type NewTagSelectItemProps = SelectItemProps & {
 
 function NewTagSelectItem({ searchValue, selected }: NewTagSelectItemProps) {
   return (
-    <SelectItem selected={selected}>
+    <SelectItem selected={selected} mih="2.25rem">
       <Text c="inherit" lh="inherit">
         {jt`Create ${(<strong key="value">{searchValue}</strong>)}`}
       </Text>
@@ -155,17 +141,22 @@ function ExistingTagSelectItem({
   };
 
   return (
-    <SelectItem selected={selected}>
+    <SelectItem className={S.item} selected={selected} py="xs">
       <Text c="inherit" lh="inherit" flex={1}>
         {tag.name}
       </Text>
       <Tooltip label={t`Rename tag`}>
-        <ActionIcon onClick={handleUpdateClick}>
+        <ActionIcon
+          className={S.button}
+          c="inherit"
+          bg="none"
+          onClick={handleUpdateClick}
+        >
           <Icon name="pencil_lines" />
         </ActionIcon>
       </Tooltip>
-      <Tooltip label={t`Delete tag`}>
-        <ActionIcon onClick={handleDeleteClick}>
+      <Tooltip className={S.button} label={t`Delete tag`}>
+        <ActionIcon c="inherit" bg="none" onClick={handleDeleteClick}>
           <Icon name="trash" />
         </ActionIcon>
       </Tooltip>
