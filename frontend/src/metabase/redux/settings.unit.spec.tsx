@@ -107,6 +107,7 @@ describe("metabase/redux/settings", () => {
 
     setupPropertiesEndpoints(
       createMockSettings({ "site-name": "updated site name" }),
+      { overwriteRoute: true },
     );
 
     // nothing should have changed
@@ -129,6 +130,7 @@ describe("metabase/redux/settings", () => {
 
     setupPropertiesEndpoints(
       createMockSettings({ "site-name": "updated site name" }),
+      { overwriteRoute: true },
     );
 
     // nothing should have changed

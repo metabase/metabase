@@ -31,7 +31,7 @@ describe("AIQuestionAnalysisSidebar", () => {
       summary: "Test analysis",
     };
 
-    setupAnalyzeChartEndpoint(mockResponse);
+    setupAnalyzeChartEndpoint({ response: mockResponse });
 
     renderWithProviders(
       <AIQuestionAnalysisSidebar question={question} onClose={jest.fn()} />,
@@ -51,7 +51,6 @@ describe("AIQuestionAnalysisSidebar", () => {
     const copyButton = await screen.findByLabelText("copy icon");
     expect(copyButton).toBeInTheDocument();
   });
-
 
   it("should send only visible timeline events with ones from the same collection", async () => {
     const collectionId = 42;
@@ -113,7 +112,7 @@ describe("AIQuestionAnalysisSidebar", () => {
       summary: "Filtered analysis",
     };
 
-    setupAnalyzeChartEndpoint(mockResponse);
+    setupAnalyzeChartEndpoint({ response: mockResponse });
 
     renderWithProviders(
       <AIQuestionAnalysisSidebar

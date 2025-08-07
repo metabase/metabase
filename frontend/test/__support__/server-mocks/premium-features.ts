@@ -1,14 +1,17 @@
 import fetchMock from "fetch-mock";
 
-export const setupTokenStatusEndpoint = (
-  valid: boolean,
-  features: string[] = [],
-) => {
+export const setupTokenStatusEndpoint = ({
+  valid,
+  features,
+  overwriteRoute,
+}: {
+  valid: boolean;
+  features?: string[];
+  overwriteRoute?: boolean;
+}) => {
   const name = "premium-token-status";
-  try {
+  if (overwriteRoute) {
     fetchMock.removeRoute(name);
-  } catch {
-    // Route might not exist, ignore
   }
   fetchMock.get(
     "path:/api/premium-features/token/status",

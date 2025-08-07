@@ -8,8 +8,14 @@ import type {
 
 export function setupPropertiesEndpoints(
   settings: Settings | EnterpriseSettings,
+  { overwriteRoute }: { overwriteRoute: boolean } = { overwriteRoute: false },
 ) {
-  fetchMock.get("path:/api/session/properties", settings);
+  if (overwriteRoute) {
+    fetchMock.removeRoute("get-session-properties");
+  }
+  fetchMock.get("path:/api/session/properties", settings, {
+    name: "get-session-properties",
+  });
 }
 
 export function setupLoginEndpoint() {

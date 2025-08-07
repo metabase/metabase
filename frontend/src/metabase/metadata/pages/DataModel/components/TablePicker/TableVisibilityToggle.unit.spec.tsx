@@ -74,8 +74,9 @@ describe("TableVisibilityToggle", () => {
         table: VISIBLE_TABLE,
       });
 
-      fetchMock.removeRoute(`table-${VISIBLE_TABLE.id}-put`);
-      fetchMock.put(`path:/api/table/${VISIBLE_TABLE.id}`, { status: 500 }, { name: `table-${VISIBLE_TABLE.id}-put` });
+      fetchMock.modifyRoute(`table-${VISIBLE_TABLE.id}-put`, {
+        response: { status: 500 },
+      });
 
       const toggle = screen.getByLabelText("eye icon");
       expect(toggle).toBeInTheDocument();
@@ -150,7 +151,11 @@ describe("TableVisibilityToggle", () => {
       });
 
       fetchMock.removeRoute(`table-${HIDDEN_TABLE.id}-put`);
-      fetchMock.put(`path:/api/table/${HIDDEN_TABLE.id}`, { status: 500 }, { name: `table-${HIDDEN_TABLE.id}-put` });
+      fetchMock.put(
+        `path:/api/table/${HIDDEN_TABLE.id}`,
+        { status: 500 },
+        { name: `table-${HIDDEN_TABLE.id}-put` },
+      );
 
       const toggle = screen.getByLabelText("eye_crossed_out icon");
       expect(toggle).toBeInTheDocument();

@@ -163,7 +163,7 @@ describe("useUpsellFlow", () => {
         );
       });
 
-      setupTokenStatusEndpoint(true);
+      setupTokenStatusEndpoint({ valid: true, overwriteRoute: true });
       view();
 
       await waitFor(() => {

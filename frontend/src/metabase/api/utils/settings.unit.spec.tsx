@@ -74,7 +74,6 @@ describe("useAdminSetting", () => {
     expect(await screen.findByText(/MB_SPECIAL_SITE_NAME/)).toBeInTheDocument();
   });
 
-
   it("should allow setting mutation", async () => {
     await setup();
     const updateButton = await screen.findByText("change site name");
@@ -82,6 +81,7 @@ describe("useAdminSetting", () => {
     // should update on refetch
     setupPropertiesEndpoints(
       createMockSettings({ "site-name": "New Site Name" }),
+      { overwriteRoute: true },
     );
 
     await userEvent.click(updateButton);

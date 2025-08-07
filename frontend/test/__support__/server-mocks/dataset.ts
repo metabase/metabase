@@ -29,17 +29,7 @@ export function setupParameterSearchValuesEndpoint(
   });
 }
 
-export function setupCardDataset(
-  options: MockDatasetOpts = {},
-  overwriteRoutes = false,
-) {
-  if (overwriteRoutes) {
-    try {
-      fetchMock.removeRoute("dataset-post");
-    } catch {
-      // Route might not exist, ignore
-    }
-  }
+export function setupCardDataset(options: MockDatasetOpts = {}) {
   fetchMock.post("path:/api/dataset", createMockDataset(options), {
     name: "dataset-post",
   });

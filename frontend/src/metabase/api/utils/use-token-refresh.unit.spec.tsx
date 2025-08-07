@@ -27,7 +27,13 @@ const waitForElevenSeconds = async () => {
   await screen.findByText("Test");
 };
 
-const setupRefreshableProperties = (hasRefresh = true) => {
+const setupRefreshableProperties = ({
+  hasRefresh,
+  overwriteRoute,
+}: {
+  hasRefresh: boolean;
+  overwriteRoute?: boolean;
+}) => {
   const settings = createMockSettings({
     "site-name": "Test",
     "token-status": {
@@ -36,11 +42,13 @@ const setupRefreshableProperties = (hasRefresh = true) => {
       features: hasRefresh ? ["refresh-token-features"] : [],
     },
   });
-  setupPropertiesEndpoints(settings);
+  setupPropertiesEndpoints(settings, {
+    overwriteRoute: Boolean(overwriteRoute),
+  });
 };
 
 const setup = async (hasRefresh = true) => {
-  setupRefreshableProperties(hasRefresh);
+  setupRefreshableProperties({ hasRefresh });
   renderWithProviders(<TestComponent />);
   await screen.findByText("Loading...");
   await screen.findByText("Test");
@@ -84,7 +92,7 @@ describe("useTokenRefresh", () => {
     await waitForElevenSeconds();
     await waitForGets(2);
 
-    setupRefreshableProperties(false); // remove the refresh flag
+    setupRefreshableProperties({ hasRefresh: false, overwriteRoute: true }); // remove the refresh flag
     await waitForElevenSeconds();
     await waitForGets(3); // should get one more
 

@@ -42,10 +42,6 @@ describe("CloudPanel", () => {
     });
   });
 
-  afterEach(() => {
-    fetchMock.removeRoutes();
-  });
-
   it("should be able to successfully go through migration flow", async () => {
     const migrationProgressResponses = [
       INIT_RESPONSE,
@@ -109,7 +105,10 @@ describe("CloudPanel", () => {
     });
     expect((store.getState() as any).undo).toHaveLength(1);
 
-    fetchMockCloudMigrationGetSequence([CANCELED_RESPONSE]);
+    fetchMockCloudMigrationGetSequence({
+      responses: [CANCELED_RESPONSE],
+      overwriteRoute: true,
+    });
 
     await expectInitState();
   });
@@ -128,9 +127,6 @@ describe("CloudPanel", () => {
   });
 
   it("should be able to start a new migration after a failed migration", async () => {
-    try {
-      fetchMock.removeRoute("cloud-migration-get");
-    } catch {}
     fetchMock.get(`path:/api/cloud-migration`, ERROR_RESPONSE, {
       name: "cloud-migration-get",
     });
@@ -143,10 +139,13 @@ describe("CloudPanel", () => {
     await expectStartConfirmationModal();
     await userEvent.click(screen.getByRole("button", { name: /Migrate now/ }));
 
-    fetchMockCloudMigrationGetSequence([
-      { ...INIT_RESPONSE, id: 2 },
-      { ...SETUP_RESPONSE, id: 2 },
-    ]);
+    fetchMockCloudMigrationGetSequence({
+      responses: [
+        { ...INIT_RESPONSE, id: 2 },
+        { ...SETUP_RESPONSE, id: 2 },
+      ],
+      overwriteRoute: true,
+    });
 
     await expectProgressState(metabaseStoreLink);
 
@@ -154,9 +153,6 @@ describe("CloudPanel", () => {
   });
 
   it("should be able to start a new migration after a successful migration", async () => {
-    try {
-      fetchMock.removeRoute("cloud-migration-get");
-    } catch {}
     fetchMock.get(`path:/api/cloud-migration`, DONE_RESPONSE, {
       name: "cloud-migration-get",
     });
@@ -169,11 +165,14 @@ describe("CloudPanel", () => {
       await screen.findByRole("button", { name: /Restart the process/ }),
     );
 
-    fetchMockCloudMigrationGetSequence([
-      { ...INIT_RESPONSE, id: 2 },
-      { ...SETUP_RESPONSE, id: 2 },
-      { ...DUMP_RESPONSE, id: 2 },
-    ]);
+    fetchMockCloudMigrationGetSequence({
+      responses: [
+        { ...INIT_RESPONSE, id: 2 },
+        { ...SETUP_RESPONSE, id: 2 },
+        { ...DUMP_RESPONSE, id: 2 },
+      ],
+      overwriteRoute: true,
+    });
 
     await expectProgressState(metabaseStoreLink);
 
@@ -284,7 +283,7 @@ const expectErrorState = async () => {
 const startMigration = async (
   migrationResponses: UserRouteConfig["response"][],
 ) => {
-  fetchMockCloudMigrationGetSequence(migrationResponses);
+  fetchMockCloudMigrationGetSequence({ responses: migrationResponses });
   const { mockMigrationStart, store, metabaseStoreLink } = setup();
 
   await expectInitState();
@@ -298,18 +297,17 @@ const startMigration = async (
   return { store, metabaseStoreLink };
 };
 
-function fetchMockCloudMigrationGetSequence(
-  responses: UserRouteConfig["response"][],
-) {
+function fetchMockCloudMigrationGetSequence({
+  responses,
+  overwriteRoute,
+}: {
+  responses: UserRouteConfig["response"][];
+  overwriteRoute?: boolean;
+}) {
   let called = 0;
-
-  // Remove any existing GET route for cloud-migration
-  try {
+  if (overwriteRoute) {
     fetchMock.removeRoute("cloud-migration-get");
-  } catch {
-    // Route might not exist, ignore
   }
-
   return fetchMock.get(
     `path:/api/cloud-migration`,
     () => {

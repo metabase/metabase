@@ -80,10 +80,6 @@ async function setup({
 }
 
 describe("actions > containers > ActionCreatorModal", () => {
-  afterEach(() => {
-    fetchMock.removeRoutes();
-  });
-
   it("renders correctly", async () => {
     const initialRoute = `/model/${MODEL.id}/detail/actions/${ACTION.id}`;
     await setup({ initialRoute });
@@ -293,7 +289,7 @@ describe("actions > containers > ActionCreatorModal", () => {
         response: {
           ...action,
           name: `${action.name}a change`,
-        }
+        },
       });
 
       await userEvent.click(screen.getByRole("button", { name: "Update" }));
