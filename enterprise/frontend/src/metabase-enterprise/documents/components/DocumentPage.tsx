@@ -8,7 +8,9 @@ import { t } from "ttag";
 
 import { skipToken } from "metabase/api";
 import { canonicalCollectionId } from "metabase/collections/utils";
-import DateTime from "metabase/common/components/DateTime";
+import DateTime, {
+  getFormattedTime,
+} from "metabase/common/components/DateTime";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { CollectionPickerModal } from "metabase/common/components/Pickers/CollectionPicker";
 import { useToast } from "metabase/common/hooks";
@@ -24,6 +26,7 @@ import {
   Menu,
   Text,
   TextInput,
+  Tooltip,
 } from "metabase/ui";
 import {
   useCreateDocumentMutation,
@@ -371,10 +374,18 @@ export const DocumentPage = ({
                       <Icon name="person" />
                       {documentData.creator.common_name}{" "}
                     </Text>
-                    <Text className={styles.metadataItem}>
-                      <Icon name="clock" />
-                      <DateTime value={documentData.updated_at} unit="day" />
-                    </Text>
+                    <Tooltip
+                      label={getFormattedTime(
+                        documentData.updated_at,
+                        "default",
+                        { local: true },
+                      )}
+                    >
+                      <Text className={styles.metadataItem}>
+                        <Icon name="clock" />
+                        <DateTime value={documentData.updated_at} unit="day" />
+                      </Text>
+                    </Tooltip>
                   </Flex>
                 )}
               </Flex>
