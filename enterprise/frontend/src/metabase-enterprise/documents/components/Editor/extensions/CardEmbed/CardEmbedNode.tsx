@@ -250,7 +250,11 @@ export const CardEmbedComponent = memo(
       if (cardToUse && metadata) {
         try {
           dispatch(setShowNavigateBackToDocumentButton(true));
-          const question = new Question(cardToUse, metadata);
+          const isDraftCard = cardToUse.id < 0;
+          const question = new Question(
+            isDraftCard ? { ...cardToUse, id: null } : cardToUse,
+            metadata,
+          );
           const url = getUrl(question, { includeDisplayIsLocked: true });
           dispatch(push(url));
         } catch (error) {
