@@ -106,8 +106,8 @@
           (letfn [(convert [query]
                     (lib/without-cleaning
                      (^:once fn* []
-                      (mu/disable-enforcement
-                        (lib/query (qp.store/metadata-provider) query)))))]
+                       (mu/disable-enforcement
+                         (lib/query (qp.store/metadata-provider) query)))))]
             (-> (cond->> query
                   (not (:lib/type query)) convert)
                 (copy-unconverted-properties query)))
