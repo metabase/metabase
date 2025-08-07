@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { t } from "ttag";
+import { jt, t } from "ttag";
 
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import {
@@ -25,6 +25,7 @@ type TagMultiSelectProps = {
 export function TagMultiSelect({ tagIds, onChange }: TagMultiSelectProps) {
   const { data: tags = [] } = useListTransformTagsQuery();
   const tagById = getTagById(tags);
+  const [searchValue, setSearchValue] = useState("");
 
   const handleChange = (value: string[]) => {
     onChange(value.map(getTagId));
@@ -33,27 +34,57 @@ export function TagMultiSelect({ tagIds, onChange }: TagMultiSelectProps) {
   return (
     <MultiSelect
       value={tagIds.map(getValue)}
-      data={tags.map(getTagOption)}
+      data={getOptions(tags, searchValue)}
       placeholder={t`Add tags`}
+      searchValue={searchValue}
       searchable
       renderOption={(item) => (
         <TagSelectItem
           tag={tagById[getTagId(item.option.value)]}
+          searchValue={searchValue}
           selected={item.checked}
         />
       )}
       onChange={handleChange}
+      onSearchChange={setSearchValue}
     />
+  );
+}
+
+type TagSelectItemProps = SelectItemProps & {
+  tag?: TransformTag;
+  searchValue: string;
+};
+
+function TagSelectItem({ tag, searchValue, selected }: TagSelectItemProps) {
+  return tag ? (
+    <ExistingTagSelectItem tag={tag} selected={selected} />
+  ) : (
+    <NewTagSelectItem searchValue={searchValue} selected={selected} />
+  );
+}
+
+type NewTagSelectItemProps = SelectItemProps & {
+  searchValue: string;
+};
+
+function NewTagSelectItem({ searchValue, selected }: NewTagSelectItemProps) {
+  return (
+    <SelectItem selected={selected}>
+      <Text c="inherit" lh="inherit">
+        {jt`Create ${(<strong key="value">{searchValue}</strong>)}`}
+      </Text>
+    </SelectItem>
   );
 }
 
 type TagModalType = "update" | "delete";
 
-type TagSelectItemProps = SelectItemProps & {
+type ExistingTagSelectItemProps = SelectItemProps & {
   tag: TransformTag;
 };
 
-function TagSelectItem({ tag, selected }: TagSelectItemProps) {
+function ExistingTagSelectItem({ tag, selected }: ExistingTagSelectItemProps) {
   const [modalType, setModalType] = useState<TagModalType>();
   const { sendSuccessToast } = useMetadataToasts();
 
@@ -129,8 +160,18 @@ function getTagId(value: string): TransformTagId {
   return parseInt(value, 10);
 }
 
-function getTagOption(tag: TransformTag) {
-  return { tag, value: getValue(tag.id), label: tag.name };
+function getOptions(tags: TransformTag[], searchValue: string) {
+  const options = tags.map((tag) => ({
+    tag,
+    value: getValue(tag.id),
+    label: tag.name,
+  }));
+
+  if (searchValue.length > 0 && tags.every((tag) => tag.name !== searchValue)) {
+    return [...options, { value: "", label: "" }];
+  }
+
+  return options;
 }
 
 function getTagById(
