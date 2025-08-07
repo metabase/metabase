@@ -495,6 +495,7 @@ export const CardEmbedComponent = memo(
                   getExtraDataForClick={() => ({})}
                   isEditing={false}
                   isDashboard={false}
+                  isDocument={true}
                   showTitle={false}
                 />
               </Box>
