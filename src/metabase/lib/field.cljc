@@ -537,7 +537,7 @@
         matching-ref (lib.equality/find-matching-ref column field-refs)]
     (if matching-ref
       (do
-        (log/debugf "Column %s already found in ref %s, doing nothing and returning the original query"
+        (log/debugf "Column %s already included by ref %s, doing nothing and returning the original query"
                     (pr-str (select-keys column [:id :metabase.lib.join/join-alias :lib/source-column-alias]))
                     (pr-str matching-ref))
         query)

@@ -1,4 +1,6 @@
 (ns metabase.query-processor.util.transformations.nest-breakouts
+  "TODO (Cam 8/7/25) -- this is a pure-MBQL-5 high-level query transformation, and almost certainly belongs in Lib
+  rather than in QP -- we should move it there."
   (:require
    [flatland.ordered.set :as ordered-set]
    [medley.core :as m]
