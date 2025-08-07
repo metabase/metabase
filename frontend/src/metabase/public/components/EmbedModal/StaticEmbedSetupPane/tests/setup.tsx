@@ -81,7 +81,7 @@ export async function setup({
     values: [],
     has_more_values: false,
   });
-  setupTokenStatusEndpoint(hasEnterprisePlugins);
+  setupTokenStatusEndpoint({ valid: hasEnterprisePlugins });
 
   const settings = mockSettings({
     "enable-embedding": true,
