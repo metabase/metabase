@@ -2,6 +2,7 @@ import type { Editor as TiptapEditor } from "@tiptap/react";
 // eslint-disable-next-line import/no-unresolved
 import { BubbleMenu } from "@tiptap/react/menus";
 import type React from "react";
+import { t } from "ttag";
 
 import { Group } from "metabase/ui";
 
@@ -29,25 +30,25 @@ export const EditorBubbleMenu: React.FC<EditorBubbleMenuProps> = ({
         <FormatButton
           isActive={editor.isActive("bold")}
           onClick={() => editor.chain().focus().toggleBold().run()}
-          tooltip="Bold"
+          tooltip={t`Bold`}
           icon="text_bold"
         />
         <FormatButton
           isActive={editor.isActive("italic")}
           onClick={() => editor.chain().focus().toggleItalic().run()}
-          tooltip="Italic"
+          tooltip={t`Italic`}
           icon="text_italic"
         />
         <FormatButton
           isActive={editor.isActive("strike")}
           onClick={() => editor.chain().focus().toggleStrike().run()}
-          tooltip="Strikethrough"
+          tooltip={t`Strikethrough`}
           icon="text_strike"
         />
         <FormatButton
           isActive={editor.isActive("code")}
           onClick={() => editor.chain().focus().toggleCode().run()}
-          tooltip="Inline code"
+          tooltip={t`Inline code`}
           icon="format_code"
         />
         <FormatButton
@@ -55,7 +56,7 @@ export const EditorBubbleMenu: React.FC<EditorBubbleMenuProps> = ({
           onClick={() =>
             editor.chain().focus().toggleHeading({ level: 1 }).run()
           }
-          tooltip="Heading 1"
+          tooltip={t`Heading 1`}
           text="H1"
         />
         <FormatButton
@@ -63,7 +64,7 @@ export const EditorBubbleMenu: React.FC<EditorBubbleMenuProps> = ({
           onClick={() =>
             editor.chain().focus().toggleHeading({ level: 2 }).run()
           }
-          tooltip="Heading 2"
+          tooltip={t`Heading 2`}
           text="H2"
         />
         <FormatButton
@@ -71,31 +72,31 @@ export const EditorBubbleMenu: React.FC<EditorBubbleMenuProps> = ({
           onClick={() =>
             editor.chain().focus().toggleHeading({ level: 3 }).run()
           }
-          tooltip="Heading 3"
+          tooltip={t`Heading 3`}
           text="H3"
         />
         <FormatButton
           isActive={editor.isActive("bulletList")}
           onClick={() => editor.chain().focus().toggleBulletList().run()}
-          tooltip="Bullet list"
+          tooltip={t`Bullet list`}
           icon="list"
         />
         <FormatButton
           isActive={editor.isActive("orderedList")}
           onClick={() => editor.chain().focus().toggleOrderedList().run()}
-          tooltip="Numbered list"
+          tooltip={t`Numbered list`}
           icon="ordered_list"
         />
         <FormatButton
           isActive={editor.isActive("blockquote")}
           onClick={() => editor.chain().focus().toggleBlockquote().run()}
-          tooltip="Quote"
+          tooltip={t`Quote`}
           icon="quote"
         />
         <FormatButton
           isActive={editor.isActive("codeBlock")}
           onClick={() => editor.chain().focus().toggleCodeBlock().run()}
-          tooltip="Code block"
+          tooltip={t`Code block`}
           icon="code_block"
         />
       </Group>
