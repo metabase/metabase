@@ -1,4 +1,5 @@
 import { isa as cljs_isa } from "cljs/metabase.types.core";
+import { isCity, isZipCode } from "metabase-lib/column_types";
 import { isVirtualCardId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import {
   BOOLEAN,
@@ -120,6 +121,7 @@ export const isFK = (field) => field && isTypeFK(field.semantic_type);
 export const isPK = (field) => field && isTypePK(field.semantic_type);
 export const isEntityName = (field) =>
   field && isa(field.semantic_type, TYPE.Name);
+export const isTitle = (field) => field && isa(field.semantic_type, TYPE.Title);
 export const isAddress = (field) =>
   field && isa(field.semantic_type, TYPE.Address);
 
@@ -175,6 +177,15 @@ export const isLatitude = (field) =>
   field && isa(field.semantic_type, TYPE.Latitude);
 export const isLongitude = (field) =>
   field && isa(field.semantic_type, TYPE.Longitude);
+
+export const isLocation = (field) =>
+  field &&
+  (isCountry(field) ||
+    isCoordinate(field) ||
+    isLatitude(field) ||
+    isLongitude(field) ||
+    isCity(field) ||
+    isZipCode(field));
 
 export const isCurrency = (field) =>
   field && isa(field.semantic_type, TYPE.Currency);
