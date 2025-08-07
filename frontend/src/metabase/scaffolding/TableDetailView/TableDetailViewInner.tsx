@@ -20,7 +20,7 @@ import { useDispatch } from "metabase/lib/redux";
 import { question } from "metabase/lib/urls";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { closeNavbar } from "metabase/redux/app";
-import { Divider, Stack } from "metabase/ui/components";
+import { Stack } from "metabase/ui/components";
 import type ForeignKey from "metabase-lib/v1/metadata/ForeignKey";
 import { isEntityName, isPK } from "metabase-lib/v1/types/utils/isa";
 import type {
@@ -31,6 +31,7 @@ import type {
 
 import { getDefaultObjectViewSettings } from "../utils";
 
+import { ColumnPickerButton } from "./ColumnPickerButton";
 import { DetailViewContainer } from "./DetailViewContainer";
 import { SortableSection } from "./SortableSection";
 import { useDetailViewSections } from "./use-detail-view-sections";
@@ -233,6 +234,16 @@ export function TableDetailViewInner({
       hoveredSectionId={hoveredSectionIdMain}
       setHoveredSectionId={setHoveredSectionIdSidebar}
     >
+      <ColumnPickerButton
+        columns={columns}
+        // fieldsLimit={3} // TODO
+        sections={sections}
+        table={table}
+        onChange={(column) => {
+          console.log("onChange", column.display_name);
+        }}
+      />
+
       <Stack
         gap="md"
         // px="lg"
@@ -254,7 +265,7 @@ export function TableDetailViewInner({
             items={notEmptySections.map((section) => section.id)}
             strategy={verticalListSortingStrategy}
           >
-            {(isEdit ? sections : notEmptySections).map((section, index) => (
+            {(isEdit ? sections : notEmptySections).map((section, _index) => (
               <Fragment key={section.id}>
                 {/* {index > 0 &&
                   (section.variant === "normal" ||
