@@ -76,6 +76,7 @@ function RunButton({ transform }: RunButtonProps) {
 
   return (
     <Button
+      variant="filled"
       leftSection={
         isRunning ? <Loader size="sm" /> : <Icon name="play_outlined" />
       }
