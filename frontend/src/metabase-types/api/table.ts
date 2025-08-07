@@ -80,6 +80,7 @@ export type ObjectViewSectionSettings = {
 
 export type ObjectViewSettings = {
   sections: ObjectViewSectionSettings[];
+  markdown?: string;
 };
 
 export type SchemaName = string;
