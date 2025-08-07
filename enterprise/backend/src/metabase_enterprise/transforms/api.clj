@@ -1,6 +1,8 @@
 (ns metabase-enterprise.transforms.api
   (:require
    [clojure.set :as set]
+   [metabase-enterprise.transforms.api.transform-job]
+   [metabase-enterprise.transforms.api.transform-tag]
    [metabase-enterprise.transforms.execute :as transforms.execute]
    [metabase-enterprise.transforms.util :as transforms.util]
    [metabase-enterprise.worker.core :as worker]
@@ -15,6 +17,9 @@
    [metabase.util.malli.schema :as ms]
    [ring.util.response :as response]
    [toucan2.core :as t2]))
+
+(comment metabase-enterprise.transforms.api.transform-job/keep-me
+         metabase-enterprise.transforms.api.transform-tag/keep-me)
 
 (set! *warn-on-reflection* true)
 
@@ -187,3 +192,11 @@
   "`/api/ee/transform` routes."
   (handlers/routes
    (api.macros/ns-handler *ns* +auth)))
+
+(def ^{:arglists '([request respond raise])} transform-tag-routes
+  "`/api/ee/transform-tag` routes."
+  (api.macros/ns-handler 'metabase-enterprise.transforms.api.transform-tag +auth))
+
+(def ^{:arglists '([request respond raise])} transform-job-routes
+  "`/api/ee/transform-job` routes."
+  (api.macros/ns-handler 'metabase-enterprise.transforms.api.transform-job +auth))
