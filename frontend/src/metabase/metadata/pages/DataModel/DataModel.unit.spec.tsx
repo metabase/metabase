@@ -294,19 +294,16 @@ describe("DataModel", () => {
 
     it("should allow to search for a table", async () => {
       await setup();
-      setupSearchEndpoints(
-        [
-          createMockSearchResult({
-            id: getNextId(),
-            model: "table",
-            name: ORDERS_TABLE.display_name,
-            table_name: ORDERS_TABLE.display_name,
-            table_schema: "public",
-            database_name: SAMPLE_DB.name,
-          }),
-        ],
-        true,
-      );
+      setupSearchEndpoints([
+        createMockSearchResult({
+          id: getNextId(),
+          model: "table",
+          name: ORDERS_TABLE.display_name,
+          table_name: ORDERS_TABLE.display_name,
+          table_schema: "public",
+          database_name: SAMPLE_DB.name,
+        }),
+      ]);
 
       const searchValue = ORDERS_TABLE.name.substring(0, 3);
       await userEvent.type(getTableSearchInput(), searchValue);
