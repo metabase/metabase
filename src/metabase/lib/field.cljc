@@ -589,7 +589,7 @@
   (let [stage  (lib.util/query-stage query stage-number)
         source (:lib/source column)]
     (when (and (empty? (:fields stage))
-               (not ({:source/implicitly-joinable :source/joins} source)))
+               (not (#{:source/implicitly-joinable :source/joins} source)))
       (log/warnf "[add-field] stage :fields is empty, which means everything will already be included; attempt to add %s will no-op"
                  (pr-str ((some-fn :display-name :name) column))))
     (-> (case source
