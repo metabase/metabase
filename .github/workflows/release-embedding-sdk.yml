@@ -401,12 +401,12 @@ jobs:
            "release-x.53.x": "53-stable",
            "release-x.54.x": "54-stable",
            "release-x.55.x": "55-stable",
-           "release-x.56.x": "56-nightly",
+           "release-x.56.x": "56-stable",
            "esbuild-main": "56-esbuild"
            }')[inputs.branch]}}
 
       - name: Add `latest` tag to the latest release branch (`release-x.55.x`) deployment
-        if: ${{ inputs.branch == 'release-x.55.x' }}
+        if: ${{ inputs.branch == 'release-x.56.x' }}
         working-directory: sdk
         run: |
           npm dist-tag add @metabase/embedding-sdk-react@${{ env.sdk_version }} latest

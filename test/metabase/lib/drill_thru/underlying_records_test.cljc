@@ -569,7 +569,7 @@
           bucket-expr        (m/find-first #(= (:name %) "cost bucket") cols)
           query              (lib/breakout base bucket-expr)
           [bucket count-col] (lib/returned-columns query)
-          bucket-dim         {:column     (dissoc bucket :lib/expression-name)
+          bucket-dim         {:column     (dissoc bucket :lib/expression-name :lib/source)
                               :column-ref (lib/ref bucket)
                               :value      "12"}
           count-dim          {:column     count-col
