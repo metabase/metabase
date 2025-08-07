@@ -45,6 +45,7 @@
    [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.lib.core :as lib]
+   [metabase.lib.equality :as lib.equality]
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -56,12 +57,9 @@
    [metabase.lib.walk :as lib.walk]
    [metabase.query-processor.middleware.annotate.legacy-helper-fns :as annotate.legacy-helper-fns]
    [metabase.query-processor.store :as qp.store]
-   [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
-   [metabase.lib.equality :as lib.equality]
-   [metabase.lib.schema.ref :as lib.schema.ref]))
+   [metabase.util.malli.registry :as mr]))
 
 (def ^:private ^:dynamic ^{:arglists '([driver s])} *escape-alias-fn*
   #'driver/escape-alias)
@@ -149,7 +147,7 @@
                               :source/table-defaults        (:table-id resolved)
                               (:source/joins
                                :source/implicitly-joinable) (or (::escaped-join-alias resolved)
-                               (throw (ex-info "Resolved metadata is missing ::escaped-join-alias" {:ref clause, :resolved resolved})))
+                                                                (throw (ex-info "Resolved metadata is missing ::escaped-join-alias" {:ref clause, :resolved resolved})))
                               (:source/previous-stage
                                :source/card)                ::source
                               (:source/expressions
@@ -363,8 +361,7 @@
                                       [:field (_opts :guard #(= (:join-alias %) (:alias join))) _id-or-name]
                                       (update-ref-from-this-join &match)
 
-
-                                      ;; a field ref that DOES NOT come from this join should get resolved relative to
+;; a field ref that DOES NOT come from this join should get resolved relative to
                                       ;; the parent stage.
                                       [:field (_opts :guard #(not= (:join-alias %) (:alias join))) _id-or-name]
                                       (update-other-ref &match)))]

@@ -18,8 +18,7 @@
    [metabase.lib.test-util.metadata-providers.merged-mock :as merged-mock]
    [metabase.lib.util :as lib.util]
    [metabase.types.core :as types]
-   [metabase.util.malli :as mu]
-   [metabase.lib.metadata.cached-provider :as lib.metadata.cached-provider]))
+   [metabase.util.malli :as mu]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
