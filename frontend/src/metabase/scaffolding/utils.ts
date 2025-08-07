@@ -315,7 +315,11 @@ export function getDefaultObjectViewSettings(
         // find the longest prefix which has multiple fields
         for (const prefix of prefixes) {
           // stop words
-          if (["has", "is", "latest", "current"].includes(prefix)) {
+          if (
+            ["has", "is", "in", "latest", "current"].includes(
+              prefix.toLowerCase(),
+            )
+          ) {
             continue;
           }
           const fields = remainingFields.filter((f) =>
@@ -350,7 +354,7 @@ export function getDefaultObjectViewSettings(
     });
   }
 
-  addPotentialSectionHelper("Location", "highlight-2", (fs) =>
+  addPotentialSectionHelper("Location", "normal", (fs) =>
     fs.filter(isLocation),
   );
 
@@ -358,14 +362,14 @@ export function getDefaultObjectViewSettings(
     fs.filter(isCurrency),
   );
 
+  addPotentialSectionHelper("Related entities", "normal", (fs) => {
+    const fields = fs.filter((f) => isFK(f) || f.name.endsWith("_id"));
+    return fields.length > 1 ? fields : [];
+  });
+
   addPotentialSectionHelper("Metadata", "normal", (fs) =>
     fs.filter((f) => f.name === "created_at" || f.name === "updated_at"),
   );
-
-  addPotentialSectionHelper("Related entities", "normal", (fs) => {
-    const fields = fs.filter(isFK);
-    fields.length > 1 ? fields : [];
-  });
 
   // {
   //   id: getNextId(),
