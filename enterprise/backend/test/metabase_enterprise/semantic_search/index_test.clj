@@ -262,6 +262,50 @@
                      :embedding (semantic.tu/get-mock-embedding "Dog Training Guide")}]
                    (semantic.tu/query-embeddings {:model "card" :model_id "3"})))))))))
 
+(deftest upsert-index-batched-embeddings-cache-test
+  (mt/with-premium-features #{:semantic-search}
+    (with-open [_ (semantic.tu/open-temp-index!)]
+      (testing "Documents with identical searchable texts lead to cached embedding"
+        (let [test-documents [{:model "card"
+                               :id "1"
+                               :searchable_text "Dog Training Guide"
+                               :creator_id 1
+                               :legacy_input {:model "card" :id "1"}
+                               :metadata {}}
+                              {:model "card"
+                               :id "2"
+                               :searchable_text "Elephant Migration"
+                               :creator_id 2
+                               :legacy_input {:model "card" :id "2"}
+                               :metadata {}}
+                              {:model "card"
+                               :id "3"
+                               :searchable_text "Dog Training Guide"
+                               :creator_id 3
+                               :legacy_input {:model "card" :id "3"}
+                               :metadata {}}]]
+          (binding [semantic.index/*batch-size* 2]
+            (let [{:keys [calls proxy]} (semantic.tu/spy semantic.embedding/process-embeddings-streaming)]
+              (with-redefs [semantic.embedding/process-embeddings-streaming proxy]
+                (semantic.tu/upsert-index! test-documents))
+              (is (= 1 (count @calls)))
+              (is (= ["Dog Training Guide" "Elephant Migration"]
+                     (second (:args (first @calls))))))
+            (is (= [{:model "card" :model_id "1" :creator_id 1
+                     :content "Dog Training Guide"
+                     :embedding (semantic.tu/get-mock-embedding "Dog Training Guide")}]
+                   (semantic.tu/query-embeddings {:model "card" :model_id "1"})))
+
+            (is (= [{:model "card" :model_id "2" :creator_id 2
+                     :content "Elephant Migration"
+                     :embedding (semantic.tu/get-mock-embedding "Elephant Migration")}]
+                   (semantic.tu/query-embeddings {:model "card" :model_id "2"})))
+
+            (is (= [{:model "card" :model_id "3" :creator_id 3
+                     :content "Dog Training Guide"
+                     :embedding (semantic.tu/get-mock-embedding "Dog Training Guide")}]
+                   (semantic.tu/query-embeddings {:model "card" :model_id "3"})))))))))
+
 (deftest prometheus-metrics-test
   (mt/with-premium-features #{:semantic-search}
     (with-open [_ (semantic.tu/open-temp-index!)]
