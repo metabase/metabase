@@ -43,13 +43,13 @@ export function JobList() {
           >
             <td>{job.name}</td>
             <td>
-              {job.last_execution?.status
-                ? formatStatus(job.last_execution.status)
+              {job.last_execution?.end_time
+                ? formatTimestamp(job.last_execution?.end_time)
                 : null}
             </td>
             <td>
-              {job.last_execution?.end_time
-                ? formatTimestamp(job.last_execution?.end_time)
+              {job.last_execution?.status
+                ? formatStatus(job.last_execution.status)
                 : null}
             </td>
           </tr>
