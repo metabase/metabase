@@ -39,6 +39,16 @@
     (= (:type card-metadata) :metric) (assoc :metric? true)
     (= (lib.util/source-card-id query) (:id card-metadata)) (assoc :is-source-card true)))
 
+(mu/defmethod lib.metadata.calculation/visible-columns-method :metadata/card :- ::lib.metadata.calculation/visible-columns
+  [query                                              :- ::lib.schema/query
+   stage-number                                       :- :int
+   {:keys [fields result-metadata] :as card-metadata} :- ::lib.schema.metadata/card
+   {:keys [include-implicitly-joinable?] :as options} :- [:maybe ::lib.metadata.calculation/visible-columns.options]]
+  (concat
+   (lib.metadata.calculation/returned-columns query stage-number card-metadata options)
+   (when include-implicitly-joinable?
+     (lib.metadata.calculation/implicitly-joinable-columns query stage-number (concat fields result-metadata)))))
+
 (mu/defn fallback-display-name :- ::lib.schema.common/non-blank-string
   "If for some reason the metadata is unavailable. This is better than returning nothing I guess."
   [card-id :- ::lib.schema.id/card]
