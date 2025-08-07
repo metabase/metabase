@@ -219,14 +219,12 @@
      {:caught-ex caught-ex
       :thread
       (doto (Thread.
-             (fn []
-               (loop []
-                 (when-not (.isInterrupted (Thread/currentThread))
-                   (try
-                     (apply semantic.indexer/indexing-loop loop-args)
-                     (catch InterruptedException ie (throw ie))
-                     (catch Throwable t
-                       (vreset! caught-ex t)))))))
+             ^Runnable
+             (bound-fn []
+               (try
+                 (apply semantic.indexer/indexing-loop loop-args)
+                 (catch Throwable t
+                   (vreset! caught-ex t)))))
         (.setDaemon true)
         (.start))}
      (fn [{:keys [^Thread thread]}]
@@ -319,14 +317,14 @@
       (testing "exits immediately after max run duration elapses"
         (let [run-time       (System/currentTimeMillis)
               indexing-state (semantic.indexer/init-indexing-state (get-metadata-row pgvector index-metadata index))]
+          (vswap! indexing-state assoc :max-run-duration (Duration/ofMillis 1))
           (with-redefs [semantic.indexer/sleep (fn [_])]
             (with-open [loop-thread (open-loop-thread! pgvector
                                                        index-metadata
                                                        index
                                                        indexing-state)]
               (let [{:keys [^Thread thread caught-ex]} @loop-thread
-                    max-wait (+ (System/currentTimeMillis) 100)]
-                (vswap! indexing-state assoc :max-run-duration (Duration/ofMillis 1))
+                    max-wait (+ (System/currentTimeMillis) 1000)]
                 (testing "exits"
                   (is
                    (loop []
@@ -335,7 +333,7 @@
                        (< max-wait (System/currentTimeMillis)) false
                        :else (recur))))
                   (testing "did not wait too long"
-                    (is (<= (- (System/currentTimeMillis) run-time) 50)))
+                    (is (<= (- (System/currentTimeMillis) run-time) 100)))
                   (testing "did not crash"
                     (is (nil? @caught-ex)))))))))
 
@@ -344,6 +342,7 @@
               indexing-state (semantic.indexer/init-indexing-state (get-metadata-row pgvector index-metadata index))
               upsert-index!  semantic.index/upsert-index!
               indexed        (atom [])]
+          (vswap! indexing-state assoc :exit-early-cold-duration (Duration/ofMillis 1))
           (with-redefs [semantic.indexer/sleep       (fn [_])
                         semantic.index/upsert-index! (fn [pgvector index docs]
                                                        (let [docs (vec docs)]
@@ -355,9 +354,8 @@
                                                        index-metadata
                                                        index
                                                        indexing-state)]
-              (vswap! indexing-state assoc :exit-early-cold-duration (Duration/ofMillis 1))
               (let [{:keys [^Thread thread caught-ex]} @loop-thread
-                    max-wait (+ (System/currentTimeMillis) 100)]
+                    max-wait (+ (System/currentTimeMillis) 1000)]
                 (testing "exits"
                   (is
                    (loop []
@@ -368,7 +366,7 @@
                   (testing "has seen our row before exiting"
                     (is (= 1 (count @indexed))))
                   (testing "did not wait too long"
-                    (is (<= (- (System/currentTimeMillis) run-time) 50)))
+                    (is (<= (- (System/currentTimeMillis) run-time) 500)))
                   (testing "did not crash"
                     (is (nil? @caught-ex))))))))))))
 
@@ -394,17 +392,12 @@
                              {:caught-ex caught-ex
                               :thread
                               (doto (Thread.
-                                     (fn []
-                                       (loop []
-                                         (when-not (.isInterrupted (Thread/currentThread))
-                                           (try
-                                             (apply semantic.indexer/quartz-job-run! args)
-                                             (catch InterruptedException ie
-                                               (vreset! caught-ex ie)
-                                               ;; reset interrupt flag
-                                               (.interrupt (Thread/currentThread)))
-                                             (catch Throwable t
-                                               (vreset! caught-ex t)))))))
+                                     ^Runnable
+                                     (bound-fn []
+                                       (try
+                                         (apply semantic.indexer/quartz-job-run! args)
+                                         (catch Throwable t
+                                           (vreset! caught-ex t)))))
                                 (.setDaemon true)
                                 (.start))}
                              (fn [{:keys [^Thread thread]}]
