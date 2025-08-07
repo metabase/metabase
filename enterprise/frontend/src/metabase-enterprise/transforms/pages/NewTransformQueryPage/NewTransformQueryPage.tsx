@@ -6,13 +6,11 @@ import { skipToken, useGetCardQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import { TransformQueryEditor } from "metabase-enterprise/transforms/components/TransformQueryEditor";
-import {
-  getTransformListUrl,
-  getTransformUrl,
-} from "metabase-enterprise/transforms/urls";
 import Question from "metabase-lib/v1/Question";
 import type { Card, CardId, DatasetQuery, Transform } from "metabase-types/api";
+
+import { TransformQueryEditor } from "../../components/TransformQueryEditor";
+import { getTransformListUrl, getTransformUrl } from "../../urls";
 
 import { NewTransformModal } from "./NewTransformModal";
 

@@ -6,11 +6,12 @@ import {
   AdminNavWrapper,
 } from "metabase/admin/components/AdminNav";
 import { AdminSettingsLayout } from "metabase/common/components/AdminLayout/AdminSettingsLayout";
+
 import {
   getJobListUrl,
   getRunListUrl,
   getTransformListUrl,
-} from "metabase-enterprise/transforms/urls";
+} from "../../../urls";
 
 type TransformPageLayoutProps = {
   children?: ReactNode;

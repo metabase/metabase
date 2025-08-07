@@ -10,9 +10,10 @@ import {
   useGetTransformQuery,
   useUpdateTransformMutation,
 } from "metabase-enterprise/api";
-import { TransformQueryEditor } from "metabase-enterprise/transforms/components/TransformQueryEditor";
-import { getTransformUrl } from "metabase-enterprise/transforms/urls";
 import type { DatasetQuery, Transform } from "metabase-types/api";
+
+import { TransformQueryEditor } from "../../components/TransformQueryEditor";
+import { getTransformUrl } from "../../urls";
 
 type TransformQueryPageParams = {
   transformId: string;

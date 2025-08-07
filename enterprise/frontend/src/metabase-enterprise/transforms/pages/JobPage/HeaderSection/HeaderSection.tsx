@@ -1,8 +1,9 @@
 import { t } from "ttag";
 
 import { BrowserCrumbs } from "metabase/common/components/BrowserCrumbs";
-import { getJobListUrl, getJobUrl } from "metabase-enterprise/transforms/urls";
 import type { TransformJob } from "metabase-types/api";
+
+import { getJobListUrl, getJobUrl } from "../../../urls";
 
 type HeaderSectionProps = {
   job: TransformJob;

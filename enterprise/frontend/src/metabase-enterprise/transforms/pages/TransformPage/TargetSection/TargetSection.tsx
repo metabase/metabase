@@ -14,15 +14,15 @@ import {
   Loader,
   Text,
 } from "metabase/ui";
+import type { Transform } from "metabase-types/api";
+
+import { SplitSection } from "../../../components/SplitSection";
 import {
   getBrowseDatabaseUrl,
   getBrowseSchemaUrl,
   getQueryBuilderUrl,
   getTableMetadataUrl,
-} from "metabase-enterprise/transforms/urls";
-import type { Transform } from "metabase-types/api";
-
-import { SplitSection } from "../../../components/SplitSection";
+} from "../../../urls";
 
 import { UpdateTargetModal } from "./UpdateTargetModal";
 
