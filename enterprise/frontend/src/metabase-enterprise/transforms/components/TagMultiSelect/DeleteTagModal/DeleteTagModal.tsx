@@ -1,3 +1,13 @@
+import { t } from "ttag";
+
+import {
+  Form,
+  FormErrorMessage,
+  FormProvider,
+  FormSubmitButton,
+} from "metabase/forms";
+import { Button, Group, Modal, Stack, Text } from "metabase/ui";
+import { useDeleteTransformTagMutation } from "metabase-enterprise/api";
 import type { TransformTag } from "metabase-types/api";
 
 type DeleteTagModalProps = {
@@ -6,6 +16,48 @@ type DeleteTagModalProps = {
   onClose: () => void;
 };
 
-export function DeleteTagModal(_props: DeleteTagModalProps) {
-  return null;
+export function DeleteTagModal({
+  tag,
+  onDelete,
+  onClose,
+}: DeleteTagModalProps) {
+  return (
+    <Modal title={t`Delete this tag?`} opened padding="xl" onClose={onClose}>
+      <DeleteTagForm tag={tag} onDelete={onDelete} onClose={onClose} />
+    </Modal>
+  );
+}
+
+type DeleteTagFormProps = {
+  tag: TransformTag;
+  onDelete: () => void;
+  onClose: () => void;
+};
+
+function DeleteTagForm({ tag, onDelete, onClose }: DeleteTagFormProps) {
+  const [deleteTag] = useDeleteTransformTagMutation();
+
+  const handleSubmit = async () => {
+    await deleteTag(tag.id).unwrap();
+    onDelete();
+  };
+
+  return (
+    <FormProvider initialValues={{}} onSubmit={handleSubmit}>
+      <Form>
+        <Stack gap="lg">
+          <Text>{t`The tag will be deleted from transforms and jobs that use it.`}</Text>
+          <FormErrorMessage />
+          <Group justify="end">
+            <Button onClick={onClose}>{t`Cancel`}</Button>
+            <FormSubmitButton
+              label={t`Delete tag`}
+              variant="filled"
+              color="error"
+            />
+          </Group>
+        </Stack>
+      </Form>
+    </FormProvider>
+  );
 }
