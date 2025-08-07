@@ -159,13 +159,18 @@
   (transforms.util/delete-target-table-by-id! id)
   nil)
 
-;; TODO (eric): this endpoint is not transform-related
-(api.macros/defendpoint :post "/cancel/:run-id"
-  [{:keys [run-id]} :- [:map
-                        [:id :string]]]
-  (log/info "canceling run " run-id)
+(api.macros/defendpoint :post "/:id/cancel"
+  [{:keys [id]} :- [:map
+                    [:id :string]]]
+  (log/info "canceling transform " id)
   (api/check-superuser)
-  (worker/mark-cancel-started-run! run-id)
+  (let [run (api/check-404 (t2/select-one :model/WorkerRun
+                                          :work_id id
+                                          :work_type "transform"
+                                          :is_active true))]
+    (if (:is_local run)
+      (worker/mark-cancel-started-run! (:run_id run))
+      (worker/cancel! (:run_id run))))
   nil)
 
 (api.macros/defendpoint :post "/:id/execute"

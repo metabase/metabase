@@ -11,6 +11,7 @@
 
 (p/import-vars
  [metabase-enterprise.worker.api
+  cancel!
   execute-transform!
   get-status
   run-remote?]
