@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useRef } from "react";
 
-import type { MetabaseAuthConfig } from "embedding-sdk";
 import { printUsageProblemToConsole } from "embedding-sdk/lib/print-usage-problem";
 import { getSdkUsageProblem } from "embedding-sdk/lib/usage-problem";
 import { useSdkDispatch, useSdkSelector } from "embedding-sdk/store";
 import { setUsageProblem } from "embedding-sdk/store/reducer";
+import type { MetabaseAuthConfig } from "embedding-sdk/types/auth-config";
 import { useSetting } from "metabase/common/hooks";
 import { EMBEDDING_SDK_CONFIG } from "metabase/embedding-sdk/config";
 import { getTokenFeature } from "metabase/setup/selectors";

@@ -3,6 +3,8 @@
    [clojure.set :as set]
    [medley.core :as m]
    [metabase-enterprise.action-v2.coerce :as data-editing.coerce]
+   [metabase-enterprise.action-v2.models.undo :as undo]
+   [metabase.actions.core :as actions]
    [metabase.api.common :as api]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -163,3 +165,27 @@
   ;; still feels messy, revisit this
   (let [pk-fields (select-table-pk-fields table-id)]
     (query-db-rows table-id pk-fields rows)))
+
+(defmethod actions/handle-effects!* :effect/row.modified
+  [_ {:keys [user-id invocation-stack scope]} diffs]
+  (let [table-ids        (distinct (map :table-id diffs))
+        table->pk-fields (u/group-by identity select-table-pk-fields concat table-ids)
+        diff->pk-diff    (u/for-map [{:keys [table-id before after] :as diff} diffs
+                                     :when (or before after)]
+                           [diff {:pk     (get-row-pks (table->pk-fields table-id) (or after before))
+                                  :before before
+                                  :after  after}])]
+    ;; undo snapshots, but only if we're not executing an undo
+    ;; TODO fix tests that execute actions without a user scope
+    (when user-id
+      (when-not (some (comp #{:data-editing/undo :data-editing/redo} first) invocation-stack)
+        (undo/track-change!
+         user-id
+         scope
+         (u/for-map [[table-id diffs] (group-by :table-id diffs)]
+           [table-id (u/for-map [{:keys [before after deleted-children] :as diff} diffs
+                                 :when (or before after)
+                                 :let [{:keys [pk before after]} (diff->pk-diff diff)]]
+                       [pk {:raw_before before
+                            :raw_after  after
+                            :undoable   (empty? deleted-children)}])]))))))
