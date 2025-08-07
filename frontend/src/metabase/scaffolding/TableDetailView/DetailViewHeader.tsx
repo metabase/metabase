@@ -1,4 +1,4 @@
-import { type ReactNode, useCallback, useState } from "react";
+import type { ReactNode } from "react";
 import { t } from "ttag";
 
 import { useUpdateTableComponentSettingsMutation } from "metabase/api";
@@ -45,17 +45,6 @@ export function DetailViewHeader({
   onNextItemClick,
   onEditClick,
 }: DetailViewHeaderProps & { table: any }): JSX.Element {
-  const [linkCopied, setLinkCopied] = useState(false);
-  const handleCopyLink = useCallback(async () => {
-    try {
-      await navigator.clipboard.writeText(window.location.href);
-      setLinkCopied(true);
-      setTimeout(() => setLinkCopied(false), 2000);
-    } catch (error) {
-      console.error("Failed to copy link:", error);
-    }
-  }, []);
-
   const [updateTableComponentSettings] =
     useUpdateTableComponentSettingsMutation();
 
@@ -125,17 +114,6 @@ export function DetailViewHeader({
                   });
                 }
               }}
-            />
-          </Tooltip>
-
-          <Tooltip label={linkCopied ? t`Copied!` : t`Copy link to this row`}>
-            <Button
-              w={32}
-              h={32}
-              c="text-dark"
-              variant="subtle"
-              leftSection={<Icon name="link" />}
-              onClick={handleCopyLink}
             />
           </Tooltip>
 
