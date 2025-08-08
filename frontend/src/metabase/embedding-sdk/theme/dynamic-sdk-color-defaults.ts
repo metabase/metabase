@@ -13,6 +13,10 @@ export const DYNAMIC_SDK_DEFAULT_COLORS_CONFIG: DynamicSdkDefaultColorConfig = {
     light: { source: "bg-white", darken: 0.1 },
     dark: { source: "bg-white", lighten: 0.2 },
   },
+  "background-secondary": {
+    light: { source: "bg-white", darken: 0.05 },
+    dark: { source: "bg-white", lighten: 0.5 },
+  },
   "text-secondary": {
     light: { source: "text-dark", alpha: 0.7 },
     dark: { source: "text-white", alpha: 0.7 },
