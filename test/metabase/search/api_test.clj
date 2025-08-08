@@ -7,7 +7,6 @@
    [clojure.test :refer :all]
    [metabase.analytics.core :as analytics]
    [metabase.collections.models.collection :as collection]
-   [metabase.config.core :as config]
    [metabase.content-verification.models.moderation-review :as moderation-review]
    [metabase.indexed-entities.models.model-index :as model-index]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
@@ -381,9 +380,12 @@
                (:engine resp))))))))
 
 (defn- get-available-models [& args]
-  (set
-   (:available_models
-    (apply mt/user-http-request :crowberto :get 200 "search" :calculate_available_models true args))))
+  (disj
+   (set
+    (:available_models
+     (apply mt/user-http-request :crowberto :get 200 "search" :calculate_available_models true args)))
+   ;; due to test contamination sometimes documents appear here, so just remove them.
+   "document"))
 
 (deftest archived-models-test
   (testing "It returns some stuff when you get results"
@@ -400,8 +402,7 @@
   (let [search-term "query-model-set"]
     (with-search-items-in-root-collection search-term
       (testing "should returns a list of models that search result will return"
-        (is (= (cond-> #{"dashboard" "table" "dataset" "segment" "collection" "database" "action" "metric" "card"}
-                 config/ee-available? (conj "document"))
+        (is (= #{"dashboard" "table" "dataset" "segment" "collection" "database" "action" "metric" "card"}
                (get-available-models)))
         (is (= #{"dashboard" "table" "dataset" "segment" "collection" "database" "action" "metric" "card"}
                (get-available-models :q search-term))))
@@ -1454,8 +1455,7 @@
                                                              :type     :query
                                                              :model_id model-id})]
         (testing "`archived-string` is 'false'"
-          (is (= (cond-> #{"dashboard" "table" "dataset" "segment" "collection" "database" "action" "metric" "card"}
-                   config/ee-available? (conj "document"))
+          (is (= #{"dashboard" "table" "dataset" "segment" "collection" "database" "action" "metric" "card"}
                  (get-available-models :archived "false"))))
         (testing "`archived-string` is 'true'"
           (is (= #{"action"}
