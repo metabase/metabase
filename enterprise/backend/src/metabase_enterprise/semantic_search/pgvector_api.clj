@@ -79,7 +79,7 @@
   `documents` is a logical collection, but can be reducible to save memory usage."
   [pgvector index-metadata documents]
   (let [{:keys [index]} (ensure-active-index-state pgvector index-metadata)]
-    (semantic.index/upsert-index! pgvector index documents)))
+    (semantic.index/upsert-index! pgvector index documents {})))
 
 (defn delete-documents!
   "Removes documents from the active index by model (search.spec model string) and ids.
