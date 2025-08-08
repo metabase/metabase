@@ -1,3 +1,5 @@
+import { useSortable } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { Link } from "react-router";
 import { t } from "ttag";
 
@@ -11,6 +13,7 @@ import type {
   Table,
 } from "metabase-types/api";
 
+import { getFieldDraggableKey } from "../dnd/utils";
 import { renderValue } from "../utils";
 
 import { renderItemIcon } from "./ColumnPicker";
@@ -47,10 +50,29 @@ export function SectionFieldContent({
   field_id: number;
   section: ObjectViewSectionSettings;
 }) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({
+    id: getFieldDraggableKey({ field_id }),
+  });
+
   return (
-    <Flex className={S.Field}>
+    <Flex
+      ref={setNodeRef}
+      className={S.Field}
+      style={{
+        transform: CSS.Translate.toString(transform),
+        transition,
+        opacity: isDragging ? 0.5 : 1,
+      }}
+    >
       <Box className={S.FieldName} w="100%">
-        {isEdit && <DragHandle />}
+        {isEdit && <DragHandle {...attributes} {...listeners} />}
 
         <Text c="var(--mb-color-text-secondary)" fw="bold" truncate>
           {column.display_name}
@@ -75,7 +97,9 @@ export function SectionFieldContent({
 
       {link && (
         <Link to={link} className={S.link}>
-          {isEdit && isFixedSection && <DragHandle />}
+          {isEdit && isFixedSection && (
+            <DragHandle {...attributes} {...listeners} />
+          )}
 
           <ColumnPopover
             disabled={!isFixedSection}
@@ -102,7 +126,9 @@ export function SectionFieldContent({
 
       {!link && (
         <>
-          {isEdit && isFixedSection && <DragHandle />}
+          {isEdit && isFixedSection && (
+            <DragHandle {...attributes} {...listeners} />
+          )}
 
           <ColumnPopover
             disabled={!isFixedSection}

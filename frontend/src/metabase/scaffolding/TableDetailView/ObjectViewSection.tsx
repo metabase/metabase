@@ -18,7 +18,6 @@ import type {
   TableId,
 } from "metabase-types/api";
 
-import { DraggableField } from "../dnd/DraggableField";
 import { getFieldDraggableKey } from "../dnd/utils";
 import { renderValue } from "../utils";
 
@@ -232,19 +231,6 @@ export function ObjectViewSection({
         {section.fields.length > 0 && (
           <Flex className={S.SectionContent}>
             {section.fields.map(({ field_id }, index) => {
-              if (isEdit) {
-                return (
-                  <DraggableField
-                    isDraggable={isEdit}
-                    key={field_id}
-                    field_id={field_id}
-                    columns={columns}
-                    section={section}
-                    row={row}
-                  />
-                );
-              }
-
               const columnIndex = columns.findIndex(
                 (column) => column.id === field_id,
               );
