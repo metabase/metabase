@@ -45,7 +45,7 @@ export function StatusFilterWidget({
   };
 
   return (
-    <Popover opened={isOpened} onDismiss={close}>
+    <Popover opened={isOpened} position="bottom-start" onDismiss={close}>
       <Popover.Target>
         <FilterButton
           label={t`Status`}
