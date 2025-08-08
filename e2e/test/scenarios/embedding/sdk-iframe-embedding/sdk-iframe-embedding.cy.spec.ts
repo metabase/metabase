@@ -247,47 +247,32 @@ describe("scenarios > embedding > sdk iframe embedding", () => {
     getIframeWindow().findByText("Orders in a dashboard").should("be.visible");
   });
 
-  it("expression editor works without CSP violations", () => {
+  it("CSP nonces are set for custom expression styles (EMB-707)", () => {
     const frame = H.loadSdkIframeEmbedTestPage({ template: "exploration" });
 
     frame.within(() => {
       cy.findByText("Orders").should("be.visible");
 
-      // Wait for the entity picker modal and select Orders table
       H.popover().within(() => {
         cy.findByText("Orders").click();
       });
 
-      // Add a custom column to trigger the expression editor
-      cy.findByRole("button", { name: "Custom column" }).click();
-    });
+      cy.log("csp nonces should be set");
+      cy.get("style[nonce]")
+        .should("have.length.greaterThan", 0)
+        .first()
+        .should("have.attr", "nonce")
+        .and("have.length.greaterThan", 4);
 
-    // Check that expression editor opens and is functional
-    getIframeWindow().within(() => {
-      // Expression editor should be visible
+      cy.findByRole("button", { name: "Custom column" }).click();
+
+      cy.log("injected codemirror styles should be set");
       cy.findByTestId("custom-expression-query-editor")
         .should("be.visible")
-        .and("be.enabled");
+        .find(".cm-editor .cm-placeholder")
+        .and("have.css", "color", "rgb(136, 136, 136)");
 
-      // Type a simple expression to test CodeMirror is working
-      H.CustomExpressionEditor.type("1 + 1");
-
-      // Verify the expression is typed correctly (CodeMirror is functional)
-      cy.findByTestId("custom-expression-query-editor").should(
-        "contain.text",
-        "1 + 1",
-      );
-
-      // Cancel to close the editor
       cy.findByRole("button", { name: "Cancel" }).click();
-    });
-
-    // Verify no CSP violations occurred by checking console errors
-    cy.window().then((win) => {
-      cy.spy(win.console, "error").should(
-        "not.have.been.calledWithMatch",
-        /Content-Security-Policy/,
-      );
     });
   });
 });
