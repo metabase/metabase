@@ -38,6 +38,39 @@
       (for [transform transforms]
         (assoc transform :last_execution (get last-executions (:id transform)))))))
 
+(mi/define-batched-hydration-method transform-tag-ids
+  :transform_tag_ids
+  "Add tag_ids to a transform"
+  [transforms]
+  (if-not (seq transforms)
+    transforms
+    (let [transform-ids (into #{} (map :id) transforms)
+          tag-associations (when (seq transform-ids)
+                             (t2/select [:transform_tags :transform_id :tag_id]
+                                        :transform_id [:in transform-ids]))
+          transform-id->tag-ids (reduce (fn [acc {:keys [transform_id tag_id]}]
+                                          (update acc transform_id (fnil conj []) tag_id))
+                                        {}
+                                        tag-associations)]
+      (for [transform transforms]
+        (assoc transform :tag_ids (vec (sort (get transform-id->tag-ids (:id transform) []))))))))
+
+(defn update-transform-tags!
+  "Update the tags associated with a transform. Replaces all existing associations."
+  [transform-id tag-ids]
+  (when transform-id
+    (t2/with-transaction [_conn]
+      ;; Delete existing associations
+      (t2/delete! :transform_tags :transform_id transform-id)
+      ;; Add new associations
+      (when (seq tag-ids)
+        (let [valid-tag-ids (into #{} (t2/select-fn-set :id :model/TransformTag :id [:in tag-ids]))]
+          (when (seq valid-tag-ids)
+            (t2/insert! :transform_tags
+                        (for [tag-id valid-tag-ids]
+                          {:transform_id transform-id
+                           :tag_id tag-id}))))))))
+
 (defmethod worker/model->work-type :model/Transform
   [_]
   :transform)

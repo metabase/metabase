@@ -391,6 +391,235 @@ databaseChangeLog:
                   constraints:
                     nullable: false
 
+  - changeSet:
+      id: v57.2025-08-07T10:00:00-add-transform-tag-table
+      author: galdre
+      comment: Add transform_tag table for grouping transforms
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: transform_tag
+      changes:
+        - createTable:
+            tableName: transform_tag
+            remarks: Tags for grouping transforms
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: name
+                  type: VARCHAR(254)
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v57.2025-08-07T10:01:00-add-transform-job-table
+      author: galdre
+      comment: Add transform_job table for scheduled execution of tagged transforms
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: transform_job
+      changes:
+        - createTable:
+            tableName: transform_job
+            remarks: Jobs that execute transforms based on tags
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: name
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+              - column:
+                  name: description
+                  type: ${text.type}
+              - column:
+                  name: schedule
+                  type: ${text.type}
+                  remarks: Cron expression for job schedule
+                  constraints:
+                    nullable: false
+              - column:
+                  name: entity_id
+                  type: char(21)
+                  remarks: NanoID identifier for the job
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v57.2025-08-07T10:02:00-add-transform-tags-table
+      author: galdre
+      comment: Add transform_tags join table for transform-tag associations
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: transform_tags
+      changes:
+        - createTable:
+            tableName: transform_tags
+            remarks: Join table for transforms and tags
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: transform_id
+                  type: int
+                  constraints:
+                    nullable: false
+              - column:
+                  name: tag_id
+                  type: int
+                  constraints:
+                    nullable: false
+        - addForeignKeyConstraint:
+            baseTableName: transform_tags
+            baseColumnNames: transform_id
+            referencedTableName: transform
+            referencedColumnNames: id
+            constraintName: fk_transform_tags_transform_id
+            onDelete: CASCADE
+        - addForeignKeyConstraint:
+            baseTableName: transform_tags
+            baseColumnNames: tag_id
+            referencedTableName: transform_tag
+            referencedColumnNames: id
+            constraintName: fk_transform_tags_tag_id
+            onDelete: CASCADE
+        - addUniqueConstraint:
+            tableName: transform_tags
+            columnNames: transform_id, tag_id
+            constraintName: unique_transform_tag
+
+  - changeSet:
+      id: v57.2025-08-07T10:03:00-add-transform-job-tags-table
+      author: galdre
+      comment: Add transform_job_tags join table for job-tag associations
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: transform_job_tags
+      changes:
+        - createTable:
+            tableName: transform_job_tags
+            remarks: Join table for jobs and tags
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: job_id
+                  type: int
+                  constraints:
+                    nullable: false
+              - column:
+                  name: tag_id
+                  type: int
+                  constraints:
+                    nullable: false
+        - addForeignKeyConstraint:
+            baseTableName: transform_job_tags
+            baseColumnNames: job_id
+            referencedTableName: transform_job
+            referencedColumnNames: id
+            constraintName: fk_transform_job_tags_job_id
+            onDelete: CASCADE
+        - addForeignKeyConstraint:
+            baseTableName: transform_job_tags
+            baseColumnNames: tag_id
+            referencedTableName: transform_tag
+            referencedColumnNames: id
+            constraintName: fk_transform_job_tags_tag_id
+            onDelete: CASCADE
+        - addUniqueConstraint:
+            tableName: transform_job_tags
+            columnNames: job_id, tag_id
+            constraintName: unique_job_tag
+
+  - changeSet:
+      id: v57.2025-08-07T10:06:00-add-default-tags
+      author: galdre
+      comment: Add default transform tags for common scheduling patterns
+      preConditions:
+        - onFail: MARK_RAN
+        - tableExists:
+            tableName: transform_tag
+      changes:
+        - insert:
+            tableName: transform_tag
+            columns:
+              - column:
+                  name: name
+                  value: hourly
+        - insert:
+            tableName: transform_tag
+            columns:
+              - column:
+                  name: name
+                  value: daily
+        - insert:
+            tableName: transform_tag
+            columns:
+              - column:
+                  name: name
+                  value: weekly
+        - insert:
+            tableName: transform_tag
+            columns:
+              - column:
+                  name: name
+                  value: monthly
+
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

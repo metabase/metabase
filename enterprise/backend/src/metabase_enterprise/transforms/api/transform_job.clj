@@ -4,8 +4,12 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.api.util.handlers :as handlers]
+   [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.log :as log]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli.schema :as ms]
+   [toucan2.core :as t2])
+  (:import
+   (org.quartz CronExpression)))
 
 (set! *warn-on-reflection* true)
 
@@ -14,17 +18,36 @@
   [_route-params
    _query-params
    {:keys [name description schedule tag_ids]} :- [:map
-                                                   [:name :string]
-                                                   [:description {:optional true} [:maybe :string]]
-                                                   [:schedule :string]
+                                                   [:name ms/NonBlankString]
+                                                   [:description {:optional true} [:maybe ms/NonBlankString]]
+                                                   [:schedule ms/NonBlankString]
                                                    [:tag_ids {:optional true} [:sequential ms/PositiveInt]]]]
-  (log/info "create job (dummy)")
+  (log/info "Creating transform job:" name "with schedule:" schedule)
   (api/check-superuser)
-  {:id          1
-   :name        name
+  ;; Validate cron expression
+  (api/check-400 (try
+                   (CronExpression/validateExpression schedule)
+                   true
+                   (catch Exception e
+                     false))
+                 (deferred-tru "Invalid cron expression: {0}" schedule))
+  ;; Validate tag IDs exist if provided
+  (when (seq tag_ids)
+    (let [existing-tags (set (t2/select-pks-vec :model/TransformTag :id [:in tag_ids]))]
+      (api/check-400 (= (set tag_ids) existing-tags)
+                     (deferred-tru "Some tag IDs do not exist"))))
+  (let [job (t2/insert-returning-instance! :model/TransformJob
+                                           {:name name
    :description description
-   :schedule    schedule
-   :tag_ids     (or tag_ids [])})
+                                            :schedule schedule})]
+    ;; Add tag associations if provided
+    (when (seq tag_ids)
+      (t2/insert! :transform_job_tags
+                  (for [tag-id tag_ids]
+                    {:job_id (:id job)
+                     :tag_id tag-id})))
+    ;; Return with hydrated tag_ids
+    (t2/hydrate job :tag_ids)))
 
 (api.macros/defendpoint :put "/:job-id"
   "Update a transform job."
@@ -32,72 +55,93 @@
                         [:job-id ms/PositiveInt]]
    _query-params
    {:keys [name description schedule tag_ids]} :- [:map
-                                                   [:name {:optional true} :string]
-                                                   [:description {:optional true} [:maybe :string]]
-                                                   [:schedule {:optional true} :string]
+                                                   [:name {:optional true} ms/NonBlankString]
+                                                   [:description {:optional true} [:maybe ms/NonBlankString]]
+                                                   [:schedule {:optional true} ms/NonBlankString]
                                                    [:tag_ids {:optional true} [:sequential ms/PositiveInt]]]]
-  (log/info "update transform job (dummy)")
+  (log/info "Updating transform job" job-id)
   (api/check-superuser)
-  {:id          job-id
-   :name        (or name "Updated Job")
-   :description description
-   :schedule    (or schedule "0 0 * * * ? *")
-   :tag_ids     (or tag_ids [])})
+  ;; Check job exists
+  (api/check-404 (t2/select-one :model/TransformJob :id job-id))
+  ;; Validate cron expression if provided
+  (when schedule
+    (api/check-400 (try
+                     (CronExpression/validateExpression schedule)
+                     true
+                     (catch Exception e
+                       false))
+                   (deferred-tru "Invalid cron expression: {0}" schedule)))
+  ;; Validate tag IDs if provided
+  (when tag_ids
+    (let [existing-tags (set (t2/select-pks-vec :model/TransformTag :id [:in tag_ids]))]
+      (api/check-400 (= (set tag_ids) existing-tags)
+                     (deferred-tru "Some tag IDs do not exist"))))
+  ;; Update the job
+  (let [updates (cond-> {}
+                  name (assoc :name name)
+                  (some? description) (assoc :description description)
+                  schedule (assoc :schedule schedule))]
+    (when (seq updates)
+      (t2/update! :model/TransformJob job-id updates)))
+  ;; Update tag associations if provided
+  (when (some? tag_ids)
+    ;; Delete existing associations
+    (t2/delete! :transform_job_tags :job_id job-id)
+    ;; Add new associations
+    (when (seq tag_ids)
+      (t2/insert! :transform_job_tags
+                  (for [tag-id tag_ids]
+                    {:job_id job-id
+                     :tag_id tag-id}))))
+  ;; Return updated job with hydration
+  (-> (t2/select-one :model/TransformJob :id job-id)
+      (t2/hydrate :tag_ids)
+      (assoc :last_execution nil)))
 
 (api.macros/defendpoint :delete "/:job-id"
   "Delete a transform job."
-  [_job :- [:map [:job-id ms/PositiveInt]]]
-  (log/info "delete job (dummy)")
+  [{:keys [job-id]} :- [:map [:job-id ms/PositiveInt]]]
+  (log/info "Deleting transform job" job-id)
   (api/check-superuser)
-  nil)
+  (api/check-404 (t2/select-one :model/TransformJob :id job-id))
+  (t2/delete! :model/TransformJob :id job-id)
+  api/generic-204-no-content)
 
 (api.macros/defendpoint :post "/:job-id/execute"
   "Execute a transform job manually."
-  [_job :- [:map [:job-id ms/PositiveInt]]]
-  (log/info "execute transform job (dummy)")
+  [{:keys [job-id]} :- [:map [:job-id ms/PositiveInt]]]
+  (log/info "Manual execution of transform job" job-id "(stub)")
   (api/check-superuser)
+  (api/check-404 (t2/select-one :model/TransformJob :id job-id))
+  ;; TODO: Implement actual job execution when execution engine is ready
+  ;; For now, return a stub response
   {:message    "Job execution started"
-   :job_run_id 123})
+   :job_run_id (str "stub-" job-id "-" (System/currentTimeMillis))})
 
 (api.macros/defendpoint :get "/:job-id"
   "Get a transform job by ID."
   [{:keys [job-id]} :- [:map
                         [:job-id ms/PositiveInt]]]
-  (log/info "get transform job (dummy)")
+  (log/info "Getting transform job" job-id)
   (api/check-superuser)
-  {:id             job-id
-   :name           "Sample Job"
-   :description    "Sample job description"
-   :schedule       "0 0 * * * ? *"
-   :tag_ids        [1]
-   :last_execution {:status "succeeded"
-                    :trigger "schedule"
-                    :start_time "2024-01-01T10:00:00Z"
-                    :end_time "2024-01-01T10:05:00Z"}})
+  (let [job (api/check-404 (t2/select-one :model/TransformJob :id job-id))]
+    ;; Hydrate tag_ids and add last_execution (null for now)
+    (-> job
+        (t2/hydrate :tag_ids)
+        (assoc :last_execution nil))))
 
 (api.macros/defendpoint :get "/"
   "Get all transform jobs."
   [_route-params
    _query-params]
-  (log/info "get all transform jobs (dummy)")
+  (log/info "Getting all transform jobs")
   (api/check-superuser)
-  [{:id             1
-    :name           "Sample Job 1"
-    :description    "First sample job"
-    :schedule       "0 0 * * * ? *"
-    :tag_ids        [1]
-    :last_execution {:status "succeeded"
-                     :trigger "schedule"
-                     :start_time "2024-01-01T10:00:00Z"
-                     :end_time "2024-01-01T10:05:00Z"}}
-   {:id             2
-    :name           "Sample Job 2"
-    :description    nil
-    :schedule       "0 */4 * * *"
-    :tag_ids        [1 2]
-    :last_execution nil}])
+  (let [jobs (t2/select :model/TransformJob {:order-by [[:created_at :desc]]})]
+    ;; Hydrate tag_ids for all jobs
+    ;; Note: last_execution will be null until execution tracking is implemented
+    (map #(assoc % :last_execution nil)
+         (t2/hydrate jobs :tag_ids))))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/transform-job` routes."
-  (handlers/routes
-   (api.macros/ns-handler *ns* +auth)))
+  (api.macros/ns-handler *ns* +auth))
