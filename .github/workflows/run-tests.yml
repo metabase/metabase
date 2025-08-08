@@ -100,29 +100,40 @@ jobs:
     timeout-minutes: 10
     if: ${{ inputs.reuse_artifacts && inputs.oss_artifact_name != '' && inputs.ee_artifact_name != '' }}
     steps:
-      - name: Download OSS artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: ${{ inputs.oss_artifact_name }}
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Download artifacts using GitHub CLI
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "Downloading OSS artifact: ${{ inputs.oss_artifact_name }}"
+          gh api repos/${{ github.repository }}/actions/artifacts \
+            --jq '.artifacts[] | select(.name=="${{ inputs.oss_artifact_name }}") | .archive_download_url' \
+            | head -1 \
+            | xargs -I {} curl -L -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" {} -o oss-artifact.zip
           
-      - name: Download EE artifact  
-        uses: actions/download-artifact@v4
-        with:
-          name: ${{ inputs.ee_artifact_name }}
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          echo "Downloading EE artifact: ${{ inputs.ee_artifact_name }}"
+          gh api repos/${{ github.repository }}/actions/artifacts \
+            --jq '.artifacts[] | select(.name=="${{ inputs.ee_artifact_name }}") | .archive_download_url' \
+            | head -1 \
+            | xargs -I {} curl -L -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" {} -o ee-artifact.zip
+            
+          echo "Extracting artifacts..."
+          unzip oss-artifact.zip
+          unzip ee-artifact.zip
+          
+          echo "Found files:"
+          ls -la *.jar || echo "No jar files found"
           
       - name: Re-upload as expected names
         uses: actions/upload-artifact@v4
         with:
           name: metabase-oss-${{ github.sha }}-uberjar
-          path: metabase-oss-*.jar
+          path: "*.jar"
           
       - name: Re-upload EE as expected name
         uses: actions/upload-artifact@v4  
         with:
           name: metabase-ee-${{ github.sha }}-uberjar
-          path: metabase-ee-*.jar
+          path: "*.jar"
 
   backend-tests:
     if: ${{ !cancelled() && !inputs.e2e_only }}

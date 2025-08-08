@@ -144,16 +144,35 @@ jobs:
           ls -la newTimes.json 2>/dev/null || echo "newTimes.json does not exist before test"
           echo "================================"
           
+          # Capture both stdout and stderr, and save cypress logs
           node e2e/runner/run_cypress_ci.js e2e \
             --env grepTags="-@mongo+-@flaky+-@OSS+-@skip",grepOmitFiltered=true \
             --spec "$SPEC_PATH" \
-            --browser ${{ steps.cypress-prep.outputs.chrome-path }}
+            --browser ${{ steps.cypress-prep.outputs.chrome-path }} 2>&1 | tee cypress-output.log
           
+          echo "=== CYPRESS OUTPUT ANALYSIS ==="
+          echo "Looking for cypress-split messages in the output:"
+          grep -i "cypress-split\|timing\|newTimes" cypress-output.log || echo "No cypress-split timing messages found"
+          echo "Last 20 lines of cypress output:"
+          tail -20 cypress-output.log
+          
+          CYPRESS_EXIT_CODE=$?
           echo "=== AFTER TEST EXECUTION ==="
-          echo "Files after test:"
-          ls -la . | grep -i timing || echo "No timing files found after test"
-          ls -la newTimes.json 2>/dev/null || echo "newTimes.json does not exist after test"
-          echo "Exit code from cypress run: $?"
+          echo "Exit code from cypress run: $CYPRESS_EXIT_CODE"
+          echo "Current directory: $(pwd)"
+          echo "Environment variables that might affect cypress-split:"
+          echo "  SPLIT_OUTPUT_FILE: $SPLIT_OUTPUT_FILE"
+          echo "  SPLIT_TIME_THRESHOLD: $SPLIT_TIME_THRESHOLD"
+          echo "All files in current directory (including hidden):"
+          ls -la
+          echo "Looking for any timing-related files recursively:"
+          find . -name "*timing*" -o -name "*newTimes*" -o -name "*.json" -type f 2>/dev/null | head -20
+          echo "Checking specific locations where timing file might be:"
+          ls -la newTimes.json 2>/dev/null || echo "newTimes.json does not exist in current dir"
+          ls -la ./newTimes.json 2>/dev/null || echo "./newTimes.json does not exist"
+          ls -la e2e/support/newTimes.json 2>/dev/null || echo "e2e/support/newTimes.json does not exist"
+          echo "Checking if there are any cypress temp or output directories:"
+          ls -la cypress/ 2>/dev/null || echo "No cypress directory found"
           echo "==============================="
 
       - name: Run Tagged EE Cypress tests on ${{ inputs.name }}
@@ -184,10 +203,14 @@ jobs:
           --browser ${{ steps.cypress-prep.outputs.chrome-path }}
           
           echo "=== AFTER TAGGED TEST EXECUTION ==="
-          echo "Files after test:"
-          ls -la . | grep -i timing || echo "No timing files found after test"
-          ls -la newTimes.json 2>/dev/null || echo "newTimes.json does not exist after test"
           echo "Exit code from cypress run: $?"
+          echo "Current directory: $(pwd)"
+          echo "All files in current directory:"
+          ls -la
+          echo "Looking for any timing-related files:"
+          find . -name "*timing*" -o -name "*newTimes*" -o -name "*.json" | head -20
+          echo "Checking if cypress-split wrote anything:"
+          ls -la newTimes.json 2>/dev/null || echo "newTimes.json does not exist after test"
           echo "==================================="
 
       - name: Upload Test Results
