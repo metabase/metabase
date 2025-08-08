@@ -3,12 +3,13 @@
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal])
        :clj  ([java-time.api :as t]
               [metabase.util.malli.fn :as mu.fn]))
-   [clojure.test :refer [deftest is testing]]
+   [clojure.test :refer [are deftest is testing]]
    [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.drill-thru :as lib.drill-thru]
    [metabase.lib.drill-thru.test-util :as lib.drill-thru.tu]
    [metabase.lib.drill-thru.test-util.canned :as canned]
+   [metabase.lib.drill-thru.underlying-records :as lib.drill-thru.underlying-records]
    [metabase.lib.join :as lib.join]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.options :as lib.options]
@@ -16,7 +17,8 @@
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
    [metabase.lib.test-util.metadata-providers.mock :as providers.mock]
-   [metabase.lib.underlying :as lib.underlying]))
+   [metabase.lib.underlying :as lib.underlying]
+   [metabase.util.time :as u.time]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
@@ -124,6 +126,12 @@
                                 (t/minus (t/months 1)))]
              (t/format :iso-offset-date-time last-month))))
 
+(let [[lo hi] (u.time/to-range (u.time/coerce-to-timestamp last-month) {:unit :month})]
+  (def ^:private last-month-start
+    (u.time/format-for-base-type lo :type/Date))
+  (def ^:private last-month-end
+    (u.time/format-for-base-type hi :type/Date)))
+
 (defn- underlying-state [query agg-index agg-value breakout-values exp-filters-fn]
   (let [columns    (lib/returned-columns query)
         aggs       (filter #(= (:lib/source %) :source/aggregations)
@@ -166,10 +174,11 @@
                       42295.12
                       [last-month]
                       (fn [_agg-dim [breakout-dim]]
-                        [[:= {}
+                        [[:between {}
                           (-> (:column-ref breakout-dim)
                               (lib.options/with-options {:temporal-unit :month}))
-                          last-month]]))))
+                          last-month-start
+                          last-month-end]]))))
 
 (deftest ^:parallel underlying-records-apply-test-2
   (testing "sum_where(subtotal, products.category = \"Doohickey\") over time"
@@ -185,10 +194,11 @@
                       6572.12
                       [last-month]
                       (fn [_agg-dim [breakout-dim]]
-                        [[:= {}
+                        [[:between {}
                           (-> (:column-ref breakout-dim)
                               (lib.options/with-options {:temporal-unit :month}))
-                          last-month]
+                          last-month-start
+                          last-month-end]
                          [:= {} (-> (meta/field-metadata :products :category)
                                     lib/ref
                                     (lib.options/with-options {}))
@@ -219,7 +229,7 @@
                         (fn [_agg-dim [breakout-dim]]
                           (let [monthly-breakout (-> (:column-ref breakout-dim)
                                                      (lib.options/with-options {:temporal-unit :month}))]
-                            [[:=  {} monthly-breakout last-month]]))))))
+                            [[:between {} monthly-breakout last-month-start last-month-end]]))))))
 
 (deftest ^:parallel multiple-aggregations-multiple-breakouts-test
   (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
@@ -238,10 +248,10 @@
                             (-> (:column-ref product-id-dim)
                                 (lib.options/update-options dissoc :lib/uuid))
                             120]
-                           [:= {}
+                           [:between {}
                             (-> (:column-ref created-at-dim)
                                 (lib.options/with-options {:temporal-unit :month}))
-                            last-month]])))))
+                            last-month-start last-month-end]])))))
 
 (deftest ^:parallel temporal-unit-breakouts-test
   (let [column (-> (meta/field-metadata :orders :created-at)
@@ -351,13 +361,13 @@
                           :value      127
                           :row        [{:column     created-at-col,
                                         :column-ref (lib/ref created-at-col)
-                                        :value      "2023-03-01T00:00:00Z"}
+                                        :value      last-month}
                                        {:column     count-col
                                         :column-ref (lib/ref count-col)
                                         :value      127}]
                           :dimensions [{:column     created-at-col
                                         :column-ref (lib/ref created-at-col)
-                                        :value      "2023-03-01T00:00:00Z"}
+                                        :value      last-month}
                                        {:column     count-col
                                         :column-ref (lib/ref count-col)
                                         :value      127}]}
@@ -367,9 +377,10 @@
       (is (=? {:stages [{:filters [[:> {}
                                     [:field {} (meta/id :orders :total)]
                                     50]
-                                   [:= {}
-                                    [:field {:temporal-unit :month} (meta/id :orders :created-at)]
-                                    "2023-03-01T00:00:00Z"]]}]}
+                                   [:between {}
+                                    [:field {:temporal-unit (symbol "nil #_\"key is not present.\"")}
+                                     (meta/id :orders :created-at)]
+                                    last-month-start last-month-end]]}]}
               (lib/drill-thru query drill))))))
 
 (deftest ^:parallel negative-aggregation-values-display-info-test
@@ -511,11 +522,11 @@
                :column-ref [:aggregation {:lib/source-name "sum_where_SUBTOTAL"} string?]}
               drill))
       (is (=? {:lib/type :mbql/query
-               :stages   [{:filters     [[:= {}
+               :stages   [{:filters     [[:between {}
                                           (-> (meta/field-metadata :orders :created-at)
                                               lib/ref
                                               (lib.options/with-options {}))
-                                          "2023-12-01"]
+                                          "2023-12-01" "2023-12-31"]
                                          [:= {} (-> (meta/field-metadata :products :category)
                                                     lib/ref
                                                     (lib.options/with-options {}))
@@ -588,3 +599,58 @@
                         (lib.underlying/top-level-column query (:column bucket-dim)))))
       (is (=? [[:= {} [:expression {} "cost bucket"] "12"]]
               (lib/filters (lib/drill-thru query drill)))))))
+
+(deftest ^:parallel filter-clauses-with-possible-bucketing-test-truncation-units
+  (testing "date(time) truncation units"
+    (are [unit lo hi] (=? [[:between {}
+                            [:field {:temporal-unit unit} (meta/id :orders :created-at)]
+                            (str lo) (str hi)]]
+                          (let [created-at (-> (meta/field-metadata :orders :created-at)
+                                               (lib/with-temporal-bucket  unit))]
+                            (#'lib.drill-thru.underlying-records/filter-clauses-with-possible-bucketing
+                             created-at created-at
+                             "2024-05-15T12:34:56Z")))
+      ;; Dates
+      :year    "2024-01-01" "2024-12-31"
+      :quarter "2024-04-01" "2024-06-30"
+      :month   "2024-05-01" "2024-05-31"
+      :week    "2024-05-12" "2024-05-18"
+      :day     "2024-05-15" "2024-05-15"
+      ;; Datetimes
+      :hour    "2024-05-15T12:00:00.000" "2024-05-15T12:59:59.999"
+      :minute  "2024-05-15T12:34:00.000" "2024-05-15T12:34:59.999")))
+
+(deftest ^:parallel filter-clauses-with-possible-bucketing-test-extraction-units
+  (testing "date(time) extraction units"
+    (are [unit value] (=? [[:= {}
+                            [:field {:temporal-unit unit} (meta/id :orders :created-at)]
+                            value]]
+                          (let [created-at (-> (meta/field-metadata :orders :created-at)
+                                               (lib/with-temporal-bucket  unit))]
+                            (#'lib.drill-thru.underlying-records/filter-clauses-with-possible-bucketing
+                             created-at created-at value)))
+      :year-of-era    2024
+      :month-of-year  5
+      :day-of-month   15
+      :day-of-week    4
+      :hour-of-day    12
+      :minute-of-hour 34)))
+
+(deftest ^:parallel filter-clauses-with-possible-bucketing-test-non-bucketed
+  (testing "nil as a value means an `:is-null` clause"
+    (let [discount (meta/field-metadata :orders :discount)]
+      (is (=? [[:is-null {} [:field {} (meta/id :orders :discount)]]]
+              (#'lib.drill-thru.underlying-records/filter-clauses-with-possible-bucketing
+               discount discount nil))))
+    (testing "even if the column is bucketed"
+      (doseq [unit [:week :day-of-month]]
+        (let [created-at (lib/with-temporal-bucket (meta/field-metadata :orders :created-at) unit)]
+          (is (=? [[:is-null {} [:field {:temporal-unit unit}
+                                 (meta/id :orders :created-at)]]]
+                  (#'lib.drill-thru.underlying-records/filter-clauses-with-possible-bucketing
+                   created-at created-at nil)))))))
+  (testing "un-bucketed columns just get plain :="
+    (let [category (meta/field-metadata :products :category)]
+      (is (=? [[:= {} [:field {} (meta/id :products :category)] "Widget"]]
+              (#'lib.drill-thru.underlying-records/filter-clauses-with-possible-bucketing
+               category category "Widget"))))))
