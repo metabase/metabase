@@ -8,13 +8,13 @@ import { Stack } from "metabase/ui";
 import { useGetTransformQuery } from "metabase-enterprise/api";
 import type { Transform, TransformId } from "metabase-types/api";
 
+import { POLLING_INTERVAL } from "../../constants";
+
 import { HeaderSection } from "./HeaderSection";
 import { ManageSection } from "./ManageSection";
 import { NameSection } from "./NameSection";
 import { RunSection } from "./RunSection";
 import { TargetSection } from "./TargetSection";
-
-const POLLING_INTERVAL = 3000;
 
 type TransformPageParams = {
   transformId: string;
