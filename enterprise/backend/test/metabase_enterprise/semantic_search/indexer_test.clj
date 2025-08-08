@@ -69,14 +69,6 @@
    (semantic.index/create-index-table-if-not-exists! pgvector index)
    (fn [_] (semantic.index/drop-index-table! pgvector index))))
 
-(defn- spy [f]
-  (let [calls (atom [])]
-    {:calls calls
-     :proxy (fn [& args]
-              (let [ret (apply f args)]
-                (swap! calls conj {:args args, :ret ret})
-                ret))}))
-
 (defn- get-metadata-row [pgvector index-metadata index]
   (jdbc/execute-one! pgvector
                      (sql/format {:select [:*]
@@ -108,9 +100,9 @@
       (let [metadata-row      (get-metadata-row pgvector index-metadata index)
             initial-watermark (semantic.gate/resume-watermark metadata-row)
             indexing-state    (semantic.indexer/init-indexing-state metadata-row)
-            {poll-proxy :proxy poll-calls :calls} (spy semantic.gate/poll)
-            {upsert-proxy :proxy upsert-calls :calls} (spy semantic.index/upsert-index!)
-            {delete-proxy :proxy delete-calls :calls} (spy semantic.index/delete-from-index!)
+            {poll-proxy :proxy poll-calls :calls} (semantic.tu/spy semantic.gate/poll)
+            {upsert-proxy :proxy upsert-calls :calls} (semantic.tu/spy semantic.index/upsert-index!)
+            {delete-proxy :proxy delete-calls :calls} (semantic.tu/spy semantic.index/delete-from-index!)
             clear-spies       (fn []
                                 (reset! poll-calls [])
                                 (reset! upsert-calls [])
