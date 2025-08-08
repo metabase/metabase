@@ -1,5 +1,6 @@
 (ns metabase-enterprise.transforms.api.transform-job
   (:require
+   [metabase-enterprise.transforms.jobs :as jobs]
    [metabase-enterprise.transforms.models.transform-job :as transform-job]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -10,11 +11,16 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2])
   (:import
+   (java.util.concurrent
+    Executors
+    ExecutorService)
    (org.quartz CronExpression)))
 
 (set! *warn-on-reflection* true)
 
 (comment transform-job/keep-me)
+
+(defonce ^:private ^ExecutorService executor (Executors/newVirtualThreadPerTaskExecutor))
 
 (api.macros/defendpoint :post "/"
   "Create a new transform job."
@@ -115,9 +121,9 @@
   [{:keys [job-id]} :- [:map [:job-id ms/PositiveInt]]]
   (log/info "Manual execution of transform job" job-id "(stub)")
   (api/check-superuser)
-  (api/check-404 (t2/select-one :model/TransformJob :id job-id))
-  ;; TODO: Implement actual job execution when execution engine is ready
-  ;; For now, return a stub response
+  (let [job (api/check-404 (t2/select-one :model/TransformJob :id job-id))]
+    (.submit executor
+             ^Runnable #(jobs/execute-jobs! [job])))
   {:message    "Job execution started"
    :job_run_id (str "stub-" job-id "-" (System/currentTimeMillis))})
 
