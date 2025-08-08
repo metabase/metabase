@@ -24,7 +24,9 @@
    [java-time.api :as t]
    [malli.generator :as mg]
    [malli.util :as mut]
+   [metabase-enterprise.transforms.ordering :as transforms.ordering]
    [metabase.models.interface :as mi]
+   [metabase.query-processor.store :as qp.store]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [methodical.core :as methodical]
@@ -165,6 +167,66 @@
       (update :data_warehouses (fnil created-at-sort []))
       (update :permissions (fnil created-at-sort []))))
 
+(defn transform-table-dependencies
+  "Identifies the database tables that a transform depends on.
+
+   For workspace transforms, this function takes a transform object and returns
+   a set of table IDs that the transform's source query depends on.
+
+   Args:
+   - transform: A transform object with :source containing query information
+
+   Returns:
+   - A set of table IDs (integers) that the transform depends on"
+  [transform]
+  (when-let [db-id (get-in transform [:source :query :database])]
+    (qp.store/with-metadata-provider db-id
+      (#'transforms.ordering/transform-deps transform))))
+
+(defn workspace-transform-dependencies
+  "Analyzes all transforms in a workspace and returns their table dependencies.
+
+   Args:
+   - workspace: A workspace object containing transforms
+
+   Returns:
+   - A map of transform name -> set of table IDs that transform depends on"
+  [workspace]
+  (into {}
+        (keep (fn [transform]
+                (when-let [deps (transform-table-dependencies transform)]
+                  [(:name transform) deps])))
+        (:transforms workspace [])))
+
+(defn transform-table-dependencies-detailed
+  "Returns detailed information about the tables a transform depends on.
+
+   Args:
+   - transform: A transform object with :source containing query information
+
+   Returns:
+   - A seq of maps containing table details: {:id, :name, :schema, :display_name, etc.}"
+  [transform]
+  (when-let [table-ids (transform-table-dependencies transform)]
+    (when (seq table-ids)
+      (t2/select [:model/Table :id :name :schema :display_name :description :db_id]
+                 :id [:in table-ids]))))
+
+(defn workspace-transform-dependencies-detailed
+  "Returns detailed table dependency information for all transforms in a workspace.
+
+   Args:
+   - workspace: A workspace object containing transforms
+
+   Returns:
+   - A map of transform name -> seq of detailed table information"
+  [workspace]
+  (into {}
+        (keep (fn [transform]
+                (when-let [deps (transform-table-dependencies-detailed transform)]
+                  [(:name transform) deps])))
+        (:transforms workspace [])))
+
 (comment
   (require '[clojure.walk :as walk])
 
@@ -184,7 +246,7 @@
        m)
       @found))
 
-  (:transforms (sort-workspace (t2/select-one :model/Workspace 254)))
+  (transform-table-dependencies (:transforms (sort-workspace (t2/select-one :model/Workspace 254))))
   ;; correct order:
   ;; => ("2025-08-08T21:16:50.420896Z"
   ;;     "2025-08-08T21:13:40.567837Z"

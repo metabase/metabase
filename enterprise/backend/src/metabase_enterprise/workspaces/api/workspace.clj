@@ -18,7 +18,7 @@
 
 (defn update-workspace-entity-at-index
   "Updates an entity at a specific index in the workspace's entity collection.
-   
+
    Args:
    - workspace-id: The workspace ID
    - entity-key: The key in the workspace map (:plans, :transforms, etc.)
@@ -35,7 +35,7 @@
 
 (defn- delete-workspace-entity-at-index
   "Deletes an entity at a specific index in the workspace's entity collection.
-   
+
    Args:
    - workspace-id: The workspace ID
    - entity-key: The key in the workspace map (:plans, :transforms, etc.)
@@ -145,7 +145,7 @@
 ;; PUT /api/ee/workspace/:id/plan
 (api.macros/defendpoint :put "/:id/plan"
   "Add a plan to the workspace.
-   
+
    Request body:
    - title (required): Plan title
    - description (required): Plan description  
@@ -211,7 +211,7 @@
 ;; PUT /api/ee/workspace/:id/transform
 (api.macros/defendpoint :put "/:id/transform"
   "Add a transform to the workspace.
-   
+
    Request body:
    - name (required): Transform name
    - description (required): Transform description
@@ -290,7 +290,7 @@
 ;; POST /api/ee/workspace/:id/transform/link
 (api.macros/defendpoint :post "/:id/transform/link"
   "Link an existing transform to the workspace.
-   
+
    Request body:
    - transform_id (required): ID of the transform to link"
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
@@ -315,7 +315,7 @@
 ;; PUT /api/ee/workspace/:id/document
 (api.macros/defendpoint :put "/:id/document"
   "Add a document to the workspace.
-   
+
    Request body:
    - document_id (required): ID of the document to link"
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
@@ -330,7 +330,7 @@
 ;; PUT /api/ee/workspace/:id/data_warehouse
 (api.macros/defendpoint :put "/:id/data_warehouse"
   "Add a data warehouse to the workspace.
-   
+
    Request body:
    - dwh_id (required): ID of the data warehouse
    - name (required): Name of the data warehouse
@@ -471,7 +471,7 @@
 ;; PUT /api/ee/workspace/:id/permission
 (api.macros/defendpoint :put "/:id/permission"
   "Add a permission to the workspace.
-   
+
    Request body:
    - table (required): Table name
    - permission (required): Permission type (read or write)"
