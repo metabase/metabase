@@ -89,15 +89,17 @@
   {:version               "0"
    :metadata-table-name   "mock_index_metadata"
    :control-table-name    "mock_index_control"
+   :gate-table-name       "mock_index_gate"
    :index-table-qualifier "mock_%s"})
 
 (defn unique-index-metadata
   []
-  (let [nano-id (u/generate-nano-id)
-        fmt     (str "mock_%s_" nano-id "_")]
+  (let [ns  (System/nanoTime)
+        fmt (str "mock_%s_" ns)]
     {:version               "0"
-     :metadata-table-name   (format fmt "index_metadata")
-     :control-table-name    (format fmt "index_control")
+     :metadata-table-name   (format fmt "metadata")
+     :control-table-name    (format fmt "control")
+     :gate-table-name       (format fmt "gate")
      :index-table-qualifier fmt}))
 
 (def mock-index
