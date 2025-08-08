@@ -6,7 +6,7 @@ summary: Getting started with Embedded Analytics JS for embedding Metabase entit
 Embedded analytics JS allows you to embed Metabase entities like questions, dashboards, or even the query builder into your own application using customizable components.
 
 Embedded Analytics JS is a JavaScript library built on top of Metabase's [Embedded Analytics React SDK](./sdk/introduction.md). But it does not require using React or setting up full SDK embedding.
-Unlike with [interactive embedding](./interactive-embedding.md), where you embed the entire Metabase app in an iframe, Embedded Analytics JS lets you choose from a set of predefined components like a single chart, a dashboard with optional drilldown, or query builder, and customize those components.
+Unlike with [interactive embedding](./interactive-embedding.md), where you embed the entire Metabase app in an iframe, Embedded Analytics JS lets you choose from a set of predefined components like a single chart, a dashboard with optional drill-through, or query builder, and customize those components.
 
 Embedded Analytics JS leverages [JWT SSO](../people-and-groups/authenticating-with-jwt.md) to authenticate people and automatically apply permissions to show people the right data upon sign-in.
 
@@ -48,23 +48,23 @@ Once you're done customizing your embed, click "Next".
 
 You'll get a choice between "Existing Metabase session" and "Single sign-on (SSO)".
 
-- If you select **Existing Metabase session**, you'll be able to preview your embeds as the user you're currently logged into Metabase as, and only in the same browser as your current session. Not all browsers are supported - we recommend using Google Chrome. To test out embedding in other contexts, you can use [API keys](#use-api-keys-to-test-embeds) instead. For production usage, use SSO.
+- If you select **Existing Metabase session**, you'll be able to preview your embeds as the user you're currently logged into Metabase, and only in the same browser as your current session. Not all browsers are supported - we recommend using Google Chrome. To test out embedding in other contexts, you can use [API keys](#use-api-keys-to-test-embeds) instead. For production usage, use [SSO](#set-up-sso).
 
-- If you set up JWT in your Metabase instance have JWT set up, you'll be able to select **Single sign-on (SSO)**, see [Set up SSO](#set-up-sso).
+- If you set up JWT in your Metabase instance, you'll be able to select **Single sign-on (SSO)**, see [Set up SSO](#set-up-sso).
 
 ### 5. Add the embedding script into your app
 
-Metabase will generate a code snippet that you can copy and paste into your app, see [Embed code snippets](#embed-snippets) for an example. You can modify this code snippet to specify additional appearance options or change the behavior of some components.
+Metabase will generate a code snippet that you can copy and paste into your app, see [Embed code snippets](#embed-code-snippets) for an example. You can later modify this code snippet to specify additional appearance options or change the behavior of some components.
 
 Add the code snippet into your app, and refresh the page.
 
-## Embed snippets
+## Embed code snippets
 
 The code snippets to embed Metabase entities using Embedded Analytics JS should have three parts:
 
 1. Loading the Embedded Analytics JS library from your Metabase instance.
 2. Global configuration settings to be used for all embeds, like the URL of your Metabase instance, appearance themes, etc. See [Configuring embeds](#configuring-embeds).
-3. Elements for Metabase entities to be embedded, with their parameters. See [Components](#components).
+3. Components for Metabase entities to be embedded, with their parameters. See [Components](#components).
 
 Here's an example of a script:
 
@@ -98,15 +98,15 @@ Here's an example of a script:
 
 Note the `async` attribute and the reference to your Metabase URL in the script that loads `embed.js` library.
 
-If you're embedding multiple elements on the same page, you only need to include the `<script>` tags once globally.
+If you're embedding multiple entities on the same page, you only need to include the `<script>` tags once globally.
 
-The code snipped for Embedded Analytics JS can be generated interactively in Metabase through **+ New > Embed**, see [Quickstart](#quickstart).
+The code snipped for Embedded Analytics JS can also be generated interactively in Metabase through **+ New > Embed**, see [Quickstart](#quickstart).
 
 ## Customizing embeds
 
 The exact customization options you see will depend on what type of entity you're embedding.
 
-When you're creating a new embed using **+ New > Embed**, you'll see customization options in the interactive flow. These options correspond to parameters in components, see [Components](#components).
+When you're creating a new embed using **+ New > Embed**, you'll see customization the following options in the interactive creating flow. These options correspond to parameters in components, see [Components](#components).
 
 - **Allow users to drill through on data points**: determines whether users can interact with the chart (or charts on a dashboard). This includes drilling down to individual records from aggregated questions, filtering on click, zooming in, etc, see [Drill-through](/learn/metabase-basics/querying-and-dashboards/questions/drill-through). Disabling this option for an embedded _question_ will also disable people's ability to add filters and summaries.
 
@@ -132,9 +132,9 @@ You can use the `defineMetabaseConfig()` function to define the configuration th
 
 ### Theming
 
-You can specify colors, fonts, configure spacing, etc in the `theme` parameter of embed configuration.
+You can specify colors, fonts, configure spacing, etc in the `theme` parameter of the embed configuration.
 
-For example, this will define the font, color, and size for text, color for backgrounds, and colors for filters and summarizes:
+For example, this will define the font, color, and size for text, color for backgrounds, and colors for filters and summaries:
 
 ```html
 <script>
@@ -208,7 +208,11 @@ SSO is required to embed in a domain other than localhost.
 
 You’ll need add a library to your backend to sign your JSON Web Tokens.
 
-For Node.js, we recommend jsonwebtoken: `npm install jsonwebtoken --save`
+For Node.js, we recommend jsonwebtoken:
+
+```sh
+npm install jsonwebtoken --save
+```
 
 Next, set up an endpoint on your backend (e.g., `/sso/metabase`) that uses your Metabase JWT shared secret to generate a JWT for the authenticated user. **This endpoint must return a JSON object with a `jwt` property containing the signed JWT.** For example: `{ "jwt": "your-signed-jwt" }`.
 
@@ -270,13 +274,13 @@ See more examples in the [Embedding SDK docs](./sdk/authentication.md#2-add-a-ne
 
 ### 3. Embeds will use SSO automatically by default
 
-Metabase will use JWT SSO by default if no other auth method is specified. Make sure you don't use `apiKey` or `useExistingUserSession` in your configuration.
+Metabase will use JWT SSO by default if no other auth method is specified. Make sure you don't use `apiKey` or `useExistingUserSession` in your configuration to enable SSO use.
 
 ## Components
 
 There are different components available that enable different experiences for the end-user.
 
-> While you can use some component parameters to show or hid part of the embedded component, these parameters are not a substitute for setting up to prevent unwanted access to data or collections. Use these options as a way to streamline the user experience. Users could obtain their token from the front-end and use it to query the Metabase API.
+> While you can use some component parameters to show or hide part of the embedded component, these parameters are not a substitute for setting up to prevent unwanted access to data or collections. Use these options as a way to streamline the user experience. Users could obtain their token from the front-end and use it to query the Metabase API.
 
 ### Dashboard
 
