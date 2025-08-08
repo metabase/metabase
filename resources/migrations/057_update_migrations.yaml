@@ -276,7 +276,7 @@ databaseChangeLog:
             onDelete: SET NULL
 
   - changeSet:
-      id: v57.2025-08-29T17:23:20
+      id: v57.2025-08-21T17:23:20
       author: edpaget
       comment: Add document_id column to report_card table
       changes:
@@ -291,7 +291,7 @@ databaseChangeLog:
                     nullable: true
 
   - changeSet:
-      id: v57.2025-08-06T17:23:30
+      id: v57.2025-08-21T17:23:30
       author: edpaget
       comment: Add index on report_card.document_id
       changes:
@@ -307,7 +307,7 @@ databaseChangeLog:
             indexName: idx_repord_card_document_id
 
   - changeSet:
-      id: v57.2025-08-29T17:23:33
+      id: v57.2025-08-21T17:23:33
       author: edpaget
       comment: Add foreign key constraint for document_id in report_card
       changes:
@@ -320,7 +320,7 @@ databaseChangeLog:
             onDelete: CASCADE
 
   - changeSet:
-      id: v57.2025-08-06T17:42:32
+      id: v57.2025-08-21T17:42:32
       author: edpaget
       comment: Create document_bookmark table
       preConditions:
@@ -365,7 +365,7 @@ databaseChangeLog:
             tableName: document_bookmark
 
   - changeSet:
-      id: v57.2025-08-06T17:42:33
+      id: v57.2025-08-21T17:42:33
       author: edpaget
       comment: Add index on document_bookmark.user_id
       changes:
@@ -381,7 +381,7 @@ databaseChangeLog:
             indexName: idx_document_bookmark_user_id
 
   - changeSet:
-      id: v57.2025-08-06T17:42:34
+      id: v57.2025-08-21T17:42:34
       author: edpaget
       comment: Add index on document_bookmark.document_id
       changes:
@@ -397,7 +397,7 @@ databaseChangeLog:
             indexName: idx_document_bookmark_document_id
 
   - changeSet:
-      id: v57.2025-08-06T17:42:35
+      id: v57.2025-08-21T17:42:35
       author: edpaget
       comment: Add foreign key constraint for document_bookmark.user_id
       changes:
@@ -414,7 +414,7 @@ databaseChangeLog:
             constraintName: fk_document_bookmark_user_id
 
   - changeSet:
-      id: v57.2025-08-06T17:42:36
+      id: v57.2025-08-21T17:42:36
       author: edpaget
       comment: Add foreign key constraint for document_bookmark.document_id
       changes:
@@ -431,7 +431,7 @@ databaseChangeLog:
             constraintName: fk_document_bookmark_document_id
 
   - changeSet:
-      id: v57.2025-08-06T17:42:37
+      id: v57.2025-08-21T17:42:37
       author: edpaget
       comment: Add unique constraint for document_bookmark user_id and document_id
       changes:
