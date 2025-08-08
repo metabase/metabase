@@ -10,7 +10,7 @@ import {
   rectIntersection,
 } from "@dnd-kit/core";
 import { arrayMove } from "@dnd-kit/sortable";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { ObjectViewSectionSettings } from "metabase-types/api";
 
@@ -129,6 +129,8 @@ export function useSectionsDragNDrop({
             overIndex >= 0 ? overIndex + modifier : overItems.length + 1;
         }
 
+        recentlyMovedToNewContainer.current = true;
+
         updateSection(activeContainer.id, {
           fields: activeItems.filter((item) => item.field_id !== activeId?.id),
         });
@@ -244,7 +246,6 @@ export function useSectionsDragNDrop({
         }
 
         lastOverId.current = overId;
-
         return [{ id: overId }];
       }
 
@@ -261,6 +262,12 @@ export function useSectionsDragNDrop({
     },
     [activeId, sections],
   );
+
+  useEffect(() => {
+    requestAnimationFrame(() => {
+      recentlyMovedToNewContainer.current = false;
+    });
+  }, [sections]);
 
   return {
     activeId,

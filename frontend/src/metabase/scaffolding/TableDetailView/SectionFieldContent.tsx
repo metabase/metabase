@@ -1,3 +1,4 @@
+import { useDndContext } from "@dnd-kit/core";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { Link } from "react-router";
@@ -61,16 +62,17 @@ export function SectionFieldContent({
     id: getFieldDraggableKey({ field_id }),
   });
 
+  const { active } = useDndContext();
+
+  const style = {
+    transform: CSS.Translate.toString(transform),
+    // dirty hack to fix animation of the field while dragging another field
+    transition: active ? "transform 200ms" : transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
   return (
-    <Flex
-      ref={setNodeRef}
-      className={S.Field}
-      style={{
-        transform: CSS.Translate.toString(transform),
-        transition,
-        opacity: isDragging ? 0.5 : 1,
-      }}
-    >
+    <Flex ref={setNodeRef} className={S.Field} style={style}>
       <Box className={S.FieldName} w="100%">
         {isEdit && <DragHandle {...attributes} {...listeners} />}
 
