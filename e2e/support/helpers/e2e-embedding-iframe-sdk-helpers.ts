@@ -18,16 +18,25 @@ const EMBED_JS_PATH = "http://localhost:4000/app/embed.js";
  * Base interface for SDK iframe embedding test page options
  */
 export interface BaseEmbedTestPageOptions {
-  // Options for the embed route
-  target?: string;
-  apiKey?: string;
-  instanceUrl?: string;
-  dashboardId?: number | string;
-  questionId?: number | string;
-  template?: "exploration";
-  theme?: MetabaseTheme;
-  locale?: string;
-  preferredAuthMethod?: "jwt" | "saml";
+  // Passed to defineMetabaseConfig
+  metabaseConfig?: {
+    instanceUrl?: string;
+    apiKey?: string;
+    useExistingUserSession?: boolean;
+    theme?: MetabaseTheme;
+    preferredAuthMethod?: "jwt" | "saml";
+    locale?: string;
+  };
+
+  // The element to embed
+  element: "metabase-dashboard" | "metabase-question";
+
+  // Attributes passed serialized to the element
+  attributes: {
+    dashboardId?: number | string;
+    questionId?: number | string;
+    [key: string]: any;
+  };
 
   // Options for the test page
   origin?: string;
@@ -77,17 +86,12 @@ export const getSimpleEmbedIframeContent = (iframeIndex = 0) => {
 /**
  * Creates and loads a test fixture for SDK iframe embedding tests
  */
-export function loadSdkIframeEmbedTestPage<T extends BaseEmbedTestPageOptions>({
+export function loadSdkIframeEmbedTestPage({
   origin = "",
   onVisitPage,
   ...options
-}: T) {
-  const testPageSource = getSdkIframeEmbedHtml({
-    target: "#metabase-embed-container",
-    instanceUrl: "http://localhost:4000",
-    origin,
-    ...options,
-  });
+}: BaseEmbedTestPageOptions) {
+  const testPageSource = getSdkIframeEmbedHtml(options);
 
   const testPageUrl = `${origin}/sdk-iframe-test-page`;
 
@@ -107,8 +111,9 @@ export function loadSdkIframeEmbedTestPage<T extends BaseEmbedTestPageOptions>({
  */
 function getSdkIframeEmbedHtml({
   insertHtml,
-  origin,
-  ...embedConfig
+  metabaseConfig,
+  element,
+  attributes,
 }: BaseEmbedTestPageOptions) {
   return `
     <!DOCTYPE html>
@@ -122,35 +127,43 @@ function getSdkIframeEmbedHtml({
           margin: 0;
         }
 
-        #metabase-embed-container {
+        metabase-question, metabase-dashboard {
           height: 100vh;
         }
       </style>
     </head>
     <body>
+      ${getNewEmbedScriptTag({ loadType: "sync" })}
+      ${getNewEmbedConfigurationScript(metabaseConfig)}
+
       ${insertHtml?.beforeEmbed ?? ""}
-      <div id="metabase-embed-container"></div>
+
+      <${element} ${convertPropertiesToEmbedTagAttributes(attributes)} />
+
       ${insertHtml?.afterEmbed ?? ""}
-
-      <script src="${EMBED_JS_PATH}"></script>
-
-      <script>
-        const { MetabaseEmbed } = window["metabase.embed"] ?? {};
-
-        try {
-          window.embed = new MetabaseEmbed({
-            ${Object.entries(embedConfig)
-              .map(([key, value]) => `${key}: ${JSON.stringify(value)}`)
-              .join(",\n          ")}
-          });
-        } catch (error) {
-          console.error(error.message)
-        }
-      </script>
     </body>
     </html>
   `;
 }
+
+const convertPropertiesToEmbedTagAttributes = (
+  attributes: BaseEmbedTestPageOptions["attributes"],
+) => {
+  return Object.entries(attributes)
+    .map(([key, value]) => {
+      if (key === "element") {
+        return "";
+      }
+      const attributeKey = key.replace(/([A-Z])/g, "-$1").toLowerCase();
+      const attributeValue = match(typeof value)
+        .with("string", () => value)
+        .with("boolean", () => value.toString())
+        .otherwise(() => JSON.stringify(value));
+
+      return `${attributeKey}='${attributeValue}'`;
+    })
+    .join(" ");
+};
 
 /**
  * Prepares the testing environment for sdk iframe embedding tests.
@@ -211,7 +224,7 @@ function setupMockAuthProviders(enabledAuthMethods: EnabledAuthMethods[]) {
     const ADMIN_GROUP_ID = 2;
 
     createApiKey("test iframe sdk embedding", ADMIN_GROUP_ID).then(
-      ({ body }) => {
+      ({ body }: { body: { unmasked_key: string } }) => {
         cy.wrap(body.unmasked_key).as("apiKey");
       },
     );
@@ -242,16 +255,30 @@ export const getNewEmbedScriptTag = ({
 export const getNewEmbedConfigurationScript = ({
   instanceUrl = "http://localhost:4000",
   theme,
+  apiKey,
+  useExistingUserSession,
+  preferredAuthMethod,
+  locale,
 }: {
   instanceUrl?: string;
   theme?: MetabaseTheme;
+  apiKey?: string;
+  useExistingUserSession?: boolean;
+  preferredAuthMethod?: "jwt" | "saml";
+  locale?: string;
 } = {}) => {
+  const config = {
+    instanceUrl,
+    apiKey,
+    useExistingUserSession,
+    theme,
+    preferredAuthMethod,
+    locale,
+  };
+
   return `
     <script>
-      defineMetabaseConfig({
-        instanceUrl: "${instanceUrl}",
-        theme: ${JSON.stringify(theme)},
-      });
+      defineMetabaseConfig(${JSON.stringify(config, null, 2)});
     </script>
   `;
 };
