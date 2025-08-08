@@ -1,5 +1,4 @@
-import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { Flex } from "metabase/ui";
+import { Center, Flex, Loader } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { DatasetQuery } from "metabase-types/api";
@@ -51,7 +50,11 @@ export function QueryEditor({
   };
 
   if (!isInitiallyLoaded) {
-    return <LoadingAndErrorWrapper loading />;
+    return (
+      <Center>
+        <Loader />
+      </Center>
+    );
   }
 
   return (
