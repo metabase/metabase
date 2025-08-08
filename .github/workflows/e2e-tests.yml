@@ -24,6 +24,7 @@ jobs:
     with:
       chunks: 50
       specs: ${{ inputs.specs }}
+      debug_specs: ${{ inputs.debug_specs }}
 
   reset-e2e-test-comment:
     if: ${{ github.event_name == 'pull_request' }}
