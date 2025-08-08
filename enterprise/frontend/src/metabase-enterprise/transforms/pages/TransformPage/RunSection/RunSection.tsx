@@ -1,22 +1,14 @@
 import { t } from "ttag";
 
 import { useMetadataToasts } from "metabase/metadata/hooks";
-import {
-  Box,
-  Button,
-  Divider,
-  Group,
-  Icon,
-  Loader,
-  Stack,
-  Text,
-} from "metabase/ui";
+import { Box, Divider, Group, Icon, Stack, Text } from "metabase/ui";
 import {
   useExecuteTransformMutation,
   useUpdateTransformMutation,
 } from "metabase-enterprise/api";
 import type { Transform, TransformTagId } from "metabase-types/api";
 
+import { RunButton } from "../../../components/RunButton";
 import { SplitSection } from "../../../components/SplitSection";
 import { TagMultiSelect } from "../../../components/TagMultiSelect";
 
@@ -33,8 +25,8 @@ export function RunSection({ transform }: RunSectionProps) {
       description={t`This transform will be run whenever the jobs it belongs to are scheduled.`}
     >
       <Group p="lg" justify="space-between">
-        <RunStatus transform={transform} />
-        <RunButton transform={transform} />
+        <RunStatusSection transform={transform} />
+        <RunButtonSection transform={transform} />
       </Group>
       <Divider />
       <Group p="lg" gap="lg">
@@ -48,11 +40,11 @@ export function RunSection({ transform }: RunSectionProps) {
   );
 }
 
-type RunStatusProps = {
+type RunStatusSectionProps = {
   transform: Transform;
 };
 
-function RunStatus({ transform }: RunStatusProps) {
+function RunStatusSection({ transform }: RunStatusSectionProps) {
   const { message, icon, color } = getStatusInfo(transform);
 
   return (
@@ -63,13 +55,12 @@ function RunStatus({ transform }: RunStatusProps) {
   );
 }
 
-type RunButtonProps = {
+type RunButtonSectionProps = {
   transform: Transform;
 };
 
-function RunButton({ transform }: RunButtonProps) {
+function RunButtonSection({ transform }: RunButtonSectionProps) {
   const [executeTransform] = useExecuteTransformMutation();
-  const isRunning = transform.last_execution?.status === "started";
   const { sendErrorToast } = useMetadataToasts();
 
   const handleRun = async () => {
@@ -77,20 +68,10 @@ function RunButton({ transform }: RunButtonProps) {
     if (error) {
       sendErrorToast(t`Failed to run transform`);
     }
+    return { error };
   };
 
-  return (
-    <Button
-      variant="filled"
-      leftSection={
-        isRunning ? <Loader size="sm" /> : <Icon name="play_outlined" />
-      }
-      disabled={isRunning}
-      onClick={handleRun}
-    >
-      {isRunning ? t`Running now…` : t`Run now`}
-    </Button>
-  );
+  return <RunButton execution={transform.last_execution} onRun={handleRun} />;
 }
 
 type TagSectionProps = {

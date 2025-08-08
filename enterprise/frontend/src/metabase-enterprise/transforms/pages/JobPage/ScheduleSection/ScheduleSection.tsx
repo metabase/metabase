@@ -8,13 +8,14 @@ import {
   getScheduleExplanation,
 } from "metabase/lib/cron";
 import { useMetadataToasts } from "metabase/metadata/hooks";
-import { Box, Button, Divider, Group, Icon, Loader } from "metabase/ui";
+import { Box, Divider, Group, Icon } from "metabase/ui";
 import {
   useExecuteTransformJobMutation,
   useUpdateTransformJobMutation,
 } from "metabase-enterprise/api";
 import type { TransformJob } from "metabase-types/api";
 
+import { RunButton } from "../../../components/RunButton";
 import { SplitSection } from "../../../components/SplitSection";
 
 type ScheduleSectionProps = {
@@ -51,7 +52,7 @@ export function ScheduleSection({ job }: ScheduleSectionProps) {
             {t`This job will run ${scheduleExplanation}`}
           </Group>
         )}
-        <RunButton job={job} />
+        <RunButtonSection job={job} />
       </Group>
     </SplitSection>
   );
@@ -96,13 +97,12 @@ function CronSection({ job, schedule, onChangeSchedule }: CronSectionProps) {
   );
 }
 
-type RunButtonProps = {
+type RunButtonSectionProps = {
   job: TransformJob;
 };
 
-function RunButton({ job }: RunButtonProps) {
+function RunButtonSection({ job }: RunButtonSectionProps) {
   const [executeJob] = useExecuteTransformJobMutation();
-  const isRunning = job.last_execution?.status === "started";
   const { sendErrorToast } = useMetadataToasts();
 
   const handleRun = async () => {
@@ -110,18 +110,8 @@ function RunButton({ job }: RunButtonProps) {
     if (error) {
       sendErrorToast(t`Failed to run job`);
     }
+    return { error };
   };
 
-  return (
-    <Button
-      variant="filled"
-      leftSection={
-        isRunning ? <Loader size="sm" /> : <Icon name="play_outlined" />
-      }
-      disabled={isRunning}
-      onClick={handleRun}
-    >
-      {isRunning ? t`Running now…` : t`Run now`}
-    </Button>
-  );
+  return <RunButton execution={job.last_execution} onRun={handleRun} />;
 }
