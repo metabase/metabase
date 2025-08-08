@@ -10,6 +10,7 @@ import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Box, Divider, Group, Icon } from "metabase/ui";
 import {
   useExecuteTransformJobMutation,
+  useLazyGetTransformJobQuery,
   useUpdateTransformJobMutation,
 } from "metabase-enterprise/api";
 import type { TransformJob } from "metabase-types/api";
@@ -101,16 +102,25 @@ type RunButtonSectionProps = {
 };
 
 function RunButtonSection({ job }: RunButtonSectionProps) {
-  const [executeJob] = useExecuteTransformJobMutation();
+  const [fetchJob, { isFetching }] = useLazyGetTransformJobQuery();
+  const [executeJob, { isLoading: isExecuting }] =
+    useExecuteTransformJobMutation();
   const { sendErrorToast } = useMetadataToasts();
 
   const handleRun = async () => {
     const { error } = await executeJob(job.id);
     if (error) {
       sendErrorToast(t`Failed to run job`);
+    } else {
+      fetchJob(job.id);
     }
-    return { error };
   };
 
-  return <RunButton execution={job.last_execution} onRun={handleRun} />;
+  return (
+    <RunButton
+      execution={job.last_execution}
+      isLoading={isFetching || isExecuting}
+      onRun={handleRun}
+    />
+  );
 }

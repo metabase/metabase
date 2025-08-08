@@ -82,6 +82,7 @@ export const transformJobApi = EnterpriseApi.injectEndpoints({
 export const {
   useListTransformJobsQuery,
   useGetTransformJobQuery,
+  useLazyGetTransformJobQuery,
   useExecuteTransformJobMutation,
   useCreateTransformJobMutation,
   useUpdateTransformJobMutation,

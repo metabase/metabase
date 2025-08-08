@@ -97,6 +97,7 @@ export const {
   useListTransformsQuery,
   useListTransformExecutionsQuery,
   useGetTransformQuery,
+  useLazyGetTransformQuery,
   useExecuteTransformMutation,
   useCreateTransformMutation,
   useUpdateTransformMutation,
