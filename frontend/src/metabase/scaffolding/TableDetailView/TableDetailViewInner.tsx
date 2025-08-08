@@ -156,8 +156,12 @@ export function TableDetailViewInner({
   }, [sections]);
 
   const [containers, setContainers] = useState(
-    notEmptySections.map((section) => section.id),
+    sections.map((section) => section.id),
   );
+
+  useEffect(() => {
+    setContainers(sections.map((section) => section.id));
+  }, [sections]);
 
   const handleDragStart = (event: DragStartEvent) => {
     const { active } = event;
