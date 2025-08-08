@@ -245,39 +245,46 @@
 
 (comment
 
-  (def c (t2/insert-returning-instance! :model/Collection {:name "Test Workspace Collection"}))
+  (do
+    (let [id (atom 1000)]
+      (defn next-id [] (swap! id inc)))
+    (def c (t2/insert-returning-instance! :model/Collection {:name "Test Workspace Collection"}))
 
-  (try (def w (t2/insert-returning-instance! :model/Workspace {:name "test workspace"
-                                                               :collection_id (:id c)
-                                                               :data_warehouses []
-                                                               :users []
-                                                               :plans []
-                                                               :activity_logs []
-                                                               :transforms []
-                                                               :documents []}))
-       (catch Exception e (ex-data e)))
+    (try (def w (t2/insert-returning-instance! :model/Workspace {:name "test workspace"
+                                                                 :collection_id (:id c)
+                                                                 :data_warehouses []
+                                                                 :users []
+                                                                 :plans []
+                                                                 :activity_logs []
+                                                                 :transforms []
+                                                                 :documents []}))
+         (catch Exception e (ex-data e))))
 
-  (mt/user-http-request :crowberto :get 200 (str "ee/workspace/" (:id w)))
-
-  (let [id (atom 1000)]
-    (defn next-id [] (swap! id inc)))
+  (mt/user-http-request :crowberto :get 200 (format "ee/workspace/%s") (:id w))
 
   (mt/user-http-request :crowberto :put 200
-                        (str "ee/workspace/" (:id w) "/user")
+                        (format "ee/workspace/%s/user" (:id w))
                         {:id (next-id) :name "name" :email "email" :type "type"})
 
   (mt/user-http-request :crowberto :put 200
-                        (str "ee/workspace/" (:id w) "/plan")
+                        (format "ee/workspace/%s/user" (:id w))
+                        {:user_id 100
+                         :name "Alice Smith"
+                         :email "alice@company.com"
+                         :type "analyst"})
+
+  (mt/user-http-request :crowberto :put 200
+                        (format "ee/workspace/%s/plan" (:id w))
                         {:title "x" :content {}})
 
   (mt/user-http-request :crowberto :put 400
-                        (str "ee/workspace/" (:id w) "/plan")
-                        {:content {}})
+                        (format "ee/workspace/%s/plan" (:id w))
+                        {:title "X" :content {}})
 
-  (mt/user-http-request :crowberto :put 200 (str "ee/workspace/" (:id w) "/document")
-                        {:document_id (next-id)})
-
-  (t2/select-one :model/Workspace))
+  [(mt/user-http-request :crowberto :put 200 (format "ee/workspace/%s/document" (:id w))
+                         {:document_id (next-id)})
+   (t2/select-one :model/Workspace :id (:id w))]
+  (t2/select-one :model/Workspace :id (:id w)))
 
 (deftest api-add-document-to-workspace-test
   (testing "PUT /api/ee/workspace/:id/document - add document to workspace"
@@ -442,9 +449,10 @@
 (deftest api-workspace-full-lifecycle-test
   (testing "Complete workspace lifecycle integration test via API"
     (mt/with-temp [:model/Collection {col-id :id} {}
-                   :model/Workspace {workspace-id :id
-                                     :as workspace} {:collection_id col-id
-                                                     :name "Test Workspace"}]
+
+                   :model/Workspace
+                   {workspace-id :id :as workspace}
+                   {:collection_id col-id :name "Test Workspace"}]
       (testing "Workspace creation"
         (is (pos? workspace-id))
         (is (= "Test Workspace" (:name workspace))))
@@ -466,14 +474,14 @@
                                                       :target {:type "olap"}})]
           (is (= 1 (count (:transforms transform-result))))))
 
-      #_(testing "Add user to workspace"
-          (let [user-result (mt/user-http-request :crowberto :put 200
-                                                  (format "ee/workspace/%s/user" workspace-id)
-                                                  {:user_id 100
-                                                   :name "Alice Smith"
-                                                   :email "alice@company.com"
-                                                   :type "analyst"})]
-            (is (= 1 (count (:users user-result))))))
+      (testing "Add user to workspace"
+        (let [user-result (mt/user-http-request :crowberto :put 200
+                                                (format "ee/workspace/%s/user" workspace-id)
+                                                {:id 100
+                                                 :name "Alice Smith"
+                                                 :email "alice@company.com"
+                                                 :type "analyst"})]
+          (is (= 1 (count (:users user-result))))))
 
       (testing "Add document to workspace"
         (let [document-result (mt/user-http-request :crowberto :put 200

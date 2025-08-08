@@ -241,7 +241,7 @@
             [:type ms/NonBlankString]]]
   (let [workspace (api/check-404 (t2/select-one :model/Workspace :id workspace-id))]
     (add-user! workspace user)
-    (t2/select-one :model/Workspace :id workspace-id)))
+    (m.workspace/sort-workspace (t2/select-one :model/Workspace :id workspace-id))))
 
 ;; PUT /api/ee/workspace/:id/permission
 (api.macros/defendpoint :put "/:id/permission"
