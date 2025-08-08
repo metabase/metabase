@@ -2,9 +2,6 @@
 (ns metabase-enterprise.workspaces.api.workspace
   #_{:clj-kondo/ignore [:metabase/modules]}
   (:require
-   [java-time.api :as t]
-   [lambdaisland.deep-diff2 :as ddiff]
-   [medley.core :as m]
    [metabase-enterprise.workspaces.models.workspace :as m.workspace]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -16,6 +13,41 @@
   m.workspace/keep-me)
 
 (set! *warn-on-reflection* true)
+
+;;; Helper functions
+
+(defn update-workspace-entity-at-index
+  "Updates an entity at a specific index in the workspace's entity collection.
+   
+   Args:
+   - workspace-id: The workspace ID
+   - entity-key: The key in the workspace map (:plans, :transforms, etc.)
+   - index: The 0-based index of the entity to update
+   - update-fn: Function that takes the current entity and returns the updated entity"
+  [workspace-id entity-key index update-fn]
+  (let [workspace (api/check-404 (t2/select-one :model/Workspace :id workspace-id))
+        current-items (vec (get workspace entity-key []))
+        current-item (api/check-404 (nth current-items index nil))
+        new-item (update-fn current-item)
+        updated-items (assoc current-items index new-item)]
+    (t2/update! :model/Workspace workspace-id {entity-key updated-items})
+    (m.workspace/sort-workspace (t2/select-one :model/Workspace :id workspace-id))))
+
+(defn- delete-workspace-entity-at-index
+  "Deletes an entity at a specific index in the workspace's entity collection.
+   
+   Args:
+   - workspace-id: The workspace ID
+   - entity-key: The key in the workspace map (:plans, :transforms, etc.)
+   - index: The 0-based index of the entity to delete"
+  [workspace-id entity-key index]
+  (let [workspace (api/check-404 (t2/select-one :model/Workspace :id workspace-id))
+        current-items (vec (get workspace entity-key []))
+        _ (api/check-404 (nth current-items index nil)) ; Verify index exists
+        updated-items (vec (concat (subvec current-items 0 index)
+                                   (subvec current-items (inc index))))]
+    (t2/update! :model/Workspace workspace-id {entity-key updated-items})
+    (m.workspace/sort-workspace (t2/select-one :model/Workspace :id workspace-id))))
 
 ;; GET /api/ee/workspace
 (api.macros/defendpoint :get "/"
@@ -156,16 +188,25 @@
        [:title ms/NonBlankString]
        [:description {:optional true} [:maybe ms/NonBlankString]]
        [:content :map]]]
-  (let [workspace (api/check-404 (t2/select-one :model/Workspace :id id))
-        current-plans (vec (:plans workspace))
-        current-plan (api/check-404 (nth current-plans index nil))
-        new-plan (merge current-plan {:title title
-                                      :description description
-                                      :content content
-                                      :created-at (str (java.time.Instant/now))})
-        updated-plans (assoc current-plans index new-plan)]
-    (t2/update! :model/Workspace id {:plans updated-plans})
-    (m.workspace/sort-workspace (t2/select-one :model/Workspace :id id))))
+  (update-workspace-entity-at-index id :plans index
+                                    (fn [current-plan]
+                                      (merge current-plan {:title title
+                                                           :description description
+                                                           :content content
+                                                           :created-at (str (java.time.Instant/now))}))))
+
+(api.macros/defendpoint :delete "/:id/plan/:index"
+  "Delete a plan from the workspace by index.
+
+   Route Params:
+    - id (required): Workspace ID
+    - index (required): Index of the plan to delete (0-based)"
+  [{:keys [id index]} :- [:map
+                          [:id ms/PositiveInt]
+                          [:index :int]]
+   _query-params]
+  (delete-workspace-entity-at-index id :plans index)
+  api/generic-204-no-content)
 
 ;; PUT /api/ee/workspace/:id/transform
 (api.macros/defendpoint :put "/:id/transform"
@@ -199,6 +240,52 @@
     (t2/update! :model/Workspace id
                 {:transforms updated-transforms})
     (m.workspace/sort-workspace (t2/select-one :model/Workspace :id id))))
+
+(api.macros/defendpoint :put "/:id/transform/:index"
+  "Replace a transform in the workspace, by index.
+
+   Route Params:
+    - id (required): Workspace ID
+    - index (required): Index of the transform to replace (0-based)
+
+   Request body:
+   - name (required): Transform name
+   - description (required): Transform description
+   - source (required): Source configuration
+   - target (required): Target configuration  
+   - config (optional): Transform configuration"
+  [{:keys [id index]} :- [:map
+                          [:id ms/PositiveInt]
+                          [:index :int]]
+   _query-params
+   {:keys [name description source target config]}
+   :- [:map
+       [:name ms/NonBlankString]
+       [:description ms/NonBlankString]
+       [:source :map]
+       [:target :map]
+       [:config {:optional true} [:maybe :map]]]]
+  (update-workspace-entity-at-index id :transforms index
+                                    (fn [current-transform]
+                                      (merge current-transform {:name name
+                                                                :description description
+                                                                :source source
+                                                                :target target
+                                                                :config config
+                                                                :created-at (str (java.time.Instant/now))}))))
+
+(api.macros/defendpoint :delete "/:id/transform/:index"
+  "Delete a transform from the workspace by index.
+
+   Route Params:
+    - id (required): Workspace ID
+    - index (required): Index of the transform to delete (0-based)"
+  [{:keys [id index]} :- [:map
+                          [:id ms/PositiveInt]
+                          [:index :int]]
+   _query-params]
+  (delete-workspace-entity-at-index id :transforms index)
+  api/generic-204-no-content)
 
 ;; PUT /api/ee/workspace/:id/document
 (api.macros/defendpoint :put "/:id/document"
@@ -244,6 +331,49 @@
                 {:data_warehouses updated-dwh})
     (m.workspace/sort-workspace (t2/select-one :model/Workspace :id id))))
 
+(api.macros/defendpoint :put "/:id/data_warehouse/:index"
+  "Replace a data warehouse in the workspace, by index.
+
+   Route Params:
+    - id (required): Workspace ID
+    - index (required): Index of the data warehouse to replace (0-based)
+
+   Request body:
+   - data_warehouses_id (required): ID of the data warehouse
+   - name (required): Name of the data warehouse
+   - type (required): Access type (read-only or read-write)
+   - credentials (required): Credentials object"
+  [{:keys [id index]} :- [:map
+                          [:id ms/PositiveInt]
+                          [:index :int]]
+   _query-params
+   {:keys [data_warehouses_id name type credentials]}
+   :- [:map
+       [:data_warehouses_id ms/PositiveInt]
+       [:name ms/NonBlankString]
+       [:type [:enum "read-only" "read-write"]]
+       [:credentials :map]]]
+  (update-workspace-entity-at-index id :data_warehouses index
+                                    (fn [current-dwh]
+                                      (merge current-dwh {:id data_warehouses_id
+                                                          :name name
+                                                          :type (keyword type)
+                                                          :credentials credentials
+                                                          :created-at (str (java.time.Instant/now))}))))
+
+(api.macros/defendpoint :delete "/:id/data_warehouse/:index"
+  "Delete a data warehouse from the workspace by index.
+
+   Route Params:
+    - id (required): Workspace ID
+    - index (required): Index of the data warehouse to delete (0-based)"
+  [{:keys [id index]} :- [:map
+                          [:id ms/PositiveInt]
+                          [:index :int]]
+   _query-params]
+  (delete-workspace-entity-at-index id :data_warehouses index)
+  api/generic-204-no-content)
+
 (defn- add-user! [workspace user]
   (let [current-users (or (:users workspace) [])
         new-user (assoc user :created-at (str (java.time.Instant/now)))
@@ -270,6 +400,49 @@
     (add-user! workspace user)
     (m.workspace/sort-workspace (t2/select-one :model/Workspace :id workspace-id))))
 
+(api.macros/defendpoint :put "/:id/user/:index"
+  "Replace a user in the workspace, by index.
+
+   Route Params:
+    - id (required): Workspace ID
+    - index (required): Index of the user to replace (0-based)
+
+   Request body:
+   - id (required): User ID
+   - name (required): User name
+   - email (required): User email
+   - type (required): User type (e.g., 'workspace-user')"
+  [{:keys [id index]} :- [:map
+                          [:id ms/PositiveInt]
+                          [:index :int]]
+   _query-params
+   {:keys [user_id name email type]}
+   :- [:map
+       [:user_id ms/PositiveInt]
+       [:name ms/NonBlankString]
+       [:email ms/NonBlankString]
+       [:type ms/NonBlankString]]]
+  (update-workspace-entity-at-index id :users index
+                                    (fn [current-user]
+                                      (merge current-user {:id user_id
+                                                           :name name
+                                                           :email email
+                                                           :type type
+                                                           :created-at (str (java.time.Instant/now))}))))
+
+(api.macros/defendpoint :delete "/:id/user/:index"
+  "Delete a user from the workspace by index.
+
+   Route Params:
+    - id (required): Workspace ID
+    - index (required): Index of the user to delete (0-based)"
+  [{:keys [id index]} :- [:map
+                          [:id ms/PositiveInt]
+                          [:index :int]]
+   _query-params]
+  (delete-workspace-entity-at-index id :users index)
+  api/generic-204-no-content)
+
 ;; PUT /api/ee/workspace/:id/permission
 (api.macros/defendpoint :put "/:id/permission"
   "Add a permission to the workspace.
@@ -293,6 +466,75 @@
                 {:permissions updated-permissions})
     (t2/select-one :model/Workspace :id id)))
 
+(api.macros/defendpoint :put "/:id/permission/:index"
+  "Replace a permission in the workspace, by index.
+
+   Route Params:
+    - id (required): Workspace ID
+    - index (required): Index of the permission to replace (0-based)
+
+   Request body:
+   - table (required): Table name
+   - permission (required): Permission type (read or write)"
+  [{:keys [id index]} :- [:map
+                          [:id ms/PositiveInt]
+                          [:index :int]]
+   _query-params
+   {:keys [table permission]}
+   :- [:map
+       [:table ms/NonBlankString]
+       [:permission [:enum "read" "write"]]]]
+  (update-workspace-entity-at-index id :permissions index
+                                    (fn [current-permission]
+                                      (merge current-permission {:table table
+                                                                 :permission (keyword permission)
+                                                                 :created-at (str (java.time.Instant/now))}))))
+
+(api.macros/defendpoint :delete "/:id/permission/:index"
+  "Delete a permission from the workspace by index.
+
+   Route Params:
+    - id (required): Workspace ID
+    - index (required): Index of the permission to delete (0-based)"
+  [{:keys [id index]} :- [:map
+                          [:id ms/PositiveInt]
+                          [:index :int]]
+   _query-params]
+  (delete-workspace-entity-at-index id :permissions index)
+  api/generic-204-no-content)
+
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/workspace/` routes for workspace management"
   (api.macros/ns-handler *ns* +auth))
+
+(comment
+
+  ;; TODO documents
+  (api.macros/defendpoint :put "/:id/:entity/:index"
+    "Replace a plan, etc. in the workspace, by index.
+
+   Route Params:
+    - id (required): Workspace ID
+    - index (required): Index of the plan to replace (0-based)
+
+   Request body:
+   - title (required): Plan title
+   - description (required): Plan description
+   - content (required): Plan content object"
+    [{:keys [id index entity]} :- [:map
+                                   [:id ms/PositiveInt]
+                                   ;; add more
+                                   [:entity [:enum :plan :transform :document]]
+                                   [:index :int]]
+     _query-params
+     body :- :map]
+    (let [workspace (api/check-404 (t2/select-one :model/Workspace :id id))
+          current-plans (vec (get workspace entity))
+          current-plan (api/check-404 (nth current-plans index nil))
+          new-plan (merge current-plan {:title title
+                                        :description description
+                                        :content content
+                                        :created-at (str (java.time.Instant/now))})
+          updated-plans (assoc current-plans index new-plan)]
+      (t2/update! :model/Workspace id {:plans updated-plans})
+      (m.workspace/sort-workspace (t2/select-one :model/Workspace :id id)))))

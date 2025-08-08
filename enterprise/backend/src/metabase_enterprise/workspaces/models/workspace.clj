@@ -18,9 +18,11 @@
   "
   #_{:clj-kondo/ignore [:metabase/modules]}
   (:require
+   [babashka.fs :as fs]
    [clj-yaml.core :as yaml]
    [clojure.string :as str]
    [java-time.api :as t]
+   [malli.generator :as mg]
    [malli.util :as mut]
    [metabase.models.interface :as mi]
    [metabase.util.malli :as mu]
@@ -28,11 +30,14 @@
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
+(mr/def ::created-at
+  [:string {:gen/fmap #(str (t/instant (hash %)))}])
+
 (mr/def ::plan [:map
                 [:title :string]
                 [:description :string]
                 [:content :map]
-                [:created-at [:string {:description "When the plan was created"}]]])
+                [:created-at ::created-at]])
 
 ;; maybe another table?
 (mr/def ::activity-log [:map
@@ -40,14 +45,14 @@
                         ;; needs a plan?
                         [:steps [:sequential
                                  [:map
-                                  [:step-id :int]
+                                  [:step-id [:int {:min 0}]]
                                   [:description :string]
                                   [:status [:enum :pending :running :completed :failed]]
                                   [:outcome {:optional true} [:enum :success :error :warning]]
                                   [:error-message {:optional true} :string]
                                   [:start-time [:string {:description "When the step started"}]]
                                   [:end-time {:optional true} [:maybe {:description "When the step ended"} :string]]
-                                  [:created-at [:string {:description "When the step was created"}]]
+                                  [:created-at ::created-at]
                                   [:updated-at [:string {:description "When the step was last updated"}]]]]]])
 
 ;; look at transforms, make it match
@@ -64,7 +69,7 @@
                                                                   [:query :string]
                                                                   [:template-tags {:optional true} [:map]]]]]]]]
    [:target [:map [:name :string] [:type :string]]]
-   [:created-at :string]
+   [:created-at ::created-at]
    [:config {:optional true} [:map]]])
 
 ;; wip
@@ -76,7 +81,7 @@
    [:type :string] ;; workspace-user
    [:name :string]
    [:email :string]
-   [:created-at :string]
+   [:created-at ::created-at]
    ;; api-key?
    ;; db creds?
    ])
@@ -84,7 +89,7 @@
 (mr/def ::data-warehouse
   [:map
    [:id [:int {:min 1}]]
-   [:created-at :string]
+   [:created-at ::created-at]
    [:type [:enum "read-only" "read-write"]]
    [:credentials :map]
    [:name :string]])
@@ -92,7 +97,7 @@
 (mr/def ::permission
   [:map
    [:table :string]
-   [:created-at :string]
+   [:created-at ::created-at]
    [:permission [:enum "read" "write"]]])
 
 (mr/def ::workspace
@@ -102,16 +107,16 @@
    [:name                             [:string {:min 1}]]
    [:description     {:optional true} [:maybe :string]]
    ;; each plan, transofrm, and document(<-unsure) is basically a file abstraction
-   [:plans           {:optional true} [:sequential ::plan]]
+   [:plans                            [:sequential ::plan]]
    ;; This should maybe be another table:
-   [:activity_logs   {:optional true} [:sequential ::activity-log]]
-   [:transforms      {:optional true} [:sequential ::transform]]
-   [:documents       {:optional true} [:sequential ::document]]
-   [:users           {:optional true} [:sequential ::user]]
-   [:data_warehouses {:optional true} [:sequential ::data-warehouse]]
-   [:permissions     {:optional true} [:sequential ::permission]]
-   [:created_at      {:optional true} [:string {:description "The date and time the workspace was created"}]]
-   [:updated_at      {:optional true} [:string {:description "The date and time the workspace was last updated"}]]])
+   [:activity_logs                    [:sequential ::activity-log]]
+   [:transforms                       [:sequential ::transform]]
+   [:documents                        [:sequential ::document]]
+   [:users                            [:sequential ::user]]
+   [:data_warehouses                  [:sequential ::data-warehouse]]
+   [:permissions                      [:sequential ::permission]]
+   [:created_at                       [:any {:description "The date and time the workspace was created"}]]
+   [:updated_at                       [:any {:description "The date and time the workspace was last updated"}]]])
 
 (methodical/defmethod t2/table-name :model/Workspace [_model] :workspace)
 
@@ -136,7 +141,7 @@
              (get order k2 Integer/MAX_VALUE))))
 
 (defn- created-at-sort
-  "Sort a collection of workspaces by their `created_at` timestamp."
+  "Sort a collection of workspaces by their `created_at` timestamp, newest first"
   [xs]
   (vec (sort-by #(t/instant (get % :created-at)) xs)))
 
@@ -151,13 +156,40 @@
       (update :data_warehouses (fnil created-at-sort []))
       (update :permissions     (fnil created-at-sort []))))
 
+(comment
+  (require '[clojure.walk :as walk])
+
+  (require '[malli.core :as mc] '[malli.error :as me] '[malli.util :as mut] '[metabase.util.malli :as mu]
+           '[metabase.util.malli.describe :as umd] '[malli.provider :as mp] '[malli.generator :as mg]
+           '[malli.transform :as mtx] '[metabase.util.malli.registry :as mr] '[malli.json-schema :as mjs])
+
+  (defn super-get [m k]
+    (let [found (volatile! [])]
+      (walk/postwalk
+       (fn [x]
+         (when (and (coll? x)
+                    (= 2 (count x))
+                    (= k (first x)))
+           (vswap! found conj (second x)))
+         x)
+       m)
+      @found)))
+
 (mu/defn- ->yaml [workspace :- ::workspace]
-  (let [file-name (str (str/replace (:name workspace) " " "_") ".yaml")
-        sorted-workspace (sort-workspace workspace)]
-    (spit file-name
-          (yaml/generate-string sorted-workspace :dumper-options {:flow-style :block}))))
+  (yaml/generate-string (sort-workspace workspace) :dumper-options {:flow-style :block}))
 
 ;; temp for testing
-(mu/defn- write-yaml [workspace :- ::workspace]
-  (let [file-name (str (str/replace (:name workspace) " " "_") ".yaml")]
-    (spit file-name (->yaml workspace))))
+(mu/defn- write-yaml
+  ([workspace] (write-yaml workspace {}))
+  ([workspace :- ::workspace
+    options :- [:map [:prefix :string]]]
+   (let [file-name (str (:prefix options "")
+                        (str/replace (:name workspace) " " "_") ".yaml")]
+     (fs/create-dirs (fs/parent file-name))
+     (println "Writing workspace to" file-name)
+     (spit file-name (->yaml workspace)))))
+
+(comment
+
+  (let [w (mg/generate ::workspace {:size 1})]
+    (write-yaml w {:prefix "yaml_samples/"})))

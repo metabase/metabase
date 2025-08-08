@@ -514,10 +514,20 @@
 
   (mt/user-http-request :crowberto :put 200
                         (format "ee/workspace/%s/user" (:id w))
-                        {:user_id 100
-                         :name "Alice Smith"
-                         :email "alice@company.com"
-                         :type "analyst"})
+                        {:id 100 :name "Alice Smith" :email "alice@company.com" :type "analyst"})
+
+  (mt/user-http-request :crowberto :put 200
+                        (format "ee/workspace/%s/user" (:id w))
+                        {:id 100 :name "Alice Smith" :email "alice@company.com" :type "analyst"})
+
+  ;; could that somehow get back:
+  [{:operation :select :table "workspace" :query [:= :id (:id w)]}
+   {:operation :insert
+    :table "workspace"
+    :row {:id 100
+          :name "Alice Smith"
+          :email "alice@company.com"
+          :type "analyst"}}]
 
   (mt/user-http-request :crowberto :put 200
                         (format "ee/workspace/%s/plan" (:id w))
