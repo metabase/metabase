@@ -5,6 +5,7 @@
             [metabase-enterprise.semantic-search.env :as semantic.env]
             [metabase-enterprise.semantic-search.indexer :as semantic-search.indexer]
             [metabase.premium-features.core :as premium-features]
+            [metabase.search.engine :as search.engine]
             [metabase.task.core :as task]
             [metabase.util.log :as log])
   (:import (java.time Duration Instant)
@@ -30,13 +31,13 @@
   org.quartz.Job
   (execute [_ _]
     (log/with-context {:quartz-job-type 'SemanticSearchIndexer}
-      (try
-        (vreset! execution-thread-ref (Thread/currentThread))
-        (when (semantic.env/pgvector-configured?)
-          (semantic-search.indexer/quartz-job-run! (semantic.env/get-pgvector-datasource!) (semantic.env/get-index-metadata)))
-        (finally
-          (locking execution-thread-ref
-            (vreset! execution-thread-ref nil))))))
+      (when (search.engine/supported-engine? :search.engine/semantic)
+        (try
+          (vreset! execution-thread-ref (Thread/currentThread))
+          (semantic-search.indexer/quartz-job-run! (semantic.env/get-pgvector-datasource!) (semantic.env/get-index-metadata))
+          (finally
+            (locking execution-thread-ref
+              (vreset! execution-thread-ref nil)))))))
   org.quartz.InterruptableJob
   (interrupt [_]
    ;; locking required here to avoid racing with the unset in the finally
