@@ -114,6 +114,7 @@ function TransformFilterForm({
         <TextInput
           value={searchValue}
           placeholder={t`Search the list`}
+          autoFocus
           onChange={handleSearchChange}
         />
       </Box>
