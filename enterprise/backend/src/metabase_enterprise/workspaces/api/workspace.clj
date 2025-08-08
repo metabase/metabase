@@ -531,35 +531,3 @@
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/workspace/` routes for workspace management"
   (api.macros/ns-handler *ns* +auth))
-
-(comment
-
-  ;; TODO documents
-  (api.macros/defendpoint :put "/:id/:entity/:index"
-    "Replace a plan, etc. in the workspace, by index.
-
-   Route Params:
-    - id (required): Workspace ID
-    - index (required): Index of the plan to replace (0-based)
-
-   Request body:
-   - title (required): Plan title
-   - description (required): Plan description
-   - content (required): Plan content object"
-    [{:keys [id index entity]} :- [:map
-                                   [:id ms/PositiveInt]
-                                   ;; add more
-                                   [:entity [:enum :plan :transform :document]]
-                                   [:index :int]]
-     _query-params
-     body :- :map]
-    (let [workspace (api/check-404 (t2/select-one :model/Workspace :id id))
-          current-plans (vec (get workspace entity))
-          current-plan (api/check-404 (nth current-plans index nil))
-          new-plan (merge current-plan {:title title
-                                        :description description
-                                        :content content
-                                        :created_at (str (java.time.Instant/now))})
-          updated-plans (assoc current-plans index new-plan)]
-      (t2/update! :model/Workspace id {:plans updated-plans})
-      (m.workspace/sort-workspace (t2/select-one :model/Workspace :id id)))))

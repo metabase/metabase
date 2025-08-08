@@ -162,7 +162,7 @@
             (is (= 1 (count (:plans result))))
             (let [added-plan (first (:plans result))]
               (is (partial= plan-data added-plan))
-              (is (contains? added-plan :created-at)))))
+              (is (contains? added-plan :created_at)))))
 
         (testing "should add multiple plans"
           (let [second-plan {:title "Second Plan"
@@ -204,7 +204,7 @@
             (is (= 1 (count (:transforms result))))
             (let [added-transform (first (:transforms result))]
               (is (partial= transform-data added-transform))
-              (is (contains? added-transform :created-at)))))
+              (is (contains? added-transform :created_at)))))
 
         (testing "should validate required fields"
           (mt/user-http-request :crowberto :put 400
@@ -235,7 +235,7 @@
           (is (= 1 (count (:users result))))
           (let [added-user (first (:users result))]
             (is (partial= user-data added-user))
-            (is (contains? added-user :created-at)))))
+            (is (contains? added-user :created_at)))))
 
       (testing "should validate required fields"
         (mt/user-http-request :crowberto :put 400
@@ -302,7 +302,7 @@
               (is (= "Production DWH" (:name added-dwh)))
               (is (= "read-only" (:type added-dwh)))
               (is (= (:credentials dwh-data) (:credentials added-dwh)))
-              (is (contains? added-dwh :created-at)))))
+              (is (contains? added-dwh :created_at)))))
 
         (testing "should add multiple data warehouses"
           (let [second-dwh {:data_warehouses_id 102
@@ -353,7 +353,7 @@
             (let [added-permission (first (:permissions result))]
               (is (= "customers" (:table added-permission)))
               (is (= "read" (:permission added-permission)))
-              (is (contains? added-permission :created-at)))))
+              (is (contains? added-permission :created_at)))))
 
         (testing "should add multiple permissions"
           (let [write-permission {:table "orders" :permission "write"}]
@@ -361,7 +361,7 @@
                                   (format "ee/workspace/%s/permission" workspace-id)
                                   write-permission)
             (let [updated-workspace (t2/select-one :model/Workspace :id workspace-id)
-                  perm-set (set (mapv #(dissoc % :created-at) (:permissions updated-workspace)))]
+                  perm-set (set (mapv #(dissoc % :created_at) (:permissions updated-workspace)))]
               (def perm-set perm-set)
               (is (= 2 (count perm-set)))
               (is (contains? perm-set
