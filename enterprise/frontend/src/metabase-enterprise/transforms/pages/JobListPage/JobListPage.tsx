@@ -11,7 +11,7 @@ export function JobListPage() {
       <Group justify="space-between">
         <Stack gap="sm">
           <Title order={1}>{t`Jobs`}</Title>
-          <Box>{t`Create custom tables with transforms, and run them on a schedule.`}</Box>
+          <Box>{t`Jobs let you run groups of transforms on a schedule.`}</Box>
         </Stack>
         <CreateJobButton />
       </Group>
