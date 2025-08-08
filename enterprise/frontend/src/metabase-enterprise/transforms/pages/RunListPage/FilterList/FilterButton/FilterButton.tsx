@@ -54,9 +54,7 @@ export const FilterButton = forwardRef(function FilterWidget(
         ) : (
           <>
             <Text flex={1}>{label}</Text>
-            <ActionIcon>
-              <Icon name="chevrondown" />
-            </ActionIcon>
+            <Icon name="chevrondown" mx="0.375rem" />
           </>
         )}
       </Group>
