@@ -20,6 +20,7 @@
    [toucan2.core :as t2])
   (:import
    [java.time Instant LocalDate OffsetDateTime ZonedDateTime]
+   [java.util.concurrent TimeUnit ThreadPoolExecutor]
    [org.postgresql.util PGobject]))
 
 (set! *warn-on-reflection* true)
@@ -288,17 +289,37 @@
             upsert-embedding!)))
        (merge-with + stats)))))
 
+(defn- index-update-executor
+  "Creates a thread pool for processing batched documents, including fetching embeddings, with the provided thread
+  count, with the supplied degree of parallelism.
+
+  A custom RejectedExecutionHandler is used which runs the rejected task in the caller thread (CallerRunsPolicy),
+  ensuring that we don't continue realizing documents until a new thread is available. This requires us to set the
+  thread pool to one less than the desired degree of parallelism, since the caller thread is also being used."
+  [n]
+  (let [thread-count (dec n)]
+    (ThreadPoolExecutor. thread-count
+                         thread-count
+                         0 TimeUnit/SECONDS
+                         (java.util.concurrent.LinkedBlockingQueue. thread-count)
+                         (java.util.concurrent.ThreadPoolExecutor$CallerRunsPolicy.))))
+
 (defn upsert-index!
   "Inserts or updates documents in the index table. If a document with the same
   model + model_id already exists, it will be replaced. Parallelizes batch insertion
   using a thread pool with a configurable thread count (default: 2)."
   [connectable index documents-reducible]
-  (not-empty
-   (cp/with-shutdown! [pool (cp/threadpool (semantic-settings/index-update-thread-count))]
-     (->> documents-reducible
-          (partition-all *batch-size*)
-          (cp/pmap pool #(upsert-index-batch! connectable index %))
-          (reduce (partial merge-with +) {})))))
+  (cp/with-shutdown! [pool (index-update-executor (semantic-settings/index-update-thread-count))]
+    (let [futures (transduce
+                   (comp (partition-all *batch-size*)
+                         (map (fn [batch]
+                                (cp/future pool (upsert-index-batch! connectable index batch)))))
+                   conj
+                   documents-reducible)]
+      (reduce (fn [update-counts fut]
+                (merge-with + update-counts @fut))
+              {}
+              futures))))
 
 (defn- drop-index-table-sql
   [{:keys [table-name]}]
@@ -822,4 +843,33 @@
   #_(explain-analyze-query db hybrid-sql)
 
   (def existing-sql (sql-format-quoted (existing-embedding-query index ["Some Text"])))
-  #_(explain-analyze-query db existing-sql))
+  #_(explain-analyze-query db existing-sql)
+
+  ;; Code to test the custom thread pool. The transduction should process batches in parallel and new batches should
+  ;; only be realized in memory once a thread is available.
+  (defn process-batch [batch]
+    #_:clj-kondo/ignore
+    (println "Processing batch starting with " (first batch))
+    (Thread/sleep 2000)
+    {:count (count batch)})
+
+  (defn logging-range [n]
+    #_:clj-kondo/ignore
+    (map #(do (println "Realizing item" %) %)
+         (range n)))
+
+  (defn reducible [n]
+    (u/rconcat (logging-range n) []))
+
+  (cp/with-shutdown! [pool (index-update-executor 2)]
+    (let [futures
+          (transduce
+           (comp
+            (partition-all 10)
+            (map #(cp/future pool (process-batch %))))
+           conj
+           (reducible 100))]
+      (reduce (fn [acc fut]
+                (merge-with + acc @fut))
+              {}
+              futures))))
