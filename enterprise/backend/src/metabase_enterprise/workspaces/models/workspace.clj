@@ -30,14 +30,14 @@
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
-(mr/def ::created-at
+(mr/def ::created_at
   [:string {:gen/fmap #(str (t/instant (hash %)))}])
 
 (mr/def ::plan [:map
                 [:title :string]
                 [:description :string]
                 [:content :map]
-                [:created-at ::created-at]])
+                [:created_at ::created_at]])
 
 ;; maybe another table?
 (mr/def ::activity-log [:map
@@ -52,7 +52,7 @@
                                   [:error-message {:optional true} :string]
                                   [:start-time [:string {:description "When the step started"}]]
                                   [:end-time {:optional true} [:maybe {:description "When the step ended"} :string]]
-                                  [:created-at ::created-at]
+                                  [:created_at ::created_at]
                                   [:updated-at [:string {:description "When the step was last updated"}]]]]]])
 
 ;; look at transforms, make it match
@@ -69,7 +69,7 @@
                                                                   [:query :string]
                                                                   [:template-tags {:optional true} [:map]]]]]]]]
    [:target [:map [:name :string] [:type :string]]]
-   [:created-at ::created-at]
+   [:created_at ::created_at]
    [:config {:optional true} [:map]]])
 
 ;; wip
@@ -81,7 +81,7 @@
    [:type :string] ;; workspace-user
    [:name :string]
    [:email :string]
-   [:created-at ::created-at]
+   [:created_at ::created_at]
    ;; api-key?
    ;; db creds?
    ])
@@ -89,7 +89,7 @@
 (mr/def ::data-warehouse
   [:map
    [:id [:int {:min 1}]]
-   [:created-at ::created-at]
+   [:created_at ::created_at]
    [:type [:enum "read-only" "read-write"]]
    [:credentials :map]
    [:name :string]])
@@ -97,7 +97,7 @@
 (mr/def ::permission
   [:map
    [:table :string]
-   [:created-at ::created-at]
+   [:created_at ::created_at]
    [:permission [:enum "read" "write"]]])
 
 (mr/def ::workspace
@@ -133,7 +133,7 @@
   (derive :metabase/model)
   (derive :hook/timestamped?))
 
-(defn- sort-workspace-keys
+(defn- sort-toplevel-keys
   "Sorts top-level keys in the order they're defined in the schema."
   [k1 k2]
   (let [order (zipmap (mut/keys (mr/resolve-schema ::workspace)) (range))]
@@ -142,12 +142,12 @@
 
 (defn- created-at-sort
   "Sort a collection of workspaces by their `created_at` timestamp, newest first.
-   Handles nil or invalid created-at values by treating them as oldest."
+   Handles nil or invalid created_at values by treating them as oldest."
   [xs]
   (vec (sort-by (fn [item]
                   (try
-                    (when-let [created-at (get item :created-at)]
-                      (t/instant created-at))
+                    (when-let [created_at (get item :created_at)]
+                      (t/instant created_at))
                     (catch Exception _
                       ;; Return a very old instant for invalid dates
                       (t/instant "1970-01-01T00:00:00Z"))))
@@ -157,7 +157,7 @@
 (defn sort-workspace
   "Required for a stable diff in a yaml view"
   [workspace]
-  (-> (into (sorted-map-by sort-workspace-keys) workspace)
+  (-> (into (sorted-map-by sort-toplevel-keys) workspace)
       (update :documents (fnil (comp vec sort) []))
       (update :plans (fnil created-at-sort []))
       (update :transforms (fnil created-at-sort []))
@@ -182,8 +182,22 @@
            (vswap! found conj (second x)))
          x)
        m)
-      @found)))
+      @found))
 
+  (:transforms (sort-workspace (t2/select-one :model/Workspace 254)))
+  ;; correct order:
+  ;; => ("2025-08-08T21:16:50.420896Z"
+  ;;     "2025-08-08T21:13:40.567837Z"
+  ;;     "2025-08-08T21:07:45.052178Z"
+  ;;     "2025-08-08T21:03:43.194484Z"
+  ;;     "2025-08-08T20:07:45.709135Z")
+
+;; => ("2025-08-08T20:07:45.709135Z"
+;;     "2025-08-08T21:16:50.420896Z"
+;;     "2025-08-08T21:13:40.567837Z"
+;;     "2025-08-08T21:07:45.052178Z"
+;;     "2025-08-08T21:03:43.194484Z")
+  )
 (mu/defn- ->yaml [workspace :- ::workspace]
   (yaml/generate-string (sort-workspace workspace) :dumper-options {:flow-style :block}))
 

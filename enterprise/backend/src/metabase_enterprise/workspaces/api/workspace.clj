@@ -163,7 +163,7 @@
         new-plan {:title title
                   :description description
                   :content content
-                  :created-at (str (java.time.Instant/now))}
+                  :created_at (str (java.time.Instant/now))}
         updated-plans (conj current-plans new-plan)]
     (t2/update! :model/Workspace id {:plans updated-plans})
     (m.workspace/sort-workspace (t2/select-one :model/Workspace :id id))))
@@ -193,7 +193,7 @@
                                       (merge current-plan {:title title
                                                            :description description
                                                            :content content
-                                                           :created-at (str (java.time.Instant/now))}))))
+                                                           :created_at (str (java.time.Instant/now))}))))
 
 (api.macros/defendpoint :delete "/:id/plan/:index"
   "Delete a plan from the workspace by index.
@@ -235,7 +235,7 @@
                        :source source
                        :target target
                        :config config
-                       :created-at (str (java.time.Instant/now))}
+                       :created_at (str (java.time.Instant/now))}
         updated-transforms (conj current-transforms new-transform)]
     (t2/update! :model/Workspace id
                 {:transforms updated-transforms})
@@ -272,7 +272,7 @@
                                                                 :source source
                                                                 :target target
                                                                 :config config
-                                                                :created-at (str (java.time.Instant/now))}))))
+                                                                :created_at (str (java.time.Instant/now))}))))
 
 (api.macros/defendpoint :delete "/:id/transform/:index"
   "Delete a transform from the workspace by index.
@@ -350,7 +350,7 @@
                  :name name
                  :type (keyword type)
                  :credentials credentials
-                 :created-at (str (java.time.Instant/now))}
+                 :created_at (str (java.time.Instant/now))}
         updated-dwh (conj current-dwh new-dwh)]
     (t2/update! :model/Workspace id
                 {:data_warehouses updated-dwh})
@@ -384,7 +384,7 @@
                                                           :name name
                                                           :type (keyword type)
                                                           :credentials credentials
-                                                          :created-at (str (java.time.Instant/now))}))))
+                                                          :created_at (str (java.time.Instant/now))}))))
 
 (api.macros/defendpoint :delete "/:id/data_warehouse/:index"
   "Delete a data warehouse from the workspace by index.
@@ -401,7 +401,7 @@
 
 (defn- add-user! [workspace user]
   (let [current-users (or (:users workspace) [])
-        new-user (assoc user :created-at (str (java.time.Instant/now)))
+        new-user (assoc user :created_at (str (java.time.Instant/now)))
         updated-users (conj current-users new-user)]
     (t2/update! :model/Workspace (:id workspace) {:users updated-users})))
 
@@ -453,7 +453,7 @@
                                                            :name name
                                                            :email email
                                                            :type type
-                                                           :created-at (str (java.time.Instant/now))}))))
+                                                           :created_at (str (java.time.Instant/now))}))))
 
 (api.macros/defendpoint :delete "/:id/user/:index"
   "Delete a user from the workspace by index.
@@ -485,7 +485,7 @@
         current-permissions (or (:permissions workspace) [])
         new-permission {:table table
                         :permission (keyword permission)
-                        :created-at (str (java.time.Instant/now))}
+                        :created_at (str (java.time.Instant/now))}
         updated-permissions (conj current-permissions new-permission)]
     (t2/update! :model/Workspace id
                 {:permissions updated-permissions})
@@ -513,7 +513,7 @@
                                     (fn [current-permission]
                                       (merge current-permission {:table table
                                                                  :permission (keyword permission)
-                                                                 :created-at (str (java.time.Instant/now))}))))
+                                                                 :created_at (str (java.time.Instant/now))}))))
 
 (api.macros/defendpoint :delete "/:id/permission/:index"
   "Delete a permission from the workspace by index.
@@ -559,7 +559,7 @@
           new-plan (merge current-plan {:title title
                                         :description description
                                         :content content
-                                        :created-at (str (java.time.Instant/now))})
+                                        :created_at (str (java.time.Instant/now))})
           updated-plans (assoc current-plans index new-plan)]
       (t2/update! :model/Workspace id {:plans updated-plans})
       (m.workspace/sort-workspace (t2/select-one :model/Workspace :id id)))))
