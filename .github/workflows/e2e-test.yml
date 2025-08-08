@@ -139,6 +139,9 @@ jobs:
         if: ${{ inputs.specs }}
         shell: bash
         env:
+          SPLIT_FILE: "./e2e/support/timings.json"
+          SPLIT_OUTPUT_FILE: "newTimes.json"
+          SPLIT_TIME_THRESHOLD: 5.0
           SPEC_PATH: ${{ env.specs || inputs.specs }}
         run: |
           echo "Running tests with specs: $SPEC_PATH"
@@ -177,6 +180,14 @@ jobs:
           name: failed-tests-${{ inputs.name }}-${{ inputs.edition }}
           path: ./cypress/test-results
 
+      - name: Check for timing file
+        if: always()
+        run: |
+          echo "Looking for newTimes.json..."
+          ls -la newTimes.json || echo "newTimes.json not found"
+          ls -la . | grep -i timing || echo "No timing files found in current directory"
+          pwd
+          
       - name: Upload Timing Data
         uses: actions/upload-artifact@v4
         if: always()
