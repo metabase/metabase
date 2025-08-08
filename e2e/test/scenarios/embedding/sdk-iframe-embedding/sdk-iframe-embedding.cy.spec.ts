@@ -221,7 +221,7 @@ describe("scenarios > embedding > sdk iframe embedding", () => {
       cy.findByText("Orders").should("be.visible");
     });
 
-    cy.log("2. call embed.updateSettings to show the title");
+    cy.log("2. call setAttribute to show the title");
     frame.window().then((win) => {
       const element = win.document!.querySelector("metabase-dashboard")!;
       element.setAttribute("with-title", "true");
