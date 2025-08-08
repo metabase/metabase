@@ -13,8 +13,11 @@ describe("scenarios > embedding > sdk iframe embed options passthrough", () => {
 
   it("shows a static question with drills=false", () => {
     const frame = H.loadSdkIframeEmbedTestPage({
-      questionId: ORDERS_QUESTION_ID,
-      drills: false,
+      element: "metabase-question",
+      attributes: {
+        questionId: ORDERS_QUESTION_ID,
+        drills: false,
+      },
     });
 
     cy.wait("@getCardQuery");
@@ -33,9 +36,12 @@ describe("scenarios > embedding > sdk iframe embed options passthrough", () => {
 
   it("shows a static question with drills=false, withTitle=true", () => {
     const frame = H.loadSdkIframeEmbedTestPage({
-      questionId: ORDERS_QUESTION_ID,
-      drills: false,
-      withTitle: true,
+      element: "metabase-question",
+      attributes: {
+        questionId: ORDERS_QUESTION_ID,
+        drills: false,
+        withTitle: true,
+      },
     });
 
     cy.wait("@getCardQuery");
@@ -51,10 +57,13 @@ describe("scenarios > embedding > sdk iframe embed options passthrough", () => {
 
   it("shows a static dashboard using drills=false, withTitle=false, withDownloads=true", () => {
     const frame = H.loadSdkIframeEmbedTestPage({
-      dashboardId: ORDERS_DASHBOARD_ID,
-      drills: false,
-      withTitle: false,
-      withDownloads: true,
+      element: "metabase-dashboard",
+      attributes: {
+        dashboardId: ORDERS_DASHBOARD_ID,
+        drills: false,
+        withTitle: false,
+        withDownloads: true,
+      },
     });
 
     cy.wait("@getDashCardQuery");
@@ -77,10 +86,13 @@ describe("scenarios > embedding > sdk iframe embed options passthrough", () => {
 
   it("renders an interactive question with drills=true, withTitle=false, withDownloads=true", () => {
     const frame = H.loadSdkIframeEmbedTestPage({
-      questionId: ORDERS_QUESTION_ID,
-      drills: true,
-      withDownloads: true,
-      withTitle: false,
+      element: "metabase-question",
+      attributes: {
+        questionId: ORDERS_QUESTION_ID,
+        drills: true,
+        withDownloads: true,
+        withTitle: false,
+      },
     });
 
     cy.wait("@getCardQuery");
@@ -104,10 +116,13 @@ describe("scenarios > embedding > sdk iframe embed options passthrough", () => {
 
   it("renders an interactive dashboard with drills=true, withDownloads=true, withTitle=false", () => {
     const frame = H.loadSdkIframeEmbedTestPage({
-      dashboardId: ORDERS_DASHBOARD_ID,
-      drills: true,
-      withDownloads: true,
-      withTitle: false,
+      element: "metabase-dashboard",
+      attributes: {
+        dashboardId: ORDERS_DASHBOARD_ID,
+        drills: true,
+        withDownloads: true,
+        withTitle: false,
+      },
     });
 
     cy.wait("@getDashCardQuery");
@@ -137,10 +152,13 @@ describe("scenarios > embedding > sdk iframe embed options passthrough", () => {
 
   it("renders the exploration template with isSaveEnabled=true, targetCollection, entityTypes", () => {
     const frame = H.loadSdkIframeEmbedTestPage({
-      template: "exploration",
-      isSaveEnabled: true,
-      targetCollection: FIRST_COLLECTION_ID,
-      entityTypes: ["table"],
+      element: "metabase-question",
+      attributes: {
+        questionId: "new",
+        isSaveEnabled: true,
+        targetCollection: FIRST_COLLECTION_ID,
+        entityTypes: ["table"],
+      },
     });
 
     frame.within(() => {

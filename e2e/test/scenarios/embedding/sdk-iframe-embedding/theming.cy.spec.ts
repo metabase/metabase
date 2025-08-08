@@ -33,8 +33,13 @@ describe("scenarios > embedding > sdk iframe embedding > theming", () => {
 
   it("should apply custom themes", () => {
     const frame = H.loadSdkIframeEmbedTestPage({
-      theme: DARK_THEME,
-      dashboardId: ORDERS_DASHBOARD_ID,
+      element: "metabase-dashboard",
+      attributes: {
+        dashboardId: ORDERS_DASHBOARD_ID,
+      },
+      metabaseConfig: {
+        theme: DARK_THEME,
+      },
     });
 
     cy.wait("@getDashboard");
@@ -72,18 +77,23 @@ describe("scenarios > embedding > sdk iframe embedding > theming", () => {
         const DARK_THEME = ${JSON.stringify(DARK_THEME)};
 
         function setLightTheme() {
-          embed.updateSettings({ theme: LIGHT_THEME });
+          defineMetabaseConfig({ theme: LIGHT_THEME });
         }
 
         function setDarkTheme() {
-          embed.updateSettings({ theme: DARK_THEME });
+          defineMetabaseConfig({ theme: DARK_THEME });
         }
       </script>
     `;
 
     const frame = H.loadSdkIframeEmbedTestPage({
-      dashboardId: ORDERS_DASHBOARD_ID,
-      theme: LIGHT_THEME,
+      element: "metabase-dashboard",
+      attributes: {
+        dashboardId: ORDERS_DASHBOARD_ID,
+      },
+      metabaseConfig: {
+        theme: LIGHT_THEME,
+      },
       insertHtml: { beforeEmbed: THEME_SWITCHER_HTML },
     });
 
