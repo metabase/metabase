@@ -50,7 +50,7 @@ export type TransformExecutionStatus =
   | "failed"
   | "timeout";
 
-export type TransformExecutionTrigger = "manual" | "schedule";
+export type TransformExecutionTrigger = "manual" | "cron";
 
 export type TransformTag = {
   id: TransformTagId;

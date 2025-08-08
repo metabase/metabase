@@ -27,7 +27,7 @@ export function formatTrigger(trigger: TransformExecutionTrigger) {
   switch (trigger) {
     case "manual":
       return t`Manual`;
-    case "schedule":
+    case "cron":
       return t`Schedule`;
   }
 }
