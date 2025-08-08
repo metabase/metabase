@@ -6,11 +6,11 @@ import type { DynamicSdkDefaultColorConfig } from "../types/private/css-variable
  */
 export const DYNAMIC_SDK_DEFAULT_COLORS_CONFIG: DynamicSdkDefaultColorConfig = {
   "background-hover": {
-    light: { source: "bg-white", darken: 0.05 },
+    light: { source: "bg-white", darken: 0.01 },
     dark: { source: "bg-white", lighten: 0.5 },
   },
   "background-disabled": {
-    light: { source: "bg-white", darken: 0.1 },
+    light: { source: "bg-white", darken: 0.03 },
     dark: { source: "bg-white", lighten: 0.2 },
   },
   "background-secondary": {
