@@ -7,7 +7,7 @@ import {
   getScheduleExplanation,
 } from "metabase/lib/cron";
 import { useMetadataToasts } from "metabase/metadata/hooks";
-import { Box, Divider, Group, Icon } from "metabase/ui";
+import { Box, Divider, Group, Icon, Tooltip } from "metabase/ui";
 import {
   useExecuteTransformJobMutation,
   useLazyGetTransformJobQuery,
@@ -106,6 +106,7 @@ function RunButtonSection({ job }: RunButtonSectionProps) {
   const [executeJob, { isLoading: isExecuting }] =
     useExecuteTransformJobMutation();
   const { sendErrorToast } = useMetadataToasts();
+  const hasTags = job.tag_ids?.length !== 0;
 
   const handleRun = async () => {
     const { error } = await executeJob(job.id);
@@ -117,11 +118,13 @@ function RunButtonSection({ job }: RunButtonSectionProps) {
   };
 
   return (
-    <RunButton
-      execution={job.last_execution}
-      isLoading={isFetching || isExecuting}
-      isDisabled={job.tag_ids?.length === 0}
-      onRun={handleRun}
-    />
+    <Tooltip label={t`This job doesn't have tags to run.`} disabled={hasTags}>
+      <RunButton
+        execution={job.last_execution}
+        isLoading={isFetching || isExecuting}
+        isDisabled={!hasTags}
+        onRun={handleRun}
+      />
+    </Tooltip>
   );
 }

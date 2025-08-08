@@ -1,4 +1,4 @@
-import { type ReactNode, useState } from "react";
+import { type ReactNode, type Ref, forwardRef, useState } from "react";
 import { useUpdateEffect } from "react-use";
 import { t } from "ttag";
 
@@ -14,12 +14,15 @@ type RunButtonProps = {
   onRun: () => void;
 };
 
-export function RunButton({
-  execution,
-  isLoading,
-  isDisabled: isExternallyDisabled = false,
-  onRun,
-}: RunButtonProps) {
+export const RunButton = forwardRef(function RunButton(
+  {
+    execution,
+    isLoading,
+    isDisabled: isExternallyDisabled = false,
+    onRun,
+  }: RunButtonProps,
+  ref: Ref<HTMLButtonElement>,
+) {
   const [isRecent, setIsRecent] = useState(false);
   const { label, color, leftSection, isDisabled } = getRunButtonInfo({
     execution,
@@ -36,6 +39,7 @@ export function RunButton({
 
   return (
     <Button
+      ref={ref}
       variant="filled"
       color={color}
       leftSection={leftSection}
@@ -45,7 +49,7 @@ export function RunButton({
       {label}
     </Button>
   );
-}
+});
 
 type RunButtonOpts = {
   execution: TransformExecution | null | undefined;
