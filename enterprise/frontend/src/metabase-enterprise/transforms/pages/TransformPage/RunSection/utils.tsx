@@ -50,8 +50,8 @@ export function getRunStatusInfo({
     case "succeeded":
       return {
         message: endTimeText
-          ? jt`Last run ${endTimeText} successfully. ${runListLink}`
-          : jt`Last run successfully. ${runListLink}`,
+          ? jt`Last ran ${endTimeText} successfully. ${runListLink}`
+          : jt`Last ran successfully. ${runListLink}`,
         icon: "check_filled",
         color: "success",
       };
