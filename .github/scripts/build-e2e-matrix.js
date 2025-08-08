@@ -5,7 +5,7 @@
 const DEFAULT_SPEC_PATTERN = "./e2e/test/scenarios/**/*.cy.spec.*";
 const EMBEDDING_SDK_SPEC_PATTERN =
   "./e2e/test/scenarios/embedding-sdk/**.cy.spec.*";
-const DEBUG_SPEC_PATTERN = "./e2e/test/scenarios/onboarding/home/homepage.cy.spec.js,./e2e/test/scenarios/onboarding/auth/signup.cy.spec.js,./e2e/test/scenarios/question/new.cy.spec.js,./e2e/test/scenarios/dashboard-cards/dashboard-drill.cy.spec.js";
+const DEBUG_SPEC_PATTERN = "./e2e/test/scenarios/organization/official-collections.cy.spec.js,./e2e/test/scenarios/organization/bookmarks-question.cy.spec.js,./e2e/test/scenarios/organization/edit-history-metadata.cy.spec.js,./e2e/test/scenarios/organization/bookmarks-collection.cy.spec.js,./e2e/test/scenarios/organization/content-verification.cy.spec.js,./e2e/test/scenarios/organization/timelines-collection.cy.spec.js,./e2e/test/scenarios/organization/timelines-question.cy.spec.js,./e2e/test/scenarios/organization/bookmarks-dashboard.cy.spec.js,./e2e/test/scenarios/filters/filter-bulk.cy.spec.js,./e2e/test/scenarios/filters/filter-sources.cy.spec.js,./e2e/test/scenarios/filters/relative-datetime.cy.spec.js,./e2e/test/scenarios/filters/view.cy.spec.js";
 
 const specialTestConfigs = [
   {
