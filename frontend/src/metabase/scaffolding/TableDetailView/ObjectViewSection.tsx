@@ -177,6 +177,7 @@ export function ObjectViewSection({
       {onUpdateSection && (section.title || isEdit) && (
         <Group
           gap="sm"
+          align="center"
           mb={isFixedSection ? 0 : "md"}
           p={0}
           className={S.SectionTitle}
@@ -187,25 +188,43 @@ export function ObjectViewSection({
               <DragHandle size="lg" {...dragHandleProps} />
             )}
 
-          <EditableText
-            isOptional
-            initialValue={section.title}
-            isDisabled={!isEdit || isFixedSection}
-            onChange={(title) => onUpdateSection({ title })}
-            placeholder={t`Untitled Group`}
-            style={{
-              minHeight: "1.5rem",
-              opacity: isFixedSection ? 0.5 : 1,
-              marginLeft: isEdit ? 0 : -4,
-              marginRight: isEdit ? 0 : -4,
-              marginTop: -4,
-              marginBottom: -4,
-              ...(isFixedSection &&
-                (!isEdit || section.fields.length > 0) && {
-                  display: "none",
-                }),
-            }}
-          />
+          {isFixedSection && section.fields.length === 0 && (
+            <Ellipsified
+              variant="primary"
+              truncate
+              c="var(--mb-color-text-primary)"
+              style={{
+                opacity: 0.5,
+                fontSize: isHeader ? "3.125rem" : undefined,
+              }}
+              fw="bold"
+              fz={undefined}
+            >
+              {isHeader ? t`Title` : t`Subtitle`}
+            </Ellipsified>
+          )}
+
+          {(!isFixedSection || section.fields.length !== 0) && (
+            <EditableText
+              isOptional
+              initialValue={section.title}
+              isDisabled={!isEdit || isFixedSection}
+              onChange={(title) => onUpdateSection({ title })}
+              placeholder={t`Untitled group`}
+              style={{
+                minHeight: "1.5rem",
+                opacity: isFixedSection ? 0.5 : 1,
+                marginLeft: isEdit ? 0 : -4,
+                marginRight: isEdit ? 0 : -4,
+                marginTop: -4,
+                marginBottom: -4,
+                ...(isFixedSection &&
+                  (!isEdit || section.fields.length > 0) && {
+                    display: "none",
+                  }),
+              }}
+            />
+          )}
         </Group>
       )}
 
