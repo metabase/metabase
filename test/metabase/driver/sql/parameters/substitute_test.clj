@@ -477,9 +477,8 @@
   "Expand parameters inside a top-level native `query`. Not recursive."
   [{:keys [parameters], inner :native, :as query}]
   (driver/with-driver :h2
-    (mt/with-metadata-provider meta/metadata-provider
-      (let [inner' (qp.native/expand-stage (update inner :parameters #(concat parameters %)))]
-        (assoc query :native inner')))))
+    (let [inner' (qp.native/expand-stage meta/metadata-provider (update inner :parameters #(concat parameters %)))]
+      (assoc query :native inner'))))
 
 (defn- expand* [query]
   (-> (expand** (mbql.normalize/normalize query))

@@ -15,9 +15,26 @@
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]))
 
-(defn- expand-parameters [query]
-  (let [query (lib/query meta/metadata-provider (mbql.normalize/normalize query))]
-    (-> (qp.mbql/expand (dissoc query :parameters) (:parameters query))
+(defn- expand-parameters
+  [query]
+  (if (:lib/type query)
+    ;; MBQL 5 query: return an MBQL 5 query
+    (let [params (:parameters query)]
+      (reduce
+       (fn [query stage-number]
+         (lib/update-query-stage
+          query
+          stage-number
+          (fn [stage]
+            (qp.mbql/expand query
+                            [:stages stage-number]
+                            (cond-> stage
+                              (not-empty params) (assoc :parameters params))))))
+       (dissoc query :parameters)
+       (range (count (:stages query)))))
+    ;; legacy input: return a legacy query
+    (-> (lib/query meta/metadata-provider (mbql.normalize/normalize query))
+        expand-parameters
         lib/->legacy-MBQL)))
 
 (defn- expanded-query-with-filter [filter-clause]
@@ -81,36 +98,47 @@
 
 (deftest ^:parallel multi-stage-test
   (testing "adding parameters to different stages"
-    (is (=? {:query {:source-query {:source-table (meta/id :venues)
-                                    :aggregation  [[:count]]
-                                    :breakout     [[:field (meta/id :venues :price) {:temporal-unit :year}]]
-                                    :filter       [:= [:field (meta/id :venues :name) nil] "Cam's Toucannery"]}
-                     :filter       [:and
-                                    [:> [:field "count" {:base-type :type/Integer}] 0]
-                                    [:<= [:field "count" {:base-type :type/Integer}] 30]]}}
+    (is (=? {:stages [{:aggregation  [[:count {}]]
+                       :breakout     [[:field {:temporal-unit :year} (meta/id :venues :price)]]
+                       :filters      [[:=
+                                       {}
+                                       [:field {} (meta/id :venues :name)]
+                                       "Cam's Toucannery"]]}
+                      {:filters [[:> {}
+                                  [:field {:base-type :type/Integer} "count"]
+                                  0]
+                                 [:<= {}
+                                  [:field {:base-type :type/Integer} "count"]
+                                  30]]}]}
             (expand-parameters
-             {:database   (meta/id)
-              :type       :query
-              :query      {:source-query {:source-table (meta/id :venues)
-                                          :aggregation  [[:count]]
-                                          :breakout     [[:field (meta/id :venues :price) {:temporal-unit :day}]]}
-                           :filter       [:> [:field "count" {:base-type :type/Integer}] 0]}
-              :parameters [{:hash   "abc123"
-                            :name   "foo"
-                            :type   "id"
-                            :target [:dimension [:field (meta/id :venues :name) nil] {:stage-number -2}]
-                            :value  "Cam's Toucannery"}
-                           {:hash   "def456"
-                            :name   "bar"
-                            :type   :number/<=
-                            :target [:dimension [:field "count" {:base-type :type/Integer}] {:stage-number 1}]
-                            :value  [30]}
-                           {:value  "year"
-                            :type   :temporal-unit
-                            :id     "66cf9285"
-                            :target [:dimension
-                                     [:field (meta/id :venues :price) {:base-type :type/DateTime, :temporal-unit :day}]
-                                     {:stage-number -2}]}]})))))
+             (lib/query
+              meta/metadata-provider
+              (lib.tu.macros/mbql-5-query venues
+                {:stages [{:aggregation [[:count {}]]
+                           :breakout    [[:field {:temporal-unit :day} %price]]
+                           :parameters  [{:hash   "abc123"
+                                          :name   "foo"
+                                          :type   "id"
+                                          ;; stage-number should get ignored by this
+                                          ;; namespace; [[metabase.query-processor.middleware.parameters]] should decide
+                                          ;; what to do with it.
+                                          :target [:dimension [:field %name nil] {:stage-number 1000}]
+                                          :value  "Cam's Toucannery"}
+                                         {:value  "year"
+                                          :type   :temporal-unit
+                                          :id     "66cf9285"
+                                          :target [:dimension
+                                                   [:field %price {:base-type :type/DateTime, :temporal-unit :day}]
+                                                   {:stage-number 1000}]}]}
+                          {:filters    [[:>
+                                         {}
+                                         [:field {:base-type :type/Integer} "count"]
+                                         0]]
+                           :parameters [{:hash   "def456"
+                                         :name   "bar"
+                                         :type   :number/<=
+                                         :target [:dimension [:field "count" {:base-type :type/Integer}] {:stage-number 1}]
+                                         :value  [30]}]}]})))))))
 
 (deftest ^:parallel date-range-parameters-test
   (testing "date range parameters"
@@ -388,7 +416,8 @@
               (update :query #(str/split-lines (driver/prettify-native-form :h2 %)))))))
 
 (defn- build-filter-clause [query param]
-  (#'qp.mbql/build-filter-clause query -1 param))
+  (let [stage-path [:stages (dec (count (:stages query)))]]
+    (#'qp.mbql/build-filter-clause query stage-path param)))
 
 (deftest ^:parallel convert-ids-to-numbers-test
   (is (=? (lib.tu.macros/$ids venues

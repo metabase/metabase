@@ -246,6 +246,7 @@
  [metabase.lib.field.util
   update-keys-for-col-from-previous-stage]
  [lib.filter
+  add-filter-to-stage
   filter
   filters
   filterable-columns

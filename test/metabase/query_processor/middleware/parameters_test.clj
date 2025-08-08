@@ -5,7 +5,6 @@
    [clojure.test :refer :all]
    [metabase.driver :as driver]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
-   [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.common :as lib.schema.common]
@@ -13,18 +12,22 @@
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
    [metabase.query-processor.middleware.parameters :as parameters]
-   [metabase.test :as mt]
-   [metabase.util.malli :as mu]))
+   [metabase.query-processor.preprocess :as qp.preprocess]
+   [metabase.test :as mt]))
 
-(mu/defn- substitute-params :- ::mbql.s/Query
+(defn- substitute-params
   ([query]
-   (substitute-params meta/metadata-provider query))
+   (let [mp (or (:lib/metadata query)
+                meta/metadata-provider)]
+     (substitute-params mp query)))
 
   ([metadata-provider query]
    (driver/with-driver :h2
-     (-> (lib/query metadata-provider (mbql.normalize/normalize query))
-         parameters/substitute-parameters
-         lib/->legacy-MBQL))))
+     (if (:lib/type query)
+       (parameters/substitute-parameters query)
+       (-> (lib/query metadata-provider (mbql.normalize/normalize query))
+           parameters/substitute-parameters
+           lib/->legacy-MBQL)))))
 
 (deftest ^:parallel expand-mbql-top-level-params-test
   (testing "can we expand MBQL params if they are specified at the top level?"
@@ -194,6 +197,7 @@
 
 (deftest ^:parallel expand-multiple-referenced-cards-in-template-tags
   (testing "multiple sub-queries, referenced in template tags, are correctly substituted"
+
     (is (=? (native-query
              {:query "SELECT COUNT(*) FROM (SELECT 1) AS c1, (SELECT 2) AS c2", :params []})
             (substitute-params
@@ -297,7 +301,7 @@
                             :snippet-name snippet-name
                             :snippet-id   snippet-id}])))
 
-(deftest expand-multiple-snippets-test
+(deftest ^:parallel expand-multiple-snippets-test
   (let [mp (lib.tu/mock-metadata-provider
             meta/metadata-provider
             {:native-query-snippets [{:id          1
@@ -376,3 +380,26 @@
                                 [:field "DATE" {:base-type :type/Date, :temporal-unit :day}]
                                 "2014-01-06"]}}
               (substitute-params mp query))))))
+
+(deftest ^:parallel stage-number-in-parameters-e2e-test
+  (testing "We should be able to apply filters explicitly targeting nested native stages (#48258)"
+    (let [mp    (lib.tu/mock-metadata-provider
+                 meta/metadata-provider
+                 {:cards [{:id            1
+                           :dataset-query {:database (meta/id)
+                                           :type     :native
+                                           :native   {:query "SELECT * FROM checkins;"}}}]})
+          query (lib/query
+                 mp
+                 (lib.tu.macros/mbql-5-query nil
+                   {:stages     [{:source-card 1}]
+                    :parameters [{:type   :date/all-options
+                                  :target [:dimension [:field "DATE" {:base-type :type/Date}] {:stage-number 0}]
+                                  :value  "2014-01-06"}]}))]
+      (is (=? {:stages [{:native "SELECT * FROM checkins;"}
+                        {:filters [[:=
+                                    {}
+                                    [:field {:temporal-unit :default} "DATE"]
+                                    [:absolute-datetime {} #t "2014-01-06" :default]]]}]}
+              (-> (qp.preprocess/preprocess query)
+                  lib/->pMBQL))))))

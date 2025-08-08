@@ -960,15 +960,9 @@
   nil)
 
 (defmulti substitute-native-parameters
-  "DEPRECATED: No longer used in Metabase 0.56.0+. Use [[substitute-native-parameters-mbql-5]] going forward."
-  {:added "0.34.0" :arglists '([driver inner-query]), :deprecated "0.56.0"}
-  dispatch-on-initialized-driver
-  :hierarchy #'hierarchy)
-
-(defmulti substitute-native-parameters-mbql-5
   "For drivers that support `:native-parameters`. Substitute parameters in a normalized 'inner' native query.
 
-    {:query \"SELECT count(*) FROM table WHERE id = {{param}}\"
+    {:query         \"SELECT count(*) FROM table WHERE id = {{param}}\"
      :template-tags {:param {:name \"param\", :display-name \"Param\", :type :number}}
      :parameters    [{:type   :number
                       :target [:variable [:template-tag \"param\"]]
@@ -980,7 +974,7 @@
   `metabase.driver.common.parameters.*` namespaces. See the `:sql` and `:mongo` drivers for sample implementations of
   this method.`Driver-agnostic end-to-end native parameter tests live in
   [[metabase.query-processor-test.parameters-test]] and other namespaces."
-  {:added "0.56.0" :arglists '([driver query stage-number])}
+  {:added "0.34.0" :arglists '([driver inner-native-query])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 

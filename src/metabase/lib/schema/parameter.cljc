@@ -199,11 +199,15 @@
    [:expression   [:ref ::legacy-expression-ref]]
    [:template-tag [:ref ::template-tag]]])
 
+;;; TODO (Cam 8/8/25) -- is options supposed to be non-empty? It it supposed to be removed from `:dimension` if it's
+;;; empty? Unclear. I don't think it matters tho.
 (mr/def ::dimension.options
   [:map
    {:error/message "dimension options"}
-   [:stage-number {:optional true} :int]])
+   [:stage-number {:optional true} ::lib.schema.common/int-greater-than-or-equal-to-zero]])
 
+;;; TODO (Cam 8/8/25) -- seems really WACK to have dimension use MBQL 4 clause order even in Lib... I guess it's not a
+;;; real MBQL clause tho.
 (mr/def ::dimension
   [:catn
    [:tag     [:= {:decode/normalize lib.schema.common/normalize-keyword} :dimension]]

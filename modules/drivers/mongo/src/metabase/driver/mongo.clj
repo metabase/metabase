@@ -490,10 +490,6 @@
   (mongo.connection/with-mongo-client [_ (driver-api/database (driver-api/metadata-provider))]
     (mongo.execute/execute-reducible-query query respond)))
 
-(defmethod driver/substitute-native-parameters-mbql-5 :mongo
-  [driver inner-query]
-  (mongo.params/substitute-native-parameters driver inner-query))
-
 (defmethod driver/db-start-of-week :mongo
   [_]
   :sunday)

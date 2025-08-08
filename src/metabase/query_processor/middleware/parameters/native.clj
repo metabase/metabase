@@ -12,8 +12,9 @@
      replaced as usual and the rest of the clause (`AND ...`) is included in the query as-is
 
   Native parameter parsing and substution logic shared by multiple drivers lives in
-  `metabase.driver.common.parameters.*`. Driver-specific parsing/substitution logic is implemented in
-  `metabase.driver.sql.parameters.*` (for SQL drivers) or similar namespaces for others.
+  `metabase.driver.common.parameters.*` (for legacy MBQL) and `metabase.query-processor.parameters.*` (for MBQL 5).
+  Driver-specific parsing/substitution logic is implemented in `metabase.driver.sql.parameters.*` (for SQL drivers) or
+  similar namespaces for others.
 
   The different steps of this process, are similar between existing driver implementations, and are as follows:
 
@@ -36,29 +37,24 @@
    [metabase.query-processor.store :as qp.store]
    [metabase.util.malli :as mu]))
 
-(mu/defn expand-stage :- ::lib.schema/stage
+(defn- substitute-native-parameters* [stage]
+  (-> stage
+      (set/rename-keys {:native :query})
+      (m/update-existing :parameters (fn [parameters]
+                                       (mapv lib/->legacy-MBQL parameters)))
+      (m/update-existing :template-tags update-vals lib/->legacy-MBQL)
+      (->> (driver/substitute-native-parameters driver/*driver*))
+      (set/rename-keys {:query :native})))
+
+(mu/defn expand-stage :- ::lib.schema/stage.native
   "Expand parameters inside an *inner* native `query`. Not recursive -- recursive transformations are handled in
   the `middleware.parameters` functions that invoke this function."
-  ([stage]
-   (expand-stage (qp.store/metadata-provider) stage))
-
-  ([metadata-providerable :- ::lib.schema.metadata/metadata-providerable
-    stage                 :- ::lib.schema/stage]
-   (if-not (driver.u/supports? driver/*driver* :native-parameters (lib.metadata/database metadata-providerable))
-     stage
-     (let [thunk             (^:once fn* []
-                               (-> stage
-                                   (set/rename-keys {:native :query})
-                                   (m/update-existing :parameters (fn [parameters]
-                                                                    (mapv lib/->legacy-MBQL parameters)))
-                                   (m/update-existing :template-tags update-vals lib/->legacy-MBQL)
-                                  ;; TODO (Cam 8/6/25) -- shouldn't we at least TRY to use
-                                  ;; `substitute-native-parameters-mbql-5` here?
-                                   #_{:clj-kondo/ignore [:deprecated-var]}
-                                   (->> (driver/substitute-native-parameters driver/*driver*))
-                                   (set/rename-keys {:query :native})))
-           substituted-stage (if (qp.store/initialized?)
-                               (thunk)
-                               (qp.store/with-metadata-provider (lib.metadata/->metadata-provider metadata-providerable)
-                                 (thunk)))]
-       (dissoc substituted-stage :parameters :template-tags)))))
+  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+   stage                 :- ::lib.schema/stage.native]
+  (if-not (driver.u/supports? driver/*driver* :native-parameters (lib.metadata/database metadata-providerable))
+    stage
+    (let [substituted-stage (qp.store/with-metadata-provider (lib.metadata/->metadata-provider metadata-providerable)
+                              (substitute-native-parameters* stage))]
+      (->
+       substituted-stage
+       (dissoc :parameters :template-tags)))))

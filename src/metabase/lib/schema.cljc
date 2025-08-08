@@ -8,6 +8,7 @@
   future we can deprecate that namespace and eventually do away with it entirely."
   (:refer-clojure :exclude [ref])
   (:require
+   [clojure.set :as set]
    [medley.core :as m]
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.schema.actions :as actions]
@@ -78,12 +79,25 @@
      ;; automatically during parameter expansion. To run a native query you must have native query permissions as well
      ;; as permissions for any Cards' parent Collections used in `:card` template tag parameters.
      [:query-permissions/referenced-card-ids {:optional true} [:maybe [:set ::id/card]]]]]
-   [:fn
-    {:error/message ":source-table is not allowed in a native query stage."}
-    #(not (contains? % :source-table))]
-   [:fn
-    {:error/message ":source-card is not allowed in a native query stage."}
-    #(not (contains? % :source-card))]
+   (let [disallowed-keys #{:source-table
+                           :source-card
+                           :joins
+                           :expressions
+                           :filter
+                           :filters
+                           :breakout
+                           :aggregation
+                           :fields
+                           :order-by
+                           :limit
+                           :offset
+                           :page}]
+     [:fn
+      {:error/message "MBQL stage keys like :source-table or :filter are not allowed in a native query stage."
+       :error/fn      (fn [{stage :value} _]
+                        (when (map? stage)
+                          (str "native stage should not have MBQL stage keys, found " (set/intersection (set (keys stage)) disallowed-keys))))}
+      (complement (apply some-fn disallowed-keys))])
    [:fn
     {:error/message ":query is not allowed in a native query stage, you probably meant to use :native instead."}
     (complement :query)]])
