@@ -109,25 +109,60 @@
         (assoc :table target-table))))
 
 (api.macros/defendpoint :get "/execution"
-  [params :-
+  [_route-params
+   {:keys [sort_column sort_direction transform_ids statuses transform_tag_ids]} :-
    [:map
     [:sort_column    {:optional true} [:enum "started_at" "ended_at"]]
     [:sort_direction {:optional true} [:enum "asc" "desc"]]
-    [:transform_id   {:optional true} ms/IntGreaterThanOrEqualToZero]
-    [:status         {:optional true} [:enum "started" "succeeded" "failed" "timeout"]]]]
+    [:transform_ids {:optional true} [:maybe (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]]
+    [:statuses {:optional true} [:maybe (ms/QueryVectorOf [:enum "started" "succeeded" "failed" "timeout"])]]
+    [:transform_tag_ids {:optional true} [:maybe (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]]]]
   (log/info "get executions")
   (api/check-superuser)
-  (update (worker/paged-executions (-> params
-                                       (set/rename-keys {:transform_id :work_id})
-                                       (assoc :work_type "transform"
+  (let [;; Resolve transforms that have the specified tags (nil if none found)
+        tag-transform-ids (when (seq transform_tag_ids)
+                            (t2/select-fn-set :transform_id :transform_tags
+                                              :tag_id [:in transform_tag_ids]))
+        ;; Convert to set for consistent handling (empty set if no results)
+        tag-ids-set (or tag-transform-ids #{})
+
+        ;; Determine final work_ids based on filters
+        final-work-ids (cond
+                        ;; Both filters: intersection
+                         (and (seq transform_ids) (seq transform_tag_ids))
+                         (let [intersection (set/intersection (set transform_ids) tag-ids-set)]
+                           (if (empty? intersection)
+                             ::no-results
+                             (vec intersection)))
+
+                        ;; Only tag filter
+                         (seq transform_tag_ids)
+                         (if (empty? tag-ids-set)
+                           ::no-results
+                           (vec tag-ids-set))
+
+                        ;; Only ID filter or no filter
+                         :else
+                         transform_ids)]
+    ;; If we determined there are no results, return empty immediately
+    (if (= final-work-ids ::no-results)
+      {:data []
+       :total 0
+       :limit (request/limit)
+       :offset (request/offset)}
+  (update (worker/paged-executions {:work_type "transform"
+                                        :work_ids final-work-ids
+                                    :statuses statuses
+                                    :sort_column sort_column
+                                    :sort_direction sort_direction
                                               :offset    (request/offset)
-                                              :limit     (request/limit))))
+                                    :limit (request/limit)})
           :data #(mapv (fn [run]
                          (-> run
                              (set/rename-keys {:run_id     :id
                                                :work_id    :transform_id
                                                :run_method :trigger})))
-                       %)))
+                           %)))))
 
 (api.macros/defendpoint :put "/:id"
   [{:keys [id]} :- [:map

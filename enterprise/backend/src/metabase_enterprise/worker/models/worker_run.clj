@@ -202,8 +202,8 @@
            sort_column
            sort_direction
            work_type
-           work_id
-           status]}]
+           work_ids
+           statuses]}]
   (let [offset (or offset 0)
         limit  (or limit 20)
         sort-direction (or (keyword sort_direction) :desc)
@@ -218,11 +218,12 @@
                     [:end_time   sort-direction nulls-sort]])
         conditions (concat (when work_type
                              [:work_type work_type])
-                           (when work_id
-                             [:work_id work_id])
-                           (when status
-                             [:= :status status])
-                           (when (= status "started")
+                           (when (seq work_ids)
+                             [:work_id [:in work_ids]])
+                           (when (seq statuses)
+                             [:status [:in statuses]])
+                           (when (and (seq statuses)
+                                      (some #(= % "started") statuses))
                              [:is_active true]))
         conditions-with-sort-and-pagination (concat conditions [{:order-by order-by
                                                                  :offset offset
