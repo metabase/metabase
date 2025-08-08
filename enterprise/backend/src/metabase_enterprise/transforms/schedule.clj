@@ -63,7 +63,7 @@
        (delete-trigger! trigger)
        (log/info "No trigger for this transform job exists"))
      (do
-       (log/info "Deleting global trigger for transforms with schedule" (:schedule job-id-or-trigger))
+       (log/info "Deleting trigger for transform job with schedule" (:schedule job-id-or-trigger))
        (task/delete-trigger! (-> job-id-or-trigger :key triggers/key))))))
 
 (task/defjob ^{:doc "Execute transforms."
@@ -98,7 +98,7 @@
           (delete-trigger! existing-trigger))
         (when schedule
           (create-trigger! job-id schedule)))
-      (log/info "No changes to the global trigger for transforms with schedule" schedule))))
+      (log/info "No changes to the trigger for transform job" job-id))))
 
 (defn delete-job! [job-id]
   (log/info "Deleting schedule for transform job" job-id)
