@@ -45,24 +45,22 @@
       display: flex;
       gap: var(--mantine-spacing-sm);
       align-items: center;
-
-      .FieldIcon {
-        display: none;
-        align-items: center;
-      }
-
-      &:hover {
-        .FieldIcon {
-          display: flex;
-        }
-      }
     }
     .FieldRemoveButton {
       align-self: center;
       visibility: hidden;
     }
-    &:hover .FieldRemoveButton {
-      visibility: visible;
+    &:hover {
+      .FieldRemoveButton {
+        visibility: visible;
+      }
+      .FieldIcon {
+        visibility: visible;
+      }
+    }
+    .FieldIcon {
+      visibility: hidden;
+      align-items: center;
     }
   }
 
