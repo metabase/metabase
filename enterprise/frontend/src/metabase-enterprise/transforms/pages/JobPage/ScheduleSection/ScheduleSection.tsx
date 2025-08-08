@@ -3,7 +3,6 @@ import { t } from "ttag";
 
 import { CronExpressionInput } from "metabase/common/components/CronExpressioInput";
 import {
-  formatCronExpressionForAPI,
   formatCronExpressionForUI,
   getScheduleExplanation,
 } from "metabase/lib/cron";
@@ -72,7 +71,7 @@ function CronSection({ job, schedule, onChangeSchedule }: CronSectionProps) {
   const handleBlurChange = async (newSchedule: string) => {
     const { error } = await updateJob({
       id: job.id,
-      schedule: formatCronExpressionForAPI(newSchedule),
+      schedule: newSchedule,
     });
 
     if (error) {
