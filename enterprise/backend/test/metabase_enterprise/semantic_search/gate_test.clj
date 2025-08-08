@@ -1,5 +1,6 @@
 (ns metabase-enterprise.semantic-search.gate-test
   (:require
+   [buddy.core.hash :as buddy-hash]
    [clojure.test :refer :all]
    [clojure.walk :as walk]
    [honey.sql :as sql]
@@ -37,7 +38,7 @@
                :document      (doto (PGobject.)
                                 (.setType "jsonb")
                                 (.setValue (json/encode search-doc)))
-               :document_hash bytes?
+               :document_hash (u/encode-base64-bytes (buddy-hash/sha1 (json/encode (into (sorted-map) search-doc))))
                :updated_at    (:updated_at search-doc)}
               (sut search-doc t2)))
 
@@ -272,7 +273,7 @@
         index2         (semantic.index-metadata/qualify-index (semantic.index/default-index model2) index-metadata)
         watermark      {:last-poll (Instant/parse "2025-01-01T13:00:00Z")
                         :last-seen {:id            "card_1"
-                                    :document_hash (byte-array [4 2 0])
+                                    :document_hash "bar"
                                     :gated_at      (Instant/parse "2025-01-01T12:45:00Z")}}]
 
     (with-open [_ (open-tables! pgvector index-metadata)]
@@ -310,9 +311,9 @@
                   :indexer_last_poll      nil
                   :indexer_last_seen      nil}
                  index1-meta))
-          (is (=? {:id                   id2
-                   :indexer_last_poll    (Timestamp/from (:last-poll watermark))
-                   :indexer_last_seen_id "card_1"
-                   :indexer_last_seen    (Timestamp/from (:gated_at (:last-seen watermark)))}
-                  index2-meta))
-          (is (= [4 2 0] (vec (:indexer_last_seen_hash index2-meta)))))))))
+          (is (=? {:id                     id2
+                   :indexer_last_poll      (Timestamp/from (:last-poll watermark))
+                   :indexer_last_seen_id   "card_1"
+                   :indexer_last_seen_hash "bar"
+                   :indexer_last_seen      (Timestamp/from (:gated_at (:last-seen watermark)))}
+                  index2-meta)))))))

@@ -15,50 +15,6 @@
 
 (use-fixtures :once #'semantic.tu/once-fixture)
 
-(def ^:private bytes0 (byte-array [0]))
-(def ^:private bytes1 (byte-array [1]))
-
-(deftest candidate-filter-test
-  (let [filter (semantic.indexer/candidate-filter 3)]
-    (testing "remove-redundant-candidates filters out seen candidates"
-      (let [candidates       [{:id "card_123" :document_hash bytes0 :gated_at (Instant/parse "2025-01-01T12:00:00Z")}
-                              {:id "card_456" :document_hash nil :gated_at (Instant/parse "2025-01-01T12:01:00Z")}]
-            filter-with-seen (semantic.indexer/update-candidate-filter
-                              filter
-                              [{:id            "card_123"
-                                :document_hash bytes0
-                                :gated_at      (Instant/parse "2025-01-01T12:00:00Z")}])
-            novel-candidates (semantic.indexer/remove-redundant-candidates filter-with-seen candidates)]
-        (is (= 1 (count novel-candidates)))
-        (is (= "card_456" (-> novel-candidates first :id)))))
-
-    (testing "does not filter candidates whose hash does not match (even if gated_at is the same)"
-      (let [candidates       [{:id "card_123" :document_hash bytes0 :gated_at (Instant/parse "2025-01-01T12:00:00Z")}
-                              {:id "card_456" :document_hash nil :gated_at (Instant/parse "2025-01-01T12:01:00Z")}]
-            filter-with-seen (semantic.indexer/update-candidate-filter
-                              filter
-                              [{:id            "card_123"
-                                :document_hash bytes1
-                                :gated_at      (Instant/parse "2025-01-01T12:00:00Z")}])
-            novel-candidates (semantic.indexer/remove-redundant-candidates filter-with-seen candidates)]
-        (is (= 2 (count novel-candidates)))))
-
-    (testing "update-candidate-filter maintains capacity limits"
-      (let [candidates     [{:id "card1" :document_hash bytes0 :gated_at (Instant/parse "2025-01-01T12:00:00Z")}
-                            {:id "card2" :document_hash bytes1 :gated_at (Instant/parse "2025-01-01T12:01:00Z")}
-                            {:id "card3" :document_hash nil :gated_at (Instant/parse "2025-01-01T12:02:00Z")}
-                            {:id "card4" :document_hash bytes1 :gated_at (Instant/parse "2025-01-01T12:03:00Z")}
-                            {:id "card5" :document_hash bytes0 :gated_at (Instant/parse "2025-01-01T12:04:00Z")}]
-            updated-filter (semantic.indexer/update-candidate-filter filter candidates)]
-        (is (= 3 (count (:tree updated-filter))))
-        (is (= 3 (:capacity updated-filter)))
-        (testing "earlier candidates are dropped"
-          (is (= ["card1" "card2"]
-                 (map :id
-                      (semantic.indexer/remove-redundant-candidates
-                       updated-filter
-                       candidates)))))))))
-
 (defn- open-metadata! [pgvector index-metadata]
   (semantic.tu/closeable
    (semantic.index-metadata/create-tables-if-not-exists! pgvector index-metadata)
@@ -76,9 +32,6 @@
                                   :where  [:= :table_name (:table-name index)]}
                                  :quoted true)
                      {:builder-fn jdbc.rs/as-unqualified-lower-maps}))
-
-(defn- comparable-watermark [watermark]
-  (u/update-in-if-exists watermark [:last-seen :document_hash] u/encode-base64-bytes))
 
 (deftest indexing-step-test
   (let [pgvector       semantic.tu/db
@@ -125,8 +78,8 @@
               (let [[{poll-result :ret}] @poll-calls]
                 (is (= (semantic.gate/next-watermark initial-watermark poll-result) (:watermark @indexing-state)))
                 (testing "watermark has been flushed to the metadata table"
-                  (is (= (comparable-watermark (:watermark @indexing-state))
-                         (comparable-watermark (semantic.gate/resume-watermark (get-metadata-row pgvector index-metadata index))))))))))
+                  (is (= (:watermark @indexing-state)
+                         (semantic.gate/resume-watermark (get-metadata-row pgvector index-metadata index)))))))))
 
         (testing "add some data to the gate we should see upsert / delete be called"
           (clear-spies)
@@ -145,8 +98,8 @@
               (let [[{poll-result :ret}] @poll-calls]
                 (is (= (semantic.gate/next-watermark initial-watermark poll-result) (:watermark @indexing-state)))
                 (testing "watermark has been flushed to the metadata table"
-                  (is (= (comparable-watermark (:watermark @indexing-state))
-                         (comparable-watermark (semantic.gate/resume-watermark (get-metadata-row pgvector index-metadata index))))))))))
+                  (is (= (:watermark @indexing-state)
+                         (semantic.gate/resume-watermark (get-metadata-row pgvector index-metadata index)))))))))
 
         (testing "stepping again with no new data does nothing"
           (clear-spies)
@@ -384,19 +337,16 @@
 
 (deftest init-indexing-state-test
   (testing "initializes indexing state from metadata row"
-    (let [metadata-row {:indexer_last_poll      (Instant/parse "2025-01-01T12:00:00Z")
-                        :indexer_last_seen      (Instant/parse "2025-01-01T11:30:00Z")
-                        :indexer_last_seen_id   "foo"
-                        :indexer_last_seen_hash bytes0}
-          state        (semantic.indexer/init-indexing-state metadata-row)
-          state-value  @state]
-
+    (let [metadata-row       {:indexer_last_poll      (Instant/parse "2025-01-01T12:00:00Z")
+                              :indexer_last_seen      (Instant/parse "2025-01-01T11:30:00Z")
+                              :indexer_last_seen_id   "foo"
+                              :indexer_last_seen_hash "bar"}
+          state              (semantic.indexer/init-indexing-state metadata-row)
+          state-value        @state
+          expected-last-seen {:id "foo" :document_hash "bar" :gated_at (Instant/parse "2025-01-01T11:30:00Z")}]
       (is (= (Instant/parse "2025-01-01T12:00:00Z") (get-in state-value [:watermark :last-poll])))
-      (is (= {:id            "foo"
-              :document_hash bytes0
-              :gated_at      (Instant/parse "2025-01-01T11:30:00Z")}
-             (get-in state-value [:watermark :last-seen])))
-      (is (map? (:candidate-filter state-value)))
+      (is (= expected-last-seen (get-in state-value [:watermark :last-seen])))
+      (is (= #{expected-last-seen} (:last-seen-candidates state-value)))
       (is (zero? (:last-indexed-count state-value)))
       (is (zero? (:last-poll-count state-value))))))
 

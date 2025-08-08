@@ -20,6 +20,7 @@
   but are not coordinated with any gated updates and therefore might race if gate indexers are also running."
   (:require [buddy.core.hash :as buddy-hash]
             [honey.sql :as sql]
+            [metabase.util :as u]
             [metabase.util.json :as json]
             [metabase.util.log :as log]
             [next.jdbc :as jdbc]
@@ -51,6 +52,9 @@
    :document_hash nil
    :updated_at    default-updated-at})
 
+(defn- document-hash [search-doc]
+  (u/encode-base64-bytes (buddy-hash/sha1 (json/encode (into (sorted-map) search-doc)))))
+
 (defn search-doc->gate-doc
   "Converts a search document into a gate table record, requires the document can be encoded as json."
   [search-doc default-updated-at]
@@ -61,7 +65,7 @@
      :document      (doto (PGobject.)
                       (.setType "jsonb")
                       (.setValue (json/encode search-doc)))
-     :document_hash (buddy-hash/sha1 (json/encode (into (sorted-map) search-doc)))
+     :document_hash (document-hash search-doc)
      :updated_at    (or (:updated_at search-doc) default-updated-at)}))
 
 (defn gate-doc->search-doc
