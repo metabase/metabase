@@ -5,6 +5,7 @@
 const DEFAULT_SPEC_PATTERN = "./e2e/test/scenarios/**/*.cy.spec.*";
 const EMBEDDING_SDK_SPEC_PATTERN =
   "./e2e/test/scenarios/embedding-sdk/**.cy.spec.*";
+const DEBUG_SPEC_PATTERN = "./e2e/test/scenarios/onboarding/home.cy.spec.js,./e2e/test/scenarios/onboarding/auth/signup.cy.spec.js,./e2e/test/scenarios/onboarding/auth/signin.cy.spec.js,./e2e/test/scenarios/question/new.cy.spec.js,./e2e/test/scenarios/question/saved.cy.spec.js,./e2e/test/scenarios/dashboard/dashboard.cy.spec.js";
 
 const specialTestConfigs = [
   {
@@ -27,7 +28,7 @@ const specialTestConfigs = [
  * or a pattern like DEFAULT_SPEC_PATTERN
  */
 function buildMatrix(options, inputSpecs, inputChunks) {
-  const { java, defaultRunner } = options;
+  const { java, defaultRunner, debugSpecs } = options;
 
   // number of specs per chunk when running specific specs
   const SPECS_PER_CHUNK = 5;
@@ -38,10 +39,17 @@ function buildMatrix(options, inputSpecs, inputChunks) {
     edition: "ee",
   };
 
-  const isDefaultSpecPattern =
-    inputSpecs === "" || inputSpecs === DEFAULT_SPEC_PATTERN;
+  // If debug_specs is enabled, override inputSpecs with debug pattern
+  let effectiveSpecs = inputSpecs;
+  if (debugSpecs) {
+    effectiveSpecs = DEBUG_SPEC_PATTERN;
+    console.log("Debug mode enabled, using debug specs:", DEBUG_SPEC_PATTERN);
+  }
 
-  console.log("Processed specs value:", inputSpecs);
+  const isDefaultSpecPattern =
+    effectiveSpecs === "" || effectiveSpecs === DEFAULT_SPEC_PATTERN;
+
+  console.log("Processed specs value:", effectiveSpecs);
   console.log("Is default pattern:", isDefaultSpecPattern);
 
   let regularChunks;
@@ -50,7 +58,7 @@ function buildMatrix(options, inputSpecs, inputChunks) {
   } else {
     // when pattern is not default, it means we passed some custom list of the changed specs
     // so we need to calculate how many chunks we need to run
-    const matchingSpecsCount = inputSpecs.split(",").length;
+    const matchingSpecsCount = effectiveSpecs.split(",").length;
     regularChunks = Math.max(
       1,
       Math.ceil(matchingSpecsCount / SPECS_PER_CHUNK),
@@ -62,7 +70,7 @@ function buildMatrix(options, inputSpecs, inputChunks) {
     // works when specs less than 5, otherwise seems all chunks will contain
     // same specs
     ...(!isDefaultSpecPattern && {
-      specs: inputSpecs
+      specs: effectiveSpecs
         .split(",")
         .slice(SPECS_PER_CHUNK * index, SPECS_PER_CHUNK * (index + 1))
         .join(","),
