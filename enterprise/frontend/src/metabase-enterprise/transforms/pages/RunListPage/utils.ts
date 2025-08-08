@@ -5,11 +5,12 @@ import type { RunListParams } from "metabase-enterprise/transforms/types";
 import type { TransformExecutionStatus } from "metabase-types/api";
 
 export function getParsedParams(location: Location): RunListParams {
-  const { page, transformIds, statuses } = location.query;
+  const { page, statuses, transformIds, transformTagIds } = location.query;
   return {
     page: parseNumber(page),
-    transformIds: parseList(transformIds, parseNumber),
     statuses: parseList(statuses, parseStatus),
+    transformIds: parseList(transformIds, parseNumber),
+    transformTagIds: parseList(transformTagIds, parseNumber),
   };
 }
 

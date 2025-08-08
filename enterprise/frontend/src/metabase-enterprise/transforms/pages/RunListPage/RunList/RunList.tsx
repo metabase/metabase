@@ -2,39 +2,29 @@ import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { AdminContentTable } from "metabase/common/components/AdminContentTable";
-import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PaginationControls } from "metabase/common/components/PaginationControls";
 import { useDispatch } from "metabase/lib/redux";
 import { Card, Group, Stack } from "metabase/ui";
-import { useListTransformExecutionsQuery } from "metabase-enterprise/api";
 import type { TransformExecution } from "metabase-types/api";
 
 import { ListEmptyState } from "../../../components/ListEmptyState";
 import type { RunListParams } from "../../../types";
 import { getRunListUrl, getTransformUrl } from "../../../urls";
 import { formatStatus, formatTimestamp, formatTrigger } from "../../../utils";
+import { PAGE_SIZE } from "../constants";
 
 import S from "./RunList.module.css";
 
-const PAGE_SIZE = 50;
-
 type RunListProps = {
+  executions: TransformExecution[];
+  totalCount: number;
   params: RunListParams;
 };
 
-export function RunList({ params }: RunListProps) {
-  const { page = 0, transformIds } = params;
-  const { data, isLoading, error } = useListTransformExecutionsQuery({
-    offset: page * PAGE_SIZE,
-    limit: PAGE_SIZE,
-    transform_ids: transformIds,
-  });
-  if (!data || isLoading || error != null) {
-    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
-  }
+export function RunList({ executions, totalCount, params }: RunListProps) {
+  const { page = 0 } = params;
+  const hasPagination = totalCount > PAGE_SIZE;
 
-  const { data: executions, total } = data;
-  const hasPagination = total > PAGE_SIZE;
   if (executions.length === 0) {
     return <ListEmptyState label={t`No runs yet`} />;
   }
@@ -46,8 +36,8 @@ export function RunList({ params }: RunListProps) {
         <Group justify="end">
           <RunTablePaginationControls
             page={page}
-            itemsLength={executions.length}
-            total={total}
+            itemCount={executions.length}
+            totalCount={totalCount}
             params={params}
           />
         </Group>
@@ -102,15 +92,15 @@ function RunTable({ executions }: RunTableProps) {
 
 type RunTablePaginationControlsProps = {
   page: number;
-  itemsLength: number;
-  total: number;
+  itemCount: number;
+  totalCount: number;
   params: RunListParams;
 };
 
 function RunTablePaginationControls({
   page,
-  itemsLength,
-  total,
+  itemCount,
+  totalCount,
   params,
 }: RunTablePaginationControlsProps) {
   const dispatch = useDispatch();
@@ -127,8 +117,8 @@ function RunTablePaginationControls({
     <PaginationControls
       page={page}
       pageSize={PAGE_SIZE}
-      itemsLength={itemsLength}
-      total={total}
+      itemsLength={itemCount}
+      total={totalCount}
       showTotal
       onPreviousPage={handlePreviousPage}
       onNextPage={handleNextPage}
