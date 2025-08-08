@@ -1,6 +1,7 @@
 (ns metabase-enterprise.semantic-search.scoring-test
   (:require
    [clojure.test :refer :all]
+   [metabase-enterprise.semantic-search.index :as semantic.index]
    [metabase-enterprise.semantic-search.test-util :as semantic.tu]
    [metabase.search.appdb.scoring-test :refer [with-weights]]
    [metabase.test :as mt])
@@ -36,7 +37,8 @@
 (defn search-results*
   [search-string & {:as raw-ctx}]
   (mapv (juxt :model :id :name)
-        (mt/as-admin ; side-step permissions for these tests
+        ;; side-step permissions for these tests
+        (mt/with-dynamic-fn-redefs [semantic.index/filter-read-permitted identity]
           (semantic.tu/query-index (merge {:search-string search-string
                                            :search-engine "semantic"
                                            :current-user-id (mt/user->id :rasta)}
