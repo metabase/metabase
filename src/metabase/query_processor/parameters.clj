@@ -1,6 +1,9 @@
 (ns metabase.query-processor.parameters
   "Schemas and helper functions for various PARSED parameter maps. These are created from the `:parameters` passed in
-  with a query."
+  with a query.
+
+  TODO (Cam 8/8/25) -- this can probably be moved into Lib since it has zero dependencies outside of Lib and util. I
+  think it should get renamed to something like `metabase.lib.schema.parsed-parameters`."
   (:require
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
