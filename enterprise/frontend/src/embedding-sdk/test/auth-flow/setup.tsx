@@ -52,9 +52,11 @@ export const setup = ({
   });
 
   const getLastUserApiCall = () =>
-    fetchMock.lastCall(`${MOCK_INSTANCE_URL}/api/user/current`);
+    fetchMock.callHistory.lastCall(`${MOCK_INSTANCE_URL}/api/user/current`);
   const getLastCardQueryApiCall = () =>
-    fetchMock.lastCall(`${MOCK_INSTANCE_URL}/api/card/${MOCK_CARD.id}/query`);
+    fetchMock.callHistory.lastCall(
+      `${MOCK_INSTANCE_URL}/api/card/${MOCK_CARD.id}/query`,
+    );
 
   return {
     ...renderWithProviders(
