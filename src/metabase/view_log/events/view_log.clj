@@ -216,4 +216,3 @@
             record-views!))
       (catch Throwable e
         (log/warnf e "Failed to process view event. %s" topic)))))
-
