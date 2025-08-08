@@ -24,7 +24,6 @@ import { CardEmbed } from "./extensions/CardEmbed";
 import { CommandExtension } from "./extensions/Command/CommandExtension";
 import { CommandSuggestion } from "./extensions/Command/CommandSuggestion";
 import { DisableMetabotSidebar } from "./extensions/DisableMetabotSidebar";
-import { EmojiExtension } from "./extensions/Emojis";
 import { MentionExtension } from "./extensions/Mention/MentionExtension";
 import { MentionSuggestion } from "./extensions/Mention/MentionSuggestion";
 import { MetabotNode } from "./extensions/MetabotEmbed";
@@ -86,7 +85,6 @@ export const Editor: React.FC<EditorProps> = ({
         }),
         MetabotNode,
         DisableMetabotSidebar,
-        EmojiExtension,
         MentionExtension.configure({
           suggestion: {
             render: createSuggestionRenderer(MentionSuggestion),
