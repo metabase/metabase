@@ -8,13 +8,12 @@ import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
-import { useDispatch } from "metabase/lib/redux";
-import { loadMetadataForCard } from "metabase/questions/actions";
 import { Button, Flex, Icon, Text, Tooltip } from "metabase/ui";
 import { useLazyMetabotDocumentNodeQuery } from "metabase-enterprise/api/metabot";
 import {
   createDraftCard,
   generateDraftCardId,
+  loadMetadataForDocumentCard,
 } from "metabase-enterprise/documents/documents.slice";
 import { useDocumentsDispatch } from "metabase-enterprise/documents/redux-utils";
 import MetabotThinkingStyles from "metabase-enterprise/metabot/components/MetabotChat/MetabotThinking.module.css";
@@ -79,7 +78,6 @@ export const MetabotNode = Node.create<{
 
 export const MetabotComponent = memo(
   ({ editor, getPos, deleteNode, updateAttributes, node }: NodeViewProps) => {
-    const dispatch = useDispatch();
     const documentsDispatch = useDocumentsDispatch();
     const inputRef = useRef<HTMLTextAreaElement>(null);
     const controllerRef = useRef<AbortController | null>(null);
@@ -121,8 +119,6 @@ export const MetabotComponent = memo(
         return;
       }
 
-      await dispatch(loadMetadataForCard(data.draft_card));
-
       const newCardId = generateDraftCardId();
       const card: Card = {
         ...data.draft_card,
@@ -153,6 +149,8 @@ export const MetabotComponent = memo(
         archived: false,
       };
 
+      await documentsDispatch(loadMetadataForDocumentCard(card));
+
       documentsDispatch(
         createDraftCard({
           originalCard: card,
@@ -177,15 +175,7 @@ export const MetabotComponent = memo(
         .run();
 
       deleteNode();
-    }, [
-      prompt,
-      editor,
-      queryMetabot,
-      deleteNode,
-      getPos,
-      dispatch,
-      documentsDispatch,
-    ]);
+    }, [prompt, editor, queryMetabot, deleteNode, getPos, documentsDispatch]);
 
     const handleStopMetabot = () => {
       controllerRef.current?.abort();

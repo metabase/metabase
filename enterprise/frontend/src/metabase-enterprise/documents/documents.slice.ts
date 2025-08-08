@@ -1,6 +1,12 @@
-import { type PayloadAction, createSlice } from "@reduxjs/toolkit";
+import {
+  type PayloadAction,
+  createAsyncThunk,
+  createSlice,
+} from "@reduxjs/toolkit";
+import _ from "underscore";
 
 import { CLOSE_QB } from "metabase/query_builder/actions";
+import { loadMetadataForCard } from "metabase/questions/actions";
 import type {
   Card,
   CardDisplayType,
@@ -11,6 +17,14 @@ import type {
 import type { CardEmbedRef } from "./components/Editor/types";
 
 let nextDraftCardId = -1;
+
+export const loadMetadataForDocumentCard = createAsyncThunk(
+  "documents/loadMetadataForDocumentCard",
+  async (card: Card, { dispatch }) => {
+    const cardForMetadata = card.id < 0 ? _.omit(card, "id") : card;
+    await dispatch(loadMetadataForCard(cardForMetadata));
+  },
+);
 
 export interface DocumentsState {
   selectedEmbedIndex: number | null;

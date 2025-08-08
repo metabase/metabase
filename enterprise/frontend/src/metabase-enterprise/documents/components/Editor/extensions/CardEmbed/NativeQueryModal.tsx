@@ -25,13 +25,12 @@ import type {
 import {
   createDraftCard,
   generateDraftCardId,
+  loadMetadataForDocumentCard,
 } from "../../../../documents.slice";
 import {
   useDocumentsDispatch,
   useDocumentsSelector,
 } from "../../../../redux-utils";
-
-import { useCardMetadata } from "./useCardMetadata";
 
 type DataReferenceStackItem = {
   type: string;
@@ -151,7 +150,11 @@ export const NativeQueryModal = ({
   const sqlError = isFailedDataset(datasetToUse) ? datasetToUse : null;
 
   // Load metadata for card
-  useCardMetadata(card, isOpen);
+  useEffect(() => {
+    if (isOpen && card) {
+      documentsDispatch(loadMetadataForDocumentCard(card));
+    }
+  }, [isOpen, card, documentsDispatch]);
 
   // Question initialization
   const question = useMemo(() => {
