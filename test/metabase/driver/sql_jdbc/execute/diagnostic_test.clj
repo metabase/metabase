@@ -3,8 +3,7 @@
    [clojure.test :refer :all]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.execute.diagnostic :as sql-jdbc.execute.diagnostic]
-   [metabase.test :as mt]
-   [metabase.util :as u]))
+   [metabase.test :as mt]))
 
 (deftest diagnostic-info-capture-test
   (mt/test-drivers (mt/driver-select {:+parent :sql-jdbc})

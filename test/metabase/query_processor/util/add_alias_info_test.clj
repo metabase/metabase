@@ -16,7 +16,6 @@
    [metabase.lib.test-util.uuid-dogs-metadata-provider :as lib.tu.uuid-dogs-metadata-provider]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.store :as qp.store]
-   [metabase.query-processor.test-util :as qp.test-util]
    [metabase.query-processor.util.add-alias-info :as add]
    [metabase.test :as mt]))
 

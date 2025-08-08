@@ -13,7 +13,6 @@
    [metabase.test.data.interface :as tx]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.http-client :as client]
-   [metabase.util :as u]
    [metabase.warehouses.models.database :as database]
    [toucan2.core :as t2]))
 

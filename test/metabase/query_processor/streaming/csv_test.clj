@@ -9,8 +9,7 @@
    [metabase.query-processor :as qp]
    [metabase.query-processor.streaming.interface :as qp.si]
    [metabase.test :as mt]
-   [metabase.test.data.dataset-definitions :as defs]
-   [metabase.util :as u])
+   [metabase.test.data.dataset-definitions :as defs])
   (:import
    (java.io BufferedOutputStream ByteArrayOutputStream)))
 
