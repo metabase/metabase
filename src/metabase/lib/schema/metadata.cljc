@@ -236,7 +236,15 @@
    {:include :source/card
     :schema  [:fn
               {:error/message "Columns with :source/card must have :lib/card-id"}
-              :lib/card-id]}])
+              :lib/card-id]}
+   ;; columns with `:source/aggregations` or `:source/expressions` should always have `:lib/source-uuid`, since they
+   ;; by definition come from an MBQL clause with a UUID in the query itself.
+   ;;
+   ;; TODO (Cam 8/7/25) -- disabled for now since this breaks a surprising amount of stuff.
+   #_{:include #{:source/aggregations :source/expressions}
+      :schema  [:fn
+                {:error/message "Columns with :source/aggregations or :source/expressions must have :lib/source-uuid"}
+                :lib/source-uuid]}])
 
 (defn- column-validate-for-source-schema [source]
   (into [:and]
@@ -400,6 +408,10 @@
     ;; where this column came from. See docstring for `::column.source`.
     [:lib/source {:optional true} [:maybe [:ref ::column.source]]]
     ;;
+    ;; if this column metadata was calculated based on MBQL clauses in the query itself, this is the UUID of the
+    ;; clauses in question. Required for aggregations and expressions
+    [:lib/source-uuid {:optional true} [:maybe [:ref ::lib.schema.common/uuid]]]
+    ;;
     ;; whether this column metadata occurs in the `:breakout`(s) in the CURRENT STAGE or not. Previously this was
     ;; signified by `:lib/source = :source/breakouts` (which has been removed)
     ;;
@@ -442,6 +454,11 @@
     ;; If this metadata was resolved from a ref (e.g. a `:field` ref) that contained a `:display-name` in the options,
     ;; this is that display name. `:lib/ref-display-name` should override any display names specified in the metadata.
     [:lib/ref-display-name {:optional true} [:maybe :string]]
+    ;;
+    ;; If this metadata was resolved from a ref (e.g. a `:field` ref) and that ref contained a `:name` in the options,
+    ;; this is that name. If specified we should use this as the basis for the desired column alias rather than join
+    ;; alias + source column alias.
+    [:lib/ref-name {:optional true} [:maybe :string]]
     ;;
     ;; when column metadata is returned by certain things
     ;; like [[metabase.lib.aggregation/selected-aggregation-operators]] or [[metabase.lib.field/fieldable-columns]], it

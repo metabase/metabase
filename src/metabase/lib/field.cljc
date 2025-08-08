@@ -387,7 +387,9 @@
      ::original-effective-type
      ::original-temporal-unit])
    {:metabase.lib.field/binning       :binning
-    :metabase.lib.field/temporal-unit :temporal-unit}))
+    :metabase.lib.field/temporal-unit :temporal-unit
+    :lib/ref-name                     :name
+    :lib/ref-display-name             :display-name}))
 
 (def ^:private field-ref-propagated-keys-for-non-inherited-columns
   "Keys that should get copied into `:field` ref options from column metadata ONLY when the column is not inherited.

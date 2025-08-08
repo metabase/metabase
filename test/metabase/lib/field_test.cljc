@@ -1509,7 +1509,9 @@
 (deftest ^:parallel expression-ref-when-metadata-has-expression-name-test
   (testing "column metadata with :expression-name should generate :expression refs. Prefer :expression-name over :name (#34957)"
     (let [metadata (-> (meta/field-metadata :venues :name)
-                       (assoc :lib/expression-name "Custom Venue Name", :lib/source :source/expressions))]
+                       (assoc :lib/expression-name "Custom Venue Name"
+                              :lib/source          :source/expressions
+                              :lib/source-uuid     "00000000-0000-0000-0000-000000000000"))]
       (is (=? [:expression {} "Custom Venue Name"]
               (lib/ref metadata))))))
 

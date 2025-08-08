@@ -125,8 +125,7 @@
                             ;; decide whether to "flow" the Card's metadata or not (whether to use it preferentially over
                             ;; the metadata associated with Fields themselves)
                             (assoc :qp/stage-had-source-card (:id card)
-                                   :source-query/model?      (= (:type card) :model)
-                                   :source-query/entity-id   (:entity-id card))
+                                   :source-query/model?      (= (:type card) :model))
                             (dissoc :source-card))]
       (into (vec card-stages) [stage']))))
 

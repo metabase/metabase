@@ -16,25 +16,35 @@
    [metabase.lib.test-util.uuid-dogs-metadata-provider :as lib.tu.uuid-dogs-metadata-provider]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.test-util :as qp.test-util]
    [metabase.query-processor.util.add-alias-info :as add]
    [metabase.test :as mt]))
 
 (comment h2/keep-me)
 
-(defn- remove-source-metadata [x]
+(defn- remove-source-metadata
+  "This is mostly to make the test failure diffs sane."
+  [x]
   (walk/postwalk
    (fn [x]
      (cond-> x
-       (map? x) (dissoc :source-metadata :ident :expression-idents :aggregation-idents :breakout-idents)))
+       (map? x) (dissoc :source-metadata :lib/stage-metadata)))
    x))
 
 (defn- add-alias-info [query]
   (driver/with-driver (or driver/*driver* :h2)
-    (mt/with-metadata-provider (cond
-                                 (qp.store/initialized?) (qp.store/metadata-provider)
-                                 (:lib/metadata query)   (:lib/metadata query)
-                                 :else                   meta/metadata-provider)
-      (-> query qp.preprocess/preprocess add/add-alias-info remove-source-metadata (dissoc :middleware)))))
+    (-> (if (:lib/type query)
+          (->> query
+               qp.preprocess/preprocess
+               (lib/query (:lib/metadata query))
+               add/add-alias-info)
+          (qp.store/with-metadata-provider (if (qp.store/initialized?)
+                                             (qp.store/metadata-provider)
+                                             meta/metadata-provider)
+            (-> query
+                qp.preprocess/preprocess
+                add/add-alias-info)))
+        remove-source-metadata)))
 
 (deftest ^:parallel join-in-source-query-test
   (is (=? (lib.tu.macros/mbql-query venues
@@ -340,7 +350,6 @@
                                     ::add/source-alias  "COOL.double_price"
                                     ::add/desired-alias "COOL.double_price"}]]
                  {:aggregation [[:aggregation-options [:count] {:name               "COOL.count"
-                                                                ::add/source-alias  "COOL.count"
                                                                 ::add/desired-alias "COOL.COOL.count"}]]
                   :breakout    [double-price]
                   :order-by    [[:asc double-price]]})))
@@ -364,10 +373,9 @@
                     outer-price (-> price
                                     (assoc-in [2 ::add/source-table] ::add/source)
                                     (update-in [2 ::add/source-alias] prefix-alias))
-                    count-opts {::add/source-alias "strange count"
+                    count-opts {::add/source-alias "strange count" ; TODO (Cam 8/7/25) -- doesn't even really make sense for an aggregation to have a source alias
                                 ::add/desired-alias "COOL.strange count"}
                     outer-count-opts (-> count-opts
-                                         (dissoc :name)
                                          (assoc :base-type :type/Integer
                                                 ::add/source-table ::add/source)
                                          (update ::add/source-alias prefix-alias))]
@@ -549,25 +557,26 @@
 
 (deftest ^:parallel aggregation-reference-test
   (testing "Make sure we add info to `:aggregation` reference clauses correctly"
-    (is (=? (lib.tu.macros/mbql-query checkins
-              {:aggregation [[:aggregation-options
-                              [:sum [:field %user-id {::add/source-table $$checkins
-                                                      ::add/source-alias "USER_ID"}]]
-                              {:name               "sum"
-                               ::add/source-alias  "sum"
-                               ::add/desired-alias "sum"}]]
-               :order-by    [[:asc [:aggregation 0 {::add/desired-alias "sum"}]]]})
+    (is (=? (lib.tu.macros/$ids checkins
+              {:stages [{:aggregation [[:sum
+                                        {:name               "sum"
+                                         ::add/desired-alias "sum"}
+                                        [:field {::add/source-table $$checkins
+                                                 ::add/source-alias "USER_ID"}
+                                         %user-id]]]
+                         :order-by    [[:asc
+                                        {}
+                                        [:aggregation {::add/desired-alias "sum"} string?]]]}]})
             (add-alias-info
-             (lib.tu.macros/mbql-query checkins
-               {:aggregation [[:sum $user-id]]
-                :order-by    [[:asc [:aggregation 0]]]}))))))
+             (lib.tu.macros/mbql-5-query checkins
+               {:stages [{:aggregation [[:sum {:lib/uuid "00000000-0000-0000-0000-000000000001"} $user-id]]
+                          :order-by    [[:asc {} [:aggregation {} "00000000-0000-0000-0000-000000000001"]]]}]}))))))
 
 (deftest ^:parallel uniquify-aggregation-names-text
   (is (=? (lib.tu.macros/mbql-query checkins
             {:expressions {"count" [:+ 1 1]}
              :breakout    [[:expression "count" {::add/desired-alias "count"}]]
-             :aggregation [[:aggregation-options [:count] {::add/source-alias  "count"
-                                                           ::add/desired-alias "count_2"}]]
+             :aggregation [[:aggregation-options [:count] {::add/desired-alias "count_2"}]]
              :order-by    [[:asc [:expression "count" {::add/desired-alias "count"}]]]
              :limit       1})
           (add-alias-info
@@ -693,6 +702,7 @@
                                              ::add/desired-alias "CREATED_AT_2"}]]]}}
                   (add/add-alias-info (qp.preprocess/preprocess query)))))))))
 
+;;; see also [[metabase.lib.join.util-test/desired-alias-should-respect-ref-name-test]]
 (deftest ^:parallel preserve-field-options-name-test
   (qp.store/with-metadata-provider meta/metadata-provider
     (driver/with-driver :h2
@@ -717,6 +727,28 @@
                 :aggregation  [[:aggregation-options
                                 [:cum-sum [:field "sum" {:base-type :type/Integer}]]
                                 {:name "sum"}]]}))))))
+
+(deftest ^:parallel field-literals-test
+  (testing "Correctly handle similar column names in nominal field literal refs (#41325)"
+    (qp.store/with-metadata-provider meta/metadata-provider
+      (driver/with-driver :h2
+        (is (=? {:fields [[:field (meta/id :orders :created-at)
+                           {::add/source-alias "CREATED_AT"
+                            ::add/desired-alias "CREATED_AT"}]
+                          [:field (meta/id :orders :created-at)
+                           {::add/source-alias "CREATED_AT"
+                            ::add/desired-alias "CREATED_AT_2"}]
+                          [:field (meta/id :orders :total)
+                           {::add/source-alias "TOTAL"
+                            ::add/desired-alias "TOTAL"}]]}
+                (-> (lib.tu.macros/mbql-query orders
+                      {:source-table $$orders
+                       :fields [!year.created-at
+                                !month.created-at
+                                $total]})
+                    qp.preprocess/preprocess
+                    add/add-alias-info
+                    :query)))))))
 
 (deftest ^:parallel nested-query-field-literals-test
   (testing "Correctly handle similar column names in nominal field literal refs (#41325)"
@@ -791,71 +823,71 @@
 ;;; adapted from [[metabase.query-processor-test.model-test/model-self-join-test]]
 (deftest ^:parallel model-duplicate-joins-test
   (testing "Field references from model joined a second time can be resolved (#48639)"
-    (let [mp meta/metadata-provider
-          mp (lib.tu/mock-metadata-provider
-              mp
-              {:cards [{:id 1
-                        :dataset-query
-                        (-> (lib/query mp (lib.metadata/table mp (meta/id :products)))
-                            (lib/join (-> (lib/join-clause (lib.metadata/table mp (meta/id :reviews))
-                                                           [(lib/=
-                                                             (lib.metadata/field mp (meta/id :products :id))
-                                                             (lib.metadata/field mp (meta/id :reviews :product-id)))])
-                                          (lib/with-join-fields :all)))
-                            lib/->legacy-MBQL)
-                        :database-id (meta/id)
-                        :name "Products+Reviews"
-                        :type :model}]})
-          mp (lib.tu/mock-metadata-provider
-              mp
-              {:cards [{:id 2
-                        :dataset-query
-                        (binding [lib.metadata.calculation/*display-name-style* :long]
-                          (as-> (lib/query mp (lib.metadata/card mp 1)) $q
-                            (lib/aggregate $q (lib/sum (->> $q
-                                                            lib/available-aggregation-operators
-                                                            (m/find-first (comp #{:sum} :short))
-                                                            :columns
-                                                            (m/find-first (comp #{"Price"} :display-name)))))
-                            (lib/breakout $q (-> (m/find-first (comp #{"Reviews → Created At"} :display-name)
-                                                               (lib/breakoutable-columns $q))
-                                                 (lib/with-temporal-bucket :month)))
-                            (lib/->legacy-MBQL $q)))
-                        :database-id (meta/id)
-                        :name "Products+Reviews Summary"
-                        :type :model}]})
-          question (binding [lib.metadata.calculation/*display-name-style* :long]
-                     (as-> (lib/query mp (lib.metadata/card mp 1)) $q
-                       (lib/breakout $q (-> (m/find-first (comp #{"Reviews → Created At"} :display-name)
-                                                          (lib/breakoutable-columns $q))
-                                            (lib/with-temporal-bucket :month)))
-                       (lib/aggregate $q (lib/avg (->> $q
-                                                       lib/available-aggregation-operators
-                                                       (m/find-first (comp #{:avg} :short))
-                                                       :columns
-                                                       (m/find-first (comp #{"Rating"} :display-name)))))
-                       (lib/append-stage $q)
-                       (letfn [(find-col [query display-name]
-                                 (or (m/find-first #(= (:display-name %) display-name)
-                                                   (lib/breakoutable-columns query))
-                                     (throw (ex-info "Failed to find column with display name"
-                                                     {:display-name display-name
-                                                      :found       (map :display-name (lib/breakoutable-columns query))}))))]
-                         (lib/join $q (-> (lib/join-clause (lib.metadata/card mp 2)
-                                                           [(lib/=
-                                                             (lib/with-temporal-bucket (find-col $q "Reviews → Created At: Month")
-                                                               :month)
-                                                             (lib/with-temporal-bucket (find-col
-                                                                                        (lib/query mp (lib.metadata/card mp 2))
-                                                                                        "Reviews → Created At: Month")
-                                                               :month))])
-                                          (lib/with-join-fields :all))))))]
+    (let [mp    meta/metadata-provider
+          mp    (lib.tu/mock-metadata-provider
+                 mp
+                 {:cards [{:id          1
+                           :dataset-query
+                           (-> (lib/query mp (lib.metadata/table mp (meta/id :products)))
+                               (lib/join (-> (lib/join-clause (lib.metadata/table mp (meta/id :reviews))
+                                                              [(lib/=
+                                                                (lib.metadata/field mp (meta/id :products :id))
+                                                                (lib.metadata/field mp (meta/id :reviews :product-id)))])
+                                             (lib/with-join-fields :all)))
+                               lib/->legacy-MBQL)
+                           :database-id (meta/id)
+                           :name        "Products+Reviews"
+                           :type        :model}]})
+          mp    (lib.tu/mock-metadata-provider
+                 mp
+                 {:cards [{:id          2
+                           :dataset-query
+                           (binding [lib.metadata.calculation/*display-name-style* :long]
+                             (as-> (lib/query mp (lib.metadata/card mp 1)) $q
+                               (lib/aggregate $q (lib/sum (->> $q
+                                                               lib/available-aggregation-operators
+                                                               (m/find-first (comp #{:sum} :short))
+                                                               :columns
+                                                               (m/find-first (comp #{"Price"} :display-name)))))
+                               (lib/breakout $q (-> (m/find-first (comp #{"Reviews → Created At"} :display-name)
+                                                                  (lib/breakoutable-columns $q))
+                                                    (lib/with-temporal-bucket :month)))
+                               (lib/->legacy-MBQL $q)))
+                           :database-id (meta/id)
+                           :name        "Products+Reviews Summary"
+                           :type        :model}]})
+          query (binding [lib.metadata.calculation/*display-name-style* :long]
+                  (as-> (lib/query mp (lib.metadata/card mp 1)) $q
+                    (lib/breakout $q (-> (m/find-first (comp #{"Reviews → Created At"} :display-name)
+                                                       (lib/breakoutable-columns $q))
+                                         (lib/with-temporal-bucket :month)))
+                    (lib/aggregate $q (lib/avg (->> $q
+                                                    lib/available-aggregation-operators
+                                                    (m/find-first (comp #{:avg} :short))
+                                                    :columns
+                                                    (m/find-first (comp #{"Rating"} :display-name)))))
+                    (lib/append-stage $q)
+                    (letfn [(find-col [query display-name]
+                              (or (m/find-first #(= (:display-name %) display-name)
+                                                (lib/breakoutable-columns query))
+                                  (throw (ex-info "Failed to find column with display name"
+                                                  {:display-name display-name
+                                                   :found        (map :display-name (lib/breakoutable-columns query))}))))]
+                      (lib/join $q (-> (lib/join-clause (lib.metadata/card mp 2)
+                                                        [(lib/=
+                                                          (lib/with-temporal-bucket (find-col $q "Reviews → Created At: Month")
+                                                            :month)
+                                                          (lib/with-temporal-bucket (find-col
+                                                                                     (lib/query mp (lib.metadata/card mp 2))
+                                                                                     "Reviews → Created At: Month")
+                                                            :month))])
+                                       (lib/with-join-fields :all))))))]
       (qp.store/with-metadata-provider mp
         (driver/with-driver :h2
-          (let [preprocessed (-> question qp.preprocess/preprocess)
+          (let [preprocessed (-> query qp.preprocess/preprocess)
                 expected     (add/add-alias-info preprocessed)]
             (testing ":source-query -> :source-query -> :joins"
-              (is (=? [{:alias "Reviews"
+              (is (=? [{:alias     "Reviews"
                         :condition [:=
                                     [:field (meta/id :products :id)
                                      {::add/source-alias "ID"}]
@@ -881,7 +913,7 @@
                                 [:field (meta/id :products :created-at)
                                  {::add/source-alias "CREATED_AT", ::add/desired-alias "CREATED_AT"}]
                                 [:field (meta/id :reviews :id)
-                                 {:join-alias "Reviews"
+                                 {:join-alias        "Reviews"
                                   ::add/source-alias "ID", ::add/desired-alias "Reviews__ID"}]
                                 [:field (meta/id :reviews :product-id)
                                  {:join-alias "Reviews", ::add/source-alias "PRODUCT_ID", ::add/desired-alias "Reviews__PRODUCT_ID"}]
@@ -897,16 +929,16 @@
             (testing ":source-query"
               ;; we should be using `Reviews__` here for names
               (is (=? {:source-query/model? true
-                       :breakout [[:field
-                                   "Reviews__CREATED_AT"
-                                   {::add/source-alias "Reviews__CREATED_AT", ::add/desired-alias "Reviews__CREATED_AT"}]]
-                       :aggregation [[:aggregation-options
-                                      [:avg [:field "RATING" {::add/source-alias "RATING"}]]
-                                      {:name "avg", ::add/source-alias "avg", ::add/desired-alias "avg"}]]
-                       :order-by [[:asc
-                                   [:field
-                                    "Reviews__CREATED_AT"
-                                    {::add/source-alias "Reviews__CREATED_AT", ::add/desired-alias "Reviews__CREATED_AT"}]]]}
+                       :breakout            [[:field
+                                              "Reviews__CREATED_AT"
+                                              {::add/source-alias "Reviews__CREATED_AT", ::add/desired-alias "Reviews__CREATED_AT"}]]
+                       :aggregation         [[:aggregation-options
+                                              [:avg [:field "RATING" {::add/source-alias "RATING"}]]
+                                              {:name "avg", ::add/desired-alias "avg"}]]
+                       :order-by            [[:asc
+                                              [:field
+                                               "Reviews__CREATED_AT"
+                                               {::add/source-alias "Reviews__CREATED_AT", ::add/desired-alias "Reviews__CREATED_AT"}]]]}
                       (-> expected :query :source-query (dissoc :source-query)))))))))))
 
 ;;; adapted from [[metabase.query-processor-test.uuid-test/joined-uuid-query-test]]
@@ -938,3 +970,111 @@
                       qp.preprocess/preprocess
                       add/add-alias-info
                       :query))))))))
+
+(deftest ^:parallel nested-literal-boolean-expression-with-name-collisions-test
+  (testing "nested literal boolean expression references with name collisions in filter and case clauses"
+    ;; Test boolean->comparison conversion for drivers that need it. See boolean_to_comparison.clj. Other drivers
+    ;; should support these queries without rewriting top-level booleans in conditions.
+    (let [true-value  [:value {:base-type :type/Boolean, :effective-type :type/Boolean, :lib/expression-name "T"} true]
+          false-value [:value {:base-type :type/Boolean, :effective-type :type/Boolean, :lib/expression-name "F"} false]
+          query       (lib.tu.macros/mbql-5-query nil
+                        {:stages [{:source-table $$orders
+                                   :expressions  [true-value
+                                                  false-value]
+                                   :fields       [[:expression {} "T"]
+                                                  [:expression {} "F"]]}
+                                  {:expressions [true-value
+                                                 false-value]
+                                   :fields      [[:expression {} "T"]
+                                                 [:expression {} "F"]
+                                                 [:field {:base-type :type/Boolean} "T"]
+                                                 [:field {:base-type :type/Boolean} "F"]]}
+                                  {:expressions [true-value
+                                                 false-value]
+                                   :aggregation [[:count-where {} *T/Boolean]
+                                                 [:count-where {} *F/Boolean]]
+                                   :filters     [[:or {}
+                                                  [:expression {} "T"]
+                                                  [:expression {} "F"]]
+                                                 [:or {}
+                                                  [:field {:base-type :type/Boolean} "T"]
+                                                  [:field {:base-type :type/Boolean} "F"]]]}]})]
+      (testing "Sanity check: Lib should return deduplicated desired aliases for the second stage"
+        (is (=? [{:lib/source-column-alias  "T"
+                  :lib/desired-column-alias "T"
+                  :lib/source               :source/expressions}
+                 {:lib/source-column-alias  "F"
+                  :lib/desired-column-alias "F"
+                  :lib/source               :source/expressions}
+                 {:lib/source-column-alias  "T"
+                  :lib/desired-column-alias "T_2"
+                  :lib/source               :source/previous-stage}
+                 {:lib/source-column-alias  "F"
+                  :lib/desired-column-alias "F_2"
+                  :lib/source               :source/previous-stage}]
+                (lib/returned-columns
+                 (lib/query meta/metadata-provider query)
+                 1))))
+      (is (=? {:stages [{}
+                        {:fields [[:expression
+                                   {::add/source-table  ::add/none
+                                    ::add/desired-alias "T"}
+                                   "T"]
+                                  [:expression
+                                   {::add/source-table  ::add/none
+                                    ::add/desired-alias "F"}
+                                   "F"]
+                                  [:field
+                                   {::add/source-table  ::add/source
+                                    ::add/source-alias  "T"
+                                    ::add/desired-alias "T_2"}
+                                   "T"]
+                                  [:field
+                                   {::add/source-table  ::add/source
+                                    ::add/source-alias  "F"
+                                    ::add/desired-alias "F_2"}
+                                   "F"]]}
+                        {:filters [[:or {}
+                                    [:expression
+                                     {::add/source-table ::add/none}
+                                     "T"]
+                                    [:expression
+                                     {::add/source-table ::add/none}
+                                     "F"]]
+                                   [:or {}
+                                    [:field
+                                     {::add/source-table ::add/source, ::add/source-alias "T"}
+                                     "T"]
+                                    [:field
+                                     {::add/source-table ::add/source, ::add/source-alias "F"}
+                                     "F"]]]}]}
+              (add-alias-info query))))))
+
+(deftest ^:parallel respect-crazy-long-native-identifiers-test
+  (testing "respect crazy-long identifiers returned by native stages (#47584)"
+    (let [mp    (lib.tu/mock-metadata-provider
+                 meta/metadata-provider
+                 {:cards [{:id              1
+                           :dataset-query   {:type     :native
+                                             :database (meta/id)
+                                             :native   {:query "SELECT *"}}
+                           :result-metadata [{:base_type      :type/Text
+                                              :database_type  "CHARACTER VARYING"
+                                              :display_name   "Total_number_of_people_from_each_state_separated_by_state_and_then_we_do_a_count"
+                                              :effective_type :type/Text
+                                              :name           "Total_number_of_people_from_each_state_separated_by_state_and_then_we_do_a_count"
+                                              :lib/source     :source/native}]}]})
+          query (-> (lib/query mp (lib.metadata/card mp 1))
+                    lib/append-stage)]
+      (is (=? {:stages [{:native "SELECT *"}
+                        {:fields [[:field
+                                   {::add/desired-alias "Total_number_of_people_from_each_state_separated_by_00028d48"
+                                    ::add/source-alias  "Total_number_of_people_from_each_state_separated_by_state_and_then_we_do_a_count"
+                                    ::add/source-table  ::add/source}
+                                   "Total_number_of_people_from_each_state_separated_by_state_and_then_we_do_a_count"]]}
+                        {:fields [[:field
+                                   {::add/desired-alias "Total_number_of_people_from_each_state_separated_by_00028d48"
+                                    ::add/source-alias  "Total_number_of_people_from_each_state_separated_by_00028d48"
+                                    ::add/source-table  ::add/source}
+                                   "Total_number_of_people_from_each_state_separated_by_state_and_then_we_do_a_count"]]}]}
+              (add-alias-info query))))))

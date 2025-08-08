@@ -57,7 +57,7 @@
                                                                        :notvisiblekey   :notvisiblevalue}}]
       (mt/with-no-data-perms-for-all-users!
         (data-perms/set-database-permission! (perms-group/all-users)
-                                             (u/the-id (mt/db))
+                                             (mt/id)
                                              :perms/create-queries :query-builder)
         (let [results        (mt/user-http-request :rasta :post 200 (format "card/%d/query/csv" card-id))
               results-string (str results)

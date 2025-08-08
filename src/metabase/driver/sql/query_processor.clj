@@ -12,6 +12,7 @@
    [metabase.driver-api.core :as driver-api]
    [metabase.driver.common :as driver.common]
    [metabase.driver.sql.query-processor.deprecated :as sql.qp.deprecated]
+   [metabase.query-processor.error-type :as qp.error-type]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
@@ -1747,7 +1748,7 @@
   :hierarchy #'driver/hierarchy)
 
 (defmethod join-source :sql
-  [driver {:keys [source-table source-query]}]
+  [driver {:keys [source-table source-query], :as _join}]
   (cond
     (and source-query (:native source-query))
     (sql-source-query (:native source-query) (:params source-query))
@@ -1907,7 +1908,8 @@
                            ;; Honey SQL 2 = [expr [alias]]
                            (first (second from))
                            from)
-        [raw-identifier] (format-honeysql driver table-identifier)
+        [raw-identifier] (when table-identifier
+                           (format-honeysql driver table-identifier))
         expr             (if (seq raw-identifier)
                            [:raw (format "%s.*" raw-identifier)]
                            :*)]

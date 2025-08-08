@@ -103,6 +103,51 @@
     (sequential? x) ((get-method = :dispatch-type/sequential) x y)
     :else           (clojure.core/= x y)))
 
+(defn- columns-equal-by-fn-when-non-nil-in-both [f col-1 col-2]
+  (let [v1 (f col-1)
+        v2 (f col-2)]
+    (if (and v1 v2)
+      (clojure.core/= v1 v2)
+      true)))
+
+(defn- columns-equal-by-fn [f col-1 col-2]
+  (clojure.core/= (f col-1) (f col-2)))
+
+(defmethod = :metadata/column
+  [col-1 col-2]
+  (and
+   ;; two column metadatas with different IDs are NEVER equal.
+   (columns-equal-by-fn-when-non-nil-in-both :id col-1 col-2)
+   ;; from the same source.
+   (columns-equal-by-fn-when-non-nil-in-both :lib/source col-1 col-2)
+   ;; same join alias
+   (columns-equal-by-fn lib.join.util/current-join-alias col-1 col-2)
+   ;;
+   ;; columns that don't have the same binning or temporal bucketing are never the same.
+   ;;
+   ;; same binning
+   (columns-equal-by-fn lib.binning/binning col-1 col-2)
+   ;; same bucketing
+   (letfn [(bucket [col]
+             (when-let [bucket (lib.temporal-bucket/raw-temporal-bucket col)]
+               (when-not (clojure.core/= bucket :default)
+                 bucket)))]
+     (columns-equal-by-fn bucket col-1 col-2))
+   ;; check `:inherited-temporal-unit` as well if both columns have it.
+   (letfn [(inherited-bucket [col]
+             (when-let [bucket (:inherited-temporal-unit col)]
+               (when-not (clojure.core/= bucket :default)
+                 bucket)))]
+     (columns-equal-by-fn-when-non-nil-in-both inherited-bucket col-1 col-2))
+   ;; finally make sure they have the same `:lib/source-column-alias` (if both columns have it) or `:name` (if for
+   ;; some reason they do not)
+   (let [k (m/find-first (fn [k]
+                           (and (k col-1)
+                                (k col-2)))
+                         [:lib/source-column-alias :name])]
+     (assert k "No key common to both columns")
+     (columns-equal-by-fn k col-1 col-2))))
+
 (mu/defn- resolve-field-id-in-source-card :- ::lib.schema.metadata/column
   "Integer Field ID: get metadata from the metadata provider. If this is the first stage of the query, merge in
   Saved Question metadata if available.

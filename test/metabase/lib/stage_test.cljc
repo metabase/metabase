@@ -4,6 +4,7 @@
    [clojure.test :refer [are deftest is testing]]
    [medley.core :as m]
    [metabase.lib.core :as lib]
+   [metabase.lib.equality :as lib.equality]
    [metabase.lib.join :as lib.join]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
@@ -875,9 +876,10 @@
                   :display-name             "Count"}]
                 (lib/returned-columns query)))))))
 
+;;; TODO (Cam 8/7/25) -- move these tests that test [[lib.equality/=]] to [[metabase.lib.equality-test]]
 (deftest ^:parallel test-QUE-1607
-  (testing "QUE-1607"
-    (is (#'lib.stage/add-cols-from-join-duplicate?
+  (testing "do not add duplicate columns whne join uses name refs in :fields (QUE-1607)"
+    (is (lib.equality/=
          {:base-type                    :type/Integer
           :display-name                 "Sum of Quantity"
           :effective-type               :type/Integer
@@ -903,7 +905,7 @@
           :metabase.lib.join/join-alias "Orders"
           :name                         "sum"}))))
 
-(deftest ^:parallel add-cols-from-join-duplicate?-test
+(deftest ^:parallel column-equality-test
   (let [join-col     {:active                       true
                       :base-type                    :type/Text
                       :caveats                      nil
@@ -939,13 +941,13 @@
                       :lib/source-column-alias      "TITLE"
                       :lib/type                     :metadata/column
                       :metabase.lib.join/join-alias "Orders"}
-        existing-col {:base-type                    :type/Integer
-                      :display-name                 "Orders → Sum"
-                      :name                         "sum"
-                      :lib/source                   :source/previous-stage
-                      :lib/type                     :metadata/column
-                      :metabase.lib.join/join-alias "Orders"}]
-    (is (not (#'lib.stage/add-cols-from-join-duplicate? join-col existing-col)))))
+        existing-col {:base-type               :type/Integer
+                      :display-name            "Orders → Sum"
+                      :name                    "sum"
+                      :lib/source              :source/previous-stage
+                      :lib/type                :metadata/column
+                      :lib/original-join-alias "Orders"}]
+    (is (not (lib.equality/= join-col existing-col)))))
 
 (deftest ^:parallel sane-desired-column-aliases-test
   (testing "Do not 'double-dip' a desired-column alias and do `__via__` twice"
@@ -986,3 +988,35 @@
                       :lib/source-column-alias  "count"
                       :lib/desired-column-alias "count"}]
                     (f query)))))))))
+
+(deftest ^:parallel propagate-crazy-long-native-identifiers-test
+  (testing "respect crazy-long identifiers from native query stages (we need to use these to refer to native columns in the second stage) (#47584)"
+    (let [query (lib.tu.macros/mbql-5-query nil
+                  {:stages [{:native             "SELECT *"
+                             :lib/stage-metadata {:columns [{:base-type                :type/Text
+                                                             :database-type            "CHARACTER VARYING"
+                                                             :display-name             "Total_number_of_people_from_each_state_separated_by_state_and_then_we_do_a_count"
+                                                             :effective-type           :type/Text
+                                                             :name                     "Total_number_of_people_from_each_state_separated_by_state_and_then_we_do_a_count"
+                                                             :lib/desired-column-alias "Total_number_of_people_from_each_state_separated_by_state_and_then_we_do_a_count"
+                                                             :lib/source               :source/native
+                                                             :lib/source-column-alias  "Total_number_of_people_from_each_state_separated_by_state_and_then_we_do_a_count"
+                                                             :lib/type                 :metadata/column}]}}
+                            {}
+                            {}]})]
+      (are [stage-number expected] (=? [expected]
+                                       (lib/returned-columns query stage-number))
+        0
+        {:lib/source               :source/native
+         :lib/source-column-alias  "Total_number_of_people_from_each_state_separated_by_state_and_then_we_do_a_count"
+         :lib/desired-column-alias "Total_number_of_people_from_each_state_separated_by_state_and_then_we_do_a_count"}
+
+        1
+        {:lib/source               :source/previous-stage
+         :lib/source-column-alias  "Total_number_of_people_from_each_state_separated_by_state_and_then_we_do_a_count"
+         :lib/desired-column-alias "Total_number_of_people_from_each_state_separated_by_00028d48"}
+
+        2
+        {:lib/source               :source/previous-stage
+         :lib/source-column-alias  "Total_number_of_people_from_each_state_separated_by_00028d48"
+         :lib/desired-column-alias "Total_number_of_people_from_each_state_separated_by_00028d48"}))))

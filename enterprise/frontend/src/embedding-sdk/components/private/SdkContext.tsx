@@ -2,7 +2,7 @@ import type React from "react";
 import { createContext, useContext } from "react";
 
 // Currently, we use this context to know if a component is rendered inside the provider or not.
-// This is needed for metabase##50736, to make sure we don't break the host app if for a render the
+// This is needed for metabase#50736, to make sure we don't break the host app if for a render the
 // sdk components is rendered outside of the sdk provider
 
 const SdkContext = createContext<boolean>(false);

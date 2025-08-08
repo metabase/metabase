@@ -30,6 +30,6 @@
             ;; the diag info driver should match the current one
             (is (= driver/*driver* driver))
             ;; the diag info database-id should also match the current one
-            (is (= (u/the-id (mt/db)) database-id))
+            (is (= (mt/id) database-id))
             ;; the active connections may be between 0 and total-connections (inclusive)
             (is (<= 0 active-connections total-connections))))))))

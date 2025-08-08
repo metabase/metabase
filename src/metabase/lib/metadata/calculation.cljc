@@ -597,12 +597,14 @@
 ;;; default impl is just the impl for [[returned-columns-method]]
 (defmethod visible-columns-method :default
   [query stage-number x options]
-  (returned-columns-method query stage-number x options))
+  (returned-columns query stage-number x options))
+
+(declare visible-columns)
 
 ;;; if you pass in an integer assume it's a stage number; use the method for the query stage itself.
 (defmethod visible-columns-method :dispatch-type/integer
   [query _stage-number stage-number options]
-  (visible-columns-method query stage-number (lib.util/query-stage query stage-number) options))
+  (visible-columns query stage-number (lib.util/query-stage query stage-number) options))
 
 ;; TODO (Cam 8/7/25) -- Braden and I are in agreement that `visible-columns` fundamentally does not make sense for
 ;; anything other than a specific query stage, and we should probably remove it entirely in the near future and leave
