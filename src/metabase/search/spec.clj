@@ -4,7 +4,6 @@
    [clojure.string :as str]
    [clojure.walk :as walk]
    [malli.error :as me]
-   [metabase.api.common :as api]
    [metabase.config.core :as config]
    [metabase.search.config :as search.config]
    [metabase.util :as u]
@@ -14,12 +13,12 @@
 
 (def search-models
   "Set of search model string names."
-  #{"dashboard" "table" "dataset" "segment" "collection" "database" "action" "indexed-entity" "metric" "card"})
+  #{"dashboard" "table" "dataset" "segment" "collection" "database" "action" "indexed-entity" "metric" "card" "document"})
 
 (def ^:private search-model->toucan-model
   (into {}
         (map (fn [search-model]
-               [search-model (-> search-model api/model->db-model :db-model)]))
+               [search-model (-> search-model search.config/model->db-model :db-model)]))
         search-models))
 
 (def ^:private SearchModel

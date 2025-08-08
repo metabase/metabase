@@ -1,6 +1,7 @@
 (ns metabase.search.config
   (:require
    [metabase.api.common :as api]
+   [metabase.config.core :as config]
    [metabase.permissions.core :as perms]
    [metabase.search.settings :as search.settings]
    [metabase.util :as u]
@@ -38,6 +39,11 @@
   "Show this many words of context before/after matches in long search results"
   2)
 
+(def model->db-model
+  "Mapping of model name to :db_model and :alias"
+  (cond-> api/model->db-model
+    config/ee-available? (assoc "document" {:db-model :model/Document :alias :document})))
+
 ;; We won't need this once fully migrated to specs, but kept for now in case legacy cod falls out of sync
 (def excluded-models
   "Set of models that should not be included in search results."
@@ -57,7 +63,7 @@
 ;; - We also need to provide an alias (and this must match the API one for legacy)
 (def model-to-db-model
   "Mapping from string model to the Toucan model backing it."
-  (apply dissoc api/model->db-model excluded-models))
+  (apply dissoc model->db-model excluded-models))
 
 (def all-models
   "Set of all valid models to search for. "
@@ -66,7 +72,7 @@
 (def models-search-order
   "The order of this list influences the order of the results: items earlier in the
   list will be ranked higher."
-  ["dashboard" "metric" "segment" "indexed-entity" "card" "dataset" "collection" "table" "action" "database"])
+  ["dashboard" "metric" "segment" "indexed-entity" "card" "dataset" "collection" "table" "action" "document" "database"])
 
 (assert (= all-models (set models-search-order)) "The models search order has to include all models")
 

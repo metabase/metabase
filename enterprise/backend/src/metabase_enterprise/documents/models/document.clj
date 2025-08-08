@@ -4,6 +4,7 @@
    [metabase.collections.models.collection :as collection]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
+   [metabase.search.spec :as search.spec]
    [metabase.users.models.user]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -61,3 +62,18 @@
 (defmethod serdes/hash-fields :model/Document
   [_table]
   [:name (serdes/hydrated-hash :collection) :created-at])
+
+ ;;;; ------------------------------------------------- Search ----------------------------------------------------------
+
+(search.spec/define-spec "document"
+  {:model :model/Document
+   :attrs {:archived true
+           :collection-id :collection_id
+           :creator-id :creator_id
+           :view-count :view_count
+           :created-at :created_at
+           :updated-at :updated_at
+           :last-viewed-at :last_viewed_at}
+   :search-terms [:name]
+   :render-terms {:document-name :name
+                  :document-id :id}})
