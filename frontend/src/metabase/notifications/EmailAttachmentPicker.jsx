@@ -357,7 +357,7 @@ export default class EmailAttachmentPicker extends Component {
                 />
               </Group>
               <Toggle
-                aria-label={t`Send only attachments (no charts)`}
+                aria-label={t`Send only attachments`}
                 value={isAttachmentOnly}
                 onChange={this.onToggleAttachmentOnly}
               />

@@ -341,15 +341,8 @@ describe("scenarios > dashboard > subscriptions", () => {
           cy.findByRole("checkbox").click();
         });
 
-      cy.findByLabelText("Send only attachments (no charts)").click();
-      cy.findByLabelText("Send only attachments (no charts)").should(
-        "be.checked",
-      );
-
-      clickButton("Done");
-      H.sidebar().within(() => {
-        H.clickSend();
-      });
+      cy.findByLabelText("Send only attachments").click();
+      cy.findByLabelText("Send only attachments").should("be.checked");
 
       H.sendEmailAndAssert((email) => {
         expect(email.attachments).to.not.be.empty;
