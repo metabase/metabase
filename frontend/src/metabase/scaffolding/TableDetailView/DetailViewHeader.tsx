@@ -28,7 +28,9 @@ interface DetailViewHeaderProps {
   onNextItemClick: () => void;
   onEditClick: () => void;
   onCloseClick: () => void;
-  onSaveClick?: () => void;
+  onSaveClick: () => void;
+  onCancel: () => void;
+  onSubmit: () => void;
 }
 
 export function DetailViewHeader({
@@ -44,6 +46,8 @@ export function DetailViewHeader({
   onPreviousItemClick,
   onNextItemClick,
   onEditClick,
+  onCancel,
+  onSubmit,
 }: DetailViewHeaderProps & { table: any }): JSX.Element {
   const [updateTableComponentSettings] =
     useUpdateTableComponentSettingsMutation();
@@ -97,34 +101,7 @@ export function DetailViewHeader({
         )}
 
         <Group gap={0}>
-          <Tooltip
-            label={t`PLEASE IGNORE THIS BUTTON. It resets settings to default. Useful when settings schema changes.`}
-          >
-            <Button
-              w={32}
-              h={32}
-              c="text-dark"
-              variant="subtle"
-              leftSection={<Icon name="refresh" />}
-              onClick={() => {
-                if (window.confirm("The change will persist. Are you sure?")) {
-                  updateTableComponentSettings({
-                    id: table.id,
-                    component_settings: null,
-                  });
-                }
-              }}
-            />
-          </Tooltip>
-
-          <Tooltip
-            disabled
-            label={
-              isEdit
-                ? t`Button is disabled to prevent losing unsaved changes. We'll have something better for production.`
-                : t`Settings`
-            }
-          >
+          {!isEdit ? (
             <Button
               h={32}
               c="text-dark"
@@ -134,11 +111,48 @@ export function DetailViewHeader({
               onClick={onEditClick}
               style={{
                 opacity: isEdit ? 0.5 : 1,
+                padding: "0 0.5rem",
               }}
             >
               {t`Display settings`}
             </Button>
-          </Tooltip>
+          ) : (
+            <Group gap="xs" justify="space-between">
+              <Tooltip
+                label={t`PLEASE IGNORE THIS BUTTON. It resets settings to default. Useful when settings schema changes.`}
+              >
+                <Button
+                  w={30}
+                  h={30}
+                  c="text-dark"
+                  variant="subtle"
+                  leftSection={<Icon name="refresh" />}
+                  onClick={() => {
+                    if (
+                      window.confirm("The change will persist. Are you sure?")
+                    ) {
+                      updateTableComponentSettings({
+                        id: table.id,
+                        component_settings: null,
+                      });
+                    }
+                  }}
+                />
+              </Tooltip>
+              <Button size="xs" variant="subtle" onClick={onCancel}>
+                {t`Cancel`}
+              </Button>
+
+              <Button
+                size="xs"
+                type="submit"
+                variant="filled"
+                onClick={onSubmit}
+              >
+                {t`Save`}
+              </Button>
+            </Group>
+          )}
         </Group>
       </Flex>
     </Nav>

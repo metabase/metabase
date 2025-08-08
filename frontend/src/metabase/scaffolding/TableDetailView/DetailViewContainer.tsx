@@ -108,6 +108,8 @@ export function DetailViewContainer({
         onNextItemClick={onNextItemClick || (() => {})}
         onCloseClick={onCloseClick}
         onSaveClick={onSaveClick}
+        onCancel={onCancel}
+        onSubmit={onSubmit}
       />
 
       <Group
@@ -133,7 +135,7 @@ export function DetailViewContainer({
           </Box>
         </Stack>
 
-        {(hasRelationships || isEdit) && (
+        {hasRelationships && !isEdit && (
           <Box
             bg="white"
             flex="0 0 auto"
