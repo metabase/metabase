@@ -6,14 +6,10 @@ import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { skipToken, useGetCardQuery, useGetCardQueryQuery } from "metabase/api";
-import {
-  useGetAdhocQueryMetadataQuery,
-  useGetAdhocQueryQuery,
-} from "metabase/api/dataset";
+import { useGetAdhocQueryQuery } from "metabase/api/dataset";
 import { useDispatch } from "metabase/lib/redux";
-import { loadMetadataForCard } from "metabase/questions/actions";
 import { getMetadata } from "metabase/selectors/metadata";
-import { Box, Icon, Loader, Menu, Text, TextInput } from "metabase/ui";
+import { Box, Flex, Icon, Loader, Menu, Text, TextInput } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
 import ChartSkeleton from "metabase/visualizations/components/skeletons/ChartSkeleton";
 import Question from "metabase-lib/v1/Question";
@@ -32,6 +28,7 @@ import { formatCardEmbed } from "../markdown/card-embed-format";
 import styles from "./CardEmbedNode.module.css";
 import { ModifyQuestionModal } from "./ModifyQuestionModal";
 import { NativeQueryModal } from "./NativeQueryModal";
+import { useCardMetadata } from "./useCardMetadata";
 
 export interface CardEmbedAttributes {
   id: number;
@@ -229,16 +226,7 @@ export const CardEmbedComponent = memo(
     };
 
     // Load metadata for the card
-    const { data: adhocMetadata } = useGetAdhocQueryMetadataQuery(
-      id < 0 && cardToUse?.dataset_query ? cardToUse.dataset_query : skipToken,
-    );
-
-    useEffect(() => {
-      if (cardToUse && id >= 0) {
-        // For regular cards, use the loadMetadataForCard action
-        dispatch(loadMetadataForCard(cardToUse));
-      }
-    }, [cardToUse, dispatch, adhocMetadata, id]);
+    useCardMetadata(cardToUse);
 
     const handleEditVisualizationSettings = () => {
       if (embedIndex !== -1) {
@@ -320,20 +308,13 @@ export const CardEmbedComponent = memo(
             })}
           >
             <Box className={styles.questionHeader}>
-              <Box
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  gap: "0.5rem",
-                }}
-              >
+              <Flex align="center" justify="space-between" gap="0.5rem">
                 <Box className={styles.titleContainer}>
                   <Text size="md" color="text-dark" fw={700}>
                     {t`Loading question...`}
                   </Text>
                 </Box>
-              </Box>
+              </Flex>
             </Box>
             <Box className={styles.questionResults}>
               <Box className={styles.loadingContainer}>
@@ -366,14 +347,7 @@ export const CardEmbedComponent = memo(
         >
           {cardToUse && (
             <Box className={styles.questionHeader}>
-              <Box
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  gap: "0.5rem",
-                }}
-              >
+              <Flex align="center" justify="space-between" gap="0.5rem">
                 {isEditingTitle ? (
                   <TextInput
                     ref={titleInputRef}
@@ -382,7 +356,7 @@ export const CardEmbedComponent = memo(
                     onBlur={handleTitleSave}
                     onKeyDown={handleTitleKeyDown}
                     size="md"
-                    style={{ flex: 1 }}
+                    flex={1}
                     styles={{
                       input: {
                         fontWeight: 700,
@@ -408,7 +382,7 @@ export const CardEmbedComponent = memo(
                       color="text-dark"
                       fw={700}
                       onClick={handleTitleClick}
-                      style={{ cursor: "pointer" }}
+                      c="pointer"
                     >
                       {displayName}
                     </Text>
@@ -418,7 +392,7 @@ export const CardEmbedComponent = memo(
                         size={14}
                         color="var(--mb-color-text-medium)"
                         className={styles.titleEditIcon}
-                        style={{ cursor: "pointer" }}
+                        c="pointer"
                         onClick={(e: React.MouseEvent) => {
                           e.stopPropagation();
                           setEditedTitle(displayName);
@@ -431,16 +405,15 @@ export const CardEmbedComponent = memo(
                 {!isEditingTitle && (
                   <Menu withinPortal position="bottom-end">
                     <Menu.Target>
-                      <Box
+                      <Flex
                         component="button"
+                        bg="transparent"
+                        c="pointer"
+                        p="0.25rem"
+                        align="center"
+                        justify="center"
                         style={{
-                          background: "none",
                           border: "none",
-                          cursor: "pointer",
-                          padding: "0.25rem",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
                           borderRadius: "4px",
                         }}
                         onClick={(e: React.MouseEvent) => e.stopPropagation()}
@@ -450,7 +423,7 @@ export const CardEmbedComponent = memo(
                           size={16}
                           color="var(--mb-color-text-medium)"
                         />
-                      </Box>
+                      </Flex>
                     </Menu.Target>
                     <Menu.Dropdown>
                       <Menu.Item
@@ -482,7 +455,7 @@ export const CardEmbedComponent = memo(
                     </Menu.Dropdown>
                   </Menu>
                 )}
-              </Box>
+              </Flex>
             </Box>
           )}
           {rawSeries ? (

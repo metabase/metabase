@@ -1,21 +1,14 @@
 import type { Editor } from "@tiptap/react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useAsync } from "react-use";
 import { c, t } from "ttag";
 
 import EmptyCodeResult from "assets/img/empty-states/code.svg";
 import { skipToken } from "metabase/api";
-import {
-  datasetApi,
-  useGetAdhocQueryMetadataQuery,
-} from "metabase/api/dataset";
+import { datasetApi } from "metabase/api/dataset";
 import { ErrorMessage } from "metabase/common/components/ErrorMessage";
 import { isMac } from "metabase/lib/browser";
-import { useDispatch } from "metabase/lib/redux";
 import NativeQueryEditor from "metabase/query_builder/components/NativeQueryEditor";
 import DataReference from "metabase/query_builder/components/dataref/DataReference";
-import { TagEditorSidebar } from "metabase/query_builder/components/template_tags/TagEditorSidebar";
-import { loadMetadataForCard } from "metabase/questions/actions";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Box, Button, Flex, Loader, Modal, Stack, Text } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
@@ -37,6 +30,8 @@ import {
   useDocumentsDispatch,
   useDocumentsSelector,
 } from "../../../../redux-utils";
+
+import { useCardMetadata } from "./useCardMetadata";
 
 type DataReferenceStackItem = {
   type: string;
@@ -119,29 +114,6 @@ const QueryExecutionEmptyState = ({
   );
 };
 
-const LoadingModal = ({
-  isOpen,
-  onClose,
-  children,
-}: {
-  isOpen: boolean;
-  onClose: () => void;
-  children: React.ReactNode;
-}) => (
-  <Modal opened={isOpen} onClose={onClose} size="95%" title={t`Edit SQL Query`}>
-    <Box
-      style={{
-        height: "400px",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-      }}
-    >
-      {children}
-    </Box>
-  </Modal>
-);
-
 export const NativeQueryModal = ({
   card,
   isOpen,
@@ -150,7 +122,6 @@ export const NativeQueryModal = ({
   editor,
   initialDataset,
 }: NativeQueryModalProps) => {
-  const dispatch = useDispatch();
   const documentsDispatch = useDocumentsDispatch();
   const metadata = useDocumentsSelector(getMetadata);
 
@@ -179,34 +150,12 @@ export const NativeQueryModal = ({
     queryResult || (!hasExecutedQuery ? initialDataset : null);
   const sqlError = isFailedDataset(datasetToUse) ? datasetToUse : null;
 
-  const isDraftCard = card.id < 0;
-  const { data: adhocMetadata, isLoading: isAdhocMetadataLoading } =
-    useGetAdhocQueryMetadataQuery(
-      isDraftCard && card.dataset_query ? card.dataset_query : skipToken,
-      { skip: !isDraftCard || !card.dataset_query },
-    );
-
-  const metadataState = useAsync(async () => {
-    if (isOpen && card && !isDraftCard) {
-      await dispatch(loadMetadataForCard(card));
-    }
-  }, [isOpen, card, dispatch, isDraftCard]);
+  // Load metadata for card
+  useCardMetadata(card, isOpen);
 
   // Question initialization
   const question = useMemo(() => {
-    const isMetadataLoading = isDraftCard
-      ? isAdhocMetadataLoading
-      : metadataState.loading;
-    const hasMetadataError = isDraftCard ? false : metadataState.error;
-    const hasMetadata = isDraftCard ? !!adhocMetadata : !!metadata;
-
-    if (
-      isMetadataLoading ||
-      hasMetadataError ||
-      !card ||
-      !hasMetadata ||
-      !isOpen
-    ) {
+    if (!card || !metadata || !isOpen) {
       return null;
     }
 
@@ -215,17 +164,7 @@ export const NativeQueryModal = ({
       setModifiedQuestion(baseQuestion);
     }
     return baseQuestion;
-  }, [
-    isDraftCard,
-    isAdhocMetadataLoading,
-    metadataState.loading,
-    metadataState.error,
-    adhocMetadata,
-    card,
-    metadata,
-    isOpen,
-    modifiedQuestion,
-  ]);
+  }, [card, metadata, isOpen, modifiedQuestion]);
 
   // Reset query execution state when modal opens
   useEffect(() => {
@@ -384,25 +323,18 @@ export const NativeQueryModal = ({
     },
   };
 
-  const editorContainerStyle = {
-    flexShrink: 0,
-    borderBottom: "1px solid var(--mb-color-border)",
-    position: "relative" as const,
-  };
-
-  if (isDraftCard ? isAdhocMetadataLoading : metadataState.loading) {
-    return (
-      <LoadingModal isOpen={isOpen} onClose={onClose}>
-        <Loader size="lg" />
-      </LoadingModal>
-    );
-  }
-
   if (!question || !modifiedQuestion) {
     return (
-      <LoadingModal isOpen={isOpen} onClose={onClose}>
-        <Text>{t`Failed to load question data`}</Text>
-      </LoadingModal>
+      <Modal
+        opened={isOpen}
+        onClose={onClose}
+        size="95%"
+        title={t`Edit SQL Query`}
+      >
+        <Flex h="400px" align="center" justify="center">
+          <Loader size="lg" />
+        </Flex>
+      </Modal>
     );
   }
 
@@ -415,26 +347,25 @@ export const NativeQueryModal = ({
       padding="lg"
       styles={modalStyles}
     >
-      <Box style={{ height: "100%", display: "flex", flexDirection: "column" }}>
+      <Flex h="100%" direction="column">
         {/* Main content area with horizontal layout */}
-        <Box
-          style={{
-            flex: 1,
-            display: "flex",
-            flexDirection: "row",
-            minHeight: 0,
-          }}
-        >
+        <Flex flex={1} direction="row" mih={0} style={{ overflow: "hidden" }}>
           {/* Left side - Editor and Results */}
-          <Box
-            style={{
-              flex: 1,
-              display: "flex",
-              flexDirection: "column",
-              minHeight: 0,
-            }}
+          <Flex
+            flex={1}
+            direction="column"
+            mih={0}
+            miw={0}
+            style={{ overflow: "hidden" }}
           >
-            <Box style={editorContainerStyle}>
+            <Box
+              pos="relative"
+              style={{
+                flexShrink: 0,
+                borderBottom: "1px solid var(--mb-color-border)",
+                overflow: "hidden",
+              }}
+            >
               {/* NativeQueryEditor with minimal configuration for modal context */}
               {(modifiedQuestion?.legacyNativeQuery() ||
                 question?.legacyNativeQuery()) && (
@@ -507,24 +438,26 @@ export const NativeQueryModal = ({
                           EDITOR_HEIGHT_OFFSET,
                       ),
                     ),
-                    style: { border: "none" },
+                    style: {
+                      border: "none",
+                      width: "100%",
+                      minWidth: 0,
+                      overflow: "hidden",
+                    },
                   }}
                 />
               )}
             </Box>
 
             {/* Results area */}
-            <Box
+            <Flex
               id="results-container"
-              style={{
-                flex: 1,
-                display: "flex",
-                flexDirection: "column",
-                minHeight: 0,
-                paddingTop: "0.25rem",
-                overflow: "hidden",
-                position: "relative",
-              }}
+              flex={1}
+              direction="column"
+              mih={0}
+              pt="0.25rem"
+              pos="relative"
+              style={{ overflow: "hidden" }}
             >
               {!isQueryRunning && (sqlError || queryError) ? (
                 <ErrorMessage
@@ -536,7 +469,7 @@ export const NativeQueryModal = ({
               ) : !isQueryRunning && hasEmptyResults(datasetToUse) ? (
                 <QueryExecutionEmptyState hasInitialData={!!datasetToUse} />
               ) : !isQueryRunning && rawSeries ? (
-                <Box style={{ flex: 1, minHeight: "300px" }}>
+                <Box flex={1} mih="300px">
                   <Visualization
                     rawSeries={rawSeries}
                     metadata={metadata}
@@ -550,68 +483,38 @@ export const NativeQueryModal = ({
               ) : !isQueryRunning ? (
                 <QueryExecutionEmptyState hasInitialData={false} />
               ) : !datasetToUse ? (
-                <Box
-                  style={{
-                    height: "100%",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
+                <Flex h="100%" align="center" justify="center">
                   <Loader size="lg" />
-                </Box>
+                </Flex>
               ) : null}
 
               {/* Loading overlay for when rerunning queries with existing results */}
               {isQueryRunning && datasetToUse && (
-                <Box
-                  style={{
-                    position: "absolute",
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    backgroundColor: "var(--mb-color-bg-white)",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    zIndex: 10,
-                  }}
+                <Flex
+                  pos="absolute"
+                  top={0}
+                  left={0}
+                  right={0}
+                  bottom={0}
+                  bg="var(--mb-color-bg-white)"
+                  align="center"
+                  justify="center"
+                  style={{ zIndex: 10 }}
                 >
                   <Loader size="lg" />
-                </Box>
+                </Flex>
               )}
-            </Box>
-          </Box>
-
-          {/* Right side - Sidebars */}
-          {/* Template tags sidebar */}
-          {isShowingTemplateTagsEditor && modifiedQuestion && (
-            <Box
-              style={{
-                width: "300px",
-                flexShrink: 0,
-                backgroundColor: "var(--mb-color-bg-white)",
-                borderLeft: "1px solid var(--mb-color-border)",
-                overflow: "auto",
-              }}
-            >
-              <TagEditorSidebar
-                question={modifiedQuestion}
-                query={modifiedQuestion.legacyNativeQuery()!}
-                onClose={() => setIsShowingTemplateTagsEditor(false)}
-                setDatasetQuery={setDatasetQuery}
-              />
-            </Box>
-          )}
+            </Flex>
+          </Flex>
 
           {/* Data reference sidebar */}
           {isShowingDataReference && modifiedQuestion && (
             <Box
+              w="350px"
+              miw="350px"
+              bg="var(--mb-color-bg-white)"
               style={{
-                width: "350px",
                 flexShrink: 0,
-                backgroundColor: "var(--mb-color-bg-white)",
                 borderLeft: "1px solid var(--mb-color-border)",
                 overflow: "auto",
               }}
@@ -632,20 +535,19 @@ export const NativeQueryModal = ({
               />
             </Box>
           )}
-        </Box>
+        </Flex>
 
         {/* Footer with actions */}
-        <Box
+        <Flex
+          pos="sticky"
+          bottom={0}
+          justify="flex-end"
+          gap="0.5rem"
+          p="1rem"
+          bg="var(--mb-color-bg-white)"
           style={{
-            position: "sticky",
-            bottom: 0,
-            display: "flex",
-            justifyContent: "flex-end",
-            gap: "0.5rem",
             borderTop: "1px solid var(--mb-color-border)",
-            padding: "1rem",
             flexShrink: 0,
-            backgroundColor: "var(--mb-color-bg-white)",
             zIndex: 10,
           }}
         >
@@ -659,8 +561,8 @@ export const NativeQueryModal = ({
           >
             {t`Save and use`}
           </Button>
-        </Box>
-      </Box>
+        </Flex>
+      </Flex>
     </Modal>
   );
 };
