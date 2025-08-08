@@ -1,8 +1,8 @@
 import {
   DndContext,
+  DragOverlay,
   KeyboardSensor,
   PointerSensor,
-  closestCenter,
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
@@ -12,8 +12,10 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { Fragment, useCallback, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { push } from "react-router-redux";
 import { useMount } from "react-use";
+import { t } from "ttag";
 
 import { useUpdateTableComponentSettingsMutation } from "metabase/api/table";
 import { useDispatch } from "metabase/lib/redux";
@@ -29,13 +31,16 @@ import type {
   RowValues,
 } from "metabase-types/api";
 
+import { DraggableField } from "../dnd/DraggableField";
+import { useSectionsDragNDrop } from "../dnd/use-sections-drag-n-drop";
+import { getSectionDraggableKey, parseDraggableKey } from "../dnd/utils";
 import { getDefaultObjectViewSettings } from "../utils";
 
 import { DetailViewContainer } from "./DetailViewContainer";
+import { ObjectViewSection } from "./ObjectViewSection";
 import { SortableSection } from "./SortableSection";
 import { useDetailViewSections } from "./use-detail-view-sections";
 import { useForeignKeyReferences } from "./use-foreign-key-references";
-import { t } from "ttag";
 
 interface TableDetailViewProps {
   tableId: number;
@@ -100,7 +105,6 @@ export function TableDetailViewInner({
     updateSection,
     updateSections,
     removeSection,
-    handleDragEnd,
   } = useDetailViewSections(initialSections);
 
   const notEmptySections = useMemo(() => {
@@ -197,6 +201,15 @@ export function TableDetailViewInner({
     [row, columns, table.database_id, dispatch],
   );
 
+  const {
+    handleDragStart,
+    handleDragOver,
+    handleDragEnd,
+    handleDragCancel,
+    collisionDetectionStrategy,
+    activeId,
+  } = useSectionsDragNDrop({ sections, updateSection, updateSections });
+
   useMount(() => {
     dispatch(closeNavbar());
   });
@@ -205,6 +218,28 @@ export function TableDetailViewInner({
   const rowName = nameIndex == null ? null : String(row[nameIndex] || "");
 
   const hasRelationships = tableForeignKeys.length > 0;
+
+  const { activeField, activeSection } = useMemo(() => {
+    const key = parseDraggableKey(activeId);
+
+    if (key?.type === "section") {
+      return {
+        activeSection: sections.find((section) => section.id === key.id),
+      };
+    }
+
+    if (key?.type === "field") {
+      const section = sections.find((section) =>
+        section.fields.some((field) => field.field_id === key.id),
+      );
+      return {
+        activeField: { field_id: key.id },
+        activeSection: section,
+      };
+    }
+
+    return { activeField: undefined, activeSection: undefined };
+  }, [activeId, sections]);
 
   return (
     <DetailViewContainer
@@ -249,16 +284,20 @@ export function TableDetailViewInner({
       >
         <DndContext
           sensors={sensors}
-          collisionDetection={closestCenter}
+          collisionDetection={collisionDetectionStrategy}
+          onDragStart={handleDragStart}
+          onDragOver={handleDragOver}
           onDragEnd={handleDragEnd}
+          onDragCancel={handleDragCancel}
         >
           <SortableContext
-            disabled
-            items={notEmptySections.map((section) => section.id)}
+            items={(isEdit ? sections : notEmptySections).map((section) =>
+              getSectionDraggableKey(section),
+            )}
             strategy={verticalListSortingStrategy}
           >
             {(isEdit ? sections : notEmptySections).map((section, _index) => (
-              <Fragment key={section.id}>
+              <Fragment key={getSectionDraggableKey(section)}>
                 {/* {index > 0 &&
                   (section.variant === "normal" ||
                     section.variant === "highlight-2") && (
@@ -321,6 +360,40 @@ export function TableDetailViewInner({
               />
             )}
           </SortableContext>
+          {createPortal(
+            <DragOverlay>
+              {activeField && activeSection ? (
+                <DraggableField
+                  field_id={activeField.field_id}
+                  columns={columns}
+                  section={activeSection}
+                  row={row}
+                  isDraggable={true}
+                />
+              ) : activeSection ? (
+                <ObjectViewSection
+                  section={activeSection}
+                  sections={sections}
+                  variant={activeSection.variant}
+                  columns={columns}
+                  row={row}
+                  tableId={tableId}
+                  isEdit={isEdit}
+                  table={table}
+                  onUpdateSection={(update) =>
+                    updateSection(activeSection.id, update)
+                  }
+                  onRemoveSection={
+                    activeSection.variant === "header" ||
+                    activeSection.variant === "subheader"
+                      ? undefined
+                      : () => removeSection(activeSection.id)
+                  }
+                />
+              ) : null}
+            </DragOverlay>,
+            document.body,
+          )}
         </DndContext>
       </Stack>
     </DetailViewContainer>

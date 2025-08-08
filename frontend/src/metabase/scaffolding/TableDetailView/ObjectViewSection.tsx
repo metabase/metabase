@@ -1,3 +1,4 @@
+import { SortableContext } from "@dnd-kit/sortable";
 import cx from "classnames";
 import { Fragment } from "react";
 import { t } from "ttag";
@@ -17,6 +18,8 @@ import type {
   TableId,
 } from "metabase-types/api";
 
+import { DraggableField } from "../dnd/DraggableField";
+import { getFieldDraggableKey } from "../dnd/utils";
 import { renderValue } from "../utils";
 
 import { getQuery } from "./ColumnPicker";
@@ -223,54 +226,71 @@ export function ObjectViewSection({
         </Group>
       )}
 
-      {section.fields.length > 0 && (
-        <Flex className={S.SectionContent}>
-          {section.fields.map(({ field_id }, index) => {
-            const columnIndex = columns.findIndex(
-              (column) => column.id === field_id,
-            );
-            const column = columns[columnIndex];
+      <SortableContext
+        items={section.fields.map((field) => getFieldDraggableKey(field))}
+      >
+        {section.fields.length > 0 && (
+          <Flex className={S.SectionContent}>
+            {section.fields.map(({ field_id }, index) => {
+              if (isEdit) {
+                return (
+                  <DraggableField
+                    isDraggable={isEdit}
+                    key={field_id}
+                    field_id={field_id}
+                    columns={columns}
+                    section={section}
+                    row={row}
+                  />
+                );
+              }
 
-            if (!column) {
-              return null;
-            }
+              const columnIndex = columns.findIndex(
+                (column) => column.id === field_id,
+              );
+              const column = columns[columnIndex];
 
-            const value = row[columnIndex];
-            const isForeignKey = isFK(column);
+              if (!column) {
+                return null;
+              }
 
-            const field = table.fields?.find((f) => f.id === field_id);
-            const newTableId = field?.target?.table_id;
-            const link = isForeignKey
-              ? `/table/${newTableId}/detail/${value}`
-              : undefined;
-            const queryColumn = Lib.fromLegacyColumn(query, 0, column);
+              const value = row[columnIndex];
+              const isForeignKey = isFK(column);
 
-            return (
-              <Fragment key={field_id}>
-                <SectionFieldContent
-                  isEdit={isEdit}
-                  column={column}
-                  table={table}
-                  link={link || ""}
-                  query={query}
-                  queryColumn={queryColumn}
-                  value={value}
-                  variant={variant}
-                  tc={tc}
-                  isFixedSection={isFixedSection}
-                  onUpdateSection={onUpdateSection || (() => {})}
-                  field_id={field_id}
-                  section={section}
-                />
+              const field = table.fields?.find((f) => f.id === field_id);
+              const newTableId = field?.target?.table_id;
+              const link = isForeignKey
+                ? `/table/${newTableId}/detail/${value}`
+                : undefined;
+              const queryColumn = Lib.fromLegacyColumn(query, 0, column);
 
-                {index < section.fields.length - 1 &&
-                  variant === "subheader" &&
-                  !isEdit && <div className={S.separator} />}
-              </Fragment>
-            );
-          })}
-        </Flex>
-      )}
+              return (
+                <Fragment key={field_id}>
+                  <SectionFieldContent
+                    isEdit={isEdit}
+                    column={column}
+                    table={table}
+                    link={link || ""}
+                    query={query}
+                    queryColumn={queryColumn}
+                    value={value}
+                    variant={variant}
+                    tc={tc}
+                    isFixedSection={isFixedSection}
+                    onUpdateSection={onUpdateSection || (() => {})}
+                    field_id={field_id}
+                    section={section}
+                  />
+
+                  {index < section.fields.length - 1 &&
+                    variant === "subheader" &&
+                    !isEdit && <div className={S.separator} />}
+                </Fragment>
+              );
+            })}
+          </Flex>
+        )}
+      </SortableContext>
     </Box>
   );
 }
