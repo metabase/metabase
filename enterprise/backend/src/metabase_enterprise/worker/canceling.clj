@@ -5,14 +5,15 @@
    [metabase-enterprise.worker.models.worker-run-cancelation :as wr.cancelation]
    [metabase-enterprise.worker.tracking :as tracking]
    [metabase.task.core :as task]
+   [metabase.util.jvm :as u.jvm]
    [metabase.util.log :as log])
   (:import
-   (java.util.concurrent Executors ExecutorService Future ScheduledExecutorService TimeUnit)))
+   (java.util.concurrent Executors ScheduledExecutorService TimeUnit)))
 
 (set! *warn-on-reflection* true)
 
-(defonce ^:private ^ScheduledExecutorService scheduler (Executors/newScheduledThreadPool 1))
-(defonce ^:private ^ExecutorService executor (Executors/newVirtualThreadPerTaskExecutor))
+(defonce ^:private ^ScheduledExecutorService scheduler
+  (Executors/newScheduledThreadPool 1))
 
 (defonce ^:private connections (atom {}))
 
@@ -31,18 +32,18 @@
     true))
 
 (defn chan-start-timeout-vthread! [run-id]
-  (.submit executor ^Runnable (fn []
-                                (Thread/sleep (* 4 60 60 1000)) ;; 4 hours
-                                (chan-signal-cancel! run-id)
-                                (worker-run/timeout-run! run-id))))
+  (u.jvm/in-virtual-thread*
+   (Thread/sleep (* 4 60 60 1000)) ;; 4 hours
+   (chan-signal-cancel! run-id)
+   (worker-run/timeout-run! run-id)))
 
 ;; please do not export from module
 (defn chan-start-timeout-vthread-worker-instance! [run-id]
-  (.submit executor ^Runnable (fn []
-                                (Thread/sleep (* 4 60 60 1000)) ;; 4 hours
-                                (chan-signal-cancel! run-id)
-                                ;; we don't store timeouts in worker db
-                                )))
+  (u.jvm/in-virtual-thread*
+   (Thread/sleep (* 4 60 60 1000)) ;; 4 hours
+   (chan-signal-cancel! run-id)
+   ;; we don't store timeouts in worker db
+   ))
 
 (defn- cancel-run-mb-instance! [run-id]
   (when (chan-signal-cancel! run-id)
@@ -53,7 +54,7 @@
     (tracking/track-cancel! run-id "Canceled by user")))
 
 (defn schedule-cancel-runs!
-  "Start a scheduled task (not quartzite) that cancels tasks marked in worker_db. Should run only in the worker server."
+  "Start a scheduled task (not quartzite) that cancels tasks marked in worker_db. Should run only in the worker server. Returns the j.u.concurrent.ScheduledFuture that can be canceled."
   []
   (.scheduleAtFixedRate scheduler
                         #(do

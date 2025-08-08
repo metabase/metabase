@@ -18,6 +18,7 @@
    [metabase.server.core :as server]
    [metabase.util :as u]
    [metabase.util.json :as json]
+   [metabase.util.jvm :as u.jvm]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
    [metabase.util.yaml :as yaml]
@@ -39,8 +40,6 @@
 ;; allow no more than 1000 running workers at a time
 (defonce ^:private ^Semaphore semaphore (Semaphore. 1000 true))
 
-(defonce ^:private ^ExecutorService executor (Executors/newVirtualThreadPerTaskExecutor))
-
 (mr/def ::transform-api-request
   [:map
    [:driver [:keyword {:decode/normalize schema.common/normalize-keyword}]]
@@ -58,21 +57,21 @@
                                                              body
                                                              (mtx/transformer {:name :normalize}))]
       (when (tracking/track-start! run-id mb-source)
-        (.submit executor
-                 ^Runnable #(try
-                              (canceling/chan-start-timeout-vthread-worker-instance! run-id)
-                              (binding [qp.pipeline/*canceled-chan* (a/promise-chan)]
-                                (canceling/chan-start-run! run-id qp.pipeline/*canceled-chan*)
-                                (driver/execute-transform! driver
-                                                           transform-details
-                                                           opts))
-                              (tracking/track-finish! run-id)
-                              (catch Throwable t
-                                (log/error t "Error executing transform")
-                                (tracking/track-error! run-id (.getMessage t)))
-                              (finally
-                                (canceling/chan-end-run! run-id)
-                                (.release semaphore)))))
+        (u.jvm/in-virtual-thread*
+         (try
+           (canceling/chan-start-timeout-vthread-worker-instance! run-id)
+           (binding [qp.pipeline/*canceled-chan* (a/promise-chan)]
+             (canceling/chan-start-run! run-id qp.pipeline/*canceled-chan*)
+             (driver/execute-transform! driver
+                                        transform-details
+                                        opts))
+           (tracking/track-finish! run-id)
+           (catch Throwable t
+             (log/error t "Error executing transform")
+             (tracking/track-error! run-id (.getMessage t)))
+           (finally
+             (canceling/chan-end-run! run-id)
+             (.release semaphore)))))
       (-> (response/response (tracking/get-status run-id mb-source))
           (response/content-type "application/json")))
 

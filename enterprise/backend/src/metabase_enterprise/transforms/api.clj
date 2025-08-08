@@ -14,21 +14,17 @@
    [metabase.driver.util :as driver.u]
    [metabase.request.core :as request]
    [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.util.jvm :as u.jvm]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [ring.util.response :as response]
-   [toucan2.core :as t2])
-  (:import (java.util.concurrent
-            Executors
-            ExecutorService)))
+   [toucan2.core :as t2]))
 
 (comment metabase-enterprise.transforms.api.transform-job/keep-me
          metabase-enterprise.transforms.api.transform-tag/keep-me)
 
 (set! *warn-on-reflection* true)
-
-(defonce ^:private ^ExecutorService executor (Executors/newVirtualThreadPerTaskExecutor))
 
 (mr/def ::transform-source
   [:map
@@ -193,9 +189,9 @@
   (api/check-superuser)
   (let [transform (api/check-404 (t2/select-one :model/Transform id))
         start-promise (promise)]
-    (.submit executor ^Runnable
-             (bound-fn* #(transforms.execute/execute-mbql-transform! transform {:start-promise start-promise
-                                                                                :run-method :manual})))
+    (u.jvm/in-virtual-thread*
+     (transforms.execute/execute-mbql-transform! transform {:start-promise start-promise
+                                                            :run-method :manual}))
     (when (instance? Throwable @start-promise)
       (throw @start-promise))
     (let [result @start-promise

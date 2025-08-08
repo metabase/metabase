@@ -15,13 +15,9 @@
    [metabase.util.jvm :as u.jvm]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
-   [toucan2.core :as t2])
-  (:import
-   (java.util.concurrent Executors ExecutorService)))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
-
-(defonce ^:private ^ExecutorService executor (Executors/newVirtualThreadPerTaskExecutor))
 
 (mr/def ::transform-details
   [:map
@@ -140,9 +136,8 @@
         (mapv (fn [transform]
                 (let [start-promise (promise)]
                   (try
-                    (let [thunk (^:once fn []
-                                  (execute-mbql-transform! transform (assoc opts :start-promise start-promise)))]
-                      (.submit executor ^Runnable (bound-fn* thunk)))
+                    (u.jvm/in-virtual-thread*
+                     (execute-mbql-transform! transform (assoc opts :start-promise start-promise)))
                     (catch Throwable t
                       (deliver start-promise t)))
                   [transform start-promise]))
