@@ -90,3 +90,37 @@ jobs:
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: "trivy-results.sarif"
+
+  post-comment:
+    needs: [get-container-info, containerize]
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-22.04
+    name: Post PR comment
+    steps:
+      - name: Check out the code
+        uses: actions/checkout@v4
+      - name: Get Docker info for comment
+        id: docker-info
+        uses: ./.github/actions/get-docker-info
+        with:
+          branch: ${{ github.head_ref || github.ref_name }}
+          edition: ee
+
+      - name: Post PR comment
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          header: docker-build-status
+          message: |
+            ✅ Docker build completed for commit ${{ github.event.pull_request.head.sha || github.sha }}
+
+            The uberjar has been built and containerized successfully.
+
+            **Branch:** `${{ github.head_ref || github.ref_name }}`
+            **Docker Image:** `${{ steps.docker-info.outputs.full_image }}`
+            **Docker Hub:** [View on Docker Hub](https://hub.docker.com/r/${{ steps.docker-info.outputs.repo }}/tags?name=${{ steps.docker-info.outputs.tag }})
+            **Triggered by:** @${{ github.actor }}
+
+            Pull the image:
+            ```bash
+            docker pull ${{ steps.docker-info.outputs.full_image }}
+            ```
