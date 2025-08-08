@@ -129,24 +129,25 @@ jobs:
           echo "Extracting EE artifact..."
           unzip -q ee-artifact.zip -d ee-extract/
           
-          echo "Renaming jar files..."
-          cp oss-extract/target/uberjar/metabase.jar ./metabase-oss.jar
-          cp ee-extract/target/uberjar/metabase.jar ./metabase-ee.jar
+          echo "Preparing artifacts with correct directory structure..."
+          # Keep the full directory structure that the e2e runner expects
           
-          echo "Found files:"
-          ls -la *.jar
+          echo "Found files in OSS extract:"
+          ls -la oss-extract/target/uberjar/
+          echo "Found files in EE extract:"
+          ls -la ee-extract/target/uberjar/
           
       - name: Re-upload OSS as expected name
         uses: actions/upload-artifact@v4
         with:
           name: metabase-oss-${{ github.sha }}-uberjar
-          path: metabase-oss.jar
+          path: oss-extract/
           
       - name: Re-upload EE as expected name
         uses: actions/upload-artifact@v4  
         with:
           name: metabase-ee-${{ github.sha }}-uberjar
-          path: metabase-ee.jar
+          path: ee-extract/
 
   backend-tests:
     if: ${{ !cancelled() && !inputs.e2e_only }}
