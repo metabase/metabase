@@ -182,18 +182,21 @@
       (testing "Documents with different searchable texts get associated with their correct embeddings"
         (let [test-documents [{:model "card"
                                :id "1"
+                               :name "Dog Training Guide"
                                :searchable_text "Dog Training Guide"
                                :creator_id 1
                                :legacy_input {:model "card" :id "1"}
                                :metadata {}}
                               {:model "card"
                                :id "2"
+                               :name "Elephant Migration"
                                :searchable_text "Elephant Migration"
                                :creator_id 2
                                :legacy_input {:model "card" :id "2"}
                                :metadata {}}
                               {:model "card"
                                :id "3"
+                               :name "Tiger Conservation"
                                :searchable_text "Tiger Conservation"
                                :creator_id 3
                                :legacy_input {:model "card" :id "3"}
@@ -221,18 +224,21 @@
 (defn- embedding-reuse-with-batch-size! [batch-size & {:keys [inter-batch?]}]
   (let [test-documents [{:model "card"
                          :id "1"
+                         :name "Dog Training Guide"
                          :searchable_text "Dog Training Guide"
                          :creator_id 1
                          :legacy_input {:model "card" :id "1"}
                          :metadata {}}
                         {:model "card"
                          :id "2"
+                         :name "Elephant Migration"
                          :searchable_text "Elephant Migration"
                          :creator_id 2
                          :legacy_input {:model "card" :id "2"}
                          :metadata {}}
                         {:model "card"
                          :id "3"
+                         :name "Dog Training Guide"
                          :searchable_text "Dog Training Guide"
                          :creator_id 3
                          :legacy_input {:model "card" :id "3"}

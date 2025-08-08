@@ -61,15 +61,7 @@
        ;; ideally we would make per-user computed attributes part of the spec itself.
        :bookmark   (pos? (:bookmarked index-row 0))
        :score      (:total_score index-row 1)
-       :all-scores (mapv (fn [k]
-                           ;; we shouldn't get null scores, but just in case (i.e., because there are bugs)
-                           (let [score  (or (get index-row k) 0)
-                                 weight (or (weights k) 0)]
-                             {:score        score
-                              :name         k
-                              :weight       weight
-                              :contribution (* weight score)}))
-                         active-scorers))
+       :all-scores (search.scoring/all-scores weights active-scorers index-row))
       (update :created_at parse-datetime)
       (update :updated_at parse-datetime)
       (update :last_edited_at parse-datetime)))

@@ -1033,6 +1033,7 @@
           metabase.search.in-place.scoring
           metabase.search.ingestion
           metabase.search.init
+          metabase.search.scoring
           metabase.search.spec}
    :uses #{analytics
            api

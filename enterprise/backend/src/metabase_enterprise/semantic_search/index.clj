@@ -4,9 +4,11 @@
    [honey.sql :as sql]
    [honey.sql.helpers :as sql.helpers]
    [metabase-enterprise.semantic-search.embedding :as embedding]
+   [metabase-enterprise.semantic-search.scoring :as scoring]
    [metabase-enterprise.semantic-search.settings :as semantic-settings]
    [metabase.analytics.core :as analytics]
    [metabase.models.interface :as mi]
+   [metabase.search.config :as search.config]
    [metabase.search.core :as search]
    [metabase.util :as u]
    [metabase.util.json :as json]
@@ -50,16 +52,21 @@
      [:model_created_at :timestamp-with-time-zone]
      [:last_editor_id :int]
      [:model_updated_at :timestamp-with-time-zone]
+     [:pinned :boolean]
      [:archived :boolean [:default false]]
      [:verified :boolean]
      [:official_collection :boolean]
      [:database_id :int]
      [:collection_id :int]
      [:display_type :text]
+     [:dashboardcard_count :int]
+     [:view_count :int]
+     [:last_viewed_at :timestamp-with-time-zone]
      [:legacy_input :jsonb]
      [:embedding [:raw (format "vector(%d)" vector-dimensions)] :not-null]
      [:text_search_vector :tsvector :not-null]
      [:text_search_with_native_query_vector :tsvector :not-null]
+     [:name :text :not-null]
      [:content :text :not-null]
      [:metadata :jsonb]
      [[:constraint unique-constraint-name]
@@ -79,20 +86,26 @@
 (defn- doc->db-record
   "Convert a document to a database record with a provided embedding."
   [embedding-vec {:keys [model id searchable_text created_at creator_id updated_at
-                         last_editor_id archived verified official_collection database_id collection_id display_type legacy_input] :as doc}]
+                         last_editor_id archived verified official_collection database_id collection_id display_type legacy_input
+                         pinned dashboardcard_count view_count last_viewed_at] :as doc}]
   {:model               model
    :model_id            id
    :creator_id          creator_id
    :model_created_at    created_at
    :last_editor_id      last_editor_id
    :model_updated_at    updated_at
+   :pinned              pinned
    :archived            archived
    :verified            verified
    :official_collection official_collection
    :database_id         database_id
    :collection_id       collection_id
+   :dashboardcard_count dashboardcard_count
+   :view_count          view_count
+   :last_viewed_at      last_viewed_at
    :display_type        display_type
    :embedding           [:raw (format-embedding embedding-vec)]
+   :name                (:name doc)
    :content             searchable_text
    :text_search_vector (if (:name doc)
                          [:||
@@ -377,6 +390,28 @@
     (when (seq conditions)
       (into [:and] conditions))))
 
+(def ^:private common-search-columns
+  [[:id :id]
+   [:model_id :model_id]
+   [:model :model]
+   [:name :name]
+   [:content :content]
+   [:verified :verified]
+   [:metadata :metadata]
+   [:archived :archived]
+   [:pinned :pinned]
+   [:creator_id :creator_id]
+   [:last_editor_id :last_editor_id]
+   [:last_viewed_at :last_viewed_at]
+   [:dashboardcard_count :dashboardcard_count]
+   [:view_count :view_count]
+   [:database_id :database_id]
+   [:display_type :display_type]
+   [:model_created_at :model_created_at]
+   [:model_updated_at :model_updated_at]
+   [:official_collection :official_collection]
+   [:collection_id :collection_id]])
+
 (defn- keyword-search-query [index search-context]
   (let [filters (search-filters search-context)
         ts-search-expr (search/to-tsquery-expr (:search-string search-context))
@@ -384,14 +419,9 @@
         vector-column (if (:search-native-query search-context)
                         :text_search_with_native_query_vector
                         :text_search_vector)]
-    {:select [[:id :id]
-              [:model_id :model_id]
-              [:model :model]
-              [:content :content]
-              [:verified :verified]
-              [:metadata :metadata]
-              [[:raw (format "row_number() OVER (ORDER BY ts_rank_cd(%s, query) DESC)" (name vector-column))]
-               :keyword_rank]]
+    {:select (into common-search-columns
+                   [[[:raw (format "row_number() OVER (ORDER BY ts_rank_cd(%s, query) DESC)" (name vector-column))]
+                     :keyword_rank]])
      :from [(keyword (:table-name index))]
      ;; Using a join allows us to share the query expression between our SELECT and WHERE clauses.
      ;; This follows the same secure pattern as metabase.search.appdb.specialization.postgres/base-query
@@ -412,33 +442,15 @@
         max-cosine-distance 0.7
         ;; Inner query: pure vector search to better trigger HNSW index vs. seqscan
         ;; TODO: only pull in necessary extra columns from configured filters
-        hnsw-query {:select [[:id :id]
-                             [:model_id :model_id]
-                             [:model :model]
-                             [:content :content]
-                             [:verified :verified]
-                             [:metadata :metadata]
-                             [:archived :archived]
-                             [:creator_id :creator_id]
-                             [:last_editor_id :last_editor_id]
-                             [:database_id :database_id]
-                             [:display_type :display_type]
-                             [:model_created_at :model_created_at]
-                             [:model_updated_at :model_updated_at]
-                             [:collection_id :collection_id]
-                             [[:raw (str "embedding <=> " embedding-literal)] :distance]]
+        hnsw-query {:select (into common-search-columns
+                                  [[[:raw (str "embedding <=> " embedding-literal)] :distance]])
                     :from   [(keyword (:table-name index))]
                     :order-by [[[:raw (str "embedding <=> " embedding-literal)] :asc]]
                     :limit  (semantic-settings/semantic-search-results-limit)}
         base-query {:with [[:vector_candidates hnsw-query]]
-                    :select [[:id :id]
-                             [:model_id :model_id]
-                             [:model :model]
-                             [:content :content]
-                             [:verified :verified]
-                             [:metadata :metadata]
-                             [[:raw "row_number() OVER (ORDER BY distance ASC)"] :semantic_rank]
-                             [:distance :semantic_score]]
+                    :select (into common-search-columns
+                                  [[[:raw "row_number() OVER (ORDER BY distance ASC)"] :semantic_rank]
+                                   [:distance :semantic_score]])
                     :from [:vector_candidates]
                     :where [:<= :distance max-cosine-distance]
                     :order-by [[:semantic_rank :asc]]}]
@@ -451,9 +463,6 @@
   [index embedding search-context]
   (let [semantic-results (semantic-search-query index embedding search-context)
         keyword-results (keyword-search-query index search-context)
-        k 60
-        keyword-weight 0.51
-        semantic-weight 0.49
         full-query {:with [[:vector_results semantic-results]
                            [:text_results keyword-results]]
                     :select [[[:coalesce :v.id :t.id] :id]
@@ -463,25 +472,20 @@
                              [[:coalesce :v.verified :t.verified] :verified]
                              [[:coalesce :v.metadata :t.metadata] :metadata]
                              [[:coalesce :v.semantic_rank -1] :semantic_rank]
-                             [[:coalesce :t.keyword_rank -1] :keyword_rank]
-                             [[:+
-                               [:* [:cast semantic-weight :float]
-                                [:coalesce [:/ 1.0 [:+ k [:. :v :semantic_rank]]] 0]]
-                               [:* [:cast keyword-weight :float]
-                                [:coalesce [:/ 1.0 [:+ k [:. :t :keyword_rank]]] 0]]]
-                              :rrf_rank]]
+                             [[:coalesce :t.keyword_rank -1] :keyword_rank]]
                     :from [[:vector_results :v]]
                     :full-join [[:text_results :t] [:= :v.id :t.id]]
-                    :order-by [[:rrf_rank :desc]]
                     :limit (semantic-settings/semantic-search-results-limit)}]
     full-query))
 
 (defn- legacy-input-with-score
   "Fetches the legacy_input field from a result's metadata and attaches a score based on the
   embedding distance."
-  [row]
+  [weights scorers row]
   (-> (get-in row [:metadata :legacy_input])
-      (assoc :score (:rrf_rank row 1.0))))
+      (assoc
+       :score (:total_score row 1.0)
+       :all-scores (scoring/all-scores weights scorers row))))
 
 (defn- decode-metadata
   "Decode `row`s `:metadata`."
@@ -646,9 +650,12 @@
             embedding-time-ms (u/since-ms timer)
 
             db-timer (u/start-timer)
-            query (hybrid-search-query index embedding search-context)
+            weights (search.config/weights (:context search-context))
+            scorers (scoring/semantic-scorers search-context)
+            query (->> (hybrid-search-query index embedding search-context)
+                       (scoring/with-scores search-context scorers))
             xform (comp (map decode-metadata)
-                        (map legacy-input-with-score))
+                        (map (partial legacy-input-with-score weights (keys scorers))))
             reducible (jdbc/plan db (sql-format-quoted query) {:builder-fn jdbc.rs/as-unqualified-lower-maps})
             raw-results (into [] xform reducible)
             db-query-time-ms (u/since-ms db-timer)
