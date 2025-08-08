@@ -5,7 +5,7 @@
    [clojure.test.check.generators :as gen]
    [clojure.test.check.properties :as prop]
    [java-time.api :as t]
-   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.driver.common.parameters.dates :as params.dates]
+   [metabase.driver.common.parameters.dates :as params.dates]
    [metabase.test :as mt]))
 
 (deftest ^:parallel date-string->filter-test

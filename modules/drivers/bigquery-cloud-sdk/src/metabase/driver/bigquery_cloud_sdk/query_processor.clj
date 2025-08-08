@@ -8,7 +8,7 @@
    [metabase.driver-api.core :as driver-api]
    [metabase.driver.bigquery-cloud-sdk.common :as bigquery.common]
    [metabase.driver.common :as driver.common]
-   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.driver.common.parameters]
+   [metabase.driver.common.parameters]
    [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util :as sql.u]

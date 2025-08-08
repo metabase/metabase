@@ -1,7 +1,5 @@
-(ns ^{:deprecated "0.56.0"} metabase.driver.common.parameters
-  "Various record types below are used as a convenience for differentiating the different param types.
-
-  DEPRECATED: use [[metabase.query-processor.parameters]] going forward."
+(ns metabase.driver.common.parameters
+  "Various record types below are used as a convenience for differentiating the different param types."
   (:require
    [potemkin.types :as p.types]
    [pretty.core :as pretty]))

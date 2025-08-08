@@ -1,7 +1,5 @@
-(ns ^{:deprecated "0.56.0"} metabase.driver.common.parameters.dates
-  "Shared code for handling datetime parameters, used by both MBQL and native params implementations.
-
-  DEPRECATED: prefer [[metabase.query-processor.parameters.dates]] going forward."
+(ns metabase.driver.common.parameters.dates
+  "Shared code for handling datetime parameters, used by both MBQL and native params implementations."
   #_{:clj-kondo/ignore [:metabase/modules]}
   (:require
    [clojure.string :as str]

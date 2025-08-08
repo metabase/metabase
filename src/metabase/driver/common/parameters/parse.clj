@@ -1,10 +1,9 @@
-(ns ^{:deprecated "0.56.0"} metabase.driver.common.parameters.parse
-  "DEPRECATED: use [[metabase.query-processor.parameters.parse]] going forward."
+(ns metabase.driver.common.parameters.parse
   #_{:clj-kondo/ignore [:metabase/modules]}
   (:require
    [clojure.core.match :refer [match]]
    [clojure.string :as str]
-   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.driver.common.parameters :as params]
+   [metabase.driver.common.parameters :as params]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.query-processor.error-type :as qp.error-type]

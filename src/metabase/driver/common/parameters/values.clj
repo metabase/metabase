@@ -1,4 +1,4 @@
-(ns ^{:deprecated "0.56.0"} metabase.driver.common.parameters.values
+(ns metabase.driver.common.parameters.values
   "These functions build a map of information about the types and values of the params used in a query. (These functions
   don't parse the query itself, but instead look at the values of `:template-tags` and `:parameters` passed along with
   the query.)
@@ -7,13 +7,11 @@
     ;; -> {\"checkin_date\" {:field {:name \"date\", :parent_id nil, :table_id 1375}
                              :param {:type   \"date/range\"
                                      :target [\"dimension\" [\"template-tag\" \"checkin_date\"]]
-                                     :value  \"2015-01-01~2016-09-01\"}}}
-
-  DEPRECATED: use [[metabase.query-processor.parameters.values]] going forward."
+                                     :value  \"2015-01-01~2016-09-01\"}}}"
   #_{:clj-kondo/ignore [:metabase/modules]}
   (:require
    [clojure.string :as str]
-   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.driver.common.parameters :as params]
+   [metabase.driver.common.parameters :as params]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -29,7 +27,9 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu])
+   [metabase.util.malli :as mu]
+   ^{:clj-kondo/ignore [:discouraged-namespace]}
+   [toucan2.core :as t2])
   (:import
    (clojure.lang ExceptionInfo)
    (java.util UUID)))
@@ -240,7 +240,7 @@
   (let [snippet-id (or snippet-id
                        (throw (ex-info (tru "Unable to resolve Snippet: missing `:snippet-id`")
                                        {:tag tag, :type qp.error-type/invalid-parameter})))
-        snippet    (or (lib.metadata/native-query-snippet (qp.store/metadata-provider) snippet-id)
+        snippet    (or (t2/select-one :model/NativeQuerySnippet :id snippet-id)
                        (throw (ex-info (tru "Snippet {0} {1} not found." snippet-id (pr-str snippet-name))
                                        {:snippet-id   snippet-id
                                         :snippet-name snippet-name

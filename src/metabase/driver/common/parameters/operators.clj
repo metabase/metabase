@@ -1,4 +1,4 @@
-(ns ^{:deprecated "0.56.0"} metabase.driver.common.parameters.operators
+(ns metabase.driver.common.parameters.operators
   "This namespace handles parameters that are operators.
 
     {:type :number/between
@@ -6,10 +6,7 @@
               [:field
                26
                {:source-field 5}]]
-     :value [3 5]}
-
-  DEPRECATED: prefer [[metabase.query-processor.parameters.operators]] going forward."
-
+     :value [3 5]}"
   #_{:clj-kondo/ignore [:metabase/modules]}
   (:require
    [metabase.legacy-mbql.schema :as mbql.s]

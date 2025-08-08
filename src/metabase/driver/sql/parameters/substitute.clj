@@ -3,7 +3,7 @@
    [clojure.string :as str]
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
-   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.driver.common.parameters :as params]
+   [metabase.driver.common.parameters :as params]
    [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
