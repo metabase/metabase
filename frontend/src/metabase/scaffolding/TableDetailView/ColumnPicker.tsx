@@ -97,7 +97,7 @@ export function renderItemIcon(table: Table, item: ColumnItem) {
   );
 }
 
-function getQuery(table: Table): Lib.Query {
+export function getQuery(table: Table): Lib.Query {
   const metadata = createMockMetadata({
     tables: table
       ? [

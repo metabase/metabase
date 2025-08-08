@@ -15,6 +15,7 @@ import {
   Icon,
   Text,
 } from "metabase/ui/components";
+import * as Lib from "metabase-lib";
 import { isFK } from "metabase-lib/v1/types/utils/isa";
 import type {
   DatasetColumn,
@@ -27,7 +28,8 @@ import type {
 
 import { renderValue } from "../utils";
 
-import { renderItemIcon } from "./ColumnPicker";
+import { getQuery, renderItemIcon } from "./ColumnPicker";
+import { ColumnPopover } from "./ColumnPopover";
 import { DragHandle } from "./DragHandle";
 import { SectionActions } from "./SectionActions";
 import S from "./TableDetailView.module.css";
@@ -130,6 +132,8 @@ export function ObjectViewSection({
       </Box>
     );
   }
+
+  const query = getQuery(table);
 
   return (
     <Box
@@ -248,6 +252,7 @@ export function ObjectViewSection({
             const link = isForeignKey
               ? `/table/${newTableId}/detail/${value}`
               : undefined;
+            const queryColumn = Lib.fromLegacyColumn(query, 0, column);
 
             return (
               <Fragment key={field_id}>
@@ -278,59 +283,55 @@ export function ObjectViewSection({
 
                   {link && (
                     <Link to={link} className={S.link}>
-                      {isEdit &&
-                        (section.variant === "subheader" ||
-                          section.variant === "header") && <DragHandle />}
+                      {isEdit && isFixedSection && <DragHandle />}
 
-                      <Ellipsified
-                        alwaysShowTooltip={
-                          variant === "subheader" || variant === "header"
-                        }
-                        variant="primary"
-                        truncate={false}
-                        c="var(--mb-color-text-primary)"
-                        lines={variant === "highlight-2" ? 3 : 0}
-                        style={{
-                          flexGrow: 1,
-                        }}
-                        className={S.FieldValue}
-                        fz={undefined}
-                        {...((variant === "subheader" ||
-                          variant === "header") && {
-                          tooltip: column.display_name,
-                        })}
+                      <ColumnPopover
+                        disabled={!isFixedSection}
+                        query={query}
+                        stageIndex={0}
+                        column={queryColumn}
                       >
-                        {renderValue(tc, value, column)}
-                      </Ellipsified>
+                        <Ellipsified
+                          variant="primary"
+                          truncate={false}
+                          c="var(--mb-color-text-primary)"
+                          lines={variant === "highlight-2" ? 3 : 0}
+                          style={{
+                            flexGrow: 1,
+                          }}
+                          className={S.FieldValue}
+                          fz={undefined}
+                        >
+                          {renderValue(tc, value, column)}
+                        </Ellipsified>
+                      </ColumnPopover>
                     </Link>
                   )}
 
                   {!link && (
                     <>
-                      {isEdit &&
-                        (section.variant === "subheader" ||
-                          section.variant === "header") && <DragHandle />}
+                      {isEdit && isFixedSection && <DragHandle />}
 
-                      <Ellipsified
-                        alwaysShowTooltip={
-                          variant === "subheader" || variant === "header"
-                        }
-                        variant="primary"
-                        truncate={false}
-                        c="var(--mb-color-text-primary)"
-                        lines={variant === "highlight-2" ? 3 : 0}
-                        style={{
-                          flexGrow: 1,
-                        }}
-                        className={S.FieldValue}
-                        fz={undefined}
-                        {...((variant === "subheader" ||
-                          variant === "header") && {
-                          tooltip: column.display_name,
-                        })}
+                      <ColumnPopover
+                        disabled={!isFixedSection}
+                        query={query}
+                        stageIndex={0}
+                        column={queryColumn}
                       >
-                        {renderValue(tc, value, column)}
-                      </Ellipsified>
+                        <Ellipsified
+                          variant="primary"
+                          truncate={false}
+                          c="var(--mb-color-text-primary)"
+                          lines={variant === "highlight-2" ? 3 : 0}
+                          style={{
+                            flexGrow: 1,
+                          }}
+                          className={S.FieldValue}
+                          fz={undefined}
+                        >
+                          {renderValue(tc, value, column)}
+                        </Ellipsified>
+                      </ColumnPopover>
                     </>
                   )}
 
