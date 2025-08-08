@@ -32,7 +32,16 @@
         (is (= 1 (count novel-candidates)))
         (is (= "card_456" (-> novel-candidates first :id)))))
 
-    ;; TODO byte comparisons
+    (testing "does not filter candidates whose hash does not match (even if gated_at is the same)"
+      (let [candidates       [{:id "card_123" :document_hash bytes0 :gated_at (Instant/parse "2025-01-01T12:00:00Z")}
+                              {:id "card_456" :document_hash nil :gated_at (Instant/parse "2025-01-01T12:01:00Z")}]
+            filter-with-seen (semantic.indexer/update-candidate-filter
+                              filter
+                              [{:id            "card_123"
+                                :document_hash bytes1
+                                :gated_at      (Instant/parse "2025-01-01T12:00:00Z")}])
+            novel-candidates (semantic.indexer/remove-redundant-candidates filter-with-seen candidates)]
+        (is (= 2 (count novel-candidates)))))
 
     (testing "update-candidate-filter maintains capacity limits"
       (let [candidates     [{:id "card1" :document_hash bytes0 :gated_at (Instant/parse "2025-01-01T12:00:00Z")}
