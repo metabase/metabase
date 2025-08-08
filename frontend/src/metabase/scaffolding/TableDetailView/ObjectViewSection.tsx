@@ -28,6 +28,7 @@ import type {
 import { renderValue } from "../utils";
 
 import { renderItemIcon } from "./ColumnPicker";
+import { DragHandle } from "./DragHandle";
 import { SectionActions } from "./SectionActions";
 import S from "./TableDetailView.module.css";
 
@@ -181,14 +182,9 @@ export function ObjectViewSection({
           {isEdit &&
             (section.variant === "normal" ||
               section.variant === "highlight-2") && (
-              <Icon
-                name="grabber"
-                style={{ cursor: "grab" }}
-                role="button"
-                tabIndex={0}
-                {...dragHandleProps}
-              />
+              <DragHandle {...dragHandleProps} />
             )}
+
           <EditableText
             isOptional
             initialValue={section.title}
