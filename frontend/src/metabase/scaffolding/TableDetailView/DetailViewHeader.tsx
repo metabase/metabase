@@ -31,6 +31,7 @@ interface DetailViewHeaderProps {
   onSaveClick: () => void;
   onCancel: () => void;
   onSubmit: () => void;
+  onBackClick: () => void;
 }
 
 export function DetailViewHeader({
@@ -48,6 +49,7 @@ export function DetailViewHeader({
   onEditClick,
   onCancel,
   onSubmit,
+  onBackClick,
 }: DetailViewHeaderProps & { table: any }): JSX.Element {
   const [updateTableComponentSettings] =
     useUpdateTableComponentSettingsMutation();
@@ -60,6 +62,7 @@ export function DetailViewHeader({
       rowId={rowId}
       rowName={rowName}
       table={table}
+      onBackClick={onBackClick}
     >
       <Flex align="center" gap="md">
         {(canOpenPreviousItem || canOpenNextItem) && (

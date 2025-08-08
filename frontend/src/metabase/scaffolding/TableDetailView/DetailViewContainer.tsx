@@ -35,6 +35,7 @@ interface DetailViewContainerProps {
   onNextItemClick?: () => void;
   onCloseClick: () => void;
   onSaveClick: () => void;
+  onBackClick?: () => void;
   onCreateSection: (options?: { position?: "start" | "end" }) => void;
   onUpdateSection: (
     id: number,
@@ -79,6 +80,7 @@ export function DetailViewContainer({
   onFollowForeignKey,
   // hoveredSectionId,
   // setHoveredSectionId,
+  onBackClick,
 }: DetailViewContainerProps) {
   return (
     <Stack
@@ -110,6 +112,7 @@ export function DetailViewContainer({
         onSaveClick={onSaveClick}
         onCancel={onCancel}
         onSubmit={onSubmit}
+        onBackClick={onBackClick}
       />
 
       <Group

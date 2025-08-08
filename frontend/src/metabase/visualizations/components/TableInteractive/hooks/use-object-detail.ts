@@ -13,6 +13,7 @@ import type { DatasetData } from "metabase-types/api";
 export const useObjectDetail = (
   { rows, cols }: DatasetData,
   query: Lib.Query,
+  location: { hash: string; pathname: string },
 ) => {
   const dispatch = useDispatch();
   const rowIndexToPkMap: Record<number, ObjectId> = useSelector((state) =>
@@ -51,10 +52,15 @@ export const useObjectDetail = (
       if (tableId == null || !primaryKeyColumn) {
         dispatch(zoomInRow({ objectId }));
       } else {
-        dispatch(push(`/table/${tableId}/detail/${objectId}`));
+        dispatch(
+          push({
+            pathname: `/table/${tableId}/detail/${objectId}`,
+            state: { hash: location.hash, pathname: location.pathname },
+          }),
+        );
       }
     },
-    [dispatch, primaryKeyColumn, rowIndexToPkMap, rows, tableId],
+    [dispatch, primaryKeyColumn, rowIndexToPkMap, rows, tableId, location],
   );
 
   return onOpenObjectDetail;
