@@ -7,7 +7,7 @@ import { PaginationControls } from "metabase/common/components/PaginationControl
 import { useDispatch } from "metabase/lib/redux";
 import { Card, Group, Stack } from "metabase/ui";
 import { useListTransformExecutionsQuery } from "metabase-enterprise/api";
-import type { TransformExecution } from "metabase-types/api";
+import type { TransformExecution, TransformId } from "metabase-types/api";
 
 import { ListEmptyState } from "../../../components/ListEmptyState";
 import { getRunListUrl, getTransformUrl } from "../../../urls";
@@ -17,12 +17,19 @@ import S from "./RunList.module.css";
 
 const PAGE_SIZE = 50;
 
-type RunListProps = {
-  page: number;
+export type RunListParams = {
+  page?: number;
+  transformId?: TransformId;
 };
 
-export function RunList({ page }: RunListProps) {
+type RunListProps = {
+  params: RunListParams;
+};
+
+export function RunList({ params }: RunListProps) {
+  const { page = 0, transformId } = params;
   const { data, isLoading, error } = useListTransformExecutionsQuery({
+    transform_id: transformId,
     offset: page * PAGE_SIZE,
     limit: PAGE_SIZE,
   });

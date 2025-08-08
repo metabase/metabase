@@ -1,16 +1,24 @@
 import dayjs from "dayjs";
-import { t } from "ttag";
+import type { ReactNode } from "react";
+import { Link } from "react-router";
+import { jt, t } from "ttag";
 
 import type { IconName } from "metabase/ui";
+import { Anchor } from "metabase/ui";
 import type { Transform } from "metabase-types/api";
+
+import { getRunListUrl } from "../../../urls";
 
 type RunStatusInfo = {
   icon: IconName;
   color: string;
-  message: string;
+  message: ReactNode;
 };
 
-export function getRunStatusInfo({ last_execution }: Transform): RunStatusInfo {
+export function getRunStatusInfo({
+  id,
+  last_execution,
+}: Transform): RunStatusInfo {
   if (last_execution == null) {
     return {
       message: t`This transform hasn’t been run before.`,
@@ -20,8 +28,13 @@ export function getRunStatusInfo({ last_execution }: Transform): RunStatusInfo {
   }
 
   const { status, end_time } = last_execution;
-  const endTimeNode =
+  const endTimeText =
     end_time != null ? dayjs(end_time).local().fromNow() : null;
+  const runListLink = (
+    <Anchor key="link" component={Link} to={getRunListUrl({ transformId: id })}>
+      {t`See all runs`}
+    </Anchor>
+  );
 
   switch (status) {
     case "started":
@@ -32,25 +45,25 @@ export function getRunStatusInfo({ last_execution }: Transform): RunStatusInfo {
       };
     case "succeeded":
       return {
-        message: endTimeNode
-          ? t`Last run ${endTimeNode} successfully`
-          : t`Last run successfully`,
+        message: endTimeText
+          ? jt`Last run ${endTimeText} successfully. ${runListLink}`
+          : jt`Last run successfully. ${runListLink}`,
         icon: "check_filled",
         color: "success",
       };
     case "failed":
       return {
-        message: endTimeNode
-          ? t`Last run failed ${endTimeNode}`
-          : t`Last run failed`,
+        message: endTimeText
+          ? jt`Last run failed ${endTimeText}. ${runListLink}`
+          : jt`Last run failed. ${runListLink}`,
         icon: "warning",
         color: "error",
       };
     case "timeout":
       return {
-        message: endTimeNode
-          ? t`Last run timed out ${endTimeNode}`
-          : t`Last run timed out`,
+        message: endTimeText
+          ? jt`Last run timed out ${endTimeText}. ${runListLink}`
+          : jt`Last run timed out. ${runListLink}`,
         icon: "warning",
         color: "error",
       };

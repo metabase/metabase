@@ -38,11 +38,15 @@ export function getJobUrl(id: TransformJobId) {
 }
 
 type RunListParams = {
+  transformId?: TransformId;
   page?: number;
 };
 
-export function getRunListUrl({ page }: RunListParams = {}) {
+export function getRunListUrl({ transformId, page }: RunListParams = {}) {
   const params = new URLSearchParams();
+  if (transformId != null) {
+    params.set("transformId", String(transformId));
+  }
   if (page != null) {
     params.set("page", String(page));
   }

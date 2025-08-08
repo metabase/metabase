@@ -3,18 +3,14 @@ import { t } from "ttag";
 
 import { Box, Stack, Title } from "metabase/ui";
 
-import { RunList } from "./RunList";
-
-type RunListPageParams = {
-  page: number;
-};
+import { RunList, type RunListParams } from "./RunList";
 
 type RunListPageProps = {
   location: Location;
 };
 
 export function RunListPage({ location }: RunListPageProps) {
-  const { page } = getParsedParams(location);
+  const params = getParsedParams(location);
 
   return (
     <Stack gap="xl">
@@ -22,14 +18,19 @@ export function RunListPage({ location }: RunListPageProps) {
         <Title order={1}>{t`Runs`}</Title>
         <Box>{t`A list of when each transform ran.`}</Box>
       </Stack>
-      <RunList page={page} />
+      <RunList params={params} />
     </Stack>
   );
 }
 
-function getParsedParams(location: Location): RunListPageParams {
-  const { page } = location.query;
+function getParsedParams(location: Location): RunListParams {
+  const { page, transformId } = location.query;
   return {
-    page: typeof page === "string" ? parseInt(page, 10) : 0,
+    page: parseNumber(page),
+    transformId: parseNumber(transformId),
   };
+}
+
+function parseNumber(value: unknown) {
+  return typeof value === "string" ? parseInt(value, 10) : undefined;
 }
