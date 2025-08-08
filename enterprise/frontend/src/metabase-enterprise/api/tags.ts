@@ -94,7 +94,7 @@ export function provideTransformTagListTags(
 export function provideTransformJobTags(
   job: TransformJob,
 ): TagDescription<EnterpriseTagType>[] {
-  return [idTag("transform-tag", job.id)];
+  return [idTag("transform-job", job.id)];
 }
 
 export function provideTransformJobListTags(
