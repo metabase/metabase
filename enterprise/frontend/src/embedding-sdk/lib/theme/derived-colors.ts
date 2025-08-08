@@ -81,10 +81,10 @@ export function getDerivedSdkDefaultColors({
       continue;
     }
 
-    for (const mantineColorKey of mantineColorKeys) {
-      const baseColor = getColor(operation.source);
-      const derivedColor = applyColorOperation(baseColor, operation);
+    const sourceColor = getColor(operation.source);
+    const derivedColor = applyColorOperation(sourceColor, operation);
 
+    for (const mantineColorKey of mantineColorKeys) {
       derivedOverride.colors[mantineColorKey] = colorTuple(derivedColor);
     }
   }
