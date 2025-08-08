@@ -187,7 +187,7 @@ export function ObjectViewSection({
             initialValue={section.title}
             isDisabled={!isEdit || section.variant === "subheader"}
             onChange={(title) => onUpdateSection({ title })}
-            placeholder={t`Section title`}
+            placeholder={t`Untitled Group`}
             style={{
               fontWeight: 700,
               fontSize: isSubheader ? "0.825rem" : "1.25rem",

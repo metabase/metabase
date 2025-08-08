@@ -20,7 +20,7 @@ import { useDispatch } from "metabase/lib/redux";
 import { question } from "metabase/lib/urls";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { closeNavbar } from "metabase/redux/app";
-import { Stack } from "metabase/ui/components";
+import { Button, Flex, Icon, Stack, Tooltip } from "metabase/ui/components";
 import type ForeignKey from "metabase-lib/v1/metadata/ForeignKey";
 import { isEntityName, isPK } from "metabase-lib/v1/types/utils/isa";
 import type {
@@ -35,6 +35,7 @@ import { DetailViewContainer } from "./DetailViewContainer";
 import { SortableSection } from "./SortableSection";
 import { useDetailViewSections } from "./use-detail-view-sections";
 import { useForeignKeyReferences } from "./use-foreign-key-references";
+import { t } from "ttag";
 
 interface TableDetailViewProps {
   tableId: number;
@@ -296,6 +297,17 @@ export function TableDetailViewInner({
               uncategorizedSection.fields.length > 0 && (
                 <Divider my={0} mx="md" />
               )} */}
+            {isEdit && (
+              <Flex align="center" justify="center" w="100%">
+                <Tooltip label={t`Add group`}>
+                  <Button
+                    leftSection={<Icon name="add" />}
+                    onClick={() => createSection({ position: "end" })}
+                  />
+                </Tooltip>
+              </Flex>
+            )}
+
             {uncategorizedSection.fields.length > 0 && (
               <SortableSection
                 section={uncategorizedSection}
