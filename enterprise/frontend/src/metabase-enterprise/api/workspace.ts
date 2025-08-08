@@ -149,8 +149,8 @@ export const workspaceApi = EnterpriseApi.injectEndpoints({
         listTag("workspace"),
       ],
     }),
-    // Transform endpoints
-    updateTransform: builder.mutation<
+    // Transform endpoints (workspace-specific)
+    updateWorkspaceTransform: builder.mutation<
       Workspace,
       { workspaceId: number; transformIndex: number; name: string; description: string; source: any; target: any; config?: any }
     >({
@@ -164,7 +164,7 @@ export const workspaceApi = EnterpriseApi.injectEndpoints({
         listTag("workspace"),
       ],
     }),
-    deleteTransform: builder.mutation<
+    deleteWorkspaceTransform: builder.mutation<
       void,
       { workspaceId: number; transformIndex: number }
     >({
@@ -261,6 +261,21 @@ export const workspaceApi = EnterpriseApi.injectEndpoints({
         listTag("workspace"),
       ],
     }),
+    // Link existing transform to workspace
+    linkTransformToWorkspace: builder.mutation<
+      Workspace,
+      { workspaceId: number; transformId: number }
+    >({
+      query: ({ workspaceId, transformId }) => ({
+        method: "POST",
+        url: `/api/ee/workspace/${workspaceId}/transform/link`,
+        body: { transform_id: transformId },
+      }),
+      invalidatesTags: (_, __, { workspaceId }) => [
+        idTag("workspace", workspaceId),
+        listTag("workspace"),
+      ],
+    }),
   }),
 });
 
@@ -272,12 +287,13 @@ export const {
   useDeleteWorkspaceMutation,
   useUpdatePlanMutation,
   useDeletePlanMutation,
-  useUpdateTransformMutation,
-  useDeleteTransformMutation,
+  useUpdateWorkspaceTransformMutation,
+  useDeleteWorkspaceTransformMutation,
   useUpdateUserMutation,
   useDeleteUserMutation,
   useUpdateDataWarehouseMutation,
   useDeleteDataWarehouseMutation,
   useUpdatePermissionMutation,
   useDeletePermissionMutation,
+  useLinkTransformToWorkspaceMutation,
 } = workspaceApi;

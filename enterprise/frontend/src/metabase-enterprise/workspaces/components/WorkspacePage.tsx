@@ -21,6 +21,8 @@ import {
   useUpdateWorkspaceMutation,
 } from "metabase-enterprise/api";
 
+import { CreateTransformModal } from "./CreateTransformModal";
+import { LinkTransformModal } from "./LinkTransformModal";
 import { PlansTab } from "./PlansTab";
 
 interface WorkspacePageProps {
@@ -42,6 +44,8 @@ export function WorkspacePage({ workspaceId }: WorkspacePageProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState("");
   const [editDescription, setEditDescription] = useState("");
+  const [showCreateTransformModal, setShowCreateTransformModal] = useState(false);
+  const [showLinkTransformModal, setShowLinkTransformModal] = useState(false);
 
   const handleEdit = useCallback(() => {
     if (workspace) {
@@ -87,6 +91,16 @@ export function WorkspacePage({ workspaceId }: WorkspacePageProps) {
       dispatch(push(`/collection/${workspace.collection_id}`));
     }
   }, [workspace, dispatch]);
+
+  const handleTransformSuccess = useCallback(() => {
+    setShowCreateTransformModal(false);
+    refetch();
+  }, [refetch]);
+
+  const handleLinkTransformSuccess = useCallback(() => {
+    setShowLinkTransformModal(false);
+    refetch();
+  }, [refetch]);
 
   if (isLoading) {
     return (
@@ -185,12 +199,13 @@ export function WorkspacePage({ workspaceId }: WorkspacePageProps) {
         </Tabs.List>
 
         <Tabs.Panel value="overview" pt="xl">
-          <Card p="xl" withBorder>
-            <Stack gap="md">
-              <Text fw={500}>{t`Workspace Information`}</Text>
-              <Stack gap="xs">
+          <Stack gap="lg">
+            {/* Workspace Information */}
+            <Card p="xl" withBorder>
+              <Stack gap="md">
+                <Text fw={500} size="lg">{t`Workspace Information`}</Text>
                 <Group>
-                  <Text color="dimmed">{t`Created:`}</Text>
+                  <Text c="dimmed">{t`Created:`}</Text>
                   <Text>
                     {workspace.created_at
                       ? new Date(workspace.created_at).toLocaleDateString()
@@ -198,7 +213,7 @@ export function WorkspacePage({ workspaceId }: WorkspacePageProps) {
                   </Text>
                 </Group>
                 <Group>
-                  <Text color="dimmed">{t`Last Updated:`}</Text>
+                  <Text c="dimmed">{t`Last Updated:`}</Text>
                   <Text>
                     {workspace.updated_at
                       ? new Date(workspace.updated_at).toLocaleDateString()
@@ -206,8 +221,151 @@ export function WorkspacePage({ workspaceId }: WorkspacePageProps) {
                   </Text>
                 </Group>
               </Stack>
-            </Stack>
-          </Card>
+            </Card>
+
+            {/* Summary Stats */}
+            <Card p="xl" withBorder>
+              <Stack gap="md">
+                <Text fw={500} size="lg">{t`Summary`}</Text>
+                <Group>
+                  <Stack gap="xs" style={{ flex: 1 }}>
+                    <Group gap="xs">
+                      <Text fw={700} size="xl" style={{ color: '#3b82f6' }}>
+                        {workspace.plans?.length || 0}
+                      </Text>
+                      <Text>{t`Plans`}</Text>
+                    </Group>
+                    {workspace.plans && workspace.plans.length > 0 && (
+                      <Text size="sm" style={{ color: '#6b7280' }}>
+                        Latest: {workspace.plans[workspace.plans.length - 1]?.title || 'Untitled'}
+                      </Text>
+                    )}
+                  </Stack>
+
+                  <Stack gap="xs" style={{ flex: 1 }}>
+                    <Group gap="xs">
+                      <Text fw={700} size="xl" style={{ color: '#10b981' }}>
+                        {workspace.transforms?.length || 0}
+                      </Text>
+                      <Text>{t`Transforms`}</Text>
+                    </Group>
+                    {workspace.transforms && workspace.transforms.length > 0 && (
+                      <Text size="sm" style={{ color: '#6b7280' }}>
+                        Latest: {workspace.transforms[workspace.transforms.length - 1]?.name || 'Untitled'}
+                      </Text>
+                    )}
+                  </Stack>
+
+                  <Stack gap="xs" style={{ flex: 1 }}>
+                    <Group gap="xs">
+                      <Text fw={700} size="xl" style={{ color: '#8b5cf6' }}>
+                        {workspace.users?.length || 0}
+                      </Text>
+                      <Text>{t`Users`}</Text>
+                    </Group>
+                    {workspace.users && workspace.users.length > 0 && (
+                      <Text size="sm" style={{ color: '#6b7280' }}>
+                        Latest: {workspace.users[workspace.users.length - 1]?.name || 'Unknown'}
+                      </Text>
+                    )}
+                  </Stack>
+
+                  <Stack gap="xs" style={{ flex: 1 }}>
+                    <Group gap="xs">
+                      <Text fw={700} size="xl" style={{ color: '#f97316' }}>
+                        {workspace.data_warehouses?.length || 0}
+                      </Text>
+                      <Text>{t`Data Warehouses`}</Text>
+                    </Group>
+                    {workspace.data_warehouses && workspace.data_warehouses.length > 0 && (
+                      <Text size="sm" style={{ color: '#6b7280' }}>
+                        Latest: {workspace.data_warehouses[workspace.data_warehouses.length - 1]?.name || 'Untitled'}
+                      </Text>
+                    )}
+                  </Stack>
+
+                  <Stack gap="xs" style={{ flex: 1 }}>
+                    <Group gap="xs">
+                      <Text fw={700} size="xl" style={{ color: '#ef4444' }}>
+                        {workspace.documents?.length || 0}
+                      </Text>
+                      <Text>{t`Documents`}</Text>
+                    </Group>
+                  </Stack>
+                </Group>
+              </Stack>
+            </Card>
+
+            {/* Recent Activity */}
+            <Card p="xl" withBorder>
+              <Stack gap="md">
+                <Text fw={500} size="lg">{t`Recent Activity`}</Text>
+                <Stack gap="sm">
+                  {workspace.plans && workspace.plans.length > 0 && (
+                    <Group justify="apart" p="sm" style={{ backgroundColor: 'rgba(59, 130, 246, 0.1)', borderRadius: 8 }}>
+                      <Stack gap={2}>
+                        <Text size="sm" fw={500}>
+                          {workspace.plans[workspace.plans.length - 1]?.title}
+                        </Text>
+                        <Text size="xs" c="dimmed">Plan</Text>
+                      </Stack>
+                      <Text size="xs" c="dimmed">
+                        {new Date(workspace.plans[workspace.plans.length - 1]?.created_at || '').toLocaleDateString()}
+                      </Text>
+                    </Group>
+                  )}
+                  
+                  {workspace.transforms && workspace.transforms.length > 0 && (
+                    <Group justify="apart" p="sm" style={{ backgroundColor: 'rgba(34, 197, 94, 0.1)', borderRadius: 8 }}>
+                      <Stack gap={2}>
+                        <Text size="sm" fw={500}>
+                          {workspace.transforms[workspace.transforms.length - 1]?.name}
+                        </Text>
+                        <Text size="xs" c="dimmed">Transform</Text>
+                      </Stack>
+                      <Text size="xs" c="dimmed">
+                        {new Date(workspace.transforms[workspace.transforms.length - 1]?.created_at || '').toLocaleDateString()}
+                      </Text>
+                    </Group>
+                  )}
+
+                  {workspace.users && workspace.users.length > 0 && (
+                    <Group justify="apart" p="sm" style={{ backgroundColor: 'rgba(147, 51, 234, 0.1)', borderRadius: 8 }}>
+                      <Stack gap={2}>
+                        <Text size="sm" fw={500}>
+                          {workspace.users[workspace.users.length - 1]?.name}
+                        </Text>
+                        <Text size="xs" c="dimmed">User added</Text>
+                      </Stack>
+                      <Text size="xs" c="dimmed">
+                        {new Date(workspace.users[workspace.users.length - 1]?.created_at || '').toLocaleDateString()}
+                      </Text>
+                    </Group>
+                  )}
+
+                  {workspace.data_warehouses && workspace.data_warehouses.length > 0 && (
+                    <Group justify="apart" p="sm" style={{ backgroundColor: 'rgba(249, 115, 22, 0.1)', borderRadius: 8 }}>
+                      <Stack gap={2}>
+                        <Text size="sm" fw={500}>
+                          {workspace.data_warehouses[workspace.data_warehouses.length - 1]?.name}
+                        </Text>
+                        <Text size="xs" c="dimmed">Data Warehouse</Text>
+                      </Stack>
+                      <Text size="xs" c="dimmed">
+                        {new Date(workspace.data_warehouses[workspace.data_warehouses.length - 1]?.created_at || '').toLocaleDateString()}
+                      </Text>
+                    </Group>
+                  )}
+
+                  {(!workspace.plans?.length && !workspace.transforms?.length && !workspace.users?.length && !workspace.data_warehouses?.length) && (
+                    <Text c="dimmed" size="sm" ta="center" py="xl">
+                      {t`No activity yet. Start by adding some plans or transforms!`}
+                    </Text>
+                  )}
+                </Stack>
+              </Stack>
+            </Card>
+          </Stack>
         </Tabs.Panel>
 
         <Tabs.Panel value="plans" pt="xl">
@@ -223,9 +381,22 @@ export function WorkspacePage({ workspaceId }: WorkspacePageProps) {
             <Stack gap="md">
               <Group justify="apart">
                 <Text fw={500}>{t`Transforms`}</Text>
-                <Button variant="light" size="xs">
-                  {t`Add Transform`}
-                </Button>
+                <Group gap="xs">
+                  <Button 
+                    variant="light" 
+                    size="xs"
+                    onClick={() => setShowCreateTransformModal(true)}
+                  >
+                    {t`Create Transform`}
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="xs"
+                    onClick={() => setShowLinkTransformModal(true)}
+                  >
+                    {t`Link Existing`}
+                  </Button>
+                </Group>
               </Group>
               {workspace.transforms && workspace.transforms.length > 0 ? (
                 <Stack gap="sm">
@@ -324,6 +495,20 @@ export function WorkspacePage({ workspaceId }: WorkspacePageProps) {
           </Card>
         </Tabs.Panel>
       </Tabs>
+      
+      <CreateTransformModal
+        workspaceId={workspaceId}
+        opened={showCreateTransformModal}
+        onClose={() => setShowCreateTransformModal(false)}
+        onSuccess={handleTransformSuccess}
+      />
+      
+      <LinkTransformModal
+        workspaceId={workspaceId}
+        opened={showLinkTransformModal}
+        onClose={() => setShowLinkTransformModal(false)}
+        onSuccess={handleLinkTransformSuccess}
+      />
     </Stack>
   );
 }

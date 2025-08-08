@@ -116,15 +116,21 @@ export function WorkspaceList({ collectionId }: WorkspaceListProps) {
                   </Stack>
                   <Group gap="xs">
                     <Button
-                      variant="subtle"
-                      size="xs"
+                      variant="outline"
+                      size="sm"
                       onClick={(e) => {
                         e.stopPropagation();
                         handleDeleteWorkspace(workspace);
                       }}
                       color="red"
+                      style={{ 
+                        flexShrink: 0,
+                        backgroundColor: '#fee2e2',
+                        border: '1px solid #dc2626',
+                        color: '#dc2626'
+                      }}
                     >
-                      {t`Delete`}
+                      Delete
                     </Button>
                   </Group>
                 </Group>
