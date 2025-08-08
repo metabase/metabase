@@ -14,7 +14,7 @@ import {
 } from "metabase/ui";
 import type { Transform, TransformId } from "metabase-types/api";
 
-import { FilterButton } from "../FilterButton";
+import { FilterFieldSet } from "../FilterFieldSet";
 import { MAX_HEIGHT, MIN_WIDTH } from "../constants";
 
 type TransformFilterWidgetProps = {
@@ -42,7 +42,7 @@ export function TransformFilterWidget({
   return (
     <Popover opened={isOpened} position="bottom-start" onDismiss={close}>
       <Popover.Target>
-        <FilterButton
+        <FilterFieldSet
           label={t`Transform`}
           icon="string"
           displayValue={getDisplayValue(transformIds, transforms)}

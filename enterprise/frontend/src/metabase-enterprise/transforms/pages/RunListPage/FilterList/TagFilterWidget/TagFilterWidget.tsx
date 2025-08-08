@@ -13,7 +13,7 @@ import {
 } from "metabase/ui";
 import type { TransformTag, TransformTagId } from "metabase-types/api";
 
-import { FilterButton } from "../FilterButton";
+import { FilterFieldSet } from "../FilterFieldSet";
 import { MIN_WIDTH } from "../constants";
 
 type TagFilterWidgetProps = {
@@ -41,7 +41,7 @@ export function TagFilterWidget({
   return (
     <Popover opened={isOpened} position="bottom-start" onDismiss={close}>
       <Popover.Target>
-        <FilterButton
+        <FilterFieldSet
           label={t`Tags`}
           icon="label"
           displayValue={getDisplayValue(tagIds, tags)}

@@ -14,7 +14,7 @@ import {
 import type { TransformExecutionStatus } from "metabase-types/api";
 
 import { formatStatus } from "../../../../utils";
-import { FilterButton } from "../FilterButton";
+import { FilterFieldSet } from "../FilterFieldSet";
 import { MIN_WIDTH } from "../constants";
 
 const STATUSES: TransformExecutionStatus[] = [
@@ -47,7 +47,7 @@ export function StatusFilterWidget({
   return (
     <Popover opened={isOpened} position="bottom-start" onDismiss={close}>
       <Popover.Target>
-        <FilterButton
+        <FilterFieldSet
           label={t`Status`}
           icon="check_filled"
           displayValue={getDisplayValue(statuses)}

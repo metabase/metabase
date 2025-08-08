@@ -16,7 +16,7 @@ import {
   Tooltip,
 } from "metabase/ui";
 
-import S from "./FilterButton.module.css";
+import S from "./FilterFieldSet.module.css";
 
 type FilterButtonProps = FieldsetHTMLAttributes<HTMLFieldSetElement> & {
   label: string;
@@ -25,7 +25,7 @@ type FilterButtonProps = FieldsetHTMLAttributes<HTMLFieldSetElement> & {
   onRemove: () => void;
 };
 
-export const FilterButton = forwardRef(function FilterWidget(
+export const FilterFieldSet = forwardRef(function FilterWidget(
   { label, icon, displayValue, onRemove, ...props }: FilterButtonProps,
   ref: Ref<HTMLFieldSetElement>,
 ) {
