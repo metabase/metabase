@@ -6,38 +6,14 @@
             [metabase.util.log :as log]
             [next.jdbc :as jdbc]
             [next.jdbc.result-set :as jdbc.rs])
-  (:import (java.time Duration Instant)
-           (java.util Arrays)))
+  (:import (java.time Duration Instant)))
 
 (def ^:private poll-limit 1000)
 
 (def ^:private lag-tolerance (.multipliedBy semantic.gate/gate-write-timeout 2))
 
-(defn candidate-filter [capacity]
-  {:capacity capacity
-   :tree     (sorted-map)})
-
-(defn remove-redundant-candidates [candidate-filter update-candidates]
-  (let [{:keys [tree]} candidate-filter]
-    (remove (fn [{:keys [id document_hash gated_at]}]
-              (let [existing-hash (get tree [gated_at id] ::not-found)]
-                (cond
-                  (identical? ::not-found existing-hash) false
-                  (nil? existing-hash) (nil? document_hash)
-                  :else (Arrays/equals ^bytes existing-hash ^bytes document_hash))))
-            update-candidates)))
-
-(defn update-candidate-filter [candidate-filter update-candidates]
-  (let [{:keys [capacity tree]} candidate-filter
-        rf (fn [tree {:keys [id document_hash gated_at] :as candidate}]
-             (if (= capacity (count tree))
-               (recur (dissoc tree (ffirst tree)) candidate)
-               (assoc tree [gated_at id] document_hash)))]
-    {:capacity capacity
-     :tree     (reduce rf tree update-candidates)}))
-
-(defn indexing-step [pgvector index-metadata index indexing-state & {:keys [ignore-filter]}]
-  (let [{:keys [watermark candidate-filter]} @indexing-state
+(defn indexing-step [pgvector index-metadata index indexing-state]
+  (let [{:keys [watermark last-seen-candidates]} @indexing-state
 
         move-to-next-watermark
         (fn [poll-result]
@@ -49,9 +25,9 @@
         (semantic.gate/poll pgvector index-metadata watermark
                             :limit poll-limit
                             :lag-tolerance lag-tolerance)]
-    (if-some [novel-candidates (if ignore-filter
-                                 (seq update-candidates)
-                                 (seq (remove-redundant-candidates candidate-filter update-candidates)))]
+    (if-some [novel-candidates (not-empty (if (seq last-seen-candidates)
+                                            (into [] (remove last-seen-candidates) update-candidates)
+                                            update-candidates))]
       (let [documents-query   {:select [:model :model_id :document]
                                :from   [(keyword (:gate-table-name index-metadata))]
                                :where  [:in :id (sort (map :id novel-candidates))]}
@@ -68,14 +44,17 @@
         (vswap! indexing-state assoc
                 :last-seen-change (Instant/now)
                 :last-indexed-count (count novel-candidates)
-                :last-poll-count (count update-candidates)
-                :candidate-filter (update-candidate-filter candidate-filter novel-candidates))
+                :last-poll-count (count update-candidates))
         (move-to-next-watermark poll-result))
       (do
         (vswap! indexing-state assoc
                 :last-indexed-count 0
                 :last-poll-count (count update-candidates))
-        (move-to-next-watermark poll-result)))))
+        (move-to-next-watermark poll-result)))
+
+    ;; we use this to filter redundant entries from the last poll (duplicate delivery is expected and intended when
+    ;; at the tail of the gate index).
+    (vswap! indexing-state assoc :last-seen-candidates (set update-candidates))))
 
 ;; having a var is handy for tests
 (defn- sleep [ms]
@@ -161,26 +140,19 @@
 (def default-exit-early-cold-duration
   (Duration/ofSeconds 30))
 
-;; this solves a problem where the very last document
-;; will be re-indexed every time the indexer is rescheduled
-(defn- seed-candidate-filter [candidate-filter
-                              {:keys [indexer_last_seen
-                                      indexer_last_seen_id
-                                      indexer_last_seen_hash]
-                               :as _metadata-row}]
-  (if indexer_last_seen_id
-    (update-candidate-filter candidate-filter [{:id            indexer_last_seen_id
-                                                :document_hash indexer_last_seen_hash
-                                                :gated_at      indexer_last_seen}])
-    candidate-filter))
-
 (defn init-indexing-state [metadata-row]
-  (volatile! {:watermark                (semantic.gate/resume-watermark metadata-row)
-              :candidate-filter         (seed-candidate-filter (candidate-filter poll-limit) metadata-row)
-              :last-indexed-count       0
-              :last-poll-count          0
-              :max-run-duration         default-max-run-duration
-              :exit-early-cold-duration default-exit-early-cold-duration}))
+  (let [watermark (semantic.gate/resume-watermark metadata-row)
+        {:keys [last-seen]} watermark]
+    (volatile! {:watermark                watermark
+                ;; The last-seen-candidates filters the expected redundant entries when
+                ;; polling beyond the confidence threshold. It is overwritten each time we poll.
+                ;; Seeding this value with the watermark solves a problem where the very last document
+                ;; will be re-indexed every time the indexer is rescheduled
+                :last-seen-candidates     (if last-seen #{last-seen} #{})
+                :last-indexed-count       0
+                :last-poll-count          0
+                :max-run-duration         default-max-run-duration
+                :exit-early-cold-duration default-exit-early-cold-duration})))
 
 (defn quartz-job-run!
   [pgvector
@@ -189,8 +161,13 @@
     (when-not index (log/debug "No active semantic search index"))
     (when index
       (let [indexing-state (init-indexing-state metadata-row)]
-        (indexing-loop
-         pgvector
-         index-metadata
-         index
-         indexing-state)))))
+        (try
+          (indexing-loop
+           pgvector
+           index-metadata
+           index
+           indexing-state)
+          (catch InterruptedException ie (throw ie))
+          (catch Throwable t
+            (log/error t "An exception was caught during the indexing loop")
+            (throw t)))))))

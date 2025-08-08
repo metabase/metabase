@@ -32,7 +32,7 @@
     [:indexer_last_poll :timestamp-with-time-zone :null]
     [:indexer_last_seen :timestamp-with-time-zone :null]
     [:indexer_last_seen_id :text :null]
-    [:indexer_last_seen_hash :bytea :null]]
+    [:indexer_last_seen_hash :text :null]]
 
    :control
    [[:id :bigint [:primary-key]]                            ;; not auto-inc, only one row - still useful to ensure only one row when inserting.
@@ -48,7 +48,10 @@
     [:gated_at   :timestamp-with-time-zone :not-null :default [:clock_timestamp]]
     ;; null signals a delete
     [:document :jsonb :null]
-    [:document_hash :bytea :null]]})
+    ;; assumes some text encoding. 'TEXT' is just so convenient to get that sweet equality.
+    ;; the actual hash encoding is pretty much irrelevant as long as nodes agree on it most of the time.
+    ;; even if they do not, as a redundancy filtering optimisation - nothing too bad happens.
+    [:document_hash :text :null]]})
 
 (defn qualify-index
   "Qualifies an index-map, returning a new index-map that might have additional disambiguating prefixes applied
