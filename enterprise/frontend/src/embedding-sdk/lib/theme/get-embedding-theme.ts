@@ -18,7 +18,7 @@ import type { ColorPalette } from "metabase/lib/colors/types";
 import type { MantineThemeOverride } from "metabase/ui";
 
 import { colorTuple } from "./color-tuple";
-import { getDerivedColors } from "./derived-colors";
+import { getDerivedSdkDefaultColors } from "./derived-colors";
 
 const SDK_BASE_FONT_SIZE = `${DEFAULT_SDK_FONT_SIZE}px`;
 
@@ -90,9 +90,5 @@ export function getEmbeddingThemeOverride({
 
   // Derive theme-aware colors for SDK colors that are not defined by the user.
   // This will give a better out-of-the-box experience as users just have to define 3 - 4 colors.
-  return getDerivedColors({
-    sdkColors: theme.colors ?? {},
-    override,
-    appColors,
-  });
+  return getDerivedSdkDefaultColors({ override, appColors });
 }

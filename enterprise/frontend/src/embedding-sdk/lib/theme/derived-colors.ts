@@ -1,4 +1,3 @@
-import type { MetabaseColors } from "metabase/embedding-sdk/theme";
 import { applyColorOperation } from "metabase/embedding-sdk/theme/dynamic-css-vars";
 import { DYNAMIC_SDK_DEFAULT_COLORS_CONFIG } from "metabase/embedding-sdk/theme/dynamic-sdk-color-defaults";
 import type { MappableSdkColor } from "metabase/embedding-sdk/theme/embedding-color-palette";
@@ -16,12 +15,10 @@ import { colorTuple } from "./color-tuple";
  *
  * Returns a Mantine theme override with the derived colors already in colorTuple format.
  */
-export function getDerivedColors({
-  sdkColors,
+export function getDerivedSdkDefaultColors({
   override,
   appColors,
 }: {
-  sdkColors: MetabaseColors;
   override: MantineThemeOverride;
   appColors?: ColorPalette;
 }): MantineThemeOverride {
@@ -66,8 +63,16 @@ export function getDerivedColors({
   )) {
     const sdkColorKey = _colorKey as MappableSdkColor;
 
+    // One SDK color can map to multiple Mantine colors.
+    // For example, `text-primary` overrides both `text-dark` and `text-primary`.
+    const mantineColorKeys = SDK_TO_MAIN_APP_COLORS_MAPPING[sdkColorKey] ?? [];
+
+    const isMantineColorDefined = mantineColorKeys.some(
+      (mantineColorKey) => derivedOverride.colors?.[mantineColorKey],
+    );
+
     // Do not derive colors if the user has already defined them.
-    if (sdkColors[sdkColorKey]) {
+    if (isMantineColorDefined) {
       continue;
     }
 
@@ -75,10 +80,6 @@ export function getDerivedColors({
     if (!operation) {
       continue;
     }
-
-    // One SDK color can map to multiple Mantine colors.
-    // For example, `text-primary` overrides both `text-dark` and `text-primary`.
-    const mantineColorKeys = SDK_TO_MAIN_APP_COLORS_MAPPING[sdkColorKey] ?? [];
 
     for (const mantineColorKey of mantineColorKeys) {
       if (derivedOverride.colors[mantineColorKey]) {
