@@ -26,7 +26,7 @@ Currently you can choose to embed:
 
 ### 2. Create a new embed
 
-1. In Metabase, click on **+ New** button in top right corner and select **Embed**.
+1. In Metabase, click on **+ New** button in top right corner and select **Embed**. Note that this will only be visible to admins.
 2. Choose the type of entity to embed. Currently the available types are dashboard, question, and exploration (which will embed the Metabase query builder).
 3. Next, select the entity you want to embed.
 
