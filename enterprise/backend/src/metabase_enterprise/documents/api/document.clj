@@ -21,7 +21,6 @@
   "Schema for creating a new card - simplified version to avoid circular dependencies"
   [:map
    [:name ms/NonBlankString]
-   [:type {:optional true} [:maybe [:= "question"]]]
    [:dataset_query ms/Map]
    [:entity_id {:optional true} [:maybe ms/NonBlankString]]
    [:parameters {:optional true} [:maybe [:sequential ms/Map]]]
@@ -36,7 +35,7 @@
   "Checks that the query is runnable by the current user then saves"
   [{query :dataset_query :as card} creator]
   (query-perms/check-run-permissions-for-query query)
-  (card/create-card! card creator))
+  (card/create-card! (assoc card :type :question :dashboard_id nil) creator))
 
 (mu/defn- update-cards-in-ast :- [:map [:document :any]
                                   [:content_type :string]]
