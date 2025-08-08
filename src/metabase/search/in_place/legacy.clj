@@ -369,7 +369,7 @@
 
 (defmethod columns-for-model "document"
   [_]
-  [:id :name :archived :created_at :updated_at :collection_id])
+  [:id :name :archived :created_at :updated_at :collection_id :creator_id])
 
 (defmethod columns-for-model "indexed-entity" [_]
   [[:model-index-value.name     :name]

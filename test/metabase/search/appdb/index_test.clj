@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.app-db.core :as mdb]
+   [metabase.config.core :as config]
    [metabase.indexed-entities.models.model-index :as model-index]
    [metabase.search.appdb.index :as search.index]
    [metabase.search.core :as search]
@@ -508,7 +509,8 @@
 
 (def ^:private model->deleted-descendants
   ;; Note that these refer to the table names, not the search-model names.
-  {"core_user"         #{"action" "collection" "model_index_value" "report_card" "report_dashboard" "segment"}
+  {"core_user"         (cond-> #{"action" "collection" "model_index_value" "report_card" "report_dashboard" "segment"}
+                         config/ee-available? (conj "document"))
    "model_index"       #{"model_index_value"}
    "metabase_database" #{"action" "metabase_table" "model_index_value" "report_card" "segment"}
    "metabase_table"    #{"action" "model_index_value" "report_card" "segment"}
