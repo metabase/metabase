@@ -25,7 +25,7 @@ export function getRunStatusInfo({ last_execution }: Transform): RunStatusInfo {
   const { status, end_time } = last_execution;
   const endTimeNode =
     end_time != null ? (
-      <RelativeDateTime date={dayjs(end_time).local().toDate()} />
+      <RelativeDateTime key="date" date={dayjs(end_time).local().toDate()} />
     ) : null;
 
   switch (status) {
