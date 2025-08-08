@@ -1,5 +1,6 @@
 (ns metabase-enterprise.transforms.api.transform-job
   (:require
+   [metabase-enterprise.transforms.models.transform-job :as transform-job]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
@@ -12,6 +13,8 @@
    (org.quartz CronExpression)))
 
 (set! *warn-on-reflection* true)
+
+(comment transform-job/keep-me)
 
 (api.macros/defendpoint :post "/"
   "Create a new transform job."
@@ -38,7 +41,7 @@
                      (deferred-tru "Some tag IDs do not exist"))))
   (let [job (t2/insert-returning-instance! :model/TransformJob
                                            {:name name
-   :description description
+                                            :description description
                                             :schedule schedule})]
     ;; Add tag associations if provided
     (when (seq tag_ids)
