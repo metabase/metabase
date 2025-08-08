@@ -57,7 +57,7 @@ export function ObjectViewSection({
   isEdit,
   onRemoveSection,
   onUpdateSection,
-  // dragHandleProps,
+  dragHandleProps,
   isHovered = false,
 }: ObjectViewSectionProps) {
   // const pkIndex = columns.findIndex(isPK); // TODO: handle multiple PKs
@@ -172,16 +172,23 @@ export function ObjectViewSection({
       )}
 
       {onUpdateSection && (section.title || isEdit) && (
-        <Group gap="md" p={0} className={S.SectionTitle}>
-          {/* {isEdit && (
-          <Icon
-          name="grabber"
-          style={{ cursor: "grab" }}
-          role="button"
-          tabIndex={0}
-          {...dragHandleProps}
-          />
-        )} */}
+        <Group
+          gap="md"
+          mb={isSubheader ? 0 : "md"}
+          p={0}
+          className={S.SectionTitle}
+        >
+          {isEdit &&
+            (section.variant === "normal" ||
+              section.variant === "highlight-2") && (
+              <Icon
+                name="grabber"
+                style={{ cursor: "grab" }}
+                role="button"
+                tabIndex={0}
+                {...dragHandleProps}
+              />
+            )}
           <EditableText
             isOptional
             initialValue={section.title}
@@ -192,7 +199,6 @@ export function ObjectViewSection({
               fontWeight: 700,
               fontSize: isSubheader ? "0.825rem" : "1.25rem",
               padding: 0,
-              marginBottom: isSubheader ? 0 : "2rem",
               minHeight: "1.5rem",
               opacity: isSubheader ? 0.5 : 1,
               ...(isSubheader &&
