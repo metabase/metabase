@@ -52,9 +52,11 @@ export function TransformPage({ params }: TransformPageProps) {
   }
 
   return (
-    <Stack gap="lg">
-      <HeaderSection transform={transform} />
-      <NameSection transform={transform} />
+    <Stack gap="3.5rem">
+      <Stack gap="lg">
+        <HeaderSection transform={transform} />
+        <NameSection transform={transform} />
+      </Stack>
       <RunSection transform={transform} />
       <TargetSection transform={transform} />
       <ManageSection transform={transform} />

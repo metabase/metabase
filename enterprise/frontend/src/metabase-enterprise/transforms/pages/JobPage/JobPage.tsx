@@ -52,9 +52,11 @@ export function JobPage({ params }: JobPageProps) {
   }
 
   return (
-    <Stack gap="lg">
-      <HeaderSection job={job} />
-      <NameSection job={job} />
+    <Stack gap="3.5rem">
+      <Stack gap="lg">
+        <HeaderSection job={job} />
+        <NameSection job={job} />
+      </Stack>
       <ScheduleSection job={job} />
       <TagSection job={job} />
       <ManageSection job={job} />
