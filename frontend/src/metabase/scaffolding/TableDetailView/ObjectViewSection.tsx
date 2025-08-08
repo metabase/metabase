@@ -64,6 +64,8 @@ export function ObjectViewSection({
   // const pkIndex = columns.findIndex(isPK); // TODO: handle multiple PKs
   const tc = useTranslateContent();
   const isSubheader = variant === "subheader";
+  const isHeader = variant === "header";
+  const isFixedSection = isSubheader || isHeader;
 
   if (variant === "header" && !isEdit) {
     // Merging header values in 1 element to handle text-overflow: ellipsis correctly.
@@ -140,13 +142,13 @@ export function ObjectViewSection({
         [S.hovered]: isHovered,
         [S.EditMode]: isEdit,
       })}
-      mt={!isSubheader ? "sm" : undefined}
-      px={!isSubheader ? "lg" : undefined}
-      py={!isSubheader ? "lg" : undefined}
-      bg={!isSubheader ? "white" : undefined}
+      mt={!isFixedSection ? "sm" : undefined}
+      px={!isFixedSection ? "lg" : undefined}
+      py={!isFixedSection ? "lg" : undefined}
+      bg={!isFixedSection ? "white" : undefined}
       pos="relative"
       style={
-        !isSubheader
+        !isFixedSection
           ? {
               border: "1px solid var(--mb-color-border)",
               borderRadius: "var(--mantine-radius-md)",
@@ -175,7 +177,7 @@ export function ObjectViewSection({
       {onUpdateSection && (section.title || isEdit) && (
         <Group
           gap="sm"
-          mb={isSubheader ? 0 : "md"}
+          mb={isFixedSection ? 0 : "md"}
           p={0}
           className={S.SectionTitle}
         >
@@ -193,11 +195,11 @@ export function ObjectViewSection({
             placeholder={t`Untitled Group`}
             style={{
               fontWeight: 700,
-              fontSize: isSubheader ? "0.825rem" : "1.25rem",
+              fontSize: isFixedSection ? "0.825rem" : "1.25rem",
               padding: 0,
               minHeight: "1.5rem",
-              opacity: isSubheader ? 0.5 : 1,
-              ...(isSubheader &&
+              opacity: isFixedSection ? 0.5 : 1,
+              ...(isFixedSection &&
                 (!isEdit || section.fields.length > 0) && {
                   display: "none",
                 }),
