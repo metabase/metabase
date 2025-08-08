@@ -15,6 +15,7 @@ import type { RunListParams } from "../../../types";
 
 import { StatusFilterWidget } from "./StatusFilterWidget";
 import { TagFilterWidget } from "./TagFilterWidget";
+import { TransformFilterWidget } from "./TransformFilterWidget";
 
 type FilterListProps = {
   transforms: Transform[];
@@ -22,15 +23,15 @@ type FilterListProps = {
   params: RunListParams;
 };
 
-export function FilterList({ params, tags }: FilterListProps) {
+export function FilterList({ transforms, tags, params }: FilterListProps) {
   const dispatch = useDispatch();
+
+  const handleTransformsChange = (transformIds: TransformId[]) => {
+    dispatch(replace(getRunListUrl({ ...params, transformIds: transformIds })));
+  };
 
   const handleStatusesChange = (statuses: TransformExecutionStatus[]) => {
     dispatch(replace(getRunListUrl({ ...params, statuses })));
-  };
-
-  const _handleTransformsChange = (transformIds: TransformId[]) => {
-    dispatch(replace(getRunListUrl({ ...params, transformIds: transformIds })));
   };
 
   const handleTagsChange = (tagIds: TransformTagId[]) => {
@@ -39,6 +40,11 @@ export function FilterList({ params, tags }: FilterListProps) {
 
   return (
     <Group>
+      <TransformFilterWidget
+        transformIds={params.transformIds ?? []}
+        transforms={transforms}
+        onChange={handleTransformsChange}
+      />
       <StatusFilterWidget
         statuses={params.statuses ?? []}
         onChange={handleStatusesChange}
