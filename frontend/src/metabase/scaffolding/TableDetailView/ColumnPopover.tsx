@@ -5,6 +5,7 @@ import {
   QueryColumnInfoPopover,
   type QueryColumnInfoPopoverProps,
 } from "metabase/common/components/MetadataInfo/ColumnInfoPopover";
+import { Box } from "metabase/ui";
 
 type QueryColumnInfoIconProps = QueryColumnInfoPopoverProps & {
   children?: ReactNode;
@@ -17,7 +18,9 @@ export function ColumnPopover({
   return (
     <>
       <QueryColumnInfoPopover {...props}>
-        <div aria-label={t`More info`}>{children}</div>
+        <Box flex={1} aria-label={t`More info`}>
+          {children}
+        </Box>
       </QueryColumnInfoPopover>
     </>
   );

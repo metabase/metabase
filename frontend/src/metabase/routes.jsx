@@ -316,11 +316,10 @@ export const getRoutes = (store) => {
           </Route>
 
           <Route path="table">
-            <Route path=":tableId/detail/:rowId" component={TableDetailView} />
             <Route
-              path=":tableId/detail/:rowId/edit"
+              path=":tableId/detail/:rowId(/:mode)"
               component={(props) => (
-                <TableDetailView {...props} isEdit={true} />
+                <TableDetailView {...props} isEdit={!!props.routeParams.mode} />
               )}
             />
           </Route>
