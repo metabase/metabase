@@ -1,4 +1,8 @@
-import { useSortable } from "@dnd-kit/sortable";
+import {
+  type AnimateLayoutChanges,
+  defaultAnimateLayoutChanges,
+  useSortable,
+} from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 
 import type {
@@ -9,6 +13,8 @@ import type {
   Table,
   TableId,
 } from "metabase-types/api";
+
+import { getSectionDraggableKey } from "../dnd/utils";
 
 import { ObjectViewSection } from "./ObjectViewSection";
 
@@ -28,6 +34,9 @@ type SortableSectionProps = {
   onHoverEnd?: () => void;
 };
 
+const animateLayoutChanges: AnimateLayoutChanges = (args) =>
+  defaultAnimateLayoutChanges({ ...args, wasDragging: true });
+
 export function SortableSection(props: SortableSectionProps) {
   const {
     attributes,
@@ -36,7 +45,10 @@ export function SortableSection(props: SortableSectionProps) {
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: props.section.id });
+  } = useSortable({
+    id: getSectionDraggableKey(props.section),
+    animateLayoutChanges,
+  });
 
   const style = {
     transform: CSS.Translate.toString(transform),

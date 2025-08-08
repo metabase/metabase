@@ -1,3 +1,4 @@
+import { SortableContext } from "@dnd-kit/sortable";
 import cx from "classnames";
 import { Fragment } from "react";
 import { Link } from "react-router";
@@ -26,6 +27,8 @@ import type {
   TableId,
 } from "metabase-types/api";
 
+import { DraggableField } from "../dnd/DraggableField";
+import { getFieldDraggableKey } from "../dnd/utils";
 import { renderValue } from "../utils";
 
 import { getQuery, renderItemIcon } from "./ColumnPicker";
@@ -232,134 +235,155 @@ export function ObjectViewSection({
         </Group>
       )}
 
-      {section.fields.length > 0 && (
-        <Flex className={S.SectionContent}>
-          {section.fields.map(({ field_id }, index) => {
-            const columnIndex = columns.findIndex(
-              (column) => column.id === field_id,
-            );
-            const column = columns[columnIndex];
+      <SortableContext
+        items={section.fields.map((field) => getFieldDraggableKey(field))}
+      >
+        {section.fields.length > 0 && (
+          <Flex className={S.SectionContent}>
+            {section.fields.map(({ field_id }, index) => {
+              if (isEdit) {
+                return (
+                  <DraggableField
+                    isDraggable={isEdit}
+                    key={field_id}
+                    field_id={field_id}
+                    columns={columns}
+                    section={section}
+                    row={row}
+                  />
+                );
+              }
 
-            if (!column) {
-              return null;
-            }
+              const columnIndex = columns.findIndex(
+                (column) => column.id === field_id,
+              );
+              const column = columns[columnIndex];
 
-            const value = row[columnIndex];
-            const isForeignKey = isFK(column);
+              if (!column) {
+                return null;
+              }
 
-            const field = table.fields?.find((f) => f.id === field_id);
-            const newTableId = field?.target?.table_id;
-            const link = isForeignKey
-              ? `/table/${newTableId}/detail/${value}`
-              : undefined;
-            const queryColumn = Lib.fromLegacyColumn(query, 0, column);
+              const value = row[columnIndex];
+              const isForeignKey = isFK(column);
 
-            return (
-              <Fragment key={field_id}>
-                <Flex className={S.Field}>
-                  <Box className={S.FieldName} w="100%">
-                    {isEdit && <DragHandle />}
+              const field = table.fields?.find((f) => f.id === field_id);
+              const newTableId = field?.target?.table_id;
+              const link = isForeignKey
+                ? `/table/${newTableId}/detail/${value}`
+                : undefined;
+              const queryColumn = Lib.fromLegacyColumn(query, 0, column);
 
-                    <Text c="var(--mb-color-text-secondary)" fw="bold" truncate>
-                      {column.display_name}
-                    </Text>
+              return (
+                <Fragment key={field_id}>
+                  <Flex className={S.Field}>
+                    <Box className={S.FieldName} w="100%">
+                      {isEdit && <DragHandle />}
 
-                    <Link
-                      to={getUrl({
-                        tableId: table.id,
-                        schemaName: table.schema,
-                        databaseId: table.db_id,
-                        fieldId: column.id,
-                      })}
-                      className={S.FieldIcon}
-                    >
-                      {renderItemIcon(table, {
-                        name: column.display_name,
-                        displayName: column.display_name,
-                        column,
-                      })}
-                    </Link>
-                  </Box>
-
-                  {link && (
-                    <Link to={link} className={S.link}>
-                      {isEdit && isFixedSection && <DragHandle />}
-
-                      <ColumnPopover
-                        disabled={!isFixedSection}
-                        query={query}
-                        stageIndex={0}
-                        column={queryColumn}
+                      <Text
+                        c="var(--mb-color-text-secondary)"
+                        fw="bold"
+                        truncate
                       >
-                        <Ellipsified
-                          variant="primary"
-                          truncate={false}
-                          c="var(--mb-color-text-primary)"
-                          lines={variant === "highlight-2" ? 3 : 0}
-                          style={{
-                            flexGrow: 1,
-                          }}
-                          className={S.FieldValue}
-                          fz={undefined}
-                        >
-                          {renderValue(tc, value, column)}
-                        </Ellipsified>
-                      </ColumnPopover>
-                    </Link>
-                  )}
+                        {column.display_name}
+                      </Text>
 
-                  {!link && (
-                    <>
-                      {isEdit && isFixedSection && <DragHandle />}
-
-                      <ColumnPopover
-                        disabled={!isFixedSection}
-                        query={query}
-                        stageIndex={0}
-                        column={queryColumn}
+                      <Link
+                        to={getUrl({
+                          tableId: table.id,
+                          schemaName: table.schema,
+                          databaseId: table.db_id,
+                          fieldId: column.id,
+                        })}
+                        className={S.FieldIcon}
                       >
-                        <Ellipsified
-                          variant="primary"
-                          truncate={false}
-                          c="var(--mb-color-text-primary)"
-                          lines={variant === "highlight-2" ? 3 : 0}
-                          style={{
-                            flexGrow: 1,
-                          }}
-                          className={S.FieldValue}
-                          fz={undefined}
+                        {renderItemIcon(table, {
+                          name: column.display_name,
+                          displayName: column.display_name,
+                          column,
+                        })}
+                      </Link>
+                    </Box>
+
+                    {link && (
+                      <Link to={link} className={S.link}>
+                        {isEdit && isFixedSection && <DragHandle />}
+
+                        <ColumnPopover
+                          disabled={!isFixedSection}
+                          query={query}
+                          stageIndex={0}
+                          column={queryColumn}
                         >
-                          {renderValue(tc, value, column)}
-                        </Ellipsified>
-                      </ColumnPopover>
-                    </>
-                  )}
+                          <Ellipsified
+                            variant="primary"
+                            truncate={false}
+                            c="var(--mb-color-text-primary)"
+                            lines={variant === "highlight-2" ? 3 : 0}
+                            style={{
+                              flexGrow: 1,
+                            }}
+                            className={S.FieldValue}
+                            fz={undefined}
+                          >
+                            {renderValue(tc, value, column)}
+                          </Ellipsified>
+                        </ColumnPopover>
+                      </Link>
+                    )}
 
-                  {isEdit && onUpdateSection && (
-                    <ActionIcon
-                      className={S.FieldRemoveButton}
-                      size={variant === "header" ? 32 : 16}
-                      onClick={() =>
-                        onUpdateSection({
-                          fields: section.fields.filter(
-                            (f) => f.field_id !== field_id,
-                          ),
-                        })
-                      }
-                    >
-                      <Icon name="close" />
-                    </ActionIcon>
-                  )}
-                </Flex>
+                    {!link && (
+                      <>
+                        {isEdit && isFixedSection && <DragHandle />}
 
-                {index < section.fields.length - 1 &&
-                  variant === "subheader" &&
-                  !isEdit && <div className={S.separator} />}
-              </Fragment>
-            );
-          })}
-        </Flex>
-      )}
+                        <ColumnPopover
+                          disabled={!isFixedSection}
+                          query={query}
+                          stageIndex={0}
+                          column={queryColumn}
+                        >
+                          <Ellipsified
+                            variant="primary"
+                            truncate={false}
+                            c="var(--mb-color-text-primary)"
+                            lines={variant === "highlight-2" ? 3 : 0}
+                            style={{
+                              flexGrow: 1,
+                            }}
+                            className={S.FieldValue}
+                            fz={undefined}
+                          >
+                            {renderValue(tc, value, column)}
+                          </Ellipsified>
+                        </ColumnPopover>
+                      </>
+                    )}
+
+                    {isEdit && onUpdateSection && (
+                      <ActionIcon
+                        className={S.FieldRemoveButton}
+                        size={variant === "header" ? 32 : 16}
+                        onClick={() =>
+                          onUpdateSection({
+                            fields: section.fields.filter(
+                              (f) => f.field_id !== field_id,
+                            ),
+                          })
+                        }
+                      >
+                        <Icon name="close" />
+                      </ActionIcon>
+                    )}
+                  </Flex>
+
+                  {index < section.fields.length - 1 &&
+                    variant === "subheader" &&
+                    !isEdit && <div className={S.separator} />}
+                </Fragment>
+              );
+            })}
+          </Flex>
+        )}
+      </SortableContext>
     </Box>
   );
 }
