@@ -12,6 +12,7 @@
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.sync.core :as sync]
    [metabase.util :as u]
+   [metabase.util.jvm :as u.jvm]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2])
@@ -46,12 +47,11 @@
     (worker/execute-transform! run-id driver transform-details opts)
     (catch Throwable t
       (log/error t "Remote execution request failed; still syncing")))
-  ;; poll the server in a loop and sync to database
-  ;; TODO (eric): timeout this loop
-  (loop []
-    (Thread/sleep 2000)
-    (when (= "running" (:status (worker/sync-single-run! run-id)))
-      (recur))))
+  ;; poll the server until it's not running
+  (u.jvm/poll {:timeout-ms (* 4 60 1000 1000)
+               :interval-ms (+ 2000 (- 500 (* 1000 (rand))))
+               :done? #(not= "running" (:status %))
+               :thunk #(worker/sync-single-run! run-id)}))
 
 (defn- sync-target!
   ([transform-id run-id]
