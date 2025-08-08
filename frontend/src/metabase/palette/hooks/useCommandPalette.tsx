@@ -78,7 +78,6 @@ export const useCommandPalette = ({
       context: "command-palette",
       include_dashboard_questions: true,
       limit: 20,
-      search_engine: "semantic",
     },
     {
       skip: !debouncedSearchText || !isSearchTypeaheadEnabled,
