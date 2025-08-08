@@ -26,7 +26,7 @@ function parseList<T>(
     return item != null ? [item] : [];
   }
   if (Array.isArray(value)) {
-    value.map(parseItem).filter(isNotNull);
+    return value.map(parseItem).filter(isNotNull);
   }
 }
 

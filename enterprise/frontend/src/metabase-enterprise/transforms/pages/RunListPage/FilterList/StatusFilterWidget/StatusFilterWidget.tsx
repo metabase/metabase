@@ -1,6 +1,6 @@
 import { useDisclosure } from "@mantine/hooks";
 import { type FormEvent, useState } from "react";
-import { t } from "ttag";
+import { msgid, ngettext, t } from "ttag";
 
 import {
   Box,
@@ -50,7 +50,7 @@ export function StatusFilterWidget({
         <FilterButton
           label={t`Status`}
           icon="check_filled"
-          canRemove={statuses.length > 0}
+          displayValue={getDisplayValue(statuses)}
           onClick={toggle}
           onRemove={handleRemove}
         />
@@ -60,6 +60,18 @@ export function StatusFilterWidget({
       </Popover.Dropdown>
     </Popover>
   );
+}
+
+function getDisplayValue(statuses: TransformExecutionStatus[]) {
+  const count = statuses.length;
+  switch (count) {
+    case 0:
+      return null;
+    case 1:
+      return formatStatus(statuses[0]);
+    default:
+      return ngettext(msgid`${count} status`, `${count} statuses`, count);
+  }
 }
 
 type StatusFilterForm = {
