@@ -3,14 +3,104 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [java-time.api :as t]
+   [metabase-enterprise.transforms.models.transform-tag]
    [metabase-enterprise.transforms.test-util :refer [with-transform-cleanup!]]
    [metabase-enterprise.transforms.util :as transforms.util]
+   [metabase-enterprise.worker.models.worker-run]
    [metabase.driver :as driver]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.test :as mt]
+   [metabase.util :as u]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
+
+;;; ------------------------------------------------------------
+;;; Test Helper Functions
+;;; ------------------------------------------------------------
+
+(defn test-transform
+  "Create a test transform with sensible defaults.
+   Can be called with just a name string or an options map."
+  [name-or-opts]
+  (let [opts       (if (string? name-or-opts)
+                     {:name name-or-opts}
+                     name-or-opts)
+        query      (or (:query opts)
+                       (str "SELECT " (or (:select opts) "1") " as num"))
+        table-name (or (:table-name opts)
+                       (str "test_table_" (u/generate-nano-id)))]
+    {:name   (or (:name opts) "Test Transform")
+     :source {:type  "query"
+              :query {:database (mt/id)
+                      :type     "native"
+                      :native   {:query         query
+                                 :template-tags {}}}}
+     :target {:type "table"
+              :name table-name}}))
+
+(defn create-worker-run
+  "Create a worker run with default values.
+   Can override any field by passing opts map."
+  ([transform-id]
+   (create-worker-run transform-id {}))
+  ([transform-id opts]
+   (merge {:work_type  "transform"
+           :work_id    transform-id
+           :status     "succeeded"
+           :run_id     (u/generate-nano-id)
+           :run_method "manual"
+           :is_local   true
+           :start_time (t/instant)
+           :end_time   (t/instant)}
+          opts)))
+
+;; mt/with-temp assumes ID as primary key
+(defmacro with-worker-runs
+  "Create worker runs and ensure they are cleaned up after the test.
+   Binds the run IDs to the provided binding symbol."
+  [[binding runs] & body]
+  `(let [runs#    ~runs
+         ~binding (mapv :run_id runs#)]
+     (t2/insert! :model/WorkerRun runs#)
+     (try
+       ~@body
+       (finally
+         (when (seq ~binding)
+           (t2/delete! :model/WorkerRun :run_id [:in ~binding]))))))
+
+(defmacro with-transform-tags
+  "Create transform-tag associations and ensure cleanup.
+   Associations should be a seq of {:transform_id X :tag_id Y} maps."
+  [associations & body]
+  `(let [assocs# ~associations]
+     (when (seq assocs#)
+       (t2/insert! :transform_tags assocs#))
+     (try
+       ~@body
+       (finally
+         (doseq [assoc# assocs#]
+           (t2/delete! :transform_tags
+                       :transform_id (:transform_id assoc#)
+                       :tag_id (:tag_id assoc#)))))))
+
+;;; ------------------------------------------------------------
+;;; Assertion Helpers
+;;; ------------------------------------------------------------
+
+(defn assert-execution-count
+  "Assert that the response contains the expected number of executions."
+  [response expected-count]
+  (is (= expected-count (count (:data response)))
+      (str "Expected " expected-count " executions, got " (count (:data response)))))
+
+(defn assert-transform-ids
+  "Assert that the response contains executions for exactly the expected transform IDs."
+  [response expected-ids]
+  (let [actual-ids (set (map :transform_id (:data response)))]
+    (is (= expected-ids actual-ids)
+        (str "Expected transform IDs " expected-ids ", got " actual-ids))))
 
 (defn- make-query [category]
   (let [q (if (= :clickhouse driver/*driver*)
@@ -257,3 +347,265 @@
                 (is (true? (transforms.util/target-table-exists? original)))
                 (is (true? (transforms.util/target-table-exists? updated)))
                 (check-query-results table2-name [2 3 4] "Doohickey")))))))))
+
+(deftest get-executions-filter-by-single-transform-id-test
+  (testing "GET /api/ee/transform/execution - filter by single transform ID"
+    (mt/with-premium-features #{:transforms}
+      (mt/with-temp [:model/Transform transform1 (test-transform "Transform 1")
+                     :model/Transform transform2 (test-transform "Transform 2")]
+        (with-worker-runs [run-ids [(create-worker-run (:id transform1))
+                                    (create-worker-run (:id transform2))]]
+          (testing "Filter by transform1 ID only returns transform1 executions"
+            (let [response (mt/user-http-request :crowberto :get 200 "ee/transform/execution"
+                                                 :transform_ids [(:id transform1)])]
+              (assert-execution-count response 1)
+              (assert-transform-ids response #{(:id transform1)})
+              (is (= (first run-ids) (-> response :data first :id)))))
+
+          (testing "Filter by transform2 ID only returns transform2 executions"
+            (let [response (mt/user-http-request :crowberto :get 200 "ee/transform/execution"
+                                                 :transform_ids [(:id transform2)])]
+              (assert-execution-count response 1)
+              (assert-transform-ids response #{(:id transform2)})
+              (is (= (second run-ids) (-> response :data first :id))))))))))
+
+(deftest get-executions-filter-by-multiple-transform-ids-test
+  (testing "GET /api/ee/transform/execution - filter by multiple transform IDs"
+    (mt/with-premium-features #{:transforms}
+      (mt/with-temp [:model/Transform transform1 (test-transform "Transform 1")
+                     :model/Transform transform2 (test-transform "Transform 2")
+                     :model/Transform transform3 (test-transform "Transform 3")]
+        (with-worker-runs [_run-ids [(create-worker-run (:id transform1))
+                                     (create-worker-run (:id transform2))
+                                     (create-worker-run (:id transform3))]]
+          (testing "Filter by transform1 and transform2 IDs returns only those executions"
+            (let [response (mt/user-http-request :crowberto :get 200 "ee/transform/execution"
+                                                 :transform_ids [(:id transform1) (:id transform2)])]
+              (assert-execution-count response 2)
+              (assert-transform-ids response #{(:id transform1) (:id transform2)}))))))))
+
+(deftest get-executions-filter-by-single-status-test
+  (testing "GET /api/ee/transform/execution - filter by single status"
+    (mt/with-premium-features #{:transforms}
+      (mt/with-temp [:model/Transform transform (test-transform "Transform with multiple executions")]
+        (with-worker-runs [_run-ids [(create-worker-run (:id transform) {:status "succeeded"})
+                                     (create-worker-run (:id transform) {:status "failed"})
+                                     (create-worker-run (:id transform) {:status "failed"})]]
+          (testing "Filter by 'failed' status returns only failed executions"
+            (let [response (mt/user-http-request :crowberto :get 200 "ee/transform/execution"
+                                                 :statuses ["failed"])]
+              (is (>= (count (:data response)) 2))
+              (is (every? #(= "failed" (:status %))
+                          (filter #(= (:id transform) (:transform_id %)) (:data response))))))
+
+          (testing "Filter by 'succeeded' status returns only succeeded executions"
+            (let [response (mt/user-http-request :crowberto :get 200 "ee/transform/execution"
+                                                 :statuses ["succeeded"])]
+              (is (>= (count (:data response)) 1))
+              (is (some #(and (= "succeeded" (:status %))
+                              (= (:id transform) (:transform_id %)))
+                        (:data response))))))))))
+
+(deftest get-executions-filter-by-multiple-statuses-test
+  (testing "GET /api/ee/transform/execution - filter by multiple statuses"
+    (mt/with-premium-features #{:transforms}
+      (mt/with-temp [:model/Transform transform {:name   "Transform with multiple executions"
+                                                 :source {:type  "query"
+                                                          :query {:database (mt/id)
+                                                                  :type     "native"
+                                                                  :native   {:query         "SELECT 1"
+                                                                             :template-tags {}}}}
+                                                 :target {:type "table"
+                                                          :name (str "test_table_" (u/generate-nano-id))}}]
+        (with-worker-runs [_run-ids [(create-worker-run (:id transform) {:status "succeeded"})
+                                     (create-worker-run (:id transform) {:status "succeeded"})
+                                     (create-worker-run (:id transform) {:status "failed"})
+                                     (create-worker-run (:id transform) {:status "timeout"})]]
+          (testing "Filter by 'succeeded' and 'failed' returns both types"
+            (let [response       (mt/user-http-request :crowberto :get 200 "ee/transform/execution"
+                                                 :statuses ["succeeded" "failed"])
+                  our-executions (filter #(= (:id transform) (:transform_id %)) (:data response))]
+              (is (>= (count our-executions) 3))
+              (is (every? #(contains? #{"succeeded" "failed"} (:status %)) our-executions)))))))))
+
+(deftest get-executions-filter-by-single-tag-test
+  (testing "GET /api/ee/transform/execution - filter by single tag"
+    (mt/with-premium-features #{:transforms}
+      (mt/with-temp [:model/Transform transform1 (test-transform "Tagged Transform 1")
+                     :model/Transform transform2 (test-transform "Tagged Transform 2")
+                     :model/Transform transform3 (test-transform "Untagged Transform")
+                     :model/TransformTag tag1 {:name (str "test-tag-" (u/generate-nano-id))}]
+        (with-transform-tags [{:transform_id (:id transform1) :tag_id (:id tag1)}
+                              {:transform_id (:id transform2) :tag_id (:id tag1)}]
+          (with-worker-runs [_run-ids [(create-worker-run (:id transform1))
+                                       (create-worker-run (:id transform2))
+                                       (create-worker-run (:id transform3))]]
+            (testing "Filter by tag1 returns only tagged transforms' executions"
+              (let [response (mt/user-http-request :crowberto :get 200 "ee/transform/execution"
+                                                   :transform_tag_ids [(:id tag1)])]
+                (assert-execution-count response 2)
+                (assert-transform-ids response #{(:id transform1) (:id transform2)})
+                (is (not (contains? (set (map :transform_id (:data response)))
+                                    (:id transform3))))))))))))
+
+(deftest get-executions-filter-by-multiple-tags-test
+  (testing "GET /api/ee/transform/execution - filter by multiple tags (union)"
+    (mt/with-premium-features #{:transforms}
+      (mt/with-temp [:model/Transform transform1 {:name   "Transform with tag1"
+                                                  :source {:type  "query"
+                                                           :query {:database (mt/id)
+                                                                   :type     "native"
+                                                                   :native   {:query         "SELECT 1"
+                                                                              :template-tags {}}}}
+                                                  :target {:type "table"
+                                                           :name (str "test_table_1_" (u/generate-nano-id))}}
+                     :model/Transform transform2 {:name   "Transform with both tags"
+                                                  :source {:type  "query"
+                                                           :query {:database (mt/id)
+                                                                   :type     "native"
+                                                                   :native   {:query         "SELECT 2"
+                                                                              :template-tags {}}}}
+                                                  :target {:type "table"
+                                                           :name (str "test_table_2_" (u/generate-nano-id))}}
+                     :model/Transform transform3 {:name   "Transform with tag2"
+                                                  :source {:type  "query"
+                                                           :query {:database (mt/id)
+                                                                   :type     "native"
+                                                                   :native   {:query         "SELECT 3"
+                                                                              :template-tags {}}}}
+                                                  :target {:type "table"
+                                                           :name (str "test_table_3_" (u/generate-nano-id))}}
+                     :model/Transform transform4 {:name   "Untagged Transform"
+                                                  :source {:type  "query"
+                                                           :query {:database (mt/id)
+                                                                   :type     "native"
+                                                                   :native   {:query         "SELECT 4"
+                                                                              :template-tags {}}}}
+                                                  :target {:type "table"
+                                                           :name (str "test_table_4_" (u/generate-nano-id))}}
+                     :model/TransformTag tag1 {:name (str "test-tag-1-" (u/generate-nano-id))}
+                     :model/TransformTag tag2 {:name (str "test-tag-2-" (u/generate-nano-id))}]
+        ;; Associate tags with transforms
+        (with-transform-tags [{:transform_id (:id transform1) :tag_id (:id tag1)}
+                              {:transform_id (:id transform2) :tag_id (:id tag1)}
+                              {:transform_id (:id transform2) :tag_id (:id tag2)}
+                              {:transform_id (:id transform3) :tag_id (:id tag2)}]
+          (with-worker-runs [_run-ids [(create-worker-run (:id transform1))
+                                       (create-worker-run (:id transform2))
+                                       (create-worker-run (:id transform3))
+                                       (create-worker-run (:id transform4))]]
+            (testing "Filter by tag1 and tag2 returns union (transforms with either tag)"
+              (let [response               (mt/user-http-request :crowberto :get 200 "ee/transform/execution"
+                                                   :transform_tag_ids [(:id tag1) (:id tag2)])
+                    returned-transform-ids (set (map :transform_id (:data response)))]
+                (assert-execution-count response 3)
+                (assert-transform-ids response #{(:id transform1) (:id transform2) (:id transform3)})
+                (is (not (contains? returned-transform-ids (:id transform4))))))))))))
+
+(deftest get-executions-combine-transform-id-and-status-test
+  (testing "GET /api/ee/transform/execution - combine transform ID and status filters"
+    (mt/with-premium-features #{:transforms}
+      (mt/with-temp [:model/Transform transform1 {:name   "Transform 1"
+                                                  :source {:type  "query"
+                                                           :query {:database (mt/id)
+                                                                   :type     "native"
+                                                                   :native   {:query         "SELECT 1"
+                                                                              :template-tags {}}}}
+                                                  :target {:type "table"
+                                                           :name (str "test_table_1_" (u/generate-nano-id))}}
+                     :model/Transform transform2 {:name   "Transform 2"
+                                                  :source {:type  "query"
+                                                           :query {:database (mt/id)
+                                                                   :type     "native"
+                                                                   :native   {:query         "SELECT 2"
+                                                                              :template-tags {}}}}
+                                                  :target {:type "table"
+                                                           :name (str "test_table_2_" (u/generate-nano-id))}}]
+        ;; Create multiple runs with different statuses for transform1
+        (with-worker-runs [_run-ids [(create-worker-run (:id transform1) {:status "succeeded"})
+                                     (create-worker-run (:id transform1) {:status "failed"})
+                                     (create-worker-run (:id transform1) {:status "failed"})
+                                     (create-worker-run (:id transform2) {:status "failed"})]]
+          (testing "Filter by transform1 ID and failed status"
+            (let [response (mt/user-http-request :crowberto :get 200 "ee/transform/execution"
+                                                 :transform_ids [(:id transform1)]
+                                                 :statuses ["failed"])]
+              (assert-execution-count response 2)
+              (is (every? #(and (= (:id transform1) (:transform_id %))
+                                (= "failed" (:status %)))
+                          (:data response))))))))))
+
+(deftest get-executions-combine-tag-and-status-test
+  (testing "GET /api/ee/transform/execution - combine tag and status filters"
+    (mt/with-premium-features #{:transforms}
+      (mt/with-temp [:model/Transform transform1 {:name   "Tagged Transform 1"
+                                                  :source {:type  "query"
+                                                           :query {:database (mt/id)
+                                                                   :type     "native"
+                                                                   :native   {:query         "SELECT 1"
+                                                                              :template-tags {}}}}
+                                                  :target {:type "table"
+                                                           :name (str "test_table_1_" (u/generate-nano-id))}}
+                     :model/Transform transform2 {:name   "Tagged Transform 2"
+                                                  :source {:type  "query"
+                                                           :query {:database (mt/id)
+                                                                   :type     "native"
+                                                                   :native   {:query         "SELECT 2"
+                                                                              :template-tags {}}}}
+                                                  :target {:type "table"
+                                                           :name (str "test_table_2_" (u/generate-nano-id))}}
+                     :model/Transform transform3 {:name   "Untagged Transform"
+                                                  :source {:type  "query"
+                                                           :query {:database (mt/id)
+                                                                   :type     "native"
+                                                                   :native   {:query         "SELECT 3"
+                                                                              :template-tags {}}}}
+                                                  :target {:type "table"
+                                                           :name (str "test_table_3_" (u/generate-nano-id))}}
+                     :model/TransformTag tag1 {:name (str "test-tag-" (u/generate-nano-id))}]
+        ;; Associate tag1 with transform1 and transform2
+        (with-transform-tags [{:transform_id (:id transform1) :tag_id (:id tag1)}
+                              {:transform_id (:id transform2) :tag_id (:id tag1)}]
+          (with-worker-runs [_run-ids [(create-worker-run (:id transform1) {:status "succeeded"})
+                                       (create-worker-run (:id transform2) {:status "failed"})
+                                       (create-worker-run (:id transform3) {:status "failed"})
+                                       (create-worker-run (:id transform2) {:status "succeeded"})]]
+            (testing "Filter by tag1 and failed status returns only failed executions of tagged transforms"
+              (let [response (mt/user-http-request :crowberto :get 200 "ee/transform/execution"
+                                                   :transform_tag_ids [(:id tag1)]
+                                                   :statuses ["failed"])]
+                (assert-execution-count response 1)
+                (is (= (:id transform2) (-> response :data first :transform_id)))
+                (is (= "failed" (-> response :data first :status)))))))))))
+
+(deftest get-executions-intersect-transform-id-and-tag-test
+  (testing "GET /api/ee/transform/execution - intersection of transform IDs and tags"
+    (mt/with-premium-features #{:transforms}
+      (mt/with-temp [:model/Transform transform1 (test-transform "Transform with tag1")
+                     :model/Transform transform2 (test-transform "Transform with tag2")
+                     :model/TransformTag tag1 {:name (str "test-tag-1-" (u/generate-nano-id))}
+                     :model/TransformTag tag2 {:name (str "test-tag-2-" (u/generate-nano-id))}]
+        (with-transform-tags [{:transform_id (:id transform1) :tag_id (:id tag1)}
+                              {:transform_id (:id transform2) :tag_id (:id tag2)}]
+          (with-worker-runs [_run-ids [(create-worker-run (:id transform1))
+                                       (create-worker-run (:id transform2))]]
+
+            (testing "Filter by transform1 ID and tag1 returns transform1 (has both)"
+              (let [response (mt/user-http-request :crowberto :get 200 "ee/transform/execution"
+                                                   :transform_ids [(:id transform1)]
+                                                   :transform_tag_ids [(:id tag1)])]
+                (assert-execution-count response 1)
+                (assert-transform-ids response #{(:id transform1)})))
+
+            (testing "Filter by transform1 ID and tag2 returns empty (transform1 doesn't have tag2)"
+              (let [response (mt/user-http-request :crowberto :get 200 "ee/transform/execution"
+                                                   :transform_ids [(:id transform1)]
+                                                   :transform_tag_ids [(:id tag2)])]
+                (assert-execution-count response 0)))
+
+            (testing "Filter by both transform IDs and tag1 returns only transform1"
+              (let [response (mt/user-http-request :crowberto :get 200 "ee/transform/execution"
+                                                   :transform_ids [(:id transform1) (:id transform2)]
+                                                   :transform_tag_ids [(:id tag1)])]
+                (assert-execution-count response 1)
+                (assert-transform-ids response #{(:id transform1)})))))))))

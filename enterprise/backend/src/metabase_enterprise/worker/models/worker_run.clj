@@ -193,6 +193,8 @@
                  :work_type work-type
                  :is_active true))
 
+;; This is kinda weird, having this code know anything about a Transform model; we may want to generalize
+;; the tags feature or else make the worker run model oblivious to tags.
 (defn paged-executions
   "Return a page of the list of the executions.
 
@@ -203,6 +205,7 @@
            sort_direction
            work_type
            work_ids
+           work_tag_ids
            statuses]}]
   (let [offset (or offset 0)
         limit  (or limit 20)
@@ -216,23 +219,55 @@
                    :ended_at   [[sort-column sort-direction nulls-sort]]
                    [[:start_time sort-direction]
                     [:end_time   sort-direction nulls-sort]])
-        conditions (concat (when work_type
-                             [:work_type work_type])
-                           (when (seq work_ids)
-                             [:work_id [:in work_ids]])
-                           (when (seq statuses)
-                             [:status [:in statuses]])
-                           (when (and (seq statuses)
+        ;; Build WHERE clause conditions
+        where-conditions (cond-> []
+                           ;; work_type condition
+                           work_type
+                           (conj [:= :work_type work_type])
+
+                           ;; work_ids and work_tag_ids (intersection)
+                           (and (seq work_ids) (seq work_tag_ids))
+                           (conj [:and
+                                  [:in :work_id work_ids]
+                                  [:in :work_id {:select [:transform_id]
+                                                 :from [:transform_tags]
+                                                 :where [:in :tag_id work_tag_ids]}]])
+
+                           ;; Only work_ids
+                           (and (seq work_ids) (not (seq work_tag_ids)))
+                           (conj [:in :work_id work_ids])
+
+                           ;; Only work_tag_ids
+                           (and (seq work_tag_ids) (not (seq work_ids)))
+                           (conj [:in :work_id {:select [:transform_id]
+                                                :from [:transform_tags]
+                                                :where [:in :tag_id work_tag_ids]}])
+
+                           ;; statuses condition
+                           (seq statuses)
+                           (conj [:in :status statuses])
+
+                           ;; is_active condition for started status
+                           (and (seq statuses)
                                       (some #(= % "started") statuses))
-                             [:is_active true]))
-        conditions-with-sort-and-pagination (concat conditions [{:order-by order-by
+                           (conj [:= :is_active true]))
+
+        where-clause     (when (seq where-conditions)
+                           (if (= 1 (count where-conditions))
+                             (first where-conditions)
+                             (into [:and] where-conditions)))
+        query-options    (cond-> {:order-by order-by
                                                                  :offset offset
-                                                                 :limit limit}])
-        runs (apply t2/select :model/WorkerRun conditions-with-sort-and-pagination)]
+                                  :limit    limit}
+                           where-clause (assoc :where where-clause))
+        runs             (t2/select :model/WorkerRun query-options)
+        count-options    (cond-> {}
+                           where-clause (assoc :where where-clause))]
+
     {:data (t2/hydrate runs :transform)
      :limit limit
      :offset offset
-     :total (apply t2/count :model/WorkerRun conditions)}))
+     :total (t2/count :model/WorkerRun count-options)}))
 
 (comment
   (t2/select :model/WorkerRun)
