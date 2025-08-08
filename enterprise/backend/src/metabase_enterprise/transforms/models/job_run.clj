@@ -16,21 +16,12 @@
   {:status mi/transform-keyword
    :run_method mi/transform-keyword})
 
-(mi/define-simple-hydration-method add-transform-job-runs
-  :transform-job-runs
-  "Add transform-job-runs for a transform job. Must have :id field."
-  [transform]
-  (t2/select :model/TransformJobRun
-             :job_id (:id transform)
-             {:order-by [[:start_time :desc] [:end_time :desc]]}))
-
 (defn- latest-runs-query [job-ids]
   {:with [[:ranked_runs
            {:select [:*
                      [[:over [[:row_number] {:partition-by :job_id, :order-by [[:start_time :desc]]}]] :rn]]
             :from [:transform_job_run]
-            :where [:and
-                    [:in :job_id job-ids]]}]]
+            :where [:in :job_id job-ids]}]]
    :select [:*]
    :from [:ranked_runs]
    :where [:= :rn [:inline 1]]})
@@ -41,6 +32,13 @@
   (when (seq job-ids)
     (into [] (map (comp t2.realize/realize #(dissoc % :rn)))
           (t2/reducible-select :model/TransformJobRun (latest-runs-query job-ids)))))
+
+(defn add-last-execution [job]
+  (assoc job
+         :last_execution
+         (t2/select-one :model/TransformJobRun
+                        :job_id (:id job)
+                        {:order-by [[:start_time :desc]]})))
 
 (defn start-run!
   "Start a run"

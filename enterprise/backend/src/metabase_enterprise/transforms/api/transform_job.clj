@@ -1,6 +1,7 @@
 (ns metabase-enterprise.transforms.api.transform-job
   (:require
    [metabase-enterprise.transforms.jobs :as transforms.jobs]
+   [metabase-enterprise.transforms.models.job-run :as transforms.job-run]
    [metabase-enterprise.transforms.models.transform-job :as transform-job]
    [metabase-enterprise.transforms.schedule :as transforms.schedule]
    [metabase.api.common :as api]
@@ -141,7 +142,7 @@
     ;; Hydrate tag_ids and add last_execution (null for now)
     (-> job
         (t2/hydrate :tag_ids)
-        (assoc :last_execution nil))))
+        transforms.job-run/add-last-execution)))
 
 (api.macros/defendpoint :get "/"
   "Get all transform jobs."
