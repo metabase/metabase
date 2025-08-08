@@ -246,6 +246,50 @@ describe("scenarios > embedding > sdk iframe embedding", () => {
     cy.log("3. dashboard title should now be visible");
     getIframeWindow().findByText("Orders in a dashboard").should("be.visible");
   });
+
+  it("expression editor works without CSP violations", () => {
+    const frame = H.loadSdkIframeEmbedTestPage({ template: "exploration" });
+
+    frame.within(() => {
+      cy.findByText("Orders").should("be.visible");
+
+      // Wait for the entity picker modal and select Orders table
+      H.popover().within(() => {
+        cy.findByText("Orders").click();
+      });
+
+      // Add a custom column to trigger the expression editor
+      cy.findByRole("button", { name: "Custom column" }).click();
+    });
+
+    // Check that expression editor opens and is functional
+    getIframeWindow().within(() => {
+      // Expression editor should be visible
+      cy.findByTestId("custom-expression-query-editor")
+        .should("be.visible")
+        .and("be.enabled");
+
+      // Type a simple expression to test CodeMirror is working
+      H.CustomExpressionEditor.type("1 + 1");
+
+      // Verify the expression is typed correctly (CodeMirror is functional)
+      cy.findByTestId("custom-expression-query-editor").should(
+        "contain.text",
+        "1 + 1",
+      );
+
+      // Cancel to close the editor
+      cy.findByRole("button", { name: "Cancel" }).click();
+    });
+
+    // Verify no CSP violations occurred by checking console errors
+    cy.window().then((win) => {
+      cy.spy(win.console, "error").should(
+        "not.have.been.calledWithMatch",
+        /Content-Security-Policy/,
+      );
+    });
+  });
 });
 
 const getIframeWindow = () =>
