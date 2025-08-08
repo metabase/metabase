@@ -1,66 +1,65 @@
 (ns metabase-enterprise.worker.sync
   (:require
-   [clojurewerkz.quartzite.conversion :as conversion]
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.schedule.calendar-interval :as calendar-interval]
-   [clojurewerkz.quartzite.schedule.simple :as simple]
    [clojurewerkz.quartzite.triggers :as triggers]
    [java-time.api :as t]
    [metabase-enterprise.worker.api :as api]
    [metabase-enterprise.worker.models.worker-run :as worker-run]
-   [metabase.app-db.core :as mdb]
-   [metabase.driver :as driver]
-   [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.task.core :as task]
-   [metabase.util.log :as log]
-   [toucan2.core :as t2])
-  (:import
-   (java.util.concurrent
-    Executors
-    ExecutorService
-    Future
-    ScheduledExecutorService
-    TimeUnit)))
+   [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 
 (def ^:private job-key "metabase-enterprise.worker.sync")
 
-(defn sync-single-run! [run-id]
-  (try
-    (let [resp (api/get-status run-id)]
-      (case (:status resp)
-        "started"
-        :started
-        "canceled"
-        (do (worker-run/cancel-run! run-id {:end_time (t/instant (:end-time resp))
+(defn sync-single-run!
+  "Fetch status from worker and sync to mb db"
+  [run-id]
+  (let [resp (api/get-status run-id)]
+    (case (:status resp)
+      "running"
+      :do-nothing
+      "canceled"
+      (worker-run/cancel-run! run-id {:end_time (t/instant (:end-time resp))
+                                      :message (:note resp)})
+      "success"
+      (worker-run/succeed-started-run! run-id {:end_time (t/instant (:end-time resp))})
+      "error"
+      (worker-run/fail-started-run! run-id {:end_time (t/instant (:end-time resp))
                                             :message (:note resp)})
-            :canceled)
-        "success"
-        (do
-          (worker-run/succeed-started-run! run-id {:end_time (t/instant (:end-time resp))})
-          :success)
-        "error"
-        (do (worker-run/fail-started-run! run-id {:end_time (t/instant (:end-time resp))
-                                                  :message (:note resp)})
-            :error)
-        "timeout"
-        (do (worker-run/timeout-run! run-id {:end_time (t/instant (:end-time resp))
-                                             :message (:note resp)})
-            :timeout)))
-    (catch Throwable t
-      (log/error t (str "Error syncing " run-id)))))
+      "timeout"
+      (worker-run/timeout-run! run-id {:end_time (t/instant (:end-time resp))
+                                       :message (:note resp)}))
+    resp))
+
+(defn- wrap-log-errors [f msg]
+  (fn [& args]
+    (try
+      (apply f args)
+      (catch Throwable t
+        (log/error t msg)
+        nil))))
 
 (defn- sync-worker-runs! [_ctx]
   (log/trace "Syncing worker runs.")
-  (let [runs (worker-run/reducible-active-remote-runs)]
-    (run! (comp sync-single-run! :run_id) runs))
+  (try
+    (run! (wrap-log-errors (comp sync-single-run! :run_id) "Error syncing task")
+          (worker-run/reducible-active-remote-runs))
+    (catch Throwable t
+      (log/error t "Error syncing worker runs.")))
 
   (log/trace "Timing out old runs.")
-  (worker-run/timeout-old-runs! 4 :hour)
+  (try
+    (worker-run/timeout-old-runs! 4 :hour)
+    (catch Throwable t
+      (log/error t "Error timing out old runs.")))
 
   (log/trace "Canceling items that haven't been marked canceled.")
-  (worker-run/cancel-old-canceling-runs! 1 :minute))
+  (try
+    (worker-run/cancel-old-canceling-runs! 1 :minute)
+    (catch Throwable t
+      (log/error t "Error canceling items not marked canceled."))))
 
 (task/defjob  ^{:doc "Syncs remote execution information with local table."
                 org.quartz.DisallowConcurrentExecution true}

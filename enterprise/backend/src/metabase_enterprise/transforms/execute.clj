@@ -39,23 +39,18 @@
                   (sync/create-table! database (select-keys target [:schema :name])))]
     (sync/sync-table! table)))
 
+;; should be run in virtual thread (please :)
 (defn- execute-mbql-transform-remote! [run-id driver transform-details opts]
   (try
-    (log/trace "starting transform run" (pr-str run-id))
+    (log/trace "starting remote transform run" (pr-str run-id))
     (worker/execute-transform! run-id driver transform-details opts)
-    (let [;; timeout after 4 hours
-          timeout-limit (+ (System/currentTimeMillis) (* 4 60 60 1000))
-          wait 2000]
-      (loop []
-        (Thread/sleep (long (* wait (inc (- (/ (rand) 5) 0.1)))))
-        (log/trace "polling for remote transform" (pr-str run-id) "after wait" wait)
-        (let [result (worker/sync-single-run! run-id)]
-          (when (= result :started)
-            (recur)))))
     (catch Throwable t
-      (log/error "Remote execution failed.")
-      (worker/fail-started-run! run-id {:message (.getMessage t)})
-      (throw t))))
+      (log/error t "Remote execution request failed; still syncing")))
+  ;; poll the server in a loop and sync to database
+  (loop []
+    (Thread/sleep 2000)
+    (when (= "running" (:status (worker/sync-single-run! run-id)))
+      (recur))))
 
 (defn- sync-target!
   ([transform-id run-id]
@@ -82,11 +77,6 @@
       (throw t))
     (finally
       (worker/chan-end-run! run-id))))
-
-(defn- execute-mbql-transform-inner! [run-id driver transform-details opts]
-  (if (worker/run-remote?)
-    (execute-mbql-transform-remote! run-id driver transform-details opts)
-    (execute-mbql-transform-local! run-id driver transform-details opts)))
 
 (defn execute-mbql-transform!
   "Execute `transform` and sync its target table.
@@ -124,7 +114,9 @@
        (when start-promise
          (deliver start-promise [:started run-id]))
        (log/info "Executing transform" id "with target" (pr-str target))
-       (execute-mbql-transform-inner! run-id driver transform-details opts)
+       (if (worker/run-remote?)
+         (execute-mbql-transform-remote! run-id driver transform-details opts)
+         (execute-mbql-transform-local!  run-id driver transform-details opts))
        (sync-target! target database run-id))
      (catch Throwable t
        (log/error t "Error executing transform")

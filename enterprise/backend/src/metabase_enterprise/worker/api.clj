@@ -38,7 +38,9 @@
                                       :mb-source (mb-id)}
                         :content-type :json})))
 
-(defn get-status [run-id]
+(defn get-status
+  "Get the status of a run."
+  [run-id]
   (json-body (http/get (worker-route (str "/status/" run-id "?mb-source=" (mb-id)))
                        {:content-type :json})))
 
@@ -52,4 +54,11 @@
 
 (comment
 
-  (health-check))
+  (health-check)
+
+  (alter-var-root #'environ.core/env assoc
+                  :mb-transform-worker-uri "http://localhost:3030")
+
+  (get-status "jjj")
+
+  (:status (ex-data *e)))
