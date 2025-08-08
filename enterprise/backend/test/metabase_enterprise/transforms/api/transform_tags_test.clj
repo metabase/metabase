@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.transforms.models.transform :as transform.model]
+   [metabase-enterprise.transforms.models.transform-tag]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -164,3 +165,52 @@
             ;; Verify tag1 is removed but tag2 remains
             (let [fetched (mt/user-http-request :crowberto :get 200 (str "ee/transform/" (:id transform)))]
               (is (= [(:id tag2)] (vec (:tag_ids fetched)))))))))))
+
+(deftest preserve-tag-order-test
+  (testing "Tag order is preserved when adding/updating transform tags"
+    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+      (mt/with-premium-features #{:transforms}
+        (mt/with-temp [:model/TransformTag tag1 {:name "order-tag-1"}
+                       :model/TransformTag tag2 {:name "order-tag-2"}
+                       :model/TransformTag tag3 {:name "order-tag-3"}]
+
+          (testing "Creating transform with specific tag order preserves that order"
+            (let [transform (mt/user-http-request :crowberto :post 200 "ee/transform"
+                                                  {:name "Order Test Transform"
+                                                   :source {:type "query"
+                                                            :query {:database (mt/id)
+                                                                    :type "native"
+                                                                    :native {:query "SELECT 1"}}}
+                                                   :target {:type "table"
+                                                            :name "order_test_table"}
+                                                   :tag_ids [(:id tag3) (:id tag1) (:id tag2)]})]
+              ;; Should preserve the exact order: tag3, tag1, tag2
+              (is (= [(:id tag3) (:id tag1) (:id tag2)] (:tag_ids transform)))
+
+              ;; Verify order is preserved when fetching
+              (let [fetched (mt/user-http-request :crowberto :get 200 (str "ee/transform/" (:id transform)))]
+                (is (= [(:id tag3) (:id tag1) (:id tag2)] (:tag_ids fetched))))
+
+              ;; Update with different order
+              (let [updated (mt/user-http-request :crowberto :put 200 (str "ee/transform/" (:id transform))
+                                                  {:tag_ids [(:id tag2) (:id tag3) (:id tag1)]})]
+                ;; Should now have the new order: tag2, tag3, tag1
+                (is (= [(:id tag2) (:id tag3) (:id tag1)] (:tag_ids updated))))
+
+              ;; Verify new order persists
+              (let [fetched-again (mt/user-http-request :crowberto :get 200 (str "ee/transform/" (:id transform)))]
+                (is (= [(:id tag2) (:id tag3) (:id tag1)] (:tag_ids fetched-again))))))
+
+          (testing "Duplicate tag IDs are handled correctly"
+            (let [transform (mt/user-http-request :crowberto :post 200 "ee/transform"
+                                                  {:name "Duplicate Test Transform"
+                                                   :source {:type "query"
+                                                            :query {:database (mt/id)
+                                                                    :type "native"
+                                                                    :native {:query "SELECT 1"}}}
+                                                   :target {:type "table"
+                                                            :name "dup_test_table"}
+                                                   ;; Try to add tag1 twice
+                                                   :tag_ids [(:id tag1) (:id tag2) (:id tag1)]})]
+              ;; Should only have each tag once, but preserve relative order
+              (is (= [(:id tag1) (:id tag2)] (:tag_ids transform))))))))))
