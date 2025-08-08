@@ -16,7 +16,7 @@
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2])
   (:import
-   (java.util.concurrent Executors ExecutorService Future ScheduledExecutorService TimeUnit)))
+   (java.util.concurrent Executors ExecutorService)))
 
 (set! *warn-on-reflection* true)
 
@@ -47,6 +47,7 @@
     (catch Throwable t
       (log/error t "Remote execution request failed; still syncing")))
   ;; poll the server in a loop and sync to database
+  ;; TODO (eric): timeout this loop
   (loop []
     (Thread/sleep 2000)
     (when (= "running" (:status (worker/sync-single-run! run-id)))
@@ -114,6 +115,7 @@
        (when start-promise
          (deliver start-promise [:started run-id]))
        (log/info "Executing transform" id "with target" (pr-str target))
+       ;; TODO (eric): execute-transform!
        (if (worker/run-remote?)
          (execute-mbql-transform-remote! run-id driver transform-details opts)
          (execute-mbql-transform-local!  run-id driver transform-details opts))

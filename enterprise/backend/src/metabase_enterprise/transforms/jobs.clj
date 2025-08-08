@@ -2,12 +2,22 @@
   (:require
    [metabase-enterprise.transforms.execute :as execute]
    [metabase-enterprise.transforms.ordering :as ordering]
+   [metabase.util :as u]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
 (defn execute-jobs!
-  [jobs]
-  nil)
+  [job-ids opts]
+  (let [transforms (t2/select-fn-set :transform_id
+                                     :transform_job_tags
+                                     {:select :transform_tags.transform_id
+                                      :from :transform_job_tags
+                                      :left-join [:transform_tags [:=
+                                                                   :transform_tags.tag_id
+                                                                   :transform_job_tags.tag_id]]
+                                      :where [:in :transform_job_tags.job_id job-ids]})]
+    (log/info "Executing transform jobs" (pr-str job-ids) "with transforms" (pr-str transforms))
+    (execute-transforms! transforms opts)))
 
 (defn- get-deps [ordering transform-ids]
   (loop [found #{}
@@ -35,8 +45,10 @@
       first
       transforms-by-id))
 
-(defn execute-transforms! [transform-ids-to-run run-method]
+(defn execute-transforms! [transform-ids-to-run {:keys [run-method start-promise]}]
   (let [plan (get-plan transform-ids-to-run)]
+    (when start-promise
+      (deliver start-promise :started))
     (loop [complete #{}]
       (when-let [current-transform (next-transform plan complete)]
         (log/info "Executing job transform" (pr-str (:id current-transform)))

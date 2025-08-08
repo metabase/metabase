@@ -194,8 +194,8 @@
   (let [transform (api/check-404 (t2/select-one :model/Transform id))
         start-promise (promise)]
     (.submit executor ^Runnable
-             #(transforms.execute/execute-mbql-transform! transform {:start-promise start-promise
-                                                                     :run-method :manual}))
+             (bound-fn* #(transforms.execute/execute-mbql-transform! transform {:start-promise start-promise
+                                                                                :run-method :manual})))
     (when (instance? Throwable @start-promise)
       (throw @start-promise))
     (let [result @start-promise
