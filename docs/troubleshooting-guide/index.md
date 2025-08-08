@@ -26,7 +26,7 @@ Problems, their causes, how to detect them, and how to fix them.
 ## Permissions
 
 - [My permissions aren't working][permissions].
-- [My data sandboxes aren't working][sandbox].
+- [Row and column security isn't working][row-and-column].
 
 ## Databases
 
@@ -105,7 +105,7 @@ Metabase adds new features and squashes bugs with each release. [Upgrading to th
 [releases]: https://github.com/metabase/metabase/releases
 [running]: ./running.md
 [saml]: ./saml.md
-[sandbox]: ./sandboxing.md
+[row-and-column]: ./row-and-column-security.md
 [slow-dashboard]: ./my-dashboard-is-slow.md
 [sql]: ./sql.md
 [sync-fingerprint-scan]: ./sync-fingerprint-scan.md

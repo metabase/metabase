@@ -1,11 +1,11 @@
 import type { CSSProperties } from "react";
 
 import { FLEXIBLE_SIZE_DEFAULT_HEIGHT } from "embedding-sdk/components/private/FlexibleSizeComponent";
-import { SdkQuestion } from "embedding-sdk/components/public/SdkQuestion/SdkQuestion";
 import { Center, Icon, Popover, type PopoverProps } from "metabase/ui";
 
 import ToolbarButtonS from "../../../styles/ToolbarButton.module.css";
 import { ToolbarButton } from "../../util/ToolbarButton";
+import { QuestionSettings } from "../QuestionSettings";
 
 /**
  * @interface
@@ -46,7 +46,7 @@ export const QuestionSettingsDropdown = ({
       />
     </Popover.Target>
     <Popover.Dropdown miw="20rem" mah={height ?? FLEXIBLE_SIZE_DEFAULT_HEIGHT}>
-      <SdkQuestion.QuestionSettings maw="20rem" />
+      <QuestionSettings maw="20rem" />
     </Popover.Dropdown>
   </Popover>
 );

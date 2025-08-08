@@ -52,7 +52,9 @@ describe("DataUsageStep", () => {
     await userEvent.click(toggle);
 
     await waitFor(() => {
-      expect(fetchMock.called(TRACKING_PATH, { method: "PUT" })).toBeTruthy();
+      expect(
+        fetchMock.callHistory.called(TRACKING_PATH, { method: "PUT" }),
+      ).toBeTruthy();
     });
 
     expect(toggle).not.toBeChecked();
@@ -67,7 +69,9 @@ describe("DataUsageStep", () => {
     await userEvent.click(toggle);
 
     await waitFor(() => {
-      expect(fetchMock.called(TRACKING_PATH, { method: "PUT" })).toBeTruthy();
+      expect(
+        fetchMock.callHistory.called(TRACKING_PATH, { method: "PUT" }),
+      ).toBeTruthy();
     });
 
     expect(await screen.findByText("An error occurred")).toBeInTheDocument();

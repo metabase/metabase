@@ -12,8 +12,8 @@ import { createMockDashboard } from "metabase-types/api/mocks";
 
 export function setupDashboardEndpoints(dashboard: Dashboard) {
   fetchMock.get(`path:/api/dashboard/${dashboard.id}`, dashboard);
-  fetchMock.put(`path:/api/dashboard/${dashboard.id}`, async (url) => {
-    const lastCall = fetchMock.lastCall(url);
+  fetchMock.put(`path:/api/dashboard/${dashboard.id}`, async (call) => {
+    const lastCall = fetchMock.callHistory.lastCall(call.url);
     return createMockDashboard(await lastCall?.request?.json());
   });
 }
