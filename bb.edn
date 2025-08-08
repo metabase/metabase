@@ -156,6 +156,11 @@
    :requires [[mage.stats-repl :as stats-repl]]
    :task     (stats-repl/connect (cli/parse! (current-task)))}
 
+  ls {:doc      "List all mage public and private tasks"
+      :examples [["./bin/mage ls" "List all tasks"]]
+      :requires [[mage.util :as u]]
+      :task     (task! (u/print-tasks parsed))}
+
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   ;; Private Tasks:
   ;; These tasks are more for internal tooling, e.g. for use from git hooks etc.
