@@ -21,6 +21,7 @@ import { renderItemIcon } from "./ColumnPicker";
 import { ColumnPopover } from "./ColumnPopover";
 import { DragHandle } from "./DragHandle";
 import S from "./TableDetailView.module.css";
+import { UNCATEGORIZED_SECTION_ID } from "./use-detail-view-sections";
 
 export function SectionFieldContent({
   isEdit,
@@ -155,7 +156,7 @@ export function SectionFieldContent({
         </>
       )}
 
-      {isEdit && onUpdateSection && (
+      {isEdit && onUpdateSection && section.id !== UNCATEGORIZED_SECTION_ID && (
         <ActionIcon
           className={S.FieldRemoveButton}
           size={variant === "header" ? 32 : 16}

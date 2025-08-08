@@ -159,6 +159,10 @@ export function useSectionsDragNDrop({
         const overIndex = sections.findIndex(
           (section) => section.id === overId.id,
         );
+        if (overIndex === 0 || overIndex === 1) {
+          // don't allow to drag sections before header or subtitle
+          return;
+        }
         updateSections(arrayMove(sections, activeIndex, overIndex));
       }
 

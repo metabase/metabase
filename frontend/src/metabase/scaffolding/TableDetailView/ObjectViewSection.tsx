@@ -26,6 +26,7 @@ import { DragHandle } from "./DragHandle";
 import { SectionActions } from "./SectionActions";
 import { SectionFieldContent } from "./SectionFieldContent";
 import S from "./TableDetailView.module.css";
+import { UNCATEGORIZED_SECTION_ID } from "./use-detail-view-sections";
 
 type ObjectViewSectionProps = {
   section: ObjectViewSectionSettings;
@@ -153,7 +154,7 @@ export function ObjectViewSection({
           : {}
       }
     >
-      {isEdit && (
+      {isEdit && section.id !== UNCATEGORIZED_SECTION_ID && (
         <Box
           className={S.ObjectViewSectionActions}
           pos="absolute"
@@ -171,59 +172,62 @@ export function ObjectViewSection({
         </Box>
       )}
 
-      {onUpdateSection && (section.title || isEdit) && (
-        <Group
-          gap="sm"
-          align="center"
-          mb={isFixedSection ? 0 : "md"}
-          p={0}
-          className={S.SectionTitle}
-        >
-          {isEdit &&
-            (section.variant === "normal" ||
-              section.variant === "highlight-2") && (
-              <DragHandle size="lg" {...dragHandleProps} />
+      {onUpdateSection &&
+        (section.title || isEdit) &&
+        section.id !== UNCATEGORIZED_SECTION_ID && (
+          <Group
+            gap="sm"
+            align="center"
+            mb={isFixedSection ? 0 : "md"}
+            p={0}
+            className={S.SectionTitle}
+          >
+            {isEdit &&
+              section.id !== UNCATEGORIZED_SECTION_ID &&
+              (section.variant === "normal" ||
+                section.variant === "highlight-2") && (
+                <DragHandle size="lg" {...dragHandleProps} />
+              )}
+
+            {isFixedSection && section.fields.length === 0 && (
+              <Ellipsified
+                variant="primary"
+                truncate
+                c="var(--mb-color-text-primary)"
+                style={{
+                  opacity: 0.5,
+                  fontSize: isHeader ? "3.125rem" : undefined,
+                }}
+                fw="bold"
+                fz={undefined}
+              >
+                {isHeader ? t`Title` : t`Subtitle`}
+              </Ellipsified>
             )}
 
-          {isFixedSection && section.fields.length === 0 && (
-            <Ellipsified
-              variant="primary"
-              truncate
-              c="var(--mb-color-text-primary)"
-              style={{
-                opacity: 0.5,
-                fontSize: isHeader ? "3.125rem" : undefined,
-              }}
-              fw="bold"
-              fz={undefined}
-            >
-              {isHeader ? t`Title` : t`Subtitle`}
-            </Ellipsified>
-          )}
-
-          {(!isFixedSection || section.fields.length !== 0) && (
-            <EditableText
-              isOptional
-              initialValue={section.title}
-              isDisabled={!isEdit || isFixedSection}
-              onChange={(title) => onUpdateSection({ title })}
-              placeholder={t`Untitled group`}
-              style={{
-                minHeight: "1.5rem",
-                opacity: isFixedSection ? 0.5 : 1,
-                marginLeft: isEdit ? 0 : -4,
-                marginRight: isEdit ? 0 : -4,
-                marginTop: -4,
-                marginBottom: -4,
-                ...(isFixedSection &&
-                  (!isEdit || section.fields.length > 0) && {
-                    display: "none",
-                  }),
-              }}
-            />
-          )}
-        </Group>
-      )}
+            {(!isFixedSection || section.fields.length !== 0) && (
+              <EditableText
+                isOptional
+                initialValue={section.title}
+                isDisabled={!isEdit || isFixedSection}
+                onChange={(title) => onUpdateSection({ title })}
+                placeholder={t`Untitled group`}
+                style={{
+                  minHeight: "1.5rem",
+                  opacity: isFixedSection ? 0.5 : 1,
+                  marginLeft: isEdit ? 0 : -4,
+                  marginRight: isEdit ? 0 : -4,
+                  marginTop: -4,
+                  marginBottom: -4,
+                  ...(isFixedSection &&
+                    (!isEdit || section.fields.length > 0) && {
+                      display: "none",
+                    }),
+                }}
+              />
+            )}
+          </Group>
+        )}
 
       <SortableContext
         items={section.fields.map((field) => getFieldDraggableKey(field))}

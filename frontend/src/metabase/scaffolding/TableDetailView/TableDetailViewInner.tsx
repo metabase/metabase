@@ -20,16 +20,11 @@ import { t } from "ttag";
 import { useUpdateTableComponentSettingsMutation } from "metabase/api/table";
 import { useDispatch } from "metabase/lib/redux";
 import { question } from "metabase/lib/urls";
-import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { closeNavbar } from "metabase/redux/app";
 import { Button, Flex, Icon, Stack, Tooltip } from "metabase/ui/components";
 import type ForeignKey from "metabase-lib/v1/metadata/ForeignKey";
 import { isEntityName, isPK } from "metabase-lib/v1/types/utils/isa";
-import type {
-  DatasetColumn,
-  ObjectViewSectionSettings,
-  RowValues,
-} from "metabase-types/api";
+import type { DatasetColumn, RowValues } from "metabase-types/api";
 
 import { DraggableField } from "../dnd/DraggableField";
 import { useSectionsDragNDrop } from "../dnd/use-sections-drag-n-drop";
@@ -39,7 +34,10 @@ import { getDefaultObjectViewSettings } from "../utils";
 import { DetailViewContainer } from "./DetailViewContainer";
 import { ObjectViewSection } from "./ObjectViewSection";
 import { SortableSection } from "./SortableSection";
-import { useDetailViewSections } from "./use-detail-view-sections";
+import {
+  UNCATEGORIZED_SECTION_ID,
+  useDetailViewSections,
+} from "./use-detail-view-sections";
 import { useForeignKeyReferences } from "./use-foreign-key-references";
 
 interface TableDetailViewProps {
@@ -107,26 +105,15 @@ export function TableDetailViewInner({
     updateSection,
     updateSections,
     removeSection,
-  } = useDetailViewSections(initialSections);
+  } = useDetailViewSections(initialSections, table);
 
   const notEmptySections = useMemo(() => {
     return sections.filter((section) => section.fields.length > 0);
   }, [sections]);
 
-  const fieldsInSections = notEmptySections.flatMap((s) => s.fields);
-  const fieldsInSectionsIds = fieldsInSections.map((f) => f.field_id);
-  const fields = table?.fields ?? [];
-  const fieldIds = fields.map(getRawTableFieldId);
-  const uncategorizedSection: ObjectViewSectionSettings = {
-    id: -1,
-    title: "",
-    variant: "normal",
-    fields: fieldIds
-      .filter((id: number) => {
-        return !fieldsInSectionsIds.includes(id);
-      })
-      .map((field_id: number) => ({ field_id })),
-  };
+  const uncategorizedSection = sections.find(
+    (s) => s.id === UNCATEGORIZED_SECTION_ID,
+  )!;
   const sensors = useSensors(
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, {
@@ -149,7 +136,7 @@ export function TableDetailViewInner({
         component_settings: {
           ...table?.component_settings,
           object_view: {
-            sections: sections,
+            sections: sections.filter((s) => s.id !== UNCATEGORIZED_SECTION_ID),
           },
         },
       }).unwrap();
@@ -296,46 +283,51 @@ export function TableDetailViewInner({
           <SortableContext
             items={[...(isEdit ? sections : notEmptySections)]
               .filter(
-                (x) => x.variant !== "header" && x.variant !== "subheader",
+                (x) =>
+                  x.variant !== "header" &&
+                  x.variant !== "subheader" &&
+                  x.id !== UNCATEGORIZED_SECTION_ID,
               )
               .map((section) => getSectionDraggableKey(section))}
             strategy={verticalListSortingStrategy}
           >
-            {(isEdit ? sections : notEmptySections).map((section, _index) => (
-              <Fragment key={getSectionDraggableKey(section)}>
-                {/* {index > 0 &&
+            {(isEdit ? sections : notEmptySections)
+              .filter((section) => section.id !== UNCATEGORIZED_SECTION_ID)
+              .map((section, _index) => (
+                <Fragment key={getSectionDraggableKey(section)}>
+                  {/* {index > 0 &&
                   (section.variant === "normal" ||
                     section.variant === "highlight-2") && (
                     <Divider my={0} mx="md" />
                   )} */}
-                <SortableSection
-                  section={section}
-                  sections={sections}
-                  variant={section.variant}
-                  columns={columns}
-                  row={row}
-                  tableId={tableId}
-                  isEdit={isEdit}
-                  onUpdateSection={(update) =>
-                    updateSection(section.id, update)
-                  }
-                  onRemoveSection={
-                    section.variant === "header" ||
-                    section.variant === "subheader"
-                      ? undefined
-                      : () => removeSection(section.id)
-                  }
-                  table={table}
-                  isHovered={
-                    isEdit &&
-                    (hoveredSectionIdMain === section.id ||
-                      hoveredSectionIdSidebar === section.id)
-                  }
-                  onHoverStart={() => setHoveredSectionIdMain(section.id)}
-                  onHoverEnd={() => setHoveredSectionIdMain(null)}
-                />
-              </Fragment>
-            ))}
+                  <SortableSection
+                    section={section}
+                    sections={sections}
+                    variant={section.variant}
+                    columns={columns}
+                    row={row}
+                    tableId={tableId}
+                    isEdit={isEdit}
+                    onUpdateSection={(update) =>
+                      updateSection(section.id, update)
+                    }
+                    onRemoveSection={
+                      section.variant === "header" ||
+                      section.variant === "subheader"
+                        ? undefined
+                        : () => removeSection(section.id)
+                    }
+                    table={table}
+                    isHovered={
+                      isEdit &&
+                      (hoveredSectionIdMain === section.id ||
+                        hoveredSectionIdSidebar === section.id)
+                    }
+                    onHoverStart={() => setHoveredSectionIdMain(section.id)}
+                    onHoverEnd={() => setHoveredSectionIdMain(null)}
+                  />
+                </Fragment>
+              ))}
 
             {/* {notEmptySections.length > 0 &&
               uncategorizedSection.fields.length > 0 && (

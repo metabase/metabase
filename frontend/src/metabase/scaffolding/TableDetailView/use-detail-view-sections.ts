@@ -1,9 +1,13 @@
 import type { DragEndEvent } from "@dnd-kit/core";
 import { arrayMove } from "@dnd-kit/sortable";
 import { useEffect, useState } from "react";
+import { useLatest } from "react-use";
 import { t } from "ttag";
 
-import type { ObjectViewSectionSettings } from "metabase-types/api";
+import { getRawTableFieldId } from "metabase/metadata/utils/field";
+import type { ObjectViewSectionSettings, Table } from "metabase-types/api";
+
+export const UNCATEGORIZED_SECTION_ID = -1;
 
 function generateId() {
   return new Date().getTime();
@@ -25,13 +29,22 @@ function getSectionName(sections: ObjectViewSectionSettings[]) {
 
 export function useDetailViewSections(
   initialSections: ObjectViewSectionSettings[],
+  table: Table,
 ) {
-  const [sections, setSections] = useState(initialSections);
+  const [sections, setSections] = useState(
+    getInitialSections(initialSections, table),
+  );
+  const uncategorizedSectionRef = useLatest(
+    sections.find((s) => s.id === UNCATEGORIZED_SECTION_ID),
+  );
 
   // Reset sections when initialSections changes after mutation
   useEffect(() => {
-    setSections(initialSections);
-  }, [initialSections]);
+    const uncategorizedSection = uncategorizedSectionRef.current;
+    setSections(
+      getInitialSections(initialSections, table, uncategorizedSection),
+    );
+  }, [initialSections, table, uncategorizedSectionRef]);
 
   const createSection = ({
     position = "start",
@@ -116,4 +129,68 @@ export function useDetailViewSections(
     updateSections: setSections,
     handleDragEnd,
   };
+}
+
+function getUncategorizedFields(
+  sections: ObjectViewSectionSettings[],
+  table: Table,
+) {
+  const notEmptySections = sections.filter(
+    (section) => section.fields.length > 0,
+  );
+  const fieldsInSections = notEmptySections.flatMap((s) => s.fields);
+  const fieldsInSectionsIds = fieldsInSections.map((f) => f.field_id);
+  const fields = table?.fields ?? [];
+  const fieldIds = fields.map(getRawTableFieldId);
+
+  const uncategorizedFields = fieldIds
+    .filter((id: number) => !fieldsInSectionsIds.includes(id))
+    .map((field_id: number) => ({ field_id }));
+
+  return uncategorizedFields;
+}
+
+function createUncategorizedSection(
+  sections: ObjectViewSectionSettings[],
+  table: Table,
+) {
+  return {
+    id: UNCATEGORIZED_SECTION_ID,
+    title: "",
+    variant: "normal" as const,
+    fields: getUncategorizedFields(sections, table),
+  };
+}
+
+function getInitialSections(
+  sections: ObjectViewSectionSettings[],
+  table: Table,
+  uncategorizedSection?: ObjectViewSectionSettings,
+) {
+  const newUncategorizedSection = createUncategorizedSection(sections, table);
+
+  // If we have an existing uncategorized section, preserve the field order
+  if (uncategorizedSection) {
+    const existingFieldIds = uncategorizedSection.fields.map((f) => f.field_id);
+    const newFieldIds = newUncategorizedSection.fields.map((f) => f.field_id);
+
+    // Create a map of field_id to field object for quick lookup
+    const fieldMap = new Map(
+      newUncategorizedSection.fields.map((field) => [field.field_id, field]),
+    );
+
+    // Preserve order from existing uncategorized section
+    const preservedFields = existingFieldIds
+      .filter((id) => newFieldIds.includes(id)) // Only include fields that are still uncategorized
+      .map((id) => fieldMap.get(id)!);
+
+    // Add any new fields that weren't in the original uncategorized section
+    const newFields = newUncategorizedSection.fields.filter(
+      (field) => !existingFieldIds.includes(field.field_id),
+    );
+
+    newUncategorizedSection.fields = [...preservedFields, ...newFields];
+  }
+
+  return [...sections, newUncategorizedSection];
 }
