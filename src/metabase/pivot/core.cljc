@@ -1,5 +1,6 @@
 (ns metabase.pivot.core
   (:require
+   #?(:cljs [metabase.util.performance :as perf])
    [flatland.ordered.map :as ordered-map]
    [medley.core :as m]
    [metabase.models.visualization-settings :as mb.viz]
@@ -562,7 +563,7 @@
                    (handle-subtotal-cell subtotal-values row-values col-values row-indexes col-indexes value-formatters)
                    (get-normal-cell-values values-by-key index-values value-formatters color-getter))]
       ;; Convert to JavaScript object if in ClojureScript context
-      #?(:cljs (clj->js result)
+      #?(:cljs (perf/clj->js result)
          :clj result))))
 
 (defn- tree-to-array
