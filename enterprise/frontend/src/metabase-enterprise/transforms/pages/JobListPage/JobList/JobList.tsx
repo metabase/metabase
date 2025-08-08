@@ -4,18 +4,15 @@ import { t } from "ttag";
 import { AdminContentTable } from "metabase/common/components/AdminContentTable";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useDispatch } from "metabase/lib/redux";
-import { Card, Group, Pill } from "metabase/ui";
+import { Card } from "metabase/ui";
 import {
   useListTransformJobsQuery,
   useListTransformTagsQuery,
 } from "metabase-enterprise/api";
-import type {
-  TransformJob,
-  TransformTag,
-  TransformTagId,
-} from "metabase-types/api";
+import type { TransformJob } from "metabase-types/api";
 
 import { ListEmptyState } from "../../../components/ListEmptyState";
+import { TagList } from "../../../components/TagList";
 import { getJobUrl } from "../../../urls";
 import { formatStatus, formatTimestamp } from "../../../utils";
 
@@ -32,7 +29,6 @@ export function JobList() {
     isLoading: isLoadingTags,
     error: tagsError,
   } = useListTransformTagsQuery();
-  const tagById = getTagById(tags);
   const isLoading = isLoadingJobs || isLoadingTags;
   const error = jobsError ?? tagsError;
   const dispatch = useDispatch();
@@ -72,30 +68,11 @@ export function JobList() {
                 : null}
             </td>
             <td>
-              <Group gap="sm">
-                {getJobTags(job.tag_ids ?? [], tagById).map((tag) => (
-                  <Pill key={tag.id} c="text-dark" bg="bg-medium">
-                    {tag.name}
-                  </Pill>
-                ))}
-              </Group>
+              <TagList tags={tags} tagIds={job.tag_ids ?? []} />
             </td>
           </tr>
         ))}
       </AdminContentTable>
     </Card>
   );
-}
-
-function getTagById(
-  tags: TransformTag[],
-): Record<TransformTagId, TransformTag> {
-  return Object.fromEntries(tags.map((tag) => [tag.id, tag]));
-}
-
-function getJobTags(
-  tagIds: TransformTagId[],
-  tagById: Record<TransformTagId, TransformTag>,
-) {
-  return tagIds.map((tagId) => tagById[tagId]).filter((tag) => tag != null);
 }

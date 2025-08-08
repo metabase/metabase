@@ -5,17 +5,32 @@ import { AdminContentTable } from "metabase/common/components/AdminContentTable"
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useDispatch } from "metabase/lib/redux";
 import { Card } from "metabase/ui";
-import { useListTransformsQuery } from "metabase-enterprise/api";
+import {
+  useListTransformTagsQuery,
+  useListTransformsQuery,
+} from "metabase-enterprise/api";
 import type { Transform } from "metabase-types/api";
 
-import { formatStatus, formatTimestamp } from "../../..//utils";
 import { ListEmptyState } from "../../../components/ListEmptyState";
+import { TagList } from "../../../components/TagList";
 import { getTransformUrl } from "../../../urls";
+import { formatStatus, formatTimestamp } from "../../../utils";
 
 import S from "./TransformList.module.css";
 
 export function TransformList() {
-  const { data: transforms = [], isLoading, error } = useListTransformsQuery();
+  const {
+    data: transforms = [],
+    isLoading: isLoadingTransforms,
+    error: transformsError,
+  } = useListTransformsQuery();
+  const {
+    data: tags = [],
+    isLoading: isLoadingTags,
+    error: tagsError,
+  } = useListTransformTagsQuery();
+  const isLoading = isLoadingTransforms || isLoadingTags;
+  const error = transformsError ?? tagsError;
   const dispatch = useDispatch();
 
   const handleRowClick = (transform: Transform) => {
@@ -37,7 +52,8 @@ export function TransformList() {
           t`Transform`,
           t`Target`,
           t`Last run at`,
-          `Last run status`,
+          t`Last run status`,
+          t`Tags`,
         ]}
       >
         {transforms.map((transform) => (
@@ -57,6 +73,9 @@ export function TransformList() {
               {transform.last_execution?.status
                 ? formatStatus(transform.last_execution.status)
                 : null}
+            </td>
+            <td>
+              <TagList tags={tags} tagIds={transform.tag_ids ?? []} />
             </td>
           </tr>
         ))}
