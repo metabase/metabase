@@ -18,7 +18,6 @@ import {
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
-import { CSS } from "@dnd-kit/utilities";
 import {
   type AnimateLayoutChanges,
   SortableContext,
@@ -28,18 +27,37 @@ import {
   useSortable,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import classNames from "classnames";
-import { type CSSProperties, Fragment, forwardRef, memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  type CSSProperties,
+  Fragment,
+  forwardRef,
+  memo,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { createPortal, unstable_batchedUpdates } from "react-dom";
 import { push } from "react-router-redux";
 import { useMount } from "react-use";
+import { t } from "ttag";
 
 import { useUpdateTableComponentSettingsMutation } from "metabase/api/table";
 import { useDispatch } from "metabase/lib/redux";
 import { question } from "metabase/lib/urls";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { closeNavbar } from "metabase/redux/app";
-import { Box, Stack } from "metabase/ui/components";
+import {
+  Box,
+  Button,
+  Flex,
+  Icon,
+  Stack,
+  Tooltip,
+} from "metabase/ui/components";
 import type ForeignKey from "metabase-lib/v1/metadata/ForeignKey";
 import { isEntityName, isPK } from "metabase-lib/v1/types/utils/isa";
 import type {
@@ -57,7 +75,6 @@ import styles from "./dnd-styles.module.css";
 import { useDetailViewSections } from "./use-detail-view-sections";
 import { useForeignKeyReferences } from "./use-foreign-key-references";
 
-
 interface TableDetailViewProps {
   tableId: number;
   rowId: number | string;
@@ -70,8 +87,8 @@ interface TableDetailViewProps {
   onNextItemClick?: () => void;
 }
 
-export const TRASH_ID = 'void';
-const PLACEHOLDER_ID = 'placeholder';
+export const TRASH_ID = "void";
+const PLACEHOLDER_ID = "placeholder";
 const empty: UniqueIdentifier[] = [];
 
 export function TableDetailViewInner({
@@ -134,12 +151,13 @@ export function TableDetailViewInner({
     // handleDragEnd,
   } = useDetailViewSections(initialSections);
 
-
   const notEmptySections = useMemo(() => {
     return sections.filter((section) => section.fields.length > 0);
   }, [sections]);
 
-  const [containers, setContainers] = useState(notEmptySections.map((section) => section.id));
+  const [containers, setContainers] = useState(
+    notEmptySections.map((section) => section.id),
+  );
 
   const handleDragStart = (event: DragStartEvent) => {
     const { active } = event;
@@ -160,26 +178,26 @@ export function TableDetailViewInner({
       if (activeId && sections.some((s) => s.id === activeId)) {
         const center = closestCenter({
           ...args,
-          droppableContainers: args.droppableContainers.filter(
-            (container) => sections.some((s) => s.id === container.id)
+          droppableContainers: args.droppableContainers.filter((container) =>
+            sections.some((s) => s.id === container.id),
           ),
         });
 
-        console.log("__DEBUG__", { center })
+        console.log("__DEBUG__", { center });
 
         return center;
       }
 
-      console.log("__DEBUG__", { args })
+      console.log("__DEBUG__", { args });
 
       // Start by finding any intersecting droppable
       const pointerIntersections = pointerWithin(args);
       const intersections =
         pointerIntersections.length > 0
           ? // If there are droppables intersecting with the pointer, return those
-          pointerIntersections
+            pointerIntersections
           : rectIntersection(args);
-      let overId = getFirstCollision(intersections, 'id');
+      let overId = getFirstCollision(intersections, "id");
 
       if (overId != null) {
         if (overId === TRASH_ID) {
@@ -189,7 +207,9 @@ export function TableDetailViewInner({
         }
 
         if (sections.some((s) => s.id === overId)) {
-          const containerItems = sections.find((s) => s.id === overId)?.fields.map((f) => f.field_id);
+          const containerItems = sections
+            .find((s) => s.id === overId)
+            ?.fields.map((f) => f.field_id);
 
           // If a container is matched and it contains items (columns 'A', 'B', 'C')
           if (containerItems && containerItems.length > 0) {
@@ -200,7 +220,7 @@ export function TableDetailViewInner({
               droppableContainers: args.droppableContainers.filter(
                 (container) =>
                   container.id !== overId &&
-                  containerItems.includes(container.id)
+                  containerItems.includes(container.id),
               ),
             })[0]?.id;
           }
@@ -222,11 +242,11 @@ export function TableDetailViewInner({
       // If no droppable is matched, return the last match
       return lastOverId.current ? [{ id: lastOverId.current }] : [];
     },
-    [activeId, sections]
+    [activeId, sections],
   );
 
   function getNextContainerId() {
-    const containerIds = sections.map(s => s.id);
+    const containerIds = sections.map((s) => s.id);
     const lastContainerId = containerIds.at(-1);
 
     return lastContainerId ? lastContainerId + 1 : Date.now();
@@ -250,7 +270,7 @@ export function TableDetailViewInner({
     //   });
     // }
 
-    const isDraggingSection = sections.some(s => s.id === active.id);
+    const isDraggingSection = sections.some((s) => s.id === active.id);
     // console.log({ isDraggingSection })
     if (isDraggingSection && over?.id) {
       setContainers((containers) => {
@@ -320,15 +340,17 @@ export function TableDetailViewInner({
       }
 
       // field index
-      const activeIndex = activeSection.fields.findIndex((f) => f.field_id === active.id);
-      const overIndex = overSection.fields.findIndex((f) => f.field_id === overId);
-
+      const activeIndex = activeSection.fields.findIndex(
+        (f) => f.field_id === active.id,
+      );
+      const overIndex = overSection.fields.findIndex(
+        (f) => f.field_id === overId,
+      );
 
       // if (overSection.id === activeSection.id) {
       //   console.log("same section, add sorting");
       //   return;
       // }
-
 
       // console.log({ activeIndex, overIndex })
 
@@ -348,11 +370,13 @@ export function TableDetailViewInner({
             fields: arrayMove(overSection.fields, activeIndex, overIndex),
           };
 
-          const overSectionIndex = newSections.findIndex((s) => s.id === overContainer);
+          const overSectionIndex = newSections.findIndex(
+            (s) => s.id === overContainer,
+          );
           newSections[overSectionIndex] = newOverSection;
 
           return newSections;
-        })
+        });
       }
     }
 
@@ -373,7 +397,7 @@ export function TableDetailViewInner({
 
     const overId = over?.id;
 
-    const isDraggingSection = sections.some(s => s.id === active.id);
+    const isDraggingSection = sections.some((s) => s.id === active.id);
     if (overId == null || overId === TRASH_ID || isDraggingSection) {
       return;
     }
@@ -399,13 +423,15 @@ export function TableDetailViewInner({
         const overItems = overSection?.fields.map((f) => f.field_id);
         const overIndex = overItems?.indexOf(overId);
 
-        console.log("__DEBUG__", { overItems, overIndex })
+        console.log("__DEBUG__", { overItems, overIndex });
 
         if (!activeSection || !overSection) {
           return sections;
         }
 
-        const activeField = activeSection.fields.find((f) => f.field_id === active.id);
+        const activeField = activeSection.fields.find(
+          (f) => f.field_id === active.id,
+        );
         const overField = overSection.fields.find((f) => f.field_id === overId);
 
         let newIndex: number;
@@ -416,7 +442,7 @@ export function TableDetailViewInner({
             over &&
             active.rect.current.translated &&
             active.rect.current.translated.top >
-            over.rect.top + over.rect.height;
+              over.rect.top + over.rect.height;
 
           const modifier = isBelowOverItem ? 1 : 0;
 
@@ -424,13 +450,11 @@ export function TableDetailViewInner({
             overIndex >= 0 ? overIndex + modifier : overItems.length + 1;
         }
 
-        console.log("__DEBUG__", { newIndex })
-
+        console.log("__DEBUG__", { newIndex });
 
         recentlyMovedToNewContainer.current = true;
 
         const newSections = [...sections];
-
 
         // remove item from active section
         // add item to over section
@@ -443,19 +467,27 @@ export function TableDetailViewInner({
 
         const newOverSection = {
           ...overSection,
-          fields: [...overSection.fields.slice(0, newIndex), activeField, ...overSection.fields.slice(newIndex)],
+          fields: [
+            ...overSection.fields.slice(0, newIndex),
+            activeField,
+            ...overSection.fields.slice(newIndex),
+          ],
         };
 
-        const activeSectionIndex = newSections.findIndex((s) => s.id === activeContainer);
-        const overSectionIndex = newSections.findIndex((s) => s.id === overContainer);
+        const activeSectionIndex = newSections.findIndex(
+          (s) => s.id === activeContainer,
+        );
+        const overSectionIndex = newSections.findIndex(
+          (s) => s.id === overContainer,
+        );
 
         newSections[activeSectionIndex] = newActiveSection;
         newSections[overSectionIndex] = newOverSection;
 
-        console.log("__DEBUG__", { newSections })
+        console.log("__DEBUG__", { newSections });
 
         return newSections;
-      })
+      });
 
       // setItems((items) => {
       //   const activeItems = items[activeContainer];
@@ -500,7 +532,6 @@ export function TableDetailViewInner({
     }
   };
 
-
   const fieldsInSections = notEmptySections.flatMap((s) => s.fields);
   const fieldsInSectionsIds = fieldsInSections.map((f) => f.field_id);
   const fields = table?.fields ?? [];
@@ -526,7 +557,7 @@ export function TableDetailViewInner({
     sideEffects: defaultDropAnimationSideEffects({
       styles: {
         active: {
-          opacity: '0.5',
+          opacity: "0.5",
         },
       },
     }),
@@ -612,8 +643,14 @@ export function TableDetailViewInner({
 
   function renderContainerDragOverlay(containerId: UniqueIdentifier) {
     console.log("renderContainerDragOverlay", containerId);
-    console.log("__DEBUG__", { fields: sections.find((s) => s.id === containerId)?.fields })
-    return <Box w="100%" h="100%" style={{ border: "1px dotted purple" }}>Section {containerId}</Box>
+    console.log("__DEBUG__", {
+      fields: sections.find((s) => s.id === containerId)?.fields,
+    });
+    return (
+      <Box w="100%" h="100%" style={{ border: "1px dotted purple" }}>
+        Section {containerId}
+      </Box>
+    );
     // return (
     //   <Container
     //     label={`Column ${containerId}`}
@@ -672,6 +709,8 @@ export function TableDetailViewInner({
     );
   }
 
+  console.log(sections);
+
   return (
     <DetailViewContainer
       rowId={rowId}
@@ -704,14 +743,14 @@ export function TableDetailViewInner({
     >
       <Stack
         gap="md"
-      // px="lg"
-      // py="xl"
-      // bg="white"
-      // style={{
-      //   border: "1px solid var(--mb-color-border)",
-      //   borderRadius: "var(--mantine-radius-md)",
-      //   overflow: "hidden",
-      // }}
+        // px="lg"
+        // py="xl"
+        // bg="white"
+        // style={{
+        //   border: "1px solid var(--mb-color-border)",
+        //   borderRadius: "var(--mantine-radius-md)",
+        //   overflow: "hidden",
+        // }}
       >
         <DndContext
           sensors={sensors}
@@ -747,10 +786,10 @@ export function TableDetailViewInner({
                   items={section.fields}
                   disabled={!isEdit}
                   style={{}}
-                // scrollable={scrollable}
-                // style={containerStyle}
-                // unstyled={minimal}
-                // onRemove={() => handleRemove(containerId)}
+                  // scrollable={scrollable}
+                  // style={containerStyle}
+                  // unstyled={minimal}
+                  // onRemove={() => handleRemove(containerId)}
                 >
                   <Fragment key={section.id}>
                     {/* {index > 0 &&
@@ -766,19 +805,27 @@ export function TableDetailViewInner({
                       row={row}
                       tableId={tableId}
                       isEdit={isEdit}
-                      onUpdateSection={(update) => updateSection(section.id, update)}
-                      onRemoveSection={section.variant === "header" ||
+                      onUpdateSection={(update) =>
+                        updateSection(section.id, update)
+                      }
+                      onRemoveSection={
+                        section.variant === "header" ||
                         section.variant === "subheader"
-                        ? undefined
-                        : () => removeSection(section.id)}
+                          ? undefined
+                          : () => removeSection(section.id)
+                      }
                       table={table}
-                      isHovered={isEdit &&
+                      isHovered={
+                        isEdit &&
                         (hoveredSectionIdMain === section.id ||
-                          hoveredSectionIdSidebar === section.id)} />
+                          hoveredSectionIdSidebar === section.id)
+                      }
+                    />
                   </Fragment>
                 </DroppableContainer>
               );
             })}
+
             <DroppableContainer
               id={PLACEHOLDER_ID}
               disabled={!isEdit}
@@ -787,28 +834,42 @@ export function TableDetailViewInner({
               // onClick={handleAddColumn}
               placeholder
             >
-              + Add column
+              {t`+ Add column`}
             </DroppableContainer>
+
+            {isEdit && (
+              <Flex align="center" justify="center" w="100%">
+                <Tooltip label={t`Add group`}>
+                  <Button
+                    leftSection={<Icon name="add" />}
+                    onClick={() => createSection({ position: "end" })}
+                  />
+                </Tooltip>
+              </Flex>
+            )}
 
             {/* {notEmptySections.length > 0 &&
               uncategorizedSection.fields.length > 0 && (
                 <Divider my={0} mx="md" />
               )} */}
-            <SortableSection
-              section={uncategorizedSection}
-              variant={uncategorizedSection.variant}
-              columns={columns}
-              row={row}
-              tableId={tableId}
-              table={table}
-              isEdit={isEdit}
-            // onUpdateSection={(update) => updateSection(section.id, update)}
-            // onRemoveSection={
-            //   notEmptySections.length > 1
-            //     ? () => removeSection(section.id)
-            //     : undefined
-            // }
-            />
+            {uncategorizedSection.fields.length > 0 && (
+              <SortableSection
+                section={uncategorizedSection}
+                sections={sections}
+                variant={uncategorizedSection.variant}
+                columns={columns}
+                row={row}
+                tableId={tableId}
+                table={table}
+                isEdit={isEdit}
+                // onUpdateSection={(update) => updateSection(section.id, update)}
+                // onRemoveSection={
+                //   notEmptySections.length > 1
+                //     ? () => removeSection(section.id)
+                //     : undefined
+                // }
+              />
+            )}
           </SortableContext>
           {createPortal(
             <DragOverlay adjustScale={false} dropAnimation={dropAnimation}>
@@ -818,14 +879,13 @@ export function TableDetailViewInner({
                   : renderSortableItemDragOverlay(activeId)
                 : null}
             </DragOverlay>,
-            document.body
+            document.body,
           )}
         </DndContext>
       </Stack>
     </DetailViewContainer>
   );
 }
-
 
 const animateLayoutChanges: AnimateLayoutChanges = (args) =>
   defaultAnimateLayoutChanges({ ...args, wasDragging: true });
@@ -837,7 +897,8 @@ function DroppableContainer({
   id,
   items,
   style,
-  ...props }) {
+  ...props
+}) {
   const {
     active,
     attributes,
@@ -850,7 +911,7 @@ function DroppableContainer({
   } = useSortable({
     id,
     data: {
-      type: 'container',
+      type: "container",
       children: items,
     },
     animateLayoutChanges,
@@ -858,8 +919,8 @@ function DroppableContainer({
   });
 
   const isOverContainer = over
-    ? (id === over.id && active?.data.current?.type !== 'container') ||
-    items.includes(over.id)
+    ? (id === over.id && active?.data.current?.type !== "container") ||
+      items.includes(over.id)
     : false;
 
   return (
@@ -872,10 +933,14 @@ function DroppableContainer({
         opacity: isDragging ? 0.5 : undefined,
       }}
       hover={isOverContainer}
-      handleProps={disabled ? undefined : {
-        ...attributes,
-        ...listeners,
-      }}
+      handleProps={
+        disabled
+          ? undefined
+          : {
+              ...attributes,
+              ...listeners,
+            }
+      }
       columns={columns}
       {...props}
     >
@@ -884,55 +949,62 @@ function DroppableContainer({
   );
 }
 
-const Container = forwardRef(({
-  children,
-  columns = 1,
-  handleProps,
-  horizontal,
-  hover,
-  onClick,
-  onRemove,
-  label,
-  placeholder,
-  style,
-  scrollable,
-  shadow,
-  unstyled,
-  ...props
-}, ref) => {
-  return (
-    <Box {...props}
-      ref={ref}
-      style={
-        {
-          ...style,
-          '--columns': columns,
-        } as React.CSSProperties
-      }
-      className={classNames(
-        styles.Container,
-        unstyled && styles.unstyled,
-        horizontal && styles.horizontal,
-        hover && styles.hover,
-        placeholder && styles.placeholder,
-        scrollable && styles.scrollable,
-        shadow && styles.shadow
-      )}
-      onClick={onClick}
-      tabIndex={onClick ? 0 : undefined}>
-      {label ? (
-        <div className={styles.Header}>
-          {label}
-          <div className={styles.Actions}>
-            {onRemove ? <Remove onClick={onRemove} /> : undefined}
-            <Handle {...handleProps} />
+const Container = forwardRef(
+  (
+    {
+      children,
+      columns = 1,
+      handleProps,
+      horizontal,
+      hover,
+      onClick,
+      onRemove,
+      label,
+      placeholder,
+      style,
+      scrollable,
+      shadow,
+      unstyled,
+      ...props
+    },
+    ref,
+  ) => {
+    return (
+      <Box
+        {...props}
+        ref={ref}
+        style={
+          {
+            ...style,
+            "--columns": columns,
+          } as React.CSSProperties
+        }
+        className={classNames(
+          styles.Container,
+          unstyled && styles.unstyled,
+          horizontal && styles.horizontal,
+          hover && styles.hover,
+          placeholder && styles.placeholder,
+          scrollable && styles.scrollable,
+          shadow && styles.shadow,
+        )}
+        onClick={onClick}
+        tabIndex={onClick ? 0 : undefined}
+      >
+        {label ? (
+          <div className={styles.Header}>
+            {label}
+            <div className={styles.Actions}>
+              {onRemove ? <Remove onClick={onRemove} /> : undefined}
+              <Handle {...handleProps} />
+            </div>
           </div>
-        </div>
-      ) : null}
-      {placeholder ? children : <ul>{children}</ul>}
-    </Box>
-  );
-})
+        ) : null}
+        {placeholder ? children : <ul>{children}</ul>}
+      </Box>
+    );
+  },
+);
 
 export const Handle = forwardRef<HTMLButtonElement, ActionProps>(
   (props, ref) => {
@@ -948,7 +1020,7 @@ export const Handle = forwardRef<HTMLButtonElement, ActionProps>(
         </svg>
       </Action>
     );
-  }
+  },
 );
 
 export function Remove(props: ActionProps) {
@@ -957,9 +1029,9 @@ export function Remove(props: ActionProps) {
       {...props}
       active={{
         // eslint-disable-next-line no-color-literals
-        fill: 'rgba(255, 70, 70, 0.95)',
+        fill: "rgba(255, 70, 70, 0.95)",
         // eslint-disable-next-line no-color-literals
-        background: 'rgba(255, 70, 70, 0.1)',
+        background: "rgba(255, 70, 70, 0.1)",
       }}
     >
       <svg width="8" viewBox="0 0 22 22" xmlns="http://www.w3.org/2000/svg">
@@ -968,7 +1040,6 @@ export function Remove(props: ActionProps) {
     </Action>
   );
 }
-
 
 export const Action = forwardRef<HTMLButtonElement, Props>(
   ({ active, className, cursor, style, ...props }, ref) => {
@@ -982,13 +1053,13 @@ export const Action = forwardRef<HTMLButtonElement, Props>(
           {
             ...style,
             cursor,
-            '--fill': active?.fill,
-            '--background': active?.background,
+            "--fill": active?.fill,
+            "--background": active?.background,
           } as CSSProperties
         }
       />
     );
-  }
+  },
 );
 
 export const Item = memo(
@@ -1015,17 +1086,17 @@ export const Item = memo(
         wrapperStyle,
         ...props
       },
-      ref
+      ref,
     ) => {
       useEffect(() => {
         if (!dragOverlay) {
           return;
         }
 
-        document.body.style.cursor = 'grabbing';
+        document.body.style.cursor = "grabbing";
 
         return () => {
-          document.body.style.cursor = '';
+          document.body.style.cursor = "";
         };
       }, [dragOverlay]);
 
@@ -1049,28 +1120,28 @@ export const Item = memo(
             styles.Wrapper,
             fadeIn && styles.fadeIn,
             sorting && styles.sorting,
-            dragOverlay && styles.dragOverlay
+            dragOverlay && styles.dragOverlay,
           )}
           style={
             {
               ...wrapperStyle,
               transition: [transition, wrapperStyle?.transition]
                 .filter(Boolean)
-                .join(', '),
-              '--translate-x': transform
+                .join(", "),
+              "--translate-x": transform
                 ? `${Math.round(transform.x)}px`
                 : undefined,
-              '--translate-y': transform
+              "--translate-y": transform
                 ? `${Math.round(transform.y)}px`
                 : undefined,
-              '--scale-x': transform?.scaleX
+              "--scale-x": transform?.scaleX
                 ? `${transform.scaleX}`
                 : undefined,
-              '--scale-y': transform?.scaleY
+              "--scale-y": transform?.scaleY
                 ? `${transform.scaleY}`
                 : undefined,
-              '--index': index,
-              '--color': color,
+              "--index": index,
+              "--color": color,
             } as React.CSSProperties
           }
           ref={ref}
@@ -1082,7 +1153,7 @@ export const Item = memo(
               handle && styles.withHandle,
               dragOverlay && styles.dragOverlay,
               disabled && styles.disabled,
-              color && styles.color
+              color && styles.color,
             )}
             style={style}
             data-cypress="draggable-item"
@@ -1100,6 +1171,6 @@ export const Item = memo(
           </div>
         </li>
       );
-    }
-  )
+    },
+  ),
 );

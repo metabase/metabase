@@ -61,24 +61,24 @@ export function DetailViewContainer({
   sections,
   tableForeignKeys,
   tableForeignKeyReferences,
-  openPopoverId,
-  setOpenPopoverId,
+  // openPopoverId,
+  // setOpenPopoverId,
   hasRelationships,
   onEditClick,
   onPreviousItemClick,
   onNextItemClick,
   onCloseClick,
   onSaveClick,
-  onCreateSection,
-  onUpdateSection,
-  onUpdateSections,
-  onRemoveSection,
-  onDragEnd,
+  // onCreateSection,
+  // onUpdateSection,
+  // onUpdateSections,
+  // onRemoveSection,
+  // onDragEnd,
   onCancel,
   onSubmit,
   onFollowForeignKey,
-  hoveredSectionId,
-  setHoveredSectionId,
+  // hoveredSectionId,
+  // setHoveredSectionId,
 }: DetailViewContainerProps) {
   return (
     <Stack
@@ -108,6 +108,8 @@ export function DetailViewContainer({
         onNextItemClick={onNextItemClick || (() => {})}
         onCloseClick={onCloseClick}
         onSaveClick={onSaveClick}
+        onCancel={onCancel}
+        onSubmit={onSubmit}
       />
 
       <Group
@@ -133,7 +135,7 @@ export function DetailViewContainer({
           </Box>
         </Stack>
 
-        {(hasRelationships || isEdit) && (
+        {hasRelationships && (
           <Box
             bg="white"
             flex="0 0 auto"
@@ -146,7 +148,7 @@ export function DetailViewContainer({
               // overflowY: "auto",
             }}
           >
-            {isEdit && (
+            {/* {isEdit && (
               <DetailViewSidebar
                 columns={columns}
                 sections={sections}
@@ -163,44 +165,42 @@ export function DetailViewContainer({
                 hoveredSectionId={hoveredSectionId}
                 setHoveredSectionId={setHoveredSectionId}
               />
-            )}
+            )} */}
 
-            {!isEdit && (
-              <Stack
-                pos="relative"
-                bg={isEdit ? "bg-medium" : "bg-white"}
-                gap={0}
-                h="100%"
+            <Stack
+              pos="relative"
+              // bg={isEdit ? "bg-medium" : "bg-white"}
+              gap={0}
+              h="100%"
+            >
+              <Box
+                flex="0 0 auto"
+                px="xl"
+                py="lg"
+                style={{
+                  borderBottom: "1px solid var(--border-color)",
+                }}
               >
-                <Box
-                  flex="0 0 auto"
-                  px="xl"
-                  py="lg"
-                  style={{
-                    borderBottom: "1px solid var(--border-color)",
-                  }}
-                >
-                  <Text fw="bold" size="xl">{t`Relationships`}</Text>
-                </Box>
+                <Text fw="bold" size="xl">{t`Relationships`}</Text>
+              </Box>
 
-                <Box
-                  flex="1"
-                  px="xl"
-                  pb="xl"
-                  pt={16}
-                  style={{ overflow: "auto" }}
-                >
-                  <Relationships
-                    objectName={rowName ? String(rowName) : String(rowId)}
-                    tableForeignKeys={tableForeignKeys}
-                    tableForeignKeyReferences={tableForeignKeyReferences}
-                    foreignKeyClicked={onFollowForeignKey}
-                    disableClicks={isEdit}
-                    relationshipsDirection={"vertical"}
-                  />
-                </Box>
-              </Stack>
-            )}
+              <Box
+                flex="1"
+                px="xl"
+                pb="xl"
+                pt={16}
+                style={{ overflow: "auto" }}
+              >
+                <Relationships
+                  objectName={rowName ? String(rowName) : String(rowId)}
+                  tableForeignKeys={tableForeignKeys}
+                  tableForeignKeyReferences={tableForeignKeyReferences}
+                  foreignKeyClicked={onFollowForeignKey}
+                  disableClicks={isEdit}
+                  relationshipsDirection={"vertical"}
+                />
+              </Box>
+            </Stack>
           </Box>
         )}
       </Group>

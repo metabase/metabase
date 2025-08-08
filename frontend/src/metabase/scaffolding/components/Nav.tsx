@@ -76,6 +76,7 @@ export const Nav = ({
       pl="xl"
       pr="md"
       wrap="nowrap"
+      mih={63}
     >
       <Group
         align="flex-end"

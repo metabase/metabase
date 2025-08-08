@@ -29,12 +29,23 @@ export function SectionActions({
   onRemoveSection,
   onUpdateSection,
 }: ObjectViewSectionProps) {
+  const isHighlightShown =
+    HIGHLIGHTABLE_VARIANTS.includes(section.variant) && onUpdateSection != null;
+  const isAddColumnShown = onUpdateSection != null;
+  const isRemoveSectionShown = onRemoveSection != null;
+
+  const buttonsCount = [
+    isHighlightShown,
+    isAddColumnShown,
+    isRemoveSectionShown,
+  ].filter(Boolean).length;
+
   return (
     <Group
       align="center"
       bg="bg-white"
       gap="xs"
-      px="xs"
+      px={buttonsCount > 1 ? "xs" : 0}
       wrap="nowrap"
       style={{
         border: "1px solid var(--border-color)",
@@ -42,7 +53,7 @@ export function SectionActions({
         boxShadow: "0 0 1px var(--mb-color-shadow)",
       }}
     >
-      {HIGHLIGHTABLE_VARIANTS.includes(section.variant) && onUpdateSection && (
+      {isHighlightShown && (
         <Tooltip
           label={
             section.variant === "normal"
@@ -64,7 +75,7 @@ export function SectionActions({
         </Tooltip>
       )}
 
-      {onUpdateSection && (
+      {isAddColumnShown && (
         <ColumnPickerButton
           columns={columns}
           fieldsLimit={getFieldsLimit(section)}
@@ -75,7 +86,7 @@ export function SectionActions({
         />
       )}
 
-      {onRemoveSection && (
+      {isRemoveSectionShown && (
         <Tooltip label={t`Remove group`}>
           <SectionAction iconName="close" onClick={onRemoveSection} />
         </Tooltip>

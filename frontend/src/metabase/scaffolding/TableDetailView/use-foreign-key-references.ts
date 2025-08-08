@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 import { MetabaseApi } from "metabase/services";
 import { isPK } from "metabase-lib/v1/types/utils/isa";
@@ -87,12 +87,12 @@ export function useForeignKeyReferences({
     setTableForeignKeyReferences(references);
   }, [tableForeignKeys, row, columns, tableDatabaseId]);
 
-  useEffect(() => {
-    calculateFKReferences();
+  const calculatedReferences = useMemo(() => {
+    return calculateFKReferences();
   }, [calculateFKReferences]);
 
   return {
     tableForeignKeyReferences,
-    calculateFKReferences,
+    calculateFKReferences: calculatedReferences,
   };
 }
