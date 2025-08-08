@@ -16,12 +16,12 @@
 
 (defn- model-rank-exp [{:keys [context]}]
   (let [search-order search.config/models-search-order
-        n            (double (count search-order))
-        cases        (map-indexed (fn [i sm]
-                                    [[:= (->col-expr :model) sm]
-                                     (or (search.config/scorer-param context :model sm)
-                                         [:inline (/ (- n i) n)])])
-                                  search-order)]
+        n (double (count search-order))
+        cases (map-indexed (fn [i sm]
+                             [[:= (->col-expr :model) sm]
+                              (or (search.config/scorer-param context :model sm)
+                                  [:inline (/ (- n i) n)])])
+                           search-order)]
     (-> (into [:case] cat (concat cases))
         ;; if you're not listed, get a very poor score
         (into [:else [:inline 0.01]]))))
@@ -40,27 +40,27 @@
   "The default constituents of the search ranking scores."
   [{:keys [search-string limit-int] :as search-ctx}]
   (if (and limit-int (zero? limit-int))
-    {:model       [:inline 1]}
+    {:model [:inline 1]}
     ;; NOTE: we calculate scores even if the weight is zero, so that it's easy to consider how we could affect any
     ;; given set of results. At some point, we should optimize away the irrelevant scores for any given context.
-    {:rrf          rrf-rank-exp
-     :pinned       (search.scoring/truthy (->col-expr :pinned))
-     :recency      (search.scoring/inverse-duration [:coalesce
-                                                     (->col-expr :last_viewed_at)
-                                                     (->col-expr :model_updated_at)]
-                                                    [:now]
-                                                    search.config/stale-time-in-days)
-     :dashboard    (search.scoring/size (->col-expr :dashboardcard_count) search.config/dashboard-count-ceiling)
-     :model        (model-rank-exp search-ctx)
-     :mine         (search.scoring/equal (->col-expr :creator_id) (:current-user-id search-ctx))
-     :exact        (if search-string
-                     ;; perform the lower casing within the database, in case it behaves differently to our helper
-                     (search.scoring/equal [:lower (->col-expr :name)] [:lower search-string])
-                     [:inline 0])
-     :prefix       (if search-string
-                     ;; in this case, we need to transform the string into a pattern in code, so forced to use helper
-                     (search.scoring/prefix [:lower (->col-expr :name)] (u/lower-case-en search-string))
-                     [:inline 0])}))
+    {:rrf       rrf-rank-exp
+     :pinned    (search.scoring/truthy (->col-expr :pinned))
+     :recency   (search.scoring/inverse-duration [:coalesce
+                                                  (->col-expr :last_viewed_at)
+                                                  (->col-expr :model_updated_at)]
+                                                 [:now]
+                                                 search.config/stale-time-in-days)
+     :dashboard (search.scoring/size (->col-expr :dashboardcard_count) search.config/dashboard-count-ceiling)
+     :model     (model-rank-exp search-ctx)
+     :mine      (search.scoring/equal (->col-expr :creator_id) (:current-user-id search-ctx))
+     :exact     (if search-string
+                  ;; perform the lower casing within the database, in case it behaves differently to our helper
+                  (search.scoring/equal [:lower (->col-expr :name)] [:lower search-string])
+                  [:inline 0])
+     :prefix    (if search-string
+                  ;; in this case, we need to transform the string into a pattern in code, so forced to use helper
+                  (search.scoring/prefix [:lower (->col-expr :name)] (u/lower-case-en search-string))
+                  [:inline 0])}))
 
 (def ^:private enterprise-scorers
   {:official-collection {:expr (search.scoring/truthy (->col-expr :official_collection))
