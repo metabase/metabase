@@ -1202,7 +1202,7 @@
                      (lib/breakout -1 (lib/with-temporal-bucket (meta/field-metadata :orders :created-at) :month))
                      lib/append-stage)
           stage1 (lib.util/query-stage query 1)
-          [created-at sum] (lib/visible-columns query 1 stage1)]
+          [created-at sum] (lib/visible-columns query 1)]
       (testing "populating :fields"
         (is (nil? (:fields stage1)))
         (is (=? [[:field {} "CREATED_AT"]
@@ -1242,8 +1242,7 @@
                               (lib/remove-field native-query -1 (first native-columns)))))
       (testing "with MBQL stage"
         (let [query   (lib/append-stage native-query)
-              stage1  (lib.util/query-stage query 1)
-              columns (lib/visible-columns query 1 stage1)]
+              columns (lib/visible-columns query 1)]
           (testing "removing each field"
             (is (=? [[:field {} "sum"]]
                     (-> query

@@ -11,7 +11,6 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.test-util :as lib.tu]
-   [metabase.lib.util :as lib.util]
    [metabase.query-processor :as qp]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.store :as qp.store]
@@ -84,9 +83,8 @@
                         (lib/join (lib/join-clause card-meta
                                                    [(lib/= (lib.metadata/field mp (mt/id :reviews :id))
                                                            id-col)])))
-          stage     (lib.util/query-stage query -1)
-          visible   (lib.metadata.calculation/visible-columns query -1 stage)
-          returned  (lib.metadata.calculation/returned-columns query -1 stage)
+          visible   (lib.metadata.calculation/visible-columns query -1)
+          returned  (lib.metadata.calculation/returned-columns query -1)
           marked    (lib.equality/mark-selected-columns query -1 visible returned)]
       (is (=? [{:name "ID",         :display-name "ID"}
                {:name "PRODUCT_ID", :display-name "Product ID"}
@@ -148,9 +146,8 @@
                         (lib/join (lib/join-clause card-meta
                                                    [(lib/= (lib.metadata/field mp (mt/id :orders :id))
                                                            count-col)])))
-          stage     (lib.util/query-stage query -1)
-          visible   (lib.metadata.calculation/visible-columns query -1 stage)
-          returned  (lib.metadata.calculation/returned-columns query -1 stage)
+          visible   (lib.metadata.calculation/visible-columns query -1)
+          returned  (lib.metadata.calculation/returned-columns query -1)
           marked    (lib.equality/mark-selected-columns query -1 visible returned)]
       (is (=? [{:name "ID", :display-name "ID"}
                {:name "USER_ID", :display-name "User ID"}
@@ -282,9 +279,8 @@
                            :fields :all}]})])
           card-meta (lib.metadata/card mp 1)
           query     (lib/query mp card-meta)
-          stage     (lib.util/query-stage query -1)
-          visible   (lib.metadata.calculation/visible-columns query -1 stage)
-          returned  (lib.metadata.calculation/returned-columns query -1 stage)
+          visible   (lib.metadata.calculation/visible-columns query -1)
+          returned  (lib.metadata.calculation/returned-columns query -1)
           marked    (lib.equality/mark-selected-columns query -1 visible returned)]
       (is (=? [{:name "ID",           :display-name "ID",              :selected? true}
                {:name "USER_ID",      :display-name "User ID",         :selected? true}

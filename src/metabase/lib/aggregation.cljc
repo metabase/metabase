@@ -336,8 +336,7 @@
 
   ([query :- ::lib.schema/query
     stage-number :- :int]
-   (let [stage (lib.util/query-stage query stage-number)
-         columns (lib.metadata.calculation/visible-columns query stage-number stage)
+   (let [columns (lib.metadata.calculation/visible-columns query stage-number)
          with-columns (fn [{:keys [requires-column? supported-field] :as operator}]
                         (cond
                           (not requires-column?)
@@ -449,9 +448,8 @@
   ([query :- ::lib.schema/query
     stage-number :- :int
     aggregation-position :- [:maybe ::lib.schema.common/int-greater-than-or-equal-to-zero]]
-   (let [stage (lib.util/query-stage query stage-number)
-         agg-cols (aggregations-metadata query stage-number)
-         columns (into (vec (lib.metadata.calculation/visible-columns query stage-number stage))
+   (let [agg-cols (aggregations-metadata query stage-number)
+         columns (into (vec (lib.metadata.calculation/visible-columns query stage-number))
                        (cond->> agg-cols
                          aggregation-position (keep-indexed (fn [i a]
                                                               (when (not= i aggregation-position)

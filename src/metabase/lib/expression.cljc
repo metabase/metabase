@@ -268,8 +268,7 @@
   temporal-unit)
 
 #_(defn- conflicting-name? [query stage-number expression-name]
-    (let [stage     (lib.util/query-stage query stage-number)
-          cols      (lib.metadata.calculation/visible-columns query stage-number stage)
+    (let [cols      (lib.metadata.calculation/visible-columns query stage-number)
           expr-name (u/lower-case-en expression-name)]
       (some #(-> % :name u/lower-case-en (= expr-name)) cols)))
 
@@ -480,12 +479,11 @@
     ;; Changing the legacy/wire format is probably the right way to go, but that's a bigger
     ;; endeavor.
     expression-position :- [:maybe ::lib.schema.common/int-greater-than-or-equal-to-zero]]
-   (let [stage (lib.util/query-stage query stage-number)
-         expr-name (when expression-position
+   (let [expr-name (when expression-position
                      (some-> (expressions query stage-number)
                              (nth expression-position nil)
                              lib.util/expression-name))
-         columns (cond->> (lib.metadata.calculation/visible-columns query stage-number stage)
+         columns (cond->> (lib.metadata.calculation/visible-columns query stage-number)
                    expr-name (into [] (remove #(and (= (:lib/source %) :source/expressions)
                                                     (= (:name %) expr-name)))))]
      (not-empty columns))))

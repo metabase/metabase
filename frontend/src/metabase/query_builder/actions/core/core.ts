@@ -166,8 +166,12 @@ export const navigateToNewCardInsideQB = createThunkAction(
           // to start building a new ad-hoc question based on a dataset
           dispatch(setCardAndRun({ ...card, type: "question" }));
         }
+
         if (objectId !== undefined) {
-          dispatch(zoomInRow({ objectId }));
+          // TODO: this should happen after we navigated to a new card, but in reality we open details view before navigation, which adds one more item in browser history
+          setTimeout(() => {
+            dispatch(zoomInRow({ objectId }));
+          });
         }
       }
     };

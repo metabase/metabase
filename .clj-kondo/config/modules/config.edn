@@ -1012,6 +1012,7 @@
            dashboards
            events
            models
+           queries
            query-permissions
            util}}
 

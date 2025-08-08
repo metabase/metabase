@@ -111,12 +111,12 @@
                                                       (lib.util/query-stage query previous-stage-number)
                                                       options)))))
 
-(mu/defn- saved-question-visible-columns :- [:maybe ::lib.metadata.calculation/visible-columns]
+(mu/defn- saved-question-returned-columns :- [:maybe ::lib.metadata.calculation/returned-columns]
   "Metadata associated with a Saved Question, e.g. if we have a `:source-card`"
   [query          :- ::lib.schema/query
    stage-number   :- :int
    card-id        :- [:maybe ::lib.schema.id/card]
-   options        :- ::lib.metadata.calculation/visible-columns.options]
+   options        :- ::lib.metadata.calculation/returned-columns.options]
   (when card-id
     (when-let [card (lib.metadata/card query card-id)]
       (not-empty (lib.metadata.calculation/returned-columns query stage-number card options)))))
@@ -132,7 +132,6 @@
     (not-empty (lib.metadata.calculation/visible-columns
                 (assoc metric-query :lib/metadata (:lib/metadata query))
                 -1
-                (lib.util/query-stage metric-query -1)
                 options))))
 
 (mu/defn- expressions-metadata :- [:maybe ::lib.metadata.calculation/visible-columns]
@@ -188,15 +187,15 @@
       ;; 1b: default visible Fields for the source Table
       (when source-table
         (assert (integer? source-table))
-        (let [table-metadata (lib.metadata/table query source-table)]
-          (lib.metadata.calculation/returned-columns query stage-number table-metadata options)))
+        (let [table (lib.metadata/table query source-table)]
+          (lib.metadata.calculation/returned-columns query stage-number table options)))
       ;; 1e. Metadata associated with a Metric
       (when metric-based?
         (metric-visible-columns query stage-number card options))
       ;; 1c. Metadata associated with a saved Question
       (when source-card
-        (when-let [cols (not-empty (saved-question-visible-columns query stage-number source-card
-                                                                   (assoc options :include-implicitly-joinable? false)))]
+        (when-let [cols (not-empty (saved-question-returned-columns query stage-number source-card
+                                                                    (assoc options :include-implicitly-joinable? false)))]
           (into []
                 (comp (map lib.field.util/update-keys-for-col-from-previous-stage)
                       (map (fn [col]
@@ -228,10 +227,17 @@
      (when include-joined?
        (lib.join/all-joins-visible-columns-relative-to-parent-stage query stage-number options)))))
 
-(mu/defmethod lib.metadata.calculation/visible-columns-method ::stage :- ::lib.metadata.calculation/visible-columns
+;;; TODO (Cam 8/7/25) -- we should probably just move all of `visible-columns` to here since this is the only
+;;; implementation, then we could avoid the indirection. A problem for another day tho. See TODO notes
+;;; on [[metabase.lib.metadata.calculation/visible-columns]]
+
+#_{:clj-kondo/ignore [:unused-private-var]} ; this is actually used
+(mu/defn- -visible-columns :- ::lib.metadata.calculation/visible-columns
+  "Implementation of [[metabase.lib.calculation/visible-columns]], which as of 8/7/25 only works on stages. Use that
+   instead of using this function directly, since it includes caching, merges default options, and does other nice
+   things for us."
   [query                                               :- ::lib.schema/query
    stage-number                                        :- :int
-   _stage                                              :- ::lib.schema/stage
    {:keys [include-implicitly-joinable?], :as options} :- ::lib.metadata.calculation/visible-columns.options]
   (let [existing-columns (existing-visible-columns query stage-number options)]
     (into (vec existing-columns)

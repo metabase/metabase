@@ -59,7 +59,6 @@
   (->> (lib.metadata.calculation/visible-columns
         query
         stage-number
-        (lib.util/query-stage query stage-number)
         {:include-joined?                              false
          :include-expressions?                         false
          :include-implicitly-joinable?                 false

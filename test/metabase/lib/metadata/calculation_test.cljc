@@ -116,9 +116,9 @@
                     visible-columns-with-desired-aliases))))))
 
 (deftest ^:parallel visible-columns-test-2
-  (testing "nil has no visible columns (#31366)"
-    (is (empty? (-> (lib.tu/venues-query)
-                    (lib/visible-columns nil))))))
+  (testing "a nil stage-number has no visible columns (#31366)"
+    (is (= []
+           (lib/visible-columns (lib.tu/venues-query) nil)))))
 
 (deftest ^:parallel visible-columns-test-3
   (testing "Include multiple implicitly joinable columns pointing to the same table and field (##33451)"
@@ -245,7 +245,7 @@
                        :lib/source                   :source/joins})]
     (testing "just own columns"
       (is (=? (concat orders-cols joined-cols)
-              (lib/visible-columns query -1 (lib.util/query-stage query -1) {:include-implicitly-joinable? false}))))
+              (lib/visible-columns query -1 {:include-implicitly-joinable? false}))))
     (testing "with implicit joins"
       (is (=? (concat orders-cols
                       joined-cols
@@ -255,7 +255,7 @@
                       ;; Second set of implicit joins
                       (implicitly-joined :people)
                       (implicitly-joined :products))
-              (lib/visible-columns query -1 (lib.util/query-stage query -1)))))))
+              (lib/visible-columns query -1))))))
 
 (deftest ^:parallel implicitly-joinable-requires-numeric-id-test
   (letfn [(query-with-user-id-tweaks [tweaks]
@@ -499,7 +499,7 @@
                       ([query]
                        (cols query {:include-remaps? true}))
                       ([query opts]
-                       (lib/visible-columns query -1 (lib.util/query-stage query -1) opts)))
+                       (lib/visible-columns query -1 opts)))
         orders-id   (meta/id :orders)
         products-id (meta/id :products)
         people-id   (meta/id :people)
@@ -983,10 +983,10 @@
                   ;; should not be returned by `visible-columns` since it needs to be recalculated in the context of
                   ;; everything that gets returned.
                   :lib/desired-column-alias     (symbol "nil #_\"key is not present.\"")}]
-                (lib/visible-columns query -1 (lib/query-stage query -1) {:include-joined?                              false
-                                                                          :include-expressions?                         false
-                                                                          :include-implicitly-joinable?                 false
-                                                                          :include-implicitly-joinable-for-source-card? false})))))))
+                (lib/visible-columns query -1 {:include-joined?                              false
+                                               :include-expressions?                         false
+                                               :include-implicitly-joinable?                 false
+                                               :include-implicitly-joinable-for-source-card? false})))))))
 
 (deftest ^:parallel join-source-query-join-test
   (testing "lib/returned-columns calculates incorrect :source-column-aliases for columns coming from nested joins (QUE-1373)"
