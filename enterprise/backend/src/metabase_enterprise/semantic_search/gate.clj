@@ -148,6 +148,8 @@
           (log/infof "Gated %d document updates" update-count)
           update-count)))))
 
+(def ^:private epoch-timestamp (->timestamp Instant/EPOCH))
+
 (defn poll
   "Find document (gate table) ids that are highly likely to have been updated. Due to commit lag, if called with a watermark
   close to the current postgres clock value, you will see some records with timestamps <= your watermark.
@@ -155,7 +157,7 @@
 
   Expect to receive a map with:
   - `:poll-time` the postgres clock value as-of this poll
-  - `:update-candidates` a vector of [{:id, :document_hash, :gated_at}] maps.
+  - `:update-candidates` a vector of [{:id, :document_hash, :gated_at}] maps. Guaranteed to be ordered by (gated_at, id).
 
   Options:
   - :limit (1000)
@@ -167,16 +169,20 @@
                                         :or   {lag-tolerance (.multipliedBy gate-write-timeout 2) ; heuristic: still depends on postgres enforcing timeouts. We might still need a slow-pass over everything occasionally in the future.
                                                limit         1000}}]
   {:pre [(pos? limit)]}
-  (let [^Instant last-poll-inst (or (some-> watermark :last-poll ->instant) Instant/EPOCH)
+  (let [;; IMPORTANT: these Instant conversion must only be used for heuristic / approximate conditions (such as confidence-time)
+        ;; as their precision does not match the actual SQL clock_timestamp() value.
+        ^Instant last-poll-inst (or (some-> watermark :last-poll ->instant) Instant/EPOCH)
         ^Instant last-seen-inst (or (some-> watermark :last-seen :gated_at ->instant) Instant/EPOCH)
         confidence-time         (.minus last-poll-inst lag-tolerance)
         gate-min                (if (.isBefore confidence-time last-seen-inst)
-                                  confidence-time
+                                  {:gated_at confidence-time}
                                   ;; We might not have seen everything with the last poll
                                   ;; e.g. maybe there were more than :limit rows
                                   ;; For this case - we would expect the last-seen to be behind the confidence window,
                                   ;; and we should not skip ahead.
-                                  last-seen-inst)
+                                  ;; IMPORTANT: preserve the java.sql.Timestamp to retain the required precision.
+                                  ;; otherwise pagination behaviour is incorrect and the indexer can stall.
+                                  (or (:last-seen watermark) {:gated_at epoch-timestamp}))
         poll-q                  {:union-all
                                  [{:select [[nil :id]
                                             [nil :document_hash]
@@ -187,8 +193,15 @@
                                    [[{:select   [:id, :document_hash, :gated_at]
                                       :from     [(keyword (:gate-table-name index-metadata))]
                                       ;; the earliest timestamp where we might expect to find new documents
-                                      :where    [:>= :gated_at gate-min]
-                                      :order-by [[:gated_at :asc]]
+                                      :where    (if (:id gate-min) ; :id here means we are polling from an exact watermark
+                                                  ;; we can do a proper paging scan, and can assume no later data will arrive out-of-order.
+                                                  [:>= [:composite :gated_at :id] [:composite (:gated_at gate-min) (:id gate-min)]]
+                                                  ;; if outside the confidence time we have to assume we will receive out of order writes
+                                                  ;; until our last seen falls within the confidence time
+                                                  ;; this means the indexer can stall here if the :limit is exceeded until
+                                                  ;; the confidence time moves or our last seen moves to be within the threshold.
+                                                  [:>= :gated_at (:gated_at gate-min)])
+                                      :order-by [[:gated_at] [:id]]
                                       :limit    limit}
                                      :q]]}]}
         poll-sql                (sql/format poll-q :quoted true)
@@ -202,13 +215,8 @@
 (defn next-watermark
   "Given a poll result and the previous watermark, return next watermark (to be applied to poll at some future time)"
   [watermark {:keys [poll-time update-candidates]}]
-  (let [max-seen-rf (fn [{old-ts :gated_at :as max-seen} {candidate-ts :gated_at :as candidate}]
-                      (cond
-                        (nil? max-seen) candidate
-                        (.isBefore (->instant old-ts) (->instant candidate-ts)) candidate
-                        :else max-seen))]
-    {:last-poll poll-time
-     :last-seen (reduce max-seen-rf (:last-seen watermark) update-candidates)}))
+  {:last-poll poll-time
+   :last-seen (or (peek update-candidates) (:last-seen watermark))})
 
 (defn resume-watermark
   "Extracts a watermark for resuming indexer processing - assuming the previous watermark was flushed
