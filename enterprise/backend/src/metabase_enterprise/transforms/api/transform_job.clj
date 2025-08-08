@@ -122,7 +122,12 @@
   (log/info "Manual execution of transform job" job-id)
   (api/check-superuser)
   (let [job (api/check-404 (t2/select-one :model/TransformJob :id job-id))]
-    (u.jvm/in-virtual-thread* (transforms.jobs/execute-jobs! [job-id] {:run-method :manual})))
+    (u.jvm/in-virtual-thread*
+     (try
+       (transforms.jobs/execute-job! job-id {:run-method :manual})
+       (catch Throwable t
+         (log/error "Error executing transform job" job-id)
+         (log/error t)))))
   {:message    "Job execution started"
    :job_run_id (str "stub-" job-id "-" (System/currentTimeMillis))})
 

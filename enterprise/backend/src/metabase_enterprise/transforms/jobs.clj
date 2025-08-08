@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [metabase-enterprise.transforms.execute :as transforms.execute]
+   [metabase-enterprise.transforms.models.job-run :as transforms.job-run]
    [metabase-enterprise.transforms.ordering :as transforms.ordering]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -49,8 +50,8 @@
         (transforms.execute/execute-mbql-transform! current-transform {:run-method run-method})
         (recur (conj complete (:id current-transform)))))))
 
-(defn execute-jobs!
-  [job-ids opts]
+(defn execute-job!
+  [job-id {:keys [run-method] :as opts}]
   (let [transforms (t2/select-fn-set :transform_id
                                      :transform_job_tags
                                      {:select :transform_tags.transform_id
@@ -58,6 +59,13 @@
                                       :left-join [:transform_tags [:=
                                                                    :transform_tags.tag_id
                                                                    :transform_job_tags.tag_id]]
-                                      :where [:in :transform_job_tags.job_id job-ids]})]
-    (log/info "Executing transform jobs" (pr-str job-ids) "with transforms" (pr-str transforms))
-    (execute-transforms! transforms opts)))
+                                      :where [:= :transform_job_tags.job_id job-id]})
+        run-id (str (u/generate-nano-id))]
+    (log/info "Executing transform job" (pr-str job-id) "with transforms" (pr-str transforms))
+    (transforms.job-run/start-run! run-id job-id run-method)
+    (try
+      (execute-transforms! transforms opts)
+      (transforms.job-run/succeed-started-run! run-id)
+      (catch Throwable t
+        (transforms.job-run/fail-started-run! run-id {:message (.getMessage t)})
+        (throw t)))))

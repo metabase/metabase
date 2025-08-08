@@ -620,6 +620,71 @@ databaseChangeLog:
                   name: name
                   value: monthly
 
+  - changeSet:
+      id: v57.2025-08-08-transform-job-runs-app-db
+      author: william
+      comment: Create transform_job_run table in app database to track transform job execution
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: transform_job_run
+      changes:
+        - createTable:
+            tableName: transform_job_run
+            remarks: Table to track transform job executions and their status in the app database
+            columns:
+              - column:
+                  name: run_id
+                  type: char(21)
+                  remarks: 'NanoID identifier for the worker run'
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: job_id
+                  type: bigint
+                  remarks: 'Identifier for the transform job'
+                  constraints:
+                    nullable: false
+              - column:
+                  name: run_method
+                  type: varchar(255)
+                  remarks: 'Method used to execute the transform job'
+                  constraints:
+                    nullable: false
+              - column:
+                  name: status
+                  type: varchar(50)
+                  remarks: 'Current status of the transform job (running, completed, failed, etc.)'
+                  constraints:
+                    nullable: false
+              - column:
+                  name: is_active
+                  type: boolean
+                  remarks: 'True only for currently running jobs, null for the others'
+                  constraints:
+                    nullable: true
+                    defaultValue: true
+              - column:
+                  name: start_time
+                  type: ${timestamp_type}
+                  remarks: 'When the transform job started'
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: end_time
+                  type: ${timestamp_type}
+                  remarks: 'When the tranform job completed (null if still running)'
+                  constraints:
+                    nullable: true
+              - column:
+                  name: message
+                  type: text
+                  remarks: 'Human-readable message about the run; may contain error message in case status is error'
+                  constraints:
+                    nullable: true
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

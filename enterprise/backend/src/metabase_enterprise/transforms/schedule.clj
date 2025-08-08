@@ -74,7 +74,7 @@
                    (get "job-id"))]
     (log/info "Executing scheduled run of transform job" job-id)
     (task-history/with-task-history {:task "execute-transforms"}
-      (transforms.jobs/execute-jobs! [job-id] {:run-method :cron}))))
+      (transforms.jobs/execute-job! job-id {:run-method :cron}))))
 
 (defn initialize-job! [{job-id :id :keys [schedule]}]
   (log/info "Initializing schedule for transform job" job-id)
