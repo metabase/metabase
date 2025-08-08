@@ -89,7 +89,7 @@
   {:version               "0"
    :metadata-table-name   "mock_index_metadata"
    :control-table-name    "mock_index_control"
-   :index-table-qualifier "mock_%s"})
+   :index-table-qualifier "%s"})
 
 (defn unique-index-metadata
   []
