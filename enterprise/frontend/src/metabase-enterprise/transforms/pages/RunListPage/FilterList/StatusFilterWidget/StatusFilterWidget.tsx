@@ -40,10 +40,20 @@ export function StatusFilterWidget({
     onChange(statuses);
   };
 
+  const handleRemove = () => {
+    onChange([]);
+  };
+
   return (
     <Popover opened={isOpened} onDismiss={close}>
       <Popover.Target>
-        <FilterButton label={t`Status`} icon="check_filled" onClick={toggle} />
+        <FilterButton
+          label={t`Status`}
+          icon="check_filled"
+          canRemove={statuses.length > 0}
+          onClick={toggle}
+          onRemove={handleRemove}
+        />
       </Popover.Target>
       <Popover.Dropdown>
         <StatusFilterForm statuses={statuses} onSubmit={handleSubmit} />
