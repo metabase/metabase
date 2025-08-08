@@ -171,8 +171,7 @@ export const MetabotComponent = memo(
         })
         .insertContentAt(
           nodePosition + 1,
-          // TODO: Internationalize
-          createTextNode(`🤖 Created with Metabot 💙`),
+          createTextNode(`🤖 ${t`Created with Metabot`} 💙`),
         )
         .insertContentAt(nodePosition + 1, createTextNode(data.description))
         .run();
