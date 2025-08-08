@@ -30,6 +30,10 @@ on:
         description: "EE artifact name to reuse (e.g. metabase-ee-COMMIT_SHA-uberjar)"
         type: string
         default: ""
+      debug_specs:
+        description: "Use minimal specs for debugging (much faster)"
+        type: boolean
+        default: false
 
 jobs:
   files-changed:
@@ -117,23 +121,32 @@ jobs:
             | xargs -I {} curl -L -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" {} -o ee-artifact.zip
             
           echo "Extracting artifacts..."
-          unzip oss-artifact.zip
-          unzip ee-artifact.zip
+          mkdir -p oss-extract ee-extract
+          
+          echo "Extracting OSS artifact..."
+          unzip -q oss-artifact.zip -d oss-extract/
+          
+          echo "Extracting EE artifact..."
+          unzip -q ee-artifact.zip -d ee-extract/
+          
+          echo "Renaming jar files..."
+          cp oss-extract/target/uberjar/metabase.jar ./metabase-oss.jar
+          cp ee-extract/target/uberjar/metabase.jar ./metabase-ee.jar
           
           echo "Found files:"
-          ls -la *.jar || echo "No jar files found"
+          ls -la *.jar
           
-      - name: Re-upload as expected names
+      - name: Re-upload OSS as expected name
         uses: actions/upload-artifact@v4
         with:
           name: metabase-oss-${{ github.sha }}-uberjar
-          path: "*.jar"
+          path: metabase-oss.jar
           
       - name: Re-upload EE as expected name
         uses: actions/upload-artifact@v4  
         with:
           name: metabase-ee-${{ github.sha }}-uberjar
-          path: "*.jar"
+          path: metabase-ee.jar
 
   backend-tests:
     if: ${{ !cancelled() && !inputs.e2e_only }}
@@ -182,11 +195,8 @@ jobs:
     secrets: inherit
     with:
       skip: ${{ needs.files-changed.outputs.e2e_all != 'true' && !inputs.run_e2e_tests }}
-      # here we pass result from files-changed, which is a list of files, comma separated
-      # e.g. e2e/test/scenarios/onboarding/command-palette.cy.spec.js,e2e/test/scenarios/question/document-title.cy.spec.js
-      # e2e_all_files includes all changes which trigger all e2e tests, if the list of changes files is included in the
-      # list of changed specs files, then only specs are changed and we can run only those specs
-      specs: ${{ needs.files-changed.outputs.e2e_all_files == needs.files-changed.outputs.e2e_specs_files && needs.files-changed.outputs.e2e_specs_files || '' }}
+      # Use debug specs if debugging, otherwise use normal spec logic
+      specs: ${{ inputs.debug_specs && 'e2e/test/scenarios/onboarding/*.cy.spec.*' || (needs.files-changed.outputs.e2e_all_files == needs.files-changed.outputs.e2e_specs_files && needs.files-changed.outputs.e2e_specs_files || '') }}
 
   sdk-tests:
     needs: files-changed
