@@ -37,7 +37,7 @@
     (sync/sync-table! table)))
 
 ;; should be run in virtual thread (please :)
-(defn- execute-mbql-transform-remote! [run-id driver transform-details opts]
+(defn- execute-transform-remote! [run-id driver transform-details opts]
   (try
     (log/trace "starting remote transform run" (pr-str run-id))
     (worker/execute-transform! run-id driver transform-details opts)
@@ -60,7 +60,7 @@
    (log/info "Syncing target" (pr-str target) "for transform")
    (sync-table! database target)))
 
-(defn- execute-mbql-transform-local!
+(defn- execute-transform-local!
   [run-id driver transform-details opts]
   (worker/chan-start-timeout-vthread! run-id)
   ;; local run is responsible for status
@@ -79,8 +79,8 @@
   "Execute a compiled transform either locally or remotely."
   [run-id driver transform-details opts]
   (if (worker/run-remote?)
-    (execute-mbql-transform-remote! run-id driver transform-details opts)
-    (execute-mbql-transform-local!  run-id driver transform-details opts)))
+    (execute-transform-remote! run-id driver transform-details opts)
+    (execute-transform-local!  run-id driver transform-details opts)))
 
 (defn execute-mbql-transform!
   "Execute `transform` and sync its target table.
