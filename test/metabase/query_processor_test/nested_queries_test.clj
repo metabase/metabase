@@ -1559,9 +1559,7 @@
                                        :source-table $$reviews
                                        ;; It's wack that the FE is using a FIELD LITERAL here but it should still work
                                        ;; anyway.
-                                       :condition    [:=
-                                                      [:field "ID" {:base-type :type/BigInteger}]
-                                                      &Reviews.reviews.product_id]
+                                       :condition    [:= *products.id &Reviews.reviews.product_id]
                                        :alias        "Reviews"}]
                        :order-by     [[:asc $product_id->products.id]
                                       [:asc &Reviews.reviews.product_id]]

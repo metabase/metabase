@@ -112,10 +112,6 @@
                                   expression-name)]
         opts (->> opts
                   normalize-ref-opts
-                  ;; Only keep fields required for handling binned&datetime expressions (#33528)
-                  ;; Allowing added alias-info through here breaks
-                  ;; [[metabase.query-processor.util.nest-query-test/nest-expressions-ignore-source-queries-test]]
-                  (m/filter-keys #{:base-type :temporal-unit :binning})
                   not-empty)]
     (cond-> expression
       opts (conj opts))))

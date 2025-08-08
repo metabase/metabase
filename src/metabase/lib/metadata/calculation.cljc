@@ -495,9 +495,6 @@
 (def ^:private returned-columns-options-keys
   (mu/map-schema-keys ::returned-columns.options))
 
-(def ^:private returned-columns-options-keys
-  (mu/map-schema-keys ::returned-columns.options))
-
 (defmulti returned-columns-method
   "Impl for [[returned-columns]]."
   {:arglists '([query stage-number x options])}

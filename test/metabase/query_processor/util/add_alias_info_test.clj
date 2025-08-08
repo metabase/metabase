@@ -14,6 +14,7 @@
    [metabase.lib.test-util.macros :as lib.tu.macros]
    [metabase.lib.test-util.metadata-providers.mock :as providers.mock]
    [metabase.lib.test-util.uuid-dogs-metadata-provider :as lib.tu.uuid-dogs-metadata-provider]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util.add-alias-info :as add]
@@ -1077,3 +1078,30 @@
                                     ::add/source-table  ::add/source}
                                    "Total_number_of_people_from_each_state_separated_by_state_and_then_we_do_a_count"]]}]}
               (add-alias-info query))))))
+
+;;; in the future when we remove all the roundtripping that happens inside of the QP then we can remove this test
+;;; entirely.
+(deftest ^:parallel additional-keys-should-survive-preprocessing-test
+  (driver/with-driver :h2
+    (let [query (lib/query
+                 meta/metadata-provider
+                 (lib.tu.macros/mbql-query orders
+                   {:aggregation [[:aggregation-options [:count] {:name "count"}]]
+                    :breakout    [&PRODUCTS__via__PRODUCT_ID.products.category
+                                  !year.created-at
+                                  [:expression "pivot-grouping"]]
+                    :expressions {"pivot-grouping" [:abs 0]}
+                    :order-by    [[:asc &PRODUCTS__via__PRODUCT_ID.products.category]
+                                  [:asc !year.created-at]
+                                  [:asc [:expression "pivot-grouping"]]]
+                    :joins       [{:source-table $$products
+                                   :strategy     :left-join
+                                   :alias        "PRODUCTS__via__PRODUCT_ID"
+                                   :fk-field-id  %product-id
+                                   :condition    [:= $product-id &PRODUCTS__via__PRODUCT_ID.products.id]}]}))]
+      (is (=? [[:expression "pivot-grouping" {::add/source-table ::add/none, ::add/desired-alias "pivot-grouping"}]
+               [:expression "pivot-grouping" {::add/source-table ::add/none, ::add/desired-alias "pivot-grouping"}]]
+              (lib.util.match/match (-> query
+                                        add/add-alias-info
+                                        qp.preprocess/preprocess)
+                :expression))))))

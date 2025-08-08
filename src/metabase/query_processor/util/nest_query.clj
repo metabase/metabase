@@ -132,24 +132,24 @@
     [:field source-alias {::add/source-table ::add/source}]))
 
 (defn- remove-unused-fields [inner-query source]
-  (let [usages         (lib.util.match/match inner-query #{:field :expression})
-        used-fields    (into #{} (map keep-source+alias-props) usages)
-        nominal-fields (into #{} (keep ->nominal-ref) usages)
-        nfc-roots      (into #{} (keep nfc-root) used-fields)]
-    (letfn [(used? [[_tag _id-or-name {::add/keys [source-table]}, :as field]]
-              (or (contains? used-fields (keep-source+alias-props field))
+  (let [usages       (lib.util.match/match inner-query #{:field :expression})
+        used-refs    (into #{} (map keep-source+alias-props) usages)
+        nominal-refs (into #{} (keep ->nominal-ref) usages)
+        nfc-roots    (into #{} (keep nfc-root) used-refs)]
+    (letfn [(used? [[_tag _id-or-name {::add/keys [source-table]}, :as a-ref]]
+              (or (contains? used-refs (keep-source+alias-props a-ref))
                   ;; We should also consider a Field to be used if we're referring to it with a nominal field literal
                   ;; ref in the next stage -- that's actually how you're supposed to be doing it anyway.
                   (and (= source-table ::add/source)
-                       (contains? nominal-fields (->nominal-ref field)))
-                  (contains? nfc-roots (field-id-props field))))
-            (used?* [field]
-              (u/prog1 (used? field)
+                       (contains? nominal-refs (->nominal-ref a-ref)))
+                  (contains? nfc-roots (field-id-props a-ref))))
+            (used?* [a-ref]
+              (u/prog1 (used? a-ref)
                 (if <>
-                  (log/debugf "Keeping used field:\n%s" (u/pprint-to-str field))
-                  (log/debugf "Removing unused field:\n%s" (u/pprint-to-str (keep-source+alias-props field))))))
-            (remove-unused [fields]
-              (filterv used?* fields))]
+                  (log/debugf "Keeping used ref:\n%s" (u/pprint-to-str a-ref))
+                  (log/debugf "Removing unused ref:\n%s" (u/pprint-to-str (keep-source+alias-props a-ref))))))
+            (remove-unused [refs]
+              (filterv used?* refs))]
       (update source :fields remove-unused))))
 
 (defn- append-join-fields

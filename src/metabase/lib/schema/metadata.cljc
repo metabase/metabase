@@ -130,7 +130,7 @@
     :none})
 
 (mr/def ::column.has-field-values
-  (into [:enum] (sort column-has-field-values-options)))
+  (into [:enum {:decode/normalize lib.schema.common/normalize-keyword}] (sort column-has-field-values-options)))
 
 (mr/def ::column.remapping.external
   "External remapping (Dimension) for a column. From the [[metabase.warehouse-schema.models.dimension]] with `type =
@@ -474,7 +474,12 @@
     ;; column. The JVM provider currently does not, since the QP doesn't need it for anything.
     [:has-field-values {:optional true} [:maybe [:ref ::column.has-field-values]]]
     ;;
+    ;; info about stuff like min and max values of the column, used for auto bucketing.
     [:fingerprint {:optional true} [:maybe [:ref ::lib.schema.metadata.fingerprint/fingerprint]]]
+    ;;
+    ;; populated by the `metabase_field.settings` column in the application database; I'm not really sure what goes in
+    ;; here and if it's actually used for anything important in Lib or the QP (I suspect it's not).
+    [:settings {:optional true} [:maybe [:map-of {:decode/normalize lib.schema.common/normalize-map-no-kebab-case} :keyword :any]]]
     ;;
     ;; Added by [[metabase.lib.metadata.result-metadata]] primarily for legacy/backward-compatibility purposes with
     ;; legacy viz settings. This should not be used for anything other than that.

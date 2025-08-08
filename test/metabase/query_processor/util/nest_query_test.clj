@@ -215,8 +215,7 @@
                                                      [:expression "x" #::add{:desired-alias "x_2"}]]}
                              :breakout [[:field %id #::add{:source-table  ::add/source
                                                            :source-alias  "ID"
-                                                           :desired-alias "ID"
-                                                           :position      0}]
+                                                           :desired-alias "ID"}]
                                         [:field "x_2" {:base-type          :type/Integer
                                                        ::add/source-table  ::add/source
                                                        ::add/source-alias  "x_2"
@@ -333,13 +332,11 @@
                         {:source-query {:source-table $$venues
                                         :joins        [{:strategy     :left-join
                                                         :condition    [:=
-                                                                       [:field %category-id {::add/source-table  $$venues
-                                                                                             ::add/source-alias  "CATEGORY_ID"
-                                                                                             ::add/desired-alias "CATEGORY_ID"}]
-                                                                       [:field %category-id {:join-alias         "CategoriesStats"
-                                                                                             ::add/source-table  "CategoriesStats"
-                                                                                             ::add/source-alias  "CATEGORY_ID"
-                                                                                             ::add/desired-alias "CategoriesStats__CATEGORY_ID"}]]
+                                                                       [:field %category-id {::add/source-table $$venues
+                                                                                             ::add/source-alias "CATEGORY_ID"}]
+                                                                       [:field %category-id {:join-alias        "CategoriesStats"
+                                                                                             ::add/source-table "CategoriesStats"
+                                                                                             ::add/source-alias "CATEGORY_ID"}]]
                                                         :source-query {:source-table $$venues
                                                                        :aggregation  [[:aggregation-options
                                                                                        [:max [:field %price {::add/source-table $$venues
@@ -366,25 +363,10 @@
                                                                                                                   ::add/source-alias  "CATEGORY_ID"
                                                                                                                   ::add/desired-alias "CATEGORY_ID"}]]]}
                                                         :alias        "CategoriesStats"
-                                                        :fields       [[:field %category-id {:join-alias         "CategoriesStats"
-                                                                                             ::add/source-table  "CategoriesStats"
-                                                                                             ::add/source-alias  "CATEGORY_ID"
-                                                                                             ::add/desired-alias "CategoriesStats__CATEGORY_ID"}]
-                                                                       [:field "MaxPrice" {:base-type          :type/Integer
-                                                                                           :join-alias         "CategoriesStats"
-                                                                                           ::add/source-table  "CategoriesStats"
-                                                                                           ::add/source-alias  "MaxPrice"
-                                                                                           ::add/desired-alias "CategoriesStats__MaxPrice"}]
-                                                                       [:field "AvgPrice" {:base-type          :type/Float
-                                                                                           :join-alias         "CategoriesStats"
-                                                                                           ::add/source-table  "CategoriesStats"
-                                                                                           ::add/source-alias  "AvgPrice"
-                                                                                           ::add/desired-alias "CategoriesStats__AvgPrice"}]
-                                                                       [:field "MinPrice" {:base-type          :type/Integer
-                                                                                           :join-alias         "CategoriesStats"
-                                                                                           ::add/source-table  "CategoriesStats"
-                                                                                           ::add/source-alias  "MinPrice"
-                                                                                           ::add/desired-alias "CategoriesStats__MinPrice"}]]}]
+                                                        :fields       [[:field %category-id {:join-alias "CategoriesStats"}]
+                                                                       [:field "MaxPrice" {:join-alias "CategoriesStats"}]
+                                                                       [:field "AvgPrice" {:join-alias "CategoriesStats"}]
+                                                                       [:field "MinPrice" {:join-alias "CategoriesStats"}]]}]
                                         :expressions  {"RelativePrice" [:/
                                                                         [:field %price {::add/source-table  $$venues
                                                                                         ::add/source-alias  "PRICE"
@@ -509,30 +491,30 @@
                                         {:fields [{:id                (meta/id :venues :price)
                                                    :coercion-strategy :Coercion/UNIXSeconds->DateTime
                                                    :effective-type    :type/DateTime}]})
-        (is (partial= (lib.tu.macros/$ids venues
-                        {:source-query {:source-table $$venues
-                                        :expressions  {"test" [:* 1 1]}
-                                        :fields       [[:field %price {::add/source-table  $$venues
-                                                                       ::add/source-alias  "PRICE"
-                                                                       ::add/desired-alias "PRICE"}]
-                                                       [:expression "test" {::add/desired-alias "test"}]]}
-                         :breakout     [[:field %price {:temporal-unit            :day
-                                                        :qp/ignore-coercion       true
-                                                        ::add/source-table        ::add/source
-                                                        ::add/source-alias        "PRICE"
-                                                        ::add/desired-alias       "PRICE"}]
-                                        [:field "test" {:base-type          :type/Integer
-                                                        ::add/source-table  ::add/source
-                                                        ::add/source-alias  "test"
-                                                        ::add/desired-alias "test"}]]
-                         :limit        1})
-                      (-> (lib.tu.macros/mbql-query venues
-                            {:expressions {"test" [:* 1 1]}
-                             :breakout    [$price
-                                           [:expression "test"]]
-                             :limit       1})
-                          add/add-alias-info
-                          nest-expressions)))))))
+        (is (=? (lib.tu.macros/$ids venues
+                  {:source-query {:source-table $$venues
+                                  :expressions  {"test" [:* 1 1]}
+                                  :fields       [[:field %price {::add/source-table  $$venues
+                                                                 ::add/source-alias  "PRICE"
+                                                                 ::add/desired-alias "PRICE"}]
+                                                 [:expression "test" {::add/desired-alias "test"}]]}
+                   :breakout     [[:field %price {:temporal-unit            :day
+                                                  :qp/ignore-coercion       true
+                                                  ::add/source-table        ::add/source
+                                                  ::add/source-alias        "PRICE"
+                                                  ::add/desired-alias       "PRICE"}]
+                                  [:field "test" {:base-type          :type/Integer
+                                                  ::add/source-table  ::add/source
+                                                  ::add/source-alias  "test"
+                                                  ::add/desired-alias "test"}]]
+                   :limit        1})
+                (-> (lib.tu.macros/mbql-query venues
+                      {:expressions {"test" [:* 1 1]}
+                       :breakout    [$price
+                                     [:expression "test"]]
+                       :limit       1})
+                    add/add-alias-info
+                    nest-expressions)))))))
 
 (deftest ^:parallel multiple-joins-with-expressions-test
   (testing "We should be able to compile a complicated query with multiple joins and expressions correctly"
@@ -589,15 +571,20 @@
                                                     {:source-table $$orders
                                                      :joins        [{:source-query {:source-table $$products}
                                                                      :alias        "PRODUCTS__via__PRODUCT_ID"
-                                                                     :condition    [:= product-id products-id]
+                                                                     :condition    [:=
+                                                                                    [:field %product-id {::add/source-table  $$orders
+                                                                                                         ::add/source-alias  "PRODUCT_ID"}]
+                                                                                    [:field %products.id {:join-alias         "PRODUCTS__via__PRODUCT_ID"
+                                                                                                          ::add/source-table  "PRODUCTS__via__PRODUCT_ID"
+                                                                                                          ::add/source-alias  "ID"}]]
                                                                      :strategy     :left-join
                                                                      :fk-field-id  %product-id}]
                                                      :expressions  {"pivot-grouping" [:abs 0]}
                                                      :fields       [product-id
                                                                     created-at
                                                                     pivot-grouping
-                                                                    products-category
-                                                                    products-id]})})))
+                                                                    products-id
+                                                                    products-category]})})))
                   (-> (lib.tu.macros/mbql-query orders
                         {:aggregation [[:aggregation-options [:count] {:name "count"}]]
                          :breakout    [&PRODUCTS__via__PRODUCT_ID.products.category
@@ -612,46 +599,44 @@
                                         :alias        "PRODUCTS__via__PRODUCT_ID"
                                         :fk-field-id  %product-id
                                         :condition    [:= $product-id &PRODUCTS__via__PRODUCT_ID.products.id]}]})
-                      qp.preprocess/preprocess
                       add/add-alias-info
                       nest-expressions))))))))
 
 (deftest ^:parallel uniquify-aliases-test
   (driver/with-driver :h2
-    (mt/dataset test-data
-      (qp.store/with-metadata-provider meta/metadata-provider
-        (is (partial= (lib.tu.macros/$ids products
-                        {:source-query       {:source-table $$products
-                                              :expressions  {"CATEGORY" [:concat
-                                                                         [:field %category {::add/source-table  $$products
-                                                                                            ::add/source-alias  "CATEGORY"
-                                                                                            ::add/desired-alias "CATEGORY"}]
-                                                                         "2"]}
-                                              :fields       [[:field %category {::add/source-table  $$products
-                                                                                ::add/source-alias  "CATEGORY"
-                                                                                ::add/desired-alias "CATEGORY"}]
-                                                             [:expression "CATEGORY" {::add/desired-alias "CATEGORY_2"}]]}
-                         :breakout           [[:field "CATEGORY_2" {:base-type          :type/Text
-                                                                    ::add/source-table  ::add/source
-                                                                    ::add/source-alias  "CATEGORY_2"
-                                                                    ::add/desired-alias "CATEGORY"}]]
-                         :aggregation        [[:aggregation-options [:count] {:name               "count"
-                                                                              ::add/desired-alias "count"}]]
-                         :order-by           [[:asc [:field "CATEGORY_2" {:base-type          :type/Text
-                                                                          ::add/source-table  ::add/source
-                                                                          ::add/source-alias  "CATEGORY_2"
-                                                                          ::add/desired-alias "CATEGORY"}]]]
-                         :limit              1})
-                      (-> (lib.tu.macros/mbql-query products
-                            {:expressions {"CATEGORY" [:concat $category "2"]}
-                             :breakout    [:expression "CATEGORY"]
-                             :aggregation [[:count]]
-                             :order-by    [[:asc [:expression "CATEGORY"]]]
-                             :limit       1})
-                          qp.preprocess/preprocess
-                          add/add-alias-info
-                          :query
-                          nest-query/nest-expressions)))))))
+    (qp.store/with-metadata-provider meta/metadata-provider
+      (is (=? (lib.tu.macros/$ids products
+                {:source-query {:source-table $$products
+                                :expressions  {"CATEGORY" [:concat
+                                                           [:field %category {::add/source-table  $$products
+                                                                              ::add/source-alias  "CATEGORY"
+                                                                              ::add/desired-alias "CATEGORY"}]
+                                                           "2"]}
+                                :fields       [[:field %category {::add/source-table  $$products
+                                                                  ::add/source-alias  "CATEGORY"
+                                                                  ::add/desired-alias "CATEGORY"}]
+                                               [:expression "CATEGORY" {::add/desired-alias "CATEGORY_2"}]]}
+                 :breakout     [[:field "CATEGORY_2" {:base-type          :type/Text
+                                                      ::add/source-table  ::add/source
+                                                      ::add/source-alias  "CATEGORY_2"
+                                                      ::add/desired-alias "CATEGORY_2"}]]
+                 :aggregation  [[:aggregation-options [:count] {:name               "count"
+                                                                ::add/desired-alias "count"}]]
+                 :order-by     [[:asc [:field "CATEGORY_2" {:base-type          :type/Text
+                                                            ::add/source-table  ::add/source
+                                                            ::add/source-alias  "CATEGORY_2"
+                                                            ::add/desired-alias "CATEGORY_2"}]]]
+                 :limit        1})
+              (-> (lib.tu.macros/mbql-query products
+                    {:expressions {"CATEGORY" [:concat $category "2"]}
+                     :breakout    [:expression "CATEGORY"]
+                     :aggregation [[:count]]
+                     :order-by    [[:asc [:expression "CATEGORY"]]]
+                     :limit       1})
+                  qp.preprocess/preprocess
+                  add/add-alias-info
+                  :query
+                  nest-query/nest-expressions))))))
 
 (deftest ^:parallel uniquify-aliases-test-2
   (driver/with-driver :h2
@@ -664,7 +649,7 @@
                                                    ;; Then exported as DISCOUNT from the middle layer.
                                                    [:field "DISCOUNT_2" {:base-type          :type/Float
                                                                          ::add/source-alias  "DISCOUNT_2"
-                                                                         ::add/desired-alias "DISCOUNT"}]]
+                                                                         ::add/desired-alias "DISCOUNT_2"}]]
                                     :source-query {:expressions  {"DISCOUNT" [:coalesce [:field %discount {}] 0]}
                                                    :fields       [[:field %id {::add/desired-alias "ID"}]
                                                                   [:field %subtotal {::add/desired-alias "SUBTOTAL"}]
@@ -815,18 +800,18 @@
                    ;; inner query can perturb this order; if you cause this test to fail based on shuffling the order of
                    ;; these joined fields, just edit the expectation to match the new order. Tech debt issue: #39396
                    [:field
+                    (meta/id :people :id)
+                    {:join-alias "p"
+                     ::add/source-table "p"
+                     ::add/source-alias "ID"
+                     ::add/desired-alias "p__ID"}]
+                   [:field
                     (meta/id :people :created-at)
                     {:temporal-unit (symbol "nil #_\"key is not present.\"")
                      ::add/source-alias "CREATED_AT"
                      :join-alias "p"
                      ::add/desired-alias "p__CREATED_AT"
-                     ::add/source-table "p"}]
-                   [:field
-                    (meta/id :people :id)
-                    {:join-alias "p"
-                     ::add/source-table "p"
-                     ::add/source-alias "ID"
-                     ::add/desired-alias "p__ID"}]]}}
+                     ::add/source-table "p"}]]}}
                 (->> (lib.tu.macros/mbql-query orders
                        {:expressions {"double_total" [:* $total 2]}
                         ;; this is a broken field ref! It should use the join alias `p`. Luckily

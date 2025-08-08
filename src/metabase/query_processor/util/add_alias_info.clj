@@ -113,26 +113,34 @@
       (throw (ex-info "Column can only come from a source table in the first stage of a query"
                       {:query query, :stage-path stage-path, :col <>})))))
 
-(mu/defn- add-escaped-desired-aliases :- [:map
-                                          [:lib/type keyword?]
-                                          [::desired-alias->escaped ::desired-alias->escaped]]
-  [query         :- ::lib.schema/query
-   path          :- ::lib.walk/path
-   stage-or-join :- [:map [:lib/type keyword?]]]
-  (let [returned-columns (returned-columns query path)
-        ;; native stages should not escape/truncate any aliases, we need to use them as-is in the next stage of the
-        ;; query; see [[metabase.query-processor.util.add-alias-info-test/respect-crazy-long-native-identifiers-test]].
-        ;; If a native query returns a column name we can assume it's legal in the current DB.
-        escape-fn        (if (= (:lib/type stage-or-join) :mbql.stage/native)
-                           identity
-                           (escape-fn))
-        escaped-aliases  (into {}
-                               (comp
-                                (map :lib/desired-column-alias)
-                                (map (fn [k]
-                                       [k (escape-fn k)])))
-                               returned-columns)]
-    (assoc stage-or-join ::desired-alias->escaped escaped-aliases)))
+(mu/defn- add-escaped-desired-aliases :- [:or
+                                          [:map
+                                           [:lib/type [:= :mbql.stage/native]]]
+                                          [:map
+                                           [:lib/type [:= :mbql.stage/mbql]]
+                                           [::desired-alias->escaped ::desired-alias->escaped]]]
+  "Add a map if `::desired-alias->escaped` to each stage. This is consumed by subsequent passes and then discarded at
+  the end."
+  [query  :- ::lib.schema/query
+   path   :- ::lib.walk/path
+   stage  :- ::lib.schema/stage]
+  ;; native stages should not escape/truncate any aliases, we need to use them as-is in the next stage of the
+  ;; query; see [[metabase.query-processor.util.add-alias-info-test/respect-crazy-long-native-identifiers-test]].
+  ;; If a native query returns a column name we can assume it's legal in the current DB.
+  (case (:lib/type stage)
+    :mbql.stage/native
+    stage
+
+    (:mbql.stage/mbql :mbql/join)
+    (let [returned-columns (returned-columns query path)
+          escape-fn        (escape-fn)
+          escaped-aliases  (into {}
+                                 (comp
+                                  (map :lib/desired-column-alias)
+                                  (map (fn [k]
+                                         [k (escape-fn k)])))
+                                 returned-columns)]
+      (assoc stage ::desired-alias->escaped escaped-aliases))))
 
 (defn- escaped-source-alias [query stage-path source-column-alias]
   (or (when-let [previous-stage-path (lib.walk/previous-path stage-path)]
@@ -141,16 +149,25 @@
       source-column-alias))
 
 (defn- escaped-desired-alias
+  "Return the escaped desired alias using the `::desired-alias->escaped` info added by [[add-escaped-desired-aliases]]
+  earlier."
   [query stage-path desired-column-alias]
   (when desired-column-alias
-    (let [desired-alias->escaped (or (::desired-alias->escaped (get-in query stage-path))
-                                     (throw (ex-info "Stage is missing ::desired-alias->escaped"
-                                                     {:stage-path stage-path})))]
-      (or (get desired-alias->escaped desired-column-alias)
-          (throw (ex-info (format "Missing ::desired-alias->escaped for %s" (pr-str desired-column-alias))
-                          {:path                   stage-path
-                           :desired-alias          desired-column-alias
-                           :desired-alias->escaped desired-alias->escaped}))))))
+    (case (:lib/type (get-in query stage-path))
+      ;; for native stages just return desired-column-alias without escaping (see comment
+      ;; in [[add-escaped-desired-aliases]] for more info)
+      :mbql.stage/native
+      desired-column-alias
+
+      :mbql.stage/mbql
+      (let [desired-alias->escaped (or (::desired-alias->escaped (get-in query stage-path))
+                                       (throw (ex-info "Stage is missing ::desired-alias->escaped"
+                                                       {:stage-path stage-path})))]
+        (or (get desired-alias->escaped desired-column-alias)
+            (throw (ex-info (format "Missing ::desired-alias->escaped for %s" (pr-str desired-column-alias))
+                            {:path                   stage-path
+                             :desired-alias          desired-column-alias
+                             :desired-alias->escaped desired-alias->escaped})))))))
 
 (defn- escaped-join-alias [query stage-path join-alias]
   (when join-alias
@@ -182,7 +199,10 @@
                       ::source-table (source-table query path col)
                       ::source-alias (escaped-source-alias query path (:lib/source-column-alias col))))
 
-(defn- add-source-aliases [query path stage]
+(mu/defn- add-source-aliases :- ::lib.schema/stage.mbql
+  [query :- ::lib.schema/query
+   path  :- ::lib.walk/path
+   stage :- ::lib.schema/stage.mbql]
   (lib.util.match/replace stage
     ;; don't recurse into the metadata or joins -- [[lib.walk]] will take care of that recursion for us.
     (_ :guard (constantly (some (set &parents) [:lib/stage-metadata :joins])))
@@ -193,7 +213,7 @@
       (-> (update-field-ref query path &match col)
           (lib/update-options assoc ::resolved col)))
 
-    [:expression _opts expression-name]
+    :expression
     (lib/update-options &match assoc ::source-table ::none)
 
     :aggregation
@@ -375,10 +395,8 @@
 (mu/defn- add-alias-info** :- ::lib.schema/query
   [query :- ::lib.schema/query]
   (as-> query query
-    ;; next walk all stages and JOINs and for all returned columns add a map of lib/desired-column-alias =>
-    ;; escaped-desired-alias
-    (lib.walk/walk query (fn [query _path-type path stage-or-join]
-                           (add-escaped-desired-aliases query path stage-or-join)))
+    ;; next walk all stages and for all returned columns add a map of lib/desired-column-alias => escaped-desired-alias
+    (lib.walk/walk-stages query add-escaped-desired-aliases)
     ;; then walk all the stages AND joins and update the refs
     (lib.walk/walk query (fn [query path-type path stage-or-join]
                            (case path-type
