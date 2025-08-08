@@ -146,6 +146,7 @@ const DashboardContextProviderInner = forwardRef(
       isLoading,
       isLoadingWithoutCards,
       parameters,
+      isEmbeddingIframe,
 
       // redux actions
       addCardToDashboard,
@@ -195,7 +196,9 @@ const DashboardContextProviderInner = forwardRef(
       setTheme,
     } = useDashboardTheme(initTheme);
 
-    const shouldRenderAsNightMode = Boolean(isNightMode && isFullscreen);
+    const shouldRenderAsNightMode = Boolean(
+      isNightMode && (isFullscreen || isEmbeddingIframe),
+    );
 
     const handleError = useCallback(
       (error: unknown) => {
@@ -434,6 +437,7 @@ const DashboardContextProviderInner = forwardRef(
           isNavigatingBackToDashboard,
           parameters,
           parameterValues,
+          isEmbeddingIframe,
 
           // redux actions
           addCardToDashboard,
