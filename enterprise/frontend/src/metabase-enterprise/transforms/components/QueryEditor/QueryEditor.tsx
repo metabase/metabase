@@ -4,13 +4,14 @@ import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { DatasetQuery } from "metabase-types/api";
 
+import { useQueryMetadata } from "../../hooks/use-query-metadata";
+import { useQueryResults } from "../../hooks/use-query-results";
+import { useQueryState } from "../../hooks/use-query-state";
+
 import { EditorBody } from "./EditorBody";
 import { EditorHeader } from "./EditorHeader";
 import { EditorVisualization } from "./EditorVisualization";
 import S from "./QueryEditor.module.css";
-import { useQueryMetadata } from "./use-query-metadata";
-import { useQueryResults } from "./use-query-results";
-import { useQueryState } from "./use-query-state";
 
 type QueryEditorProps = {
   query: DatasetQuery;
