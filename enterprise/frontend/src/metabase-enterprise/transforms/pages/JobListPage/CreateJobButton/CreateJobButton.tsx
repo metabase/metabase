@@ -8,9 +8,9 @@ import { useCreateTransformJobMutation } from "metabase-enterprise/api";
 
 import { getJobUrl } from "../../../urls";
 
-const DEFAULT_SCHEDULE = "0 0 * * * ? *";
+const DEFAULT_SCHEDULE = "0 0 0 * * ? *";
 
-export function NewJobButton() {
+export function CreateJobButton() {
   const [createJob, { isLoading }] = useCreateTransformJobMutation();
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
   const dispatch = useDispatch();
