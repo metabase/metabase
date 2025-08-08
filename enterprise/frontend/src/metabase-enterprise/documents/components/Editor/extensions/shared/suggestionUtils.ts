@@ -1,6 +1,7 @@
 import { getIcon } from "metabase/lib/icon";
 import { getName } from "metabase/lib/name";
 import type {
+  Database,
   RecentCollectionItem,
   RecentItem,
   SearchModel,
@@ -49,6 +50,22 @@ export function buildRecentsMenuItems(
       id: recent.id,
       model: recent.model as SearchModel,
       action: () => onSelect(recent),
+    };
+  });
+}
+
+export function buildDbMenuItems(
+  dbs: Database[],
+  onSelect: (db: Database) => void,
+): MenuItem[] {
+  return dbs.map((db) => {
+    const iconData = getIcon({ model: "database" });
+    return {
+      icon: iconData.name,
+      label: db.name,
+      id: db.id,
+      model: "database",
+      action: () => onSelect(db),
     };
   });
 }

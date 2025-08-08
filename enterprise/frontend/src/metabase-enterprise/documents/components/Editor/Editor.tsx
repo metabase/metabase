@@ -27,6 +27,8 @@ import { DisableMetabotSidebar } from "./extensions/DisableMetabotSidebar";
 import { MentionExtension } from "./extensions/Mention/MentionExtension";
 import { MentionSuggestion } from "./extensions/Mention/MentionSuggestion";
 import { MetabotNode } from "./extensions/MetabotEmbed";
+import { MetabotMentionExtension } from "./extensions/MetabotMention/MetabotMentionExtension";
+import { MetabotMentionSuggestion } from "./extensions/MetabotMention/MetabotSuggestion";
 import { SmartLinkEmbed } from "./extensions/SmartLink";
 import { Markdown } from "./extensions/markdown/index";
 import { createSuggestionRenderer } from "./extensions/suggestionRenderer";
@@ -87,12 +89,32 @@ export const Editor: React.FC<EditorProps> = ({
         DisableMetabotSidebar,
         MentionExtension.configure({
           suggestion: {
+            allow: ({ state }) => {
+              const isMetabotBlock =
+                state.selection.$head.parent.type.name === "metabot";
+              return !isMetabotBlock;
+            },
             render: createSuggestionRenderer(MentionSuggestion),
           },
         }),
         CommandExtension.configure({
           suggestion: {
+            allow: ({ state }) => {
+              const isMetabotBlock =
+                state.selection.$head.parent.type.name === "metabot";
+              return !isMetabotBlock;
+            },
             render: createSuggestionRenderer(CommandSuggestion),
+          },
+        }),
+        MetabotMentionExtension.configure({
+          suggestion: {
+            allow: ({ state }) => {
+              const isMetabotBlock =
+                state.selection.$head.parent.type.name === "metabot";
+              return isMetabotBlock;
+            },
+            render: createSuggestionRenderer(MetabotMentionSuggestion),
           },
         }),
       ],

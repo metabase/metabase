@@ -1,10 +1,11 @@
 import { Node, mergeAttributes } from "@tiptap/core";
 import {
+  NodeViewContent,
   type NodeViewProps,
   NodeViewWrapper,
   ReactNodeViewRenderer,
 } from "@tiptap/react";
-import { memo, useCallback, useEffect, useRef, useState } from "react";
+import { memo, useRef, useState } from "react";
 import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
@@ -31,7 +32,8 @@ export const MetabotNode = Node.create<{
 }>({
   name: "metabot",
   group: "block",
-  atom: true,
+  content: "inline*",
+  marks: "",
   draggable: true,
   selectable: false,
 
@@ -77,16 +79,28 @@ export const MetabotNode = Node.create<{
 });
 
 export const MetabotComponent = memo(
-  ({ editor, getPos, deleteNode, updateAttributes, node }: NodeViewProps) => {
+  ({ editor, getPos, deleteNode, node }: NodeViewProps) => {
     const documentsDispatch = useDocumentsDispatch();
-    const inputRef = useRef<HTMLTextAreaElement>(null);
     const controllerRef = useRef<AbortController | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [errorText, setErrorText] = useState("");
     const [queryMetabot] = useLazyMetabotDocumentNodeQuery();
     const { text: prompt } = node.attrs;
 
-    const handleRunMetabot = useCallback(async () => {
+    const handleRunMetabot = async () => {
+      // eslint-disable-next-line no-console
+      console.log(node);
+      const promptExample = node.content.content
+        .map((n) => {
+          if (n.type.name === "smartLink") {
+            return `#${n.attrs.model}:${n.attrs.entityId}`;
+          }
+          return n.text;
+        })
+        .join("");
+      // eslint-disable-next-line no-console
+      console.log(promptExample);
+
       if (!prompt?.trim()) {
         return;
       }
@@ -175,32 +189,13 @@ export const MetabotComponent = memo(
         .run();
 
       deleteNode();
-    }, [prompt, editor, queryMetabot, deleteNode, getPos, documentsDispatch]);
+    };
 
     const handleStopMetabot = () => {
       controllerRef.current?.abort();
       setIsLoading(false);
       setErrorText("");
     };
-
-    useEffect(() => {
-      // Grab focus from TipTap editor and put it in textarea when component mounts
-      if (inputRef.current) {
-        setTimeout(() => {
-          inputRef.current?.focus();
-          const unfocus = (e: KeyboardEvent) => {
-            if (e.key === "Tab") {
-              inputRef.current?.blur();
-              editor.commands.focus();
-            }
-          };
-
-          inputRef.current?.addEventListener("keydown", unfocus);
-          return () =>
-            inputRef.current?.removeEventListener("keydown", unfocus);
-        }, 50); // Small delay to ensure focus is set after rendering
-      }
-    }, [inputRef, editor.commands]);
 
     return (
       <NodeViewWrapper as="span">
@@ -226,24 +221,7 @@ export const MetabotComponent = memo(
             <Icon name="close" />
           </Button>
           <Flex flex={1} direction="column" style={{ overflow: "auto" }}>
-            <textarea
-              disabled={isLoading}
-              ref={inputRef}
-              className={Styles.codeBlockTextArea}
-              value={prompt || ""}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && e.metaKey) {
-                  e.preventDefault();
-                  handleRunMetabot();
-                }
-                if (e.key === "Escape" && !prompt?.trim()) {
-                  deleteNode();
-                  editor.commands.focus();
-                }
-              }}
-              onChange={(e) => updateAttributes({ text: e.target.value })}
-              placeholder={t`Can you show me monthly sales data for the past year in a line chart?`}
-            />
+            <NodeViewContent className={Styles.codeBlockTextArea} />
           </Flex>
           <Flex px="md" pb="md" pt="sm" gap="sm">
             <Flex flex={1} my="auto">
@@ -285,12 +263,12 @@ export const MetabotComponent = memo(
       </NodeViewWrapper>
     );
   },
-  (prevProps, nextProps) => {
-    return (
-      prevProps.node.attrs.text === nextProps.node.attrs.text &&
-      prevProps.selected === nextProps.selected
-    );
-  },
+  // (prevProps, nextProps) => {
+  //   return (
+  //     prevProps.node.attrs.text === nextProps.node.attrs.text &&
+  //     prevProps.selected === nextProps.selected
+  //   );
+  // },
 );
 
 MetabotComponent.displayName = "MetabotComponent";
