@@ -1,10 +1,11 @@
+import type { EditorState } from "@tiptap/pm/state";
 import type { Editor as TiptapEditor } from "@tiptap/react";
 // eslint-disable-next-line import/no-unresolved
 import { BubbleMenu } from "@tiptap/react/menus";
 import type React from "react";
 import { t } from "ttag";
 
-import { Group } from "metabase/ui";
+import { Flex } from "metabase/ui";
 
 import { FormatButton } from "./FormatButton";
 
@@ -16,14 +17,62 @@ export const EditorBubbleMenu: React.FC<EditorBubbleMenuProps> = ({
   editor,
 }) => {
   return (
-    <BubbleMenu editor={editor}>
-      <Group
+    <BubbleMenu
+      editor={editor}
+      shouldShow={({
+        editor,
+        state,
+        from,
+        to,
+      }: {
+        editor: TiptapEditor;
+        state: EditorState;
+        from: number;
+        to: number;
+      }) => {
+        // Don't show bubble menu if nothing is selected
+        const { empty } = state.selection;
+        if (empty) {
+          return false;
+        }
+
+        // Don't show for code blocks
+        if (editor.isActive("codeBlock")) {
+          return false;
+        }
+
+        // Don't show bubble menu for certain node types
+        const disallowedNodes = ["cardEmbed", "metabot", "smartLink", "image"];
+
+        // Check if any disallowed node is active
+        for (const nodeName of disallowedNodes) {
+          if (editor.isActive(nodeName)) {
+            return false;
+          }
+        }
+
+        // Check if selection contains any disallowed nodes
+        let hasDisallowedNode = false;
+        state.doc.nodesBetween(from, to, (node) => {
+          if (
+            disallowedNodes.includes(node.type.name) ||
+            node.type.name === "codeBlock"
+          ) {
+            hasDisallowedNode = true;
+            return false; // Stop traversing
+          }
+        });
+
+        return !hasDisallowedNode;
+      }}
+    >
+      <Flex
         gap={4}
+        bg="white"
+        p="2px"
         style={{
-          background: "white",
           border: "1px solid var(--mb-color-border)",
           borderRadius: "6px",
-          padding: "2px",
           boxShadow: "0 2px 12px var(--mb-color-shadow)",
         }}
       >
@@ -99,7 +148,7 @@ export const EditorBubbleMenu: React.FC<EditorBubbleMenuProps> = ({
           tooltip={t`Code block`}
           icon="code_block"
         />
-      </Group>
+      </Flex>
     </BubbleMenu>
   );
 };
