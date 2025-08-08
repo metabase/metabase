@@ -1,5 +1,3 @@
-import type { DragEndEvent } from "@dnd-kit/core";
-import { arrayMove } from "@dnd-kit/sortable";
 import { useEffect, useState } from "react";
 import { useLatest } from "react-use";
 import { t } from "ttag";
@@ -88,37 +86,73 @@ export function useDetailViewSections(
   };
 
   const removeSection = (id: number) => {
-    setSections((sections) =>
-      sections.filter((section) => String(section.id) !== String(id)),
-    );
+    setSections((sections) => {
+      const sectionToRemove = sections.find(
+        (section) => String(section.id) === String(id),
+      );
+      const filteredSections = sections.filter(
+        (section) => String(section.id) !== String(id),
+      );
+
+      // If we're removing a section with fields, add them to the uncategorized section
+      if (sectionToRemove?.fields && sectionToRemove.fields.length > 0) {
+        const uncategorizedSection = filteredSections.find(
+          (s) => s.id === UNCATEGORIZED_SECTION_ID,
+        );
+        if (uncategorizedSection) {
+          const updatedUncategorizedSection = {
+            ...uncategorizedSection,
+            fields: [...uncategorizedSection.fields, ...sectionToRemove.fields],
+          };
+          return filteredSections.map((s) =>
+            s.id === UNCATEGORIZED_SECTION_ID ? updatedUncategorizedSection : s,
+          );
+        }
+      }
+
+      return filteredSections;
+    });
   };
 
   const updateSection = (
     id: number,
     update: Partial<ObjectViewSectionSettings>,
   ) => {
-    setSections((sections) =>
-      sections.map((s) =>
+    setSections((sections) => {
+      const sectionToUpdate = sections.find((s) => String(s.id) === String(id));
+
+      // If we're updating fields and removing some, add them to uncategorized section
+      if (update.fields && sectionToUpdate) {
+        const removedFields = sectionToUpdate.fields.filter(
+          (field) => !update.fields!.some((f) => f.field_id === field.field_id),
+        );
+
+        if (removedFields.length > 0) {
+          const uncategorizedSection = sections.find(
+            (s) => s.id === UNCATEGORIZED_SECTION_ID,
+          );
+          if (uncategorizedSection) {
+            const updatedUncategorizedSection = {
+              ...uncategorizedSection,
+              fields: [...uncategorizedSection.fields, ...removedFields],
+            };
+            return sections.map((s) => {
+              if (String(s.id) === String(id)) {
+                return { ...s, ...update };
+              }
+              if (s.id === UNCATEGORIZED_SECTION_ID) {
+                return updatedUncategorizedSection;
+              }
+              return s;
+            });
+          }
+        }
+      }
+
+      return sections.map((s) =>
         String(s.id) === String(id) ? { ...s, ...update } : s,
-      ),
-    );
-  };
-
-  const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
-
-    if (over && String(active.id) !== String(over.id)) {
-      setSections((sections) => {
-        const oldIndex = sections.findIndex(
-          (section) => String(section.id) === String(active.id),
-        );
-        const newIndex = sections.findIndex(
-          (section) => String(section.id) === String(over.id),
-        );
-
-        return arrayMove(sections, oldIndex, newIndex);
-      });
-    }
+      );
+    });
   };
 
   return {
@@ -127,7 +161,6 @@ export function useDetailViewSections(
     removeSection,
     updateSection,
     updateSections: setSections,
-    handleDragEnd,
   };
 }
 
