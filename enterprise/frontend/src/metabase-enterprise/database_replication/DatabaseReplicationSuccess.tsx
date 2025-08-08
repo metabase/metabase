@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { Button, Stack, Text, Title } from "metabase/ui";
+import { Box, Button, Stack, Text, Title } from "metabase/ui";
 
 export const DatabaseReplicationSuccess = ({
   onClose,
@@ -9,14 +9,9 @@ export const DatabaseReplicationSuccess = ({
 }) => {
   return (
     <Stack align="center">
-      <img
-        src="app/assets/img/metabot-cloud-96x96.svg"
-        alt="Metabot Cloud"
-        style={{
-          width: 96,
-          height: 96,
-        }}
-      />
+      <Box h={96} w={96}>
+        <img src="app/assets/img/metabot-cloud-96x96.svg" alt="Metabot Cloud" />
+      </Box>
 
       <Stack align="center">
         <Title>{t`Replication in progress`}</Title>
@@ -25,15 +20,7 @@ export const DatabaseReplicationSuccess = ({
         </Text>
       </Stack>
 
-      <Button
-        onClick={onClose}
-        size="md"
-        variant="filled"
-        style={{
-          minWidth: 120,
-          marginTop: "1rem",
-        }}
-      >
+      <Button onClick={onClose} size="md" variant="filled" miw={120} mt="md">
         {t`Done`}
       </Button>
     </Stack>

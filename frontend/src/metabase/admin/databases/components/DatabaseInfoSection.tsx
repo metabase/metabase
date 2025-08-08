@@ -1,4 +1,5 @@
 import Markdown from "metabase/common/components/Markdown";
+import type { PropsWithChildren } from "react";
 import {
   Box,
   Card,
@@ -12,7 +13,6 @@ import {
 interface DatabaseInfoSectionProps extends FlexProps {
   name: string;
   description: string;
-  children: React.ReactNode;
   condensed?: boolean;
 }
 
@@ -22,9 +22,9 @@ export const DatabaseInfoSection = ({
   children,
   condensed = false,
   ...props
-}: DatabaseInfoSectionProps) => (
+}: PropsWithChildren<DatabaseInfoSectionProps>) => (
   <Flex gap="lg" w="100%" direction={{ sm: "row", base: "column" }} {...props}>
-    <Stack w="100%" maw={{ sm: "16rem" }} mt="md" style={{ flexShrink: 0 }}>
+    <Stack w="100%" maw={{ sm: "md" }} mt="md" style={{ flexShrink: 0 }}>
       <Text size="lg" fw="700" mb="xs" lh={1.4}>
         {name}
       </Text>
@@ -36,7 +36,7 @@ export const DatabaseInfoSection = ({
         bg="accent-gray-light"
         shadow="none"
         style={{ flexGrow: 0 }}
-        px="1.5rem"
+        px="lg"
         py={condensed ? "1.125rem" : "1.875rem"}
       >
         {children}
@@ -53,10 +53,6 @@ export const DatabaseInfoSectionDivider = ({
   condensed?: boolean;
 }) => {
   return (
-    <Divider
-      w="calc(100% + 3rem)"
-      ml="-1.5rem"
-      my={condensed ? "1rem" : "1.5rem"}
-    />
+    <Divider w="calc(100% + 3rem)" ml="-1.5rem" my={condensed ? "md" : "lg"} />
   );
 };

@@ -62,7 +62,7 @@ export const DatabaseReplicationModal = ({
       })
         .unwrap()
         .then(handleResponse)
-        .catch((error) => {
+        .catch((error: unknown) => {
           isRTKQueryError(error) && handleDWHReplicationFieldError(error.data);
         });
     },
@@ -79,7 +79,7 @@ export const DatabaseReplicationModal = ({
         .then(() => {
           setSetupStep("setting-up");
         })
-        .catch((error) => {
+        .catch((error: unknown) => {
           isRTKQueryError(error) && handleDWHReplicationFieldError(error.data);
         }),
     [createDatabaseReplication, database.id, setSetupStep],
@@ -108,7 +108,7 @@ export const DatabaseReplicationModal = ({
         <DatabaseReplicationSettingUp
           database={database}
           proceed={() => setSetupStep("success")}
-        ></DatabaseReplicationSettingUp>
+        />
       ) : setupStep === "success" ? (
         <DatabaseReplicationSuccess onClose={onClose} />
       ) : undefined}

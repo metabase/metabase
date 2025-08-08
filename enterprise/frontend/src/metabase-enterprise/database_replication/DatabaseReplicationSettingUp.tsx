@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { t } from "ttag";
 
-import { Stack, Text, Title } from "metabase/ui";
+import { Box, Stack, Text, Title } from "metabase/ui";
 import { useGetDatabaseReplicationQuery } from "metabase-enterprise/api/database-replication";
 import type { Database } from "metabase-types/api";
 
@@ -42,14 +42,9 @@ export const DatabaseReplicationSettingUp = ({
 
   return (
     <Stack align="center">
-      <img
-        src="app/assets/img/metabot-cloud-96x96.svg"
-        alt="Metabot Cloud"
-        style={{
-          width: 96,
-          height: 96,
-        }}
-      />
+      <Box h={96} w={96}>
+        <img src="app/assets/img/metabot-cloud-96x96.svg" alt="Metabot Cloud" />
+      </Box>
 
       <Stack align="center">
         <Title>{t`Setting up, please wait`}</Title>
