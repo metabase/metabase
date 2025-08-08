@@ -24,7 +24,7 @@ export const DatabaseInfoSection = ({
   ...props
 }: PropsWithChildren<DatabaseInfoSectionProps>) => (
   <Flex gap="lg" w="100%" direction={{ sm: "row", base: "column" }} {...props}>
-    <Stack w="100%" maw={{ sm: "md" }} mt="md" style={{ flexShrink: 0 }}>
+    <Stack w="100%" maw={{ sm: "16rem" }} mt="md" style={{ flexShrink: 0 }}>
       <Text size="lg" fw="700" mb="xs" lh={1.4}>
         {name}
       </Text>
