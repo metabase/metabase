@@ -1,7 +1,8 @@
 (ns metabase-enterprise.transforms.api.transform-job
   (:require
-   [metabase-enterprise.transforms.jobs :as jobs]
+   [metabase-enterprise.transforms.jobs :as transforms.jobs]
    [metabase-enterprise.transforms.models.transform-job :as transform-job]
+   [metabase-enterprise.transforms.schedule :as transforms.schedule]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
@@ -44,6 +45,7 @@
                                            {:name name
                                             :description description
                                             :schedule schedule})]
+    (transforms.schedule/initialize-job! job)
     ;; Add tag associations if provided
     (when (seq tag_ids)
       (t2/insert! :transform_job_tags
@@ -87,6 +89,8 @@
                   schedule (assoc :schedule schedule))]
     (when (seq updates)
       (t2/update! :model/TransformJob job-id updates)))
+  (when schedule
+    (transforms.schedule/update-job! job-id schedule))
   ;; Update tag associations if provided
   (when (some? tag_ids)
     ;; Delete existing associations
@@ -109,6 +113,7 @@
   (api/check-superuser)
   (api/check-404 (t2/select-one :model/TransformJob :id job-id))
   (t2/delete! :model/TransformJob :id job-id)
+  (transforms.schedule/delete-job! job-id)
   api/generic-204-no-content)
 
 (api.macros/defendpoint :post "/:job-id/execute"
@@ -117,7 +122,7 @@
   (log/info "Manual execution of transform job" job-id)
   (api/check-superuser)
   (let [job (api/check-404 (t2/select-one :model/TransformJob :id job-id))]
-    (u.jvm/in-virtual-thread* (jobs/execute-jobs! [job-id] {:run-method :manual})))
+    (u.jvm/in-virtual-thread* (transforms.jobs/execute-jobs! [job-id] {:run-method :manual})))
   {:message    "Job execution started"
    :job_run_id (str "stub-" job-id "-" (System/currentTimeMillis))})
 
