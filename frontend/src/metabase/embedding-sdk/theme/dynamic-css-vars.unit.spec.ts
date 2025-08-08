@@ -7,7 +7,8 @@ describe("applyColorOperation", () => {
 
     const result = applyColorOperation(baseColor, operation);
 
-    // Lightening red should make it different and be a valid color format
+    // Lightening red by 20% should produce a specific lighter red
+    expect(result).toBe("hsl(0, 100%, 60%)");
     expect(result).not.toBe(baseColor);
     expect(result).toMatch(/^(#[0-9a-fA-F]{6}|hsl\(|rgb\()/); // Valid color format
   });
@@ -18,7 +19,8 @@ describe("applyColorOperation", () => {
 
     const result = applyColorOperation(baseColor, operation);
 
-    // Darkening red should make it different and be a valid color format
+    // Darkening red by 20% should produce a specific darker red
+    expect(result).toBe("hsl(0, 100%, 40%)");
     expect(result).not.toBe(baseColor);
     expect(result).toMatch(/^(#[0-9a-fA-F]{6}|hsl\(|rgb\()/); // Valid color format
   });
@@ -29,7 +31,8 @@ describe("applyColorOperation", () => {
 
     const result = applyColorOperation(baseColor, operation);
 
-    // Alpha should return a color with alpha channel
+    // Alpha operation should produce red with 50% opacity
+    expect(result).toBe("rgba(255, 0, 0, 0.5)");
     expect(result).toMatch(/^(rgba?\(|hsla\()/);
     expect(result).toContain("0.5"); // Should contain the alpha value
   });

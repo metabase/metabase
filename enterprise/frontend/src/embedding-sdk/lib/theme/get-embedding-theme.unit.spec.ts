@@ -7,8 +7,8 @@ import { getEmbeddingThemeOverride } from "./get-embedding-theme";
 
 describe("Transform Embedding Theme Override", () => {
   it("should transform MetabaseTheme to EmbeddingThemeOverride", () => {
-    const theme = getEmbeddingThemeOverride(
-      {
+    const theme = getEmbeddingThemeOverride({
+      theme: {
         lineHeight: 1.5,
         fontSize: "2rem",
         fontFamily: "Roboto",
@@ -26,8 +26,9 @@ describe("Transform Embedding Theme Override", () => {
           },
         },
       },
-      "Roboto",
-    );
+      font: "Roboto",
+      appColors: {},
+    });
 
     expect(theme).toEqual({
       lineHeight: 1.5,

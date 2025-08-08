@@ -20,9 +20,26 @@ describe("getDerivedSdkDefaultColors", () => {
     expect(result.colors?.["bg-white"]).toEqual(colorTuple("#ffffff"));
     expect(result.colors?.["text-dark"]).toEqual(colorTuple("#333333"));
 
-    // Should include derived colors based on the real configuration
+    // Should include derived colors with specific expected values
+    expect(result.colors?.["background-hover"]).toEqual(
+      colorTuple("hsl(0, 0%, 95%)"),
+    );
+    expect(result.colors?.["background-disabled"]).toEqual(
+      colorTuple("hsl(0, 0%, 90%)"),
+    );
+    expect(result.colors?.["text-secondary"]).toEqual(
+      colorTuple("rgba(51, 51, 51, 0.7)"),
+    );
+    expect(result.colors?.["text-tertiary"]).toEqual(
+      colorTuple("rgba(51, 51, 51, 0.5)"),
+    );
+
+    // Should include all expected derived colors
     expect(result.colors).toBeDefined();
-    expect(typeof result.colors).toBe("object");
+    expect(Object.keys(result.colors || {})).toContain("background-hover");
+    expect(Object.keys(result.colors || {})).toContain("background-disabled");
+    expect(Object.keys(result.colors || {})).toContain("text-secondary");
+    expect(Object.keys(result.colors || {})).toContain("text-tertiary");
   });
 
   it("should preserve existing colors", () => {
