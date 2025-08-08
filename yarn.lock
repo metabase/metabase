@@ -4261,10 +4261,10 @@
     "@tiptap/extensions" "^3.0.7"
     "@tiptap/pm" "^3.0.7"
 
-"@tiptap/suggestion@^3.0.7":
-  version "3.0.7"
-  resolved "https://registry.yarnpkg.com/@tiptap/suggestion/-/suggestion-3.0.7.tgz#a513bd94d7fba90fddc83cabb8a7a4c35501616d"
-  integrity sha512-HSMvzAejdvcnVaRZOhXJWAvQqaQs3UYDZaA0ZnzgiJ/sNSbtTyn9XVbX6MfVNYrbtBua4iKaXuJwp6CP0KdHQg==
+"@tiptap/suggestion@^3.0.9":
+  version "3.0.9"
+  resolved "https://registry.yarnpkg.com/@tiptap/suggestion/-/suggestion-3.0.9.tgz#7b100c8f30963cfe7151de07a8e9e69a08ab5542"
+  integrity sha512-irthqfUybezo3IwR6AXvyyTOtkzwfvvst58VXZtTnR1nN6NEcrs3TQoY3bGKGbN83bdiquKh6aU2nLnZfAhoXg==
 
 "@tokenizer/token@^0.3.0":
   version "0.3.0"
@@ -20800,10 +20800,17 @@ tinyspy@^3.0.0:
   resolved "https://registry.yarnpkg.com/tinyspy/-/tinyspy-3.0.2.tgz#86dd3cf3d737b15adcf17d7887c84a75201df20a"
   integrity sha512-n1cw8k1k0x4pgA2+9XrOkFydTerNcJ1zWCO5Nn9scWHTD+5tp8dghT2x1uduQePZTZgd3Tupf+x9BxJjeJi77Q==
 
-tippy.js@^6.3.1, tippy.js@^6.3.5:
+tippy.js@^6.3.1:
   version "6.3.5"
   resolved "https://registry.yarnpkg.com/tippy.js/-/tippy.js-6.3.5.tgz#cbc99d34f87ccc127e6460032b86c8d47971d38f"
   integrity sha512-B9hAQ5KNF+jDJRg6cRysV6Y3J+5fiNfD60GuXR5TP0sfrcltpgdzVc7f1wMtjQ3W0+Xsy80CDvk0Z+Vr0cM4sQ==
+  dependencies:
+    "@popperjs/core" "^2.9.0"
+
+tippy.js@^6.3.7:
+  version "6.3.7"
+  resolved "https://registry.yarnpkg.com/tippy.js/-/tippy.js-6.3.7.tgz#8ccfb651d642010ed9a32ff29b0e9e19c5b8c61c"
+  integrity sha512-E1d3oP2emgJ9dRQZdf3Kkn0qJgI6ZLpyS5z6ZkY1DF3kaQaBsGZsndEpHwx+eC+tYM41HaSNvNtLx8tU57FzTQ==
   dependencies:
     "@popperjs/core" "^2.9.0"
 

@@ -18,16 +18,19 @@ import { useSelector } from "metabase/lib/redux";
 import { getSetting } from "metabase/selectors/settings";
 import { Box, Loader } from "metabase/ui";
 
-import { CommandPlugin } from "./CommandPlugin";
 import styles from "./Editor.module.css";
 import { EditorBubbleMenu } from "./EditorBubbleMenu";
-import { MentionPlugin } from "./MentionPlugin";
 import { CardEmbed } from "./extensions/CardEmbed";
+import { CommandExtension } from "./extensions/Command/CommandExtension";
+import { CommandSuggestion } from "./extensions/Command/CommandSuggestion";
 import { DisableMetabotSidebar } from "./extensions/DisableMetabotSidebar";
 import { EmojiExtension } from "./extensions/Emojis";
+import { MentionExtension } from "./extensions/Mention/MentionExtension";
+import { MentionSuggestion } from "./extensions/Mention/MentionSuggestion";
 import { MetabotNode } from "./extensions/MetabotEmbed";
 import { SmartLinkEmbed } from "./extensions/SmartLink";
 import { Markdown } from "./extensions/markdown/index";
+import { createSuggestionRenderer } from "./extensions/suggestionRenderer";
 import { useCardEmbedsTracking, useQuestionSelection } from "./hooks";
 import type { CardEmbedRef } from "./types";
 
@@ -73,7 +76,7 @@ export const Editor: React.FC<EditorProps> = ({
           },
         }),
         Placeholder.configure({
-          placeholder: t`Start writing, press "/" to insert a chart, or "@" to insert a reference...`,
+          placeholder: t`Start writing, press "/" for formatting, or "@" to insert a chart...`,
         }),
         Markdown,
         CardEmbed.configure({
@@ -84,6 +87,16 @@ export const Editor: React.FC<EditorProps> = ({
         MetabotNode,
         DisableMetabotSidebar,
         EmojiExtension,
+        MentionExtension.configure({
+          suggestion: {
+            render: createSuggestionRenderer(MentionSuggestion),
+          },
+        }),
+        CommandExtension.configure({
+          suggestion: {
+            render: createSuggestionRenderer(CommandSuggestion),
+          },
+        }),
       ],
       autofocus: false,
       immediatelyRender: false,
@@ -204,8 +217,6 @@ export const Editor: React.FC<EditorProps> = ({
       >
         <EditorContent editor={editor} />
         <EditorBubbleMenu editor={editor} />
-        <MentionPlugin editor={editor} />
-        <CommandPlugin editor={editor} />
       </Box>
     </Box>
   );
