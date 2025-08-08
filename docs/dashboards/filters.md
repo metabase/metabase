@@ -205,7 +205,7 @@ You might want to require a filter value if:
 To edit a filter's settings:
 
 1. Click the **pencil** icon to enter dashboard editing mode.
-2. Click the **gear** icon on the filter you want to edit.
+2. Click the filter you want to edit.
 
 From this filter editing view, you can wire up dashboard cards to the filter, or use the filter settings sidebar to:
 
@@ -219,14 +219,14 @@ From this filter editing view, you can wire up dashboard cards to the filter, or
 
 ### Rename filter
 
-1. In dashboard edit mode, click your filter's **gear** icon.
+1. In dashboard edit mode, click the fiter you want to edit.
 2. Change the label text.
 
 Renaming the filter only affects the filter's display; the label has no effect on which columns Metabase filters.
 
 ### Set filter input type
 
-1. In dashboard edit mode, click your filter's **gear** icon.
+1. In dashboard edit mode, click the fiter you want to edit.
 2. From the filter settings sidebar, set **How should people filter on this column?**:
 
 - [Dropdown list](#dropdown-list)
@@ -256,14 +256,14 @@ Useful for looking up partial matches (such as the ["contains" filter](#text-or-
 
 ### Set a default filter value
 
-1. In dashboard edit mode, click your filter's **gear** icon.
+1. In dashboard edit mode, click the filter you want to edit.
 2. From the sidebar, choose a value from the **Default value** input field.
 
 For example, you might want to set a default filter value like "Active", so that when people load your dashboard, they only see data for "Active" records (not "Inactive", "Cancelled", etc).
 
 ### Remove a filter
 
-1. In dashboard edit mode, click your filter's **gear** icon.
+1. In dashboard edit mode, click the fiter you want to edit.
 2. From the sidebar, click **Remove**.
 
 If you accidentally remove a filter, just click **Cancel** in the top-right to exit dashboard edit mode without saving your changes.
@@ -274,14 +274,14 @@ In dashboard edit mode, click on the grabber handle (six dots) on the left side 
 
 ### Make a multi-select filter
 
-1. In dashboard edit mode, click your filter's **gear** icon.
+1. In dashboard edit mode, click the fiter you want to edit.
 2. From the sidebar, find **People can pick** and select "Multiple values".
 
 A multi-select filter with the widget type [Dropdown list](#dropdown-list) or [Search box](#search-box) will display a list of values with checkboxes.
 
 ### Change a filter's selectable values
 
-1. In dashboard edit mode, click your filter's **gear** icon.
+1. In dashboard edit mode, click the fiter you want to edit.
 2. From the sidebar, find **How should users filter on this column?**.
 3. Select "Dropdown list".\*
 4. Click **Edit** (to the right of "Dropdown list") to specify where the values should come from:
