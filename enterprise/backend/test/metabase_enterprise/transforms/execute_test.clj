@@ -64,7 +64,7 @@
                                                   :source {:type :query
                                                            :query (lib.convert/->legacy-MBQL t2-query)}
                                                   :target target2}]
-                (transforms.execute/execute-transforms! [t1 t2] {:run-method :cron})
+                (transforms.execute/execute-mbql-transform! t2 {:run-method :cron})
                 (let [table2 (wait-for-table table2-name 10000)
                       check-query (lib/aggregate (make-query table2) (lib/count))]
                   (is (=? {:data {:cols [{:name "count"}]
