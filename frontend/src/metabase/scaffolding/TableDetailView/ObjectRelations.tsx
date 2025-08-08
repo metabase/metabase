@@ -1,5 +1,6 @@
 import cx from "classnames";
 import { inflect } from "inflection";
+import { useMemo } from "react";
 import { t } from "ttag";
 
 import IconBorder from "metabase/common/components/IconBorder";
@@ -28,15 +29,22 @@ export function Relationships({
   disableClicks,
   relationshipsDirection = "vertical",
 }: RelationshipsProps & BoxProps): JSX.Element | null {
+  const fkCountsByTable = useMemo(
+    () => foreignKeyCountsByOriginTable(tableForeignKeys),
+    [tableForeignKeys],
+  );
+
+  const sortedForeignTables = useMemo(
+    () =>
+      tableForeignKeys?.toSorted((a, b) =>
+        extractDisplayName(a).localeCompare(extractDisplayName(b)),
+      ),
+    [tableForeignKeys],
+  );
+
   if (!tableForeignKeys || !tableForeignKeys?.length) {
     return null;
   }
-
-  const fkCountsByTable = foreignKeyCountsByOriginTable(tableForeignKeys);
-
-  const sortedForeignTables = tableForeignKeys.toSorted((a, b) =>
-    extractDisplayName(a).localeCompare(extractDisplayName(b)),
-  );
 
   return (
     <Flex
@@ -45,7 +53,7 @@ export function Relationships({
       gap="md"
       wrap={relationshipsDirection === "horizontal" ? "wrap" : "nowrap"}
     >
-      {sortedForeignTables.map((fk) => (
+      {sortedForeignTables?.map((fk) => (
         <Relationship
           key={`${fk.origin_id}-${fk.destination_id}`}
           fk={fk}
