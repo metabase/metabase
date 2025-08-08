@@ -1699,6 +1699,7 @@
   enterprise/metabot-v3
   {:team "Metabot"
    :api #{metabase-enterprise.metabot-v3.api
+          metabase-enterprise.metabot-v3.client
           metabase-enterprise.metabot-v3.core
           metabase-enterprise.metabot-v3.init
           metabase-enterprise.metabot-v3.tools.api}
@@ -1796,7 +1797,8 @@
            search
            settings
            util
-           enterprise/llm}}
+           enterprise/llm
+           enterprise/metabot-v3}}
 
   enterprise/serialization
   {:team "Workflows"
