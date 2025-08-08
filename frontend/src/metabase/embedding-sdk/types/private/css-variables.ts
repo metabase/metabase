@@ -1,11 +1,8 @@
-import type { SemanticColorKey } from "metabase/embedding-sdk/theme/embedding-color-palette";
-import type { ColorName } from "metabase/lib/colors/types";
-
-export type SourceColorKey = ColorName | SemanticColorKey;
+import type { MetabaseColor } from "metabase/embedding-sdk/theme";
 
 export type ColorOperation = {
   /** The color to use as a source for generating the CSS variable. **/
-  source: SourceColorKey;
+  source: MetabaseColor;
 
   /** Lightens the color by the given amount. **/
   lighten?: number;
@@ -20,9 +17,9 @@ export type ColorOperation = {
 /**
  * Applies different color operations to light and dark themes.
  */
-export type DynamicCssVarColorDefinition = {
+export type DynamicColorDefinition = {
   light?: ColorOperation;
   dark?: ColorOperation;
 };
 
-export type DynamicCssVarConfig = Record<string, DynamicCssVarColorDefinition>;
+export type DynamicCssVarConfig = Record<string, DynamicColorDefinition>;

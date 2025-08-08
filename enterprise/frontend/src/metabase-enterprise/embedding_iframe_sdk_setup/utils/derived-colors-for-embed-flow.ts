@@ -1,0 +1,88 @@
+import type { MetabaseColors, MetabaseTheme } from "embedding-sdk";
+import type { MetabaseColor } from "metabase/embedding-sdk/theme";
+import { applyColorOperation } from "metabase/embedding-sdk/theme/dynamic-css-vars";
+import { SDK_TO_MAIN_APP_COLORS_MAPPING } from "metabase/embedding-sdk/theme/embedding-color-palette";
+import { colors, isDark } from "metabase/lib/colors";
+import type { ColorName, ColorPalette } from "metabase/lib/colors/types";
+
+import { EMBED_FLOW_DERIVED_COLORS_CONFIG } from "./dynamic-sdk-color-defaults";
+
+/**
+ * Generate derived colors for SDK colors that the user did not define in the embed flow.
+ * This is a breaking-change-free implementation that works with MetabaseTheme format
+ * instead of MantineThemeOverride.
+ *
+ * @param theme The current MetabaseTheme with user-defined colors
+ * @param appColors Optional application colors from instance settings
+ * @returns A new MetabaseTheme with derived colors added
+ */
+export function getDerivedDefaultColorsForEmbedFlow(
+  theme: MetabaseTheme,
+  appColors: ColorPalette = {},
+): MetabaseTheme {
+  const userColors = theme.colors ?? {};
+
+  const getSourceColor = (colorName: MetabaseColor): string => {
+    // Chart colors consists of 8 colors, so they can't be derived.
+    if (colorName === "charts") {
+      throw new Error("chart color must not be used as a source color");
+    }
+
+    // If the SDK user has defined the color, use them.
+    const userColor = userColors[colorName];
+    if (userColor) {
+      return userColor;
+    }
+
+    const appColorNames = SDK_TO_MAIN_APP_COLORS_MAPPING[colorName];
+
+    // If the instance has white-labeled colors, use them
+    for (const appColorName of appColorNames) {
+      const appColor = appColors[appColorName as ColorName];
+
+      if (appColor) {
+        return appColor;
+      }
+    }
+
+    // As a last resort, fallback to the default Metabase color object
+    return colors[colorName as ColorName];
+  };
+
+  const backgroundColor = getSourceColor("background");
+  const isDarkTheme = backgroundColor && isDark(backgroundColor);
+
+  const derivedColors: MetabaseColors = { ...userColors };
+
+  // Apply theme-aware derived colors for SDK colors not defined by the user
+  for (const [_colorKey, config] of Object.entries(
+    EMBED_FLOW_DERIVED_COLORS_CONFIG,
+  )) {
+    const colorKey = _colorKey as MetabaseColor;
+
+    // Do not derive colors if the user has already defined them
+    if (userColors[colorKey]) {
+      continue;
+    }
+
+    const operation = isDarkTheme ? config.dark : config.light;
+    if (!operation) {
+      continue;
+    }
+
+    // Derive chart color is not supported, as `charts` contain 8 chart colors.
+    if (colorKey === "charts") {
+      continue;
+    }
+
+    const sourceColor = getSourceColor(operation.source);
+    const derivedColor = applyColorOperation(sourceColor, operation);
+
+    derivedColors[colorKey] = derivedColor;
+  }
+
+  return {
+    ...theme,
+    colors: derivedColors,
+  };
+}
