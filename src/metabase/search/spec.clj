@@ -13,7 +13,8 @@
 
 (def search-models
   "Set of search model string names."
-  #{"dashboard" "table" "dataset" "segment" "collection" "database" "action" "indexed-entity" "metric" "card" "document"})
+  (cond->  #{"dashboard" "table" "dataset" "segment" "collection" "database" "action" "indexed-entity" "metric" "card"}
+    config/ee-available? (conj "document")))
 
 (def ^:private search-model->toucan-model
   (into {}

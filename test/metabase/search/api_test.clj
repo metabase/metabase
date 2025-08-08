@@ -7,6 +7,7 @@
    [clojure.test :refer :all]
    [metabase.analytics.core :as analytics]
    [metabase.collections.models.collection :as collection]
+   [metabase.config.core :as config]
    [metabase.content-verification.models.moderation-review :as moderation-review]
    [metabase.indexed-entities.models.model-index :as model-index]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
@@ -399,7 +400,8 @@
   (let [search-term "query-model-set"]
     (with-search-items-in-root-collection search-term
       (testing "should returns a list of models that search result will return"
-        (is (= #{"dashboard" "table" "dataset" "segment" "collection" "database" "action" "metric" "card"}
+        (is (= (cond-> #{"dashboard" "table" "dataset" "segment" "collection" "database" "action" "metric" "card"}
+                 config/ee-available? (conj "document"))
                (get-available-models)))
         (is (= #{"dashboard" "table" "dataset" "segment" "collection" "database" "action" "metric" "card"}
                (get-available-models :q search-term))))
@@ -1452,7 +1454,8 @@
                                                              :type     :query
                                                              :model_id model-id})]
         (testing "`archived-string` is 'false'"
-          (is (= #{"dashboard" "table" "dataset" "segment" "collection" "database" "action" "metric" "card"}
+          (is (= (cond-> #{"dashboard" "table" "dataset" "segment" "collection" "database" "action" "metric" "card"}
+                   config/ee-available? (conj "document"))
                  (get-available-models :archived "false"))))
         (testing "`archived-string` is 'true'"
           (is (= #{"action"}
