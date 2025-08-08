@@ -1,5 +1,5 @@
 import { useDisclosure } from "@mantine/hooks";
-import { type FormEvent, useState } from "react";
+import { type ChangeEvent, type FormEvent, useMemo, useState } from "react";
 import { msgid, ngettext, t } from "ttag";
 
 import {
@@ -10,11 +10,12 @@ import {
   Group,
   Popover,
   Stack,
+  TextInput,
 } from "metabase/ui";
 import type { Transform, TransformId } from "metabase-types/api";
 
 import { FilterButton } from "../FilterButton";
-import { MIN_WIDTH } from "../constants";
+import { MAX_HEIGHT, MIN_WIDTH } from "../constants";
 
 type TransformFilterWidgetProps = {
   transformIds: TransformId[];
@@ -84,7 +85,13 @@ function TransformFilterForm({
   onSubmit,
 }: TransformFilterFormProps) {
   const [transformIds, setTransformIds] = useState(initialTransformIds);
+  const [searchValue, setSearchValue] = useState("");
   const isValid = transformIds.length > 0;
+
+  const filteredTransforms = useMemo(
+    () => filterTransforms(transforms, searchValue),
+    [transforms, searchValue],
+  );
 
   const handleChange = (values: string[]) => {
     setTransformIds(values.map(getTransformId));
@@ -97,22 +104,39 @@ function TransformFilterForm({
     }
   };
 
+  const handleSearchChange = (event: ChangeEvent<HTMLInputElement>) => {
+    setSearchValue(event.target.value);
+  };
+
   return (
     <Box component="form" miw={MIN_WIDTH} onSubmit={handleSubmit}>
-      <Checkbox.Group
-        value={transformIds.map(getTransformIdValue)}
-        onChange={handleChange}
-      >
-        <Stack p="md">
-          {transforms.map((tag) => (
-            <Checkbox
-              key={tag.id}
-              value={getTransformIdValue(tag.id)}
-              label={tag.name}
-            />
-          ))}
-        </Stack>
-      </Checkbox.Group>
+      <Box px="md" pt="md">
+        <TextInput
+          value={searchValue}
+          placeholder={t`Search the list`}
+          onChange={handleSearchChange}
+        />
+      </Box>
+      {filteredTransforms.length > 0 ? (
+        <Box maw={MAX_HEIGHT} style={{ overflow: "auto" }}>
+          <Checkbox.Group
+            value={transformIds.map(getTransformIdValue)}
+            onChange={handleChange}
+          >
+            <Stack p="md">
+              {filteredTransforms.map((tag) => (
+                <Checkbox
+                  key={tag.id}
+                  value={getTransformIdValue(tag.id)}
+                  label={tag.name}
+                />
+              ))}
+            </Stack>
+          </Checkbox.Group>
+        </Box>
+      ) : (
+        <Box p="md" ta="center">{t`No transforms found.`}</Box>
+      )}
       <Divider />
       <Group p="md" justify="end">
         <Button type="submit" variant="filled" disabled={!isValid}>
@@ -129,4 +153,11 @@ function getTransformId(value: string) {
 
 function getTransformIdValue(transformId: TransformId) {
   return String(transformId);
+}
+
+function filterTransforms(transforms: Transform[], searchValue: string) {
+  const searchValueLowerCase = searchValue.toLowerCase();
+  return transforms.filter((transform) =>
+    transform.name.toLowerCase().includes(searchValueLowerCase),
+  );
 }
