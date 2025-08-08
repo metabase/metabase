@@ -263,6 +263,7 @@ export const tokenFeatures = [
   "development_mode",
   "etl_connections",
   "etl_connections_pg",
+  "transforms",
 ] as const;
 
 export type TokenFeature = (typeof tokenFeatures)[number];
