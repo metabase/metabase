@@ -3,19 +3,60 @@ import { t } from "ttag";
 
 import { AdminContentTable } from "metabase/common/components/AdminContentTable";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { PaginationControls } from "metabase/common/components/PaginationControls";
 import { useDispatch } from "metabase/lib/redux";
-import { Card } from "metabase/ui";
+import { Card, Group, Stack } from "metabase/ui";
 import { useListTransformExecutionsQuery } from "metabase-enterprise/api";
 import type { TransformExecution } from "metabase-types/api";
 
 import { ListEmptyState } from "../../../components/ListEmptyState";
-import { getTransformUrl } from "../../../urls";
+import { getRunListUrl, getTransformUrl } from "../../../urls";
 import { formatStatus, formatTimestamp, formatTrigger } from "../../../utils";
 
 import S from "./RunList.module.css";
 
-export function RunList() {
-  const { data, isLoading, error } = useListTransformExecutionsQuery({});
+const PAGE_SIZE = 50;
+
+type RunListProps = {
+  page: number;
+};
+
+export function RunList({ page }: RunListProps) {
+  const { data, isLoading, error } = useListTransformExecutionsQuery({
+    offset: page * PAGE_SIZE,
+    limit: PAGE_SIZE,
+  });
+  if (!data || isLoading || error != null) {
+    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
+  }
+
+  const { data: executions, total } = data;
+  const hasPagination = total > PAGE_SIZE;
+  if (executions.length === 0) {
+    return <ListEmptyState label={t`No runs yet`} />;
+  }
+
+  return (
+    <Stack gap="lg">
+      <RunTable executions={executions} />
+      {hasPagination && (
+        <Group justify="end">
+          <RunTablePaginationControls
+            page={page}
+            itemsLength={executions.length}
+            total={total}
+          />
+        </Group>
+      )}
+    </Stack>
+  );
+}
+
+type RunTableProps = {
+  executions: TransformExecution[];
+};
+
+function RunTable({ executions }: RunTableProps) {
   const dispatch = useDispatch();
 
   const handleRowClick = (execution: TransformExecution) => {
@@ -23,15 +64,6 @@ export function RunList() {
       dispatch(push(getTransformUrl(execution.transform.id)));
     }
   };
-
-  if (!data || isLoading || error != null) {
-    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
-  }
-
-  const { data: executions } = data;
-  if (executions.length === 0) {
-    return <ListEmptyState label={t`No runs yet`} />;
-  }
 
   return (
     <Card p={0} shadow="none" withBorder>
@@ -61,5 +93,38 @@ export function RunList() {
         ))}
       </AdminContentTable>
     </Card>
+  );
+}
+
+type RunTablePaginationControlsProps = {
+  page: number;
+  itemsLength: number;
+  total: number;
+};
+
+function RunTablePaginationControls({
+  page,
+  itemsLength,
+  total,
+}: RunTablePaginationControlsProps) {
+  const dispatch = useDispatch();
+
+  const handlePreviousPage = () => {
+    dispatch(push(getRunListUrl({ page: page - 1 })));
+  };
+
+  const handleNextPage = () => {
+    dispatch(push(getRunListUrl({ page: page + 1 })));
+  };
+
+  return (
+    <PaginationControls
+      page={page}
+      pageSize={PAGE_SIZE}
+      itemsLength={itemsLength}
+      total={total}
+      onPreviousPage={handlePreviousPage}
+      onNextPage={handleNextPage}
+    />
   );
 }

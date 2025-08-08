@@ -37,8 +37,21 @@ export function getJobUrl(id: TransformJobId) {
   return `${ROOT_URL}/jobs/${id}`;
 }
 
-export function getRunListUrl() {
-  return `${ROOT_URL}/runs`;
+type RunListParams = {
+  page?: number;
+};
+
+export function getRunListUrl({ page }: RunListParams = {}) {
+  const params = new URLSearchParams();
+  if (page != null) {
+    params.set("page", String(page));
+  }
+
+  if (params.size > 0) {
+    return `${ROOT_URL}/runs?${params}`;
+  } else {
+    return `${ROOT_URL}/runs`;
+  }
 }
 
 export function getBrowseDatabaseUrl(databaseId: DatabaseId) {
