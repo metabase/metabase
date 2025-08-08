@@ -1,6 +1,7 @@
 import { match } from "ts-pattern";
 
 import type { MetabaseTheme } from "metabase/embedding-sdk/theme/MetabaseTheme";
+import type { CreateApiKeyResponse } from "metabase-types/api";
 
 import { createApiKey } from "./api";
 import { getIframeBody } from "./e2e-embedding-helpers";
@@ -224,7 +225,7 @@ function setupMockAuthProviders(enabledAuthMethods: EnabledAuthMethods[]) {
     const ADMIN_GROUP_ID = 2;
 
     createApiKey("test iframe sdk embedding", ADMIN_GROUP_ID).then(
-      ({ body }: { body: { unmasked_key: string } }) => {
+      ({ body }: { body: CreateApiKeyResponse }) => {
         cy.wrap(body.unmasked_key).as("apiKey");
       },
     );
