@@ -309,18 +309,18 @@
           (testing "exceptions are bubbled out of loop, will not loop forever"
             (let [ex (Exception. (str "Error: " (u/generate-nano-id)))]
               (vreset! step-ex ex)
-              (wait-for-calls)
-              (is (= (ex-message ex) (ex-message @caught-ex)))
-              (vreset! step-ex nil)
-              (wait-for-calls)
-              (testing "sanity: check loop no longer throwing"
-                (vreset! caught-ex nil)
-                (wait-for-calls)
-                (is (= nil @caught-ex)))))
+              (is (.join thread (Duration/ofSeconds 1)) "loop exits")
+              (is (= (ex-message ex) (ex-message @caught-ex)))))))
 
-          (testing "loop interruptible"
+      (testing "loop interruptible"
+        (with-open [loop-thread
+                    (open-loop-thread! pgvector
+                                       index-metadata
+                                       index
+                                       indexing-state)]
+          (let [{:keys [thread]} @loop-thread]
             (.interrupt thread)
-            (is (.join thread (Duration/ofSeconds 10)))))))))
+            (is (.join thread (Duration/ofSeconds 1)))))))))
 
 (deftest indexing-loop-exit-test
   (let [pgvector       semantic.tu/db
