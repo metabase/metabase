@@ -10,12 +10,7 @@ export const searchApi = Api.injectEndpoints({
       query: (params) => ({
         method: "GET",
         url: "/api/search",
-        params: {
-          // default FE to using app db for search to so it
-          // can be enabled only in specific features
-          search_engine: "appdb",
-          ...params,
-        },
+        params,
       }),
       providesTags: (response, error, { models }) =>
         provideSearchItemListTags(response?.data ?? [], models),
