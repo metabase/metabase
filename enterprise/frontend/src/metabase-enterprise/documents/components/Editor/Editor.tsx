@@ -1,6 +1,7 @@
 import Image from "@tiptap/extension-image";
 import Link from "@tiptap/extension-link";
 import { Placeholder } from "@tiptap/extension-placeholder";
+import type { EditorState } from "@tiptap/pm/state";
 import {
   EditorContent,
   type Editor as TiptapEditor,
@@ -26,12 +27,36 @@ import { CommandSuggestion } from "./extensions/Command/CommandSuggestion";
 import { DisableMetabotSidebar } from "./extensions/DisableMetabotSidebar";
 import { MentionExtension } from "./extensions/Mention/MentionExtension";
 import { MentionSuggestion } from "./extensions/Mention/MentionSuggestion";
-import { MetabotNode } from "./extensions/MetabotEmbed";
+import { MetabotNode, type PromptSerializer } from "./extensions/MetabotEmbed";
+import { MetabotMentionExtension } from "./extensions/MetabotMention/MetabotMentionExtension";
+import { MetabotMentionSuggestion } from "./extensions/MetabotMention/MetabotSuggestion";
 import { SmartLinkEmbed } from "./extensions/SmartLink";
 import { Markdown } from "./extensions/markdown/index";
 import { createSuggestionRenderer } from "./extensions/suggestionRenderer";
 import { useCardEmbedsTracking, useQuestionSelection } from "./hooks";
 import type { CardEmbedRef } from "./types";
+
+const metabotPromptSerializer: PromptSerializer = (node) => {
+  const payload: ReturnType<PromptSerializer> = { instructions: "" };
+  return node.content.content.reduce((acc, child) => {
+    // Serialize @ mentions in the metabot prompt
+    if (child.type.name === SmartLinkEmbed.name) {
+      const key = `${child.attrs.model}:${child.attrs.entityId}`;
+      const value = child.attrs.name;
+      acc.instructions += `[${value}](${key})`;
+      if (!acc.references) {
+        acc.references = {};
+      }
+      acc.references[key] = value;
+    } else {
+      acc.instructions += child.textContent;
+    }
+    return acc;
+  }, payload);
+};
+
+const isMetabotBlock = (state: EditorState): boolean =>
+  state.selection.$head.parent.type.name === "metabot";
 
 interface EditorProps {
   onEditorReady?: (editor: TiptapEditor) => void;
@@ -83,16 +108,24 @@ export const Editor: React.FC<EditorProps> = ({
             class: "card-embed",
           },
         }),
-        MetabotNode,
+        MetabotNode.configure({ serializePrompt: metabotPromptSerializer }),
         DisableMetabotSidebar,
         MentionExtension.configure({
           suggestion: {
+            allow: ({ state }) => !isMetabotBlock(state),
             render: createSuggestionRenderer(MentionSuggestion),
           },
         }),
         CommandExtension.configure({
           suggestion: {
+            allow: ({ state }) => !isMetabotBlock(state),
             render: createSuggestionRenderer(CommandSuggestion),
+          },
+        }),
+        MetabotMentionExtension.configure({
+          suggestion: {
+            allow: ({ state }) => isMetabotBlock(state),
+            render: createSuggestionRenderer(MetabotMentionSuggestion),
           },
         }),
       ],

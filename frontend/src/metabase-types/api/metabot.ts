@@ -222,6 +222,7 @@ export type MetabotApiEntity = Omit<MetabotEntity, "id"> & {
 
 export interface MetabotDocumentNodeRequest {
   instructions: string;
+  references?: Record<string, string>;
 }
 
 export interface MetabotDocumentNodeResponse {

@@ -1,14 +1,19 @@
 import { Node, mergeAttributes } from "@tiptap/core";
+import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
+import { Selection } from "@tiptap/pm/state";
 import {
+  NodeViewContent,
   type NodeViewProps,
   NodeViewWrapper,
   ReactNodeViewRenderer,
 } from "@tiptap/react";
-import { memo, useCallback, useEffect, useRef, useState } from "react";
+import { memo, useEffect, useRef, useState } from "react";
+import { useLatest } from "react-use";
 import { t } from "ttag";
 
+import { useUniqueId } from "metabase/common/hooks/use-unique-id";
 import CS from "metabase/css/core/index.css";
-import { Button, Flex, Icon, Text, Tooltip } from "metabase/ui";
+import { Box, Button, Flex, Icon, Text, Tooltip } from "metabase/ui";
 import { useLazyMetabotDocumentNodeQuery } from "metabase-enterprise/api/metabot";
 import {
   createDraftCard,
@@ -17,7 +22,7 @@ import {
 } from "metabase-enterprise/documents/documents.slice";
 import { useDocumentsDispatch } from "metabase-enterprise/documents/redux-utils";
 import MetabotThinkingStyles from "metabase-enterprise/metabot/components/MetabotChat/MetabotThinking.module.css";
-import type { Card } from "metabase-types/api";
+import type { Card, MetabotDocumentNodeRequest } from "metabase-types/api";
 
 import Styles from "./MetabotEmbed.module.css";
 
@@ -26,20 +31,100 @@ const createTextNode = (str: string) => ({
   content: [{ type: "text", text: str }],
 });
 
+export type PromptSerializer = (
+  node: ProseMirrorNode,
+) => MetabotDocumentNodeRequest;
+
+const serializePromptDefault: PromptSerializer = (node) => ({
+  instructions: node.textContent,
+});
+
 export const MetabotNode = Node.create<{
-  HTMLAttributes: Record<string, unknown>;
+  serializePrompt?: PromptSerializer;
 }>({
   name: "metabot",
   group: "block",
-  atom: true,
+  content: "inline*",
+  marks: "",
   draggable: true,
   selectable: false,
 
+  addOptions() {
+    return {
+      serializePrompt: serializePromptDefault,
+    };
+  },
+
   addAttributes() {
     return {
-      text: {
+      id: {
         default: null,
-        parseHTML: (element) => element.getAttribute("data-text"),
+      },
+    };
+  },
+
+  addKeyboardShortcuts() {
+    return {
+      // newline on Enter
+      Enter: ({ editor }) => {
+        const { state } = editor;
+        const { selection } = state;
+        const { $from, empty } = selection;
+
+        if (!empty || $from.parent.type !== this.type) {
+          return false;
+        }
+        return editor.commands.setHardBreak();
+      },
+
+      // run metabot on mod-Enter
+      "mod-Enter": ({ editor }) => {
+        const { state } = editor;
+        const { selection } = state;
+        const { $from, empty } = selection;
+
+        if (!empty || $from.parent.type !== this.type) {
+          return false;
+        }
+        const targetId = $from.parent.attrs.id;
+        if (targetId) {
+          editor.emit("runMetabot", targetId);
+        }
+        return true;
+      },
+
+      // exit node on arrow down
+      ArrowDown: ({ editor }) => {
+        const { state } = editor;
+        const { selection, doc } = state;
+        const { $from, empty } = selection;
+
+        if (!empty || $from.parent.type !== this.type) {
+          return false;
+        }
+
+        const isAtEnd = $from.parentOffset === $from.parent.nodeSize - 2;
+
+        if (!isAtEnd) {
+          return false;
+        }
+
+        const after = $from.after();
+
+        if (after === undefined) {
+          return false;
+        }
+
+        const nodeAfter = doc.nodeAt(after);
+
+        if (nodeAfter) {
+          return editor.commands.command(({ tr }) => {
+            tr.setSelection(Selection.near(doc.resolve(after)));
+            return true;
+          });
+        }
+
+        return editor.commands.exitCode();
       },
     };
   },
@@ -59,35 +144,43 @@ export const MetabotNode = Node.create<{
   renderHTML({ node, HTMLAttributes }) {
     return [
       "div",
-      mergeAttributes(
-        HTMLAttributes,
-        {
-          "data-type": "metabot",
-          "data-text": node.attrs.text,
-        },
-        this.options.HTMLAttributes,
-      ),
-      `{{ metabot:${node.attrs.text} }}`,
+      mergeAttributes(HTMLAttributes, {
+        "data-type": "metabot",
+        "data-text": node.attrs.text,
+      }),
+      0,
     ];
-  },
-
-  renderText({ node }) {
-    return `{{ metabot:${node.attrs.text} }}`;
   },
 });
 
 export const MetabotComponent = memo(
-  ({ editor, getPos, deleteNode, updateAttributes, node }: NodeViewProps) => {
+  ({
+    editor,
+    getPos,
+    deleteNode,
+    node,
+    updateAttributes,
+    extension,
+  }: NodeViewProps) => {
     const documentsDispatch = useDocumentsDispatch();
-    const inputRef = useRef<HTMLTextAreaElement>(null);
     const controllerRef = useRef<AbortController | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [errorText, setErrorText] = useState("");
     const [queryMetabot] = useLazyMetabotDocumentNodeQuery();
-    const { text: prompt } = node.attrs;
 
-    const handleRunMetabot = useCallback(async () => {
-      if (!prompt?.trim()) {
+    const id = useUniqueId();
+    useEffect(() => {
+      setTimeout(() => {
+        updateAttributes({ id });
+      }, 10); // setTimeout prevents `flushSync was called from inside a lifecycle method` error
+    }, [updateAttributes, id]);
+
+    const handleRunMetabot = async () => {
+      const serializePrompt =
+        extension?.options?.serializePrompt || serializePromptDefault;
+      const payload = serializePrompt(node);
+
+      if (!payload.instructions.trim()) {
         return;
       }
       const controller = new AbortController();
@@ -96,7 +189,7 @@ export const MetabotComponent = memo(
       setErrorText("");
       editor.commands.focus();
 
-      const res = queryMetabot({ instructions: prompt.trim() });
+      const res = queryMetabot(payload);
       controller.signal.addEventListener("abort", () => res.abort());
       const { data, error } = await res;
       if (controller.signal.aborted) {
@@ -171,7 +264,7 @@ export const MetabotComponent = memo(
       ]);
 
       deleteNode();
-    }, [prompt, editor, queryMetabot, deleteNode, getPos, documentsDispatch]);
+    };
 
     const handleStopMetabot = () => {
       controllerRef.current?.abort();
@@ -179,27 +272,23 @@ export const MetabotComponent = memo(
       setErrorText("");
     };
 
-    useEffect(() => {
-      // Grab focus from TipTap editor and put it in textarea when component mounts
-      if (inputRef.current) {
-        setTimeout(() => {
-          inputRef.current?.focus();
-          const unfocus = (e: KeyboardEvent) => {
-            if (e.key === "Tab") {
-              inputRef.current?.blur();
-              editor.commands.focus();
-            }
-          };
-
-          inputRef.current?.addEventListener("keydown", unfocus);
-          return () =>
-            inputRef.current?.removeEventListener("keydown", unfocus);
-        }, 50); // Small delay to ensure focus is set after rendering
+    const onRunMetabotRef = useLatest((targetId: string) => {
+      if (targetId === id) {
+        handleRunMetabot();
       }
-    }, [inputRef, editor.commands]);
+    });
+    useEffect(() => {
+      const onRunMetabot = (targetId: string) => {
+        onRunMetabotRef.current(targetId);
+      };
+      editor.on("runMetabot", onRunMetabot);
+      return () => {
+        editor.off("runMetabot", onRunMetabot);
+      };
+    }, [editor, onRunMetabotRef]);
 
     return (
-      <NodeViewWrapper as="span">
+      <NodeViewWrapper>
         <Flex
           bg="bg-light"
           bd="1px solid var(--border-color)"
@@ -217,28 +306,21 @@ export const MetabotComponent = memo(
             m="sm"
             size="sm"
             opacity="0.5"
+            style={{ zIndex: 1 }}
             onClick={() => deleteNode()}
           >
             <Icon name="close" />
           </Button>
           <Flex flex={1} direction="column" style={{ overflow: "auto" }}>
-            <textarea
-              disabled={isLoading}
-              ref={inputRef}
+            <Box
+              className={Styles.placeholder}
+              hidden={!!node.content.content.length}
+            >
+              {t`Ask Metabot to generate a chart for you, and use @ to select a specific Database to use`}
+            </Box>
+            <NodeViewContent
+              contentEditable={!isLoading}
               className={Styles.codeBlockTextArea}
-              value={prompt || ""}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && e.metaKey) {
-                  e.preventDefault();
-                  handleRunMetabot();
-                }
-                if (e.key === "Escape" && !prompt?.trim()) {
-                  deleteNode();
-                  editor.commands.focus();
-                }
-              }}
-              onChange={(e) => updateAttributes({ text: e.target.value })}
-              placeholder={t`Can you show me monthly sales data for the past year in a line chart?`}
             />
           </Flex>
           <Flex px="md" pb="md" pt="sm" gap="sm">
@@ -279,12 +361,6 @@ export const MetabotComponent = memo(
           </Flex>
         </Flex>
       </NodeViewWrapper>
-    );
-  },
-  (prevProps, nextProps) => {
-    return (
-      prevProps.node.attrs.text === nextProps.node.attrs.text &&
-      prevProps.selected === nextProps.selected
     );
   },
 );

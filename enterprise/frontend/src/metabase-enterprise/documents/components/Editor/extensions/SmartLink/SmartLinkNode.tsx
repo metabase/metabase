@@ -1,6 +1,6 @@
 import { Node, mergeAttributes, nodePasteRule } from "@tiptap/core";
 import { type NodeViewProps, NodeViewWrapper } from "@tiptap/react";
-import { memo } from "react";
+import { memo, useEffect } from "react";
 import { t } from "ttag";
 
 import { cardApi } from "metabase/api";
@@ -115,6 +115,7 @@ export const SmartLinkNode = Node.create<{
         default: null,
         parseHTML: (element) => element.getAttribute("data-model"),
       },
+      name: {},
     };
   },
 
@@ -244,9 +245,13 @@ const useEntityData = (entityId: number | null, model: SearchModel | null) => {
 };
 
 export const SmartLinkComponent = memo(
-  ({ node }: NodeViewProps) => {
+  ({ node, updateAttributes }: NodeViewProps) => {
     const { entityId, model } = node.attrs;
     const { entity, isLoading, error } = useEntityData(entityId, model);
+
+    useEffect(() => {
+      updateAttributes({ name: entity?.name });
+    }, [updateAttributes, entity?.name]);
 
     if (isLoading) {
       return (

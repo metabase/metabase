@@ -26,6 +26,10 @@ declare module "@tiptap/core" {
   interface Storage {
     markdown: MarkdownStorage;
   }
+
+  interface EditorEvents {
+    runMetabot: string; // id of metabot node
+  }
 }
 
 export interface MarkdownStorage {
