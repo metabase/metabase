@@ -26,7 +26,6 @@ import {
   Button,
   Flex,
   Icon,
-  Loader,
   Menu,
   Text,
   TextInput,
@@ -57,7 +56,6 @@ import {
 import styles from "./DocumentPage.module.css";
 import { Editor } from "./Editor";
 import { EmbedQuestionSettingsSidebar } from "./EmbedQuestionSettingsSidebar";
-import { downloadFile, getDownloadableMarkdown } from "./exports";
 
 export const DocumentPage = ({
   params: { entityId },
@@ -72,7 +70,6 @@ export const DocumentPage = ({
   const selectedEmbedIndex = useDocumentsSelector(getSelectedEmbedIndex);
   const draftCards = useDocumentsSelector(getDraftCards);
   const [editorInstance, setEditorInstance] = useState<any>(null);
-  const [isDownloading, setIsDownloading] = useState(false);
   const [currentContent, setCurrentContent] = useState<string>("");
   const [createDocument] = useCreateDocumentMutation();
   const [updateDocument] = useUpdateDocumentMutation();
@@ -111,7 +108,6 @@ export const DocumentPage = ({
     setDocumentTitle,
     documentContent,
     setDocumentContent,
-    cardEmbeds,
     updateCardEmbeds,
   } = useDocumentState(documentData);
 
@@ -321,29 +317,6 @@ export const DocumentPage = ({
     [dispatch, selectedEmbedIndex],
   );
 
-  const handleDownloadMarkdown = useCallback(() => {
-    if (!editorInstance) {
-      return;
-    }
-
-    (async () => {
-      try {
-        setIsDownloading(true);
-        const rawMarkdown = editorInstance.storage.markdown.getMarkdown();
-        const processedMarkdown = await getDownloadableMarkdown(
-          rawMarkdown,
-          cardEmbeds,
-        );
-
-        downloadFile(processedMarkdown);
-      } catch (error) {
-        console.error("Failed to download markdown:", error);
-      } finally {
-        setIsDownloading(false);
-      }
-    })();
-  }, [cardEmbeds, editorInstance]);
-
   const handlePrintDocument = useCallback(() => {
     window.print();
   }, []);
@@ -422,19 +395,6 @@ export const DocumentPage = ({
                     </ActionIcon>
                   </Menu.Target>
                   <Menu.Dropdown>
-                    <Menu.Item
-                      leftSection={
-                        isDownloading ? (
-                          <Loader size="xs" />
-                        ) : (
-                          <Icon name="download" />
-                        )
-                      }
-                      onClick={handleDownloadMarkdown}
-                      disabled={isDownloading}
-                    >
-                      {isDownloading ? t`Downloading...` : t`Download`}
-                    </Menu.Item>
                     <Menu.Item
                       leftSection={<Icon name="document" />}
                       onClick={handlePrintDocument}
