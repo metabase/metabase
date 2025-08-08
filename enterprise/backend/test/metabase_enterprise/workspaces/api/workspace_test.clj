@@ -523,6 +523,10 @@
                         (format "ee/workspace/%s/plan" (:id w))
                         {:title "x" :content {}})
 
+  (mt/user-http-request :crowberto :put 200
+                        (format "ee/workspace/%s/plan/0" (:id w))
+                        {:title (str "xx" (rand)) :content {}})
+
   (mt/user-http-request :crowberto :put 400
                         (format "ee/workspace/%s/plan" (:id w))
                         {:title "X" :content {}})

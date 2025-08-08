@@ -136,9 +136,36 @@
     (t2/update! :model/Workspace id {:plans updated-plans})
     (m.workspace/sort-workspace (t2/select-one :model/Workspace :id id))))
 
-#_(let [w (t2/select-one :model/Workspace)
-        s (m.workspace/sort-workspace (t2/select-one :model/Workspace))]
-    (clojure.data/diff w s))
+(api.macros/defendpoint :put "/:id/plan/:index"
+  "Replace a plan in the workspace, by index.
+
+   Route Params:
+    - id (required): Workspace ID
+    - index (required): Index of the plan to replace (0-based)
+
+   Request body:
+   - title (required): Plan title
+   - description (required): Plan description
+   - content (required): Plan content object"
+  [{:keys [id index]} :- [:map
+                          [:id ms/PositiveInt]
+                          [:index :int]]
+   _query-params
+   {:keys [title description content]}
+   :- [:map
+       [:title ms/NonBlankString]
+       [:description {:optional true} [:maybe ms/NonBlankString]]
+       [:content :map]]]
+  (let [workspace (api/check-404 (t2/select-one :model/Workspace :id id))
+        current-plans (vec (:plans workspace))
+        current-plan (api/check-404 (nth current-plans index nil))
+        new-plan (merge current-plan {:title title
+                                      :description description
+                                      :content content
+                                      :created-at (str (java.time.Instant/now))})
+        updated-plans (assoc current-plans index new-plan)]
+    (t2/update! :model/Workspace id {:plans updated-plans})
+    (m.workspace/sort-workspace (t2/select-one :model/Workspace :id id))))
 
 ;; PUT /api/ee/workspace/:id/transform
 (api.macros/defendpoint :put "/:id/transform"
