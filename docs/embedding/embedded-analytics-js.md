@@ -96,7 +96,7 @@ Here's an example of a script:
 <metabase-dashboard dashboard-id="2" with-title="false"></metabase-dashboard>
 ```
 
-Note the `async` attribute and the reference to your Metabase URL in the script that loads `embed.js` library.
+Note the `defer` attribute and the reference to your Metabase URL in the script that loads `embed.js` library.
 
 If you're embedding multiple entities on the same page, you only need to include the `<script>` tags once globally.
 
