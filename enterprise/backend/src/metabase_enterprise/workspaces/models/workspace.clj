@@ -102,21 +102,21 @@
 
 (mr/def ::workspace
   [:map
-   [:id              {:optional true} [:maybe [:int {:min 1}]]]
-   [:collection_id   {:optional true} [:maybe [:int {:min 1}]]]
-   [:name                             [:string {:min 1}]]
-   [:description     {:optional true} [:maybe :string]]
+   [:id {:optional true} [:maybe [:int {:min 1}]]]
+   [:collection_id {:optional true} [:maybe [:int {:min 1}]]]
+   [:name [:string {:min 1}]]
+   [:description {:optional true} [:maybe :string]]
    ;; each plan, transofrm, and document(<-unsure) is basically a file abstraction
-   [:plans                            [:sequential ::plan]]
+   [:plans [:sequential ::plan]]
    ;; This should maybe be another table:
-   [:activity_logs                    [:sequential ::activity-log]]
-   [:transforms                       [:sequential ::transform]]
-   [:documents                        [:sequential ::document]]
-   [:users                            [:sequential ::user]]
-   [:data_warehouses                  [:sequential ::data-warehouse]]
-   [:permissions                      [:sequential ::permission]]
-   [:created_at                       [:any {:description "The date and time the workspace was created"}]]
-   [:updated_at                       [:any {:description "The date and time the workspace was last updated"}]]])
+   [:activity_logs [:sequential ::activity-log]]
+   [:transforms [:sequential ::transform]]
+   [:documents [:sequential ::document]]
+   [:users [:sequential ::user]]
+   [:data_warehouses [:sequential ::data-warehouse]]
+   [:permissions [:sequential ::permission]]
+   [:created_at [:any {:description "The date and time the workspace was created"}]]
+   [:updated_at [:any {:description "The date and time the workspace was last updated"}]]])
 
 (methodical/defmethod t2/table-name :model/Workspace [_model] :workspace)
 
@@ -141,20 +141,29 @@
              (get order k2 Integer/MAX_VALUE))))
 
 (defn- created-at-sort
-  "Sort a collection of workspaces by their `created_at` timestamp, newest first"
+  "Sort a collection of workspaces by their `created_at` timestamp, newest first.
+   Handles nil or invalid created-at values by treating them as oldest."
   [xs]
-  (vec (sort-by #(t/instant (get % :created-at)) xs)))
+  (vec (sort-by (fn [item]
+                  (try
+                    (when-let [created-at (get item :created-at)]
+                      (t/instant created-at))
+                    (catch Exception _
+                      ;; Return a very old instant for invalid dates
+                      (t/instant "1970-01-01T00:00:00Z"))))
+                #(compare %2 %1) ; Reverse comparison for newest first
+                xs)))
 
 (defn sort-workspace
   "Required for a stable diff in a yaml view"
   [workspace]
   (-> (into (sorted-map-by sort-workspace-keys) workspace)
-      (update :documents       (fnil (comp vec sort) []))
-      (update :plans           (fnil created-at-sort []))
-      (update :transforms      (fnil created-at-sort []))
-      (update :users           (fnil created-at-sort []))
+      (update :documents (fnil (comp vec sort) []))
+      (update :plans (fnil created-at-sort []))
+      (update :transforms (fnil created-at-sort []))
+      (update :users (fnil created-at-sort []))
       (update :data_warehouses (fnil created-at-sort []))
-      (update :permissions     (fnil created-at-sort []))))
+      (update :permissions (fnil created-at-sort []))))
 
 (comment
   (require '[clojure.walk :as walk])
