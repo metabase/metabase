@@ -40,16 +40,16 @@ runs:
           const branch = '${{ inputs.branch }}';
           const edition = '${{ inputs.edition }}';
           const owner = '${{ inputs.owner }}';
-          
+
           console.log(`Determining Docker info for branch: ${branch}, edition: ${edition}`);
-          
+
           let repo, tag, editions;
-          
+
           if (branch === 'master') {
             // Master builds both editions with specific repos
             editions = ['ee', 'oss'];
             tag = 'latest';
-            
+
             if (edition === 'ee') {
               repo = `${owner}/metabase-enterprise-head`;
             } else {
@@ -61,14 +61,14 @@ runs:
             tag = branch.replaceAll('/', '-'); // slashes make docker sad
             repo = `${owner}/metabase-dev`;
           }
-          
+
           const fullImage = `${repo}:${tag}`;
-          
+
           // Set outputs
           core.setOutput('repo', repo);
           core.setOutput('tag', tag);
           core.setOutput('full_image', fullImage);
           core.setOutput('editions', JSON.stringify(editions));
-          
+
           console.log(`Docker image: ${fullImage}`);
           console.log(`Editions: ${JSON.stringify(editions)}`);

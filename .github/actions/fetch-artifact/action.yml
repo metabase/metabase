@@ -99,7 +99,7 @@ runs:
       run: |
         echo "Verifying JAR at: $JAR_PATH"
         file --mime-type "$JAR_PATH"
-        
+
     - name: Reveal its version.properties
       shell: bash
       run: |
