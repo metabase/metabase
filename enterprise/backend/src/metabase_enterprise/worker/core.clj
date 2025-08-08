@@ -43,5 +43,4 @@
   start!
   stop!]
  [metabase-enterprise.worker.sync
-  sync-single-run!
-  sync-worker-run-from-worker])
+  sync-single-run!])
