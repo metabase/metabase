@@ -196,6 +196,10 @@ export function ObjectViewSection({
             style={{
               minHeight: "1.5rem",
               opacity: isFixedSection ? 0.5 : 1,
+              marginLeft: isEdit ? 0 : -4,
+              marginRight: isEdit ? 0 : -4,
+              marginTop: -4,
+              marginBottom: -4,
               ...(isFixedSection &&
                 (!isEdit || section.fields.length > 0) && {
                   display: "none",
@@ -314,7 +318,7 @@ export function ObjectViewSection({
                   {isEdit && onUpdateSection && (
                     <ActionIcon
                       className={S.FieldRemoveButton}
-                      size={variant === "header" ? "2rem" : "1rem"}
+                      size={variant === "header" ? 32 : 16}
                       onClick={() =>
                         onUpdateSection({
                           fields: section.fields.filter(

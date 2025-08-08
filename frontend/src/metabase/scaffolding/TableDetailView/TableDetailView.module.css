@@ -52,18 +52,22 @@
       gap: var(--mantine-spacing-sm);
       align-items: center;
     }
+
     .FieldRemoveButton {
       align-self: center;
       visibility: hidden;
     }
+
     &:hover {
       .FieldRemoveButton {
         visibility: visible;
       }
+
       .FieldIcon {
         visibility: visible;
       }
     }
+
     .FieldIcon {
       visibility: hidden;
       align-items: center;
@@ -103,10 +107,12 @@
         display: inline-flex;
         flex-wrap: wrap;
       }
+
       .FieldRemoveButton {
         font-size: 2rem;
       }
     }
+
     .SectionTitle {
       font-size: 2.5rem;
     }
@@ -127,9 +133,11 @@
 
   &.subheader {
     margin-top: -0.75rem;
+
     .SectionTitle {
       font-size: 0.825rem;
     }
+
     .SectionContent {
       gap: var(--mantine-spacing-xs);
       flex-wrap: wrap;
@@ -148,6 +156,7 @@
     .Field {
       gap: var(--mantine-spacing-xs);
     }
+
     .Field + .Field {
       display: flex;
       line-height: 1;
@@ -155,10 +164,6 @@
       .FieldValue {
         display: flex;
       }
-    }
-
-    .FieldRemoveButton {
-      margin-top: 0.125rem;
     }
   }
 
