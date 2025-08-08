@@ -1,3 +1,19 @@
+## [0.56.2](https://github.com/metabase/metabase/compare/embedding-sdk-0.56.1-nightly...embedding-sdk-0.56.2) (2025-08-08)
+
+
+### Bug Fixes
+
+* **sdk:** send CORS headers for error messages when embedding is disabled ([#61808](https://github.com/metabase/metabase/issues/61808)) ([#61937](https://github.com/metabase/metabase/issues/61937)) ([f22706f](https://github.com/metabase/metabase/commit/f22706f1fc6450a9e68ad17ff116e16fb68572c9))
+* **sdk:** targetCollection should take precedence over recent dashboard ([#61874](https://github.com/metabase/metabase/issues/61874)) ([#61929](https://github.com/metabase/metabase/issues/61929)) ([e911a3a](https://github.com/metabase/metabase/commit/e911a3af2b1256faef59f0fa1f13c845408388b5))
+
+
+### Features
+
+* **sdk:** add translation context and aria-label to embedding sdk settings ([#61856](https://github.com/metabase/metabase/issues/61856)) ([#61872](https://github.com/metabase/metabase/issues/61872)) ([6348adc](https://github.com/metabase/metabase/commit/6348adc439c3cd33702141de6eeae03a1bec6418))
+* **sdk:** hide tables by default in embedding data picker if there are more than 2 models ([#61022](https://github.com/metabase/metabase/issues/61022)) ([#61760](https://github.com/metabase/metabase/issues/61760)) ([7bb6dcf](https://github.com/metabase/metabase/commit/7bb6dcf549f1f8a002586817a9a28caa38f4f48e))
+
+
+
 ## [0.56.1-nightly](https://github.com/metabase/metabase/compare/embedding-sdk-0.55.1-nightly...embedding-sdk-0.56.1-nightly) (2025-08-01)
 
 
