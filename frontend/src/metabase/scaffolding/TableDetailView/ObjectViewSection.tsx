@@ -64,7 +64,7 @@ export function ObjectViewSection({
   const tc = useTranslateContent();
   const isSubheader = variant === "subheader";
 
-  if (variant === "header") {
+  if (variant === "header" && !isEdit) {
     // Merging header values in 1 element to handle text-overflow: ellipsis correctly.
 
     // keep in sync with equivalent implementation in Nav
@@ -131,6 +131,7 @@ export function ObjectViewSection({
   return (
     <Box
       className={cx(S.ObjectViewSection, {
+        [S.header]: variant === "header",
         [S.normal]: variant === "normal",
         [S.subheader]: variant === "subheader",
         [S.highlight1]: variant === "highlight-1",
@@ -148,7 +149,6 @@ export function ObjectViewSection({
           ? {
               border: "1px solid var(--mb-color-border)",
               borderRadius: "var(--mantine-radius-md)",
-              // overflow: "hidden",
             }
           : {}
       }
@@ -251,7 +251,9 @@ export function ObjectViewSection({
                 {link && (
                   <Link to={link} className={S.link}>
                     <Ellipsified
-                      alwaysShowTooltip={variant === "subheader"}
+                      alwaysShowTooltip={
+                        variant === "subheader" || variant === "header"
+                      }
                       variant="primary"
                       truncate={false}
                       c="var(--mb-color-text-primary)"
@@ -261,7 +263,8 @@ export function ObjectViewSection({
                       }}
                       className={S.FieldValue}
                       fz={undefined}
-                      {...(variant === "subheader" && {
+                      {...((variant === "subheader" ||
+                        variant === "header") && {
                         tooltip: column.display_name,
                       })}
                     >
@@ -272,7 +275,9 @@ export function ObjectViewSection({
 
                 {!link && (
                   <Ellipsified
-                    alwaysShowTooltip={variant === "subheader"}
+                    alwaysShowTooltip={
+                      variant === "subheader" || variant === "header"
+                    }
                     variant="primary"
                     truncate={false}
                     c="var(--mb-color-text-primary)"
@@ -282,7 +287,7 @@ export function ObjectViewSection({
                     }}
                     className={S.FieldValue}
                     fz={undefined}
-                    {...(variant === "subheader" && {
+                    {...((variant === "subheader" || variant === "header") && {
                       tooltip: column.display_name,
                     })}
                   >
@@ -293,7 +298,7 @@ export function ObjectViewSection({
                 {isEdit && onUpdateSection && (
                   <ActionIcon
                     className={S.FieldRemoveButton}
-                    size="1rem"
+                    size={variant === "header" ? "2rem" : "1rem"}
                     onClick={() =>
                       onUpdateSection({
                         fields: section.fields.filter(

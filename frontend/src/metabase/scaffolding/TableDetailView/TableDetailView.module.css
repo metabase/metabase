@@ -94,6 +94,15 @@
   }
 
   &.header {
+    &.EditMode {
+      .SectionContent {
+        display: inline-flex;
+        flex-wrap: wrap;
+      }
+      .FieldRemoveButton {
+        font-size: 2rem;
+      }
+    }
     .SectionTitle {
       display: none;
     }
