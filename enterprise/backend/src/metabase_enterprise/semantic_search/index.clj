@@ -304,22 +304,27 @@
                          (java.util.concurrent.LinkedBlockingQueue. thread-count)
                          (java.util.concurrent.ThreadPoolExecutor$CallerRunsPolicy.))))
 
+(defn upsert-index-pooled!
+  "Returns a future which upserts the provided documents into the index table, executed using the provided thread pool."
+  [pool connectable index documents]
+  (cp/future pool (upsert-index-batch! connectable index documents)))
+
 (defn upsert-index!
   "Inserts or updates documents in the index table. If a document with the same
   model + model_id already exists, it will be replaced. Parallelizes batch insertion
   using a thread pool with a configurable thread count (default: 2)."
   [connectable index documents-reducible]
-  (cp/with-shutdown! [pool (index-update-executor (semantic-settings/index-update-thread-count))]
-    (let [futures (transduce
-                   (comp (partition-all *batch-size*)
-                         (map (fn [batch]
-                                (cp/future pool (upsert-index-batch! connectable index batch)))))
-                   conj
-                   documents-reducible)]
-      (reduce (fn [update-counts fut]
-                (merge-with + update-counts @fut))
-              {}
-              futures))))
+  (not-empty
+   (cp/with-shutdown! [pool (index-update-executor (semantic-settings/index-update-thread-count))]
+     (let [futures (transduce
+                    (comp (partition-all *batch-size*)
+                          (map #(upsert-index-pooled! pool connectable index %)))
+                    conj
+                    documents-reducible)]
+       (reduce (fn [update-counts fut]
+                 (merge-with + update-counts (when fut @fut)))
+               {}
+               futures)))))
 
 (defn- drop-index-table-sql
   [{:keys [table-name]}]

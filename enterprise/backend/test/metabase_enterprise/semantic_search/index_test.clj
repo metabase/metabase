@@ -166,7 +166,7 @@
             (semantic.tu/check-index-has-no-mock-docs)
 
             (testing "upsert-index!"
-              (with-redefs [semantic.index/upsert-index-batch! (only-first-call realized @#'semantic.index/upsert-index-batch!)]
+              (with-redefs [semantic.index/upsert-index-pooled! (only-first-call realized @#'semantic.index/upsert-index-pooled!)]
                 (is (= {"card" 2} (semantic.tu/upsert-index! mock-docs))))
               (semantic.tu/check-index-has-mock-card))
 
