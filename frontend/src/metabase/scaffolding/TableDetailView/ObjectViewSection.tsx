@@ -347,7 +347,7 @@ export function ObjectViewSection({
                         })
                       }
                     >
-                      <Icon name="close" />
+                      <Icon name="close" tooltip={t`Remove field`} />
                     </ActionIcon>
                   )}
                 </Flex>
