@@ -4,12 +4,16 @@
    [honey.sql :as sql]
    [metabase-enterprise.semantic-search.index :as semantic.index]
    [metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]
+   [metabase-enterprise.semantic-search.indexer :as semantic.indexer]
    [metabase-enterprise.semantic-search.pgvector-api :as semantic.pgvector-api]
    [metabase-enterprise.semantic-search.test-util :as semantic.tu]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [next.jdbc :as jdbc]))
+   [metabase.util.log :as log]
+   [next.jdbc :as jdbc]
+   [next.jdbc.result-set :as jdbc.rs])
+  (:import (java.time Duration)))
 
 (use-fixtures :once #'semantic.tu/once-fixture)
 
@@ -182,3 +186,63 @@
           (jdbc/execute! pgvector (sql/format {:delete-from (keyword (:control-table-name index-metadata))}
                                               :quoted true))
           (is (thrown-with-msg? Exception #"No active semantic search index" (sut pgvector index-metadata search))))))))
+
+(deftest e2e-index-a-sample-db-with-gate-test
+  (let [docs            (mt/dataset test-data (vec (search.ingestion/searchable-documents)))
+        pgvector        semantic.tu/db
+        index-metadata  (semantic.tu/unique-index-metadata)
+        embedding-model semantic.tu/mock-embedding-model
+        open-job-thread (fn [& args]
+                          (let [caught-ex (volatile! nil)]
+                            (semantic.tu/closeable
+                             {:caught-ex caught-ex
+                              :thread
+                              (doto (Thread.
+                                     ^Runnable
+                                     (bound-fn []
+                                       (try
+                                         (apply semantic.indexer/quartz-job-run! args)
+                                         (catch InterruptedException _)
+                                         (catch Throwable t
+                                           (vreset! caught-ex t)))))
+                                (.setDaemon true)
+                                (.start))}
+                             (fn [{:keys [^Thread thread]}]
+                               (when (.isAlive thread)
+                                 (.interrupt thread)
+                                 (when-not (.join thread (Duration/ofSeconds 30))
+                                   (log/fatal "Indexing loop thread not exiting during test!")))))))]
+    (with-redefs [semantic.indexer/sleep         (fn [_])   ; do not slow down
+                  semantic.indexer/poll-limit    4          ; important to test poll / paging (not many docs in test-data)
+                  semantic.indexer/lag-tolerance Duration/ZERO ; if too high will slow the test down significantly
+                  ]
+      (with-open [index-ref  (open-semantic-search! pgvector index-metadata embedding-model)
+                  job-thread (open-job-thread pgvector index-metadata)]
+        (let [index @index-ref
+              {:keys [caught-ex ^Thread thread]} @job-thread]
+
+          (is (= (frequencies (map :model docs)) (semantic.pgvector-api/gate-updates! pgvector index-metadata docs)))
+
+          (let [max-wait         (+ (System/currentTimeMillis) 1000)
+                get-indexed-q    {:select [:model [:model_id :id]] :from [(keyword (:table-name index))]}
+                get-indexed      (fn [] (frequencies
+                                         (jdbc/execute! pgvector
+                                                        (sql/format get-indexed-q :quoted true)
+                                                        {:builder-fn jdbc.rs/as-unqualified-lower-maps})))
+                expected-indexed (frequencies (distinct (map (fn [{:keys [model id]}]
+                                                               {:model model
+                                                                :id    (str id)})
+                                                             docs)))
+                indexed-in-time  (loop [indexed {}]
+                                   (cond
+                                     (< max-wait (System/currentTimeMillis)) indexed
+                                     (= indexed expected-indexed) indexed
+                                     :else (recur (get-indexed))))]
+
+            (testing "we indexed all the expected documents"
+              (is (= expected-indexed indexed-in-time))))
+
+          (testing "interrupt"
+            (.interrupt thread)
+            (is (.join thread (Duration/ofSeconds 10)))
+            (is (nil? @caught-ex))))))))

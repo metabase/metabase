@@ -96,11 +96,11 @@
     (transduce
      (partition-all (min 512 semantic.gate/max-batch-size))
      (completing
-      (fn [frequencies documents]
+      (fn [acc documents]
         (->> documents
              (mapv #(semantic.gate/search-doc->gate-doc % now))
              (semantic.gate/gate-documents! pgvector index-metadata))
-        (merge-with + frequencies (frequencies (map :model documents)))))
+        (merge-with + acc (frequencies (map :model documents)))))
      {}
      documents)))
 
@@ -114,11 +114,11 @@
     (transduce
      (partition-all (min 512 semantic.gate/max-batch-size))
      (completing
-      (fn [frequencies ids]
+      (fn [acc ids]
         (->> ids
              (mapv #(semantic.gate/deleted-search-doc->gate-doc model % now))
              (semantic.gate/gate-documents! pgvector index-metadata))
-        (merge-with + frequencies {model (count ids)})))
+        (merge-with + acc {model (count ids)})))
      {}
      ids)))
 
