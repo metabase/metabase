@@ -4,6 +4,7 @@
    [metabase-enterprise.transforms.api.transform-job]
    [metabase-enterprise.transforms.api.transform-tag]
    [metabase-enterprise.transforms.execute :as transforms.execute]
+   [metabase-enterprise.transforms.models.transform :as transform.model]
    [metabase-enterprise.transforms.util :as transforms.util]
    [metabase-enterprise.worker.core :as worker]
    [metabase.api.common :as api]
@@ -69,7 +70,7 @@
   [_route-params
    _query-params]
   (api/check-superuser)
-  (t2/hydrate (t2/select :model/Transform) :last_execution))
+  (t2/hydrate (t2/select :model/Transform) :last_execution :transform_tag_ids))
 
 (api.macros/defendpoint :post "/"
   [_route-params
@@ -79,13 +80,20 @@
             [:description {:optional true} [:maybe :string]]
             [:source ::transform-source]
             [:target ::transform-target]
-            [:execution_trigger {:optional true} ::execution-trigger]]]
+            [:execution_trigger {:optional true} ::execution-trigger]
+            [:tag_ids {:optional true} [:sequential ms/PositiveInt]]]]
   (api/check-superuser)
   (check-database-feature body)
   (when (transforms.util/target-table-exists? body)
     (api/throw-403))
-  (t2/insert-returning-instance!
-   :model/Transform (select-keys body [:name :description :source :target :execution_trigger])))
+  (let [tag-ids (:tag_ids body)
+        transform (t2/insert-returning-instance!
+                   :model/Transform (select-keys body [:name :description :source :target :execution_trigger]))]
+    ;; Add tag associations if provided
+    (when (seq tag-ids)
+      (transform.model/update-transform-tags! (:id transform) tag-ids))
+    ;; Return with hydrated tag_ids
+    (t2/hydrate transform :transform_tag_ids)))
 
 (api.macros/defendpoint :get "/:id"
   [{:keys [id]} :- [:map
@@ -96,7 +104,7 @@
         database-id (source-database-id transform)
         target-table (transforms.util/target-table database-id target :active true)]
     (-> transform
-        (t2/hydrate :last_execution)
+        (t2/hydrate :last_execution :transform_tag_ids)
         (assoc :table target-table))))
 
 (api.macros/defendpoint :get "/execution"
@@ -129,7 +137,8 @@
             [:description {:optional true} [:maybe :string]]
             [:source {:optional true} ::transform-source]
             [:target {:optional true} ::transform-target]
-            [:execution_trigger {:optional true} ::execution-trigger]]]
+            [:execution_trigger {:optional true} ::execution-trigger]
+            [:tag_ids {:optional true} [:sequential ms/PositiveInt]]]]
   (log/info "put transform" id)
   (api/check-superuser)
   (let [old (t2/select-one :model/Transform id)
@@ -139,8 +148,11 @@
     (when (and (not= (target-fields old) (target-fields new))
                (transforms.util/target-table-exists? new))
       (api/throw-403)))
-  (t2/update! :model/Transform id body)
-  (t2/select-one :model/Transform id))
+  (t2/update! :model/Transform id (dissoc body :tag_ids))
+  ;; Update tag associations if provided
+  (when (contains? body :tag_ids)
+    (transform.model/update-transform-tags! id (:tag_ids body)))
+  (t2/hydrate (t2/select-one :model/Transform id) :transform_tag_ids))
 
 (api.macros/defendpoint :delete "/:id"
   [{:keys [id]} :- [:map
