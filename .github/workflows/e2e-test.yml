@@ -123,17 +123,38 @@ jobs:
           SPLIT_INDEX: ${{ inputs.split_index }}
           SPLIT_FILE: "./e2e/support/timings.json"
           SPLIT_OUTPUT_FILE: "newTimes.json"
-          SPLIT_TIME_THRESHOLD: 5.0
+          SPLIT_TIME_THRESHOLD: 0
           # do not write cypress-split summary to github
           SPLIT_SUMMARY: false
           SPEC_PATH: ${{ env.specs || inputs.specs }}
         shell: bash
         run: |
           echo "Running tests with specs: $SPEC_PATH"
+          echo "=== BEFORE TEST EXECUTION ==="
+          echo "Cypress split environment variables:"
+          echo "  SPLIT: $SPLIT"
+          echo "  SPLIT_INDEX: $SPLIT_INDEX" 
+          echo "  SPLIT_FILE: $SPLIT_FILE"
+          echo "  SPLIT_OUTPUT_FILE: $SPLIT_OUTPUT_FILE"
+          echo "  SPLIT_TIME_THRESHOLD: $SPLIT_TIME_THRESHOLD"
+          echo "  CYPRESS_CI: $CYPRESS_CI"
+          echo "Current directory: $(pwd)"
+          echo "Files before test:"
+          ls -la . | grep -i timing || echo "No timing files found before test"
+          ls -la newTimes.json 2>/dev/null || echo "newTimes.json does not exist before test"
+          echo "================================"
+          
           node e2e/runner/run_cypress_ci.js e2e \
             --env grepTags="-@mongo+-@flaky+-@OSS+-@skip",grepOmitFiltered=true \
             --spec "$SPEC_PATH" \
             --browser ${{ steps.cypress-prep.outputs.chrome-path }}
+          
+          echo "=== AFTER TEST EXECUTION ==="
+          echo "Files after test:"
+          ls -la . | grep -i timing || echo "No timing files found after test"
+          ls -la newTimes.json 2>/dev/null || echo "newTimes.json does not exist after test"
+          echo "Exit code from cypress run: $?"
+          echo "==============================="
 
       - name: Run Tagged EE Cypress tests on ${{ inputs.name }}
         if: ${{ inputs.specs }}
@@ -141,14 +162,33 @@ jobs:
         env:
           SPLIT_FILE: "./e2e/support/timings.json"
           SPLIT_OUTPUT_FILE: "newTimes.json"
-          SPLIT_TIME_THRESHOLD: 5.0
+          SPLIT_TIME_THRESHOLD: 0
           SPEC_PATH: ${{ env.specs || inputs.specs }}
         run: |
           echo "Running tests with specs: $SPEC_PATH"
+          echo "=== BEFORE TAGGED TEST EXECUTION ==="
+          echo "Cypress split environment variables:"
+          echo "  SPLIT_FILE: $SPLIT_FILE"
+          echo "  SPLIT_OUTPUT_FILE: $SPLIT_OUTPUT_FILE"
+          echo "  SPLIT_TIME_THRESHOLD: $SPLIT_TIME_THRESHOLD"
+          echo "  CYPRESS_CI: $CYPRESS_CI"
+          echo "Current directory: $(pwd)"
+          echo "Files before test:"
+          ls -la . | grep -i timing || echo "No timing files found before test"
+          ls -la newTimes.json 2>/dev/null || echo "newTimes.json does not exist before test"
+          echo "====================================="
+          
           node e2e/runner/run_cypress_ci.js e2e \
           --env grepTags="${{inputs.tags}}+-@skip",grepOmitFiltered=true \
           --spec "$SPEC_PATH" \
           --browser ${{ steps.cypress-prep.outputs.chrome-path }}
+          
+          echo "=== AFTER TAGGED TEST EXECUTION ==="
+          echo "Files after test:"
+          ls -la . | grep -i timing || echo "No timing files found after test"
+          ls -la newTimes.json 2>/dev/null || echo "newTimes.json does not exist after test"
+          echo "Exit code from cypress run: $?"
+          echo "==================================="
 
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results
