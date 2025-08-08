@@ -1,7 +1,6 @@
 (ns metabase-enterprise.semantic-search.embedding
   (:require
    [clj-http.client :as http]
-   [com.climate.claypoole :as cp]
    [metabase-enterprise.semantic-search.settings :as semantic-settings]
    [metabase.analytics.core :as analytics]
    [metabase.util :as u]
