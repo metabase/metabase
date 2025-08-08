@@ -170,7 +170,9 @@ jobs:
           echo "All files in current directory (including hidden):"
           ls -la
           echo "Looking for any timing-related files recursively:"
-          find . -name "*timing*" -o -name "*newTimes*" -o -name "*.json" -type f 2>/dev/null | head -20
+          find . -maxdepth 2 -name "*timing*" -o -name "*newTimes*" 2>/dev/null
+          echo "Looking for json files in current directory:"
+          find . -maxdepth 1 -name "*.json" 2>/dev/null
           echo "Checking specific locations where timing file might be:"
           ls -la newTimes.json 2>/dev/null || echo "newTimes.json does not exist in current dir"
           ls -la ./newTimes.json 2>/dev/null || echo "./newTimes.json does not exist"
@@ -214,7 +216,9 @@ jobs:
           echo "All files in current directory:"
           ls -la
           echo "Looking for any timing-related files:"
-          find . -name "*timing*" -o -name "*newTimes*" -o -name "*.json" | head -20
+          find . -maxdepth 2 -name "*timing*" -o -name "*newTimes*" 2>/dev/null
+          echo "Looking for json files in current directory:"
+          find . -maxdepth 1 -name "*.json" 2>/dev/null
           echo "Checking if cypress-split wrote anything:"
           ls -la newTimes.json 2>/dev/null || echo "newTimes.json does not exist after test"
           echo "==================================="
