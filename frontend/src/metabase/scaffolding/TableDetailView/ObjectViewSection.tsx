@@ -190,13 +190,10 @@ export function ObjectViewSection({
           <EditableText
             isOptional
             initialValue={section.title}
-            isDisabled={!isEdit || section.variant === "subheader"}
+            isDisabled={!isEdit || isFixedSection}
             onChange={(title) => onUpdateSection({ title })}
             placeholder={t`Untitled Group`}
             style={{
-              fontWeight: 700,
-              fontSize: isFixedSection ? "0.825rem" : "1.25rem",
-              padding: 0,
               minHeight: "1.5rem",
               opacity: isFixedSection ? 0.5 : 1,
               ...(isFixedSection &&
@@ -208,135 +205,137 @@ export function ObjectViewSection({
         </Group>
       )}
 
-      <Flex className={S.SectionContent}>
-        {section.fields.map(({ field_id }, index) => {
-          const columnIndex = columns.findIndex(
-            (column) => column.id === field_id,
-          );
-          const column = columns[columnIndex];
+      {section.fields.length > 0 && (
+        <Flex className={S.SectionContent}>
+          {section.fields.map(({ field_id }, index) => {
+            const columnIndex = columns.findIndex(
+              (column) => column.id === field_id,
+            );
+            const column = columns[columnIndex];
 
-          if (!column) {
-            return null;
-          }
+            if (!column) {
+              return null;
+            }
 
-          const value = row[columnIndex];
-          const isForeignKey = isFK(column);
+            const value = row[columnIndex];
+            const isForeignKey = isFK(column);
 
-          const field = table.fields?.find((f) => f.id === field_id);
-          const newTableId = field?.target?.table_id;
-          const link = isForeignKey
-            ? `/table/${newTableId}/detail/${value}`
-            : undefined;
+            const field = table.fields?.find((f) => f.id === field_id);
+            const newTableId = field?.target?.table_id;
+            const link = isForeignKey
+              ? `/table/${newTableId}/detail/${value}`
+              : undefined;
 
-          return (
-            <Fragment key={field_id}>
-              <Flex className={S.Field}>
-                <Box className={S.FieldName} w="100%">
-                  {isEdit && <DragHandle />}
+            return (
+              <Fragment key={field_id}>
+                <Flex className={S.Field}>
+                  <Box className={S.FieldName} w="100%">
+                    {isEdit && <DragHandle />}
 
-                  <Text c="var(--mb-color-text-secondary)" fw="bold" truncate>
-                    {column.display_name}
-                  </Text>
+                    <Text c="var(--mb-color-text-secondary)" fw="bold" truncate>
+                      {column.display_name}
+                    </Text>
 
-                  <Link
-                    to={getUrl({
-                      tableId: table.id,
-                      schemaName: table.schema,
-                      databaseId: table.db_id,
-                      fieldId: column.id,
-                    })}
-                    className={S.FieldIcon}
-                  >
-                    {renderItemIcon(table, {
-                      name: column.display_name,
-                      displayName: column.display_name,
-                      column,
-                    })}
-                  </Link>
-                </Box>
-
-                {link && (
-                  <Link to={link} className={S.link}>
-                    {isEdit &&
-                      (section.variant === "subheader" ||
-                        section.variant === "header") && <DragHandle />}
-
-                    <Ellipsified
-                      alwaysShowTooltip={
-                        variant === "subheader" || variant === "header"
-                      }
-                      variant="primary"
-                      truncate={false}
-                      c="var(--mb-color-text-primary)"
-                      lines={variant === "highlight-2" ? 3 : 0}
-                      style={{
-                        flexGrow: 1,
-                      }}
-                      className={S.FieldValue}
-                      fz={undefined}
-                      {...((variant === "subheader" ||
-                        variant === "header") && {
-                        tooltip: column.display_name,
+                    <Link
+                      to={getUrl({
+                        tableId: table.id,
+                        schemaName: table.schema,
+                        databaseId: table.db_id,
+                        fieldId: column.id,
                       })}
+                      className={S.FieldIcon}
                     >
-                      {renderValue(tc, value, column)}
-                    </Ellipsified>
-                  </Link>
-                )}
-
-                {!link && (
-                  <>
-                    {isEdit &&
-                      (section.variant === "subheader" ||
-                        section.variant === "header") && <DragHandle />}
-
-                    <Ellipsified
-                      alwaysShowTooltip={
-                        variant === "subheader" || variant === "header"
-                      }
-                      variant="primary"
-                      truncate={false}
-                      c="var(--mb-color-text-primary)"
-                      lines={variant === "highlight-2" ? 3 : 0}
-                      style={{
-                        flexGrow: 1,
-                      }}
-                      className={S.FieldValue}
-                      fz={undefined}
-                      {...((variant === "subheader" ||
-                        variant === "header") && {
-                        tooltip: column.display_name,
+                      {renderItemIcon(table, {
+                        name: column.display_name,
+                        displayName: column.display_name,
+                        column,
                       })}
+                    </Link>
+                  </Box>
+
+                  {link && (
+                    <Link to={link} className={S.link}>
+                      {isEdit &&
+                        (section.variant === "subheader" ||
+                          section.variant === "header") && <DragHandle />}
+
+                      <Ellipsified
+                        alwaysShowTooltip={
+                          variant === "subheader" || variant === "header"
+                        }
+                        variant="primary"
+                        truncate={false}
+                        c="var(--mb-color-text-primary)"
+                        lines={variant === "highlight-2" ? 3 : 0}
+                        style={{
+                          flexGrow: 1,
+                        }}
+                        className={S.FieldValue}
+                        fz={undefined}
+                        {...((variant === "subheader" ||
+                          variant === "header") && {
+                          tooltip: column.display_name,
+                        })}
+                      >
+                        {renderValue(tc, value, column)}
+                      </Ellipsified>
+                    </Link>
+                  )}
+
+                  {!link && (
+                    <>
+                      {isEdit &&
+                        (section.variant === "subheader" ||
+                          section.variant === "header") && <DragHandle />}
+
+                      <Ellipsified
+                        alwaysShowTooltip={
+                          variant === "subheader" || variant === "header"
+                        }
+                        variant="primary"
+                        truncate={false}
+                        c="var(--mb-color-text-primary)"
+                        lines={variant === "highlight-2" ? 3 : 0}
+                        style={{
+                          flexGrow: 1,
+                        }}
+                        className={S.FieldValue}
+                        fz={undefined}
+                        {...((variant === "subheader" ||
+                          variant === "header") && {
+                          tooltip: column.display_name,
+                        })}
+                      >
+                        {renderValue(tc, value, column)}
+                      </Ellipsified>
+                    </>
+                  )}
+
+                  {isEdit && onUpdateSection && (
+                    <ActionIcon
+                      className={S.FieldRemoveButton}
+                      size={variant === "header" ? "2rem" : "1rem"}
+                      onClick={() =>
+                        onUpdateSection({
+                          fields: section.fields.filter(
+                            (f) => f.field_id !== field_id,
+                          ),
+                        })
+                      }
                     >
-                      {renderValue(tc, value, column)}
-                    </Ellipsified>
-                  </>
-                )}
+                      <Icon name="close" />
+                    </ActionIcon>
+                  )}
+                </Flex>
 
-                {isEdit && onUpdateSection && (
-                  <ActionIcon
-                    className={S.FieldRemoveButton}
-                    size={variant === "header" ? "2rem" : "1rem"}
-                    onClick={() =>
-                      onUpdateSection({
-                        fields: section.fields.filter(
-                          (f) => f.field_id !== field_id,
-                        ),
-                      })
-                    }
-                  >
-                    <Icon name="close" />
-                  </ActionIcon>
-                )}
-              </Flex>
-
-              {index < section.fields.length - 1 &&
-                variant === "subheader" &&
-                !isEdit && <div className={S.separator} />}
-            </Fragment>
-          );
-        })}
-      </Flex>
+                {index < section.fields.length - 1 &&
+                  variant === "subheader" &&
+                  !isEdit && <div className={S.separator} />}
+              </Fragment>
+            );
+          })}
+        </Flex>
+      )}
     </Box>
   );
 }

@@ -30,6 +30,12 @@
     }
   }
 
+  .SectionTitle {
+    font-size: 1.25rem;
+    font-weight: 700;
+    padding: 0;
+  }
+
   .SectionContent {
     gap: var(--mantine-spacing-md);
   }
@@ -102,7 +108,7 @@
       }
     }
     .SectionTitle {
-      display: none;
+      font-size: 2.5rem;
     }
 
     .SectionContent {
@@ -121,7 +127,9 @@
 
   &.subheader {
     margin-top: -0.75rem;
-
+    .SectionTitle {
+      font-size: 0.825rem;
+    }
     .SectionContent {
       gap: var(--mantine-spacing-xs);
       flex-wrap: wrap;
