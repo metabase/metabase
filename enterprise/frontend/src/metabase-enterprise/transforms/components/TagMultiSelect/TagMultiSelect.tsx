@@ -166,13 +166,13 @@ function ExistingTagSelectItem({
   };
 
   return (
-    <SelectItem className={S.item} selected={selected} py="xs">
+    <SelectItem className={S.selectItem} selected={selected} py="xs">
       <Text c="inherit" lh="inherit" flex={1}>
         {tag.name}
       </Text>
       <Tooltip label={t`Rename tag`}>
         <ActionIcon
-          className={S.button}
+          className={S.actionIcon}
           c="inherit"
           bg="none"
           onClick={handleUpdateClick}
@@ -182,7 +182,7 @@ function ExistingTagSelectItem({
       </Tooltip>
       <Tooltip label={t`Delete tag`}>
         <ActionIcon
-          className={S.button}
+          className={S.actionIcon}
           c="inherit"
           bg="none"
           onClick={handleDeleteClick}

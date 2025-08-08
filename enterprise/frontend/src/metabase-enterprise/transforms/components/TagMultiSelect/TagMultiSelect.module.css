@@ -1,7 +1,7 @@
-.button {
+.actionIcon {
   visibility: hidden;
 }
 
-.item:hover .button {
+.selectItem:hover .actionIcon {
   visibility: visible;
 }
