@@ -39,26 +39,27 @@ function buildMatrix(options, inputSpecs, inputChunks) {
     edition: "ee",
   };
 
-  // If debug_specs is enabled, override inputSpecs with debug pattern
-  let effectiveSpecs = inputSpecs;
-  if (debugSpecs) {
-    effectiveSpecs = DEBUG_SPEC_PATTERN;
-    console.log("Debug mode enabled, using debug specs:", DEBUG_SPEC_PATTERN);
-  }
-
   const isDefaultSpecPattern =
-    effectiveSpecs === "" || effectiveSpecs === DEFAULT_SPEC_PATTERN;
+    inputSpecs === "" || inputSpecs === DEFAULT_SPEC_PATTERN;
+    
+  console.log("Debug mode enabled:", debugSpecs);
 
-  console.log("Processed specs value:", effectiveSpecs);
+  console.log("Processed specs value:", inputSpecs);
   console.log("Is default pattern:", isDefaultSpecPattern);
 
   let regularChunks;
   if (isDefaultSpecPattern) {
-    regularChunks = inputChunks - specialTestConfigs.length;
+    // If debug mode, use much fewer chunks for faster testing
+    if (debugSpecs) {
+      console.log("Debug mode: using only 3 chunks instead of", inputChunks);
+      regularChunks = 3 - specialTestConfigs.length;
+    } else {
+      regularChunks = inputChunks - specialTestConfigs.length;
+    }
   } else {
     // when pattern is not default, it means we passed some custom list of the changed specs
     // so we need to calculate how many chunks we need to run
-    const matchingSpecsCount = effectiveSpecs.split(",").length;
+    const matchingSpecsCount = inputSpecs.split(",").length;
     regularChunks = Math.max(
       1,
       Math.ceil(matchingSpecsCount / SPECS_PER_CHUNK),
@@ -70,7 +71,7 @@ function buildMatrix(options, inputSpecs, inputChunks) {
     // works when specs less than 5, otherwise seems all chunks will contain
     // same specs
     ...(!isDefaultSpecPattern && {
-      specs: effectiveSpecs
+      specs: inputSpecs
         .split(",")
         .slice(SPECS_PER_CHUNK * index, SPECS_PER_CHUNK * (index + 1))
         .join(","),
