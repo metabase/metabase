@@ -1,8 +1,11 @@
 import { type ReactNode, useState } from "react";
+import { useUpdateEffect } from "react-use";
 import { t } from "ttag";
 
 import { Button, Icon, Loader } from "metabase/ui";
 import type { TransformExecution } from "metabase-types/api";
+
+const RECENT_TIMEOUT = 5000;
 
 type RunButtonProps = {
   execution: TransformExecution | null | undefined;
@@ -11,12 +14,18 @@ type RunButtonProps = {
 };
 
 export function RunButton({ execution, isLoading, onRun }: RunButtonProps) {
-  const [isRecent] = useState(false);
+  const [isRecent, setIsRecent] = useState(false);
   const { label, color, leftSection, disabled } = getButtonInfo(
     execution,
     isLoading,
     isRecent,
   );
+
+  useUpdateEffect(() => {
+    setIsRecent(true);
+    const timeoutId = setTimeout(() => setIsRecent(false), RECENT_TIMEOUT);
+    return () => clearTimeout(timeoutId);
+  }, [execution]);
 
   return (
     <Button
