@@ -1,0 +1,5 @@
+.button {
+  border: 2px solid var(--mb-color-border);
+  border-radius: var(--default-border-radius);
+  background-color: var(--mb-color-bg-white);
+}
