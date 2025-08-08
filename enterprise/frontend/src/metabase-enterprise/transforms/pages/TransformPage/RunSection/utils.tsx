@@ -1,17 +1,19 @@
-import { t } from "ttag";
+import dayjs from "dayjs";
+import type { ReactNode } from "react";
+import { jt, t } from "ttag";
 
 import type { IconName } from "metabase/ui";
 import type { Transform } from "metabase-types/api";
 
-import { formatTimestamp } from "../../../utils";
+import { RelativeDateTime } from "../../../components/RelativeDateTime";
 
-type StatusInfo = {
+type RunStatusInfo = {
   icon: IconName;
   color: string;
-  message: string;
+  message: ReactNode;
 };
 
-export function getStatusInfo({ last_execution }: Transform): StatusInfo {
+export function getRunStatusInfo({ last_execution }: Transform): RunStatusInfo {
   if (last_execution == null) {
     return {
       message: t`This transform hasn’t been run before.`,
@@ -21,7 +23,10 @@ export function getStatusInfo({ last_execution }: Transform): StatusInfo {
   }
 
   const { status, end_time } = last_execution;
-  const endTimeText = end_time != null ? formatTimestamp(end_time) : null;
+  const endTimeNode =
+    end_time != null ? (
+      <RelativeDateTime date={dayjs(end_time).local().toDate()} />
+    ) : null;
 
   switch (status) {
     case "started":
@@ -32,24 +37,24 @@ export function getStatusInfo({ last_execution }: Transform): StatusInfo {
       };
     case "succeeded":
       return {
-        message: endTimeText
-          ? t`Last run at ${endTimeText} successfully`
+        message: endTimeNode
+          ? jt`Last run ${endTimeNode} successfully`
           : t`Last run successfully`,
         icon: "check_filled",
         color: "success",
       };
     case "failed":
       return {
-        message: endTimeText
-          ? t`Last run failed at ${endTimeText}`
+        message: endTimeNode
+          ? jt`Last run failed ${endTimeNode}`
           : t`Last run failed`,
         icon: "warning",
         color: "error",
       };
     case "timeout":
       return {
-        message: endTimeText
-          ? t`Last run timed out at ${endTimeText}`
+        message: endTimeNode
+          ? jt`Last run timed out ${endTimeNode}`
           : t`Last run timed out`,
         icon: "warning",
         color: "error",

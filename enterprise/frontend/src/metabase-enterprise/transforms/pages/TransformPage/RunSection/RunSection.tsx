@@ -12,7 +12,7 @@ import { RunButton } from "../../../components/RunButton";
 import { SplitSection } from "../../../components/SplitSection";
 import { TagMultiSelect } from "../../../components/TagMultiSelect";
 
-import { getStatusInfo } from "./utils";
+import { getRunStatusInfo } from "./utils";
 
 type RunSectionProps = {
   transform: Transform;
@@ -45,7 +45,7 @@ type RunStatusSectionProps = {
 };
 
 function RunStatusSection({ transform }: RunStatusSectionProps) {
-  const { message, icon, color } = getStatusInfo(transform);
+  const { message, icon, color } = getRunStatusInfo(transform);
 
   return (
     <Group gap="sm">
