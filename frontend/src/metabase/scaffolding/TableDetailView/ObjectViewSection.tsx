@@ -189,6 +189,7 @@ export function ObjectViewSection({
             style={{
               fontWeight: 700,
               fontSize: "1.25rem",
+              padding: 0,
               marginBottom: section.variant === "subheader" ? 0 : "2rem",
               opacity: section.variant === "subheader" ? 0.5 : 1,
               ...(section.variant === "subheader" &&
