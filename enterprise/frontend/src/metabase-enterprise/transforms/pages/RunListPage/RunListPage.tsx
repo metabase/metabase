@@ -1,8 +1,9 @@
 import type { Location } from "history";
 import { t } from "ttag";
 
-import { Box, Stack, Title } from "metabase/ui";
+import { Box, Title } from "metabase/ui";
 
+import { FilterList } from "./FilterList";
 import { RunList } from "./RunList";
 import { getParsedParams } from "./utils";
 
@@ -14,12 +15,13 @@ export function RunListPage({ location }: RunListPageProps) {
   const params = getParsedParams(location);
 
   return (
-    <Stack gap="xl">
-      <Stack gap="sm">
-        <Title order={1}>{t`Runs`}</Title>
-        <Box>{t`A list of when each transform ran.`}</Box>
-      </Stack>
+    <div>
+      <Title order={1} mb="sm">{t`Runs`}</Title>
+      <Box mb="xl">{t`A list of when each transform ran.`}</Box>
+      <Box mb="md">
+        <FilterList params={params} />
+      </Box>
       <RunList params={params} />
-    </Stack>
+    </div>
   );
 }
