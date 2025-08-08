@@ -10,16 +10,23 @@ const RECENT_TIMEOUT = 5000;
 type RunButtonProps = {
   execution: TransformExecution | null | undefined;
   isLoading: boolean;
+  isDisabled?: boolean;
   onRun: () => void;
 };
 
-export function RunButton({ execution, isLoading, onRun }: RunButtonProps) {
+export function RunButton({
+  execution,
+  isLoading,
+  isDisabled: isExternallyDisabled = false,
+  onRun,
+}: RunButtonProps) {
   const [isRecent, setIsRecent] = useState(false);
-  const { label, color, leftSection, disabled } = getButtonInfo(
+  const { label, color, leftSection, isDisabled } = getRunButtonInfo({
     execution,
     isLoading,
     isRecent,
-  );
+    isDisabled: isExternallyDisabled,
+  });
 
   useUpdateEffect(() => {
     setIsRecent(true);
@@ -32,7 +39,7 @@ export function RunButton({ execution, isLoading, onRun }: RunButtonProps) {
       variant="filled"
       color={color}
       leftSection={leftSection}
-      disabled={disabled}
+      disabled={isDisabled}
       onClick={onRun}
     >
       {label}
@@ -40,30 +47,39 @@ export function RunButton({ execution, isLoading, onRun }: RunButtonProps) {
   );
 }
 
-type ButtonInfo = {
+type RunButtonOpts = {
+  execution: TransformExecution | null | undefined;
+  isLoading: boolean;
+  isRecent: boolean;
+  isDisabled: boolean;
+};
+
+type RunButtonInfo = {
   label: string;
   color?: string;
   leftSection?: ReactNode;
-  disabled?: boolean;
+  isDisabled?: boolean;
 };
 
-function getButtonInfo(
-  execution: TransformExecution | null | undefined,
-  isLoading: boolean,
-  isRecent: boolean,
-): ButtonInfo {
+function getRunButtonInfo({
+  execution,
+  isLoading,
+  isRecent,
+  isDisabled,
+}: RunButtonOpts): RunButtonInfo {
   if (execution?.status === "started" || isLoading) {
     return {
       label: t`Running now…`,
       leftSection: <Loader size="sm" />,
-      disabled: true,
+      isDisabled: true,
     };
   }
 
-  if (execution == null || !isRecent) {
+  if (execution == null || !isRecent || isDisabled) {
     return {
       label: t`Run now`,
       leftSection: <Icon name="play_outlined" />,
+      isDisabled,
     };
   }
 

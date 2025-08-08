@@ -120,6 +120,7 @@ function RunButtonSection({ job }: RunButtonSectionProps) {
     <RunButton
       execution={job.last_execution}
       isLoading={isFetching || isExecuting}
+      isDisabled={job.tag_ids?.length === 0}
       onRun={handleRun}
     />
   );
