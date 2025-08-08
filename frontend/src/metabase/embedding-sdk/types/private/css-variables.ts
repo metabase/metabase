@@ -1,3 +1,4 @@
+import type { MetabaseColor } from "metabase/embedding-sdk/theme";
 import type { SemanticColorKey } from "metabase/embedding-sdk/theme/embedding-color-palette";
 import type { ColorName } from "metabase/lib/colors/types";
 
@@ -20,9 +21,18 @@ export type ColorOperation = {
 /**
  * Applies different color operations to light and dark themes.
  */
-export type DynamicCssVarColorDefinition = {
+export type DynamicColorDefinition = {
   light?: ColorOperation;
   dark?: ColorOperation;
 };
 
-export type DynamicCssVarConfig = Record<string, DynamicCssVarColorDefinition>;
+export type DynamicCssVarConfig = Record<string, DynamicColorDefinition>;
+
+/**
+ * A mapping of SDK color names to their dynamic color definition.
+ *
+ * This is used to provide theme-aware defaults for SDK colors.
+ **/
+export type DynamicSdkDefaultColorConfig = Partial<
+  Record<MetabaseColor, DynamicColorDefinition>
+>;

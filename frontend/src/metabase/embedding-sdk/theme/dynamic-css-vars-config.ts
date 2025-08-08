@@ -1,7 +1,8 @@
 import type { DynamicCssVarConfig } from "../types/private/css-variables";
 
 /**
- * These CSS variables are dynamically generated based on the theme.
+ * Custom CSS variables that don't correspond to SDK color mappings.
+ * These are always applied and can't be overridden by user-defined colors.
  */
 export const DYNAMIC_CSS_VARIABLES: DynamicCssVarConfig = {
   "--mb-color-bg-sdk-question-toolbar": {
@@ -16,10 +17,11 @@ export const DYNAMIC_CSS_VARIABLES: DynamicCssVarConfig = {
     light: { source: "bg-white", darken: 0.1 },
     dark: { source: "bg-white", lighten: 0.4 },
   },
-  "--mb-color-background-hover": {
-    dark: { source: "bg-white", lighten: 0.5 },
-  },
   "--mb-color-bg-error": {
     dark: { source: "error", alpha: 0.3 },
+  },
+  "--mb-color-bg-light": {
+    light: { source: "bg-white", darken: 0.02 },
+    dark: { source: "bg-white", lighten: 0.1 },
   },
 };

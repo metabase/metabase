@@ -14,9 +14,11 @@ import {
 } from "metabase/embedding-sdk/theme";
 import type { MappableSdkColor } from "metabase/embedding-sdk/theme/embedding-color-palette";
 import { SDK_TO_MAIN_APP_COLORS_MAPPING } from "metabase/embedding-sdk/theme/embedding-color-palette";
+import type { ColorPalette } from "metabase/lib/colors/types";
 import type { MantineThemeOverride } from "metabase/ui";
 
 import { colorTuple } from "./color-tuple";
+import { getDerivedColors } from "./derived-colors";
 
 const SDK_BASE_FONT_SIZE = `${DEFAULT_SDK_FONT_SIZE}px`;
 
@@ -30,10 +32,15 @@ const stripUndefinedKeys = <T>(x: T): unknown =>
  * Transforms a public-facing Metabase theme configuration
  * into a Mantine theme override for internal use.
  */
-export function getEmbeddingThemeOverride(
-  theme: MetabaseTheme,
-  font: string | undefined,
-): MantineThemeOverride {
+export function getEmbeddingThemeOverride({
+  theme,
+  font,
+  appColors,
+}: {
+  theme: MetabaseTheme;
+  font: string | undefined;
+  appColors: ColorPalette;
+}): MantineThemeOverride {
   const components: MetabaseComponentTheme = merge(
     DEFAULT_EMBEDDED_COMPONENT_THEME,
     stripUndefinedKeys(theme.components),
@@ -81,5 +88,11 @@ export function getEmbeddingThemeOverride(
     }
   }
 
-  return override;
+  // Derive theme-aware colors for SDK colors that are not defined by the user.
+  // This will give a better out-of-the-box experience as users just have to define 3 - 4 colors.
+  return getDerivedColors({
+    sdkColors: theme.colors ?? {},
+    override,
+    appColors,
+  });
 }

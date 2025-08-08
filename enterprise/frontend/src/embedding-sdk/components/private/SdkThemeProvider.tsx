@@ -28,7 +28,11 @@ export const SdkThemeProvider = ({ theme, children }: Props) => {
     // This must be done before ThemeProvider calls getThemeOverrides.
     setGlobalEmbeddingColors(theme?.colors, appColors ?? {});
 
-    return getEmbeddingThemeOverride(theme || {}, font);
+    return getEmbeddingThemeOverride({
+      theme: theme ?? {},
+      font,
+      appColors: appColors ?? {},
+    });
   }, [appColors, theme, font]);
 
   return (
