@@ -79,6 +79,13 @@
     (finally
       (worker/chan-end-run! run-id))))
 
+(defn execute-transform!
+  "Execute a compiled transform either locally or remotely."
+  [run-id driver transform-details opts]
+  (if (worker/run-remote?)
+    (execute-mbql-transform-remote! run-id driver transform-details opts)
+    (execute-mbql-transform-local!  run-id driver transform-details opts)))
+
 (defn execute-mbql-transform!
   "Execute `transform` and sync its target table.
 
@@ -115,10 +122,7 @@
        (when start-promise
          (deliver start-promise [:started run-id]))
        (log/info "Executing transform" id "with target" (pr-str target))
-       ;; TODO (eric): execute-transform!
-       (if (worker/run-remote?)
-         (execute-mbql-transform-remote! run-id driver transform-details opts)
-         (execute-mbql-transform-local!  run-id driver transform-details opts))
+       (execute-transform! run-id driver transform-details opts)
        (sync-target! target database run-id))
      (catch Throwable t
        (log/error t "Error executing transform")
