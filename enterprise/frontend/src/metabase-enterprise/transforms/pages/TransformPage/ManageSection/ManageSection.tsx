@@ -5,9 +5,10 @@ import { t } from "ttag";
 
 import { useDispatch } from "metabase/lib/redux";
 import { useMetadataToasts } from "metabase/metadata/hooks";
-import { Button, Group, Icon } from "metabase/ui";
+import { Button, Card, Group, Icon } from "metabase/ui";
 import type { Transform } from "metabase-types/api";
 
+import { QueryView } from "../../../components/QueryView";
 import { TitleSection } from "../../../components/TitleSection";
 import { getTransformListUrl, getTransformQueryUrl } from "../../../urls";
 
@@ -27,7 +28,11 @@ export function ManageSection({ transform }: ManageSectionProps) {
           <DeleteTransformButton transform={transform} />
         </Group>
       }
-    />
+    >
+      <Card p={0} shadow="none" withBorder>
+        <QueryView query={transform.source.query} />
+      </Card>
+    </TitleSection>
   );
 }
 
