@@ -8,43 +8,38 @@
 
 (deftest test-get-provider
   (testing "get-active-model returns based on setting"
-    (mt/with-temporary-setting-values [ee-embedding-provider "ollama"]
+    (mt/with-temporary-setting-values [ee-embedding-provider "ai-service"
+                                       ee-embedding-model "mxbai-embed-large"
+                                       ee-embedding-model-dimensions 1024]
+      (is (= {:provider "ai-service"
+              :model-name "mxbai-embed-large"
+              :vector-dimensions 1024}
+             (embedding/get-configured-model))))
+
+    (mt/with-temporary-setting-values [ee-embedding-provider "ollama"
+                                       ee-embedding-model "mxbai-embed-large"
+                                       ee-embedding-model-dimensions 1024]
       (is (= {:provider "ollama"
               :model-name "mxbai-embed-large"
               :vector-dimensions 1024}
              (embedding/get-configured-model))))
 
-    (mt/with-temporary-setting-values [ee-embedding-provider "openai"]
+    (mt/with-temporary-setting-values [ee-embedding-provider "openai"
+                                       ee-embedding-model "text-embedding-3-small"
+                                       ee-embedding-model-dimensions 1536]
       (is (= {:provider "openai"
               :model-name "text-embedding-3-small"
               :vector-dimensions 1536}
-             (embedding/get-configured-model)))))
-
-  (testing "get-provider throws on unknown provider"
-    (mt/with-temporary-setting-values [ee-embedding-provider "unknown"]
-      (is (thrown-with-msg?
-           clojure.lang.ExceptionInfo
-           #"Unknown embedding provider: unknown"
-           (embedding/get-configured-model))))))
+             (embedding/get-configured-model))))))
 
 (deftest test-model-dimensions-with-settings
-  (testing "model-dimensions uses provider defaults when override is nil"
-    (mt/with-temporary-setting-values [ee-embedding-provider "ollama"
-                                       ee-embedding-model nil]
-      (is (= 1024 (:vector-dimensions (embedding/get-configured-model)))))
-
-    (mt/with-temporary-setting-values [ee-embedding-provider "openai"
-                                       ee-embedding-model nil]
-      (is (= 1536 (:vector-dimensions (embedding/get-configured-model))))))
+  (testing "model-dimensions uses setting defaults when override is nil"
+    (mt/with-temporary-setting-values [ee-embedding-model-dimensions nil]
+      (is (= 1024 (:vector-dimensions (embedding/get-configured-model))))))
 
   (testing "model-dimensions uses override when specified"
-    (mt/with-temporary-setting-values [ee-embedding-provider "ollama"
-                                       ee-embedding-model "nomic-embed-text"]
-      (is (= 768 (:vector-dimensions (embedding/get-configured-model)))))
-
-    (mt/with-temporary-setting-values [ee-embedding-provider "openai"
-                                       ee-embedding-model "text-embedding-ada-002"]
-      (is (= 1536 (:vector-dimensions (embedding/get-configured-model)))))))
+    (mt/with-temporary-setting-values [ee-embedding-model-dimensions 768]
+      (is (= 768 (:vector-dimensions (embedding/get-configured-model)))))))
 
 (deftest test-openai-provider-validation
   (testing "OpenAIProvider throws when API key not configured"

@@ -3,7 +3,6 @@
    [clj-http.client :as http]
    [clojure.string :as str]
    [metabase-enterprise.metabot-v3.client :as metabot-v3.client]
-   [metabase-enterprise.metabot-v3.settings :as metabot-v3.settings]
    [metabase-enterprise.semantic-search.settings :as semantic-settings]
    [metabase.analytics.core :as analytics]
    [metabase.util :as u]
@@ -26,17 +25,26 @@
 (def ^:private model-abbreviations {"small" "sm" "medium" "md" "large" "lg" "tiny" "tn"})
 
 (defn abbrev-model-name
-  "Abbreviate long model names for use in index names. Does not ensure uniqueness."
-  [model-name max-len]
-  (let [clean-model-name (clean-model-name model-name)]
-    (if (<= (count clean-model-name) max-len)
+  "Abbreviate long model names for use in index names."
+  [model-name]
+  (-> model-name
       clean-model-name
-      (-> clean-model-name
-          (str/replace #"embedding|embed" "")
-          ((fn [s] (reduce-kv str/replace s model-abbreviations)))
-          (str/replace #"_{2,}" "_")
-          (#(subs % 0 (min (count %) max-len)))
-          (str/replace #"^_+|_+$" "")))))
+      (str/replace #"embedding|embed" "")
+      ((fn [s] (reduce-kv str/replace s model-abbreviations)))
+      (str/replace #"_{2,}" "_")
+      (str/replace #"^_+|_+$" "")))
+
+(defn clean-provider-name
+  "Clean up a provider names for use in index names."
+  [provider-name]
+  (str/replace provider-name #"[-:.]" "_"))
+
+(defn abbrev-provider-name
+  "Abbreviate long provider names for use in index names."
+  [provider-name]
+  (if (= provider-name "ai-service")
+    "ais"
+    (clean-provider-name provider-name)))
 
 ;;; Token Counting for OpenAI Models
 
