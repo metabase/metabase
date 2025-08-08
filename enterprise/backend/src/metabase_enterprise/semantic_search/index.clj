@@ -289,20 +289,21 @@
             upsert-embedding!)))
        (merge-with + stats)))))
 
-(defn- index-update-executor
-  "Creates a thread pool for processing batched documents, including fetching embeddings, with the provided thread
-  count, with the supplied degree of parallelism.
+(defonce ^:private
+  ^{:doc "A shared thread pool for processing batched documents, including fetching embeddings.
 
-  A custom RejectedExecutionHandler is used which runs the rejected task in the caller thread (CallerRunsPolicy),
-  ensuring that we don't continue realizing documents until a new thread is available. This requires us to set the
-  thread pool to one less than the desired degree of parallelism, since the caller thread is also being used."
-  [n]
-  (let [thread-count (dec n)]
-    (ThreadPoolExecutor. thread-count
-                         thread-count
-                         0 TimeUnit/SECONDS
-                         (java.util.concurrent.LinkedBlockingQueue. thread-count)
-                         (java.util.concurrent.ThreadPoolExecutor$CallerRunsPolicy.))))
+    A custom RejectedExecutionHandler is used which runs the rejected task in the caller thread (CallerRunsPolicy),
+    ensuring that we don't continue realizing documents until a new thread is available. This requires us to set the
+    thread pool to one less than the desired degree of parallelism, since the caller thread is also being used."}
+  index-update-executor
+  (delay
+    (let [n (semantic-settings/index-update-thread-count)
+          ^long thread-count (dec n)]
+      (ThreadPoolExecutor. thread-count
+                           thread-count
+                           0 TimeUnit/SECONDS
+                           (java.util.concurrent.LinkedBlockingQueue. thread-count)
+                           (java.util.concurrent.ThreadPoolExecutor$CallerRunsPolicy.)))))
 
 (defn upsert-index-pooled!
   "Returns a future which upserts the provided documents into the index table, executed using the provided thread pool."
@@ -312,19 +313,24 @@
 (defn upsert-index!
   "Inserts or updates documents in the index table. If a document with the same
   model + model_id already exists, it will be replaced. Parallelizes batch insertion
-  using a thread pool with a configurable thread count (default: 2)."
-  [connectable index documents-reducible]
-  (not-empty
-   (cp/with-shutdown! [pool (index-update-executor (semantic-settings/index-update-thread-count))]
-     (let [futures (transduce
-                    (comp (partition-all *batch-size*)
-                          (map #(upsert-index-pooled! pool connectable index %)))
-                    conj
-                    documents-reducible)]
-       (reduce (fn [update-counts fut]
-                 (merge-with + update-counts (when fut @fut)))
-               {}
-               futures)))))
+  using a shared thread pool with a configurable thread count (default: 2)."
+  ([connectable index documents-reducible]
+   (upsert-index! connectable index documents-reducible {}))
+  ([connectable index documents-reducible {:keys [serial?] :or {serial? false}}]
+   (not-empty
+    (let [pool @index-update-executor
+          results (transduce
+                   (comp (partition-all *batch-size*)
+                         (map (if serial?
+                                #(upsert-index-batch! connectable index %)
+                                #(upsert-index-pooled! pool connectable index %))))
+                   conj
+                   documents-reducible)]
+      (reduce (fn [update-counts result]
+                (let [value (if (future? result) @result result)]
+                  (merge-with + update-counts (when value value))))
+              {}
+              results)))))
 
 (defn- drop-index-table-sql
   [{:keys [table-name]}]
@@ -866,15 +872,15 @@
   (defn reducible [n]
     (u/rconcat (logging-range n) []))
 
-  (cp/with-shutdown! [pool (index-update-executor 2)]
-    (let [futures
-          (transduce
-           (comp
-            (partition-all 10)
-            (map #(cp/future pool (process-batch %))))
-           conj
-           (reducible 100))]
-      (reduce (fn [acc fut]
-                (merge-with + acc @fut))
-              {}
-              futures))))
+  (let [pool @index-update-executor
+        futures
+        (transduce
+         (comp
+          (partition-all 10)
+          (map #(cp/future pool (process-batch %))))
+         conj
+         (reducible 100))]
+    (reduce (fn [acc fut]
+              (merge-with + acc @fut))
+            {}
+            futures)))

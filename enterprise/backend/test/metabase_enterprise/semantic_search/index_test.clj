@@ -249,7 +249,7 @@
                        :embedding (semantic.tu/get-mock-embedding "Tiger Conservation")}]
                      (semantic.tu/query-embeddings {:model "card" :model_id "3"}))))))))))
 
-(defn- embedding-reuse-with-batch-size! [batch-size & {:keys [inter-batch?]}]
+(defn- embedding-reuse-with-batch-size! [batch-size & {:keys [inter-batch? serial?]}]
   (let [test-documents [{:model "card"
                          :id "1"
                          :name "Dog Training Guide"
@@ -282,7 +282,7 @@
                             (when (seq (second ret))
                               (reset! inter-batch-cache-hit? true))
                             ret)))]
-          (semantic.tu/upsert-index! test-documents))
+          (semantic.tu/upsert-index! test-documents {:serial? serial?}))
         (is (= inter-batch? @inter-batch-cache-hit?))
         (is (= 1 (count @calls)))
         (is (= ["Dog Training Guide" "Elephant Migration"]
@@ -310,7 +310,8 @@
           (embedding-reuse-with-batch-size! 3 :inter-batch? false)))
       (testing "via inter-batch caching"
         (with-open [_ (semantic.tu/open-temp-index!)]
-          (embedding-reuse-with-batch-size! 2 :inter-batch? true))))))
+          ;; Ensure batches are processed serially -- concurrent batches don't support inter-batch caching.
+          (embedding-reuse-with-batch-size! 2 :inter-batch? true :serial? true))))))
 
 (deftest prometheus-metrics-test
   (mt/with-premium-features #{:semantic-search}
