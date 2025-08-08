@@ -5,7 +5,7 @@
 const DEFAULT_SPEC_PATTERN = "./e2e/test/scenarios/**/*.cy.spec.*";
 const EMBEDDING_SDK_SPEC_PATTERN =
   "./e2e/test/scenarios/embedding-sdk/**.cy.spec.*";
-const DEBUG_SPEC_PATTERN = "./e2e/test/scenarios/onboarding/home.cy.spec.js,./e2e/test/scenarios/onboarding/auth/signup.cy.spec.js,./e2e/test/scenarios/onboarding/auth/signin.cy.spec.js,./e2e/test/scenarios/question/new.cy.spec.js,./e2e/test/scenarios/question/saved.cy.spec.js,./e2e/test/scenarios/dashboard/dashboard.cy.spec.js";
+const DEBUG_SPEC_PATTERN = "./e2e/test/scenarios/onboarding/home/homepage.cy.spec.js,./e2e/test/scenarios/onboarding/auth/signup.cy.spec.js,./e2e/test/scenarios/question/new.cy.spec.js,./e2e/test/scenarios/dashboard-cards/dashboard-drill.cy.spec.js";
 
 const specialTestConfigs = [
   {
