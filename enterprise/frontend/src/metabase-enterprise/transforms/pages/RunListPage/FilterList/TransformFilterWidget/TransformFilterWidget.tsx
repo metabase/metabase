@@ -119,7 +119,7 @@ function TransformFilterForm({
         />
       </Box>
       {filteredTransforms.length > 0 ? (
-        <Box maw={MAX_HEIGHT} style={{ overflow: "auto" }}>
+        <Box mah={MAX_HEIGHT} style={{ overflow: "auto" }}>
           <Checkbox.Group
             value={transformIds.map(getTransformIdValue)}
             onChange={handleChange}
