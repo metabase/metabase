@@ -122,12 +122,8 @@
 (defn dog-training-native-query []
   (mt/native-query {:query "SELECT AVG(tricks) FROM dogs WHERE age > 7 GROUP BY breed"}))
 
-(defn dog-training-native-query-json []
-  (-> (dog-training-native-query)
-      json/encode))
-
 (defn mock-documents []
-  (let [native-query-json (dog-training-native-query-json)]
+  (let [native-query-json (-> (dog-training-native-query) json/encode)]
     [{:model "card"
       :id 123
       :name "Dog Training Guide"
