@@ -309,6 +309,34 @@ describe("scenarios > embedding > sdk iframe embedding > custom elements api", (
     });
   });
 
+  describe("common checks", () => {
+    describe("should be permissive with json attributes", () => {
+      // NOTE: pay attention if you use initialFilters for these tests, as when the filters are not parsed correctly
+      // we default them to the latest filters used by that user
+      it("should support normal json with strings wrapped in double quotes", () => {
+        H.visitCustomHtmlPage(`
+      ${H.getNewEmbedScriptTag()}
+      ${H.getNewEmbedConfigurationScript()}
+      <metabase-question question-id="new" entity-types='["table"]' />
+      `);
+
+        H.getSimpleEmbedIframeContent().should("contain", "Orders");
+        H.getSimpleEmbedIframeContent().should("not.contain", "Orders model");
+      });
+
+      it("should support json5 with strings wrapped in single quotes", () => {
+        H.visitCustomHtmlPage(`
+      ${H.getNewEmbedScriptTag()}
+      ${H.getNewEmbedConfigurationScript()}
+      <metabase-question question-id="new" entity-types="['table']" />
+      `);
+
+        H.getSimpleEmbedIframeContent().should("contain", "Orders");
+        H.getSimpleEmbedIframeContent().should("not.contain", "Orders model");
+      });
+    });
+  });
+
   describe("sync vs async vs defer script loading", () => {
     (
       [

@@ -37,7 +37,7 @@ export function suggestFunctions({ expressionMode, query, metadata }: Options) {
     (func) => expressionClauseCompletion(func, { type: "function" }),
   );
 
-  const matcher = fuzzyMatcher({ options: functions });
+  const matcher = fuzzyMatcher(functions);
 
   return function (context: CompletionContext) {
     const source = context.state.doc.toString();
@@ -62,7 +62,6 @@ export function suggestFunctions({ expressionMode, query, metadata }: Options) {
       from: token.start,
       to: token.end,
       options,
-      filter: false,
     };
   };
 }

@@ -1,4 +1,5 @@
 import type { SdkStoreState } from "embedding-sdk/store/types";
+import { getSetting } from "metabase/selectors/settings";
 import type { State } from "metabase-types/store";
 
 export const getLoginStatus = (state: SdkStoreState) => state.sdk?.loginStatus;
@@ -26,6 +27,9 @@ export const getErrorComponent = (state: SdkStoreState) =>
 
 export const getMetabaseInstanceUrl = (state: SdkStoreState) =>
   state.sdk?.metabaseInstanceUrl;
+
+export const getMetabaseInstanceVersion = (state: SdkStoreState) =>
+  state.sdk?.metabaseInstanceVersion ?? getSetting(state, "version")?.tag;
 
 export const getFetchRefreshTokenFn = (state: SdkStoreState) =>
   state.sdk.fetchRefreshTokenFn;

@@ -5,6 +5,7 @@
   These routes should generally live under prefixes like `/api/ee/<feature>/` -- see the
   `enterprise/backend/README.md` for more details."
   (:require
+   [metabase-enterprise.action-v2.api]
    [metabase-enterprise.advanced-config.api.logs]
    [metabase-enterprise.advanced-permissions.api.routes]
    [metabase-enterprise.ai-entity-analysis.api]
@@ -50,6 +51,7 @@
    :metabot-v3                 (deferred-tru "MetaBot")
    :scim                       (deferred-tru "SCIM configuration")
    :serialization              (deferred-tru "Serialization")
+   :table-data-editing         (deferred-tru "Table Data Editing")
    :upload-management          (deferred-tru "Upload Management")
    :database-routing           (deferred-tru "Database Routing")
    :cloud-custom-smtp          (deferred-tru "Custom SMTP")})
@@ -73,7 +75,9 @@
 (def ^:private ee-routes-map
   "/api/ee routes. The following routes are NICE and do follow the `/ee/<feature>/` naming convention. Please add new
   routes here and follow the convention."
-  {"/advanced-permissions"         (premium-handler metabase-enterprise.advanced-permissions.api.routes/routes :advanced-permissions)
+  ;; Postponing a granular flag for :actions until it's used more widely.
+  {"/action-v2"                    (premium-handler metabase-enterprise.action-v2.api/routes :table-data-editing)
+   "/advanced-permissions"         (premium-handler metabase-enterprise.advanced-permissions.api.routes/routes :advanced-permissions)
    "/ai-entity-analysis"           (premium-handler metabase-enterprise.ai-entity-analysis.api/routes :ai-entity-analysis)
    "/ai-sql-fixer"                 (premium-handler metabase-enterprise.ai-sql-fixer.api/routes :ai-sql-fixer)
    "/ai-sql-generation"            (premium-handler metabase-enterprise.ai-sql-generation.api/routes :ai-sql-generation)

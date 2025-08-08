@@ -1,17 +1,18 @@
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 import { t } from "ttag";
 
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
-import type { ButtonProps } from "metabase/ui";
+import type { ButtonProps, MantineSize } from "metabase/ui";
 
 export type ConfirmationState = {
   title: string;
-  message?: string;
+  message?: string | ReactNode;
   onConfirm: () => void;
   onCancel?: () => void;
   confirmButtonText?: string;
   cancelButtonText?: string;
   confirmButtonProps?: Omit<ButtonProps, "onClick" | "children">;
+  size?: MantineSize;
 };
 
 export const useConfirmation = () => {
@@ -38,6 +39,7 @@ export const useConfirmation = () => {
       message={confirmationState?.message}
       confirmButtonText={confirmationState.confirmButtonText}
       confirmButtonProps={confirmationState.confirmButtonProps}
+      size={confirmationState.size}
     />
   ) : null;
 
@@ -49,6 +51,7 @@ export const useConfirmation = () => {
     confirmButtonText = t`Confirm`,
     cancelButtonText = t`Cancel`,
     confirmButtonProps,
+    size,
   }: ConfirmationState) =>
     setConfirmationState({
       title,
@@ -58,6 +61,7 @@ export const useConfirmation = () => {
       confirmButtonText,
       cancelButtonText,
       confirmButtonProps,
+      size,
     });
 
   return { modalContent, show };
