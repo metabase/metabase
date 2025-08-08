@@ -1,15 +1,4 @@
-.button {
-  position: relative;
-  border: 2px solid var(--mb-color-border);
+.fieldset {
+  cursor: pointer;
   border-radius: var(--default-border-radius);
-  background-color: var(--mb-color-bg-white);
-}
-
-.label {
-  flex: 1;
-
-  &.hasValue {
-    position: absolute;
-    top: -5px;
-  }
 }

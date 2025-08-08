@@ -1,5 +1,5 @@
 import {
-  type ButtonHTMLAttributes,
+  type FieldsetHTMLAttributes,
   type MouseEvent,
   type Ref,
   forwardRef,
@@ -8,17 +8,17 @@ import { t } from "ttag";
 
 import {
   ActionIcon,
+  Box,
   Group,
   Icon,
   type IconName,
   Text,
   Tooltip,
-  UnstyledButton,
 } from "metabase/ui";
 
 import S from "./FilterButton.module.css";
 
-type FilterButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
+type FilterButtonProps = FieldsetHTMLAttributes<HTMLFieldSetElement> & {
   label: string;
   icon: IconName;
   displayValue: string | null;
@@ -27,7 +27,7 @@ type FilterButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
 
 export const FilterButton = forwardRef(function FilterWidget(
   { label, icon, displayValue, onRemove, ...props }: FilterButtonProps,
-  ref: Ref<HTMLButtonElement>,
+  ref: Ref<HTMLFieldSetElement>,
 ) {
   const hasValue = displayValue != null;
 
@@ -37,9 +37,23 @@ export const FilterButton = forwardRef(function FilterWidget(
   };
 
   return (
-    <UnstyledButton {...props} ref={ref} className={S.button}>
-      <Group c="text-secondary" h="2.5rem" gap="sm" pl="md" pr="xs">
-        <Icon name={icon} />
+    <Box
+      component="fieldset"
+      {...props}
+      ref={ref}
+      className={S.fieldset}
+      pl="md"
+      pr="xs"
+      py="xs"
+      bd="2px solid border"
+      bg="bg-white"
+    >
+      {hasValue && (
+        <Box component="legend" h="2px" ml="-4px" px="xs" fz="sm" lh={0}>
+          {label}
+        </Box>
+      )}
+      <Group c="text-secondary" gap="sm">
         {hasValue ? (
           <>
             <Text flex={1} fw="bold">
@@ -53,11 +67,14 @@ export const FilterButton = forwardRef(function FilterWidget(
           </>
         ) : (
           <>
+            <Icon name={icon} />
             <Text flex={1}>{label}</Text>
-            <Icon name="chevrondown" mx="0.375rem" />
+            <ActionIcon>
+              <Icon name="chevrondown" />
+            </ActionIcon>
           </>
         )}
       </Group>
-    </UnstyledButton>
+    </Box>
   );
 });
