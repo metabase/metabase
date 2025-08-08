@@ -5,22 +5,17 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
-   [metabase.api.util.handlers :as handlers]
    [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.util.jvm :as u.jvm]
    [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2])
   (:import
-   (java.util.concurrent
-    Executors
-    ExecutorService)
    (org.quartz CronExpression)))
 
 (set! *warn-on-reflection* true)
 
 (comment transform-job/keep-me)
-
-(defonce ^:private ^ExecutorService executor (Executors/newVirtualThreadPerTaskExecutor))
 
 (api.macros/defendpoint :post "/"
   "Create a new transform job."
@@ -122,8 +117,7 @@
   (log/info "Manual execution of transform job" job-id)
   (api/check-superuser)
   (let [job (api/check-404 (t2/select-one :model/TransformJob :id job-id))]
-    (.submit executor
-             ^Runnable #(jobs/execute-jobs! [job-id] {:run-method :manual})))
+    (u.jvm/in-virtual-thread* (jobs/execute-jobs! [job-id] {:run-method :manual})))
   {:message    "Job execution started"
    :job_run_id (str "stub-" job-id "-" (System/currentTimeMillis))})
 

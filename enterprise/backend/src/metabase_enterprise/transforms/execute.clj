@@ -15,13 +15,9 @@
    [metabase.util.jvm :as u.jvm]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
-   [toucan2.core :as t2])
-  (:import
-   (java.util.concurrent Executors ExecutorService)))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
-
-(defonce ^:private ^ExecutorService executor (Executors/newVirtualThreadPerTaskExecutor))
 
 (mr/def ::transform-details
   [:map
@@ -79,6 +75,13 @@
     (finally
       (worker/chan-end-run! run-id))))
 
+(defn execute-transform!
+  "Execute a compiled transform either locally or remotely."
+  [run-id driver transform-details opts]
+  (if (worker/run-remote?)
+    (execute-mbql-transform-remote! run-id driver transform-details opts)
+    (execute-mbql-transform-local!  run-id driver transform-details opts)))
+
 (defn execute-mbql-transform!
   "Execute `transform` and sync its target table.
 
@@ -115,10 +118,7 @@
        (when start-promise
          (deliver start-promise [:started run-id]))
        (log/info "Executing transform" id "with target" (pr-str target))
-       ;; TODO (eric): execute-transform!
-       (if (worker/run-remote?)
-         (execute-mbql-transform-remote! run-id driver transform-details opts)
-         (execute-mbql-transform-local!  run-id driver transform-details opts))
+       (execute-transform! run-id driver transform-details opts)
        (sync-target! target database run-id))
      (catch Throwable t
        (log/error t "Error executing transform")
@@ -136,9 +136,8 @@
         (mapv (fn [transform]
                 (let [start-promise (promise)]
                   (try
-                    (let [thunk (^:once fn []
-                                  (execute-mbql-transform! transform (assoc opts :start-promise start-promise)))]
-                      (.submit executor ^Runnable (bound-fn* thunk)))
+                    (u.jvm/in-virtual-thread*
+                     (execute-mbql-transform! transform (assoc opts :start-promise start-promise)))
                     (catch Throwable t
                       (deliver start-promise t)))
                   [transform start-promise]))
