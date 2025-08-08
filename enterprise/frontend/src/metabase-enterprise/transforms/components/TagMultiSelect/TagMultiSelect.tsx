@@ -5,23 +5,26 @@ import { useMetadataToasts } from "metabase/metadata/hooks";
 import {
   ActionIcon,
   Icon,
+  Loader,
   MultiSelect,
   SelectItem,
   type SelectItemProps,
   Text,
   Tooltip,
 } from "metabase/ui";
-import { useListTransformTagsQuery } from "metabase-enterprise/api/transform-tag";
+import {
+  useCreateTransformTagMutation,
+  useListTransformTagsQuery,
+} from "metabase-enterprise/api/transform-tag";
 import type { TransformTag, TransformTagId } from "metabase-types/api";
 
-import { CreateTagModal } from "./CreateTagModal";
 import { DeleteTagModal } from "./DeleteTagModal";
 import S from "./TagMultiSelect.module.css";
 import { UpdateTagModal } from "./UpdateTagModal";
 
 const NEW_VALUE = "";
 
-type TagModalType = "create" | "update" | "delete";
+type TagModalType = "update" | "delete";
 
 type TagMultiSelectProps = {
   tagIds: TransformTagId[];
@@ -29,18 +32,23 @@ type TagMultiSelectProps = {
 };
 
 export function TagMultiSelect({ tagIds, onChange }: TagMultiSelectProps) {
-  const { data: tags = [] } = useListTransformTagsQuery();
+  const { data: tags = [], isLoading } = useListTransformTagsQuery();
+  const [createTag, { isLoading: isCreating }] =
+    useCreateTransformTagMutation();
   const tagById = getTagById(tags);
   const [searchValue, setSearchValue] = useState("");
   const [modalType, setModalType] = useState<TagModalType>();
-  const [newTagName, setNewTagName] = useState("");
   const [selectedTagId, setSelectedTagId] = useState<TransformTagId>();
-  const { sendSuccessToast } = useMetadataToasts();
+  const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
 
   const handleChange = async (value: string[]) => {
     if (value.includes(NEW_VALUE)) {
-      setModalType("create");
-      setNewTagName(searchValue);
+      const { data: tag } = await createTag({ name: searchValue });
+      if (!tag) {
+        sendErrorToast(t`Failed to create a tag`);
+      } else {
+        onChange([...tagIds, tag.id]);
+      }
     } else {
       onChange(value.map(getTagId));
     }
@@ -48,14 +56,7 @@ export function TagMultiSelect({ tagIds, onChange }: TagMultiSelectProps) {
 
   const handleModalClose = () => {
     setModalType(undefined);
-    setNewTagName("");
     setSelectedTagId(undefined);
-  };
-
-  const handleCreate = (tag: TransformTag) => {
-    handleModalClose();
-    sendSuccessToast(t`Tag created`);
-    onChange([...tagIds, tag.id]);
   };
 
   const handleUpdate = () => {
@@ -87,6 +88,9 @@ export function TagMultiSelect({ tagIds, onChange }: TagMultiSelectProps) {
         searchValue={searchValue}
         searchable
         nothingFoundMessage={t`Tag with this name is already added.`}
+        rightSection={
+          isLoading || isCreating ? <Loader size="sm" /> : undefined
+        }
         renderOption={(item) =>
           item.option.value === NEW_VALUE ? (
             <NewTagSelectItem
@@ -105,13 +109,6 @@ export function TagMultiSelect({ tagIds, onChange }: TagMultiSelectProps) {
         onChange={handleChange}
         onSearchChange={setSearchValue}
       />
-      {modalType === "create" && (
-        <CreateTagModal
-          initialName={newTagName}
-          onCreate={handleCreate}
-          onClose={handleModalClose}
-        />
-      )}
       {modalType === "update" && selectedTagId != null && (
         <UpdateTagModal
           tag={tagById[selectedTagId]}
