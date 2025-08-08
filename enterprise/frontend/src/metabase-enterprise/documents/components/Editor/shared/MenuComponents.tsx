@@ -35,6 +35,8 @@ export const MenuItemComponent = ({
     className={styles.suggestionMenuItem}
     data-selected={isSelected || undefined}
     onClick={onClick || item.action}
+    role="listitem"
+    aria-label={item.label}
   >
     <Group gap="sm" wrap="nowrap">
       <Icon
@@ -65,6 +67,8 @@ export const SearchResultsFooter = ({
     className={styles.suggestionMenuItem}
     data-selected={isSelected || undefined}
     onClick={onClick}
+    role="listitem"
+    aria-label={t`Browse all`}
   >
     <Group gap="sm" wrap="nowrap">
       <Icon name="search" size={16} color="var(--mb-color-text-medium)" />
@@ -81,6 +85,8 @@ export const MetabotFooter = ({ isSelected, onClick }: ExtraItemProps) => (
     className={cx(styles.suggestionMenuItem, styles.suggestionMenuFooter)}
     data-selected={isSelected || undefined}
     onClick={onClick}
+    role="listitem"
+    aria-label={t`Ask Metabot`}
   >
     <Group gap="sm" wrap="nowrap">
       <Icon name="metabot" size={16} color="var(--mb-color-text-medium)" />

@@ -213,7 +213,7 @@ export const Editor: React.FC<EditorProps> = ({
           }
         }}
       >
-        <EditorContent editor={editor} />
+        <EditorContent data-testid="document-content" editor={editor} />
         <EditorBubbleMenu editor={editor} />
       </Box>
     </Box>

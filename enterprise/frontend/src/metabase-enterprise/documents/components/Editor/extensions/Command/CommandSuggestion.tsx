@@ -87,6 +87,8 @@ const CommandMenuItem = ({
     className={styles.suggestionMenuItem}
     data-selected={isSelected || undefined}
     onClick={onClick}
+    role="listitem"
+    aria-label={option.label}
   >
     <Group gap="sm" wrap="nowrap" align="center">
       {option.icon ? (
@@ -369,7 +371,11 @@ const CommandSuggestionComponent = forwardRef<
   }
 
   return (
-    <Box className={styles.suggestionPopup}>
+    <Box
+      className={styles.suggestionPopup}
+      aria-label={t`Command Dialog`}
+      role="dialog"
+    >
       <Box className={styles.suggestionScroll}>
         {showLinkSearch &&
         ((isRecentsLoading && effectiveQuery.length === 0) ||

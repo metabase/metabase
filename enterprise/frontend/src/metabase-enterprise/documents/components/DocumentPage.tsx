@@ -329,6 +329,7 @@ export const DocumentPage = ({
             <Box className={styles.header} mt="xl" pt="xl">
               <Flex direction="column" w="100%">
                 <TextInput
+                  aria-label={t`Document Title`}
                   autoFocus={isNewDocument}
                   value={documentTitle}
                   onChange={(event) =>

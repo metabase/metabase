@@ -348,7 +348,10 @@ export const CardEmbedComponent = memo(
     }
 
     return (
-      <NodeViewWrapper className={styles.embedWrapper}>
+      <NodeViewWrapper
+        className={styles.embedWrapper}
+        data-testid="document-card-embed"
+      >
         <Box
           className={cx(styles.cardEmbed, EDITOR_STYLE_BOUNDARY_CLASS, {
             [styles.selected]: selected,

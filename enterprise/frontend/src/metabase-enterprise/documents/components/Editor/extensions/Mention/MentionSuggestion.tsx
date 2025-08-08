@@ -209,8 +209,16 @@ const MentionSuggestionComponent = forwardRef<
   };
 
   return (
-    <Box className={styles.suggestionPopup}>
-      <Box className={styles.suggestionScroll}>
+    <Box
+      className={styles.suggestionPopup}
+      role="dialog"
+      aria-label={t`Mention Dialog`}
+    >
+      <Box
+        className={styles.suggestionScroll}
+        role="list"
+        aria-label={t`Suggestions`}
+      >
         {(isRecentsLoading && query.length === 0) ||
         (isSearchLoading && query.length > 0) ? (
           <Group justify="center" p="sm">
