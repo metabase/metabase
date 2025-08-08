@@ -4,6 +4,7 @@ import { usePrevious } from "react-use";
 import { t } from "ttag";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
+import { PLUGIN_WORKSPACES } from "metabase/plugins";
 import { deletePermanently } from "metabase/archive/actions";
 import { ArchivedEntityBanner } from "metabase/archive/components/ArchivedEntityBanner";
 import { CollectionBulkActions } from "metabase/collections/components/CollectionBulkActions";
@@ -251,6 +252,14 @@ const CollectionContentViewInner = ({
             onCopy={handleCopy}
           />
         </ErrorBoundary>
+        {PLUGIN_WORKSPACES.shouldShowWorkspaceInCollections() &&
+          PLUGIN_WORKSPACES.WorkspaceListComponent && (
+            <ErrorBoundary>
+              <PLUGIN_WORKSPACES.WorkspaceListComponent
+                collectionId={collectionId}
+              />
+            </ErrorBoundary>
+          )}
         <ErrorBoundary>
           <CollectionItemsTable
             collectionId={collectionId}

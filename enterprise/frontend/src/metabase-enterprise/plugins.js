@@ -41,4 +41,5 @@ import "./metabot";
 import "./database_replication";
 import "./transforms";
 import "./documents";
+import "./workspaces";
 import "./entities";

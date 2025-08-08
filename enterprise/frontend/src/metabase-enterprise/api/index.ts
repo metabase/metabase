@@ -13,3 +13,4 @@ export * from "./scim";
 export * from "./tags";
 export * from "./transform";
 export * from "./upload-management";
+export * from "./workspace";
