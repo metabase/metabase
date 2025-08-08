@@ -93,7 +93,7 @@
 
 (defn unique-index-metadata
   []
-  (let [uniq-id (subs (u/generate-nano-id) 0 17)
+  (let [uniq-id (subs (u/generate-nano-id) 0 11)
         fmt     (str "mock_%s_" uniq-id "_")]
     {:version               "0"
      :metadata-table-name   (format fmt "index_metadata")
