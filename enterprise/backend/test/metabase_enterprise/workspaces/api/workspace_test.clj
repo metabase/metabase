@@ -243,49 +243,6 @@
                               {:name "Missing user_id and email"
                                :type "user"})))))
 
-(comment
-
-  (do
-    (let [id (atom 1000)]
-      (defn next-id [] (swap! id inc)))
-    (def c (t2/insert-returning-instance! :model/Collection {:name "Test Workspace Collection"}))
-
-    (try (def w (t2/insert-returning-instance! :model/Workspace {:name "test workspace"
-                                                                 :collection_id (:id c)
-                                                                 :data_warehouses []
-                                                                 :users []
-                                                                 :plans []
-                                                                 :activity_logs []
-                                                                 :transforms []
-                                                                 :documents []}))
-         (catch Exception e (ex-data e))))
-
-  (mt/user-http-request :crowberto :get 200 (format "ee/workspace/%s") (:id w))
-
-  (mt/user-http-request :crowberto :put 200
-                        (format "ee/workspace/%s/user" (:id w))
-                        {:id (next-id) :name "name" :email "email" :type "type"})
-
-  (mt/user-http-request :crowberto :put 200
-                        (format "ee/workspace/%s/user" (:id w))
-                        {:user_id 100
-                         :name "Alice Smith"
-                         :email "alice@company.com"
-                         :type "analyst"})
-
-  (mt/user-http-request :crowberto :put 200
-                        (format "ee/workspace/%s/plan" (:id w))
-                        {:title "x" :content {}})
-
-  (mt/user-http-request :crowberto :put 400
-                        (format "ee/workspace/%s/plan" (:id w))
-                        {:title "X" :content {}})
-
-  [(mt/user-http-request :crowberto :put 200 (format "ee/workspace/%s/document" (:id w))
-                         {:document_id (next-id)})
-   (t2/select-one :model/Workspace :id (:id w))]
-  (t2/select-one :model/Workspace :id (:id w)))
-
 (deftest api-add-document-to-workspace-test
   (testing "PUT /api/ee/workspace/:id/document - add document to workspace"
     (mt/with-temp [:model/Collection {col-id :id} {}
@@ -527,3 +484,50 @@
         (mt/user-http-request :crowberto :delete 204
                               (format "ee/workspace/%s" workspace-id))
         (is (nil? (t2/select-one :model/Workspace :id workspace-id)))))))
+
+(comment
+
+  ;; repl stuff
+  (do
+    (let [id (atom 1000)]
+      (defn next-id [] (swap! id inc)))
+    (def c (t2/insert-returning-instance! :model/Collection {:name "Test Workspace Collection"}))
+
+    (try (def w (t2/insert-returning-instance! :model/Workspace {:name "test workspace"
+                                                                 :collection_id (:id c)
+                                                                 :data_warehouses []
+                                                                 :users []
+                                                                 :plans []
+                                                                 :activity_logs []
+                                                                 :transforms []
+                                                                 :documents []}))
+         (catch Exception e (ex-data e))))
+
+  [w c]
+
+  (mt/user-http-request :crowberto :get 200
+                        (format "ee/workspace/%s" (:id w)))
+
+  (mt/user-http-request :crowberto :put 200
+                        (format "ee/workspace/%s/user" (:id w))
+                        {:id (next-id) :name "name" :email "email" :type "type"})
+
+  (mt/user-http-request :crowberto :put 200
+                        (format "ee/workspace/%s/user" (:id w))
+                        {:user_id 100
+                         :name "Alice Smith"
+                         :email "alice@company.com"
+                         :type "analyst"})
+
+  (mt/user-http-request :crowberto :put 200
+                        (format "ee/workspace/%s/plan" (:id w))
+                        {:title "x" :content {}})
+
+  (mt/user-http-request :crowberto :put 400
+                        (format "ee/workspace/%s/plan" (:id w))
+                        {:title "X" :content {}})
+
+  [(mt/user-http-request :crowberto :put 200 (format "ee/workspace/%s/document" (:id w))
+                         {:document_id (next-id)})
+   (t2/select-one :model/Workspace :id (:id w))]
+  (t2/select-one :model/Workspace :id (:id w)))
