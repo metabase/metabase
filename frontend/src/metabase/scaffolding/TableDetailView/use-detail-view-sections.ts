@@ -91,29 +91,12 @@ export function useDetailViewSections(
     );
   };
 
-  const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
-
-    if (over && String(active.id) !== String(over.id)) {
-      setSections((sections) => {
-        const oldIndex = sections.findIndex(
-          (section) => String(section.id) === String(active.id),
-        );
-        const newIndex = sections.findIndex(
-          (section) => String(section.id) === String(over.id),
-        );
-
-        return arrayMove(sections, oldIndex, newIndex);
-      });
-    }
-  };
-
   return {
     sections,
     createSection,
     removeSection,
     updateSection,
     updateSections: setSections,
-    handleDragEnd,
+    // handleDragEnd,
   };
 }

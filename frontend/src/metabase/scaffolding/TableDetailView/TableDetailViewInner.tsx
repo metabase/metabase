@@ -1,17 +1,28 @@
 import {
   DndContext,
+  DragOverlay,
   KeyboardSensor,
+  MeasuringStrategy,
   PointerSensor,
   closestCenter,
+  defaultDropAnimationSideEffects,
   useSensor,
   useSensors,
+  type DragEndEvent,
+  type DragOverEvent,
+  type DragStartEvent,
+  type DropAnimation,
+  type UniqueIdentifier,
 } from "@dnd-kit/core";
 import {
   SortableContext,
+  arrayMove,
+  defaultAnimateLayoutChanges,
   sortableKeyboardCoordinates,
+  useSortable,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
-import { Fragment, useCallback, useMemo, useState } from "react";
+import { Fragment, forwardRef, memo, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { push } from "react-router-redux";
 import { useMount } from "react-use";
 
@@ -20,7 +31,7 @@ import { useDispatch } from "metabase/lib/redux";
 import { question } from "metabase/lib/urls";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { closeNavbar } from "metabase/redux/app";
-import { Stack } from "metabase/ui/components";
+import { Box, Stack } from "metabase/ui/components";
 import type ForeignKey from "metabase-lib/v1/metadata/ForeignKey";
 import { isEntityName, isPK } from "metabase-lib/v1/types/utils/isa";
 import type {
@@ -33,8 +44,12 @@ import { getDefaultObjectViewSettings } from "../utils";
 
 import { DetailViewContainer } from "./DetailViewContainer";
 import { SortableSection } from "./SortableSection";
+import styles from "./dnd-styles.module.css";
 import { useDetailViewSections } from "./use-detail-view-sections";
 import { useForeignKeyReferences } from "./use-foreign-key-references";
+import classNames from "classnames";
+import { ObjectViewSection } from "./ObjectViewSection";
+import { createPortal, unstable_batchedUpdates } from "react-dom";
 
 interface TableDetailViewProps {
   tableId: number;
@@ -47,6 +62,10 @@ interface TableDetailViewProps {
   onPreviousItemClick?: () => void;
   onNextItemClick?: () => void;
 }
+
+export const TRASH_ID = 'void';
+const PLACEHOLDER_ID = 'placeholder';
+const empty: UniqueIdentifier[] = [];
 
 export function TableDetailViewInner({
   tableId,
@@ -71,6 +90,10 @@ export function TableDetailViewInner({
   const dispatch = useDispatch();
   const [updateTableComponentSettings] =
     useUpdateTableComponentSettingsMutation();
+
+  const [activeId, setActiveId] = useState<UniqueIdentifier | null>(null);
+  const lastOverId = useRef<UniqueIdentifier | null>(null);
+  const recentlyMovedToNewContainer = useRef(false);
 
   const { tableForeignKeyReferences } = useForeignKeyReferences({
     tableForeignKeys,
@@ -99,12 +122,202 @@ export function TableDetailViewInner({
     updateSection,
     updateSections,
     removeSection,
-    handleDragEnd,
+    // handleDragEnd,
   } = useDetailViewSections(initialSections);
 
   const notEmptySections = useMemo(() => {
     return sections.filter((section) => section.fields.length > 0);
   }, [sections]);
+
+  const [containers, setContainers] = useState(notEmptySections.map((section) => section.id));
+
+  const handleDragStart = (event: DragStartEvent) => {
+    const { active } = event;
+    setActiveId(active.id);
+    // setClonedItems(items);
+  };
+
+  function getNextContainerId() {
+    const containerIds = sections.map(s => s.id);
+    const lastContainerId = containerIds.at(-1);
+
+    return lastContainerId ? lastContainerId + 1 : Date.now();
+  }
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    // if (over && String(active.id) !== String(over.id)) {
+    //   updateSections((sections) => {
+    //     const oldIndex = sections.findIndex(
+    //       (section) => String(section.id) === String(active.id),
+    //     );
+    //     const newIndex = sections.findIndex(
+    //       (section) => String(section.id) === String(over.id),
+    //     );
+
+    //     return arrayMove(sections, oldIndex, newIndex);
+    //   });
+    // }
+
+    const isDraggingSection = sections.some(s => s.id === active.id);
+    // console.log({ isDraggingSection })
+    if (isDraggingSection && over?.id) {
+      setContainers((containers) => {
+        const activeIndex = containers.indexOf(active.id);
+        const overIndex = containers.indexOf(over.id);
+
+        return arrayMove(containers, activeIndex, overIndex);
+      });
+    }
+
+    const activeContainer = findContainer(active.id);
+
+    if (!activeContainer) {
+      setActiveId(null);
+      return;
+    }
+
+    const overId = over?.id;
+
+    if (overId == null) {
+      setActiveId(null);
+      return;
+    }
+
+    console.log({ activeContainer, overId });
+
+    if (overId === TRASH_ID) {
+      setItems((items) => ({
+        ...items,
+        [activeContainer]: items[activeContainer].filter(
+          (id) => id !== activeId
+        ),
+      }));
+      setActiveId(null);
+      return;
+    }
+
+    if (overId === PLACEHOLDER_ID) {
+      const newContainerId = getNextContainerId();
+
+      unstable_batchedUpdates(() => {
+        setContainers((containers) => [...containers, newContainerId]);
+        // setItems((items) => ({
+        //   ...items,
+        //   [activeContainer]: items[activeContainer].filter(
+        //     (id) => id !== activeId
+        //   ),
+        //   [newContainerId]: [active.id],
+        // }));
+        setActiveId(null);
+      });
+      return;
+    }
+
+    const overContainer = findContainer(overId);
+
+    console.log({ overContainer });
+
+    if (overContainer) {
+      const overSection = sections.find((s) => s.id === overContainer);
+      const activeSection = sections.find((s) => s.id === activeContainer);
+      // field index
+      const activeIndex = activeSection.fields.findIndex((f) => f.field_id === active.id);
+      const overIndex = overSection.fields.findIndex((f) => f.field_id === overId);
+
+      console.log({ activeIndex, overIndex })
+
+      if (activeIndex !== overIndex) {
+        // TODO: move field between sections
+
+        // setItems((items) => ({
+        //   ...items,
+        //   [overContainer]: arrayMove(
+        //     items[overContainer],
+        //     activeIndex,
+        //     overIndex
+        //   ),
+        // }));
+      }
+    }
+
+    setActiveId(null);
+  };
+
+  const findContainer = (id: UniqueIdentifier) => {
+    if (sections.some((s) => s.id === id)) {
+      return id;
+    }
+
+    console.error("find field");
+    return sections.find((s) => s.fields.some((f) => f.field_id === id))?.id;
+  };
+
+  const handleDragOver = (event: DragOverEvent) => {
+    const { active, over } = event;
+
+    const overId = over?.id;
+
+    const isDraggingSection = sections.some(s => s.id === active.id);
+    if (overId == null || overId === TRASH_ID || isDraggingSection) {
+      return;
+    }
+
+    const overContainer = findContainer(overId);
+    const activeContainer = findContainer(active.id);
+
+    // console.log({ activeContainer, overContainer });
+
+    if (!overContainer || !activeContainer) {
+      return;
+    }
+
+    if (activeContainer !== overContainer) {
+      console.log("drag fields between sections");
+      // setItems((items) => {
+      //   const activeItems = items[activeContainer];
+      //   const overItems = items[overContainer];
+      //   const overIndex = overItems.indexOf(overId);
+      //   const activeIndex = activeItems.indexOf(active.id);
+
+      //   let newIndex: number;
+
+      //   if (overId in items) {
+      //     newIndex = overItems.length + 1;
+      //   } else {
+      //     const isBelowOverItem =
+      //       over &&
+      //       active.rect.current.translated &&
+      //       active.rect.current.translated.top >
+      //       over.rect.top + over.rect.height;
+
+      //     const modifier = isBelowOverItem ? 1 : 0;
+
+      //     newIndex =
+      //       overIndex >= 0 ? overIndex + modifier : overItems.length + 1;
+      //   }
+
+      //   recentlyMovedToNewContainer.current = true;
+
+      //   return {
+      //     ...items,
+      //     [activeContainer]: items[activeContainer].filter(
+      //       (item) => item !== active.id
+      //     ),
+      //     [overContainer]: [
+      //       ...items[overContainer].slice(0, newIndex),
+      //       items[activeContainer][activeIndex],
+      //       ...items[overContainer].slice(
+      //         newIndex,
+      //         items[overContainer].length
+      //       ),
+      //     ],
+      //   };
+      // });
+    }
+  };
+
 
   const fieldsInSections = notEmptySections.flatMap((s) => s.fields);
   const fieldsInSectionsIds = fieldsInSections.map((f) => f.field_id);
@@ -126,6 +339,16 @@ export function TableDetailViewInner({
       coordinateGetter: sortableKeyboardCoordinates,
     }),
   );
+
+  const dropAnimation: DropAnimation = {
+    sideEffects: defaultDropAnimationSideEffects({
+      styles: {
+        active: {
+          opacity: '0.5',
+        },
+      },
+    }),
+  };
 
   const handleEditClick = useCallback(() => {
     dispatch(push(`/table/${tableId}/detail/${rowId}/edit`));
@@ -205,6 +428,64 @@ export function TableDetailViewInner({
 
   const hasRelationships = tableForeignKeys.length > 0;
 
+  function renderContainerDragOverlay(containerId: UniqueIdentifier) {
+    console.log("renderContainerDragOverlay", containerId);
+    return (
+      <Container
+        label={`Column ${containerId}`}
+        columns={columns}
+        style={{
+          height: '100%',
+        }}
+        shadow
+        unstyled={false}
+      >
+        {sections.find((s) => s.id === containerId)?.fields.map((item, index) => (
+          <Item
+            key={item.field_id}
+            value={item.field_id}
+            handle={false}
+          // style={getItemStyles({
+          //   containerId,
+          //   overIndex: -1,
+          //   index: getIndex(item),
+          //   value: item,
+          //   isDragging: false,
+          //   isSorting: false,
+          //   isDragOverlay: false,
+          // })}
+          // color={getColor(item)}
+          // wrapperStyle={wrapperStyle({ index })}
+          // renderItem={renderItem}
+          />
+        ))}
+      </Container>
+    );
+  }
+
+  function renderSortableItemDragOverlay(id: UniqueIdentifier) {
+    console.log("renderSortableItemDragOverlay", id);
+    return (
+      <Item
+        value={id}
+        handle={false}
+        // style={getItemStyles({
+        //   containerId: findContainer(id) as UniqueIdentifier,
+        //   overIndex: -1,
+        //   index: getIndex(id),
+        //   value: id,
+        //   isSorting: true,
+        //   isDragging: true,
+        //   isDragOverlay: true,
+        // })}
+        // color={getColor(id)}
+        // wrapperStyle={wrapperStyle({ index: 0 })}
+        // renderItem={renderItem}
+        dragOverlay
+      />
+    );
+  }
+
   return (
     <DetailViewContainer
       rowId={rowId}
@@ -237,60 +518,87 @@ export function TableDetailViewInner({
     >
       <Stack
         gap="md"
-        // px="lg"
-        // py="xl"
-        // bg="white"
-        // style={{
-        //   border: "1px solid var(--mb-color-border)",
-        //   borderRadius: "var(--mantine-radius-md)",
-        //   overflow: "hidden",
-        // }}
+      // px="lg"
+      // py="xl"
+      // bg="white"
+      // style={{
+      //   border: "1px solid var(--mb-color-border)",
+      //   borderRadius: "var(--mantine-radius-md)",
+      //   overflow: "hidden",
+      // }}
       >
         <DndContext
           sensors={sensors}
           collisionDetection={closestCenter}
+          onDragStart={handleDragStart}
           onDragEnd={handleDragEnd}
+          onDragOver={handleDragOver}
+        // measuring={{
+        //   droppable: {
+        //     strategy: MeasuringStrategy.Always,
+        //   },
+        // }}
         >
           <SortableContext
-            disabled
-            items={notEmptySections.map((section) => section.id)}
+            disabled={!isEdit}
+            items={[...containers, PLACEHOLDER_ID]}
             strategy={verticalListSortingStrategy}
           >
-            {(isEdit ? sections : notEmptySections).map((section, _index) => (
-              <Fragment key={section.id}>
-                {/* {index > 0 &&
-                  (section.variant === "normal" ||
-                    section.variant === "highlight-2") && (
-                    <Divider my={0} mx="md" />
-                  )} */}
-                <SortableSection
-                  section={section}
-                  sections={sections}
-                  variant={section.variant}
-                  columns={columns}
-                  row={row}
-                  tableId={tableId}
-                  isEdit={isEdit}
-                  onUpdateSection={(update) =>
-                    updateSection(section.id, update)
-                  }
-                  onRemoveSection={
-                    section.variant === "header" ||
-                    section.variant === "subheader"
-                      ? undefined
-                      : () => removeSection(section.id)
-                  }
-                  table={table}
-                  isHovered={
-                    isEdit &&
-                    (hoveredSectionIdMain === section.id ||
-                      hoveredSectionIdSidebar === section.id)
-                  }
-                  onHoverStart={() => setHoveredSectionIdMain(section.id)}
-                  onHoverEnd={() => setHoveredSectionIdMain(null)}
-                />
-              </Fragment>
-            ))}
+            {(isEdit ? containers : containers).map((containerId, _index) => {
+              const section = sections.find((s) => s.id === containerId);
+              if (!section) {
+                console.error(`Section ${containerId} not found`);
+                return null;
+              }
+
+              return (
+                <DroppableContainer
+                  key={containerId}
+                  id={containerId}
+                  label={`Column ${containerId}`}
+                  columns={1}
+                  items={section.fields}
+                // scrollable={scrollable}
+                // style={containerStyle}
+                // unstyled={minimal}
+                // onRemove={() => handleRemove(containerId)}
+                >
+                  <Fragment key={section.id}>
+                    {/* {index > 0 &&
+              (section.variant === "normal" ||
+                section.variant === "highlight-2") && (
+                <Divider my={0} mx="md" />
+              )} */}
+                    <ObjectViewSection
+                      section={section}
+                      sections={sections}
+                      variant={section.variant}
+                      columns={columns}
+                      row={row}
+                      tableId={tableId}
+                      isEdit={isEdit}
+                      onUpdateSection={(update) => updateSection(section.id, update)}
+                      onRemoveSection={section.variant === "header" ||
+                        section.variant === "subheader"
+                        ? undefined
+                        : () => removeSection(section.id)}
+                      table={table}
+                      isHovered={isEdit &&
+                        (hoveredSectionIdMain === section.id ||
+                          hoveredSectionIdSidebar === section.id)} />
+                  </Fragment>
+                </DroppableContainer>
+              );
+            })}
+            <DroppableContainer
+              id={PLACEHOLDER_ID}
+              // disabled={isSortingContainer}
+              items={empty}
+              // onClick={handleAddColumn}
+              placeholder
+            >
+              + Add column
+            </DroppableContainer>
 
             {/* {notEmptySections.length > 0 &&
               uncategorizedSection.fields.length > 0 && (
@@ -304,16 +612,303 @@ export function TableDetailViewInner({
               tableId={tableId}
               table={table}
               isEdit={isEdit}
-              // onUpdateSection={(update) => updateSection(section.id, update)}
-              // onRemoveSection={
-              //   notEmptySections.length > 1
-              //     ? () => removeSection(section.id)
-              //     : undefined
-              // }
+            // onUpdateSection={(update) => updateSection(section.id, update)}
+            // onRemoveSection={
+            //   notEmptySections.length > 1
+            //     ? () => removeSection(section.id)
+            //     : undefined
+            // }
             />
           </SortableContext>
+          {createPortal(
+            <DragOverlay adjustScale={false} dropAnimation={dropAnimation}>
+              {activeId
+                ? containers.includes(activeId)
+                  ? renderContainerDragOverlay(activeId)
+                  : renderSortableItemDragOverlay(activeId)
+                : null}
+            </DragOverlay>,
+            document.body
+          )}
         </DndContext>
       </Stack>
     </DetailViewContainer>
   );
 }
+
+
+const animateLayoutChanges: AnimateLayoutChanges = (args) =>
+  defaultAnimateLayoutChanges({ ...args, wasDragging: true });
+
+function DroppableContainer({
+  children,
+  columns = 1,
+  disabled,
+  id,
+  items,
+  style,
+  ...props }) {
+  const {
+    active,
+    attributes,
+    isDragging,
+    listeners,
+    over,
+    setNodeRef,
+    transition,
+    transform,
+  } = useSortable({
+    id,
+    data: {
+      type: 'container',
+      children: items,
+    },
+    animateLayoutChanges,
+  });
+
+  const isOverContainer = over
+    ? (id === over.id && active?.data.current?.type !== 'container') ||
+    items.includes(over.id)
+    : false;
+
+  return (
+    <Container
+      ref={disabled ? undefined : setNodeRef}
+      style={{
+        ...style,
+        transition,
+        // transform: CSS.Translate.toString(transform),
+        opacity: isDragging ? 0.5 : undefined,
+      }}
+      hover={isOverContainer}
+      handleProps={{
+        ...attributes,
+        ...listeners,
+      }}
+      columns={columns}
+      {...props}
+    >
+      {children}
+    </Container>
+  );
+}
+
+const Container = forwardRef(({
+  children,
+  columns = 1,
+  handleProps,
+  horizontal,
+  hover,
+  onClick,
+  onRemove,
+  label,
+  placeholder,
+  style,
+  scrollable,
+  shadow,
+  unstyled,
+  ...props
+}, ref) => {
+  return (
+    <Box {...props}
+      ref={ref}
+      style={
+        {
+          ...style,
+          '--columns': columns,
+        } as React.CSSProperties
+      }
+      className={classNames(
+        styles.Container,
+        unstyled && styles.unstyled,
+        horizontal && styles.horizontal,
+        hover && styles.hover,
+        placeholder && styles.placeholder,
+        scrollable && styles.scrollable,
+        shadow && styles.shadow
+      )}
+      onClick={onClick}
+      tabIndex={onClick ? 0 : undefined}>
+      {label ? (
+        <div className={styles.Header}>
+          {label}
+          <div className={styles.Actions}>
+            {onRemove ? <Remove onClick={onRemove} /> : undefined}
+            <Handle {...handleProps} />
+          </div>
+        </div>
+      ) : null}
+      {placeholder ? children : <ul>{children}</ul>}
+    </Box>
+  );
+})
+
+export const Handle = forwardRef<HTMLButtonElement, ActionProps>(
+  (props, ref) => {
+    return (
+      <Action
+        ref={ref}
+        cursor="grab"
+        data-cypress="draggable-handle"
+        {...props}
+      >
+        <svg viewBox="0 0 20 20" width="12">
+          <path d="M7 2a2 2 0 1 0 .001 4.001A2 2 0 0 0 7 2zm0 6a2 2 0 1 0 .001 4.001A2 2 0 0 0 7 8zm0 6a2 2 0 1 0 .001 4.001A2 2 0 0 0 7 14zm6-8a2 2 0 1 0-.001-4.001A2 2 0 0 0 13 6zm0 2a2 2 0 1 0 .001 4.001A2 2 0 0 0 13 8zm0 6a2 2 0 1 0 .001 4.001A2 2 0 0 0 13 14z"></path>
+        </svg>
+      </Action>
+    );
+  }
+);
+
+export function Remove(props: ActionProps) {
+  return (
+    <Action
+      {...props}
+      active={{
+        // eslint-disable-next-line no-color-literals
+        fill: 'rgba(255, 70, 70, 0.95)',
+        // eslint-disable-next-line no-color-literals
+        background: 'rgba(255, 70, 70, 0.1)',
+      }}
+    >
+      <svg width="8" viewBox="0 0 22 22" xmlns="http://www.w3.org/2000/svg">
+        <path d="M2.99998 -0.000206962C2.7441 -0.000206962 2.48794 0.0972617 2.29294 0.292762L0.292945 2.29276C-0.0980552 2.68376 -0.0980552 3.31682 0.292945 3.70682L7.58591 10.9998L0.292945 18.2928C-0.0980552 18.6838 -0.0980552 19.3168 0.292945 19.7068L2.29294 21.7068C2.68394 22.0978 3.31701 22.0978 3.70701 21.7068L11 14.4139L18.2929 21.7068C18.6829 22.0978 19.317 22.0978 19.707 21.7068L21.707 19.7068C22.098 19.3158 22.098 18.6828 21.707 18.2928L14.414 10.9998L21.707 3.70682C22.098 3.31682 22.098 2.68276 21.707 2.29276L19.707 0.292762C19.316 -0.0982383 18.6829 -0.0982383 18.2929 0.292762L11 7.58573L3.70701 0.292762C3.51151 0.0972617 3.25585 -0.000206962 2.99998 -0.000206962Z" />
+      </svg>
+    </Action>
+  );
+}
+
+
+export const Action = forwardRef<HTMLButtonElement, Props>(
+  ({ active, className, cursor, style, ...props }, ref) => {
+    return (
+      <button
+        ref={ref}
+        {...props}
+        className={classNames(styles.Action, className)}
+        tabIndex={0}
+        style={
+          {
+            ...style,
+            cursor,
+            '--fill': active?.fill,
+            '--background': active?.background,
+          } as CSSProperties
+        }
+      />
+    );
+  }
+);
+
+export const Item = memo(
+  forwardRef<HTMLLIElement, Props>(
+    (
+      {
+        color,
+        dragOverlay,
+        dragging,
+        disabled,
+        fadeIn,
+        handle,
+        handleProps,
+        height,
+        index,
+        listeners,
+        onRemove,
+        renderItem,
+        sorting,
+        style,
+        transition,
+        transform,
+        value,
+        wrapperStyle,
+        ...props
+      },
+      ref
+    ) => {
+      useEffect(() => {
+        if (!dragOverlay) {
+          return;
+        }
+
+        document.body.style.cursor = 'grabbing';
+
+        return () => {
+          document.body.style.cursor = '';
+        };
+      }, [dragOverlay]);
+
+      return renderItem ? (
+        renderItem({
+          dragOverlay: Boolean(dragOverlay),
+          dragging: Boolean(dragging),
+          sorting: Boolean(sorting),
+          index,
+          fadeIn: Boolean(fadeIn),
+          listeners,
+          ref,
+          style,
+          transform,
+          transition,
+          value,
+        })
+      ) : (
+        <li
+          className={classNames(
+            styles.Wrapper,
+            fadeIn && styles.fadeIn,
+            sorting && styles.sorting,
+            dragOverlay && styles.dragOverlay
+          )}
+          style={
+            {
+              ...wrapperStyle,
+              transition: [transition, wrapperStyle?.transition]
+                .filter(Boolean)
+                .join(', '),
+              '--translate-x': transform
+                ? `${Math.round(transform.x)}px`
+                : undefined,
+              '--translate-y': transform
+                ? `${Math.round(transform.y)}px`
+                : undefined,
+              '--scale-x': transform?.scaleX
+                ? `${transform.scaleX}`
+                : undefined,
+              '--scale-y': transform?.scaleY
+                ? `${transform.scaleY}`
+                : undefined,
+              '--index': index,
+              '--color': color,
+            } as React.CSSProperties
+          }
+          ref={ref}
+        >
+          <div
+            className={classNames(
+              styles.Item,
+              dragging && styles.dragging,
+              handle && styles.withHandle,
+              dragOverlay && styles.dragOverlay,
+              disabled && styles.disabled,
+              color && styles.color
+            )}
+            style={style}
+            data-cypress="draggable-item"
+            {...(!handle ? listeners : undefined)}
+            {...props}
+            tabIndex={!handle ? 0 : undefined}
+          >
+            {value}
+            <span className={styles.Actions}>
+              {onRemove ? (
+                <Remove className={styles.Remove} onClick={onRemove} />
+              ) : null}
+              {handle ? <Handle {...handleProps} {...listeners} /> : null}
+            </span>
+          </div>
+        </li>
+      );
+    }
+  )
+);
