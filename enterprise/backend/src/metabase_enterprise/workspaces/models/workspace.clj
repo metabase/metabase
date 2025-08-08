@@ -21,9 +21,7 @@
    [clj-yaml.core :as yaml]
    [clojure.string :as str]
    [java-time.api :as t]
-   [lambdaisland.deep-diff2 :as ddiff]
    [malli.util :as mut]
-   [medley.core :as m]
    [metabase.models.interface :as mi]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -35,8 +33,8 @@
                 [:description :string]
                 [:content :map]
                 [:created-at [:string {:description "When the plan was created"}]]])
-;; maybe another table?
 
+;; maybe another table?
 (mr/def ::activity-log [:map
                         [:name [:string {:min 1}]]
                         ;; needs a plan?
