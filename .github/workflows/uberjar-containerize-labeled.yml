@@ -27,13 +27,14 @@ jobs:
     needs: [uberjar, containerize]
     runs-on: ubuntu-22.04
     steps:
-      - name: Generate Docker Hub URL
-        id: docker-url
-        run: |
-          BRANCH="${{ github.event.pull_request.head.ref }}"
-          # Replace slashes with dashes for Docker tag (same logic as containerize-uberjar.yml)
-          DOCKER_TAG="${BRANCH//\//-}"
-          echo "docker_tag=$DOCKER_TAG" >> $GITHUB_OUTPUT
+      - name: Check out the code
+        uses: actions/checkout@v4
+      - name: Get Docker info
+        id: docker-info
+        uses: ./.github/actions/get-docker-info
+        with:
+          branch: ${{ github.event.pull_request.head.ref }}
+          edition: ee
           
       - name: Post PR comment
         uses: marocchino/sticky-pull-request-comment@v2
@@ -45,10 +46,11 @@ jobs:
             The uberjar has been built and containerized successfully.
 
             **Branch:** `${{ github.event.pull_request.head.ref }}`
-            **Docker Tag:** `${{ steps.docker-url.outputs.docker_tag }}`
-            **Docker Hub:** [metabase/metabase-dev:${{ steps.docker-url.outputs.docker_tag }}](https://hub.docker.com/r/metabase/metabase-dev/tags?name=${{ steps.docker-url.outputs.docker_tag }})
+            **Docker Image:** `${{ steps.docker-info.outputs.full_image }}`
+            **Docker Hub:** [View on Docker Hub](https://hub.docker.com/r/${{ steps.docker-info.outputs.repo }}/tags?name=${{ steps.docker-info.outputs.tag }})
             **Triggered by:** @${{ github.actor }}
             
+            Pull the image:
             ```bash
-            docker pull metabase/metabase-dev:${{ steps.docker-url.outputs.docker_tag }}
+            docker pull ${{ steps.docker-info.outputs.full_image }}
             ```
