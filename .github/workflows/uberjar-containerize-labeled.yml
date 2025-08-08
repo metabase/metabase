@@ -21,36 +21,3 @@ jobs:
     if: ${{ github.event.label.name == 'build-docker-uberjar' }}
     uses: ./.github/workflows/containerize-uberjar.yml
     secrets: inherit
-
-  post-comment:
-    if: ${{ github.event.label.name == 'build-docker-uberjar' }}
-    needs: [uberjar, containerize]
-    runs-on: ubuntu-22.04
-    steps:
-      - name: Check out the code
-        uses: actions/checkout@v4
-      - name: Get Docker info
-        id: docker-info
-        uses: ./.github/actions/get-docker-info
-        with:
-          branch: ${{ github.event.pull_request.head.ref }}
-          edition: ee
-          
-      - name: Post PR comment
-        uses: marocchino/sticky-pull-request-comment@v2
-        with:
-          header: docker-build-status
-          message: |
-            ✅ Docker build completed for commit ${{ github.event.pull_request.head.sha }}
-
-            The uberjar has been built and containerized successfully.
-
-            **Branch:** `${{ github.event.pull_request.head.ref }}`
-            **Docker Image:** `${{ steps.docker-info.outputs.full_image }}`
-            **Docker Hub:** [View on Docker Hub](https://hub.docker.com/r/${{ steps.docker-info.outputs.repo }}/tags?name=${{ steps.docker-info.outputs.tag }})
-            **Triggered by:** @${{ github.actor }}
-            
-            Pull the image:
-            ```bash
-            docker pull ${{ steps.docker-info.outputs.full_image }}
-            ```
