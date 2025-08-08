@@ -1,11 +1,15 @@
+import { SortableContext, useSortable, verticalListSortingStrategy, } from "@dnd-kit/sortable";
+import { CSS } from '@dnd-kit/utilities';
 import cx from "classnames";
 import { Fragment } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
 
+
 import EditableText from "metabase/common/components/EditableText";
 import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { useTranslateContent } from "metabase/i18n/hooks";
+import { getUrl } from "metabase/metadata/pages/DataModel/utils";
 import {
   ActionIcon,
   Box,
@@ -29,7 +33,161 @@ import { renderValue } from "../utils";
 import { renderItemIcon } from "./ColumnPicker";
 import { SectionActions } from "./SectionActions";
 import S from "./TableDetailView.module.css";
-import { getUrl } from "metabase/metadata/pages/DataModel/utils";
+
+type SectionFieldProps = {
+  field_id: number;
+  column: DatasetColumn;
+  value: any;
+  table: Table;
+  variant: SectionVariant;
+  isEdit: boolean;
+  onUpdateSection?: (section: Partial<ObjectViewSectionSettings>) => void;
+  section: ObjectViewSectionSettings;
+  tc: any;
+};
+
+function SectionField({
+  field_id,
+  column,
+  value,
+  table,
+  variant,
+  isEdit,
+  onUpdateSection,
+  section,
+  tc,
+  dragHandleProps,
+}: SectionFieldProps) {
+  const isForeignKey = isFK(column);
+  const field = table.fields?.find((f) => f.id === field_id);
+  const newTableId = field?.target?.table_id;
+  const link = isForeignKey
+    ? `/table/${newTableId}/detail/${value}`
+    : undefined;
+
+  return (
+    <Fragment key={field_id}>
+      <Flex className={S.Field}>
+        <Box className={S.FieldName} w="100%">
+          {isEdit && (
+            <Icon
+              name="grabber"
+              style={{ cursor: "grab" }}
+              role="button"
+              tabIndex={0}
+              {...dragHandleProps}
+            />
+          )}
+          <Text c="var(--mb-color-text-secondary)" fw="bold" truncate>
+            {column.display_name}
+          </Text>
+          <Link
+            to={getUrl({
+              tableId: table.id,
+              schemaName: table.schema,
+              databaseId: table.db_id,
+              fieldId: column.id,
+            })}
+            className={S.FieldIcon}
+          >
+            {renderItemIcon(table, {
+              name: column.display_name,
+              displayName: column.display_name,
+              column,
+            })}
+          </Link>
+        </Box>
+
+        {link && (
+          <Link to={link} className={S.link}>
+            <Ellipsified
+              alwaysShowTooltip={variant === "subheader"}
+              variant="primary"
+              truncate={false}
+              c="var(--mb-color-text-primary)"
+              lines={variant === "highlight-2" ? 3 : 0}
+              style={{
+                flexGrow: 1,
+              }}
+              className={S.FieldValue}
+              fz={undefined}
+              {...(variant === "subheader" && {
+                tooltip: column.display_name,
+              })}
+            >
+              {renderValue(tc, value, column)}
+            </Ellipsified>
+          </Link>
+        )}
+
+        {!link && (
+          <Ellipsified
+            alwaysShowTooltip={variant === "subheader"}
+            variant="primary"
+            truncate={false}
+            c="var(--mb-color-text-primary)"
+            lines={variant === "highlight-2" ? 3 : 0}
+            style={{
+              flexGrow: 1,
+            }}
+            className={S.FieldValue}
+            fz={undefined}
+            {...(variant === "subheader" && {
+              tooltip: column.display_name,
+            })}
+          >
+            {renderValue(tc, value, column)}
+          </Ellipsified>
+        )}
+
+        {isEdit && onUpdateSection && (
+          <ActionIcon
+            className={S.FieldRemoveButton}
+            size="1rem"
+            onClick={() =>
+              onUpdateSection({
+                fields: section.fields.filter(
+                  (f) => f.field_id !== field_id,
+                ),
+              })
+            }
+          >
+            <Icon name="close" />
+          </ActionIcon>
+        )}
+      </Flex>
+    </Fragment>
+  );
+}
+
+function SortableSectionField({
+  ...props
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: props.field_id });
+
+  const style = {
+    transform: CSS.Translate.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <div ref={setNodeRef} style={style}>
+      <SectionField
+        {...props}
+        dragHandleProps={{ ...attributes, ...listeners }}
+      // isDraggingSection={props.isDraggingSection}
+      />
+    </div>
+  );
+}
 
 type ObjectViewSectionProps = {
   section: ObjectViewSectionSettings;
@@ -57,7 +215,7 @@ export function ObjectViewSection({
   isEdit,
   onRemoveSection,
   onUpdateSection,
-  // dragHandleProps,
+  dragHandleProps,
   isHovered = false,
 }: ObjectViewSectionProps) {
   // const pkIndex = columns.findIndex(isPK); // TODO: handle multiple PKs
@@ -145,10 +303,10 @@ export function ObjectViewSection({
       style={
         variant !== "subheader"
           ? {
-              border: "1px solid var(--mb-color-border)",
-              borderRadius: "var(--mantine-radius-md)",
-              // overflow: "hidden",
-            }
+            border: "1px solid var(--mb-color-border)",
+            borderRadius: "var(--mantine-radius-md)",
+            // overflow: "hidden",
+          }
           : {}
       }
     >
@@ -172,15 +330,15 @@ export function ObjectViewSection({
 
       {onUpdateSection && (
         <Group gap="md" p={0} className={S.SectionTitle}>
-          {/* {isEdit && (
-          <Icon
-          name="grabber"
-          style={{ cursor: "grab" }}
-          role="button"
-          tabIndex={0}
-          {...dragHandleProps}
-          />
-        )} */}
+          {isEdit && (
+            <Icon
+              name="grabber"
+              style={{ cursor: "grab" }}
+              role="button"
+              tabIndex={0}
+              {...dragHandleProps}
+            />
+          )}
           <EditableText
             initialValue={section.title}
             isDisabled={!isEdit || section.variant === "subheader"}
@@ -193,122 +351,48 @@ export function ObjectViewSection({
               opacity: section.variant === "subheader" ? 0.5 : 1,
               ...(section.variant === "subheader" &&
                 !isEdit && {
-                  display: "none",
-                }),
+                display: "none",
+              }),
             }}
           />
         </Group>
       )}
 
       <Flex className={S.SectionContent}>
-        {section.fields.map(({ field_id }, index) => {
-          const columnIndex = columns.findIndex(
-            (column) => column.id === field_id,
-          );
-          const column = columns[columnIndex];
+        <SortableContext items={section.fields.map(f => f.field_id)} strategy={verticalListSortingStrategy}>
+          {section.fields.map(({ field_id }, index) => {
+            const columnIndex = columns.findIndex(
+              (column) => column.id === field_id,
+            );
+            const column = columns[columnIndex];
 
-          if (!column) {
-            return null;
-          }
+            if (!column) {
+              return null;
+            }
 
-          const value = row[columnIndex];
-          const isForeignKey = isFK(column);
+            const value = row[columnIndex];
 
-          const field = table.fields?.find((f) => f.id === field_id);
-          const newTableId = field?.target?.table_id;
-          const link = isForeignKey
-            ? `/table/${newTableId}/detail/${value}`
-            : undefined;
+            return (
+              <Fragment key={field_id}>
+                <SortableSectionField
+                  field_id={field_id}
+                  column={column}
+                  value={value}
+                  table={table}
+                  variant={variant}
+                  isEdit={isEdit}
+                  onUpdateSection={onUpdateSection}
+                  section={section}
+                  tc={tc}
+                />
 
-          return (
-            <Fragment key={field_id}>
-              <Flex className={S.Field}>
-                <Box className={S.FieldName} w="100%">
-                  <Text c="var(--mb-color-text-secondary)" fw="bold" truncate>
-                    {column.display_name}
-                  </Text>
-                  <Link
-                    to={getUrl({
-                      tableId: table.id,
-                      schemaName: table.schema,
-                      databaseId: table.db_id,
-                      fieldId: column.id,
-                    })}
-                    className={S.FieldIcon}
-                  >
-                    {renderItemIcon(table, {
-                      name: column.display_name,
-                      displayName: column.display_name,
-                      column,
-                    })}
-                  </Link>
-                </Box>
-
-                {link && (
-                  <Link to={link} className={S.link}>
-                    <Ellipsified
-                      alwaysShowTooltip={variant === "subheader"}
-                      variant="primary"
-                      truncate={false}
-                      c="var(--mb-color-text-primary)"
-                      lines={variant === "highlight-2" ? 3 : 0}
-                      style={{
-                        flexGrow: 1,
-                      }}
-                      className={S.FieldValue}
-                      fz={undefined}
-                      {...(variant === "subheader" && {
-                        tooltip: column.display_name,
-                      })}
-                    >
-                      {renderValue(tc, value, column)}
-                    </Ellipsified>
-                  </Link>
-                )}
-
-                {!link && (
-                  <Ellipsified
-                    alwaysShowTooltip={variant === "subheader"}
-                    variant="primary"
-                    truncate={false}
-                    c="var(--mb-color-text-primary)"
-                    lines={variant === "highlight-2" ? 3 : 0}
-                    style={{
-                      flexGrow: 1,
-                    }}
-                    className={S.FieldValue}
-                    fz={undefined}
-                    {...(variant === "subheader" && {
-                      tooltip: column.display_name,
-                    })}
-                  >
-                    {renderValue(tc, value, column)}
-                  </Ellipsified>
-                )}
-
-                {isEdit && onUpdateSection && (
-                  <ActionIcon
-                    className={S.FieldRemoveButton}
-                    size="1rem"
-                    onClick={() =>
-                      onUpdateSection({
-                        fields: section.fields.filter(
-                          (f) => f.field_id !== field_id,
-                        ),
-                      })
-                    }
-                  >
-                    <Icon name="close" />
-                  </ActionIcon>
-                )}
-              </Flex>
-
-              {index < section.fields.length - 1 &&
-                variant === "subheader" &&
-                !isEdit && <div className={S.separator} />}
-            </Fragment>
-          );
-        })}
+                {index < section.fields.length - 1 &&
+                  variant === "subheader" &&
+                  !isEdit && <div className={S.separator} />}
+              </Fragment>
+            );
+          })}
+        </SortableContext>
       </Flex>
     </Box>
   );

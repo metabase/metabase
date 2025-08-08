@@ -1,20 +1,25 @@
 import {
+  type CollisionDetection,
   DndContext,
+  type DragEndEvent,
+  type DragOverEvent,
   DragOverlay,
+  type DragStartEvent,
+  type DropAnimation,
   KeyboardSensor,
   MeasuringStrategy,
   PointerSensor,
+  type UniqueIdentifier,
   closestCenter,
   defaultDropAnimationSideEffects,
+  getFirstCollision,
+  pointerWithin,
+  rectIntersection,
   useSensor,
   useSensors,
-  type DragEndEvent,
-  type DragOverEvent,
-  type DragStartEvent,
-  type DropAnimation,
-  type UniqueIdentifier,
 } from "@dnd-kit/core";
 import {
+  type AnimateLayoutChanges,
   SortableContext,
   arrayMove,
   defaultAnimateLayoutChanges,
@@ -22,7 +27,9 @@ import {
   useSortable,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
-import { Fragment, forwardRef, memo, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import classNames from "classnames";
+import { type CSSProperties, Fragment, forwardRef, memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal, unstable_batchedUpdates } from "react-dom";
 import { push } from "react-router-redux";
 import { useMount } from "react-use";
 
@@ -43,13 +50,12 @@ import type {
 import { getDefaultObjectViewSettings } from "../utils";
 
 import { DetailViewContainer } from "./DetailViewContainer";
+import { ObjectViewSection } from "./ObjectViewSection";
 import { SortableSection } from "./SortableSection";
 import styles from "./dnd-styles.module.css";
 import { useDetailViewSections } from "./use-detail-view-sections";
 import { useForeignKeyReferences } from "./use-foreign-key-references";
-import classNames from "classnames";
-import { ObjectViewSection } from "./ObjectViewSection";
-import { createPortal, unstable_batchedUpdates } from "react-dom";
+
 
 interface TableDetailViewProps {
   tableId: number;
@@ -95,6 +101,8 @@ export function TableDetailViewInner({
   const lastOverId = useRef<UniqueIdentifier | null>(null);
   const recentlyMovedToNewContainer = useRef(false);
 
+  // const [items, setItems] = useState(sections);
+
   const { tableForeignKeyReferences } = useForeignKeyReferences({
     tableForeignKeys,
     row,
@@ -125,6 +133,7 @@ export function TableDetailViewInner({
     // handleDragEnd,
   } = useDetailViewSections(initialSections);
 
+
   const notEmptySections = useMemo(() => {
     return sections.filter((section) => section.fields.length > 0);
   }, [sections]);
@@ -136,6 +145,79 @@ export function TableDetailViewInner({
     setActiveId(active.id);
     // setClonedItems(items);
   };
+
+  /**
+   * Custom collision detection strategy optimized for multiple containers
+   *
+   * - First, find any droppable containers intersecting with the pointer.
+   * - If there are none, find intersecting containers with the active draggable.
+   * - If there are no intersecting containers, return the last matched intersection
+   *
+   */
+  const collisionDetectionStrategy: CollisionDetection = useCallback(
+    (args) => {
+      if (activeId && sections.some((s) => s.id === activeId)) {
+        console.log('active section');
+        return closestCenter({
+          ...args,
+          droppableContainers: args.droppableContainers.filter(
+            (container) => sections.some((s) => s.id === container.id)
+          ),
+        });
+      }
+
+      // Start by finding any intersecting droppable
+      const pointerIntersections = pointerWithin(args);
+      const intersections =
+        pointerIntersections.length > 0
+          ? // If there are droppables intersecting with the pointer, return those
+          pointerIntersections
+          : rectIntersection(args);
+      let overId = getFirstCollision(intersections, 'id');
+
+      if (overId != null) {
+        if (overId === TRASH_ID) {
+          // If the intersecting droppable is the trash, return early
+          // Remove this if you're not using trashable functionality in your app
+          return intersections;
+        }
+
+        if (sections.some((s) => s.id === overId)) {
+          const containerItems = sections.find((s) => s.id === overId)?.fields.map((f) => f.field_id);
+
+          // If a container is matched and it contains items (columns 'A', 'B', 'C')
+          if (containerItems && containerItems.length > 0) {
+            console.log('container items', containerItems);
+            // Return the closest droppable within that container
+            overId = closestCenter({
+              ...args,
+              droppableContainers: args.droppableContainers.filter(
+                (container) =>
+                  container.id !== overId &&
+                  containerItems.includes(container.id)
+              ),
+            })[0]?.id;
+          }
+        }
+
+        lastOverId.current = overId;
+
+        return [{ id: overId }];
+      }
+
+      // When a draggable item moves to a new container, the layout may shift
+      // and the `overId` may become `null`. We manually set the cached `lastOverId`
+      // to the id of the draggable item that was moved to the new container, otherwise
+      // the previous `overId` will be returned which can cause items to incorrectly shift positions
+      if (recentlyMovedToNewContainer.current) {
+        lastOverId.current = activeId;
+      }
+
+      // If no droppable is matched, return the last match
+      return lastOverId.current ? [{ id: lastOverId.current }] : [];
+    },
+    [activeId, sections]
+  );
 
   function getNextContainerId() {
     const containerIds = sections.map(s => s.id);
@@ -172,6 +254,8 @@ export function TableDetailViewInner({
     }
 
     const activeContainer = findContainer(active.id);
+
+    console.log({ activeContainer });
 
     if (!activeContainer) {
       setActiveId(null);
@@ -250,7 +334,7 @@ export function TableDetailViewInner({
       return id;
     }
 
-    console.error("find field");
+    // console.error("find field");
     return sections.find((s) => s.fields.some((f) => f.field_id === id))?.id;
   };
 
@@ -275,6 +359,62 @@ export function TableDetailViewInner({
 
     if (activeContainer !== overContainer) {
       console.log("drag fields between sections");
+      updateSections((sections) => {
+        const activeSection = sections.find((s) => s.id === activeContainer);
+        const overSection = sections.find((s) => s.id === overContainer);
+
+        console.log("update sections", { activeSection, overSection });
+
+        if (!activeSection || !overSection) {
+          return sections;
+        }
+
+        const activeIndex = activeSection.fields.findIndex((f) => f.field_id === active.id);
+        const overIndex = overSection.fields.findIndex((f) => f.field_id === overId);
+
+        console.log("update sections", { activeIndex, overIndex });
+
+        if (activeIndex === -1 || overIndex === -1) {
+          return sections;
+        }
+
+        const activeField = activeSection.fields[activeIndex];
+        const overField = overSection.fields[overIndex];
+
+        console.log("update fields", { activeField: activeField.field_id, overField: overField.field_id });
+
+        const newActiveSection = {
+          ...activeSection,
+          fields: activeSection.fields.filter((f) => f.field_id !== active.id),
+        };
+
+        const newOverSection = {
+          ...overSection,
+          fields: [...overSection.fields.slice(0, overIndex), activeField, ...overSection.fields.slice(overIndex)],
+        };
+
+        console.log("newOverSection", newOverSection.fields.map(f => f.field_id));
+
+        const newSections = [...sections];
+
+        const activeSectionIndex = newSections.findIndex((s) => s.id === activeContainer);
+        const overSectionIndex = newSections.findIndex((s) => s.id === overContainer);
+
+        newSections[activeSectionIndex] = newActiveSection;
+        newSections[overSectionIndex] = newOverSection;
+
+        console.log("newSections", newSections.map(s => s.fields.map(f => f.field_id)));
+
+        // return sections;
+        return newSections;
+
+
+        // const newSections = [...sections];
+        // newSections[activeIndex] = overField;
+        // newSections[overIndex] = activeField;
+
+        return sections;
+      })
       // setItems((items) => {
       //   const activeItems = items[activeContainer];
       //   const overItems = items[overContainer];
@@ -465,6 +605,8 @@ export function TableDetailViewInner({
 
   function renderSortableItemDragOverlay(id: UniqueIdentifier) {
     console.log("renderSortableItemDragOverlay", id);
+    // const field = fields.find((f) => f.id === id);
+    // return <Box w="100%" h="100%" style={{ border: "1px dotted purple" }}>field {id}</Box>
     return (
       <Item
         value={id}
@@ -529,15 +671,16 @@ export function TableDetailViewInner({
       >
         <DndContext
           sensors={sensors}
-          collisionDetection={closestCenter}
+          collisionDetection={collisionDetectionStrategy}
           onDragStart={handleDragStart}
           onDragEnd={handleDragEnd}
           onDragOver={handleDragOver}
-        // measuring={{
-        //   droppable: {
-        //     strategy: MeasuringStrategy.Always,
-        //   },
-        // }}
+          // important for section dnd
+          measuring={{
+            droppable: {
+              strategy: MeasuringStrategy.Always,
+            },
+          }}
         >
           <SortableContext
             disabled={!isEdit}
