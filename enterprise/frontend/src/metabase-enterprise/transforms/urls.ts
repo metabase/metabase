@@ -41,19 +41,19 @@ export function getJobUrl(id: TransformJobId) {
 
 export function getRunListUrl({
   page,
-  statuses,
   transformIds,
+  statuses,
   transformTagIds,
 }: RunListParams = {}) {
   const params = new URLSearchParams();
   if (page != null) {
     params.set("page", String(page));
   }
-  statuses?.forEach((status) => {
-    params.append("statuses", String(status));
-  });
   transformIds?.forEach((transformId) => {
     params.append("transformIds", String(transformId));
+  });
+  statuses?.forEach((status) => {
+    params.append("statuses", String(status));
   });
   transformTagIds?.forEach((tagId) => {
     params.append("transformTagIds", String(tagId));
