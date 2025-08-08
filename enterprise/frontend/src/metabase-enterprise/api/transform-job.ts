@@ -12,6 +12,7 @@ import {
   listTag,
   provideTransformJobListTags,
   provideTransformJobTags,
+  tag,
 } from "./tags";
 
 export const transformJobApi = EnterpriseApi.injectEndpoints({
@@ -37,7 +38,11 @@ export const transformJobApi = EnterpriseApi.injectEndpoints({
         url: `/api/ee/transform-job/${id}/execute`,
       }),
       invalidatesTags: (_, error, id) =>
-        invalidateTags(error, [idTag("transform", id), listTag("table")]),
+        invalidateTags(error, [
+          idTag("transform-job", id),
+          tag("transform"),
+          tag("table"),
+        ]),
     }),
     createTransformJob: builder.mutation<
       TransformJob,

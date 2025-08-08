@@ -15,6 +15,7 @@ import {
   provideTransformExecutionListTags,
   provideTransformListTags,
   provideTransformTags,
+  tag,
 } from "./tags";
 
 export const transformApi = EnterpriseApi.injectEndpoints({
@@ -53,7 +54,7 @@ export const transformApi = EnterpriseApi.injectEndpoints({
         url: `/api/ee/transform/${id}/execute`,
       }),
       invalidatesTags: (_, error, id) =>
-        invalidateTags(error, [idTag("transform", id), listTag("table")]),
+        invalidateTags(error, [idTag("transform", id), tag("table")]),
     }),
     createTransform: builder.mutation<Transform, CreateTransformRequest>({
       query: (body) => ({
