@@ -28,6 +28,7 @@
   cached-database-via-table-id
   cached-table
   default-mapping
+  handle-effects!*
   perform-action!
   perform-action-v2!
   ;; allow actions to be defined in the data-editing module

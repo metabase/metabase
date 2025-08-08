@@ -89,9 +89,9 @@ describe("useAdminSetting", () => {
       expect(screen.getByText(/New Site Name/)).toBeInTheDocument();
     });
 
-    const apiCalls = fetchMock.calls();
-    const putCall = apiCalls.find((call) => call[1]?.method === "PUT");
+    const apiCalls = fetchMock.callHistory.calls();
+    const putCall = apiCalls.find((call) => call.request?.method === "PUT");
 
-    expect(putCall?.[0]).toContain("/api/setting/site-name");
+    expect(putCall?.request?.url).toContain("/api/setting/site-name");
   });
 });

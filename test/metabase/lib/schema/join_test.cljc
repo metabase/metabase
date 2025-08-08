@@ -1,7 +1,7 @@
 (ns metabase.lib.schema.join-test
   (:require
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
-   [clojure.test :refer [deftest is]]
+   [clojure.test :refer [deftest is testing]]
    [malli.error :as me]
    [metabase.lib.core :as lib]
    [metabase.lib.schema :as lib.schema]
@@ -60,3 +60,19 @@
                                          {:name "NAME", :base_type :type/Name, :display_name "Name"}]
                        :alias           "Question 54"
                        :condition       [:= 1 1]}]})))))
+
+(deftest ^:parallel normalize-join-condition->conditions-test
+  (testing "normalize should fix condition => conditions and normalize things inside it"
+    (is (=? {:strategy   :left-join
+             :stages     [{:source-table 1}]
+             :alias      "Cat"
+             :conditions [[:= {} [:field {} 2] [:field {:join-alias "Cat"} 3]]]
+             :conditon   (symbol "nil #_\"key is not present.\"")
+             :fields     [[:field {} 4]]}
+            (lib/normalize
+             ::lib.schema.join/join
+             {:strategy  :left-join
+              :stages    [{:source-table 1}]
+              :alias     "Cat"
+              :condition [:= [:field {} 2] [:field {:join-alias "Cat"} 3]]
+              :fields    [[:field {} 4]]})))))

@@ -82,6 +82,8 @@
    ;; ^/api/health -> Health Check Endpoint
    (GET "/api/health" [] health-handler)
 
+   ;; Handle CORS preflight requests for auth routes
+   (OPTIONS "/auth/*" [] {:status 200 :body ""})
    (OPTIONS "/api/*" [] {:status 200 :body ""})
 
    ;; ^/api/ -> All other API routes
