@@ -1,5 +1,6 @@
 (ns metabase-enterprise.semantic-search.index
   (:require
+   [buddy.core.hash :as buddy-hash]
    [clojure.string :as str]
    [honey.sql :as sql]
    [honey.sql.helpers :as sql.helpers]
@@ -62,6 +63,7 @@
      [:text_search_with_native_query_vector :tsvector :not-null]
      [:content :text :not-null]
      [:metadata :jsonb]
+     [:hash :text :not-null]
      [[:constraint unique-constraint-name]
       [:unique [:composite :model :model_id]]]]))
 
@@ -76,41 +78,51 @@
                        :embedding embedding}))))
   (str "'[" (str/join ", " embedding) "]'::vector"))
 
+(defn- compute-hash [doc embedding]
+  (->
+   (into (sorted-map) doc)
+   (assoc :embedding embedding)
+   (json/encode)
+   buddy-hash/sha1
+   u/encode-base64-bytes))
+
 (defn- doc->db-record
   "Convert a document to a database record with a provided embedding."
   [embedding-vec {:keys [model id searchable_text created_at creator_id updated_at
                          last_editor_id archived verified official_collection database_id collection_id display_type legacy_input] :as doc}]
-  {:model               model
-   :model_id            id
-   :creator_id          creator_id
-   :model_created_at    created_at
-   :last_editor_id      last_editor_id
-   :model_updated_at    updated_at
-   :archived            archived
-   :verified            verified
-   :official_collection official_collection
-   :database_id         database_id
-   :collection_id       collection_id
-   :display_type        display_type
-   :embedding           [:raw (format-embedding embedding-vec)]
-   :content             searchable_text
-   :text_search_vector (if (:name doc)
-                         [:||
-                          (search/weighted-tsvector "A" (:name doc))
-                          (search/weighted-tsvector "B" (:searchable_text doc ""))]
-                         (search/weighted-tsvector "A" (:searchable_text doc "")))
-   :text_search_with_native_query_vector
-   (if (:name doc)
-     [:||
-      (search/weighted-tsvector "A" (:name doc))
-      (search/weighted-tsvector "B"
-                                (str/join " " (remove str/blank? [(:searchable_text doc "")
-                                                                  (:native_query doc "")])))]
-     (search/weighted-tsvector "A"
-                               (str/join " " (remove str/blank? [(:searchable_text doc "")
-                                                                 (:native_query doc "")]))))
-   :legacy_input        [:cast (json/encode legacy_input) :jsonb]
-   :metadata            [:cast (json/encode doc) :jsonb]})
+  (let [embedding (format-embedding embedding-vec)]
+    {:model               model
+     :model_id            id
+     :creator_id          creator_id
+     :model_created_at    created_at
+     :last_editor_id      last_editor_id
+     :model_updated_at    updated_at
+     :archived            archived
+     :verified            verified
+     :official_collection official_collection
+     :database_id         database_id
+     :collection_id       collection_id
+     :display_type        display_type
+     :embedding           [:raw embedding]
+     :content             searchable_text
+     :text_search_vector (if (:name doc)
+                           [:||
+                            (search/weighted-tsvector "A" (:name doc))
+                            (search/weighted-tsvector "B" (:searchable_text doc ""))]
+                           (search/weighted-tsvector "A" (:searchable_text doc "")))
+     :text_search_with_native_query_vector
+     (if (:name doc)
+       [:||
+        (search/weighted-tsvector "A" (:name doc))
+        (search/weighted-tsvector "B"
+                                  (str/join " " (remove str/blank? [(:searchable_text doc "")
+                                                                    (:native_query doc "")])))]
+       (search/weighted-tsvector "A"
+                                 (str/join " " (remove str/blank? [(:searchable_text doc "")
+                                                                   (:native_query doc "")]))))
+     :legacy_input        [:cast (json/encode legacy_input) :jsonb]
+     :hash                (compute-hash doc embedding)
+     :metadata            [:cast (json/encode doc) :jsonb]}))
 
 (defn- analytics-set-index-size!
   "Set the semantic-index-size metric to the number of rows in the index table."
@@ -134,7 +146,8 @@
         (doseq [batch (->> (map vector documents embeddings)
                            (map (fn [[doc embedding]] (doc->db-record embedding doc)))
                            (partition-all *batch-size*))]
-          (jdbc/execute! connectable (records->sql batch)))
+          (when-some [sql (records->sql batch)]
+            (jdbc/execute! connectable sql)))
         (analytics-set-index-size! connectable table-name)))))
 
 (defn- execute-with-counts [connectable model ids sql]
@@ -175,6 +188,36 @@
      :table-name table-name
      :version 0}))
 
+(defn- existing-records-hash-query [index ids]
+  (-> (sql.helpers/select :model :model_id :hash)
+      (sql.helpers/from (keyword (:table-name index)))
+      (sql.helpers/where
+       [:in [:composite :model :model_id] ids])))
+
+(defn- filter-updated-records
+  "Filter db-records to only include those that differ from existing records in the database.
+   This avoids issuing idempotent updates by comparing key fields that might have changed.
+   See [[compute-hash]]"
+  [connectable index db-records]
+  (let [ids (map (juxt :model (comp str :model_id)) db-records)
+        existing-records (->>
+                          (jdbc/execute!
+                           connectable
+                           (sql-format-quoted (existing-records-hash-query index ids))
+                           {:builder-fn jdbc.rs/as-unqualified-lower-maps})
+                          (u/index-by (juxt :model (comp parse-long :model_id)) :hash))
+
+        updated-records (->>
+                         db-records
+                         (filter (fn [{:keys [model model_id hash]}]
+                                   (not= hash (get existing-records [model model_id])))))
+        skipped-count (- (count db-records) (count updated-records))]
+
+    (when (pos? skipped-count)
+      (log/debug "Skipping" skipped-count "idempotent updates out of" (count db-records) "total records"))
+
+    updated-records))
+
 (defn- upsert-embedding!-fn [connectable index text->docs]
   (fn [text->embedding]
     (let [batch-documents
@@ -190,11 +233,12 @@
        connectable
        (:table-name index)
        (fn [db-records]
-         (-> (sql.helpers/insert-into (keyword (:table-name index)))
-             (sql.helpers/values db-records)
-             (sql.helpers/on-conflict :model :model_id)
-             (sql.helpers/do-update-set (db-records->update-set db-records))
-             sql-format-quoted))
+         (when-let [db-records (seq (filter-updated-records connectable index db-records))]
+           (-> (sql.helpers/insert-into (keyword (:table-name index)))
+               (sql.helpers/values db-records)
+               (sql.helpers/on-conflict :model :model_id)
+               (sql.helpers/do-update-set (db-records->update-set db-records))
+               sql-format-quoted)))
        batch-documents
        (map :embedding batch-documents)))))
 
