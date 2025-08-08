@@ -291,9 +291,11 @@ export function TableDetailViewInner({
           onDragCancel={handleDragCancel}
         >
           <SortableContext
-            items={(isEdit ? sections : notEmptySections).map((section) =>
-              getSectionDraggableKey(section),
-            )}
+            items={[...(isEdit ? sections : notEmptySections)]
+              .filter(
+                (x) => x.variant !== "header" && x.variant !== "subheader",
+              )
+              .map((section) => getSectionDraggableKey(section))}
             strategy={verticalListSortingStrategy}
           >
             {(isEdit ? sections : notEmptySections).map((section, _index) => (
