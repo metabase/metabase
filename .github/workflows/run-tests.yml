@@ -19,17 +19,9 @@ on:
         type: boolean
         default: true
       reuse_artifacts:
-        description: "Reuse existing artifacts instead of building (for testing workflows)"
+        description: "Reuse latest existing artifacts instead of building (for testing workflows)"
         type: boolean
         default: false
-      oss_artifact_name:
-        description: "OSS artifact name to reuse (e.g. metabase-oss-COMMIT_SHA-uberjar)"
-        type: string
-        default: ""
-      ee_artifact_name:
-        description: "EE artifact name to reuse (e.g. metabase-ee-COMMIT_SHA-uberjar)"
-        type: string
-        default: ""
       debug_specs:
         description: "Use minimal specs for debugging (much faster)"
         type: boolean
@@ -102,21 +94,41 @@ jobs:
   download-artifacts:
     runs-on: ubuntu-22.04
     timeout-minutes: 10
-    if: ${{ inputs.reuse_artifacts && inputs.oss_artifact_name != '' && inputs.ee_artifact_name != '' }}
+    if: ${{ inputs.reuse_artifacts }}
     steps:
-      - name: Download artifacts using GitHub CLI
+      - name: Find and download latest artifacts
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          echo "Downloading OSS artifact: ${{ inputs.oss_artifact_name }}"
+          echo "Finding latest OSS and EE artifacts..."
+          
+          # Find the latest OSS artifact
+          OSS_ARTIFACT=$(gh api repos/${{ github.repository }}/actions/artifacts \
+            --jq '.artifacts[] | select(.name | contains("metabase-oss-") and endswith("-uberjar")) | select(.expired == false) | .name' \
+            | head -1)
+          
+          # Find the latest EE artifact  
+          EE_ARTIFACT=$(gh api repos/${{ github.repository }}/actions/artifacts \
+            --jq '.artifacts[] | select(.name | contains("metabase-ee-") and endswith("-uberjar")) | select(.expired == false) | .name' \
+            | head -1)
+          
+          echo "Latest OSS artifact: $OSS_ARTIFACT"
+          echo "Latest EE artifact: $EE_ARTIFACT"
+          
+          if [ -z "$OSS_ARTIFACT" ] || [ -z "$EE_ARTIFACT" ]; then
+            echo "Error: Could not find recent OSS or EE artifacts"
+            exit 1
+          fi
+          
+          echo "Downloading OSS artifact: $OSS_ARTIFACT"
           gh api repos/${{ github.repository }}/actions/artifacts \
-            --jq '.artifacts[] | select(.name=="${{ inputs.oss_artifact_name }}") | .archive_download_url' \
+            --jq ".artifacts[] | select(.name==\"$OSS_ARTIFACT\") | .archive_download_url" \
             | head -1 \
             | xargs -I {} curl -L -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" {} -o oss-artifact.zip
           
-          echo "Downloading EE artifact: ${{ inputs.ee_artifact_name }}"
+          echo "Downloading EE artifact: $EE_ARTIFACT"
           gh api repos/${{ github.repository }}/actions/artifacts \
-            --jq '.artifacts[] | select(.name=="${{ inputs.ee_artifact_name }}") | .archive_download_url' \
+            --jq ".artifacts[] | select(.name==\"$EE_ARTIFACT\") | .archive_download_url" \
             | head -1 \
             | xargs -I {} curl -L -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" {} -o ee-artifact.zip
             
