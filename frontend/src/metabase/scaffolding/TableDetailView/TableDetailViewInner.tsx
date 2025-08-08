@@ -157,14 +157,19 @@ export function TableDetailViewInner({
   const collisionDetectionStrategy: CollisionDetection = useCallback(
     (args) => {
       if (activeId && sections.some((s) => s.id === activeId)) {
-        console.log('active section');
-        return closestCenter({
+        const center = closestCenter({
           ...args,
           droppableContainers: args.droppableContainers.filter(
             (container) => sections.some((s) => s.id === container.id)
           ),
         });
+
+        console.log("__DEBUG__", { center })
+
+        return center;
       }
+
+      console.log("__DEBUG__", { args })
 
       // Start by finding any intersecting droppable
       const pointerIntersections = pointerWithin(args);
@@ -187,7 +192,7 @@ export function TableDetailViewInner({
 
           // If a container is matched and it contains items (columns 'A', 'B', 'C')
           if (containerItems && containerItems.length > 0) {
-            console.log('container items', containerItems);
+            // console.log('container items', containerItems);
             // Return the closest droppable within that container
             overId = closestCenter({
               ...args,
@@ -229,6 +234,8 @@ export function TableDetailViewInner({
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
 
+    // console.log("handle drag end!")
+
     // if (over && String(active.id) !== String(over.id)) {
     //   updateSections((sections) => {
     //     const oldIndex = sections.findIndex(
@@ -255,7 +262,7 @@ export function TableDetailViewInner({
 
     const activeContainer = findContainer(active.id);
 
-    console.log({ activeContainer });
+    // console.log({ activeContainer });
 
     if (!activeContainer) {
       setActiveId(null);
@@ -269,15 +276,15 @@ export function TableDetailViewInner({
       return;
     }
 
-    console.log({ activeContainer, overId });
+    // console.log({ activeContainer, overId });
 
     if (overId === TRASH_ID) {
-      setItems((items) => ({
-        ...items,
-        [activeContainer]: items[activeContainer].filter(
-          (id) => id !== activeId
-        ),
-      }));
+      // setItems((items) => ({
+      //   ...items,
+      //   [activeContainer]: items[activeContainer].filter(
+      //     (id) => id !== activeId
+      //   ),
+      // }));
       setActiveId(null);
       return;
     }
@@ -301,28 +308,50 @@ export function TableDetailViewInner({
 
     const overContainer = findContainer(overId);
 
-    console.log({ overContainer });
+    // console.log({ overContainer });
 
     if (overContainer) {
       const overSection = sections.find((s) => s.id === overContainer);
       const activeSection = sections.find((s) => s.id === activeContainer);
+
+      if (!overSection || !activeSection) {
+        return;
+      }
+
       // field index
       const activeIndex = activeSection.fields.findIndex((f) => f.field_id === active.id);
       const overIndex = overSection.fields.findIndex((f) => f.field_id === overId);
 
-      console.log({ activeIndex, overIndex })
+
+      // if (overSection.id === activeSection.id) {
+      //   console.log("same section, add sorting");
+      //   return;
+      // }
+
+
+      // console.log({ activeIndex, overIndex })
 
       if (activeIndex !== overIndex) {
         // TODO: move field between sections
+        console.log("move fields between sections", { activeIndex, overIndex });
 
-        // setItems((items) => ({
-        //   ...items,
-        //   [overContainer]: arrayMove(
-        //     items[overContainer],
-        //     activeIndex,
-        //     overIndex
-        //   ),
-        // }));
+        // find active section, over section
+        // remove active field from active section
+        // add active field to over section
+        // update sections
+        updateSections((sections) => {
+          const newSections = [...sections];
+
+          const newOverSection = {
+            ...overSection,
+            fields: arrayMove(overSection.fields, activeIndex, overIndex),
+          };
+
+          const overSectionIndex = newSections.findIndex((s) => s.id === overContainer);
+          newSections[overSectionIndex] = newOverSection;
+
+          return newSections;
+        })
       }
     }
 
@@ -359,29 +388,52 @@ export function TableDetailViewInner({
 
     if (activeContainer !== overContainer) {
       console.log("drag fields between sections");
+
       updateSections((sections) => {
+        // const newSections = [...sections];
+        // const activeSection = newSections.find((s) => s.id === activeContainer);
+        // const overSection = newSections.find((s) => s.id === overContainer);
         const activeSection = sections.find((s) => s.id === activeContainer);
         const overSection = sections.find((s) => s.id === overContainer);
+        const overItems = overSection?.fields.map((f) => f.field_id);
+        const overIndex = overItems?.indexOf(overId);
 
-        console.log("update sections", { activeSection, overSection });
+        console.log("__DEBUG__", { overItems, overIndex })
 
         if (!activeSection || !overSection) {
           return sections;
         }
 
-        const activeIndex = activeSection.fields.findIndex((f) => f.field_id === active.id);
-        const overIndex = overSection.fields.findIndex((f) => f.field_id === overId);
+        const activeField = activeSection.fields.find((f) => f.field_id === active.id);
+        const overField = overSection.fields.find((f) => f.field_id === overId);
 
-        console.log("update sections", { activeIndex, overIndex });
+        let newIndex: number;
+        if (sections.some((s) => s.id === active.id)) {
+          newIndex = sections.length + 1;
+        } else {
+          const isBelowOverItem =
+            over &&
+            active.rect.current.translated &&
+            active.rect.current.translated.top >
+            over.rect.top + over.rect.height;
 
-        if (activeIndex === -1 || overIndex === -1) {
-          return sections;
+          const modifier = isBelowOverItem ? 1 : 0;
+
+          newIndex =
+            overIndex >= 0 ? overIndex + modifier : overItems.length + 1;
         }
 
-        const activeField = activeSection.fields[activeIndex];
-        const overField = overSection.fields[overIndex];
+        console.log("__DEBUG__", { newIndex })
 
-        console.log("update fields", { activeField: activeField.field_id, overField: overField.field_id });
+
+        recentlyMovedToNewContainer.current = true;
+
+        const newSections = [...sections];
+
+
+        // remove item from active section
+        // add item to over section
+        // update sections
 
         const newActiveSection = {
           ...activeSection,
@@ -390,12 +442,8 @@ export function TableDetailViewInner({
 
         const newOverSection = {
           ...overSection,
-          fields: [...overSection.fields.slice(0, overIndex), activeField, ...overSection.fields.slice(overIndex)],
+          fields: [...overSection.fields.slice(0, newIndex), activeField, ...overSection.fields.slice(newIndex)],
         };
-
-        console.log("newOverSection", newOverSection.fields.map(f => f.field_id));
-
-        const newSections = [...sections];
 
         const activeSectionIndex = newSections.findIndex((s) => s.id === activeContainer);
         const overSectionIndex = newSections.findIndex((s) => s.id === overContainer);
@@ -403,18 +451,11 @@ export function TableDetailViewInner({
         newSections[activeSectionIndex] = newActiveSection;
         newSections[overSectionIndex] = newOverSection;
 
-        console.log("newSections", newSections.map(s => s.fields.map(f => f.field_id)));
+        console.log("__DEBUG__", { newSections })
 
-        // return sections;
         return newSections;
-
-
-        // const newSections = [...sections];
-        // newSections[activeIndex] = overField;
-        // newSections[overIndex] = activeField;
-
-        return sections;
       })
+
       // setItems((items) => {
       //   const activeItems = items[activeContainer];
       //   const overItems = items[overContainer];
@@ -570,37 +611,39 @@ export function TableDetailViewInner({
 
   function renderContainerDragOverlay(containerId: UniqueIdentifier) {
     console.log("renderContainerDragOverlay", containerId);
-    return (
-      <Container
-        label={`Column ${containerId}`}
-        columns={columns}
-        style={{
-          height: '100%',
-        }}
-        shadow
-        unstyled={false}
-      >
-        {sections.find((s) => s.id === containerId)?.fields.map((item, index) => (
-          <Item
-            key={item.field_id}
-            value={item.field_id}
-            handle={false}
-          // style={getItemStyles({
-          //   containerId,
-          //   overIndex: -1,
-          //   index: getIndex(item),
-          //   value: item,
-          //   isDragging: false,
-          //   isSorting: false,
-          //   isDragOverlay: false,
-          // })}
-          // color={getColor(item)}
-          // wrapperStyle={wrapperStyle({ index })}
-          // renderItem={renderItem}
-          />
-        ))}
-      </Container>
-    );
+    console.log("__DEBUG__", { fields: sections.find((s) => s.id === containerId)?.fields })
+    return <Box w="100%" h="100%" style={{ border: "1px dotted purple" }}>Section {containerId}</Box>
+    // return (
+    //   <Container
+    //     label={`Column ${containerId}`}
+    //     columns={columns}
+    //     style={{
+    //       height: '100%',
+    //     }}
+    //     shadow
+    //     unstyled={false}
+    //   >
+    //     {sections.find((s) => s.id === containerId)?.fields.map((item, index) => (
+    //       <Item
+    //         key={item.field_id}
+    //         value={item.field_id}
+    //       // handle={false}
+    //       // style={getItemStyles({
+    //       //   containerId,
+    //       //   overIndex: -1,
+    //       //   index: getIndex(item),
+    //       //   value: item,
+    //       //   isDragging: false,
+    //       //   isSorting: false,
+    //       //   isDragOverlay: false,
+    //       // })}
+    //       // color={getColor(item)}
+    //       // wrapperStyle={wrapperStyle({ index })}
+    //       // renderItem={renderItem}
+    //       />
+    //     ))}
+    //   </Container>
+    // );
   }
 
   function renderSortableItemDragOverlay(id: UniqueIdentifier) {
