@@ -13,48 +13,55 @@
 (def ^:private lag-tolerance (.multipliedBy semantic.gate/gate-write-timeout 2))
 
 (defn indexing-step [pgvector index-metadata index indexing-state]
-  (let [{:keys [watermark last-seen-candidates]} @indexing-state
+  (letfn [(poll []
+            (let [{:keys [watermark]} @indexing-state]
+              (semantic.gate/poll pgvector index-metadata watermark
+                                  :limit poll-limit
+                                  :lag-tolerance lag-tolerance)))
+          ;; when polling within the lag-tolerance window we need to expect
+          ;; to see the same gate entries when polling.
+          ;; We keep a :last-seen-candidates set so if we saw them last time we can filter them out
+          (remove-redundant-candidates [update-candidates]
+            (let [{:keys [last-seen-candidates]} @indexing-state]
+              (not-empty (if (seq last-seen-candidates)
+                           (into [] (remove last-seen-candidates) update-candidates)
+                           update-candidates))))
 
-        move-to-next-watermark
-        (fn [poll-result]
-          (let [next-watermark (semantic.gate/next-watermark watermark poll-result)]
-            (vswap! indexing-state assoc :watermark next-watermark)
-            (semantic.gate/flush-watermark! pgvector index-metadata index next-watermark)))
+          ;; currently we expect to flush the watermark each time we poll
+          (move-to-next-watermark [poll-result]
+            (let [{:keys [watermark]} @indexing-state
+                  next-watermark (semantic.gate/next-watermark watermark poll-result)]
+              (vswap! indexing-state assoc :watermark next-watermark)
+              (semantic.gate/flush-watermark! pgvector index-metadata index next-watermark)))]
+    (let [{:keys [update-candidates] :as poll-result} (poll)]
+      (if-some [novel-candidates (remove-redundant-candidates update-candidates)]
+        (let [documents-query   {:select [:model :model_id :document]
+                                 :from   [(keyword (:gate-table-name index-metadata))]
+                                 :where  [:in :id (sort (map :id novel-candidates))]}
+              documents-sql     (sql/format documents-query :quoted true)
+              gate-docs         (jdbc/execute! pgvector documents-sql {:builder-fn jdbc.rs/as-unqualified-lower-maps})
+              updates           (filter :document gate-docs)
+              deletes           (remove :document gate-docs)
+              updated-documents (map semantic.gate/gate-doc->search-doc updates)]
+          (log/infof "Found gate updates: %d updates, %d deletes" (count updates) (count deletes))
+          (when (seq updated-documents)
+            (semantic.index/upsert-index! pgvector index updated-documents))
+          (doseq [[model deletes] (group-by :model deletes)]
+            (semantic.index/delete-from-index! pgvector index model (map :model_id deletes)))
+          (vswap! indexing-state assoc
+                  :last-seen-change (Instant/now)
+                  :last-indexed-count (count novel-candidates)
+                  :last-poll-count (count update-candidates))
+          (move-to-next-watermark poll-result))
+        (do
+          (vswap! indexing-state assoc
+                  :last-indexed-count 0
+                  :last-poll-count (count update-candidates))
+          (move-to-next-watermark poll-result)))
 
-        {:keys [update-candidates] :as poll-result}
-        (semantic.gate/poll pgvector index-metadata watermark
-                            :limit poll-limit
-                            :lag-tolerance lag-tolerance)]
-    (if-some [novel-candidates (not-empty (if (seq last-seen-candidates)
-                                            (into [] (remove last-seen-candidates) update-candidates)
-                                            update-candidates))]
-      (let [documents-query   {:select [:model :model_id :document]
-                               :from   [(keyword (:gate-table-name index-metadata))]
-                               :where  [:in :id (sort (map :id novel-candidates))]}
-            documents-sql     (sql/format documents-query :quoted true)
-            gate-docs         (jdbc/execute! pgvector documents-sql {:builder-fn jdbc.rs/as-unqualified-lower-maps})
-            updates           (filter :document gate-docs)
-            deletes           (remove :document gate-docs)
-            updated-documents (map semantic.gate/gate-doc->search-doc updates)]
-        (log/infof "Found gate updates: %d updates, %d deletes" (count updates) (count deletes))
-        (when (seq updated-documents)
-          (semantic.index/upsert-index! pgvector index updated-documents))
-        (doseq [[model deletes] (group-by :model deletes)]
-          (semantic.index/delete-from-index! pgvector index model (map :model_id deletes)))
-        (vswap! indexing-state assoc
-                :last-seen-change (Instant/now)
-                :last-indexed-count (count novel-candidates)
-                :last-poll-count (count update-candidates))
-        (move-to-next-watermark poll-result))
-      (do
-        (vswap! indexing-state assoc
-                :last-indexed-count 0
-                :last-poll-count (count update-candidates))
-        (move-to-next-watermark poll-result)))
-
-    ;; we use this to filter redundant entries from the last poll (duplicate delivery is expected and intended when
-    ;; at the tail of the gate index).
-    (vswap! indexing-state assoc :last-seen-candidates (set update-candidates))))
+      ;; we use this to filter redundant entries from the last poll (duplicate delivery is expected and intended when
+      ;; at the tail of the gate index).
+      (vswap! indexing-state assoc :last-seen-candidates (set update-candidates)))))
 
 ;; having a var is handy for tests
 (defn- sleep [ms]
