@@ -123,6 +123,7 @@ function RunTablePaginationControls({
       pageSize={PAGE_SIZE}
       itemsLength={itemsLength}
       total={total}
+      showTotal
       onPreviousPage={handlePreviousPage}
       onNextPage={handleNextPage}
     />
