@@ -86,7 +86,7 @@
           (with-redefs [semantic.index/upsert-index! proxy]
             (testing "check proxies correct args and ret is untouched"
               (let [ret (sut pgvector index-metadata documents)]
-                (is (= [{:args [pgvector @index-ref documents]
+                (is (= [{:args [pgvector @index-ref documents {}]
                          :ret  ret}]
                        @calls))))
 
@@ -94,7 +94,7 @@
               (reset! calls [])
               (let [new-index (semantic.pgvector-api/init-semantic-search! pgvector index-metadata model2)
                     ret       (sut pgvector index-metadata documents)]
-                (is (= [{:args [pgvector new-index documents]
+                (is (= [{:args [pgvector new-index documents {}]
                          :ret  ret}]
                        @calls))))))))))
 
