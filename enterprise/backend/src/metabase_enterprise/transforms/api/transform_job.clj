@@ -119,11 +119,11 @@
 (api.macros/defendpoint :post "/:job-id/execute"
   "Execute a transform job manually."
   [{:keys [job-id]} :- [:map [:job-id ms/PositiveInt]]]
-  (log/info "Manual execution of transform job" job-id "(stub)")
+  (log/info "Manual execution of transform job" job-id)
   (api/check-superuser)
   (let [job (api/check-404 (t2/select-one :model/TransformJob :id job-id))]
     (.submit executor
-             ^Runnable #(jobs/execute-jobs! [job])))
+             ^Runnable #(jobs/execute-jobs! [job-id] {:run-method :manual})))
   {:message    "Job execution started"
    :job_run_id (str "stub-" job-id "-" (System/currentTimeMillis))})
 
