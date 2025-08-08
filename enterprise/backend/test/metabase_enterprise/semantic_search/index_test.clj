@@ -176,6 +176,34 @@
                 (is (= {"card" 2} (semantic.tu/delete-from-index! "card" (eduction (map :id) mock-docs)))))
               (semantic.tu/check-index-has-no-mock-docs))))))))
 
+(defn- track-concurrency
+  [max-concurrent f]
+  (let [current-concurrent (atom 0)]
+    (fn [& args]
+      (swap! current-concurrent inc)
+      (swap! max-concurrent (fn [m] (max m @current-concurrent)))
+      (try
+        (apply f args)
+        (finally
+          (swap! current-concurrent dec))))))
+
+(deftest upsert-index-concurrent-batch-processing-test
+  (mt/with-premium-features #{:semantic-search}
+    (with-open [_ (semantic.tu/open-temp-index!)]
+      (testing "ensure upsert! batch processing is concurrent update to index-update-thread-count"
+        (binding [semantic.index/*batch-size* 2]
+          (let [max-concurrent (atom 0)
+                update-fn      @#'semantic.index/upsert-index-batch!
+                docs          (take 100 (map-indexed (fn [i doc] (assoc doc :id (str i)))
+                                                     (cycle (semantic.tu/mock-documents))))]
+            (with-redefs [semantic.index/upsert-index-batch! (track-concurrency
+                                                              max-concurrent
+                                                              (fn [& args] (apply update-fn args)))]
+              (semantic.tu/check-index-has-no-mock-docs)
+              (is (= {"card" 50, "dashboard" 50}
+                     (semantic.tu/upsert-index! docs)))
+              (is (= 2 @max-concurrent) "Expected up to 2 concurrent batches"))))))))
+
 (deftest upsert-index-batched-embeddings-pairing-test
   (mt/with-premium-features #{:semantic-search}
     (with-open [_ (semantic.tu/open-temp-index!)]
