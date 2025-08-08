@@ -11,7 +11,8 @@
    [metabase.util.log :as log]
    [next.jdbc :as jdbc]
    [next.jdbc.result-set :as jdbc.rs])
-  (:import (java.time Duration Instant)))
+  (:import (java.sql Timestamp)
+           (java.time Duration Instant)))
 
 (use-fixtures :once #'semantic.tu/once-fixture)
 
@@ -33,14 +34,17 @@
                                  :quoted true)
                      {:builder-fn jdbc.rs/as-unqualified-lower-maps}))
 
+(defn- ts ^Timestamp [s]
+  (Timestamp/from (Instant/parse s)))
+
 (deftest indexing-step-test
   (let [pgvector       semantic.tu/db
         index-metadata (semantic.tu/unique-index-metadata)
         model          semantic.tu/mock-embedding-model
         index          (semantic.index-metadata/qualify-index (semantic.index/default-index model) index-metadata)
-        t1             (Instant/parse "2025-01-01T00:01:00Z")
-        t2             (Instant/parse "2025-01-02T00:03:10Z")
-        t3             (Instant/parse "2025-01-03T00:02:42Z")
+        t1             (ts "2025-01-01T00:01:00Z")
+        t2             (ts "2025-01-02T00:03:10Z")
+        t3             (ts "2025-01-03T00:02:42Z")
         c1             {:model "card" :id "1" :searchable_text "Dog Training Guide"}
         c2             {:model "card" :id "2" :searchable_text "Dog Training Guide 2"}
         c3             {:model "card" :id "3" :searchable_text "Dog Training Guide 3"}
@@ -272,7 +276,7 @@
         index-metadata (semantic.tu/unique-index-metadata)
         model          semantic.tu/mock-embedding-model
         index          (semantic.index-metadata/qualify-index (semantic.index/default-index model) index-metadata)
-        t1             (Instant/parse "2025-01-01T00:01:00Z")
+        t1             (ts "2025-01-01T00:01:00Z")
         c1             {:model "card" :id "1" :searchable_text "Dog Training Guide"}
         version        (fn [doc t] (semantic.gate/search-doc->gate-doc doc t))]
     (with-open [_ (open-metadata! pgvector index-metadata)
@@ -337,14 +341,14 @@
 
 (deftest init-indexing-state-test
   (testing "initializes indexing state from metadata row"
-    (let [metadata-row       {:indexer_last_poll      (Instant/parse "2025-01-01T12:00:00Z")
-                              :indexer_last_seen      (Instant/parse "2025-01-01T11:30:00Z")
+    (let [metadata-row       {:indexer_last_poll      (ts "2025-01-01T12:00:00Z")
+                              :indexer_last_seen      (ts "2025-01-01T11:30:00Z")
                               :indexer_last_seen_id   "foo"
                               :indexer_last_seen_hash "bar"}
           state              (semantic.indexer/init-indexing-state metadata-row)
           state-value        @state
-          expected-last-seen {:id "foo" :document_hash "bar" :gated_at (Instant/parse "2025-01-01T11:30:00Z")}]
-      (is (= (Instant/parse "2025-01-01T12:00:00Z") (get-in state-value [:watermark :last-poll])))
+          expected-last-seen {:id "foo" :document_hash "bar" :gated_at (ts "2025-01-01T11:30:00Z")}]
+      (is (= (ts "2025-01-01T12:00:00Z") (get-in state-value [:watermark :last-poll])))
       (is (= expected-last-seen (get-in state-value [:watermark :last-seen])))
       (is (= #{expected-last-seen} (:last-seen-candidates state-value)))
       (is (zero? (:last-indexed-count state-value)))
@@ -383,8 +387,8 @@
 
     (testing "runs loop on active index then exits"
       (let [loop-args    (atom [])
-            metadata-row {:indexer_last_poll (Instant/parse "2025-01-01T12:00:00Z")
-                          :indexer_last_seen (Instant/parse "2025-01-01T11:30:00Z")}
+            metadata-row {:indexer_last_poll (ts "2025-01-01T12:00:00Z")
+                          :indexer_last_seen (ts "2025-01-01T11:30:00Z")}
             index        {:table-name "foo"}]
         (with-redefs [semantic.index-metadata/get-active-index-state (fn [& _] {:index index :metadata-row metadata-row})
                       semantic.indexer/indexing-loop                 (fn [& args] (swap! loop-args conj args) nil)]

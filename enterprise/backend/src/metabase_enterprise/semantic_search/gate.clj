@@ -25,7 +25,8 @@
             [metabase.util.log :as log]
             [next.jdbc :as jdbc]
             [next.jdbc.result-set :as jdbc.rs])
-  (:import (java.time Duration Instant)
+  (:import (java.sql Timestamp)
+           (java.time Duration Instant OffsetDateTime)
            (org.postgresql.util PGobject)))
 
 ;; multiple threads can hit the gating table, row states can be committed in any order,
@@ -55,6 +56,22 @@
 (defn- document-hash [search-doc]
   (u/encode-base64-bytes (buddy-hash/sha1 (json/encode (into (sorted-map) search-doc)))))
 
+(defn- ->instant
+  ^Instant [inst]
+  (cond
+    (instance? Instant inst) inst
+    (instance? OffsetDateTime inst) (.toInstant ^OffsetDateTime inst)
+    :else (Instant/ofEpochMilli (inst-ms inst))))
+
+(defn- ->timestamp
+  "By default, our TIMESTAMP WITH TIME ZONE columns will result in JDBC timestamps. Which should be interpreted as
+  Instants.
+  We remain sympathetic, to that for now, despite the fact it would normally represent a LocalDateTime. We might change that fact later."
+  ^Timestamp [inst]
+  (if (instance? Timestamp inst)
+    inst
+    (Timestamp/from (->instant inst))))
+
 (defn search-doc->gate-doc
   "Converts a search document into a gate table record, requires the document can be encoded as json."
   [search-doc default-updated-at]
@@ -66,7 +83,7 @@
                       (.setType "jsonb")
                       (.setValue (json/encode search-doc)))
      :document_hash (document-hash search-doc)
-     :updated_at    (or (:updated_at search-doc) default-updated-at)}))
+     :updated_at    (->timestamp (or (:updated_at search-doc) default-updated-at))}))
 
 (defn gate-doc->search-doc
   "Converts a gate table record back to a search document."
@@ -150,45 +167,45 @@
                                         :or   {lag-tolerance (.multipliedBy gate-write-timeout 2) ; heuristic: still depends on postgres enforcing timeouts. We might still need a slow-pass over everything occasionally in the future.
                                                limit         1000}}]
   {:pre [(pos? limit)]}
-  (let [last-poll-time    (or (:last-poll watermark) Instant/EPOCH)
-        last-seen-time    (or (:gated_at (:last-seen watermark)) Instant/EPOCH)
-        confidence-time   (.minus (Instant/ofEpochMilli (inst-ms last-poll-time)) lag-tolerance)
-        gate-min          (if (< (inst-ms confidence-time) (inst-ms last-seen-time))
-                            confidence-time
-                            ;; We might not have seen everything with the last poll
-                            ;; e.g. maybe there were more than :limit rows
-                            ;; For this case - we would expect the last-seen to be behind the confidence window,
-                            ;; and we should not skip ahead.
-                            last-seen-time)
-        poll-q            {:union-all
-                           [{:select [[nil :id]
-                                      [nil :document_hash]
-                                      [[:clock_timestamp] :gated_at]]} ; return pgs clock value, to use as the :poll-time
-                            {:select [:q.id :q.document_hash :q.gated_at]
-                             :from
-                             ;; subquery is important otherwise :limit is honey-ed into the outer union
-                             [[{:select   [:id, :document_hash, :gated_at]
-                                :from     [(keyword (:gate-table-name index-metadata))]
-                                ;; the earliest timestamp where we might expect to find new documents
-                                :where    [:>= :gated_at gate-min]
-                                :order-by [[:gated_at :asc]]
-                                :limit    limit}
-                               :q]]}]}
-        poll-sql          (sql/format poll-q :quoted true)
-        rs                (jdbc/execute! pgvector poll-sql {:builder-fn jdbc.rs/as-unqualified-lower-maps})
-        poll-time         (some #(when (nil? (:id %)) (:gated_at %)) rs)
-        _                 (assert poll-time "expected poll time record (nil id)")
-        update-candidates (filterv #(some? (:id %)) rs)]
+  (let [^Instant last-poll-inst (or (some-> watermark :last-poll ->instant) Instant/EPOCH)
+        ^Instant last-seen-inst (or (some-> watermark :last-seen :gated_at ->instant) Instant/EPOCH)
+        confidence-time         (.minus last-poll-inst lag-tolerance)
+        gate-min                (if (.isBefore confidence-time last-seen-inst)
+                                  confidence-time
+                                  ;; We might not have seen everything with the last poll
+                                  ;; e.g. maybe there were more than :limit rows
+                                  ;; For this case - we would expect the last-seen to be behind the confidence window,
+                                  ;; and we should not skip ahead.
+                                  last-seen-inst)
+        poll-q                  {:union-all
+                                 [{:select [[nil :id]
+                                            [nil :document_hash]
+                                            [[:clock_timestamp] :gated_at]]} ; return pgs clock value, to use as the :poll-time
+                                  {:select [:q.id :q.document_hash :q.gated_at]
+                                   :from
+                                   ;; subquery is important otherwise :limit is honey-ed into the outer union
+                                   [[{:select   [:id, :document_hash, :gated_at]
+                                      :from     [(keyword (:gate-table-name index-metadata))]
+                                      ;; the earliest timestamp where we might expect to find new documents
+                                      :where    [:>= :gated_at gate-min]
+                                      :order-by [[:gated_at :asc]]
+                                      :limit    limit}
+                                     :q]]}]}
+        poll-sql                (sql/format poll-q :quoted true)
+        rs                      (jdbc/execute! pgvector poll-sql {:builder-fn jdbc.rs/as-unqualified-lower-maps})
+        poll-time               (some #(when (nil? (:id %)) (:gated_at %)) rs)
+        _                       (assert poll-time "expected poll time record (nil id)")
+        update-candidates       (filterv #(some? (:id %)) rs)]
     {:poll-time         poll-time
      :update-candidates update-candidates}))
 
 (defn next-watermark
   "Given a poll result and the previous watermark, return next watermark (to be applied to poll at some future time)"
   [watermark {:keys [poll-time update-candidates]}]
-  (let [max-seen-rf (fn [max-seen {:keys [gated_at] :as candidate}]
+  (let [max-seen-rf (fn [{old-ts :gated_at :as max-seen} {candidate-ts :gated_at :as candidate}]
                       (cond
                         (nil? max-seen) candidate
-                        (< (inst-ms (:gated_at max-seen)) (inst-ms gated_at)) candidate
+                        (.isBefore (->instant old-ts) (->instant candidate-ts)) candidate
                         :else max-seen))]
     {:last-poll poll-time
      :last-seen (reduce max-seen-rf (:last-seen watermark) update-candidates)}))
