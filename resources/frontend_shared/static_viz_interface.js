@@ -19,10 +19,10 @@ function toJSMap(m) {
  */
 function row_chart(settings, data, colors, tokenFeatures) {
   return StaticViz.LegacyRenderChart("row", {
-    settings: JSON.parse(settings),
-    data: JSON.parse(data),
-    colors: JSON.parse(colors),
-    tokenFeatures: JSON.parse(tokenFeatures),
+    settings: settings,
+    data: data,
+    colors: colors,
+    tokenFeatures: tokenFeatures,
   });
 }
 
@@ -31,9 +31,9 @@ function row_chart(settings, data, colors, tokenFeatures) {
  */
 function gauge(card, data, tokenFeatures) {
   return StaticViz.LegacyRenderChart("gauge", {
-    card: JSON.parse(card),
-    data: JSON.parse(data),
-    tokenFeatures: JSON.parse(tokenFeatures),
+    card: card,
+    data: data,
+    tokenFeatures: tokenFeatures,
   });
 }
 
@@ -42,9 +42,9 @@ function gauge(card, data, tokenFeatures) {
  */
 function funnel(data, settings, tokenFeatures) {
   return StaticViz.LegacyRenderChart("funnel", {
-    data: JSON.parse(data),
-    settings: JSON.parse(settings),
-    tokenFeatures: JSON.parse(tokenFeatures),
+    data: data,
+    settings: settings,
+    tokenFeatures: tokenFeatures,
   });
 }
 
@@ -53,18 +53,18 @@ function funnel(data, settings, tokenFeatures) {
  */
 function progress(data, settings, instanceColors, tokenFeatures) {
   return StaticViz.LegacyRenderChart("progress", {
-    data: JSON.parse(data),
-    settings: JSON.parse(settings),
-    colors: JSON.parse(instanceColors),
-    tokenFeatures: JSON.parse(tokenFeatures),
+    data: data,
+    settings: settings,
+    colors: instanceColors,
+    tokenFeatures: tokenFeatures,
   });
 }
 
 function javascript_visualization(rawSeries, dashcardSettings, options) {
   const content = StaticViz.RenderChart(
-    JSON.parse(rawSeries),
-    JSON.parse(dashcardSettings),
-    JSON.parse(options),
+    rawSeries,
+    dashcardSettings,
+    options,
   );
   const type = content.startsWith("<svg") ? "svg" : "html";
 
