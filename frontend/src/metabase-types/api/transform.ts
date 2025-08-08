@@ -6,7 +6,6 @@ export type TransformId = number;
 export type TransformTagId = number;
 export type TransformJobId = number;
 export type TransformExecutionId = number;
-export type TransformJobExecutionId = number;
 
 export type Transform = {
   id: TransformId;
@@ -66,15 +65,7 @@ export type TransformJob = {
 
   // hydrated fields
   tag_ids?: TransformTagId[];
-  last_execution?: TransformJobExecution | null;
-};
-
-export type TransformJobExecution = {
-  id: TransformJobExecutionId;
-  status: TransformExecutionStatus;
-  trigger: TransformExecutionTrigger;
-  start_time: string;
-  end_time: string | null;
+  last_execution?: TransformExecution | null;
 };
 
 export type CreateTransformRequest = {
