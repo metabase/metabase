@@ -10,6 +10,9 @@ on:
         type: string
         required: false
         default: ""
+      debug_specs:
+        type: boolean
+        default: false
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}-e2e
@@ -72,6 +75,7 @@ jobs:
       split_index: ${{ strategy.job-index }}
       tags: ${{ matrix.tags }}
       runner: ${{ matrix.runner }}
+      debug_specs: ${{ inputs.debug_specs }}
 
   # run this separately to make it non-blocking
   flaky-e2e-tests:
