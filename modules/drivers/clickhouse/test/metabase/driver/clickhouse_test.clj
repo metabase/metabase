@@ -354,3 +354,16 @@
                               :target [:variable [:template-tag "category_id_2"]]
                               :value  "2"}]
                 :middleware {:format-rows? false}})))))))
+
+(deftest ^:parallel compile-transform-test
+  (mt/test-driver :clickhouse
+    (testing "compile transform for clickhouse with single primary key column"
+      (is (= ["CREATE TABLE `PRODUCTS_COPY` ORDER BY `id` ASC AS SELECT * FROM products"]
+             (driver/compile-transform :clickhouse {:sql "SELECT * FROM products"
+                                                    :output-table "PRODUCTS_COPY"
+                                                    :primary-key "id"}))))
+    (testing "compile transform for clickhouse with multiple primary key columns"
+      (is (= ["CREATE TABLE `PRODUCTS_COPY` ORDER BY `id` ASC, `dude` ASC AS SELECT * FROM products"]
+             (driver/compile-transform :clickhouse {:sql "SELECT * FROM products"
+                                                    :output-table "PRODUCTS_COPY"
+                                                    :primary-key ["id" "dude"]}))))))

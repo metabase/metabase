@@ -1,0 +1,17 @@
+.buttonRoot {
+  &:hover {
+    background-color: var(--mb-color-brand-lighter) !important;
+  }
+
+  &:hover.isSelected,
+  &.isSelected {
+    background-color: var(--mb-color-brand-light) !important;
+  }
+
+  color: var(--mb-color-text-medium) !important;
+
+  img {
+    height: 1rem;
+    width: 1rem;
+  }
+}

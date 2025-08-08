@@ -13,6 +13,7 @@ export * from "./FormProvider";
 export * from "./FormRadioGroup";
 export * from "./FormSecretKey";
 export * from "./FormSection";
+export * from "./FormSegmentedControl";
 export * from "./FormSelect";
 export * from "./FormSubmitButton";
 export * from "./FormSwitch";
