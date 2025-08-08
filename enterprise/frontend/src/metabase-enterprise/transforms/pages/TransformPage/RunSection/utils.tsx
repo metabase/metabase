@@ -1,16 +1,13 @@
 import dayjs from "dayjs";
-import type { ReactNode } from "react";
-import { jt, t } from "ttag";
+import { t } from "ttag";
 
 import type { IconName } from "metabase/ui";
 import type { Transform } from "metabase-types/api";
 
-import { RelativeDateTime } from "../../../components/RelativeDateTime";
-
 type RunStatusInfo = {
   icon: IconName;
   color: string;
-  message: ReactNode;
+  message: string;
 };
 
 export function getRunStatusInfo({ last_execution }: Transform): RunStatusInfo {
@@ -24,9 +21,7 @@ export function getRunStatusInfo({ last_execution }: Transform): RunStatusInfo {
 
   const { status, end_time } = last_execution;
   const endTimeNode =
-    end_time != null ? (
-      <RelativeDateTime key="date" date={dayjs(end_time).local().toDate()} />
-    ) : null;
+    end_time != null ? dayjs(end_time).local().fromNow() : null;
 
   switch (status) {
     case "started":
@@ -38,7 +33,7 @@ export function getRunStatusInfo({ last_execution }: Transform): RunStatusInfo {
     case "succeeded":
       return {
         message: endTimeNode
-          ? jt`Last run ${endTimeNode} successfully`
+          ? t`Last run ${endTimeNode} successfully`
           : t`Last run successfully`,
         icon: "check_filled",
         color: "success",
@@ -46,7 +41,7 @@ export function getRunStatusInfo({ last_execution }: Transform): RunStatusInfo {
     case "failed":
       return {
         message: endTimeNode
-          ? jt`Last run failed ${endTimeNode}`
+          ? t`Last run failed ${endTimeNode}`
           : t`Last run failed`,
         icon: "warning",
         color: "error",
@@ -54,7 +49,7 @@ export function getRunStatusInfo({ last_execution }: Transform): RunStatusInfo {
     case "timeout":
       return {
         message: endTimeNode
-          ? jt`Last run timed out ${endTimeNode}`
+          ? t`Last run timed out ${endTimeNode}`
           : t`Last run timed out`,
         icon: "warning",
         color: "error",
