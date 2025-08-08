@@ -80,8 +80,13 @@ runs:
           TARGET_PATH="$EXTRACT_PATH/metabase.jar"
         fi
 
-        echo "Moving $SOURCE_JAR to $TARGET_PATH"
-        mv "$SOURCE_JAR" "$TARGET_PATH"
+        # Check if source and target are the same
+        if [ "$SOURCE_JAR" == "$TARGET_PATH" ]; then
+          echo "Jar is already at the correct location: $TARGET_PATH"
+        else
+          echo "Moving $SOURCE_JAR to $TARGET_PATH"
+          mv "$SOURCE_JAR" "$TARGET_PATH"
+        fi
 
     - name: Verify that this is a valid JAR file
       shell: bash
