@@ -57,9 +57,12 @@
         }
       }
     }
-
     .FieldRemoveButton {
       align-self: center;
+      visibility: hidden;
+    }
+    &:hover .FieldRemoveButton {
+      visibility: visible;
     }
   }
 

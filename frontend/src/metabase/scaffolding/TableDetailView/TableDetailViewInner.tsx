@@ -296,21 +296,18 @@ export function TableDetailViewInner({
               uncategorizedSection.fields.length > 0 && (
                 <Divider my={0} mx="md" />
               )} */}
-            <SortableSection
-              section={uncategorizedSection}
-              variant={uncategorizedSection.variant}
-              columns={columns}
-              row={row}
-              tableId={tableId}
-              table={table}
-              isEdit={isEdit}
-              // onUpdateSection={(update) => updateSection(section.id, update)}
-              // onRemoveSection={
-              //   notEmptySections.length > 1
-              //     ? () => removeSection(section.id)
-              //     : undefined
-              // }
-            />
+            {uncategorizedSection.fields.length > 0 && (
+              <SortableSection
+                section={uncategorizedSection}
+                sections={sections}
+                variant={uncategorizedSection.variant}
+                columns={columns}
+                row={row}
+                tableId={tableId}
+                table={table}
+                isEdit={isEdit}
+              />
+            )}
           </SortableContext>
         </DndContext>
       </Stack>

@@ -6,6 +6,7 @@ import { t } from "ttag";
 import EditableText from "metabase/common/components/EditableText";
 import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { useTranslateContent } from "metabase/i18n/hooks";
+import { getUrl } from "metabase/metadata/pages/DataModel/utils";
 import {
   ActionIcon,
   Box,
@@ -29,7 +30,6 @@ import { renderValue } from "../utils";
 import { renderItemIcon } from "./ColumnPicker";
 import { SectionActions } from "./SectionActions";
 import S from "./TableDetailView.module.css";
-import { getUrl } from "metabase/metadata/pages/DataModel/utils";
 
 type ObjectViewSectionProps = {
   section: ObjectViewSectionSettings;
@@ -62,6 +62,7 @@ export function ObjectViewSection({
 }: ObjectViewSectionProps) {
   // const pkIndex = columns.findIndex(isPK); // TODO: handle multiple PKs
   const tc = useTranslateContent();
+  const isSubheader = variant === "subheader";
 
   if (variant === "header") {
     // Merging header values in 1 element to handle text-overflow: ellipsis correctly.
@@ -137,13 +138,13 @@ export function ObjectViewSection({
         [S.hovered]: isHovered,
         [S.EditMode]: isEdit,
       })}
-      mt={variant !== "subheader" ? "sm" : undefined}
-      px={variant !== "subheader" ? "lg" : undefined}
-      py={variant !== "subheader" ? "lg" : undefined}
-      bg={variant !== "subheader" ? "white" : undefined}
+      mt={!isSubheader ? "sm" : undefined}
+      px={!isSubheader ? "lg" : undefined}
+      py={!isSubheader ? "lg" : undefined}
+      bg={!isSubheader ? "white" : undefined}
       pos="relative"
       style={
-        variant !== "subheader"
+        !isSubheader
           ? {
               border: "1px solid var(--mb-color-border)",
               borderRadius: "var(--mantine-radius-md)",
@@ -170,7 +171,7 @@ export function ObjectViewSection({
         </Box>
       )}
 
-      {onUpdateSection && (
+      {onUpdateSection && (section.title || isEdit) && (
         <Group gap="md" p={0} className={S.SectionTitle}>
           {/* {isEdit && (
           <Icon
@@ -182,18 +183,20 @@ export function ObjectViewSection({
           />
         )} */}
           <EditableText
+            isOptional
             initialValue={section.title}
             isDisabled={!isEdit || section.variant === "subheader"}
             onChange={(title) => onUpdateSection({ title })}
             placeholder={t`Section title`}
             style={{
               fontWeight: 700,
-              fontSize: "1.25rem",
+              fontSize: isSubheader ? "0.825rem" : "1.25rem",
               padding: 0,
-              marginBottom: section.variant === "subheader" ? 0 : "2rem",
-              opacity: section.variant === "subheader" ? 0.5 : 1,
-              ...(section.variant === "subheader" &&
-                !isEdit && {
+              marginBottom: isSubheader ? 0 : "2rem",
+              minHeight: "1.5rem",
+              opacity: isSubheader ? 0.5 : 1,
+              ...(isSubheader &&
+                (!isEdit || section.fields.length > 0) && {
                   display: "none",
                 }),
             }}
