@@ -75,7 +75,7 @@ export const Editor: React.FC<EditorProps> = ({
           },
         }),
         Placeholder.configure({
-          placeholder: t`Start writing, press "/" for formatting, or "@" to insert a chart...`,
+          placeholder: t`Start writing, press "/" to open command palette, or "@" to insert a link...`,
         }),
         Markdown,
         CardEmbed.configure({
