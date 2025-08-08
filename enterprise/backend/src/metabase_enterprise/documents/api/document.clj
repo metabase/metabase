@@ -11,6 +11,7 @@
    [metabase.models.interface :as mi]
    [metabase.queries.core :as card]
    [metabase.query-permissions.core :as query-perms]
+   [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -111,9 +112,12 @@
 (defn get-document
   "Get document by id checking if the current user has permission to access and if the document exists."
   [id]
-  (api/check-404
-   (api/read-check
-    (t2/hydrate (t2/select-one :model/Document :id id) :creator :can_write))))
+  (u/prog1 (api/check-404
+            (api/read-check
+             (t2/hydrate (t2/select-one :model/Document :id id) :creator :can_write)))
+    (events/publish-event! :event/document-read
+                           {:object-id id
+                            :user-id api/*current-user-id*})))
 
 (api.macros/defendpoint :get "/"
   "Gets existing `Documents`."
