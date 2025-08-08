@@ -102,21 +102,43 @@ jobs:
         run: |
           echo "Finding latest OSS and EE artifacts..."
           
-          # Find the latest OSS artifact
+          # Debug: List all available artifacts to see what's available
+          echo "All available uberjar artifacts:"
+          gh api repos/${{ github.repository }}/actions/artifacts \
+            --jq '.artifacts[] | select(.expired == false and (.name | contains("uberjar"))) | "\(.name) - created: \(.created_at)"' | head -10
+          
+          # Find the latest OSS artifact (improved search)
           OSS_ARTIFACT=$(gh api repos/${{ github.repository }}/actions/artifacts \
-            --jq '.artifacts[] | select(.name | contains("metabase-oss-") and endswith("-uberjar")) | select(.expired == false) | .name' \
+            --jq '.artifacts[] | select(.expired == false and (.name | contains("metabase-oss") and endswith("-uberjar"))) | .name' \
             | head -1)
+          
+          # If no OSS artifact, try to find any uberjar that might work for OSS
+          if [ -z "$OSS_ARTIFACT" ]; then
+            echo "No OSS artifact found, looking for any uberjar artifact..."
+            OSS_ARTIFACT=$(gh api repos/${{ github.repository }}/actions/artifacts \
+              --jq '.artifacts[] | select(.name | endswith("-uberjar")) | select(.expired == false) | .name' \
+              | head -1)
+            echo "Using artifact for both OSS and EE: $OSS_ARTIFACT"
+          fi
           
           # Find the latest EE artifact  
           EE_ARTIFACT=$(gh api repos/${{ github.repository }}/actions/artifacts \
-            --jq '.artifacts[] | select(.name | contains("metabase-ee-") and endswith("-uberjar")) | select(.expired == false) | .name' \
+            --jq '.artifacts[] | select(.expired == false and (.name | contains("metabase-ee") and endswith("-uberjar"))) | .name' \
             | head -1)
+          
+          # If no EE artifact but we have OSS, use the same artifact
+          if [ -z "$EE_ARTIFACT" ] && [ -n "$OSS_ARTIFACT" ]; then
+            echo "No separate EE artifact found, using OSS artifact for both"
+            EE_ARTIFACT="$OSS_ARTIFACT"
+          fi
           
           echo "Latest OSS artifact: $OSS_ARTIFACT"
           echo "Latest EE artifact: $EE_ARTIFACT"
           
           if [ -z "$OSS_ARTIFACT" ] || [ -z "$EE_ARTIFACT" ]; then
-            echo "Error: Could not find recent OSS or EE artifacts"
+            echo "Error: Could not find recent artifacts"
+            echo "Available artifacts:"
+            gh api repos/${{ github.repository }}/actions/artifacts --jq '.artifacts[] | select(.expired == false) | "\(.name) - expires: \(.expires_at)"'
             exit 1
           fi
           
