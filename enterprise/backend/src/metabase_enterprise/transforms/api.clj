@@ -124,14 +124,14 @@
                              {:run_id     :id
                               :work_id    :transform_id
                               :run_method :trigger}))]
-  (update (worker/paged-executions {:work_type "transform"
+    (update (worker/paged-executions {:work_type      "transform"
                                       :work_ids       transform_ids
                                       :work_tag_ids   transform_tag_ids
-                                    :statuses statuses
-                                    :sort_column sort_column
-                                    :sort_direction sort_direction
-                                              :offset    (request/offset)
-                                    :limit (request/limit)})
+                                      :statuses       statuses
+                                      :sort_column    sort_column
+                                      :sort_direction sort_direction
+                                      :offset         (request/offset)
+                                      :limit          (request/limit)})
             :data #(mapv work-run->api-run %))))
 
 (api.macros/defendpoint :put "/:id"
