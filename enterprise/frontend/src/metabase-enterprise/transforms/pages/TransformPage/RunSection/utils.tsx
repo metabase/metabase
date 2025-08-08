@@ -31,7 +31,11 @@ export function getRunStatusInfo({
   const endTimeText =
     end_time != null ? dayjs(end_time).local().fromNow() : null;
   const runListLink = (
-    <Anchor key="link" component={Link} to={getRunListUrl({ transformId: id })}>
+    <Anchor
+      key="link"
+      component={Link}
+      to={getRunListUrl({ transformIds: [id] })}
+    >
       {t`See all runs`}
     </Anchor>
   );

@@ -7,9 +7,10 @@ import { PaginationControls } from "metabase/common/components/PaginationControl
 import { useDispatch } from "metabase/lib/redux";
 import { Card, Group, Stack } from "metabase/ui";
 import { useListTransformExecutionsQuery } from "metabase-enterprise/api";
-import type { TransformExecution, TransformId } from "metabase-types/api";
+import type { TransformExecution } from "metabase-types/api";
 
 import { ListEmptyState } from "../../../components/ListEmptyState";
+import type { RunListParams } from "../../../types";
 import { getRunListUrl, getTransformUrl } from "../../../urls";
 import { formatStatus, formatTimestamp, formatTrigger } from "../../../utils";
 
@@ -17,21 +18,16 @@ import S from "./RunList.module.css";
 
 const PAGE_SIZE = 50;
 
-export type RunListParams = {
-  page?: number;
-  transformId?: TransformId;
-};
-
 type RunListProps = {
   params: RunListParams;
 };
 
 export function RunList({ params }: RunListProps) {
-  const { page = 0, transformId } = params;
+  const { page = 0, transformIds } = params;
   const { data, isLoading, error } = useListTransformExecutionsQuery({
-    transform_id: transformId,
     offset: page * PAGE_SIZE,
     limit: PAGE_SIZE,
+    transform_ids: transformIds,
   });
   if (!data || isLoading || error != null) {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
@@ -52,6 +48,7 @@ export function RunList({ params }: RunListProps) {
             page={page}
             itemsLength={executions.length}
             total={total}
+            params={params}
           />
         </Group>
       )}
@@ -107,21 +104,23 @@ type RunTablePaginationControlsProps = {
   page: number;
   itemsLength: number;
   total: number;
+  params: RunListParams;
 };
 
 function RunTablePaginationControls({
   page,
   itemsLength,
   total,
+  params,
 }: RunTablePaginationControlsProps) {
   const dispatch = useDispatch();
 
   const handlePreviousPage = () => {
-    dispatch(push(getRunListUrl({ page: page - 1 })));
+    dispatch(push(getRunListUrl({ ...params, page: page - 1 })));
   };
 
   const handleNextPage = () => {
-    dispatch(push(getRunListUrl({ page: page + 1 })));
+    dispatch(push(getRunListUrl({ ...params, page: page + 1 })));
   };
 
   return (

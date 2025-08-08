@@ -7,6 +7,8 @@ import type {
   TransformJobId,
 } from "metabase-types/api";
 
+import type { RunListParams } from "./types";
+
 export const ROOT_URL = "/admin/transforms";
 
 export function getTransformListUrl() {
@@ -37,19 +39,21 @@ export function getJobUrl(id: TransformJobId) {
   return `${ROOT_URL}/jobs/${id}`;
 }
 
-type RunListParams = {
-  transformId?: TransformId;
-  page?: number;
-};
-
-export function getRunListUrl({ transformId, page }: RunListParams = {}) {
+export function getRunListUrl({
+  page,
+  transformIds,
+  statuses,
+}: RunListParams = {}) {
   const params = new URLSearchParams();
-  if (transformId != null) {
-    params.set("transformId", String(transformId));
-  }
   if (page != null) {
     params.set("page", String(page));
   }
+  transformIds?.forEach((transformId) => {
+    params.append("transformIds", String(transformId));
+  });
+  statuses?.forEach((status) => {
+    params.append("statuses", String(status));
+  });
 
   if (params.size > 0) {
     return `${ROOT_URL}/runs?${params}`;

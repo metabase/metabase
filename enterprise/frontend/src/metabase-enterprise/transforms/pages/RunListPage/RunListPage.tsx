@@ -3,7 +3,8 @@ import { t } from "ttag";
 
 import { Box, Stack, Title } from "metabase/ui";
 
-import { RunList, type RunListParams } from "./RunList";
+import { RunList } from "./RunList";
+import { getParsedParams } from "./utils";
 
 type RunListPageProps = {
   location: Location;
@@ -21,16 +22,4 @@ export function RunListPage({ location }: RunListPageProps) {
       <RunList params={params} />
     </Stack>
   );
-}
-
-function getParsedParams(location: Location): RunListParams {
-  const { page, transformId } = location.query;
-  return {
-    page: parseNumber(page),
-    transformId: parseNumber(transformId),
-  };
-}
-
-function parseNumber(value: unknown) {
-  return typeof value === "string" ? parseInt(value, 10) : undefined;
 }

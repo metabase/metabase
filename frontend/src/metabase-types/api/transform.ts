@@ -110,7 +110,8 @@ export type UpdateTransformTagRequest = {
 };
 
 export type ListTransformExecutionsRequest = {
-  transform_id?: TransformId;
+  transform_ids?: TransformId[];
+  statuses?: TransformExecutionStatus[];
 } & PaginationRequest;
 
 export type ListTransformExecutionsResponse = {
