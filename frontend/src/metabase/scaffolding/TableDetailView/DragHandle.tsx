@@ -1,6 +1,10 @@
 import { Icon, type IconProps } from "metabase/ui";
 
-export const DragHandle = (props: Omit<IconProps, "name">) => {
+interface Props extends Omit<IconProps, "name"> {
+  size?: "md" | "lg";
+}
+
+export const DragHandle = ({ size = "md", ...props }: Props) => {
   return (
     <Icon
       flex="0 0 auto"
@@ -8,6 +12,7 @@ export const DragHandle = (props: Omit<IconProps, "name">) => {
       role="button"
       style={{ cursor: "grab" }}
       tabIndex={0}
+      size={size === "lg" ? 20 : 16}
       {...props}
     />
   );

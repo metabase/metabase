@@ -184,7 +184,7 @@ export function ObjectViewSection({
           {isEdit &&
             (section.variant === "normal" ||
               section.variant === "highlight-2") && (
-              <DragHandle {...dragHandleProps} />
+              <DragHandle size="lg" {...dragHandleProps} />
             )}
 
           <EditableText
