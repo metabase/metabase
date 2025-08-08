@@ -48,14 +48,10 @@ export function getDerivedSdkDefaultColors({
   const backgroundColor = getColor("background") ?? getColor("bg-white");
   const isDarkTheme = backgroundColor && isDark(backgroundColor);
 
-  const derivedOverride: MantineThemeOverride = {
+  const derivedOverride = {
     ...override,
     colors: { ...override.colors },
-  };
-
-  if (!derivedOverride.colors) {
-    derivedOverride.colors = {};
-  }
+  } satisfies MantineThemeOverride;
 
   // Apply theme-aware derived colors for SDK colors not defined by the user.
   for (const [_colorKey, config] of Object.entries(
