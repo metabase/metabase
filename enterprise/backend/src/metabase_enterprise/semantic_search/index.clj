@@ -78,19 +78,31 @@
                        :embedding embedding}))))
   (str "'[" (str/join ", " embedding) "]'::vector"))
 
-(defn- compute-hash [doc embedding]
+(defn- compute-hash [doc]
   (->
    (into (sorted-map) doc)
-   (assoc :embedding embedding)
    (json/encode)
    buddy-hash/sha1
    u/encode-base64-bytes))
+
+(defn- compute-vector [{:keys [name searchable_text native_query]} & {:keys [with-native-query?]}]
+  (let [searchable-text
+        (if with-native-query?
+          (str/join " " (remove str/blank? [searchable_text native_query]))
+          searchable_text)]
+    (if name
+      [:||
+       (search/weighted-tsvector "A" name)
+       (search/weighted-tsvector "B" searchable-text)]
+      (search/weighted-tsvector "A" searchable-text))))
 
 (defn- doc->db-record
   "Convert a document to a database record with a provided embedding."
   [embedding-vec {:keys [model id searchable_text created_at creator_id updated_at
                          last_editor_id archived verified official_collection database_id collection_id display_type legacy_input] :as doc}]
-  (let [embedding (format-embedding embedding-vec)]
+  (let [embedding (format-embedding embedding-vec)
+        vector (compute-vector doc)
+        with-native-query-vector (compute-vector doc :with-native-query? true)]
     {:model               model
      :model_id            id
      :creator_id          creator_id
@@ -105,23 +117,14 @@
      :display_type        display_type
      :embedding           [:raw embedding]
      :content             searchable_text
-     :text_search_vector (if (:name doc)
-                           [:||
-                            (search/weighted-tsvector "A" (:name doc))
-                            (search/weighted-tsvector "B" (:searchable_text doc ""))]
-                           (search/weighted-tsvector "A" (:searchable_text doc "")))
-     :text_search_with_native_query_vector
-     (if (:name doc)
-       [:||
-        (search/weighted-tsvector "A" (:name doc))
-        (search/weighted-tsvector "B"
-                                  (str/join " " (remove str/blank? [(:searchable_text doc "")
-                                                                    (:native_query doc "")])))]
-       (search/weighted-tsvector "A"
-                                 (str/join " " (remove str/blank? [(:searchable_text doc "")
-                                                                   (:native_query doc "")]))))
+     :text_search_vector  vector
+     :text_search_with_native_query_vector with-native-query-vector
      :legacy_input        [:cast (json/encode legacy_input) :jsonb]
-     :hash                (compute-hash doc embedding)
+     :hash                (-> doc
+                              (assoc :embedding embedding
+                                     :vector vector
+                                     :with-native-query-vector with-native-query-vector)
+                              compute-hash)
      :metadata            [:cast (json/encode doc) :jsonb]}))
 
 (defn- analytics-set-index-size!
