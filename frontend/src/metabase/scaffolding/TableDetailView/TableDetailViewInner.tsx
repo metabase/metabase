@@ -52,6 +52,7 @@ interface TableDetailViewProps {
   isEdit: boolean;
   onPreviousItemClick?: () => void;
   onNextItemClick?: () => void;
+  onBackClick?: () => void;
 }
 
 export function TableDetailViewInner({
@@ -64,6 +65,7 @@ export function TableDetailViewInner({
   isEdit = false,
   onPreviousItemClick,
   onNextItemClick,
+  onBackClick,
 }: TableDetailViewProps) {
   const [openPopoverId, setOpenPopoverId] = useState<number | null>(null);
   const [_hoveredSectionIdMain, setHoveredSectionIdMain] = useState<
@@ -270,6 +272,7 @@ export function TableDetailViewInner({
       onFollowForeignKey={handleFollowForeignKey}
       hoveredSectionId={hoveredSectionIdMain}
       setHoveredSectionId={setHoveredSectionIdSidebar}
+      onBackClick={onBackClick}
     >
       <Stack
         gap="md"

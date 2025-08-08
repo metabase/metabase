@@ -1,3 +1,4 @@
+import type { LocationDescriptorObject } from "history";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { push } from "react-router-redux";
 
@@ -27,11 +28,13 @@ interface TableDetailViewLoaderProps {
     rowId: string;
   };
   isEdit?: boolean;
+  router: { location: LocationDescriptorObject };
 }
 
 export function TableDetailView({
   params,
   isEdit = false,
+  router: { location },
 }: TableDetailViewLoaderProps) {
   const tableId = parseInt(params.tableId, 10);
   const rowId = params.rowId;
@@ -77,6 +80,20 @@ export function TableDetailView({
 
   const row = rowFromList ?? rowFromObject;
 
+  const [previousPathState] = useState<
+    | {
+        pathname: string;
+        hash: string;
+      }
+    | object
+  >(() => location.state);
+
+  const handleBackClick = useMemo(() => {
+    return "hash" in previousPathState
+      ? () => dispatch(push(previousPathState))
+      : undefined;
+  }, [dispatch, previousPathState]);
+
   // Handle row selection based on rowId
   useEffect(() => {
     if (!row) {
@@ -97,12 +114,25 @@ export function TableDetailView({
       const rowId = rows[newIndex]?.[0];
       if (rowId !== undefined) {
         dispatch(
-          push(`/table/${tableId}/detail/${rowId}${isEdit ? "/edit" : ""}`),
+          push({
+            pathname: `/table/${tableId}/detail/${rowId}${isEdit ? "/edit" : ""}`,
+            state: {
+              hash: location.state?.hash,
+              pathname: location.state?.pathname,
+            },
+          }),
         );
       }
       return newIndex;
     });
-  }, [dispatch, rows, tableId, isEdit]);
+  }, [
+    rows,
+    dispatch,
+    tableId,
+    isEdit,
+    location.state?.hash,
+    location.state?.pathname,
+  ]);
 
   const handleViewNextObjectDetail = useCallback(() => {
     setCurrentRowIndex((i) => {
@@ -110,12 +140,25 @@ export function TableDetailView({
       const rowId = rows[newIndex]?.[0];
       if (rowId !== undefined) {
         dispatch(
-          push(`/table/${tableId}/detail/${rowId}${isEdit ? "/edit" : ""}`),
+          push({
+            pathname: `/table/${tableId}/detail/${rowId}${isEdit ? "/edit" : ""}`,
+            state: {
+              hash: location.state?.hash,
+              pathname: location.state?.pathname,
+            },
+          }),
         );
       }
       return newIndex;
     });
-  }, [dispatch, rows, tableId, isEdit]);
+  }, [
+    rows,
+    dispatch,
+    tableId,
+    isEdit,
+    location.state?.hash,
+    location.state?.pathname,
+  ]);
 
   if (!table || !dataset || !row) {
     return <LoadingAndErrorWrapper loading />;
@@ -144,6 +187,7 @@ export function TableDetailView({
           ? handleViewNextObjectDetail
           : undefined
       }
+      onBackClick={handleBackClick}
     />
   );
 }

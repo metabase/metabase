@@ -79,6 +79,7 @@ import {
 import { MiniBarCell } from "./cells/MiniBarCell";
 import { useObjectDetail } from "./hooks/use-object-detail";
 import { useResetWidthsOnColumnsChange } from "./hooks/use-reset-widths-on-columns-change";
+import { withRouter } from "react-router";
 
 const getBodyCellVariant = (column: DatasetColumn): BodyCellVariant => {
   const isPill = isPK(column) || isFK(column);
@@ -167,6 +168,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     onUpdateVisualizationSettings,
     card,
     metadata,
+    location,
   }: TableProps,
   ref: Ref<HTMLDivElement>,
 ) {
@@ -217,7 +219,8 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     metadataProvider,
     card.dataset_query,
   );
-  const onOpenObjectDetail = useObjectDetail(data, query);
+
+  const onOpenObjectDetail = useObjectDetail(data, query, location);
 
   const getIsCellClickable = useMemoizedCallback(
     (clicked: ClickObject) => {
@@ -822,6 +825,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
 
 export const TableInteractive = _.compose(
   withMantineTheme,
+  withRouter,
   ExplicitSize({
     refreshMode: "throttle",
   }),

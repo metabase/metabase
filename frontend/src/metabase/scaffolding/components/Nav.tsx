@@ -3,7 +3,15 @@ import type { ReactNode } from "react";
 import { createMockMetadata } from "__support__/metadata";
 import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { useTranslateContent } from "metabase/i18n/hooks";
-import { Box, Group, Text } from "metabase/ui";
+import {
+  ActionIcon,
+  Box,
+  Button,
+  Group,
+  Icon,
+  Text,
+  Tooltip,
+} from "metabase/ui";
 import * as ML_Urls from "metabase-lib/v1/urls";
 import type {
   DatasetColumn,
@@ -15,6 +23,7 @@ import type {
 import { renderValue } from "../utils";
 
 import { TableBreadcrumbs } from "./TableBreadcrumbs";
+import { t } from "ttag";
 
 interface Props {
   columns: DatasetColumn[];
@@ -24,6 +33,7 @@ interface Props {
   rowName?: ReactNode;
   rowId?: number | string;
   table: Table;
+  onBackClick?: () => void;
 }
 
 export const Nav = ({
@@ -34,6 +44,7 @@ export const Nav = ({
   rowId,
   rowName,
   table,
+  onBackClick,
 }: Props) => {
   const tc = useTranslateContent();
   const headerSection = sections.find((s) => s.variant === "header");
@@ -79,7 +90,8 @@ export const Nav = ({
       mih={63}
     >
       <Group
-        align="flex-end"
+        // align="flex-end"
+        align="center"
         gap={0}
         wrap="nowrap"
         // flex="1"
@@ -88,6 +100,17 @@ export const Nav = ({
           fontSize: 20,
         }}
       >
+        {onBackClick && (
+          <Tooltip label={t`Back to table`}>
+            <Button
+              onClick={onBackClick}
+              // mr="sm"
+              leftSection={<Icon name="chevronleft" />}
+              c="text-dark"
+              variant="subtle"
+            />
+          </Tooltip>
+        )}
         <TableBreadcrumbs tableId={table.id} />
 
         {showValues && (
