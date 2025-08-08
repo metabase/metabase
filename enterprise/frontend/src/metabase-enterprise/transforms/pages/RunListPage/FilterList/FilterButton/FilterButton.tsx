@@ -4,6 +4,7 @@ import {
   type Ref,
   forwardRef,
 } from "react";
+import { t } from "ttag";
 
 import {
   ActionIcon,
@@ -11,6 +12,7 @@ import {
   Icon,
   type IconName,
   Text,
+  Tooltip,
   UnstyledButton,
 } from "metabase/ui";
 
@@ -43,9 +45,11 @@ export const FilterButton = forwardRef(function FilterWidget(
             <Text flex={1} fw="bold">
               {displayValue}
             </Text>
-            <ActionIcon onClick={handleRemove}>
-              <Icon name="close" />
-            </ActionIcon>
+            <Tooltip label={t`Remove filter`}>
+              <ActionIcon onClick={handleRemove}>
+                <Icon name="close" />
+              </ActionIcon>
+            </Tooltip>
           </>
         ) : (
           <>
