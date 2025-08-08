@@ -86,6 +86,7 @@ export function TagMultiSelect({ tagIds, onChange }: TagMultiSelectProps) {
         placeholder={t`Add tags`}
         searchValue={searchValue}
         searchable
+        nothingFoundMessage={t`Tag with this name is already added.`}
         renderOption={(item) =>
           item.option.value === NEW_VALUE ? (
             <NewTagSelectItem
