@@ -1,16 +1,16 @@
 import { useCallback, useEffect, useState } from "react";
-import { t } from "ttag";
 import { push } from "react-router-redux";
+import { t } from "ttag";
 
 import { useDispatch } from "metabase/lib/redux";
-import { Group, Text, Button, Card, Stack, Loader, Alert } from "metabase/ui";
+import { Alert, Button, Card, Group, Loader, Stack, Text } from "metabase/ui";
+import {
+  type Workspace,
+  useDeleteWorkspaceMutation,
+  useListWorkspacesQuery,
+} from "metabase-enterprise/api";
 import type { CollectionId } from "metabase-types/api";
 
-import {
-  useListWorkspacesQuery,
-  useDeleteWorkspaceMutation,
-  type Workspace,
-} from "metabase-enterprise/api";
 import { CreateWorkspaceModal } from "./CreateWorkspaceModal";
 
 interface WorkspaceListProps {

@@ -1,14 +1,7 @@
-import { Route } from "react-router";
+import { Route } from "metabase/hoc/Title";
 
-import { WorkspacePage } from "./components/WorkspacePage";
+import { WorkspacePage } from "./containers/WorkspacePage";
 
 export const getWorkspaceRoutes = () => (
-  <Route path="workspace">
-    <Route
-      path=":id"
-      component={(props: any) => (
-        <WorkspacePage workspaceId={parseInt(props.params.id)} />
-      )}
-    />
-  </Route>
+  <Route path="workspace/:id" component={WorkspacePage} />
 );

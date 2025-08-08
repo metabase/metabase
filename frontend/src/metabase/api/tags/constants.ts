@@ -44,6 +44,7 @@ export const TAG_TYPES = [
   "public-action",
   "unique-tasks",
   "user-key-value",
+  "workspace",
 ] as const;
 
 export const TAG_TYPE_MAPPING = {
@@ -61,4 +62,5 @@ export const TAG_TYPE_MAPPING = {
   metric: "card",
   snippet: "snippet",
   pulse: "subscription",
+  workspace: "workspace",
 } as const;

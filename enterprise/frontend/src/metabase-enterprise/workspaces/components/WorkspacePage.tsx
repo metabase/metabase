@@ -1,27 +1,27 @@
 import { useCallback, useState } from "react";
-import { t } from "ttag";
 import { push } from "react-router-redux";
+import { t } from "ttag";
 
 import { useDispatch } from "metabase/lib/redux";
 import {
-  Group,
-  Text,
+  Alert,
   Button,
   Card,
-  Stack,
+  Group,
+  Icon,
   Loader,
-  Alert,
+  Stack,
   Tabs,
+  Text,
   TextInput,
-  Textarea,
-} from "metabase/ui";
-import { Icon } from "metabase/ui";
-
+ Textarea } from "metabase/ui";
 import {
+  useDeleteWorkspaceMutation,
   useGetWorkspaceQuery,
   useUpdateWorkspaceMutation,
-  useDeleteWorkspaceMutation,
 } from "metabase-enterprise/api";
+
+import { PlansTab } from "./PlansTab";
 
 interface WorkspacePageProps {
   workspaceId: number;
@@ -33,6 +33,7 @@ export function WorkspacePage({ workspaceId }: WorkspacePageProps) {
     data: workspace,
     isLoading,
     error,
+    refetch,
   } = useGetWorkspaceQuery(workspaceId);
   const [updateWorkspace, { isLoading: isUpdating }] =
     useUpdateWorkspaceMutation();
@@ -165,7 +166,7 @@ export function WorkspacePage({ workspaceId }: WorkspacePageProps) {
               <Button variant="light" onClick={handleEdit}>
                 {t`Edit`}
               </Button>
-              <Button variant="light" color="red" onClick={handleDelete}>
+              <Button variant="light" onClick={handleDelete}>
                 {t`Delete`}
               </Button>
             </>
@@ -210,30 +211,11 @@ export function WorkspacePage({ workspaceId }: WorkspacePageProps) {
         </Tabs.Panel>
 
         <Tabs.Panel value="plans" pt="xl">
-          <Card p="xl" withBorder>
-            <Stack gap="md">
-              <Group justify="apart">
-                <Text fw={500}>{t`Plans`}</Text>
-                <Button variant="light" size="xs">
-                  {t`Add Plan`}
-                </Button>
-              </Group>
-              {workspace.plans && workspace.plans.length > 0 ? (
-                <Stack gap="sm">
-                  {workspace.plans.map((plan, index) => (
-                    <Card key={index} p="md" withBorder>
-                      <Text fw={500}>{plan.title}</Text>
-                      <Text size="sm" color="dimmed">
-                        {plan.description}
-                      </Text>
-                    </Card>
-                  ))}
-                </Stack>
-              ) : (
-                <Text color="dimmed">{t`No plans yet`}</Text>
-              )}
-            </Stack>
-          </Card>
+          <PlansTab
+            workspaceId={workspaceId}
+            plans={workspace.plans}
+            onRefresh={refetch}
+          />
         </Tabs.Panel>
 
         <Tabs.Panel value="transforms" pt="xl">

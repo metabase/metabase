@@ -1,11 +1,10 @@
 import { useCallback } from "react";
 import { t } from "ttag";
 
-import { Modal, Button, TextInput, Textarea, Stack } from "metabase/ui";
 import { Form, FormProvider } from "metabase/forms";
-import type { CollectionId } from "metabase-types/api";
-
+import { Button, Modal, Stack, TextInput, Textarea } from "metabase/ui";
 import { useCreateWorkspaceMutation } from "metabase-enterprise/api";
+import type { CollectionId } from "metabase-types/api";
 
 interface CreateWorkspaceModalProps {
   collectionId: CollectionId;

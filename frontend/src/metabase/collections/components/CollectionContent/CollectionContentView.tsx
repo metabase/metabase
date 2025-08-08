@@ -4,7 +4,6 @@ import { usePrevious } from "react-use";
 import { t } from "ttag";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
-import { PLUGIN_WORKSPACES } from "metabase/plugins";
 import { deletePermanently } from "metabase/archive/actions";
 import { ArchivedEntityBanner } from "metabase/archive/components/ArchivedEntityBanner";
 import { CollectionBulkActions } from "metabase/collections/components/CollectionBulkActions";
@@ -33,6 +32,7 @@ import Bookmarks from "metabase/entities/bookmarks";
 import Collections from "metabase/entities/collections";
 import Search from "metabase/entities/search";
 import { useDispatch } from "metabase/lib/redux";
+import { PLUGIN_WORKSPACES } from "metabase/plugins";
 import { addUndo } from "metabase/redux/undo";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type {
