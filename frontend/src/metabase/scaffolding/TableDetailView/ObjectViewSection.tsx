@@ -174,7 +174,7 @@ export function ObjectViewSection({
 
       {onUpdateSection && (section.title || isEdit) && (
         <Group
-          gap="md"
+          gap="sm"
           mb={isSubheader ? 0 : "md"}
           p={0}
           className={S.SectionTitle}
@@ -230,9 +230,12 @@ export function ObjectViewSection({
             <Fragment key={field_id}>
               <Flex className={S.Field}>
                 <Box className={S.FieldName} w="100%">
+                  {isEdit && <DragHandle />}
+
                   <Text c="var(--mb-color-text-secondary)" fw="bold" truncate>
                     {column.display_name}
                   </Text>
+
                   <Link
                     to={getUrl({
                       tableId: table.id,
@@ -252,6 +255,10 @@ export function ObjectViewSection({
 
                 {link && (
                   <Link to={link} className={S.link}>
+                    {isEdit &&
+                      (section.variant === "subheader" ||
+                        section.variant === "header") && <DragHandle />}
+
                     <Ellipsified
                       alwaysShowTooltip={
                         variant === "subheader" || variant === "header"
@@ -276,25 +283,32 @@ export function ObjectViewSection({
                 )}
 
                 {!link && (
-                  <Ellipsified
-                    alwaysShowTooltip={
-                      variant === "subheader" || variant === "header"
-                    }
-                    variant="primary"
-                    truncate={false}
-                    c="var(--mb-color-text-primary)"
-                    lines={variant === "highlight-2" ? 3 : 0}
-                    style={{
-                      flexGrow: 1,
-                    }}
-                    className={S.FieldValue}
-                    fz={undefined}
-                    {...((variant === "subheader" || variant === "header") && {
-                      tooltip: column.display_name,
-                    })}
-                  >
-                    {renderValue(tc, value, column)}
-                  </Ellipsified>
+                  <>
+                    {isEdit &&
+                      (section.variant === "subheader" ||
+                        section.variant === "header") && <DragHandle />}
+
+                    <Ellipsified
+                      alwaysShowTooltip={
+                        variant === "subheader" || variant === "header"
+                      }
+                      variant="primary"
+                      truncate={false}
+                      c="var(--mb-color-text-primary)"
+                      lines={variant === "highlight-2" ? 3 : 0}
+                      style={{
+                        flexGrow: 1,
+                      }}
+                      className={S.FieldValue}
+                      fz={undefined}
+                      {...((variant === "subheader" ||
+                        variant === "header") && {
+                        tooltip: column.display_name,
+                      })}
+                    >
+                      {renderValue(tc, value, column)}
+                    </Ellipsified>
+                  </>
                 )}
 
                 {isEdit && onUpdateSection && (
