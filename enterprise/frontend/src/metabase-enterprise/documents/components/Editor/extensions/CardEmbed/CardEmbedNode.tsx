@@ -257,7 +257,7 @@ export const CardEmbedComponent = memo(
       if (typeof pos === "number") {
         editor.commands.insertContentAt(
           { from: pos, to: pos + node.nodeSize },
-          "/",
+          "@",
         );
         editor.commands.focus();
       }
