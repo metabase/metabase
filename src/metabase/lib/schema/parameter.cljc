@@ -204,7 +204,7 @@
 (mr/def ::dimension.options
   [:map
    {:error/message "dimension options"}
-   [:stage-number {:optional true} ::lib.schema.common/int-greater-than-or-equal-to-zero]])
+   [:stage-number {:optional true} :int]])
 
 ;;; TODO (Cam 8/8/25) -- seems really WACK to have dimension use MBQL 4 clause order even in Lib... I guess it's not a
 ;;; real MBQL clause tho.

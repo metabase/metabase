@@ -1291,6 +1291,8 @@
     (is (=? query
             (-> query lib/->pMBQL lib/->legacy-MBQL)))))
 
+;;; TODO (Cam 8/8/25) -- mentioned in `->pMBQL` for `:mbql/join` but we don't even actually ever attach `:parameters`
+;;; to a join's top-level IRL, so this not something we ACTUALLY need to support.
 (deftest ^:parallel join-parameters-test
   (let [query {:database 33001
                :type     :query
@@ -1304,24 +1306,35 @@
                                           :parameters   [{:type   :category
                                                           :target [:field 33101 nil]
                                                           :value  "BBQ"}]}]}}]
-    (is (=? {:stages                 [{:source-table 33040}
-                                      {:joins [{:alias      "c"
-                                                :parameters (symbol "nil #_\"key is not present.\"")
-                                                :conditions [[:=
-                                                              {}
-                                                              [:field {} 33402]
-                                                              [:field {:join-alias "c"} 33100]]]
-                                                :lib/type   :mbql/join
-                                                :stages     [{:lib/type     :mbql.stage/mbql
-                                                              :source-table 33010
-                                                              :parameters   [{:type   :category
-                                                                              :target [:field 33101 nil]
-                                                                              :value  "BBQ"}]}]}]}]
-             :database               33001
-             :lib.convert/converted? true}
+    (is (=? {:stages   [{:source-table 33040}
+                        {:joins [{:alias      "c"
+                                  :parameters (symbol "nil #_\"key is not present.\"")
+                                  :conditions [[:=
+                                                {}
+                                                [:field {} 33402]
+                                                [:field {:join-alias "c"} 33100]]]
+                                  :lib/type   :mbql/join
+                                  :stages     [{:lib/type     :mbql.stage/mbql
+                                                :source-table 33010
+                                                :parameters   [{:type   :category
+                                                                :target [:field 33101 nil]
+                                                                :value  "BBQ"}]}]}]}]
+             :database 33001}
             (lib/->pMBQL query)))
-    (is (=? query
-            (-> query lib/->pMBQL lib/->legacy-MBQL)))))
+    (testing "round-trip to legacy should leave join parameters in the :source-query"
+      (is (=? {:database 33001
+               :type     :query
+               :query    {:source-query {:source-table 33040}
+                          :aggregation  [[:count]]
+                          :joins        [{:source-query {:source-table 33010
+                                                         :parameters   [{:type   :category
+                                                                         :target [:field 33101 nil]
+                                                                         :value  "BBQ"}]}
+                                          :alias        "c"
+                                          :condition    [:=
+                                                         [:field 33402 nil]
+                                                         [:field 33100 {:join-alias "c"}]]}]}}
+              (-> query lib/->pMBQL lib/->legacy-MBQL))))))
 
 (deftest ^:parallel join-parameters-test-2
   (testing "If join has top-level :parameters and its source query has :parameters, splice them together"

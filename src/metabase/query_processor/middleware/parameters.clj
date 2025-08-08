@@ -9,6 +9,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
+   [metabase.lib.util :as lib.util]
    [metabase.lib.walk :as lib.walk]
    [metabase.query-processor.middleware.parameters.mbql :as qp.mbql]
    [metabase.query-processor.middleware.parameters.native :as qp.native]
@@ -46,34 +47,39 @@
   [{:keys [stages], :as _query} :- ::lib.schema/query]
   (count (take-while :qp/stage-is-from-source-card stages)))
 
-(mu/defn- parameter->unpreprocessed-stage-number :- ::lib.schema.common/int-greater-than-or-equal-to-zero
-  "The stage number that this parameter should be applied to in the query before preprocessing. Note that this number
-  might not correspond to the ACTUAL stage number it should be applied to because of the stages added be preprocessing;
-  to get that we need to add [[num-stages-prepended-by-preprocessing]].
-
-  Parameters without `:stage-number` should be applied to the first stage of the query not added by preprocessing (e.g.
-  no `:stage-number` is the same as `:stage-number` 0)."
-  [parameter :- ::lib.schema.parameter/parameter]
-  (or (-> parameter
-          :target
-          lib/->pMBQL
-          lib/options
-          :stage-number)
-      0))
+(mu/defn- parameter->stage-number :- :int
+  "The stage number that this parameter should be applied to. This is derived from the `:stage-number` specified in the
+  parameter `:target`, defaulting to `0`. Note that this `:stage-number` is relative to the stages in the query BEFORE
+  stages were appended by preprocessing, so if a parameter specifies `:stage-number` 1 and the the first stage (stage 0)
+  has a `:source-card` that gets expanded to three replacement stages (i.e., 2 additional stages prepended to `:stages`
+  before the original first stage) then the actual stage number we need to apply the parameter is `3` (1 offset by
+  the [[num-stages-prepended-by-preprocessing]])."
+  [query     :- ::lib.schema/query
+   parameter :- ::lib.schema.parameter/parameter]
+  (let [stage-number (or (-> parameter
+                             :target
+                             lib/->pMBQL
+                             lib/options
+                             :stage-number)
+                         0)]
+    (if (not (neg? stage-number))
+      ;; for a non-negative stage number add the offset to it as mentioned above
+      (+ stage-number (num-stages-prepended-by-preprocessing query))
+      ;; for a NEGATIVE stage number we can leave it NEGATIVE because it applies to a stage relative to the end, and all
+      ;; the `:source-card` stages get added to the front, e.g. `-1` applies to the same last stage and `-2` applies to
+      ;; the same second-to-last stage either way.
+      stage-number)))
 
 (defn- move-top-level-params-to-stage* [query parameters]
-  (let [num-stages-prepended-by-preprocessing (num-stages-prepended-by-preprocessing query)]
-    (reduce
-     (fn [query parameter]
-       (let [param-stage-number (or (parameter->unpreprocessed-stage-number parameter)
-                                    0)
-             param-stage-number (+ param-stage-number num-stages-prepended-by-preprocessing)]
-         (lib/update-query-stage query param-stage-number
-                                 update :parameters
-                                 (fn [parameters]
-                                   (conj (vec parameters) parameter)))))
-     query
-     parameters)))
+  (reduce
+   (fn [query parameter]
+     (let [param-stage-number (parameter->stage-number query parameter)]
+       (lib/update-query-stage query param-stage-number
+                               update :parameters
+                               (fn [parameters]
+                                 (conj (vec parameters) parameter)))))
+   query
+   parameters))
 
 (mu/defn- move-top-level-params-to-stage :- ::lib.schema/query
   "Move any top-level parameters to the stage they affect."

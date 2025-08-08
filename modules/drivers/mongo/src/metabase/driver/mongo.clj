@@ -175,12 +175,12 @@
 (def ^:private unwind-stages
   "Sequence of stages repeated in _search_ phase of [[describe-table-pipeline]]
     for [[describe-table-query-depth]] times.
-
+  
     Each repetion $unwinds documents having `val` of type \"object\", so those are __swapped__ for sequence
     of their children.
-
+  
     Documents with non-object val are left untouched.
-
+  
     Each document that is processed has path from parent stored in `path`. `indices` represent indices of keys
     in the `path` in parent objects as per $objectToArray."
   [{"$addFields" {"kvs" {"$cond" [{"$eq" [{"$type" "$val"} "object"]} {"$objectToArray" "$val"} nil]}}}
@@ -359,7 +359,7 @@
   first.
 
   The resulting structure will hold at most [[driver.settings/sync-leaf-fields-limit]] leaf fields. That translates
-  to at most [[driver.settings/sync-leaf-fields-limit]] * [[describe-table-query-depth]]. That is 7K fields at the
+  to at most [[driver.settings/sync-leaf-fields-limit]] * [[describe-table-query-depth]]. That is 7K fields at the 
   time of writing hence safe to reside in memory for further operation."
   [dbfields]
   (-> dbfields dbfields->ftree* ftree-reconcile-nodes))
@@ -489,6 +489,10 @@
   (assert (string? (get-in query [:native :collection])) "Cannot execute MongoDB query without a :collection name")
   (mongo.connection/with-mongo-client [_ (driver-api/database (driver-api/metadata-provider))]
     (mongo.execute/execute-reducible-query query respond)))
+
+(defmethod driver/substitute-native-parameters :mongo
+  [driver inner-query]
+  (mongo.params/substitute-native-parameters driver inner-query))
 
 (defmethod driver/db-start-of-week :mongo
   [_]

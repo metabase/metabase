@@ -259,8 +259,18 @@
                                          (mapv ->pMBQL fields)
                                          (keyword fields))))
       (not (:alias join)) (assoc :alias legacy-default-join-alias)
-      (:parameters join)  (-> (update-in [:stages 0 :parameters] #(into (vec %) (:parameters join)))
-                              (dissoc :parameters)))))
+      ;; MBQL 5 does not support `:parameters` at the top level of a join, so move them to the join's first stage.
+      ;;
+      ;; TODO (Cam 8/8/25) -- this is not really a 100% correct transformation, parameters that specify
+      ;; `:stage-number` should get moved to the corresponding stage. (The first stage is the default tho so this is
+      ;; correct if `:stage-number` is unspecified.) We do this in the QP
+      ;; in [[metabase.query-processor.middleware.parameters/move-top-level-params-to-stage*]].
+      ;;
+      ;; IRL parameters are never actually attached to joins at all, and the only reason we're even pretending
+      ;; to "support them" (in air quotes) even this much is because we had a few tests that act like this is ok and I
+      ;; don't want to fix them. But we don't really need to be serious about actually supporting this.
+      (:parameters join) (-> (update-in [:stages 0 :parameters] #(into (vec %) (:parameters join)))
+                             (dissoc :parameters)))))
 
 (defmethod ->pMBQL :dispatch-type/sequential
   [xs]
