@@ -353,10 +353,7 @@
     (has-feature? :sandboxes)          ; -> true
     (has-feature? :toucan-management)  ; -> false"
   [feature]
-  (if (and (not-empty (*token-features*))
-           (= feature :documents))
-    true
-    (contains? (*token-features*) (name feature))))
+  (contains? (*token-features*) (name feature)))
 
 (defn ee-feature-error
   "Returns an error that can be used to throw when an enterprise feature check fails."
