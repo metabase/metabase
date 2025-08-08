@@ -23,10 +23,12 @@
    (semantic.index-metadata/create-tables-if-not-exists! pgvector index-metadata)
    (fn [_] (semantic.tu/cleanup-index-metadata! pgvector index-metadata))))
 
+(defn- ^Timestamp ts [s] (Timestamp/from (Instant/parse s)))
+
 (deftest search-doc->gate-doc-test
   (testing "converts search document to gate document format"
-    (let [t1         (Instant/parse "2025-01-01T12:00:00Z")
-          t2         (Instant/parse "2025-01-02T12:00:00Z")
+    (let [t1         (ts "2025-01-01T12:00:00Z")
+          t2         (ts "2025-01-02T12:00:00Z")
           search-doc {:model           "card"
                       :id              "123"
                       :searchable_text "Dog Training Guide"
@@ -85,10 +87,10 @@
 (deftest gate-documents!-test
   (let [pgvector       semantic.tu/db
         index-metadata (semantic.tu/unique-index-metadata)
-        t0             (Instant/parse "2025-01-01T00:00:00Z")
-        t1             (Instant/parse "2025-01-01T00:01:00Z")
-        t2             (Instant/parse "2025-01-02T00:03:10Z")
-        t3             (Instant/parse "2025-01-03T00:02:42Z")
+        t0             (ts "2025-01-01T00:00:00Z")
+        t1             (ts "2025-01-01T00:01:00Z")
+        t2             (ts "2025-01-02T00:03:10Z")
+        t3             (ts "2025-01-03T00:02:42Z")
         c1             {:model "card" :id "123" :searchable_text "Dog Training Guide"}
         c2             {:model "card" :id "123" :searchable_text "Dog Training Guide 2"}
         c3             {:model "card" :id "123" :searchable_text "Dog Training Guide 3"}
@@ -168,9 +170,9 @@
         c1              {:model "card" :id "123" :searchable_text "a"}
         c2              {:model "card" :id "234" :searchable_text "b"}
         c3              {:model "card" :id "345" :searchable_text "c"}
-        t0              (Instant/parse "2025-01-01T00:00:00Z")
-        t1              (Instant/parse "2025-01-01T00:01:00Z")
-        t2              (Instant/parse "2025-01-02T00:03:10Z")
+        t0              (ts "2025-01-01T00:00:00Z")
+        t1              (ts "2025-01-01T00:01:00Z")
+        t2              (ts "2025-01-02T00:03:10Z")
         version         (fn [doc t] (semantic.gate/search-doc->gate-doc doc t))
         delete          (fn [doc t] (semantic.gate/deleted-search-doc->gate-doc (:model doc) (:id doc) t))
         gate!           semantic.gate/gate-documents!
@@ -240,29 +242,29 @@
 
 (deftest watermark-management-test
   (testing "next-watermark updates watermark based on poll results"
-    (let [initial-watermark {:last-poll (Instant/parse "2025-01-01T12:00:00Z")
+    (let [initial-watermark {:last-poll (ts "2025-01-01T12:00:00Z")
                              :last-seen {:id            "card_1"
                                          :document_hash (byte-array [1 2 3])
-                                         :gated_at      (Instant/parse "2025-01-01T11:00:00Z")}}
-          poll-result       {:poll-time         (Instant/parse "2025-01-01T13:00:00Z")
-                             :update-candidates [{:id "card_123" :gated_at (Instant/parse "2025-01-01T12:30:00Z")}
-                                                 {:id "dashboard_456" :gated_at (Instant/parse "2025-01-01T12:45:00Z")}]}
+                                         :gated_at      (ts "2025-01-01T11:00:00Z")}}
+          poll-result       {:poll-time         (ts "2025-01-01T13:00:00Z")
+                             :update-candidates [{:id "card_123" :gated_at (ts "2025-01-01T12:30:00Z")}
+                                                 {:id "dashboard_456" :gated_at (ts "2025-01-01T12:45:00Z")}]}
           next-watermark    (semantic.gate/next-watermark initial-watermark poll-result)]
 
-      (is (= (Instant/parse "2025-01-01T13:00:00Z") (:last-poll next-watermark)))
-      (is (=? {:gated_at (Instant/parse "2025-01-01T12:45:00Z")
+      (is (= (ts "2025-01-01T13:00:00Z") (:last-poll next-watermark)))
+      (is (=? {:gated_at (ts "2025-01-01T12:45:00Z")
                :id       "dashboard_456"}
               (:last-seen next-watermark)))))
 
   (testing "resume-watermark extracts watermark from metadata row"
-    (let [metadata-row {:indexer_last_poll      (Instant/parse "2025-01-01T12:00:00Z")
-                        :indexer_last_seen      (Instant/parse "2025-01-01T11:30:00Z")
+    (let [metadata-row {:indexer_last_poll      (ts "2025-01-01T12:00:00Z")
+                        :indexer_last_seen      (ts "2025-01-01T11:30:00Z")
                         :indexer_last_seen_id   "card_1"
                         :indexer_last_seen_hash (byte-array [1 2 3])}
           watermark    (semantic.gate/resume-watermark metadata-row)]
 
-      (is (= (Instant/parse "2025-01-01T12:00:00Z") (:last-poll watermark)))
-      (is (= (Instant/parse "2025-01-01T11:30:00Z") (:gated_at (:last-seen watermark)))))))
+      (is (= (ts "2025-01-01T12:00:00Z") (:last-poll watermark)))
+      (is (= (ts "2025-01-01T11:30:00Z") (:gated_at (:last-seen watermark)))))))
 
 (deftest flush-watermark!-test
   (let [pgvector       semantic.tu/db
@@ -271,10 +273,10 @@
         model2         {:provider "foo" :model-name "m2" :vector-dimensions 42}
         index1         (semantic.index-metadata/qualify-index (semantic.index/default-index model1) index-metadata)
         index2         (semantic.index-metadata/qualify-index (semantic.index/default-index model2) index-metadata)
-        watermark      {:last-poll (Instant/parse "2025-01-01T13:00:00Z")
+        watermark      {:last-poll (ts "2025-01-01T13:00:00Z")
                         :last-seen {:id            "card_1"
                                     :document_hash "bar"
-                                    :gated_at      (Instant/parse "2025-01-01T12:45:00Z")}}]
+                                    :gated_at      (ts "2025-01-01T12:45:00Z")}}]
 
     (with-open [_ (open-tables! pgvector index-metadata)]
 
@@ -312,8 +314,8 @@
                   :indexer_last_seen      nil}
                  index1-meta))
           (is (=? {:id                     id2
-                   :indexer_last_poll      (Timestamp/from (:last-poll watermark))
+                   :indexer_last_poll      (:last-poll watermark)
                    :indexer_last_seen_id   "card_1"
                    :indexer_last_seen_hash "bar"
-                   :indexer_last_seen      (Timestamp/from (:gated_at (:last-seen watermark)))}
+                   :indexer_last_seen      (:gated_at (:last-seen watermark))}
                   index2-meta)))))))
