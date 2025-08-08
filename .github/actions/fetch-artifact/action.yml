@@ -50,18 +50,27 @@ runs:
     - name: unzip uberjar artifact
       shell: bash
       run: unzip mb.zip
-    - name: Move the Uberjar
+    - name: Process the Uberjar
       shell: bash
       run: | # bash
         OUTPUT_NAME="${{ inputs.output-name }}"
         EXTRACT_PATH="${{ inputs.extract-path }}"
+
+        # Function to determine the final JAR path
+        get_jar_path() {
+          if [ "$EXTRACT_PATH" == "." ]; then
+            echo "$OUTPUT_NAME"
+          else
+            echo "$EXTRACT_PATH/metabase.jar"
+          fi
+        }
 
         # Create target directory if it doesn't exist
         if [ "$EXTRACT_PATH" != "." ]; then
           mkdir -p "$EXTRACT_PATH"
         fi
 
-        # Find the jar file
+        # Find the source jar file
         if [ -e "metabase.jar" ]; then
           SOURCE_JAR="metabase.jar"
         elif [ -e "target/uberjar/metabase.jar" ]; then
@@ -71,16 +80,10 @@ runs:
           exit 1
         fi
 
-        # Move to target path
-        if [ "$EXTRACT_PATH" == "." ]; then
-          # Current directory - use output-name
-          TARGET_PATH="$OUTPUT_NAME"
-        else
-          # Specific directory - always use metabase.jar
-          TARGET_PATH="$EXTRACT_PATH/metabase.jar"
-        fi
+        # Get the target path
+        TARGET_PATH=$(get_jar_path)
 
-        # Check if source and target are the same
+        # Move the jar if source and target differ
         if [ "$SOURCE_JAR" == "$TARGET_PATH" ]; then
           echo "Jar is already at the correct location: $TARGET_PATH"
         else
@@ -88,25 +91,17 @@ runs:
           mv "$SOURCE_JAR" "$TARGET_PATH"
         fi
 
+        # Export the path for subsequent steps
+        echo "JAR_PATH=$TARGET_PATH" >> $GITHUB_ENV
+
     - name: Verify that this is a valid JAR file
       shell: bash
       run: |
-        EXTRACT_PATH="${{ inputs.extract-path }}"
-        if [ "$EXTRACT_PATH" == "." ]; then
-          JAR_PATH="./${{ inputs.output-name }}"
-        else
-          JAR_PATH="./$EXTRACT_PATH/metabase.jar"
-        fi
         echo "Verifying JAR at: $JAR_PATH"
         file --mime-type "$JAR_PATH"
+        
     - name: Reveal its version.properties
       shell: bash
       run: |
-        EXTRACT_PATH="${{ inputs.extract-path }}"
-        if [ "$EXTRACT_PATH" == "." ]; then
-          JAR_PATH="${{ inputs.output-name }}"
-        else
-          JAR_PATH="$EXTRACT_PATH/metabase.jar"
-        fi
         echo "Extracting version.properties from: $JAR_PATH"
         jar xf "$JAR_PATH" version.properties && cat version.properties
