@@ -1,6 +1,5 @@
 (ns metabase.search.appdb.core
   (:require
-   [clojure.string :as str]
    [environ.core :as env]
    [honey.sql.helpers :as sql.helpers]
    [java-time.api :as t]
@@ -16,6 +15,7 @@
    [metabase.search.ingestion :as search.ingestion]
    [metabase.search.permissions :as search.permissions]
    [metabase.search.settings :as search.settings]
+   [metabase.search.util :as search.util]
    [metabase.settings.core :as setting]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
@@ -50,12 +50,9 @@
 (defn- parse-datetime [s]
   (when s (OffsetDateTime/parse s)))
 
-(defn- collapse-id [{:keys [id] :as row}]
-  (assoc row :id (if (number? id) id (parse-long (last (str/split (:id row) #":"))))))
-
 (defn- rehydrate [weights active-scorers index-row]
   (-> (json/decode+kw (:legacy_input index-row))
-      collapse-id
+      search.util/collapse-id
       (assoc
        ;; this relies on the corresponding scorer, which is not great coupling.
        ;; ideally we would make per-user computed attributes part of the spec itself.

@@ -658,7 +658,7 @@
 
 (defn- apply-collection-filter
   "Apply personal collection filtering with logging."
-  [docs search-context]
+  [search-context docs]
   (let [filter-type (:filter-items-in-personal-collection search-context)]
     (if (or (nil? filter-type) (= filter-type "all"))
       docs
@@ -693,9 +693,10 @@
             raw-results (into [] xform reducible)
             db-query-time-ms (u/since-ms db-timer)
 
-            filtered-results (-> raw-results
-                                 filter-read-permitted
-                                 (apply-collection-filter search-context))
+            filtered-results (->> raw-results
+                                  filter-read-permitted
+                                  (apply-collection-filter search-context)
+                                  (mapv search/collapse-id))
 
             total-time-ms (u/since-ms timer)]
 

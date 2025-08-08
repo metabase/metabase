@@ -49,6 +49,7 @@
   define-spec]
 
  [search.util
+  collapse-id
   tsv-language
   to-tsquery-expr
   weighted-tsvector])

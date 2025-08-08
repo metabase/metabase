@@ -22,6 +22,11 @@
       :or  (every? impossible-condition? (rest where))
       false)))
 
+(defn collapse-id
+  "Collapse the id of search results that may contain multiple ids (like indexed-entities)."
+  [{:keys [id] :as row}]
+  (assoc row :id (if (number? id) id (parse-long (last (str/split id #":"))))))
+
 ;;; ============================================================================
 ;;; Postgres-specific utilities
 ;;; ============================================================================
