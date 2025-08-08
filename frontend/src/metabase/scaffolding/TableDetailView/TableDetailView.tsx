@@ -86,7 +86,7 @@ export function TableDetailView({
         hash: string;
       }
     | object
-  >(() => location.state);
+  >(() => location.state || {});
 
   const handleBackClick = useMemo(() => {
     return "hash" in previousPathState
