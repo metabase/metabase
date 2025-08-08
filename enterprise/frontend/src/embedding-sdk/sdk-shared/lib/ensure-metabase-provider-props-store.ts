@@ -42,13 +42,13 @@ const INTERNAL_PROP_NAMES: (keyof MetabaseProviderPropsStoreInternalProps)[] = [
 ];
 
 const KEY = "METABASE_PROVIDER_PROPS_STORE";
-const EMPTY_PROPS = {
+const EMPTY_PROPS: MetabaseProviderPropsStoreInternalProps = {
   loadingPromise: null,
   loadingState: SdkLoadingState.Initial,
   loadingError: null,
   reduxStore: null,
   singleCopyWrapperIdsMap: {},
-} as MetabaseProviderPropsStoreInternalProps;
+};
 
 export function ensureMetabaseProviderPropsStore(): MetabaseProviderPropsStore {
   const win = getWindow();
