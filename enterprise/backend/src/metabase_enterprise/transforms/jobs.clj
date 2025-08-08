@@ -1,7 +1,8 @@
 (ns metabase-enterprise.transforms.jobs
   (:require
-   [metabase-enterprise.transforms.execute :as execute]
-   [metabase-enterprise.transforms.ordering :as ordering]
+   [clojure.string :as str]
+   [metabase-enterprise.transforms.execute :as transforms.execute]
+   [metabase-enterprise.transforms.ordering :as transforms.ordering]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
@@ -18,17 +19,23 @@
 
 (defn- get-plan [transform-ids]
   (let [all-transforms (t2/select :model/Transform)
-        global-ordering (ordering/transform-ordering all-transforms)
-        relevant-ids (get-deps global-ordering transform-ids)]
+        global-ordering (transforms.ordering/transform-ordering all-transforms)
+        relevant-ids (get-deps global-ordering transform-ids)
+        ordering (select-keys global-ordering relevant-ids)]
+    (when-let [cycle (transforms.ordering/find-cycle ordering)]
+      (let [id->name (into {} (map (juxt :id :name)) all-transforms)]
+        (throw (ex-info (str "Cyclic transform definitions detected: "
+                             (str/join " → " (map id->name cycle)))
+                        {:cycle cycle}))))
     {:transforms-by-id (into {}
                              (keep (fn [{:keys [id] :as transform}]
                                      (when (relevant-ids id)
                                        [id transform])))
                              all-transforms)
-     :ordering (select-keys global-ordering relevant-ids)}))
+     :ordering ordering}))
 
 (defn- next-transform [{:keys [ordering transforms-by-id]} complete]
-  (-> (ordering/available-transforms ordering #{} complete)
+  (-> (transforms.ordering/available-transforms ordering #{} complete)
       first
       transforms-by-id))
 
@@ -39,7 +46,7 @@
     (loop [complete #{}]
       (when-let [current-transform (next-transform plan complete)]
         (log/info "Executing job transform" (pr-str (:id current-transform)))
-        (execute/execute-mbql-transform! current-transform {:run-method run-method})
+        (transforms.execute/execute-mbql-transform! current-transform {:run-method run-method})
         (recur (conj complete (:id current-transform)))))))
 
 (defn execute-jobs!
