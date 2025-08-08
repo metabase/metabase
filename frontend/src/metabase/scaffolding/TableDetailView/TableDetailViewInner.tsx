@@ -18,6 +18,7 @@ import {
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
+import { CSS } from "@dnd-kit/utilities";
 import {
   type AnimateLayoutChanges,
   SortableContext,
@@ -744,6 +745,8 @@ export function TableDetailViewInner({
                   label={`Column ${containerId}`}
                   columns={1}
                   items={section.fields}
+                  disabled={!isEdit}
+                  style={{}}
                 // scrollable={scrollable}
                 // style={containerStyle}
                 // unstyled={minimal}
@@ -778,8 +781,9 @@ export function TableDetailViewInner({
             })}
             <DroppableContainer
               id={PLACEHOLDER_ID}
-              // disabled={isSortingContainer}
+              disabled={!isEdit}
               items={empty}
+              style={{}}
               // onClick={handleAddColumn}
               placeholder
             >
@@ -850,6 +854,7 @@ function DroppableContainer({
       children: items,
     },
     animateLayoutChanges,
+    disabled,
   });
 
   const isOverContainer = over
@@ -863,11 +868,11 @@ function DroppableContainer({
       style={{
         ...style,
         transition,
-        // transform: CSS.Translate.toString(transform),
+        transform: CSS.Translate.toString(transform),
         opacity: isDragging ? 0.5 : undefined,
       }}
       hover={isOverContainer}
-      handleProps={{
+      handleProps={disabled ? undefined : {
         ...attributes,
         ...listeners,
       }}

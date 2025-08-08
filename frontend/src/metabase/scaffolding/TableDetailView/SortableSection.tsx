@@ -36,7 +36,10 @@ export function SortableSection(props: SortableSectionProps) {
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: props.section.id });
+  } = useSortable({
+    id: props.section.id,
+    disabled: !props.isEdit
+  });
 
   const style = {
     transform: CSS.Translate.toString(transform),
@@ -53,7 +56,7 @@ export function SortableSection(props: SortableSectionProps) {
     >
       <ObjectViewSection
         {...props}
-        dragHandleProps={{ ...attributes, ...listeners }}
+        dragHandleProps={props.isEdit ? { ...attributes, ...listeners } : undefined}
       />
     </div>
   );

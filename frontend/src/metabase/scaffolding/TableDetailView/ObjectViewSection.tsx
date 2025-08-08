@@ -44,6 +44,7 @@ type SectionFieldProps = {
   onUpdateSection?: (section: Partial<ObjectViewSectionSettings>) => void;
   section: ObjectViewSectionSettings;
   tc: any;
+  dragHandleProps?: any;
 };
 
 function SectionField({
@@ -170,7 +171,10 @@ function SortableSectionField({
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: props.field_id });
+  } = useSortable({
+    id: props.field_id,
+    disabled: !props.isEdit
+  });
 
   const style = {
     transform: CSS.Translate.toString(transform),
@@ -182,7 +186,7 @@ function SortableSectionField({
     <div ref={setNodeRef} style={style}>
       <SectionField
         {...props}
-        dragHandleProps={{ ...attributes, ...listeners }}
+        dragHandleProps={props.isEdit ? { ...attributes, ...listeners } : undefined}
       // isDraggingSection={props.isDraggingSection}
       />
     </div>
