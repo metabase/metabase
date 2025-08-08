@@ -10,45 +10,41 @@ jobs:
     timeout-minutes: 5
     name: Get container info
     outputs:
-      editions: ${{ toJson(fromJson(steps.info.outputs.result).editions) }}
-      ee: ${{ toJson(fromJson(steps.info.outputs.result).ee) }}
-      oss: ${{ toJson(fromJson(steps.info.outputs.result).oss) }}
+      editions: ${{ steps.ee-info.outputs.editions }}
+      ee: ${{ toJson(fromJson(steps.build-matrix.outputs.result).ee) }}
+      oss: ${{ toJson(fromJson(steps.build-matrix.outputs.result).oss) }}
     steps:
-      - name: Get docker repo and tag
-        id: info
+      - name: Check out the code
+        uses: actions/checkout@v4
+      - name: Get EE Docker info
+        id: ee-info
+        uses: ./.github/actions/get-docker-info
+        with:
+          edition: ee
+      - name: Get OSS Docker info
+        id: oss-info
+        uses: ./.github/actions/get-docker-info
+        with:
+          edition: oss
+      - name: Build matrix info
+        id: build-matrix
         uses: actions/github-script@v7
         with:
           script: | # js
-            const branch = '${{ github.head_ref || github.ref_name }}';
-            const owner = '${{ github.repository_owner }}';
-
-            console.log(`Branch: ${branch}`);
-
-            if (branch === "master") {
-              return {
-                editions: ["ee", "oss"],
-                ee: {
-                  repo: `${owner}/metabase-enterprise-head`,
-                  tag: "latest"
-                },
-                oss: {
-                  repo: `${owner}/metabase-head`,
-                  tag: "latest"
-                }
-              };
-            }
-
-            return {
-              editions: ["ee"],
+            const editions = JSON.parse('${{ steps.ee-info.outputs.editions }}');
+            const result = {
+              editions: editions,
               ee: {
-                repo: `${owner}/metabase-dev`,
-                tag: branch.replaceAll("/", "-"), // slashes make docker sad
+                repo: '${{ steps.ee-info.outputs.repo }}',
+                tag: '${{ steps.ee-info.outputs.tag }}'
               },
+              oss: {
+                repo: '${{ steps.oss-info.outputs.repo }}',
+                tag: '${{ steps.oss-info.outputs.tag }}'
+              }
             };
-
-      - name: Print output
-        run: |
-          echo "${{ steps.info.outputs.result }}"
+            console.log('Build matrix:', result);
+            return result;
 
   containerize:
     needs: [get-container-info]
