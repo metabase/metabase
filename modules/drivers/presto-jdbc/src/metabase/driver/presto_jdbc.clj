@@ -57,7 +57,7 @@
                               :set-timezone                    true
                               :standard-deviation-aggregations true
                               :metadata/key-constraints        false
-                              :database-routing                false}]
+                              :database-routing                true}]
   (defmethod driver/database-supports? [:presto-jdbc feature] [_driver _feature _db] supported?))
 
 ;;; Presto API helpers
