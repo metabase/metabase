@@ -34,15 +34,15 @@
                       :searchable_text "Dog Training Guide"
                       :updated_at      t1}
           sut        semantic.gate/search-doc->gate-doc]
-      (is (=? {:id            "card_123"
-               :model_id      "123"
-               :model         "card"
-               :document      (doto (PGobject.)
-                                (.setType "jsonb")
-                                (.setValue (json/encode search-doc)))
-               :document_hash (u/encode-base64-bytes (buddy-hash/sha1 (json/encode (into (sorted-map) search-doc))))
-               :updated_at    (:updated_at search-doc)}
-              (sut search-doc t2)))
+      (is (= {:id            "card_123"
+              :model_id      "123"
+              :model         "card"
+              :document      (doto (PGobject.)
+                               (.setType "jsonb")
+                               (.setValue (json/encode search-doc)))
+              :document_hash (u/encode-base64-bytes (buddy-hash/sha1 (json/encode (into (sorted-map) search-doc))))
+              :updated_at    (:updated_at search-doc)}
+             (sut search-doc t2)))
 
       (testing "uses default updated_at when search doc has none"
         (is (= t2
@@ -244,27 +244,31 @@
   (testing "next-watermark updates watermark based on poll results"
     (let [initial-watermark {:last-poll (ts "2025-01-01T12:00:00Z")
                              :last-seen {:id            "card_1"
-                                         :document_hash (byte-array [1 2 3])
+                                         :document_hash "foo"
                                          :gated_at      (ts "2025-01-01T11:00:00Z")}}
           poll-result       {:poll-time         (ts "2025-01-01T13:00:00Z")
-                             :update-candidates [{:id "card_123" :gated_at (ts "2025-01-01T12:30:00Z")}
-                                                 {:id "dashboard_456" :gated_at (ts "2025-01-01T12:45:00Z")}]}
+                             :update-candidates [{:id "card_123" :documen_hash "foo" :gated_at (ts "2025-01-01T12:30:00Z")}
+                                                 {:id "dashboard_456" :document_hash nil :gated_at (ts "2025-01-01T12:45:00Z")}]}
           next-watermark    (semantic.gate/next-watermark initial-watermark poll-result)]
 
       (is (= (ts "2025-01-01T13:00:00Z") (:last-poll next-watermark)))
-      (is (=? {:gated_at (ts "2025-01-01T12:45:00Z")
-               :id       "dashboard_456"}
-              (:last-seen next-watermark)))))
+      (is (= {:gated_at (ts "2025-01-01T12:45:00Z")
+              :document_hash nil
+              :id       "dashboard_456"}
+             (:last-seen next-watermark)))))
 
   (testing "resume-watermark extracts watermark from metadata row"
     (let [metadata-row {:indexer_last_poll      (ts "2025-01-01T12:00:00Z")
                         :indexer_last_seen      (ts "2025-01-01T11:30:00Z")
                         :indexer_last_seen_id   "card_1"
-                        :indexer_last_seen_hash (byte-array [1 2 3])}
+                        :indexer_last_seen_hash "foo"}
           watermark    (semantic.gate/resume-watermark metadata-row)]
 
       (is (= (ts "2025-01-01T12:00:00Z") (:last-poll watermark)))
-      (is (= (ts "2025-01-01T11:30:00Z") (:gated_at (:last-seen watermark)))))))
+      (is (= {:id "card_1"
+              :document_hash "foo"
+              :gated_at (ts "2025-01-01T11:30:00Z")}
+             (:last-seen watermark))))))
 
 (deftest flush-watermark!-test
   (let [pgvector       semantic.tu/db
