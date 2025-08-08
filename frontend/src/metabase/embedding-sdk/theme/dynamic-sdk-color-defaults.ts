@@ -30,7 +30,7 @@ export const DYNAMIC_SDK_DEFAULT_COLORS_CONFIG: DynamicSdkDefaultColorConfig = {
     dark: { source: "brand", lighten: 0.3 },
   },
   "brand-hover-light": {
-    light: { source: "brand", lighten: 0.4 },
+    light: { source: "brand", lighten: 0.6 },
     dark: { source: "brand", lighten: 0.3 },
   },
 };
