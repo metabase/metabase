@@ -6,19 +6,6 @@
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
-(defn execute-jobs!
-  [job-ids opts]
-  (let [transforms (t2/select-fn-set :transform_id
-                                     :transform_job_tags
-                                     {:select :transform_tags.transform_id
-                                      :from :transform_job_tags
-                                      :left-join [:transform_tags [:=
-                                                                   :transform_tags.tag_id
-                                                                   :transform_job_tags.tag_id]]
-                                      :where [:in :transform_job_tags.job_id job-ids]})]
-    (log/info "Executing transform jobs" (pr-str job-ids) "with transforms" (pr-str transforms))
-    (execute-transforms! transforms opts)))
-
 (defn- get-deps [ordering transform-ids]
   (loop [found #{}
          [current-transform & more-transforms] transform-ids]
@@ -54,3 +41,16 @@
         (log/info "Executing job transform" (pr-str (:id current-transform)))
         (execute/execute-mbql-transform! current-transform {:run-method run-method})
         (recur (conj complete (:id current-transform)))))))
+
+(defn execute-jobs!
+  [job-ids opts]
+  (let [transforms (t2/select-fn-set :transform_id
+                                     :transform_job_tags
+                                     {:select :transform_tags.transform_id
+                                      :from :transform_job_tags
+                                      :left-join [:transform_tags [:=
+                                                                   :transform_tags.tag_id
+                                                                   :transform_job_tags.tag_id]]
+                                      :where [:in :transform_job_tags.job_id job-ids]})]
+    (log/info "Executing transform jobs" (pr-str job-ids) "with transforms" (pr-str transforms))
+    (execute-transforms! transforms opts)))
