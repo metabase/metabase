@@ -28,6 +28,10 @@ on:
       split_index: # index of the chunk
         required: false
         type: number
+      debug_specs:
+        required: false
+        type: boolean
+        default: false
 
 jobs:
   e2e-tests:
@@ -179,6 +183,8 @@ jobs:
         if: ${{ inputs.specs }}
         shell: bash
         env:
+          SPLIT: ${{ inputs.total_chunks || 1 }}
+          SPLIT_INDEX: ${{ inputs.split_index || 0 }}
           SPLIT_FILE: "./e2e/support/timings.json"
           SPLIT_OUTPUT_FILE: "newTimes.json"
           SPLIT_TIME_THRESHOLD: 0
