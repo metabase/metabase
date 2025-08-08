@@ -10,7 +10,9 @@ interface CommandProps {
   command?: string;
   clearQuery?: boolean;
   switchToLinkMode?: boolean;
+  switchToEmbedMode?: boolean;
   selectItem?: boolean;
+  embedItem?: boolean;
   entityId?: number;
   model?: string;
 }
@@ -36,12 +38,29 @@ export const CommandExtension = Extension.create<CommandOptions>({
           range: Range;
           props: CommandProps;
         }) => {
-          if (props.clearQuery && props.switchToLinkMode) {
+          if (
+            props.clearQuery &&
+            (props.switchToLinkMode || props.switchToEmbedMode)
+          ) {
             const startPos = range.from + 1;
             editor
               .chain()
               .focus()
               .deleteRange({ from: startPos, to: range.to })
+              .run();
+            return;
+          }
+          if (props.embedItem && props.entityId && props.model) {
+            editor
+              .chain()
+              .focus()
+              .deleteRange(range)
+              .insertContent({
+                type: "cardEmbed",
+                attrs: {
+                  id: props.entityId,
+                },
+              })
               .run();
             return;
           }
@@ -61,9 +80,23 @@ export const CommandExtension = Extension.create<CommandOptions>({
             return;
           }
 
-          if (props.command === "linkTo") {
+          if (props.command === "linkTo" || props.command === "embedQuestion") {
             return;
           }
+
+          if (props.command === "metabot") {
+            editor
+              .chain()
+              .focus()
+              .deleteRange(range)
+              .insertContent({
+                type: "metabot",
+                attrs: {},
+              })
+              .run();
+            return;
+          }
+
           switch (props.command) {
             case "heading1":
               editor

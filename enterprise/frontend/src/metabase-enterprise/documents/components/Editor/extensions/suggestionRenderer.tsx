@@ -11,6 +11,7 @@ export const createSuggestionRenderer = <I = unknown, TSelected = unknown>(
 ) => {
   return () => {
     let component: ReactRenderer | undefined;
+    let currentClientRect: (() => DOMRect | null) | null | undefined;
 
     function repositionComponent(clientRect: DOMRect | null) {
       if (!component || !component.element) {
@@ -21,22 +22,35 @@ export const createSuggestionRenderer = <I = unknown, TSelected = unknown>(
         return;
       }
 
+      const element = component.element;
+      if (!(element instanceof HTMLElement)) {
+        return;
+      }
+
       const virtualElement: VirtualElement = {
         getBoundingClientRect() {
           return clientRect;
         },
       };
 
-      computePosition(virtualElement, component.element as HTMLElement, {
+      computePosition(virtualElement, element, {
         placement: "bottom-start",
       }).then((pos) => {
-        Object.assign((component?.element as HTMLElement).style, {
-          left: `${pos.x}px`,
-          top: `${pos.y}px`,
-          position: pos.strategy === "fixed" ? "fixed" : "absolute",
-        });
+        if (component?.element instanceof HTMLElement) {
+          Object.assign(component.element.style, {
+            left: `${pos.x}px`,
+            top: `${pos.y}px`,
+            position: pos.strategy === "fixed" ? "fixed" : "absolute",
+          });
+        }
       });
     }
+
+    const handleScroll = () => {
+      if (currentClientRect) {
+        repositionComponent(currentClientRect());
+      }
+    };
 
     return {
       onStart: (props: SuggestionProps<I, TSelected>) => {
@@ -45,32 +59,60 @@ export const createSuggestionRenderer = <I = unknown, TSelected = unknown>(
           editor: props.editor,
         });
 
-        document.body.appendChild(component.element);
-        repositionComponent(props.clientRect?.());
+        if (component.element instanceof HTMLElement) {
+          document.body.appendChild(component.element);
+        }
+        currentClientRect = props.clientRect;
+        repositionComponent(props.clientRect?.() ?? null);
+
+        // Add scroll listeners to reposition on scroll
+        window.addEventListener("scroll", handleScroll, true);
+        window.addEventListener("resize", handleScroll);
       },
 
       onUpdate(props: SuggestionProps<I, TSelected>) {
         component?.updateProps(props);
-        repositionComponent(props.clientRect?.());
+        currentClientRect = props.clientRect;
+        repositionComponent(props.clientRect?.() ?? null);
       },
 
       onKeyDown(props: SuggestionKeyDownProps) {
         if (props.event.key === "Escape") {
-          if (component?.element && document.body.contains(component.element)) {
+          if (
+            component?.element instanceof HTMLElement &&
+            document.body.contains(component.element)
+          ) {
             document.body.removeChild(component.element);
           }
           component?.destroy();
           return true;
         }
 
-        return component?.ref?.onKeyDown?.(props) ?? false;
+        const ref = component?.ref;
+        if (
+          ref &&
+          typeof ref === "object" &&
+          "onKeyDown" in ref &&
+          typeof ref.onKeyDown === "function"
+        ) {
+          return ref.onKeyDown(props);
+        }
+        return false;
       },
 
       onExit() {
-        if (component?.element && document.body.contains(component.element)) {
+        // Remove scroll listeners
+        window.removeEventListener("scroll", handleScroll, true);
+        window.removeEventListener("resize", handleScroll);
+
+        if (
+          component?.element instanceof HTMLElement &&
+          document.body.contains(component.element)
+        ) {
           document.body.removeChild(component.element);
         }
         component?.destroy();
+        currentClientRect = undefined;
       },
     };
   };

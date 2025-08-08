@@ -4,29 +4,21 @@ import {
   useCallback,
   useEffect,
   useImperativeHandle,
-  useMemo,
   useState,
 } from "react";
 import { t } from "ttag";
 
-import { useListRecentsQuery, useSearchQuery } from "metabase/api";
 import { QuestionPickerModal } from "metabase/common/components/Pickers/QuestionPicker/components/QuestionPickerModal";
 import type { QuestionPickerValueItem } from "metabase/common/components/Pickers/QuestionPicker/types";
-import { Box, Group, type IconName, Loader, Text } from "metabase/ui";
-import type { RecentItem, SearchModel, SearchResult } from "metabase-types/api";
+import { Box, Group, Loader, Text } from "metabase/ui";
+import type { RecentItem, SearchResult } from "metabase-types/api";
 
 import styles from "../../Editor.module.css";
-import type { MenuItem } from "../../shared/MenuComponents";
 import {
   MenuItemComponent,
-  MetabotFooter,
   SearchResultsFooter,
 } from "../../shared/MenuComponents";
-import {
-  buildRecentsMenuItems,
-  buildSearchMenuItems,
-  isRecentQuestion,
-} from "../shared/suggestionUtils";
+import { useEntitySearch } from "../shared/useEntitySearch";
 
 interface MentionSuggestionProps {
   items: SearchResult[];
@@ -46,18 +38,6 @@ interface SuggestionRef {
   onKeyDown: (props: { event: KeyboardEvent }) => boolean;
 }
 
-interface MentionItem {
-  icon: IconName;
-  iconColor?: string;
-  label: string;
-  description?: string;
-  action: () => void;
-  id: number | string;
-  type?: string;
-}
-
-const MODELS_TO_SEARCH: SearchModel[] = ["card", "dataset"];
-
 const MentionSuggestionComponent = forwardRef<
   SuggestionRef,
   MentionSuggestionProps
@@ -67,28 +47,6 @@ const MentionSuggestionComponent = forwardRef<
 ) {
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [modal, setModal] = useState<"question-picker" | null>(null);
-
-  const { data: recents = [], isLoading: isRecentsLoading } =
-    useListRecentsQuery(undefined, { refetchOnMountOrArgChange: true });
-
-  const filteredRecents = recents.filter(isRecentQuestion).slice(0, 4);
-
-  // Search functionality
-  const { data: searchResponse, isLoading: isSearchLoading } = useSearchQuery(
-    {
-      q: query,
-      models: MODELS_TO_SEARCH,
-      limit: 4,
-    },
-    {
-      skip: !query || query.length === 0,
-    },
-  );
-
-  const searchResults = useMemo(
-    () => (searchResponse?.data as SearchResult[]) ?? [],
-    [searchResponse],
-  );
 
   const handleRecentSelect = useCallback(
     (item: RecentItem) => {
@@ -110,49 +68,19 @@ const MentionSuggestionComponent = forwardRef<
     [command],
   );
 
-  const insertMetabotBlock = () => {
-    command({
-      type: "metabot",
-    });
-  };
-
-  const menuItems = useMemo(() => {
-    const items: Array<MentionItem | MenuItem> = [];
-
-    if (query.length > 0) {
-      if (!isSearchLoading && searchResults.length > 0) {
-        items.push(
-          ...buildSearchMenuItems(searchResults, handleSearchResultSelect),
-        );
-      }
-    } else {
-      if (!isRecentsLoading && filteredRecents.length > 0) {
-        items.push(
-          ...buildRecentsMenuItems(filteredRecents, handleRecentSelect),
-        );
-      }
-    }
-
-    return items as MentionItem[];
-  }, [
+  const { menuItems, isLoading, searchResults } = useEntitySearch({
     query,
-    searchResults,
-    isSearchLoading,
-    filteredRecents,
-    isRecentsLoading,
-    handleRecentSelect,
-    handleSearchResultSelect,
-  ]);
+    onSelectRecent: handleRecentSelect,
+    onSelectSearchResult: handleSearchResultSelect,
+  });
 
-  const totalItems = menuItems.length + 2;
+  const totalItems = menuItems.length + 1;
 
   const selectItem = (index: number) => {
     if (index < menuItems.length) {
       menuItems[index].action();
-    } else if (index === menuItems.length) {
-      setModal("question-picker");
     } else {
-      insertMetabotBlock();
+      setModal("question-picker");
     }
   };
 
@@ -219,8 +147,7 @@ const MentionSuggestionComponent = forwardRef<
         role="list"
         aria-label={t`Suggestions`}
       >
-        {(isRecentsLoading && query.length === 0) ||
-        (isSearchLoading && query.length > 0) ? (
+        {isLoading ? (
           <Group justify="center" p="sm">
             <Loader size="sm" />
           </Group>
@@ -234,23 +161,24 @@ const MentionSuggestionComponent = forwardRef<
                 onClick={() => selectItem(index)}
               />
             ))}
-            {query.length > 0 &&
-            searchResults.length === 0 &&
-            !isSearchLoading ? (
+            {query.length > 0 && searchResults.length === 0 && !isLoading ? (
               <Box p="sm">
                 <Text size="md" c="text-medium" ta="center">
                   {t`No results found`}
                 </Text>
               </Box>
             ) : null}
-            <SearchResultsFooter
-              isSelected={selectedIndex === menuItems.length}
-              onClick={() => setModal("question-picker")}
-            />
-            <MetabotFooter
-              isSelected={selectedIndex === menuItems.length + 1}
-              onClick={insertMetabotBlock}
-            />
+            <Box>
+              <Box
+                style={{
+                  borderTop: "1px solid var(--mb-color-border)",
+                }}
+              />
+              <SearchResultsFooter
+                isSelected={selectedIndex === menuItems.length}
+                onClick={() => setModal("question-picker")}
+              />
+            </Box>
           </>
         )}
       </Box>

@@ -43,25 +43,16 @@ export const MentionExtension = Extension.create<MentionOptions>({
           range: Range;
           props: MentionProps;
         }) => {
-          if (props.type === "metabot") {
+          if (props.id && props.model) {
             editor
               .chain()
               .focus()
               .deleteRange(range)
               .insertContent({
-                type: "metabot",
-                attrs: {},
-              })
-              .run();
-          } else if (props.id) {
-            editor
-              .chain()
-              .focus()
-              .deleteRange(range)
-              .insertContent({
-                type: "cardEmbed",
+                type: "smartLink",
                 attrs: {
-                  id: props.id,
+                  entityId: props.id,
+                  model: props.model,
                 },
               })
               .run();

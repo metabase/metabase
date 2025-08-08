@@ -266,7 +266,7 @@ export const CardEmbedComponent = memo(
       if (typeof pos === "number") {
         editor.commands.insertContentAt(
           { from: pos, to: pos + node.nodeSize },
-          "@",
+          "/",
         );
         editor.commands.focus();
       }
@@ -462,7 +462,7 @@ export const CardEmbedComponent = memo(
                         disabled={!canWrite}
                         leftSection={<Icon name="refresh" size={14} />}
                       >
-                        {t`Replace question`}
+                        {t`Replace`}
                       </Menu.Item>
                     </Menu.Dropdown>
                   </Menu>
