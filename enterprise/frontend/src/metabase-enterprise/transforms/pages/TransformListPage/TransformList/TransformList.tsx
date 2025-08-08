@@ -49,13 +49,13 @@ export function TransformList() {
             <td>{transform.name}</td>
             <td>{transform.target.name}</td>
             <td>
-              {transform.last_execution?.status
-                ? formatStatus(transform.last_execution.status)
+              {transform.last_execution?.end_time
+                ? formatTimestamp(transform.last_execution?.end_time)
                 : null}
             </td>
             <td>
-              {transform.last_execution?.end_time
-                ? formatTimestamp(transform.last_execution?.end_time)
+              {transform.last_execution?.status
+                ? formatStatus(transform.last_execution.status)
                 : null}
             </td>
           </tr>

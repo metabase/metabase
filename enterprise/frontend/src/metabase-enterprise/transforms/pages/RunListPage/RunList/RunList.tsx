@@ -1,15 +1,28 @@
+import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { AdminContentTable } from "metabase/common/components/AdminContentTable";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { useDispatch } from "metabase/lib/redux";
 import { Card } from "metabase/ui";
 import { useListTransformExecutionsQuery } from "metabase-enterprise/api";
+import type { TransformExecution } from "metabase-types/api";
 
 import { ListEmptyState } from "../../../components/ListEmptyState";
+import { getTransformUrl } from "../../../urls";
 import { formatStatus, formatTimestamp, formatTrigger } from "../../../utils";
+
+import S from "./RunList.module.css";
 
 export function RunList() {
   const { data, isLoading, error } = useListTransformExecutionsQuery({});
+  const dispatch = useDispatch();
+
+  const handleRowClick = (execution: TransformExecution) => {
+    if (execution.transform) {
+      dispatch(push(getTransformUrl(execution.transform.id)));
+    }
+  };
 
   if (!data || isLoading || error != null) {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
@@ -32,7 +45,11 @@ export function RunList() {
         ]}
       >
         {executions.map((execution) => (
-          <tr key={execution.id}>
+          <tr
+            key={execution.id}
+            className={S.row}
+            onClick={() => handleRowClick(execution)}
+          >
             <td>{execution.transform?.name}</td>
             <td>{formatTimestamp(execution.start_time)}</td>
             <td>
