@@ -20,8 +20,4 @@ export const DYNAMIC_CSS_VARIABLES: DynamicCssVarConfig = {
   "--mb-color-bg-error": {
     dark: { source: "error", alpha: 0.3 },
   },
-  "--mb-color-bg-light": {
-    light: { source: "bg-white", darken: 0.02 },
-    dark: { source: "bg-white", lighten: 0.1 },
-  },
 };
