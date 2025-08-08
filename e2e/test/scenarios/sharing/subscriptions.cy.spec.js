@@ -346,7 +346,11 @@ describe("scenarios > dashboard > subscriptions", () => {
 
       H.sendEmailAndAssert((email) => {
         expect(email.attachments).to.not.be.empty;
-        expect(email.attachments[0].filename).to.include("Orders");
+        const csvAttachment = email.attachments.find(
+          (attachment) => attachment.contentType === "text/csv",
+        );
+        expect(csvAttachment).to.exist;
+        expect(csvAttachment.generatedFileName).to.include("Orders");
         expect(email.html).to.not.include("Orders chart");
         expect(email.html).to.include(
           "Dashboard content available in attached files",
