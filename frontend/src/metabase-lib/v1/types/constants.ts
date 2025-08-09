@@ -14,6 +14,7 @@ export const STRING = "STRING";
 export const STRING_LIKE = "STRING_LIKE";
 export const BOOLEAN = "BOOLEAN";
 export const TEMPORAL = "TEMPORAL";
+export const BINARY = "BINARY";
 export const LOCATION = "LOCATION";
 export const COORDINATE = "COORDINATE";
 export const FOREIGN_KEY = "FOREIGN_KEY";
@@ -53,6 +54,10 @@ export const TYPE_HIERARCHIES = {
   [BOOLEAN]: {
     base: [TYPE.Boolean],
     effective: [TYPE.Boolean],
+  },
+  [BINARY]: {
+    base: [TYPE.Binary],
+    effective: [TYPE.Binary],
   },
   [COORDINATE]: {
     semantic: [TYPE.Coordinate],
