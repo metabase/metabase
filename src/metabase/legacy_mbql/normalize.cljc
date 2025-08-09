@@ -462,7 +462,7 @@
    ;; TODO -- when does query ever have a top-level `:context` key??
    :context         #(some-> % maybe-normalize-token)
    :source-metadata {::sequence normalize-source-metadata}
-   :viz-settings    maybe-normalize-token
+   :viz-settings    maybe-normalize-token ; TODO (Cam 8/8/25) -- we also have [[metabase.models.interface/normalize-visualization-settings]]
    :create-row      normalize-actions-row
    :update-row      normalize-actions-row
    ;;
@@ -1117,7 +1117,7 @@
    :query        {:source-query remove-empty-clauses-in-source-query
                   :joins        {::sequence remove-empty-clauses-in-join}}
    :parameters   {::sequence remove-empty-clauses-in-parameter}
-   :viz-settings identity
+   :viz-settings identity ; TODO (Cam 8/8/25) -- we also have [[metabase.models.interface/normalize-visualization-settings]]
    :create-row   identity
    :update-row   identity})
 
