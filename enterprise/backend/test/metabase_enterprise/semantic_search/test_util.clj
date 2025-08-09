@@ -89,12 +89,12 @@
   {:version               "0"
    :metadata-table-name   "mock_index_metadata"
    :control-table-name    "mock_index_control"
-   :index-table-qualifier "mock_%s"})
+   :index-table-qualifier "_%s"})
 
 (defn unique-index-metadata
   []
-  (let [nano-id (u/generate-nano-id)
-        fmt     (str "mock_%s_" nano-id "_")]
+  (let [uniq-id (subs (u/generate-nano-id) 0 11)
+        fmt     (str "mock_%s_" uniq-id "_")]
     {:version               "0"
      :metadata-table-name   (format fmt "index_metadata")
      :control-table-name    (format fmt "index_control")

@@ -6,21 +6,30 @@
    [metabase.util.i18n :refer [deferred-tru]]))
 
 (defsetting ee-embedding-provider
-  (deferred-tru "The embedding provider to use (:openai or :ollama)")
+  (deferred-tru "The embedding provider to use (:openai, :ollama, or :ai-service)")
   :encryption :no
   :visibility :settings-manager
-  :default "ollama"
+  :default "ai-service"
   :type :string
   :export? false
   :doc "This feature is experimental.")
 
 (defsetting ee-embedding-model
-  (deferred-tru "Override the default embedding model for the selected provider")
+  (deferred-tru "Set the embedding model for the selected provider")
   :encryption :no
   :visibility :settings-manager
-  :default nil
+  :default "Snowflake/snowflake-arctic-embed-l-v2.0"
   :export? false
-  :doc "This feature is experimental. Leave empty to use provider defaults.")
+  :doc "This feature is experimental.")
+
+(defsetting ee-embedding-model-dimensions
+  (deferred-tru "Set the dimension size for the selected embedding model")
+  :encryption :no
+  :visibility :settings-manager
+  :default 1024
+  :type :positive-integer
+  :export? false
+  :doc "This feature is experimental.")
 
 (defn openai-api-base-url
   "Get the OpenAI API base url from the existing LLM settings."

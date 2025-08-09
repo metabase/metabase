@@ -177,13 +177,28 @@
         excluded-kw (fn [column] (keyword (str "excluded." (name column))))]
     (zipmap update-keys (map excluded-kw update-keys))))
 
+(defn- throw-if-max-pg-len
+  [resource-name msg]
+  (when (> (count resource-name) 63)
+    (throw (ex-info msg
+                    {:table-name resource-name
+                     :length (count resource-name)
+                     :limit 63}))))
+
+(defn model-table-name
+  "Returns the table name for a model."
+  [embedding-model]
+  (let [{:keys [model-name provider vector-dimensions]} embedding-model
+        provider-name (embedding/abbrev-provider-name provider)
+        abbrev-model-name (embedding/abbrev-model-name model-name)
+        result (str "index_table_" provider-name "_" abbrev-model-name "_" vector-dimensions)]
+    (throw-if-max-pg-len result "Table name exceeds PostgreSQL limit")
+    result))
+
 (defn default-index
   "Returns the default index spec for a model."
   [embedding-model]
-  (let [{:keys [model-name provider vector-dimensions]} embedding-model
-        ;; This is a hack to ensure we don't exceed postgres' limit of 63 chars for identifier names.
-        abbreviated-model-name (embedding/model->abbrev model-name model-name)
-        table-name (str "index_table_" provider "_" abbreviated-model-name "_" vector-dimensions)]
+  (let [table-name (model-table-name embedding-model)]
     {:embedding-model embedding-model
      :table-name table-name
      :version 0}))
@@ -280,7 +295,9 @@
 (defn- index-name
   "Returns the name for an index for the given index configuration, column, and index type."
   [index suffix]
-  (str (:table-name index) suffix))
+  (let [result (str (:table-name index) suffix)]
+    (throw-if-max-pg-len result "Index name exceeds PostgreSQL limit")
+    result))
 
 (defn hnsw-index-name
   "Returns the name for a HNSW database index for the given semantic search index configuration."
