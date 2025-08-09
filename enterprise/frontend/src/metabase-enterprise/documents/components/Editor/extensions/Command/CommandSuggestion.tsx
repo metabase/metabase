@@ -303,41 +303,43 @@ const CommandSuggestionComponent = forwardRef<
   });
 
   // Search for entities when typing in command mode (for embedding)
-  const { menuItems: searchMenuItems } = useEntitySearch({
-    query,
-    onSelectRecent: useCallback(
-      (item: RecentItem) => {
-        command({
-          embedItem: true,
-          entityId: item.id,
-          model: item.model,
-        });
-      },
-      [command],
-    ),
-    onSelectSearchResult: useCallback(
-      (item: SearchResult) => {
-        command({
-          embedItem: true,
-          entityId: item.id,
-          model: item.model,
-        });
-      },
-      [command],
-    ),
-    enabled: !showLinkSearch && !showEmbedSearch && !!query,
-    searchModels: EMBED_SEARCH_MODELS,
-  });
+  const { menuItems: searchMenuItems, searchResults: commandSearchResults } =
+    useEntitySearch({
+      query,
+      onSelectRecent: useCallback(
+        (item: RecentItem) => {
+          command({
+            embedItem: true,
+            entityId: item.id,
+            model: item.model,
+          });
+        },
+        [command],
+      ),
+      onSelectSearchResult: useCallback(
+        (item: SearchResult) => {
+          command({
+            embedItem: true,
+            entityId: item.id,
+            model: item.model,
+          });
+        },
+        [command],
+      ),
+      enabled: !showLinkSearch && !showEmbedSearch && !!query,
+      searchModels: EMBED_SEARCH_MODELS,
+    });
 
   const currentItems = useMemo(() => {
     if (showLinkSearch || showEmbedSearch) {
       return linkMenuItems;
     }
 
-    // When searching in command mode, combine entity results with command results
-    if (query && searchMenuItems.length > 0) {
-      const limitedSearchItems = searchMenuItems.slice(0, 3);
-      return [...limitedSearchItems, ...commandOptions];
+    // When searching in command mode, only show question search results (not recents)
+    if (query && commandSearchResults.length > 0) {
+      // Build menu items from search results
+      const searchItems = searchMenuItems.slice(0, 3);
+      return [...searchItems, ...commandOptions];
     }
 
     return commandOptions;
@@ -346,6 +348,7 @@ const CommandSuggestionComponent = forwardRef<
     showEmbedSearch,
     linkMenuItems,
     query,
+    commandSearchResults,
     searchMenuItems,
     commandOptions,
   ]);
@@ -364,7 +367,7 @@ const CommandSuggestionComponent = forwardRef<
       }
     } else {
       // When searching in command mode, handle both entity results and commands
-      if (query && searchMenuItems.length > 0) {
+      if (query && commandSearchResults.length > 0) {
         const limitedSearchItems = searchMenuItems.slice(0, 3);
         if (index < limitedSearchItems.length) {
           limitedSearchItems[index].action();
@@ -400,7 +403,7 @@ const CommandSuggestionComponent = forwardRef<
     currentItems.length,
     showLinkSearch,
     showEmbedSearch,
-    searchMenuItems.length,
+    commandSearchResults.length,
   ]);
 
   useEffect(() => {
@@ -509,13 +512,12 @@ const CommandSuggestionComponent = forwardRef<
           <>
             {commandOptions.length > 0 ? (
               <>
-                {query ? (
-                  // When searching, show entity results first (max 3), then commands
+                {query && commandSearchResults.length > 0 ? (
+                  // When searching, show question search results first (max 3), then commands
                   <>
                     {searchMenuItems.slice(0, 3).map((item, index) => (
                       <MenuItemComponent
                         key={`search-${index}`}
-                        ref={(el) => (itemRefs.current[index] = el)}
                         item={item}
                         isSelected={selectedIndex === index}
                         onClick={() => selectItem(index)}
