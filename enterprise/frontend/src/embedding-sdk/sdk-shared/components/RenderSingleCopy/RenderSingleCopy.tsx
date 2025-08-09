@@ -1,8 +1,13 @@
-import { type PropsWithChildren, useEffect, useMemo, useRef } from "react";
+import { type ReactNode, useEffect, useMemo, useRef } from "react";
 
 import { useSingleCopyWrapperIds } from "embedding-sdk/sdk-shared/hooks/use-single-copy-wrapper-ids";
 
+type RenderSingleCopyData = {
+  isFirstCopy: boolean;
+};
+
 type Props = {
+  children: ReactNode | ((data: RenderSingleCopyData) => ReactNode);
   id: string;
   multipleRegisteredInstancesWarningMessage?: string;
 };
@@ -20,7 +25,7 @@ export const RenderSingleCopy = ({
   id,
   children,
   multipleRegisteredInstancesWarningMessage,
-}: PropsWithChildren<Props>) => {
+}: Props) => {
   const { singleCopyIdsMap, setSingleCopyIdsMap } = useSingleCopyWrapperIds();
 
   const currentIdRef = useRef(
@@ -71,6 +76,12 @@ export const RenderSingleCopy = ({
     },
     [multipleRegisteredInstancesWarningMessage, shouldRender, singleCopyIds],
   );
+
+  const isChildrenAsFunction = typeof children === "function";
+
+  if (isChildrenAsFunction) {
+    return children({ isFirstCopy: shouldRender });
+  }
 
   if (!shouldRender) {
     return null;

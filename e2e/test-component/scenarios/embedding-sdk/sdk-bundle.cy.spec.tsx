@@ -90,6 +90,60 @@ describe("scenarios > embedding-sdk > sdk-bundle", () => {
       });
     });
 
+    it("should properly render global Mantine and Emotion styles once for multiple rendered components", () => {
+      const checkStyles = ({
+        expectedMantineStylesLength,
+        expectedEmotionStylesLength,
+      }: {
+        expectedMantineStylesLength?: number;
+        expectedEmotionStylesLength?: number;
+      }) => {
+        cy.get('[data-cy-root] > style[data-mantine-styles="true"]').should(
+          "have.length",
+          expectedMantineStylesLength,
+        );
+        cy.get('[data-cy-root] > style[data-mantine-styles="classes"]').should(
+          "have.length",
+          expectedMantineStylesLength,
+        );
+        // We have 3 usages of `<Global />` component from Emotion, all are wrapped within the RenderSingleCopy
+        cy.get('style[data-emotion="emotion-global"]').should(
+          "have.length",
+          expectedEmotionStylesLength,
+        );
+      };
+
+      const componentsCount = 10;
+
+      cy.mount(
+        <MetabaseProvider
+          authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}
+          locale="en"
+        >
+          {Array.from({ length: componentsCount }, (_, i) => (
+            <InteractiveQuestion
+              key={`q-${i}`}
+              questionId={ORDERS_QUESTION_ID}
+            />
+          ))}
+        </MetabaseProvider>,
+      );
+
+      checkStyles({
+        expectedMantineStylesLength: 1,
+        // We have 3 usages of `<Global />` component from Emotion, all are wrapped within the RenderSingleCopy
+        expectedEmotionStylesLength: 3,
+      });
+
+      // Unmount
+      cy.mount(<></>);
+
+      checkStyles({
+        expectedMantineStylesLength: 0,
+        expectedEmotionStylesLength: 0,
+      });
+    });
+
     it("should update props passed to MetabaseProvider", () => {
       cy.mount(
         <MetabaseProvider
