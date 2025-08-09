@@ -20,6 +20,7 @@ export const CollectionPermissions = ({
         icon="lock"
         aria-label={t`Edit permissions`}
         tooltipLabel={t`Edit permissions`}
+        tooltipPosition="bottom"
       />
     </Link>
   );
