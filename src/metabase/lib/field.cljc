@@ -21,7 +21,6 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.ref :as lib.schema.ref]
-   [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
@@ -36,12 +35,12 @@
 (defn- column-metadata-effective-type
   "Effective type of a column when taking the `::temporal-unit` into account. If we have a temporal extraction like
   `:month-of-year`, then this actually returns an integer rather than the 'original` effective type of `:type/Date` or
-  whatever."
-  [{::keys [temporal-unit], :as column-metadata}]
-  (if (and temporal-unit
-           (contains? lib.schema.temporal-bucketing/datetime-extraction-units temporal-unit))
-    :type/Integer
-    ((some-fn :effective-type :base-type) column-metadata)))
+  whatever.
+
+  Defaults to the `:base-type` if there's no `:effective-type`."
+  [column-metadata]
+  (or (lib.options/correct-effective-type column-metadata)
+      (:base-type column-metadata)))
 
 (defmethod lib.metadata.calculation/type-of-method :metadata/column
   [_query _stage-number column-metadata]

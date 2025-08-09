@@ -275,12 +275,15 @@
         clean)
     (update-vals m ->pMBQL)))
 
+(defn- ref-options->pMBQL [options]
+  (m/assoc-some options :effective-type (lib.options/correct-effective-type options)))
+
 (defmethod ->pMBQL :field
   [[_tag x y]]
   (let [[id-or-name options] (if (map? x)
                                [y x]
                                [x y])]
-    (lib.options/ensure-uuid [:field options id-or-name])))
+    (lib.options/ensure-uuid [:field (ref-options->pMBQL options) id-or-name])))
 
 (defmethod ->pMBQL :value
   [[_tag value opts]]
@@ -314,7 +317,7 @@
 
 (defmethod ->pMBQL :expression
   [[tag value opts]]
-  (lib.options/ensure-uuid [tag opts value]))
+  (lib.options/ensure-uuid [tag (ref-options->pMBQL opts) value]))
 
 (defn- get-or-throw!
   [m k]
@@ -328,11 +331,12 @@
 (defmethod ->pMBQL :aggregation
   [[tag aggregation-index opts, :as clause]]
   (lib.options/ensure-uuid
-   [tag opts (or (get *legacy-index->pMBQL-uuid* aggregation-index)
-                 (throw (ex-info (str "Error converting :aggregation reference: no aggregation at index "
-                                      aggregation-index)
-                                 {:clause clause
-                                  :error ::legacy-index->pMBQL-uuid-missing})))]))
+   [tag (ref-options->pMBQL opts)
+    (or (get *legacy-index->pMBQL-uuid* aggregation-index)
+        (throw (ex-info (str "Error converting :aggregation reference: no aggregation at index "
+                             aggregation-index)
+                        {:clause clause
+                         :error ::legacy-index->pMBQL-uuid-missing})))]))
 
 (defmethod ->pMBQL :aggregation-options
   [[_tag aggregation options]]
