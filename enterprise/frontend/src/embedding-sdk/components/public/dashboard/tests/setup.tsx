@@ -17,10 +17,10 @@ import {
 import { setupDashcardQueryEndpoints } from "__support__/server-mocks/dashcard";
 import { setupNotificationChannelsEndpoints } from "__support__/server-mocks/pulse";
 import { screen } from "__support__/ui";
-import type { MetabaseProviderProps } from "embedding-sdk/components/public/MetabaseProvider";
 import { renderWithSDKProviders } from "embedding-sdk/test/__support__/ui";
 import { createMockSdkConfig } from "embedding-sdk/test/mocks/config";
 import { setupSdkState } from "embedding-sdk/test/server-mocks/sdk-init";
+import type { MetabaseProviderProps } from "embedding-sdk/types/metabase-provider";
 import { useLocale } from "metabase/common/hooks/use-locale";
 import { Box } from "metabase/ui";
 import {

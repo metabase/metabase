@@ -26,7 +26,7 @@ import { makeMainReducers } from "metabase/reducers-main";
 import { publicReducers } from "metabase/reducers-public";
 import type { MantineThemeOverride } from "metabase/ui";
 import { ThemeProvider } from "metabase/ui";
-import { themeProviderContext } from "metabase/ui/components/theme/ThemeProvider/context";
+import { ThemeProviderContext } from "metabase/ui/components/theme/ThemeProvider/context";
 import type { State } from "metabase-types/store";
 import { createMockState } from "metabase-types/store/mocks";
 
@@ -248,7 +248,7 @@ export function TestWrapper({
   return (
     <MetabaseReduxProvider store={store}>
       <MaybeDNDProvider hasDND={withDND}>
-        <themeProviderContext.Provider value={{ withCssVariables }}>
+        <ThemeProviderContext.Provider value={{ withCssVariables }}>
           <ThemeProvider theme={theme}>
             <GlobalStylesForTest />
 
@@ -259,7 +259,7 @@ export function TestWrapper({
             </MaybeKBar>
             {withUndos && <UndoListing />}
           </ThemeProvider>
-        </themeProviderContext.Provider>
+        </ThemeProviderContext.Provider>
       </MaybeDNDProvider>
     </MetabaseReduxProvider>
   );
@@ -417,9 +417,9 @@ const ThemeProviderWrapper = ({
   children,
   ...props
 }: React.PropsWithChildren) => (
-  <themeProviderContext.Provider value={{ withCssVariables: false }}>
+  <ThemeProviderContext.Provider value={{ withCssVariables: false }}>
     <ThemeProvider {...props}>{children}</ThemeProvider>
-  </themeProviderContext.Provider>
+  </ThemeProviderContext.Provider>
 );
 
 export function renderWithTheme(children: React.ReactElement) {
