@@ -2,21 +2,45 @@
 import { css } from "@emotion/react";
 
 import { alpha, darken, isDark, isLight, lighten } from "metabase/lib/colors";
-import type { MantineTheme } from "metabase/ui";
+import type { MantineTheme, MantineThemeOverride } from "metabase/ui";
 
 import type { ColorOperation } from "../types/private/css-variables";
 
 import { DYNAMIC_CSS_VARIABLES } from "./dynamic-css-vars-config";
 
-const isColorDefined = (color: string) =>
-  color && color !== "transparent" && color !== "unset";
+const isColorDefined = (color?: string): color is string =>
+  !!color && color !== "transparent" && color !== "unset";
+
+/**
+ * Applies color operations (lighten, darken, alpha) to a base color.
+ */
+export function applyColorOperation(
+  baseColor: string,
+  operation: ColorOperation,
+): string {
+  let mappedColor = baseColor;
+
+  if (operation.lighten) {
+    mappedColor = lighten(mappedColor, operation.lighten);
+  }
+
+  if (operation.darken) {
+    mappedColor = darken(mappedColor, operation.darken);
+  }
+
+  if (operation.alpha) {
+    mappedColor = alpha(mappedColor, operation.alpha);
+  }
+
+  return mappedColor;
+}
 
 /**
  * Determine if the current color scheme is dark based on the palette.
  */
-export function getIsDarkThemeFromPalette(theme: MantineTheme) {
-  const backgroundColor = theme.fn.themeColor("background");
-  const foregroundColor = theme.fn.themeColor("text-dark");
+export function getIsDarkThemeFromPalette(theme: MantineThemeOverride) {
+  const backgroundColor = theme.fn?.themeColor?.("background");
+  const foregroundColor = theme.fn?.themeColor?.("text-dark");
 
   // Dark background color indicates a dark theme.
   if (isColorDefined(backgroundColor)) {
@@ -53,19 +77,8 @@ export function getDynamicCssVariables(theme: MantineTheme) {
         return [cssVar, null];
       }
 
-      let mappedColor = theme.fn.themeColor(operation.source);
-
-      if (operation.lighten) {
-        mappedColor = lighten(mappedColor, operation.lighten);
-      }
-
-      if (operation.darken) {
-        mappedColor = darken(mappedColor, operation.darken);
-      }
-
-      if (operation.alpha) {
-        mappedColor = alpha(mappedColor, operation.alpha);
-      }
+      const baseColor = theme.fn.themeColor(operation.source);
+      const mappedColor = applyColorOperation(baseColor, operation);
 
       return [cssVar, mappedColor];
     })
