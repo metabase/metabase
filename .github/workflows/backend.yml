@@ -36,7 +36,7 @@ jobs:
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
         with:
-          m2-cache-key: "eastwood"
+          m2-cache-key: 'eastwood'
       - run: clojure -X:dev:ee:ee-dev:drivers:drivers-dev:test:eastwood
         name: Run Eastwood linter
 
@@ -109,19 +109,9 @@ jobs:
         with:
           m2-cache-key: be-tests
           java-version: "${{ matrix.java-version }}"
-      # Depending on which files changed, we might either have to build static-viz
-      # from scratch or download the previously built artifact
-      - name: Build static-viz frontend
+      - name: Prepare static-viz bundle
         if: ${{ matrix.job.build-static-viz == 'true' && !inputs.skip }}
-        run: yarn build-static-viz
-        env:
-          MB_EDITION: ${{ matrix.job.edition }}
-      - name: Download Static Viz Bundle Artifact
-        if: ${{ matrix.job.build-static-viz == 'true' && !inputs.skip }}
-        uses: actions/download-artifact@v4
-        with:
-          name: static-viz-bundle-${{ github.sha }}
-          path: resources/frontend_client/app/dist
+        uses: ./.github/actions/prepare-static-viz
 
       - name: "Test Java ${{ matrix.java-version }} ${{ matrix.job.name }}"
         id: run-java-tests

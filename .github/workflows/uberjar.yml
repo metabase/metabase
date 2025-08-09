@@ -170,7 +170,7 @@ jobs:
     env:
       MB_EDITION: ${{ matrix.edition }}
       INTERACTIVE: false
-      SKIP_LICENSES: ${{ github.event_name == 'pull_request' }}  # faster builds for dev
+      SKIP_LICENSES: ${{ github.event_name == 'pull_request' }} # faster builds for dev
     steps:
       - name: Check out the code
         uses: actions/checkout@v4
@@ -185,8 +185,14 @@ jobs:
         with:
           m2-cache-key: uberjar
           java-version: "${{ needs.get-build-requirements.outputs.java_version || 21 }}"
+
+      # Build static-viz bundle with caching
+      - name: Prepare static-viz bundle
+        uses: ./.github/actions/prepare-static-viz
+
       - name: Build
         run: ./bin/build.sh
+
       - name: Prepare uberjar artifact
         uses: ./.github/actions/prepare-uberjar-artifact
         with:

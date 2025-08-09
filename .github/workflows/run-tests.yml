@@ -24,6 +24,7 @@ jobs:
       frontend_all: ${{ steps.changes.outputs.frontend_all }}
       frontend_sources: ${{ steps.changes.outputs.frontend_sources }}
       documentation: ${{ steps.changes.outputs.documentation }}
+      visualizations: ${{ steps.changes.outputs.visualizations }}
     steps:
       - uses: actions/checkout@v4
       - name: Test which files changed
@@ -35,53 +36,21 @@ jobs:
           list-files: csv
           filters: .github/file-paths.yaml
 
-  static-viz-files-changed:
-    name: Check whether static-viz files changed
-    if: ${{ !contains(github.event.pull_request.labels.*.name,'ci skip') }}
-    runs-on: ubuntu-22.04
-    timeout-minutes: 10
-    outputs:
-      static_viz: ${{ steps.static_viz.outputs.static_viz }}
-    steps:
-      - uses: actions/checkout@v4
-      - name: Prepare front-end environment
-        uses: ./.github/actions/prepare-frontend
-      - name: Prepare back-end environment
-        uses: ./.github/actions/prepare-backend
-        with:
-          m2-cache-key: "files-changed"
-      - name: Build static-viz frontend
-        run: yarn build-static-viz
-        env:
-          MB_EDITION: ee
-      - name: Upload Static Viz Bundle Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: static-viz-bundle-${{ github.sha }}
-          path: resources/frontend_client/app/dist
-
-      - name: Check for static viz changes
-        uses: dorny/paths-filter@v3.0.0
-        id: static_viz
-        with:
-          token: ${{ github.token }}
-          filters: .github/static-viz-sources.yaml
-
   uberjar:
-    needs: [files-changed, static-viz-files-changed]
+    needs: [files-changed]
     if: ${{ !cancelled() && !(needs.files-changed.outputs.documentation == 'true' && needs.files-changed.outputs.backend_all == 'false' && needs.files-changed.outputs.frontend_all == 'false' && needs.files-changed.outputs.e2e_all == 'false') }}
     uses: ./.github/workflows/uberjar.yml
     secrets: inherit
     with:
-      source_changed: ${{ needs.files-changed.outputs.backend_all == 'true' || needs.files-changed.outputs.frontend_all == 'true' || needs.static-viz-files-changed.outputs.static_viz == 'true' }}
+      source_changed: ${{ needs.files-changed.outputs.backend_all == 'true' || needs.files-changed.outputs.frontend_all == 'true' || needs.files-changed.outputs.visualizations == 'true' }}
 
   backend-tests:
     if: ${{ !cancelled() }}
-    needs: [files-changed, static-viz-files-changed]
+    needs: [files-changed]
     uses: ./.github/workflows/backend.yml
     secrets: inherit
     with:
-      skip: ${{ needs.files-changed.outputs.backend_all != 'true' && needs.static-viz-files-changed.outputs.static_viz != 'true' }}
+      skip: ${{ needs.files-changed.outputs.backend_all != 'true' && needs.files-changed.outputs.visualizations != 'true' }}
 
   app-db-tests:
     needs: files-changed
