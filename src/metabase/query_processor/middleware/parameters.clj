@@ -9,7 +9,6 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
-   [metabase.lib.util :as lib.util]
    [metabase.lib.walk :as lib.walk]
    [metabase.query-processor.middleware.parameters.mbql :as qp.mbql]
    [metabase.query-processor.middleware.parameters.native :as qp.native]
