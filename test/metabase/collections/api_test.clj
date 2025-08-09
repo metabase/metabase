@@ -532,6 +532,8 @@
 ;;; |                                              GET /collection/:id                                               |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(def message-403 "You don't have permissions to see that or it doesn't exist")
+
 (deftest fetch-collection-test
   (testing "GET /api/collection/:id"
     (testing "check that we can see collection details"
@@ -547,7 +549,7 @@
     (testing "check that collections detail properly checks permissions"
       (mt/with-non-admin-groups-no-root-collection-perms
         (mt/with-temp [:model/Collection collection]
-          (is (= "You don't have permissions to do that."
+          (is (= message-403
                  (mt/user-http-request :rasta :get 403 (str "collection/" (u/the-id collection))))))))
 
     (testing "for personal collections, it should return name and slug in user's locale"
@@ -1322,7 +1324,7 @@
              (api-get-lucky-personal-collection :crowberto))))
 
     (testing "Other, non-admin Users should not be allowed to fetch others' Personal Collections!"
-      (is (= "You don't have permissions to do that."
+      (is (= message-403
              (api-get-lucky-personal-collection :rasta, :expected-status-code 403))))))
 
 (def ^:private lucky-personal-subcollection-item
@@ -1636,7 +1638,7 @@
                      :model/Dashboard {dash-id :id} {:collection_id coll-id}
                      :model/Card {card-id :id} {:collection_id coll-id}
                      :model/DashboardCard _ {:dashboard_id dash-id :card_id card-id}]
-        (is (= "You don't have permissions to do that."
+        (is (= message-403
                (mt/user-http-request :rasta :get 403 (str "collection/" coll-id "/dashboard-question-candidates"))))))))
 
 (deftest dashboard-question-candidates-excludes-archived-cards-test
@@ -1896,7 +1898,7 @@
   (testing "POST /api/collection/:id/move-dashboard-question-candidates"
     (testing "Non-admin request (using `:rasta` instead of `:crowberto`)"
       (mt/with-temp [:model/Collection {coll-id :id} {}]
-        (is (= "You don't have permissions to do that."
+        (is (= message-403
                (mt/user-http-request :rasta :post 403 (format "collection/%d/move-dashboard-question-candidates" coll-id))))))))
 
 (deftest post-move-dashboard-question-candidates-multiple-dashboards
@@ -2488,7 +2490,7 @@
     (testing "check that users without write perms aren't allowed to update a Collection"
       (mt/with-non-admin-groups-no-root-collection-perms
         (mt/with-temp [:model/Collection collection]
-          (is (= "You don't have permissions to do that."
+          (is (= message-403
                  (mt/user-http-request :rasta :put 403 (str "collection/" (u/the-id collection))
                                        {:name "My Beautiful Collection"}))))))))
 
@@ -2522,7 +2524,7 @@
     (testing "I shouldn't be allowed to archive a Collection without proper perms"
       (mt/with-non-admin-groups-no-root-collection-perms
         (mt/with-temp [:model/Collection collection]
-          (is (= "You don't have permissions to do that."
+          (is (= message-403
                  (mt/user-http-request :rasta :put 403 (str "collection/" (u/the-id collection))
                                        {:archived true})))))
 
@@ -2533,7 +2535,7 @@
           (mt/with-temp [:model/Collection collection-a  {}
                          :model/Collection _collection-b {:location (collection/children-location collection-a)}]
             (perms/grant-collection-readwrite-permissions! (perms/all-users-group) collection-a)
-            (is (= "You don't have permissions to do that."
+            (is (= message-403
                    (mt/user-http-request :rasta :put 403 (str "collection/" (u/the-id collection-a))
                                          {:archived true})))))))))
 
@@ -2561,7 +2563,7 @@
           (mt/with-temp [:model/Collection collection-a {}
                          :model/Collection collection-b {}]
             (perms/grant-collection-readwrite-permissions! (perms/all-users-group) collection-a)
-            (is (= "You don't have permissions to do that."
+            (is (= message-403
                    (mt/user-http-request :rasta :put 403 (str "collection/" (u/the-id collection-a))
                                          {:parent_id (u/the-id collection-b)}))))))
 
@@ -2576,7 +2578,7 @@
                              :model/Collection collection-c {}]
                 (doseq [collection [collection-a collection-b]]
                   (perms/grant-collection-readwrite-permissions! (perms/all-users-group) collection))
-                (is (= "You don't have permissions to do that."
+                (is (= message-403
                        (mt/user-http-request :rasta :put 403 (str "collection/" (u/the-id collection-a))
                                              {:parent_id (u/the-id collection-c)}))))))
 
@@ -2589,7 +2591,7 @@
                              :model/Collection collection-c  {}]
                 (doseq [collection [collection-a collection-c]]
                   (perms/grant-collection-readwrite-permissions! (perms/all-users-group) collection))
-                (is (= "You don't have permissions to do that."
+                (is (= message-403
                        (mt/user-http-request :rasta :put 403 (str "collection/" (u/the-id collection-a))
                                              {:parent_id (u/the-id collection-c)}))))))
 
@@ -2602,7 +2604,7 @@
                              :model/Collection collection-c {}]
                 (doseq [collection [collection-b collection-c]]
                   (perms/grant-collection-readwrite-permissions! (perms/all-users-group) collection))
-                (is (= "You don't have permissions to do that."
+                (is (= message-403
                        (mt/user-http-request :rasta :put 403 (str "collection/" (u/the-id collection-a))
                                              {:parent_id (u/the-id collection-c)})))))))))))
 
@@ -2919,7 +2921,7 @@
             (perms/revoke-collection-permissions! (perms/all-users-group) grandchild-collection)
             (perms/grant-collection-readwrite-permissions! (perms/all-users-group) parent-collection)
             ;; No permissions for child or grandchild
-            (is (= "You don't have permissions to do that."
+            (is (= message-403
                    (mt/user-http-request :rasta :put 403 (str "collection/" (u/the-id parent-collection)) {:archived true}))))
 
           (testing "Should return 403 if user only has read permissions for descendants"
@@ -2929,7 +2931,7 @@
             (perms/grant-collection-readwrite-permissions! (perms/all-users-group) parent-collection)
             (perms/grant-collection-read-permissions! (perms/all-users-group) child-collection)
             (perms/grant-collection-read-permissions! (perms/all-users-group) grandchild-collection)
-            (is (= "You don't have permissions to do that."
+            (is (= message-403
                    (mt/user-http-request :rasta :put 403 (str "collection/" (u/the-id parent-collection)) {:archived true}))))
 
           (testing "Should return 200 if user has read-write permissions for all descendants"
