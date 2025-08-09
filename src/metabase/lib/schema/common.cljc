@@ -5,7 +5,8 @@
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.memoize :as u.memo]))
+   [metabase.util.memoize :as u.memo]
+   [metabase.util.performance :as perf]))
 
 (comment metabase.types.core/keep-me)
 
@@ -30,14 +31,10 @@
 (defn normalize-map-no-kebab-case
   "Part of [[normalize-map]]; converts keys to keywords but DOES NOT convert to `kebab-case`."
   [m]
-  ;; check to make sure we actually need to update anything before we do it. [[update-keys]] always creates new maps
-  ;; even if nothing has changed, this way we can avoid creating a bunch of garbage for already-normalized maps
-  (let [m (cond-> m
-            (and (map? m)
-                 (some string? (keys m)))
-            (update-keys keyword))]
-    (cond-> m
-      (string? (:lib/type m)) (update :lib/type keyword))))
+  (when (map? m)
+    (let [m (perf/update-keys m keyword)]
+      (cond-> m
+        (string? (:lib/type m)) (update :lib/type keyword)))))
 
 (def ^:private ^{:arglists '([k])} memoized-kebab-key
   "Calculating the kebab-case version of a key every time is pretty slow (even with the LRU caching
@@ -49,7 +46,7 @@
   "Convert a map to kebab case, for use with `:decode/normalize`."
   [m]
   (when (map? m)
-    (update-keys m memoized-kebab-key)))
+    (perf/update-keys m memoized-kebab-key)))
 
 (defn normalize-map
   "Base normalization behavior for a pMBQL map: keywordize keys and keywordize `:lib/type`; convert map to
