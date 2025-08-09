@@ -165,7 +165,7 @@
   (testing "Does a join using a source query get its Tables resolved?"
     (is (=? (lib.tu.macros/mbql-query venues
               {:joins    [{:alias        "cat"
-                           :source-query {:source-table $$categories}
+                           :source-table $$categories
                            :strategy     :left-join
                            :condition    [:=
                                           $category-id
@@ -206,7 +206,7 @@
                             [:field (mt/id :categories :id) {:join-alias "cat"}]
                             [:field (mt/id :categories :name) {:join-alias "cat"}]]
                  :joins    [{:alias           "cat"
-                             :source-query    {:source-table $$categories}
+                             :source-table    $$categories
                              :source-metadata (for [col source-metadata]
                                                 (dissoc col :fingerprint))
                              :strategy        :left-join
