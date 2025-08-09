@@ -131,7 +131,7 @@ export type SdkIframeEmbedTemplateSettings =
 
 /** Settings used by the sdk embed route */
 export type SdkIframeEmbedSettings = SdkIframeEmbedBaseSettings &
-  SdkIframeEmbedTemplateSettings;
+  Record<string, unknown>;
 
 /** Settings used by the embed.js constructor */
 export type SdkIframeEmbedTagSettings = SdkIframeEmbedSettings & {

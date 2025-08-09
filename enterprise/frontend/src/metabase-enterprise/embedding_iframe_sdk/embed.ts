@@ -23,8 +23,12 @@ import { attributeToSettingKey, parseAttributeValue } from "./webcomponents";
 
 const EMBEDDING_ROUTE = "embed/sdk/v1";
 
+// Forward declaration to resolve circular reference
+let CustomEmbedElement: CustomEmbedElementConstructor;
+
 /** list of active embeds, used to know which embeds to update when the global config changes */
-const _activeEmbeds: Set<MetabaseEmbedElement> = new Set();
+const _activeEmbeds: Set<InstanceType<CustomEmbedElementConstructor>> =
+  new Set();
 
 // Stub of MetabaseEmbedElement to satisfy type requirements of helper utilities below.
 // The full custom elements are declared later in this file.
@@ -44,7 +48,7 @@ const setupConfigWatcher = () => {
         obj[prop as string] = value;
 
         _activeEmbeds.forEach((embedElement) => {
-          embedElement.updateSettings({ [prop as string]: value });
+          embedElement.setAttribute(prop as string, value as string);
         });
         return true;
       },
@@ -78,11 +82,13 @@ export const updateAllEmbeds = (config: Partial<SdkIframeEmbedSettings>) => {
   });
 };
 
-const registerEmbed = (embed: MetabaseEmbedElement) => {
+const registerEmbed = (embed: InstanceType<CustomEmbedElementConstructor>) => {
   _activeEmbeds.add(embed);
 };
 
-const unregisterEmbed = (embed: MetabaseEmbedElement) => {
+const unregisterEmbed = (
+  embed: InstanceType<CustomEmbedElementConstructor>,
+) => {
   _activeEmbeds.delete(embed);
 };
 
@@ -90,23 +96,109 @@ if (typeof window !== "undefined") {
   setupConfigWatcher();
 }
 
-class MetabaseEmbed {
+const raiseError = (message: string) => {
+  throw new MetabaseError("EMBED_ERROR", message);
+};
+
+type CustomEmbedElementConstructor = typeof CustomEmbedElementBase & {
+  new (): CustomEmbedElementBase;
+};
+
+abstract class CustomEmbedElementBase extends HTMLElement {
+  private _iframe: HTMLIFrameElement | null = null;
+  protected abstract _componentName: string;
+  protected abstract _attributeNames: readonly string[];
+
   static readonly VERSION = "1.1.0";
 
-  private _settings: SdkIframeEmbedTagSettings;
+  private _settings: SdkIframeEmbedTagSettings =
+    {} as SdkIframeEmbedTagSettings;
   private _isEmbedReady: boolean = false;
-  private iframe: HTMLIFrameElement | null = null;
-
   private _eventHandlers: Map<
     SdkIframeEmbedEvent["type"],
     Set<SdkIframeEmbedEventHandler>
   > = new Map();
 
-  constructor(settings: SdkIframeEmbedTagSettings) {
-    this._settings = settings;
-    this._settings._isLocalhost = this._getIsLocalhost();
+  get globalSettings() {
+    return (window as any).metabaseConfig || {};
+  }
 
-    this._setup();
+  // returns the attributes converted to camelCase + global settings
+  get properties(): Partial<SdkIframeEmbedTagSettings> {
+    const attributesConverted = this._attributeNames.reduce(
+      (acc, attr) => {
+        const attrValue = this.getAttribute(attr as string);
+        if (attrValue !== null) {
+          const key = attributeToSettingKey(attr as string);
+          acc[key] = parseAttributeValue(attrValue);
+        }
+        return acc;
+      },
+      {} as Record<string, unknown>,
+    );
+
+    return {
+      ...this.globalSettings,
+      ...attributesConverted,
+      componentName: this._componentName,
+    };
+  }
+
+  addEventListener(
+    type: string,
+    listener: EventListenerOrEventListenerObject | SdkIframeEmbedEventHandler,
+    options?: boolean | AddEventListenerOptions,
+  ): void {
+    if (type === "ready") {
+      const eventType = type as SdkIframeEmbedEvent["type"];
+      const handler = listener as SdkIframeEmbedEventHandler;
+      if (!this._eventHandlers.has(eventType)) {
+        this._eventHandlers.set(eventType, new Set());
+      }
+
+      // For the ready event, invoke the handler immediately if the embed is already ready.
+      if (eventType === "ready" && this._isEmbedReady) {
+        handler();
+        return;
+      }
+
+      this._eventHandlers.get(eventType)!.add(handler);
+      return;
+    }
+
+    // Fall back to the native HTMLElement event mechanism for all other events.
+    super.addEventListener(
+      type,
+      listener as EventListenerOrEventListenerObject,
+      options,
+    );
+  }
+
+  removeEventListener(
+    type: string,
+    listener: EventListenerOrEventListenerObject | SdkIframeEmbedEventHandler,
+    options?: boolean | EventListenerOptions,
+  ): void {
+    if (type === "ready") {
+      const eventType = type as SdkIframeEmbedEvent["type"];
+      const handler = listener as SdkIframeEmbedEventHandler;
+      const handlers = this._eventHandlers.get(eventType);
+
+      if (handlers) {
+        handlers.delete(handler);
+
+        if (handlers.size === 0) {
+          this._eventHandlers.delete(eventType);
+        }
+      }
+      return;
+    }
+
+    super.removeEventListener(
+      type,
+      listener as EventListenerOrEventListenerObject,
+      options,
+    );
   }
 
   /**
@@ -124,72 +216,83 @@ class MetabaseEmbed {
       }
     }
 
-    // Merge incoming settings regardless of readiness so they're applied once the iframe signals ready.
-    const allowedSettings = Object.fromEntries(
-      Object.entries(settings).filter(([key]) =>
-        ALLOWED_EMBED_SETTING_KEYS.includes(key as AllowedEmbedSettingKey),
-      ),
-    );
-
     // Update local cache first.
-    this._settings = { ...this._settings, ...allowedSettings };
+    this._settings = { ...this._settings, ...settings };
 
     // If the iframe isn't ready yet, don't send the message now.
     if (!this._isEmbedReady) {
       return;
     }
 
-    // Iframe is ready – propagate only the delta (allowedSettings)
-    if (Object.keys(allowedSettings).length > 0) {
+    // Iframe is ready – propagate the delta
+    if (Object.keys(settings).length > 0) {
       this._validateEmbedSettings(this._settings);
-      this._sendMessage(
-        "metabase.embed.setSettings",
-        this._settings as SdkIframeEmbedSettings,
-      );
+      this._setEmbedSettings(this._settings);
     }
   }
 
-  public destroy() {
+  destroy() {
     window.removeEventListener("message", this._handleMessage);
     this._isEmbedReady = false;
     this._eventHandlers.clear();
 
-    if (this.iframe) {
-      this.iframe.remove();
-      this.iframe = null;
+    if (this._iframe) {
+      this._iframe.remove();
+      this._iframe = null;
     }
   }
 
-  public addEventListener(
-    eventType: SdkIframeEmbedEvent["type"],
-    handler: SdkIframeEmbedEventHandler,
-  ) {
-    if (!this._eventHandlers.has(eventType)) {
-      this._eventHandlers.set(eventType, new Set());
-    }
+  connectedCallback() {
+    this.style.display = "block";
 
-    // For the ready event, invoke the handler immediately if the embed is already ready.
-    if (eventType === "ready" && this._isEmbedReady) {
-      handler();
+    if (this._iframe) {
+      // already initialised
       return;
     }
 
-    this._eventHandlers.get(eventType)!.add(handler);
+    if (!this.id) {
+      this.id = `metabase-embed-${Math.random().toString(36).slice(2)}`;
+    }
+
+    try {
+      const initialSettings = {
+        target: `#${this.id}`,
+        ...this.properties,
+      };
+
+      this._settings = initialSettings as SdkIframeEmbedTagSettings;
+      this._settings._isLocalhost = this._getIsLocalhost();
+      this._setup();
+
+      registerEmbed(this);
+    } catch (error) {
+      console.error("[metabase.embed.error]", error);
+    }
   }
 
-  public removeEventListener(
-    eventType: SdkIframeEmbedEvent["type"],
-    handler: SdkIframeEmbedEventHandler,
+  disconnectedCallback() {
+    this.destroy();
+    unregisterEmbed(this);
+  }
+
+  attributeChangedCallback(
+    attrName: string,
+    oldVal: string | null,
+    newVal: string | null,
   ) {
-    const handlers = this._eventHandlers.get(eventType);
-
-    if (handlers) {
-      handlers.delete(handler);
-
-      if (handlers.size === 0) {
-        this._eventHandlers.delete(eventType);
-      }
+    if (!this._iframe || oldVal === newVal) {
+      return;
     }
+
+    const key = attributeToSettingKey(attrName) as keyof SdkIframeEmbedSettings;
+    if (
+      (DISABLE_UPDATE_FOR_KEYS as readonly string[]).includes(key as string)
+    ) {
+      console.error(`${key} cannot be updated after the embed is created`);
+      return;
+    }
+
+    this.updateSettings(this.properties);
   }
 
   private _emitEvent(event: SdkIframeEmbedEvent) {
@@ -218,16 +321,16 @@ class MetabaseEmbed {
 
     const { instanceUrl, target, iframeClassName } = this._settings;
 
-    this.iframe = document.createElement("iframe");
-    this.iframe.src = `${instanceUrl}/${EMBEDDING_ROUTE}`;
-    this.iframe.style.width = "100%";
-    this.iframe.style.height = "100%";
-    this.iframe.style.border = "none";
+    this._iframe = document.createElement("iframe");
+    this._iframe.src = `${instanceUrl}/${EMBEDDING_ROUTE}`;
+    this._iframe.style.width = "100%";
+    this._iframe.style.height = "100%";
+    this._iframe.style.border = "none";
 
-    this.iframe.setAttribute("data-metabase-embed", "true");
+    this._iframe.setAttribute("data-metabase-embed", "true");
 
     if (iframeClassName) {
-      this.iframe.classList.add(iframeClassName);
+      this._iframe.classList.add(iframeClassName);
     }
 
     window.addEventListener("message", this._handleMessage);
@@ -245,7 +348,7 @@ class MetabaseEmbed {
       return;
     }
 
-    parentContainer.appendChild(this.iframe);
+    parentContainer.appendChild(this._iframe);
   }
 
   private _getIsLocalhost() {
@@ -269,36 +372,36 @@ class MetabaseEmbed {
       raiseError("instanceUrl must be provided");
     }
 
-    if (!settings.dashboardId && !settings.questionId && !settings.template) {
-      raiseError(
-        "either dashboardId, questionId, or template must be provided",
-      );
-    }
+    // if (!settings.dashboardId && !settings.questionId && !settings.template) {
+    //   raiseError(
+    //     "either dashboardId, questionId, or template must be provided",
+    //   );
+    // }
 
-    if (
-      settings.template === "exploration" &&
-      (settings.dashboardId || settings.questionId)
-    ) {
-      raiseError(
-        "the exploration template can't be used with dashboardId or questionId",
-      );
-    }
+    // if (
+    //   settings.template === "exploration" &&
+    //   (settings.dashboardId || settings.questionId)
+    // ) {
+    //   raiseError(
+    //     "the exploration template can't be used with dashboardId or questionId",
+    //   );
+    // }
 
-    if (
-      (settings.template === "view-content" ||
-        settings.template === "curate-content") &&
-      !settings.initialCollection
-    ) {
-      raiseError(
-        `initialCollection must be provided for the ${settings.template} template`,
-      );
-    }
+    // if (
+    //   (settings.template === "view-content" ||
+    //     settings.template === "curate-content") &&
+    //   !settings.initialCollection
+    // ) {
+    //   raiseError(
+    //     `initialCollection must be provided for the ${settings.template} template`,
+    //   );
+    // }
 
-    if (settings.dashboardId && settings.questionId) {
-      raiseError(
-        "can't use both dashboardId and questionId at the same time. to change the question to a dashboard, set the questionId to null (and vice-versa)",
-      );
-    }
+    // if (settings.dashboardId && settings.questionId) {
+    //   raiseError(
+    //     "can't use both dashboardId and questionId at the same time. to change the question to a dashboard, set the questionId to null (and vice-versa)",
+    //   );
+    // }
 
     // Ensure auth methods are mutually exclusive
     const authMethods = [
@@ -323,7 +426,7 @@ class MetabaseEmbed {
   private _handleMessage = async (
     event: MessageEvent<SdkIframeEmbedTagMessage>,
   ) => {
-    if (event.source !== this.iframe?.contentWindow) {
+    if (event.source !== this._iframe?.contentWindow) {
       // ignore messages from other iframes
       return;
     }
@@ -338,9 +441,9 @@ class MetabaseEmbed {
       }
 
       this._isEmbedReady = true;
-      if (this.iframe) {
+      if (this._iframe) {
         // this is used from tests to await the loading of the iframe
-        this.iframe.setAttribute("data-iframe-loaded", "true");
+        this._iframe.setAttribute("data-iframe-loaded", "true");
       }
       this._setEmbedSettings(this._settings);
       this._emitEvent({ type: "ready" });
@@ -355,8 +458,8 @@ class MetabaseEmbed {
     type: Message["type"],
     data: Message["data"],
   ) {
-    if (this.iframe?.contentWindow) {
-      this.iframe.contentWindow.postMessage({ type, data }, "*");
+    if (this._iframe?.contentWindow) {
+      this._iframe.contentWindow.postMessage({ type, data }, "*");
     }
   }
 
@@ -429,142 +532,21 @@ class MetabaseEmbed {
   }
 }
 
-const raiseError = (message: string) => {
-  throw new MetabaseError("EMBED_ERROR", message);
-};
-
 function createCustomElement<Arr extends readonly string[]>(
-  tagName: string,
+  componentName: string,
   attributeNames: Arr,
 ) {
-  class CustomEmbedElement extends HTMLElement {
-    private _embed: MetabaseEmbed | null = null;
+  CustomEmbedElement = class extends CustomEmbedElementBase {
+    protected _componentName: string = componentName;
+    protected _attributeNames: readonly string[] = attributeNames;
 
     static get observedAttributes() {
       return attributeNames as readonly string[];
     }
+  };
 
-    addEventListener(
-      type: string,
-      listener: EventListenerOrEventListenerObject | SdkIframeEmbedEventHandler,
-      options?: boolean | AddEventListenerOptions,
-    ): void {
-      if (type === "ready") {
-        // Forward Metabase SDK specific events to the underlying embed instance.
-        this._embed?.addEventListener(
-          type as SdkIframeEmbedEvent["type"],
-          listener as SdkIframeEmbedEventHandler,
-        );
-        return;
-      }
-
-      // Fall back to the native HTMLElement event mechanism for all other events.
-      super.addEventListener(
-        type,
-        listener as EventListenerOrEventListenerObject,
-        options,
-      );
-    }
-
-    removeEventListener(
-      type: string,
-      listener: EventListenerOrEventListenerObject | SdkIframeEmbedEventHandler,
-      options?: boolean | EventListenerOptions,
-    ): void {
-      if (type === "ready") {
-        this._embed?.removeEventListener(
-          type as SdkIframeEmbedEvent["type"],
-          listener as SdkIframeEmbedEventHandler,
-        );
-        return;
-      }
-
-      super.removeEventListener(
-        type,
-        listener as EventListenerOrEventListenerObject,
-        options,
-      );
-    }
-
-    updateSettings(settings: Partial<SdkIframeEmbedSettings>) {
-      this._embed?.updateSettings(settings);
-    }
-
-    connectedCallback() {
-      this.style.display = "block";
-
-      if (this._embed) {
-        // already initialised
-        return;
-      }
-
-      // we need to copy the settings, we don't want to accidentally mutate the shared object
-      // TODO: do deep copy to be sure we're not sharing the theme
-      const settings: Record<string, unknown> = {
-        ...(window.metabaseConfig || {}),
-      };
-
-      // Read element-specific attributes
-      attributeNames.forEach((attr) => {
-        const attrValue = this.getAttribute(attr as string);
-        if (attrValue !== null) {
-          const key = attributeToSettingKey(attr as string);
-          settings[key] = parseAttributeValue(attrValue);
-        }
-      });
-
-      if (!this.id) {
-        this.id = `metabase-embed-${Math.random().toString(36).slice(2)}`;
-      }
-      settings.target = `#${this.id}`;
-
-      try {
-        this._embed = new MetabaseEmbed(
-          settings as unknown as SdkIframeEmbedTagSettings,
-        );
-        registerEmbed(this as unknown as MetabaseEmbedElement);
-      } catch (error) {
-        console.error("[metabase.embed.error]", error);
-      }
-    }
-
-    disconnectedCallback() {
-      this._embed?.destroy();
-      this._embed = null;
-      unregisterEmbed(this as unknown as MetabaseEmbedElement);
-    }
-
-    attributeChangedCallback(
-      attrName: string,
-      oldVal: string | null,
-      newVal: string | null,
-    ) {
-      if (!this._embed || oldVal === newVal) {
-        return;
-      }
-
-      const key = attributeToSettingKey(
-        attrName,
-      ) as keyof SdkIframeEmbedSettings;
-      if (
-        (DISABLE_UPDATE_FOR_KEYS as readonly string[]).includes(key as string)
-      ) {
-        return;
-      }
-
-      const value = parseAttributeValue(newVal);
-      try {
-        this._embed.updateSettings({
-          [key]: value,
-        } as Partial<SdkIframeEmbedSettings>);
-      } catch (error) {
-        console.error("[metabase.embed.error]", error);
-      }
-    }
-  }
-
-  if (typeof window !== "undefined" && !customElements.get(tagName)) {
-    customElements.define(tagName, CustomEmbedElement);
+  if (typeof window !== "undefined" && !customElements.get(componentName)) {
+    customElements.define(componentName, CustomEmbedElement);
   }
 
   return CustomEmbedElement;
@@ -594,8 +576,7 @@ const MetabaseQuestionElement = createCustomElement("metabase-question", [
 if (typeof window !== "undefined") {
   (window as any)["metabase.embed"] = {
     ...(window as any)["metabase.embed"],
-    MetabaseEmbed,
   };
 }
 
-export { MetabaseEmbed, MetabaseDashboardElement, MetabaseQuestionElement };
+export { MetabaseDashboardElement, MetabaseQuestionElement };
