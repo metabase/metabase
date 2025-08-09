@@ -1,5 +1,3 @@
-// NOTE: these tests can replace their counterparts in the metabot.unit.spec.tsx once streaming becomes the default
-
 import { combineReducers } from "@reduxjs/toolkit";
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
