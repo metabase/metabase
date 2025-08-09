@@ -70,7 +70,7 @@ const CollapseSection = ({
         onKeyDown={onKeyDown}
       >
         {iconPosition === "left" && HeaderIcon}
-        <Header>{header}</Header>
+        <Header iconPosition={iconPosition}>{header}</Header>
         {iconPosition === "right" && HeaderIcon}
       </HeaderContainer>
       <div role="tabpanel">

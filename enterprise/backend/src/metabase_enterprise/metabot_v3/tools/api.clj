@@ -21,6 +21,7 @@
    [metabase-enterprise.metabot-v3.tools.find-metric :as metabot-v3.tools.find-metric]
    [metabase-enterprise.metabot-v3.tools.find-outliers :as metabot-v3.tools.find-outliers]
    [metabase-enterprise.metabot-v3.tools.generate-insights :as metabot-v3.tools.generate-insights]
+   [metabase-enterprise.metabot-v3.tools.table-view-config :as metabot-v3.tools.table-view-config]
    [metabase-enterprise.metabot-v3.util :as metabot-v3.u]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -822,6 +823,23 @@
                          (metabot-v3.tools.filters/query-model arguments)
                          (mtx/transformer {:name :tool-api-response}))
               (assoc :conversation_id conversation_id))
+      (metabot-v3.context/log :llm.log/be->llm))))
+
+(api.macros/defendpoint :post "/table-view-config" :- :any #_[:map
+                                                              [:success :boolean]
+                                                              [:config {:optional true} :map]
+                                                              [:error {:optional true} :string]
+                                                              [:table_id :int]
+                                                              [:view_type :string]]
+  "Generate table view configuration using AI"
+  [_route-params
+   _query-params
+   {:keys [table_id view_type] :as body}]
+  (metabot-v3.context/log (assoc body :api :table-view-config) :llm.log/llm->be)
+  (let [result (metabot-v3.tools.table-view-config/generate-table-view-config
+                {:table-id table_id
+                 :view-type (keyword view_type)})]
+    (doto result
       (metabot-v3.context/log :llm.log/be->llm))))
 
 (defn- enforce-authentication

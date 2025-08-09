@@ -1,0 +1,21 @@
+.tableContainer {
+  /* border: 1px solid var(--border-color);
+  border-radius: 8px; */
+}
+
+.table {
+  border-collapse: collapse;
+}
+
+.filterPanel {
+  padding: 0 !important;
+  border-bottom: none !important;
+}
+
+.link {
+  visibility: hidden;
+
+  .row:hover & {
+    visibility: visible;
+  }
+}
