@@ -1,6 +1,7 @@
 (ns metabase.pivot.core-test
   (:require
    [clojure.test :refer [deftest is testing]]
+   [matcher-combinators.test] ;; adds support for `match?` and `thrown-match?` in `is` expressions
    [metabase.pivot.core :as pivot]))
 
 (def ^:private pivot-test-data
@@ -101,6 +102,14 @@
            :remapping nil,
            :remapped_from_index nil,
            :base_type "type/BigInteger"}]})
+
+(defn- lists-to-vecs-recursively [structure]
+  (letfn [(walk [x]
+            (cond (map? x) (update-vals x walk)
+                  #?(:clj (instance? java.util.ArrayList x)
+                     :cljs (array? x)) (mapv walk x)
+                  :else x))]
+    (walk structure)))
 
 (deftest ensure-consistent-type-test
   #?(:clj
@@ -229,17 +238,17 @@
           settings {}
           col-settings [{} {} {} {} {}]
           result (pivot/build-pivot-trees rows cols row-indexes col-indexes val-indexes settings col-settings)]
-      (is (= [{:children [{:children [] :isCollapsed false :value "A"}]
-               :isCollapsed false
-               :value 1}
-              {:children [{:children [] :isCollapsed false :value "B"}]
-               :isCollapsed false
-               :value 2}]
-             (:row-tree result)))
+      (is (match? [{:children [{:children [] :isCollapsed false :value "A"}]
+                    :isCollapsed false
+                    :value 1}
+                   {:children [{:children [] :isCollapsed false :value "B"}]
+                    :isCollapsed false
+                    :value 2}]
+                  (lists-to-vecs-recursively (:row-tree result))))
 
-      (is (= [{:children [] :isCollapsed false :value "Y"}
-              {:children [] :isCollapsed false :value "Z"}]
-             (:col-tree result)))
+      (is (match? [{:children [] :isCollapsed false :value "Y"}
+                   {:children [] :isCollapsed false :value "Z"}]
+                  (lists-to-vecs-recursively (:col-tree result))))
 
       (is (= [[["Y" 1 "A"] [10]]
               [["Z" 2 "B"] [20]]]
@@ -267,29 +276,31 @@
          ;; Set up collapsed subtotals for level 1 (the root level)
          (let [settings {:pivot_table.collapsed_rows {:value ["1"]}}
                result (pivot/build-pivot-trees rows cols row-indexes col-indexes val-indexes settings col-settings)]
-           (is (= [{:children [{:children [] :isCollapsed false :value "A"}
-                               {:children [] :isCollapsed false :value "B"}]
-                    :isCollapsed true
-                    :value 1}
-                   {:children [{:children [] :isCollapsed false :value "A"}
-                               {:children [] :isCollapsed false :value "B"}]
-                    :isCollapsed true
-                    :value 2}]
-                  (:row-tree result))
+           (is (match?
+                [{:children [{:children [] :isCollapsed false :value "A"}
+                             {:children [] :isCollapsed false :value "B"}]
+                  :isCollapsed true
+                  :value 1}
+                 {:children [{:children [] :isCollapsed false :value "A"}
+                             {:children [] :isCollapsed false :value "B"}]
+                  :isCollapsed true
+                  :value 2}]
+                (lists-to-vecs-recursively (:row-tree result)))
                "Row tree should have correct collapsed state for the root level"))
 
          ;; Set up collapsed subtotals for level 2 (children of the root)
          (let [settings {:pivot_table.collapsed_rows {:value ["1"]}}
                result (pivot/build-pivot-trees rows cols row-indexes col-indexes val-indexes settings col-settings)]
-           (is (= [{:children [{:children [] :isCollapsed false :value "A"}
-                               {:children [] :isCollapsed false :value "B"}]
-                    :isCollapsed true
-                    :value 1}
-                   {:children [{:children [] :isCollapsed false :value "A"}
-                               {:children [] :isCollapsed false :value "B"}]
-                    :isCollapsed true
-                    :value 2}]
-                  (:row-tree result))
+           (is (match?
+                [{:children [{:children [] :isCollapsed false :value "A"}
+                             {:children [] :isCollapsed false :value "B"}]
+                  :isCollapsed true
+                  :value 1}
+                 {:children [{:children [] :isCollapsed false :value "A"}
+                             {:children [] :isCollapsed false :value "B"}]
+                  :isCollapsed true
+                  :value 2}]
+                (lists-to-vecs-recursively (:row-tree result)))
                "Row tree should have correct collapsed state for the chlidren of the root"))))))
 
 #?(:clj
@@ -311,29 +322,31 @@
          ;; Set up collapsed subtotals for level 1 (the root level)
          (let [settings {:pivot_table.collapsed_rows {:value ["1"]}}
                result (pivot/build-pivot-trees rows cols row-indexes col-indexes val-indexes settings col-settings)]
-           (is (= [{:children [{:children [] :isCollapsed false :value "A"}
-                               {:children [] :isCollapsed false :value "B"}]
-                    :isCollapsed false
-                    :value 1}
-                   {:children [{:children [] :isCollapsed false :value "A"}
-                               {:children [] :isCollapsed false :value "B"}]
-                    :isCollapsed false
-                    :value 2}]
-                  (:row-tree result))
+           (is (match?
+                [{:children [{:children [] :isCollapsed false :value "A"}
+                             {:children [] :isCollapsed false :value "B"}]
+                  :isCollapsed false
+                  :value 1}
+                 {:children [{:children [] :isCollapsed false :value "A"}
+                             {:children [] :isCollapsed false :value "B"}]
+                  :isCollapsed false
+                  :value 2}]
+                (lists-to-vecs-recursively (:row-tree result)))
                "Row tree should have correct collapsed state for the root level"))
 
          ;; Set up collapsed subtotals for level 2 (children of the root)
          (let [settings {:pivot_table.collapsed_rows {:value ["1"]}}
                result (pivot/build-pivot-trees rows cols row-indexes col-indexes val-indexes settings col-settings)]
-           (is (= [{:children [{:children [] :isCollapsed false :value "A"}
-                               {:children [] :isCollapsed false :value "B"}]
-                    :isCollapsed false
-                    :value 1}
-                   {:children [{:children [] :isCollapsed false :value "A"}
-                               {:children [] :isCollapsed false :value "B"}]
-                    :isCollapsed false
-                    :value 2}]
-                  (:row-tree result))
+           (is (match?
+                [{:children [{:children [] :isCollapsed false :value "A"}
+                             {:children [] :isCollapsed false :value "B"}]
+                  :isCollapsed false
+                  :value 1}
+                 {:children [{:children [] :isCollapsed false :value "A"}
+                             {:children [] :isCollapsed false :value "B"}]
+                  :isCollapsed false
+                  :value 2}]
+                (lists-to-vecs-recursively (:row-tree result)))
                "Row tree should have correct collapsed state for the chlidren of the root"))))))
 
 #?(:cljs
@@ -356,51 +369,54 @@
          (let [settings {:pivot_table.collapsed_rows {:value ["[1]"]}}
                result (pivot/build-pivot-trees rows cols row-indexes col-indexes val-indexes settings col-settings)]
 
-           (is (= [{:children [{:children [] :isCollapsed false :value "A"}
-                               {:children [] :isCollapsed false :value "B"}]
-                    :isCollapsed true  ;; Only the node with value 1 should be collapsed
-                    :value 1}
-                   {:children [{:children [] :isCollapsed false :value "A"}
-                               {:children [] :isCollapsed false :value "B"}]
-                    :isCollapsed false ;; Node with value 2 should not be collapsed
-                    :value 2}]
-                  (:row-tree result))
+           (is (match?
+                [{:children [{:children [] :isCollapsed false :value "A"}
+                             {:children [] :isCollapsed false :value "B"}]
+                  :isCollapsed true ;; Only the node with value 1 should be collapsed
+                  :value 1}
+                 {:children [{:children [] :isCollapsed false :value "A"}
+                             {:children [] :isCollapsed false :value "B"}]
+                  :isCollapsed false ;; Node with value 2 should not be collapsed
+                  :value 2}]
+                (lists-to-vecs-recursively (:row-tree result)))
                "Row tree should have correct collapsed state for node with value 1 only"))
 
          ;; Test collapsing a specific nested path
          (let [settings {:pivot_table.collapsed_rows {:value ["[1,\"A\"]"]}}
                result (pivot/build-pivot-trees rows cols row-indexes col-indexes val-indexes settings col-settings)]
 
-           (is (= [{:children [{:children [] :isCollapsed true :value "A"}  ;; Only [1,"A"] should be collapsed
-                               {:children [] :isCollapsed false :value "B"}]
-                    :isCollapsed false
-                    :value 1}
-                   {:children [{:children [] :isCollapsed false :value "A"}
-                               {:children [] :isCollapsed false :value "B"}]
-                    :isCollapsed false
-                    :value 2}]
-                  (:row-tree result))
+           (is (match?
+                [{:children [{:children [] :isCollapsed true :value "A"} ;; Only [1,"A"] should be collapsed
+                             {:children [] :isCollapsed false :value "B"}]
+                  :isCollapsed false
+                  :value 1}
+                 {:children [{:children [] :isCollapsed false :value "A"}
+                             {:children [] :isCollapsed false :value "B"}]
+                  :isCollapsed false
+                  :value 2}]
+                (lists-to-vecs-recursively (:row-tree result)))
                "Row tree should have correct collapsed state for nested path [1,\"A\"]"))
 
          ;; Test collapsing multiple specific paths
          (let [settings {:pivot_table.collapsed_rows {:value ["[1,\"A\"]", "[2,\"B\"]"]}}
                result (pivot/build-pivot-trees rows cols row-indexes col-indexes val-indexes settings col-settings)]
 
-           (is (= [{:children [{:children [] :isCollapsed true :value "A"}  ;; [1,"A"] should be collapsed
-                               {:children [] :isCollapsed false :value "B"}]
-                    :isCollapsed false
-                    :value 1}
-                   {:children [{:children [] :isCollapsed false :value "A"}
-                               {:children [] :isCollapsed true :value "B"}]  ;; [2,"B"] should be collapsed
-                    :isCollapsed false
-                    :value 2}]
-                  (:row-tree result))
+           (is (match?
+                [{:children [{:children [] :isCollapsed true :value "A"} ;; [1,"A"] should be collapsed
+                             {:children [] :isCollapsed false :value "B"}]
+                  :isCollapsed false
+                  :value 1}
+                 {:children [{:children [] :isCollapsed false :value "A"}
+                             {:children [] :isCollapsed true :value "B"}] ;; [2,"B"] should be collapsed
+                  :isCollapsed false
+                  :value 2}]
+                (lists-to-vecs-recursively (:row-tree result)))
                "Row tree should have correct collapsed state for multiple specific paths"))))))
 
 #?(:cljs
    (deftest build-pivot-trees-collapsed-rows-type-coherence-test
      (testing "build-pivot-trees correctly associates values in the viz settings with values from the QP"
-        ;; Use BigInts and BigDecimals in the raw rows and ensure the collapsed_rows setting still applies
+       ;; Use BigInts and BigDecimals in the raw rows and ensure the collapsed_rows setting still applies
        (let [rows [[1N "A" "Y" 0 10]
                    [1N "B" "Z" 0 20]
                    [2.5M "A" "Y" 0 30]
@@ -416,15 +432,16 @@
              col-settings [{} {} {} {} {}]
              settings {:pivot_table.collapsed_rows {:value ["[1]"]}}
              result (pivot/build-pivot-trees rows cols row-indexes col-indexes val-indexes settings col-settings)]
-         (is (= [{:children [{:children [] :isCollapsed false :value "A"}
-                             {:children [] :isCollapsed false :value "B"}]
-                  :isCollapsed true  ;; Only the node with value 1 should be collapsed
-                  :value 1}
-                 {:children [{:children [] :isCollapsed false :value "A"}
-                             {:children [] :isCollapsed false :value "B"}]
-                  :isCollapsed false ;; Node with value 2 should not be collapsed
-                  :value 2.5}]
-                (:row-tree result)))))))
+         (is (match?
+              [{:children [{:children [] :isCollapsed false :value "A"}
+                           {:children [] :isCollapsed false :value "B"}]
+                :isCollapsed true ;; Only the node with value 1 should be collapsed
+                :value 1}
+               {:children [{:children [] :isCollapsed false :value "A"}
+                           {:children [] :isCollapsed false :value "B"}]
+                :isCollapsed false ;; Node with value 2 should not be collapsed
+                :value 2.5}]
+              (lists-to-vecs-recursively (:row-tree result))))))))
 
 #?(:cljs
    (deftest build-pivot-trees-non-existant-paths
@@ -442,19 +459,62 @@
              col-indexes [2]
              val-indexes [4]
              col-settings [{} {} {} {} {}]
-              ;; Specify paths that do not exist in the data
+             ;; Specify paths that do not exist in the data
              settings {:pivot_table.collapsed_rows {:value ["[3]" "[1,\"C\"]"]}}
              result (pivot/build-pivot-trees rows cols row-indexes col-indexes val-indexes settings col-settings)]
-         (is (= [{:children [{:children [] :isCollapsed false :value "A"}
-                             {:children [] :isCollapsed false :value "B"}]
-                  :isCollapsed false
-                  :value 1}
-                 {:children [{:children [] :isCollapsed false :value "A"}
-                             {:children [] :isCollapsed false :value "B"}]
-                  :isCollapsed false
-                  :value 2}]
-                (:row-tree result))
+         (is (match?
+              [{:children [{:children [] :isCollapsed false :value "A"}
+                           {:children [] :isCollapsed false :value "B"}]
+                :isCollapsed false
+                :value 1}
+               {:children [{:children [] :isCollapsed false :value "A"}
+                           {:children [] :isCollapsed false :value "B"}]
+                :isCollapsed false
+                :value 2}]
+              (lists-to-vecs-recursively (:row-tree result)))
              "Row tree should not have any collapsed nodes for paths that don't exist in the data")))))
+
+(deftest build-pivot-trees-sort-trees-test
+  (let [rows [[1 "A" "Y" 0 10]
+              [1 "B" "Z" 0 20]
+              [2 "A" "Y" 0 30]
+              [2 "B" "Z" 0 40]]
+        cols [{:name "col0" :source "breakout"}
+              {:name "col1" :source "breakout"}
+              {:name "col2" :source "breakout"}
+              {:name "pivot-grouping" :source "breakout"}
+              {:name "count" :source "aggregation"}]
+        row-indexes [0 1]
+        col-indexes [2]
+        val-indexes [4]]
+    (testing "ascending sort order for first column"
+      (let [result (pivot/build-pivot-trees rows cols row-indexes col-indexes val-indexes {}
+                                            [{:pivot_table.column_sort_order "ascending"} {} {} {} {}])]
+        (is (match? [{:value 1
+                      :children [{:value "A"} {:value "B"}]}
+                     {:value 2
+                      :children [{:value "A"} {:value "B"}]}]
+                    (lists-to-vecs-recursively (:row-tree result))))))
+
+    (testing "descending sort order for first column"
+      (let [result (pivot/build-pivot-trees rows cols row-indexes col-indexes val-indexes {}
+                                            [{:pivot_table.column_sort_order "descending"} {} {} {} {}])]
+        (is (match? [{:value 2
+                      :children [{:value "A"} {:value "B"}]}
+                     {:value 1
+                      :children [{:value "A"} {:value "B"}]}]
+                    (lists-to-vecs-recursively (:row-tree result))))))
+
+    (testing "descending sort order for first two columns"
+      (let [result (pivot/build-pivot-trees rows cols row-indexes col-indexes val-indexes {}
+                                            [{:pivot_table.column_sort_order "descending"}
+                                             {:pivot_table.column_sort_order "descending"}
+                                             {} {} {}])]
+        (is (match? [{:value 2
+                      :children [{:value "B"} {:value "A"}]}
+                     {:value 1
+                      :children [{:value "B"} {:value "A"}]}]
+                    (lists-to-vecs-recursively (:row-tree result))))))))
 
 (deftest create-row-section-getter-test
   (testing "Returns a function that correctly retrieves cell values"
@@ -500,29 +560,30 @@
     (let [tree [{:value "A" :rawValue "A"
                  :children [{:value "X" :rawValue "X" :children []}
                             {:value "Y" :rawValue "Y" :children []}]}]
-          result (#'pivot/tree-to-array tree)]
-      (is (= [{:value "A"
-               :rawValue "A"
-               :depth 0
-               :offset 0
-               :hasChildren true
-               :path ["A"]
-               :span 2
-               :maxDepthBelow 1}
-              {:value "X"
-               :rawValue "X"
-               :depth 1
-               :offset 0
-               :hasChildren false
-               :path ["A" "X"]
-               :span 1
-               :maxDepthBelow 0}
-              {:value "Y"
-               :rawValue "Y"
-               :depth 1
-               :offset 1
-               :hasChildren false
-               :path ["A" "Y"]
-               :span 1
-               :maxDepthBelow 0}]
-             result)))))
+          result (lists-to-vecs-recursively (#'pivot/tree-to-array tree))]
+      (is (match?
+           [{:value "A"
+             :rawValue "A"
+             :depth 0
+             :offset 0
+             :hasChildren true
+             :path ["A"]
+             :span 2
+             :maxDepthBelow 1}
+            {:value "X"
+             :rawValue "X"
+             :depth 1
+             :offset 0
+             :hasChildren false
+             :path ["A" "X"]
+             :span 1
+             :maxDepthBelow 0}
+            {:value "Y"
+             :rawValue "Y"
+             :depth 1
+             :offset 1
+             :hasChildren false
+             :path ["A" "Y"]
+             :span 1
+             :maxDepthBelow 0}]
+           result)))))
