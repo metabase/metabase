@@ -505,7 +505,7 @@
           (is (= [[1746]]
                  (mt/rows results))))))))
 
-(deftest model-with-implicit-join-and-external-remapping-test
+(deftest ^:parallel model-with-implicit-join-and-external-remapping-test
   (testing "Should handle models with implicit join on externally remapped field (#57596)"
     (qp.store/with-metadata-provider
       (lib.tu/remap-metadata-provider
@@ -527,7 +527,7 @@
                                               :source-field (mt/id :orders :user_id)
                                               :source-field-name "USER_ID"}]
                                             {:stage-number -1}]}]))]
-            ;; should return 613 rows
+        ;; should return 613 rows
         (mt/with-native-query-testing-context query
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Column .*STATE.* not found"
                                 (-> query qp/process-query mt/rows count))))))))

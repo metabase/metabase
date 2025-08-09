@@ -6,7 +6,10 @@
               [:field
                26
                {:source-field 5}]]
-     :value [3 5]}"
+     :value [3 5]}
+
+  TODO (Cam 8/8/25) -- move this into `lib` since there's nothing particularly QP about it except
+  for [[qp.error-type]], which maybe belongs in Lib too!"
   (:require
    [metabase.lib.core :as lib]
    [metabase.lib.schema.expression :as lib.schema.expression]

@@ -71,6 +71,7 @@
 
 (defn- last-stage-number
   [outer-query]
+  #_{:clj-kondo/ignore [:deprecated-var]}
   (mbql.u/legacy-last-stage-number (:query outer-query)))
 
 (defn- nest-query

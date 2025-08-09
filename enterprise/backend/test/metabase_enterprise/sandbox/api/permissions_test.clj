@@ -132,7 +132,10 @@
                         {:database (mt/id)
                          :query {:source-table (str "card__" (u/the-id card))}
                          :type :query}))
-               "metabase_cache")))))
+               "metabase_cache")))))))
+
+(deftest persistence-and-permissions-2
+  (mt/with-model-cleanup [:model/PersistedInfo]
     (testing "Queries from source if sandboxed"
       (met/with-gtaps!
         {:gtaps {:venues {:query (mt/mbql-query venues)

@@ -110,7 +110,13 @@
     (complement :condition)]
    [:fn
     {:error/message "join should not have :source-table or :source-query; use :stages instead"}
-    (complement (some-fn :source-table :source-query))]])
+    (complement (some-fn :source-table :source-query))]
+   [:fn
+    {:error/message "join should not have top-level :filters; these should belong to one of the join :stages"}
+    (complement (some-fn :filters :filter))]
+   [:fn
+    {:error/message "join should not have top-level :parameters; these should belong to one of the join :stages"}
+    (complement :parameters)]])
 
 (mr/def ::joins
   [:and

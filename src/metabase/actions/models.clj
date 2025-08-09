@@ -55,8 +55,7 @@
    :visualization_settings transform-action-visualization-settings})
 
 (t2/deftransforms :model/QueryAction
-  ;; shouldn't this be mi/transform-metabase-query?
-  {:dataset_query mi/transform-json})
+  {:dataset_query mi/transform-metabase-query})
 
 (def ^:private transform-json-with-nested-parameters
   {:in  (comp mi/json-in

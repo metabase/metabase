@@ -624,6 +624,8 @@
    [:lib/type [:= :metadata/native-query-snippet]]
    [:id       ::lib.schema.id/native-query-snippet]])
 
+;;; TODO (Cam 8/8/25) -- description, content, archived, collection-id
+
 (mr/def ::table
   "Schema for metadata about a specific [[metabase.warehouse-schema.models.table]]. More or less the same but with
   kebab-case keys."
