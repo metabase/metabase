@@ -533,7 +533,7 @@
          clojure.lang.ExceptionInfo
          (query->params-map (query-with-snippet :snippet-id Integer/MAX_VALUE))))))
 
-(deftest snippet-happy-path-test
+(deftest ^:parallel snippet-happy-path-test
   (testing "Snippet parsing should work correctly for a valid Snippet"
     (mt/with-temp [:model/NativeQuerySnippet {snippet-id :id} {:name    "expensive-venues"
                                                                :content "venues WHERE price = 4"}]
@@ -541,10 +541,23 @@
                                                                               :content    "venues WHERE price = 4"})}]
         (is (= expected
                (query->params-map (query-with-snippet :snippet-id snippet-id))))
-
         (testing "`:snippet-name` property in query shouldn't have to match `:name` of Snippet in DB"
           (is (= expected
                  (query->params-map (query-with-snippet :snippet-id snippet-id, :snippet-name "Old Name")))))))))
+
+(deftest ^:parallel snippet-happy-path-mock-metadata-provider-test
+  (testing "Snippet parsing should work correctly for a valid Snippet"
+    (qp.store/with-metadata-provider (lib.tu/mock-metadata-provider
+                                      meta/metadata-provider
+                                      {:native-query-snippets [{:id      1
+                                                                :content "venues WHERE price = 4"}]})
+      (let [expected {"expensive-venues" (params/map->ReferencedQuerySnippet {:snippet-id 1
+                                                                              :content    "venues WHERE price = 4"})}]
+        (is (= expected
+               (query->params-map (query-with-snippet :snippet-id 1))))
+        (testing "`:snippet-name` property in query shouldn't have to match `:name` of Snippet in DB"
+          (is (= expected
+                 (query->params-map (query-with-snippet :snippet-id 1, :snippet-name "Old Name")))))))))
 
 (deftest ^:parallel invalid-param-test
   (testing "Should throw an Exception if we try to pass with a `:type` we don't understand"
