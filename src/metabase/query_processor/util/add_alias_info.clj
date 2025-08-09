@@ -237,10 +237,10 @@
                                                                       (throw (ex-info "Resolved aggregation is missing :lib/desired-column-alias"
                                                                                       {:ag-clause ag-clause, :col col}))))]
               (lib/update-options ag-clause assoc
-                                  ;; not really convinced it makes sense for an aggregation definition to have a
-                                  ;; `::source-table` or `::source-alias` given that it comes from the current stage,
-                                  ;; but I don't want to break something that might have been using it for weird
-                                  ;; purposes, so I guess we can just keep including it.
+                                  ;; TODO (Cam 8/8/25) -- not really convinced it makes sense for an aggregation
+                                  ;; definition to have a `::source-table` or `::source-alias` given that it comes from
+                                  ;; the current stage, but I don't want to break something that might have been using
+                                  ;; it for weird purposes, so I guess we can just keep including it.
                                   ::source-table  ::none
                                   ::source-alias  (:lib/desired-column-alias col)
                                   ::desired-alias desired-alias)))

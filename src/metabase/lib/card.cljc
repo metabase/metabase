@@ -215,7 +215,7 @@
                           (source-model-cols metadata-providerable card))]
         (not-empty
          (into []
-               ;; do not deduplicate the desired column aliases coming back in card metadata, if the query returns a
+               ;; do not truncate the desired column aliases coming back in card metadata, if the query returns a
                ;; 'crazy long' column name then we need to use that in the next stage.
                ;; See [[metabase.lib.card-test/propagate-crazy-long-identifiers-from-card-metadata-test]]
                (lib.field.util/add-source-and-desired-aliases-xform metadata-providerable (lib.util/non-truncating-unique-name-generator))

@@ -47,7 +47,7 @@
           (not-empty
            (into []
                  (comp (map #(assoc % :lib/source source-type))
-                       ;; do not deduplicate the desired column aliases coming back from a native query, because if a
+                       ;; do not truncate the desired column aliases coming back from a native query, because if a
                        ;; native query returns a 'crazy long' column name then we need to use that in the next stage.
                        ;; See [[metabase.lib.stage-test/propagate-crazy-long-native-identifiers-test]]
                        (lib.field.util/add-source-and-desired-aliases-xform query (lib.util/non-truncating-unique-name-generator)))
