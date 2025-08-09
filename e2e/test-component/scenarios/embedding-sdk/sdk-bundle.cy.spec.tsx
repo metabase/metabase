@@ -1,13 +1,13 @@
 import {
   InteractiveQuestion,
+  type MetabaseDashboard,
   MetabaseProvider,
   useCreateDashboardApi,
   useMetabaseAuthStatus,
 } from "@metabase/embedding-sdk-react";
 import { type ReactNode, useEffect, useState } from "react";
 
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import * as H from "e2e/support/helpers";
+import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
 import {
   DEFAULT_SDK_AUTH_PROVIDER_CONFIG,
@@ -17,8 +17,6 @@ import {
 import { signInAsAdminAndEnableEmbeddingSdk } from "e2e/support/helpers/embedding-sdk-testing";
 import { mockAuthProviderAndJwtSignIn } from "e2e/support/helpers/embedding-sdk-testing/embedding-sdk-helpers";
 import { renameConflictingCljsGlobals } from "metabase/embedding-sdk/test/rename-conflicting-cljs-globals";
-
-const { ORDERS_ID } = SAMPLE_DATABASE;
 
 const sdkBundleCleanup = () => {
   getSdkBundleScriptElement()?.remove();
@@ -34,27 +32,6 @@ describe("scenarios > embedding-sdk > sdk-bundle", () => {
 
     signInAsAdminAndEnableEmbeddingSdk();
 
-    H.createDashboardWithQuestions({
-      questions: [
-        {
-          name: "Test Question",
-          display: "table",
-          query: {
-            "source-table": ORDERS_ID,
-            aggregation: [["count"]],
-          },
-          visualization_settings: {
-            "graph.dimensions": ["CREATED_AT", "STATE"],
-            "graph.metrics": ["count", "sum"],
-          },
-        },
-      ],
-      cards: [{ col: 0, row: 0, size_x: 24, size_y: 6 }],
-    }).then(({ dashboard, questions }) => {
-      cy.wrap(dashboard.id).as("dashboardId");
-      cy.wrap(questions[0].id).as("questionId");
-    });
-
     cy.signOut();
 
     mockAuthProviderAndJwtSignIn();
@@ -65,57 +42,101 @@ describe("scenarios > embedding-sdk > sdk-bundle", () => {
       sdkBundleCleanup();
     });
 
+    it("should add and cleanup the MetabaseProviderPropsStore in a global object", () => {
+      const metabaseProvideElement = (
+        <MetabaseProvider
+          authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}
+          locale="en"
+        >
+          <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />
+        </MetabaseProvider>
+      );
+
+      cy.mount(
+        <>
+          {metabaseProvideElement}
+          {metabaseProvideElement}
+        </>,
+      );
+
+      cy.window().then((win) => {
+        expect(win.METABASE_PROVIDER_PROPS_STORE).to.exist;
+      });
+
+      cy.mount(metabaseProvideElement);
+
+      cy.window().then((win) => {
+        expect(win.METABASE_PROVIDER_PROPS_STORE).to.exist;
+      });
+
+      // Unmount
+      cy.mount(<></>);
+
+      cy.window().then((win) => {
+        expect(win.METABASE_PROVIDER_PROPS_STORE).to.not.exist;
+      });
+
+      cy.mount(metabaseProvideElement);
+
+      cy.window().then((win) => {
+        expect(win.METABASE_PROVIDER_PROPS_STORE).to.exist;
+      });
+
+      // Unmount
+      cy.mount(<></>);
+
+      cy.window().then((win) => {
+        expect(win.METABASE_PROVIDER_PROPS_STORE).to.not.exist;
+      });
+    });
+
     it("should update props passed to MetabaseProvider", () => {
-      cy.get<string>("@questionId").then((questionId) => {
-        cy.mount(
+      cy.mount(
+        <MetabaseProvider
+          authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}
+          locale="en"
+        >
+          <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />
+        </MetabaseProvider>,
+      ).then(({ rerender }) => {
+        getSdkRoot().within(() => {
+          cy.findByText("Filter").should("exist");
+        });
+
+        // Update props via the declarative API
+        rerender(
           <MetabaseProvider
             authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}
-            locale="en"
+            locale="es"
           >
-            <InteractiveQuestion questionId={questionId} />
+            <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />
           </MetabaseProvider>,
-        ).then(({ rerender }) => {
-          getSdkRoot().within(() => {
-            cy.findByText("Filter").should("exist");
+        );
+
+        getSdkRoot().within(() => {
+          cy.findByText("Filtro").should("exist");
+        });
+
+        // Update props via the imperative API (via window)
+        cy.window().then((win) => {
+          (win as any).METABASE_PROVIDER_PROPS_STORE.setProps({
+            authConfig: DEFAULT_SDK_AUTH_PROVIDER_CONFIG,
+            locale: "fr",
           });
 
-          // Update props via the declarative API
-          rerender(
-            <MetabaseProvider
-              authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}
-              locale="es"
-            >
-              <InteractiveQuestion questionId={questionId} />
-            </MetabaseProvider>,
-          );
-
           getSdkRoot().within(() => {
-            cy.findByText("Filtro").should("exist");
-          });
-
-          // Update props via the imperative API (via window)
-          cy.window().then((win) => {
-            (win as any).METABASE_PROVIDER_PROPS_STORE.setProps({
-              authConfig: DEFAULT_SDK_AUTH_PROVIDER_CONFIG,
-              locale: "fr",
-            });
-
-            getSdkRoot().within(() => {
-              cy.findByText("Filtre").should("exist");
-            });
+            cy.findByText("Filtre").should("exist");
           });
         });
       });
     });
 
     it("should show a custom loader when the SDK bundle is loading", () => {
-      cy.get<string>("@questionId").then((questionId) => {
-        mountSdkContent(<InteractiveQuestion questionId={questionId} />, {
-          sdkProviderProps: {
-            loaderComponent: () => <div>Loading...</div>,
-          },
-          waitForUser: false,
-        });
+      mountSdkContent(<InteractiveQuestion questionId={ORDERS_QUESTION_ID} />, {
+        sdkProviderProps: {
+          loaderComponent: () => <div>Loading...</div>,
+        },
+        waitForUser: false,
       });
 
       cy.findByTestId("loading-indicator").should("have.text", "Loading...");
@@ -142,18 +163,16 @@ describe("scenarios > embedding-sdk > sdk-bundle", () => {
           cy.spy(win.console, "warn").as("consoleWarn");
         });
 
-        cy.get<string>("@questionId").then((questionId) => {
-          cy.mount(
-            <>
-              <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}>
-                <InteractiveQuestion questionId={questionId} />
-              </MetabaseProvider>
-              <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}>
-                <InteractiveQuestion questionId={questionId} />
-              </MetabaseProvider>
-            </>,
-          );
-        });
+        cy.mount(
+          <>
+            <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}>
+              <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />
+            </MetabaseProvider>
+            <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}>
+              <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />
+            </MetabaseProvider>
+          </>,
+        );
 
         cy.get("@consoleWarn").should(
           "be.calledWithMatch",
@@ -168,12 +187,12 @@ describe("scenarios > embedding-sdk > sdk-bundle", () => {
           cy.spy(win.console, "warn").as("consoleWarn");
         });
 
-        cy.get<string>("@questionId").then((questionId) => {
-          mountSdkContent(<InteractiveQuestion questionId={questionId} />);
-        });
+        mountSdkContent(
+          <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />,
+        );
 
         getSdkRoot().within(() => {
-          cy.findByText("Test Question").should("exist");
+          cy.findByText("Orders").should("exist");
         });
 
         cy.get("@consoleWarn").should(
@@ -192,10 +211,8 @@ describe("scenarios > embedding-sdk > sdk-bundle", () => {
         cy.spy(win.console, "warn").as("consoleWarn");
       });
 
-      cy.get<string>("@questionId").then((questionId) => {
-        mountSdkContent(<InteractiveQuestion questionId={questionId} />, {
-          strictMode: true,
-        });
+      mountSdkContent(<InteractiveQuestion questionId={ORDERS_QUESTION_ID} />, {
+        strictMode: true,
       });
 
       getSdkRoot().within(() => {
@@ -203,7 +220,7 @@ describe("scenarios > embedding-sdk > sdk-bundle", () => {
           /The loading state is `Loaded` but the SDK bundle is not loaded yet/,
         ).should("not.exist");
 
-        cy.findByText("Test Question").should("exist");
+        cy.findByText("Orders").should("exist");
 
         cy.findByTestId("visualization-root").should("be.visible");
       });
@@ -214,20 +231,18 @@ describe("scenarios > embedding-sdk > sdk-bundle", () => {
         cy.spy(win.console, "warn").as("consoleWarn");
       });
 
-      cy.get<string>("@questionId").then((questionId) => {
-        mountSdkContent(
-          <>
-            <InteractiveQuestion questionId={questionId}>
-              <InteractiveQuestion.Title />
+      mountSdkContent(
+        <>
+          <InteractiveQuestion questionId={ORDERS_QUESTION_ID}>
+            <InteractiveQuestion.Title />
 
-              <InteractiveQuestion.QuestionVisualization />
-            </InteractiveQuestion>
-          </>,
-        );
-      });
+            <InteractiveQuestion.QuestionVisualization />
+          </InteractiveQuestion>
+        </>,
+      );
 
       getSdkRoot().within(() => {
-        cy.findByText("Test Question").should("exist");
+        cy.findByText("Orders").should("exist");
 
         cy.findByTestId("visualization-root").should("be.visible");
       });
@@ -240,9 +255,7 @@ describe("scenarios > embedding-sdk > sdk-bundle", () => {
         cy.spy(win.console, "warn").as("consoleWarn");
       });
 
-      cy.get<string>("@questionId").then((questionId) => {
-        cy.mount(<InteractiveQuestion questionId={questionId} />);
-      });
+      cy.mount(<InteractiveQuestion questionId={ORDERS_QUESTION_ID} />);
 
       getSdkRoot().within(() => {
         cy.findByText(
@@ -256,7 +269,7 @@ describe("scenarios > embedding-sdk > sdk-bundle", () => {
     type HookScenario = {
       name: string;
       waitForComponent: boolean;
-      mount: (Wrapper: () => ReactNode, questionId?: string) => JSX.Element;
+      mount: (Wrapper: () => ReactNode, questionId?: number) => JSX.Element;
     };
 
     const scenarios: HookScenario[] = [
@@ -266,7 +279,9 @@ describe("scenarios > embedding-sdk > sdk-bundle", () => {
         mount: (Wrapper, questionId) => (
           <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}>
             <Wrapper />
-            {questionId && <InteractiveQuestion questionId={questionId} />}
+            {questionId && (
+              <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />
+            )}
           </MetabaseProvider>
         ),
       },
@@ -304,9 +319,7 @@ describe("scenarios > embedding-sdk > sdk-bundle", () => {
         ({ name, waitForComponent, mount }: HookScenario) => {
           it(`should call hook properly when called ${name}`, () => {
             if (waitForComponent) {
-              cy.get<string>("@questionId").then((questionId) => {
-                cy.mount(mount(Wrapper, questionId));
-              });
+              cy.mount(mount(Wrapper, ORDERS_QUESTION_ID));
             } else {
               cy.mount(mount(Wrapper));
             }
@@ -334,7 +347,7 @@ describe("scenarios > embedding-sdk > sdk-bundle", () => {
                 name: "Test Dashboard",
                 description: "This is a test dashboard",
               })
-              .then((dashboard) => {
+              .then((dashboard: MetabaseDashboard) => {
                 setCreatedDashboard(dashboard);
               });
           }
@@ -348,9 +361,7 @@ describe("scenarios > embedding-sdk > sdk-bundle", () => {
         ({ name, waitForComponent, mount }: HookScenario) => {
           it(`should call hook properly when called ${name}`, () => {
             if (waitForComponent) {
-              cy.get<string>("@questionId").then((questionId) => {
-                cy.mount(mount(Wrapper, questionId));
-              });
+              cy.mount(mount(Wrapper, ORDERS_QUESTION_ID));
             } else {
               cy.mount(mount(Wrapper));
             }
@@ -379,9 +390,12 @@ describe("scenarios > embedding-sdk > sdk-bundle", () => {
           statusCode: 404,
         });
 
-        mountSdkContent(<InteractiveQuestion questionId={1} />, {
-          waitForUser: false,
-        });
+        mountSdkContent(
+          <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />,
+          {
+            waitForUser: false,
+          },
+        );
 
         cy.findByTestId("sdk-error-container").should(
           "contain.text",
@@ -394,12 +408,17 @@ describe("scenarios > embedding-sdk > sdk-bundle", () => {
           statusCode: 404,
         });
 
-        mountSdkContent(<InteractiveQuestion questionId={1} />, {
-          sdkProviderProps: {
-            errorComponent: ({ message }) => <div>Custom error: {message}</div>,
+        mountSdkContent(
+          <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />,
+          {
+            sdkProviderProps: {
+              errorComponent: ({ message }) => (
+                <div>Custom error: {message}</div>
+              ),
+            },
+            waitForUser: false,
           },
-          waitForUser: false,
-        });
+        );
 
         cy.findByTestId("sdk-error-container").should(
           "contain.text",
