@@ -181,13 +181,20 @@
       (mt/with-dynamic-fn-redefs [mu.fn/instrument-ns? (constantly true)]
         (let [expansion (macroexpand `(mu/defn ~'f :- :int [] "foo"))]
           (is (= '(def f
-                    "Inputs: []\n  Return: :int"
+                    "Inputs: []
+  Return: :int"
                     (clojure.core/let
-                     [&f (clojure.core/fn f [] "foo")]
+                     [&f (clojure.core/fn f [] "foo")
+                      &schema+explainers (metabase.util.malli.fn/fn-schemas->schema+explainers
+                                          [:=> :cat :int])]
                       (clojure.core/fn
                         ([]
                          (try
-                           (clojure.core/->> (&f) (metabase.util.malli.fn/validate-output {:fn-name 'f} :int))
+                           (metabase.util.malli.fn/validate-output
+                            {:fn-name 'f}
+                            (clojure.core/-> &schema+explainers (clojure.core/nth 0) :out clojure.core/deref clojure.core/first)
+                            (clojure.core/-> &schema+explainers (clojure.core/nth 0) :out clojure.core/deref clojure.core/second)
+                            (&f))
                            (catch java.lang.Exception error (throw (metabase.util.malli.fn/fixup-stacktrace error))))))))
                  (deanon-fn-names expansion))))))))
 
