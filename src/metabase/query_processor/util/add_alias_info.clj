@@ -55,6 +55,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.join :as lib.schema.join]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
@@ -116,7 +117,7 @@
     ;; this doesn't use [[mbql.u/update-field-options]] because this gets called a lot and the overhead actually adds up
     ;; a bit
     [:field id-or-name (remove-namespaced-options (cond-> (dissoc opts :source-field :effective-type)
-                                                    (integer? id-or-name) (dissoc :base-type)))]
+                                                    (pos-int? id-or-name) (dissoc :base-type)))]
 
     ;; for `:expression` and `:aggregation` references, remove the options map if they are empty.
     [:expression expression-name opts]
@@ -180,7 +181,7 @@
 
 (mu/defn- field-instance :- [:maybe ::lib.schema.metadata/column]
   [[_ id-or-name :as _field-clause] :- mbql.s/field]
-  (when (integer? id-or-name)
+  (when (pos-int? id-or-name)
     (lib.metadata/field (qp.store/metadata-provider) id-or-name)))
 
 (defn- field-table-id [field-clause]
@@ -212,7 +213,9 @@
                                        ::lib.schema.id/table
                                        [:= ::source]]
   "Determine the appropriate `::source-table` alias for a `field-clause`."
-  [{:keys [source-table source-query], :as inner-query} [_ _id-or-name {:keys [join-alias]}, :as field-clause]]
+  [{:keys [source-table source-query], :as inner-query}   :- [:map
+                                                              [::join-alias->escaped {:optional true} [:map-of ::lib.schema.join/alias ::lib.schema.join/alias]]]
+   [_ _id-or-name {:keys [join-alias]}, :as field-clause] :- mbql.s/field]
   (let [table-id            (field-table-id field-clause)
         join-is-this-level? (field-is-from-join-in-this-level? inner-query field-clause)]
     (cond
@@ -302,7 +305,7 @@
                         field-exports))
         ;; if still no match try looking based for a matching Field based on ID.
         (let [[_field id-or-name _opts] field-clause]
-          (when (integer? id-or-name)
+          (when (pos-int? id-or-name)
             (or (m/find-first (fn [[_field an-id-or-name _opts]]
                                 (= an-id-or-name id-or-name))
                               field-exports)
@@ -325,6 +328,20 @@
                 (m/find-first (fn [[_tag _id-or-name opts]]
                                 (= (::desired-alias opts) desired-column-alias))
                               all-exports)))))
+        ;; if that still failed try matching on a name ref instead of an ID ref
+        (let [[_ id-or-name opts] field-clause]
+          (when (pos-int? id-or-name)
+            (let [col     (lib.metadata/field (qp.store/metadata-provider) id-or-name)
+                  clause' [:field (:name col) (merge {:base-type (:base-type col)} opts)]]
+              (matching-field-in-source-query* source-query source-metadata clause'))))
+        ;; if this is a field name like `count_2` try matching WITHOUT the suffix.
+        (let [[_ id-or-name opts] field-clause]
+          (when (string? id-or-name)
+            (when-let [[_match undeduplicated] (re-find #"(^.*)_\d+$" id-or-name)]
+              (log/warnf "Looking for matches for %s" (pr-str undeduplicated))
+              (let [clause' [:field undeduplicated opts]]
+                (matching-field-in-source-query* source-query source-metadata clause')))))
+
         ;; otherwise we failed to find a match! This is expected for native queries but if the source query was MBQL
         ;; there's probably something wrong.
         (when-not (:native source-query)
