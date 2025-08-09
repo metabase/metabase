@@ -133,12 +133,12 @@
 
     (:mbql.stage/mbql :mbql/join)
     (let [returned-columns (returned-columns query path)
-          escape-fn        (escape-fn)
           escaped-aliases  (into {}
                                  (comp
                                   (map :lib/desired-column-alias)
-                                  (map (fn [k]
-                                         [k (escape-fn k)])))
+                                  (map (let [f (escape-fn)]
+                                         (fn [k]
+                                           [k (f k)]))))
                                  returned-columns)]
       (assoc stage ::desired-alias->escaped escaped-aliases))))
 
