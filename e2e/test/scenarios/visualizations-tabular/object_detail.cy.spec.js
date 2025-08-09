@@ -269,6 +269,33 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
     cy.findByText(`Showing ${EXPECTED_LINKED_ORDERS_COUNT} rows`);
   });
 
+  it("should open, close or update the Object Detail View modal when going back and forth in the browser (metabase#55487)", () => {
+    H.openProductsTable();
+
+    H.openObjectDetail(4);
+    cy.findByTestId("object-detail").within(() => {
+      cy.findByText("4134502155718").should("be.visible");
+    });
+
+    cy.go("back");
+    cy.findByTestId("object-detail").should("not.exist");
+
+    cy.go("forward");
+    cy.findByTestId("object-detail").within(() => {
+      cy.findByText("4134502155718").should("be.visible");
+    });
+
+    cy.findByTestId("view-previous-object-detail").click();
+    cy.findByTestId("object-detail").within(() => {
+      cy.findByText("4966277046676").should("be.visible");
+    });
+
+    cy.go("back");
+    cy.findByTestId("object-detail").within(() => {
+      cy.findByText("4134502155718").should("be.visible");
+    });
+  });
+
   it("should fetch linked entities data only once per entity type when reopening the modal (metabase#32720)", () => {
     cy.intercept("POST", "/api/dataset", cy.spy().as("fetchDataset"));
 
