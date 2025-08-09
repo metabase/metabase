@@ -87,18 +87,18 @@
                [:subgoal1 {} "action1" "action2"]
                [:subgoal2 {}
                 "action3"
-                [:subsubgoal {} "action4"]]]
-        result (#'isolation-manager/evaluate-steps steps (fn [x] [:success x]))]
+                [:subsubgoal {} "action4"]]]]
     (testing "general evaluation works"
-      (is (= [[[:tree :overall]
-               [:tree :subgoal1]
-               [:success "action1"]
-               [:success "action2"]
-               [:tree :subgoal2]
-               [:success "action3"]
-               [:tree :subsubgoal]
-               [:success "action4"]]
-              :running] result )))
+      (let [result (#'isolation-manager/evaluate-steps steps (fn [x] [:success x]))]
+        (is (= [[[:tree :overall]
+                 [:tree :subgoal1]
+                 [:success "action1"]
+                 [:success "action2"]
+                 [:tree :subgoal2]
+                 [:success "action3"]
+                 [:tree :subsubgoal]
+                 [:success "action4"]]
+                :running] result ))))
     (testing "errors prevent more work"
       (let [result (#'isolation-manager/evaluate-steps steps (fn [x]
                                                                (if (= x "action2")
@@ -110,23 +110,41 @@
                  [:error "action2 is failed"]
                  [:skipping-tree :subgoal2]]
                 :error]
-               result))))
-    (testing "errors can be marked recoverable"
-      (let [steps [:cleanup {:error-strategy ::isolation-manager/continue-on-error}
-                   [:remove-privileges {} "revoke privileges"]
-                   [:remove-schema {} "drop schema"]
-                   [:remove-user {} "drop user"]]
-            result (#'isolation-manager/evaluate-steps steps
-                                                       (fn [x]
-                                                         [:error x "failed"]))]
-        (is (= [[[:tree :cleanup]
-                 [:tree :remove-privileges]
-                 [:error "revoke privileges" "failed"]
-                 [:tree :remove-schema]
-                 [:error "drop schema" "failed"]
-                 [:tree :remove-user]
-                 [:error "drop user" "failed"]]
-                :running] result))))))
+               result)))))
+  (testing "errors can be marked recoverable"
+    (let [steps [:cleanup {:error-strategy ::isolation-manager/continue-on-error}
+                 [:remove-privileges {} "revoke privileges"]
+                 [:remove-schema {} "drop schema"]
+                 [:remove-user {} "drop user"]]
+          result (#'isolation-manager/evaluate-steps steps
+                                                     (fn [x]
+                                                       [:error x "failed"]))]
+      (is (= [[[:tree :cleanup]
+               [:tree :remove-privileges]
+               [:error "revoke privileges" "failed"]
+               [:tree :remove-schema]
+               [:error "drop schema" "failed"]
+               [:tree :remove-user]
+               [:error "drop user" "failed"]]
+              :running] result))))
+  (testing "can error one subtree and then continue"
+    (let [steps [:overall-with-continue
+                 {:error-strategy ::isolation-manager/continue-on-error}
+                 [:subgoal1-with-fail {:error-strategy ::isolation-manager/fail} "action1" "action2"]
+                 [:subgoal2 {}
+                  "action3"
+                  [:subsubgoal {} "action4"]]]
+          results (#'isolation-manager/evaluate-steps steps
+                                                      (fn [x]
+                                                        (if (= x "action1")
+                                                          [:error x]
+                                                          [:success x])))]
+      (is (= [[[:tree :overall-with-continue]
+               [:tree :subgoal1-with-fail] [:error "action1"] [:skipping-step "action2"]
+               [:tree :subgoal2] [:success "action3"]
+               [:tree :subsubgoal] [:success "action4"]]
+              :running]
+             results)))))
 
 
 (comment

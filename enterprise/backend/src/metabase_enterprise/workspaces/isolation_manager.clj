@@ -122,9 +122,6 @@
 
 (mu/defn evaluate-steps
   [steps :- ::steps f]
-  ;; todo: put options onto each rule using options from the tree?  todo: how do i want to do that? making each leaf
-  ;; more complicated, or have a stack of frames? lets do a proper interpreter that can have stack frames. can get
-  ;; parent tree rule in this manner
   (letfn [(subtree? [rule] (vector? rule))
           (error-strategy [stackframes]
             (when (seq stackframes)
@@ -144,9 +141,15 @@
         (let [{:keys [q] :as frame} (peek stackframes)
               base-stack            (pop stackframes)
               rule                  (peek q)]
-          ;; done
+          ;; done with this stackframe
           (cond (not (seq q))
-                (recur base-stack acc state (dec gas))
+                (let [state' (if (= state :error)
+                               (let [strategy (error-strategy base-stack)]
+                                 (if (not= strategy ::continue-on-error)
+                                   state
+                                   :running))
+                               state)]
+                  (recur base-stack acc state' (dec gas)))
 
                 ;; scoot through
                 (= state :error)
