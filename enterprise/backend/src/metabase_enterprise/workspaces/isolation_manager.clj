@@ -132,59 +132,73 @@
   ;; todo: put options onto each rule using options from the tree?  todo: how do i want to do that? making each leaf
   ;; more complicated, or have a stack of frames? lets do a proper interpreter that can have stack frames. can get
   ;; parent tree rule in this manner
-  (letfn [(subtree? [rule] (vector? rule))]
-    (loop [process (into [] (reverse (nthrest steps 2)))
-           acc     [[:tree (first steps)]]
-           state   :running]
-      (let [rule (peek process)]
-        ;; done
-        (cond (not (seq process))
-              [acc state]
+  (letfn [(subtree? [rule] (vector? rule))
+          (error-strategy [stackframes]
+            (when (seq stackframes)
+              (if-some [strategy (-> stackframes peek :options :error-strategy)]
+                strategy
+                (recur (pop stackframes)))))]
+    (loop [stackframes [{:q       (into clojure.lang.PersistentQueue/EMPTY
+                                        (nthrest steps 2))
+                         :options (second steps)
+                         :tree    (first steps)}]
+           acc         [[:tree (first steps)]]
+           state       :running
+           gas         50]
+      (when (zero? gas) (throw (ex-info "ran out of gas" {:acc acc})))
+      (if-not (seq stackframes)
+        [acc state]
+        (let [{:keys [q] :as frame} (peek stackframes)
+              base-stack            (pop stackframes)
+              rule                  (peek q)]
+          ;; done
+          (cond (not (seq q))
+                (recur base-stack acc state (dec gas))
 
-              ;; scoot through
-              (= state :error)
-              (let [info (if (vector? rule)
-                           [:skipping-tree (first rule)]
-                           [:skipping-step rule])]
-                (recur (pop process) (conj acc info) state))
-
-              ;; hit a tree node
-              (subtree? rule)
-              ;; todo: include options onto each rule from the rule?
-              (let [[tree-name _options & sub-rules] rule]
-                (recur (into (pop process) (reverse sub-rules))
-                       (conj acc [:tree tree-name])
-                       state))
-              :else
-              (let [[status _response :as result] (f rule)]
-                (when-not (#{:error :success} status)
-                  (throw (ex-info "Bad status from rule" {:rule rule :result result})))
-                (recur (pop process)
-                       (conj acc result)
-                       (case status :success state :error :error))))))))
-
-#_(mu/defn evaluate-steps
-  [steps :- ::steps f]
-  (reduce (fn [[acc running-state] rule]
-            ;; don't continue and prune space
-            (cond (= running-state :error)
-                  (let [info (if (vector? rule)
+                ;; scoot through
+                (= state :error)
+                (let [info   (if (subtree? rule)
                                [:skipping-tree (first rule)]
-                               [:skipping-step rule])]
-                    [(conj acc info) running-state])
+                               [:skipping-step rule])
+                      frame' (update frame :q pop)]
+                  (recur (conj base-stack frame') (conj acc info) state (dec gas)))
 
-                  ;; recursive rule. if here we are running
-                  (vector? rule)
-                  (let [[result running-state] (evaluate-steps rule f)]
-                    [(into acc result) running-state])
+                ;; hit a tree node
+                (subtree? rule)
+                (let [[tree-name options & sub-rules] rule
 
+                      new-stackframe {:q       (into clojure.lang.PersistentQueue/EMPTY
+                                                     sub-rules)
+                                      :options options
+                                      :tree    tree-name}
+                      stackframes    (conj base-stack
+                                           (update frame :q pop)
+                                           new-stackframe)]
+                  (recur stackframes
+                         (conj acc [:tree tree-name])
+                         state
+                         (dec gas)))
+                :else
+                (let [[status _response :as result] (f rule)]
+                  (when-not (#{:error :success} status)
+                    (throw (ex-info "Bad status from rule" {:rule rule :result result})))
+                  (let [switch-to-error? (and (= :error status)
+                                              (not= (error-strategy stackframes)
+                                                    ::continue-on-error))]
+                    (recur (conj base-stack (update frame :q pop))
+                           (conj acc result)
+                           (if switch-to-error? :error state)
+                           (dec gas))))))))))
 
-                  :else
-                  (let [[status _response :as result] (f rule)]
-                    [(conj acc result)
-                     (if (= status :error) :error running-state)])))
-          [[[:tree (first steps)]] :running]
-          (drop 2 steps)))
+(comment
+  (evaluate-steps
+   [:overall
+    {}
+    [:subgoal1 {} "action1" "action2"]
+    [:subgoal2 {}
+     "action3"
+     [:subsubgoal {} "action4"]]] (fn [x] [:success x]))
+  )
 
 (comment
   (evaluate-steps (postgres-steps {:populator {:user "populator" :password "populator-pw"}
@@ -195,7 +209,7 @@
                                [:success (format "performed: %s" step)])))
 
   (evaluate-steps [:schema
-                   {}
+                   {:error-strategy ::continue-on-error}
                    "CREATE SCHEMA scratchpad"
                    [:users
                     {}
@@ -205,14 +219,18 @@
                      [:populator-privileges
                       {}
                       "GRANT USAGE ON SCHEMA public TO populator"
+                      "GRANT USAGE ON SCHEMA public TO populator"
                       "GRANT USAGE ON SCHEMA scratchpad TO populator"
-                      ]]
+                      "GRANT SELECT ON ALL TABLES IN SCHEMA public TO populator"
+                      "GRANT CREATE ON SCHEMA scratchpad TO populator"
+                      "GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA scratchpad TO populator"]]
                     [:reader
                      {}
                      "CREATE USER reader WITH PASSWORD 'reader-pw'"
                      [:reader-privileges
                       {}
-                      "GRANT USAGE ON SCHEMA scratchpad TO reader"]]]]
+                      "GRANT USAGE ON SCHEMA scratchpad TO reader"
+                      "GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA scratchpad TO reader"]]]]
                   (fn [step] (if (= 0 (rand-int 10))
                                [:error (format "error during: %s" step)]
                                [:success (format "performed: %s" step)]))))
@@ -397,15 +415,15 @@
 
 (defmethod delete-isolation* :postgres
   [_driver {:keys [id connection-details isolation-info]}]
-  (let [schema-name (or (:schema-name isolation-info)
-                        (isolation-schema-name id))
+  (let [schema-name    (or (:schema-name isolation-info)
+                           (isolation-schema-name id))
         populator-user (or (-> isolation-info :populator :user)
                            (isolation-user-name id :populator))
-        reader-user (or (-> isolation-info :reader :user)
-                        (isolation-user-name id :reader))
-        jdbc-spec (sql-jdbc.conn/connection-details->spec :postgres connection-details)
-        teardown-steps [:remove-user
-                        {::continue-on-error? true}
+        reader-user    (or (-> isolation-info :reader :user)
+                           (isolation-user-name id :reader))
+        jdbc-spec      (sql-jdbc.conn/connection-details->spec :postgres connection-details)
+        teardown-steps [:cleanup
+                        {:error-strategy ::continue-on-error}
                         [:remove-privileges
                          {}
                          (format "REVOKE ALL PRIVILEGES ON ALL TABLES IN  SCHEMA %s FROM %s" "public" populator-user)
@@ -425,7 +443,8 @@
                                                           (catch Exception e
                                                             [:error sql (ex-message e)]))))]
         {:deleted-schema schema-name
-         :deleted-users [populator-user reader-user]}))))
+         :deleted-users  [populator-user reader-user]
+         :results        results}))))
 
 (defmethod delete-isolation* :clickhouse
   [_driver {:keys [id connection-details isolation-info]}]
@@ -435,17 +454,22 @@
                            (isolation-user-name id :populator))
         reader-user (or (-> isolation-info :reader :user)
                         (isolation-user-name id :reader))
-        jdbc-spec (sql-jdbc.conn/connection-details->spec :clickhouse connection-details)]
+        jdbc-spec (sql-jdbc.conn/connection-details->spec :clickhouse connection-details)
+        steps [:cleanup
+               {:error-strategy ::continue-on-error}
+               [:drop-database {}
+                (format "DROP DATABASE IF EXISTS %s" database-name)]
+               [:remove-users {}
+                (format "DROP USER IF EXISTS %s" populator-user)
+                (format "DROP USER IF EXISTS %s" reader-user)]]]
     (jdbc/with-db-transaction [tx jdbc-spec]
-      ;; Drop database
-      (jdbc/execute! tx [(format "DROP DATABASE IF EXISTS %s" database-name)])
-
-      ;; Drop users
-      (jdbc/execute! tx [(format "DROP USER IF EXISTS %s" populator-user)])
-      (jdbc/execute! tx [(format "DROP USER IF EXISTS %s" reader-user)])
-
-      {:deleted-database database-name
-       :deleted-users [populator-user reader-user]})))
+      (let [results (evaluate-steps steps (fn [sql]
+                                            (try [:success sql (jdbc/execute! tx [sql])]
+                                                 (catch Exception e
+                                                   [:error sql (ex-message e)]))))]
+        {:deleted-database database-name
+         :deleted-users [populator-user reader-user]
+         :results results}))))
 
 (defn delete-isolation
   "Delete database isolation for a single database.
