@@ -64,7 +64,7 @@ describe("SdkDashboard", () => {
 
     // do not reload dashboard data on navigate back
     expect(
-      fetchMock.calls(`path:/api/dashboard/${TEST_DASHBOARD_ID}`),
+      fetchMock.callHistory.calls(`path:/api/dashboard/${TEST_DASHBOARD_ID}`),
     ).toHaveLength(1);
   });
 
@@ -85,7 +85,7 @@ describe("SdkDashboard", () => {
 
     // do not reload dashboard data on navigate back
     expect(
-      fetchMock.calls(`path:/api/dashboard/${TEST_DASHBOARD_ID}`),
+      fetchMock.callHistory.calls(`path:/api/dashboard/${TEST_DASHBOARD_ID}`),
     ).toHaveLength(1);
   });
 
@@ -100,7 +100,7 @@ describe("SdkDashboard", () => {
     expect(onLoadWithoutCards).toHaveBeenLastCalledWith(dashboard);
 
     await waitFor(() => {
-      return fetchMock.called(
+      return fetchMock.callHistory.called(
         `path:/api/card/${dashboard.dashcards[0].card_id}/query`,
       );
     });
@@ -125,7 +125,7 @@ describe("SdkDashboard", () => {
     expect(onLoadWithoutCards).toHaveBeenLastCalledWith(dashboard);
 
     await waitFor(() => {
-      return fetchMock.called(
+      return fetchMock.callHistory.called(
         `path:/api/card/${dashboard.dashcards[0].card_id}/query`,
       );
     });

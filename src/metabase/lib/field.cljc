@@ -452,7 +452,6 @@
           (lib.metadata.calculation/visible-columns
            query
            stage-number
-           (lib.util/query-stage query stage-number)
            {:include-joined?              false
             :include-expressions?         true
             :include-implicitly-joinable? false})))
@@ -505,7 +504,6 @@
     stage-number :- :int]
    (let [visible-columns (lib.metadata.calculation/visible-columns query
                                                                    stage-number
-                                                                   (lib.util/query-stage query stage-number)
                                                                    {:include-joined?              false
                                                                     :include-expressions?         false
                                                                     :include-implicitly-joinable? false})
@@ -696,13 +694,12 @@
   ([query        :- ::lib.schema/query
     stage-number :- :int
     field-ref    :- some?]
-   (let [stage   (lib.util/query-stage query stage-number)
-         ;; not 100% sure why, but [[lib.metadata.calculation/visible-columns]] doesn't seem to return aggregations,
+   (let [;; not 100% sure why, but [[lib.metadata.calculation/visible-columns]] doesn't seem to return aggregations,
          ;; so we have to use [[lib.metadata.calculation/returned-columns]] instead.
          columns ((if (= (lib.dispatch/dispatch-value field-ref) :aggregation)
                     lib.metadata.calculation/returned-columns
                     lib.metadata.calculation/visible-columns)
-                  query stage-number stage)]
+                  query stage-number)]
      (lib.equality/find-matching-column query stage-number field-ref columns))))
 
 (defn json-field?

@@ -164,7 +164,7 @@ export const setup = async ({
 
   if (hasEnterprisePlugins) {
     setupEnterprisePlugins();
-    setupTokenStatusEndpoint(hasTokenFeatures);
+    setupTokenStatusEndpoint({ valid: hasTokenFeatures });
   }
 
   renderWithProviders(
