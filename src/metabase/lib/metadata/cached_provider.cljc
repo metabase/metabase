@@ -59,7 +59,8 @@
   (when (seq ids)
     (log/tracef "Getting %s metadata with IDs %s" metadata-type (pr-str (sort ids)))
     (let [metadata-cache (get @cache metadata-type)]
-      (when-not (every? #(contains? metadata-cache %) ids)
+      (if (every? #(contains? metadata-cache %) ids)
+        (log/trace "Found all items in cache")
         (let [existing-ids (set (keys metadata-cache))
               missing-ids  (set/difference (set ids) existing-ids)]
           (log/tracef "Already fetched %s: %s" metadata-type (pr-str (sort (set/intersection (set ids) existing-ids))))
