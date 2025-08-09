@@ -108,8 +108,7 @@
    (when-let [;; TODO: This is clumsy and expensive; there is likely a neater way to find the full FK column.
               ;; Note that using `lib.metadata/field` is out - we need to respect metadata overrides etc. in models, and
               ;; `lib.metadata/field` uses the field's original status.
-              fk-column (->> (lib.util/query-stage query stage-number)
-                             (lib.metadata.calculation/visible-columns query stage-number)
+              fk-column (->> (lib.metadata.calculation/visible-columns query stage-number)
                              (m/find-first #(and (= (:id %) fk-field-id)
                                                  (= (lib.field.util/inherited-column-name %) fk-field-name)
                                                  (= (lib.join.util/current-join-alias %) fk-join-alias)
