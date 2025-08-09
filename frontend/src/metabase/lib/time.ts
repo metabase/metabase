@@ -6,6 +6,10 @@ import type { DatetimeUnit } from "metabase-types/api/query";
 
 addAbbreviatedLocale();
 
+// NOTE for developer:
+// this file is deprecated, do not modify it unless it is really necessary
+// use ./time-dayjs.ts instead
+
 const TIME_FORMAT_24_HOUR = "HH:mm";
 
 const TEXT_UNIT_FORMATS = {
@@ -74,7 +78,7 @@ function addAbbreviatedLocale() {
   moment.locale(initialLocale);
 }
 
-export function getTimeStyleFromSettings() {
+function getTimeStyleFromSettings() {
   const customFormattingSettings = MetabaseSettings.get("custom-formatting");
   return customFormattingSettings?.["type/Temporal"]?.time_style;
 }
