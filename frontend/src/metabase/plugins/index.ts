@@ -69,6 +69,7 @@ import type {
   DashboardId,
   Database as DatabaseType,
   Dataset,
+  Document,
   Group,
   GroupPermissions,
   GroupsPermissions,
@@ -803,4 +804,15 @@ export const PLUGIN_SMTP_OVERRIDE: {
 } = {
   CloudSMTPConnectionCard: PluginPlaceholder,
   SMTPOverrideConnectionForm: PluginPlaceholder,
+};
+
+export const PLUGIN_DOCUMENTS = {
+  getRoutes: () => null as React.ReactElement | null,
+  shouldShowDocumentInNewItemMenu: () => false,
+  DocumentBackButton: PluginPlaceholder as React.ComponentType<any>,
+  getCurrentDocument: (_state: any) => null as Document | null,
+};
+
+export const PLUGIN_ENTITIES = {
+  entities: {} as Record<string, any>,
 };
