@@ -58,6 +58,7 @@ import SegmentFieldListContainer from "metabase/reference/segments/SegmentFieldL
 import SegmentListContainer from "metabase/reference/segments/SegmentListContainer";
 import SegmentQuestionsContainer from "metabase/reference/segments/SegmentQuestionsContainer";
 import SegmentRevisionsContainer from "metabase/reference/segments/SegmentRevisionsContainer";
+import { TableDetailView } from "metabase/scaffolding";
 import SearchApp from "metabase/search/containers/SearchApp";
 import { EmbeddingSetup } from "metabase/setup/components/EmbeddingSetup/EmbeddingSetup";
 import { Setup } from "metabase/setup/components/Setup";
@@ -311,6 +312,15 @@ export const getRoutes = (store) => {
             <Redirect
               from=":dbId/schema/:schemaName"
               to="databases/:dbId/schema/:schemaName"
+            />
+          </Route>
+
+          <Route path="table">
+            <Route
+              path=":tableId/detail/:rowId(/:mode)"
+              component={(props) => (
+                <TableDetailView {...props} isEdit={!!props.routeParams.mode} />
+              )}
             />
           </Route>
 

@@ -1,0 +1,256 @@
+.ObjectViewSectionActions {
+  visibility: hidden;
+}
+
+.ObjectViewSection {
+  border-radius: var(--default-border-radius);
+  padding: 0 var(--mantine-spacing-md);
+  position: relative;
+  transition: all 0.2s ease;
+
+  &:hover .ObjectViewSectionActions {
+    visibility: visible;
+  }
+
+  &.hovered {
+    position: relative;
+
+    &:after {
+      content: "";
+      border-radius: 8px;
+      position: absolute;
+      top: -12px;
+      right: 0;
+      bottom: -12px;
+      left: 0;
+      background-color: var(--mb-color-brand);
+      opacity: 0.2;
+      pointer-events: none;
+      user-select: none;
+    }
+  }
+
+  .SectionTitle {
+    font-size: 1.25rem;
+    font-weight: 700;
+    padding: 0;
+  }
+
+  .SectionContent {
+    gap: var(--mantine-spacing-md);
+  }
+
+  .Field {
+    align-items: center;
+    overflow: hidden;
+    flex-wrap: nowrap;
+    min-width: 0;
+    gap: var(--mantine-spacing-md);
+
+    .FieldName {
+      display: flex;
+      gap: var(--mantine-spacing-sm);
+      align-items: center;
+    }
+
+    .FieldRemoveButton {
+      align-self: center;
+      visibility: hidden;
+    }
+
+    &:hover {
+      .FieldRemoveButton {
+        visibility: visible;
+      }
+
+      .FieldIcon {
+        visibility: visible;
+      }
+    }
+
+    .FieldIcon {
+      visibility: hidden;
+      align-items: center;
+    }
+  }
+
+  &.normal {
+    .SectionContent {
+      flex-direction: column;
+
+      .Field {
+        align-items: start;
+      }
+
+      .FieldName {
+        white-space: nowrap;
+        min-width: 33%;
+        max-width: 33%;
+        flex-shrink: 0;
+
+        > * {
+          font-size: 1.0625rem;
+        }
+      }
+
+      .FieldValue {
+        word-break: break-word;
+        font-size: 1.0625rem;
+        text-align: left;
+      }
+    }
+  }
+
+  &.header {
+    &.EditMode {
+      .SectionContent {
+        display: inline-flex;
+        flex-wrap: wrap;
+      }
+
+      .FieldRemoveButton {
+        font-size: 2rem;
+      }
+    }
+
+    .SectionTitle {
+      font-size: 2.5rem;
+    }
+
+    .SectionContent {
+      gap: 1rem;
+    }
+
+    .FieldName {
+      display: none;
+    }
+
+    .FieldValue {
+      font-size: 3.125rem;
+      font-weight: 700;
+    }
+  }
+
+  &.subheader {
+    margin-top: -0.75rem;
+
+    .SectionTitle {
+      font-size: 0.825rem;
+    }
+
+    .SectionContent {
+      gap: var(--mantine-spacing-xs);
+      flex-wrap: wrap;
+    }
+
+    &.EditMode {
+      .SectionContent {
+        gap: var(--mantine-spacing-md);
+      }
+    }
+
+    .FieldName {
+      display: none;
+    }
+
+    .Field {
+      gap: var(--mantine-spacing-xs);
+    }
+
+    .Field + .Field {
+      display: flex;
+      line-height: 1;
+
+      .FieldValue {
+        display: flex;
+      }
+    }
+  }
+
+  &.highlight1,
+  &.highlight2 {
+    .SectionContent {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: var(--mantine-spacing-xl);
+    }
+
+    .SectionContent .Field {
+      flex-direction: column;
+      overflow: hidden;
+      align-items: start;
+      align-content: start;
+    }
+
+    &.highlight2 {
+      .Field {
+        position: relative;
+        align-items: start;
+        align-content: start;
+        gap: var(--mantine-spacing-sm);
+      }
+
+      .FieldName {
+        text-align: center;
+        font-size: 0.875rem;
+        padding-right: 1rem;
+      }
+
+      .FieldValue {
+        font-size: 1.75rem;
+        line-height: 1;
+        font-weight: 700;
+      }
+
+      .FieldRemoveButton {
+        position: absolute;
+        top: 0.25rem;
+        right: 0.25rem;
+      }
+    }
+
+    .SectionContent .FieldName,
+    .SectionContent .FieldValue {
+      width: 100%;
+    }
+  }
+}
+
+.ObjectViewSidebarSectionActions {
+  visibility: hidden;
+}
+
+.ObjectViewSidebarSection {
+  &:hover .ObjectViewSidebarSectionActions {
+    visibility: visible;
+  }
+}
+
+.ObjectViewSidebarColumnActionIcon {
+  visibility: hidden;
+}
+
+.ObjectViewSidebarColumn {
+  &:hover .ObjectViewSidebarColumnActionIcon {
+    visibility: visible;
+  }
+}
+
+.link,
+.link > div {
+  cursor: pointer;
+  text-decoration: none;
+  color: var(--mb-color-brand) !important;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+.separator::before {
+  display: block;
+  content: "•";
+  margin: 0 0.25rem;
+  color: var(--mb-color-text-secondary);
+  font-size: 1em;
+}
