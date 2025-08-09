@@ -170,10 +170,6 @@
     separator :- [:or :string char?]]
    (str/join separator (field-name-components field))))
 
-(mu/defmethod driver-api/field-reference-mlv2 :mongo
-  [_driver field-inst :- driver-api/schema.metadata.column]
-  (field->name field-inst))
-
 (defmacro ^:private mongo-let
   {:style/indent 1}
   [[field value] & body]
@@ -210,31 +206,31 @@
 (def ^:private base64-decoder "
 function(bin) {
           if (!bin) return null;
-          
+
           try {
             var base64 = bin.base64();
-            
+
             // Manual base64 decode implementation
             var chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
             var result = '';
             var i = 0;
-            
+
             // Remove any padding
             base64 = base64.replace(/=+$/, '');
-            
+
             while (i < base64.length) {
               var a = chars.indexOf(base64.charAt(i++));
               var b = chars.indexOf(base64.charAt(i++));
               var c = chars.indexOf(base64.charAt(i++));
               var d = chars.indexOf(base64.charAt(i++));
-              
+
               var bitmap = (a << 18) | (b << 12) | (c << 6) | d;
-              
+
               result += String.fromCharCode((bitmap >> 16) & 255);
               if (c !== -1) result += String.fromCharCode((bitmap >> 8) & 255);
               if (d !== -1) result += String.fromCharCode(bitmap & 255);
             }
-            
+
             return result;
           } catch(e) {
             return null;
