@@ -160,3 +160,24 @@
                                                    [(u/->snake_case_en k) p s]) (mc/children schema)))
 
                          schema)))))
+
+(core/defn map-schema-keys
+  "Return a set of keys specified in a map `schema`. Resolves refs in the registry and handles maps wrapped in `:and`
+  or combined with `:merge`.
+
+    (map-schema-keys :metabase.lib.metadata.calculation/visible-columns.options)
+    ;; => #{:include-joined?
+            :include-expressions?
+            :include-implicitly-joinable-for-source-card?
+            :include-implicitly-joinable?
+            :include-remaps?}"
+  [schema]
+  ;;   TODO (Cam 8/7/25) -- there's probably a better way to do this but I don't know what it is.
+  (let [schema (mr/resolve-schema schema)]
+    (case (mc/type schema)
+      :map (into
+            #{}
+            (map first)
+            (mc/children schema))
+      :and (some map-schema-keys (mc/children schema))
+      nil)))

@@ -468,11 +468,10 @@
 
   ([query        :- ::lib.schema/query
     stage-number :- :int]
-   (let [stage (lib.util/query-stage query stage-number)
-         columns (sequence
+   (let [columns (sequence
                   (comp (map add-column-operators)
                         (clojure.core/filter :operators))
-                  (lib.metadata.calculation/visible-columns query stage-number stage))
+                  (lib.metadata.calculation/visible-columns query stage-number))
          existing-filters (filters query stage-number)]
      (cond
        (empty? columns)
@@ -515,8 +514,7 @@
     stage-number :- :int
     a-filter-clause :- ::lib.schema.expression/boolean]
    (let [[op _ first-arg] a-filter-clause
-         stage   (lib.util/query-stage query stage-number)
-         columns (lib.metadata.calculation/visible-columns query stage-number stage)
+         columns (lib.metadata.calculation/visible-columns query stage-number)
          col     (lib.equality/find-matching-column query stage-number first-arg columns)]
      (clojure.core/or (m/find-first #(clojure.core/= (:short %) op)
                                     (lib.filter.operator/filter-operators col))
@@ -577,8 +575,7 @@
     stage-number :- :int
     a-filter-clause :- ::lib.schema.expression/boolean]
    (let [[op options first-arg & rest-args] a-filter-clause
-         stage   (lib.util/query-stage query stage-number)
-         columns (lib.metadata.calculation/visible-columns query stage-number stage)
+         columns (lib.metadata.calculation/visible-columns query stage-number)
          col     (lib.equality/find-matching-column query stage-number first-arg columns)]
      {:lib/type :mbql/filter-parts
       :operator (clojure.core/or (m/find-first #(clojure.core/= (:short %) op)
