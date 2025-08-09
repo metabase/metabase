@@ -112,7 +112,7 @@
                 :error]
                result))))
     (testing "errors can be marked recoverable"
-      (let [steps [:cleanup {::isolation-manager/continue-on-error? true}
+      (let [steps [:cleanup {:error-strategy ::isolation-manager/continue-on-error}
                    [:remove-privileges {} "revoke privileges"]
                    [:remove-schema {} "drop schema"]
                    [:remove-user {} "drop user"]]
@@ -121,15 +121,16 @@
                                                          [:error x "failed"]))]
         (is (= [[[:tree :cleanup]
                  [:tree :remove-privileges]
-                 [:failed "revoke privileges" "failed"]
+                 [:error "revoke privileges" "failed"]
                  [:tree :remove-schema]
-                 [:failed "drop schema" "failed"]
+                 [:error "drop schema" "failed"]
                  [:tree :remove-user]
-                 [:failed "drop user" "failed"]]
+                 [:error "drop user" "failed"]]
                 :running] result))))))
 
 
 (comment
+  (run-tests)
   (mt/set-test-drivers! #{:postgres :clickhouse})
   (mt/set-test-drivers! #{:postgres})
   (mt/set-test-drivers! #{:clickhouse})
