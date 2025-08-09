@@ -446,7 +446,7 @@
                       ;; The order of these columns seems to be 'flexible' (I would consider either to be correct), and
                       ;; I've seen both in two different branches of mine attempting to fix this bug. The order doesn't
                       ;; matter at all to the FE, so if this changes in the future it's ok. -- Cam
-                      "j__EMAIL"
+                      "j__PEOPLE__via__USER_ID__EMAIL" #_"j__EMAIL"
                       "PEOPLE__via__USER_ID__EMAIL"]
                      (map :lib/desired-column-alias (mt/cols results))))
               (is (= [[1                ; <= orders.id

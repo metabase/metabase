@@ -13,6 +13,7 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.aggregation :as lib.schema.aggregation]
    [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.mbql-clause :as lib.schema.mbql-clause]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.types.isa :as lib.types.isa]
@@ -159,8 +160,11 @@
     :sum       "sum"
     :var       "var"))
 
-(defmethod lib.metadata.calculation/display-name-method ::unary-aggregation
-  [query stage-number [tag _opts arg] style]
+(mu/defmethod lib.metadata.calculation/display-name-method ::unary-aggregation
+  [query
+   stage-number
+   [tag _opts arg] :- [:ref ::lib.schema.mbql-clause/clause]
+   style]
   (let [arg (lib.metadata.calculation/display-name query stage-number arg style)]
     (case tag
       :avg       (i18n/tru "Average of {0}"            arg)

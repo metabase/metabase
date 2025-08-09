@@ -46,8 +46,9 @@
 
 (deftest ^:parallel aggregation-names-test
   (are [aggregation-clause expected] (= expected
-                                        {:column-name  (aggregation-column-name aggregation-clause)
-                                         :display-name (aggregation-display-name aggregation-clause)})
+                                        (let [clause (lib/normalize aggregation-clause)]
+                                          {:column-name  (aggregation-column-name clause)
+                                           :display-name (aggregation-display-name clause)}))
     [:count {}]
     {:column-name "count", :display-name "Count"}
 
@@ -141,7 +142,7 @@
    (col-info-for-aggregation-clause query -1 clause))
 
   ([query stage clause]
-   (lib/metadata query stage clause)))
+   (lib/metadata query stage (lib/normalize clause))))
 
 (deftest ^:parallel col-info-for-aggregation-clause-test
   (are [clause expected] (=? expected

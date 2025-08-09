@@ -301,3 +301,41 @@
                 ;; ok because it has a different temporal unit
                 [:field {:lib/uuid "00000000-0000-0000-0000-000000000003", :base-type :type/Integer, :temporal-unit :month} 101]]
                (lib/normalize schema fields)))))))
+
+(deftest ^:parallel normalize-stage-infer-type-test
+  (are [stage expected] (= expected
+                           (lib/normalize ::lib.schema/stage stage))
+    {:source-table 10}
+    {:lib/type :mbql.stage/mbql, :source-table 10}
+
+    {:source-card 10}
+    {:lib/type :mbql.stage/mbql, :source-card 10}
+
+    {:native "SELECT *"}
+    {:lib/type :mbql.stage/native, :native "SELECT *"}
+
+    ;; if we can't infer the type, return the stage as-is
+    {:breakout [[:field {:lib/uuid "00000000-0000-0000-0000-000000000000"} 1]]}
+    {:breakout [[:field {:lib/uuid "00000000-0000-0000-0000-000000000000"} 1]]}))
+
+(deftest ^:parallel normalize-stages-add-subsequent-stage-types-test
+  (are [stages expected] (= expected
+                            (lib/normalize ::lib.schema/stages stages))
+    ;; add `:lib/type` to subsequent stages automatically
+    [{:source-table 1} {}]
+    [{:lib/type :mbql.stage/mbql, :source-table 1}
+     {:lib/type :mbql.stage/mbql}]
+
+    [{:source-table 1}
+     {:breakout [[:field {:lib/uuid "00000000-0000-0000-0000-000000000000"} 1]]}]
+    [{:lib/type :mbql.stage/mbql, :source-table 1}
+     {:lib/type :mbql.stage/mbql, :breakout [[:field {:lib/uuid "00000000-0000-0000-0000-000000000000"} 1]]}]
+
+    ;; don't stomp on existing `:lib/type` even if it's wrong
+    [{:source-table 1} {:lib/type :mbql.stage/native}]
+    [{:lib/type :mbql.stage/mbql, :source-table 1}
+     {:lib/type :mbql.stage/native}]
+
+    [{:source-table 1} {"lib/type" :mbql.stage/native}]
+    [{:lib/type :mbql.stage/mbql, :source-table 1}
+     {:lib/type :mbql.stage/native}]))

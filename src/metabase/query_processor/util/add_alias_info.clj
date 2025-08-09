@@ -68,11 +68,14 @@
    [metabase.util.malli.registry :as mr]
    [metabase.util.performance :as perf]))
 
+(def ^:private ^:dynamic ^{:arglists '([driver s])} *escape-alias-fn*
+  #'driver/escape-alias)
+
 (defn- prefix-field-alias
   "Generate a field alias by applying `prefix` to `field-alias`. This is used for automatically-generated aliases for
   columns that are the result of joins."
   [prefix field-alias]
-  (driver/escape-alias driver/*driver* (str prefix "__" field-alias)))
+  (*escape-alias-fn* driver/*driver* (str prefix "__" field-alias)))
 
 (defn- make-unique-alias-fn
   "Creates a function with the signature
@@ -86,7 +89,7 @@
     (fn unique-alias-fn [position original-alias]
       (assert (string? original-alias)
               (format "unique-alias-fn expected string, got: %s" (pr-str original-alias)))
-      (unique-name-fn position (driver/escape-alias driver/*driver* original-alias)))))
+      (unique-name-fn position (*escape-alias-fn* driver/*driver* original-alias)))))
 
 ;; TODO -- this should probably limit the resulting alias, and suffix a short hash as well if it gets too long. See also
 ;; [[unique-alias-fn]] below.
@@ -310,7 +313,7 @@
         ;; otherwise if this is a nominal field literal ref then look for matches based on the string name used
         (when-let [field-names (let [[_ id-or-name] field-clause]
                                  (when (string? id-or-name)
-                                   [id-or-name (some-> driver/*driver* (driver/escape-alias id-or-name))]))]
+                                   [id-or-name (some-> driver/*driver* (*escape-alias-fn* id-or-name))]))]
           (some #(field-name-match % all-exports source-metadata field-exports) field-names))
         ;; if all of that failed then try to find a match using `:lib/deduplicated-name` (if present)
         (let [[_ id-or-name] field-clause]
@@ -443,7 +446,7 @@
     ;; potentially break by doing this. I haven't been able to reproduce it yet however.
     ;;
     ;; This will only be triggered if the join somehow exposes duplicate columns or columns that have the same escaped
-    ;; name after going thru [[driver/escape-alias]]. I think the only way this could happen is if we escape them
+    ;; name after going thru [[*escape-alias-fn*]]. I think the only way this could happen is if we escape them
     ;; aggressively but the escape logic produces duplicate columns (i.e., there is overlap between the unique hashes we
     ;; suffix to escaped identifiers.)
     ;;
@@ -620,7 +623,7 @@
           (if (and (map? form)
                    (seq (:joins form)))
             (as-> form form
-              (update form :joins (let [unique (comp (partial driver/escape-alias driver/*driver*)
+              (update form :joins (let [unique (comp (partial *escape-alias-fn* driver/*driver*)
                                                      (make-join-alias-unique-name-generator))]
                                     (fn [joins]
                                       (mapv (fn [join]

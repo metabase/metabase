@@ -251,8 +251,9 @@
                                :params
                                :parameters
                                :lib/stage-metadata
-                               ;; wait a minute, `:middleware` is not supposed to be added here, it's supposed to be
-                               ;; added to the top level.
+                               ;; TODO (Cam 8/7/25) -- wait a minute, `:middleware` is not supposed to be added here,
+                               ;; it's supposed to be added to the top level. Investigate whether this was just a
+                               ;; mistake or what.
                                :middleware)}
    [:map
     [:lib/type [:ref ::stage.type]]]

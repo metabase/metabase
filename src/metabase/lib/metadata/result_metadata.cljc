@@ -178,19 +178,25 @@
       (set/union aliases (implicit-join-aliases query previous-stage-number))
       aliases)))
 
-;;; TODO (Cam 7/30/25) -- I have no real idea why we're doing this. It seems dumb and broken; a column from a reified
-;;; explicit join that gets `:source/joins` should always have a join aliases -- see my notes on
-;;; `:metabase.lib.metadata.result-metadata/column.validate-join-alias`. Can we just remove `:source-alias` (which is
-;;; used by the FE for mysterious/unknown purposes) and leave the Lib keys in the correct shape?
 (defn- remove-implicit-join-aliases
+  "If an implicit join was reified by the QP preprocessor, we need to remove traces of that reification from result
+  metadata, so anyone using it in combination with the un-preprocessed query doesn't accidentally introduce field refs
+  that include generated join aliases for joins that don't exist yet."
   [query cols]
-  (let [implicit-aliases (implicit-join-aliases query -1)]
-    (map (fn [col]
-           (cond-> col
-             (when-let [join-alias (any-join-alias col)]
-               (contains? implicit-aliases join-alias))
-             (dissoc :metabase.lib.join/join-alias :lib/original-join-alias :source-alias)))
-         cols)))
+  (let [implicit-aliases    (implicit-join-aliases query -1)
+        maybe-update-source (fn [col]
+                              (cond-> col
+                                (= (:lib/source col) :source/joins)
+                                (assoc :lib/source :source/implicitly-joinable)))
+        remove-aliases      (fn [col]
+                              (dissoc col :metabase.lib.join/join-alias :lib/original-join-alias :source-alias))
+        implicitly-joined?  (fn [col]
+                              (when-let [join-alias (any-join-alias col)]
+                                (contains? implicit-aliases join-alias)))
+        maybe-update-col    (fn [col]
+                              (cond-> col
+                                (implicitly-joined? col) (-> remove-aliases maybe-update-source)))]
+    (map maybe-update-col cols)))
 
 (mu/defn- add-legacy-source :- [:sequential
                                 [:merge

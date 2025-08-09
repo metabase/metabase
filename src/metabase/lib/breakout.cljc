@@ -32,15 +32,15 @@
     stage-number :- :int]
    (not-empty (:breakout (lib.util/query-stage query stage-number)))))
 
-(mu/defn breakouts-metadata :- [:maybe [:sequential ::lib.metadata.calculation/column-metadata-with-source]]
+(mu/defn breakouts-metadata :- [:maybe ::lib.metadata.calculation/visible-columns]
   "Get metadata about the breakouts in a given stage of a `query`."
   ([query]
    (breakouts-metadata query -1))
   ([query        :- ::lib.schema/query
     stage-number :- :int]
    (some->> (breakouts query stage-number)
-            (mapv (fn [field-ref]
-                    (-> (lib.metadata.calculation/metadata query stage-number field-ref)
+            (mapv (mu/fn [a-ref :- [:or :mbql.clause/field :mbql.clause/expression]]
+                    (-> (lib.metadata.calculation/metadata query stage-number a-ref)
                         (assoc :lib/breakout? true)))))))
 
 (mu/defn breakout :- ::lib.schema/query

@@ -20,8 +20,7 @@
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.util :as lib.util]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli :as mu]))
 
 (defmulti =
   "Determine whether two already-normalized pMBQL maps, clauses, or other sorts of expressions are equal. The basic rule
@@ -427,72 +426,39 @@
 (defn- ref-id-or-name [[_ref-kind _opts id-or-name]]
   id-or-name)
 
-(mr/def ::match-type
-  [:enum ::match-type.same-stage ::match-type.unknown])
-
-(mr/def ::match-options
-  [:map
-   {:closed true}
-   [:match-type {:optional true} [:maybe ::match-type]]])
-
 (mu/defn find-matching-ref :- [:maybe ::lib.schema.ref/ref]
   "Given `column` and a list of `refs`, finds the ref that best matches this column.
 
   Throws if there are multiple, ambiguous matches.
 
-  Returns the matching ref, or nil if no plausible matches are found."
-  ([column refs]
-   (find-matching-ref column refs nil))
+  Returns the matching ref, or nil if no plausible matches are found.
 
-  ([column :- ::lib.schema.metadata/column
-    refs   :- [:sequential ::lib.schema.ref/ref]
-    ;; `same-stage?` = refs and columns are known to be from the same stage (or join), so they should have matching
-    ;; join aliases AND any string name refs should match `:lib/source-column-alias` (the string name in a field name
-    ;; ref should be the SOURCE COLUMN ALIAS in the current stage; this is derived from the DESIRED COLUMN ALIAS from
-    ;; the previous stage).
-    {:keys [match-type], :or {match-type ::match-type.unknown}} :- [:maybe ::match-options]]
-   (let [ref-tails (group-by ref-id-or-name refs)
-         matches   (or (when-let [source-uuid (:lib/source-uuid column)]
-                         (some (fn [a-ref]
-                                 (when (= (lib.options/uuid a-ref) source-uuid)
-                                   [a-ref]))
-                               refs))
-                       (case match-type
-                         ::match-type.same-stage
-                         ;; same stage match, use SOURCE COLUMN ALIAS!!!! IF YOU ARE NOT CLEAR ON WHY, TALK
-                         ;; TO YOUR BOY CAM!!!!
-                         (let [matches (let [col-join-alias      (lib.join.util/current-join-alias column)
-                                             source-column-alias ((some-fn :lib/source-column-alias :name) column)]
-                                         (filter (fn [a-ref]
-                                                   (and (clojure.core/= (:join-alias (lib.options/options a-ref)) col-join-alias)
-                                                        (some #(clojure.core/= (ref-id-or-name a-ref) %)
-                                                              [(:id column) source-column-alias])))
-                                                 refs))]
-                           ;; if we fail to match with join alias then try to match by `:source-field`/`:fk-field-id`
-                           (if (= (count matches) 1)
-                             matches
-                             (when-let [fk-field-id (:fk-field-id column)]
-                               (filter (fn [a-ref]
-                                         (= (:source-field (lib.options/options a-ref)) fk-field-id))
-                                       refs))))
-                         ;; otherwise they're not the same stage, maybe the column is from an earlier stage
-                         ;; or maybe the refs are. WHO KNOWS!!!
-                         ::match-type.unknown
-                         (do
-                           (log/debug "Are refs from a previous stage that the column or the other way around? Who knows! Implement better match logic.")
-                           (or
-                            (not-empty (get ref-tails (:id column)))
-                            ;; columns from the previous stage have unique `:lib/desired-column-alias`
-                            ;; but not `:name`. we cannot fallback to `:name` when
-                            ;; `:lib/desired-column-alias` is set
-                            (get ref-tails ((some-fn :lib/desired-column-alias :name) column)))))
-                       [])]
-     (case (count matches)
-       0 nil
-       1 (first matches)
-       (throw (ex-info "Ambiguous match: given column matches multiple refs"
-                       {:column        column
-                        :matching-refs matches}))))))
+  `column` AND `refs` MUST BOTH BE RELATIVE TO THE SAME STAGE FOR THIS TO WORK CORRECTLY!!!!!!"
+  [column :- ::lib.schema.metadata/column
+   refs   :- [:sequential ::lib.schema.ref/ref]]
+  (let [matches   (or (when-let [source-uuid (:lib/source-uuid column)]
+                        (some (fn [a-ref]
+                                (when (= (lib.options/uuid a-ref) source-uuid)
+                                  [a-ref]))
+                              refs))
+                      ;; same stage match, use SOURCE COLUMN ALIAS!!!! IF YOU ARE NOT CLEAR ON WHY, TALK TO YOUR BOY
+                      ;; CAM!!!!
+                      (let [col-join-alias      (lib.join.util/current-join-alias column)
+                            col-source-field    (:fk-field-id column)
+                            source-column-alias ((some-fn :lib/source-column-alias :name) column)]
+                        (filter (fn [a-ref]
+                                  (and (clojure.core/= (:join-alias (lib.options/options a-ref)) col-join-alias)
+                                       (clojure.core/= (:source-field (lib.options/options a-ref)) col-source-field)
+                                       (some #(clojure.core/= (ref-id-or-name a-ref) %)
+                                             [(:id column) source-column-alias])))
+                                refs))
+                      [])]
+    (case (count matches)
+      0 nil
+      1 (first matches)
+      (throw (ex-info "Ambiguous match: given column matches multiple refs"
+                      {:column        column
+                       :matching-refs matches})))))
 
 (mu/defn find-column-indexes-for-refs :- [:sequential :int]
   "Given a list `haystack` of columns or refs, and a list `needles` of refs to searc for, this returns a list parallel
