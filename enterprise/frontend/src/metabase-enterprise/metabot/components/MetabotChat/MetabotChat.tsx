@@ -158,7 +158,6 @@ export const MetabotChat = () => {
               {/* conversation messages */}
               {metabot.messages.map((message, index) => {
                 const canRetry =
-                  metabot.useStreaming &&
                   message.role === "agent" &&
                   metabot.messages[index + 1]?.role !== "agent";
 
@@ -189,7 +188,7 @@ export const MetabotChat = () => {
               {/* loading */}
               {metabot.isDoingScience && (
                 <MetabotThinking
-                  toolCalls={metabot.useStreaming ? metabot.toolCalls : []}
+                  toolCalls={metabot.toolCalls}
                   hasStartedResponse={
                     _.last(metabot.messages)?.role === "agent"
                   }
@@ -231,11 +230,8 @@ export const MetabotChat = () => {
               data-testid="metabot-chat-input"
               w="100%"
               leftSection={
-                <Box h="100%" pt="11px" onDoubleClick={metabot.toggleStreaming}>
-                  <Icon
-                    name="metabot"
-                    c={metabot.useStreaming ? "brand" : "warning"}
-                  />
+                <Box h="100%" pt="11px">
+                  <Icon name="metabot" c="brand" />
                 </Box>
               }
               autosize

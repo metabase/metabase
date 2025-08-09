@@ -13,11 +13,6 @@ import type { MetabotStoreState } from "./types";
 export const getMetabot = (state: MetabotStoreState) =>
   state.plugins.metabotPlugin;
 
-export const getUseStreaming = createSelector(
-  getMetabot,
-  (metabot) => metabot.useStreaming,
-);
-
 export const getMetabotVisible = createSelector(
   getMetabot,
   (metabot) => metabot.visible,
