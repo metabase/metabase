@@ -36,6 +36,7 @@ export const AdminNavWrapper = ({
 export type AdminNavItemProps = {
   path: string;
   icon?: IconName;
+  onClick?: () => void;
 } & Omit<NavLinkProps, "href">;
 
 export function AdminNavItem({
