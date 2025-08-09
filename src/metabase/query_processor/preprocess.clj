@@ -101,13 +101,22 @@
 (defn- ensure-pmbql-for-unclean-query
   [middleware-fn]
   (-> (fn [query]
-        (mu/disable-enforcement
-          (lib/without-cleaning
-           (fn []
-             (let [query' (-> (cond->> query
-                                (not (:lib/type query)) (lib/query (qp.store/metadata-provider)))
-                              (copy-unconverted-properties query))]
-               (-> query' middleware-fn ->legacy))))))
+        (as-> query query
+          ;; convert to MBQL 5 as needed
+          (letfn [(convert [query]
+                    (lib/without-cleaning
+                     (^:once fn* []
+                       (mu/disable-enforcement
+                         (lib/query (qp.store/metadata-provider) query)))))]
+            (-> (cond->> query
+                  (not (:lib/type query)) convert)
+                (copy-unconverted-properties query)))
+          ;; apply the middleware WITH MALLI ENFORCEMENT ENABLED!
+          (middleware-fn query)
+          ;; now convert back to legacy without cleaning
+          (mu/disable-enforcement
+            (lib/without-cleaning
+             (^:once fn* [] (->legacy query))))))
       (with-meta (meta middleware-fn))))
 
 (def ^:private middleware
