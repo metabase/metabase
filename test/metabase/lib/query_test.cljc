@@ -601,8 +601,7 @@
 (deftest ^:parallel automatically-wrap-metadata-providers-in-cached-metadata-provider-test-2
   (testing "Re-wrap things that are CachedMetadataProviders IF they do not have a cache"
     (let [mp (lib.metadata.invocation-tracker/invocation-tracker-provider
-              (lib.metadata.cached-provider/cached-metadata-provider
-               (lib.tu/mock-metadata-provider {})))]
+              (lib.tu/mock-metadata-provider {}))]
       (is (lib.metadata.protocols/cached-metadata-provider? mp))
       (is (not (lib.metadata.protocols/cached-metadata-provider-with-cache? mp)))
       (is (= (lib.metadata.cached-provider/cached-metadata-provider mp)
