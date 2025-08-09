@@ -98,6 +98,8 @@ export function formatValue(value: unknown, _options: OptionsType = {}) {
   }
 }
 
+export { OptionsType };
+
 export function getRemappedValue(
   value: string | number,
   { remap, column }: OptionsType = {},

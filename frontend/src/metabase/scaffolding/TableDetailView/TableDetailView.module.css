@@ -1,0 +1,96 @@
+.ObjectViewSectionActions {
+  visibility: hidden;
+}
+
+.ObjectViewSection {
+  &:hover .ObjectViewSectionActions {
+    visibility: visible;
+  }
+}
+
+.ObjectViewSidebarSectionActions {
+  visibility: hidden;
+}
+
+.ObjectViewSidebarSection {
+  &:hover .ObjectViewSidebarSectionActions {
+    visibility: visible;
+  }
+}
+
+.ObjectViewSidebarColumnActionIcon {
+  visibility: hidden;
+}
+
+.ObjectViewSidebarColumn {
+  &:hover .ObjectViewSidebarColumnActionIcon {
+    visibility: visible;
+  }
+}
+
+.SectionContent {
+  overflow-x: auto;
+  gap: var(--mantine-spacing-md);
+}
+
+.ListViewContainer {
+  border: 1px solid var(--border-color);
+  border-radius: var(--default-border-radius);
+  display: grid;
+  grid-template-columns: 33% 17% 17% 33%;
+  gap: 0;
+  padding: var(--mantine-spacing-sm);
+}
+
+.ListViewSection {
+  display: flex;
+  flex-direction: column;
+  border: none;
+
+  .FieldName {
+    color: var(--mb-color-text-tertiary);
+  }
+
+  .SectionContent {
+    /* flex-direction: column; */
+    display: grid;
+    grid-template-columns: auto 1fr;
+    align-items: start;
+    /* line-height: 1; */
+    /* background-color: green; */
+
+    &.Header {
+      display: flex;
+      padding: var(--mantine-spacing-sm) var(--mantine-spacing-md);
+
+      .FieldValue {
+        font-weight: 700;
+        font-size: var(--mantine-font-size-lg);
+      }
+    }
+
+    &.HighlightSection {
+      grid-template-columns: 1fr;
+      grid-row-gap: var(--mantine-spacing-xs);
+      .FieldName {
+        display: none;
+      }
+      .FieldValue {
+        font-weight: 700;
+        font-size: var(--mantine-font-size-lg);
+      }
+    }
+
+    &.NormalSection {
+      grid-row-gap: var(--mantine-spacing-xs);
+    }
+
+    &.UnlabeledSection {
+      grid-template-columns: 1fr;
+      grid-row-gap: var(--mantine-spacing-xs);
+      .FieldName {
+        display: none;
+      }
+    }
+  }
+}
