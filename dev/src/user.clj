@@ -100,3 +100,7 @@
                        (conj cider-nrepl/cider-middleware 'refactor-nrepl.middleware/wrap-refactor)))))
   ((requiring-resolve 'dev/start!))
   (deref (promise)))
+
+(comment
+  (-/debugging-tools)
+  )
