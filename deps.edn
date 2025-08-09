@@ -697,7 +697,7 @@
    {com.bhauman/spell-spec            {:mvn/version "0.1.2"}                    ; used to find misspellings in YAML files
     expound/expound                   {:mvn/version "0.9.0"}                    ; better output of spec validation errors
     io.github.borkdude/grasp          {:mvn/version "0.1.4"}
-    io.github.clojure/tools.build     {:mvn/version "0.10.9"}
+    io.github.clojure/tools.build     {:mvn/version "0.10.10"}
     io.github.seancorfield/build-uber-log4j2-handler
     {:git/tag "v2.24.0" :git/sha "de93f51"}                                     ; collect binary files for log4j2
     org.clojure/data.xml              {:mvn/version "0.2.0-alpha9"}
