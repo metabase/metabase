@@ -41,8 +41,10 @@
   #{:postgres :h2})
 
 (defmethod search.engine/supported-engine? :search.engine/appdb [_]
-  (and (or (not config/is-prod?)
-           (= "appdb" (some-> (search.settings/search-engine) name)))
+  (and (or config/is-dev?
+           ;; if the default engine is semantic we want appdb to be available,
+           ;; as we want to mix results
+           (#{"appdb" "semantic"} (some-> (search.settings/search-engine) name)))
        (supported-db? (mdb/db-type))))
 
 (defn- parse-datetime [s]
@@ -59,15 +61,7 @@
        ;; ideally we would make per-user computed attributes part of the spec itself.
        :bookmark   (pos? (:bookmarked index-row 0))
        :score      (:total_score index-row 1)
-       :all-scores (mapv (fn [k]
-                           ;; we shouldn't get null scores, but just in case (i.e., because there are bugs)
-                           (let [score  (or (get index-row k) 0)
-                                 weight (or (weights k) 0)]
-                             {:score        score
-                              :name         k
-                              :weight       weight
-                              :contribution (* weight score)}))
-                         active-scorers))
+       :all-scores (search.scoring/all-scores weights active-scorers index-row))
       (update :created_at parse-datetime)
       (update :updated_at parse-datetime)
       (update :last_edited_at parse-datetime)))
@@ -102,7 +96,7 @@
       true (sql.helpers/where (or-null permitted-clause))
       personal-clause (sql.helpers/where (or-null personal-clause)))))
 
-(defmethod search.engine/results :search.engine/appdb
+(defn- results
   [{:keys [search-engine search-string] :as search-ctx}]
   ;; Check whether there is a query-able index.
   (when-not (search.index/active-table)
@@ -152,6 +146,10 @@
       ;; Rule out the error coming from stale index metadata.
       (#'search.index/sync-tracking-atoms!)
       (throw e))))
+
+(defmethod search.engine/results :search.engine/appdb
+  [search-ctx]
+  (results search-ctx))
 
 (defmethod search.engine/model-set :search.engine/appdb
   [search-ctx]
