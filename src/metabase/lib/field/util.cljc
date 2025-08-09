@@ -4,19 +4,17 @@
    [clojure.set :as set]
    [metabase.lib.join.util :as lib.join.util]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+   [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.util :as lib.util]
    [metabase.util.malli :as mu]))
 
+;;; TODO (Cam 6/24/25) -- this is fundamentally broken -- see QUE-1375
 (mu/defn inherited-column? :- :boolean
   "Is the `column` coming directly from a card, a native query, or a previous query stage?"
   [column :- [:map
               [:lib/source {:optional true} ::lib.schema.metadata/column.source]]]
-  ;; broken legacy refs should use IDs as much as possible unless this comes from a native query
-  (boolean
-   (or (= (:lib/source column) :source-native)
-       (when-not (:metabase.lib.metadata.result-metadata/force-id-refs-for-non-native-columns column)
-         (#{:source/card :source/previous-stage} (:lib/source column))))))
+  (some? (#{:source/card :source/native :source/previous-stage} (:lib/source column))))
 
 (mu/defn inherited-column-name :- [:maybe :string]
   "If the field ref for this `column` should be name-based, returns the name used in the field ref.
@@ -31,14 +29,15 @@
   came from."
   [column :- ::lib.schema.metadata/column]
   (when (inherited-column? column)
-    (some (fn [k]
-            (when k
-              (k column)))
-          [;; broken field refs never use `:lib/source-column-alias`.
-           (when-not (:metabase.lib.metadata.result-metadata/force-id-refs-for-non-native-columns column)
-             :lib/source-column-alias)
-           :lib/deduplicated-name
-           :name])))
+    ((some-fn
+      ;; broken field refs never use `:lib/source-column-alias`.
+      (case lib.ref/*ref-style*
+        :ref.style/default                  :lib/source-column-alias
+        :ref.style/broken-legacy-qp-results (constantly nil))
+      ;; if this is missing for some reason then fall back to `:name` -- probably wrong, but maybe not and it might
+      ;; still work.
+      :name)
+     column)))
 
 (mu/defn add-deduplicated-names :- [:or
                                     ;; zero-arity: transducer
@@ -72,8 +71,7 @@
   [metadata-providerable :- ::lib.metadata.protocols/metadata-providerable]
   (comp (add-deduplicated-names)
         (let [unique-name-fn (lib.util/unique-name-generator)]
-          (map (mu/fn [col :- [:map
-                               [:lib/type [:= :metadata/column]]]]
+          (map (fn [col]
                  (let [source-alias  ((some-fn :lib/source-column-alias :name) col)
                        desired-alias (unique-name-fn
                                       (lib.join.util/desired-alias metadata-providerable col))]

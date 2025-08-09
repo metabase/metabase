@@ -134,7 +134,6 @@
  [lib.convert
   ->legacy-MBQL
   ->pMBQL
-  legacy-default-join-alias
   without-cleaning]
  [metabase.lib.convert.metadata-to-legacy
   lib-metadata-column->legacy-metadata-column

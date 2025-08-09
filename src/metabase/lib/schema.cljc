@@ -75,13 +75,12 @@
     ;;
     ;; TODO -- parameters??
     ]
-   (let [disallowed-keys [:source-table :source-card :fields]]
-     (into [:and]
-           (mapv (fn [k]
-                   [:fn
-                    {:error/message (str k " is not allowed in a native query stage.")}
-                    #(not (contains? % k))])
-                 disallowed-keys)))
+   [:fn
+    {:error/message ":source-table is not allowed in a native query stage."}
+    #(not (contains? % :source-table))]
+   [:fn
+    {:error/message ":source-card is not allowed in a native query stage."}
+    #(not (contains? % :source-card))]
    [:fn
     {:error/message ":query is not allowed in a native query stage, you probably meant to use :native instead."}
     (complement :query)]])
