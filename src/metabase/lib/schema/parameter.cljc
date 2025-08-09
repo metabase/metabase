@@ -224,10 +224,18 @@
                        [:id ::lib.schema.common/non-blank-string]]]
                [false ::lib.schema.common/non-blank-string]]])
 
+(mr/def ::variable.target
+  [:multi {:dispatch      lib.schema.common/mbql-clause-tag
+           :error/message "A :variable target must be a (legacy) :field or :template-tag"
+           :error/fn      (fn [{:keys [value]} _]
+                            (str "Invalid :variable target: must be a :field or :template-tag, got: " (pr-str value)))}
+   [:field        [:ref ::legacy-field-ref]]
+   [:template-tag [:ref ::template-tag]]])
+
 (mr/def ::variable
   [:tuple
    #_tag    [:= {:decode/normalize lib.schema.common/normalize-keyword} :variable]
-   #_target [:ref ::template-tag]])
+   #_target [:ref ::variable.target]])
 
 (mr/def ::target
   [:multi {:dispatch lib.schema.common/mbql-clause-tag
