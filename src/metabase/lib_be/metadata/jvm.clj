@@ -359,7 +359,7 @@
 (defn- metadatas [database-id metadata-type ids]
   (let [database-id-key (case metadata-type
                           :metadata/table                :db_id
-                          :metadata/card                 :database_id
+                          :metadata/card                 :card/database_id
                           :metadata/native-query-snippet nil
                           :table/db_id)]
     (when (seq ids)
