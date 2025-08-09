@@ -12,7 +12,7 @@ import type { MetabaseProviderProps } from "embedding-sdk/types/metabase-provide
 import { Api } from "metabase/api";
 import { MetabaseReduxProvider } from "metabase/lib/redux";
 import type { MantineThemeOverride } from "metabase/ui";
-import { themeProviderContext } from "metabase/ui/components/theme/ThemeProvider/context";
+import { ThemeProviderContext } from "metabase/ui/components/theme/ThemeProvider/context";
 import type { State } from "metabase-types/store";
 import { createMockState } from "metabase-types/store/mocks";
 
@@ -75,13 +75,13 @@ export function renderWithSDKProviders(
     return (
       <MetabaseReduxProvider store={store}>
         {/* If we try to inject CSS variables to `.mb-wrapper`, it will slow the Jest tests down like crazy. */}
-        <themeProviderContext.Provider value={{ withCssVariables: false }}>
+        <ThemeProviderContext.Provider value={{ withCssVariables: false }}>
           <MetabaseProviderInternal
             {...props}
             {...sdkProviderProps}
             reduxStore={store}
           />
-        </themeProviderContext.Provider>
+        </ThemeProviderContext.Provider>
       </MetabaseReduxProvider>
     );
   };
