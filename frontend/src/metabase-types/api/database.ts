@@ -14,6 +14,7 @@ export type DatabaseSettings = {
 
 export type DatabaseFeature =
   | "actions"
+  | "actions/data-editing"
   | "basic-aggregations"
   | "binning"
   | "case-sensitivity-string-filter-options"
