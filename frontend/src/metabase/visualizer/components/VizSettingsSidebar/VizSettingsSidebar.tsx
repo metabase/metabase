@@ -5,8 +5,13 @@ import { useDispatch, useSelector } from "metabase/lib/redux";
 import { Center } from "metabase/ui";
 import { BaseChartSettings } from "metabase/visualizations/components/ChartSettings";
 import { ErrorView } from "metabase/visualizations/components/Visualization/ErrorView";
-import { getSettingsWidgetsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import {
+  getComputedSettingsForSeries,
+  getSettingsWidgetsForSeries,
+} from "metabase/visualizations/lib/settings/visualization";
+import {
+  getVisualizerAllAvailableRawSeries,
+  getVisualizerAllAvailableTransformedSeries,
   getVisualizerComputedSettings,
   getVisualizerRawSeries,
   getVisualizerTransformedSeries,
@@ -19,8 +24,18 @@ const HIDDEN_SETTING_WIDGETS = ["card.title", "card.description"];
 export function VizSettingsSidebar({ className }: { className?: string }) {
   const series = useSelector(getVisualizerRawSeries);
   const transformedSeries = useSelector(getVisualizerTransformedSeries);
+  const allAvailableSeries = useSelector(getVisualizerAllAvailableRawSeries);
+  const allAvailableTransformedSeries = useSelector(
+    getVisualizerAllAvailableTransformedSeries,
+  );
+
   const settings = useSelector(getVisualizerComputedSettings);
   const dispatch = useDispatch();
+
+  const allAvailableSeriesSettings =
+    series.length > 0
+      ? getComputedSettingsForSeries(allAvailableTransformedSeries)
+      : {};
 
   const [error, setError] = useState<Error | null>(null);
 
@@ -43,6 +58,8 @@ export function VizSettingsSidebar({ className }: { className?: string }) {
         handleChangeSettings,
         true,
       );
+
+      // patch widgets here, to inject custom series options for tooltip
       return widgets.filter(
         (widget) => !HIDDEN_SETTING_WIDGETS.includes(widget.id),
       );
@@ -51,6 +68,34 @@ export function VizSettingsSidebar({ className }: { className?: string }) {
       return [];
     }
   }, [transformedSeries, handleChangeSettings]);
+
+  const allSeriesWidgets = useMemo(() => {
+    if (allAvailableTransformedSeries.length === 0) {
+      return [];
+    }
+
+    try {
+      setError(null);
+      const widgets = getSettingsWidgetsForSeries(
+        allAvailableTransformedSeries,
+        handleChangeSettings,
+        true,
+      );
+
+      // patch widgets here, to inject custom series options for tooltip
+      return widgets.filter((widget) => widget.id === "graph.tooltip_columns");
+    } catch (error) {
+      setError(error as Error);
+      return [];
+    }
+  }, [allAvailableTransformedSeries, handleChangeSettings]);
+
+  console.log("VizSettingsSidebar", {
+    widgets,
+    allAvailableSeries,
+    allAvailableTransformedSeries,
+    allAvailableSeriesSettings,
+  });
 
   return error ? (
     <ErrorComponent message={error.message} />
@@ -61,6 +106,15 @@ export function VizSettingsSidebar({ className }: { className?: string }) {
         transformedSeries={transformedSeries}
         chartSettings={settings}
         widgets={widgets}
+        onChange={handleChangeSettings}
+        className={className}
+      />
+      <div>--------------</div>
+      <BaseChartSettings
+        series={allAvailableSeries}
+        transformedSeries={allAvailableTransformedSeries}
+        chartSettings={allAvailableSeriesSettings}
+        widgets={allSeriesWidgets}
         onChange={handleChangeSettings}
         className={className}
       />
