@@ -23,6 +23,8 @@ type Props<TComponentProps> = {
   componentProps: TComponentProps | undefined;
 };
 
+const NOT_STARTED_LOADING_WAIT_TIMEOUT = 1000;
+
 // When the ComponentWrapper is rendered without being wrapped withing the MetabaseProvider,
 // the SDK bundle loading is not triggered.
 // We wait for 1 second and if the loading state is still not set or Initial - we set the NotStartedLoading error
@@ -42,7 +44,7 @@ const NotStartedLoadingTrigger = () => {
           loadingError: SdkLoadingError.NotStartedLoading,
         });
       }
-    }, 1000);
+    }, NOT_STARTED_LOADING_WAIT_TIMEOUT);
 
     return () => {
       window.clearTimeout(timeoutRef.current);
