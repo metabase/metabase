@@ -1,7 +1,7 @@
 (ns metabase.util.performance
   "Functions and utilities for faster processing. This namespace is compatible with both Clojure and ClojureScript.
   However, some functions are either not only available in CLJS, or offer passthrough non-improved functions."
-  (:refer-clojure :exclude [reduce mapv run! some every? concat select-keys #?(:cljs clj->js)])
+  (:refer-clojure :exclude [reduce mapv run! some every? concat select-keys update-keys #?(:cljs clj->js)])
   #?@(:clj ()
       :cljs [(:require
               [cljs.core :as core]
@@ -269,6 +269,23 @@
                                acc
                                (assoc! acc k v))))
                          (transient {}) keyseq))))
+
+(defn update-keys
+  "Like `clojure.core/update-keys`, but doesn't recreate the collection if no keys are changed after applying `f`."
+  [m f]
+  (if (nil? m)
+    {}
+    (-> (reduce-kv (fn [acc k v]
+                     (let [k' (f k)]
+                       ;; Check for identical? first which is faster.
+                       (if (or (identical? k k') (= k k'))
+                         acc
+                         (-> acc
+                             (assoc+ k' v)
+                             (dissoc! k)))))
+                   m m)
+        maybe-persistent!
+        (with-meta (meta m)))))
 
 ;; clojure.walk reimplementation. Partially adapted from https://github.com/tonsky/clojure-plus.
 
