@@ -20,6 +20,7 @@
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
@@ -38,6 +39,7 @@
    [metabase.queries.models.parameter-card :as parameter-card]
    [metabase.queries.models.query :as query]
    [metabase.query-permissions.core :as query-perms]
+   [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util :as qp.util]
    [metabase.search.core :as search]
    [metabase.util :as u]
@@ -388,7 +390,9 @@
                   {:status-code 400}))
 
         :else
-        (recur (or (t2/select-one-fn :dataset_query :model/Card :id source-card-id)
+        (recur (or (if (qp.store/initialized?)
+                     (:dataset-query (lib.metadata/card (qp.store/metadata-provider) source-card-id))
+                     (t2/select-one-fn :dataset_query :model/Card :id source-card-id))
                    (throw (ex-info (tru "Card {0} does not exist." source-card-id)
                                    {:status-code 404})))
                (conj ids-already-seen source-card-id))))))

@@ -211,7 +211,10 @@
                 [:fn
                  {:error/message (str k " is deprecated and should not be used")}
                  (complement k)]))
-         [:aggregation-idents :breakout-idents :expression-idents])])
+         [:aggregation-idents :breakout-idents :expression-idents])
+   [:fn
+    {:error/message ":filter is not allowed in an MBQL 5 stage, use :filters instead"}
+    (complement :filter)]])
 
 ;;; the schemas are constructed this way instead of using `:or` because they give better error messages
 (mr/def ::stage.type

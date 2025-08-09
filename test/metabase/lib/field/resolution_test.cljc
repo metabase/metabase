@@ -748,10 +748,6 @@
                                                               [:field (meta/id :venues :longitude) nil]
                                                               [:field (meta/id :venues :price) nil]]}})
             field-ref [:field {:lib/uuid (str (random-uuid))} (meta/id :venues :name)]]
-        (testing `lib.field.resolution/resolve-column-in-previous-stage-metadata
-          (let [stage-cols (get-in (lib.util/query-stage query 0) [:lib/stage-metadata :columns])]
-            (is (=? {:name "NAME", :description "user description", :display-name "user display name"}
-                    (#'lib.field.resolution/resolve-column-in-previous-stage-metadata query field-ref stage-cols)))))
         (testing `lib.field.resolution/resolve-field-ref
           (is (=? {:name "NAME", :description "user description", :display-name "user display name"}
                   (lib.field.resolution/resolve-field-ref query -1 field-ref))))))))
@@ -1020,8 +1016,8 @@
                :name                                     "ID"
                :table-id                                 (meta/id :products)
                ;; TODO (Cam 7/29/25) -- maybe we need to add a `:source/indetermiate` option or something. Because
-               ;; this is wrong... but nothing else is right either.
-               :lib/source                               :source/table-defaults
+               ;; this is probably wrong... but nothing else is right either.
+               :lib/source                               :source/previous-stage
                ::lib.field.resolution/fallback-metadata? true}
               (lib.field.resolution/resolve-field-ref
                query -1
@@ -1242,3 +1238,27 @@
                :lib/source-column-alias      "Cat__NAME"
                :lib/desired-column-alias     (symbol "nil #_\"key is not present.\"")}
               (lib.field.resolution/resolve-field-ref query -1 bad-ref))))))
+
+(deftest ^:parallel nested-literal-boolean-expression-with-name-collisions-test
+  (testing "Don't resolve a `:field` ref to an expression if it has a conflicting name"
+    (let [true-value  [:value {:base-type :type/Boolean, :effective-type :type/Boolean, :lib/expression-name "T"} true]
+          false-value [:value {:base-type :type/Boolean, :effective-type :type/Boolean, :lib/expression-name "F"} false]
+          query       (lib.tu.macros/mbql-5-query nil
+                        {:stages [{:source-table $$orders
+                                   :expressions  [true-value
+                                                  false-value]
+                                   :fields       [[:expression {} "T"]
+                                                  [:expression {} "F"]]}
+                                  {:expressions [true-value
+                                                 false-value]
+                                   :fields      [[:expression {} "T"]
+                                                 [:expression {} "F"]
+                                                 [:field {:base-type :type/Boolean} "T"]
+                                                 [:field {:base-type :type/Boolean} "F"]]}]})]
+      (is (=? {:lib/source                   :source/previous-stage
+               :lib/source-column-alias      "T"
+               :lib/expression-name          (symbol "nil #_\"key is not present.\"")
+               :lib/original-expression-name "T"}
+              (lib.field.resolution/resolve-field-ref query -1 [:field
+                                                                {:lib/uuid "00000000-0000-0000-0000-000000000000", :base-type :type/Boolean}
+                                                                "T"]))))))

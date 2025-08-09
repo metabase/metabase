@@ -75,7 +75,7 @@
   expression refs by name, if necessary, to determine whether their value is a boolean literal."
   [clause]
   (and (driver-api/is-clause? :expression clause)
-       (or (boolean-typed-clause? clause)
+       (or #_(boolean-typed-clause? clause) ; NOCOMMIT
            (boolean-value-clause? (driver-api/expression-with-name sql.qp/*inner-query* (second clause))))))
 
 (defn boolean->comparison

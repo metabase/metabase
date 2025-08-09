@@ -2,6 +2,8 @@
   "Code for resolving field metadata from a field ref. There's a lot of code here, isn't there? This is probably more
   complicated than it needs to be!"
   (:require
+   #?@(:clj
+       ([metabase.config.core :as config]))
    [better-cond.core :as b]
    [clojure.set :as set]
    [clojure.string :as str]
@@ -142,7 +144,8 @@
    :source-field-name       :fk-field-name
    :temporal-unit           :metabase.lib.field/temporal-unit
    ;; display-name gets copied to both display-name and lib/ref-display-name
-   :display-name            :lib/ref-display-name})
+   :display-name            :lib/ref-display-name
+   :name                    :lib/ref-name})
 
 (defn- opts-fn-inherited-temporal-unit
   "`:inherited-temporal-unit` is transfered from `:temporal-unit` ref option only when
@@ -293,7 +296,8 @@
             (-> col
                 (as-> $col (lib.join/column-from-join query stage-number $col join-alias))
                 (merge (select-keys join [:fk-field-id]))))))
-      ;; a join with this alias does not exist at this stage of the query... try looking recursively in previous stage(s)
+      ;; a join with this alias does not exist at this stage of the query... try looking recursively in previous
+      ;; stage(s)
       (do
         (log/debugf "Join %s does not exist in stage %s, looking in previous stages"
                     (pr-str join-alias)
@@ -301,7 +305,12 @@
         (if-some [previous-stage-number (lib.util/previous-stage-number query stage-number)]
           (let [previous-stage-cols (filter #(= (:lib/original-join-alias %) join-alias)
                                             (lib.metadata.calculation/returned-columns query previous-stage-number))]
-            (resolve-in-previous-stage-metadata-and-update-keys query previous-stage-cols id-or-name))
+            ;; try to resolve by what is PROBABLY the correct name in a previous stage e.g. `Join` + `COLUMN` becomes
+            ;; `Join__COLUMN`... if this fails then fall back to looking for matches that ignore join alias entirely
+            ;; e.g. just `COLUMN`
+            (or (when (string? id-or-name)
+                  (resolve-in-previous-stage-metadata-and-update-keys query previous-stage-cols (str join-alias "__" id-or-name)))
+                (resolve-in-previous-stage-metadata-and-update-keys query previous-stage-cols id-or-name)))
           (do
             (log/debug "Unable to resolve in previous stage =(")
             nil))))))
@@ -411,7 +420,7 @@
     (resolve-in-card-returned-columns query source-card-id id-or-name)))
 
 (defn- fallback-metadata [id-or-name]
-  (log/debug (u/colorize :red "Returning fallback metadata"))
+  (log/info (u/format-color :red "Returning fallback metadata for %s" (pr-str id-or-name)))
   (merge
    {:lib/type            :metadata/column
     ;; guess that the column came from the previous stage
@@ -474,18 +483,22 @@
    stage-number :- :int
    id-or-name   :- ::id-or-name]
   (log/debugf "Resolving %s from previous stage, source table, or source card" (pr-str id-or-name))
-  (let [col      (or (resolve-from-previous-stage-or-source* query stage-number id-or-name)
-                     (do
-                       (log/infof "Failed to resolve Field %s in stage %s" (pr-str id-or-name) (pr-str stage-number))
-                       (resolve-ref-missing-join-alias query stage-number id-or-name))
-                     ;; if we haven't found a match yet try getting metadata from the metadata provider if this is a
-                     ;; Field ID ref. It's likely a ref that makes little or no sense (e.g. wrong table) but we can
-                     ;; let QP code worry about that.
-                     (when (pos-int? id-or-name)
-                       (when-some [col (field-metadata query id-or-name)]
-                         (assoc col ::fallback-metadata? true)))
-                     ;; if we STILL can't find a match, return made-up fallback metadata.
-                     (fallback-metadata id-or-name))]
+  (let [col (or (resolve-from-previous-stage-or-source* query stage-number id-or-name)
+                (do
+                  (log/infof "Failed to resolve Field %s in stage %s" (pr-str id-or-name) (pr-str stage-number))
+                  (resolve-ref-missing-join-alias query stage-number id-or-name))
+                ;; if we haven't found a match yet try getting metadata from the metadata provider if this is a
+                ;; Field ID ref. It's likely a ref that makes little or no sense (e.g. wrong table) but we can
+                ;; let QP code worry about that.
+                (when (pos-int? id-or-name)
+                  (when-some [col (field-metadata query id-or-name)]
+                    (assoc col
+                           ::fallback-metadata? true
+                           :lib/source          (if (zero? (lib.util/canonical-stage-index query stage-number))
+                                                  :source/table-defaults
+                                                  :source/previous-stage))))
+                ;; if we STILL can't find a match, return made-up fallback metadata.
+                (fallback-metadata id-or-name))]
     (merge-metadata
      col
      (when col
@@ -501,38 +514,40 @@
   ;; this is just for easier debugging
   (let [stage-number (lib.util/canonical-stage-index query stage-number)]
     (log/debugf "Resolving %s in stage %s" (pr-str id-or-name) (pr-str stage-number))
-    (-> (merge-metadata
-         {:lib/type :metadata/column}
-         (or (cond
-               join-alias   (resolve-in-join query stage-number join-alias id-or-name)
-               source-field (resolve-in-implicit-join query stage-number source-field id-or-name)
-               :else        (resolve-from-previous-stage-or-source query stage-number id-or-name))
-             (merge
-              (fallback-metadata id-or-name)
-              (when join-alias
-                {:lib/source                   :source/joins
-                 :metabase.lib.join/join-alias join-alias})))
-         (options-metadata opts)
-         {:lib/original-ref field-ref})
-        (as-> $col (assoc $col :display-name (lib.metadata.calculation/display-name query stage-number $col)))
-        ;; `:lib/desired-column-alias` needs to be recalculated in the context of the stage where the ref appears, go
-        ;; ahead and remove it so we don't accidentally try to use it when it may or may not be accurate at all.
-        ;;
-        ;; We should OTOH keep `:lib/deduplicated-name`, because this is used to calculate subsequent deduplicated
-        ;; names, see [[metabase.lib.stage-test/return-correct-deduplicated-names-test]] for an example.
-        (dissoc :lib/desired-column-alias))))
-
-;;;
-;;; Helper functions for other namespaces
-;;;
-
-(mu/defn resolve-column-in-previous-stage-metadata :- [:maybe ::lib.schema.metadata/column]
-  "Find the matching column metadata in `cols` for `field-ref`.
-
-  TODO (Cam 7/28/25) -- We should probably prefer [[lib.equality/find-matching-column]] directly instead; if this
-  function does something that [[lib.equality]] doesn't, we should fix the code in `lib.equality` instead of having
-  our own bespoke way of finding matching columns here."
-  [metadata-providerable                   :- ::lib.schema.metadata/metadata-providerable
-   [_tag _opts id-or-name, :as _field-ref] :- :mbql.clause/field
-   cols                                    :- [:sequential ::lib.schema.metadata/column]]
-  (resolve-in-previous-stage-metadata-without-updating-keys metadata-providerable cols id-or-name))
+    (u/prog1 (-> (merge-metadata
+                  {:lib/type :metadata/column}
+                  (or (cond
+                        join-alias   (resolve-in-join query stage-number join-alias id-or-name)
+                        source-field (resolve-in-implicit-join query stage-number source-field id-or-name)
+                        :else        (resolve-from-previous-stage-or-source query stage-number id-or-name))
+                      (merge
+                       (fallback-metadata id-or-name)
+                       (when (and join-alias
+                                  (contains? (into #{}
+                                                   (map :alias)
+                                                   (:joins (lib.util/query-stage query stage-number)))
+                                             join-alias))
+                         {:lib/source                   :source/joins
+                          :metabase.lib.join/join-alias join-alias})))
+                  (options-metadata opts)
+                  {:lib/original-ref field-ref})
+                 (as-> $col (assoc $col :display-name (lib.metadata.calculation/display-name query stage-number $col)))
+                 ;; `:lib/desired-column-alias` needs to be recalculated in the context of the stage where the ref
+                 ;; appears, go ahead and remove it so we don't accidentally try to use it when it may or may not be
+                 ;; accurate at all.
+                 ;;
+                 ;; We should OTOH keep `:lib/deduplicated-name`, because this is used to calculate subsequent
+                 ;; deduplicated names, see [[metabase.lib.stage-test/return-correct-deduplicated-names-test]] for an
+                 ;; example.
+                 (dissoc :lib/desired-column-alias))
+      ;; sanity check the metadata that we return. (Clj + dev/test only)
+      #?(:clj
+         (when (or config/is-dev? config/is-test?)
+           (when (and (= (:lib/source <>) :source/joins)
+                      (empty? (:joins (lib.util/query-stage query stage-number))))
+             (throw (ex-info "Stage has no joins, how can source be :source/joins??"
+                             {:query query, :stage-number stage-number, :field-ref field-ref, :col <>})))
+           (when (and (pos-int? stage-number)
+                      (#{:source/table-defaults :source/native} (:lib/source <>)))
+             (throw (ex-info "A column can only come from a :source-table or native query in the first stage of a query"
+                             {:query query, :stage-number stage-number, :field-ref field-ref, :col <>}))))))))

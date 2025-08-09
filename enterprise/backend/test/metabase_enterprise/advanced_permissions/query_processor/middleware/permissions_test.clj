@@ -2,10 +2,10 @@
   (:require
    [clojure.data.csv :as csv]
    [clojure.test :refer :all]
-   [metabase-enterprise.advanced-permissions.query-processor.middleware.permissions
-    :as ee.qp.perms]
+   [metabase-enterprise.advanced-permissions.query-processor.middleware.permissions :as ee.qp.perms]
    [metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions :as row-level-restrictions]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.lib.test-metadata :as meta]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.data-permissions.graph :as data-perms.graph]
@@ -479,64 +479,54 @@
                                        {:error "You do not have permissions to download the results of this query."}
                                        results)))}})))))))
 
-(deftest joined-cards-with-native-query-test
-  (testing "Do we correctly apply the least permissive download perms when joining cards where one has a native query? (#XXXX)"
+(defn- do-joined-cards-with-native-query-test! [f]
+  (testing "Do we correctly apply the least permissive download perms when joining cards where one has a native query?"
     (mt/with-full-data-perms-for-all-users!
       (with-redefs [ee.qp.perms/max-rows-in-limited-downloads 3]
         (mt/with-temp [:model/Card {mbql-card-id :id} {:dataset_query {:database (mt/id)
                                                                        :type     :query
                                                                        :query    {:source-table (mt/id :venues)}}}
-                       :model/Card {native-card-id :id} {:dataset_query {:database (mt/id)
-                                                                         :type     :native
-                                                                         :native   {:query "SELECT * FROM checkins"}}}]
-          (testing "When one card has native query, least permissive DB-level permission applies"
-            (with-download-perms! (mt/id) {:schemas {"PUBLIC" {(mt/id :venues)     :full
-                                                               (mt/id :checkins)   :limited
-                                                               (mt/id :users)      :full}}}
-              (streaming-test/do-test!
-               "Join between MBQL card (venues:full) and native card - should use limited perms due to native query"
-               {:query {:database (mt/id)
-                        :type     :query
-                        :query    {:source-table (format "card__%d" mbql-card-id)
-                                   :joins        [{:fields       [[:field "ID" {:base-type :type/Integer}]]
-                                                   :source-table (format "card__%d" native-card-id)
-                                                   :alias        "native_card"
-                                                   :condition    [:= [:field "ID" {:base-type :type/Integer}]
-                                                                  [:field "VENUE_ID" {:base-type :type/Integer, :join-alias "native_card"}]]
-                                                   :strategy     :left-join}]
-                                   :limit        10}}
-                :endpoints  [:card :dataset]
-                :assertions {:csv (fn [results] (is (= 3 (csv-row-count results))))}})))
+                       :model/Card {native-card-id :id} {:dataset_query   {:database (mt/id)
+                                                                           :type     :native
+                                                                           :native   {:query "SELECT * FROM checkins"}}
+                                                         :result_metadata (for [field (meta/fields :checkins)]
+                                                                            (-> (meta/field-metadata :checkins field)
+                                                                                (dissoc :id :table-id)))}]
+          (f {:mbql-card-id mbql-card-id, :native-card-id native-card-id}))))))
 
-          (testing "When native card references tables with no download perms, download is blocked"
-            (with-download-perms! (mt/id) {:schemas {"PUBLIC" {(mt/id :venues)     :full
-                                                               (mt/id :checkins)   :none
-                                                               (mt/id :users)      :limited}}}
-              (streaming-test/do-test!
-               "Join between MBQL card (venues:full) and native card - should block due to checkins:none"
-               {:query {:database (mt/id)
+(deftest joined-cards-with-native-query-test
+  (do-joined-cards-with-native-query-test!
+   (fn [{:keys [mbql-card-id native-card-id]}]
+     (testing "When one card has native query, least permissive DB-level permission applies"
+       (with-download-perms! (mt/id) {:schemas {"PUBLIC" {(mt/id :venues)   :full
+                                                          (mt/id :checkins) :limited
+                                                          (mt/id :users)    :full}}}
+         (streaming-test/do-test!
+          "Join between MBQL card (venues:full) and native card - should use limited perms due to native query"
+          {:query      {:database (mt/id)
                         :type     :query
                         :query    {:source-table (format "card__%d" mbql-card-id)
                                    :joins        [{:fields       [[:field "ID" {:base-type :type/Integer}]]
                                                    :source-table (format "card__%d" native-card-id)
                                                    :alias        "native_card"
-                                                   :condition    [:= [:field "ID" {:base-type :type/Integer}]
+                                                   :condition    [:=
+                                                                  [:field "ID" {:base-type :type/Integer}]
                                                                   [:field "VENUE_ID" {:base-type :type/Integer, :join-alias "native_card"}]]
                                                    :strategy     :left-join}]
                                    :limit        10}}
-                :endpoints  [:card :dataset]
-                :assertions {:csv (fn [results]
-                                    (is (partial=
-                                         {:error "You do not have permissions to download the results of this query."}
-                                         results)))}})))
+           :endpoints  [:card :dataset]
+           :assertions {:csv (fn [results] (is (= 3 (csv-row-count results))))}}))))))
 
-          (testing "When all tables have full perms, download works normally"
-            (with-download-perms! (mt/id) {:schemas {"PUBLIC" {(mt/id :venues)     :full
-                                                               (mt/id :checkins)   :full
-                                                               (mt/id :users)      :full}}}
-              (streaming-test/do-test!
-               "Join between MBQL card and native card - should work with full perms for all tables"
-               {:query {:database (mt/id)
+(deftest joined-cards-with-native-query-test-2
+  (do-joined-cards-with-native-query-test!
+   (fn [{:keys [mbql-card-id native-card-id]}]
+     (testing "When native card references tables with no download perms, download is blocked"
+       (with-download-perms! (mt/id) {:schemas {"PUBLIC" {(mt/id :venues)   :full
+                                                          (mt/id :checkins) :none
+                                                          (mt/id :users)    :limited}}}
+         (streaming-test/do-test!
+          "Join between MBQL card (venues:full) and native card - should block due to checkins:none"
+          {:query      {:database (mt/id)
                         :type     :query
                         :query    {:source-table (format "card__%d" mbql-card-id)
                                    :joins        [{:fields       [[:field "ID" {:base-type :type/Integer}]]
@@ -546,8 +536,33 @@
                                                                   [:field "VENUE_ID" {:base-type :type/Integer, :join-alias "native_card"}]]
                                                    :strategy     :left-join}]
                                    :limit        10}}
-                :endpoints  [:card :dataset]
-                :assertions {:csv (fn [results] (is (= 10 (csv-row-count results))))}}))))))))
+           :endpoints  [:card :dataset]
+           :assertions {:csv (fn [results]
+                               (is (partial=
+                                    {:error "You do not have permissions to download the results of this query."}
+                                    results)))}}))))))
+
+(deftest joined-cards-with-native-query-test-3
+  (do-joined-cards-with-native-query-test!
+   (fn [{:keys [mbql-card-id native-card-id]}]
+     (testing "When all tables have full perms, download works normally"
+       (with-download-perms! (mt/id) {:schemas {"PUBLIC" {(mt/id :venues)   :full
+                                                          (mt/id :checkins) :full
+                                                          (mt/id :users)    :full}}}
+         (streaming-test/do-test!
+          "Join between MBQL card and native card - should work with full perms for all tables"
+          {:query      {:database (mt/id)
+                        :type     :query
+                        :query    {:source-table (format "card__%d" mbql-card-id)
+                                   :joins        [{:fields       [[:field "ID" {:base-type :type/Integer}]]
+                                                   :source-table (format "card__%d" native-card-id)
+                                                   :alias        "native_card"
+                                                   :condition    [:= [:field "ID" {:base-type :type/Integer}]
+                                                                  [:field "VENUE_ID" {:base-type :type/Integer, :join-alias "native_card"}]]
+                                                   :strategy     :left-join}]
+                                   :limit        10}}
+           :endpoints  [:card :dataset]
+           :assertions {:csv (fn [results] (is (= 10 (csv-row-count results))))}}))))))
 
 (defn- do-with-card-with-native-source-card! [f]
   (mt/with-full-data-perms-for-all-users!

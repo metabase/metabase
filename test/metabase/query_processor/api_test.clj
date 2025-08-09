@@ -230,7 +230,7 @@
             (do-test)))))))
 
 (deftest native-query-with-long-column-alias
-  (testing "nested native query with long column alias (metabase#47584)"
+  (testing "nested native query with long column alias (#47584)"
     (let [short-col-name "coun"
           long-col-name  "Total_number_of_people_from_each_state_separated_by_state_and_then_we_do_a_count"
 

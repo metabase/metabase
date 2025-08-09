@@ -1,6 +1,5 @@
 (ns metabase.lib.convert
   (:require
-   #?@(:clj ([metabase.util.log :as log]))
    [clojure.data :as data]
    [clojure.set :as set]
    [clojure.string :as str]
@@ -17,6 +16,7 @@
    [metabase.lib.schema.ref :as lib.schema.ref]
    [metabase.lib.util :as lib.util]
    [metabase.util :as u]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr])
   #?@(:cljs [(:require-macros [metabase.lib.convert :refer [with-aggregation-list]])]))
@@ -220,16 +220,51 @@
           (= converted (:converted state))        (throw (ex-info "Couldn't index clauses" {:clauses clauses}))
           :else                                   (recur state'))))))
 
+(defn- add-source-uuids-to-cols
+  "`cols` with `:source/aggregations` and `:source/expressions` should have `:lib/source-uuid`, since it's sorta
+  important for matching purposes. Add them to attached `:lib/stage-metadata` when converting from legacy MBQL to MBQL 5."
+  [cols expressions]
+  (try
+    (loop [acc [], aggregation-index 0, [col & more] cols]
+      (cond
+        (not col)
+        acc
+
+        (= (:lib/source col) :source/aggregations)
+        (let [ag-uuid (or (get *legacy-index->pMBQL-uuid* aggregation-index)
+                          (throw (ex-info (str "Missing UUID for aggregation at index " aggregation-index)
+                                          {:legacy-index->pMBQL-uuid *legacy-index->pMBQL-uuid*
+                                           :aggregation-index        aggregation-index})))
+              col'    (assoc col :lib/source-uuid ag-uuid)]
+          (recur (conj acc col') (inc aggregation-index) more))
+
+        (= (:lib/source col) :source/expressions)
+        (let [expression-name (or (:lib/expression-name col)
+                                  (throw (ex-info "Column with :source/expressions is missing :lib/expression-name"
+                                                  {:col col})))
+              expression      (or (m/find-first #(= (:lib/expression-name (lib.options/options %)) expression-name)
+                                                expressions)
+                                  (throw (ex-info (str "Failed to find expression with name " (pr-str expression-name))
+                                                  {:expression-name expression-name, :expressions expressions})))
+              col'            (assoc col :lib/source-uuid (lib.options/uuid expression))]
+          (recur (conj acc col') aggregation-index more))
+
+        :else
+        (recur (conj acc col) aggregation-index more)))
+    (catch #?(:clj Throwable :cljs :default) e
+      (log/error e "Error adding :lib/source-uuid to cols")
+      cols)))
+
 (defmethod ->pMBQL :mbql.stage/mbql
   [stage]
-  (let [stage        (m/update-existing stage :aggregation index-ref-clauses->pMBQL)
-        expressions  (->> stage
-                          :expressions
-                          (mapv (fn [[k v]]
-                                  (-> v
-                                      ->pMBQL
-                                      (lib.util/top-level-expression-clause k))))
-                          not-empty)]
+  (let [stage       (m/update-existing stage :aggregation index-ref-clauses->pMBQL)
+        expressions (->> stage
+                         :expressions
+                         (mapv (fn [[k v]]
+                                 (-> v
+                                     ->pMBQL
+                                     (lib.util/top-level-expression-clause k))))
+                         not-empty)]
     (metabase.lib.convert/with-aggregation-list (:aggregation stage)
       (let [stage (-> stage
                       stage-source-card-id->pMBQL
@@ -242,7 +277,8 @@
                    stage
                    (disj stage-keys :expressions :aggregation))]
         (cond-> stage
-          (:joins stage) (update :joins deduplicate-join-aliases))))))
+          (:joins stage)              (update :joins deduplicate-join-aliases)
+          (:lib/stage-metadata stage) (update-in [:lib/stage-metadata :columns] add-source-uuids-to-cols expressions))))))
 
 (defmethod ->pMBQL :mbql.stage/native
   [stage]
@@ -605,6 +641,7 @@
 (defmethod ->legacy-MBQL :mbql/join [join]
   (let [base     (cond-> (disqualify join)
                    (and *clean-query*
+                        (:alias join)
                         (str/starts-with? (:alias join) legacy-default-join-alias)
                         ;; added by [[metabase.query-processor.middleware.resolve-joins]]
                         (not (:qp/keep-default-join-alias join)))
@@ -641,9 +678,9 @@
         (for [expression expressions
               :let [legacy-clause (->legacy-MBQL expression)]]
           [(lib.util/expression-name expression)
-           ;; `:aggregation-options` is not allowed inside
-           ;; `:expressions` in legacy, we'll just have to toss the
-           ;; extra info.
+           ;; there's no way to add an options map to arbitrary clauses like `[:abs ...]` in legacy in `:expressions`
+           ;; -- in `:aggregation` we can wrap it in `:aggregation-options` but this is not allowed here. We'll just
+           ;; have to toss the extra info.
            (if (#{:aggregation-options} (first legacy-clause))
              (second legacy-clause)
              legacy-clause)])))

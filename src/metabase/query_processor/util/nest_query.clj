@@ -50,9 +50,48 @@
                       all-fields)))
     outer-query))
 
+(defn- remove-namespaced-options [options]
+  (when options
+    (not-empty (into {}
+                     (remove (fn [[k _]]
+                               (qualified-keyword? k)))
+                     options))))
+
+;;; TODO (Cam 6/16/25) -- duplicated with [[metabase.query-processor.middleware.resolve-joins/normalize-clause]], but
+;;; this doesn't matter much since we will rewrite this whole namespace in MLv2 soon.
+(defn- normalize-clause
+  "Normalize a `:field`/`:expression`/`:aggregation` clause by removing extra info so it can serve as a key for
+  `:qp/refs`. This removes `:source-field` if it is present -- don't use the output of this for anything but internal
+  key/distinct comparison purposes."
+  [clause]
+  (lib.util.match/match-one clause
+    ;; optimization: don't need to rewrite a `:field` clause without any options
+    [:field _ nil]
+    &match
+
+    [:field id-or-name opts]
+    ;; this doesn't use [[mbql.u/update-field-options]] because this gets called a lot and the overhead actually adds up
+    ;; a bit
+    [:field id-or-name (remove-namespaced-options (cond-> (dissoc opts :source-field :effective-type)
+                                                    (integer? id-or-name) (dissoc :base-type)))]
+
+    ;; for `:expression` and `:aggregation` references, remove the options map if they are empty.
+    [:expression expression-name opts]
+    (if-let [opts (remove-namespaced-options opts)]
+      [:expression expression-name opts]
+      [:expression expression-name])
+
+    [:aggregation index opts]
+    (if-let [opts (remove-namespaced-options opts)]
+      [:aggregation index opts]
+      [:aggregation index])
+
+    _
+    &match))
+
 (defn- joined-fields [inner-query]
   (m/distinct-by
-   add/normalize-clause
+   normalize-clause
    (lib.util.match/match (walk/prewalk (fn [x]
                                          (if (map? x)
                                            (dissoc x :source-query :source-metadata :temporal-unit)
@@ -93,24 +132,24 @@
     [:field source-alias {::add/source-table ::add/source}]))
 
 (defn- remove-unused-fields [inner-query source]
-  (let [usages         (lib.util.match/match inner-query #{:field :expression})
-        used-fields    (into #{} (map keep-source+alias-props) usages)
-        nominal-fields (into #{} (keep ->nominal-ref) usages)
-        nfc-roots      (into #{} (keep nfc-root) used-fields)]
-    (letfn [(used? [[_tag _id-or-name {::add/keys [source-table]}, :as field]]
-              (or (contains? used-fields (keep-source+alias-props field))
+  (let [usages       (lib.util.match/match inner-query #{:field :expression})
+        used-refs    (into #{} (map keep-source+alias-props) usages)
+        nominal-refs (into #{} (keep ->nominal-ref) usages)
+        nfc-roots    (into #{} (keep nfc-root) used-refs)]
+    (letfn [(used? [[_tag _id-or-name {::add/keys [source-table]}, :as a-ref]]
+              (or (contains? used-refs (keep-source+alias-props a-ref))
                   ;; We should also consider a Field to be used if we're referring to it with a nominal field literal
                   ;; ref in the next stage -- that's actually how you're supposed to be doing it anyway.
                   (and (= source-table ::add/source)
-                       (contains? nominal-fields (->nominal-ref field)))
-                  (contains? nfc-roots (field-id-props field))))
-            (used?* [field]
-              (u/prog1 (used? field)
+                       (contains? nominal-refs (->nominal-ref a-ref)))
+                  (contains? nfc-roots (field-id-props a-ref))))
+            (used?* [a-ref]
+              (u/prog1 (used? a-ref)
                 (if <>
-                  (log/debugf "Keeping used field:\n%s" (u/pprint-to-str field))
-                  (log/debugf "Removing unused field:\n%s" (u/pprint-to-str (keep-source+alias-props field))))))
-            (remove-unused [fields]
-              (filterv used?* fields))]
+                  (log/debugf "Keeping used ref:\n%s" (u/pprint-to-str a-ref))
+                  (log/debugf "Removing unused ref:\n%s" (u/pprint-to-str (keep-source+alias-props a-ref))))))
+            (remove-unused [refs]
+              (filterv used?* refs))]
       (update source :fields remove-unused))))
 
 (defn- append-join-fields

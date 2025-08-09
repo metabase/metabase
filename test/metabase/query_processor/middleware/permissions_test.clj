@@ -3,6 +3,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.api.common :as api]
+   [metabase.lib.test-metadata :as meta]
    [metabase.permissions.core :as perms]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.permissions :as qp.perms]
@@ -812,14 +813,19 @@
     (mt/with-temp [:model/User {user-id :id} {}
                    :model/Card {card-id :id} {:dataset_query {:database (mt/id)
                                                               :type :native
-                                                              :native {:query "SELECT * FROM venues"}}}]
+                                                              :native {:query "SELECT * FROM venues"}}
+                                              :result_metadata (for [field (meta/fields :venues)]
+                                                                 (-> (meta/field-metadata :venues field)
+                                                                     (dissoc :id :table-id)))}]
       (mt/with-no-data-perms-for-all-users!
         (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/create-queries :query-builder)
         (let [query (mt/mbql-query checkins
-                      {:joins [{:fields [$id]
+                      {:joins [{:fields [[:field "ID" {:base-type :type/Integer, :join-alias "card"}]]
                                 :source-table (format "card__%d" card-id)
                                 :alias "card"
-                                :condition [:= $venue_id &card.venues.id]
+                                :condition [:=
+                                            $venue_id
+                                            [:field "ID" {:base-type :type/Integer, :join-alias "card"}]]
                                 :strategy :left-join}]
                        :order-by [[:asc $id]]
                        :limit 2})]

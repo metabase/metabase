@@ -463,7 +463,7 @@ describe("scenarios > notebook > link to data source", () => {
           .icon("notebook")
           .should("not.exist");
 
-        // TODO update the following once metabase##46398 is fixed
+        // TODO update the following once metabase#46398 is fixed
         // cy.visit(`/question/${nestedQuestion.id}/notebook`);
       });
     });
