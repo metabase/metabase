@@ -51,6 +51,7 @@
   "Put everything needed for REPL development within easy reach"
   (:require
    [clojure.core.async :as a]
+   [clojure.main]
    [clojure.string :as str]
    [clojure.test]
    [dev.debug-qp :as debug-qp]
@@ -99,6 +100,8 @@
   debug-qp/keep-me
   model-tracking/keep-me
   dev.h2/keep-me)
+
+(apply require clojure.main/repl-requires)
 
 #_:clj-kondo/ignore
 (defn tap>-spy [x]
@@ -193,6 +196,16 @@
   []
   (stop!)
   (start!))
+
+(defn start-worker!
+  "Start metabase worker"
+  []
+  ((requiring-resolve 'metabase-enterprise.worker.core/start!) {:dev true}))
+
+(defn stop-worker!
+  "Stop metabase worker"
+  []
+  ((requiring-resolve 'metabase-enterprise.worker.core/stop!)))
 
 (defn ns-unmap-all
   "Unmap all interned vars in a namespace. Reset the namespace to a blank slate! Perfect for when you rename everything

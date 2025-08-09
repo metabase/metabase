@@ -705,6 +705,18 @@
     ;; Does this driver support "temporal-unit" template tags in native queries?
     :native-temporal-units
 
+    ;; Does this driver support transforms with a table as the target?
+    :transforms/table
+
+    ;; Does this driver support transforms with a view as the target?
+    :transforms/view
+
+    ;; Does this driver support transforms with a materialized view as the target?
+    :transforms/materialized-view
+
+    ;; Does this driver properly support the table-exists? method for checking table existence?
+    :metadata/table-existence-check
+
     ;; Whether the driver supports loading dynamic test datasets on each test run. Eg. datasets with names like
     ;; `checkins:4-per-minute` are created dynamically in each test run. This should be truthy for every driver we test
     ;; against except for Athena and Databricks which currently require test data to be loaded separately.
@@ -768,7 +780,8 @@
                               :upload-with-auto-pk                    true
                               :saved-question-sandboxing              true
                               :test/dynamic-dataset-loading           true
-                              :test/uuids-in-create-table-statements  true}]
+                              :test/uuids-in-create-table-statements true
+                              :metadata/table-existence-check false}]
   (defmethod database-supports? [::driver feature] [_driver _feature _db] supported?))
 
 ;;; By default a driver supports `:native-parameter-card-reference` if it supports `:native-parameters` AND
@@ -1094,6 +1107,57 @@
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
+(defmulti compile-transform dispatch-on-initialized-driver :hierarchy #'hierarchy)
+
+(defmulti compile-drop-table dispatch-on-initialized-driver :hierarchy #'hierarchy)
+
+(defmulti execute-raw-queries!
+  "Executes a series of 'raw' queries.  A raw query is a vector of a sql string and arguments, in the case of sql
+  drivers.
+
+  Drivers that support any of the `:transforms/...` features must implement this method."
+  {:added "0.57.0", :arglists '([driver connection-details queries])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmulti execute-transform!
+  "Executes a transform.
+
+  Drivers that support any of the `:transforms/...` features must implement this method for the appropriate transform
+  types."
+  {:added "0.57.0",
+   :arglists '([driver
+                {:keys [transform-type connection-details query output-table] :as _transform-details}
+                {:keys [overwrite?] :as _opts}])}
+  (fn [driver transform-details _opts]
+    [(dispatch-on-initialized-driver driver) (:transform-type transform-details)])
+  :hierarchy #'hierarchy)
+
+(defmulti drop-transform-target!
+  "Drops the target of a transform.
+
+  Drivers that support any of the `:transforms/...` features must implement this method for the appropriate transform
+  types."
+  {:added "0.57.0",
+   :arglists '([driver database {:keys [type schema name] :as _transform-details}])}
+  (fn [driver _database transform-details]
+    [(dispatch-on-initialized-driver driver) (:type transform-details)])
+  :hierarchy #'hierarchy)
+
+(defmulti native-query-deps
+  "Gets the table dependencies of a given sql string (or equivalent).
+
+  Drivers that support any of the `:transforms/...` features must implement this method."
+  {:added "0.57.0" :arglists '([driver query])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmulti connection-details
+  "Get connection details for a given driver and db object"
+  {:added "0.56.0", :arglists '([driver db])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
 (defmulti table-rows-sample
   "Processes a sample of rows produced by `driver`, from the `table`'s `fields`
   using the query result processing function `rff`.
@@ -1354,6 +1418,28 @@
   :hierarchy #'hierarchy)
 
 (defmethod table-known-to-not-exist? ::driver [_ _] false)
+
+(defmulti table-exists?
+  "Check if a table exists in the database. Returns true if the table exists, false otherwise.
+
+   If you need proactively to check for table existence, this is the preferred method.
+   The default implementation uses describe-table and catches exceptions, but drivers can override
+   this with more efficient implementations for databases that support them.."
+  {:added "" :arglists '([driver database table])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmethod table-exists? ::driver
+  [driver database table]
+  (try
+    (let [table-info (describe-table driver database table)]
+      ;; Some drivers (e.g., BigQuery) return nil for non-existent tables. Others return a map with fields.
+      (boolean (seq (:fields table-info))))
+    (catch Exception e
+      ;; If an exception was thrown, check if it's because the table doesn't exist
+      (if (table-known-to-not-exist? driver e)
+        false
+        (throw e)))))
 
 (defmulti set-database-used!
   "Sets the database to be used on a connection. Called prior to query execution for drivers that support USE DATABASE like commands."
