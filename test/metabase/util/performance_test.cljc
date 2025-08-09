@@ -37,57 +37,55 @@
             (perf/transpose [[1 1 1 1 1] [2 2 2 2 2] [3 3 3 3 3] [4 4 4 4 4] [5 5 5 5 5]])
             (apply mapv vector [[1 1 1 1 1] [2 2 2 2 2] [3 3 3 3 3] [4 4 4 4 4] [5 5 5 5 5]])))))
 
-#?(:clj
-   (deftest ^:parallel test-postwalk
-     (are [before after] (= after (perf/postwalk #(cond-> %
-                                                    (number? %) inc)
-                                                 before))
+(deftest ^:parallel test-postwalk
+  (are [before after] (= after (perf/postwalk #(cond-> %
+                                                 (number? %) inc)
+                                              before))
 
-       (list 1 2 3 :a "b" nil 4 5 6)
-       (list 2 3 4 :a "b" nil 5 6 7)
+    (list 1 2 3 :a "b" nil 4 5 6)
+    (list 2 3 4 :a "b" nil 5 6 7)
 
-       [1 2 3 :a "b" nil 4 5 6]
-       [2 3 4 :a "b" nil 5 6 7]
+    [1 2 3 :a "b" nil 4 5 6]
+    [2 3 4 :a "b" nil 5 6 7]
 
-       #{1 2 3 :a "b" nil 4 5 6}
-       #{2 3 4 :a "b" nil 5 6 7}
+    #{1 2 3 :a "b" nil 4 5 6}
+    #{2 3 4 :a "b" nil 5 6 7}
 
-       ;; new keys overriding past keys
-       {1 "1" 2 "2" 3 "3"}
-       {2 "1" 3 "2" 4 "3"}
+    ;; new keys overriding past keys
+    {1 "1" 2 "2" 3 "3"}
+    {2 "1" 3 "2" 4 "3"}
 
-       {3 "3" 2 "2" 1 "1"}
-       {2 "1" 3 "2" 4 "3"}
+    {3 "3" 2 "2" 1 "1"}
+    {2 "1" 3 "2" 4 "3"}
 
-       {1 2 3 :a "b" 4 nil nil}
-       {2 3 4 :a "b" 5 nil nil}
+    {1 2 3 :a "b" 4 nil nil}
+    {2 3 4 :a "b" 5 nil nil}
 
-       {:a {:b {:c {:d [1 2 {:e 3}]}}}}
-       {:a {:b {:c {:d [2 3 {:e 4}]}}}})))
+    {:a {:b {:c {:d [1 2 {:e 3}]}}}}
+    {:a {:b {:c {:d [2 3 {:e 4}]}}}}))
 
 (defrecord Foo [a b c])
 
-#?(:clj
-   (deftest test-walk
-     (let [colls ['(1 2 3)
-                  [1 2 3]
-                  #{1 2 3}
-                  (sorted-set-by > 1 2 3)
-                  {:a 1, :b 2, :c 3}
-                  (sorted-map-by > 1 10, 2 20, 3 30)
-                  (->Foo 1 2 3)
-                  (map->Foo {:a 1 :b 2 :c 3 :extra 4})]]
-       (doseq [c colls]
-         (let [walked (perf/walk identity identity c)]
-           (is (= c walked))
-           (if (map? c)
-             (is (= (perf/walk #(cond-> % (number? %) inc) #(reduce + (vals %)) c)
-                    (reduce + (map (comp inc val) c))))
-             (is (= (perf/walk inc #(reduce + %) c)
-                    (reduce + (map inc c)))))
-           (when (instance? clojure.lang.Sorted c)
-             (is (= (.comparator ^clojure.lang.Sorted c)
-                    (.comparator ^clojure.lang.Sorted walked)))))))))
+(deftest test-walk
+  (let [colls ['(1 2 3)
+               [1 2 3]
+               #{1 2 3}
+               (sorted-set-by > 1 2 3)
+               {:a 1, :b 2, :c 3}
+               (sorted-map-by > 1 10, 2 20, 3 30)
+               (->Foo 1 2 3)
+               (map->Foo {:a 1 :b 2 :c 3 :extra 4})]]
+    (doseq [c colls]
+      (let [walked (perf/walk identity identity c)]
+        (is (= c walked))
+        (if (map? c)
+          (is (= (perf/walk #(cond-> % (number? %) inc) #(reduce + (vals %)) c)
+                 (reduce + (map (comp inc val) c))))
+          (is (= (perf/walk inc #(reduce + %) c)
+                 (reduce + (map inc c)))))
+        #?(:clj (when (instance? clojure.lang.Sorted c)
+                  (is (= (.comparator ^clojure.lang.Sorted c)
+                         (.comparator ^clojure.lang.Sorted walked)))))))))
 
 (deftest test-select-keys
   (are [keys result] (= result (perf/select-keys {:a 1 :b 2 :c 3 :d 4 :e 5} keys))
