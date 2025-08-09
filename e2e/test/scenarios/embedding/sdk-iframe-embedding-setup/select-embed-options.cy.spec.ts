@@ -168,6 +168,9 @@ H.describeWithSnowplow(suiteTitle, () => {
       cy.findByText("See these Orders").should("not.exist");
     });
 
+    cy.log("allow downloads should be visible when drills are off (EMB-712)");
+    getEmbedSidebar().findByLabelText("Allow downloads").should("be.visible");
+
     cy.log("snippet should be updated");
     getEmbedSidebar().findByText("Get Code").click();
     codeBlock().should("contain", 'drills="false"');
