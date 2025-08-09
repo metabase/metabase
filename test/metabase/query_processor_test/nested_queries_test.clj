@@ -1562,7 +1562,8 @@
                                        :condition    [:= *products.id &Reviews.reviews.product_id]
                                        :alias        "Reviews"}]
                        :order-by     [[:asc $product_id->products.id]
-                                      [:asc &Reviews.reviews.product_id]]
+                                      [:asc &Reviews.reviews.product_id]
+                                      [:asc &Reviews.reviews.id]]
                        :limit        1})]
           (sql.qp-test-util/with-native-query-testing-context query
             (testing "results"
