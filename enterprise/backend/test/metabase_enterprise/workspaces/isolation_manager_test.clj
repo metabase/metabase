@@ -81,9 +81,58 @@
             (isolation-manager/delete-isolation (:engine db) (:details db) workspace-id
                                                 isolation-info)))))))
 
+(deftest evaluator-test
+  (let [steps [:overall
+               {}
+               [:subgoal1 {} "action1" "action2"]
+               [:subgoal2 {}
+                "action3"
+                [:subsubgoal {} "action4"]]]
+        result (#'isolation-manager/evaluate-steps steps (fn [x] [:success x]))]
+    (testing "general evaluation works"
+      (is (= [[[:tree :overall]
+               [:tree :subgoal1]
+               [:success "action1"]
+               [:success "action2"]
+               [:tree :subgoal2]
+               [:success "action3"]
+               [:tree :subsubgoal]
+               [:success "action4"]]
+              :running] result )))
+    (testing "errors prevent more work"
+      (let [result (#'isolation-manager/evaluate-steps steps (fn [x]
+                                                               (if (= x "action2")
+                                                                 [:error "action2 is failed"]
+                                                                 [:success x])))]
+        (is (= [[[:tree :overall]
+                 [:tree :subgoal1]
+                 [:success "action1"]
+                 [:error "action2 is failed"]
+                 [:skipping-tree :subgoal2]]
+                :error]
+               result))))
+    (testing "errors can be marked recoverable"
+      (let [steps [:cleanup {::isolation-manager/continue-on-error? true}
+                   [:remove-privileges {} "revoke privileges"]
+                   [:remove-schema {} "drop schema"]
+                   [:remove-user {} "drop user"]]
+            result (#'isolation-manager/evaluate-steps steps
+                                                       (fn [x]
+                                                         [:error x "failed"]))]
+        (is (= [[[:tree :cleanup]
+                 [:tree :remove-privileges]
+                 [:failed "revoke privileges" "failed"]
+                 [:tree :remove-schema]
+                 [:failed "drop schema" "failed"]
+                 [:tree :remove-user]
+                 [:failed "drop user" "failed"]]
+                :running] result))))))
+
 
 (comment
   (mt/set-test-drivers! #{:postgres :clickhouse})
+  (mt/set-test-drivers! #{:postgres})
+  (mt/set-test-drivers! #{:clickhouse})
   (do (run-test e2e)
       (run-test create-isolation-test))
 
