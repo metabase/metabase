@@ -193,14 +193,14 @@
   {:in  json-in-with-eliding
    :out json-out-with-keywordization})
 
-(defn- serialize-mlv2-query
-  "Saving MLv2 queries​ we can assume MLv2 queries are normalized enough already, but remove the metadata provider before
-  saving it, because it's not something that lends itself well to serialization."
+(defn- serialize-mbql-5-query
+  "Saving MBQL 5 queries​ we can assume MBQL 5 queries are normalized enough already, but remove the metadata provider
+  before saving it, because it's not something that lends itself well to serialization."
   [query]
   (dissoc query :lib/metadata))
 
-(defn- deserialize-mlv2-query
-  "Reading MLv2 queries​: normalize them, then attach a MetadataProvider based on their Database."
+(defn- deserialize-mbql-5-query
+  "Reading MBQL 5 queries​: normalize them, then attach a MetadataProvider based on their Database."
   [query]
   (let [metadata-provider (if (lib.metadata.protocols/metadata-provider? (:lib/metadata query))
                             ;; in case someone passes in an already-normalized query to [[maybe-normalize-query]] below,
@@ -216,12 +216,12 @@
    query]
   (letfn [(normalize [query]
             (let [f (if (= (lib/normalized-query-type query) :mbql/query)
-                      ;; MLv2 queries
+                      ;; MBQL 5 queries
                       (case in-or-out
-                        :in  serialize-mlv2-query
-                        :out deserialize-mlv2-query)
+                        :in  serialize-mbql-5-query
+                        :out deserialize-mbql-5-query)
                       ;; legacy queries: just normalize them with the legacy normalization code for now... in the near
-                      ;; future we'll probably convert to MLv2 before saving so everything in the app DB is MLv2
+                      ;; future we'll probably convert to MBQL 5 before saving so everything in the app DB is MBQL 5
                       (case in-or-out
                         :in  mbql.normalize/normalize
                         :out mbql.normalize/normalize))]
@@ -411,10 +411,15 @@
               (map? form)
               (into (empty form)
                     (map (fn [[k v]]
-                           ;; don't recurse into `:columns` -- if the first column name is something like "expression"
-                           ;; then we don't want to accidentally treat it as an `:expression` ref.
-                           [k (cond-> v
-                                (not= k :columns) normalize-mbql-clauses)]))
+                           ;; don't recurse into `:columns` if they are COLUMN NAMES! -- if the first column name is
+                           ;; something like "expression" then we don't want to accidentally treat it as an
+                           ;; `:expression` ref. Some `:columns` lists is viz settings do contain MBQL clauses
+                           ;; tho :unamused:
+                           (let [column-names? (and (= k :columns)
+                                                    (sequential? v)
+                                                    (every? (complement mbql-field-clause?) v))]
+                             [k (cond-> v
+                                  (not column-names?) normalize-mbql-clauses)])))
                     form)
 
               :else

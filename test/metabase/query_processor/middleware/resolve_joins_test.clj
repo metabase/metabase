@@ -19,10 +19,20 @@
       (resolve-joins/resolve-joins query))))
 
 (deftest ^:parallel joins->fields-test
-  (is (= [1 2 3 4]
-         (#'resolve-joins/joins->fields [{:fields :all}
-                                         {:fields [1 2]}
-                                         {:fields [3 4]}]))))
+  (is (= [[:field 1 {:join-alias "B"}]
+          [:field 2 {:join-alias "B"}]
+          [:field 3 {:join-alias "C"}]
+          [:field 4 {:join-alias "C"}]]
+         (#'resolve-joins/joins->fields [{:alias "A"
+                                          :fields :all}
+                                         {:alias "B"
+                                          :fields [[:field 1 {:join-alias "B"}]
+                                                   ;; missing join alias
+                                                   [:field 2 nil]]}
+                                         {:alias "C"
+                                          :fields [[:field 3 {:join-alias "C"}]
+                                                   ;; wrong join alias
+                                                   [:field 4 {:join-alias "X"}]]}]))))
 
 (deftest ^:parallel no-op-test
   (testing "Does the middleware function if the query has no joins?"

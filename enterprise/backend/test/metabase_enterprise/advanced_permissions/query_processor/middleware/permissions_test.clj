@@ -15,8 +15,7 @@
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.streaming-test :as streaming-test]
    [metabase.test :as mt]
-   [metabase.util :as u]
-   [metabase.util.log :as log])
+   [metabase.util :as u])
   (:import
    (clojure.lang ExceptionInfo)))
 

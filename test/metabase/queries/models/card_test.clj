@@ -363,7 +363,7 @@
       (testing varr
         (varr f)))))
 
-(deftest normalize-visualization-settings-test
+(deftest ^:parallel normalize-visualization-settings-test
   (test-visualization-settings-normalization
    (fn [original expected]
      (mt/with-temp [:model/Card card {:visualization_settings original}]
