@@ -108,7 +108,7 @@ export const createComponent = <
   return function ComponentWrapper(props: TComponentProps) {
     return (
       <ClientSideOnlyWrapper ssrFallback={null}>
-        <RenderSingleCopy id="component-wrapper">
+        <RenderSingleCopy identifier="component-wrapper">
           <NotStartedLoadingTrigger />
         </RenderSingleCopy>
 

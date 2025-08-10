@@ -3,12 +3,13 @@ import { type ReactNode, useEffect, useMemo, useRef } from "react";
 import { useSingleCopyWrapperIds } from "embedding-sdk/sdk-shared/hooks/use-single-copy-wrapper-ids";
 
 type RenderSingleCopyData = {
-  isFirstCopy: boolean;
+  singleCopyDetected: boolean;
+  isSingleCopyToRender: boolean;
 };
 
 type Props = {
   children: ReactNode | ((data: RenderSingleCopyData) => ReactNode);
-  id: string;
+  identifier: string;
   multipleRegisteredInstancesWarningMessage?: string;
 };
 
@@ -16,76 +17,85 @@ type Props = {
  * A wrapper component that ensures only the first-mounted instance for a given `id` actually renders its children.
  *
  * This component:
- * 1. Generates a unique instance key (via `useId()`).
- * 2. Registers itself in a passed `singleCopyWrapperIdsMap` on mount.
- * 3. Removes itself from that map on unmount.
- * 4. Only the very first-registered instance for this `id` will render its `children`; all others return `null`.
+ * Generates a unique component instance key (via `useId()`).
+ * Registers itself in a `singleCopyIdsMap` on the first render:
+ * Removes itself from that map on unmount.
+ * Only the very first-registered instance for this `id` will render its `children`; all others return `null`.
  */
 export const RenderSingleCopy = ({
-  id,
+  identifier,
   children,
   multipleRegisteredInstancesWarningMessage,
 }: Props) => {
   const { singleCopyIdsMap, setSingleCopyIdsMap } = useSingleCopyWrapperIds();
 
-  const currentIdRef = useRef(
-    `single-copy-${id}-${Math.random().toString(36).slice(2)}`,
+  const currentInstanceIdRef = useRef(
+    `${identifier}-${Math.random().toString(36).slice(2)}`,
   );
 
   const singleCopyIds = useMemo(
-    () => (singleCopyIdsMap ?? {})[id] ?? [],
-    [id, singleCopyIdsMap],
+    () => (singleCopyIdsMap ?? {})[identifier] ?? [],
+    [identifier, singleCopyIdsMap],
   );
 
   useEffect(() => {
-    const currentId = currentIdRef.current;
+    const currentInstanceId = currentInstanceIdRef.current;
 
     setSingleCopyIdsMap((singleCopyIdsMap) => {
-      const idsOnMount = singleCopyIdsMap[id] ?? [];
+      const idsOnMount = singleCopyIdsMap[identifier] ?? [];
 
       return {
         ...singleCopyIdsMap,
-        [id]: [...idsOnMount, currentId],
+        [identifier]: !idsOnMount.includes(currentInstanceId)
+          ? [...idsOnMount, currentInstanceId]
+          : idsOnMount,
       };
     });
 
     return () => {
       setSingleCopyIdsMap((singleCopyIdsMap) => {
-        const idsOnUnmount = singleCopyIdsMap[id] ?? [];
+        const idsOnUnmount = singleCopyIdsMap[identifier] ?? [];
 
         return {
           ...singleCopyIdsMap,
-          [id]: idsOnUnmount.filter((id) => id !== currentId),
+          [identifier]: idsOnUnmount.filter(
+            (instanceId) => instanceId !== currentInstanceId,
+          ),
         };
       });
     };
-  }, [id, currentIdRef, setSingleCopyIdsMap]);
+  }, [identifier, currentInstanceIdRef, setSingleCopyIdsMap]);
 
-  const shouldRender = singleCopyIds[0] === currentIdRef.current;
+  const singleCopyDetected = singleCopyIds.length > 0;
+  const isSingleCopyToRender =
+    singleCopyDetected && singleCopyIds[0] === currentInstanceIdRef.current;
 
   useEffect(
     function showWarningOnMultipleRegisteredInstances() {
       const shouldShowWaring =
         !!multipleRegisteredInstancesWarningMessage &&
-        shouldRender &&
+        isSingleCopyToRender &&
         singleCopyIds.length > 1;
 
       if (shouldShowWaring) {
         console.warn(multipleRegisteredInstancesWarningMessage);
       }
     },
-    [multipleRegisteredInstancesWarningMessage, shouldRender, singleCopyIds],
+    [
+      multipleRegisteredInstancesWarningMessage,
+      isSingleCopyToRender,
+      singleCopyIds,
+    ],
   );
 
   const isChildrenAsFunction = typeof children === "function";
 
   if (isChildrenAsFunction) {
-    return children({ isFirstCopy: shouldRender });
+    return children({
+      singleCopyDetected,
+      isSingleCopyToRender,
+    });
   }
 
-  if (!shouldRender) {
-    return null;
-  }
-
-  return <>{children}</>;
+  return isSingleCopyToRender ? children : null;
 };

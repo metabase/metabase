@@ -99,16 +99,20 @@ export const MetabaseProvider = memo(function MetabaseProvider({
   return (
     <ClientSideOnlyWrapper ssrFallback={children}>
       <RenderSingleCopy
-        id="metabase-provider"
+        identifier="metabase-provider"
         multipleRegisteredInstancesWarningMessage={
           // eslint-disable-next-line no-literal-metabase-strings -- Warning message
           "Multiple instances of MetabaseProvider detected. Metabase Embedding SDK may work unexpectedly. Ensure only one instance of MetabaseProvider is rendered at a time."
         }
       >
-        <MetabaseProviderInner {...props} />
-      </RenderSingleCopy>
+        {({ singleCopyDetected, isSingleCopyToRender }) => (
+          <>
+            {isSingleCopyToRender && <MetabaseProviderInner {...props} />}
 
-      <>{children}</>
+            {singleCopyDetected && children}
+          </>
+        )}
+      </RenderSingleCopy>
     </ClientSideOnlyWrapper>
   );
 });

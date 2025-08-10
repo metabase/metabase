@@ -34,18 +34,18 @@ export const SdkThemeProvider = ({ theme, children }: Props) => {
   }, [appColors, theme, font]);
 
   return (
-    <RenderSingleCopy id="sdk-theme-provider">
-      {({ isFirstCopy }) => (
+    <RenderSingleCopy identifier="sdk-theme-provider">
+      {({ singleCopyDetected, isSingleCopyToRender }) => (
         <ThemeProviderContext.Provider
           value={{
-            withCssVariables: isFirstCopy,
-            withGlobalClasses: isFirstCopy,
+            withCssVariables: isSingleCopyToRender,
+            withGlobalClasses: isSingleCopyToRender,
           }}
         >
           <ThemeProvider theme={themeOverride}>
-            {isFirstCopy && <GlobalSdkCssVariables />}
+            {isSingleCopyToRender && <GlobalSdkCssVariables />}
 
-            {children}
+            {singleCopyDetected && children}
           </ThemeProvider>
         </ThemeProviderContext.Provider>
       )}

@@ -5,7 +5,7 @@ import {
   useCreateDashboardApi,
   useMetabaseAuthStatus,
 } from "@metabase/embedding-sdk-react";
-import { type ReactNode, useEffect, useState } from "react";
+import { type ReactNode, StrictMode, useEffect, useState } from "react";
 
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
@@ -53,10 +53,10 @@ describe("scenarios > embedding-sdk > sdk-bundle", () => {
       );
 
       cy.mount(
-        <>
+        <StrictMode>
           {metabaseProvideElement}
           {metabaseProvideElement}
-        </>,
+        </StrictMode>,
       );
 
       cy.window().then((win) => {
@@ -116,17 +116,19 @@ describe("scenarios > embedding-sdk > sdk-bundle", () => {
       const componentsCount = 10;
 
       cy.mount(
-        <MetabaseProvider
-          authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}
-          locale="en"
-        >
-          {Array.from({ length: componentsCount }, (_, i) => (
-            <InteractiveQuestion
-              key={`q-${i}`}
-              questionId={ORDERS_QUESTION_ID}
-            />
-          ))}
-        </MetabaseProvider>,
+        <StrictMode>
+          <MetabaseProvider
+            authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}
+            locale="en"
+          >
+            {Array.from({ length: componentsCount }, (_, i) => (
+              <InteractiveQuestion
+                key={`q-${i}`}
+                questionId={ORDERS_QUESTION_ID}
+              />
+            ))}
+          </MetabaseProvider>
+        </StrictMode>,
       );
 
       checkStyles({

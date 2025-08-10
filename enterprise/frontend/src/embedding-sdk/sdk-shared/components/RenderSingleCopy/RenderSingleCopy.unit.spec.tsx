@@ -25,12 +25,12 @@ describe("RenderSingleCopy", () => {
     const { warningMessage, warnSpy } = setup();
 
     function Wrapper({
-      id,
+      identifier,
       initialMap = {},
       multipleWarning,
       children,
     }: {
-      id: string;
+      identifier: string;
       initialMap?: Record<string, string[]>;
       multipleWarning?: string;
       children: ReactNode;
@@ -44,7 +44,7 @@ describe("RenderSingleCopy", () => {
 
       return (
         <RenderSingleCopy
-          id={id}
+          identifier={identifier}
           multipleRegisteredInstancesWarningMessage={multipleWarning}
         >
           {children}
@@ -53,7 +53,7 @@ describe("RenderSingleCopy", () => {
     }
 
     render(
-      <Wrapper id="foo">
+      <Wrapper identifier="foo">
         <div>FirstChild</div>
       </Wrapper>,
     );
@@ -76,19 +76,19 @@ describe("RenderSingleCopy", () => {
       return (
         <>
           <RenderSingleCopy
-            id="foo"
+            identifier="foo"
             multipleRegisteredInstancesWarningMessage={warningMessage}
           >
             <div>First</div>
           </RenderSingleCopy>
           <RenderSingleCopy
-            id="foo"
+            identifier="foo"
             multipleRegisteredInstancesWarningMessage={warningMessage}
           >
             <div>Second</div>
           </RenderSingleCopy>
           <RenderSingleCopy
-            id="foo"
+            identifier="foo"
             multipleRegisteredInstancesWarningMessage={warningMessage}
           >
             <div>Third</div>
@@ -121,10 +121,10 @@ describe("RenderSingleCopy", () => {
 
       return (
         <>
-          <RenderSingleCopy id="one">
+          <RenderSingleCopy identifier="one">
             <div>ChildOne</div>
           </RenderSingleCopy>
-          <RenderSingleCopy id="two">
+          <RenderSingleCopy identifier="two">
             <div>ChildTwo</div>
           </RenderSingleCopy>
         </>

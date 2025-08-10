@@ -77,21 +77,40 @@ export const MetabaseProviderInternal = ({
   return (
     <EmotionCacheProvider>
       <SdkThemeProvider theme={theme}>
-        <LocaleProvider locale={locale || instanceLocale}>
-          {children}
+        <RenderSingleCopy identifier="component-level-providers">
+          {({ singleCopyDetected, isSingleCopyToRender }) => (
+            <>
+              {/*
+               * We have to rely on `singleCopyDetected` to perform the first render of `children` and `PortalContainer` at the same time
+               * Without relying on it the `children` rendered first. That may cause issues,
+               * because `PortalContainer` is not yet rendered at this moment but children may try to use it.
+               */}
+              {singleCopyDetected && (
+                <LocaleProvider locale={locale || instanceLocale}>
+                  {children}
 
-          <SdkIncompatibilityWithInstanceBanner />
-        </LocaleProvider>
+                  <SdkIncompatibilityWithInstanceBanner />
+                </LocaleProvider>
+              )}
 
-        <RenderSingleCopy id="component-level-providers">
-          <Global styles={SCOPED_CSS_RESET} />
-          <SdkFontsGlobalStyles baseUrl={authConfig.metabaseInstanceUrl} />
+              {isSingleCopyToRender && (
+                <>
+                  <Global styles={SCOPED_CSS_RESET} />
 
-          <SdkUsageProblemDisplay
-            authConfig={authConfig}
-            allowConsoleLog={allowConsoleLog}
-          />
-          <PortalContainer />
+                  <SdkFontsGlobalStyles
+                    baseUrl={authConfig.metabaseInstanceUrl}
+                  />
+
+                  <SdkUsageProblemDisplay
+                    authConfig={authConfig}
+                    allowConsoleLog={allowConsoleLog}
+                  />
+
+                  <PortalContainer />
+                </>
+              )}
+            </>
+          )}
         </RenderSingleCopy>
       </SdkThemeProvider>
     </EmotionCacheProvider>
