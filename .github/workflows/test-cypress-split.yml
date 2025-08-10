@@ -34,10 +34,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install dependencies
-        uses: cypress-io/github-action@v6
-        with:
-          runTests: false
+      - name: Prepare front-end environment
+        uses: ./.github/actions/prepare-frontend
 
   test-split:
     needs: prepare
@@ -48,6 +46,9 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Prepare front-end environment
+        uses: ./.github/actions/prepare-frontend
 
       - name: Create test timing file
         run: |
@@ -153,10 +154,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install dependencies
-        uses: cypress-io/github-action@v6
-        with:
-          runTests: false
+      - name: Prepare front-end environment
+        uses: ./.github/actions/prepare-frontend
 
       - name: Download all artifacts
         uses: actions/download-artifact@v4
