@@ -59,35 +59,25 @@ describe("scenarios > embedding-sdk > sdk-bundle", () => {
         </StrictMode>,
       );
 
-      cy.window().then((win) => {
-        expect(win.METABASE_PROVIDER_PROPS_STORE).to.exist;
-      });
-
       cy.mount(metabaseProvideElement);
 
-      cy.window().then((win) => {
-        expect(win.METABASE_PROVIDER_PROPS_STORE).to.exist;
-      });
+      cy.window().its("METABASE_PROVIDER_PROPS_STORE").should("exist");
+
+      cy.window().its("METABASE_PROVIDER_PROPS_STORE").should("exist");
 
       // Unmount
       cy.mount(<></>);
 
-      cy.window().then((win) => {
-        expect(win.METABASE_PROVIDER_PROPS_STORE).to.not.exist;
-      });
+      cy.window().its("METABASE_PROVIDER_PROPS_STORE").should("not.exist");
 
       cy.mount(metabaseProvideElement);
 
-      cy.window().then((win) => {
-        expect(win.METABASE_PROVIDER_PROPS_STORE).to.exist;
-      });
+      cy.window().its("METABASE_PROVIDER_PROPS_STORE").should("exist");
 
       // Unmount
       cy.mount(<></>);
 
-      cy.window().then((win) => {
-        expect(win.METABASE_PROVIDER_PROPS_STORE).to.not.exist;
-      });
+      cy.window().its("METABASE_PROVIDER_PROPS_STORE").should("not.exist");
     });
 
     it("should properly render global Mantine and Emotion styles once for multiple rendered components", () => {
