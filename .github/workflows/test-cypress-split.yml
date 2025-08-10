@@ -12,6 +12,9 @@ on:
         type: boolean
         required: false
         default: true
+  push:
+    paths:
+      - '.github/workflows/test-cypress-split.yml'
 
 jobs:
   prepare:
