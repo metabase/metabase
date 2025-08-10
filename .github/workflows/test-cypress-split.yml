@@ -116,11 +116,12 @@ jobs:
         env:
           SPLIT: ${{ strategy.job-total }}
           SPLIT_INDEX: ${{ strategy.job-index }}
-          SPLIT_FILE: 'timings.json'
+          SPLIT_FILE: 'test-cypress-split/timings.json'
           DEBUG: ${{ inputs.debug && 'cypress-split' || '' }}
         with:
           working-directory: test-cypress-split
-          install-command: npm install cypress cypress-split
+          install: false  # Don't install, use existing Metabase deps
+          config-file: cypress.config.js
           runTests: true
           browser: electron
 
