@@ -6,68 +6,90 @@ import os
 import argparse
 import asyncio
 import aiohttp
-from consts import DOC_STRING_CURRENT
+import time
+from consts import DOC_STRING_CURRENT, SEARCH_REQ_HEADERS
 
-SEARCH_REQ_HEADERS = {
-    'Accept': 'application/json',
-    'Accept-Language': 'en-US,en;q=0.9',
-    'Connection': 'keep-alive',
-    'Content-Type': 'application/json',
-    'If-Modified-Since': 'Mon, 4 Aug 2025 20:05:06 GMT',
-    'Referer': 'http://localhost:3000/',
-    'Sec-Fetch-Dest': 'empty',
-    'Sec-Fetch-Mode': 'cors',
-    'Sec-Fetch-Site': 'same-origin',
-    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36',
-    'sec-ch-ua': '"Not)A;Brand";v="8", "Chromium";v="138", "Google Chrome";v="138"',
-    'sec-ch-ua-mobile': '?0',
-    'sec-ch-ua-platform': '"macOS"'
-}
+from dotenv import load_dotenv
+load_dotenv()
+
+SEARCH_ENGINES = ['appdb', 'semantic']
 
 TEST_ENVS = [
     {
         'name': 'stats',
-        'enabled': True,
-        'concurrent': 1,
-        'session_id': '85e07e9c-44e9-4d1e-9558-55d46830c8c2',
-        'url': 'http://stats.metabase.com/api/search'
-    },
-    {
-        'name': 'fiery-blue',
         'enabled': False,
         'concurrent': 5,
         'session_id': '<SESSION_ID>',
-        'url': 'http://fiery-blue.hosted.staging.metabase.com/api/search'
+        'api_key': os.getenv('STATS_API_KEY'),
+        'url': 'http://stats.metabase.com/api/search',
+        'engines': ['appdb']
+    },
+    {
+        'name': 'fiery-blue',
+        'enabled': True,
+        'concurrent': 5,
+        'session_id': '<SESSION_ID>',
+        'api_key': os.getenv('FIERY_BLUE_API_KEY'),
+        'url': 'http://fiery-blue.hosted.staging.metabase.com/api/search',
+        'engines': ['appdb', 'semantic']
     },
     {
         'name': 'local',
         'enabled': False,
         'concurrent': 5,
         'session_id': '<SESSION_ID>',
-        'url': 'http://localhost:3000/api/search'
+        'api_key': os.getenv('LOCAL_API_KEY'),
+        'url': 'http://localhost:3000/api/search',
+        'engines': ['appdb', 'semantic']
     }
 ]
 
-async def async_search_request(session, semaphore, search_text, url, session_id, limit=5):
+async def async_search_request(session, semaphore, search_text, env, engine, suffix=None, save_dir=None, limit=5):
     params = {
         'q': search_text,
-        'search_engine': 'semantic',
+        'search_engine': engine,
         'context': 'command-palette',
         'include_dashboard_questions': 'true',
         'limit': limit
     }
-    cookies = { 'metabase.SESSION': session_id }
+    cookies = { 'metabase.SESSION': env.get('session_id') }
+    headers = {**SEARCH_REQ_HEADERS}
+    if env.get('api_key'):
+        headers['x-api-key'] = env.get('api_key')
+        cookies = {}
 
+    url = env['url']
     async with semaphore:
+        start_time = time.time()
         try:
-            async with session.get(url, params=params, headers=SEARCH_REQ_HEADERS, cookies=cookies) as response:
+            async with session.get(url, params=params, headers=headers, cookies=cookies) as response:
+                end_time = time.time()
+                duration = end_time - start_time
+                
                 if response.status == 200:
                     data = await response.json()
+                    
+                    # Save individual request response if save_dir is provided
+                    if save_dir and suffix is not None:
+                        request_data_dir = os.path.join(save_dir, 'request_data')
+                        os.makedirs(request_data_dir, exist_ok=True)
+                        filename = f"{env['name']}_{engine}_{suffix}.json"
+                        filepath = os.path.join(request_data_dir, filename.replace('-', '_'))
+                        
+                        # Add timing information to the saved data
+                        data_with_timing = data.copy()
+                        data_with_timing['t_duration'] = duration
+                        
+                        with open(filepath, 'w') as f:
+                            json.dump(data_with_timing, f, indent=2)
+                    
                     return response.status, data['data']
                 else:
                     print(f"WARNING: {response.status} response from '{url}' for test '{search_text}'")
                     return response.status, []
         except Exception as e:
+            end_time = time.time()
+            duration = end_time - start_time
             print(f"ERROR: in async request to '{url}' for '{search_text}': {e}")
             return 0, []
 
@@ -105,8 +127,9 @@ def reciprocal_rank(relevant_items, result_objects):
     return 0.0
 
 
-async def async_run_benchmark(test_queries, url, session_id, k_values=[5, 10], max_concurrent=5, cohort="Nil"):
-    print(f"Running async benchmark (cohort='{cohort}', concurrent={max_concurrent}, {url})")
+async def async_run_benchmark(test_queries, env, engine, save_dir=None, k_values=[5, 10], cohort="Nil"):
+    max_concurrent = env.get('concurrent', 5)
+    print(f"Running async benchmark (cohort='{cohort}', engine='{engine}', concurrent={max_concurrent}, {env['url']})")
 
     request_tasks = []
     query_data_list = []
@@ -115,7 +138,8 @@ async def async_run_benchmark(test_queries, url, session_id, k_values=[5, 10], m
     async with aiohttp.ClientSession() as session:
         for i, query_data in enumerate(test_queries):
             query_text = query_data["search_text"]
-            task = async_search_request(session, semaphore, query_text, url, session_id, limit=max(k_values))
+            suffix = f"{cohort}_test_{i}"
+            task = async_search_request(session, semaphore, query_text, env, engine, suffix=suffix, save_dir=save_dir, limit=max(k_values))
             request_tasks.append(task)
             query_data_list.append((i, query_data))
 
@@ -126,7 +150,7 @@ async def async_run_benchmark(test_queries, url, session_id, k_values=[5, 10], m
     status_codes = [status for status, _ in request_results]
     success_count = sum(1 for status in status_codes if status == 200)
     total_count = len(status_codes)
-    print(f"{success_count}/{total_count} async success for (cohort='{cohort}', {url}")
+    print(f"{success_count}/{total_count} async success for (cohort='{cohort}', engine='{engine}', {env['url']}")
 
     query_results = []
     for (i, query_data), (_, search_results) in zip(query_data_list, request_results):
@@ -156,54 +180,66 @@ async def async_run_benchmark(test_queries, url, session_id, k_values=[5, 10], m
     return summary_data
 
 
-async def run_all_benchmarks_async(test_queries, max_concurrent=5):
-    cohorts = set()
-    for query_data in test_queries:
-        for search_texts_dict in query_data["search_texts"]:
-            cohorts.update(search_texts_dict.keys())
-
-    # Run benchmarks for each cohort
+async def run_all_benchmarks_async(test_data, save_dir=None, n=None):
     results = {}
-    for cohort in sorted(cohorts):
+    if n:
+        print(f"Running for {n} tests")
+    
+    for term_name, term_data in test_data.items():
+        # if term_name not in ["term0", "term1"]:
+        #     continue
+
         cohort_tests = []
-        for query_data in test_queries:
-            for search_texts_dict in query_data["search_texts"]:
-                cohort_tests.append({
-                    "search_text": search_texts_dict[cohort],
-                    "relevant": query_data["relevant"]
-                })
+        for test in term_data["tests"][:n]:
+            cohort_tests.append({
+                "search_text": test["text"],
+                "relevant": test["relevant"]
+            })
 
         tasks = []
-        env_names = []
+        env_engine_pairs = []
 
         for env in TEST_ENVS:
             if env['enabled']:
-                task = async_run_benchmark(cohort_tests, env['url'], env['session_id'], max_concurrent=env['concurrent'], cohort=cohort)
-                tasks.append(task)
-                env_names.append(env['name'])
+                for engine in env['engines']:
+                    task = async_run_benchmark(cohort_tests, env, engine, save_dir=save_dir, cohort=term_name)
+                    tasks.append(task)
+                    env_engine_pairs.append((env['name'], engine))
 
         task_results = await asyncio.gather(*tasks)
 
-        results[cohort] = {}
-        for env_name, result in zip(env_names, task_results):
-            results[cohort][env_name] = result
+        results[term_name] = {}
+        for (env_name, engine), result in zip(env_engine_pairs, task_results):
+            if env_name not in results[term_name]:
+                results[term_name][env_name] = {}
+            results[term_name][env_name][engine] = result
+            
     return results
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Run benchmark evaluation on search endpoints')
     parser.add_argument('--save', action='store_true', help='Save results to CSV file with timestamp')
     parser.add_argument('--verbose', '-v', action='store_true', help='Print DOC_STRING_CURRENT')
-    parser.add_argument('--max-concurrent', type=int, default=5, help='Maximum concurrent requests for async mode (default: 5)')
+    parser.add_argument('-n', type=int, default=None, help='How many tests in each batch to run')
     parser.add_argument('--benchmark', type=str, default='benchmark.json', help='Benchmark json spec (default benchmark.json)')
     args = parser.parse_args()
 
-    test_queries = json.load(open(args.benchmark, 'r'))
-    results = asyncio.run(run_all_benchmarks_async(test_queries, max_concurrent=args.max_concurrent))
+    # Create timestamped run directory if saving
+    save_dir = None
+    if args.save:
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        save_dir = f'data/run_{timestamp}'
+        os.makedirs(save_dir, exist_ok=True)
+        print(f"Created run directory: {save_dir}")
+
+    test_data = json.load(open(args.benchmark, 'r'))
+    results = asyncio.run(run_all_benchmarks_async(test_data, save_dir=save_dir, n=args.n))
 
     df = pd.DataFrame.from_dict({
-        (term, model): metrics
-        for term, models in results.items()
-        for model, metrics in models.items()
+        (term, env, engine): metrics
+        for term, envs in results.items()
+        for env, engines in envs.items()
+        for engine, metrics in engines.items()
     }, orient='index')
 
     with pd.option_context('display.precision', 3):
@@ -212,8 +248,6 @@ if __name__ == "__main__":
         print(df)
 
     if args.save:
-        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        os.makedirs('results', exist_ok=True)
-        filename = f'results/bench_result_{timestamp}.csv'
+        filename = os.path.join(save_dir, 'results.csv')
         df.to_csv(filename, index=True)
         print(f"\nResults saved to: {filename}")

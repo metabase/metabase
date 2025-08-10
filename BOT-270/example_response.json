@@ -1,77 +1,115 @@
 {
   "data": [
     {
-      "description": "Compares the orders of each category quarter over quarter",
+      "description": null,
       "archived": false,
-      "display_type": "line",
-      "collection_position": null,
-      "bookmark": null,
+      "collection_position": 19,
+      "bookmark": false,
       "can_write": true,
-      "database_id": 1,
-      "last_editor_common_name": null,
+      "last_editor_common_name": "Tony Cini",
       "pk_ref": null,
-      "official_collection": null,
-      "name": "Orders by product category",
-      "creator_common_name": "Metabase Internal",
-      "collection_authority_level": null,
-      "creator_id": 13371338,
-      "updated_at": "2025-08-02T06:06:50.690781Z",
+      "name": "Revenue",
+      "creator_common_name": "Sameer Al-Sakran",
+      "collection_authority_level": "official",
+      "creator_id": 3,
+      "updated_at": "2025-05-21T13:16:17.554928Z",
       "moderated_status": null,
       "effective_location": null,
-      "last_editor_id": null,
-      "id": 24,
-      "last_edited_at": null,
-      "dashboardcard_count": 1,
+      "last_editor_id": 135,
+      "id": 107,
+      "last_edited_at": "2023-02-24T08:08:10.279176Z",
       "context": null,
-      "display": "line",
-      "scores": [],
+      "scores": [
+        {
+          "score": 0.4350750624965278,
+          "name": "recency",
+          "weight": 1.0,
+          "contribution": 0.4350750624965278
+        },
+        {
+          "score": 1,
+          "name": "pinned",
+          "weight": 0,
+          "contribution": 0
+        },
+        {
+          "score": 0,
+          "name": "bookmarked",
+          "weight": 1.0,
+          "contribution": 0.0
+        },
+        {
+          "score": 0,
+          "name": "official-collection",
+          "weight": 1.0,
+          "contribution": 0.0
+        },
+        {
+          "score": 0.0,
+          "name": "dashboard",
+          "weight": 0.0,
+          "contribution": 0.0
+        },
+        {
+          "score": 1,
+          "name": "prefix",
+          "weight": 0,
+          "contribution": 0
+        },
+        {
+          "score": 0,
+          "name": "mine",
+          "weight": 1,
+          "contribution": 0
+        },
+        {
+          "score": 1,
+          "name": "exact",
+          "weight": 5,
+          "contribution": 5
+        },
+        {
+          "score": 0.2099084759251891,
+          "name": "view-count",
+          "weight": 2,
+          "contribution": 0.4198169518503782
+        },
+        {
+          "score": 0.0,
+          "name": "user-recency",
+          "weight": 5.0,
+          "contribution": 0.0
+        },
+        {
+          "score": 0,
+          "name": "verified",
+          "weight": 1.0,
+          "contribution": 0.0
+        },
+        {
+          "score": 0.66871977,
+          "name": "text",
+          "weight": 5.0,
+          "contribution": 3.3435988426208496
+        },
+        {
+          "score": 1.0,
+          "name": "model",
+          "weight": 2.0,
+          "contribution": 2.0
+        }
+      ],
       "collection": {
-        "id": 2,
-        "name": "Examples",
-        "authority_level": null,
+        "id": 358,
+        "name": "Revenue",
+        "authority_level": "official",
         "type": null
       },
-      "verified": null,
-      "created_at": "2025-08-02T06:06:50.690781Z",
-      "model": "card"
-    },
-    {
-      "description": "Orders for each product, grouped by product category",
-      "archived": false,
-      "display_type": "pie",
-      "collection_position": null,
-      "bookmark": null,
-      "can_write": true,
-      "database_id": 1,
-      "last_editor_common_name": null,
-      "pk_ref": null,
-      "official_collection": null,
-      "name": "Product breakdown",
-      "creator_common_name": "Metabase Internal",
-      "collection_authority_level": null,
-      "creator_id": 13371338,
-      "updated_at": "2025-08-02T06:06:50.690781Z",
-      "moderated_status": null,
-      "effective_location": null,
-      "last_editor_id": null,
-      "id": 7,
-      "last_edited_at": null,
-      "dashboardcard_count": 1,
-      "context": null,
-      "display": "pie",
-      "scores": [],
-      "collection": {
-        "id": 2,
-        "name": "Examples",
-        "authority_level": null,
-        "type": null
-      },
-      "verified": null,
-      "created_at": "2025-08-02T06:06:50.690781Z",
-      "model": "card"
+      "created_at": "2019-06-05T18:48:46.583Z",
+      "model": "dashboard"
     }
   ],
-  "limit": 2,
+  "limit": 1,
   "models": [
     "dashboard",
     "table",
@@ -86,6 +124,6 @@
   ],
   "offset": 0,
   "table_db_id": null,
-  "engine": "search.engine/semantic",
-  "total": 99
+  "engine": "search.engine/appdb",
+  "total": 238
 }

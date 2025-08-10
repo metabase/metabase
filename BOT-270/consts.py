@@ -1,3 +1,9 @@
+
+SEARCH_REQ_HEADERS = {
+    'Accept': 'application/json',
+    'Content-Type': 'application/json',
+}
+
 DOC_STRING_CURRENT = """\
 ┌──── METRICS ────────────────────────────────────────────────────────────┐
 
