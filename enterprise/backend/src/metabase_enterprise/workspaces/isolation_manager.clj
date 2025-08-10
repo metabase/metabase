@@ -31,9 +31,9 @@
   meant to be a sandbox that is granted data for the LLM to consider.
 
   The public api is
-  create-isolation(driver, connection-details, workspace-id)
+  (create-isolation driver, connection-details, workspace-id)
 
-  delete-isolation(driver, connection-details, workspace-id, [isolation-info])
+  (delete-isolation driver, connection-details, workspace-id, [isolation-info])
   Isolation info is optional but nice to have. The isolation mechanism should be deterministic from the connection
   details and worksapce-id.
 
@@ -80,7 +80,9 @@
 ;; todo: use (jdbc/metadata-result (.getSchemas metadata))
 
 (mu/defn- postgres-steps :- ::steps
-  "Return postgres steps."
+  "Return postgres steps. Needs the populator and read users (maps with user and password) and the schema name to be
+  populated. Will create the schema, uses, and setup privileges. Currently hardcoded to give the populator access to
+  the `public` schema. This will need to be updated to include the schemas from the source database."
   [{:keys [populator reader schema-name]}]
   [:schema
    {}
@@ -127,7 +129,15 @@
                                         :schema-name "scratchpad"}))
   )
 
-(mu/defn evaluate-steps
+(mu/defn- evaluate-steps
+  "Evaluate steps. Steps is a tree of steps matching the ::steps schema. F should be a function that takes in the
+  opaque value of a step. `f` must return a tuple `[:success _]` or `[:error ]`.
+
+  Error handling: by default an error will stop all evaluation. It will report which _steps_ are skipped, and which
+  _trees_ are also skipped. It will not descend into trees to enumerate steps once skipped. You can put
+  `{:error-strategy ::continue-on-error}` as options anywhere in the tree. This option affects subtrees. You can
+  shadow this back to the regular error strategy with any other value to prevent finding the continue on error
+  strategy."
   [steps :- ::steps f]
   (letfn [(subtree? [rule] (vector? rule))
           (error-strategy [stackframes]
@@ -192,16 +202,6 @@
                            (conj acc result)
                            (if switch-to-error? :error state)
                            (dec gas))))))))))
-
-(comment
-  (evaluate-steps
-   [:overall
-    {}
-    [:subgoal1 {} "action1" "action2"]
-    [:subgoal2 {}
-     "action3"
-     [:subsubgoal {} "action4"]]] (fn [x] [:success x]))
-  )
 
 (comment
   (evaluate-steps (postgres-steps {:populator {:user "populator" :password "populator-pw"}
@@ -341,15 +341,13 @@
   ;; future work to check for existing schemas
   (let [metadata (.getMetaData (:connection tx))]
     (let [schemas (into [] (map :table_schem) (jdbc/result-set-seq (.getSchemas metadata)))]
-      (tap> {:schemas schemas
-             :isolations (filter #(String/.startsWith % "mb__isolation_") schemas)
-             :our-isolations (filter #(String/.startsWith % "mb__isolation_7748c") schemas)
-             :already-exists? (some #{schema-name} schemas)
-             :driver _driver})))
-  (def workspace {:connection-details (:details (toucan2.core/select-one :model/Database :id 19))
-                  :id "workspace_manual_01"})
+      {:schemas schemas
+       :isolations (filter #(String/.startsWith % "mb__isolation_") schemas)
+       :our-isolations (filter #(String/.startsWith % "mb__isolation_7748c") schemas)
+       :already-exists? (some #{schema-name} schemas)
+       :driver _driver}))
+
   ;; we're a bit sloppy with db vs dbname?
-  ((some-fn :db :dbname) (:details (toucan2.core/select-one :model/Database :id 19)))
   (let [workspace-id "workspace_manual_01"
         connection-details {:scan-all-databases false, :ssl false, :password "password", :destination-database false,
                             :port 8123, :advanced-options false, :dbname "sales_data", :host "localhost",

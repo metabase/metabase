@@ -144,6 +144,30 @@
                [:tree :subgoal2] [:success "action3"]
                [:tree :subsubgoal] [:success "action4"]]
               :running]
+             results))))
+  (testing "can error one subtree and then continue"
+    (let [steps [:overall-with-continue
+                 {:error-strategy ::isolation-manager/continue-on-error}
+                 [:subgoal1-with-fail {:error-strategy ::isolation-manager/fail}
+                  "action1" "action2"
+                  [:subtree-should-be-skipped {} "not-important1" "not-important2"]]
+                 [:subgoal2 {}
+                  "action3"
+                  [:subsubgoal {} "action4"]]]
+          results (#'isolation-manager/evaluate-steps steps
+                                                      (fn [x]
+                                                        (if (= x "action1")
+                                                          [:error x]
+                                                          [:success x])))]
+      (is (= [[[:tree :overall-with-continue]
+               [:tree :subgoal1-with-fail]
+               [:error "action1"] [:skipping-step "action2"]
+               ;; tree maintains the failure strategy
+               [:skipping-tree :subtree-should-be-skipped]
+               ;; but popping back out continues according to main strategy
+               [:tree :subgoal2] [:success "action3"]
+               [:tree :subsubgoal] [:success "action4"]]
+              :running]
              results)))))
 
 
