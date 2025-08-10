@@ -58,7 +58,7 @@ describe("RenderSingleCopy", () => {
       </Wrapper>,
     );
 
-    expect(await screen.findByText("FirstChild")).toBeInTheDocument();
+    expect(screen.getByText("FirstChild")).toBeInTheDocument();
     expect(warnSpy).not.toHaveBeenCalledWith(warningMessage);
   });
 
@@ -99,7 +99,7 @@ describe("RenderSingleCopy", () => {
 
     render(<Wrapper />);
 
-    expect(await screen.findByText("First")).toBeInTheDocument();
+    expect(screen.getByText("First")).toBeInTheDocument();
     expect(screen.queryByText("Second")).not.toBeInTheDocument();
     expect(screen.queryByText("Third")).not.toBeInTheDocument();
 
@@ -133,8 +133,8 @@ describe("RenderSingleCopy", () => {
 
     render(<Wrapper />);
 
-    expect(await screen.findByText("ChildOne")).toBeInTheDocument();
-    expect(await screen.findByText("ChildTwo")).toBeInTheDocument();
+    expect(screen.getByText("ChildOne")).toBeInTheDocument();
+    expect(screen.getByText("ChildTwo")).toBeInTheDocument();
     expect(warnSpy).not.toHaveBeenCalledWith(warningMessage);
   });
 });

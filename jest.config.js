@@ -136,6 +136,7 @@ const config = {
 
       setupFilesAfterEnv: [
         ...baseConfig.setupFilesAfterEnv,
+        "<rootDir>/enterprise/frontend/src/embedding-sdk/jest/setup-after-env.js",
         "<rootDir>/enterprise/frontend/src/embedding-sdk/jest/console-restrictions.js",
       ],
     },

@@ -26,13 +26,6 @@ jest.mock("metabase/common/hooks/use-locale", () => ({
   useLocale: jest.fn(),
 }));
 
-jest.mock(
-  "embedding-sdk/sdk-shared/components/RenderSingleCopy/RenderSingleCopy",
-  () => ({
-    RenderSingleCopy: jest.fn(({ children }) => children),
-  }),
-);
-
 const useLocaleMock = useLocale as jest.Mock;
 
 const CURRENT_USER = createMockUser({

@@ -42,13 +42,14 @@ const INTERNAL_PROP_NAMES: (keyof MetabaseProviderPropsStoreInternalProps)[] = [
 ];
 
 const KEY = "METABASE_PROVIDER_PROPS_STORE";
-const EMPTY_PROPS: MetabaseProviderPropsStoreInternalProps = {
-  loadingPromise: null,
-  loadingState: SdkLoadingState.Initial,
-  loadingError: null,
-  reduxStore: null,
-  singleCopyWrapperIdsMap: {},
-};
+const getEmptyProps = (): MetabaseProviderPropsStoreInternalProps =>
+  ({
+    loadingPromise: null,
+    loadingState: SdkLoadingState.Initial,
+    loadingError: null,
+    reduxStore: null,
+    singleCopyWrapperIdsMap: {},
+  }) satisfies MetabaseProviderPropsStoreInternalProps;
 
 export function ensureMetabaseProviderPropsStore(): MetabaseProviderPropsStore {
   const win = getWindow();
@@ -61,8 +62,7 @@ export function ensureMetabaseProviderPropsStore(): MetabaseProviderPropsStore {
     return win[KEY];
   }
 
-  let props: MetabaseProviderPropsToStore =
-    EMPTY_PROPS as MetabaseProviderPropsToStore;
+  let props = getEmptyProps() as MetabaseProviderPropsToStore;
   const listeners = new Set<() => void>();
 
   const store: MetabaseProviderPropsStore = {
@@ -82,7 +82,6 @@ export function ensureMetabaseProviderPropsStore(): MetabaseProviderPropsStore {
         ...initialProps,
       } as MetabaseProviderPropsToStore;
     },
-
     updateInternalProps(propsToSet) {
       props = {
         ...props,
