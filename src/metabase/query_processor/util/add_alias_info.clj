@@ -142,10 +142,15 @@
                                  returned-columns)]
       (assoc stage ::desired-alias->escaped escaped-aliases))))
 
-(defn- escaped-source-alias [query stage-path source-column-alias]
-  (or (when-let [previous-stage-path (lib.walk/previous-path stage-path)]
-        (let [previous-stage (get-in query previous-stage-path)]
-          (get-in previous-stage [::desired-alias->escaped source-column-alias])))
+(defn- escaped-source-alias [query stage-path join-alias source-column-alias]
+  (or (if join-alias
+        (when-let [join (m/find-first #(= (:alias %) join-alias)
+                                      (:joins (get-in query stage-path)))]
+          (let [join-last-stage (last (:stages join))]
+            (get-in join-last-stage [::desired-alias->escaped source-column-alias])))
+        (when-let [previous-stage-path (lib.walk/previous-path stage-path)]
+          (let [previous-stage (get-in query previous-stage-path)]
+            (get-in previous-stage [::desired-alias->escaped source-column-alias]))))
       source-column-alias))
 
 (defn- escaped-desired-alias
@@ -197,7 +202,7 @@
 (defn- update-field-ref [query path field-ref col]
   (lib/update-options field-ref assoc
                       ::source-table (source-table query path col)
-                      ::source-alias (escaped-source-alias query path (:lib/source-column-alias col))))
+                      ::source-alias (escaped-source-alias query path (:metabase.lib.join/join-alias col) (:lib/source-column-alias col))))
 
 (mu/defn- add-source-aliases :- ::lib.schema/stage.mbql
   [query :- ::lib.schema/query

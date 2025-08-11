@@ -14,6 +14,7 @@
    [metabase.lib.test-util.macros :as lib.tu.macros]
    [metabase.lib.test-util.metadata-providers.mock :as providers.mock]
    [metabase.lib.test-util.uuid-dogs-metadata-provider :as lib.tu.uuid-dogs-metadata-provider]
+   [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.store :as qp.store]
@@ -1105,3 +1106,116 @@
                                         add/add-alias-info
                                         qp.preprocess/preprocess)
                 :expression))))))
+
+(deftest ^:parallel remapped-columns-in-joined-source-queries-test
+  (testing "Make sure remapped columns are given correct aliases and escaped correctly for drivers like Oracle"
+    (let [mp                    (-> meta/metadata-provider
+                                    (lib.tu/remap-metadata-provider (meta/id :orders :product-id) (meta/id :products :title)))
+          query                 (lib/query
+                                 mp
+                                 (lib.tu.macros/mbql-query products
+                                   {:joins    [{:source-query {:source-table $$orders
+                                                               :breakout     [$orders.product-id]
+                                                               :aggregation  [[:sum $orders.quantity]]}
+                                                :alias        "Orders"
+                                                :condition    [:= $id &Orders.orders.product-id]
+                                                ;; we can get title since product_id is remapped to title
+                                                :fields       [&Orders.title
+                                                               &Orders.*sum/Integer]}]
+                                    :fields   [$title $category]
+                                    :order-by [[:asc $id]]
+                                    :limit    3}))
+          ;; this is a basically the same as Oracle's behavior for truncating aliases
+          query                 (binding [add/*escape-alias-fn* (fn [_driver s]
+                                                                  (let [s (str/replace s #"[\"\u0000]" "_")]
+                                                                    (lib.util/truncate-alias s 30)))]
+                                  (add-alias-info query))
+          stage                 (-> query :stages first)
+          stage-join            (-> stage :joins first)
+          stage-join-stage      (-> stage-join :stages first)
+          stage-join-stage-join (-> stage-join-stage :joins first)]
+      (testing ":stages -> first -> :joins -> first -> :stages -> first -> :joins -> first"
+        (is (=? {:stages              [{:source-table (meta/id :products)}]
+                 ::add/original-alias "PRODUCTS__via__PRODUCT_ID"
+                 ::add/alias          "PRODUCTS__via__PRODUCT_ID"
+                 :alias               "PRODUCTS__via__PRODUCT_ID"
+                 :conditions          [[:=
+                                        {}
+                                        [:field
+                                         {::add/source-table (meta/id :orders)
+                                          ::add/source-alias "PRODUCT_ID"}
+                                         any?]
+                                        [:field
+                                         {:join-alias        "PRODUCTS__via__PRODUCT_ID"
+                                          ::add/source-alias "ID"
+                                          ::add/source-table "PRODUCTS__via__PRODUCT_ID"}
+                                         any?]]]}
+                stage-join-stage-join)))
+      (testing ":stages -> first -> :joins -> first -> :stages -> first"
+        (is (=? {:breakout    [[:field
+                                {::add/source-alias  "TITLE"
+                                 :join-alias         "PRODUCTS__via__PRODUCT_ID"
+                                 ::add/desired-alias "PRODUCTS__via__PRODUC_8b0b9fea"
+                                 ::add/source-table  "PRODUCTS__via__PRODUCT_ID"}
+                                any?]
+                               [:field
+                                {::add/source-alias  "PRODUCT_ID"
+                                 ::add/desired-alias "PRODUCT_ID"
+                                 ::add/source-table  (meta/id :orders)}
+                                any?]]
+                 :order-by    [[:asc
+                                {}
+                                [:field
+                                 {::add/source-alias  "TITLE"
+                                  :join-alias         "PRODUCTS__via__PRODUCT_ID"
+                                  ::add/desired-alias "PRODUCTS__via__PRODUC_8b0b9fea"
+                                  ::add/source-table  "PRODUCTS__via__PRODUCT_ID"}
+                                 any?]]]
+                 :aggregation [[:sum
+                                {:name               "sum"
+                                 ::add/source-table  ::add/none
+                                 ::add/source-alias  "sum"
+                                 ::add/desired-alias "sum"}
+                                [:field
+                                 {::add/source-table  (meta/id :orders)
+                                  ::add/source-alias  "QUANTITY"
+                                  ::add/desired-alias nil}
+                                 any?]]]}
+                (dissoc stage-join-stage :joins))))
+      (testing ":stages -> first -> :joins -> first"
+        (is (=? {:conditions [[:=
+                               {}
+                               [:field
+                                {::add/source-table (meta/id :products)
+                                 ::add/source-alias "ID"}
+                                any?]
+                               [:field
+                                {:join-alias        "Orders"
+                                 ::add/source-alias "PRODUCT_ID"
+                                 ::add/source-table "Orders"}
+                                any?]]]}
+                (dissoc stage-join :stages))))
+      (testing ":stages -> first"
+        (is (=? {:fields [[:field
+                           {::add/desired-alias "TITLE"
+                            ::add/source-alias  "TITLE"
+                            ::add/source-table  (meta/id :products)}
+                           any?]
+                          [:field
+                           {::add/desired-alias "CATEGORY"
+                            ::add/source-alias  "CATEGORY"
+                            ::add/source-table  (meta/id :products)}
+                           any?]
+                          [:field
+                           {:join-alias         "Orders"
+                            ::add/desired-alias "Orders__PRODUCTS__via_6256d0ed"
+                            ::add/source-alias  "PRODUCTS__via__PRODUC_8b0b9fea"
+                            ::add/source-table  "Orders"}
+                           any?]
+                          [:field
+                           {:join-alias         "Orders"
+                            ::add/desired-alias "Orders__sum"
+                            ::add/source-alias  "sum"
+                            ::add/source-table  "Orders"}
+                           "sum"]]}
+                (dissoc stage :joins)))))))
