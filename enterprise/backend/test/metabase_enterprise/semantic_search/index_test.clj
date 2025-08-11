@@ -166,7 +166,7 @@
             (semantic.tu/check-index-has-no-mock-docs)
 
             (testing "upsert-index!"
-              (with-redefs [semantic.index/upsert-index-batch! (only-first-call realized @#'semantic.index/upsert-index-batch!)]
+              (with-redefs [semantic.index/upsert-index-pooled! (only-first-call realized @#'semantic.index/upsert-index-pooled!)]
                 (is (= {"card" 2} (semantic.tu/upsert-index! mock-docs))))
               (semantic.tu/check-index-has-mock-card))
 
@@ -175,6 +175,34 @@
               (with-redefs [semantic.index/delete-from-index-batch-sql (only-first-call realized @#'semantic.index/delete-from-index-batch-sql)]
                 (is (= {"card" 2} (semantic.tu/delete-from-index! "card" (eduction (map :id) mock-docs)))))
               (semantic.tu/check-index-has-no-mock-docs))))))))
+
+(defn- track-concurrency
+  [max-concurrent f]
+  (let [current-concurrent (atom 0)]
+    (fn [& args]
+      (swap! current-concurrent inc)
+      (swap! max-concurrent (fn [m] (max m @current-concurrent)))
+      (try
+        (apply f args)
+        (finally
+          (swap! current-concurrent dec))))))
+
+(deftest upsert-index-concurrent-batch-processing-test
+  (mt/with-premium-features #{:semantic-search}
+    (with-open [_ (semantic.tu/open-temp-index!)]
+      (testing "ensure upsert! batch processing is concurrent update to index-update-thread-count"
+        (binding [semantic.index/*batch-size* 2]
+          (let [max-concurrent (atom 0)
+                update-fn      @#'semantic.index/upsert-index-batch!
+                docs          (take 100 (map-indexed (fn [i doc] (assoc doc :id (str i)))
+                                                     (cycle (semantic.tu/mock-documents))))]
+            (with-redefs [semantic.index/upsert-index-batch! (track-concurrency
+                                                              max-concurrent
+                                                              (fn [& args] (apply update-fn args)))]
+              (semantic.tu/check-index-has-no-mock-docs)
+              (is (= {"card" 50, "dashboard" 50}
+                     (semantic.tu/upsert-index! docs)))
+              (is (= 2 @max-concurrent) "Expected up to 2 concurrent batches"))))))))
 
 (deftest upsert-index-batched-embeddings-pairing-test
   (mt/with-premium-features #{:semantic-search}
@@ -221,7 +249,7 @@
                        :embedding (semantic.tu/get-mock-embedding "Tiger Conservation")}]
                      (semantic.tu/query-embeddings {:model "card" :model_id "3"}))))))))))
 
-(defn- embedding-reuse-with-batch-size! [batch-size & {:keys [inter-batch?]}]
+(defn- embedding-reuse-with-batch-size! [batch-size & {:keys [inter-batch? serial?]}]
   (let [test-documents [{:model "card"
                          :id "1"
                          :name "Dog Training Guide"
@@ -254,7 +282,7 @@
                             (when (seq (second ret))
                               (reset! inter-batch-cache-hit? true))
                             ret)))]
-          (semantic.tu/upsert-index! test-documents))
+          (semantic.tu/upsert-index! test-documents :serial? serial?))
         (is (= inter-batch? @inter-batch-cache-hit?))
         (is (= 1 (count @calls)))
         (is (= ["Dog Training Guide" "Elephant Migration"]
@@ -282,7 +310,8 @@
           (embedding-reuse-with-batch-size! 3 :inter-batch? false)))
       (testing "via inter-batch caching"
         (with-open [_ (semantic.tu/open-temp-index!)]
-          (embedding-reuse-with-batch-size! 2 :inter-batch? true))))))
+          ;; Ensure batches are processed serially -- concurrent batches don't support inter-batch caching.
+          (embedding-reuse-with-batch-size! 2 :inter-batch? true :serial? true))))))
 
 (deftest prometheus-metrics-test
   (mt/with-premium-features #{:semantic-search}

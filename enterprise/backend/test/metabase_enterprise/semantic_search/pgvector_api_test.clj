@@ -214,10 +214,10 @@
                                  (.interrupt thread)
                                  (when-not (.join thread (Duration/ofSeconds 30))
                                    (log/fatal "Indexing loop thread not exiting during test!")))))))]
-    (with-redefs [semantic.indexer/sleep         (fn [_])   ; do not slow down
-                  semantic.indexer/poll-limit    4          ; important to test poll / paging (not many docs in test-data)
-                  semantic.indexer/lag-tolerance Duration/ZERO ; if too high will slow the test down significantly
-                  ]
+    (with-redefs [semantic.indexer/sleep         (fn [_])       ; do not slow down
+                  semantic.indexer/poll-limit    4              ; important to test poll / paging (not many docs in test-data)
+                  semantic.indexer/lag-tolerance Duration/ZERO] ; if too high will slow the test down significantly
+
       (with-open [index-ref  (open-semantic-search! pgvector index-metadata embedding-model)
                   job-thread (open-job-thread pgvector index-metadata)]
         (let [index @index-ref

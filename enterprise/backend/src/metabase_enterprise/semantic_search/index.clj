@@ -1,6 +1,7 @@
 (ns metabase-enterprise.semantic-search.index
   (:require
    [clojure.string :as str]
+   [com.climate.claypoole :as cp]
    [honey.sql :as sql]
    [honey.sql.helpers :as sql.helpers]
    [metabase-enterprise.semantic-search.embedding :as embedding]
@@ -19,6 +20,7 @@
    [toucan2.core :as t2])
   (:import
    [java.time Instant LocalDate OffsetDateTime ZonedDateTime]
+   [java.util.concurrent ArrayBlockingQueue RejectedExecutionHandler RejectedExecutionException TimeUnit ThreadPoolExecutor]
    [org.postgresql.util PGobject]))
 
 (set! *warn-on-reflection* true)
@@ -268,8 +270,8 @@
 (defn- upsert-index-batch!
   [connectable index documents]
   (when (seq documents)
-    (let [text->docs         (group-by :searchable_text documents)
-          searchable-texts   (keys text->docs)
+    (let [text->docs        (group-by :searchable_text documents)
+          searchable-texts  (keys text->docs)
           upsert-embedding! (upsert-embedding!-fn connectable index text->docs)
           [new-texts stats]
           (u/profile (str "Semantic search embedding caching attempt for " {:docs (count documents) :texts (count searchable-texts)})
@@ -287,14 +289,61 @@
             upsert-embedding!)))
        (merge-with + stats)))))
 
+(def ^:private ^:dynamic *retrying* false)
+
+(defonce ^:private
+  ^{:doc "A shared thread pool for processing batched documents, including fetching embeddings. A custom retry handler
+    is used to block the caller thread until a thread is available, to prevent realizing documents until they can be
+    processed."}
+  index-update-executor
+  (delay
+    (let [n (long (semantic-settings/index-update-thread-count))
+          retry-handler (reify RejectedExecutionHandler
+                          (^void rejectedExecution [_ ^Runnable task ^ThreadPoolExecutor executor]
+                            (if *retrying*
+                              (throw (RejectedExecutionException.))
+                              (loop [attempt 0]
+                                (let [op
+                                      (if (.isShutdown executor)
+                                        (.run task)
+                                        (try
+                                          (binding [*retrying* true]
+                                            (.execute executor task))
+                                          (catch RejectedExecutionException _ ::retry)))]
+                                  (case op
+                                    ::retry
+                                    (let [delay-ms (min 500 (* 10 (Math/pow 2 attempt)))]
+                                      (Thread/sleep (long delay-ms))
+                                      (recur (inc attempt)))
+                                    nil))))))]
+      (ThreadPoolExecutor. n n 0 TimeUnit/SECONDS
+                           (ArrayBlockingQueue. n)
+                           retry-handler))))
+
+(defn upsert-index-pooled!
+  "Returns a future which upserts the provided documents into the index table, executed using the provided thread pool."
+  [pool connectable index documents]
+  (cp/future pool (upsert-index-batch! connectable index documents)))
+
 (defn upsert-index!
   "Inserts or updates documents in the index table. If a document with the same
-  model + model_id already exists, it will be replaced."
-  [connectable index documents-reducible]
-  (transduce (comp (partition-all *batch-size*)
-                   (map #(upsert-index-batch! connectable index %)))
-             (partial merge-with +)
-             documents-reducible))
+  model + model_id already exists, it will be replaced. Parallelizes batch insertion
+  using a shared thread pool with a configurable thread count (default: 2)."
+  ([connectable index documents-reducible & {:keys [serial?] :or {serial? false}}]
+   (not-empty
+    (let [pool @index-update-executor
+          results (transduce
+                   (comp (partition-all *batch-size*)
+                         (map (if serial?
+                                #(upsert-index-batch! connectable index %)
+                                #(upsert-index-pooled! pool connectable index %))))
+                   conj
+                   documents-reducible)]
+      (reduce (fn [update-counts result]
+                (let [value (if (future? result) @result result)]
+                  (merge-with + update-counts (when value value))))
+              {}
+              results)))))
 
 (defn- drop-index-table-sql
   [{:keys [table-name]}]
@@ -818,4 +867,33 @@
   #_(explain-analyze-query db hybrid-sql)
 
   (def existing-sql (sql-format-quoted (existing-embedding-query index ["Some Text"])))
-  #_(explain-analyze-query db existing-sql))
+  #_(explain-analyze-query db existing-sql)
+
+  ;; Code to test the custom thread pool. The transduction should process batches in parallel and new batches should
+  ;; only be realized in memory once a thread is available.
+  (defn process-batch [batch]
+    #_:clj-kondo/ignore
+    (println "Processing batch starting with " (first batch))
+    (Thread/sleep 2000)
+    {:count (count batch)})
+
+  (defn logging-range [n]
+    #_:clj-kondo/ignore
+    (map #(do (println "Realizing item" %) %)
+         (range n)))
+
+  (defn reducible [n]
+    (u/rconcat (logging-range n) []))
+
+  (let [pool @index-update-executor
+        futures
+        (transduce
+         (comp
+          (partition-all 10)
+          (map #(cp/future pool (process-batch %))))
+         conj
+         (reducible 100))]
+    (reduce (fn [acc fut]
+              (merge-with + acc @fut))
+            {}
+            futures)))

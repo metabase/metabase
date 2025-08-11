@@ -114,8 +114,8 @@
 (defn query-index [search-context]
   (semantic.index/query-index db mock-index search-context))
 
-(defn upsert-index! [documents]
-  (semantic.index/upsert-index! db mock-index documents))
+(defn upsert-index! [documents & opts]
+  (apply semantic.index/upsert-index! db mock-index documents opts))
 
 (defn delete-from-index! [model ids]
   (semantic.index/delete-from-index! db mock-index model ids))
