@@ -29,7 +29,7 @@ export function QueryEditor({
   onSave,
   onCancel,
 }: QueryEditorProps) {
-  const { question, setQuestion } = useQueryState(initialQuery);
+  const { question, isQueryDirty, setQuestion } = useQueryState(initialQuery);
   const { isInitiallyLoaded } = useQueryMetadata(question);
   const {
     result,
@@ -72,9 +72,9 @@ export function QueryEditor({
   return (
     <Flex className={S.root} w="100%" h="100%" direction="column" bg="bg-white">
       <EditorHeader
-        canSave={canSave}
         isNew={isNew}
         isSaving={isSaving}
+        canSave={isQueryDirty && canSave}
         onSave={handleSave}
         onCancel={onCancel}
       />
