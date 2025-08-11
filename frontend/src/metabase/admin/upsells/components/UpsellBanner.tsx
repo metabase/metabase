@@ -14,6 +14,7 @@ import {
 
 import { UPGRADE_URL } from "../constants";
 
+import S from "./UpsellBanner.module.css";
 import {
   type DismissibleProps,
   UpsellWrapperDismissible,
@@ -21,7 +22,6 @@ import {
 import { UpsellCta } from "./UpsellCta";
 import { UpsellGem } from "./UpsellGem";
 import { UpsellWrapper } from "./UpsellWrapper";
-import S from "./Upsells.module.css";
 import { trackUpsellClicked, trackUpsellViewed } from "./analytics";
 import { useUpsellLink } from "./use-upsell-link";
 
