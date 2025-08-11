@@ -181,12 +181,25 @@
                   {}
                   [- 10]]]]
       (let [result (atom 0)
-            results
-            (#'isolation-manager/evaluate-steps steps (fn [[op x]]
-                                                        (try
-                                                          [:success (swap! result op x)]
-                                                          (catch Exception _e
-                                                           [:error :failed]))))]
+            results (#'isolation-manager/evaluate-steps steps (fn [[op x]]
+                                                                (try
+                                                                  [:success (swap! result op x)]
+                                                                  (catch Exception _e
+                                                                    [:error :failed]))))]
+        (is (=? [[[:tree :compute]
+                  [:success 1]
+                  [:success 2]
+                  [:tree :multiply]
+                  [:success 20]
+                  [:success 100]
+                  [:tree :divide]
+                  [:success 50]
+                  [:error :failed]
+                  [:tree :subtract]
+                  [:success 40]]
+                 :running]
+                results)
+            (= 50 @result))))))
 
 
 (comment
