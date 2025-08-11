@@ -173,9 +173,17 @@ export function DetailView({
         />
       </Box>
 
-      <Group className={S.content} flex="1" gap="lg" mih={0} mt={rem(64)}>
-        <Group justify="center" flex="1">
-          <Details />
+      <Group
+        align="flex-start"
+        className={S.content}
+        flex="1"
+        gap={rem(72)}
+        mih={0}
+      >
+        <Group justify="center" flex="1" px="xl" py={rem(64)}>
+          <Box maw={rem(900)}>
+            <Details />
+          </Box>
         </Group>
 
         <Box flex="0 0 auto">
