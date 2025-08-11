@@ -222,11 +222,11 @@
                :limit    [1]}
              (sql.qp-test-util/query->sql-map
               (mt/mbql-query products
-                             {:expressions {:CATEGORY [:concat $category "2"]}
-                              :breakout    [:expression :CATEGORY]
-                              :aggregation [:count]
-                              :order-by    [[:asc [:expression :CATEGORY]]]
-                              :limit       1})))))))
+                {:expressions {:CATEGORY [:concat $category "2"]}
+                 :breakout    [:expression :CATEGORY]
+                 :aggregation [:count]
+                 :order-by    [[:asc [:expression :CATEGORY]]]
+                 :limit       1})))))))
 
 (deftest ^:parallel disallow-fdw-to-other-databases-test
   (testing "Don't allow connections to other SQLite databases with ATTACH DATABASE (https://github.com/metabase/metaboat/issues/152)"
