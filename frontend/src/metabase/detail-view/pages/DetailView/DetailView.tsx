@@ -10,6 +10,7 @@ import {
 } from "metabase/api/table";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/LoadingAndErrorWrapper";
 import { Details, Nav, Relationships } from "metabase/detail-view/components";
+import { getRowName } from "metabase/detail-view/utils";
 import { useDispatch } from "metabase/lib/redux";
 import { closeNavbar } from "metabase/redux/app";
 import { Box, Group, Stack, rem } from "metabase/ui";
@@ -68,6 +69,7 @@ export function DetailView({
   );
 
   const row = rowFromList ?? rowFromObject;
+  const rowName = getRowName(columns, row);
 
   const [previousPathState] = useState<
     { pathname: string; hash: string } | object
@@ -152,6 +154,7 @@ export function DetailView({
     <Stack bg="bg-white" gap={0} h="100%">
       <Box className={S.nav} flex="0 0 auto" p="md">
         <Nav
+          rowName={rowName}
           tableId={tableId}
           onBackClick={
             "hash" in previousPathState ? handleBackClick : undefined

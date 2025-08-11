@@ -16,7 +16,7 @@ export const Breadcrumb = ({ children, className, href, ...props }: Props) => {
     return (
       <Box
         c="text-light"
-        className={cx(S.breadcrumb, className)}
+        className={cx(S.breadcrumb, S.link, className)}
         component={Link}
         flex="0 0 auto"
         fw="bold"

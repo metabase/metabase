@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { t } from "ttag";
 
 import {
@@ -14,6 +15,7 @@ import { NavButton } from "./NavButton";
 import { getExploreTableUrl } from "./utils";
 
 interface Props {
+  rowName: ReactNode;
   tableId: TableId;
   onBackClick?: () => void;
   onNextClick?: () => void;
@@ -21,6 +23,7 @@ interface Props {
 }
 
 export const Nav = ({
+  rowName,
   tableId,
   onBackClick,
   onNextClick,
@@ -91,6 +94,14 @@ export const Nav = ({
         <Breadcrumb href={getExploreTableUrl(table)}>
           {table.display_name}
         </Breadcrumb>
+
+        {rowName != null && (
+          <>
+            <Separator />
+
+            <Breadcrumb>{rowName}</Breadcrumb>
+          </>
+        )}
       </Group>
     </Group>
   );

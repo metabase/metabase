@@ -127,3 +127,23 @@ export function getBodyColumns(columns: DatasetColumn[]): DatasetColumn[] {
   const headerColumns = getHeaderColumns(columns);
   return columns.filter((column) => !headerColumns.includes(column));
 }
+
+export function getRowName(
+  columns: DatasetColumn[],
+  row: RowValue[] | undefined,
+): string | undefined {
+  if (!row) {
+    return undefined;
+  }
+
+  const title = getTitleColumn(columns);
+
+  if (!title) {
+    return undefined;
+  }
+
+  const titleIndex = columns.indexOf(title);
+  const titleValue = row[titleIndex];
+  const rowName = String(titleValue || "");
+  return rowName;
+}
