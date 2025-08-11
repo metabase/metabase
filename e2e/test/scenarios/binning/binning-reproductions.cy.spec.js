@@ -108,7 +108,7 @@ describe("binning related reproductions", () => {
 
     H.getNotebookStep("summarize").findByText("CREATED_AT: Month").click();
     H.popover()
-      .findByRole("option", { name: "CREATED_AT: Month" })
+      .findByRole("option", { name: "CREATED_AT" })
       .findByLabelText("Temporal bucket")
       .realHover()
       .click();

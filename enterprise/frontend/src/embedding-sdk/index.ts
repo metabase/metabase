@@ -1,7 +1,12 @@
-// Mantine styles need to be imported before any of our components so that our styles win over
-// the default mantine styles
-import "@mantine/core/styles.css";
-import "@mantine/dates/styles.css";
+import { EMBEDDING_SDK_CONFIG } from "metabase/embedding-sdk/config";
+
+// Enable SDK mode as we are in the SDK bundle
+// This applies to SDK derivatives such as new iframe embedding.
+EMBEDDING_SDK_CONFIG.isEmbeddingSdk = true;
+
+import "metabase/embedding-sdk/css/layer.module.css";
+import "metabase/embedding-sdk/css/vendor.module.css";
+import "metabase/embedding-sdk/css/index.module.css";
 
 import "metabase/lib/dayjs";
 

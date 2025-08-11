@@ -778,17 +778,20 @@
         (log/tracef "Applied casting\n=>\n%s" (u/pprint-to-str <>))))))
 
 (defmethod ->honeysql [:sql :datetime]
-  [driver [_ value mode]]
+  [driver [_ value {:keys [mode]}]]
   (let [honeysql-form (->honeysql driver value)
         coercion-strategy (case (or mode :iso)
                             ;; String
                             :iso              :Coercion/ISO8601->DateTime
-                            :simple           :Coercion/YYYYMMDDHHMMSSString->DateTime
+                            :simple           :Coercion/YYYYMMDDHHMMSSString->Temporal
+                            ;; Binary
+                            :iso-bytes         :Coercion/ISO8601Bytes->Temporal
+                            :simple-bytes      :Coercion/YYYYMMDDHHMMSSBytes->Temporal
                             ;; Number
-                            :unixmilliseconds :Coercion/UNIXMilliSeconds->DateTime
-                            :unixseconds      :Coercion/UNIXSeconds->DateTime
-                            :unixmicroseconds :Coercion/UNIXMicroSeconds->DateTime
-                            :unixnanoseconds  :Coercion/UNIXNanoSeconds->DateTime)]
+                            :unix-milliseconds :Coercion/UNIXMilliSeconds->DateTime
+                            :unix-seconds      :Coercion/UNIXSeconds->DateTime
+                            :unix-microseconds :Coercion/UNIXMicroSeconds->DateTime
+                            :unix-nanoseconds  :Coercion/UNIXNanoSeconds->DateTime)]
     (cond
       (isa? coercion-strategy :Coercion/UNIXTime->Temporal)
       (unix-timestamp->honeysql driver
@@ -797,6 +800,9 @@
 
       (isa? coercion-strategy :Coercion/String->Temporal)
       (cast-temporal-string driver coercion-strategy honeysql-form)
+
+      (isa? coercion-strategy :Coercion/Bytes->Temporal)
+      (cast-temporal-byte driver coercion-strategy honeysql-form)
 
       :else
       (throw (ex-info "Don't know how to convert the value to datetime."
@@ -1324,6 +1330,10 @@
   [driver [_ value]]
   (->honeysql driver [::cast-to-text value]))
 
+(defmethod ->honeysql [:sql :today]
+  [driver [_]]
+  (->honeysql driver [:date [:now]]))
+
 (mu/defmethod ->honeysql [:sql :relative-datetime] :- some?
   [driver [_ amount unit]]
   (date driver unit (if (zero? amount)
@@ -1677,16 +1687,17 @@
       [:= field-honeysql (->honeysql driver value)])))
 
 (defn- correct-null-behaviour
-  [driver [op & args :as clause]]
-  (if-let [field-arg (driver-api/match-one args
-                       :field          &match
-                       :expression     &match)]
-    ;; We must not transform the head again else we'll have an infinite loop
-    ;; (and we can't do it at the call-site as then it will be harder to fish out field references)
-    [:or
-     (into [op] (map (partial ->honeysql driver)) args)
-     [:= (->honeysql driver field-arg) nil]]
-    clause))
+  [driver [op & args :as _clause]]
+  ;; We must not transform the head again else we'll have an infinite loop
+  ;; (and we can't do it at the call-site as then it will be harder to fish out field references)
+  (let [honeysql-clause (into [op] (map (partial ->honeysql driver)) args)]
+    (if-let [field-arg (driver-api/match-one args
+                         :field          &match
+                         :expression     &match)]
+      [:or
+       honeysql-clause
+       [:= (->honeysql driver field-arg) nil]]
+      honeysql-clause)))
 
 (defmethod ->honeysql [:sql :!=]
   [driver [_ field value]]

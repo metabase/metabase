@@ -29,9 +29,9 @@ frontend_configs: &frontend_configs
   - ".eslintrc.js"
   - "postcss.config.js"
   - "rspack.config.js"
-  - "webpack.config.js"
-  - "webpack.embedding-sdk.config.js"
-  - "webpack.static-viz.config.js"
+  - "rspack.main.config.js"
+  - "rspack.embedding-sdk-bundle.config.js"
+  - "rspack.static-viz.config.js"
   - ".nvmrc"
 
 frontend_sources: &frontend_sources
@@ -117,8 +117,7 @@ e2e_ci: &e2e_ci
   - ".github/workflows/e2e-*"
 
 e2e_specs: &e2e_specs
-  - "**/*.cy.*.js"
-  - "**/*.cy.*.ts"
+  - e2e/!(test-host-app)**/*.cy.*.{js,ts}
 
 e2e_cross_version: &e2e_cross_version
   - ".github/workflows/e2e-cross-version.yml"
@@ -133,6 +132,7 @@ e2e_embedding_sdk_compatibility:
   - *default
   - *frontend_embedding_sdk_ci
   - *frontend_sources
+  - *backend_sources
   - "e2e/embedding-sdk-host-apps/**"
   - "e2e/runner/embedding-sdk/**"
   - "e2e/test-host-app/**/*.cy.*.{js,ts}"

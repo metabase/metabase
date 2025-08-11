@@ -50,9 +50,6 @@ export const FormTextarea = forwardRef(function FormTextarea(
       onBlur={handleBlur}
       styles={{
         ...(props.styles ?? {}),
-        input: {
-          fontWeight: "bold",
-        },
       }}
     />
   );

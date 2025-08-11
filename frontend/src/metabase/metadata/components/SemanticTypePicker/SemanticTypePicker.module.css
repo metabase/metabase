@@ -1,0 +1,4 @@
+.semanticTypePicker {
+  /* override our own weird default for Select, to prevent scrollbar being shown */
+  overflow: visible;
+}

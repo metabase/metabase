@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { t } from "ttag";
 
-import AccordionList from "metabase/common/components/AccordionList";
+import { AccordionList } from "metabase/common/components/AccordionList";
 import {
   HoverParent,
   TableColumnInfoIcon,
@@ -91,7 +91,7 @@ const DataSelectorFieldPicker = ({
           searchable={hasFiltering}
           onChange={(item: { field: Field }) => onChangeField(item.field)}
           itemIsSelected={checkIfItemIsSelected}
-          itemIsClickable={(item: FieldWithName) => item.field}
+          itemIsClickable={(item: FieldWithName) => Boolean(item.field)}
           renderItemWrapper={renderItemWrapper}
           renderItemIcon={renderItemIcon}
         />

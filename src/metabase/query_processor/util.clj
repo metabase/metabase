@@ -106,13 +106,13 @@
                                                                         :constraints
                                                                         :destination-database/id
                                                                         :impersonation/role])]
-    (cond-> query
-      (empty? constraints) (dissoc :constraints)
-      true                 (update :parameters sort-parameter-values)
-      (empty? parameters)  (dissoc :parameters)
-      true                 lib.schema.util/indexed-order-bys
-      true                 lib.schema.util/remove-randomized-idents
-      true                 walk-query-sort-maps)))
+    (-> query
+        (cond-> (empty? constraints) (dissoc :constraints))
+        (update :parameters sort-parameter-values)
+        (cond-> (empty? parameters) (dissoc :parameters))
+        lib.schema.util/indexed-order-bys
+        lib.schema.util/remove-lib-uuids
+        walk-query-sort-maps)))
 
 (defn- ->metadata-provider [legacy-query]
   (if (qp.store/initialized?)

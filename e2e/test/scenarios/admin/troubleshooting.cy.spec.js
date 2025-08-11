@@ -549,9 +549,6 @@ describe("admin > tools", () => {
     cy.findByRole("heading", {
       name: "Troubleshoot faster",
     }).should("be.visible");
-    cy.findByRole("link", { name: "Try for free" })
-      .should("have.attr", "href")
-      .and("include", "https://www.metabase.com/upgrade")
-      .and("include", "utm_");
+    cy.findByRole("button", { name: "Try for free" });
   });
 });

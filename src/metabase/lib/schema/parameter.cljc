@@ -70,8 +70,7 @@
    :text    {:type :string,  :allowed-for #{:text :string/= :id :category
                                             :location/city :location/state :location/zip_code :location/country}}
    :date    {:type :date,    :allowed-for #{:date :date/single :date/all-options :id :category}}
-   ;; I don't think `:boolean` is actually used on the FE at all.
-   :boolean {:type :boolean, :allowed-for #{:boolean :id :category}}
+   :boolean {:type :boolean, :allowed-for #{:boolean :id :category :boolean/=}}
 
    ;; as far as I can tell this is basically just an alias for `:date`... I'm not sure what the difference is TBH
    :date/single {:type :date, :allowed-for #{:date :date/single :date/all-options :id :category}}
@@ -138,7 +137,7 @@
    :string/does-not-contain {:type :string, :operator :variadic, :options-fn variadic-opts-first, :allowed-for #{:string/does-not-contain}}
    :string/ends-with        {:type :string, :operator :variadic, :options-fn variadic-opts-first, :allowed-for #{:string/ends-with}}
    :string/starts-with      {:type :string, :operator :variadic, :options-fn variadic-opts-first, :allowed-for #{:string/starts-with}}
-   :boolean/=               {:type :boolean, :operator :variadic, :allowed-for #{:boolean/=}}})
+   :boolean/=               {:type :boolean, :operator :variadic, :allowed-for #{:boolean :boolean/=}}})
 
 (mr/def ::type
   (into [:enum {:error/message    "valid parameter type"

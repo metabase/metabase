@@ -13,7 +13,7 @@ interface UserHasSeenProps {
   }: {
     hasSeen: boolean;
     ack: () => void;
-  }) => JSX.Element;
+  }) => React.ReactNode;
 }
 
 export const UserHasSeen = ({

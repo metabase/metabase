@@ -64,7 +64,7 @@
                               :identifiers-with-spaces                true
                               :split-part                             true
                               :now                                    true
-                              :database-routing                       false}]
+                              :database-routing                       true}]
   (defmethod driver/database-supports? [:snowflake feature] [_driver _feature _db] supported?))
 
 (defmethod driver/humanize-connection-error-message :snowflake
@@ -205,6 +205,8 @@
                 ;; keep open connections open indefinitely instead of closing them. See #9674 and
                 ;; https://docs.snowflake.net/manuals/sql-reference/parameters.html#client-session-keep-alive
                 :client_session_keep_alive                  true
+                ;; identify this connection as coming from Metabase for easier monitoring in Snowflake
+                :application                                "Metabase_Metabase"
                 ;; other SESSION parameters
                 ;; not 100% sure why we need to do this but if we don't set the connection to UTC our report timezone
                 ;; stuff doesn't work, even though we ultimately override this when we set the session timezone
@@ -451,6 +453,10 @@
 (defmethod sql.qp/datetime-diff [:snowflake :minute] [_driver _unit x y] (sub-day-datediff :minute x y))
 (defmethod sql.qp/datetime-diff [:snowflake :second] [_driver _unit x y] (sub-day-datediff :second x y))
 
+(defmethod sql.qp/cast-temporal-string [:snowflake :Coercion/YYYYMMDDHHMMSSString->Temporal]
+  [_driver _coercion-strategy expr]
+  (h2x/with-database-type-info [:to_timestamp expr (h2x/literal "YYYYMMDDHH24MISS")] "timestamp"))
+
 (defmethod sql.qp/->honeysql [:snowflake :regex-match-first]
   [driver [_ arg pattern]]
   [:regexp_substr (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver pattern)])
@@ -502,7 +508,7 @@
 ;; :field]` below.
 (defn- qualify-identifier [[_identifier identifier-type components, :as identifier]]
   {:pre [(h2x/identifier? identifier)]}
-  (apply h2x/identifier identifier-type (query-db-name) components))
+  (apply h2x/identifier identifier-type components))
 
 (defmethod sql.qp/->honeysql [:snowflake ::h2x/identifier]
   [_driver [_identifier identifier-type :as identifier]]
@@ -622,7 +628,7 @@
                           ;; See [[metabase.driver.snowflake/describe-database-default-schema-test]] and
                           ;; https://metaboat.slack.com/archives/C04DN5VRQM6/p1706220295862639?thread_ts=1706156558.940489&cid=C04DN5VRQM6
                           ;; for more info.
-                          (sql-jdbc.describe-database/db-tables driver (.getMetaData conn) "%" db-name))}))))))
+                          (vec (sql-jdbc.describe-database/db-tables driver (.getMetaData conn) "%" db-name)))}))))))
 
 (defmethod driver/describe-table :snowflake
   [driver database table]
@@ -840,3 +846,8 @@
 
 (defmethod sql-jdbc/impl-query-canceled? :snowflake [_ e]
   (= (sql-jdbc/get-sql-state e) "57014"))
+
+(defmethod driver/set-database-used! :snowflake [_driver conn db]
+  (let [sql (format "USE DATABASE \"%s\"" (db-name db))]
+    (with-open [stmt (.createStatement ^java.sql.Connection conn)]
+      (.execute stmt sql))))

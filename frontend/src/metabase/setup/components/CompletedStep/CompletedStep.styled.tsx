@@ -12,12 +12,6 @@ export const StepRoot = styled.section`
   margin-bottom: 1.75rem;
 `;
 
-export const StepTitle = styled.div`
-  color: var(--mb-color-text-light);
-  font-size: 2rem;
-  font-weight: 700;
-`;
-
 export const StepBody = styled.div`
   padding: 24px;
   border: 1px solid var(--mb-color-border);

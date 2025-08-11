@@ -42,7 +42,7 @@
                               :uuid-type                 false
                               :nested-field-columns      false
                               :test/jvm-timezone-setting false
-                              :database-routing          false}]
+                              :database-routing          true}]
   (defmethod driver/database-supports? [:redshift feature] [_driver _feat _db] supported?))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -272,12 +272,13 @@
    db-or-id-or-spec
    options
    (fn [^Connection conn]
+     (let [db (cond (integer? db-or-id-or-spec) (driver-api/with-metadata-provider db-or-id-or-spec
+                                                  (driver-api/database (driver-api/metadata-provider)))
+                    (u/id db-or-id-or-spec)     db-or-id-or-spec)]
+       (sql-jdbc.execute/set-role-if-supported! driver conn db))
      (when-not (sql-jdbc.execute/recursive-connection?)
        (sql-jdbc.execute/set-best-transaction-level! driver conn)
        (sql-jdbc.execute/set-time-zone-if-supported! driver conn session-timezone)
-       (sql-jdbc.execute/set-role-if-supported! driver conn (cond (integer? db-or-id-or-spec) (driver-api/with-metadata-provider db-or-id-or-spec
-                                                                                                (driver-api/database (driver-api/metadata-provider)))
-                                                                  (u/id db-or-id-or-spec)     db-or-id-or-spec))
        (try
          (.setHoldability conn ResultSet/CLOSE_CURSORS_AT_COMMIT)
          (catch Throwable e
@@ -614,6 +615,11 @@
 (defmethod sql.qp/cast-temporal-byte [:redshift :Coercion/YYYYMMDDHHMMSSBytes->Temporal]
   [driver _coercion-strategy expr]
   (sql.qp/cast-temporal-string driver :Coercion/YYYYMMDDHHMMSSString->Temporal
+                               [:from_varbyte expr (h2x/literal "UTF8")]))
+
+(defmethod sql.qp/cast-temporal-byte [:redshift :Coercion/ISO8601Bytes->Temporal]
+  [driver _coercion-strategy expr]
+  (sql.qp/cast-temporal-string driver :Coercion/ISO8601->DateTime
                                [:from_varbyte expr (h2x/literal "UTF8")]))
 
 (defmethod sql-jdbc/impl-table-known-to-not-exist? :redshift

@@ -2,8 +2,6 @@
 
 ![Metabase logo](https://raw.githubusercontent.com/metabase/metabase/refs/heads/master/docs/images/metabase-logo.svg)
 
-> This SDK is in public beta and actively being developed. You can expect some changes to the API, especially during the beta. The SDK currently only works with a Metabase 1.51 or higher.
-
 With Metabase's Embedded analytics SDK, you can embed individual [Metabase](https://www.metabase.com/) components with React (like standalone charts, dashboards, the query builder, and more). You can manage access and interactivity per component, and you have advanced customization for seamless styling.
 
 [Learn more](https://www.metabase.com/docs/latest/embedding/sdk/introduction).
@@ -52,6 +50,10 @@ yarn add @metabase/embedding-sdk-react
 
 For more on the SDK, check out the [SDK docs](https://www.metabase.com/docs/latest/embedding/sdk/introduction).
 
+## Limitations
+
+For the current limitations of the SDK, see the [SDK limitations section](https://www.metabase.com/docs/latest/embedding/sdk/introduction#sdk-limitations) of the docs.
+
 ## Development docs
 
-For developing the SDK, see the [dev docs](./dev.md).
+For developing the SDK, see the [dev docs](https://github.com/metabase/metabase/blob/master/enterprise/frontend/src/embedding-sdk/dev.md).

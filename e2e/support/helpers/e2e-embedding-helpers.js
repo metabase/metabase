@@ -32,7 +32,7 @@ import { openSharingMenu } from "./e2e-sharing-helpers";
  * @param {object} [options]
  * @param {object} [options.setFilters]
  * @param {PageStyle} options.pageStyle
- * @param {object} options.additionalHashOptions
+ * @param {object} [options.additionalHashOptions]
  * @param {string} [options.additionalHashOptions.locale]
  * @param {string[]} [options.additionalHashOptions.hideFilters]
  * @param {object} [options.qs]

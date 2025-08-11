@@ -1,13 +1,14 @@
 import { jt, t } from "ttag";
 
+import { UpsellEmbeddingButton } from "metabase/admin/upsells/UpsellEmbeddingButton";
+import { UpsellGem } from "metabase/admin/upsells/components/UpsellGem";
 import ExternalLink from "metabase/common/components/ExternalLink";
 import { useSetting } from "metabase/common/hooks";
 import { getPlan } from "metabase/common/utils/plan";
-import { Badge } from "metabase/home/components/EmbedHomepage/Badge";
 import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_EMBEDDING } from "metabase/plugins";
 import { getDocsUrl, getSetting } from "metabase/selectors/settings";
-import { Box, Button, Group, Icon, Text } from "metabase/ui";
+import { Box, Group, Icon, Text } from "metabase/ui";
 
 import { EmbeddingToggle } from "../../EmbeddingToggle";
 import { EmbeddingOption } from "../EmbeddingOption";
@@ -44,15 +45,11 @@ export const InteractiveEmbeddingOptionCard = () => {
           disabled={!isEE || !isInteractiveEmbeddingEnabled}
         />
       }
-      title={t`Interactive embedding`}
-      label={
-        <Badge
-          fz="sm"
-          px="sm"
-          py="xs"
-          color="brand"
-          uppercase
-        >{t`Pro and Enterprise`}</Badge>
+      title={
+        <Group gap="sm">
+          {!isEE && <UpsellGem />}
+          {t`Interactive embedding`}
+        </Group>
       }
       description={jt`Use interactive embedding when you want to ${(
         <ExternalLink
@@ -84,12 +81,12 @@ export const InteractiveEmbeddingOptionCard = () => {
             {t`Configure`}
           </LinkButton>
         ) : (
-          <Button
-            component={ExternalLink}
-            href={`https://www.metabase.com/product/embedded-analytics?utm_source=${plan}&utm_media=embed-settings`}
-          >
-            {t`Learn More`}
-          </Button>
+          <UpsellEmbeddingButton
+            url="https://www.metabase.com/product/embedded-analytics"
+            campaign="embedding-interactive"
+            location="embedding-page"
+            large
+          />
         )}
         <EmbeddingToggle
           settingKey="enable-embedding-interactive"

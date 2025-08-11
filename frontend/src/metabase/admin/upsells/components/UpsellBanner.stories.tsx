@@ -1,3 +1,4 @@
+import { action } from "@storybook/addon-actions";
 import type { ComponentProps } from "react";
 
 import { ReduxProvider } from "__support__/storybook";
@@ -14,6 +15,7 @@ const args = {
   campaign: "upsell-banner",
   source: "storybook",
   title: "Upgrade now",
+  large: false,
 };
 
 const argTypes = {
@@ -34,6 +36,9 @@ const argTypes = {
   },
   title: {
     control: { type: "text" },
+  },
+  large: {
+    control: { type: "boolean" },
   },
 };
 
@@ -76,4 +81,37 @@ export const Default = {
 
 export const Secondary = {
   render: SecondaryTemplate,
+};
+
+export const WithInternalLink = {
+  render: DefaultTemplate,
+  args: {
+    ...args,
+    internalLink: "/internal-link",
+    buttonText: "Internal link text",
+  },
+};
+
+export const WithOnClick = {
+  render: (args: UpsellBannerProps) => (
+    <ReduxProvider>
+      <Box>
+        <_UpsellBanner {...args} onClick={action("clicked")} />
+      </Box>
+    </ReduxProvider>
+  ),
+};
+
+export const Dismissible = {
+  render: (args: UpsellBannerProps) => (
+    <ReduxProvider>
+      <Box>
+        <_UpsellBanner {...args} dismissible />
+      </Box>
+    </ReduxProvider>
+  ),
+  args: {
+    ...args,
+    onDismiss: action("dismiss"),
+  },
 };

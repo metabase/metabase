@@ -11,6 +11,7 @@ import {
   screen,
   waitFor,
 } from "__support__/ui";
+import { formatNumber } from "metabase/lib/formatting";
 import { checkNotNull } from "metabase/lib/types";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
@@ -188,7 +189,7 @@ describe("QuestionRowCount", () => {
 
           await waitFor(() =>
             expect(rowCount).toHaveTextContent(
-              `Showing first ${HARD_ROW_LIMIT} rows`,
+              `Showing first ${formatNumber(HARD_ROW_LIMIT)} rows`,
             ),
           );
         });
@@ -237,7 +238,7 @@ describe("QuestionRowCount", () => {
           const { rowCount } = await setup({ question: getCard(), result });
 
           expect(rowCount).toHaveTextContent(
-            `Showing first ${HARD_ROW_LIMIT} rows`,
+            `Showing first ${formatNumber(HARD_ROW_LIMIT)} rows`,
           );
         });
 

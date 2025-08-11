@@ -5,6 +5,7 @@
    [medley.core :as m]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
+   [metabase.lib.field.util :as lib.field.util]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.metadata.result-metadata :as result-metadata]
@@ -76,7 +77,7 @@
                          :fields [&Category.categories.name]
                          ;; This is a hand-rolled implicit join clause.
                          :joins  [{:alias        "Category"
-                                   :source-table $$venues
+                                   :source-table $$categories
                                    :condition    [:= $category-id &CATEGORIES__via__CATEGORY_ID.categories.id]
                                    :strategy     :left-join
                                    :fk-field-id  %category-id}]}})
@@ -96,7 +97,7 @@
                  :query {:source-table (meta/id :venues)
                          :fields [&Categories.categories.name]
                          :joins  [{:alias        "Categories"
-                                   :source-table $$venues
+                                   :source-table $$categories
                                    :condition    [:= $category-id &Categories.categories.id]
                                    :strategy     :left-join}]}})
                {:columns [:name]}))))))
@@ -922,10 +923,10 @@
                   :unit                                       :year
                   :lib/deduplicated-name                      "CREATED_AT"
                   :lib/desired-column-alias                   "CREATED_AT"
-                  :lib/hack-original-name                     "CREATED_AT"
                   :lib/original-display-name                  "Created At"
                   :lib/original-name                          "CREATED_AT"
-                  :lib/source                                 :source/breakouts
+                  :lib/source                                 :source/previous-stage
+                  :lib/breakout?                              true
                   :lib/source-column-alias                    "CREATED_AT"
                   :lib/type                                   :metadata/column
                   :metabase.lib.field/original-effective-type :type/DateTimeWithLocalTZ
@@ -1046,3 +1047,47 @@
             "Count"
             "Sum of Total" "Average of Quantity"]
            (map :display-name (result-metadata/returned-columns query))))))
+
+(deftest ^:parallel return-correct-deduplicated-names-test
+  (testing "Deduplicated names from previous stage should be preserved even when excluding certain fields"
+    ;; e.g. a field called CREATED_AT_2 in the previous stage should continue to be called that. See ;; see
+    ;; https://metaboat.slack.com/archives/C0645JP1W81/p1750961267171999
+    (let [query (-> (lib/query
+                     meta/metadata-provider
+                     (lib.tu.macros/mbql-query orders
+                       {:source-query {:source-table $$orders
+                                       :aggregation  [[:count]]
+                                       :breakout     [[:field %created-at {:base-type :type/DateTime, :temporal-unit :year}]
+                                                      [:field %created-at {:base-type :type/DateTime, :temporal-unit :month}]]}
+                        :filter       [:>
+                                       [:field "count" {:base-type :type/Integer}]
+                                       0]}))
+                    lib/append-stage
+                    lib/append-stage
+                    (as-> query (lib/remove-field query -1 (first (lib/fieldable-columns query -1)))))]
+      (is (=? [{:name "CREATED_AT_2", :display-name "Created At: Month", :field-ref [:field "CREATED_AT_2" {}]}
+               {:name "count", :display-name "Count", :field-ref [:field "count" {}]}]
+              (result-metadata/returned-columns query))))))
+
+(deftest ^:parallel deduplicate-field-refs-test
+  (testing "Don't return duplicate field refs, force deduplicated-name when they are ambiguous (QUE-1623)"
+    (let [cols [(-> (meta/field-metadata :venues :id)
+                    (assoc :lib/source :source/previous-stage
+                           :field-ref  [:field (meta/id :venues :id) nil]))
+                (-> (meta/field-metadata :venues :name)
+                    (assoc :lib/source               :source/joins
+                           :field-ref                [:field (meta/id :venues :name) nil]
+                           :metabase.lib.join/join-alias "v1"
+                           :lib/source-column-alias      "NAME"
+                           :lib/desired-column-alias     "v1__NAME"))
+                (-> (meta/field-metadata :venues :name)
+                    (assoc :lib/source               :source/joins
+                           :field-ref                [:field (meta/id :venues :name) nil]
+                           :metabase.lib.join/join-alias "v2"
+                           :lib/source-column-alias      "NAME"
+                           :lib/desired-column-alias     "v2__NAME"))]
+          cols (lib.field.util/add-deduplicated-names cols)]
+      (is (=? [[:field (meta/id :venues :id) nil]
+               [:field "NAME"   {}]
+               [:field "NAME_2" {}]]
+              (map :field-ref (#'result-metadata/deduplicate-field-refs cols)))))))

@@ -470,22 +470,25 @@ describe("scenarios > question > saved", () => {
 
     const HIDDEN_TYPES = ["hidden", "technical", "cruft"];
 
-    function hideTable(name, visibilityType) {
-      cy.visit("/admin/datamodel");
-      H.sidebar().findByText(name).click();
-      H.main().findByText("Hidden").click();
-
-      if (visibilityType === "technical") {
-        H.main().findByText("Technical Data").click();
-      }
-      if (visibilityType === "cruft") {
-        H.main().findByText("Irrelevant/Cruft").click();
+    function hideTable({ name, id, visibilityType }) {
+      // Since v56 it's no longer possible to specify the reason (e.g. "technical" or "cruft")
+      // for hiding the table via UI.
+      // We still want to support cases where visibility type has been set to such values in
+      // the past, so we simulate it with API call.
+      if (visibilityType === "technical" || visibilityType === "cruft") {
+        cy.request("PUT", `/api/table/${id}`, {
+          visibility_type: visibilityType,
+        });
+      } else {
+        H.DataModel.visit();
+        H.DataModel.TablePicker.getTable(name).click();
+        H.DataModel.TablePicker.getTable(name).button("Hide table").click();
       }
     }
 
     HIDDEN_TYPES.forEach((visibilityType) => {
       it(`should show a View-only tag when the source table is marked as ${visibilityType}`, () => {
-        hideTable("Orders", visibilityType);
+        hideTable({ name: "Orders", id: ORDERS_ID, visibilityType });
 
         H.visitQuestion(ORDERS_QUESTION_ID);
 
@@ -502,7 +505,7 @@ describe("scenarios > question > saved", () => {
 
       it(`should show a View-only tag when a joined table is marked as ${visibilityType}`, () => {
         cy.signInAsAdmin();
-        hideTable("Products", visibilityType);
+        hideTable({ name: "Products", id: PRODUCTS_ID, visibilityType });
         H.createQuestion(
           {
             name: "Joined question",
@@ -592,7 +595,7 @@ describe("scenarios > question > saved", () => {
 
       cy.intercept("/api/session/properties", (req) => {
         req.continue((res) => {
-          res.body["token-features"]["development-mode"] = true;
+          res.body["token-features"].development_mode = true;
         });
       });
 

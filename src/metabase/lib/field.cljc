@@ -20,6 +20,7 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.lib.schema.ref :as lib.schema.ref]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.types.isa :as lib.types.isa]
@@ -56,7 +57,7 @@
   [_query _stage-number {field-name :name, :as field-metadata}]
   (assoc field-metadata :name field-name))
 
-(mu/defmethod lib.metadata.calculation/metadata-method :field :- ::lib.schema.metadata/column
+(mu/defmethod lib.metadata.calculation/metadata-method :field :- ::lib.metadata.calculation/visible-column
   [query stage-number field-ref]
   (lib.field.resolution/resolve-field-ref query stage-number field-ref))
 
@@ -206,7 +207,7 @@
   ;;
   ;; See https://metaboat.slack.com/archives/C0645JP1W81/p1750805177651009
   (let [style (if (or
-                   (lib.field.util/FIXED-inherited-column? query stage-number col)
+                   (lib.field.util/inherited-column? col)
                    ;; TODO (Cam 6/26/25) -- not really sure whether a column that comes from a join in the current
                    ;; stage AGAINST ANOTHER CARD is 'inherited' or not... on the one hand it does come from another
                    ;; Card but on the other hand it was introduced in this stage. Either way, we do always want to use
@@ -238,20 +239,20 @@
     "unknown_field"))
 
 (defmethod lib.metadata.calculation/display-info-method :metadata/column
-  [query stage-number field-metadata]
+  [query stage-number col]
   (merge
-   ((get-method lib.metadata.calculation/display-info-method :default) query stage-number field-metadata)
+   ((get-method lib.metadata.calculation/display-info-method :default) query stage-number col)
    ;; These have to be calculated even if the metadata has display-name to support nested fields
    ;; because the query processor doesn't produce nested display-names.
-   {:display-name (lib.metadata.calculation/display-name query stage-number field-metadata)
-    :long-display-name (lib.metadata.calculation/display-name query stage-number field-metadata :long)}
+   {:display-name (lib.metadata.calculation/display-name query stage-number col)
+    :long-display-name (lib.metadata.calculation/display-name query stage-number col :long)}
    ;; Include description and fingerprint if they're present on the column. Only proper fields or columns from a model
    ;; have these, not aggregations or expressions.
-   (u/select-non-nil-keys field-metadata [:description :fingerprint])
+   (u/select-non-nil-keys col [:description :fingerprint])
    ;; if this column comes from a source Card (Saved Question/Model/etc.) use the name of the Card as the 'table' name
    ;; rather than the ACTUAL table name.
-   (when (= (:lib/source field-metadata) :source/card)
-     (when-let [card-id (:lib/card-id field-metadata)]
+   (when (= (:lib/source col) :source/card)
+     (when-let [card-id (:lib/card-id col)]
        (when-let [card (lib.metadata/card query card-id)]
          {:table {:name (:name card), :display-name (:name card)}})))))
 
@@ -348,7 +349,7 @@
 
 (defmethod lib.binning/available-binning-strategies-method :metadata/column
   [query _stage-number {:keys [effective-type fingerprint semantic-type] :as field-metadata}]
-  (if (not= (:lib/source field-metadata) :source/expressions)
+  (if-not (= (:lib/source field-metadata) :source/expressions)
     (let [binning?    (lib.metadata/database-supports? query :binning)
           fingerprint (get-in fingerprint [:type :type/Number])
           existing    (lib.binning/binning field-metadata)
@@ -388,7 +389,7 @@
    {:metabase.lib.field/binning       :binning
     :metabase.lib.field/temporal-unit :temporal-unit}))
 
-(def ^:private field-ref-propagated-keys-for-non-inherited-colums
+(def ^:private field-ref-propagated-keys-for-non-inherited-columns
   "Keys that should get copied into `:field` ref options from column metadata ONLY when the column is not inherited.
 
     key-in-col-metadata => key-in-opts"
@@ -411,8 +412,8 @@
       (select-keys (keys old->new))
       (set/rename-keys old->new)))
 
-(defn- column-metadata->field-ref
-  [metadata]
+(mu/defn- column-metadata->field-ref :- :mbql.clause/field
+  [metadata :- ::lib.schema.metadata/column]
   (let [inherited-column? (lib.field.util/inherited-column? metadata)
         options           (merge {:lib/uuid       (str (random-uuid))
                                   :effective-type (column-metadata-effective-type metadata)}
@@ -431,24 +432,16 @@
                                                               (:source-alias metadata))]
                                    {:join-alias source-alias})
                                  (when-not inherited-column?
-                                   (select-renamed-keys metadata field-ref-propagated-keys-for-non-inherited-colums)))
+                                   (select-renamed-keys metadata field-ref-propagated-keys-for-non-inherited-columns)))
         id-or-name        (or (lib.field.util/inherited-column-name metadata)
                               ((some-fn :id :lib/deduplicated-name :lib/original-name :name) metadata))]
     [:field options id-or-name]))
 
-(defmethod lib.ref/ref-method :metadata/column
-  [{source :lib/source, :as metadata}]
+(mu/defmethod lib.ref/ref-method :metadata/column :- ::lib.schema.ref/ref
+  [{source :lib/source, :as metadata} :- ::lib.schema.metadata/column]
   (case source
     :source/aggregations (lib.aggregation/column-metadata->aggregation-ref metadata)
     :source/expressions  (lib.expression/column-metadata->expression-ref metadata)
-    ;; `:source/fields`/`:source/breakouts` can hide the true origin of the column. Since it's impossible to break out
-    ;; by aggregation references at the current stage, we only have to check if we break out by an expression
-    ;; reference. `:lib/expression-name` is only set for expression references, so if it's set, we have to generate an
-    ;; expression ref, otherwise we generate a normal field ref.
-    (:source/fields :source/breakouts)
-    (if (:lib/expression-name metadata)
-      (lib.expression/column-metadata->expression-ref metadata)
-      (column-metadata->field-ref metadata))
     #_else
     (column-metadata->field-ref metadata)))
 
@@ -459,7 +452,6 @@
           (lib.metadata.calculation/visible-columns
            query
            stage-number
-           (lib.util/query-stage query stage-number)
            {:include-joined?              false
             :include-expressions?         true
             :include-implicitly-joinable? false})))
@@ -498,7 +490,7 @@
     stage-number :- :int]
    (:fields (lib.util/query-stage query stage-number))))
 
-(mu/defn fieldable-columns :- [:sequential ::lib.schema.metadata/column]
+(mu/defn fieldable-columns :- ::lib.metadata.calculation/visible-columns
   "Return a sequence of column metadatas for columns that you can specify in the `:fields` of a query. This is
   basically just the columns returned by the source Table/Saved Question/Model or previous query stage.
 
@@ -512,7 +504,6 @@
     stage-number :- :int]
    (let [visible-columns (lib.metadata.calculation/visible-columns query
                                                                    stage-number
-                                                                   (lib.util/query-stage query stage-number)
                                                                    {:include-joined?              false
                                                                     :include-expressions?         false
                                                                     :include-implicitly-joinable? false})
@@ -541,14 +532,15 @@
 (defn- include-field [query stage-number column]
   (let [populated  (query-with-fields query stage-number)
         field-refs (fields populated stage-number)
-        match-ref  (lib.equality/find-matching-ref column field-refs)
-        column-ref (lib.ref/ref column)]
-    (if (and match-ref
-             (or (string? (last column-ref))
-                 (integer? (last match-ref))))
-      ;; If the column is already found, do nothing and return the original query.
-      query
-      (lib.util/update-query-stage populated stage-number update :fields conj column-ref))))
+        matching-ref (lib.equality/find-matching-ref column field-refs)]
+    (if matching-ref
+      (do
+        (log/debugf "Column %s already included by ref %s, doing nothing and returning the original query"
+                    (pr-str (select-keys column [:id :metabase.lib.join/join-alias :lib/source-column-alias]))
+                    (pr-str matching-ref))
+        query)
+      (let [column-ref (lib.ref/ref column)]
+        (lib.util/update-query-stage populated stage-number update :fields conj column-ref)))))
 
 (defn- add-field-to-join [query stage-number column]
   (let [column-ref   (lib.ref/ref column)
@@ -591,21 +583,19 @@
   - Explicit join: add it to that join's `:fields` list."
   [query        :- ::lib.schema/query
    stage-number :- :int
-   column       :- lib.metadata.calculation/ColumnMetadataWithSource]
+   column       :- ::lib.metadata.calculation/column-metadata-with-source]
   (let [stage  (lib.util/query-stage query stage-number)
         source (:lib/source column)]
     (when (and (empty? (:fields stage))
-               (not= source :source/joins))
+               (not (#{:source/implicitly-joinable :source/joins} source)))
       (log/warnf "[add-field] stage :fields is empty, which means everything will already be included; attempt to add %s will no-op"
                  (pr-str ((some-fn :display-name :name) column))))
     (-> (case source
           (:source/table-defaults
-           :source/fields
            :source/card
            :source/previous-stage
            :source/expressions
-           :source/aggregations
-           :source/breakouts)         (cond-> query
+           :source/aggregations)      (cond-> query
                                         (contains? stage :fields) (include-field stage-number column))
           :source/joins               (add-field-to-join query stage-number column)
           :source/implicitly-joinable (include-field query stage-number column)
@@ -619,8 +609,8 @@
         lib.remove-replace/normalize-fields-clauses)))
 
 (defn- remove-matching-ref [column refs]
-  (let [match (or (lib.equality/find-matching-ref column refs {:match-type ::lib.equality/match-type.same-stage})
-                  (log/warnf "Failed to find match for column\n%s\nin refs:\n%s"
+  (let [match (or (lib.equality/find-matching-ref column refs)
+                  (log/warnf "[remove-matching-ref] Failed to find match for column\n%s\nin refs:\n%s"
                              (u/pprint-to-str column)
                              (u/pprint-to-str refs)))]
     (remove #(= % match) refs)))
@@ -648,7 +638,7 @@
       ;; Nothing to do if there's already no join fields.
       query
       (let [resolved-join-fields (if (= join-fields :all)
-                                   (map lib.ref/ref (lib.metadata.calculation/returned-columns query stage-number join))
+                                   (map lib.ref/ref (lib.join/join-returned-columns-relative-to-parent-stage query stage-number join))
                                    join-fields)
             removed              (remove-matching-ref column resolved-join-fields)]
         (cond-> query
@@ -667,11 +657,12 @@
   - Explicit join: remove it from that join's `:fields` list (handle `:fields :all` like for source tables)."
   [query      :- ::lib.schema/query
    stage-number :- :int
-   column       :- lib.metadata.calculation/ColumnMetadataWithSource]
-  (let [source (:lib/source column)]
+   column       :- ::lib.metadata.calculation/column-metadata-with-source]
+  (let [source (if (:lib/breakout? column)
+                 ::breakouts
+                 (:lib/source column))]
     (-> (case source
           (:source/table-defaults
-           :source/fields
            :source/card
            :source/previous-stage
            :source/expressions
@@ -680,7 +671,7 @@
           :source/native                (throw (ex-info (native-query-fields-edit-error)
                                                         {:query query :stage stage-number}))
 
-          (:source/breakouts
+          (::breakouts
            :source/aggregations)        (throw (ex-info (source-clauses-only-fields-edit-error)
                                                         {:query  query
                                                          :stage  stage-number
@@ -703,13 +694,12 @@
   ([query        :- ::lib.schema/query
     stage-number :- :int
     field-ref    :- some?]
-   (let [stage   (lib.util/query-stage query stage-number)
-         ;; not 100% sure why, but [[lib.metadata.calculation/visible-columns]] doesn't seem to return aggregations,
+   (let [;; not 100% sure why, but [[lib.metadata.calculation/visible-columns]] doesn't seem to return aggregations,
          ;; so we have to use [[lib.metadata.calculation/returned-columns]] instead.
          columns ((if (= (lib.dispatch/dispatch-value field-ref) :aggregation)
                     lib.metadata.calculation/returned-columns
                     lib.metadata.calculation/visible-columns)
-                  query stage-number stage)]
+                  query stage-number)]
      (lib.equality/find-matching-column query stage-number field-ref columns))))
 
 (defn json-field?

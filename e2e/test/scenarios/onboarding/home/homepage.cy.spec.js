@@ -41,30 +41,29 @@ describe("scenarios > home > homepage", () => {
 
     it("should display x-rays for a user database", () => {
       cy.signInAsAdmin();
+      H.addSqliteDatabase();
 
-      const dbId = 2;
+      cy.get("@sqliteID").then((dbId) => {
+        H.withDatabase(dbId, ({ NUMBER_WITH_NULLS: { NUM } }) => {
+          // we first set the semantic type of the num field to Category,
+          // else no X-rays would be computed
+          cy.request("PUT", `/api/field/${NUM}`, {
+            semantic_type: "type/Category",
+            has_field_values: "none",
+          });
 
-      H.restore("withSqlite");
+          cy.visit("/");
+          cy.wait("@getXrayCandidates");
 
-      H.withDatabase(dbId, ({ NUMBER_WITH_NULLS: { NUM } }) => {
-        // we first set the semantic type of the num field to Category,
-        // else no X-rays would be computed
-        cy.request("PUT", `/api/field/${NUM}`, {
-          semantic_type: "type/Category",
-          has_field_values: "none",
+          cy.findByText("Here are some explorations of");
+          cy.findAllByRole("link").contains("sqlite");
+
+          cy.findByText("Number With Nulls").click();
+
+          cy.wait("@getXrayDashboard");
+
+          cy.findByText("More X-rays");
         });
-
-        cy.visit("/");
-        cy.wait("@getXrayCandidates");
-
-        cy.findByText("Here are some explorations of");
-        cy.findAllByRole("link").contains("sqlite");
-
-        cy.findByText("Number With Nulls").click();
-
-        cy.wait("@getXrayDashboard");
-
-        cy.findByText("More X-rays");
       });
     });
 
@@ -336,7 +335,7 @@ describe("scenarios > home > custom homepage", () => {
         `/dashboard/${ORDERS_DASHBOARD_ID}`,
       );
 
-      // Do a page refresh and test dashboard header
+      cy.log("Do a page refresh and test dashboard header");
       cy.visit("/");
       cy.location("pathname").should(
         "equal",

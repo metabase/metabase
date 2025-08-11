@@ -20,7 +20,6 @@ import type {
   DatasetColumn,
   VisualizerColumnReference,
   VisualizerDataSource,
-  VisualizerVizDefinition,
 } from "metabase-types/api";
 import type { VisualizerVizDefinitionWithColumns } from "metabase-types/store/visualizer";
 
@@ -89,14 +88,12 @@ export const pieDropHandler = (
   }
 };
 
-export function findColumnSlotForPieChart(
-  state: Pick<VisualizerVizDefinition, "settings">,
-  computedSettings: ComputedVisualizationSettings,
-  datasets: Record<string, Dataset>,
-  dataSourceColumns: DatasetColumn[],
-  column: DatasetColumn,
-) {
-  const ownMetric = computedSettings["pie.metric"];
+export function findColumnSlotForPieChart(parameters: {
+  settings: ComputedVisualizationSettings;
+  column: DatasetColumn;
+}) {
+  const { settings, column } = parameters;
+  const ownMetric = settings["pie.metric"];
   if (!ownMetric && isMetric(column)) {
     return "pie.metric";
   }
@@ -113,13 +110,10 @@ export function addColumnToPieChart(
   column: DatasetColumn,
   columnRef: VisualizerColumnReference,
 ) {
-  const slot = findColumnSlotForPieChart(
-    state,
+  const slot = findColumnSlotForPieChart({
     settings,
-    datasets,
-    dataSourceColumns,
     column,
-  );
+  });
   if (slot) {
     state.columns.push(column);
     state.columnValuesMapping[column.name] = [columnRef];

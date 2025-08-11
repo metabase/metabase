@@ -5,6 +5,7 @@ import {
   setupPropertiesEndpoints,
   setupSettingsEndpoints,
   setupUpdateSettingEndpoint,
+  setupUserKeyValueEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
 import { createMockSettings } from "metabase-types/api/mocks";
@@ -17,6 +18,11 @@ const setup = async () => {
   setupPropertiesEndpoints(settings);
   setupSettingsEndpoints([]);
   setupUpdateSettingEndpoint();
+  setupUserKeyValueEndpoints({
+    namespace: "user_acknowledgement",
+    key: "upsell-dev_instances",
+    value: true,
+  });
 
   renderWithProviders(<EmbeddingSettingsPage />);
   expect(await screen.findByText("Embedding")).toBeInTheDocument(); // title
@@ -30,9 +36,7 @@ describe("EmbeddingSettingsPage", () => {
     expect(
       await screen.findByText("Interactive embedding"),
     ).toBeInTheDocument();
-    expect(
-      await screen.findByText("Embedded analytics SDK for React"),
-    ).toBeInTheDocument();
+    expect(await screen.findByText("Modular embedding")).toBeInTheDocument();
   });
 
   it("can toggle static embedding on", async () => {

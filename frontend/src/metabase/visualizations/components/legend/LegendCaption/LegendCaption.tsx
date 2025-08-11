@@ -89,7 +89,6 @@ export const LegendCaption = ({
         DashboardS.fullscreenNormalText,
         DashboardS.fullscreenNightText,
         EmbedFrameS.fullscreenNightText,
-        CS.h3,
 
         // html2canvas doesn't support `text-overflow: ellipsis` (#45499) https://github.com/niklasvh/html2canvas/issues/324
         SAVING_DOM_IMAGE_OVERFLOW_VISIBLE_CLASS,
@@ -130,23 +129,24 @@ export const LegendCaption = ({
       ) : (
         titleElement
       )}
+      {hasInfoTooltip && description && !shouldHideDescription(width) && (
+        <Tooltip
+          label={
+            <Markdown dark disallowHeading unstyleLinks lineClamp={8}>
+              {description}
+            </Markdown>
+          }
+          maw="22em"
+        >
+          <LegendDescriptionIcon
+            name="info"
+            className={cx(CS.hoverChild, CS.hoverChildSmooth)}
+            mt="3px"
+            mr="md"
+          />
+        </Tooltip>
+      )}
       <LegendRightContent>
-        {hasInfoTooltip && description && !shouldHideDescription(width) && (
-          <Tooltip
-            label={
-              <Markdown dark disallowHeading unstyleLinks lineClamp={8}>
-                {description}
-              </Markdown>
-            }
-            maw="22em"
-          >
-            <LegendDescriptionIcon
-              name="info"
-              className={cx(CS.hoverChild, CS.hoverChildSmooth)}
-              mt="2px"
-            />
-          </Tooltip>
-        )}
         {actionButtons && <LegendActions>{actionButtons}</LegendActions>}
       </LegendRightContent>
     </LegendCaptionRoot>

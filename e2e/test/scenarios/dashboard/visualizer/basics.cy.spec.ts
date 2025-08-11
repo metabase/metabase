@@ -116,28 +116,25 @@ describe("scenarios > dashboard > visualizer > basics", () => {
       cy.findByText(PRODUCTS_COUNT_BY_CREATED_AT.name).click();
       cy.wait("@cardQuery");
 
-      cy.findByTestId("visualization-canvas").within(() => {
-        cy.findByText("Count").should("exist");
-      });
-
-      cy.findByTestId("visualizer-header").within(() => {
-        cy.findByText(`${PRODUCTS_COUNT_BY_CREATED_AT.name}`).should("exist");
+      H.assertWellItems({
+        vertical: ["Count", "Count (Products by Created At (Month))"],
+        horizontal: ["Created At: Month"],
       });
     });
 
     H.saveDashcardVisualizerModal();
 
     H.getDashboardCard(1).within(() => {
-      cy.findByText(PRODUCTS_COUNT_BY_CREATED_AT.name).should("exist");
-      cy.findByText("Count").should("exist");
+      cy.findAllByText(ORDERS_COUNT_BY_CREATED_AT.name).should("exist");
+      cy.findAllByText(PRODUCTS_COUNT_BY_CREATED_AT.name).should("exist");
       cy.findByText("Created At: Month").should("exist");
     });
 
     H.saveDashboard();
 
     H.getDashboardCard(1).within(() => {
-      cy.findByText(PRODUCTS_COUNT_BY_CREATED_AT.name).should("exist");
-      cy.findByText("Count").should("exist");
+      cy.findAllByText(ORDERS_COUNT_BY_CREATED_AT.name).should("exist");
+      cy.findAllByText(PRODUCTS_COUNT_BY_CREATED_AT.name).should("exist");
       cy.findByText("Created At: Month").should("exist");
     });
   });
@@ -154,38 +151,42 @@ describe("scenarios > dashboard > visualizer > basics", () => {
       },
     );
 
-    H.showDashcardVisualizerModal(1);
+    H.showDashcardVisualizerModal(1, {
+      isVisualizerCard: false,
+    });
 
     H.modal().within(() => {
       cy.button("Add more data").click();
-      cy.findByPlaceholderText("Search for something").type("Cre");
-
-      cy.findByText(PRODUCTS_COUNT_BY_CREATED_AT.name).click();
-      cy.wait("@cardQuery");
+      H.selectDataset(PRODUCTS_COUNT_BY_CREATED_AT.name);
 
       cy.findByTestId("visualization-canvas").within(() => {
-        cy.findByText("Count").should("exist");
+        cy.findByText(`Count (${PRODUCTS_COUNT_BY_CREATED_AT.name})`).should(
+          "exist",
+        );
+        cy.findAllByText("Created At: Month").should("exist");
       });
 
       cy.findByTestId("visualizer-header").within(() => {
-        cy.findByText(`${PRODUCTS_COUNT_BY_CREATED_AT.name}`).should("exist");
+        cy.findByText(`${ORDERS_COUNT_BY_CREATED_AT.name}`).should("exist");
       });
     });
 
     H.saveDashcardVisualizerModal();
 
     H.getDashboardCard(1).within(() => {
+      cy.findByText(ORDERS_COUNT_BY_CREATED_AT.name).should("exist");
       cy.findByText(PRODUCTS_COUNT_BY_CREATED_AT.name).should("exist");
-      cy.findByText("Count").should("exist");
-      cy.findByText("Created At: Month").should("exist");
+      cy.findAllByText("Created At: Month").should("exist");
     });
 
     H.saveDashboard();
 
     H.getDashboardCard(1).within(() => {
-      cy.findByText(PRODUCTS_COUNT_BY_CREATED_AT.name).should("exist");
-      cy.findByText("Count").should("exist");
-      cy.findByText("Created At: Month").should("exist");
+      cy.findByTestId("chart-container").within(() => {
+        cy.findByText(ORDERS_COUNT_BY_CREATED_AT.name).should("exist");
+        cy.findByText(PRODUCTS_COUNT_BY_CREATED_AT.name).should("exist");
+        cy.findAllByText("Created At: Month").should("exist");
+      });
     });
   });
 
@@ -247,43 +248,6 @@ describe("scenarios > dashboard > visualizer > basics", () => {
     );
     cy.findByLabelText("Back to Test Dashboard").click();
 
-    // make the pie a two series pie and check that the title is still clickable
-    H.editDashboard();
-    H.showDashcardVisualizerModal(2);
-    H.modal().within(() => {
-      H.switchToAddMoreData();
-      H.selectDataset(PRODUCTS_COUNT_BY_CATEGORY.name);
-      H.assertWellItems({
-        vertical: ["Count"],
-        horizontal: ["Category"],
-      });
-      H.addDataset(PRODUCTS_COUNT_BY_CATEGORY_PIE.name);
-      H.assertWellItems({
-        vertical: ["Count", "Count (Products by Category (Pie))"],
-        horizontal: ["Category"],
-      });
-      H.selectVisualization("pie");
-      H.assertWellItems({
-        pieMetric: ["Count"],
-        pieDimensions: ["Category", "Category (Products by Category (Pie))"],
-      });
-    });
-
-    H.saveDashcardVisualizerModal({ waitMs: 500 });
-    H.saveDashboard({ waitMs: 2000 });
-
-    H.showUnderlyingQuestion(2, PRODUCTS_COUNT_BY_CATEGORY.name);
-    cy.get("@productsCountByCategoryQuestionId").then((id) =>
-      cy.url().should("contain", `${id}-products-by-category`),
-    );
-    cy.findByLabelText("Back to Test Dashboard").click();
-
-    H.showUnderlyingQuestion(2, PRODUCTS_COUNT_BY_CATEGORY_PIE.name);
-    cy.get("@productsCountByCategoryPieQuestionId").then((id) =>
-      cy.url().should("contain", `${id}-products-by-category-pie`),
-    );
-    cy.findByLabelText("Back to Test Dashboard").click();
-
     // Click on the fifth chart (a funnel)
     H.showUnderlyingQuestion(4, STEP_COLUMN_CARD.name);
     cy.get("@stepColumnQuestionId").then((id) =>
@@ -342,7 +306,9 @@ describe("scenarios > dashboard > visualizer > basics", () => {
 
     // Rename the third card and check
     // PRODUCTS_COUNT_BY_CREATED_AT.name -> "Another chart"
-    H.showDashcardVisualizerModal(3);
+    H.showDashcardVisualizerModal(3, {
+      isVisualizerCard: false,
+    });
     H.modal().within(() => {
       cy.findByDisplayValue(PRODUCTS_COUNT_BY_CREATED_AT.name)
         .clear()
@@ -377,6 +343,28 @@ describe("scenarios > dashboard > visualizer > basics", () => {
     H.modal().within(() => {
       cy.findByTestId("visualizer-title").should("have.text", "");
     });
+  });
+
+  it("should allow adding description to a visualizer dashcard (metabase#61457)", () => {
+    createDashboardWithVisualizerDashcards();
+    H.editDashboard();
+
+    H.showDashcardVisualizerModal(0);
+    H.modal().within(() => {
+      cy.findByText("Settings").click();
+      cy.findByTestId("card.description").should("have.value", "");
+      cy.findByTestId("card.description").type("My description").blur();
+    });
+
+    H.saveDashcardVisualizerModal();
+    H.saveDashboard();
+
+    H.getDashboardCard(0)
+      .realHover()
+      .within(() => {
+        cy.icon("info").realHover();
+      });
+    H.tooltip().findByText("My description").should("exist");
   });
 
   it("should start in a pristine state and update dirtyness accordingly", () => {
@@ -416,7 +404,7 @@ describe("scenarios > dashboard > visualizer > basics", () => {
       cy.get("@redoButton").should("be.disabled");
 
       H.switchToAddMoreData();
-      H.addDataset(PRODUCTS_COUNT_BY_CREATED_AT.name);
+      H.selectDataset(PRODUCTS_COUNT_BY_CREATED_AT.name);
       H.switchToColumnsList();
 
       // Undo adding a new data source
@@ -504,29 +492,13 @@ describe("scenarios > dashboard > visualizer > basics", () => {
       cy.get("@redoButton").should("be.disabled");
 
       H.switchToAddMoreData();
-      H.addDataset(PRODUCTS_COUNT_BY_CREATED_AT.name);
+      H.selectDataset(PRODUCTS_COUNT_BY_CREATED_AT.name);
       H.assertWellItems({
         vertical: ["Count", "Count (Products by Created At (Month))"],
       });
 
-      H.addDataset(PRODUCTS_AVERAGE_BY_CREATED_AT.name);
+      H.selectDataset(PRODUCTS_AVERAGE_BY_CREATED_AT.name);
 
-      H.assertWellItems({
-        vertical: [
-          "Count",
-          "Count (Products by Created At (Month))",
-          "Average of Price",
-        ],
-      });
-
-      H.selectDataset(PRODUCTS_COUNT_BY_CATEGORY_PIE.name);
-
-      H.assertWellItems({
-        pieMetric: ["Count"],
-        pieDimensions: ["Category"],
-      });
-
-      cy.get("@undoButton").click();
       H.assertWellItems({
         vertical: [
           "Count",
@@ -603,7 +575,7 @@ describe("scenarios > dashboard > visualizer > basics", () => {
     H.showDashcardVisualizerModal(0);
     H.modal().within(() => {
       H.switchToAddMoreData();
-      H.addDataset(PRODUCTS_COUNT_BY_CREATED_AT.name);
+      H.selectDataset(PRODUCTS_COUNT_BY_CREATED_AT.name);
       H.assertWellItemsCount({ vertical: 2 });
     });
     H.saveDashcardVisualizerModal();
@@ -648,7 +620,7 @@ describe("scenarios > dashboard > visualizer > basics", () => {
       H.clickVisualizeAnotherWay(ORDERS_COUNT_BY_CREATED_AT.name);
       H.modal().within(() => {
         H.switchToAddMoreData();
-        H.addDataset("Products by Created At (Month)");
+        H.selectDataset("Products by Created At (Month)");
         H.assertWellItems({
           vertical: ["Count", "Count (Products by Created At (Month))"],
         });
@@ -722,11 +694,17 @@ describe("scenarios > dashboard > visualizer > basics", () => {
       "Visualize another way",
     ).click();
 
+    cy.intercept("GET", "/api/card/*/query_metadata").as("queryMetadata");
+
     H.modal().within(() => {
       H.switchToAddMoreData();
-      H.addDataset(invalidQuestion.name);
+      H.selectDataset(invalidQuestion.name);
+      cy.findByTestId("funnel-chart").should("contain", "Invalid question");
       cy.button("Save").click();
     });
+
+    cy.get("@queryMetadata.all").should("have.length", 2);
+    H.getDashboardCard().should("contain", "Invalid question");
 
     H.saveDashboard();
 
@@ -818,7 +796,54 @@ describe("scenarios > dashboard > visualizer > basics", () => {
       cy.findByText("Add more data").click();
       cy.findByPlaceholderText("Search for something").type("non-existing");
 
-      cy.findByText("No results").should("exist");
+      cy.findByText("No compatible results").should("exist");
+    });
+  });
+
+  it("should reset a dataset", () => {
+    H.visitDashboard(ORDERS_DASHBOARD_ID);
+    H.editDashboard();
+    H.openQuestionsSidebar();
+    H.clickVisualizeAnotherWay(ORDERS_COUNT_BY_CREATED_AT.name);
+
+    H.modal().within(() => {
+      cy.findByText("Add to dashboard").click();
+    });
+
+    cy.wait("@cardQuery");
+
+    H.getDashboardCard(1).within(() => {
+      cy.findByText(ORDERS_COUNT_BY_CREATED_AT.name).should("exist");
+      cy.findByText("Created At: Month").should("exist");
+    });
+
+    H.showDashcardVisualizerModal(1);
+    H.modal().within(() => {
+      H.selectVisualization("pie");
+      H.assertWellItems({
+        pieMetric: ["Count"],
+        pieDimensions: ["Created At: Month"],
+      });
+    });
+    H.saveDashcardVisualizerModal();
+    H.saveDashboard();
+
+    H.editDashboard();
+    H.showDashcardVisualizerModal(1);
+
+    H.modal().within(() => {
+      H.resetDataSourceButton(ORDERS_COUNT_BY_CREATED_AT.name)
+        .should("be.enabled")
+        .click();
+
+      H.assertWellItems({
+        vertical: ["Count"],
+        horizontal: ["Created At: Month"],
+      });
+
+      H.resetDataSourceButton(ORDERS_COUNT_BY_CREATED_AT.name).should(
+        "be.disabled",
+      );
     });
   });
 });

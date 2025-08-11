@@ -43,7 +43,6 @@ import {
 import S from "./NativeQueryEditor.module.css";
 import { NativeQueryEditorRunButton } from "./NativeQueryEditorRunButton/NativeQueryEditorRunButton";
 import { NativeQueryEditorTopBar } from "./NativeQueryEditorTopBar/NativeQueryEditorTopBar";
-import { NativeQueryValidationError } from "./NativeQueryValidationError/NativeQueryValidationError";
 import { RightClickPopover } from "./RightClickPopover";
 import {
   MIN_EDITOR_HEIGHT_AFTER_DRAGGING,
@@ -328,39 +327,33 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
               }
             }}
           >
-            <>
-              <Flex w="100%" flex="1" className={S.resizableBoxContent}>
-                <CodeMirrorEditor
-                  ref={this.editor}
-                  query={question.query()}
-                  readOnly={readOnly}
-                  highlightedLineNumbers={highlightedLineNumbers}
-                  onChange={this.onChange}
-                  onRunQuery={runQuery}
-                  onSelectionChange={setNativeEditorSelectedRange}
-                  onCursorMoveOverCardTag={openDataReferenceAtQuestion}
-                  onRightClickSelection={this.handleRightClickSelection}
-                  onFormatQuery={
-                    canFormatQuery ? this.handleFormatQuery : undefined
-                  }
+            <Flex w="100%" flex="1" className={S.resizableBoxContent}>
+              <CodeMirrorEditor
+                ref={this.editor}
+                query={question.query()}
+                readOnly={readOnly}
+                highlightedLineNumbers={highlightedLineNumbers}
+                onChange={this.onChange}
+                onRunQuery={runQuery}
+                onSelectionChange={setNativeEditorSelectedRange}
+                onCursorMoveOverCardTag={openDataReferenceAtQuestion}
+                onRightClickSelection={this.handleRightClickSelection}
+                onFormatQuery={
+                  canFormatQuery ? this.handleFormatQuery : undefined
+                }
+              />
+
+              {hasEditingSidebar && !readOnly && (
+                <NativeQueryEditorRunButton
+                  cancelQuery={this.props.cancelQuery}
+                  isResultDirty={this.props.isResultDirty}
+                  isRunnable={this.props.isRunnable}
+                  isRunning={this.props.isRunning}
+                  nativeEditorSelectedText={this.props.nativeEditorSelectedText}
+                  runQuery={this.props.runQuery}
                 />
-
-                {hasEditingSidebar && !readOnly && (
-                  <NativeQueryEditorRunButton
-                    cancelQuery={this.props.cancelQuery}
-                    isResultDirty={this.props.isResultDirty}
-                    isRunnable={this.props.isRunnable}
-                    isRunning={this.props.isRunning}
-                    nativeEditorSelectedText={
-                      this.props.nativeEditorSelectedText
-                    }
-                    runQuery={this.props.runQuery}
-                  />
-                )}
-              </Flex>
-
-              <NativeQueryValidationError query={query.question().query()} />
-            </>
+              )}
+            </Flex>
           </ResizableBox>
         </div>
 

@@ -1,4 +1,5 @@
-import type { ComponentProps } from "react";
+import cx from "classnames";
+import { type ComponentProps, forwardRef } from "react";
 
 import {
   setEditingParameter,
@@ -10,24 +11,36 @@ import { DASHBOARD_PARAMETERS_PDF_EXPORT_NODE_CLASSNAME } from "metabase/dashboa
 import { useDashboardContext } from "metabase/dashboard/context";
 import { useDispatch } from "metabase/lib/redux";
 import { ParametersList } from "metabase/parameters/components/ParametersList";
-import type { Parameter } from "metabase-types/api";
+import type { UiParameter } from "metabase-lib/v1/parameters/types";
 
 export interface DashboardParameterListProps
   extends Pick<
     ComponentProps<typeof ParametersList>,
-    "widgetsVariant" | "widgetsWithinPortal" | "vertical"
+    | "widgetsWithinPortal"
+    | "widgetsPopoverPosition"
+    | "vertical"
+    | "hasTestIdProps"
   > {
-  parameters: Array<Parameter & { value: unknown }>;
+  className?: string;
+  parameters: UiParameter[];
   isSortable?: boolean;
 }
 
-export function DashboardParameterList({
-  parameters,
-  isSortable = true,
-  widgetsVariant,
-  widgetsWithinPortal,
-  vertical,
-}: DashboardParameterListProps) {
+export const DashboardParameterList = forwardRef<
+  HTMLDivElement,
+  DashboardParameterListProps
+>(function DashboardParameterList(
+  {
+    className,
+    parameters,
+    isSortable = true,
+    widgetsWithinPortal,
+    widgetsPopoverPosition,
+    vertical,
+    hasTestIdProps = true,
+  },
+  ref,
+) {
   const dispatch = useDispatch();
 
   const {
@@ -41,7 +54,8 @@ export function DashboardParameterList({
 
   return (
     <ParametersList
-      className={DASHBOARD_PARAMETERS_PDF_EXPORT_NODE_CLASSNAME}
+      ref={ref}
+      className={cx(DASHBOARD_PARAMETERS_PDF_EXPORT_NODE_CLASSNAME, className)}
       parameters={parameters}
       editingParameter={editingParameter}
       hideParameters={hideParameters}
@@ -57,9 +71,10 @@ export function DashboardParameterList({
         dispatch(setParameterValueToDefault(id))
       }
       enableParameterRequiredBehavior
-      widgetsVariant={widgetsVariant}
       widgetsWithinPortal={widgetsWithinPortal}
+      widgetsPopoverPosition={widgetsPopoverPosition}
       vertical={vertical}
+      hasTestIdProps={hasTestIdProps}
     />
   );
-}
+});

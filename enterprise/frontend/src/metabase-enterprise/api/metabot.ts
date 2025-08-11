@@ -1,7 +1,5 @@
 import type {
   DeleteSuggestedMetabotPromptRequest,
-  MetabotAgentRequest,
-  MetabotAgentResponse,
   MetabotApiEntity,
   MetabotEntity,
   MetabotId,
@@ -17,13 +15,6 @@ import { idTag } from "./tags";
 
 export const metabotApi = EnterpriseApi.injectEndpoints({
   endpoints: (builder) => ({
-    metabotAgent: builder.mutation<MetabotAgentResponse, MetabotAgentRequest>({
-      query: (body) => ({
-        method: "POST",
-        url: "/api/ee/metabot-v3/v2/agent",
-        body,
-      }),
-    }),
     listMetabots: builder.query<{ items: MetabotInfo[] }, void>({
       query: () => ({
         method: "GET",
@@ -123,9 +114,7 @@ export const metabotApi = EnterpriseApi.injectEndpoints({
   }),
 });
 
-export const { metabotAgent } = metabotApi.endpoints;
 export const {
-  useMetabotAgentMutation,
   useListMetabotsQuery,
   useListMetabotsEntitiesQuery,
   useUpdateMetabotEntitiesMutation,

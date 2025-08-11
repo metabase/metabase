@@ -115,7 +115,7 @@ describe("Visualization", () => {
       {},
       createMockSettings({
         "token-features": createMockTokenFeatures({
-          "development-mode": true,
+          development_mode: true,
         }),
       }),
     );

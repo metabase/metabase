@@ -24,7 +24,6 @@
     OffsetTime
     ZonedDateTime]
    [java.util Arrays UUID]))
-
 ;; (set! *warn-on-reflection* true) ;; isn't enabled because of Arrays/toString call
 
 (defmethod sql.qp/quote-style :clickhouse [_] :mysql)
@@ -458,6 +457,10 @@
   [_driver _special_type expr]
   expr)
 
+(defmethod sql.qp/cast-temporal-string [:clickhouse :Coercion/YYYYMMDDHHMMSSString->Temporal]
+  [_driver _coercion-strategy expr]
+  [:'parseDateTime expr (h2x/literal "%Y%m%d%H%i%S")])
+
 ;;; ------------------------------------------------------------------------------------
 ;;; JDBC-related functions
 ;;; ------------------------------------------------------------------------------------
@@ -602,3 +605,4 @@
 (defmethod sql.params.substitution/->replacement-snippet-info [:clickhouse UUID]
   [_driver this]
   {:replacement-snippet (format "CAST('%s' AS UUID)" (str this))})
+

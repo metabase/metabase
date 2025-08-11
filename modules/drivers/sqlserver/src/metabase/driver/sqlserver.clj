@@ -46,6 +46,7 @@
 
 (doseq [[feature supported?] {:case-sensitivity-string-filter-options false
                               :connection-impersonation               true
+                              :connection-impersonation-requires-role true
                               :uuid-type                              true
                               :convert-timezone                       true
                               :datetime-diff                          true
@@ -56,10 +57,6 @@
                               :regex                                  false
                               :test/jvm-timezone-setting              false}]
   (defmethod driver/database-supports? [:sqlserver feature] [_driver _feature _db] supported?))
-
-(defmethod driver/database-supports? [:sqlserver :connection-impersonation-requires-role]
-  [_driver _feature db]
-  (= (u/lower-case-en (-> db :details :user)) "sa"))
 
 (defmethod driver/database-supports? [:sqlserver :percentile-aggregations]
   [_ _ db]
@@ -923,10 +920,11 @@
 
 (defmethod driver.sql/default-database-role :sqlserver
   [_driver database]
-  ;; Use a "role" (sqlserver user) if it exists, otherwise use
-  ;; the user if it can be impersonated (ie not the 'sa' user).
-  (let [{:keys [role user]} (:details database)]
-    (or role (when-not (= (u/lower-case-en user) "sa") user))))
+  ;; Use a "role" (sqlserver user) if it exists. Do not fall back to the user
+  ;; field automatically, as it represents the login user which may not be a
+  ;; valid database user for impersonation (see issue #60665).
+  (let [{:keys [role]} (:details database)]
+    role))
 
 (defmethod driver.sql/set-role-statement :sqlserver
   [_driver role]

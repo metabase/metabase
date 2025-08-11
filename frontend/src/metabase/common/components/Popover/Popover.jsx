@@ -6,6 +6,7 @@ import Tether from "tether";
 
 import OnClickOutsideWrapper from "metabase/common/components/OnClickOutsideWrapper";
 import CS from "metabase/css/core/index.css";
+import { getPortalRootElement } from "metabase/css/core/overlays/utils";
 import ZIndex from "metabase/css/core/z-index.module.css";
 import { isCypressActive } from "metabase/env";
 
@@ -97,6 +98,8 @@ export default class Popover extends Component {
     const resizeTimer = isCypressActive ? 3000 : 100;
 
     if (!this._popoverElement && isOpen) {
+      const portalRootElement = getPortalRootElement();
+
       this._popoverElement = document.createElement("span");
       this._popoverElement.className = cx(
         PopoverS.PopoverContainer,
@@ -104,7 +107,8 @@ export default class Popover extends Component {
         this.props.containerClassName,
       );
       this._popoverElement.dataset.testid = "popover";
-      document.body.appendChild(this._popoverElement);
+
+      portalRootElement.appendChild(this._popoverElement);
 
       this._timer = setInterval(() => {
         const { width, height } = this._popoverElement.getBoundingClientRect();

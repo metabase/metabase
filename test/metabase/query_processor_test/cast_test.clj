@@ -2,14 +2,20 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [medley.core :as m]
+   [metabase.driver :as driver]
    [metabase.driver.impl]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor :as qp]
+   [metabase.query-processor-test.alternative-date-test :as adt]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.test :as mt]
+   [metabase.test.data.interface :as tx]
    [metabase.types.core :as types]
-   [metabase.util :as u]))
+   [metabase.util :as u])
+  (:import
+   (java.time OffsetDateTime LocalDate)))
 
 (set! *warn-on-reflection* true)
 
@@ -106,9 +112,9 @@
                 (let [query (-> (lib/query mp (lib.metadata/card mp card-id))
                                 (lib/with-fields [])
                                 (as-> q
-                                      (lib/expression q "UNCAST" (->> q lib/visible-columns (filter #(= "uncasted" (u/lower-case-en (:name %)))) first)))
+                                      (lib/expression q "UNCAST" (->> q lib/visible-columns (m/find-first #(= "uncasted" (u/lower-case-en (:name %)))))))
                                 (as-> q
-                                      (lib/expression q "INTCAST" (lib/integer (->> q lib/visible-columns (filter #(= "uncasted" (u/lower-case-en (:name %)))) first)))))
+                                      (lib/expression q "INTCAST" (lib/integer (->> q lib/visible-columns (m/find-first #(= "uncasted" (u/lower-case-en (:name %)))))))))
                       result (-> query qp/process-query)
                       cols (mt/cols result)
                       rows (mt/rows result)]
@@ -170,9 +176,9 @@
                 (let [query (-> (lib/query mp (lib.metadata/card mp card-id))
                                 (lib/with-fields [(lib.metadata/field mp (mt/id table :id))])
                                 (as-> q
-                                      (lib/expression q "UNCAST" (->> q lib/visible-columns (filter #(= "UNCASTED" (:name %))) first)))
+                                      (lib/expression q "UNCAST" (->> q lib/visible-columns (m/find-first #(= "UNCASTED" (:name %))))))
                                 (as-> q
-                                      (lib/expression q "INTCAST" (lib/integer (->> q lib/visible-columns (filter #(= "UNCASTED" (:name %))) first))))
+                                      (lib/expression q "INTCAST" (lib/integer (->> q lib/visible-columns (m/find-first #(= "UNCASTED" (:name %)))))))
                                 (lib/limit 10))
                       result (-> query qp/process-query)
                       cols (mt/cols result)
@@ -341,8 +347,7 @@
                 (let [card-query (lib/query mp (lib.metadata/card mp card-id))
                       uncast-column (->> card-query
                                          lib/visible-columns
-                                         (filter #(= "uncasted" (u/lower-case-en (:name %))))
-                                         first)
+                                         (m/find-first #(= "uncasted" (u/lower-case-en (:name %)))))
                       query (-> card-query
                                 (lib/expression "UNCAST"               uncast-column)
                                 (lib/expression "FLOATCAST" (lib/float uncast-column)))
@@ -408,8 +413,7 @@
                 (let [card-query (lib/query mp (lib.metadata/card mp card-id))
                       uncast-column (->> card-query
                                          lib/visible-columns
-                                         (filter #(= "uncasted" (u/lower-case-en (:name %))))
-                                         first)
+                                         (m/find-first #(= "uncasted" (u/lower-case-en (:name %)))))
                       query (-> card-query
                                 (lib/with-fields [(lib.metadata/field mp (mt/id table :id))])
                                 (lib/expression "UNCAST"               uncast-column)
@@ -499,12 +503,27 @@
 
 ;; date()
 
-(defn- date-type? [col]
-  (some #(types/field-is-type? % col) [:type/DateTime ;; some databases return datetimes for date (e.g., Oracle)
-                                       :type/Text ;; sqlite uses text :(
-                                       :type/Date
-                                       :type/* ;; Mongo
-                                       ]))
+(defmulti date-type-expected
+  "Which date type are we expecting from `date()`?"
+  {:arglists '([driver])}
+  tx/dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod date-type-expected :default
+  [_]
+  :type/Date)
+
+(defmethod date-type-expected :oracle
+  [_]
+  :type/DateTime)
+
+(defmethod date-type-expected :sqlite
+  [_]
+  :type/Text)
+
+(defmethod date-type-expected :mongo
+  [_]
+  :type/*)
 
 (defn- parse-date [s]
   (try
@@ -531,7 +550,8 @@
                 result (-> query qp/process-query)
                 cols (mt/cols result)
                 rows (mt/rows result)]
-            (is (date-type? (last cols)))
+            (is (types/field-is-type? (date-type-expected driver/*driver*)
+                                      (last cols)))
             (doseq [[_ uncasted-value casted-value] rows]
               (let [cd (parse-date casted-value)
                     ud (parse-date uncasted-value)]
@@ -672,7 +692,7 @@
                (mt/card-with-source-metadata-for-query native-query)]
               (let [query (-> (lib/query mp (lib.metadata/card mp card-id))
                               (as-> q
-                                    (lib/expression q "TEXTCAST" (lib/text (->> q lib/visible-columns (filter #(= "uncasted" (u/lower-case-en (:name %)))) first)))))
+                                    (lib/expression q "TEXTCAST" (lib/text (->> q lib/visible-columns (m/find-first #(= "uncasted" (u/lower-case-en (:name %)))))))))
                     result (-> query qp/process-query)
                     cols (mt/cols result)
                     rows (mt/rows result)]
@@ -730,7 +750,7 @@
                (mt/card-with-source-metadata-for-query nested-query)]
               (let [query (-> (lib/query mp (lib.metadata/card mp card-id))
                               (as-> q
-                                    (lib/expression q "TEXTCAST" (lib/text (->> q lib/visible-columns (filter #(= "UNCASTED" (:name %))) first))))
+                                    (lib/expression q "TEXTCAST" (lib/text (->> q lib/visible-columns (m/find-first #(= "UNCASTED" (:name %)))))))
                               (lib/limit 10))
                     result (-> query qp/process-query)
                     cols (mt/cols result)
@@ -796,25 +816,247 @@
 (deftest ^:parallel datetime-cast
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions/datetime)
     (let [mp (mt/metadata-provider)]
-      (doseq [[table expressions] [[:people [{:expression (lib/concat "2025-05-15T22:20:01" "")
+      (doseq [[table expressions] [[:people [;; no mode
+                                             {:expression (lib/concat "2025-05-15T22:20:01" "")
                                               :mode nil
                                               :expected #{"2025-05-15T22:20:01Z"
-                                                          "2025-05-15 22:20:01"}
-                                              :limit 1}
+                                                          "2025-05-15 22:20:01"}}
                                              {:expression (lib/concat "2025-05-15 22:20:01" "")
                                               :mode nil
                                               :expected #{"2025-05-15T22:20:01Z"
-                                                          "2025-05-15 22:20:01"}
-                                              :limit 1}]]]
-              {:keys [expression mode expected limit]} expressions]
-        (testing (str "Parsing " expression " as datetime with " mode ".")
+                                                          "2025-05-15 22:20:01"}}
+
+                                             ;; iso mode
+                                             {:expression (lib/concat "2025-05-15T22:20:01" "")
+                                              :mode :iso
+                                              :expected #{"2025-05-15T22:20:01Z"
+                                                          "2025-05-15 22:20:01"}}
+                                             {:expression (lib/concat "2025-05-15 22:20:01" "")
+                                              :mode :iso
+                                              :expected #{"2025-05-15T22:20:01Z"
+                                                          "2025-05-15 22:20:01"}}
+
+                                             ;; simple mode
+                                             {:expression (lib/concat "20250515222001" "")
+                                              :mode :simple
+                                              :expected #{"2025-05-15T22:20:01Z"
+                                                          "2025-05-15 22:20:01"}}]]]
+              {:keys [expression mode expected]} expressions]
+        (testing (str "Parsing " expression " as datetime with " (or mode "no mode") ".")
           (let [query (-> (lib/query mp (lib.metadata/table mp (mt/id table)))
                           (lib/with-fields [(lib.metadata/field mp (mt/id table :id))])
-                          (lib/expression "DATETIME_PARSE" (lib/datetime expression))
-                          (lib/limit limit))
+                          (lib/expression "DATETIME_PARSE" (if mode
+                                                             (lib/datetime expression mode)
+                                                             (lib/datetime expression)))
+                          (lib/limit 1))
                 result (-> query qp/process-query)
                 cols (mt/cols result)
                 rows (mt/rows result)]
             (is (datetime-type? (last cols)))
             (doseq [[_id casted-value] rows]
               (is (contains? expected casted-value)))))))))
+
+(mt/defdataset yyyymmddhhss-binary-simple-cast
+  [["times" [{:field-name "name"
+              :effective-type :type/Text
+              :base-type :type/Text}
+             {:field-name "as_bytes"
+              :base-type {:natives {:postgres "BYTEA"
+                                    :h2       "BYTEA"
+                                    :mysql    "VARBINARY(100)"
+                                    :redshift "VARBYTE"
+                                    :presto-jdbc "VARBINARY"
+                                    :oracle "BLOB"
+                                    :sqlite "BLOB"}}}]
+    [["foo" (.getBytes "20190421164300")]
+     ["bar" (.getBytes "20200421164300")]
+     ["baz" (.getBytes "20210421164300")]]]])
+
+(mt/defdataset iso-binary-cast
+  [["times" [{:field-name "name"
+              :effective-type :type/Text
+              :base-type :type/Text}
+             {:field-name "as_bytes"
+              :base-type {:natives {:postgres "BYTEA"
+                                    :h2       "BYTEA"
+                                    :mysql    "VARBINARY(100)"
+                                    :redshift "VARBYTE"
+                                    :presto-jdbc "VARBINARY"
+                                    :oracle "BLOB"
+                                    :sqlite "BLOB"}}}]
+    [["foo" (.getBytes "2019-04-21 16:43:00")]
+     ["bar" (.getBytes "2020-04-21T16:43:00")]
+     ["baz" (.getBytes "2021-04-21 16:43:00")]]]])
+
+(defmulti binary-dates-expected-rows-simple
+  "Expected rows for the [[datetime-binary-cast]] test below."
+  {:arglists '([driver])}
+  tx/dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod binary-dates-expected-rows-simple :default
+  [_driver]
+  [])
+
+(doseq [driver [:h2 :postgres :databricks]]
+  (defmethod binary-dates-expected-rows-simple driver
+    [_driver]
+    [[1 "foo" (OffsetDateTime/from #t "2019-04-21T16:43Z")]
+     [2 "bar" (OffsetDateTime/from #t "2020-04-21T16:43Z")]
+     [3 "baz" (OffsetDateTime/from #t "2021-04-21T16:43Z")]]))
+
+(doseq [driver [:mysql :sqlserver :presto-jdbc]]
+  (defmethod binary-dates-expected-rows-simple driver
+    [_driver]
+    [[1 "foo" #t "2019-04-21T16:43"]
+     [2 "bar" #t "2020-04-21T16:43"]
+     [3 "baz" #t "2021-04-21T16:43"]]))
+
+(defmethod binary-dates-expected-rows-simple :sqlite
+  [_driver]
+  [[1 "foo" "2019-04-21 16:43:00"]
+   [2 "bar" "2020-04-21 16:43:00"]
+   [3 "baz" "2021-04-21 16:43:00"]])
+
+(defmethod binary-dates-expected-rows-simple :mongo
+  [_driver]
+  [[1 "foo" (.toInstant #t "2019-04-21T16:43:00Z")]
+   [2 "bar" (.toInstant #t "2020-04-21T16:43:00Z")]
+   [3 "baz" (.toInstant #t "2021-04-21T16:43:00Z")]])
+
+(defmethod binary-dates-expected-rows-simple :oracle
+  [_driver]
+  [[1M "foo" #t "2019-04-21T16:43"]
+   [2M "bar" #t "2020-04-21T16:43"]
+   [3M "baz" #t "2021-04-21T16:43"]])
+
+(defmulti binary-dates-expected-rows-iso
+  "Expected rows for the [[datetime-binary-cast]] test below."
+  {:arglists '([driver])}
+  tx/dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod binary-dates-expected-rows-iso :default
+  [_driver]
+  [])
+
+(doseq [driver [:databricks]]
+  (defmethod binary-dates-expected-rows-iso driver
+    [_driver]
+    [[1 "foo" (OffsetDateTime/from #t "2019-04-21T16:43Z")]
+     [2 "bar" (OffsetDateTime/from #t "2020-04-21T16:43Z")]
+     [3 "baz" (OffsetDateTime/from #t "2021-04-21T16:43Z")]]))
+
+(doseq [driver [:mysql :sqlserver :presto-jdbc :postgres :h2]]
+  (defmethod binary-dates-expected-rows-iso driver
+    [_driver]
+    [[1 "foo" #t "2019-04-21T16:43"]
+     [2 "bar" #t "2020-04-21T16:43"]
+     [3 "baz" #t "2021-04-21T16:43"]]))
+
+(defmethod binary-dates-expected-rows-iso :sqlite
+  [_driver]
+  [[1 "foo" "2019-04-21 16:43:00"]
+   [2 "bar" "2020-04-21 16:43:00"]
+   [3 "baz" "2021-04-21 16:43:00"]])
+
+(defmethod binary-dates-expected-rows-iso :mongo
+  [_driver]
+  [[1 "foo" (.toInstant #t "2019-04-21T16:43:00Z")]
+   [2 "bar" (.toInstant #t "2020-04-21T16:43:00Z")]
+   [3 "baz" (.toInstant #t "2021-04-21T16:43:00Z")]])
+
+(defmethod binary-dates-expected-rows-iso :oracle
+  [_driver]
+  [[1M "foo" #t "2019-04-21T16:43"]
+   [2M "bar" #t "2020-04-21T16:43"]
+   [3M "baz" #t "2021-04-21T16:43"]])
+
+(deftest ^:parallel datetime-binary-cast
+  (mt/test-drivers (mt/normal-drivers-with-feature :expressions/datetime ::adt/yyyymmddhhss-binary-timestamps)
+    (doseq [{:keys [dataset mode expected]}
+            [{:dataset yyyymmddhhss-binary-simple-cast
+              :mode :simple-bytes
+              :expected binary-dates-expected-rows-simple}
+             {:dataset iso-binary-cast
+              :mode :iso-bytes
+              :expected binary-dates-expected-rows-iso}]]
+      (mt/dataset dataset
+        (testing (str "Parsing bytes from " (:database-name dataset) " as datetime with " (or mode "no mode") ".")
+          (let [mp (mt/metadata-provider)
+                query (-> (lib/query mp (lib.metadata/table mp (mt/id :times)))
+                          (lib/with-fields [(lib.metadata/field mp (mt/id :times :id))
+                                            (lib.metadata/field mp (mt/id :times :name))])
+                          (as-> q
+                                (let [column (->> q lib/visible-columns (m/find-first #(= "as_bytes" (u/lower-case-en (:name %)))))]
+                                  (lib/expression q "FCALL" (if (nil? mode)
+                                                              (lib/datetime column)
+                                                              (lib/datetime column mode)))))
+                          (assoc :middleware {:format-rows? false}))
+                result (-> query qp/process-query)
+                rows (mt/rows result)]
+            (is (= (expected driver/*driver*)
+                   rows))))))))
+
+(defmulti datetime-number-cast-expected
+  "Expected datetime string for [[datetime-number-cast]] test."
+  {:arglists '([driver])}
+  tx/dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod datetime-number-cast-expected :default
+  [_]
+  "2025-07-02T18:33:35Z")
+
+(defmethod datetime-number-cast-expected :sqlite
+  [_]
+  "2025-07-02 18:33:35")
+
+;; sqlserver's sql.qp/unix-timestamp->honeysql truncates to minutes
+(defmethod datetime-number-cast-expected :sqlserver
+  [_]
+  "2025-07-02T18:33:00Z")
+
+(deftest ^:parallel datetime-number-cast
+  (let [seconds-timestamp 1751481215]
+    (mt/test-drivers (mt/normal-drivers-with-feature :expressions/datetime)
+      (doseq [{:keys [multiple mode]}
+              [{:multiple (long 1e0)
+                :mode :unix-seconds}
+               {:multiple (long 1e3)
+                :mode :unix-milliseconds}
+               {:multiple (long 1e6)
+                :mode :unix-microseconds}
+               {:multiple (long 1e9)
+                :mode :unix-nanoseconds}]]
+        (testing (str "Parsing number"  " as datetime with " mode ".")
+          (let [mp (mt/metadata-provider)
+                query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                          (lib/with-fields [(lib.metadata/field mp (mt/id :orders :id))])
+                          (lib/expression "date_number" (lib/+ 0 (* seconds-timestamp multiple)))
+                          (as-> q
+                                (let [column (->> q lib/visible-columns (m/find-first #(= "date_number" (u/lower-case-en (:name %)))))]
+                                  (lib/expression q "FCALL" (lib/datetime column mode))))
+                          (lib/limit 1))
+                result (-> query qp/process-query)
+                rows (mt/rows result)]
+            (is (= (datetime-number-cast-expected driver/*driver*)
+                   (-> rows first (get 2))))))))))
+;; today()
+
+(deftest ^:parallel today-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :expressions/today)
+    (testing "Calling today() and getting today's date"
+      (let [mp (mt/metadata-provider)
+            query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                      (lib/with-fields [(lib.metadata/field mp (mt/id :orders :id))])
+                      (lib/expression "TODAY" (lib/today))
+                      (lib/limit 1))
+            result (-> query qp/process-query)
+            cols (mt/cols result)
+            rows (mt/rows result)]
+        (is (types/field-is-type? (date-type-expected driver/*driver*)
+                                  (last cols)))
+        (doseq [[_id today] rows]
+          (is (= (parse-date today)
+                 (LocalDate/now))))))))

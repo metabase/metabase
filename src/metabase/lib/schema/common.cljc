@@ -39,19 +39,11 @@
     (cond-> m
       (string? (:lib/type m)) (update :lib/type keyword))))
 
-(def HORRIBLE-keys
-  "TODO (Cam 6/13/25) -- MEGA HACK -- keys that live in MLv2 that aren't SUPPOSED to be kebab-cased. We can and should
-  remove these keys altogether."
-  #{:model/inner_ident})
-
 (def ^:private ^{:arglists '([k])} memoized-kebab-key
   "Calculating the kebab-case version of a key every time is pretty slow (even with the LRU caching
   [[u/->kebab-case-en]] has), since the keys here are static and finite we can just memoize them forever and
   get a nice performance boost."
-  (u.memo/fast-memo (fn [k]
-                      (if (contains? HORRIBLE-keys k)
-                        k
-                        (u/->kebab-case-en k)))))
+  (u.memo/fast-memo u/->kebab-case-en))
 
 (defn map->kebab-case
   "Convert a map to kebab case, for use with `:decode/normalize`."
@@ -164,23 +156,31 @@
                       (str "Not a valid base type: " (pr-str value)))}
     base-type?]])
 
+(defn- normalize-options-map [m]
+  (let [m (normalize-map m)]
+    (-> m
+        ;; add `:lib/uuid` if it's missing
+        (cond-> (not (:lib/uuid m)) (assoc :lib/uuid (str (random-uuid))))
+        ;; remove deprecated `:ident` key
+        (dissoc :ident))))
+
 (mr/def ::options
-  [:map
-   {:default {}
-    :decode/normalize (fn [m]
-                        (let [m (normalize-map m)]
-                          ;; add `:lib/uuid` if it's missing
-                          (cond-> m
-                            (not (:lib/uuid m)) (assoc :lib/uuid (str (random-uuid))))))}
-   [:lib/uuid ::uuid]
-   ;; these options aren't required for any clause in particular, but if they're present they must follow these schemas.
-   [:base-type      {:optional true} [:maybe ::base-type]]
-   [:effective-type {:optional true} [:maybe ::base-type]]
-   ;; these two different types are currently both stored under one key, but maybe one day we can fix this.
-   [:semantic-type  {:optional true} [:maybe ::semantic-or-relation-type]]
-   [:database-type  {:optional true} [:maybe ::non-blank-string]]
-   [:name           {:optional true} [:maybe ::non-blank-string]]
-   [:display-name   {:optional true} [:maybe ::non-blank-string]]])
+  [:and
+   {:default {}}
+   [:map
+    {:decode/normalize normalize-options-map}
+    [:lib/uuid ::uuid]
+    ;; these options aren't required for any clause in particular, but if they're present they must follow these schemas.
+    [:base-type      {:optional true} [:maybe ::base-type]]
+    [:effective-type {:optional true} [:maybe ::base-type]]
+    ;; these two different types are currently both stored under one key, but maybe one day we can fix this.
+    [:semantic-type  {:optional true} [:maybe ::semantic-or-relation-type]]
+    [:database-type  {:optional true} [:maybe ::non-blank-string]]
+    [:name           {:optional true} [:maybe ::non-blank-string]]
+    [:display-name   {:optional true} [:maybe ::non-blank-string]]]
+   [:fn
+    {:error/message ":ident is deprecated and should not be included in options maps"}
+    (complement :ident)]])
 
 (mr/def ::external-op
   [:map

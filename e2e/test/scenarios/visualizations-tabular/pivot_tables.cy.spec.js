@@ -130,7 +130,10 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
     assertOnPivotSettings();
 
     // Drag the second aggregate (Product category) from table columns to table rows
-    H.dragField(1, 0);
+    H.moveDnDKitListElement("drag-handle", {
+      startIndex: 1,
+      dropIndex: 0,
+    });
 
     // One field should now be empty
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage

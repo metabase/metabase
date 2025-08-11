@@ -83,7 +83,7 @@
         (is (= "Filtered by Expensive BBQ Spots and ID is not empty"
                (:definition_description (t2/hydrate segment-2 :definition_description))))))))
 
-(deftest definition-description-missing-source-table-test
+(deftest ^:parallel definition-description-missing-source-table-test
   (testing "Should work if `:definition` does not include `:source-table`"
     (mt/with-temp [:model/Segment segment {:name       "Expensive BBQ Spots"
                                            :definition (mt/$ids venues
@@ -92,10 +92,11 @@
       (is (= "Filtered by Price is equal to 4"
              (:definition_description (t2/hydrate segment :definition_description)))))))
 
-(deftest definition-description-invalid-query-test
+(deftest ^:synchronized definition-description-invalid-query-test
   (testing "Should return `nil` if query is invalid"
-    (mt/with-temp [:model/Segment segment {:name       "Expensive BBQ Spots"
-                                           :definition (:query (mt/mbql-query venues
-                                                                 {:filter
-                                                                  [:= [:field Integer/MAX_VALUE nil] 4]}))}]
-      (is (nil? (:definition_description (t2/hydrate segment :definition_description)))))))
+    (with-redefs [segment/validate-segment-definition identity]
+      (mt/with-temp [:model/Segment segment {:name       "Expensive BBQ Spots"
+                                             :definition (:query (mt/mbql-query venues
+                                                                   {:filter
+                                                                    [:= [:wheat-field Integer/MAX_VALUE nil] 4]}))}]
+        (is (nil? (:definition_description (t2/hydrate segment :definition_description))))))))

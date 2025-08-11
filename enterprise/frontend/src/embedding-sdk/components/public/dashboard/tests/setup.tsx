@@ -1,5 +1,6 @@
 import { indexBy } from "underscore";
 
+import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
   setupAlertsEndpoints,
   setupBookmarksEndpoints,
@@ -21,7 +22,6 @@ import { renderWithSDKProviders } from "embedding-sdk/test/__support__/ui";
 import { createMockSdkConfig } from "embedding-sdk/test/mocks/config";
 import { setupSdkState } from "embedding-sdk/test/server-mocks/sdk-init";
 import { useLocale } from "metabase/common/hooks/use-locale";
-import { useDashboardFullscreen } from "metabase/dashboard/hooks/use-dashboard-fullscreen";
 import { Box } from "metabase/ui";
 import {
   createMockCard,
@@ -44,6 +44,7 @@ import {
 } from "metabase-types/api/mocks/presets";
 import { createMockDashboardState } from "metabase-types/store/mocks";
 
+import type { EditableDashboardProps } from "../EditableDashboard";
 import type { SdkDashboardProps } from "../SdkDashboard";
 
 export const TEST_DASHBOARD_ID = 1;
@@ -107,39 +108,32 @@ export interface SetupSdkDashboardOptions {
   props?: Partial<SdkDashboardProps>;
   providerProps?: Partial<MetabaseProviderProps>;
   isLocaleLoading?: boolean;
-  isFullscreen?: boolean;
   component: React.ComponentType<SdkDashboardProps>;
+  dashboardName?: string;
+  dataPickerProps?: EditableDashboardProps["dataPickerProps"];
 }
 
 jest.mock("metabase/common/hooks/use-locale", () => ({
   useLocale: jest.fn(),
 }));
 
-jest.mock("metabase/dashboard/hooks/use-dashboard-fullscreen", () => ({
-  useDashboardFullscreen: jest.fn(),
-}));
-
 export const setupSdkDashboard = async ({
   props = {},
   providerProps = {},
   isLocaleLoading = false,
-  isFullscreen = false,
   component: Component,
+  dashboardName = "Dashboard",
+  dataPickerProps,
 }: SetupSdkDashboardOptions) => {
   const useLocaleMock = useLocale as jest.Mock;
   useLocaleMock.mockReturnValue({ isLocaleLoading });
-
-  const useDashboardFullscreenMock = useDashboardFullscreen as jest.Mock;
-  useDashboardFullscreenMock.mockReturnValue({
-    isFullscreen,
-    onFullscreenChange: jest.fn(),
-  });
 
   const database = createSampleDatabase();
 
   const dashboardId = props?.dashboardId || TEST_DASHBOARD_ID;
   const dashboard = createMockDashboard({
     id: dashboardId,
+    name: dashboardName,
     dashcards,
     tabs: dashboardTabs,
     parameters: [parameter],
@@ -197,9 +191,16 @@ export const setupSdkDashboard = async ({
     }),
   });
 
+  // Used in simple data picker
+  setupEnterprisePlugins();
+
   renderWithSDKProviders(
     <Box h="500px">
-      <Component dashboardId={dashboardId} {...props} />
+      <Component
+        dashboardId={dashboardId}
+        dataPickerProps={dataPickerProps}
+        {...props}
+      />
     </Box>,
     {
       sdkProviderProps: {

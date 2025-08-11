@@ -69,12 +69,15 @@ function DimensionPicker({
 }
 
 // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
+const BREAKOUT_TITLE = t`Breakout`;
+// eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
 const INNER_RING_TITLE = t`Inner Ring`;
 // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
 const MIDDLE_RING_TITLE = t`Middle Ring`;
 // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
 const OUTER_RING_TITLE = t`Outer Ring`;
 
+const SINGLE_RING_SETTING_TITLES = [BREAKOUT_TITLE];
 const TWO_RING_SETTING_TITLES = [INNER_RING_TITLE, OUTER_RING_TITLE];
 const THREE_RING_SETTING_TITLES = [
   INNER_RING_TITLE,
@@ -98,8 +101,13 @@ export function DimensionsWidget({
     ...getPieDimensions(settings),
   ]);
 
+  const actualRingCount = dimensions.filter((d) => d != null).length;
   const dimensionTitles =
-    dimensions.length < 3 ? TWO_RING_SETTING_TITLES : THREE_RING_SETTING_TITLES;
+    actualRingCount === 1
+      ? SINGLE_RING_SETTING_TITLES
+      : actualRingCount === 2
+        ? TWO_RING_SETTING_TITLES
+        : THREE_RING_SETTING_TITLES;
 
   const updateDimensions = (newDimensions: (string | undefined)[]) => {
     setDimensions(newDimensions);
@@ -180,7 +188,7 @@ export function DimensionsWidget({
           strategy={verticalListSortingStrategy}
         >
           {dimensions.map((dimension, index) => (
-            <>
+            <div key={`dimension-${index}`}>
               <Text fw="bold" mb="sm">
                 {dimensionTitles[index]}
               </Text>
@@ -214,7 +222,7 @@ export function DimensionsWidget({
                   numRings={dimensions.filter((d) => d != null).length}
                 />
               )}
-            </>
+            </div>
           ))}
           <DragOverlay>
             {draggedDimensionIndex != null ? (

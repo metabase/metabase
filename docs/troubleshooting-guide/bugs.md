@@ -4,7 +4,7 @@ title: Reporting a bug
 
 # Reporting a bug
 
-If you come across something that looks like a bug, please start by searching our [Github issues][metabase-issues] to see if it has already been reported. If it has, please let us know you're experiencing the same issue by reacting with a thumbs up emoji or adding a comment to provide additional information.
+If you come across something that looks like a bug, please start by searching our [GitHub issues][metabase-issues] to see if it has already been reported. If it has, please let us know you're experiencing the same issue by reacting with a thumbs up emoji or adding a comment to provide additional information.
 
 If the bug has not yet been reported, go ahead and [open a bug report][metabase-file-bug]. The following information will help us reproduce your issue:
 

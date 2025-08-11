@@ -1,5 +1,4 @@
-import { DashCardQuestionDownloadButton } from "metabase/dashboard/components/DashCard/DashCardQuestionDownloadButton";
-import { DASHBOARD_DISPLAY_ACTIONS } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/constants";
+import { PublicOrEmbeddedDashCardMenu } from "metabase/dashboard/components/DashCard/PublicOrEmbeddedDashCardMenu";
 import { DASHBOARD_ACTION } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/dashboard-action-keys";
 import { isQuestionCard } from "metabase/dashboard/utils";
 import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
@@ -34,9 +33,7 @@ export const StaticDashboard = (props: StaticDashboardProps) => {
       {...props}
       getClickActionMode={getClickActionMode}
       dashboardActions={({ downloadsEnabled }) =>
-        downloadsEnabled.pdf
-          ? [...DASHBOARD_DISPLAY_ACTIONS, DASHBOARD_ACTION.DOWNLOAD_PDF]
-          : DASHBOARD_DISPLAY_ACTIONS
+        downloadsEnabled.pdf ? [DASHBOARD_ACTION.DOWNLOAD_PDF] : []
       }
       navigateToNewCardFromDashboard={null}
       dashcardMenu={({ dashcard, result }) =>
@@ -44,7 +41,7 @@ export const StaticDashboard = (props: StaticDashboardProps) => {
         isQuestionCard(dashcard.card) &&
         !!result?.data &&
         !result?.error && (
-          <DashCardQuestionDownloadButton result={result} dashcard={dashcard} />
+          <PublicOrEmbeddedDashCardMenu result={result} dashcard={dashcard} />
         )
       }
     />

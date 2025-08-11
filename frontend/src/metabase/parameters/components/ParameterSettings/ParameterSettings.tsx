@@ -8,6 +8,7 @@ import {
 import { t } from "ttag";
 
 import { resetParameterMapping } from "metabase/dashboard/actions";
+import { isQuestionDashCard } from "metabase/dashboard/utils";
 import { useDispatch } from "metabase/lib/redux";
 import {
   getDashboardParameterSections,
@@ -32,6 +33,7 @@ import {
   parameterHasNoDisplayValue,
 } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {
+  DashboardCard,
   Parameter,
   TemporalUnit,
   ValuesQueryType,
@@ -44,6 +46,7 @@ import { ParameterValueWidget } from "../ParameterValueWidget";
 import { RequiredParamToggle } from "../RequiredParamToggle";
 import { ValuesSourceSettings } from "../ValuesSourceSettings";
 
+import { MoveParameterMenu } from "./MoveParameterMenu";
 import S from "./ParameterSettings.module.css";
 import { TemporalUnitSettings } from "./TemporalUnitSettings";
 
@@ -61,6 +64,7 @@ export interface ParameterSettingsProps {
   onChangeRequired: (value: boolean) => void;
   onChangeTemporalUnits: (temporalUnits: TemporalUnit[]) => void;
   embeddedParameterVisibility: EmbeddingParameterVisibility | null;
+  editingParameterInlineDashcard?: DashboardCard;
 }
 
 const parameterSections = getDashboardParameterSections();
@@ -72,6 +76,7 @@ const defaultOptionForSection = getDefaultOptionForParameterSectionMap();
 
 export const ParameterSettings = ({
   parameter,
+  editingParameterInlineDashcard,
   isParameterSlugUsed,
   onChangeName,
   onChangeType,
@@ -285,16 +290,21 @@ export const ParameterSettings = ({
         ></RequiredParamToggle>
       </Box>
 
+      <MoveParameterMenu parameterId={parameter.id} />
+
       {hasMapping && (
-        <Box>
-          <Button
-            variant="subtle"
-            pl={0}
-            onClick={() => {
-              dispatch(resetParameterMapping(parameter.id));
-            }}
-          >{t`Disconnect from cards`}</Button>
-        </Box>
+        <Button
+          mt="sm"
+          w="100%"
+          onClick={() => {
+            dispatch(resetParameterMapping(parameter.id));
+          }}
+        >
+          {editingParameterInlineDashcard != null &&
+          isQuestionDashCard(editingParameterInlineDashcard)
+            ? t`Disconnect from card`
+            : t`Disconnect from cards`}
+        </Button>
       )}
     </Box>
   );

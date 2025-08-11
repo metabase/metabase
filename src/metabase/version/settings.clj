@@ -3,7 +3,7 @@
    [metabase.config.core :as config]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.system.core :as system]
-   [metabase.util.i18n :refer [deferred-tru tru]]
+   [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.log :as log]))
 
 (defsetting version
@@ -18,24 +18,6 @@
   :type    :boolean
   :audit   :getter
   :default true)
-
-(defn- set-update-channel! [new-channel]
-  (let [valid-channels #{"latest" "beta" "nightly"}]
-    (when-not (valid-channels new-channel)
-      (throw (IllegalArgumentException.
-              (tru "Invalid update channel ''{0}''. Valid channels are: {1}"
-                   new-channel valid-channels))))
-    (setting/set-value-of-type! :string :update-channel new-channel)))
-
-(defsetting update-channel
-  (deferred-tru "We''ll notify you here when there''s a new version of this type of release.")
-  :visibility :admin
-  :type       :string
-  :encryption :no
-  :export?    true
-  :audit      :getter
-  :setter     set-update-channel!
-  :default    "latest")
 
 (defsetting upgrade-threshold
   (deferred-tru "Threshold (value in 0-100) indicating at which treshold it should offer an upgrade to the latest major version.")

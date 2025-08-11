@@ -337,7 +337,6 @@
                                                               :entity_id       source-eid
                                                               :result_metadata
                                                               (-> source-query
-                                                                  (assoc-in [:info :card-entity-id] source-eid)
                                                                   qp/process-query
                                                                   (get-in [:data :results_metadata :columns]))}
                        :model/Card       {card-id :id}       {:table_id      nil

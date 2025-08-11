@@ -40,29 +40,43 @@ describe("metabase/parameters/utils/dashboards", () => {
     });
 
     it("should prevent a duplicate name", () => {
-      expect(
-        createParameter(
-          {
-            name: "foo bar",
-            type: "category",
-            sectionId: "abc",
-          },
-          [
-            createParameter(
-              {
-                name: "foo bar",
-                type: "category",
-                sectionId: "abc",
-              },
-              [],
-            ),
-          ],
-        ),
-      ).toEqual({
+      const parameter1 = createParameter({
+        name: "foo bar",
+        type: "category",
+        sectionId: "abc",
+      });
+
+      const parameter2 = createParameter(
+        {
+          name: "foo bar",
+          type: "category",
+          sectionId: "abc",
+        },
+        [parameter1],
+      );
+
+      expect(parameter2).toEqual({
         id: expect.any(String),
         name: "foo bar 1",
         sectionId: "abc",
         slug: "foo_bar_1",
+        type: "category",
+      });
+
+      const parameter3 = createParameter(
+        {
+          name: "foo bar",
+          type: "category",
+          sectionId: "abc",
+        },
+        [parameter1, parameter2],
+      );
+
+      expect(parameter3).toEqual({
+        id: expect.any(String),
+        name: "foo bar 2",
+        sectionId: "abc",
+        slug: "foo_bar_2",
         type: "category",
       });
     });

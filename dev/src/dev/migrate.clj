@@ -197,10 +197,10 @@
        (let [database              (liquibase-database db-type)
              change-log-iterator   (ChangeLogIterator. ^DatabaseChangeLog (.getDatabaseChangeLog liquibase)
                                                        ^"[Lliquibase.changelog.filter.ChangeSetFilter;" (into-array ChangeSetFilter []))
-             list-visistor         (ListVisitor.)
+             list-visitor          (ListVisitor.)
              runtime-env           (RuntimeEnvironment. database (Contexts.) nil)
-             _                     (.run change-log-iterator list-visistor runtime-env)
-             ^ChangeSet change-set (first (filter #(= id (.getId ^ChangeSet %)) (.getSeenChangeSets list-visistor)))
+             _                     (.run change-log-iterator list-visitor runtime-env)
+             ^ChangeSet change-set (first (filter #(= id (.getId ^ChangeSet %)) (.getSeenChangeSets list-visitor)))
              sql-generator-factory (SqlGeneratorFactory/getInstance)]
          (reduce (fn [acc data]
                   ;; merge all changes in one change set into one single :forward and :rollback
@@ -208,6 +208,52 @@
                                  (str x "\n" y)) acc data))
                  {}
                  (map #(change->sql % sql-generator-factory database) (.getChanges change-set))))))))
+
+(defn known-changesets
+  "Gets a list of all changesets applicable to current db"
+  []
+  (t2/with-connection [conn]
+    (liquibase/with-liquibase [^Liquibase liquibase conn]
+      (let [database            (liquibase-database (mdb/db-type))
+            change-log-iterator (ChangeLogIterator. ^DatabaseChangeLog (.getDatabaseChangeLog liquibase)
+                                                    ^"[Lliquibase.changelog.filter.ChangeSetFilter;" (into-array ChangeSetFilter []))
+            list-visitor        (ListVisitor.)
+            runtime-env         (RuntimeEnvironment. database (Contexts.) nil)]
+        (.run change-log-iterator list-visitor runtime-env)
+        (->> (.getSeenChangeSets list-visitor)
+             (map (fn [^ChangeSet c]
+                    {:id          (.getId c)
+                     :author      (.getAuthor c)
+                     :filename    (.getFilePath c)
+                     :description (.getDescription c)
+                     :changes     (vec (.getChanges c))
+                     :comments    (.getComments c)})))))))
+
+(defn orphaned-changesets
+  "List migrations that are applied to the database but not present in the current changelog.
+
+  They either have different id or are not present at all."
+  []
+  (let [applied      (->> (t2/query {:from   [(keyword (liquibase/changelog-table-name (mdb/data-source)))]
+                                     :select [:id :comments :author]
+                                     ;; ignore ancient history
+                                     :where  [:< [:age :dateexecuted] [:raw "INTERVAL '2 year'"]]})
+                          (map t2/current))
+        known        (mapv #(select-keys % [:id :comments :author]) (known-changesets))
+        by-id        (group-by :id known)
+        by-comments  (group-by :comments known)
+        ;; we cannot use `set/diff` here because long `comments` can be truncated in the db
+        orphans      (remove #(contains? by-id (:id %)) applied)
+        ;; obviously prev comment is valid here as well but we work with what we have :)
+        mismatches   (for [c     orphans
+                           :let  [known-as (get by-comments (:comments c))]
+                           :when known-as]
+                       (assoc c :knownas (:id known-as)))
+        mismatch-ids (set (map :id mismatches))
+        unknown      (vec (remove #(contains? mismatch-ids (:id %)) orphans))]
+    {:mismatches (sort-by :id mismatches) ; identical comments, but different ids
+     :unknown    (sort-by :id unknown)    ; those are not present in current branch
+     :total      (+ (count mismatches) (count unknown))}))
 
 (comment
   (rollback! :count 1)

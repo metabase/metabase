@@ -1,37 +1,8 @@
-/**
- * The upsell color palette is designed to function in harmony with the original Metabase set of Blues, Grays and Purples
- * but with a twist. All three colors are new and should not be used elsewhere in the product experience.
- */
-:root {
-  --mb-color-upsell-primary: #005999;
-  --mb-color-upsell-secondary: #bff4ff;
-  --mb-color-upsell-gem: #00d4ff;
-}
+@import "./Upsells.base.module.css";
 
 .UpsellGem {
   color: var(--mb-color-upsell-gem);
   flex-shrink: 0;
-}
-
-.UpsellCTALink {
-  display: flex;
-  gap: 0.5rem;
-  align-items: center;
-  justify-content: center;
-  flex-grow: 0;
-  font-weight: bold;
-  font-size: 0.75rem;
-  padding: 0.25rem 0.5rem;
-  border-radius: 2rem;
-  color: var(--mb-color-upsell-primary);
-  background-color: var(--mb-color-upsell-secondary);
-  text-decoration: none;
-  cursor: pointer;
-
-  &:hover {
-    background-color: var(--mb-color-upsell-primary);
-    color: var(--mb-color-text-white);
-  }
 }
 
 .UpsellBannerComponent {
@@ -39,7 +10,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  padding: 1rem;
+  padding: 1.25rem 2rem;
   overflow: hidden;
   border: 1px solid var(--mb-color-border);
   border-radius: 0.5rem;
@@ -47,6 +18,14 @@
 
   .UpsellCTALink {
     flex-shrink: 0;
+  }
+
+  &.Large {
+    align-items: flex-start;
+
+    .UpsellCTALink {
+      padding: 0.5rem 1rem;
+    }
   }
 }
 

@@ -16,17 +16,13 @@ import {
 } from "metabase/dashboard/selectors";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { getPulseFormInput } from "metabase/notifications/pulse/selectors";
-import { getIsEmbeddingSdk } from "metabase/selectors/embed";
 import {
   canManageSubscriptions as canManageSubscriptionsSelector,
   getUserIsAdmin,
 } from "metabase/selectors/user";
 import { Box } from "metabase/ui";
 
-import { DASHBOARD_EDITING_ACTIONS, DASHBOARD_VIEW_ACTIONS } from "./constants";
-
 export const DashboardHeaderButtonRow = ({
-  dashboardActionKeys = null,
   isPublic = false,
   isAnalyticsDashboard = false,
   ...props
@@ -38,7 +34,6 @@ export const DashboardHeaderButtonRow = ({
   const canManageSubscriptions = useSelector(canManageSubscriptionsSelector);
 
   const dashboard = useSelector(getDashboardComplete);
-  const isEmbeddingSdk = useSelector(getIsEmbeddingSdk);
   const canEdit = Boolean(dashboard?.can_write && !dashboard?.archived);
 
   const {
@@ -47,20 +42,14 @@ export const DashboardHeaderButtonRow = ({
     hasNightModeToggle,
     onNightModeChange,
     downloadsEnabled,
+    dashboardActions,
   } = useDashboardContext();
 
   const hasModelActionsEnabled = useSelector(getHasModelActionsEnabled);
 
   const isEditing = useSelector(getIsEditing);
 
-  const buttonOptions = isEditing
-    ? DASHBOARD_EDITING_ACTIONS
-    : DASHBOARD_VIEW_ACTIONS;
-
-  const visibleDashboardActionKeys = dashboardActionKeys
-    ? buttonOptions.filter((key) => dashboardActionKeys.includes(key))
-    : buttonOptions;
-
+  const visibleDashboardActionKeys = dashboardActions ?? [];
   const dispatch = useDispatch();
 
   const openSettingsSidebar = useCallback(() => {
@@ -82,7 +71,6 @@ export const DashboardHeaderButtonRow = ({
             formInput,
             isAdmin,
             isPublic,
-            isEmbeddingSdk,
             openSettingsSidebar,
             ...props,
           };

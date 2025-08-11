@@ -6,6 +6,7 @@
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.expression :as lib.expression]
+   [metabase.lib.field.util :as lib.field.util]
    [metabase.lib.filter :as lib.filter]
    [metabase.lib.filter.operator :as lib.filter.operator]
    [metabase.lib.options :as lib.options]
@@ -238,7 +239,9 @@
                                                    (meta/field-metadata :checkins :venue-id)
                                                    (meta/field-metadata :venues :id))])
                                 (lib/with-join-fields :all))))
-        columns (lib/filterable-columns query)
+        columns (into []
+                      (lib.field.util/add-source-and-desired-aliases-xform query)
+                      (lib/filterable-columns query))
         pk-operators [:= :!= :> :< :between :>= :<= :is-null :not-null]
         temporal-operators [:!= := :< :> :between :is-null :not-null]
         coordinate-operators [:= :!= :inside :> :< :between :>= :<=]
@@ -471,14 +474,14 @@
          :display-name   "Last Online Time"
          :base-type      :type/Time
          :effective-type :type/Time
-         :semantic-type  :type/Time))
+         :semantic-type  :type/UpdatedTime))
 
 (def ^:private is-active
   (assoc (meta/field-metadata :orders :discount)
          :display-name   "Is Active"
          :base-type      :type/Boolean
          :effective-type :type/Boolean
-         :semantic-type  :type/Boolean))
+         :semantic-type  nil))
 
 (defn- check-display-names [tests]
   (let [metadata-provider (lib/composed-metadata-provider
@@ -907,7 +910,7 @@
                                     {:column-type :type/Boolean :v true}
                                     {:column-type :type/Coordinate :v 1}}
           [query desired] (matrix/test-queries column-type)]
-    (let [col (matrix/find-first desired (lib/filterable-columns query))
+    (let [col (matrix/find-first query desired (lib/filterable-columns query))
           query' (lib/filter query (lib/= col v))
           parts (lib/expression-parts query' (first (lib/filters query')))]
       (is (=? (lib.filter.operator/filter-operators {:lib/type :metadata/column :name "expected" :base-type column-type})

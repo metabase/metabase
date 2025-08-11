@@ -343,7 +343,7 @@ describe("scenarios > question > filter", () => {
     cy.findByText("Filter").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Custom Expression").click();
-    H.enterCustomColumnDetails({ formula: "su", blur: false });
+    H.enterCustomColumnDetails({ formula: "[su", blur: false });
 
     H.CustomExpressionEditor.completion("Sum of Total").should("be.visible");
 
@@ -677,7 +677,7 @@ describe("scenarios > question > filter", () => {
     H.popover().findByText("Custom Expression").click();
 
     // Try to auto-complete Tax
-    H.CustomExpressionEditor.focus().type("Ta");
+    H.CustomExpressionEditor.focus().type("[Ta");
 
     // Suggestion popover shows up and this select the first one ([Tax])
     H.CustomExpressionEditor.acceptCompletion("tab");
@@ -1050,6 +1050,59 @@ describe("scenarios > question > filter", () => {
       cy.findByLabelText("Filter value").type("{esc}");
       cy.findByRole("option", { name: optionName }).should("not.exist");
       cy.findByLabelText("Filter value").should("be.visible");
+    });
+  });
+
+  it("should render the selected item in view", () => {
+    cy.viewport(1280, 320);
+    H.openReviewsTable({ mode: "notebook" });
+    H.filter({ mode: "notebook" });
+
+    cy.realPress("ArrowDown");
+    cy.realPress("ArrowDown");
+    cy.realPress("ArrowDown");
+    cy.realPress("ArrowDown");
+    cy.realPress("ArrowDown");
+    cy.realPress("ArrowDown");
+    cy.realPress("ArrowDown");
+
+    H.popover()
+      .findByRole("tree")
+      .then((el) => {
+        cy.wrap(el[0].scrollTop).should("be.greaterThan", 0);
+      });
+
+    H.popover().findByText("Created At").should("be.visible");
+  });
+
+  it("should allow picking custom expressions in filter picker", () => {
+    H.openOrdersTable({ mode: "notebook" });
+    H.filter({ mode: "notebook" });
+    H.popover().within(() => {
+      cy.findByPlaceholderText("Find...").clear().type("coalesce");
+      cy.findByText("Custom Expressions").should("be.visible");
+      cy.findByText("coalesce").should("be.visible").click();
+
+      H.CustomExpressionEditor.value().should(
+        "equal",
+        "coalesce(value1, value2)",
+      );
+    });
+  });
+
+  it("should allow selecting custom expressions in filter picker with (", () => {
+    H.openOrdersTable({ mode: "notebook" });
+    H.filter({ mode: "notebook" });
+    H.popover().within(() => {
+      cy.log("typing a non-existing clause does nothing");
+      cy.findByPlaceholderText("Find...").clear().type("foo(");
+      H.CustomExpressionEditor.get().should("not.exist");
+
+      cy.findByPlaceholderText("Find...").clear().type("case(");
+      H.CustomExpressionEditor.value().should(
+        "equal",
+        "case(condition, output)",
+      );
     });
   });
 });

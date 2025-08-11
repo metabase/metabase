@@ -4,8 +4,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
-   [metabase.lib.test-util.metadata-providers.mock
-    :as lib.tu.metadata-providers.mock]
+   [metabase.lib.test-util.metadata-providers.mock :as lib.tu.metadata-providers.mock]
    [metabase.lib.util :as lib.util]
    [metabase.util :as u]
    [metabase.util.malli :as mu]))

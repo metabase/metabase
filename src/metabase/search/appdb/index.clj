@@ -228,15 +228,19 @@
        :model_updated_at (:updated_at entity))
       (merge (specialization/extra-entry-fields entity))))
 
+(defn- table-not-found-exception? [e]
+  ;; Use with care, obviously this can give false positives if used with a query that's *actually* malformed.
+  ;; TODO we should handle the MySQL and MariaDB flavors here too
+  (or (instance? PSQLException (ex-cause e))
+      (instance? JdbcSQLSyntaxErrorException (ex-cause e))))
+
 (defn- safe-batch-upsert! [table-name entries]
   ;; For convenience, no-op if we are not tracking any table.
   (when table-name
     (try
       (specialization/batch-upsert! table-name entries)
       (catch Exception e
-        ;; TODO we should handle the MySQL and MariaDB flavors here too
-        (if (or (instance? PSQLException (ex-cause e))
-                (instance? JdbcSQLSyntaxErrorException (ex-cause e)))
+        (if (table-not-found-exception? e)
           ;; If resetting tracking atoms resolves the issue (which is likely happened because of stale tracking data),
           ;; suppress the issue - but throw it all the way to the caller if the issue persists
           (do (sync-tracking-atoms!)
@@ -285,13 +289,20 @@
     (u/prog1 (->> [(active-table) (pending-table)]
                   (keep (fn [table-name]
                           (when table-name
-                            {search-model (t2/delete! table-name :model search-model :model_id [:in (set ids)])})))
+                            {search-model (try (t2/delete! table-name :model search-model :model_id [:in (set ids)])
+                                               ;; Race conditions with table being deleted, especially in tests.
+                                               (catch Exception e (if (table-not-found-exception? e) 0 (throw e))))})))
                   (apply merge-with +)
                   (into {}))
       (when (active-table)
-        (analytics/set! :metabase-search/appdb-index-size (:count (t2/query-one {:select [[:%count.* :count]]
-                                                                                 :from   [(active-table)]
-                                                                                 :limit  1})))))))
+        (try
+          (analytics/set! :metabase-search/appdb-index-size (:count (t2/query-one {:select [[:%count.* :count]]
+                                                                                   :from   [(active-table)]
+                                                                                   :limit  1})))
+          (catch Exception e
+            ;; No point tracking the size of the newer index table, since we won't have modified it.
+            (when-not (table-not-found-exception? e)
+              (throw e))))))))
 
 (defn when-index-created
   "Return creation time of the active index, or nil if there is none."

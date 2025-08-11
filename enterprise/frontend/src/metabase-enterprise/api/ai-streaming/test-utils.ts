@@ -1,5 +1,18 @@
+import { defer } from "metabase/lib/promise";
+
+async function delay(timeout: number) {
+  return new Promise((resolve) => {
+    setTimeout(() => resolve(undefined), timeout);
+  });
+}
+
+export function createPauses<Count extends number>(count: Count) {
+  const pauses = new Array(count).fill(null).map(() => defer());
+  return pauses as ReturnType<typeof defer>[] & { length: Count };
+}
+
 export function createMockReadableStream(
-  textChunks: string[],
+  textChunks: string[] | AsyncGenerator<string, void, unknown>,
   options?: {
     disableAutoInsertNewLines: boolean;
   },
@@ -8,7 +21,7 @@ export function createMockReadableStream(
     async start(controller) {
       const textEncoder = new TextEncoder();
       try {
-        for (const textChunk of textChunks) {
+        for await (const textChunk of textChunks) {
           const text =
             textChunk + (options?.disableAutoInsertNewLines ? "" : "\n");
           controller.enqueue(textEncoder.encode(text));
@@ -20,15 +33,10 @@ export function createMockReadableStream(
   });
 }
 
-export function mockStreamedEndpoint({
-  url,
-  textChunks,
-  initialDelay = 0,
-}: {
-  url: string;
-  textChunks: string[] | undefined;
-  initialDelay?: number;
-}) {
+export function mockEndpoint<T extends Response>(
+  url: string,
+  endpointMock: () => Promise<T>,
+) {
   const originalFetch = global.fetch;
 
   // fetch-mock is supposed to work with ReadableStreams, but when passed one
@@ -40,19 +48,38 @@ export function mockStreamedEndpoint({
         typeof fetchedUrl === "string" && fetchedUrl.includes(url);
 
       if (isRequestedUrl) {
-        return new Promise((resolve) => {
-          setTimeout(() => {
-            resolve({
-              status: 202,
-              ok: true,
-              body: textChunks
-                ? createMockReadableStream(textChunks)
-                : undefined,
-            } as any);
-          }, initialDelay);
-        });
+        return endpointMock();
       } else {
         return originalFetch(fetchedUrl, ...args);
       }
     });
+}
+
+export type MockStreamedEndpointParams =
+  | {
+      textChunks: string[] | undefined;
+      stream?: undefined;
+      initialDelay?: number;
+    }
+  | {
+      textChunks?: undefined;
+      stream: ReadableStream<any>;
+      initialDelay?: number;
+    };
+
+export function mockStreamedEndpoint(
+  url: string,
+  { textChunks, stream, initialDelay = 0 }: MockStreamedEndpointParams,
+) {
+  return mockEndpoint(url, async () => {
+    await delay(initialDelay);
+    return {
+      status: 202,
+      ok: true,
+      body:
+        stream ||
+        (textChunks && createMockReadableStream(textChunks)) ||
+        undefined,
+    } as any;
+  });
 }

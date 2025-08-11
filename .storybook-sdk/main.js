@@ -1,10 +1,8 @@
 const webpack = require("webpack");
 const MiniCssExtractPlugin = require("mini-css-extract-plugin");
-const getAppConfig = require("../webpack.embedding-sdk.config");
+const appConfig = require("../rspack.embedding-sdk-bundle.config");
 const fs = require("fs");
 const path = require("path");
-
-const appConfig = getAppConfig();
 
 const {
   isEmbeddingSdkPackageInstalled,
@@ -39,7 +37,7 @@ module.exports = {
       }),
       new webpack.EnvironmentPlugin({
         EMBEDDING_SDK_VERSION,
-        IS_EMBEDDING_SDK: true,
+        IS_EMBEDDING_SDK: "true",
       }),
     ],
     module: {

@@ -1,15 +1,15 @@
 import { useState } from "react";
 import { t } from "ttag";
 
-import { InteractiveAdHocQuestion } from "embedding-sdk/components/private/InteractiveAdHocQuestion";
-import { InteractiveQuestionDefaultView } from "embedding-sdk/components/private/InteractiveQuestionDefaultView";
 import {
   SdkLoader,
   withPublicComponentWrapper,
 } from "embedding-sdk/components/private/PublicComponentWrapper";
+import { SdkAdHocQuestion } from "embedding-sdk/components/private/SdkAdHocQuestion";
+import { SdkQuestionDefaultView } from "embedding-sdk/components/private/SdkQuestionDefaultView";
 import { useLocale } from "metabase/common/hooks/use-locale";
 import { Flex, Icon, Paper, Stack, Text } from "metabase/ui";
-import { getAgentOfflineError } from "metabase-enterprise/metabot/constants";
+import { METABOT_ERR_MSG } from "metabase-enterprise/metabot/constants";
 
 import { MetabotChatEmbedding } from "./MetabotChatEmbedding";
 import { QuestionDetails } from "./QuestionDetails";
@@ -34,13 +34,12 @@ const MetabotQuestionInner = () => {
         <Message key={index} message={message} />
       ))}
       {redirectUrl && (
-        <InteractiveAdHocQuestion
+        <SdkAdHocQuestion
           questionPath={redirectUrl}
           title={false}
-          onNavigateBack={() => {}}
           isSaveEnabled={false}
         >
-          <InteractiveQuestionDefaultView
+          <SdkQuestionDefaultView
             withChartTypeSelector
             title={
               <Stack gap="sm" mb="1rem">
@@ -49,7 +48,7 @@ const MetabotQuestionInner = () => {
               </Stack>
             }
           />
-        </InteractiveAdHocQuestion>
+        </SdkAdHocQuestion>
       )}
       <Disclaimer />
     </Flex>
@@ -60,7 +59,7 @@ interface MessageProps {
   message: string;
 }
 function Message({ message }: MessageProps) {
-  const isErrorMessage = message === getAgentOfflineError();
+  const isErrorMessage = message === METABOT_ERR_MSG.agentOffline;
   if (isErrorMessage) {
     return (
       <Paper shadow="sm" p="lg" w="100%" maw="41.5rem" radius="lg" ta="center">

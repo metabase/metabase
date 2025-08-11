@@ -3,7 +3,6 @@ import styled from "@emotion/styled";
 
 import BaseTabList from "metabase/common/components/TabList";
 import { alpha } from "metabase/lib/colors";
-import { space } from "metabase/styled-components/theme";
 
 export const TabList = styled(BaseTabList)`
   width: 100%;
@@ -29,9 +28,9 @@ interface ScrollButtonProps {
 export const ScrollButton = styled.button<ScrollButtonProps>`
   position: absolute;
   cursor: pointer;
-  height: 100%;
+  height: calc(100% - 2px);
+  top: 0;
   width: 3rem;
-  padding-bottom: ${space(2)};
   text-align: ${(props) => props.direction};
   color: var(--mb-color-text-light);
 

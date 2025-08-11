@@ -1,44 +1,27 @@
 (ns metabase.query-processor.middleware.annotate
   "Middleware for annotating (adding type information to) the results of a query, under the `:cols` column."
   (:require
-   [medley.core :as m]
    [metabase.analyze.core :as analyze]
    [metabase.driver.common :as driver.common]
+   [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.lib.core :as lib]
    [metabase.lib.metadata.result-metadata :as lib.metadata.result-metadata]
    [metabase.lib.schema :as lib.schema]
-   [metabase.lib.util :as lib.util]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.query-processor.debug :as qp.debug]
    [metabase.query-processor.middleware.annotate.legacy-helper-fns]
    [metabase.query-processor.reducible :as qp.reducible]
    [metabase.query-processor.schema :as qp.schema]
-   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.memoize :as u.memo]
    [potemkin :as p]))
 
 (comment metabase.query-processor.middleware.annotate.legacy-helper-fns/keep-me)
 
 (mr/def ::col
   [:map
-   [:source    {:optional true} ::lib.metadata.result-metadata/legacy-source]
-   [:field_ref {:optional true} ::lib.metadata.result-metadata/super-broken-legacy-field-ref]])
-
-(def ^:private ^{:arglists '([k])} key->qp-results-key
-  "Convert unnamespaced keys to snake case for traditional reasons; `:lib/` keys and the like can stay in kebab case
-  because you can't consume them in JS without using bracket notation anyway (and you probably shouldn't be doing it
-  in the first place) and it's a waste of CPU cycles to convert them back and forth between snake case and kebab case
-  anyway."
-  (u.memo/fast-memo
-   (fn [k]
-     (if (qualified-keyword? k)
-       k
-       (u/->snake_case_en k)))))
-
-(defn- update-result-col-key-casing [col]
-  (as-> col col
-    (update-keys col key->qp-results-key)
-    (m/update-existing col :binning_info update-keys key->qp-results-key)))
+   [:source    {:optional true} ::lib.schema.metadata/column.legacy-source]
+   [:field_ref {:optional true} ::mbql.s/Reference]])
 
 (mr/def ::qp-results-cased-col
   "Map where all simple keywords are snake_case, but lib keywords can stay in kebab-case."
@@ -48,7 +31,7 @@
     {:error/message "map with QP results casing rules for keys"}
     (fn [m]
       (every? (fn [k]
-                (= k (key->qp-results-key k)))
+                (= k (lib/lib-metadata-column-key->legacy-metadata-column-key k)))
               (keys m)))]])
 
 (mr/def ::cols
@@ -70,10 +53,7 @@
 
   ([query         :- ::lib.schema/query
     initial-cols  :- ::cols]
-   (for [col (lib.metadata.result-metadata/returned-columns query initial-cols)]
-     (-> col
-         (dissoc :lib/type)
-         update-result-col-key-casing))))
+   (mapv lib/lib-metadata-column->legacy-metadata-column (lib.metadata.result-metadata/returned-columns query initial-cols))))
 
 (mu/defn- add-column-info-no-type-inference :- ::qp.schema/rf
   [query            :- ::lib.schema/query
@@ -135,7 +115,7 @@
 (mu/defn- needs-type-inference?
   [query                                       :- ::lib.schema/query
    {initial-cols :cols, :as _initial-metadata} :- ::metadata]
-  (and (= (:lib/type (lib.util/query-stage query 0)) :mbql.stage/native)
+  (and (= (:lib/type (lib/query-stage query 0)) :mbql.stage/native)
        (or (empty? initial-cols)
            (every? (fn [col]
                      (let [base-type ((some-fn :base-type :base_type) col)]

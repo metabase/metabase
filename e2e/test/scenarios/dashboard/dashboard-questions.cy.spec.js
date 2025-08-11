@@ -857,11 +857,13 @@ describe("Dashboard > Dashboard Questions", () => {
       H.sidebar().findByText("Average Order Total by Month Question").click();
 
       // overlay the quantity series in the purple dashboard
-      H.findDashCardAction(H.getDashboardCard(0), "Edit visualization").click();
+      H.showDashcardVisualizerModal(0, {
+        isVisualizerCard: false,
+      });
 
       H.modal().within(() => {
         H.switchToAddMoreData();
-        H.addDataset("Average Quantity by Month Question");
+        H.selectDataset("Average Quantity by Month Question");
         cy.button("Save").click();
       });
 

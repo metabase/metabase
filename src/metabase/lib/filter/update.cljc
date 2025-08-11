@@ -39,7 +39,8 @@
 (defn- contains-ref-for-column? [expr column]
   (letfn [(ref-for-column? [expr]
             (is-ref-for-column? expr column))]
-    (lib.util.match/match-one expr ref-for-column?)))
+    (lib.util.match/match-lite-recursive expr
+      (x :guard ref-for-column?) true)))
 
 (mu/defn- remove-existing-filters-against-column* :- ::lib.schema/query
   [query        :- ::lib.schema/query

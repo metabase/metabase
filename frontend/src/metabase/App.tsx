@@ -25,6 +25,7 @@ import {
   getErrorPage,
   getIsAdminApp,
   getIsAppBarVisible,
+  getIsEmbeddingSetup,
   getIsNavBarEnabled,
 } from "metabase/selectors/app";
 import StatusListing from "metabase/status/components/StatusListing";
@@ -55,6 +56,7 @@ const getErrorComponent = ({ status, data, context }: AppErrorDescriptor) => {
 interface AppStateProps {
   errorPage: AppErrorDescriptor | null;
   isAdminApp: boolean;
+  isEmbeddingSetup: boolean;
   bannerMessageDescriptor?: string;
   isAppBarVisible: boolean;
   isNavBarEnabled: boolean;
@@ -77,6 +79,7 @@ const mapStateToProps = (
 ): AppStateProps => ({
   errorPage: getErrorPage(state),
   isAdminApp: getIsAdminApp(state, props),
+  isEmbeddingSetup: getIsEmbeddingSetup(state, props),
   isAppBarVisible: getIsAppBarVisible(state, props),
   isNavBarEnabled: getIsNavBarEnabled(state, props),
 });
@@ -88,6 +91,7 @@ const mapDispatchToProps: AppDispatchProps = {
 function App({
   errorPage,
   isAdminApp,
+  isEmbeddingSetup,
   isAppBarVisible,
   isNavBarEnabled,
   children,
@@ -100,13 +104,16 @@ function App({
     initializeIframeResizer();
   }, []);
 
+  const isAppBannerVisible = !isEmbeddingSetup;
+  const isStatusListingVisible = !isEmbeddingSetup;
+
   return (
     <ErrorBoundary onError={onError}>
       <ScrollToTop>
         <KBarProvider>
           <KeyboardTriggeredErrorModal />
           <AppContainer className={CS.spread}>
-            <AppBanner />
+            {isAppBannerVisible && <AppBanner />}
             {isAppBarVisible && <AppBar />}
             <AppContentContainer isAdminApp={isAdminApp}>
               {isNavBarEnabled && <Navbar />}
@@ -118,7 +125,7 @@ function App({
                 </ContentViewportContext.Provider>
               </AppContent>
               <UndoListing />
-              <StatusListing />
+              {isStatusListingVisible && <StatusListing />}
               <NewModals />
               <PLUGIN_METABOT.Metabot hide={isAdminApp} />
             </AppContentContainer>

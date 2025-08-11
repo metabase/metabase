@@ -9,10 +9,12 @@ import {
   StaticQuestion,
   defineMetabaseAuthConfig,
 } from "embedding-sdk";
+import { SdkQuestion } from "embedding-sdk/components/public/SdkQuestion";
 import { EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG } from "metabase/embedding-sdk/config";
 import { PLUGIN_EMBEDDING_IFRAME_SDK } from "metabase/plugins";
 import { Box } from "metabase/ui";
 
+import { useParamRerenderKey } from "../hooks/use-param-rerender-key";
 import { useSdkIframeEmbedEventBus } from "../hooks/use-sdk-iframe-embed-event-bus";
 import type { SdkIframeEmbedSettings } from "../types/embed";
 
@@ -78,22 +80,28 @@ const SdkIframeEmbedView = ({
 }: {
   settings: SdkIframeEmbedSettings;
 }): ReactNode => {
+  const rerenderKey = useParamRerenderKey(settings);
+
   return match(settings)
-    .with({ template: "exploration" }, (settings) => (
-      <InteractiveQuestion
-        questionId="new"
-        height="100%"
-        isSaveEnabled={settings.isSaveEnabled ?? false}
-        targetCollection={settings.targetCollection}
-        entityTypes={settings.entityTypes}
-      />
-    ))
+    .with(
+      P.union({ template: "exploration" }, { questionId: "new" }),
+      (settings) => (
+        <InteractiveQuestion
+          questionId="new"
+          height="100%"
+          isSaveEnabled={settings.isSaveEnabled ?? false}
+          targetCollection={settings.targetCollection}
+          entityTypes={settings.entityTypes}
+          key={rerenderKey}
+        />
+      ),
+    )
     .with({ template: "curate-content" }, (_settings) => null)
     .with({ template: "view-content" }, (_settings) => null)
     .with(
       {
         dashboardId: P.nonNullable,
-        isDrillThroughEnabled: false,
+        drills: false,
       },
       (settings) => (
         <StaticDashboard
@@ -102,26 +110,14 @@ const SdkIframeEmbedView = ({
           withDownloads={settings.withDownloads}
           initialParameters={settings.initialParameters}
           hiddenParameters={settings.hiddenParameters}
-        />
-      ),
-    )
-    .with(
-      {
-        questionId: P.nonNullable,
-        isDrillThroughEnabled: false,
-      },
-      (settings) => (
-        <StaticQuestion
-          questionId={settings.questionId}
-          height="100%"
-          initialSqlParameters={settings.initialSqlParameters}
+          key={rerenderKey}
         />
       ),
     )
     .with(
       {
         dashboardId: P.nonNullable,
-        isDrillThroughEnabled: P.optional(true),
+        drills: P.optional(true),
       },
       (settings) => (
         <InteractiveDashboard
@@ -132,24 +128,38 @@ const SdkIframeEmbedView = ({
           hiddenParameters={settings.hiddenParameters}
           drillThroughQuestionHeight="100%"
           drillThroughQuestionProps={{ isSaveEnabled: false }}
+          key={rerenderKey}
         />
       ),
     )
     .with(
       {
         questionId: P.nonNullable,
-        isDrillThroughEnabled: P.optional(true),
       },
-      (settings) => (
-        <InteractiveQuestion
-          questionId={settings.questionId}
-          withDownloads={settings.withDownloads}
-          height="100%"
-          initialSqlParameters={settings.initialSqlParameters}
-          title={settings.withTitle}
-          isSaveEnabled={false}
-        />
-      ),
+      (settings) => {
+        const commonProps = {
+          questionId: settings.questionId,
+          withDownloads: settings.withDownloads,
+          height: "100%",
+          initialSqlParameters: settings.initialSqlParameters,
+          title: settings.withTitle ?? true, // defaulting title to true even if in the sdk it defaults to false for static
+        };
+
+        if (settings.drills === false) {
+          // note: this disable drills but also removes the top toolbar
+          return <StaticQuestion {...commonProps} key={rerenderKey} />;
+        }
+
+        return (
+          <SdkQuestion
+            {...commonProps}
+            isSaveEnabled={settings.isSaveEnabled}
+            key={rerenderKey}
+            targetCollection={settings.targetCollection}
+            entityTypes={settings.entityTypes}
+          />
+        );
+      },
     )
     .otherwise(() => null);
 };

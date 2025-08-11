@@ -81,6 +81,9 @@ export function PeriodsAgoMenuOption({
 
   const handleInputEnter = useCallback(
     (e: KeyboardEvent<HTMLInputElement>) => {
+      if (e.nativeEvent.isComposing) {
+        return;
+      }
       if (e.key === "Enter") {
         onChange({ type, value }, true);
       }

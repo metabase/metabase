@@ -57,7 +57,7 @@
                               :set-timezone                    true
                               :standard-deviation-aggregations true
                               :metadata/key-constraints        false
-                              :database-routing                false}]
+                              :database-routing                true}]
   (defmethod driver/database-supports? [:presto-jdbc feature] [_driver _feature _db] supported?))
 
 ;;; Presto API helpers
@@ -140,6 +140,11 @@
 (defmethod sql.qp/cast-temporal-byte [:presto-jdbc :Coercion/YYYYMMDDHHMMSSBytes->Temporal]
   [driver _coercion-strategy expr]
   (sql.qp/cast-temporal-string driver :Coercion/YYYYMMDDHHMMSSString->Temporal
+                               [:from_utf8 expr]))
+
+(defmethod sql.qp/cast-temporal-byte [:presto-jdbc :Coercion/ISO8601Bytes->Temporal]
+  [driver _coercion-strategy expr]
+  (sql.qp/cast-temporal-string driver :Coercion/ISO8601->DateTime
                                [:from_utf8 expr]))
 
 (defmethod sql.qp/->honeysql [:presto-jdbc ::sql.qp/cast-to-text]
