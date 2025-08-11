@@ -39,7 +39,7 @@ export function TagMultiSelect({ tagIds, onChange }: TagMultiSelectProps) {
   const [searchValue, setSearchValue] = useState("");
   const [modalType, setModalType] = useState<TagModalType>();
   const [selectedTagId, setSelectedTagId] = useState<TransformTagId>();
-  const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
+  const { sendErrorToast } = useMetadataToasts();
 
   const handleChange = async (value: string[]) => {
     if (value.includes(NEW_VALUE)) {
@@ -61,12 +61,11 @@ export function TagMultiSelect({ tagIds, onChange }: TagMultiSelectProps) {
 
   const handleUpdate = () => {
     handleModalClose();
-    sendSuccessToast(t`Tag renamed`);
   };
 
   const handleDelete = () => {
     handleModalClose();
-    sendSuccessToast(t`Tag deleted`);
+    onChange(tagIds.filter((tagId) => tagId !== selectedTagId));
   };
 
   const handleUpdateClick = (tag: TransformTag) => {

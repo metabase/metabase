@@ -73,6 +73,21 @@ export const transformApi = EnterpriseApi.injectEndpoints({
       }),
       invalidatesTags: (_, error, { id }) =>
         invalidateTags(error, [idTag("transform", id)]),
+      onQueryStarted: async (
+        { id, ...patch },
+        { dispatch, queryFulfilled },
+      ) => {
+        const patchResult = dispatch(
+          transformApi.util.updateQueryData("getTransform", id, (draft) => {
+            Object.assign(draft, patch);
+          }),
+        );
+        try {
+          await queryFulfilled;
+        } catch {
+          patchResult.undo();
+        }
+      },
     }),
     deleteTransform: builder.mutation<void, TransformId>({
       query: (id) => ({
