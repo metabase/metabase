@@ -10,6 +10,8 @@ const MAX_RETRIES = 10;
 
 // eslint-disable-next-line no-literal-metabase-strings -- Not a user facing string
 const ANTI_CSRF_HEADER = "X-Metabase-Anti-CSRF-Token";
+// eslint-disable-next-line no-literal-metabase-strings -- Not a user facing string
+const METABASE_VERSION_HEADER = "X-Metabase-Version";
 
 let ANTI_CSRF_TOKEN = null;
 
@@ -35,6 +37,7 @@ export class Api extends EventEmitter {
   sessionToken;
 
   onBeforeRequest;
+  onResponseError;
 
   /**
    * @type {string|{name: string, version: string}}
@@ -54,9 +57,59 @@ export class Api extends EventEmitter {
     this.PUT = this._makeMethod("PUT", { hasBody: true });
   }
 
-  _makeMethod(method, creatorOptions = {}) {
+  getClientHeaders() {
     const self = this;
+    const headers = {};
 
+    if (this.apiKey) {
+      headers["X-Api-Key"] = self.apiKey;
+    }
+
+    if (this.sessionToken) {
+      // eslint-disable-next-line no-literal-metabase-strings -- Not a user facing string
+      headers["X-Metabase-Session"] = self.sessionToken;
+    }
+
+    // For simple embedding, we use "embedding-simple" instead of "embedding-iframe"
+    const isSimpleEmbedHeader =
+      typeof self.requestClient === "object" &&
+      self.requestClient.name === "embedding-simple";
+
+    if (isWithinIframe() && !isSimpleEmbedHeader) {
+      // eslint-disable-next-line no-literal-metabase-strings -- Not a user facing string
+      headers["X-Metabase-Embedded"] = "true";
+      // eslint-disable-next-line no-literal-metabase-strings -- Not a user facing string
+      headers["X-Metabase-Client"] = "embedding-iframe";
+    }
+
+    if (self.requestClient) {
+      if (typeof self.requestClient === "object") {
+        // eslint-disable-next-line no-literal-metabase-strings -- Not a user facing string
+        headers["X-Metabase-Client"] = self.requestClient.name;
+        // eslint-disable-next-line no-literal-metabase-strings -- Not a user facing string
+        headers["X-Metabase-Client-Version"] = self.requestClient.version;
+      } else {
+        // eslint-disable-next-line no-literal-metabase-strings -- Not a user facing string
+        headers["X-Metabase-Client"] = self.requestClient;
+      }
+    }
+
+    if (ANTI_CSRF_TOKEN) {
+      headers[ANTI_CSRF_HEADER] = ANTI_CSRF_TOKEN;
+    }
+
+    // eslint-disable-next-line no-literal-metabase-strings -- Not a user facing string
+    if (DEFAULT_OPTIONS.headers["X-Metabase-Locale"]) {
+      // eslint-disable-next-line no-literal-metabase-strings -- Not a user facing string
+      headers["X-Metabase-Locale"] =
+        // eslint-disable-next-line no-literal-metabase-strings -- Not a user facing string
+        DEFAULT_OPTIONS.headers["X-Metabase-Locale"];
+    }
+
+    return headers;
+  }
+
+  _makeMethod(method, creatorOptions = {}) {
     return (urlTemplate, methodOptions = {}) => {
       if (typeof methodOptions === "function") {
         methodOptions = { transformResponse: methodOptions };
@@ -98,46 +151,6 @@ export class Api extends EventEmitter {
           }
         }
 
-        const headers = options.json
-          ? { Accept: "application/json", "Content-Type": "application/json" }
-          : {};
-
-        if (options.formData && options.fetch) {
-          delete headers["Content-Type"];
-        }
-
-        if (this.apiKey) {
-          headers["X-Api-Key"] = this.apiKey;
-        }
-
-        if (this.sessionToken) {
-          // eslint-disable-next-line no-literal-metabase-strings -- Not a user facing string
-          headers["X-Metabase-Session"] = this.sessionToken;
-        }
-
-        if (isWithinIframe()) {
-          // eslint-disable-next-line no-literal-metabase-strings -- Not a user facing string
-          headers["X-Metabase-Embedded"] = "true";
-          // eslint-disable-next-line no-literal-metabase-strings -- Not a user facing string
-          headers["X-Metabase-Client"] = "embedding-iframe";
-        }
-
-        if (self.requestClient) {
-          if (typeof self.requestClient === "object") {
-            // eslint-disable-next-line no-literal-metabase-strings -- Not a user facing string
-            headers["X-Metabase-Client"] = self.requestClient.name;
-            // eslint-disable-next-line no-literal-metabase-strings -- Not a user facing string
-            headers["X-Metabase-Client-Version"] = self.requestClient.version;
-          } else {
-            // eslint-disable-next-line no-literal-metabase-strings -- Not a user facing string
-            headers["X-Metabase-Client"] = self.requestClient;
-          }
-        }
-
-        if (ANTI_CSRF_TOKEN) {
-          headers[ANTI_CSRF_HEADER] = ANTI_CSRF_TOKEN;
-        }
-
         let body;
         if (options.hasBody) {
           body = options.formData
@@ -154,7 +167,17 @@ export class Api extends EventEmitter {
           }
         }
 
-        Object.assign(headers, options.headers);
+        const headers = {
+          ...this.getClientHeaders(),
+          ...(options.json
+            ? { Accept: "application/json", "Content-Type": "application/json" }
+            : {}),
+          ...options.headers,
+        };
+
+        if (options.formData && options.fetch) {
+          delete headers["Content-Type"];
+        }
 
         if (options.retry) {
           return this._makeRequestWithRetries(
@@ -225,6 +248,10 @@ export class Api extends EventEmitter {
         if (xhr.readyState === XMLHttpRequest.DONE) {
           // getResponseHeader() is case-insensitive
           const antiCsrfToken = xhr.getResponseHeader(ANTI_CSRF_HEADER);
+          const metabaseVersion = xhr.getResponseHeader(
+            METABASE_VERSION_HEADER,
+          );
+
           if (antiCsrfToken) {
             ANTI_CSRF_TOKEN = antiCsrfToken;
           }
@@ -239,12 +266,17 @@ export class Api extends EventEmitter {
           if (status === 202 && body && body._status > 0) {
             status = body._status;
           }
+
           if (status >= 200 && status <= 299) {
             if (options.transformResponse) {
               body = options.transformResponse({ body, data });
             }
             resolve(body);
           } else {
+            if (this.onResponseError) {
+              this.onResponseError({ body, status, metabaseVersion });
+            }
+
             reject({
               status: status,
               data: body,
@@ -303,6 +335,8 @@ export class Api extends EventEmitter {
           }
 
           const token = response.headers.get(ANTI_CSRF_HEADER);
+          const metabaseVersion = response.headers.get(METABASE_VERSION_HEADER);
+
           if (token) {
             ANTI_CSRF_TOKEN = token;
           }
@@ -321,6 +355,10 @@ export class Api extends EventEmitter {
             }
             return body;
           } else {
+            if (this.onResponseError) {
+              this.onResponseError({ body, status, metabaseVersion });
+            }
+
             throw { status: status, data: body };
           }
         });

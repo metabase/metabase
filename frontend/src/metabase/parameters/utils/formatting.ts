@@ -2,6 +2,7 @@ import { msgid, ngettext } from "ttag";
 
 import { formatValue } from "metabase/lib/formatting";
 import * as Lib from "metabase-lib";
+import Field from "metabase-lib/v1/metadata/Field";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import {
   getFields,
@@ -57,7 +58,7 @@ export function formatParameterValue(
   if (isFieldFilterParameter(parameter)) {
     // skip formatting field filter parameters mapped to native query variables
     if (parameter.hasVariableTemplateTagTarget) {
-      return value;
+      return String(value);
     }
 
     // format using the parameter's first targeted field
@@ -65,9 +66,9 @@ export function formatParameterValue(
       const fields = getFields(parameter);
       const [firstField] = fields;
       // when a parameter targets multiple fields we won't know
-      // which parameter the value is associated with, meaning we
-      // are unable to remap the value to the correct field
-      const remap = fields.length === 1;
+      // which parameter the value is associated with, so we take
+      // the first field for remapping
+      const remap = Field.remappedField(fields) != null;
       return formatValue(value as string, {
         column: firstField,
         maximumFractionDigits: 20,

@@ -39,11 +39,7 @@ You can use custom expressions to combine multiple metrics, or perform calculati
 
 To create a metric, bring up the command palette with cmd/ctrl + k. That’s cmd + k for Macs, or ctrl + k for Windows PCs. Search for New metric.
 
-You can also create a metric by first creating a question, then converting it to a metric:
-
-1. Click on **+ New** and select **Question**
-2. Build your query using the query builder
-3. Once you've created your question, you can convert it to a metric by clicking the three dot menu (**...**) and selecting **Turn into a metric**
+You can also create a new metric by going to **Browse > Metrics** in the navigation side bar and clicking on **+**.
 
 Select your starting data. You can start from a model, metric, table, or saved question.
 

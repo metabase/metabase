@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
-import { SetByEnvVarWrapper } from "metabase/admin/settings/components/SettingsSetting";
+import { SetByEnvVarWrapper } from "metabase/admin/settings/components/widgets/AdminSettingInput";
 import { useAdminSetting } from "metabase/api/utils";
 import { Box, Button, Group, Icon, Menu, Stack, Text } from "metabase/ui";
 import type { SessionCookieSameSite } from "metabase-types/api";
@@ -56,7 +56,10 @@ export function SameSiteSelectWidget() {
   };
 
   return (
-    <SetByEnvVarWrapper setting={settingDetails}>
+    <SetByEnvVarWrapper
+      settingDetails={settingDetails}
+      settingKey="session-cookie-samesite"
+    >
       <Stack gap="md">
         <SettingHeader
           id="session-cookie-samesite"

@@ -543,10 +543,13 @@
     :development-mode
     :embedding
     :embedding-sdk
-    :embedding-iframe-sdk
+    :embedding-simple
     :enhancements
+    :etl-connections
+    :etl-connections-pg
     :llm-autodescription
     :query-reference-validation
+    :cloud-custom-smtp
     :session-timeout-config})
 
 (deftest every-feature-is-accounted-for-test

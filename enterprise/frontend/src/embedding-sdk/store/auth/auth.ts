@@ -5,15 +5,13 @@ import {
   samlTokenStorage,
   validateSessionToken,
 } from "embedding/auth-common";
-import type {
-  MetabaseAuthConfig,
-  MetabaseEmbeddingSessionToken,
-} from "embedding-sdk";
 import { getEmbeddingSdkVersion } from "embedding-sdk/config";
 import * as MetabaseError from "embedding-sdk/errors";
 import { getIsLocalhost } from "embedding-sdk/lib/is-localhost";
 import { isSdkVersionCompatibleWithMetabaseVersion } from "embedding-sdk/lib/version-utils";
 import type { SdkStoreState } from "embedding-sdk/store/types";
+import type { MetabaseAuthConfig } from "embedding-sdk/types/auth-config";
+import type { MetabaseEmbeddingSessionToken } from "embedding-sdk/types/refresh-token";
 import { EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG } from "metabase/embedding-sdk/config";
 import api from "metabase/lib/api";
 import { createAsyncThunk } from "metabase/lib/redux";
@@ -42,6 +40,8 @@ export const initAuth = createAsyncThunk(
     if (isValidApiKeyConfig) {
       // API key setup
       api.apiKey = apiKey;
+    } else if (EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG.useExistingUserSession) {
+      // Use existing user session. Do nothing.
     } else if (isValidInstanceUrl) {
       // SSO setup
       api.onBeforeRequest = async () => {
@@ -115,7 +115,7 @@ export const refreshTokenAsync = createAsyncThunk(
   ): Promise<MetabaseEmbeddingSessionToken | null> => {
     const state = getState() as SdkStoreState;
 
-    if (EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG.isSdkIframeEmbedAuth) {
+    if (EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG.isSimpleEmbedding) {
       return requestSessionTokenFromEmbedJs();
     }
 

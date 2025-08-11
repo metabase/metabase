@@ -1,4 +1,4 @@
-import ExternalLink from "metabase/core/components/ExternalLink";
+import ExternalLink from "metabase/common/components/ExternalLink";
 import { getDataFromClicked } from "metabase-lib/v1/parameters/utils/click-behavior";
 
 import { renderLinkTextForClick } from "./link";

@@ -1,4 +1,5 @@
 import {
+  type Context,
   type PropsWithChildren,
   createContext,
   useEffect,
@@ -16,7 +17,10 @@ interface LocaleProviderProps {
 }
 
 /** context for the locale used in the sdk and in public/static from the #locale parameter  */
-export const FrontendLocaleContext = createContext<string | null>(null);
+export const FrontendLocaleContext = createContext({}) as unknown as Context<{
+  locale: string | null;
+  isLocaleLoading: boolean;
+}>;
 
 export const LocaleProvider = ({
   children,
@@ -54,7 +58,12 @@ export const LocaleProvider = ({
   }
 
   return (
-    <FrontendLocaleContext.Provider value={contextLocale}>
+    <FrontendLocaleContext.Provider
+      value={{
+        locale: contextLocale,
+        isLocaleLoading,
+      }}
+    >
       {/* The `DatesProvider` wrapping the app is not re-rendered when the locale changes
       so we need to wrap the children in another `DatesProvider` to ensure the locale is updated */}
       <DatesProvider>

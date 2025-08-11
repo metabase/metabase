@@ -2,7 +2,7 @@ import cx from "classnames";
 import type { MouseEventHandler, ReactNode } from "react";
 import { t } from "ttag";
 
-import Link from "metabase/core/components/Link";
+import Link from "metabase/common/components/Link";
 import { Box, Center, Group, Paper, Stack, Text, Title } from "metabase/ui";
 
 import S from "./SharingPaneButton.module.css";
@@ -45,8 +45,8 @@ export const SharingPaneButton = ({
       <Stack pb={isDisabled ? "md" : undefined}>
         <Center mb={32}>{illustration}</Center>
         <Group align="center" gap="sm">
-          <Title order={2}>{title}</Title>
           {badge}
+          <Title order={2}>{title}</Title>
         </Group>
         {children}
       </Stack>

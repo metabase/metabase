@@ -1,11 +1,12 @@
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
-import IconButtonWrapper from "metabase/components/IconButtonWrapper";
-import SelectList from "metabase/components/SelectList";
-import type { IconName } from "metabase/ui";
+import IconButtonWrapper from "metabase/common/components/IconButtonWrapper";
+import SelectList from "metabase/common/components/SelectList";
 import { Icon, Popover } from "metabase/ui";
 import * as Lib from "metabase-lib";
+
+import { getJoinStrategyIcon } from "../utils";
 
 import S from "./JoinStrategyPicker.module.css";
 
@@ -46,7 +47,7 @@ export function JoinStrategyPicker({
         >
           <Icon
             className={S.JoinStrategyIcon}
-            name={JOIN_ICON[strategyInfo.shortName]}
+            name={getJoinStrategyIcon(strategyInfo)}
             tooltip={t`Change join type`}
             size={32}
           />
@@ -92,8 +93,8 @@ function JoinStrategyDropdown({
         <SelectList.Item
           id={index}
           key={index}
-          name={JOIN_NAME[item.strategyInfo.shortName]}
-          icon={{ name: JOIN_ICON[item.strategyInfo.shortName], size: 24 }}
+          name={item.strategyInfo.displayName}
+          icon={{ name: getJoinStrategyIcon(item.strategyInfo), size: 24 }}
           isSelected={strategyInfo.shortName === item.strategyInfo.shortName}
           onSelect={() => onChange(item.strategy)}
         />
@@ -101,25 +102,3 @@ function JoinStrategyDropdown({
     </SelectList>
   );
 }
-
-const JOIN_NAME: Record<string, string> = {
-  get "left-join"() {
-    return t`Left outer join`;
-  },
-  get "right-join"() {
-    return t`Right outer join`;
-  },
-  get "inner-join"() {
-    return t`Inner join`;
-  },
-  get "full-join"() {
-    return t`Full outer join`;
-  },
-};
-
-const JOIN_ICON: Record<string, IconName> = {
-  "left-join": "join_left_outer",
-  "right-join": "join_right_outer",
-  "inner-join": "join_inner",
-  "full-join": "join_full_outer",
-};

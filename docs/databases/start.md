@@ -1,5 +1,7 @@
 ---
 title: Databases overview
+redirect_from:
+  - /docs/latest/databases
 ---
 
 # Databases overview

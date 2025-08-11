@@ -49,6 +49,8 @@
     :type/SerializedJSON
     :type/DateTimeWithZoneOffset
     :type/Temporal
+    :type/HasDate
+    :type/HasTime
     :type/CreationTimestamp
     :type/Large
     :type/JoinTime
@@ -68,7 +70,7 @@
 (deftest ^:parallel base-type-should-have-field-values-test
   (doseq [base-type (conj (descendants :type/*) :type/*)]
     (let [expected (not (contains? base-types-without-field-values base-type))]
-      (testing (str base-type "should " (when-not expected "not ") "have field values")
+      (testing (str base-type " should " (when-not expected " not ") "have field values")
         (is (= expected
                (#'field-values/field-should-have-field-values? {:has_field_values :list
                                                                 :visibility_type  :normal

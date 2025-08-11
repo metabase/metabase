@@ -2,6 +2,7 @@
   (:require
    [clojure.walk :as walk]
    [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.query-processor.interface :as qp.i]
@@ -26,7 +27,7 @@
                   (every? #(lib.util.match/match-one % [:field (_ :guard string?) _])
                           fields))))))
 
-(mu/defn- native-source-query->metadata :- [:maybe [:sequential mbql.s/SourceQueryMetadata]]
+(mu/defn- native-source-query->metadata :- [:maybe [:sequential ::mbql.s/legacy-column-metadata]]
   "Given a `source-query`, return the source metadata that should be added at the parent level (i.e., at the same
   level where this `source-query` was present.) This metadata is used by other middleware to determine what Fields to
   expect from the source query."
@@ -43,7 +44,7 @@
                   {:source-query source-query}))
       nil)))
 
-(mu/defn mbql-source-query->metadata :- [:maybe [:sequential mbql.s/SourceQueryMetadata]]
+(mu/defn mbql-source-query->metadata :- [:maybe [:sequential ::mbql.s/legacy-column-metadata]]
   "Preprocess a `source-query` so we can determine the result columns."
   [source-query :- mbql.s/MBQLQuery]
   (try
@@ -54,10 +55,7 @@
                    ;; don't add remapped columns to the source metadata for the source query, otherwise we're going
                    ;; to end up adding it again when the middleware runs at the top level
                    :query    (assoc-in source-query [:middleware :disable-remaps?] true)}))]
-      (for [col cols
-            :when (not (:remapped_from col))]
-        (select-keys col [:name :id :ident :table_id :display_name :base_type :effective_type :coercion_strategy
-                          :semantic_type :unit :fingerprint :settings :source_alias :field_ref :nfc_path :parent_id])))
+      (remove :remapped_from cols))
     (catch Throwable e
       (log/errorf e "Error determining expected columns for query: %s" (ex-message e))
       nil)))
@@ -65,15 +63,22 @@
 (mu/defn- add-source-metadata :- [:map
                                   [:source-metadata
                                    {:optional true}
-                                   [:maybe [:sequential mbql.s/SourceQueryMetadata]]]]
+                                   [:maybe [:sequential ::mbql.s/legacy-column-metadata]]]]
   [{{native-source-query? :native, :as source-query} :source-query, :as inner-query} :- :map]
   (let [metadata ((if native-source-query?
                     native-source-query->metadata
-                    mbql-source-query->metadata) source-query)]
+                    mbql-source-query->metadata) source-query)
+        metadata (when metadata
+                   (let [unique-name-fn (mbql.u/unique-name-generator)]
+                     (for [col  metadata
+                           :let [original-name ((some-fn :lib/original-name :name) col)]]
+                       (assoc col
+                              :lib/original-name     original-name
+                              :lib/deduplicated-name (unique-name-fn original-name)))))]
     (cond-> inner-query
       (seq metadata) (assoc :source-metadata metadata))))
 
-(defn- legacy-source-metadata?
+(defn- legacy-source-metadata-without-field-ref?
   "Whether this source metadata is *legacy* source metadata from < 0.38.0. Legacy source metadata did not include
   `:field_ref` or `:id`, which made it hard to correctly construct queries with. For MBQL queries, we're better off
   ignoring legacy source metadata and using [[metabase.query-processor.preprocess/query->expected-cols]] to infer the
@@ -96,11 +101,14 @@
      source-query-has-source-metadata? :source-metadata
      :as                               source-query} :source-query
     :keys                                            [source-metadata]}]
-  (and source-query
-       (or (not source-metadata)
-           (legacy-source-metadata? source-metadata))
-       (or (not native-source-query?)
-           source-query-has-source-metadata?)))
+  (let [source-metadata source-metadata]
+    (and source-query
+         (let [valid-source-metadata? (and source-metadata
+                                           (not (legacy-source-metadata-without-field-ref? source-metadata)))]
+           (not valid-source-metadata?))
+         (or (not native-source-query?)
+             source-query-has-source-metadata?
+             (:qp/stage-is-from-source-card source-query)))))
 
 (defn- maybe-add-source-metadata [x]
   (if (and (map? x) (should-add-source-metadata? x))
@@ -110,7 +118,7 @@
 (defn- add-source-metadata-at-all-levels [inner-query]
   (walk/postwalk maybe-add-source-metadata inner-query))
 
-(defn add-source-metadata-for-source-queries
+(mu/defn add-source-metadata-for-source-queries :- ::mbql.s/Query
   "Middleware that attempts to recursively add `:source-metadata`, if not already present, to any maps with a
   `:source-query`.
 
@@ -118,7 +126,7 @@
   query; this is added automatically for source queries added via the `card__id` source table form, but for *explicit*
   source queries that do not specify this information, we can often infer it by looking at the shape of the source
   query."
-  [{query-type :type, :as query}]
+  [{query-type :type, :as query} :- ::mbql.s/Query]
   (if-not (= query-type :query)
     query
     (update query :query add-source-metadata-at-all-levels)))

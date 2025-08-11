@@ -3,8 +3,8 @@
   (:require
    [clojure.core.memoize :as memoize]
    [clojure.string :as str]
-   [metabase.config.core :as config]
    [metabase.driver :as driver]
+   [metabase.driver-api.core :as driver-api]
    [metabase.driver.clickhouse-introspection]
    [metabase.driver.clickhouse-nippy]
    [metabase.driver.clickhouse-qp]
@@ -16,8 +16,6 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql.util :as sql.u]
-   [metabase.lib.metadata :as lib.metadata]
-   [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.log :as log])
   (:import  [com.clickhouse.client.api.query QuerySettings]
@@ -51,12 +49,12 @@
                               :split-part                      true
                               :upload-with-auto-pk             false
                               :window-functions/offset         false
-                              :window-functions/cumulative     (not config/is-test?)
-                              :left-join                       (not config/is-test?)
+                              :window-functions/cumulative     (not driver-api/is-test?)
+                              :left-join                       (not driver-api/is-test?)
                               :describe-fks                    false
                               :actions                         false
-                              :uuid-type                       true
-                              :metadata/key-constraints        (not config/is-test?)}]
+                              :metadata/key-constraints        (not driver-api/is-test?)
+                              :database-routing                false}]
   (defmethod driver/database-supports? [:clickhouse feature] [_driver _feature _db] supported?))
 
 (def ^:private default-connection-details
@@ -82,7 +80,7 @@
          :user                           user
          :ssl                            (boolean ssl)
          :use_server_time_zone_for_dates true
-         :product_name                   (format "metabase/%s" (:tag config/mb-version-info))
+         :product_name                   (format "metabase/%s" (:tag driver-api/mb-version-info))
          :remember_last_set_roles        true
          :http_connection_provider       "HTTP_URL_CONNECTION"
          :jdbc_ignore_unsupported_values "true"
@@ -99,6 +97,16 @@
    db-or-id-or-spec
    options
    (fn [^java.sql.Connection conn]
+     (when-let [db (cond
+                     ;; id?
+                     (integer? db-or-id-or-spec)
+                     (driver-api/with-metadata-provider db-or-id-or-spec
+                       (driver-api/database (driver-api/metadata-provider)))
+                     ;; db?
+                     (u/id db-or-id-or-spec)     db-or-id-or-spec
+                     ;; otherwise it's a spec and we can't get the db
+                     :else nil)]
+       (sql-jdbc.execute/set-role-if-supported! driver conn db))
      (when-not (sql-jdbc.execute/recursive-connection?)
        (when session-timezone
          (let [^com.clickhouse.jdbc.ConnectionImpl clickhouse-conn (.unwrap conn com.clickhouse.jdbc.ConnectionImpl)
@@ -106,17 +114,7 @@
            (.setOption query-settings "session_timezone" session-timezone)
            (.setDefaultQuerySettings clickhouse-conn query-settings)))
        (sql-jdbc.execute/set-best-transaction-level! driver conn)
-       (sql-jdbc.execute/set-time-zone-if-supported! driver conn session-timezone)
-       (when-let [db (cond
-                       ;; id?
-                       (integer? db-or-id-or-spec)
-                       (qp.store/with-metadata-provider db-or-id-or-spec
-                         (lib.metadata/database (qp.store/metadata-provider)))
-                       ;; db?
-                       (u/id db-or-id-or-spec)     db-or-id-or-spec
-                       ;; otherwise it's a spec and we can't get the db
-                       :else nil)]
-         (sql-jdbc.execute/set-role-if-supported! driver conn db)))
+       (sql-jdbc.execute/set-time-zone-if-supported! driver conn session-timezone))
      (f conn))))
 
 (def ^:private ^{:arglists '([db-details])} cloud?
@@ -153,7 +151,7 @@
 
 (defmethod driver/can-connect? :clickhouse
   [driver details]
-  (if config/is-test?
+  (if driver-api/is-test?
     (try
       ;; Default SELECT 1 is not enough for Metabase test suite,
       ;; as it works slightly differently than expected there

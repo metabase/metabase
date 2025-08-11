@@ -11,7 +11,6 @@
    [metabase.driver :as driver]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
-   [metabase.lib.core :as lib]
    [metabase.queries.models.query :as query]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.cache :as cache]
@@ -25,7 +24,7 @@
    [metabase.request.core :as request]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
-   [metabase.test.fixtures :as fixtures]
+   [metabase.test.initialize :as initialize]
    [metabase.test.util :as tu]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -36,7 +35,11 @@
 
 (set! *warn-on-reflection* true)
 
-(use-fixtures :once (fixtures/initialize :db))
+#_{:clj-kondo/ignore [:metabase/validate-deftest]}
+(use-fixtures :once (fn [thunk]
+                      (initialize/initialize-if-needed! :db)
+                      (metabase.cache.core/enable-query-caching! true)
+                      (thunk)))
 
 (def ^:private ^:dynamic *save-chan*
   "Gets a message whenever results are saved to the test backend, or if the reducing function stops serializing results
@@ -116,7 +119,9 @@
 
 (def ^:private ^:dynamic ^Long *query-execution-delay-ms* 10)
 
-(def ^:private ^:dynamic *query-caching-min-ttl* 1)
+(def ^:private ^:dynamic *query-caching-min-ttl*
+  "Set this to zero to prevent flakes - we don't want a query to slip under the wire here."
+  0)
 
 (defn ^:private ttl-strategy []
   {:type             :ttl
@@ -342,7 +347,6 @@
             (is (true?
                  (boolean (#'cache/is-cacheable? query)))
                 "Query should be cacheable")
-
             (mt/with-clock #t "2020-02-19T04:44:26.056Z[UTC]"
               (let [original-result (qp/process-query query)
                     ;; clear any existing values in the `save-chan`
@@ -362,7 +366,9 @@
                        (seq (-> cached-result :cache/details :hash))))
                 (is (= (dissoc original-result :cache/details)
                        (dissoc cached-result :cache/details))
-                    "Cached result should be in the same format as the uncached result, except for added keys"))))))))
+                    "Cached result should be in the same format as the uncached result, except for added keys")))))))))
+
+(deftest e2e-test-2
   (testing "Cached results don't impact average execution time"
     (let [save-execution-metadata-count       (atom 0)
           update-avg-execution-count          (atom 0)
@@ -399,20 +405,13 @@
               (is (= avg-execution-time (query/average-execution-time-ms q-hash))))))))))
 
 (def ^:private expected-inner-metadata
-  (for [[name col-key] [["ID"          :id]
-                        ["NAME"        :name]
-                        ["CATEGORY_ID" :category_id]
-                        ["LATITUDE"    :latitude]
-                        ["LONGITUDE"   :longitude]
-                        ["PRICE"       :price]]]
-    {:name name
-     :ident (mt/ident :venues col-key)}))
-
-(defn- expected-model-metadata [the-model]
-  (for [col expected-inner-metadata]
-    (-> (lib/add-model-ident col (:entity_id the-model))
-        ;; TODO: Inner idents are not returned on query results... but perhaps should be?
-        (dissoc :model/inner_ident))))
+  (for [name ["ID"
+              "NAME"
+              "CATEGORY_ID"
+              "LATITUDE"
+              "LONGITUDE"
+              "PRICE"]]
+    {:name name}))
 
 (deftest multiple-models-e2e-test
   (testing "caching works across the whole QP where two models have the same inner query"
@@ -425,16 +424,13 @@
                                                                 :type          :model})]
         (testing "both models get :result_metadata containing model :idents"
           (doseq [the-model [model1 model2]]
-            (is (=? (expected-model-metadata the-model)
+            (is (=? expected-inner-metadata
                     (:result_metadata the-model)))))
-
         (with-mock-cache! [save-chan]
           (let [inner1 (-> (:dataset_query model1)
-                           (assoc :cache-strategy (ttl-strategy))
-                           (assoc-in [:info :card-entity-id] (:entity_id model1)))
+                           (assoc :cache-strategy (ttl-strategy)))
                 inner2 (-> (:dataset_query model2)
-                           (assoc :cache-strategy (ttl-strategy))
-                           (assoc-in [:info :card-entity-id] (:entity_id model2)))]
+                           (assoc :cache-strategy (ttl-strategy)))]
             (testing (format "\ninner1 = %s\ninner2 = %s" (pr-str inner1) (pr-str inner2))
               (is (true?
                    (boolean (#'cache/is-cacheable? inner1)))
@@ -477,7 +473,7 @@
                       rerun-outer1     (qp/process-query outer1)
                       one-run-outer2   (qp/process-query outer2)]
                   (testing "Original results have correct model metadata"
-                    (is (=? (expected-model-metadata model1)
+                    (is (=? expected-inner-metadata
                             (-> original-result1 :data :results_metadata :columns))))
 
                   (testing "\n\nOuter queries are cached *separately*"
@@ -501,14 +497,8 @@
                     (doseq [[the-model cached-results] [[model1 rerun-outer1]
                                                         [model2 one-run-outer2]]]
                       (testing (:name the-model)
-                        (is (=? (expected-model-metadata the-model)
+                        (is (=? expected-inner-metadata
                                 (-> cached-results :data :results_metadata :columns)))))))))))))))
-
-(defn- expected-native-metadata [the-card]
-  [{:name  "ID"
-    :ident (lib/native-ident "ID"   (:entity_id the-card))}
-   {:name  "NAME"
-    :ident (lib/native-ident "NAME" (:entity_id the-card))}])
 
 (deftest duplicate-native-queries-e2e-test
   (testing "caching works across the whole QP when two native cards have the same inner query"
@@ -518,18 +508,18 @@
                      :model/Card card2 (mt/card-with-metadata {:dataset_query inner-query
                                                                :name          "Native card 2"})]
         (testing "both cards get :result_metadata containing the card's :entity_id"
-          (is (=? (expected-native-metadata card1)
+          (is (=? [{:name "ID"}
+                   {:name "NAME"}]
                   (:result_metadata card1)))
-          (is (=? (expected-native-metadata card2)
+          (is (=? [{:name "ID"}
+                   {:name "NAME"}]
                   (:result_metadata card2))))
 
         (with-mock-cache! [save-chan]
           (let [query1 (-> (:dataset_query card1)
-                           (assoc :cache-strategy (ttl-strategy))
-                           (assoc-in [:info :card-entity-id] (:entity_id card1)))
+                           (assoc :cache-strategy (ttl-strategy)))
                 query2 (-> (:dataset_query card2)
-                           (assoc :cache-strategy (ttl-strategy))
-                           (assoc-in [:info :card-entity-id] (:entity_id card2)))]
+                           (assoc :cache-strategy (ttl-strategy)))]
             (testing (format "\nquery1 = %s\nquery2 = %s" (pr-str query1) (pr-str query2))
               (is (true?
                    (boolean (#'cache/is-cacheable? query1)))
@@ -557,13 +547,15 @@
                           (is (=? {:cache/details  {:cached     true
                                                     :updated_at #t "2020-02-19T04:44:26.056Z[UTC]"
                                                     :hash       some?
-                                                    ;; TODO: this check is not working if the key is not present in the data
+                                                    ;; TODO: this check is not working if the key is not present in the
+                                                    ;; data
                                                     :cache-hash some?}
                                    :row_count 5
                                    :status    :completed}
                                   (dissoc cached-results :data))))
                         (testing "should have correct **card-specific** metadata"
-                          (is (=? (expected-native-metadata the-card)
+                          (is (=? [{:name "ID"}
+                                   {:name "NAME"}]
                                   (-> cached-results :data :results_metadata :columns))))))))))))))))
 
 (deftest insights-from-cache-test

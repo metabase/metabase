@@ -53,7 +53,7 @@ export const getVisualizationColumns = (
         if (typeof columnMapping !== "string") {
           const datasetColumn = datasets[
             columnMapping.sourceId
-          ]?.data.cols.find((col) => col.name === columnMapping.originalName);
+          ]?.data?.cols?.find((col) => col.name === columnMapping.originalName);
 
           const dataSource = dataSources.find(
             (dataSource) => dataSource.id === columnMapping.sourceId,

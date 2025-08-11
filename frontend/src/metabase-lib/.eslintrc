@@ -24,6 +24,7 @@
               "!metabase/lib/formatting",
               "!metabase/lib/number",
               "!metabase/lib/time",
+              "!metabase/lib/time-dayjs",
               "!metabase/lib/types",
               "!metabase/lib/urls",
               "!metabase/lib/utils"

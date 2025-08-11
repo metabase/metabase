@@ -10,7 +10,11 @@ import type {
 
 type Handler = (event: MessageEvent<SdkIframeEmbedMessage>) => void;
 
-export function useSdkIframeEmbedEventBus(): {
+export function useSdkIframeEmbedEventBus({
+  onSettingsChanged,
+}: {
+  onSettingsChanged?: (settings: SdkIframeEmbedSettings) => void;
+}): {
   embedSettings: SdkIframeEmbedSettings | null;
 } {
   const [embedSettings, setEmbedSettings] =
@@ -24,7 +28,10 @@ export function useSdkIframeEmbedEventBus(): {
 
       match(event.data).with(
         { type: "metabase.embed.setSettings" },
-        ({ data }) => setEmbedSettings(data),
+        ({ data }) => {
+          setEmbedSettings(data);
+          onSettingsChanged?.(data);
+        },
       );
     };
 
@@ -36,7 +43,7 @@ export function useSdkIframeEmbedEventBus(): {
     return () => {
       window.removeEventListener("message", messageHandler);
     };
-  }, []);
+  }, [onSettingsChanged]);
 
   return { embedSettings };
 }

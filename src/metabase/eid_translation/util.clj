@@ -9,6 +9,8 @@
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
+(set! *warn-on-reflection* true)
+
 (defn- api-model?
   [model]
   (isa? (t2/resolve-model model) :hook/entity-id))
@@ -125,3 +127,16 @@
                          :status status}))
         (:id info)))
     id))
+
+(mu/defn ->id-or-404 :- :int
+  "Translates a single entity_id -> id, throwing a 404 error if not found.
+   This is intended for use in API endpoints where a 404 should be returned
+   for non-existent entity IDs."
+  [api-name-or-model :- [:or ApiName ApiModel] id :- [:or #_id :int #_entity-id :string]]
+  (try
+    (->id api-name-or-model id)
+    (catch Exception e
+      (if (and (= (:status (ex-data e)) :not-found)
+               (= (.getMessage e) "problem looking up id from entity_id"))
+        (throw (ex-info "Not found." {:status-code 404}))
+        (throw e)))))

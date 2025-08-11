@@ -1,4 +1,4 @@
-(ns src.dev.add-load
+(ns dev.add-load
   (:require [clojure.walk :as walk]
             [dev.with-perm :as perm]
             [metabase.util.malli :as mu]))
@@ -28,9 +28,9 @@
 (def ^:private NormalizedTuple [:tuple :keyword BindingForm :map])
 
 (def ^:private Tuple [:or
-            [:tuple :keyword]
-            [:tuple :keyword BindingForm]
-            NormalizedTuple])
+                      [:tuple :keyword]
+                      [:tuple :keyword BindingForm]
+                      NormalizedTuple])
 
 (mu/defn- normalize-tuple :- NormalizedTuple
   [next-kw-thunk :- fn? t :- Tuple]
@@ -60,7 +60,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; PUBLIC API ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
 
 (mu/defn from-script :- :map
   "Takes a script and inserts the entities into the database. Returns a map of the ids of the entities inserted."
@@ -105,5 +104,4 @@
                 [:model/DashboardCard :? {:card_id :?/card-id :dashboard_id :?/dash-id}]
                 [:model/Card {:?/card-id :id} {:name "My Card (w/ dashboard)"}]
                 [:model/Dashboard {:?/dash-id :id} {:name "My Dashboard"}]
-                [:model/DashboardCard :? {:card_id :?/card-id :dashboard_id :?/dash-id}]])
-  )
+                [:model/DashboardCard :? {:card_id :?/card-id :dashboard_id :?/dash-id}]]))

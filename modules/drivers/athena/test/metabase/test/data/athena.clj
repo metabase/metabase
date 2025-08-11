@@ -24,7 +24,8 @@
 
 (doseq [feature [:test/time-type
                  :test/timestamptz-type
-                 :test/dynamic-dataset-loading]]
+                 :test/dynamic-dataset-loading
+                 :test/uuids-in-create-table-statements]]
   (defmethod driver/database-supports? [:athena feature]
     [_driver _feature _database]
     false))
@@ -42,10 +43,14 @@
 
 (defmethod tx/dbdef->connection-details :athena
   [driver _context {:keys [database-name], :as _dbdef}]
-  {:region                        (tx/db-test-env-var-or-throw :athena :region)
+  {:region                        (if tx/*use-routing-details*
+                                    (tx/db-test-env-var-or-throw :athena :region-routing)
+                                    (tx/db-test-env-var-or-throw :athena :region))
    :access_key                    (tx/db-test-env-var-or-throw :athena :access-key)
    :secret_key                    (tx/db-test-env-var-or-throw :athena :secret-key)
-   :s3_staging_dir                (tx/db-test-env-var-or-throw :athena :s3-staging-dir)
+   :s3_staging_dir                (if tx/*use-routing-details*
+                                    (tx/db-test-env-var-or-throw :athena :s3-staging-dir-routing)
+                                    (tx/db-test-env-var-or-throw :athena :s3-staging-dir))
    :catalog                       "AwsDataCatalog"
    :workgroup                     "primary"
    ;; HACK -- this is here so the Athena driver sync code only syncs the database in question -- see documentation

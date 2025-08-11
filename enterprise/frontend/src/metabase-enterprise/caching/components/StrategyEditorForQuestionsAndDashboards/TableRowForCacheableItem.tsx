@@ -1,10 +1,10 @@
 import { useMemo } from "react";
 
 import { getShortStrategyLabel } from "metabase/admin/performance/utils";
+import { MaybeLink } from "metabase/common/components/Badge/Badge.styled";
+import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { EllipsifiedCollectionPath } from "metabase/common/components/EllipsifiedPath/EllipsifiedCollectionPath";
-import { MaybeLink } from "metabase/components/Badge/Badge.styled";
-import { Ellipsified } from "metabase/core/components/Ellipsified";
-import Link from "metabase/core/components/Link";
+import Link from "metabase/common/components/Link";
 import { getIcon } from "metabase/lib/icon";
 import * as Urls from "metabase/lib/urls";
 import { Box, Button, FixedSizeIcon, Flex } from "metabase/ui";

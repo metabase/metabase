@@ -1,13 +1,13 @@
 import userEvent from "@testing-library/user-event";
-import fetchMock from "fetch-mock";
 
 import {
+  findRequests,
   setupPropertiesEndpoints,
   setupSettingsEndpoints,
   setupUpdateSettingEndpoint,
 } from "__support__/server-mocks";
 import { fireEvent, renderWithProviders, screen } from "__support__/ui";
-import { UndoListing } from "metabase/containers/UndoListing";
+import { UndoListing } from "metabase/common/components/UndoListing";
 import {
   createMockSettingDefinition,
   createMockSettings,
@@ -40,12 +40,14 @@ const setup = () => {
 describe("siteUrlWidget", () => {
   it("should render a SiteUrlWidget", async () => {
     setup();
-    expect(await screen.findByText("Site Url")).toBeInTheDocument();
+    expect(await screen.findByText("Site url")).toBeInTheDocument();
   });
 
   it("should load existing value", async () => {
     setup();
-    const selectInput = await screen.findByLabelText("input-prefix");
+    const selectInput = await screen.findByRole("textbox", {
+      name: "input-prefix",
+    });
     expect(selectInput).toHaveValue("http://");
 
     const textInput = await screen.findByDisplayValue("mysite.biz");
@@ -60,19 +62,21 @@ describe("siteUrlWidget", () => {
     await fireEvent.blur(input);
     await screen.findByDisplayValue("newsite.guru");
 
-    const [putUrl, putDetails] = await findPut();
-    expect(putUrl).toMatch(/\/api\/setting\/site-url/);
-    expect(putDetails).toEqual({ value: "http://newsite.guru" });
+    const [{ url, body }] = await findRequests("PUT");
+    expect(url).toMatch(/\/api\/setting\/site-url/);
+    expect(body).toEqual({ value: "http://newsite.guru" });
   });
 
   it("can change from http to https", async () => {
     setup();
-    await userEvent.click(await screen.findByLabelText("input-prefix"));
+    await userEvent.click(
+      await screen.findByRole("textbox", { name: "input-prefix" }),
+    );
     await userEvent.click(await screen.findByText("https://"));
 
-    const [putUrl, putDetails] = await findPut();
-    expect(putUrl).toMatch(/\/api\/setting\/site-url/);
-    expect(putDetails).toEqual({ value: "https://mysite.biz" });
+    const [{ url, body }] = await findRequests("PUT");
+    expect(url).toMatch(/\/api\/setting\/site-url/);
+    expect(body).toEqual({ value: "https://mysite.biz" });
   });
 
   it("should show success toast", async () => {
@@ -104,13 +108,3 @@ describe("siteUrlWidget", () => {
     ).toBeInTheDocument();
   });
 });
-
-async function findPut() {
-  const calls = fetchMock.calls();
-  const [putUrl, putDetails] =
-    calls.find((call) => call[1]?.method === "PUT") ?? [];
-
-  const body = ((await putDetails?.body) as string) ?? "{}";
-
-  return [putUrl, JSON.parse(body)];
-}

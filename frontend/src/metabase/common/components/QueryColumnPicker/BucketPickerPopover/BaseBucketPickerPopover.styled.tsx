@@ -1,7 +1,7 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import BaseSelectList from "metabase/components/SelectList";
+import BaseSelectList from "metabase/common/components/SelectList";
 import { color } from "metabase/lib/colors";
 import type { ColorName } from "metabase/lib/colors/types";
 import { Button, type ButtonProps, Icon } from "metabase/ui";

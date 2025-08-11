@@ -1,5 +1,3 @@
-import type { Query } from "history";
-
 import type {
   EntityTypeFilterKeys,
   MetabaseTheme,
@@ -8,6 +6,7 @@ import type {
 import type { MetabaseError } from "embedding-sdk/errors";
 import type { MetabaseAuthMethod } from "embedding-sdk/types";
 import type { MetabaseEmbeddingSessionToken } from "embedding-sdk/types/refresh-token";
+import type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";
 import type { CollectionId } from "metabase-types/api";
 
 /** Events that the embed.js script listens for */
@@ -40,12 +39,12 @@ export type SdkIframeEmbedMessage =
 export interface DashboardEmbedOptions {
   dashboardId: number | string;
 
-  isDrillThroughEnabled?: boolean;
+  drills?: boolean;
   withTitle?: boolean;
   withDownloads?: boolean;
 
   // parameters
-  initialParameters?: Query;
+  initialParameters?: ParameterValues;
   hiddenParameters?: string[];
 
   // incompatible options
@@ -56,9 +55,12 @@ export interface DashboardEmbedOptions {
 export interface QuestionEmbedOptions {
   questionId: number | string;
 
-  isDrillThroughEnabled?: boolean;
+  drills?: boolean;
   withTitle?: boolean;
   withDownloads?: boolean;
+  targetCollection?: CollectionId;
+  entityTypes?: EntityTypeFilterKeys[];
+  isSaveEnabled?: boolean;
 
   // parameters
   initialSqlParameters?: SqlParameterValues;
@@ -76,8 +78,8 @@ export interface ExplorationEmbedOptions {
   entityTypes?: EntityTypeFilterKeys[];
 
   // incompatible options
-  questionId?: never;
   dashboardId?: never;
+  questionId?: never;
 }
 
 export interface CurateContentEmbedOptions {
@@ -106,17 +108,21 @@ type CollectionBrowserEntityTypes =
   | "question"
   | "model";
 
-type SdkIframeEmbedBaseSettings = {
-  apiKey: string;
+export type SdkIframeEmbedBaseSettings = {
+  apiKey?: string;
   instanceUrl: string;
   theme?: MetabaseTheme;
   locale?: string;
   preferredAuthMethod?: MetabaseAuthMethod;
+
+  /** Whether we should use the existing user session (i.e. admin user's cookie) */
+  useExistingUserSession?: boolean;
+
   // Whether the embed is running on localhost. Cannot be set by the user.
   _isLocalhost?: boolean;
 };
 
-type SdkIframeEmbedTemplateSettings =
+export type SdkIframeEmbedTemplateSettings =
   | DashboardEmbedOptions
   | QuestionEmbedOptions
   | ExplorationEmbedOptions
@@ -132,3 +138,16 @@ export type SdkIframeEmbedTagSettings = SdkIframeEmbedSettings & {
   target: string | HTMLElement;
   iframeClassName?: string;
 };
+
+export type SdkIframeEmbedEvent = { type: "ready" };
+
+export type SdkIframeEmbedEventHandler = () => void;
+
+/** Keys that can be used to update the embed settings */
+export type SdkIframeEmbedSettingKey =
+  | keyof SdkIframeEmbedBaseSettings
+  | keyof DashboardEmbedOptions
+  | keyof QuestionEmbedOptions
+  | keyof ExplorationEmbedOptions
+  | keyof CurateContentEmbedOptions
+  | keyof ViewContentEmbedOptions;

@@ -60,6 +60,8 @@ If you have problems connecting, verify the SSH host port and password by connec
 
 NOTE: the SSH server needs to have "AllowTcpForwarding" configuration set to "yes" for the tunneling to work.
 
+NOTE: the best practice with SSH Tunnel Hosts is to deny all traffic except from approved clients. Metabase lists our Metabase [Cloud IPs to whitelist here](https://www.metabase.com/docs/latest/cloud/ip-addresses-to-whitelist).
+
 ## Disadvantages of indirect connections
 
 While using an SSH tunnel makes it possible to use a data warehouse that is otherwise inaccessible, it's almost always preferable to use a direct connection when possible.

@@ -1,4 +1,6 @@
 (ns metabase.lib.temporal-bucket
+  "TODO (Cam 6/13/25) -- decide whether things are `unit` or `bucket` and rename functions and args for consistency.
+  Confusing to use both as synonyms."
   (:require
    [clojure.string :as str]
    [medley.core :as m]
@@ -497,6 +499,8 @@
     s
     (lib.util/format "%s: %s" s (describe-temporal-unit temporal-unit))))
 
+;;; TODO (Cam 6/13/25) -- only used outside of Lib; Lib doesn't use `snake_cased` keys. We should reconsider if this
+;;; belongs in Lib in its current shape.
 (defn ensure-temporal-unit-in-display-name
   "Append temporal unit into `column-metadata`'s `:display_name` when appropriate.
 

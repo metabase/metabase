@@ -8,6 +8,7 @@
    [metabase-enterprise.serialization.v2.ingest :as serdes.ingest]
    [metabase-enterprise.serialization.v2.models :as serdes.models]
    [metabase.models.serialization :as serdes]
+   [metabase.search.core :as search]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [toucan2.core :as t2]
@@ -155,27 +156,33 @@
   [ingestion & {:keys [backfill? continue-on-error]
                 :or   {backfill?         true
                        continue-on-error false}}]
-  (t2/with-transaction [_tx]
-    ;; We proceed in the arbitrary order of ingest-list, deserializing all the files. Their declared dependencies
-    ;; guide the import, and make sure all containers are imported before contents, etc.
-    (when backfill?
-      (serdes.backfill/backfill-ids!))
-    (let [contents (serdes.ingest/ingest-list ingestion)
-          ctx      {:expanding #{}
-                    :seen      #{}
-                    :circular  #{}
-                    :ingestion ingestion
-                    :from-ids  (m/index-by :id contents)
-                    :errors    []}]
-      (log/infof "Starting deserialization, total %s documents" (count contents))
-      (reduce (fn [ctx item]
-                (try
-                  (load-one! ctx item)
-                  (catch Exception e
-                    (when-not continue-on-error
-                      (throw e))
-                    ;; eschew big and scary stacktrace
-                    (log/warnf "Skipping deserialization error: %s %s" (ex-message e) (ex-data e))
-                    (update ctx :errors conj e))))
-              ctx
-              contents))))
+  (u/prog1
+    (t2/with-transaction [_tx]
+      ;; We proceed in the arbitrary order of ingest-list, deserializing all the files. Their declared dependencies
+      ;; guide the import, and make sure all containers are imported before contents, etc.
+      (when backfill?
+        (serdes.backfill/backfill-ids!))
+      (let [contents (serdes.ingest/ingest-list ingestion)
+            ctx      {:expanding #{}
+                      :seen      #{}
+                      :circular  #{}
+                      :ingestion ingestion
+                      :from-ids  (m/index-by :id contents)
+                      :errors    []}]
+        (log/infof "Starting deserialization, total %s documents" (count contents))
+        (reduce (fn [ctx item]
+                  (try
+                    (load-one! ctx item)
+                    (catch Exception e
+                      (when-not continue-on-error
+                        (throw e))
+                      ;; eschew big and scary stacktrace
+                      (log/warnf (u/strip-error e "Skipping deserialization error"))
+                      (update ctx :errors conj e))))
+                ctx
+                contents)))
+    ;; Hack: the transaction above typically takes much longer than our delay on the search indexing queue.
+    ;;       this means that the corresponding entries would have been missing or stale when we indexed them.
+    ;;       ideally, we would delay the indexing somehow, or only reindex what we've loaded.
+    ;;       while we're figuring that out, here's a crude stopgap.
+    (search/reindex!)))

@@ -38,6 +38,17 @@
 
 (def card-name-regex (re-pattern notification.tu/default-card-name))
 
+(defn- default-slack-blocks
+  [card-id include-image?]
+  (cond-> [{:type "header" :text {:type "plain_text" :text "🔔 Card notification test card" :emoji true}}
+           {:type "section"
+            :text
+            {:type "mrkdwn" :text (format "<https://testmb.com/question/%d|Card notification test card>" card-id) :verbatim true}}]
+    include-image?
+    (conj {:type "image"
+           :slack_file {:id (mt/malli=? :string)}
+           :alt_text "Card notification test card"})))
+
 (deftest basic-table-notification-test
   (testing "card notification of a simple table"
     (notification.tu/with-notification-testing-setup!
@@ -72,17 +83,10 @@
 
                 :channel/slack
                 (fn [[message]]
-                  (is (=? {:attachments [{:blocks [{:text {:emoji true
-                                                           :text "🔔 Card notification test card"
-                                                           :type "plain_text"}
-                                                    :type "header"}]}
-                                         {:attachment-name "image.png"
-                                          :fallback "Card notification test card",
-                                          :rendered-info {:attachments false
-                                                          :content true
-                                                          :render/text true}
-                                          :title "Card notification test card"}]
-                           :channel-id "#general"}
+                  (is (=? {:blocks
+                           (conj (default-slack-blocks card-id false)
+                                 {:type "section" :text {:type "plain_text" :text "Hello world!!!"}})
+                           :channel "#general"}
                           (notification.tu/slack-message->boolean message))))
 
                 :channel/http
@@ -126,15 +130,8 @@
                   #"Manage your subscriptions"))))
         :channel/slack
         (fn [[message]]
-          (is (=? {:attachments [{:blocks [{:text {:emoji true
-                                                   :text "🔔 Card notification test card"
-                                                   :type "plain_text"}
-                                            :type "header"}]}
-                                 {:attachment-name "image.png"
-                                  :fallback "Card notification test card"
-                                  :rendered-info {:attachments false :content true}
-                                  :title "Card notification test card"}]
-                   :channel-id "#general"}
+          (is (=? {:channel "#general"
+                   :blocks (default-slack-blocks (-> notification :payload :card_id) true)}
                   (notification.tu/slack-message->boolean message))))}))))
 
 (deftest card-with-rows-saved-to-disk-test
@@ -171,15 +168,8 @@
                             #"Manage your subscriptions"))))
                   :channel/slack
                   (fn [[message]]
-                    (is (=? {:attachments [{:blocks [{:text {:emoji true
-                                                             :text "🔔 Card notification test card"
-                                                             :type "plain_text"}
-                                                      :type "header"}]}
-                                           {:attachment-name "image.png"
-                                            :fallback "Card notification test card"
-                                            :rendered-info {:attachments false :content true}
-                                            :title "Card notification test card"}]
-                             :channel-id "#general"}
+                    (is (=? {:blocks  (default-slack-blocks (-> notification :payload :card_id) true)
+                             :channel "#general"}
                             (notification.tu/slack-message->boolean message))))
                   :channel/http
                   (fn [[req]]
@@ -415,7 +405,46 @@
 
       (testing "archive if the send is successful"
         (notification/send-notification! notification)
-        (is (false? (t2/select-one-fn :active :model/Notification (:id notification))))))))
+        (is (false? (t2/select-one-fn :active :model/Notification (:id notification))))
+        (testing "once archived, notifications will be skipped if trying to send"
+          (notification.tu/test-send-notification!
+           notification
+           {:channel/email
+            (fn [emails]
+              (is (empty? emails)))}))))))
+
+(deftest send-once-with-goal-test
+  (notification.tu/with-card-notification
+    [notification {:card              {:dataset_query          (mt/mbql-query
+                                                                 checkins
+                                                                 {:aggregation [["count"]]
+                                                                  :filter      [:between $date "2014-04-01" "2014-06-01"]
+                                                                  :breakout    [!day.date]})
+                                       :display                :line
+                                       :visualization_settings {:graph.show_goal  true
+                                                                :graph.goal_value 0
+                                                                :graph.dimensions ["DATE"]
+                                                                :graph.metrics    ["count"]}}
+                   :notification-card {:send_condition :goal_below
+                                       :send_once      true}
+                   :handlers          [@notification.tu/default-email-handler]}]
+    (testing "if the goal is not met, no email is sent and notification is active"
+      (notification.tu/test-send-notification!
+       notification
+       {:channel/email
+        (fn [emails]
+          (is (zero? (count emails)))
+          (is (true? (t2/select-one-fn :active :model/Notification (:id notification)))))}))
+
+    (testing "if the goal is met, notification is sent then archived"
+      ;; flip the condition so the goal is met now
+      (t2/update! :model/NotificationCard (get-in notification [:payload :id]) {:send_condition :goal_above})
+      (notification.tu/test-send-notification!
+       (t2/select-one :model/Notification (:id notification))
+       {:channel/email
+        (fn [emails]
+          (is (= 1 (count emails)))
+          (is (false? (t2/select-one-fn :active :model/Notification (:id notification)))))}))))
 
 (deftest non-user-email-test
   (notification.tu/with-card-notification

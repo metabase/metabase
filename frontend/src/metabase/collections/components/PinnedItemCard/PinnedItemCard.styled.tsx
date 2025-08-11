@@ -3,9 +3,9 @@ import { css } from "@emotion/react";
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import { RawMaybeLink } from "metabase/components/Badge/Badge.styled";
-import Card from "metabase/components/Card";
-import { MarkdownPreview } from "metabase/core/components/MarkdownPreview";
+import { RawMaybeLink } from "metabase/common/components/Badge/Badge.styled";
+import Card from "metabase/common/components/Card";
+import { MarkdownPreview } from "metabase/common/components/MarkdownPreview";
 import { Box, type BoxProps, Icon } from "metabase/ui";
 
 export const ItemCard = styled(Card)``;

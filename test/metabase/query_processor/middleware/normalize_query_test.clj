@@ -1,6 +1,7 @@
 (ns metabase.query-processor.middleware.normalize-query-test
   (:require
    [clojure.test :refer :all]
+   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.test-metadata :as meta]
    [metabase.query-processor.middleware.normalize-query :as normalize-query]
    [metabase.query-processor.store :as qp.store]))
@@ -10,7 +11,7 @@
     (qp.store/with-metadata-provider meta/metadata-provider
       (is (=? {:database     (meta/id)
                :lib/type     :mbql/query
-               :lib/metadata meta/metadata-provider
+               :lib/metadata lib.metadata.protocols/cached-metadata-provider?
                :stages       [{:lib/type     :mbql.stage/mbql
                                :source-table (meta/id :venues)
                                :fields       [[:field {:lib/uuid string?} (meta/id :venues :id)]
@@ -27,7 +28,7 @@
     (qp.store/with-metadata-provider meta/metadata-provider
       (is (=? {:database     (meta/id)
                :lib/type     :mbql/query
-               :lib/metadata meta/metadata-provider
+               :lib/metadata lib.metadata.protocols/cached-metadata-provider?
                :stages       [{:lib/type     :mbql.stage/mbql
                                :source-table (meta/id :venues)
                                :fields       [[:field {:lib/uuid string?} (meta/id :venues :id)]]

@@ -3,6 +3,7 @@ name: Prevent backport.sh from being merged
 on:
   pull_request:
     types: [opened, synchronize, reopened]
+  merge_group:
 
 jobs:
   check-backport-script:

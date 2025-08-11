@@ -7,7 +7,7 @@
    [toucan2.core :as t2]))
 
 (deftest backfill-needed-test
-  (mt/with-empty-h2-app-db
+  (mt/with-empty-h2-app-db!
     (ts/with-temp-dpc [:model/Collection {c1-id :id} {:name "some collection"}
                        :model/Collection {c2-id :id} {:name "other collection"}
                        ;; These two deliberately have the same name!
@@ -31,7 +31,7 @@
           (is (every? some? (all-eids))))))))
 
 (deftest no-overwrite-test
-  (mt/with-empty-h2-app-db
+  (mt/with-empty-h2-app-db!
     (ts/with-temp-dpc [:model/Collection {c1-id :id c1-eid :entity_id} {:name "some collection"}
                        :model/Collection {c2-id :id}                   {:name "other collection"}]
       (testing "deleting the entity_id for one of them"
@@ -47,7 +47,7 @@
           (is (= c1-eid (t2/select-one-fn :entity_id :model/Collection :id c1-id))))))))
 
 (deftest repeatable-test
-  (mt/with-empty-h2-app-db
+  (mt/with-empty-h2-app-db!
     (ts/with-temp-dpc [:model/Collection {c1-eid :entity_id} {:name "some collection"}
                        :model/Collection {c2-id :id}         {:name "other collection"}]
       (testing "deleting the entity_id for one of them"

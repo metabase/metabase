@@ -45,9 +45,13 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
 
     it("should display the embedding page correctly", () => {
       cy.visit("/admin/settings/setup");
-      sidebar().within(() => {
-        cy.findByRole("link", { name: "Embedding" }).click();
-      });
+
+      sidebar().findByText("Embedding").click(); // open section
+      sidebar()
+        .findAllByText("Overview") // the second "overview" page is for embedding
+        .should("have.length", 2)
+        .last()
+        .click();
 
       cy.location("pathname").should("eq", embeddingPage);
       mainPage().findByText(embeddingDescription).should("be.visible");
@@ -75,7 +79,7 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
         value: true,
       });
       mainPage().within(() => {
-        cy.findByLabelText("Enable Static embedding")
+        cy.findByLabelText("Enable static embedding")
           .click({ force: true })
           .should("be.checked");
         cy.findByTestId("embedding-secret-key-setting").within(() => {
@@ -100,14 +104,14 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
       cy.location("pathname").should("eq", embeddingPage);
 
       cy.log("The second section: 'Interactive embedding'");
-      cy.findByRole("article", { name: "Interactive embedding" }).within(() => {
+      cy.findByRole("article", { name: /Interactive embedding/ }).within(() => {
         cy.findByText("Interactive embedding");
 
-        cy.findByRole("link", { name: "Learn More" })
+        cy.findByRole("link", { name: "Try for free" })
           .should("have.attr", "href")
           .and(
             "eq",
-            "https://www.metabase.com/product/embedded-analytics?utm_source=oss&utm_media=embed-settings",
+            "https://www.metabase.com/product/embedded-analytics?utm_source=product&utm_medium=upsell&utm_campaign=embedding-interactive&utm_content=embedding-page&source_plan=oss",
           );
       });
     });

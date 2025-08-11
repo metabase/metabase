@@ -2,8 +2,8 @@ import { match } from "ts-pattern";
 import { jt, t } from "ttag";
 
 import { UpsellMetabaseBanner } from "metabase/admin/upsells";
+import ExternalLink from "metabase/common/components/ExternalLink";
 import { useDocsUrl } from "metabase/common/hooks";
-import ExternalLink from "metabase/core/components/ExternalLink";
 import { color } from "metabase/lib/colors";
 import { useSelector } from "metabase/lib/redux";
 import type {

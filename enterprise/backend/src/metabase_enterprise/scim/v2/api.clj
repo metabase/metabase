@@ -9,7 +9,6 @@
    [metabase.api.macros :as api.macros]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
-   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.users.models.user :as user]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
@@ -141,8 +140,8 @@
                                                               :join [[:permissions_group :pg] [:= :pg.id :group_id]]
                                                               :where [:and
                                                                       [:in :user_id (map u/the-id users)]
-                                                                      [:not= :pg.id (:id (perms-group/all-users))]
-                                                                      [:not= :pg.id (:id (perms-group/admin))]]}))
+                                                                      [:not= :pg.id (:id (perms/all-users-group))]
+                                                                      [:not= :pg.id (:id (perms/admin-group))]]}))
           membership->group    (fn [membership] (select-keys membership [:name :entity_id]))]
       (for [user users]
         (assoc user :user_group_memberships (->> (user-id->memberships (u/the-id user))
@@ -339,8 +338,8 @@
                      :entity_id entity-id
                      {:where
                       [:and
-                       [:not= :id (:id (perms-group/all-users))]
-                       [:not= :id (:id (perms-group/admin))]]})
+                       [:not= :id (:id (perms/all-users-group))]
+                       [:not= :id (:id (perms/admin-group))]]})
       (throw-scim-error 404 "Group not found")))
 
 (mu/defn ^:private mb-group->scim :- SCIMGroup
@@ -379,8 +378,8 @@
           offset         (if start-index (dec start-index) default-pagination-offset)
           filter-param   (when filter-param (codec/url-decode filter-param))
           where-clause   [:and
-                          [:not= :id (:id perms-group/all-users)]
-                          [:not= :id (:id perms-group/admin)]
+                          [:not= :id (:id perms/all-users-group)]
+                          [:not= :id (:id perms/admin-group)]
                           (when filter-param (group-filter-clause filter-param))]
           groups         (t2/select (cons :model/PermissionsGroup group-cols)
                                     {:where    where-clause

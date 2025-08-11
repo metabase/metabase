@@ -26,7 +26,7 @@ import {
   getTimeoutId,
 } from "../selectors";
 
-import { updateUrl } from "./navigation";
+import { updateUrl } from "./url";
 
 export const SET_DOCUMENT_TITLE = "metabase/qb/SET_DOCUMENT_TITLE";
 const setDocumentTitle = createAction(SET_DOCUMENT_TITLE);

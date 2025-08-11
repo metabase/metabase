@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
-import { ToolbarButton } from "metabase/components/ToolbarButton";
-import Link from "metabase/core/components/Link/Link";
+import Link from "metabase/common/components/Link/Link";
+import { ToolbarButton } from "metabase/common/components/ToolbarButton";
 import * as Urls from "metabase/lib/urls";
 import type { Collection } from "metabase-types/api";
 

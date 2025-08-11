@@ -1,23 +1,48 @@
 import type { ReactNode } from "react";
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
+import { t } from "ttag";
 
-import { getColumnGroupIcon } from "metabase/common/utils/column-groups";
+import {
+  AccordionList,
+  type Section as BaseSection,
+} from "metabase/common/components/AccordionList";
 import {
   HoverParent,
   QueryColumnInfoIcon,
-} from "metabase/components/MetadataInfo/ColumnInfoIcon";
+} from "metabase/common/components/MetadataInfo/ColumnInfoIcon";
+import { getColumnGroupIcon } from "metabase/common/utils/column-groups";
+import { color } from "metabase/lib/colors";
 import type { ColorName } from "metabase/lib/colors/types";
+import { isNotNull } from "metabase/lib/types";
+import {
+  type DefinedClauseName,
+  clausesForMode,
+  getClauseDefinition,
+} from "metabase/querying/expressions";
 import type { IconName } from "metabase/ui";
-import { DelayGroup } from "metabase/ui";
+import { DelayGroup, Icon } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import { BucketPickerPopover } from "./BucketPickerPopover";
 import S from "./QueryColumnPicker.module.css";
-import { StyledAccordionList } from "./QueryColumnPicker.styled";
+
+const CUSTOM_EXPRESSION_SECTION_KEY = "custom-expression";
 
 export type ColumnListItem = Lib.ColumnDisplayInfo & {
+  type: "column";
   column: Lib.ColumnMetadata;
+  combinedDisplayName?: string;
 };
+
+type ExpressionClauseItem = {
+  type: "expression-clause";
+  clause: DefinedClauseName;
+  displayName: string;
+};
+
+type Item = ColumnListItem | ExpressionClauseItem;
+
+export type QueryColumnPickerSection = BaseSection<Item>;
 
 export interface QueryColumnPickerProps {
   className?: string;
@@ -32,6 +57,12 @@ export interface QueryColumnPickerProps {
   color?: ColorName;
   checkIsColumnSelected: (item: ColumnListItem) => boolean;
   onSelect: (column: Lib.ColumnMetadata) => void;
+  onSelectSection?: (section: QueryColumnPickerSection) => void;
+  /**
+   * Set onSelectExpression to allow custom expressions to be selected
+   */
+  onSelectExpression?: (clause?: DefinedClauseName) => void;
+  expressionSectionIcon?: IconName;
   onClose?: () => void;
   "data-testid"?: string;
   width?: string;
@@ -40,11 +71,12 @@ export interface QueryColumnPickerProps {
   disableSearch?: boolean;
 }
 
-type Sections = {
-  name: string;
-  items: ColumnListItem[];
-  icon?: IconName;
-};
+const SEARCH_PROP = [
+  "name",
+  "displayName",
+  "combinedDisplayName",
+  "longDisplayName",
+] as const;
 
 export function QueryColumnPicker({
   className,
@@ -55,9 +87,12 @@ export function QueryColumnPicker({
   hasTemporalBucketing = false,
   withDefaultBucketing = true,
   withInfoIcons = false,
-  color = "brand",
+  color: colorProp = "brand",
   checkIsColumnSelected,
   onSelect,
+  onSelectSection,
+  onSelectExpression,
+  expressionSectionIcon = "function",
   onClose,
   width,
   "data-testid": dataTestId,
@@ -65,23 +100,79 @@ export function QueryColumnPicker({
   alwaysExpanded,
   disableSearch,
 }: QueryColumnPickerProps) {
-  const sections: Sections[] = useMemo(
-    () =>
-      columnGroups.map((group) => {
-        const groupInfo = Lib.displayInfo(query, stageIndex, group);
+  const withCustomExpressions = onSelectExpression != null;
+  const [isSearching, setIsSearching] = useState(false);
 
-        const items = Lib.getColumnsFromColumnGroup(group).map((column) => ({
-          ...Lib.displayInfo(query, stageIndex, column),
-          column,
-        }));
+  const sections: QueryColumnPickerSection[] = useMemo(() => {
+    const columnSections = columnGroups.map((group) => {
+      const groupInfo = Lib.displayInfo(query, stageIndex, group);
 
+      const items = Lib.getColumnsFromColumnGroup(group).map((column) => {
+        const columnInfo = Lib.displayInfo(
+          query,
+          stageIndex,
+          getColumnWithoutBucketing(column, hasTemporalBucketing, hasBinning),
+        );
         return {
-          name: groupInfo.displayName,
-          icon: getColumnGroupIcon(groupInfo),
-          items,
+          type: "column" as const,
+          ...columnInfo,
+          column,
+          combinedDisplayName: `${columnInfo.table?.displayName ?? ""} ${columnInfo.displayName}`,
         };
-      }),
-    [query, stageIndex, columnGroups],
+      });
+
+      return {
+        name: groupInfo.displayName,
+        icon: getColumnGroupIcon(groupInfo),
+        items,
+      };
+    });
+
+    const expressionClausesSection = {
+      key: "expression-clauses",
+      name: t`Custom Expressions`,
+      icon: "function" as const,
+      items: clausesForMode("expression").map((clause) => ({
+        type: "expression-clause" as const,
+        clause: clause.name,
+        displayName: clause.displayName,
+      })),
+      alwaysSortLast: true,
+    };
+    const expressionClauseAction = {
+      key: CUSTOM_EXPRESSION_SECTION_KEY,
+      type: "action" as const,
+      name: t`Custom Expression`,
+      items: [],
+      icon: expressionSectionIcon,
+      alwaysSortLast: true,
+    };
+
+    return [
+      ...columnSections,
+      withCustomExpressions && isSearching ? expressionClausesSection : null,
+      withCustomExpressions ? expressionClauseAction : null,
+    ].filter(isNotNull);
+  }, [
+    query,
+    stageIndex,
+    columnGroups,
+    hasTemporalBucketing,
+    hasBinning,
+    withCustomExpressions,
+    expressionSectionIcon,
+    isSearching,
+  ]);
+
+  const handleSelectSection = useCallback(
+    (section: QueryColumnPickerSection) => {
+      if (section.key === CUSTOM_EXPRESSION_SECTION_KEY) {
+        onSelectExpression?.();
+      } else {
+        onSelectSection?.(section);
+      }
+    },
+    [onSelectExpression, onSelectSection],
   );
 
   const handleSelect = useCallback(
@@ -92,39 +183,43 @@ export function QueryColumnPicker({
     [onSelect, onClose],
   );
 
-  const handleSelectColumn = useCallback(
-    (item: ColumnListItem) => {
-      const isSameColumn = checkIsColumnSelected(item);
+  const handleSelectItem = useCallback(
+    (item: Item) => {
+      if (item.type === "column") {
+        const isSameColumn = checkIsColumnSelected(item);
 
-      if (isSameColumn) {
-        onClose?.();
-        return;
-      }
+        if (isSameColumn) {
+          onClose?.();
+          return;
+        }
 
-      if (!withDefaultBucketing) {
-        handleSelect(item.column);
-        return;
-      }
+        if (!withDefaultBucketing) {
+          handleSelect(item.column);
+          return;
+        }
 
-      const isBinnable = Lib.isBinnable(query, stageIndex, item.column);
-      if (hasBinning && isBinnable) {
-        handleSelect(Lib.withDefaultBinning(query, stageIndex, item.column));
-        return;
-      }
+        const isBinnable = Lib.isBinnable(query, stageIndex, item.column);
+        if (hasBinning && isBinnable) {
+          handleSelect(Lib.withDefaultBinning(query, stageIndex, item.column));
+          return;
+        }
 
-      const isTemporalBucketable = Lib.isTemporalBucketable(
-        query,
-        stageIndex,
-        item.column,
-      );
-      if (hasTemporalBucketing && isTemporalBucketable) {
-        handleSelect(
-          Lib.withDefaultTemporalBucket(query, stageIndex, item.column),
+        const isTemporalBucketable = Lib.isTemporalBucketable(
+          query,
+          stageIndex,
+          item.column,
         );
-        return;
-      }
+        if (hasTemporalBucketing && isTemporalBucketable) {
+          handleSelect(
+            Lib.withDefaultTemporalBucket(query, stageIndex, item.column),
+          );
+          return;
+        }
 
-      handleSelect(item.column);
+        handleSelect(item.column);
+      } else if (item.type === "expression-clause") {
+        onSelectExpression?.(item.clause);
+      }
     },
     [
       query,
@@ -134,12 +229,31 @@ export function QueryColumnPicker({
       withDefaultBucketing,
       checkIsColumnSelected,
       handleSelect,
+      onSelectExpression,
       onClose,
     ],
   );
 
+  const handleSearchTextChange = useCallback(
+    (searchText: string) => {
+      setIsSearching(searchText !== "");
+      if (searchText.trim().endsWith("(")) {
+        const name = searchText.trim().slice(0, -1);
+        const clause = getClauseDefinition(name);
+        if (clause) {
+          onSelectExpression?.(clause.name);
+        }
+      }
+    },
+    [onSelectExpression],
+  );
+
   const renderItemExtra = useCallback(
-    (item: ColumnListItem) => {
+    (item: Item) => {
+      if (item.type !== "column") {
+        return null;
+      }
+
       const isEditing = checkIsColumnSelected(item);
 
       return (
@@ -161,7 +275,7 @@ export function QueryColumnPicker({
             hasBinning={hasBinning}
             hasTemporalBucketing={hasTemporalBucketing}
             hasChevronDown={withInfoIcons}
-            color={color}
+            color={colorProp}
             onSelect={handleSelect}
           />
         )
@@ -174,44 +288,55 @@ export function QueryColumnPicker({
       hasBinning,
       hasTemporalBucketing,
       withInfoIcons,
-      color,
+      colorProp,
       handleSelect,
     ],
   );
 
   const renderItemIcon = useCallback(
-    (item: ColumnListItem) => (
-      <QueryColumnInfoIcon
-        query={query}
-        stageIndex={stageIndex}
-        column={item.column}
-        position="top-start"
-      />
-    ),
+    (item: Item) =>
+      item.type === "expression-clause" ? (
+        <Icon name="function" />
+      ) : (
+        <QueryColumnInfoIcon
+          query={query}
+          stageIndex={stageIndex}
+          column={item.column}
+          position="top-start"
+        />
+      ),
     [query, stageIndex],
+  );
+
+  const itemIsSelected = useCallback(
+    (item: Item) => item.type === "column" && checkIsColumnSelected(item),
+    [checkIsColumnSelected],
   );
 
   return (
     <DelayGroup>
-      <StyledAccordionList
+      <AccordionList<Item, QueryColumnPickerSection>
         className={className}
         sections={sections}
         alwaysExpanded={alwaysExpanded}
-        onChange={handleSelectColumn}
-        itemIsSelected={checkIsColumnSelected}
+        onChange={handleSelectItem}
+        onChangeSection={handleSelectSection}
+        onChangeSearchText={handleSearchTextChange}
+        itemIsSelected={itemIsSelected}
         renderItemWrapper={renderItemWrapper}
         renderItemName={renderItemName}
         renderItemExtra={renderItemExtra}
         renderItemDescription={omitItemDescription}
         renderItemIcon={renderItemIcon}
-        color={color}
+        style={{
+          color: color(colorProp),
+        }}
         maxHeight={Infinity}
         data-testid={dataTestId}
-        searchProp={["name", "displayName"]}
+        searchProp={SEARCH_PROP}
         // Compat with E2E tests around MLv1-based components
         // Prefer using a11y role selectors
         itemTestId="dimension-list-item"
-        withBorders
         hasInitialFocus={hasInitialFocus}
         width={width}
         globalSearch={!disableSearch}
@@ -221,7 +346,23 @@ export function QueryColumnPicker({
   );
 }
 
-function renderItemName(item: ColumnListItem) {
+// if there is a separate picker for temporal bucketing or binning,
+// we do not want to include it in the column name
+function getColumnWithoutBucketing(
+  column: Lib.ColumnMetadata,
+  hasTemporalBucketing: boolean,
+  hasBinning: boolean,
+) {
+  if (hasTemporalBucketing && Lib.temporalBucket(column) != null) {
+    return Lib.withTemporalBucket(column, null);
+  }
+  if (hasBinning && Lib.binning(column) != null) {
+    return Lib.withBinning(column, null);
+  }
+  return column;
+}
+
+function renderItemName(item: Item) {
   return item.displayName;
 }
 

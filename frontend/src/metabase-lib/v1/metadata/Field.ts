@@ -306,6 +306,15 @@ export default class Field extends Base {
 
   // REMAPPINGS
 
+  static remappedField(fields: Field[]): Field | null {
+    const remappedFields = fields.map((field) => field.remappedField());
+    const remappedFieldIds = new Set(remappedFields.map((field) => field?.id));
+    if (remappedFields[0] != null && remappedFieldIds.size === 1) {
+      return remappedFields[0];
+    }
+    return null;
+  }
+
   remappedField() {
     return this.remappedInternalField() ?? this.remappedExternalField();
   }
@@ -330,10 +339,12 @@ export default class Field extends Base {
       return this.metadata.field(displayFieldId);
     }
 
-    // this enables "implicit" remappings from type/PK to type/Name on the same table,
+    // enables "implicit" remapping from type/PK to type/Name on the same table,
+    // or type/FK to type/Name on the type/FK table;
     // used in FieldValuesWidget, but not table/object detail listings
-    if (this.name_field) {
-      return this.name_field;
+    const maybePkField = this.target ?? this;
+    if (maybePkField.name_field) {
+      return maybePkField.name_field;
     }
 
     return null;

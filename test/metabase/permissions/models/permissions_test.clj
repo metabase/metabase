@@ -59,36 +59,6 @@
     #{"/db/3/" "/db/2/"}                             "/db/1/schema/public/table/2/"
     #{"/db/3/schema/public/" "/db/2/schema/public/"} "/db/1/schema/public/table/2/"))
 
-(deftest set-has-partial-permissions?-test
-  (doseq [[expected inputs]
-          {true
-           [[#{"/"}                                                     "/db/1/schema/public/table/2/"]
-            [#{"/db/3/" "/db/1/"}                                       "/db/1/schema/public/table/2/"]
-            [#{"/db/3/" "/db/1/"}                                       "/db/1/schema/public/table/2/"]
-            [#{"/db/1/schema/public/" "/db/3/schema//"}                 "/db/1/schema/public/table/2/"]
-            [#{"/db/3/schema//table/4/" "/db/1/schema/public/table/2/"} "/db/1/schema/public/table/2/"]
-            [#{"/db/1/schema/public/"}                                  "/db/1/"]
-            [#{"/db/1/schema/"}                                         "/db/1/"]
-            [#{"/db/1/schema/public/"}                                  "/db/1/"]
-            [#{"/db/1/schema/public/table/1/"}                          "/db/1/"]
-            [#{"/db/1/schema/public/"}                                  "/db/1/schema/"]
-            [#{"/db/1/schema/public/table/1/"}                          "/db/1/schema/"]
-            [#{"/db/1/schema/public/table/1/"}                          "/db/1/schema/public/"]
-            [#{"/db/3/schema//table/4/" "/db/1/schema/public/table/2/"} "/db/1/"]]
-
-           false
-           [[#{}                                              "/db/1/schema/public/table/2/"]
-            [#{"/db/1/schema/"}                               "/db/1/native/"]
-            [#{"/db/1/native/"}                               "/db/1/schema/"]
-            [#{"/db/2/"}                                      "/db/1/schema/public/table/2/"]
-            [#{"/db/3/" "/db/2/"}                             "/db/1/schema/public/table/2/"]
-            [#{"/db/3/schema/public/" "/db/2/schema/public/"} "/db/1/schema/public/table/2/"]]}
-
-          [perms path] inputs]
-    (testing (pr-str (list 'set-has-partial-permissions? perms path))
-      (is (= expected
-             (perms/set-has-partial-permissions? perms path))))))
-
 (deftest ^:parallel set-has-application-permission-of-type?-test
   (are [perms perms-type] (perms/set-has-application-permission-of-type? perms perms-type)
     #{"/"}                          :subscription
@@ -115,47 +85,6 @@
     #{"/db/2/" "/db/1/"}                                       #{"/db/3/schema//table/4/" "/db/1/schema/public/table/2/"}
     #{"/db/3/schema/public/" "/db/1/schema/public/"}           #{"/db/3/schema//table/4/" "/db/1/schema/public/table/2/"}
     #{"/db/3/schema//table/5/" "/db/1/schema/public/table/2/"} #{"/db/3/schema//table/4/" "/db/1/schema/public/table/2/"}))
-
-(deftest ^:parallel set-has-partial-permissions-for-set?-test
-  (are [perms paths] (perms/set-has-partial-permissions-for-set? perms paths)
-    #{"/"}                                                      #{"/db/1/schema/public/table/2/" "/db/2/"}
-    #{"/db/1/schema/public/table/2/" "/db/3/schema/public/"}    #{"/db/1/" "/db/3/"}
-    #{"/db/1/schema/public/table/2/" "/db/3/"}                  #{"/db/1/"}
-    #{"/db/1/schema/public/" "/db/3/schema//"}                  #{"/db/1/" "/db/3/"}
-    #{"/db/1/schema/public/table/2/" "/db/3/schema//table/4/"}  #{"/db/1/"}
-    #{"/db/1/schema/public/"}                                   #{"/db/1/"}
-    #{"/db/1/schema/"}                                          #{"/db/1/"}
-    #{"/db/1/schema/public/"}                                   #{"/db/1/"}
-    #{"/db/1/schema/public/"}                                   #{"/db/1/" "/db/1/schema/"}
-    #{"/db/1/schema/public/"}                                   #{"/db/1/" "/db/1/schema/public/"}
-    #{"/db/1/schema/public/table/1/"}                           #{"/db/1/" "/db/1/schema/public/table/1/"}
-    #{"/db/1/native/"}                                          #{"/db/1/native/"}
-    #{"/db/1/schema/public/"}                                   #{"/db/1/schema/"}
-    #{"/db/1/schema/public/table/1/"}                           #{"/db/1/schema/"}
-    #{"/db/1/schema/public/table/1/"}                           #{"/db/1/schema/public/"}
-    #{"/db/1/schema/public/table/2/" "/db/3/schema//table/4/"}  #{"/db/1/"})
-  (are [perms paths] (not (perms/set-has-partial-permissions-for-set? perms paths))
-    #{}                                                        #{"/db/1/schema/public/table/2/"}
-    #{"/db/1/schema/"}                                         #{"/db/1/native/"}
-    #{"/db/1/native/"}                                         #{"/db/1/schema/"}
-    #{"/db/2/"}                                                #{"/db/1/schema/public/table/2/"}
-    #{"/db/2/" "/db/3/"}                                       #{"/db/1/schema/public/table/2/"}
-    #{"/db/2/schema/public/" "/db/3/schema/public/"}           #{"/db/1/schema/public/table/2/"}
-    #{"/db/1/schema/public/table/2/" "/db/3/schema/public/"}   #{"/db/1/" "/db/3/" "/db/9/"}
-    #{"/db/1/schema/public/table/2/" "/db/3/"}                 #{"/db/1/" "/db/9/"}
-    #{"/db/1/schema/public/" "/db/3/schema//"}                 #{"/db/1/" "/db/3/" "/db/9/"}
-    #{"/db/1/schema/public/table/2/" "/db/3/schema//table/4/"} #{"/db/1/" "/db/9/"}
-    #{"/db/1/schema/public/"}                                  #{"/db/1/" "/db/9/"}
-    #{"/db/1/schema/"}                                         #{"/db/1/" "/db/9/"}
-    #{"/db/1/schema/public/"}                                  #{"/db/1/" "/db/9/"}
-    #{"/db/1/schema/public/"}                                  #{"/db/1/" "/db/1/schema/" "/db/9/"}
-    #{"/db/1/schema/public/"}                                  #{"/db/1/" "/db/1/schema/public/" "/db/9/"}
-    #{"/db/1/schema/public/table/1/"}                          #{"/db/1/" "/db/1/schema/public/table/1/" "/db/9/"}
-    #{"/db/1/native/"}                                         #{"/db/1/native/" "/db/9/"}
-    #{"/db/1/schema/public/"}                                  #{"/db/1/schema/" "/db/9/"}
-    #{"/db/1/schema/public/table/1/"}                          #{"/db/1/schema/" "/db/9/"}
-    #{"/db/1/schema/public/table/1/"}                          #{"/db/1/schema/public/" "/db/9/"}
-    #{"/db/1/schema/public/table/2/" "/db/3/schema//table/4/"} #{"/db/1/" "/db/9/"}))
 
 (deftest ^:parallel perms-objects-set-for-parent-collection-test
   (are [input expected] (= expected
