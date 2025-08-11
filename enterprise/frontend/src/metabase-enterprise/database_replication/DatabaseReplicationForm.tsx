@@ -23,7 +23,6 @@ import {
   Progress,
   Stack,
   Text,
-  useMantineTheme,
 } from "metabase/ui";
 import type { PreviewDatabaseReplicationResponse } from "metabase-enterprise/api/database-replication";
 import type { Database, DatabaseId } from "metabase-types/api";
@@ -98,8 +97,6 @@ export const DatabaseReplicationForm = ({
   ) => void;
   initialValues: DatabaseReplicationFormFields;
 }) => {
-  const theme = useMantineTheme();
-
   const storeUrl = useStoreUrl("account/storage");
 
   // FIXME: Can we get all values of the form at once?
@@ -107,16 +104,16 @@ export const DatabaseReplicationForm = ({
   const [schemaFilters, setSchemaFilters] = useState("");
   const [showTablesWithoutPk, setShowTablesWithoutPk] = useState(false);
 
+  const [previewResponseLoading, setPreviewResponseLoading] = useState(false);
   const [previewResponse, setPreviewResponse] =
     useState<PreviewDatabaseReplicationResponse>();
-  useEffect(
-    () =>
-      preview(
-        { databaseId: database.id, schemaSelect, schemaFilters },
-        setPreviewResponse,
-      ),
-    [preview, database.id, schemaFilters, schemaSelect],
-  );
+  useEffect(() => {
+    setPreviewResponseLoading(true);
+    preview({ databaseId: database.id, schemaSelect, schemaFilters }, (res) => {
+      setPreviewResponse(res);
+      setPreviewResponseLoading(false);
+    });
+  }, [preview, database.id, schemaFilters, schemaSelect]);
 
   return (
     <>
@@ -225,7 +222,7 @@ export const DatabaseReplicationForm = ({
                             key={`${schema}.${name}`}
                             c="text-medium"
                             ff="Monaco, 'Lucida Console', monospace"
-                            fz="0.875rem"
+                            fz="md"
                           >
                             <Box component="span" c="text-dark" fw="500">
                               {schema}
@@ -246,6 +243,7 @@ export const DatabaseReplicationForm = ({
               <Group>
                 <FormSubmitButton
                   disabled={!previewResponse?.canSetReplication}
+                  loading={previewResponseLoading}
                   label={t`Start replication`}
                   variant="filled"
                 />
