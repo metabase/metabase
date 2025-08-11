@@ -589,11 +589,15 @@ databaseChangeLog:
   - changeSet:
       id: v57.2025-08-07T10:06:00-add-default-tags
       author: galdre
-      comment: Add default transform tags for common scheduling patterns
+      comment: Add default transform tags and jobs for common scheduling patterns
       preConditions:
         - onFail: MARK_RAN
         - tableExists:
             tableName: transform_tag
+        - tableExists:
+            tableName: transform_job
+        - tableExists:
+            tableName: transform_job_tags
       changes:
         - insert:
             tableName: transform_tag
@@ -601,24 +605,132 @@ databaseChangeLog:
               - column:
                   name: name
                   value: hourly
+              - column:
+                  name: id
+                  value: 1
         - insert:
             tableName: transform_tag
             columns:
               - column:
                   name: name
                   value: daily
+              - column:
+                  name: id
+                  value: 2
         - insert:
             tableName: transform_tag
             columns:
               - column:
                   name: name
                   value: weekly
+              - column:
+                  name: id
+                  value: 3
         - insert:
             tableName: transform_tag
             columns:
               - column:
                   name: name
                   value: monthly
+              - column:
+                  name: id
+                  value: 4
+        - insert:
+            tableName: transform_job
+            columns:
+              - column:
+                  name: name
+                  value: hourly
+              - column:
+                  name: schedule
+                  value: 0 0 * * * ? *
+              - column:
+                  name: entity_id
+                  value: hourly000000000000000
+              - column:
+                  name: id
+                  value: 1
+        - insert:
+            tableName: transform_job
+            columns:
+              - column:
+                  name: name
+                  value: daily
+              - column:
+                  name: schedule
+                  value: 0 0 0 * * ? *
+              - column:
+                  name: entity_id
+                  value: daily0000000000000000
+              - column:
+                  name: id
+                  value: 2
+        - insert:
+            tableName: transform_job
+            columns:
+              - column:
+                  name: name
+                  value: weekly
+              - column:
+                  name: schedule
+                  value: 0 0 0 ? * 1 *
+              - column:
+                  name: entity_id
+                  value: weekly000000000000000
+              - column:
+                  name: id
+                  value: 3
+        - insert:
+            tableName: transform_job
+            columns:
+              - column:
+                  name: name
+                  value: monthly
+              - column:
+                  name: schedule
+                  value: 0 0 0 1 * ? *
+              - column:
+                  name: entity_id
+                  value: monthly00000000000000
+              - column:
+                  name: id
+                  value: 4
+        - insert:
+            tableName: transform_job_tags
+            columns:
+              - column:
+                  name: job_id
+                  value: 1
+              - column:
+                  name: tag_id
+                  value: 1
+        - insert:
+            tableName: transform_job_tags
+            columns:
+              - column:
+                  name: job_id
+                  value: 2
+              - column:
+                  name: tag_id
+                  value: 2
+        - insert:
+            tableName: transform_job_tags
+            columns:
+              - column:
+                  name: job_id
+                  value: 3
+              - column:
+                  name: tag_id
+                  value: 3
+        - insert:
+            tableName: transform_job_tags
+            columns:
+              - column:
+                  name: job_id
+                  value: 4
+              - column:
+                  name: tag_id
+                  value: 4
 
   - changeSet:
       id: v57.2025-08-08-transform-job-runs-app-db
