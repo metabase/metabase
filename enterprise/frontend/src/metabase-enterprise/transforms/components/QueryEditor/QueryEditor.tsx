@@ -1,3 +1,5 @@
+import { useHotkeys } from "@mantine/hooks";
+
 import { Center, Flex, Loader } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
@@ -48,6 +50,16 @@ export function QueryEditor({
   const handleSave = () => {
     onSave(question.datasetQuery());
   };
+
+  const handleCmdEnter = () => {
+    if (isRunning) {
+      cancelQuery();
+    } else if (isRunnable) {
+      runQuery();
+    }
+  };
+
+  useHotkeys([["mod+Enter", handleCmdEnter]], []);
 
   if (!isInitiallyLoaded) {
     return (
