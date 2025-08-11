@@ -10,14 +10,17 @@ import { t } from "ttag";
 
 import { QuestionPickerModal } from "metabase/common/components/Pickers/QuestionPicker/components/QuestionPickerModal";
 import type { QuestionPickerValueItem } from "metabase/common/components/Pickers/QuestionPicker/types";
-import { Box, Group, Loader, Text } from "metabase/ui";
+import { Box, Divider, Text } from "metabase/ui";
 import type { RecentItem, SearchResult } from "metabase-types/api";
 
-import styles from "../../Editor.module.css";
 import {
   MenuItemComponent,
   SearchResultsFooter,
 } from "../../shared/MenuComponents";
+import {
+  LoadingSuggestionPaper,
+  SuggestionPaper,
+} from "../../shared/SuggestionPaper";
 import { useEntitySearch } from "../shared/useEntitySearch";
 
 interface MentionSuggestionProps {
@@ -136,52 +139,32 @@ const MentionSuggestionComponent = forwardRef<
     }, 0);
   };
 
+  if (isLoading) {
+    return <LoadingSuggestionPaper aria-label={t`Mention Dialog`} />;
+  }
+
   return (
-    <Box
-      className={styles.suggestionPopup}
-      role="dialog"
-      aria-label={t`Mention Dialog`}
-    >
-      <Box
-        className={styles.suggestionScroll}
-        role="list"
-        aria-label={t`Suggestions`}
-      >
-        {isLoading ? (
-          <Group justify="center" p="sm">
-            <Loader size="sm" />
-          </Group>
-        ) : (
-          <>
-            {menuItems.map((item, index) => (
-              <MenuItemComponent
-                key={index}
-                item={item}
-                isSelected={selectedIndex === index}
-                onClick={() => selectItem(index)}
-              />
-            ))}
-            {query.length > 0 && searchResults.length === 0 && !isLoading ? (
-              <Box p="sm">
-                <Text size="md" c="text-medium" ta="center">
-                  {t`No results found`}
-                </Text>
-              </Box>
-            ) : null}
-            <Box>
-              <Box
-                style={{
-                  borderTop: "1px solid var(--mb-color-border)",
-                }}
-              />
-              <SearchResultsFooter
-                isSelected={selectedIndex === menuItems.length}
-                onClick={() => setModal("question-picker")}
-              />
-            </Box>
-          </>
-        )}
-      </Box>
+    <SuggestionPaper aria-label={t`Mention Dialog`}>
+      <>
+        {menuItems.map((item, index) => (
+          <MenuItemComponent
+            key={index}
+            item={item}
+            isSelected={selectedIndex === index}
+            onClick={() => selectItem(index)}
+          />
+        ))}
+        {query.length > 0 && searchResults.length === 0 ? (
+          <Box p="sm" ta="center">
+            <Text size="sm" c="dimmed">{t`No results found`}</Text>
+          </Box>
+        ) : null}
+        <Divider my="xs" mx="sm" />
+        <SearchResultsFooter
+          isSelected={selectedIndex === menuItems.length}
+          onClick={() => setModal("question-picker")}
+        />
+      </>
 
       {modal === "question-picker" && (
         <QuestionPickerModal
@@ -189,7 +172,7 @@ const MentionSuggestionComponent = forwardRef<
           onClose={handleModalClose}
         />
       )}
-    </Box>
+    </SuggestionPaper>
   );
 });
 

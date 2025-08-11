@@ -12,14 +12,27 @@ import { t } from "ttag";
 
 import { QuestionPickerModal } from "metabase/common/components/Pickers/QuestionPicker/components/QuestionPickerModal";
 import type { QuestionPickerValueItem } from "metabase/common/components/Pickers/QuestionPicker/types";
-import { Box, Group, Icon, type IconName, Loader, Text } from "metabase/ui";
+import {
+  Box,
+  Divider,
+  Group,
+  Icon,
+  type IconName,
+  Stack,
+  Text,
+  UnstyledButton,
+} from "metabase/ui";
 import type { RecentItem, SearchModel, SearchResult } from "metabase-types/api";
 
-import styles from "../../Editor.module.css";
 import {
   MenuItemComponent,
   SearchResultsFooter,
 } from "../../shared/MenuComponents";
+import S from "../../shared/MenuItems.module.css";
+import {
+  LoadingSuggestionPaper,
+  SuggestionPaper,
+} from "../../shared/SuggestionPaper";
 import { EMBED_SEARCH_MODELS } from "../shared/constants";
 import { useEntitySearch } from "../shared/useEntitySearch";
 
@@ -60,48 +73,51 @@ interface CommandSection {
 }
 
 const CommandMenuItem = forwardRef<
-  HTMLDivElement,
+  HTMLButtonElement,
   {
     option: CommandOption;
     isSelected?: boolean;
     onClick?: () => void;
   }
 >(({ option, isSelected, onClick }, ref) => (
-  <Box
+  <UnstyledButton
     ref={ref}
-    p="sm"
-    className={styles.suggestionMenuItem}
-    data-selected={isSelected || undefined}
+    className={S.menuItem}
     onClick={onClick}
-    role="listitem"
+    role="option"
+    aria-selected={isSelected}
     aria-label={option.label}
   >
     <Group gap="sm" wrap="nowrap" align="center">
       {option.icon ? (
-        <Icon
-          name={option.icon}
-          size={16}
-          color="var(--mb-color-text-medium)"
-        />
+        <Icon name={option.icon} size={16} color="inherit" />
       ) : option.text ? (
-        <Group w={16} h={16} gap={0} align="center" justify="center">
-          <Text size="xs" fw={700} c="text-medium">
+        <Box
+          w={16}
+          h={16}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <Text size="xs" fw={700} c="inherit">
             {option.text}
           </Text>
-        </Group>
+        </Box>
       ) : null}
-      <Box>
-        <Text size="md" fw={500}>
+      <Stack gap={2} style={{ flex: 1 }}>
+        <Text size="md" lh="lg" c="inherit">
           {option.label}
         </Text>
         {option.description && (
-          <Text size="sm" c="text-medium">
+          <Text size="sm" c="text-light" lh="md">
             {option.description}
           </Text>
         )}
-      </Box>
+      </Stack>
     </Group>
-  </Box>
+  </UnstyledButton>
 ));
 
 CommandMenuItem.displayName = "CommandMenuItem";
@@ -116,7 +132,7 @@ const CommandSuggestionComponent = forwardRef<
   const [pendingLinkMode, setPendingLinkMode] = useState(false);
   const [pendingEmbedMode, setPendingEmbedMode] = useState(false);
   const [modal, setModal] = useState<"question-picker" | null>(null);
-  const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const itemRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
   useEffect(() => {
     if (pendingLinkMode) {
@@ -454,155 +470,123 @@ const CommandSuggestionComponent = forwardRef<
   };
 
   if ((showLinkSearch || showEmbedSearch) && isLinkSearchLoading) {
-    return (
-      <Group justify="center" p="sm">
-        <Loader size="sm" />
-      </Group>
-    );
+    return <LoadingSuggestionPaper aria-label={t`Command Dialog`} />;
   }
 
   return (
-    <Box
-      className={styles.suggestionPopup}
-      aria-label={t`Command Dialog`}
-      role="dialog"
-    >
-      <Box className={styles.suggestionScroll}>
-        {(showLinkSearch || showEmbedSearch) && isLinkSearchLoading ? (
-          <Group justify="center" p="sm">
-            <Loader size="sm" />
-          </Group>
-        ) : showLinkSearch || showEmbedSearch ? (
-          <>
-            {linkMenuItems.map((item, index) => (
-              <MenuItemComponent
-                key={index}
-                item={item}
-                isSelected={selectedIndex === index}
-                onClick={() => selectItem(index)}
-              />
-            ))}
-            {effectiveQuery.length > 0 &&
-            searchResults.length === 0 &&
-            !isLinkSearchLoading ? (
-              <Box p="sm">
-                <Text size="md" c="text-medium" ta="center">
-                  {t`No results found`}
-                </Text>
-              </Box>
-            ) : null}
-            <Box>
-              <Box
-                style={{
-                  borderTop: "1px solid var(--mb-color-border)",
-                }}
-              />
-              <SearchResultsFooter
-                isSelected={selectedIndex === linkMenuItems.length}
-                onClick={() => setModal("question-picker")}
-              />
+    <SuggestionPaper aria-label={t`Command Dialog`}>
+      {showLinkSearch || showEmbedSearch ? (
+        <>
+          {linkMenuItems.map((item, index) => (
+            <MenuItemComponent
+              key={index}
+              item={item}
+              isSelected={selectedIndex === index}
+              onClick={() => selectItem(index)}
+            />
+          ))}
+          {effectiveQuery.length > 0 &&
+          searchResults.length === 0 &&
+          !isLinkSearchLoading ? (
+            <Box p="sm" ta="center">
+              <Text size="sm" c="dimmed">{t`No results found`}</Text>
             </Box>
-          </>
-        ) : (
-          <>
-            {commandOptions.length > 0 ||
-            (query && searchMenuItems.length > 0) ? (
-              <>
-                {query && searchMenuItems.length > 0 ? (
-                  // When searching, show question search results first, then matching commands
-                  <>
-                    {searchMenuItems.map((item, index) => (
-                      <MenuItemComponent
-                        key={`search-${index}`}
-                        item={item}
+          ) : null}
+          <Divider my="xs" mx="sm" />
+          <SearchResultsFooter
+            isSelected={selectedIndex === linkMenuItems.length}
+            onClick={() => setModal("question-picker")}
+          />
+        </>
+      ) : (
+        <>
+          {commandOptions.length > 0 ||
+          (query && searchMenuItems.length > 0) ? (
+            <>
+              {query && searchMenuItems.length > 0 ? (
+                // When searching, show question search results first, then matching commands
+                <>
+                  {searchMenuItems.map((item, index) => (
+                    <MenuItemComponent
+                      key={`search-${index}`}
+                      item={item}
+                      isSelected={selectedIndex === index}
+                      onClick={() => selectItem(index)}
+                    />
+                  ))}
+                  {searchMenuItems.length > 0 && commandOptions.length > 0 && (
+                    <Divider my="xs" mx="sm" />
+                  )}
+                  {commandOptions.map((option, cmdIndex) => {
+                    const index = searchMenuItems.length + cmdIndex;
+                    return (
+                      <CommandMenuItem
+                        key={`cmd-${cmdIndex}`}
+                        ref={(el) => (itemRefs.current[index] = el)}
+                        option={option}
                         isSelected={selectedIndex === index}
                         onClick={() => selectItem(index)}
                       />
-                    ))}
-                    {searchMenuItems.length > 0 &&
-                      commandOptions.length > 0 && (
-                        <Box
-                          mx="sm"
-                          my="xs"
-                          style={{
-                            borderTop: "1px solid var(--mb-color-border)",
-                          }}
-                        />
+                    );
+                  })}
+                </>
+              ) : (
+                // When not searching, show sections
+                allCommandSections.map((section, sectionIndex) => {
+                  const filteredItems = section.items.filter((item) =>
+                    commandOptions.includes(item),
+                  );
+                  if (filteredItems.length === 0) {
+                    return null;
+                  }
+
+                  return (
+                    <Box key={sectionIndex}>
+                      {section.title && sectionIndex > 0 && (
+                        <Box>
+                          <Divider my="xs" mx="sm" />
+                          <Text
+                            size="sm"
+                            c="text-primary"
+                            px="sm"
+                            pt="xs"
+                            pb="xs"
+                          >
+                            {section.title}
+                          </Text>
+                        </Box>
                       )}
-                    {commandOptions.map((option, cmdIndex) => {
-                      const index = searchMenuItems.length + cmdIndex;
-                      return (
-                        <CommandMenuItem
-                          key={`cmd-${cmdIndex}`}
-                          ref={(el) => (itemRefs.current[index] = el)}
-                          option={option}
-                          isSelected={selectedIndex === index}
-                          onClick={() => selectItem(index)}
-                        />
-                      );
-                    })}
-                  </>
-                ) : (
-                  // When not searching, show sections
-                  allCommandSections.map((section, sectionIndex) => {
-                    const filteredItems = section.items.filter((item) =>
-                      commandOptions.includes(item),
-                    );
-                    if (filteredItems.length === 0) {
-                      return null;
-                    }
-
-                    return (
-                      <Box key={sectionIndex}>
-                        {section.title && sectionIndex > 0 && (
-                          <Box>
-                            <Box
-                              style={{
-                                borderTop: "1px solid var(--mb-color-border)",
-                              }}
-                            />
-                            <Box px="sm" py="sm">
-                              <Text size="sm" c="text-medium" fw={700}>
-                                {section.title}
-                              </Text>
-                            </Box>
-                          </Box>
-                        )}
-                        {filteredItems.map((option) => {
-                          const index = commandOptions.indexOf(option);
-                          return (
-                            <CommandMenuItem
-                              key={index}
-                              ref={(el) => (itemRefs.current[index] = el)}
-                              option={option}
-                              isSelected={selectedIndex === index}
-                              onClick={() => selectItem(index)}
-                            />
-                          );
-                        })}
-                      </Box>
-                    );
-                  })
-                )}
-              </>
-            ) : (
-              <Box p="sm">
-                <Text size="md" c="text-medium" ta="center">
-                  {t`No results found`}
-                </Text>
-              </Box>
-            )}
-          </>
-        )}
-      </Box>
-
+                      {filteredItems.map((option) => {
+                        const index = commandOptions.indexOf(option);
+                        return (
+                          <CommandMenuItem
+                            key={index}
+                            ref={(el) => (itemRefs.current[index] = el)}
+                            option={option}
+                            isSelected={selectedIndex === index}
+                            onClick={() => selectItem(index)}
+                          />
+                        );
+                      })}
+                    </Box>
+                  );
+                })
+              )}
+            </>
+          ) : (
+            <Box p="sm" ta="center">
+              <Text size="sm" c="dimmed">{t`No results found`}</Text>
+            </Box>
+          )}
+        </>
+      )}
       {modal === "question-picker" && (
         <QuestionPickerModal
           onChange={handleModalSelect}
           onClose={handleModalClose}
         />
       )}
-    </Box>
+    </SuggestionPaper>
   );
 });
 
