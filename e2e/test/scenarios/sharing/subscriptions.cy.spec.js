@@ -331,12 +331,11 @@ describe("scenarios > dashboard > subscriptions", () => {
       assignRecipient();
 
       cy.findByLabelText("Attach results").click();
-      cy.findByText("Questions to attach").click();
       cy.findAllByRole("listitem")
         .contains("Orders")
         .closest("li")
         .within(() => {
-          cy.findByRole("checkbox").click();
+          cy.findByRole("checkbox").should("be.checked");
         });
 
       cy.findByLabelText("Send only attachments").click();
