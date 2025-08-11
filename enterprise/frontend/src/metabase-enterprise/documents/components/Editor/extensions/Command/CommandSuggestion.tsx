@@ -22,7 +22,10 @@ import {
 } from "metabase/ui";
 import type { RecentItem, SearchResult } from "metabase-types/api";
 
-import { MenuItemComponent } from "../../shared/MenuComponents";
+import {
+  MenuItemComponent,
+  SearchResultsFooter,
+} from "../../shared/MenuComponents";
 import S from "../../shared/MenuItems.module.css";
 import {
   LoadingSuggestionPaper,
@@ -282,12 +285,12 @@ const CommandSuggestionComponent = forwardRef<
     });
   };
 
-  // Use shared entity suggestions for link/embed mode
+  // Use shared entity suggestions for link/embed mode and browse all functionality
   const entitySuggestions = useEntitySuggestions({
     query: effectiveQuery,
     editor,
     onSelectEntity: onSelectLinkEntity,
-    enabled: showLinkSearch || showEmbedSearch,
+    enabled: showLinkSearch || showEmbedSearch || !!query,
     searchModels: showEmbedSearch ? EMBED_SEARCH_MODELS : undefined,
   });
 
@@ -346,11 +349,13 @@ const CommandSuggestionComponent = forwardRef<
     searchMenuItems,
     commandOptions,
   ]);
+  let totalItems = currentItems.length;
 
-  const totalItems =
-    showLinkSearch || showEmbedSearch
-      ? linkMenuItems.length + 1
-      : currentItems.length;
+  if (showLinkSearch || showEmbedSearch) {
+    totalItems = linkMenuItems.length + 1;
+  } else if (currentItems.length === 0 && query) {
+    totalItems = 1; // Just the browse all footer
+  }
 
   const selectItem = (index: number) => {
     if (showLinkSearch || showEmbedSearch) {
@@ -366,6 +371,11 @@ const CommandSuggestionComponent = forwardRef<
             executeCommand(commandOptions[commandIndex].command);
           }
         }
+      } else if (currentItems.length === 0 && query && index === 0) {
+        // Handle browse all when no results
+        // Switch to embed mode so selected questions get embedded
+        setShowEmbedSearch(true);
+        entityHandlers.openModal();
       } else {
         if (index < commandOptions.length) {
           executeCommand(commandOptions[index].command);
@@ -521,9 +531,24 @@ const CommandSuggestionComponent = forwardRef<
               )}
             </>
           ) : (
-            <Box p="sm" ta="center">
-              <Text size="sm" c="dimmed">{t`No results found`}</Text>
-            </Box>
+            <>
+              <Box p="sm" ta="center">
+                <Text size="md" c="text-medium">{t`No results found`}</Text>
+              </Box>
+              {query && (
+                <>
+                  <Divider my="sm" mx="sm" />
+                  <SearchResultsFooter
+                    isSelected={selectedIndex === currentItems.length}
+                    onClick={() => {
+                      // Switch to embed mode so selected questions get embedded
+                      setShowEmbedSearch(true);
+                      entityHandlers.openModal();
+                    }}
+                  />
+                </>
+              )}
+            </>
           )}
         </>
       )}
