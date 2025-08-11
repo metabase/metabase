@@ -14,7 +14,7 @@ import type { Transform } from "metabase-types/api";
 import { ListEmptyState } from "../../../components/ListEmptyState";
 import { TagList } from "../../../components/TagList";
 import { getTransformUrl } from "../../../urls";
-import { formatStatus, formatTimestamp } from "../../../utils";
+import { formatStatus, parseLocalTimestamp } from "../../../utils";
 
 import S from "./TransformList.module.css";
 
@@ -66,7 +66,9 @@ export function TransformList() {
             <td>{transform.target.name}</td>
             <td>
               {transform.last_execution?.end_time
-                ? formatTimestamp(transform.last_execution?.end_time)
+                ? parseLocalTimestamp(transform.last_execution.end_time).format(
+                    "lll",
+                  )
                 : null}
             </td>
             <td>

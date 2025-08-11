@@ -8,9 +8,10 @@ import { Card, Group, Stack } from "metabase/ui";
 import type { TransformExecution } from "metabase-types/api";
 
 import { ListEmptyState } from "../../../components/ListEmptyState";
+import { RunStatusInfo } from "../../../components/RunStatusInfo";
 import type { RunListParams } from "../../../types";
 import { getRunListUrl, getTransformUrl } from "../../../urls";
-import { formatStatus, formatTimestamp, formatTrigger } from "../../../utils";
+import { formatTrigger, parseLocalTimestamp } from "../../../utils";
 import { PAGE_SIZE } from "../constants";
 
 import S from "./RunList.module.css";
@@ -77,11 +78,23 @@ function RunTable({ executions }: RunTableProps) {
             onClick={() => handleRowClick(execution)}
           >
             <td>{execution.transform?.name}</td>
-            <td>{formatTimestamp(execution.start_time)}</td>
+            <td>{parseLocalTimestamp(execution.start_time).format("lll")}</td>
             <td>
-              {execution.end_time ? formatTimestamp(execution.end_time) : null}
+              {execution.end_time
+                ? parseLocalTimestamp(execution.end_time).format("lll")
+                : null}
             </td>
-            <td>{formatStatus(execution.status)}</td>
+            <td>
+              <RunStatusInfo
+                status={execution.status}
+                message={execution.message}
+                endTime={
+                  execution.end_time != null
+                    ? parseLocalTimestamp(execution.end_time).toDate()
+                    : null
+                }
+              />
+            </td>
             <td>{formatTrigger(execution.trigger)}</td>
           </tr>
         ))}

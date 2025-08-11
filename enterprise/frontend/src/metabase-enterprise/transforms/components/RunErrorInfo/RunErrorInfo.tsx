@@ -1,4 +1,6 @@
 import { useDisclosure } from "@mantine/hooks";
+import dayjs from "dayjs";
+import type { MouseEvent } from "react";
 import { t } from "ttag";
 
 import { CodeEditor } from "metabase/common/components/CodeEditor";
@@ -18,42 +20,64 @@ import {
 import S from "./RunErrorInfo.module.css";
 
 type RunErrorInfoProps = {
-  title: string;
-  error: string;
+  message: string;
+  endTime: Date | null;
 };
 
-export function RunErrorInfo({ title, error }: RunErrorInfoProps) {
+export function RunErrorInfo({ message, endTime }: RunErrorInfoProps) {
   const [isOpened, { open, close }] = useDisclosure();
+
+  const handleIconClick = (event: MouseEvent) => {
+    event.stopPropagation();
+    open();
+  };
+
+  const handleModalClick = (event: MouseEvent) => {
+    event.stopPropagation();
+  };
 
   return (
     <>
       <Tooltip label={t`See error`}>
-        <ActionIcon onClick={open}>
+        <ActionIcon onClick={handleIconClick}>
           <Icon name="document" />
         </ActionIcon>
       </Tooltip>
       {isOpened && (
-        <Modal title={title} size="xl" padding="xl" opened onClose={close}>
+        <Modal
+          title={getTitle(endTime)}
+          size="xl"
+          padding="xl"
+          opened
+          onClick={handleModalClick}
+          onClose={close}
+        >
           <FocusTrap.InitialFocus />
-          <RunErrorModalContent error={error} onClose={close} />
+          <RunErrorModalContent message={message} onClose={close} />
         </Modal>
       )}
     </>
   );
 }
 
+function getTitle(endTime: Date | null) {
+  return endTime
+    ? t`Failed at ${dayjs(endTime).format("lll")}, with this error`
+    : t`Failed with this error`;
+}
+
 type RunErrorModalContentProps = {
-  error: string;
+  message: string;
   onClose: () => void;
 };
 
-function RunErrorModalContent({ error, onClose }: RunErrorModalContentProps) {
+function RunErrorModalContent({ message, onClose }: RunErrorModalContentProps) {
   return (
-    <Stack>
+    <Stack pt="md" gap="lg">
       <Box className={S.codeContainer} pos="relative" pr="lg">
-        <CodeEditor value={error} readOnly />
+        <CodeEditor value={message} readOnly />
         <Box p="sm" pos="absolute" right={0} top={0}>
-          <CopyButton value={error} />
+          <CopyButton value={message} />
         </Box>
       </Box>
       <Group justify="end">

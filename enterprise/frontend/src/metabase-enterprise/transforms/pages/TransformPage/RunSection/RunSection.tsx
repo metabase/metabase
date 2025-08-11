@@ -1,4 +1,3 @@
-import dayjs from "dayjs";
 import { Link } from "react-router";
 import { t } from "ttag";
 
@@ -16,6 +15,7 @@ import { RunErrorInfo } from "../../../components/RunErrorInfo";
 import { SplitSection } from "../../../components/SplitSection";
 import { TagMultiSelect } from "../../../components/TagMultiSelect";
 import { getRunListUrl } from "../../../urls";
+import { parseLocalTimestamp } from "../../../utils";
 
 type RunSectionProps = {
   transform: Transform;
@@ -60,8 +60,8 @@ function RunStatusSection({ transform }: RunStatusSectionProps) {
   }
 
   const { status, end_time, message } = last_execution;
-  const endTimeText =
-    end_time != null ? dayjs(end_time).local().fromNow() : null;
+  const endTime = end_time != null ? parseLocalTimestamp(end_time) : null;
+  const endTimeText = endTime != null ? endTime.fromNow() : null;
 
   const runsInfo = (
     <Anchor
@@ -75,7 +75,10 @@ function RunStatusSection({ transform }: RunStatusSectionProps) {
 
   const errorInfo =
     message != null ? (
-      <RunErrorInfo title={t`Transform run error`} error={message} />
+      <RunErrorInfo
+        error={message}
+        endTime={endTime ? endTime.toDate() : null}
+      />
     ) : null;
 
   switch (status) {
