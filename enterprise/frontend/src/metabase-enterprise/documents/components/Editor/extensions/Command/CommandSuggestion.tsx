@@ -302,44 +302,41 @@ const CommandSuggestionComponent = forwardRef<
     searchModels: showEmbedSearch ? EMBED_SEARCH_MODELS : undefined,
   });
 
-  // Search for entities when typing in command mode (for embedding)
-  const { menuItems: searchMenuItems, searchResults: commandSearchResults } =
-    useEntitySearch({
-      query,
-      onSelectRecent: useCallback(
-        (item: RecentItem) => {
-          command({
-            embedItem: true,
-            entityId: item.id,
-            model: item.model,
-          });
-        },
-        [command],
-      ),
-      onSelectSearchResult: useCallback(
-        (item: SearchResult) => {
-          command({
-            embedItem: true,
-            entityId: item.id,
-            model: item.model,
-          });
-        },
-        [command],
-      ),
-      enabled: !showLinkSearch && !showEmbedSearch && !!query,
-      searchModels: EMBED_SEARCH_MODELS,
-    });
+  const { menuItems: searchMenuItems } = useEntitySearch({
+    query,
+    onSelectRecent: useCallback(
+      (item: RecentItem) => {
+        command({
+          embedItem: true,
+          entityId: item.id,
+          model: item.model,
+        });
+      },
+      [command],
+    ),
+    onSelectSearchResult: useCallback(
+      (item: SearchResult) => {
+        command({
+          embedItem: true,
+          entityId: item.id,
+          model: item.model,
+        });
+      },
+      [command],
+    ),
+    enabled: !showLinkSearch && !showEmbedSearch && !!query,
+    searchModels: EMBED_SEARCH_MODELS,
+  });
 
   const currentItems = useMemo(() => {
     if (showLinkSearch || showEmbedSearch) {
       return linkMenuItems;
     }
 
-    // When searching in command mode, only show question search results (not recents)
-    if (query && commandSearchResults.length > 0) {
-      // Build menu items from search results
-      const searchItems = searchMenuItems.slice(0, 3);
-      return [...searchItems, ...commandOptions];
+    // When searching in command mode, combine search results with matching commands
+    if (query && searchMenuItems.length > 0) {
+      // Show search results (questions) followed by matching commands
+      return [...searchMenuItems, ...commandOptions];
     }
 
     return commandOptions;
@@ -348,7 +345,6 @@ const CommandSuggestionComponent = forwardRef<
     showEmbedSearch,
     linkMenuItems,
     query,
-    commandSearchResults,
     searchMenuItems,
     commandOptions,
   ]);
@@ -367,12 +363,11 @@ const CommandSuggestionComponent = forwardRef<
       }
     } else {
       // When searching in command mode, handle both entity results and commands
-      if (query && commandSearchResults.length > 0) {
-        const limitedSearchItems = searchMenuItems.slice(0, 3);
-        if (index < limitedSearchItems.length) {
-          limitedSearchItems[index].action();
+      if (query && searchMenuItems.length > 0) {
+        if (index < searchMenuItems.length) {
+          searchMenuItems[index].action();
         } else {
-          const commandIndex = index - limitedSearchItems.length;
+          const commandIndex = index - searchMenuItems.length;
           if (commandIndex < commandOptions.length) {
             executeCommand(commandOptions[commandIndex].command);
           }
@@ -403,7 +398,7 @@ const CommandSuggestionComponent = forwardRef<
     currentItems.length,
     showLinkSearch,
     showEmbedSearch,
-    commandSearchResults.length,
+    searchMenuItems.length,
   ]);
 
   useEffect(() => {
@@ -510,12 +505,13 @@ const CommandSuggestionComponent = forwardRef<
           </>
         ) : (
           <>
-            {commandOptions.length > 0 ? (
+            {commandOptions.length > 0 ||
+            (query && searchMenuItems.length > 0) ? (
               <>
-                {query && commandSearchResults.length > 0 ? (
-                  // When searching, show question search results first (max 3), then commands
+                {query && searchMenuItems.length > 0 ? (
+                  // When searching, show question search results first, then matching commands
                   <>
-                    {searchMenuItems.slice(0, 3).map((item, index) => (
+                    {searchMenuItems.map((item, index) => (
                       <MenuItemComponent
                         key={`search-${index}`}
                         item={item}
@@ -534,8 +530,7 @@ const CommandSuggestionComponent = forwardRef<
                         />
                       )}
                     {commandOptions.map((option, cmdIndex) => {
-                      const index =
-                        Math.min(searchMenuItems.length, 3) + cmdIndex;
+                      const index = searchMenuItems.length + cmdIndex;
                       return (
                         <CommandMenuItem
                           key={`cmd-${cmdIndex}`}
@@ -593,7 +588,7 @@ const CommandSuggestionComponent = forwardRef<
             ) : (
               <Box p="sm">
                 <Text size="md" c="text-medium" ta="center">
-                  {t`No commands found`}
+                  {t`No results found`}
                 </Text>
               </Box>
             )}

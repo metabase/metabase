@@ -41,6 +41,7 @@ export const createSuggestionRenderer = <I = unknown, TSelected = unknown>(
             left: `${pos.x}px`,
             top: `${pos.y}px`,
             position: pos.strategy === "fixed" ? "fixed" : "absolute",
+            zIndex: "3",
           });
         }
       });

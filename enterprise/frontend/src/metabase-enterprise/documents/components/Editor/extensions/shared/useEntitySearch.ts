@@ -33,15 +33,20 @@ export function useEntitySearch({
   enabled = true,
   searchModels = LINK_SEARCH_MODELS,
 }: UseEntitySearchOptions): UseEntitySearchResult {
+  const shouldFetchRecents = enabled && query.length === 0;
+
   const { data: recents = [], isLoading: isRecentsLoading } =
     useListRecentsQuery(undefined, {
       refetchOnMountOrArgChange: true,
-      skip: !enabled,
+      skip: !shouldFetchRecents,
     });
 
   const filteredRecents = useMemo(
-    () => recents.filter(isRecentQuestion).slice(0, LINK_SEARCH_LIMIT),
-    [recents],
+    () =>
+      shouldFetchRecents
+        ? recents.filter(isRecentQuestion).slice(0, LINK_SEARCH_LIMIT)
+        : [],
+    [recents, shouldFetchRecents],
   );
 
   const { data: searchResponse, isLoading: isSearchLoading } = useSearchQuery(
@@ -64,12 +69,15 @@ export function useEntitySearch({
     const items: MenuItem[] = [];
 
     if (query.length > 0) {
-      if (!isSearchLoading && searchResults.length > 0) {
+      // When there's a query, always show search results (even if empty)
+      // Don't show recents when searching
+      if (!isSearchLoading) {
         items.push(
           ...buildSearchMenuItems(searchResults, onSelectSearchResult),
         );
       }
     } else {
+      // Only show recents when there's no query
       if (!isRecentsLoading && filteredRecents.length > 0) {
         items.push(...buildRecentsMenuItems(filteredRecents, onSelectRecent));
       }
@@ -87,8 +95,8 @@ export function useEntitySearch({
   ]);
 
   const isLoading =
-    (isRecentsLoading && query.length === 0) ||
-    (isSearchLoading && query.length > 0);
+    (shouldFetchRecents && isRecentsLoading) ||
+    (query.length > 0 && isSearchLoading);
 
   return {
     menuItems,
