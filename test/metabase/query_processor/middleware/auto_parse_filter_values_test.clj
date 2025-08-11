@@ -1,6 +1,8 @@
 (ns metabase.query-processor.middleware.auto-parse-filter-values-test
   (:require
    [clojure.test :refer :all]
+   [metabase.lib.core :as lib]
+   [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util.macros :as lib.tu.macros]
    [metabase.query-processor.middleware.auto-parse-filter-values
     :as
@@ -26,21 +28,32 @@
                                 :type/Boolean    true}]
     (testing (format "A String parameter that has %s should get parsed to a %s"
                      base-type (.getCanonicalName (class expected)))
-      (is (= (lib.tu.macros/$ids venues
-               [:= $price [:value expected {:base_type base-type}]])
-             (-> (lib.tu.macros/mbql-query venues
-                   {:filter [:= $price [:value (str expected) {:base_type base-type}]]})
-                 auto-parse-filter-values
-                 :query :filter))))))
+      (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+                      (lib/filter (lib/= (meta/field-metadata :venues :price)
+                                         ;; apparently we have no MLv2 helper for creating `:value` clauses
+                                         [:value
+                                          {:base-type base-type, :effective-type base-type, :lib/uuid (str (random-uuid))}
+                                          (str expected)])))]
+        (is (=? [:=
+                 {}
+                 [:field {} (meta/id :venues :price)]
+                 [:value {:base-type base-type, :effective-type base-type} expected]]
+                (-> query
+                    auto-parse-filter-values
+                    lib/filters
+                    first)))))))
 
 (deftest ^:parallel parse-large-integers-test
   (testing "Should parse Integer strings to Longs in case they're extra-big"
     (let [n     (inc (long Integer/MAX_VALUE))
-          query (lib.tu.macros/mbql-query venues
-                  {:filter [:= $price [:value (str n) {:base_type :type/Integer}]]})]
+          query (lib/query meta/metadata-provider
+                           (lib.tu.macros/mbql-query venues
+                             {:filter [:= $price [:value (str n) {:base_type :type/Integer}]]}))]
       (testing (format "\nQuery = %s" (pr-str query))
-        (is (= (lib.tu.macros/$ids venues
-                 [:= $price [:value n {:base_type :type/Integer}]])
-               (-> (auto-parse-filter-values query)
-                   :query
-                   :filter)))))))
+        (is (=? [:=
+                 {}
+                 [:field {} (meta/id :venues :price)]
+                 [:value {:base-type :type/Integer, :effective-type :type/Integer} n]]
+                (-> (auto-parse-filter-values query)
+                    lib/filters
+                    first)))))))

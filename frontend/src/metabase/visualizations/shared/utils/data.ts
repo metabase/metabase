@@ -201,7 +201,12 @@ const getBreakoutSeries = (
     return {
       seriesKey: breakoutName,
       seriesName: breakoutName,
-      yAccessor: (datum: GroupedDatum) => formatNullable(datum.dimensionValue),
+      yAccessor: (datum: GroupedDatum) =>
+        formatNullable(
+          typeof datum.dimensionValue === "object"
+            ? JSON.stringify(datum.dimensionValue)
+            : datum.dimensionValue,
+        ),
       xAccessor: (datum: GroupedDatum) =>
         datum.breakout?.[breakoutName]?.metrics[metric.column.name] ?? null,
       seriesInfo: {
@@ -221,7 +226,10 @@ const getMultipleMetricSeries = (
     return {
       seriesKey: metric.column.name,
       seriesName: metric.column.display_name ?? metric.column.name,
-      yAccessor: (datum: GroupedDatum) => datum.dimensionValue,
+      yAccessor: (datum: GroupedDatum) =>
+        typeof datum.dimensionValue === "object"
+          ? JSON.stringify(datum.dimensionValue)
+          : datum.dimensionValue,
       xAccessor: (datum: GroupedDatum) => datum.metrics[metric.column.name],
       seriesInfo: {
         dimensionColumn: dimension.column,

@@ -20,7 +20,7 @@ export const getRowIdColumn = <TRow, TValue>({
   return {
     accessorFn: (_row, index) => index as TValue,
     id: ROW_ID_COLUMN_ID,
-    size: getRowIdColumnSize(variant),
+    minSize: getRowIdColumnSize(variant),
     enableSorting: false,
     enableResizing: false,
     enablePinning: true,

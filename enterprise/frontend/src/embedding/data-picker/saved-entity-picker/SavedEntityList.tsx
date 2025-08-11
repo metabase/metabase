@@ -2,20 +2,21 @@ import { Fragment } from "react";
 import { t } from "ttag";
 
 import { skipToken, useListCollectionItemsQuery } from "metabase/api";
-import EmptyState from "metabase/components/EmptyState";
-import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
-import SelectList from "metabase/components/SelectList";
+import EmptyState from "metabase/common/components/EmptyState";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import SelectList from "metabase/common/components/SelectList";
 import { PERSONAL_COLLECTIONS } from "metabase/entities/collections/constants";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import { Box } from "metabase/ui";
 import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
-import type { Collection, DatabaseId } from "metabase-types/api";
+import type { CardType, Collection, DatabaseId } from "metabase-types/api";
 import { SortDirection } from "metabase-types/api/sorting";
 
 import SavedEntityListS from "./SavedEntityList.module.css";
 import { CARD_INFO } from "./constants";
 
 interface SavedEntityListProps {
+  type: Extract<CardType, "model" | "question">;
   selectedId: string;
   databaseId: DatabaseId;
   collection?: Collection;
@@ -23,6 +24,7 @@ interface SavedEntityListProps {
 }
 
 const SavedEntityList = ({
+  type,
   selectedId,
   databaseId,
   collection,
@@ -40,7 +42,7 @@ const SavedEntityList = ({
     collection && !isVirtualCollection
       ? {
           id: collection.id,
-          models: [CARD_INFO.model.model],
+          models: [CARD_INFO[type].model],
           sort_column: "name",
           sort_direction: SortDirection.Asc,
         }
@@ -77,7 +79,7 @@ const SavedEntityList = ({
                   size="small"
                   name={name}
                   icon={{
-                    name: CARD_INFO.model.icon,
+                    name: CARD_INFO[type].icon,
                     size: 16,
                   }}
                   onSelect={() => onSelect(virtualTableId)}

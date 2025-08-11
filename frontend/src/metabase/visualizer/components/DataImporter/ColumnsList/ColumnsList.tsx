@@ -1,11 +1,13 @@
 import { useDraggable } from "@dnd-kit/core";
 import { t } from "ttag";
 
+import { ToolbarButton } from "metabase/common/components/ToolbarButton";
 import { trackSimpleEvent } from "metabase/lib/analytics";
 import { isPivotGroupColumn } from "metabase/lib/data_grid";
 import { useDispatch, useSelector } from "metabase/lib/redux";
-import { Box, Flex, Icon, Loader, Text } from "metabase/ui";
+import { Box, Flex, Icon, Loader, Menu, Text } from "metabase/ui";
 import { DRAGGABLE_ID } from "metabase/visualizer/constants";
+import { useIsCardPristine } from "metabase/visualizer/hooks/use-is-card-pristine";
 import {
   getDataSources,
   getDatasets,
@@ -18,7 +20,11 @@ import {
 } from "metabase/visualizer/selectors";
 import { isReferenceToColumn } from "metabase/visualizer/utils";
 import { findSlotForColumn } from "metabase/visualizer/visualizations/compat";
-import { addColumn, removeColumn } from "metabase/visualizer/visualizer.slice";
+import {
+  addColumn,
+  removeColumn,
+  setHoveredItems,
+} from "metabase/visualizer/visualizer.slice";
 import type {
   DatasetColumn,
   VisualizerDataSource,
@@ -32,10 +38,16 @@ export interface ColumnListProps {
   collapsedDataSources: Record<string, boolean>;
   toggleDataSource: (sourceId: VisualizerDataSourceId) => void;
   onRemoveDataSource: (source: VisualizerDataSource) => void;
+  onResetDataSource: (source: VisualizerDataSource) => void;
 }
 
 export const ColumnsList = (props: ColumnListProps) => {
-  const { collapsedDataSources, toggleDataSource, onRemoveDataSource } = props;
+  const {
+    collapsedDataSources,
+    toggleDataSource,
+    onRemoveDataSource,
+    onResetDataSource,
+  } = props;
 
   const display = useSelector(getVisualizationType) ?? null;
   const columns = useSelector(getVisualizerDatasetColumns);
@@ -57,6 +69,11 @@ export const ColumnsList = (props: ColumnListProps) => {
   const handleRemoveColumn = (columnRefName: string) => {
     dispatch(removeColumn({ name: columnRefName, well: "all" }));
   };
+
+  const isPristine = useIsCardPristine({
+    source: dataSources[0],
+  });
+  const isSingleDataSource = dataSources.length === 1;
 
   return (
     <Flex
@@ -87,13 +104,60 @@ export const ColumnsList = (props: ColumnListProps) => {
               ) : (
                 <Loader size={12} mr={6} />
               )}
-              <Text truncate mr={4}>
+              <Text truncate mr={4} flex={1}>
                 {source.name}
               </Text>
-              {!isLoading && (
+              {!isLoading && isSingleDataSource && (
+                <Menu position="bottom-end">
+                  <Menu.Target>
+                    <ToolbarButton
+                      className={S.ActionsButton}
+                      icon="ellipsis"
+                      data-testid="datasource-actions-button"
+                      aria-label={t`Datasource actions`}
+                    />
+                  </Menu.Target>
+                  <Menu.Dropdown data-testid="datasource-actions-dropdown">
+                    <Menu.Item
+                      key="reset_data_source"
+                      leftSection={<Icon name="revert" />}
+                      disabled={isPristine}
+                      onClick={() => {
+                        trackSimpleEvent({
+                          event: "visualizer_data_changed",
+                          event_detail: "visualizer_datasource_reset",
+                          triggered_from: "visualizer-modal",
+                        });
+                        onResetDataSource(source);
+                      }}
+                      aria-label={t`Reset data source`}
+                      data-testid="reset-datasource-button"
+                    >
+                      {t`Reset to defaults`}
+                    </Menu.Item>
+                    <Menu.Item
+                      key="remove_data_source"
+                      leftSection={<Icon name="close" />}
+                      onClick={() => {
+                        trackSimpleEvent({
+                          event: "visualizer_data_changed",
+                          event_detail: "visualizer_datasource_removed",
+                          triggered_from: "visualizer-modal",
+                        });
+                        onRemoveDataSource(source);
+                      }}
+                      data-testid="remove-datasource-button"
+                      aria-label="Remove data source"
+                    >
+                      {t`Remove`}
+                    </Menu.Item>
+                  </Menu.Dropdown>
+                </Menu>
+              )}
+              {!isLoading && !isSingleDataSource && (
                 <Icon
                   style={{ flexShrink: 0 }}
-                  className={S.close}
+                  className={S.ActionsButton}
                   name="close"
                   ml="auto"
                   size={12}
@@ -104,7 +168,6 @@ export const ColumnsList = (props: ColumnListProps) => {
                       event: "visualizer_data_changed",
                       event_detail: "visualizer_datasource_removed",
                       triggered_from: "visualizer-modal",
-                      event_data: source.id,
                     });
                     onRemoveDataSource(source);
                   }}
@@ -144,7 +207,6 @@ export const ColumnsList = (props: ColumnListProps) => {
                             event: "visualizer_data_changed",
                             event_detail: "visualizer_column_added",
                             triggered_from: "visualizer-modal",
-                            event_data: `source: ${source.id}, column: ${column.name}`,
                           });
 
                           handleAddColumn(source, column);
@@ -157,7 +219,6 @@ export const ColumnsList = (props: ColumnListProps) => {
                                 event: "visualizer_data_changed",
                                 event_detail: "visualizer_column_removed",
                                 triggered_from: "visualizer-modal",
-                                event_data: `source: ${source.id}, column: ${column.name}`,
                               });
 
                               handleRemoveColumn(columnReference.name);
@@ -187,6 +248,8 @@ function DraggableColumnListItem({
   isSelected,
   ...props
 }: DraggableColumnListItemProps) {
+  const dispatch = useDispatch();
+
   const { attributes, listeners, isDragging, setNodeRef } = useDraggable({
     id: `${DRAGGABLE_ID.COLUMN}:${dataSource.id}:${column.name}`,
     data: {
@@ -195,6 +258,26 @@ function DraggableColumnListItem({
       dataSource,
     },
   });
+
+  const onMouseEnter = () => {
+    dispatch(
+      setHoveredItems([
+        {
+          id: column.name,
+          data: {
+            current: {
+              type: "COLUMN",
+              column,
+              dataSource,
+            },
+          },
+        },
+      ]),
+    );
+  };
+  const onMouseLeave = () => {
+    dispatch(setHoveredItems(null));
+  };
 
   return (
     <ColumnsListItem
@@ -207,6 +290,8 @@ function DraggableColumnListItem({
       aria-selected={isSelected}
       data-testid="column-list-item"
       ref={setNodeRef}
+      onMouseEnter={onMouseEnter}
+      onMouseLeave={onMouseLeave}
     />
   );
 }

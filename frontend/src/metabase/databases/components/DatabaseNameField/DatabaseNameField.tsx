@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import FormInput from "metabase/core/components/FormInput";
+import FormInput from "metabase/common/components/FormInput";
 import { PLUGIN_DB_ROUTING } from "metabase/plugins";
 import type { Engine } from "metabase-types/api";
 
@@ -12,7 +12,7 @@ export interface DatabaseNameFieldProps {
   autoFocus?: boolean;
 }
 
-const DatabaseNameField = ({
+export const DatabaseNameField = ({
   engine,
   autoFocus,
   config,
@@ -39,6 +39,3 @@ const DatabaseNameField = ({
     />
   );
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default DatabaseNameField;

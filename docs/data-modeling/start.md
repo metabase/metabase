@@ -1,5 +1,7 @@
 ---
 title: "Data modeling overview"
+redirect_from:
+  - /docs/latest/data-modeling
 ---
 
 # Data modeling overview
@@ -22,11 +24,11 @@ Create metrics to define the official way to calculate important numbers for you
 
 Guide people to the right data by adding display names, hiding outdated tables, configuring filter types, and more.
 
-## [Field types](./field-types.md)
+## [Field types](./semantic-types.md)
 
 Field types dictate how Metabase displays its data, as well as the column’s special functionality, if any.
 
-## [Setting default formatting for your data](./field-types.md)
+## [Setting default formatting for your data](./formatting.md)
 
 Define formatting and display defaults for numbers, currencies, datetimes, and more.
 

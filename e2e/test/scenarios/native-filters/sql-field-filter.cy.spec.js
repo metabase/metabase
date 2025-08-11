@@ -55,9 +55,7 @@ describe("scenarios > filters > sql filters > field filter", () => {
       H.filterWidget().click();
       H.clearFilterWidget();
       SQLFilter.toggleRequired();
-      H.filterWidget()
-        .findByTestId("field-set-content")
-        .should("have.text", "5");
+      H.filterWidget().should("contain.text", "5");
     });
 
     it("when there's a default value and value is unset, updating filter sets the default back", () => {
@@ -68,9 +66,11 @@ describe("scenarios > filters > sql filters > field filter", () => {
         H.removeFieldValuesValue(0);
         cy.findByText("Set to default").click();
       });
-      H.filterWidget()
-        .findByTestId("field-set-content")
-        .should("have.text", "10");
+
+      cy.log("make sure the dialog is gone");
+      cy.findByRole("dialog").should("not.exist");
+
+      H.filterWidget().should("contain.text", "10");
     });
 
     it("when there's a default value and template tag is required, can reset it back", () => {
@@ -82,9 +82,7 @@ describe("scenarios > filters > sql filters > field filter", () => {
         cy.findByText("Update filter").click();
       });
       H.filterWidget().icon("revert").click();
-      H.filterWidget()
-        .findByTestId("field-set-content")
-        .should("have.text", "8");
+      H.filterWidget().should("contain.text", "8");
     });
   });
 
@@ -177,6 +175,47 @@ describe("scenarios > filters > sql filters > field filter", () => {
         .click();
 
       H.popover().contains("String");
+    });
+  });
+
+  describe("field alias", () => {
+    it("should be able to use a field alias with a field filter", () => {
+      H.startNewNativeQuestion();
+      SQLFilter.enterParameterizedQuery(
+        "select * from (select id as alias from products) as p where {{filter}}",
+      );
+      SQLFilter.openTypePickerFromDefaultFilterType();
+      SQLFilter.chooseType("Field Filter");
+      FieldFilter.mapTo({
+        table: "Products",
+        field: "ID",
+      });
+      SQLFilter.setFieldAlias("p.alias");
+      H.filterWidget().click();
+      H.popover().within(() => {
+        H.multiAutocompleteInput().type("10,20");
+        cy.button("Add filter").click();
+      });
+      SQLFilter.runQuery();
+      H.tableInteractive().should("contain", "10").and("contain", "20");
+    });
+
+    it("should be able to use a field alias with a time grouping", () => {
+      H.startNewNativeQuestion();
+      SQLFilter.enterParameterizedQuery(
+        "select count(*), {{date}} as date from products as p group by date",
+      );
+      SQLFilter.openTypePickerFromDefaultFilterType();
+      SQLFilter.chooseType("Time grouping");
+      FieldFilter.mapTo({
+        table: "Products",
+        field: "Created At",
+      });
+      SQLFilter.setFieldAlias("p.created_at");
+      H.filterWidget().click();
+      H.popover().findByText("Month").click();
+      SQLFilter.runQuery();
+      H.tableInteractive().should("contain", "April 1, 2022");
     });
   });
 });

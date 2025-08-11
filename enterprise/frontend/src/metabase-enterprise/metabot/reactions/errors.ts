@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { addAgentMessage, stopProcessing } from "../state";
+import { addAgentErrorMessage, stopProcessing } from "../state";
 
 import type { ReactionHandler } from "./types";
 
@@ -12,8 +12,8 @@ export const notifyUnknownReaction: ReactionHandler<UnknownReaction> = (
   return ({ dispatch }) => {
     console.error("Unknown reaction recieved", reaction);
     dispatch(
-      addAgentMessage({
-        type: "error",
+      addAgentErrorMessage({
+        type: "message",
         message: t`Whoops, I actually can’t do this. Sorry.`,
       }),
     );

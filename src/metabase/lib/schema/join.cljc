@@ -39,8 +39,23 @@
    {:gen/fmap #(str % "-" (random-uuid))}
    ::common/non-blank-string])
 
+(mr/def ::condition
+  [:ref ::expression/boolean])
+
 (mr/def ::conditions
-  [:sequential {:min 1} [:ref ::expression/boolean]])
+  [:sequential {:min 1} ::condition])
+
+(def ordered-condition-operators
+  "Operators that should be listed as options in join conditions. The front end shows the options in this order."
+  [:= :> :< :>= :<= :!=])
+
+(def condition-operators
+  "Operators that should be listed as options in join conditions."
+  (set ordered-condition-operators))
+
+(mr/def ::condition.operator
+  "Operators that should be listed as options in join conditions."
+  (into [:enum] condition-operators))
 
 ;;; valid values for the optional `:strategy` key in a join. Note that these are only valid if the current Database
 ;;; supports that specific join type; these match 1:1 with the Database `:features`, e.g. a Database that supports
@@ -55,17 +70,47 @@
    :inner-join
    :full-join])
 
+(defn- normalize-join [join]
+  (when join
+    (let [{:keys [fields], :as join} (common/normalize-map join)]
+      (cond-> join
+        (and (not (keyword? fields)) (empty? fields))
+        (dissoc :fields)
+
+        (seq (:source-metadata join))
+        (-> (assoc-in [:stages (dec (count (:stages join))) :lib/stage-metadata] {:lib/type :metadata/results
+                                                                                  :columns  (:source-metadata join)})
+            (dissoc :source-metadata))
+
+        ;; automatically fix :condition => :conditions if we run into it. Kinda overlapping responsibility
+        ;; with [[metabase.lib.convert]] but this lets us write busted stuff in tests more easily
+        ;; using [[metabase.lib.test-util.macros/mbql-5-query]]
+        (:condition join)
+        (-> (dissoc :condition)
+            (assoc :conditions [(:condition join)]))))))
+
 (mr/def ::join
-  [:map
-   {:decode/normalize common/normalize-map}
-   [:lib/type    [:= {:decode/normalize common/normalize-keyword} :mbql/join]]
-   [:lib/options ::common/options]
-   [:stages      [:ref :metabase.lib.schema/stages]]
-   [:conditions  ::conditions]
-   [:alias       ::alias]
-   [:ident    {:optional true} ::common/non-blank-string]
-   [:fields   {:optional true} ::fields]
-   [:strategy {:optional true} ::strategy]])
+  [:and
+   [:map
+    {:default {}, :decode/normalize normalize-join}
+    [:lib/type    [:= {:default :mbql/join, :decode/normalize common/normalize-keyword} :mbql/join]]
+    ;; TODO (Cam 7/23/25) -- why would a join need an options map? If we need to add extra keys we can just add them
+    ;; to the join itself.
+    [:lib/options ::common/options]
+    [:stages      [:ref :metabase.lib.schema/stages]]
+    [:conditions  ::conditions]
+    [:alias       ::alias]
+    [:fields   {:optional true} ::fields]
+    [:strategy {:optional true} ::strategy]]
+   [:fn
+    {:error/message "join should not have metadata attached directly to them; attach metadata to their last stage instead"}
+    (complement (some-fn :lib/stage-metadata :source-metadata))]
+   [:fn
+    {:error/message ":condition is not allowed for MBQL 5 joins, use :conditions instead"}
+    (complement :condition)]
+   [:fn
+    {:error/message "join should not have :source-table or :source-query; use :stages instead"}
+    (complement (some-fn :source-table :source-query))]])
 
 (mr/def ::joins
   [:and

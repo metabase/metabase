@@ -294,6 +294,8 @@ describe("scenarios > models", () => {
       cy.findByText("Duplicate").click();
       cy.wait("@cardCreate");
     });
+
+    H.modal().should("not.exist");
   });
 
   it("shows 404 when opening a question with a /dataset URL", () => {
@@ -426,7 +428,7 @@ describe("scenarios > models", () => {
         cy.findByText("Save").click();
       });
 
-      cy.url().should("match", /\/dashboard\/\d+-[a-z0-9-]*#edit$/);
+      cy.url().should("match", /\/dashboard\/\d+-[a-z0-9-]*$/);
     });
 
     it("should not display models if nested queries are disabled", () => {

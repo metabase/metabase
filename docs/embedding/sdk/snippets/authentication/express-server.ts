@@ -44,22 +44,6 @@ app.get("/sso/metabase", async (req, res) => {
     },
     METABASE_JWT_SHARED_SECRET,
   );
-  const ssoUrl = `${METABASE_INSTANCE_URL}/auth/sso?token=true&jwt=${token}`;
-  console.log("Hitting MB SSO endpoint", ssoUrl);
-
-  try {
-    const response = await fetch(ssoUrl, { method: "GET" });
-    const session = await response.text();
-
-    console.log("Received session", session);
-    res.status(200).set("Content-Type", "application/json").end(session);
-  } catch (error) {
-    if (error instanceof Error) {
-      res.status(401).json({
-        status: "error",
-        message: "authentication failed",
-        error: error.message,
-      });
-    }
-  }
+  // The user backend should return a JSON object with the JWT.
+  res.status(200).json({ jwt: token });
 });

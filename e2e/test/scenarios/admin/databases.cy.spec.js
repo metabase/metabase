@@ -9,7 +9,7 @@ import {
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
-import { visitDatabase } from "./helpers/e2e-database-helpers";
+import { visitDatabase, waitForDbSync } from "./helpers/e2e-database-helpers";
 
 const { H } = cy;
 const { IS_ENTERPRISE } = Cypress.env();
@@ -77,20 +77,6 @@ describe("admin > database > add", () => {
 
     cy.button("Save").click();
     return cy.wait("@createDatabase");
-  }
-
-  // we need to check for an indefinite number of these requests because we don't know how many polls it's going to take
-  function waitForDbSync(maxRetries = 10) {
-    if (maxRetries === 0) {
-      throw new Error("Timed out waiting for database sync");
-    }
-    cy.wait("@getDatabases").then(({ response }) => {
-      if (
-        response.body.data.some((db) => db.initial_sync_status !== "complete")
-      ) {
-        waitForDbSync(maxRetries - 1);
-      }
-    });
   }
 
   beforeEach(() => {
@@ -334,7 +320,7 @@ describe("admin > database > add", () => {
         H.popover().findByText("MongoDB").click({ force: true });
 
         cy.findByTestId("database-form").within(() => {
-          cy.findByText("Paste a connection string").click();
+          cy.findByLabelText("Use a connection string").click();
           H.typeAndBlurUsingLabel("Display name", "QA Mongo");
           cy.findByLabelText("Port").should("not.exist");
           cy.findByLabelText("Paste your connection string").type(badDBString, {
@@ -542,7 +528,7 @@ describe("scenarios > admin > databases > exceptions", () => {
   it("should handle a failure to `GET` the list of all databases (metabase#20471)", () => {
     const errorMessage = "Lorem ipsum dolor sit amet, consectetur adip";
 
-    IS_ENTERPRISE && H.setTokenFeatures("all");
+    IS_ENTERPRISE && H.activateToken("pro-self-hosted");
 
     cy.intercept(
       {

@@ -184,6 +184,94 @@ describe("scenarios > dashboard > filters > SQL > number", () => {
   });
 });
 
+describe("scenarios > dashboard > filters > SQL > number and multiple values", () => {
+  const questionDetails = {
+    name: "SQL",
+    native: {
+      query: "SELECT ID FROM products WHERE ID IN ({{number}})",
+      "template-tags": {
+        number: {
+          id: "49596bcb-62bb-49d6-a92d-bf5dbfddf43b",
+          name: "number",
+          "display-name": "Number",
+          type: "number",
+        },
+      },
+    },
+  };
+
+  const parameterDetails = {
+    id: "49596bcb-62bb-49d6-a92d-bf5dbfddf43b",
+    type: "number/=",
+    name: "Number",
+    slug: "number",
+    isMultiSelect: true,
+  };
+
+  const dashboardDetails = {
+    parameters: [parameterDetails],
+    enable_embedding: true,
+    embedding_params: {
+      number: "enabled",
+    },
+  };
+
+  function setFilterAndVerify({ values } = {}) {
+    H.filterWidget().click();
+    H.popover().within(() => {
+      H.multiAutocompleteInput().type(values.join(","));
+      cy.button("Add filter").click();
+    });
+    values.forEach((value) => {
+      H.getDashboardCard().within(() => {
+        cy.findAllByText(value).should("have.length.gte", 1);
+        cy.findAllByText(value).should("have.length.gte", 1);
+      });
+    });
+  }
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should allow multiple values for Number variables", () => {
+    cy.log("create a dashboard");
+    H.createNativeQuestionAndDashboard({
+      questionDetails,
+      dashboardDetails,
+    }).then(({ body: dashcard }) => {
+      cy.wrap(dashcard.dashboard_id).as("dashboardId");
+    });
+
+    cy.log("set mapping");
+    H.visitDashboard("@dashboardId");
+    H.editDashboard();
+    cy.findByTestId("fixed-width-filters").findByText("Number").click();
+    H.selectDashboardFilter(H.getDashboardCard(), "Number");
+    H.sidebar().findByLabelText("Multiple values").click();
+    H.saveDashboard();
+
+    cy.log("regular dashboard");
+    setFilterAndVerify({ values: ["10", "20"] });
+
+    cy.log("public dashboard");
+    cy.get("@dashboardId").then((dashboardId) =>
+      H.visitPublicDashboard(dashboardId),
+    );
+    setFilterAndVerify({ values: ["10", "20"] });
+
+    cy.log("embedded dashboard");
+    cy.get("@dashboardId").then((dashboardId) =>
+      H.visitEmbeddedPage({
+        resource: { dashboard: dashboardId },
+        params: {},
+      }),
+    );
+    setFilterAndVerify({ values: ["10", "20"] });
+  });
+});
+
 function clickSelect() {
   H.getDashboardCard().findByText("Select…").click();
 }

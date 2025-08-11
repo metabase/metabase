@@ -17,20 +17,21 @@ import {
 const { SAMPLE_DATABASE } = require("e2e/support/cypress_sample_database");
 
 const { ALL_USERS_GROUP, COLLECTION_GROUP } = USER_GROUPS;
-const { ORDERS_ID, ORDERS, PRODUCTS_ID, PRODUCTS, PEOPLE } = SAMPLE_DATABASE;
+const { ORDERS_ID, ORDERS, PRODUCTS_ID, PRODUCTS, PEOPLE, PEOPLE_ID } =
+  SAMPLE_DATABASE;
 
 function capitalize(string) {
   return string.charAt(0).toUpperCase() + string.slice(1);
 }
 
-describe("issue 12578", () => {
-  const ORDERS_QUESTION = {
-    name: "Orders question",
-    query: {
-      "source-table": ORDERS_ID,
-    },
-  };
+const ORDERS_QUESTION = {
+  name: "Orders question",
+  query: {
+    "source-table": ORDERS_ID,
+  },
+};
 
+describe("issue 12578", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
@@ -62,6 +63,89 @@ describe("issue 12578", () => {
   });
 });
 
+describe("issue 61013", () => {
+  const dashboardName = "Dashboard 61013";
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+
+    H.createDashboardWithTabs({
+      name: dashboardName,
+
+      tabs: [
+        {
+          id: 1,
+          name: "Tab 1",
+        },
+        {
+          id: 2,
+          name: "Tab 2",
+        },
+      ],
+    });
+  });
+
+  it("should only add one card and save correctly to the dashboard when the dashboard is empty but has multiple tabs (metabase#61013)", () => {
+    H.createQuestion(ORDERS_QUESTION).then(({ body }) =>
+      H.visitQuestion(body.id),
+    );
+
+    cy.findByLabelText("Move, trash, and more…").click();
+    H.popover().findByText("Add to dashboard").click();
+
+    H.modal().within(() => {
+      cy.findByPlaceholderText("Search…").type(dashboardName);
+      cy.findByTestId("result-item").click();
+      cy.findByText("Select").click();
+    });
+
+    H.getDashboardCards().should("have.length", 1);
+    H.getDashboardCard(0).within(() => {
+      cy.findByText("Orders question").should("be.visible");
+      cy.findByText("2,000 rows").should("be.visible");
+    });
+
+    cy.findByTestId("edit-bar")
+      .findByText("You're editing this dashboard.")
+      .should("be.visible");
+
+    H.saveDashboard();
+
+    H.getDashboardCards().should("have.length", 1);
+    H.getDashboardCard(0).within(() => {
+      cy.findByText("Orders question").should("be.visible");
+      cy.findByText("2,000 rows").should("be.visible");
+    });
+  });
+
+  it("should not wait for cards to load before switching to edit mode", () => {
+    slowDownCardQuery();
+
+    // visitQuestion waits for the query, which we don't want here.
+    // we just want to visit the dashboard directly
+    H.createQuestion(ORDERS_QUESTION, { visitQuestion: false }).then(
+      ({ body }) => cy.visit(`/question/${body.id}`),
+    );
+
+    cy.findByLabelText("Move, trash, and more…").click();
+    H.popover().findByText("Add to dashboard").click();
+
+    H.modal().within(() => {
+      cy.findByPlaceholderText("Search…").type(dashboardName);
+      cy.findByTestId("result-item").click();
+      cy.findByText("Select").click();
+    });
+
+    cy.findByTestId("edit-bar")
+      .findByText("You're editing this dashboard.")
+      .should("be.visible");
+    H.getDashboardCard(0)
+      .findByTestId("loading-indicator")
+      .should("be.visible");
+  });
+});
+
 describe("issue 12926", () => {
   const filterDisplayName = "F";
   const queryResult = 42;
@@ -80,14 +164,6 @@ describe("issue 12926", () => {
       },
     },
   };
-
-  function slowDownCardQuery(as) {
-    cy.intercept("POST", "/api/card/*/query", (req) => {
-      req.on("response", (res) => {
-        res.setDelay(300000);
-      });
-    }).as(as);
-  }
 
   function slowDownDashcardQuery() {
     cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query", (req) => {
@@ -186,7 +262,7 @@ describe("issue 12926", () => {
 
       H.openQuestionsSidebar();
       // when the card is added to a dashboard, it doesn't use the dashcard endpoint but instead uses the card one
-      slowDownCardQuery("cardQuerySlowed");
+      slowDownCardQuery().as("cardQuerySlowed");
       H.sidebar().findByText(questionDetails.name).click();
 
       H.setFilter("Number", "Equal to");
@@ -648,7 +724,7 @@ describe("issue 29076", () => {
     cy.intercept("/api/dashboard/*/dashcard/*/card/*/query").as("cardQuery");
 
     cy.signInAsAdmin();
-    H.setTokenFeatures("all");
+    H.activateToken("pro-self-hosted");
 
     cy.updatePermissionsGraph({
       [ALL_USERS_GROUP]: {
@@ -954,10 +1030,7 @@ describe("issue 34382", () => {
   }
 
   function applyFilter() {
-    H.dashboardParametersContainer()
-      .findByRole("button", { name: "Apply" })
-      .click();
-
+    cy.findByRole("button", { name: "Apply" }).click();
     cy.wait("@dashcardQuery");
   }
 
@@ -1856,3 +1929,106 @@ describe("issue 56716", () => {
     H.getDashboardCard().findByText("200 rows").should("be.visible");
   });
 });
+
+describe("Issue 46337", () => {
+  const MODEL_NAME = "Model 46337";
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+    H.createQuestion({
+      type: "model",
+      name: MODEL_NAME,
+      query: {
+        "source-table": ORDERS_ID,
+        fields: [
+          [
+            "field",
+            ORDERS.ID,
+            {
+              "base-type": "type/BigInteger",
+            },
+          ],
+          [
+            "field",
+            ORDERS.TAX,
+            {
+              "base-type": "type/Float",
+            },
+          ],
+          [
+            "field",
+            ORDERS.TOTAL,
+            {
+              "base-type": "type/Float",
+            },
+          ],
+          [
+            "field",
+            ORDERS.DISCOUNT,
+            {
+              "base-type": "type/Float",
+            },
+          ],
+          [
+            "field",
+            ORDERS.QUANTITY,
+            {
+              "base-type": "type/Integer",
+            },
+          ],
+          [
+            "field",
+            ORDERS.CREATED_AT,
+            {
+              "base-type": "type/DateTime",
+            },
+          ],
+          [
+            "field",
+            ORDERS.PRODUCT_ID,
+            {
+              "base-type": "type/Integer",
+            },
+          ],
+        ],
+        joins: [
+          {
+            fields: "all",
+            alias: "Products",
+            "source-table": PEOPLE_ID,
+            strategy: "left-join",
+            condition: [
+              "=",
+              ["field", ORDERS.USER_ID, {}],
+              ["field", PEOPLE.ID, { "join-alias": "Products" }],
+            ],
+          },
+        ],
+      },
+    }).then(({ body: model }) => {
+      cy.visit(`/auto/dashboard/model/${model.id}`);
+    });
+  });
+
+  // TODO: unskip when metabase#46337 is fixed
+  // See: https://github.com/metabase/metabase/issues/46337
+  it.skip("should (metabase#46337)", () => {
+    cy.log("ensure the dashcards render data not errors");
+
+    cy.findByTestId("dashboard-grid").within(() => {
+      cy.findByText("There was a problem displaying this chart.").should(
+        "not.exist",
+      );
+      cy.findByText(`Total ${MODEL_NAME}`).should("be.visible");
+    });
+  });
+});
+
+function slowDownCardQuery() {
+  return cy.intercept("POST", "/api/card/*/query", (req) => {
+    req.on("response", (res) => {
+      res.setDelay(300000);
+    });
+  });
+}

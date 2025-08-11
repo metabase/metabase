@@ -1,15 +1,16 @@
-import fetchMock, { type MockOptionsMethodGet } from "fetch-mock";
+import fetchMock from "fetch-mock";
+import { match } from "ts-pattern";
 
 import type { CollectionItem, SearchResult } from "metabase-types/api";
+import type { EmbeddingDataPicker } from "metabase-types/store/embedding-data-picker";
 
-export function setupSearchEndpoints(
-  items: (CollectionItem | SearchResult)[],
-  options?: MockOptionsMethodGet,
-) {
+export function setupSearchEndpoints(items: (CollectionItem | SearchResult)[]) {
+  const name = "search";
+  fetchMock.removeRoute(name);
   fetchMock.get(
     "path:/api/search",
-    (uri) => {
-      const url = new URL(uri);
+    (call) => {
+      const url = new URL(call.url);
       const models = url.searchParams.getAll("models");
       const limit = Number(url.searchParams.get("limit")) || 50;
       const offset = Number(url.searchParams.get("offset"));
@@ -28,7 +29,6 @@ export function setupSearchEndpoints(
       matchedItems = matchedItems.filter(
         ({ model }) => !models.length || models.includes(model),
       );
-
       return {
         data: matchedItems.slice(offset, offset + limit),
         total: matchedItems.length,
@@ -39,6 +39,27 @@ export function setupSearchEndpoints(
         table_db_id,
       };
     },
-    options,
+    { name },
   );
+}
+
+export function setupEmbeddingDataPickerDecisionEndpoints(
+  dataPicker: EmbeddingDataPicker,
+) {
+  const mockEntityCount = match(dataPicker)
+    .with("flat", () => 10)
+    .with("staged", () => 100)
+    .exhaustive();
+
+  fetchMock.get({
+    name: "entity-count",
+    url: "path:/api/search",
+    query: {
+      models: ["dataset", "table"],
+      limit: 0,
+    },
+    response: {
+      total: mockEntityCount,
+    },
+  });
 }

@@ -1,4 +1,5 @@
-import moment, { type Moment } from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
+import dayjs from "dayjs";
+import type { Moment } from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 
 import * as ML from "cljs/metabase.lib.js";
 import type { CardId } from "metabase-types/api";
@@ -16,6 +17,7 @@ import type {
   FilterClause,
   FilterOperator,
   FilterParts,
+  Filterable,
   NumberFilterParts,
   Query,
   RelativeDateFilterParts,
@@ -77,7 +79,7 @@ export function stringFilterClause({
 export function stringFilterParts(
   query: Query,
   stageIndex: number,
-  filterClause: FilterClause,
+  filterClause: Filterable,
 ): StringFilterParts | null {
   return ML.string_filter_parts(query, stageIndex, filterClause);
 }
@@ -93,7 +95,7 @@ export function numberFilterClause({
 export function numberFilterParts(
   query: Query,
   stageIndex: number,
-  filterClause: FilterClause,
+  filterClause: Filterable,
 ): NumberFilterParts | null {
   return ML.number_filter_parts(query, stageIndex, filterClause);
 }
@@ -110,7 +112,7 @@ export function coordinateFilterClause({
 export function coordinateFilterParts(
   query: Query,
   stageIndex: number,
-  filterClause: FilterClause,
+  filterClause: Filterable,
 ): CoordinateFilterParts | null {
   return ML.coordinate_filter_parts(query, stageIndex, filterClause);
 }
@@ -126,7 +128,7 @@ export function booleanFilterClause({
 export function booleanFilterParts(
   query: Query,
   stageIndex: number,
-  filterClause: FilterClause,
+  filterClause: Filterable,
 ): BooleanFilterParts | null {
   return ML.boolean_filter_parts(query, stageIndex, filterClause);
 }
@@ -140,7 +142,7 @@ export function specificDateFilterClause({
   return ML.specific_date_filter_clause(
     operator,
     column,
-    values.map((value) => moment(value)),
+    values.map((value) => dayjs(value)),
     hasTime,
   );
 }
@@ -148,7 +150,7 @@ export function specificDateFilterClause({
 export function specificDateFilterParts(
   query: Query,
   stageIndex: number,
-  filterClause: FilterClause,
+  filterClause: Filterable,
 ): SpecificDateFilterParts | null {
   const filterParts = ML.specific_date_filter_parts(
     query,
@@ -187,7 +189,7 @@ export function relativeDateFilterClause({
 export function relativeDateFilterParts(
   query: Query,
   stageIndex: number,
-  filterClause: FilterClause,
+  filterClause: Filterable,
 ): RelativeDateFilterParts | null {
   return ML.relative_date_filter_parts(query, stageIndex, filterClause);
 }
@@ -204,7 +206,7 @@ export function excludeDateFilterClause({
 export function excludeDateFilterParts(
   query: Query,
   stageIndex: number,
-  filterClause: FilterClause,
+  filterClause: Filterable,
 ): ExcludeDateFilterParts | null {
   return ML.exclude_date_filter_parts(query, stageIndex, filterClause);
 }
@@ -217,14 +219,14 @@ export function timeFilterClause({
   return ML.time_filter_clause(
     operator,
     column,
-    values.map((value) => moment(value)),
+    values.map((value) => dayjs(value)),
   );
 }
 
 export function timeFilterParts(
   query: Query,
   stageIndex: number,
-  filterClause: FilterClause,
+  filterClause: Filterable,
 ): TimeFilterParts | null {
   const filterParts = ML.time_filter_parts(query, stageIndex, filterClause);
   if (!filterParts) {
@@ -246,7 +248,7 @@ export function defaultFilterClause({
 export function defaultFilterParts(
   query: Query,
   stageIndex: number,
-  filterClause: FilterClause,
+  filterClause: Filterable,
 ): DefaultFilterParts | null {
   return ML.default_filter_parts(query, stageIndex, filterClause);
 }

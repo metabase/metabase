@@ -2,8 +2,8 @@
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
-   [metabase.config.core :as config]
    [metabase.driver :as driver]
+   [metabase.driver-api.core :as driver-api]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
@@ -178,6 +178,6 @@
   [_driver ^java.sql.Connection conn db-name-or-nil table]
   ;; JDBC v2 sets the PKs now, so that :metadata/key-constraints feature should be enabled;
   ;; however, enabling :metadata/key-constraints will also enable left-join tests which are currently failing
-  (if (not config/is-test?)
+  (if (not driver-api/is-test?)
     (sql-jdbc.describe-table/get-table-pks :sql-jdbc conn db-name-or-nil table)
     []))

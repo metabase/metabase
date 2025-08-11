@@ -113,16 +113,20 @@
   [dashboard-id :- ms/PositiveInt
    slug->value  :- :map]
   (let [parameters (t2/select-one-fn :parameters :model/Dashboard :id dashboard-id)
-        slug->id   (into {} (map (juxt :slug :id)) parameters)]
+        slug->id (into {} (map (juxt :slug :id)) parameters)
+        slug->type (into {} (map (juxt :slug :type)) parameters)]
     (vec (for [[slug value] slug->value
-               :let         [slug (u/qualified-name slug)]]
-           {:slug  slug
-            :id    (or (get slug->id slug)
-                       (throw (ex-info (tru "No matching parameter with slug {0}. Found: {1}" (pr-str slug) (pr-str (keys slug->id)))
-                                       {:status-code          400
-                                        :slug                 slug
-                                        :dashboard-parameters parameters})))
-            :value value}))))
+               :let [slug (u/qualified-name slug)
+                     param-type (get slug->type slug)
+                     default-options (parameters.dashboard/param-type->default-options param-type)]]
+           (cond-> {:slug slug
+                    :id    (or (get slug->id slug)
+                               (throw (ex-info (tru "No matching parameter with slug {0}. Found: {1}" (pr-str slug) (pr-str (keys slug->id)))
+                                               {:status-code          400
+                                                :slug                 slug
+                                                :dashboard-parameters parameters})))
+                    :value value}
+             default-options (assoc :options default-options))))))
 
 (mu/defn parse-query-params :- :map
   "Parses parameter values from the query string in a backward compatible way.
@@ -325,13 +329,18 @@
         field-ids-to-maybe-remove (set (mapcat (params/get-linked-field-ids (:dashcards dashboard)) param-ids-to-remove))
         field-ids-to-keep         (set (mapcat (params/get-linked-field-ids (:dashcards dashboard)) param-ids-to-keep))
         field-ids-to-remove       (set/difference field-ids-to-maybe-remove field-ids-to-keep)
-        remove-parameters         (fn [dashcard]
+        remove-parameter-mappings (fn [dashcard]
                                     (update dashcard :parameter_mappings
                                             (fn [param-mappings]
                                               (remove (fn [{:keys [parameter_id]}]
-                                                        (contains? param-ids-to-remove parameter_id)) param-mappings))))]
+                                                        (contains? param-ids-to-remove parameter_id)) param-mappings))))
+        remove-inline-parameters  (fn [dashcard]
+                                    (update dashcard :inline_parameters
+                                            (fn [inline-params]
+                                              (remove (fn [id] (contains? param-ids-to-remove id)) inline-params))))]
     (-> dashboard
-        (update :dashcards #(map remove-parameters %))
+        (update :dashcards #(map remove-parameter-mappings %))
+        (update :dashcards #(map remove-inline-parameters %))
         ;; TODO cleanup
         (update :param_fields update-vals (fn [fields] (into [] (filter #(not (field-ids-to-remove (:id %)))) fields))))))
 

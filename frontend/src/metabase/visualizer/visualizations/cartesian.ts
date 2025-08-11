@@ -2,6 +2,7 @@ import type { DragEndEvent } from "@dnd-kit/core";
 import type { Draft } from "immer";
 import _ from "underscore";
 
+import { isNotNull } from "metabase/lib/types";
 import { isCartesianChart } from "metabase/visualizations";
 import {
   getDefaultDimensionFilter,
@@ -213,19 +214,30 @@ export function addDimensionColumnToCartesianChart(
   };
 }
 
-export function findColumnSlotForCartesianChart(
+/**
+ * Returns a slot where the column can be added to a cartesian chart,
+ * or undefined if no suitable slot is found.
+ *
+ * @param state the current state of the visualizer
+ * @param settings the computed visualization settings
+ * @param datasets the selected datasets (not used )
+ * @param dataSourceColumns the current data source columns (not used )
+ * @param column the column to find a slot for
+ * @returns a string representing the slot where the column should be added,
+ *          or undefined if no suitable slot is found.
+ */
+export function findColumnSlotForCartesianChart(parameters: {
   state: Pick<
     VisualizerVizDefinitionWithColumns,
     "display" | "columns" | "settings"
-  >,
-  settings: ComputedVisualizationSettings,
-  datasets: Record<VisualizerDataSourceId, Dataset>,
-  dataSourceColumns: DatasetColumn[],
-  column: DatasetColumn,
-) {
+  >;
+  settings: ComputedVisualizationSettings;
+  column: DatasetColumn;
+}) {
+  const { state, settings, column } = parameters;
   if (state.display === "scatter") {
-    const metrics = settings["graph.metrics"] ?? [];
-    const dimensions = settings["graph.dimensions"] ?? [];
+    const metrics = settings["graph.metrics"]?.filter(isNotNull) ?? [];
+    const dimensions = settings["graph.dimensions"]?.filter(isNotNull) ?? [];
     const bubble = settings["scatter.bubble"];
 
     const couldBeMetric = getDefaultMetricFilter("scatter")(column);
@@ -240,42 +252,7 @@ export function findColumnSlotForCartesianChart(
     }
   } else {
     if (isDimension(column) && !isMetric(column)) {
-      // Filtering out nulls as computed 'graph.dimensions' can be `[null]` sometimes
-      const ownDimensions =
-        state.settings["graph.dimensions"] ??
-        settings["graph.dimensions"]?.filter(Boolean) ??
-        [];
-      if (ownDimensions.length === 0) {
-        return "graph.dimensions";
-      } else {
-        const isCompatibleWithUsedColumns = state.columns.some((col) => {
-          if (isDate(col)) {
-            return isDate(column);
-          } else {
-            return col.id === column.id;
-          }
-        });
-        if (isCompatibleWithUsedColumns) {
-          return "graph.dimensions";
-        }
-
-        // Handles potential new dimensions that are not yet used in a chart
-        // For example, a chart could show several metrics over time (from different data sources)
-        // And each data source can have a "User → Source" column. This check ensure that
-        // dimensions are considered mappable in this case if they're present in every data source.
-        const isCompatibleWithUnusedColumns = Object.values(datasets).every(
-          (dataset) =>
-            dataset.data.cols.some((col) => {
-              if (isDate(col)) {
-                return isDate(column);
-              } else {
-                return col.id === column.id;
-              }
-            }),
-        );
-
-        return isCompatibleWithUnusedColumns ? "graph.dimensions" : undefined;
-      }
+      return "graph.dimensions";
     } else if (isMetric(column)) {
       return "graph.metrics";
     }
@@ -298,13 +275,11 @@ export function addColumnToCartesianChart(
   columnRef: VisualizerColumnReference,
   dataSource: VisualizerDataSource,
 ) {
-  const slot = findColumnSlotForCartesianChart(
+  const slot = findColumnSlotForCartesianChart({
     state,
     settings,
-    datasets,
-    dataSourceColumns,
     column,
-  );
+  });
   if (slot === "graph.dimensions") {
     addDimensionColumnToCartesianChart(
       state,
@@ -492,13 +467,11 @@ export function combineWithCartesianChart(
   );
 
   metrics.forEach((column) => {
-    const isCompatible = !!findColumnSlotForCartesianChart(
+    const isCompatible = !!findColumnSlotForCartesianChart({
       state,
       settings,
-      datasets,
-      dataset.data.cols,
       column,
-    );
+    });
     if (isCompatible) {
       const columnRef = createVisualizerColumnReference(
         dataSource,
@@ -516,13 +489,11 @@ export function combineWithCartesianChart(
   });
 
   dimensions.forEach((column) => {
-    const isCompatible = !!findColumnSlotForCartesianChart(
+    const isCompatible = !!findColumnSlotForCartesianChart({
       state,
       settings,
-      datasets,
-      dataset.data.cols,
       column,
-    );
+    });
     if (isCompatible) {
       const columnRef = createVisualizerColumnReference(
         dataSource,

@@ -15,6 +15,8 @@ import {
   useUpdateSettingsMutation,
 } from "../settings";
 
+import { getErrorMessage } from "./errors";
+
 /**
  * One hook to get setting values and mutators for a given setting
  */
@@ -83,7 +85,7 @@ export const useAdminSetting = <SettingName extends EnterpriseSettingKey>(
 
         sendToast({ message, icon: "warning", toastColor: "danger" });
       } else {
-        sendToast({ message: t`Changes saved`, icon: "check" });
+        sendToast({ message: t`Changes saved`, icon: "check_filled" });
       }
       return response;
     },
@@ -103,31 +105,4 @@ export const useAdminSetting = <SettingName extends EnterpriseSettingKey>(
     isLoading: settingsLoading || detailsLoading,
     ...apiProps,
   };
-};
-
-export const getErrorMessage = (
-  payload:
-    | unknown
-    | string
-    | { data: { message: string } | string }
-    | { message: string },
-  fallback: string = t`Something went wrong`,
-): string => {
-  if (typeof payload === "string") {
-    return payload || fallback;
-  }
-
-  if (!payload || typeof payload !== "object") {
-    return fallback;
-  }
-
-  if ("message" in payload) {
-    return getErrorMessage(payload.message, fallback);
-  }
-
-  if ("data" in payload) {
-    return getErrorMessage(payload.data, fallback);
-  }
-
-  return fallback;
 };

@@ -4,6 +4,7 @@
   (:require
    [clojure.core :as core]
    [clojure.set :as set]
+   [clojure.string :as str]
    [malli.core :as mc]
    [malli.error :as me]
    [metabase.legacy-mbql.schema.helpers :as helpers :refer [is-clause?]]
@@ -15,8 +16,12 @@
    [metabase.lib.schema.expression.window :as lib.schema.expression.window]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.info :as lib.schema.info]
+   [metabase.lib.schema.join :as lib.schema.join]
    [metabase.lib.schema.literal :as lib.schema.literal]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.lib.schema.metadata.fingerprint :as lib.schema.metadata.fingerprint]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
+   [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli.registry :as mr]))
 
@@ -36,11 +41,6 @@
 ;; *  Clauses marked `^{:requires-features #{feature+}}` require a certain set of features to be used. At some date in
 ;;    the future we will likely add middleware that uses this metadata to automatically validate that a driver has the
 ;;    features needed to run the query in question.
-
-(def ^:private PositiveInt
-  [:schema
-   {:description "Must be a positive integer."}
-   pos-int?])
 
 ;; `:day-of-week` depends on the [[metabase.lib-be.core/start-of-week]] Setting, by default Sunday.
 ;; 1 = first day of the week (e.g. Sunday)
@@ -299,7 +299,7 @@
 
   `:join-alias` is used to refer to a FieldOrExpression from a different Table/nested query that you are EXPLICITLY
   JOINING against."}
-     [:maybe ::lib.schema.common/non-blank-string]]
+     [:maybe ::lib.schema.join/alias]]
 
     [:binning
      {:optional true
@@ -332,7 +332,7 @@
    {:doc/title [:span [:code ":field"] " clause"]}
    (helpers/clause
     :field
-    "id-or-name" [:or ::lib.schema.id/field ::lib.schema.common/non-blank-string]
+    "id-or-name" [:or ::lib.schema.id/field :string]
     "options"    [:maybe [:ref ::FieldOptions]])
    [:ref
     {:description "Fields using names rather than integer IDs are required to specify `:base-type`."}
@@ -353,14 +353,14 @@
        (integer? id-or-name))]]
    {:clause-name :field}))
 
-(mr/def ::Field
+(mr/def ::field-or-expression-ref
   [:schema
    {:doc/title "`:field` or `:expression` ref"}
    (one-of expression field)])
 
 (def Field
   "Schema for either a `:field` clause (reference to a Field) or an `:expression` clause (reference to an expression)."
-  [:ref ::Field])
+  [:ref ::field-or-expression-ref])
 
 ;; aggregate field reference refers to an aggregation, e.g.
 ;;
@@ -383,7 +383,11 @@
   options                  (optional :map))
 
 (mr/def ::Reference
-  (one-of aggregation expression field))
+  [:schema
+   ;; this is provided for the convenience of Lib which uses this schema for `:field-ref` in results metadata
+   {:decode/normalize (fn [x]
+                        ((#?(:clj requiring-resolve :cljs resolve) 'metabase.legacy-mbql.normalize/normalize-field-ref) x))}
+   (one-of aggregation expression field)])
 
 (def Reference
   "Schema for any type of valid Field clause, or for an indexed reference to an aggregation clause."
@@ -442,7 +446,7 @@
 
 (def ^:private datetime-functions
   "Functions that return Date or DateTime values. Should match [[DatetimeExpression]]."
-  #{:+ :datetime-add :datetime-subtract :convert-timezone :now :date :datetime})
+  #{:+ :datetime-add :datetime-subtract :convert-timezone :now :date :datetime :today})
 
 (def ^:private NumericExpression
   "Schema for the definition of a numeric expression. All numeric expressions evaluate to numeric values."
@@ -474,8 +478,7 @@
    [:numeric-expression NumericExpression]
    [:aggregation        Aggregation]
    [:value              value]
-   [:field              Field]])
-
+   [:field              Reference]])
 (def ^:private NumericExpressionArg
   [:ref ::NumericExpressionArg])
 
@@ -542,7 +545,7 @@
                      (if (number? x)
                        :number
                        :else))}
-   [:number PositiveInt]
+   [:number pos-int?]
    [:else   NumericExpression]])
 
 (def ^:private IntGreaterThanZeroOrNumericExpression
@@ -723,22 +726,18 @@
 (defclause ^{:requires-features #{:expressions :expressions/date}} date
   string [:or StringExpressionArg DateTimeExpressionArg])
 
+(defclause ^{:requires-features #{:expressions :expressions/today}} today)
+
 (def ^:private LiteralDatetimeModeString
-  [:enum {:error/message "datetime mode string"
-          :decode/normalize lib.schema.common/normalize-keyword-lower}
-   :iso
-   :simple
-   :unixmilliseconds
-   :unixseconds
-   :unixmicroseconds
-   :unixnanoseconds])
+  (into [:enum {:error/message "datetime mode string"}]
+        lib.schema.expression.temporal/datetime-modes))
 
 (defclause ^{:requires-features #{:expressions :expressions/datetime}} datetime
-  value  StringExpressionArg ;; normally a string, number, or bytes
-  mode   (optional LiteralDatetimeModeString))
+  value  :any ;; normally a string, number, or bytes
+  options (optional [:map [:mode {:optional true} LiteralDatetimeModeString]]))
 
 (mr/def ::DatetimeExpression
-  (one-of + datetime-add datetime-subtract convert-timezone now date datetime))
+  (one-of + datetime-add datetime-subtract convert-timezone now date datetime today))
 
 ;;; ----------------------------------------------------- Filter -----------------------------------------------------
 
@@ -987,7 +986,8 @@
 (mr/def ::NumericExpression
   (one-of + - / * coalesce length floor ceil round abs power sqrt exp log case case:if datetime-diff integer float
           temporal-extract get-year get-quarter get-month get-week get-day get-day-of-week
-          get-hour get-minute get-second))
+          get-hour get-minute get-second
+          aggregation))
 
 (mr/def ::StringExpression
   (one-of substring trim ltrim rtrim replace lower upper concat regex-match-first coalesce case case:if host domain
@@ -1084,7 +1084,7 @@
                        :numeric-expression
                        :else))}
    [:numeric-expression NumericExpression]
-   [:else (one-of avg cum-sum distinct distinct-where stddev sum min max metric share count-where
+   [:else (one-of aggregation avg cum-sum distinct distinct-where stddev sum min max metric share count-where
                   sum-where case case:if median percentile ag:var cum-count count offset)]])
 
 (def ^:private UnnamedAggregation
@@ -1163,9 +1163,9 @@
    [:map
     [:type         [:= :snippet]]
     [:snippet-name ::lib.schema.common/non-blank-string]
-    [:snippet-id   PositiveInt]
+    [:snippet-id   ::lib.schema.id/snippet]
     ;; database to which this Snippet belongs. Doesn't always seen to be specified.
-    [:database {:optional true} PositiveInt]]])
+    [:database {:optional true} ::lib.schema.id/database]]])
 
 ;; Example:
 ;;
@@ -1180,7 +1180,7 @@
    TemplateTag:Common
    [:map
     [:type    [:= :card]]
-    [:card-id PositiveInt]]])
+    [:card-id ::lib.schema.id/card]]])
 
 (def ^:private TemplateTag:Value:Common
   "Stuff shared between the Field filter and raw value template tag schemas."
@@ -1207,6 +1207,7 @@
    [:map
     [:type        [:= :dimension]]
     [:dimension   field]
+    [:alias       {:optional true} :string]
 
     [:widget-type
      [:ref
@@ -1219,6 +1220,21 @@
      {:optional    true
       :description "optional map to be appended to filter clause"}
      [:maybe [:map-of :keyword :any]]]]])
+
+;; Example:
+;;
+;;   {:id "cd35d6dc-285b-4944-8a83-21e4c38d6584",
+;;    :type "temporal-unit",
+;;    :name "unit",
+;;    :display-name "Unit"}
+(mr/def ::TemplateTag:TemporalUnit
+  "Schema for a temporal unit template tag."
+  [:merge
+   TemplateTag:Value:Common
+   [:map
+    [:type      [:= :temporal-unit]]
+    [:dimension field]
+    [:alias     {:optional true} :string]]])
 
 ;; Example:
 ;;
@@ -1274,10 +1290,11 @@
   Field filters and raw values usually have their value specified by `:parameters`."
   [:multi
    {:dispatch :type}
-   [:dimension   [:ref ::TemplateTag:FieldFilter]]
-   [:snippet     [:ref ::TemplateTag:Snippet]]
-   [:card        [:ref ::TemplateTag:SourceQuery]]
-   [::mc/default [:ref ::TemplateTag:RawValue]]])
+   [:dimension     [:ref ::TemplateTag:FieldFilter]]
+   [:snippet       [:ref ::TemplateTag:Snippet]]
+   [:card          [:ref ::TemplateTag:SourceQuery]]
+   [:temporal-unit [:ref ::TemplateTag:TemporalUnit]]
+   [::mc/default   [:ref ::TemplateTag:RawValue]]])
 
 (def TemplateTag
   "Alias for ::TemplateTag; prefer that going forward."
@@ -1322,8 +1339,7 @@
   "Schema for a valid, normalized MBQL [inner] query."
   [:ref ::MBQLQuery])
 
-(def SourceQuery
-  "Schema for a valid value for a `:source-query` clause."
+(mr/def ::SourceQuery
   [:multi
    {:dispatch (fn [x]
                 (if ((every-pred map? :native) x)
@@ -1335,27 +1351,57 @@
    [:native [:ref ::NativeSourceQuery]]
    [:mbql   MBQLQuery]])
 
-(mr/def ::SourceQueryMetadata
-  "Schema for the expected keys for a single column in `:source-metadata` (`:source-metadata` is a sequence of these
-  entries), if it is passed in to the query.
+(def SourceQuery
+  "Schema for a valid value for a `:source-query` clause."
+  [:ref ::SourceQuery])
 
-  This metadata automatically gets added for all source queries that are referenced via the `card__id` `:source-table`
-  form; for explicit `:source-query`s you should usually include this information yourself when specifying explicit
-  `:source-query`s."
-  [:map
-   [:name         ::lib.schema.common/non-blank-string]
-   [:base_type    ::lib.schema.common/base-type]
-   ;; this is only used by the annotate post-processing stage, not really needed at all for pre-processing, might be
-   ;; able to remove this as a requirement
-   [:display_name ::lib.schema.common/non-blank-string]
-   [:semantic_type {:optional true} [:maybe ::lib.schema.common/semantic-or-relation-type]]
-   ;; you'll need to provide this in order to use BINNING
-   [:fingerprint   {:optional true} [:maybe :map]]])
+(defn- lib-normalize-legacy-column
+  "Normalize legacy column metadata when using [[metabase.lib.normalize/normalize]]."
+  [m]
+  (when (map? m)
+    (let [m (lib.schema.common/normalize-map-no-kebab-case m)]
+      ;; remove deprecated `:ident` key.
+      (dissoc m :ident))))
 
-(def SourceQueryMetadata
-  "Alias for ::SourceQueryMetadata -- prefer that instead."
-  ;; TODO - there is a very similar schema in `metabase.analyze.query-results`; see if we can merge them
-  [:ref ::SourceQueryMetadata])
+(mr/def ::legacy-column-metadata
+  "Schema for a single legacy metadata column. This is the pre-Lib equivalent of
+  `:metabase.lib.schema.metadata/column`."
+  [:and
+   [:map
+    ;; this schema is allowed for Card `result_metadata` in Lib so `:decode/normalize` is used for those Lib use cases.
+    {:decode/normalize lib-normalize-legacy-column}
+    [:base_type          ::lib.schema.common/base-type]
+    [:display_name       :string]
+    [:name               :string]
+    [:effective_type     {:optional true} ::lib.schema.common/base-type]
+    [:converted_timezone {:optional true} [:maybe [:ref ::lib.schema.expression.temporal/timezone-id]]]
+    [:field_ref          {:optional true} [:maybe [:ref ::Reference]]]
+    ;; Fingerprint is required in order to use BINNING
+    [:fingerprint        {:optional true} [:maybe [:ref ::lib.schema.metadata.fingerprint/fingerprint]]]
+    [:id                 {:optional true} [:maybe ::lib.schema.id/field]]
+    ;; name is allowed to be empty in some databases like SQL Server.
+    [:semantic_type      {:optional true} [:maybe ::lib.schema.common/semantic-or-relation-type]]
+    [:source             {:optional true} [:maybe [:ref ::lib.schema.metadata/column.legacy-source]]]
+    [:unit               {:optional true} [:maybe [:ref ::lib.schema.temporal-bucketing/unit]]]
+    [:visibility_type    {:optional true} [:maybe [:ref ::lib.schema.metadata/column.visibility-type]]]]
+   [:fn
+    {:error/message "Legacy results metadata should not have :lib/type, use :metabase.lib.schema.metadata/column for Lib metadata"}
+    (complement :lib/type)]
+   (letfn [(disallowed-key? [k]
+             (core/or (core/not (keyword? k))
+                      (let [disallowed-char (if (qualified-keyword? k)
+                                              "_"
+                                              "-")]
+                        (str/includes? (str k) disallowed-char))))]
+     [:fn
+      {:error/message "legacy source query metadata should use snake_case keys (except for namespaced lib keys, which should use kebab-case)"
+       :error/fn      (fn [{m :value} _]
+                        (str "legacy source query metadata should use snake_case keys (except for namespaced lib keys, which should use kebab-case), got: "
+                             (when (map? m)
+                               (into #{} (filter disallowed-key?) (keys m)))))}
+      (fn [m]
+        (core/and (map? m)
+                  (every? (complement disallowed-key?) (keys m))))])])
 
 (def source-table-card-id-regex
   "Pattern that matches `card__id` strings that can be used as the `:source-table` of MBQL queries."
@@ -1455,14 +1501,7 @@
   in the options.
 
   Driver implementations: This is guaranteed to be present after pre-processing."}
-     ::lib.schema.common/non-blank-string]
-
-    [:ident
-     {:optional true
-      :description
-      "An opaque string used as a unique identifier for this join clause, even if it evolves. This string is randomly
-      generated when a join clause is created, so it can never be confused with another join of the same table."}
-     ::Ident]
+     ::lib.schema.join/alias]
 
     [:fk-field-id
      {:optional true
@@ -1478,13 +1517,20 @@
      {:optional true
       :description "Metadata about the source query being used, if pulled in from a Card via the
   `:source-table \"card__id\"` syntax. added automatically by the `resolve-card-id-source-tables` middleware."}
-     [:maybe [:sequential SourceQueryMetadata]]]]
+     [:maybe [:sequential [:ref ::legacy-column-metadata]]]]]
    ;; additional constraints
    [:fn
     {:error/message "Joins must have either a `source-table` or `source-query`, but not both."}
     (every-pred
      (some-fn :source-table :source-query)
-     (complement (every-pred :source-table :source-query)))]])
+     (complement (every-pred :source-table :source-query)))]
+   (let [disallowed-keys #{:filter :breakout :aggreggation :expressions :joins}]
+     [:fn
+      {:error/message "Join should not have top-level 'inner' query keys like :fields or :filter -- they should go in :source-query"
+       :error/fn      (fn [{join :value} _]
+                        (when (map? join)
+                          (str "join should not have top-level 'inner' query keys, found " (set/intersection (set (keys join)) disallowed-keys))))}
+      (complement (apply some-fn disallowed-keys))])])
 
 (def Join
   "Alias for ::Join. Prefer that going forward."
@@ -1503,6 +1549,9 @@
    {:error/message "Distinct, non-empty sequence of Field clauses"}
    (helpers/distinct [:sequential {:min 1} Field])])
 
+(mr/def ::OrderBys
+  (helpers/distinct [:sequential {:min 1} [:ref ::OrderBy]]))
+
 (mr/def ::Page
   "`page` = page num, starting with 1. `items` = number of items per page.
   e.g.
@@ -1510,57 +1559,29 @@
     {:page 1, :items 10} = items 1-10
     {:page 2, :items 10} = items 11-20"
   [:map
-   [:page  PositiveInt]
-   [:items PositiveInt]])
-
-(mr/def ::Ident
-  "Unique identifier string for new `:column` refs. The new refs aren't used in legacy MBQL (currently) but the
-  idents for column-introducing new clauses (joins, aggregations, breakouts, expressions) are randomly generated when
-  the clauses are created, so the idents must be preserved in legacy MBQL.
-
-  These are opaque strings under the initial design; I've made them a separate schema for documentation and
-  future-proofing."
-  [:or ::lib.schema.common/non-blank-string :keyword])
-
-(mr/def ::IndexedIdents
-  "Aggregations and breakouts get their `:ident` in legacy MBQL from a separate map, which maps the index of the
-  aggregation or breakout to its ident.
-
-  (That's super unstable, but legacy MBQL is never manipulated anymore. We just need a clean round trip through
-  legacy, so indexes work fine. Idents are stored directly on the clauses in pMBQL.)"
-  ;; TODO: Make the ::Ident values strict once idents are always-populated? That only works for post-normalization
-  ;; queries, but I think we don't apply this schema until normalization.
-  [:map-of ::lib.schema.common/int-greater-than-or-equal-to-zero [:maybe ::Ident]])
-
-(mr/def ::ExpressionIdents
-  "Expressions get their `:ident` in legacy MBQL from a separate map, which maps expression names to idents."
-  ;; TODO: Make the ::Ident values strict once idents are always-populated? That only works for post-normalization
-  ;; queries, but I think we don't apply this schema until normalization.
-  [:map-of ::lib.schema.common/non-blank-string [:maybe ::Ident]])
+   [:page  pos-int?]
+   [:items pos-int?]])
 
 (mr/def ::MBQLQuery
   [:and
    [:map
-    [:source-query       {:optional true} SourceQuery]
-    [:source-table       {:optional true} SourceTable]
-    [:aggregation        {:optional true} [:sequential {:min 1} Aggregation]]
-    [:aggregation-idents {:optional true} [:ref ::IndexedIdents]]
-    [:breakout           {:optional true} [:sequential {:min 1} Field]]
-    [:breakout-idents    {:optional true} [:ref ::IndexedIdents]]
-    [:expressions        {:optional true} [:map-of ::lib.schema.common/non-blank-string [:ref ::FieldOrExpressionDef]]]
-    [:expression-idents  {:optional true} [:ref ::ExpressionIdents]]
-    [:fields             {:optional true} Fields]
-    [:filter             {:optional true} Filter]
-    [:limit              {:optional true} ::lib.schema.common/int-greater-than-or-equal-to-zero]
-    [:order-by           {:optional true} (helpers/distinct [:sequential {:min 1} [:ref ::OrderBy]])]
-    [:page               {:optional true} [:ref ::Page]]
-    [:joins              {:optional true} [:ref ::Joins]]
+    [:source-query {:optional true} SourceQuery]
+    [:source-table {:optional true} SourceTable]
+    [:aggregation  {:optional true} [:sequential {:min 1} Aggregation]]
+    [:breakout     {:optional true} [:sequential {:min 1} Field]]
+    [:expressions  {:optional true} [:map-of ::lib.schema.common/non-blank-string [:ref ::FieldOrExpressionDef]]]
+    [:fields       {:optional true} Fields]
+    [:filter       {:optional true} Filter]
+    [:limit        {:optional true} ::lib.schema.common/int-greater-than-or-equal-to-zero]
+    [:order-by     {:optional true} [:ref ::OrderBys]]
+    [:page         {:optional true} [:ref ::Page]]
+    [:joins        {:optional true} [:ref ::Joins]]
 
     [:source-metadata
      {:optional true
       :description "Info about the columns of the source query. Added in automatically by middleware. This metadata is
   primarily used to let power things like binning when used with Field Literals instead of normal Fields."}
-     [:maybe [:sequential SourceQueryMetadata]]]]
+     [:maybe [:sequential [:ref ::legacy-column-metadata]]]]]
    ;;
    ;; CONSTRAINTS
    ;;
@@ -1571,16 +1592,7 @@
    [:fn
     {:error/message "Fields specified in `:breakout` should not be specified in `:fields`; this is implied."}
     (fn [{:keys [breakout fields]}]
-      (empty? (set/intersection (set breakout) (set fields))))]
-   ;; TODO: Re-enable this - it's a useful check but it currently breaks a pile of too-literal legacy tests.
-   #_[:fn
-      {:error/message ":expressions must have the same keys as :expression-idents"}
-      (fn [{:keys [expressions expression-idents]}]
-        (core/or (core/= nil expressions expression-idents)
-                 (core/and (map? expressions)
-                           (map? expression-idents)
-                           (core/= (set (keys expressions))
-                                   (set (keys expression-idents))))))]])
+      (empty? (set/intersection (set breakout) (set fields))))]])
 
 ;;; ----------------------------------------------------- Params -----------------------------------------------------
 
@@ -1602,7 +1614,7 @@
    [:fn {:error/message "must be a `:dimension` clause"} (partial helpers/is-clause? :dimension)]
    [:catn
     [:tag [:= :dimension]]
-    [:target [:schema [:or [:ref ::Field] [:ref ::template-tag]]]]
+    [:target [:schema [:or [:ref ::field-or-expression-ref] [:ref ::template-tag]]]]
     [:options [:? [:maybe [:map {:error/message "dimension options"} [:stage-number {:optional true} :int]]]]]]])
 
 (def dimension

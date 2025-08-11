@@ -37,12 +37,7 @@
 
 (defmethod serdes/dependencies "Metabot"
   [{:keys [entities]}]
-  (set (map (fn [{:keys [model model_id]}]
-              [{:model (case model
-                         "collection" "Collection"
-                         ("dataset" "metric") "Card")
-                :id model_id}])
-            entities)))
+  (into #{} (mapcat serdes/dependencies) entities))
 
 (defmethod serdes/generate-path "Metabot" [_ metabot]
   [(serdes/infer-self-path "Metabot" metabot)])

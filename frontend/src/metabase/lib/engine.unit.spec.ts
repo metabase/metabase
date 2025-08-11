@@ -108,16 +108,19 @@ describe("isDeprecatedEngine", () => {
       "driver-name": "Foo",
       source: { type: "official", contact: null },
       "superseded-by": "deprecated",
+      "extra-info": null,
     },
     bar: {
       "driver-name": "Bar",
       source: { type: "official", contact: null },
       "superseded-by": "baz",
+      "extra-info": null,
     },
     baz: {
       "driver-name": "Baz",
       source: { type: "official", contact: null },
       "superseded-by": null,
+      "extra-info": null,
     },
   };
 

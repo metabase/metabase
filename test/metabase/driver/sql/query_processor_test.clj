@@ -23,6 +23,7 @@
    [metabase.settings.core :as setting]
    [metabase.test :as mt]
    [metabase.test.data.env :as tx.env]
+   [metabase.test.data.interface :as tx]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli.registry :as mr]))
@@ -119,7 +120,9 @@
                                      VENUES.LONGITUDE   AS LONGITUDE
                                      VENUES.PRICE       AS PRICE]
                           :from     [VENUES]
-                          join-type [CATEGORIES AS c
+                          join-type [{:select [CATEGORIES.ID AS ID
+                                               CATEGORIES.NAME AS NAME]
+                                      :from   [CATEGORIES]} AS c
                                      ON VENUES.CATEGORY_ID = c.ID]
                           :where    [c.NAME = ?]
                           :order-by [VENUES.ID ASC]
@@ -156,7 +159,14 @@
                           :from   [CHECKINS]
                           :where  [CHECKINS.DATE > ?]}
                          AS source]
-             :left-join [VENUES AS v
+             :left-join [{:select
+                          [VENUES.ID          AS ID
+                           VENUES.NAME        AS NAME
+                           VENUES.CATEGORY_ID AS CATEGORY_ID
+                           VENUES.LATITUDE    AS LATITUDE
+                           VENUES.LONGITUDE   AS LONGITUDE
+                           VENUES.PRICE       AS PRICE]
+                          :from [VENUES]} AS v
                          ON source.VENUE_ID = v.ID]
              :where     [(v.NAME LIKE ?) AND (source.USER_ID > 0)]
              :group-by  [v.NAME]
@@ -213,7 +223,7 @@
                 :h2
                 (lib.tu.macros/mbql-query venues
                   {:source-query    {:native "SELECT * FROM some_table WHERE name = ?;", :params ["Cam"]}
-                   :source-metadata [{:name "name", :base_type :type/Integer}]
+                   :source-metadata [{:name "name", :display_name "Name", :base_type :type/Integer}]
                    :filter          [:!= *name/Integer "Lucky Pigeon"]}))))))))
 
 (deftest ^:parallel joins-against-native-queries-test
@@ -327,7 +337,10 @@
     (testing "when the join is at the same level"
       (is (= {:select    '[c.NAME AS c__NAME]
               :from      '[VENUES]
-              :left-join '[CATEGORIES AS c ON VENUES.CATEGORY_ID = c.ID]
+              :left-join '[{:select [CATEGORIES.ID AS ID
+                                     CATEGORIES.NAME AS NAME]
+                            :from   [CATEGORIES]} AS c
+                           ON VENUES.CATEGORY_ID = c.ID]
               :limit     [limit/absolute-max-results]}
              (-> (lib.tu.macros/mbql-query venues
                    {:fields [&c.categories.name]
@@ -337,13 +350,18 @@
                               :condition    [:= $category-id &c.categories.id]
                               :alias        "c"}]})
                  mbql->native
-                 sql.qp-test-util/sql->sql-map))))
+                 sql.qp-test-util/sql->sql-map))))))
 
+(deftest ^:parallel joined-field-clauses-test-2
+  (testing "Should correctly compile `:field` clauses with `:join-alias`"
     (testing "when the join is NOT at the same level"
       (is (= {:select '[source.c__NAME AS c__NAME]
               :from   '[{:select    [c.NAME AS c__NAME]
                          :from      [VENUES]
-                         :left-join [CATEGORIES AS c ON VENUES.CATEGORY_ID = c.ID]} AS source]
+                         :left-join [{:select [CATEGORIES.ID AS ID
+                                               CATEGORIES.NAME AS NAME]
+                                      :from   [CATEGORIES]} AS c
+                                     ON VENUES.CATEGORY_ID = c.ID]} AS source]
               :limit  [limit/absolute-max-results]}
              (-> (lib.tu.macros/mbql-query venues
                    {:fields       [&c.categories.name]
@@ -365,8 +383,26 @@
                          Products.ID                     AS Products__ID
                          Products.TITLE                  AS Products__TITLE]
              :from      [ORDERS]
-             :left-join [PRODUCTS AS Products                  ON ORDERS.PRODUCT_ID = Products.ID
-                         PRODUCTS AS PRODUCTS__via__PRODUCT_ID ON ORDERS.PRODUCT_ID = PRODUCTS__via__PRODUCT_ID.ID]
+             :left-join [{:select [PRODUCTS.ID         AS ID
+                                   PRODUCTS.EAN        AS EAN
+                                   PRODUCTS.TITLE      AS TITLE
+                                   PRODUCTS.CATEGORY   AS CATEGORY
+                                   PRODUCTS.VENDOR     AS VENDOR
+                                   PRODUCTS.PRICE      AS PRICE
+                                   PRODUCTS.RATING     AS RATING
+                                   PRODUCTS.CREATED_AT AS CREATED_AT]
+                          :from [PRODUCTS]} AS Products
+                         ON ORDERS.PRODUCT_ID = Products.ID
+                         {:select [PRODUCTS.ID         AS ID
+                                   PRODUCTS.EAN        AS EAN
+                                   PRODUCTS.TITLE      AS TITLE
+                                   PRODUCTS.CATEGORY   AS CATEGORY
+                                   PRODUCTS.VENDOR     AS VENDOR
+                                   PRODUCTS.PRICE      AS PRICE
+                                   PRODUCTS.RATING     AS RATING
+                                   PRODUCTS.CREATED_AT AS CREATED_AT]
+                          :from [PRODUCTS]} AS PRODUCTS__via__PRODUCT_ID
+                         ON ORDERS.PRODUCT_ID = PRODUCTS__via__PRODUCT_ID.ID]
              :order-by  [ORDERS.ID ASC]
              :limit     [2]}
            (-> (lib.tu.macros/mbql-query orders
@@ -427,21 +463,42 @@
                                      ORDERS.PRODUCT_ID                  AS PRODUCT_ID
                                      ORDERS.CREATED_AT                  AS CREATED_AT
                                      ABS (0)                            AS pivot-grouping
-                                     ;; TODO: The order here is not deterministic!
-                                     ;; It's coming from qp.util/nest-source, which walks the query looking for refs
-                                     ;; in an arbitrary order, and returns `m/distinct-by` over that random order.
-                                     ;; Changing the map keys on the inner query can perturb this order; if you cause
-                                     ;; this test to fail based on shuffling the order of these joined fields, just
-                                     ;; edit the expectation to match the new order.
-                                     ;; Tech debt issue: #39396
-                                     PRODUCTS__via__PRODUCT_ID.ID       AS PRODUCTS__via__PRODUCT_ID__ID
-                                     PEOPLE__via__USER_ID.ID            AS PEOPLE__via__USER_ID__ID
+                                     ;; TODO: The order here is not deterministic! It's coming
+                                     ;; from [[metabase.query-processor.util.transformations.nest-breakouts]]
+                                     ;; or [[metabase.query-processor.util.nest-query]], which walks the query looking
+                                     ;; for refs in an arbitrary order, and returns `m/distinct-by` over that random
+                                     ;; order. Changing the map keys on the inner query can perturb this order; if you
+                                     ;; cause this test to fail based on shuffling the order of these joined fields
+                                     ;; just edit the expectation to match the new order. Tech debt issue: #39396
+                                     PRODUCTS__via__PRODUCT_ID.CATEGORY AS PRODUCTS__via__PRODUCT_ID__CATEGORY
                                      PEOPLE__via__USER_ID.SOURCE        AS PEOPLE__via__USER_ID__SOURCE
-                                     PRODUCTS__via__PRODUCT_ID.CATEGORY AS PRODUCTS__via__PRODUCT_ID__CATEGORY]
+                                     PRODUCTS__via__PRODUCT_ID.ID       AS PRODUCTS__via__PRODUCT_ID__ID
+                                     PEOPLE__via__USER_ID.ID            AS PEOPLE__via__USER_ID__ID]
                          :from      [ORDERS]
-                         :left-join [PRODUCTS AS PRODUCTS__via__PRODUCT_ID
+                         :left-join [{:select [PRODUCTS.ID         AS ID
+                                               PRODUCTS.EAN        AS EAN
+                                               PRODUCTS.TITLE      AS TITLE
+                                               PRODUCTS.CATEGORY   AS CATEGORY
+                                               PRODUCTS.VENDOR     AS VENDOR
+                                               PRODUCTS.PRICE      AS PRICE
+                                               PRODUCTS.RATING     AS RATING
+                                               PRODUCTS.CREATED_AT AS CREATED_AT]
+                                      :from [PRODUCTS]} AS PRODUCTS__via__PRODUCT_ID
                                      ON ORDERS.PRODUCT_ID = PRODUCTS__via__PRODUCT_ID.ID
-                                     PEOPLE AS PEOPLE__via__USER_ID
+                                     {:select [PEOPLE.ID         AS ID
+                                               PEOPLE.ADDRESS    AS ADDRESS
+                                               PEOPLE.EMAIL      AS EMAIL
+                                               PEOPLE.PASSWORD   AS PASSWORD
+                                               PEOPLE.NAME       AS NAME
+                                               PEOPLE.CITY       AS CITY
+                                               PEOPLE.LONGITUDE  AS LONGITUDE
+                                               PEOPLE.STATE      AS STATE
+                                               PEOPLE.SOURCE     AS SOURCE
+                                               PEOPLE.BIRTH_DATE AS BIRTH_DATE
+                                               PEOPLE.ZIP        AS ZIP
+                                               PEOPLE.LATITUDE   AS LATITUDE
+                                               PEOPLE.CREATED_AT AS CREATED_AT]
+                                      :from   [PEOPLE]} AS PEOPLE__via__USER_ID
                                      ON ORDERS.USER_ID = PEOPLE__via__USER_ID.ID]
                          :where     [((PEOPLE__via__USER_ID.SOURCE = ?) OR (PEOPLE__via__USER_ID.SOURCE = ?))
                                      AND
@@ -623,7 +680,9 @@
          (-> (lib.tu.macros/mbql-query venues
                {:source-table $$venues
                 :joins        [{:alias        "cat"
-                                :source-query {:source-table $$categories}
+                                :source-query {:source-table $$categories
+                                               ;; this will prevent the nesting from getting collapsed
+                                               ::whatever true}
                                 :condition    [:= $category-id &cat.*categories.id]}]
                 :order-by     [[:asc $name]]
                 :limit        3})
@@ -635,7 +694,16 @@
     (is (= '{:select [source.P1__CATEGORY AS P1__CATEGORY]
              :from   [{:select    [P1.CATEGORY AS P1__CATEGORY]
                        :from      [ORDERS]
-                       :left-join [PRODUCTS AS P1 ON ORDERS.PRODUCT_ID = P1.ID]}
+                       :left-join [{:select [PRODUCTS.ID         AS ID
+                                             PRODUCTS.EAN        AS EAN
+                                             PRODUCTS.TITLE      AS TITLE
+                                             PRODUCTS.CATEGORY   AS CATEGORY
+                                             PRODUCTS.VENDOR     AS VENDOR
+                                             PRODUCTS.PRICE      AS PRICE
+                                             PRODUCTS.RATING     AS RATING
+                                             PRODUCTS.CREATED_AT AS CREATED_AT]
+                                    :from [PRODUCTS]} AS P1
+                                   ON ORDERS.PRODUCT_ID = P1.ID]}
                       AS source]
              :limit  [1]}
            (-> (lib.tu.macros/mbql-query orders
@@ -656,11 +724,29 @@
       (is (= '{:select    [source.P1__CATEGORY AS P1__CATEGORY]
                :from      [{:select    [P1.CATEGORY AS P1__CATEGORY]
                             :from      [ORDERS]
-                            :left-join [PRODUCTS AS P1 ON ORDERS.PRODUCT_ID = P1.ID]}
+                            :left-join [{:select [PRODUCTS.ID         AS ID
+                                                  PRODUCTS.EAN        AS EAN
+                                                  PRODUCTS.TITLE      AS TITLE
+                                                  PRODUCTS.CATEGORY   AS CATEGORY
+                                                  PRODUCTS.VENDOR     AS VENDOR
+                                                  PRODUCTS.PRICE      AS PRICE
+                                                  PRODUCTS.RATING     AS RATING
+                                                  PRODUCTS.CREATED_AT AS CREATED_AT]
+                                         :from [PRODUCTS]} AS P1
+                                        ON ORDERS.PRODUCT_ID = P1.ID]}
                            AS source]
                :left-join [{:select    [P2.CATEGORY AS P2__CATEGORY]
                             :from      [REVIEWS]
-                            :left-join [PRODUCTS AS P2 ON REVIEWS.PRODUCT_ID = P2.ID]}
+                            :left-join [{:select [PRODUCTS.ID         AS ID
+                                                  PRODUCTS.EAN        AS EAN
+                                                  PRODUCTS.TITLE      AS TITLE
+                                                  PRODUCTS.CATEGORY   AS CATEGORY
+                                                  PRODUCTS.VENDOR     AS VENDOR
+                                                  PRODUCTS.PRICE      AS PRICE
+                                                  PRODUCTS.RATING     AS RATING
+                                                  PRODUCTS.CREATED_AT AS CREATED_AT]
+                                         :from [PRODUCTS]} AS P2
+                                        ON REVIEWS.PRODUCT_ID = P2.ID]}
                            AS Q2
                            ON source.P1__CATEGORY = Q2.P2__CATEGORY]
                :limit     [1]}
@@ -689,7 +775,10 @@
   (is (= '{:select    [VENUES.NAME                       AS NAME
                        CATEGORIES__via__CATEGORY_ID.NAME AS CATEGORIES__via__CATEGORY_ID__NAME]
            :from      [VENUES]
-           :left-join [CATEGORIES AS CATEGORIES__via__CATEGORY_ID
+           :left-join [{:select [CATEGORIES.ID AS ID
+                                 CATEGORIES.NAME AS NAME]
+                        :from   [CATEGORIES]}
+                       AS CATEGORIES__via__CATEGORY_ID
                        ON VENUES.CATEGORY_ID = CATEGORIES__via__CATEGORY_ID.ID]
            :order-by  [VENUES.ID ASC]
            :limit     [5]}
@@ -759,8 +848,31 @@
                                       People.SOURCE AS People__SOURCE
                                       COUNT (*)     AS count]
                           :from      [ORDERS]
-                          :left-join [PRODUCTS AS P1     ON ORDERS.PRODUCT_ID = P1.ID
-                                      PEOPLE   AS People ON ORDERS.USER_ID = People.ID]
+                          :left-join [{:select [PRODUCTS.ID         AS ID
+                                                PRODUCTS.EAN        AS EAN
+                                                PRODUCTS.TITLE      AS TITLE
+                                                PRODUCTS.CATEGORY   AS CATEGORY
+                                                PRODUCTS.VENDOR     AS VENDOR
+                                                PRODUCTS.PRICE      AS PRICE
+                                                PRODUCTS.RATING     AS RATING
+                                                PRODUCTS.CREATED_AT AS CREATED_AT]
+                                       :from   [PRODUCTS]} AS P1
+                                      ON ORDERS.PRODUCT_ID = P1.ID
+                                      {:select [PEOPLE.ID         AS ID
+                                                PEOPLE.ADDRESS    AS ADDRESS
+                                                PEOPLE.EMAIL      AS EMAIL
+                                                PEOPLE.PASSWORD   AS PASSWORD
+                                                PEOPLE.NAME       AS NAME
+                                                PEOPLE.CITY       AS CITY
+                                                PEOPLE.LONGITUDE  AS LONGITUDE
+                                                PEOPLE.STATE      AS STATE
+                                                PEOPLE.SOURCE     AS SOURCE
+                                                PEOPLE.BIRTH_DATE AS BIRTH_DATE
+                                                PEOPLE.ZIP        AS ZIP
+                                                PEOPLE.LATITUDE   AS LATITUDE
+                                                PEOPLE.CREATED_AT AS CREATED_AT]
+                                       :from   [PEOPLE]} AS People
+                                      ON ORDERS.USER_ID = People.ID]
                           :group-by  [P1.CATEGORY
                                       People.SOURCE]
                           :order-by  [P1.CATEGORY ASC People.SOURCE ASC]}
@@ -768,7 +880,16 @@
              :left-join [{:select    [P2.CATEGORY          AS P2__CATEGORY
                                       AVG (REVIEWS.RATING) AS avg]
                           :from      [REVIEWS]
-                          :left-join [PRODUCTS AS P2 ON REVIEWS.PRODUCT_ID = P2.ID]
+                          :left-join [{:select [PRODUCTS.ID         AS ID
+                                                PRODUCTS.EAN        AS EAN
+                                                PRODUCTS.TITLE      AS TITLE
+                                                PRODUCTS.CATEGORY   AS CATEGORY
+                                                PRODUCTS.VENDOR     AS VENDOR
+                                                PRODUCTS.PRICE      AS PRICE
+                                                PRODUCTS.RATING     AS RATING
+                                                PRODUCTS.CREATED_AT AS CREATED_AT]
+                                       :from   [PRODUCTS]} AS P2
+                                      ON REVIEWS.PRODUCT_ID = P2.ID]
                           :group-by  [P2.CATEGORY]
                           :order-by  [P2.CATEGORY ASC]}
                          AS Q2
@@ -871,7 +992,13 @@
                             :group-by  [PRODUCTS__via__PRODUCT_ID.ID]
                             :order-by  [PRODUCTS__via__PRODUCT_ID.ID ASC]}
                            AS source]
-               :left-join [REVIEWS AS Reviews
+               :left-join [{:select [REVIEWS.ID         AS ID
+                                     REVIEWS.PRODUCT_ID AS PRODUCT_ID
+                                     REVIEWS.REVIEWER   AS REVIEWER
+                                     REVIEWS.RATING     AS RATING
+                                     REVIEWS.BODY       AS BODY
+                                     REVIEWS.CREATED_AT AS CREATED_AT]
+                            :from   [REVIEWS]} AS Reviews
                            ON source.PRODUCTS__via__PRODUCT_ID__ID = Reviews.PRODUCT_ID]
                :limit     [1]}
              (sql.qp-test-util/query->sql-map
@@ -943,8 +1070,31 @@
                                       People.SOURCE AS People__SOURCE
                                       COUNT (*)     AS count]
                           :from      [ORDERS]
-                          :left-join [PRODUCTS AS P1     ON ORDERS.PRODUCT_ID = P1.ID
-                                      PEOPLE   AS People ON ORDERS.USER_ID = People.ID]
+                          :left-join [{:select [PRODUCTS.ID         AS ID
+                                                PRODUCTS.EAN        AS EAN
+                                                PRODUCTS.TITLE      AS TITLE
+                                                PRODUCTS.CATEGORY   AS CATEGORY
+                                                PRODUCTS.VENDOR     AS VENDOR
+                                                PRODUCTS.PRICE      AS PRICE
+                                                PRODUCTS.RATING     AS RATING
+                                                PRODUCTS.CREATED_AT AS CREATED_AT]
+                                       :from   [PRODUCTS]} AS P1
+                                      ON ORDERS.PRODUCT_ID = P1.ID
+                                      {:select [PEOPLE.ID         AS ID
+                                                PEOPLE.ADDRESS    AS ADDRESS
+                                                PEOPLE.EMAIL      AS EMAIL
+                                                PEOPLE.PASSWORD   AS PASSWORD
+                                                PEOPLE.NAME       AS NAME
+                                                PEOPLE.CITY       AS CITY
+                                                PEOPLE.LONGITUDE  AS LONGITUDE
+                                                PEOPLE.STATE      AS STATE
+                                                PEOPLE.SOURCE     AS SOURCE
+                                                PEOPLE.BIRTH_DATE AS BIRTH_DATE
+                                                PEOPLE.ZIP        AS ZIP
+                                                PEOPLE.LATITUDE   AS LATITUDE
+                                                PEOPLE.CREATED_AT AS CREATED_AT]
+                                       :from   [PEOPLE]} AS People
+                                      ON ORDERS.USER_ID = People.ID]
                           :group-by  [P1.CATEGORY
                                       People.SOURCE]
                           :order-by  [P1.CATEGORY   ASC
@@ -953,7 +1103,16 @@
              :left-join [{:select    [P2.CATEGORY          AS P2__CATEGORY
                                       AVG (REVIEWS.RATING) AS avg]
                           :from      [REVIEWS]
-                          :left-join [PRODUCTS AS P2 ON REVIEWS.PRODUCT_ID = P2.ID]
+                          :left-join [{:select [PRODUCTS.ID         AS ID
+                                                PRODUCTS.EAN        AS EAN
+                                                PRODUCTS.TITLE      AS TITLE
+                                                PRODUCTS.CATEGORY   AS CATEGORY
+                                                PRODUCTS.VENDOR     AS VENDOR
+                                                PRODUCTS.PRICE      AS PRICE
+                                                PRODUCTS.RATING     AS RATING
+                                                PRODUCTS.CREATED_AT AS CREATED_AT]
+                                       :from   [PRODUCTS]} AS P2
+                                      ON REVIEWS.PRODUCT_ID = P2.ID]
                           :group-by  [P2.CATEGORY]
                           :order-by  [P2.CATEGORY ASC]}
                          AS Q2
@@ -1205,3 +1364,62 @@
              (h2x/unwrap-typed-honeysql-form
               (sql.qp/coerce-integer :sql
                                      (h2x/with-database-type-info value type))))))))
+
+(defmulti native-nested-array-query
+  {:arglists '([driver])}
+  tx/dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod native-nested-array-query :default
+  [_driver]
+  "select array[array[array['a', 'b'], array['c', 'd'] ], array[array['w', 'x'], array['y', 'z'] ]];")
+
+(doseq [driver [:mysql :sqlite]]
+  (defmethod native-nested-array-query driver
+    [_driver]
+    "select json_array(json_array(json_array('a', 'b'), json_array('c', 'd')), json_array(json_array('w', 'x'), json_array('y', 'z')));"))
+
+(doseq [driver [:redshift :databricks]]
+  (defmethod native-nested-array-query driver
+    [_driver]
+    "select array(array(array('a', 'b'), array('c', 'd')), array(array('w', 'x'), array('y', 'z')));"))
+
+(defmethod native-nested-array-query :snowflake
+  [_driver]
+  "select array_construct(array_construct(array_construct('a', 'b'), array_construct('c', 'd')), array_construct(array_construct('w', 'x'), array_construct('y', 'z')));")
+
+(defmulti native-nested-array-results
+  {:arglists '([driver])}
+  tx/dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod native-nested-array-results :default
+  [_driver]
+  [[["a" "b"] ["c" "d"]] [["w" "x"] ["y" "z"]]])
+
+(doseq [driver [:sqlite :databricks :redshift]]
+  (defmethod native-nested-array-results driver
+    [_driver]
+    "[[[\"a\",\"b\"],[\"c\",\"d\"]],[[\"w\",\"x\"],[\"y\",\"z\"]]]"))
+
+(defmethod native-nested-array-results :mysql
+  [_driver]
+  "[[[\"a\", \"b\"], [\"c\", \"d\"]], [[\"w\", \"x\"], [\"y\", \"z\"]]]")
+
+(defmethod native-nested-array-results :snowflake
+  [_driver]
+  "[\n  [\n    [\n      \"a\",\n      \"b\"\n    ],\n    [\n      \"c\",\n      \"d\"\n    ]\n  ],\n  [\n    [\n      \"w\",\n      \"x\"\n    ],\n    [\n      \"y\",\n      \"z\"\n    ]\n  ]\n]")
+
+(doseq [driver [:postgres :vertica :mysql :sqlite :redshift :databricks :snowflake]]
+  (defmethod driver/database-supports? [driver :test/nested-arrays]
+    [_driver _feature _database]
+    true))
+
+(deftest ^:parallel nested-array-query-test
+  (testing "A nested array query should be returned in a readable format"
+    (mt/test-drivers (mt/driver-select {:+features [:test/nested-arrays]})
+      (mt/dataset test-data
+        (is (= [[(native-nested-array-results driver/*driver*)]]
+               (->> (mt/native-query {:query (native-nested-array-query driver/*driver*)})
+                    mt/process-query
+                    mt/rows)))))))

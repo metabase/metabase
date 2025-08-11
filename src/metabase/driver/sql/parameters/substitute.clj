@@ -2,15 +2,15 @@
   (:require
    [clojure.string :as str]
    [metabase.driver :as driver]
+   [metabase.driver-api.core :as driver-api]
    [metabase.driver.common.parameters :as params]
    [metabase.driver.sql.parameters.substitution
     :as sql.params.substitution]
-   [metabase.query-processor.error-type :as qp.error-type]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]))
 
-(defn- substitute-field-filter [[sql args missing] in-optional? k {:keys [_field value], :as v}]
+(defn- substitute-field-param [[sql args missing] in-optional? k {:keys [_field value], :as v}]
   (if (and (= params/no-value value) in-optional?)
     ;; no-value field filters inside optional clauses are ignored, and eventually emitted entirely
     [sql args (conj missing k)]
@@ -33,8 +33,9 @@
     [sql args (conj missing k)]
     (let [v (get param->value k)]
       (cond
-        (params/FieldFilter? v)
-        (substitute-field-filter [sql args missing] in-optional? k v)
+        (or (params/FieldFilter? v)
+            (params/TemporalUnit? v))
+        (substitute-field-param [sql args missing] in-optional? k v)
 
         (params/ReferencedCardQuery? v)
         (substitute-card-query [sql args missing] v)
@@ -89,13 +90,13 @@
                              (substitute* param->value parsed-query false)
                              (catch Throwable e
                                (throw (ex-info (tru "Unable to substitute parameters: {0}" (ex-message e))
-                                               {:type         (or (:type (ex-data e)) qp.error-type/qp)
+                                               {:type         (or (:type (ex-data e)) driver-api/qp.error-type.qp)
                                                 :params       param->value
                                                 :parsed-query parsed-query}
                                                e))))]
     (log/tracef "=>%s\n%s" sql (pr-str args))
     (when (seq missing)
       (throw (ex-info (tru "Cannot run the query: missing required parameters: {0}" (set missing))
-                      {:type    qp.error-type/missing-required-parameter
+                      {:type    driver-api/qp.error-type.missing-required-parameter
                        :missing missing})))
     [(str/trim sql) args]))

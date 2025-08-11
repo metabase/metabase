@@ -240,7 +240,7 @@ function setup({
   return { onError, question };
 }
 
-jest.mock("metabase/core/components/Link", () => ({ to: href, ...props }) => (
+jest.mock("metabase/common/components/Link", () => ({ to: href, ...props }) => (
   <a href={href} {...props} />
 ));
 

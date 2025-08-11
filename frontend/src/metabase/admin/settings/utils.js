@@ -20,3 +20,15 @@ export const useGetEnvVarDocsUrl = (envName) => {
     anchor: envName?.toLowerCase(),
   });
 };
+
+export const getExtraFormFieldProps = (setting) => {
+  if (setting?.is_env_setting) {
+    return {
+      description: t`Using ${setting.env_name}`,
+      readOnly: true,
+    };
+  }
+  return {
+    description: setting?.description ?? "",
+  };
+};

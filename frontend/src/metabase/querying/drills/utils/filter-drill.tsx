@@ -8,7 +8,7 @@ interface FilterPopoverProps {
   query: Lib.Query;
   stageIndex: number;
   column: Lib.ColumnMetadata;
-  initialFilter?: Lib.FilterClause;
+  initialFilter?: Lib.Filterable;
 }
 
 export function getFilterPopover({

@@ -104,15 +104,15 @@
                                                                         :stages
                                                                         :parameters
                                                                         :constraints
-                                                                        :mirror-database/id
+                                                                        :destination-database/id
                                                                         :impersonation/role])]
-    (cond-> query
-      (empty? constraints) (dissoc :constraints)
-      true                 (update :parameters sort-parameter-values)
-      (empty? parameters)  (dissoc :parameters)
-      true                 lib.schema.util/indexed-order-bys
-      true                 lib.schema.util/remove-randomized-idents
-      true                 walk-query-sort-maps)))
+    (-> query
+        (cond-> (empty? constraints) (dissoc :constraints))
+        (update :parameters sort-parameter-values)
+        (cond-> (empty? parameters) (dissoc :parameters))
+        lib.schema.util/indexed-order-bys
+        lib.schema.util/remove-lib-uuids
+        walk-query-sort-maps)))
 
 (defn- ->metadata-provider [legacy-query]
   (if (qp.store/initialized?)
@@ -187,7 +187,7 @@
                               (:base_type field-info))))
                     result-metadata)))))
 
-(def preserved-keys
+(def ^:private preserved-keys
   "Keys that can survive merging metadata from the database onto metadata computed from the query. When merging
   metadata, the types returned should be authoritative. But things like semantic_type, display_name, and description
   can be merged on top."

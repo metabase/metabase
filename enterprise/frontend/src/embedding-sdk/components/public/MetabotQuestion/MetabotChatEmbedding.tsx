@@ -15,7 +15,10 @@ import {
 import { MetabotIcon } from "metabase-enterprise/metabot/components/MetabotIcon";
 import { METABOT_RESULTS_MESSAGE } from "metabase-enterprise/metabot/constants";
 import { useMetabotAgent } from "metabase-enterprise/metabot/hooks";
-import { resetConversationId } from "metabase-enterprise/metabot/state";
+import {
+  cancelInflightAgentRequests,
+  resetConversationId,
+} from "metabase-enterprise/metabot/state";
 
 import Styles from "./MetabotChatEmbedding.module.css";
 
@@ -43,8 +46,6 @@ export const MetabotChatEmbedding = ({
     setInputExpanded(false);
   }, []);
 
-  const metabotRequestPromiseRef = useRef<{ abort: () => void } | null>(null);
-
   const handleSend = () => {
     const trimmedInput = input.trim();
     if (!trimmedInput.length || metabot.isDoingScience) {
@@ -55,13 +56,10 @@ export const MetabotChatEmbedding = ({
       trimmedInput,
       EMBEDDING_METABOT_ID,
     );
-    metabotRequestPromiseRef.current = metabotRequestPromise;
 
     metabotRequestPromise
       .then((result) => {
-        const redirectUrl = (
-          result.payload as any
-        )?.payload?.data?.reactions?.find(
+        const redirectUrl = (result.payload as any)?.data?.reactions?.find(
           (reaction: { type: string; url: string }) =>
             reaction.type === "metabot.reaction/redirect",
         )?.url;
@@ -98,7 +96,7 @@ export const MetabotChatEmbedding = ({
     : inputPlaceholder;
 
   function cancelRequest() {
-    metabotRequestPromiseRef.current?.abort();
+    dispatch(cancelInflightAgentRequests());
   }
 
   const dispatch = useSdkDispatch();
@@ -158,6 +156,9 @@ export const MetabotChatEmbedding = ({
           // @ts-expect-error - undocumented API for mantine Textarea - leverages the prop from react-textarea-autosize's TextareaAutosize component
           onHeightChange={handleMaybeExpandInput}
           onKeyDown={(e) => {
+            if (e.nativeEvent.isComposing) {
+              return;
+            }
             if (e.key === "Enter") {
               // prevent event from inserting new line + interacting with other content
               e.preventDefault();

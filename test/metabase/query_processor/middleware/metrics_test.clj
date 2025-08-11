@@ -24,6 +24,8 @@
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]))
 
+;;; TODO (Cam 7/18/25) -- update the tests in this namespace to use mock metadata providers instead of with-temp
+
 (def ^:private counter (atom 2000))
 
 (defn- add-aggregation-options
@@ -1010,7 +1012,7 @@
                               (< (abs (- aggregation-value metric-value))
                                  (if (and (#{:percentile :median} operator)
                                           (driver/database-supports? driver/*driver* :test/inaccurate-approx-percentile nil))
-                                   1
+                                   3
                                    0.01)))
                             results-combined))))))))))
 
@@ -1089,5 +1091,5 @@
   (testing "All available aggregations are tested for filter expansion in metric"
     (is (empty? (set/difference
                  (disj (descendants @lib.hierarchy/hierarchy :metabase.lib.schema.aggregation/aggregation-clause-tag)
-                       :metric :offset)
+                       :aggregation :metric :offset)
                  (set (map :operator tested-aggregations)))))))

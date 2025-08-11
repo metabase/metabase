@@ -10,15 +10,21 @@ import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import {
   createMockSettingDefinition,
   createMockSettings,
+  createMockTokenFeatures,
 } from "metabase-types/api/mocks";
 
 import { GoogleAuthForm } from "./GoogleAuthForm";
 
-const setup = async (moreSettings = {}, envSettings = false) => {
+const setup = async (
+  moreSettings = {},
+  envSettings = false,
+  tokenFeatures = {},
+) => {
   const settings = createMockSettings({
     "google-auth-enabled": false,
     "google-auth-client-id": null,
     "google-auth-auto-create-accounts-domain": null,
+    "token-features": createMockTokenFeatures(tokenFeatures),
     ...moreSettings,
   });
   setupPropertiesEndpoints(settings);
@@ -65,6 +71,38 @@ describe("GoogleAuthForm", () => {
     await setup({ "google-auth-enabled": true });
     await userEvent.type(screen.getByLabelText("Domain"), "domain.test");
     expect(screen.getByRole("button", { name: "Save changes" })).toBeDisabled();
+  });
+
+  it("should allow multi-domain auth with the token feature", async () => {
+    await setup(
+      {
+        "google-auth-enabled": true,
+        "google-auth-client-id": "id.test",
+      },
+      undefined,
+      { sso_google: true },
+    );
+    expect(
+      await screen.findByText(/email address is from one of the domains/),
+    ).toBeInTheDocument();
+  });
+
+  it("should not allow multi-domain auth without the token feature", async () => {
+    await setup(
+      {
+        "google-auth-enabled": true,
+        "google-auth-client-id": "id.test",
+      },
+      undefined,
+      { sso_google: false },
+    );
+
+    expect(
+      await screen.findByText(/email address is from:/),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(/email address is from one of the domains/),
+    ).not.toBeInTheDocument();
   });
 
   it("should submit the form when required fields set by env vars", async () => {

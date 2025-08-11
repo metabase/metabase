@@ -1,16 +1,18 @@
-import CodeMirror, {
-  type ReactCodeMirrorRef,
-  type ViewUpdate,
-} from "@uiw/react-codemirror";
+import type { ViewUpdate } from "@uiw/react-codemirror";
 import {
   forwardRef,
   useCallback,
   useEffect,
   useImperativeHandle,
+  useMemo,
   useRef,
 } from "react";
 import _ from "underscore";
 
+import {
+  CodeMirror,
+  type CodeMirrorRef,
+} from "metabase/common/components/CodeMirror";
 import { isEventOverElement } from "metabase/lib/dom";
 import * as Lib from "metabase-lib";
 import type { CardId } from "metabase-types/api";
@@ -22,6 +24,7 @@ export type CodeMirrorEditorProps = {
   highlightedLineNumbers?: number[];
   readOnly?: boolean;
   onChange?: (queryText: string) => void;
+  onFormatQuery?: () => void;
   onRunQuery?: () => void;
   onCursorMoveOverCardTag?: (id: CardId) => void;
   onRightClickSelection?: () => void;
@@ -34,7 +37,7 @@ export interface CodeMirrorEditorRef {
 }
 
 import S from "./CodeMirrorEditor.module.css";
-import { useExtensions, useHighlightLines } from "./extensions";
+import { useExtensions } from "./extensions";
 import {
   getPlaceholderText,
   getSelectedRanges,
@@ -54,12 +57,12 @@ export const CodeMirrorEditor = forwardRef<
     onSelectionChange,
     onRightClickSelection,
     onCursorMoveOverCardTag,
+    onFormatQuery,
   },
   ref,
 ) {
-  const editorRef = useRef<ReactCodeMirrorRef>(null);
+  const editorRef = useRef<CodeMirrorRef>(null);
   const extensions = useExtensions({ query, onRunQuery });
-  useHighlightLines(editorRef, highlightedLineNumbers);
 
   const engine = Lib.engine(query);
   const placeholder = getPlaceholderText(engine);
@@ -121,6 +124,11 @@ export const CodeMirrorEditor = forwardRef<
     return () => document.removeEventListener("contextmenu", handler);
   }, [onRightClickSelection]);
 
+  const highlightedRanges = useMemo(
+    () => highlightedLineNumbers?.map((lineNumber) => ({ line: lineNumber })),
+    [highlightedLineNumbers],
+  );
+
   return (
     <CodeMirror
       ref={editorRef}
@@ -133,7 +141,10 @@ export const CodeMirrorEditor = forwardRef<
       height="100%"
       onUpdate={handleUpdate}
       autoFocus
+      autoCorrect="off"
       placeholder={placeholder}
+      highlightRanges={highlightedRanges}
+      onFormat={onFormatQuery}
     />
   );
 });

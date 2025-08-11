@@ -702,7 +702,7 @@ export const GRAPH_AXIS_SETTINGS = {
       return t`X-axis`;
     },
     get title() {
-      return t`Show lines and marks`;
+      return t`Show lines and tick marks`;
     },
     index: 3,
     widget: "select",
@@ -747,7 +747,7 @@ export const GRAPH_AXIS_SETTINGS = {
       return t`Axes`;
     },
     get title() {
-      return t`Show lines and marks`;
+      return t`Show lines and tick marks`;
     },
     index: 9,
     get group() {
@@ -845,20 +845,6 @@ export const GRAPH_AXIS_SETTINGS = {
     getHidden: (series, vizSettings) =>
       vizSettings["graph.y_axis.auto_range"] !== false,
   },
-  "graph.y_axis.split_number": {
-    get section() {
-      return t`Axes`;
-    },
-    get group() {
-      return t`Y-axis`;
-    },
-    index: 7,
-    get title() {
-      return t`Approximate number of intervals`;
-    },
-    widget: "number",
-    placeholder: "auto",
-  },
   "graph.y_axis.auto_split": {
     get section() {
       return t`Axes`;
@@ -923,6 +909,22 @@ export const GRAPH_AXIS_SETTINGS = {
     widget: "toggle",
     inline: true,
     getDefault: getIsYAxisLabelEnabledDefault,
+  },
+  "graph.y_axis.split_number": {
+    get section() {
+      return t`Axes`;
+    },
+    get group() {
+      return t`Y-axis`;
+    },
+    get title() {
+      return t`Number of tick marks`;
+    },
+    widget: "number",
+    placeholder: "auto",
+    getHidden: (_series, settings) => {
+      return settings["graph.y_axis.axis_enabled"] === false;
+    },
   },
   "graph.y_axis.title_text": {
     get section() {

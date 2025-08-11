@@ -14,7 +14,6 @@ import { startSampleAppContainers } from "./embedding-sdk/sample-apps/start-samp
 const userOptions = {
   TEST_SUITE: "e2e", // e2e | component
   MB_EDITION: "ee", // ee | oss
-  ENTERPRISE_TOKEN: "",
   START_CONTAINERS: true,
   STOP_CONTAINERS: false,
   BACKEND_PORT: 4000,
@@ -22,15 +21,15 @@ const userOptions = {
   SHOW_BACKEND_LOGS: false,
   GENERATE_SNAPSHOTS: true,
   QUIET: false,
+  TZ: "UTC",
   ...booleanify(process.env),
 };
 
 const derivedOptions = {
-  CYPRESS_ALL_FEATURES_TOKEN: userOptions.ENTERPRISE_TOKEN,
   QA_DB_ENABLED: userOptions.START_CONTAINERS,
   BUILD_JAR: userOptions.BACKEND_PORT === 4000,
   START_BACKEND: userOptions.BACKEND_PORT === 4000,
-  CYPRESS_IS_EMBEDDING_SDK: userOptions.TEST_SUITE === "component",
+  CYPRESS_IS_EMBEDDING_SDK: String(userOptions.TEST_SUITE === "component"),
   MB_SNOWPLOW_AVAILABLE: userOptions.START_CONTAINERS,
   MB_SNOWPLOW_URL: "http://localhost:9090",
 };
@@ -42,9 +41,16 @@ const options = {
 
 process.env = unBooleanify(options);
 
-if (options.MB_EDITION === "ee" && !options.ENTERPRISE_TOKEN) {
+const missingTokens = [
+  "MB_ALL_FEATURES_TOKEN",
+  "MB_STARTER_CLOUD_TOKEN",
+  "MB_PRO_CLOUD_TOKEN",
+  "MB_PRO_SELF_HOSTED_TOKEN",
+].filter((token) => !process.env[token]);
+
+if (options.MB_EDITION === "ee" && missingTokens.length > 0) {
   printBold(
-    "⚠️ ENTERPRISE_TOKEN is not set. Either set it or run with MB_EDITION=oss",
+    `⚠️ Missing tokens: ${missingTokens.join(", ")}. Either set them or run with MB_EDITION=oss`,
   );
   process.exit(FAILURE_EXIT_CODE);
 }
@@ -52,7 +58,6 @@ if (options.MB_EDITION === "ee" && !options.ENTERPRISE_TOKEN) {
 printBold(`Running Cypress with options:
   - TEST_SUITE         : ${options.TEST_SUITE}
   - MB_EDITION         : ${options.MB_EDITION}
-  - ENTERPRISE_TOKEN   : ${options.ENTERPRISE_TOKEN ? "present" : "<missing>"}
   - START_CONTAINERS   : ${options.START_CONTAINERS}
   - STOP_CONTAINERS    : ${options.STOP_CONTAINERS}
   - BUILD_JAR          : ${options.BUILD_JAR}
@@ -61,6 +66,7 @@ printBold(`Running Cypress with options:
   - START_BACKEND      : ${options.START_BACKEND}
   - OPEN_UI            : ${options.OPEN_UI}
   - SHOW_BACKEND_LOGS  : ${options.SHOW_BACKEND_LOGS}
+  - TZ                 : ${options.TZ}
 `);
 
 const init = async () => {
@@ -123,9 +129,10 @@ const init = async () => {
       await startSampleAppContainers(options.TEST_SUITE);
       break;
 
-    case "vite-5-host-app-e2e":
-    case "next-14-app-router-host-app-e2e":
-    case "next-14-pages-router-host-app-e2e":
+    case "vite-6-host-app-e2e":
+    case "next-15-app-router-host-app-e2e":
+    case "next-15-pages-router-host-app-e2e":
+    case "angular-20-host-app-e2e":
       await startHostAppContainers(options.TEST_SUITE);
       break;
   }

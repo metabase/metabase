@@ -9,6 +9,7 @@ import { screen, waitFor } from "__support__/ui";
 import { getNextId } from "__support__/utils";
 import { renderWithSDKProviders } from "embedding-sdk/test/__support__/ui";
 import { createMockSdkConfig } from "embedding-sdk/test/mocks/config";
+import { useLocale } from "metabase/common/hooks/use-locale";
 import { ROOT_COLLECTION as ROOT } from "metabase/entities/collections";
 import {
   createMockCollection,
@@ -20,6 +21,12 @@ import {
   CreateDashboardModal,
   type CreateDashboardModalProps,
 } from "./CreateDashboardModal";
+
+jest.mock("metabase/common/hooks/use-locale", () => ({
+  useLocale: jest.fn(),
+}));
+
+const useLocaleMock = useLocale as jest.Mock;
 
 const CURRENT_USER = createMockUser({
   id: getNextId(),
@@ -43,7 +50,13 @@ const PERSONAL_COLLECTION = createMockCollection({
 const COLLECTIONS = [ROOT_COLLECTION, PERSONAL_COLLECTION];
 
 describe("CreateDashboardModal", () => {
-  it("should render", () => {
+  it("should render a loader when a locale is loading", async () => {
+    setup({ isLocaleLoading: true });
+
+    expect(screen.queryByText("New dashboard")).not.toBeInTheDocument();
+  });
+
+  it("should render", async () => {
     setup();
 
     expect(screen.getByText("New dashboard")).toBeInTheDocument();
@@ -76,7 +89,9 @@ describe("CreateDashboardModal", () => {
 
     await waitFor(() => {
       return expect(
-        fetchMock.called(`path:/api/collection/${PERSONAL_COLLECTION.id}`),
+        fetchMock.callHistory.called(
+          `path:/api/collection/${PERSONAL_COLLECTION.id}`,
+        ),
       ).toBe(true);
     });
 
@@ -87,15 +102,14 @@ describe("CreateDashboardModal", () => {
     await userEvent.click(screen.getByText("Create"));
 
     expect(
-      fetchMock.calls(`path:/api/dashboard`, { method: "POST" }),
+      fetchMock.callHistory.calls(`path:/api/dashboard`, { method: "POST" }),
     ).toHaveLength(1);
 
     // api called with typed form input
-    expect(
-      await fetchMock
-        .lastCall(`path:/api/dashboard`, { method: "POST" })
-        ?.request?.json(),
-    ).toMatchObject({
+    const lastCall = fetchMock.callHistory.lastCall(`path:/api/dashboard`, {
+      method: "POST",
+    });
+    expect(await lastCall?.request?.json()).toMatchObject({
       name: "My awesome dashboard title",
       collection_id: PERSONAL_COLLECTION.id,
     });
@@ -120,7 +134,17 @@ describe("CreateDashboardModal", () => {
   });
 });
 
-function setup({ props }: { props?: Partial<CreateDashboardModalProps> } = {}) {
+function setup(
+  {
+    isLocaleLoading,
+    props,
+  }: {
+    isLocaleLoading?: boolean;
+    props?: Partial<CreateDashboardModalProps>;
+  } = { isLocaleLoading: false, props: {} },
+) {
+  useLocaleMock.mockReturnValue({ isLocaleLoading });
+
   setupCollectionByIdEndpoint({ collections: COLLECTIONS });
 
   return renderWithSDKProviders(

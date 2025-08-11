@@ -9,6 +9,7 @@
    [metabase.lib.schema.common :as common]
    [metabase.lib.schema.expression :as expression]
    [metabase.lib.schema.id :as id]
+   [metabase.lib.schema.join :as lib.schema.join]
    [metabase.lib.schema.mbql-clause :as mbql-clause]
    [metabase.lib.schema.temporal-bucketing :as temporal-bucketing]
    [metabase.types.core]
@@ -25,17 +26,31 @@
                                        opts))}
    ::common/options
    [:map
+    [:join-alias                                 {:optional true} [:ref ::lib.schema.join/alias]]
     [:temporal-unit                              {:optional true} [:ref ::temporal-bucketing/unit]]
     [:binning                                    {:optional true} [:ref ::binning/binning]]
     [:metabase.lib.field/original-effective-type {:optional true} [:ref ::common/base-type]]
     [:metabase.lib.field/original-temporal-unit  {:optional true} [:ref ::temporal-bucketing/unit]]
+    ;;
+    ;; for implicitly joinable columns, this is the ID of the FK in `:source-table` (or the previous stage) used to
+    ;; perform the implicit join. E.g. if the query is against `ORDERS` and the field ref is for `CATEGORIES.NAME`
+    ;; then `:source-field` should be `ORDERS.CATEGORY_ID`. This column should have `:fk-target-field-id` that points
+    ;; to `CATEGORIES.ID`. This (ideally) should only be specified in the stage of the query the implicit join is to
+    ;; be done; subsequent stages should omit this and use field name refs instead e.g. `CATEGORIES__via__CATEGORY_ID`.
+    ;;
+    ;; You REALLY shouldn't be specifying this for a field name ref, since it makes resolution 10x harder. There's
+    ;; a 99.9% chance that using a field name ref with `:source-field` is a bad idea and broken, I even
+    ;; considered banning it at the schema level, but decided to let it be for now since we should still be
+    ;; able to resolve it.
+    [:source-field {:optional true} [:ref ::id/field]]
+    ;;
     ;; Inherited temporal unit captures the temporal unit, that has been set on a ref, for next stages. It is attached
     ;; _to a column_, which is created from this ref by means of `returned-columns`, ie. is visible [inherited temporal
     ;; unit] in next stages only. This information is used eg. to help pick a default _temporal unit_ for columns that
     ;; are bucketed -- if a column contains `:inherited-temporal-unit`, it was bucketed already in previous stages,
     ;; so nil default picked to avoid another round of bucketing. Shall user bucket the column again, they have to
     ;; select the bucketing explicitly in QB.
-    [:inherited-temporal-unit  {:optional true} [:ref ::temporal-bucketing/unit]]]])
+    [:inherited-temporal-unit {:optional true} [:ref ::temporal-bucketing/unit]]]])
 
 (mr/def ::field.literal.options
   [:merge
@@ -48,7 +63,7 @@
   [:tuple
    [:= :field]
    ::field.literal.options
-   ::common/non-blank-string])
+   :string])
 
 (mr/def ::field.id
   [:tuple
@@ -61,7 +76,7 @@
    [:tuple
     [:= {:decode/normalize common/normalize-keyword} :field]
     [:ref ::field.options]
-    [:or ::id/field ::common/non-blank-string]]
+    [:or ::id/field :string]]
    [:multi {:dispatch      (fn [clause]
                              ;; apparently it still tries to dispatch when humanizing errors even if the `:tuple`
                              ;; schema above failed, so we need to check that this is actually a tuple here again.

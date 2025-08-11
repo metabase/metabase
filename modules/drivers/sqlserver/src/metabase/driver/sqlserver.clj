@@ -8,8 +8,8 @@
    [honey.sql :as sql]
    [honey.sql.helpers :as sql.helpers]
    [java-time.api :as t]
-   [metabase.config.core :as config]
    [metabase.driver :as driver]
+   [metabase.driver-api.core :as driver-api]
    [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc :as sql-jdbc]
    [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
@@ -21,15 +21,15 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor.boolean-to-comparison :as sql.qp.boolean-to-comparison]
    [metabase.driver.sql.util :as sql.u]
-   [metabase.legacy-mbql.util :as mbql.u]
-   [metabase.lib.util.match :as lib.util.match]
-   [metabase.query-processor.middleware.limit :as limit]
-   [metabase.query-processor.timezone :as qp.timezone]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log])
   (:import
-   (java.sql Connection PreparedStatement ResultSet Time)
+   (java.sql
+    Connection
+    PreparedStatement
+    ResultSet
+    Time)
    (java.time
     LocalDate
     LocalDateTime
@@ -46,6 +46,7 @@
 
 (doseq [[feature supported?] {:case-sensitivity-string-filter-options false
                               :connection-impersonation               true
+                              :connection-impersonation-requires-role true
                               :uuid-type                              true
                               :convert-timezone                       true
                               :datetime-diff                          true
@@ -56,10 +57,6 @@
                               :regex                                  false
                               :test/jvm-timezone-setting              false}]
   (defmethod driver/database-supports? [:sqlserver feature] [_driver _feature _db] supported?))
-
-(defmethod driver/database-supports? [:sqlserver :connection-impersonation-requires-role]
-  [_driver _feature db]
-  (= (u/lower-case-en (-> db :details :user)) "sa"))
 
 (defmethod driver/database-supports? [:sqlserver :percentile-aggregations]
   [_ _ db]
@@ -120,7 +117,7 @@
   [_ {:keys [user password db host port instance domain ssl]
       :or   {user "dbuser", password "dbpassword", db "", host "localhost"}
       :as   details}]
-  (-> {:applicationName    config/mb-version-and-process-identifier
+  (-> {:applicationName    driver-api/mb-version-and-process-identifier
        :subprotocol        "sqlserver"
        ;; it looks like the only thing that actually needs to be passed as the `subname` is the host; everything else
        ;; can be passed as part of the Properties
@@ -215,7 +212,7 @@
   it casts to `:datetime2`."
   [base-expr day-expr]
   (if (or (= (:base-type *field-options*) :type/Date)
-          (lib.util.match/match-one base-expr [::h2x/typed _ {:database-type (_ :guard #{:date "date"})}]))
+          (driver-api/match-one base-expr [::h2x/typed _ {:database-type (_ :guard #{:date "date"})}]))
     day-expr
     (h2x/cast :datetime2 day-expr)))
 
@@ -375,11 +372,11 @@
         y (sql.qp/->honeysql driver y)
         _ (sql.qp/datetime-diff-check-args x y (partial re-find #"(?i)^(timestamp|date)"))
         x (if (h2x/is-of-type? x "datetimeoffset")
-            (h2x/at-time-zone x (zone-id->windows-zone (qp.timezone/results-timezone-id)))
+            (h2x/at-time-zone x (zone-id->windows-zone (driver-api/results-timezone-id)))
             x)
         x (h2x/cast "datetime2" x)
         y (if (h2x/is-of-type? y "datetimeoffset")
-            (h2x/at-time-zone y (zone-id->windows-zone (qp.timezone/results-timezone-id)))
+            (h2x/at-time-zone y (zone-id->windows-zone (driver-api/results-timezone-id)))
             y)
         y (h2x/cast "datetime2" y)]
     (sql.qp/datetime-diff driver unit x y)))
@@ -468,7 +465,7 @@
   The `year`, `month`, and `day` can make use of indexes whereas `DateFromParts` cannot. The optimized version of the
   query is much more efficient. See #9934 for more details."
   [field-clause]
-  (when (mbql.u/is-clause? :field field-clause)
+  (when (driver-api/is-clause? :field field-clause)
     (let [[_ id-or-name {:keys [temporal-unit], :as opts}] field-clause]
       (when (#{:year :month :day} temporal-unit)
         (mapv
@@ -494,7 +491,7 @@
   ;; this is basically the same implementation as the default one in the `sql.qp` namespace, the only difference is
   ;; that we optimize the fields in the GROUP BY clause using `optimize-breakout-clauses`.
   (let [optimized      (optimize-breakout-clauses breakout-fields)
-        unique-name-fn (mbql.u/unique-name-generator)]
+        unique-name-fn (driver-api/unique-name-generator)]
     (as-> honeysql-form new-hsql
       ;; we can still use the "unoptimized" version of the breakout for the SELECT... e.g.
       ;;
@@ -518,7 +515,7 @@
         ;; where a boolean is required; otherwise, SQL Server returns a value of type int for `SELECT 1 AS MyBool`.
         maybe-add-cast #(cond-> %
                           (sql.qp.boolean-to-comparison/boolean-expression-clause? %)
-                          (mbql.u/assoc-field-options ::sql.qp/add-cast :bit))]
+                          (driver-api/assoc-field-options ::sql.qp/add-cast :bit))]
     (->> (update query :fields #(mapv maybe-add-cast %))
          (parent-method driver :fields honeysql-form))))
 
@@ -773,13 +770,13 @@
             (and (has-order-by-without-limit? m)
                  (not (in-join-source-query? path))
                  (in-source-query? path)))]
-    (lib.util.match/replace inner-query
+    (driver-api/replace inner-query
       ;; remove order by and then recurse in case we need to do more tranformations at another level
       (m :guard (partial remove-order-by? &parents))
       (fix-order-bys (dissoc m :order-by))
 
       (m :guard (partial add-limit? &parents))
-      (fix-order-bys (assoc m :limit limit/absolute-max-results)))))
+      (fix-order-bys (assoc m :limit driver-api/absolute-max-results)))))
 
 (defmethod sql.qp/preprocess :sqlserver
   [driver inner-query]
@@ -923,10 +920,11 @@
 
 (defmethod driver.sql/default-database-role :sqlserver
   [_driver database]
-  ;; Use a "role" (sqlserver user) if it exists, otherwise use
-  ;; the user if it can be impersonated (ie not the 'sa' user).
-  (let [{:keys [role user]} (:details database)]
-    (or role (when-not (= (u/lower-case-en user) "sa") user))))
+  ;; Use a "role" (sqlserver user) if it exists. Do not fall back to the user
+  ;; field automatically, as it represents the login user which may not be a
+  ;; valid database user for impersonation (see issue #60665).
+  (let [{:keys [role]} (:details database)]
+    role))
 
 (defmethod driver.sql/set-role-statement :sqlserver
   [_driver role]

@@ -533,6 +533,26 @@
 
 ;;; ------------------------------------------- TESTS FOR GOOGLE SIGN-IN ---------------------------------------------
 
+(deftest google-auth-remember-test
+  (reset-throttlers!)
+  (testing "POST /google_auth"
+    (mt/with-temporary-setting-values [google-auth-client-id "pretend-client-id.apps.googleusercontent.com"]
+      (mt/with-model-cleanup [:model/User]
+        (t2/insert! :model/User (merge  (mt/with-temp-defaults :model/User) {:email "test@metabase.com" :is_active true}))
+        (testing "Google auth works with remember me and rasta"
+          (with-redefs [http/post (constantly
+                                   {:status 200
+                                    :body   (str "{\"aud\":\"pretend-client-id.apps.googleusercontent.com\","
+                                                 "\"email_verified\":\"true\","
+                                                 "\"first_name\":\"test\","
+                                                 "\"last_name\":\"user\","
+                                                 "\"email\":\"test@metabase.com\"}")})]
+            (testing "Test that 'remember me' checkbox sets expiration on session"
+              (let [response (mt/client-real-response :post 200 "session/google_auth" {:token "foo" :remember true})]
+                (is (some? (get-in response [:cookies session-cookie :expires])) "Session should have expiration set when remember=true"))
+              (let [response (mt/client-real-response :post 200 "session/google_auth" {:token "foo" :remember false})]
+                (is (nil? (get-in response [:cookies session-cookie :expires])) "Session should not have expiration set when remember=false")))))))))
+
 (deftest google-auth-test
   (reset-throttlers!)
   (testing "POST /google_auth"

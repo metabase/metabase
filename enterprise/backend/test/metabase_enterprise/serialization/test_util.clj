@@ -64,7 +64,7 @@
   `(binding [mdb.connection/*application-db* (mdb.connection/application-db :h2 ~data-source)]
      (with-open [conn# (.getConnection mdb.connection/*application-db*)]
        (binding [t2.conn/*current-connectable* conn#]
-         ;; TODO mt/with-empty-h2-app-db also rebinds some perms-group/* - do we want to do that too?
+         ;; TODO mt/with-empty-h2-app-db! also rebinds some perms-group/* - do we want to do that too?
          ;;   redefs not great for parallelism
          (testing (format "\nApp DB = %s" (pr-str (-data-source-url ~data-source)))
            ~@body)))))
@@ -178,12 +178,9 @@
                                                                    :query {:source-table table-id
                                                                            :filter [:= [:field category-field-id nil] 2]
                                                                            :aggregation [:sum [:field numeric-field-id nil]]
-                                                                           :aggregation-idents {0 "ptB0TYWlsl8qVQGLMXknK"}
                                                                            :breakout [[:field category-field-id nil]]
-                                                                           :breakout-idents {0 "v2gFszquoclWC505vvmhY"}
                                                                            :joins [{:source-table table-id-categories
                                                                                     :alias "cat"
-                                                                                    :ident     "-7CAEDVYQlvLuiikYiCxf"
                                                                                     :fields    "all"
                                                                                     :condition [:=
                                                                                                 [:field category-field-id nil]
@@ -198,17 +195,14 @@
                                                                         :database db-id
                                                                         :query {:source-table table-id
                                                                                 :aggregation [:sum [:field numeric-field-id nil]]
-                                                                                :aggregation-idents {0 "ptB0TYWlsl8qVQGLMXknK"}
-                                                                                :breakout [[:field category-field-id nil]]
-                                                                                :breakout-idents {0 "v2gFszquoclWC505vvmhY"}}}}
+                                                                                :breakout [[:field category-field-id nil]]}}}
                   :model/Card       {card-id-root :id} {:table_id table-id
                                                  ;; https://en.wikipedia.org/wiki/Filename#Reserved_characters_and_words
                                                         :name root-card-name
                                                         :dataset_query {:type :query
                                                                         :database db-id
                                                                         :query {:source-table table-id
-                                                                                :expressions  {"Price Known" [:> [:field numeric-field-id nil] 0]}
-                                                                                :expression-idents {"Price Known" "ptB0TYWlsl8qVQGLMXknK"}}}}
+                                                                                :expressions  {"Price Known" [:> [:field numeric-field-id nil] 0]}}}}
                   :model/Card       {card-id-nested :id} {:table_id table-id
                                                           :name "My Nested Card"
                                                           :collection_id collection-id
@@ -276,7 +270,8 @@
                                                                                                             (mb.viz/with-entity-click-action
                                                                                                               name-field-id
                                                                                                               ::mb.viz/dashboard
-                                                                                                              root-dashboard-id)
+                                                                                                              root-dashboard-id
+                                                                                                              nil)
                                                                                                             (mb.viz/with-click-action
                                                                                                               (mb.viz/column-name->column-ref "Price Known")
                                                                                                               (mb.viz/url-click-action "/price-info"))
@@ -335,12 +330,8 @@
                                                                                                         [[:aggregation-options
                                                                                                           [:count]
                                                                                                           {:name "num_per_type"}]]
-                                                                                                        :aggregation-idents
-                                                                                                        {0 "vb1xlvyOHJQSJJGEiDgYx"}
                                                                                                         :breakout
-                                                                                                        [[:field category-field-id nil]]
-                                                                                                        :breakout-idents
-                                                                                                        {0 "VZQg03VY_GHx1R-d9PVd8"}}
+                                                                                                        [[:field category-field-id nil]]}
                                                                                          :filter [:>
                                                                                                   [:field-literal "num_per_type" :type/Integer]
                                                                                                   4]}}}
@@ -353,15 +344,11 @@
                                                                                                            table-id-checkins
                                                                                                            :aggregation
                                                                                                            [[:count]]
-                                                                                                           :aggregation-idents
-                                                                                                           {0 "iTOso6duTmJp2Kl__jlLp"}
                                                                                                            :breakout
                                                                                                            [[:field last-login-field-id {:source-field
                                                                                                                                          user-id-field-id
                                                                                                                                          :temporal-unit
-                                                                                                                                         :month}]]
-                                                                                                           :breakout-idents
-                                                                                                           {0 "ufD_PFrEGPQExr_lVpw6u"}}}}}
+                                                                                                                                         :month}]]}}}}
                   :model/NativeQuerySnippet {snippet-id :id} {:content     "price > 2"
                                                               :description "Predicate on venues table for price > 2"
                                                               :name        "Pricey Venues"}
@@ -404,7 +391,6 @@
                                                                                      :query   {:source-table table-id-checkins
                                                                                                :joins [{:source-table (str "card__" card-id-root)
                                                                                                         :alias        "v"
-                                                                                                        :ident        "rfuo5Et_zy91PhOIyMOsS"
                                                                                                         :fields       "all"
                                                                                                         :condition    [:=
                                                                                                                        [:field
@@ -420,9 +406,7 @@
                                                                                        :database db-id
                                                                                        :query {:source-table table-id
                                                                                                :aggregation [:sum [:field latitude-field-id nil]]
-                                                                                               :aggregation-idents {0 "Nmb2tQjRgQ5PZybzMnHo3"}
-                                                                                               :breakout [[:field category-field-id nil]]
-                                                                                               :breakout-idents {0 "WSlL0FYI9ANx1fiokqzG-"}}}
+                                                                                               :breakout [[:field category-field-id nil]]}}
 
                                                                        :visualization_settings
                                                                        {:pivot_table.column_split {:columns ["LATITUDE"]

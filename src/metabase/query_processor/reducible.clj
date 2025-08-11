@@ -1,14 +1,18 @@
 (ns metabase.query-processor.reducible
   (:require
    [clojure.core.async :as a]
+   [metabase.analytics.core :as analytics]
+   [metabase.driver :as driver]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.query-processor.pipeline :as qp.pipeline]
+   [metabase.query-processor.schema :as qp.schema]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.performance :as perf]))
 
 (set! *warn-on-reflection* true)
 
-(defn default-rff
+(mu/defn default-rff :- ::qp.schema/rf
   "Default function returning a reducing function. Results are returned in the 'standard' map format e.g.
 
     {:data {:cols [...], :rows [...]}, :row_count ...}"
@@ -22,6 +26,7 @@
       ([result]
        {:pre [(map? (unreduced result))]}
        ;; if the result is a clojure.lang.Reduced, unwrap it so we always get back the standard-format map
+       (analytics/inc! :metabase-query-processor/query {:driver driver/*driver* :status "success"})
        (-> (unreduced result)
            (assoc :row_count @row-count
                   :status :completed)
@@ -32,7 +37,7 @@
        (vswap! rows conj! row)
        result))))
 
-(defn reducible-rows
+(mu/defn reducible-rows :- (lib.schema.common/instance-of-class clojure.lang.IReduceInit)
   "Utility function for generating reducible rows when implementing [[metabase.driver/execute-reducible-query]].
 
   `row-thunk` is a function that, when called, should return the next row in the results, or falsey if no more rows
@@ -59,7 +64,7 @@
                (log/trace "All rows consumed.")
                acc))))))))
 
-(mu/defn combine-additional-reducing-fns
+(mu/defn combine-additional-reducing-fns :- ::qp.schema/rf
   "Utility function for creating a reducing function that reduces results using `primary-rf` and some number of
   `additional-rfs`, then combines them into a final result with `combine`.
 
@@ -88,8 +93,8 @@
 
   4. The completing arity of the primary reducing function is not applied automatically, so be sure to apply it
   yourself in the appropriate place in the body of your `combine` function."
-  [primary-rf     :- ifn?
-   additional-rfs :- [:sequential ifn?]
+  [primary-rf     :- ::qp.schema/rf
+   additional-rfs :- [:sequential ::qp.schema/rf]
    combine        :- ifn?]
   (let [additional-accs (volatile! (perf/mapv (fn [rf] (rf))
                                               additional-rfs))]

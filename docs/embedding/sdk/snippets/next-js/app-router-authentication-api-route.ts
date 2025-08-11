@@ -25,26 +25,7 @@ export async function GET() {
     // This is the JWT signing secret in your Metabase JWT authentication setting
     METABASE_JWT_SHARED_SECRET,
   );
-  const ssoUrl = `${METABASE_INSTANCE_URL}/auth/sso?token=true&jwt=${token}`;
-
-  try {
-    const ssoResponse = await fetch(ssoUrl, { method: "GET" });
-    const ssoResponseBody = await ssoResponse.json();
-
-    return Response.json(ssoResponseBody);
-  } catch (error) {
-    if (error instanceof Error) {
-      return Response.json(
-        {
-          status: "error",
-          message: "authentication failed",
-          error: error.message,
-        },
-        {
-          status: 401,
-        },
-      );
-    }
-  }
+  // The user backend should return a JSON object with the JWT.
+  return Response.json({ jwt: token });
 }
 // [<endsnippet example>]

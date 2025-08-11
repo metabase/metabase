@@ -1,5 +1,19 @@
 import { createRoot } from "react-dom/client";
 
+import {
+  EMBEDDING_SDK_CONFIG,
+  EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG,
+} from "metabase/embedding-sdk/config";
+
+/**
+ * Configuration overrides for simple embedding.
+ */
+EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG.isSimpleEmbedding = true;
+EMBEDDING_SDK_CONFIG.isEmbeddingSdk = true;
+EMBEDDING_SDK_CONFIG.metabaseClientRequestHeader = "embedding-simple";
+EMBEDDING_SDK_CONFIG.enableEmbeddingSettingKey = "enable-embedding-simple";
+EMBEDDING_SDK_CONFIG.tokenFeatureKey = "embedding_simple";
+
 // load the embedding_iframe_sdk EE plugin
 import "sdk-iframe-embedding-ee-plugins";
 

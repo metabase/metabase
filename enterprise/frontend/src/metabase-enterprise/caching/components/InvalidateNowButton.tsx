@@ -7,8 +7,8 @@ import { IconInButton } from "metabase/admin/performance/components/StrategyForm
 import { useInvalidateTarget } from "metabase/admin/performance/hooks/useInvalidateTarget";
 import { useIsFormPending } from "metabase/admin/performance/hooks/useIsFormPending";
 import type { ModelWithClearableCache } from "metabase/admin/performance/types";
+import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import { Form, FormProvider } from "metabase/forms";
-import { useConfirmation } from "metabase/hooks/use-confirmation";
 import { color } from "metabase/lib/colors";
 import type { InvalidateNowButtonProps } from "metabase/plugins";
 import { Group, Icon, Loader, Text } from "metabase/ui";

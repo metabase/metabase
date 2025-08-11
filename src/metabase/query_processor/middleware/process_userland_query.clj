@@ -12,6 +12,7 @@
    [metabase.queries.models.query :as query]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.util :as qp.util]
+   [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    ^{:clj-kondo/ignore [:discouraged-namespace]}
@@ -22,7 +23,8 @@
 (defn- add-running-time [{start-time-ms :start_time_millis, :as query-execution}]
   (-> query-execution
       (assoc :running_time (when start-time-ms
-                             (- (System/currentTimeMillis) start-time-ms)))
+                             ;; Consider having `:start_time_nanos` instead, to avoid the pitfalls of system clocks.
+                             (u/since-ms-wall-clock start-time-ms)))
       (dissoc :start_time_millis)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -123,7 +125,7 @@
     database-id                    :database
     query-type                     :type
     parameters                     :parameters
-    mirror-database-id             :mirror-database/id
+    destination-database-id        :destination-database/id
     :as                            query}]
   {:pre [(bytes? query-hash)]}
   (let [json-query (if original-query
@@ -132,7 +134,7 @@
                          (assoc :was-pivot true))
                      (cond-> (dissoc query :info)
                        (empty? (:parameters query)) (dissoc :parameters)))]
-    {:database_id       (or mirror-database-id database-id)
+    {:database_id       (or destination-database-id database-id)
      :executor_id       executed-by
      :action_id         action-id
      :card_id           card-id

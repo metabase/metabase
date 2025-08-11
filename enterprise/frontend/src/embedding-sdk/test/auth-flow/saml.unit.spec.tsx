@@ -40,7 +40,9 @@ describe("Auth Flow - SAML", () => {
     const { rerender, popup } = setup({ authConfig });
 
     await waitForLoaderToBeRemoved();
-    expect(fetchMock.calls(`${MOCK_INSTANCE_URL}/auth/sso`)).toHaveLength(1);
+    expect(
+      fetchMock.callHistory.calls(`begin:${MOCK_INSTANCE_URL}/auth/sso`),
+    ).toHaveLength(1);
     expect(popup.close).toHaveBeenCalled();
 
     rerender(
@@ -51,9 +53,12 @@ describe("Auth Flow - SAML", () => {
 
     await waitForLoaderToBeRemoved();
 
-    expect(fetchMock.calls(`${MOCK_INSTANCE_URL}/auth/sso`)).toHaveLength(1);
+    expect(
+      fetchMock.callHistory.calls(`begin:${MOCK_INSTANCE_URL}/auth/sso`),
+    ).toHaveLength(1);
 
-    expect(screen.queryByText("Initializing...")).not.toBeInTheDocument();
+    const loader = screen.queryByTestId("loading-indicator");
+    expect(loader).not.toBeInTheDocument();
 
     expect(
       // this is just something we know it's on the screen when everything is ok
@@ -71,13 +76,15 @@ describe("Auth Flow - SAML", () => {
     });
 
     await waitForRequest(() => getLastUserApiCall());
-    expect(getLastUserApiCall()![1]).toMatchObject({
-      headers: { "X-Metabase-Session": [MOCK_SESSION_TOKEN_ID] },
-    });
+    expect(getLastUserApiCall()?.options.headers).toHaveProperty(
+      "x-metabase-session",
+      MOCK_SESSION_TOKEN_ID,
+    );
 
     await waitForRequest(() => getLastCardQueryApiCall());
-    expect(getLastCardQueryApiCall()![1]).toMatchObject({
-      headers: { "X-Metabase-Session": [MOCK_SESSION_TOKEN_ID] },
-    });
+    expect(getLastCardQueryApiCall()?.options.headers).toHaveProperty(
+      "x-metabase-session",
+      MOCK_SESSION_TOKEN_ID,
+    );
   });
 });

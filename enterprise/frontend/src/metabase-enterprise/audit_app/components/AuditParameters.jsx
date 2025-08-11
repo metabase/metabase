@@ -2,10 +2,7 @@ import PropTypes from "prop-types";
 import { Component } from "react";
 import _ from "underscore";
 
-import Button from "metabase/core/components/Button";
-import CS from "metabase/css/core/index.css";
-
-import { AuditParametersInput } from "./AuditParameters.styled";
+import { Box, Button, Group, Input, ScrollArea } from "metabase/ui";
 
 const DEBOUNCE_PERIOD = 300;
 
@@ -59,35 +56,36 @@ export default class AuditParameters extends Component {
       Object.values(inputValues).every((v) => v === "");
 
     return (
-      <div>
-        <div className={CS.pt4}>
-          {parameters.map(({ key, placeholder, icon, disabled }) => (
-            <AuditParametersInput
-              key={key}
-              type="text"
-              value={inputValues[key] || ""}
-              placeholder={placeholder}
-              disabled={isEmpty || disabled}
-              onChange={(e) => {
-                this.changeValue(key, e.target.value);
-              }}
-              icon={icon}
-            />
-          ))}
-          {buttons?.map(({ key, label, disabled, onClick }) => (
-            <Button
-              className={CS.ml2}
-              key={key}
-              primary
-              disabled={isEmpty || disabled}
-              onClick={onClick}
-            >
-              {label}
-            </Button>
-          ))}
+      <Box>
+        <div>
+          <Group grow>
+            {parameters.map(({ key, placeholder, icon, disabled }) => (
+              <Input
+                key={key}
+                type="text"
+                value={inputValues[key] || ""}
+                placeholder={placeholder}
+                disabled={isEmpty || disabled}
+                onChange={(e) => {
+                  this.changeValue(key, e.target.value);
+                }}
+                icon={icon}
+              />
+            ))}
+            {buttons?.map(({ key, label, disabled, onClick }) => (
+              <Button
+                key={key}
+                variant="filled"
+                disabled={isEmpty || disabled}
+                onClick={onClick}
+              >
+                {label}
+              </Button>
+            ))}
+          </Group>
         </div>
-        {children && children(committedValues)}
-      </div>
+        <ScrollArea>{children && children(committedValues)}</ScrollArea>
+      </Box>
     );
   }
 }

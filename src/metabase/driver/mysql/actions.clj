@@ -3,7 +3,7 @@
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
-   [metabase.actions.core :as actions]
+   [metabase.driver-api.core :as driver-api]
    [metabase.driver.sql-jdbc.actions :as sql-jdbc.actions]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -48,7 +48,7 @@
       [[] nil nil]
       (jdbc/reducible-query jdbc-spec sql-args {:identifers identity, :transaction? false})))))
 
-(defmethod sql-jdbc.actions/maybe-parse-sql-error [:mysql actions/violate-not-null-constraint]
+(defmethod sql-jdbc.actions/maybe-parse-sql-error [:mysql driver-api/violate-not-null-constraint]
   [_driver error-type _database _action-type error-message]
   (or
    (when-let [[_ column]
@@ -62,7 +62,7 @@
       :message (tru "{0} must have values." (str/capitalize column))
       :errors  {column (tru "You must provide a value.")}})))
 
-(defmethod sql-jdbc.actions/maybe-parse-sql-error [:mysql actions/violate-unique-constraint]
+(defmethod sql-jdbc.actions/maybe-parse-sql-error [:mysql driver-api/violate-unique-constraint]
   [_driver error-type database _action-type error-message]
   (when-let [[_match constraint]
              (re-find #"Duplicate entry '.+' for key '(.+)'" error-message)]
@@ -75,18 +75,18 @@
                         {}
                         columns)})))
 
-(defmethod sql-jdbc.actions/maybe-parse-sql-error [:mysql actions/violate-foreign-key-constraint]
+(defmethod sql-jdbc.actions/maybe-parse-sql-error [:mysql driver-api/violate-foreign-key-constraint]
   [_driver error-type _database action-type error-message]
   (or
    (when-let [[_match _ref-table _constraint _fkey-cols column _key-cols]
               (re-find #"Cannot delete or update a parent row: a foreign key constraint fails \((.+), CONSTRAINT (.+) FOREIGN KEY \((.+)\) REFERENCES (.+) \((.+)\)\)" error-message)]
      (merge {:type error-type}
             (case action-type
-              :row/delete
+              (:table.row/delete :model.row/delete)
               {:message (tru "Other tables rely on this row so it cannot be deleted.")
                :errors  {}}
 
-              :row/update
+              :model.row/update
               (let [column (remove-backticks column)]
                 {:message (tru "Unable to update the record.")
                  :errors  {column (tru "This {0} does not exist." (str/capitalize column))}}))))
@@ -95,14 +95,14 @@
      (let [column (remove-backticks column)]
        {:type    error-type
         :message (case action-type
-                   :row/create
+                   (:table.row/create :model.row/create)
                    (tru "Unable to create a new record.")
 
-                   :row/update
+                   (:table.row/update :model.row/update)
                    (tru "Unable to update the record."))
         :errors  {(remove-backticks column) (tru "This {0} does not exist." (str/capitalize (remove-backticks column)))}}))))
 
-(defmethod sql-jdbc.actions/maybe-parse-sql-error [:mysql actions/incorrect-value-type]
+(defmethod sql-jdbc.actions/maybe-parse-sql-error [:mysql driver-api/incorrect-value-type]
   [_driver error-type _database _action-type error-message]
   (when-let [[_ expected-type _value _database _table column _row]
              (re-find #"Incorrect (.+?) value: '(.+)' for column (?:(.+)\.)??(?:(.+)\.)?(.+) at row (\d+)"  error-message)]

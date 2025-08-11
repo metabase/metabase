@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 import { usePrevious } from "react-use";
 
 import {
-  getBase64ChartImage,
+  getChartImagePngDataUri,
   getChartSelector,
 } from "metabase/visualizations/lib/image-exports";
 import type { DashCardId } from "metabase-types/api";
@@ -47,7 +47,7 @@ export function useDashCardAnalysis({
     }
 
     analysisTimeoutRef.current = setTimeout(async () => {
-      const imageBase64 = await getBase64ChartImage(
+      const imageBase64 = await getChartImagePngDataUri(
         getChartSelector({ dashcardId }),
       );
 

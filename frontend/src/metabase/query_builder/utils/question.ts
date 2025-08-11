@@ -49,3 +49,14 @@ export const isSavedQuestionChanged = (
     originalQuestion.type() === "question"
   );
 };
+
+export function cleanQuestion(question: Question): Question {
+  // Converting a query to MLv2 and back performs a clean-up
+  const cleanQuestion = question.setQuery(
+    Lib.dropEmptyStages(question.query()),
+  );
+  if (cleanQuestion.display() === "table") {
+    return cleanQuestion.setDefaultDisplay();
+  }
+  return cleanQuestion;
+}

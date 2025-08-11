@@ -41,7 +41,9 @@ H.describeWithSnowplow("scenarios > dashboard cards > sections", () => {
       section_layout: "kpi_chart_below",
     });
 
-    cy.findByPlaceholderText("Heading").type("This is a heading");
+    cy.findByPlaceholderText(
+      "You can connect widgets to {{variables}} in heading cards.",
+    ).type("This is a heading");
     selectQuestion("Orders, Count");
 
     H.createNewTab();
@@ -150,7 +152,9 @@ function selectQuestion(question) {
 }
 
 function overwriteDashCardTitle(index, originalTitle, newTitle) {
-  H.showDashcardVisualizerModalSettings(index);
+  H.showDashcardVisualizerModalSettings(index, {
+    isVisualizerCard: false,
+  });
   cy.findByDisplayValue(originalTitle).clear().type(newTitle).blur();
   H.saveDashcardVisualizerModalSettings();
 }

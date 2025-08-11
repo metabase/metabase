@@ -18,8 +18,8 @@
 
 (deftest ^:parallel json-schema-conversion-2
   (testing ":json-schema basically works (see definition of :metabase.lib.schema.common/non-blank-string)"
-    (is (=? {:$ref        "#/definitions/metabase.lib.schema.common~1non-blank-string"
-             :definitions {"metabase.lib.schema.common/non-blank-string" {:type "string", :minLength 1}}}
+    (is (=? {:$ref        "#/definitions/metabase.lib.schema.common.non-blank-string"
+             :definitions {"metabase.lib.schema.common.non-blank-string" {:type "string", :minLength 1}}}
             (mjs/transform ::lib.schema.common/non-blank-string)))))
 
 (mr/def ::non-blank-string
@@ -28,12 +28,12 @@
 
 (deftest ^:parallel json-schema-conversion-2b
   (testing ":json-schema basically works (nested ref)"
-    (is (=? {:$ref "#/definitions/metabase.api.macros.defendpoint.open-api-test~1non-blank-string",
-             :definitions {"metabase.api.macros.defendpoint.open-api-test/non-blank-string"
+    (is (=? {:$ref "#/definitions/metabase.api.macros.defendpoint.open-api-test.non-blank-string",
+             :definitions {"metabase.api.macros.defendpoint.open-api-test.non-blank-string"
                            {:description "Non-blank string."
-                            :$ref "#/definitions/metabase.lib.schema.common~1non-blank-string"}
+                            :$ref "#/definitions/metabase.lib.schema.common.non-blank-string"}
 
-                           "metabase.lib.schema.common/non-blank-string"
+                           "metabase.lib.schema.common.non-blank-string"
                            {:type "string", :minLength 1}}}
             (mjs/transform ::non-blank-string)))))
 
@@ -59,7 +59,7 @@
 
 (deftest ^:parallel collect-definitions-test
   (binding [defendpoint.open-api/*definitions* (atom [])]
-    (is (=? {:properties {:value {:$ref "#/components/schemas/metabase.lib.schema.common~1non-blank-string"}}}
+    (is (=? {:properties {:value {:$ref "#/components/schemas/metabase.lib.schema.common.non-blank-string"}}}
             (#'defendpoint.open-api/mjs-collect-definitions [:map [:value ::lib.schema.common/non-blank-string]])))
-    (is (= [{"metabase.lib.schema.common/non-blank-string" {:type :string, :minLength 1}}]
+    (is (= [{"metabase.lib.schema.common.non-blank-string" {:type :string, :minLength 1}}]
            @@#'defendpoint.open-api/*definitions*))))

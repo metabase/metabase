@@ -1,7 +1,7 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import { Tree } from "metabase/components/tree";
+import { Tree } from "metabase/common/components/tree";
 import { color, lighten } from "metabase/lib/colors";
 
 export const FilterableTreeRoot = styled.div`
