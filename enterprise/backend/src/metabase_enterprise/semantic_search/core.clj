@@ -38,9 +38,9 @@
   [search-ctx]
   (try
     (let [{:keys [results filtered-count]} (semantic.pgvector-api/query
-                                            (semantic.env/get-pgvector-datasource!
-                                             (semantic.env/get-index-metadata)
-                                             search-ctx))
+                                            (semantic.env/get-pgvector-datasource!)
+                                            (semantic.env/get-index-metadata)
+                                            search-ctx)
           final-count (count results)
           threshold (semantic.settings/semantic-search-min-results-threshold)]
       (if (or (>= final-count threshold)
