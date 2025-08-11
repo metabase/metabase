@@ -89,14 +89,14 @@
 ;;; Assertion Helpers
 ;;; ------------------------------------------------------------
 
-(defn assert-execution-count
-  "Assert that the response contains the expected number of executions."
+(defn assert-run-count
+  "Assert that the response contains the expected number of runs."
   [response expected-count]
   (is (= expected-count (count (:data response)))
-      (str "Expected " expected-count " executions, got " (count (:data response)))))
+      (str "Expected " expected-count " runs, got " (count (:data response)))))
 
 (defn assert-transform-ids
-  "Assert that the response contains executions for exactly the expected transform IDs."
+  "Assert that the response contains runs for exactly the expected transform IDs."
   [response expected-ids]
   (let [actual-ids (set (map :transform_id (:data response)))]
     (is (= expected-ids actual-ids)
@@ -173,8 +173,8 @@
                                   :name table-name}}
               resp (mt/user-http-request :crowberto :post 200 "ee/transform" body)]
           (is (=? (assoc body
-                         :execution_trigger "none"
-                         :last_execution nil)
+                         :run_trigger "none"
+                         :last_run nil)
                   (mt/user-http-request :crowberto :get 200 (format "ee/transform/%s" (:id resp))))))))))
 
 (deftest put-transforms-test
@@ -201,7 +201,7 @@
                                                           :template-tags {}}}}
                    :target            {:type "table"
                                        :name table-name}
-                   :execution_trigger "global-schedule"}
+                   :run_trigger "global-schedule"}
                   (mt/user-http-request :crowberto :put 200 (format "ee/transform/%s" (:id resp))
                                         {:name              "Gadget Products 2"
                                          :description       "Desc"
@@ -210,7 +210,7 @@
                                                                      :type     "native"
                                                                      :native   {:query         query2
                                                                                 :template-tags {}}}}
-                                         :execution_trigger "global-schedule"}))))))))
+                                         :run_trigger "global-schedule"}))))))))
 
 (deftest change-target-table-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
@@ -275,20 +275,20 @@
                                                    :name table-name}})]
           (mt/user-http-request :crowberto :delete 204 (format "ee/transform/%s/table" (:id resp))))))))
 
-(defn- test-execution
+(defn- test-run
   [transform-id]
-  (let [resp      (mt/user-http-request :crowberto :post 202 (format "ee/transform/%s/execute" transform-id))
+  (let [resp (mt/user-http-request :crowberto :post 202 (format "ee/transform/%s/run" transform-id))
         timeout-s 10 ; 10 seconds is our timeout to finish execution and sync
         limit     (+ (System/currentTimeMillis) (* timeout-s 1000))]
-    (is (=? {:message "Transform execution started"}
+    (is (=? {:message "Transform run started"}
             resp))
     (loop []
       (when (> (System/currentTimeMillis) limit)
-        (throw (ex-info (str "Transfer execution timed out after " timeout-s " seconds") {})))
+        (throw (ex-info (str "Transfer run timed out after " timeout-s " seconds") {})))
       (let [resp   (mt/user-http-request :crowberto :get 200 (format "ee/transform/%s" transform-id))
-            status (some-> resp :last_execution :status keyword)]
+            status (some-> resp :last_run :status keyword)]
         (when-not (contains? #{:started :succeeded} status)
-          (throw (ex-info (str "Transfer execution failed with status " status) {:resp resp})))
+          (throw (ex-info (str "Transfer run failed with status " status) {:resp resp})))
         (when-not (some? (:table resp))
           (Thread/sleep 100)
           (recur))))))
@@ -306,7 +306,7 @@
                :order-by     [[[:field id-field-id nil] :asc]]
                :limit        3}))))))
 
-(deftest execute-test
+(deftest execute-transform-test
   (doseq [target-type ["table" #_"view"]
           :let        [feature (keyword "transforms" target-type)]]
     (testing (str "transform execution with " target-type " target")
@@ -329,7 +329,7 @@
                                         :target target1}
                     {transform-id :id} (mt/user-http-request :crowberto :post 200 "ee/transform"
                                                              original)
-                    _                  (test-execution transform-id)
+                    _ (test-run transform-id)
                     _                  (is (true? (transforms.util/target-table-exists? original)))
                     _                  (check-query-results table1-name [5 11 16] "Gadget")
                     updated            {:name        "Doohickey Products"
@@ -341,36 +341,36 @@
                                                                          :template-tags {}}}}
                                         :target      target2}]
                 (is (=? (assoc updated
-                               :execution_trigger "none")
+                               :run_trigger "none")
                         (mt/user-http-request :crowberto :put 200 (format "ee/transform/%s" transform-id) updated)))
-                (test-execution transform-id)
+                (test-run transform-id)
                 (is (true? (transforms.util/target-table-exists? original)))
                 (is (true? (transforms.util/target-table-exists? updated)))
                 (check-query-results table2-name [2 3 4] "Doohickey")))))))))
 
-(deftest get-executions-filter-by-single-transform-id-test
-  (testing "GET /api/ee/transform/execution - filter by single transform ID"
+(deftest get-runs-filter-by-single-transform-id-test
+  (testing "GET /api/ee/transform/run - filter by single transform ID"
     (mt/with-premium-features #{:transforms}
       (mt/with-temp [:model/Transform transform1 (test-transform "Transform 1")
                      :model/Transform transform2 (test-transform "Transform 2")]
         (with-worker-runs [run-ids [(create-worker-run (:id transform1))
                                     (create-worker-run (:id transform2))]]
-          (testing "Filter by transform1 ID only returns transform1 executions"
-            (let [response (mt/user-http-request :crowberto :get 200 "ee/transform/execution"
+          (testing "Filter by transform1 ID only returns transform1 runs"
+            (let [response (mt/user-http-request :crowberto :get 200 "ee/transform/run"
                                                  :transform_ids [(:id transform1)])]
-              (assert-execution-count response 1)
+              (assert-run-count response 1)
               (assert-transform-ids response #{(:id transform1)})
               (is (= (first run-ids) (-> response :data first :id)))))
 
-          (testing "Filter by transform2 ID only returns transform2 executions"
-            (let [response (mt/user-http-request :crowberto :get 200 "ee/transform/execution"
+          (testing "Filter by transform2 ID only returns transform2 runs"
+            (let [response (mt/user-http-request :crowberto :get 200 "ee/transform/run"
                                                  :transform_ids [(:id transform2)])]
-              (assert-execution-count response 1)
+              (assert-run-count response 1)
               (assert-transform-ids response #{(:id transform2)})
               (is (= (second run-ids) (-> response :data first :id))))))))))
 
-(deftest get-executions-filter-by-multiple-transform-ids-test
-  (testing "GET /api/ee/transform/execution - filter by multiple transform IDs"
+(deftest get-runs-filter-by-multiple-transform-ids-test
+  (testing "GET /api/ee/transform/run - filter by multiple transform IDs"
     (mt/with-premium-features #{:transforms}
       (mt/with-temp [:model/Transform transform1 (test-transform "Transform 1")
                      :model/Transform transform2 (test-transform "Transform 2")
@@ -378,38 +378,38 @@
         (with-worker-runs [_run-ids [(create-worker-run (:id transform1))
                                      (create-worker-run (:id transform2))
                                      (create-worker-run (:id transform3))]]
-          (testing "Filter by transform1 and transform2 IDs returns only those executions"
-            (let [response (mt/user-http-request :crowberto :get 200 "ee/transform/execution"
+          (testing "Filter by transform1 and transform2 IDs returns only those runs"
+            (let [response (mt/user-http-request :crowberto :get 200 "ee/transform/run"
                                                  :transform_ids [(:id transform1) (:id transform2)])]
-              (assert-execution-count response 2)
+              (assert-run-count response 2)
               (assert-transform-ids response #{(:id transform1) (:id transform2)}))))))))
 
-(deftest get-executions-filter-by-single-status-test
-  (testing "GET /api/ee/transform/execution - filter by single status"
+(deftest get-runs-filter-by-single-status-test
+  (testing "GET /api/ee/transform/run - filter by single status"
     (mt/with-premium-features #{:transforms}
-      (mt/with-temp [:model/Transform transform (test-transform "Transform with multiple executions")]
+      (mt/with-temp [:model/Transform transform (test-transform "Transform with multiple runs")]
         (with-worker-runs [_run-ids [(create-worker-run (:id transform) {:status "succeeded"})
                                      (create-worker-run (:id transform) {:status "failed"})
                                      (create-worker-run (:id transform) {:status "failed"})]]
-          (testing "Filter by 'failed' status returns only failed executions"
-            (let [response (mt/user-http-request :crowberto :get 200 "ee/transform/execution"
+          (testing "Filter by 'failed' status returns only failed runs"
+            (let [response (mt/user-http-request :crowberto :get 200 "ee/transform/run"
                                                  :statuses ["failed"])]
               (is (>= (count (:data response)) 2))
               (is (every? #(= "failed" (:status %))
                           (filter #(= (:id transform) (:transform_id %)) (:data response))))))
 
-          (testing "Filter by 'succeeded' status returns only succeeded executions"
-            (let [response (mt/user-http-request :crowberto :get 200 "ee/transform/execution"
+          (testing "Filter by 'succeeded' status returns only succeeded runs"
+            (let [response (mt/user-http-request :crowberto :get 200 "ee/transform/run"
                                                  :statuses ["succeeded"])]
               (is (>= (count (:data response)) 1))
               (is (some #(and (= "succeeded" (:status %))
                               (= (:id transform) (:transform_id %)))
                         (:data response))))))))))
 
-(deftest get-executions-filter-by-multiple-statuses-test
-  (testing "GET /api/ee/transform/execution - filter by multiple statuses"
+(deftest get-runs-filter-by-multiple-statuses-test
+  (testing "GET /api/ee/transform/run - filter by multiple statuses"
     (mt/with-premium-features #{:transforms}
-      (mt/with-temp [:model/Transform transform {:name   "Transform with multiple executions"
+      (mt/with-temp [:model/Transform transform {:name "Transform with multiple runs"
                                                  :source {:type  "query"
                                                           :query {:database (mt/id)
                                                                   :type     "native"
@@ -422,14 +422,14 @@
                                      (create-worker-run (:id transform) {:status "failed"})
                                      (create-worker-run (:id transform) {:status "timeout"})]]
           (testing "Filter by 'succeeded' and 'failed' returns both types"
-            (let [response       (mt/user-http-request :crowberto :get 200 "ee/transform/execution"
+            (let [response (mt/user-http-request :crowberto :get 200 "ee/transform/run"
                                                  :statuses ["succeeded" "failed"])
-                  our-executions (filter #(= (:id transform) (:transform_id %)) (:data response))]
-              (is (>= (count our-executions) 3))
-              (is (every? #(contains? #{"succeeded" "failed"} (:status %)) our-executions)))))))))
+                  our-runs (filter #(= (:id transform) (:transform_id %)) (:data response))]
+              (is (>= (count our-runs) 3))
+              (is (every? #(contains? #{"succeeded" "failed"} (:status %)) our-runs)))))))))
 
-(deftest get-executions-filter-by-single-tag-test
-  (testing "GET /api/ee/transform/execution - filter by single tag"
+(deftest get-runs-filter-by-single-tag-test
+  (testing "GET /api/ee/transform/run - filter by single tag"
     (mt/with-premium-features #{:transforms}
       (mt/with-temp [:model/Transform transform1 (test-transform "Tagged Transform 1")
                      :model/Transform transform2 (test-transform "Tagged Transform 2")
@@ -440,16 +440,16 @@
           (with-worker-runs [_run-ids [(create-worker-run (:id transform1))
                                        (create-worker-run (:id transform2))
                                        (create-worker-run (:id transform3))]]
-            (testing "Filter by tag1 returns only tagged transforms' executions"
-              (let [response (mt/user-http-request :crowberto :get 200 "ee/transform/execution"
+            (testing "Filter by tag1 returns only tagged transforms' runs"
+              (let [response (mt/user-http-request :crowberto :get 200 "ee/transform/run"
                                                    :transform_tag_ids [(:id tag1)])]
-                (assert-execution-count response 2)
+                (assert-run-count response 2)
                 (assert-transform-ids response #{(:id transform1) (:id transform2)})
                 (is (not (contains? (set (map :transform_id (:data response)))
                                     (:id transform3))))))))))))
 
-(deftest get-executions-filter-by-multiple-tags-test
-  (testing "GET /api/ee/transform/execution - filter by multiple tags (union)"
+(deftest get-runs-filter-by-multiple-tags-test
+  (testing "GET /api/ee/transform/run - filter by multiple tags (union)"
     (mt/with-premium-features #{:transforms}
       (mt/with-temp [:model/Transform transform1 {:name   "Transform with tag1"
                                                   :source {:type  "query"
@@ -495,15 +495,15 @@
                                        (create-worker-run (:id transform3))
                                        (create-worker-run (:id transform4))]]
             (testing "Filter by tag1 and tag2 returns union (transforms with either tag)"
-              (let [response               (mt/user-http-request :crowberto :get 200 "ee/transform/execution"
+              (let [response (mt/user-http-request :crowberto :get 200 "ee/transform/run"
                                                    :transform_tag_ids [(:id tag1) (:id tag2)])
                     returned-transform-ids (set (map :transform_id (:data response)))]
-                (assert-execution-count response 3)
+                (assert-run-count response 3)
                 (assert-transform-ids response #{(:id transform1) (:id transform2) (:id transform3)})
                 (is (not (contains? returned-transform-ids (:id transform4))))))))))))
 
-(deftest get-executions-combine-transform-id-and-status-test
-  (testing "GET /api/ee/transform/execution - combine transform ID and status filters"
+(deftest get-runs-combine-transform-id-and-status-test
+  (testing "GET /api/ee/transform/run - combine transform ID and status filters"
     (mt/with-premium-features #{:transforms}
       (mt/with-temp [:model/Transform transform1 {:name   "Transform 1"
                                                   :source {:type  "query"
@@ -527,16 +527,16 @@
                                      (create-worker-run (:id transform1) {:status "failed"})
                                      (create-worker-run (:id transform2) {:status "failed"})]]
           (testing "Filter by transform1 ID and failed status"
-            (let [response (mt/user-http-request :crowberto :get 200 "ee/transform/execution"
+            (let [response (mt/user-http-request :crowberto :get 200 "ee/transform/run"
                                                  :transform_ids [(:id transform1)]
                                                  :statuses ["failed"])]
-              (assert-execution-count response 2)
+              (assert-run-count response 2)
               (is (every? #(and (= (:id transform1) (:transform_id %))
                                 (= "failed" (:status %)))
                           (:data response))))))))))
 
-(deftest get-executions-combine-tag-and-status-test
-  (testing "GET /api/ee/transform/execution - combine tag and status filters"
+(deftest get-runs-combine-tag-and-status-test
+  (testing "GET /api/ee/transform/run - combine tag and status filters"
     (mt/with-premium-features #{:transforms}
       (mt/with-temp [:model/Transform transform1 {:name   "Tagged Transform 1"
                                                   :source {:type  "query"
@@ -570,16 +570,16 @@
                                        (create-worker-run (:id transform2) {:status "failed"})
                                        (create-worker-run (:id transform3) {:status "failed"})
                                        (create-worker-run (:id transform2) {:status "succeeded"})]]
-            (testing "Filter by tag1 and failed status returns only failed executions of tagged transforms"
-              (let [response (mt/user-http-request :crowberto :get 200 "ee/transform/execution"
+            (testing "Filter by tag1 and failed status returns only failed runs of tagged transforms"
+              (let [response (mt/user-http-request :crowberto :get 200 "ee/transform/run"
                                                    :transform_tag_ids [(:id tag1)]
                                                    :statuses ["failed"])]
-                (assert-execution-count response 1)
+                (assert-run-count response 1)
                 (is (= (:id transform2) (-> response :data first :transform_id)))
                 (is (= "failed" (-> response :data first :status)))))))))))
 
-(deftest get-executions-intersect-transform-id-and-tag-test
-  (testing "GET /api/ee/transform/execution - intersection of transform IDs and tags"
+(deftest get-runs-intersect-transform-id-and-tag-test
+  (testing "GET /api/ee/transform/run - intersection of transform IDs and tags"
     (mt/with-premium-features #{:transforms}
       (mt/with-temp [:model/Transform transform1 (test-transform "Transform with tag1")
                      :model/Transform transform2 (test-transform "Transform with tag2")
@@ -591,21 +591,21 @@
                                        (create-worker-run (:id transform2))]]
 
             (testing "Filter by transform1 ID and tag1 returns transform1 (has both)"
-              (let [response (mt/user-http-request :crowberto :get 200 "ee/transform/execution"
+              (let [response (mt/user-http-request :crowberto :get 200 "ee/transform/run"
                                                    :transform_ids [(:id transform1)]
                                                    :transform_tag_ids [(:id tag1)])]
-                (assert-execution-count response 1)
+                (assert-run-count response 1)
                 (assert-transform-ids response #{(:id transform1)})))
 
             (testing "Filter by transform1 ID and tag2 returns empty (transform1 doesn't have tag2)"
-              (let [response (mt/user-http-request :crowberto :get 200 "ee/transform/execution"
+              (let [response (mt/user-http-request :crowberto :get 200 "ee/transform/run"
                                                    :transform_ids [(:id transform1)]
                                                    :transform_tag_ids [(:id tag2)])]
-                (assert-execution-count response 0)))
+                (assert-run-count response 0)))
 
             (testing "Filter by both transform IDs and tag1 returns only transform1"
-              (let [response (mt/user-http-request :crowberto :get 200 "ee/transform/execution"
+              (let [response (mt/user-http-request :crowberto :get 200 "ee/transform/run"
                                                    :transform_ids [(:id transform1) (:id transform2)]
                                                    :transform_tag_ids [(:id tag1)])]
-                (assert-execution-count response 1)
+                (assert-run-count response 1)
                 (assert-transform-ids response #{(:id transform1)})))))))))
