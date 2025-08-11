@@ -8,10 +8,11 @@ import {
 } from "metabase/forms";
 import { Button, FocusTrap, Group, Modal, Stack, Text } from "metabase/ui";
 import { useDeleteTransformJobMutation } from "metabase-enterprise/api";
-import type { TransformJob } from "metabase-types/api";
+
+import type { TransformJobInfo } from "../../types";
 
 type DeleteJobModalProps = {
-  job: TransformJob;
+  job: TransformJobInfo;
   onDelete: () => void;
   onClose: () => void;
 };
@@ -30,7 +31,7 @@ export function DeleteJobModal({
 }
 
 type DeleteJobFormProps = {
-  job: TransformJob;
+  job: TransformJobInfo;
   onDelete: () => void;
   onClose: () => void;
 };
@@ -39,8 +40,10 @@ function DeleteJobForm({ job, onDelete, onClose }: DeleteJobFormProps) {
   const [deleteJob] = useDeleteTransformJobMutation();
 
   const handleSubmit = async () => {
-    await deleteJob(job.id).unwrap();
-    onDelete();
+    if (job.id != null) {
+      await deleteJob(job.id).unwrap();
+      onDelete();
+    }
   };
 
   return (

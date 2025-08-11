@@ -11,18 +11,21 @@ import { Box, Divider, Group, Icon, Tooltip } from "metabase/ui";
 import {
   useExecuteTransformJobMutation,
   useLazyGetTransformJobQuery,
-  useUpdateTransformJobMutation,
 } from "metabase-enterprise/api";
-import type { TransformJob } from "metabase-types/api";
 
 import { RunButton } from "../../../components/RunButton";
 import { SplitSection } from "../../../components/SplitSection";
+import type { TransformJobInfo } from "../types";
 
 type ScheduleSectionProps = {
-  job: TransformJob;
+  job: TransformJobInfo;
+  onScheduleChange: (schedule: string) => void;
 };
 
-export function ScheduleSection({ job }: ScheduleSectionProps) {
+export function ScheduleSection({
+  job,
+  onScheduleChange,
+}: ScheduleSectionProps) {
   const [schedule, setSchedule] = useState(() =>
     formatCronExpressionForUI(job.schedule),
   );
@@ -35,9 +38,9 @@ export function ScheduleSection({ job }: ScheduleSectionProps) {
     >
       <Box px="xl" py="lg">
         <CronSection
-          job={job}
           schedule={schedule}
           onChangeSchedule={setSchedule}
+          onChangeSubmit={onScheduleChange}
         />
       </Box>
       <Divider />
@@ -59,46 +62,27 @@ export function ScheduleSection({ job }: ScheduleSectionProps) {
 }
 
 type CronSectionProps = {
-  job: TransformJob;
   schedule: string;
   onChangeSchedule: (schedule: string) => void;
+  onChangeSubmit: (schedule: string) => void;
 };
 
-function CronSection({ job, schedule, onChangeSchedule }: CronSectionProps) {
-  const [updateJob] = useUpdateTransformJobMutation();
-  const { sendErrorToast, sendSuccessToast, sendUndoToast } =
-    useMetadataToasts();
-
-  const handleBlurChange = async (newSchedule: string) => {
-    const { error } = await updateJob({
-      id: job.id,
-      schedule: newSchedule,
-    });
-
-    if (error) {
-      sendErrorToast(t`Failed to update job schedule`);
-    } else {
-      sendSuccessToast(t`Job schedule updated`, async () => {
-        const { error } = await updateJob({
-          id: job.id,
-          schedule: job.schedule,
-        });
-        sendUndoToast(error);
-      });
-    }
-  };
-
+function CronSection({
+  schedule,
+  onChangeSchedule,
+  onChangeSubmit,
+}: CronSectionProps) {
   return (
     <CronExpressionInput
       value={schedule}
       onChange={onChangeSchedule}
-      onBlurChange={handleBlurChange}
+      onBlurChange={onChangeSubmit}
     />
   );
 }
 
 type RunButtonSectionProps = {
-  job: TransformJob;
+  job: TransformJobInfo;
 };
 
 function RunButtonSection({ job }: RunButtonSectionProps) {
@@ -106,9 +90,13 @@ function RunButtonSection({ job }: RunButtonSectionProps) {
   const [executeJob, { isLoading: isExecuting }] =
     useExecuteTransformJobMutation();
   const { sendErrorToast } = useMetadataToasts();
+  const isSaved = job.id != null;
   const hasTags = job.tag_ids?.length !== 0;
 
   const handleRun = async () => {
+    if (job.id == null) {
+      return;
+    }
     const { error } = await executeJob(job.id);
     if (error) {
       sendErrorToast(t`Failed to run job`);
@@ -122,7 +110,7 @@ function RunButtonSection({ job }: RunButtonSectionProps) {
       <RunButton
         execution={job.last_execution}
         isLoading={isFetching || isExecuting}
-        isDisabled={!hasTags}
+        isDisabled={!isSaved || !hasTags}
         onRun={handleRun}
       />
     </Tooltip>

@@ -1,12 +1,12 @@
 import { t } from "ttag";
 
 import { BrowserCrumbs } from "metabase/common/components/BrowserCrumbs";
-import type { TransformJob } from "metabase-types/api";
 
 import { getJobListUrl, getJobUrl } from "../../../urls";
+import type { TransformJobInfo } from "../types";
 
 type HeaderSectionProps = {
-  job: TransformJob;
+  job: TransformJobInfo;
 };
 
 export function HeaderSection({ job }: HeaderSectionProps) {
@@ -14,7 +14,7 @@ export function HeaderSection({ job }: HeaderSectionProps) {
     <BrowserCrumbs
       crumbs={[
         { title: t`Jobs`, to: getJobListUrl() },
-        { title: job.name, to: getJobUrl(job.id) },
+        { title: job.name, to: job.id != null ? getJobUrl(job.id) : "" },
       ]}
     />
   );

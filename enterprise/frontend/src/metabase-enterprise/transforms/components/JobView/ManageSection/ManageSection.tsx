@@ -5,15 +5,15 @@ import { t } from "ttag";
 import { useDispatch } from "metabase/lib/redux";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Box, Button, Icon } from "metabase/ui";
-import type { TransformJob } from "metabase-types/api";
 
 import { SplitSection } from "../../../components/SplitSection";
 import { getJobListUrl } from "../../../urls";
+import type { TransformJobInfo } from "../types";
 
 import { DeleteJobModal } from "./DeleteJobModal";
 
 export type ManageSectionProps = {
-  job: TransformJob;
+  job: TransformJobInfo;
 };
 
 export function ManageSection({ job }: ManageSectionProps) {
@@ -30,7 +30,7 @@ export function ManageSection({ job }: ManageSectionProps) {
 }
 
 type DeleteJobButtonProps = {
-  job: TransformJob;
+  job: TransformJobInfo;
 };
 
 function DeleteJobButton({ job }: DeleteJobButtonProps) {
