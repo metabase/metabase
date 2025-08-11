@@ -31,7 +31,8 @@
     (testing "creates metadata and control tables when they don't exist"
       (with-open [_ (sut pgvector index-metadata)]
         (is (semantic.tu/table-exists-in-db? (:metadata-table-name index-metadata)))
-        (is (semantic.tu/table-exists-in-db? (:control-table-name index-metadata)))))
+        (is (semantic.tu/table-exists-in-db? (:control-table-name index-metadata)))
+        (is (semantic.tu/table-exists-in-db? (:gate-table-name index-metadata)))))
     (testing "is idempotent when tables already exist"
       (with-open [_ (sut pgvector index-metadata)]
         (let [table-names-snap (semantic.tu/get-table-names pgvector)
@@ -51,7 +52,8 @@
       (let [table-names-snap (semantic.tu/get-table-names pgvector)
             _                (sut pgvector index-metadata)
             now-expected     (remove (hash-set (:control-table-name index-metadata)
-                                               (:metadata-table-name index-metadata))
+                                               (:metadata-table-name index-metadata)
+                                               (:gate-table-name index-metadata))
                                      table-names-snap)]
         (is (= now-expected (semantic.tu/get-table-names pgvector)))))))
 

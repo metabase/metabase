@@ -8,10 +8,14 @@
   Important: The pgvector database must be setup for metadata by calling (init-semantic-search!)
   After this, the document management and query functions will work as long as you pass the same index-metadata configuration."
   (:require
+   [metabase-enterprise.semantic-search.gate :as semantic.gate]
    [metabase-enterprise.semantic-search.index :as semantic.index]
    [metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]
    [metabase.util :as u]
-   [metabase.util.log :as log]))
+   [metabase.util.log :as log])
+  (:import (java.time Instant)))
+
+(set! *warn-on-reflection* true)
 
 #_{:clj-kondo/ignore [unresolved-require]}
 (comment
@@ -76,10 +80,49 @@
   "Indexes documents into the active semantic search index.
   Documents are upserted - existing documents with same id are replaced.
 
+  This is the 'immediate mode' API for inserting documents, the expected production behaviour
+  is to instead (gate-updates!) the documents and allow the indexer task to pick them up.
+
   `documents` is a logical collection, but can be reducible to save memory usage."
   [pgvector index-metadata documents]
   (let [{:keys [index]} (ensure-active-index-state pgvector index-metadata)]
     (semantic.index/upsert-index! pgvector index documents)))
+
+(defn gate-updates!
+  "Stages document updates through the gate table to enable async indexing. See gate.clj.
+
+  NOTE: Returns a frequency map of input {model id-count} for compatibility with existing caller expectations -
+  but it is redundant and should otherwise be ignored."
+  [pgvector index-metadata documents]
+  (let [now (Instant/now)]
+    (transduce
+     (partition-all (min 512 semantic.gate/max-batch-size))
+     (completing
+      (fn [acc documents]
+        (->> documents
+             (mapv #(semantic.gate/search-doc->gate-doc % now))
+             (semantic.gate/gate-documents! pgvector index-metadata))
+        (merge-with + acc (frequencies (map :model documents)))))
+     {}
+     documents)))
+
+(defn gate-deletes!
+  "Stages document deletes through the gate table for async indexing. See gate.clj.
+
+  NOTE: Returns a frequency map of input {model id-count} for compatibility with existing caller expectations -
+  but it is redundant and should otherwise be ignored."
+  [pgvector index-metadata model ids]
+  (let [now (Instant/now)]
+    (transduce
+     (partition-all (min 512 semantic.gate/max-batch-size))
+     (completing
+      (fn [acc ids]
+        (->> ids
+             (mapv #(semantic.gate/deleted-search-doc->gate-doc model % now))
+             (semantic.gate/gate-documents! pgvector index-metadata))
+        (merge-with + acc {model (count ids)})))
+     {}
+     ids)))
 
 (defn delete-documents!
   "Removes documents from the active index by model (search.spec model string) and ids.

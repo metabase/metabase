@@ -1801,6 +1801,7 @@
            premium-features
            search
            settings
+           task
            util
            enterprise/llm
            enterprise/metabot-v3}}
