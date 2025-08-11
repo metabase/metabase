@@ -42,6 +42,7 @@ export function NameDescriptionInput({
         p={0}
         fz="md"
         lh="1.25rem"
+        isOptional
         onChange={handleDescriptionChange}
       />
     </Stack>
