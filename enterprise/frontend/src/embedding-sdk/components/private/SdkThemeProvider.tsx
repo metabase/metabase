@@ -1,5 +1,5 @@
 import { Global } from "@emotion/react";
-import { useContext, useMemo } from "react";
+import { useContext, useId, useMemo } from "react";
 
 import { DEFAULT_FONT } from "embedding-sdk/config";
 import { getEmbeddingThemeOverride } from "embedding-sdk/lib/theme";
@@ -36,9 +36,14 @@ export const SdkThemeProvider = ({ theme, children }: Props) => {
   const { withCssVariables, withGlobalClasses } =
     useContext(ThemeProviderContext);
 
+  const renderSingleCopyInstanceId = useId();
+
   return (
-    <RenderSingleCopy identifier="sdk-theme-provider">
-      {({ singleCopyDetected, isSingleCopyToRender }) => (
+    <RenderSingleCopy
+      groupId="sdk-theme-provider"
+      instanceId={renderSingleCopyInstanceId}
+    >
+      {({ isSingleCopyToRender }) => (
         <ThemeProviderContext.Provider
           value={{
             withCssVariables: withCssVariables ?? isSingleCopyToRender,
@@ -48,7 +53,7 @@ export const SdkThemeProvider = ({ theme, children }: Props) => {
           <ThemeProvider theme={themeOverride}>
             {isSingleCopyToRender && <GlobalSdkCssVariables />}
 
-            {singleCopyDetected && children}
+            {children}
           </ThemeProvider>
         </ThemeProviderContext.Provider>
       )}

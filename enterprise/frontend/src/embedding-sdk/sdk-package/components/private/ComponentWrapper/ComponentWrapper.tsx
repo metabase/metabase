@@ -1,4 +1,4 @@
-import { type FunctionComponent, useEffect, useRef } from "react";
+import { type FunctionComponent, useEffect, useId, useRef } from "react";
 
 import { ClientSideOnlyWrapper } from "embedding-sdk/sdk-package/components/private/ClientSideOnlyWrapper/ClientSideOnlyWrapper";
 import { Error } from "embedding-sdk/sdk-package/components/private/Error/Error";
@@ -106,9 +106,14 @@ export const createComponent = <
   getComponent: () => FunctionComponent<TComponentProps> | null | undefined,
 ): ComponentWrapperFunction<TComponentProps> => {
   return function ComponentWrapper(props: TComponentProps) {
+    const renderSingleCopyInstanceId = useId();
+
     return (
       <ClientSideOnlyWrapper ssrFallback={null}>
-        <RenderSingleCopy identifier="component-wrapper">
+        <RenderSingleCopy
+          groupId="component-wrapper"
+          instanceId={renderSingleCopyInstanceId}
+        >
           <NotStartedLoadingTrigger />
         </RenderSingleCopy>
 

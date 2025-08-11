@@ -1,5 +1,5 @@
 import { Global } from "@emotion/react";
-import { type JSX, memo, useEffect, useRef } from "react";
+import { type JSX, memo, useEffect, useId, useRef } from "react";
 
 import { SdkThemeProvider } from "embedding-sdk/components/private/SdkThemeProvider";
 import { SdkIncompatibilityWithInstanceBanner } from "embedding-sdk/components/private/SdkVersionCompatibilityHandler/SdkIncompatibilityWithInstanceBanner";
@@ -74,24 +74,22 @@ export const MetabaseProviderInternal = ({
 
   const instanceLocale = useInstanceLocale();
 
+  const renderSingleCopyInstanceId = useId();
+
   return (
     <EmotionCacheProvider>
       <SdkThemeProvider theme={theme}>
-        <RenderSingleCopy identifier="component-level-providers">
-          {({ singleCopyDetected, isSingleCopyToRender }) => (
+        <RenderSingleCopy
+          groupId="component-level-providers"
+          instanceId={renderSingleCopyInstanceId}
+        >
+          {({ isSingleCopyToRender }) => (
             <>
-              {/*
-               * We have to rely on `singleCopyDetected` to perform the first render of `children` and `PortalContainer` at the same time
-               * Without relying on it the `children` rendered first. That may cause issues,
-               * because `PortalContainer` is not yet rendered at this moment but children may try to use it.
-               */}
-              {singleCopyDetected && (
-                <LocaleProvider locale={locale || instanceLocale}>
-                  {children}
+              <LocaleProvider locale={locale || instanceLocale}>
+                {children}
 
-                  <SdkIncompatibilityWithInstanceBanner />
-                </LocaleProvider>
-              )}
+                <SdkIncompatibilityWithInstanceBanner />
+              </LocaleProvider>
 
               {isSingleCopyToRender && (
                 <>

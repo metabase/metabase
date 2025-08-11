@@ -1,5 +1,5 @@
 import { render, screen, waitFor } from "@testing-library/react";
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useId, useState } from "react";
 
 import { useSingleCopyWrapperIds } from "embedding-sdk/sdk-shared/hooks/use-single-copy-wrapper-ids";
 
@@ -21,30 +21,30 @@ describe("RenderSingleCopy", () => {
     jest.clearAllMocks();
   });
 
-  it("renders its children after the mount effect", async () => {
+  it("renders its children", async () => {
     const { warningMessage, warnSpy } = setup();
+    const groupId = "foo";
 
     function Wrapper({
-      identifier,
-      initialMap = {},
       multipleWarning,
       children,
     }: {
-      identifier: string;
-      initialMap?: Record<string, string[]>;
-      multipleWarning?: string;
+      multipleWarning: string;
       children: ReactNode;
     }) {
-      const [map, setMap] = useState<Record<string, string[]>>(initialMap);
+      const [map, setMap] = useState<Record<string, string[]>>({});
 
       useSingleCopyWrapperIdsMock.mockReturnValue({
         singleCopyIdsMap: map,
         setSingleCopyIdsMap: setMap,
       });
 
+      const instanceId = useId();
+
       return (
         <RenderSingleCopy
-          identifier={identifier}
+          groupId={groupId}
+          instanceId={instanceId}
           multipleRegisteredInstancesWarningMessage={multipleWarning}
         >
           {children}
@@ -53,7 +53,7 @@ describe("RenderSingleCopy", () => {
     }
 
     render(
-      <Wrapper identifier="foo">
+      <Wrapper multipleWarning={warningMessage}>
         <div>FirstChild</div>
       </Wrapper>,
     );
@@ -64,6 +64,7 @@ describe("RenderSingleCopy", () => {
 
   it("only renders the very first of the components with the same id", async () => {
     const { warningMessage, warnSpy } = setup();
+    const groupId = "foo";
 
     function Wrapper() {
       const [map, setMap] = useState<Record<string, string[]>>({});
@@ -73,22 +74,29 @@ describe("RenderSingleCopy", () => {
         setSingleCopyIdsMap: setMap,
       });
 
+      const instanceId1 = useId();
+      const instanceId2 = useId();
+      const instanceId3 = useId();
+
       return (
         <>
           <RenderSingleCopy
-            identifier="foo"
+            groupId={groupId}
+            instanceId={instanceId1}
             multipleRegisteredInstancesWarningMessage={warningMessage}
           >
             <div>First</div>
           </RenderSingleCopy>
           <RenderSingleCopy
-            identifier="foo"
+            groupId={groupId}
+            instanceId={instanceId2}
             multipleRegisteredInstancesWarningMessage={warningMessage}
           >
             <div>Second</div>
           </RenderSingleCopy>
           <RenderSingleCopy
-            identifier="foo"
+            groupId={groupId}
+            instanceId={instanceId3}
             multipleRegisteredInstancesWarningMessage={warningMessage}
           >
             <div>Third</div>
@@ -119,12 +127,15 @@ describe("RenderSingleCopy", () => {
         setSingleCopyIdsMap: setMap,
       });
 
+      const groupOneInstanceId = useId();
+      const groupTwoInstanceId = useId();
+
       return (
         <>
-          <RenderSingleCopy identifier="one">
+          <RenderSingleCopy groupId="one" instanceId={groupOneInstanceId}>
             <div>ChildOne</div>
           </RenderSingleCopy>
-          <RenderSingleCopy identifier="two">
+          <RenderSingleCopy groupId="two" instanceId={groupTwoInstanceId}>
             <div>ChildTwo</div>
           </RenderSingleCopy>
         </>

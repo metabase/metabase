@@ -1,4 +1,4 @@
-import { memo, useMemo } from "react";
+import { memo, useId, useMemo } from "react";
 import useDeepCompareEffect from "react-use/lib/useDeepCompareEffect";
 
 import { ClientSideOnlyWrapper } from "embedding-sdk/sdk-package/components/private/ClientSideOnlyWrapper/ClientSideOnlyWrapper";
@@ -96,23 +96,22 @@ export const MetabaseProvider = memo(function MetabaseProvider({
   children,
   ...props
 }: MetabaseProviderProps) {
+  const renderSingleCopyInstanceId = useId();
+
   return (
     <ClientSideOnlyWrapper ssrFallback={children}>
       <RenderSingleCopy
-        identifier="metabase-provider"
+        groupId="metabase-provider"
+        instanceId={renderSingleCopyInstanceId}
         multipleRegisteredInstancesWarningMessage={
           // eslint-disable-next-line no-literal-metabase-strings -- Warning message
           "Multiple instances of MetabaseProvider detected. Metabase Embedding SDK may work unexpectedly. Ensure only one instance of MetabaseProvider is rendered at a time."
         }
       >
-        {({ singleCopyDetected, isSingleCopyToRender }) => (
-          <>
-            {isSingleCopyToRender && <MetabaseProviderInner {...props} />}
-
-            {singleCopyDetected && children}
-          </>
-        )}
+        <MetabaseProviderInner {...props} />
       </RenderSingleCopy>
+
+      {children}
     </ClientSideOnlyWrapper>
   );
 });
