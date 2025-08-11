@@ -107,7 +107,7 @@
 
 (mu/defn check-query-permissions*
   "Check that User with `user-id` has permissions to run `query`, or throw an exception."
-  [{database-id :database, {gtap-perms :gtaps} ::perms :as outer-query} :- [:map [:database ::lib.schema.id/database]]]
+  [{database-id :database, {gtap-perms :gtaps} :query-permissions/perms :as outer-query} :- [:map [:database ::lib.schema.id/database]]]
   (when *current-user-id*
     (log/tracef "Checking query permissions. Current user permissions = %s"
                 (pr-str (perms/permissions-for-user *current-user-id*)))
@@ -123,7 +123,8 @@
         ;; if card-id is bound this means that this is not an ad hoc query and we can just
         ;; check that the user has permission to read this card
         *card-id*
-        (query-perms/check-card-read-perms database-id *card-id*)
+        (do (query-perms/check-card-read-perms database-id *card-id*)
+            (query-perms/check-card-result-metadata-data-perms database-id *card-id*))
 
         ;; set when querying for field values of dashboard filters, which only require
         ;; collection perms for the dashboard and not ad-hoc query perms
@@ -141,6 +142,10 @@
 
           ;; Check that we have the data permissions to run this card
           (query-perms/check-data-perms outer-query required-perms :throw-exceptions? true)
+
+          ;; Check that all columns from source cards result_metadata are accessible
+          (doseq [card-id source-card-ids]
+            (query-perms/check-card-result-metadata-data-perms database-id card-id))
 
           ;; Recursively check permissions for any Cards referenced by this query via template tags
           (doseq [{query :dataset-query} (lib/template-tags-referenced-cards

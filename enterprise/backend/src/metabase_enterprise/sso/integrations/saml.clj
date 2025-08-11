@@ -289,7 +289,7 @@
                             :last-name       last-name
                             :email           email
                             :group-names     groups
-                            :user-attributes attrs
+                            :user-attributes (sso-utils/filter-non-stringable-attributes attrs)
                             :device-info     (request/device-info request)})
             response      (response/redirect (or continue-url (system/site-url)))]
         (if token-value

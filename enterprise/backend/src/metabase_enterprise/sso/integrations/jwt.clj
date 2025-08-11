@@ -14,7 +14,8 @@
    [metabase.session.models.session :as session]
    [metabase.sso.core :as sso]
    [metabase.util.i18n :refer [tru]]
-   [ring.util.response :as response])
+   [ring.util.response :as response]
+   [toucan2.core :as t2])
   (:import
    (java.net URLEncoder)))
 
@@ -31,7 +32,7 @@
               :last_name        last-name
               :email            email
               :sso_source       :jwt
-              :login_attributes user-attributes}]
+              :jwt_attributes   user-attributes}]
     (or (sso-utils/fetch-and-update-login-attributes! user (sso-settings/jwt-user-provisioning-enabled?))
         (sso-utils/check-user-provisioning :jwt)
         (sso-utils/create-new-sso-user! user))))
@@ -53,12 +54,14 @@
   [:iss :iat :sub :aud :exp :nbf :jti])
 
 (defn- jwt-data->login-attributes [jwt-data]
-  (apply dissoc
-         jwt-data
-         (jwt-attribute-email)
-         (jwt-attribute-firstname)
-         (jwt-attribute-lastname)
-         registered-claims))
+  (sso-utils/filter-non-stringable-attributes
+   (apply dissoc
+          jwt-data
+          (jwt-attribute-email)
+          (jwt-attribute-firstname)
+          (jwt-attribute-lastname)
+          (jwt-attribute-groups)
+          registered-claims)))
 
 ;; JWTs use seconds since Epoch, not milliseconds since Epoch for the `iat` and `max_age` time. 3 minutes is the time
 ;; used by Zendesk for their JWT SSO, so it seemed like a good place for us to start
@@ -67,9 +70,11 @@
 (defn- group-names->ids
   "Translate a user's group names to a set of MB group IDs using the configured mappings"
   [group-names]
-  (set
-   (mapcat (sso-settings/jwt-group-mappings)
-           (map keyword group-names))))
+  (if-let [name-mappings (not-empty (sso-settings/jwt-group-mappings))]
+    (set
+     (mapcat name-mappings
+             (map keyword group-names)))
+    (t2/select-pks-set :model/PermissionsGroup :name [:in group-names])))
 
 (defn- all-mapped-group-ids
   "Returns the set of all MB group IDs that have configured mappings"
@@ -85,9 +90,11 @@
   (when (sso-settings/jwt-group-sync)
     (when-let [groups-attribute (jwt-attribute-groups)]
       (when-let [group-names (get jwt-data groups-attribute)]
-        (sso/sync-group-memberships! user
-                                     (group-names->ids group-names)
-                                     (all-mapped-group-ids))))))
+        (if (empty? (sso-settings/jwt-group-mappings))
+          (sso/sync-group-memberships! user (group-names->ids group-names))
+          (sso/sync-group-memberships! user
+                                       (group-names->ids group-names)
+                                       (all-mapped-group-ids)))))))
 
 (defn- session-data
   [jwt {{redirect :return_to} :params, :as request}]
@@ -99,8 +106,7 @@
                          (catch Throwable e
                            (throw
                             (ex-info (ex-message e)
-                                     {:status      "error-jwt-bad-unsigning"
-                                      :status-code 401}))))
+                                     {:status-code 401}))))
           login-attrs  (jwt-data->login-attributes jwt-data)
           email        (get jwt-data (jwt-attribute-email))
           first-name   (get jwt-data (jwt-attribute-firstname))
@@ -109,6 +115,11 @@
           session      (session/create-session! :sso user (request/device-info request))]
       (sync-groups! user jwt-data)
       {:session session, :redirect-url redirect-url, :jwt-data jwt-data})))
+
+(defn jwt->session
+  "Given a JWT, return a valid session token for the associated user (creating the user if necessary)."
+  [jwt request]
+  (-> (session-data jwt request) :session :key))
 
 (defn- throw-react-sdk-embedding-disabled
   []
@@ -120,7 +131,7 @@
 (defn- throw-simple-embedding-disabled
   []
   (throw
-   (ex-info (tru "Simple Embedding is disabled. Enable it in the embedding settings.")
+   (ex-info (tru "Embedded Analytics JS is disabled. Enable it in the embedding settings.")
             {:status      "error-embedding-simple-disabled"
              :status-code 402})))
 

@@ -36,9 +36,7 @@ describe("EmbeddingSettingsPage", () => {
     expect(
       await screen.findByText("Interactive embedding"),
     ).toBeInTheDocument();
-    expect(
-      await screen.findByText("Embedded Analytics SDK"),
-    ).toBeInTheDocument();
+    expect(await screen.findByText("Modular embedding")).toBeInTheDocument();
   });
 
   it("can toggle static embedding on", async () => {

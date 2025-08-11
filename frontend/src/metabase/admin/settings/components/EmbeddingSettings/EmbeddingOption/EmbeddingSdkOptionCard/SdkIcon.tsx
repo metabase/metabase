@@ -14,6 +14,7 @@ export const SdkIcon = ({ disabled }: EmbeddingOptionIconProps) => {
         [EmbeddingOptionS.Disabled]: disabled,
       })}
       data-testid="sdk-icon"
+      data-disabled={disabled}
     >
       <g clipPath="url(#a)">
         <rect

@@ -9,8 +9,7 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
-   [metabase.lib.test-util.metadata-providers.mock :as providers.mock]
-   [metabase.lib.util :as lib.util]))
+   [metabase.lib.test-util.metadata-providers.mock :as providers.mock]))
 
 (deftest ^:parallel mark-selected-columns-with-duplicate-names-test
   (testing "Should be able to distinguish columns with the same name and differen join alias (#39033)"
@@ -29,9 +28,8 @@
                                                        (m/find-first (comp #{"ID"} :name)
                                                                      (:result-metadata card2)))])))
           stage-number   -1
-          stage          (lib.util/query-stage query stage-number)
-          vis-columns    (lib.metadata.calculation/visible-columns query stage-number stage)
-          ret-columns    (lib.metadata.calculation/returned-columns query stage-number stage)
+          vis-columns    (lib.metadata.calculation/visible-columns query stage-number)
+          ret-columns    (lib.metadata.calculation/returned-columns query stage-number)
           marked-columns (lib.equality/mark-selected-columns query stage-number vis-columns ret-columns)]
       (is (= ["ID"
               "Total"
@@ -98,12 +96,20 @@
                   ;; than in the current stage. However, we should be smart enough to try to figure out what they
                   ;; meant.
                   :breakout     [&Cat.categories.name]}))]
-    ;; we expect the returned column should not look like it's coming from a join
-    (is (=? [{:id                           (meta/id :categories :name)
-              :name                         "NAME"
-              ;; `:lib/source` is broken -- see #59596
-              :lib/source                   :source/joins ; should be :source/breakout (if something at all)
-              :metabase.lib.join/join-alias "Cat"  ; should be missing
-              :lib/source-column-alias      "NAME" ; should be "Cat__NAME"
-              :lib/desired-column-alias     "Cat__NAME"}]
-            (lib/returned-columns query)))))
+    (testing "returned columns for first stage"
+      (is (=? [{:name "ID"}
+               {:id                           (meta/id :categories :name)
+                :name                         "NAME"
+                :lib/source                   :source/joins
+                :metabase.lib.join/join-alias "Cat"
+                :lib/source-column-alias      "NAME"
+                :lib/desired-column-alias     "Cat__NAME"}]
+              (lib/returned-columns query 0))))
+    (testing "we expect the returned column should not look like it's coming from a join"
+      (is (=? [{:id                           (meta/id :categories :name)
+                :name                         "NAME"
+                :lib/source                   :source/previous-stage
+                :metabase.lib.join/join-alias (symbol "nil #_\"key is not present.\"")
+                :lib/source-column-alias      "Cat__NAME"
+                :lib/desired-column-alias     "Cat__NAME"}]
+              (lib/returned-columns query))))))

@@ -75,7 +75,7 @@
   [query stage-number metric-metadata]
   (merge
    ((get-method lib.metadata.calculation/display-info-method :default) query stage-number metric-metadata)
-   (select-keys metric-metadata [:description :aggregation-position])))
+   (select-keys metric-metadata [:description :aggregation-position :display-name])))
 
 (defmethod lib.metadata.calculation/display-info-method :metric
   [query stage-number [_tag opts metric-id-or-name]]
@@ -145,9 +145,8 @@
           inner-aggregation (first (lib.aggregation/aggregations metric-query))
           inner-meta        (lib.metadata.calculation/metadata metric-query -1 inner-aggregation)]
       (-> inner-meta
-          (assoc :display-name           (:name metric-meta) ; Metric card's name
-                 :lib/hack-original-name (:name metric-meta) ; Metric card's name
-                 :name                   (:name inner-meta)) ; Name of the inner aggregation column
+          (assoc :display-name (:name metric-meta) ; Metric card's name
+                 :name         (:name inner-meta)) ; Name of the inner aggregation column
           ;; If the :metric ref has a :name option, that overrides the metric card's name.
           (cond-> (:name opts) (assoc :name (:name opts)))))
     {:lib/type :metadata/metric
