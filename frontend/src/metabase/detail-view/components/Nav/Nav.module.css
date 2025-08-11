@@ -1,3 +1,17 @@
-.disabled {
-  opacity: 0.5;
+.breadcrumbs {
+  width: 100%;
+}
+
+.breadcrumb {
+  font-size: 20px; /* var(--mantine-font-size-md) */
+
+  &:hover {
+    color: var(--mb-color-brand) !important;
+  }
+}
+
+.separator {
+  font-size: 14.4px; /* var(--mantine-font-size-sm) */
+  padding-left: 7.2px;
+  padding-right: 7.2px;
 }

@@ -73,10 +73,8 @@ export function DetailView({
     { pathname: string; hash: string } | object
   >(() => location.state ?? {});
 
-  const handleBackClick = useMemo(() => {
-    return "hash" in previousPathState
-      ? () => dispatch(push(previousPathState))
-      : undefined;
+  const handleBackClick = useCallback(() => {
+    dispatch(push(previousPathState));
   }, [dispatch, previousPathState]);
 
   const handleViewPreviousObjectDetail = useCallback(() => {
@@ -151,9 +149,13 @@ export function DetailView({
   }
 
   return (
-    <Stack bg="bg-white">
+    <Stack bg="bg-white" h="100%">
       <Box flex="0 0 auto" p="md">
         <Nav
+          tableId={tableId}
+          onBackClick={
+            "hash" in previousPathState ? handleBackClick : undefined
+          }
           onPreviousClick={
             rows.length > 1 &&
             typeof currentRowIndex === "number" &&
@@ -171,7 +173,7 @@ export function DetailView({
         />
       </Box>
 
-      <Group className={S.content} flex="1" h="100%" mih={0}>
+      <Group className={S.content} flex="1" mih={0}>
         <Group flex="1">
           <Details />
         </Group>
