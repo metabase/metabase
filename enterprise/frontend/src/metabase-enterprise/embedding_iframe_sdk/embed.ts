@@ -90,6 +90,7 @@ function assertFieldCanbeUpdated(newValues: Partial<SdkIframeEmbedSettings>) {
   for (const field of DISABLE_UPDATE_FOR_KEYS) {
     if (
       currentConfig[field] !== undefined &&
+      newValues[field] !== undefined && // we allow passing a partial update
       currentConfig[field] !== newValues[field]
     ) {
       raiseError(`${field} cannot be updated after the embed is created`);
