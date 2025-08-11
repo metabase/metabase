@@ -7,6 +7,7 @@
    [metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]
    [metabase-enterprise.semantic-search.pgvector-api :as semantic.pgvector-api]
    [metabase-enterprise.semantic-search.settings :as semantic.settings]
+   [metabase.analytics.prometheus :as prometheus]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.search.engine :as search.engine]
    [metabase.util.log :as log]
@@ -35,15 +36,17 @@
   [search-ctx]
   (try
     (let [semantic-results (semantic.pgvector-api/query
-                            (semantic.env/get-pgvector-datasource!)
-                            (semantic.env/get-index-metadata)
-                            search-ctx)
+                            (semantic.env/get-pgvector-datasource!
+                             (semantic.env/get-index-metadata)
+                             search-ctx))
           result-count (count semantic-results)]
       (if (>= result-count (semantic.settings/semantic-search-min-results-threshold))
         semantic-results
         (let [fallback (fallback-engine)]
           (log/debugf "Semantic search returned %d results (< %d), supplementing with %s search"
                       result-count (semantic.settings/semantic-search-min-results-threshold) fallback)
+          (prometheus/inc! :metabase-search/semantic-fallback-triggered)
+          (prometheus/observe! :metabase-search/semantic-fallback-results result-count)
           (let [fallback-results (search.engine/results (assoc search-ctx :search-engine fallback))
                 combined-results (concat semantic-results fallback-results)
                 deduped-results  (m/distinct-by (juxt :model :id) combined-results)]
