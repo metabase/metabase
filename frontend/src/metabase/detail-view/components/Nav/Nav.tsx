@@ -95,7 +95,7 @@ export const Nav = ({
           {table.display_name}
         </Breadcrumb>
 
-        {rowName != null && (
+        {rowName && (
           <>
             <Separator />
 
