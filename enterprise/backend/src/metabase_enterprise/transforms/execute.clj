@@ -37,10 +37,10 @@
     (sync/sync-table! table)))
 
 ;; should be run in virtual thread (please :)
-(defn- execute-transform-remote! [run-id driver transform-details opts]
+(defn- run-transform-remote! [run-id driver transform-details opts]
   (try
     (log/trace "starting remote transform run" (pr-str run-id))
-    (worker/execute-transform! run-id driver transform-details opts)
+    (worker/run-transform! run-id driver transform-details opts)
     (catch Throwable t
       (log/error t "Remote execution request failed; still syncing")))
   ;; poll the server until it's not running
@@ -60,14 +60,14 @@
    (log/info "Syncing target" (pr-str target) "for transform")
    (sync-table! database target)))
 
-(defn- execute-transform-local!
+(defn- run-transform-local!
   [run-id driver transform-details opts]
   (worker/chan-start-timeout-vthread! run-id)
   ;; local run is responsible for status
   (try
     (binding [qp.pipeline/*canceled-chan* (a/promise-chan)]
       (worker/chan-start-run! run-id qp.pipeline/*canceled-chan*)
-      (driver/execute-transform! driver transform-details opts))
+      (driver/run-transform! driver transform-details opts))
     (worker/succeed-started-run! run-id)
     (catch Throwable t
       (worker/fail-started-run! run-id {:message (.getMessage t)})
@@ -75,20 +75,20 @@
     (finally
       (worker/chan-end-run! run-id))))
 
-(defn execute-transform!
-  "Execute a compiled transform either locally or remotely."
+(defn run-transform!
+  "Run a compiled transform either locally or remotely."
   [run-id driver transform-details opts]
   (if (worker/run-remote?)
-    (execute-transform-remote! run-id driver transform-details opts)
-    (execute-transform-local!  run-id driver transform-details opts)))
+    (run-transform-remote! run-id driver transform-details opts)
+    (run-transform-local!  run-id driver transform-details opts)))
 
-(defn execute-mbql-transform!
-  "Execute `transform` and sync its target table.
+(defn run-mbql-transform!
+  "Run `transform` and sync its target table.
 
   This is executing synchronously, but supports being kicked off in the background
   by delivering the `start-promise` just before the start when the beginning of the execution has been booked
   in the database."
-  ([transform] (execute-mbql-transform! transform nil))
+  ([transform] (run-mbql-transform! transform nil))
   ([{:keys [id source target] :as transform} {:keys [run-method start-promise]}]
    (try
      (let [db (get-in source [:query :database])
@@ -118,7 +118,7 @@
        (when start-promise
          (deliver start-promise [:started run-id]))
        (log/info "Executing transform" id "with target" (pr-str target))
-       (execute-transform! run-id driver transform-details opts)
+       (run-transform! run-id driver transform-details opts)
        (sync-target! target database run-id))
      (catch Throwable t
        (log/error t "Error executing transform")

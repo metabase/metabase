@@ -66,23 +66,23 @@
        (log/info "Deleting trigger for transform job with schedule" (:schedule job-id-or-trigger))
        (task/delete-trigger! (-> job-id-or-trigger :key triggers/key))))))
 
-(task/defjob ^{:doc "Execute transforms."
+(task/defjob ^{:doc "Run transforms."
                org.quartz.DisallowConcurrentExecution true}
-  ExecuteTransforms
+  RunTransforms
   [context]
   (let [job-id (-> (conversion/from-job-data context)
                    (get "job-id"))]
     (log/info "Executing scheduled run of transform job" job-id)
-    (task-history/with-task-history {:task "execute-transforms"}
-      (transforms.jobs/execute-job! job-id {:run-method :cron}))))
+    (task-history/with-task-history {:task "run-transforms"}
+      (transforms.jobs/run-job! job-id {:run-method :cron}))))
 
 (defn initialize-job! [{job-id :id :keys [schedule]}]
   (log/info "Initializing schedule for transform job" job-id)
   (let [job (jobs/build
              (jobs/with-identity (job-key job-id))
-             (jobs/with-description (str "Execute Transform job " job-id))
+             (jobs/with-description (str "Run Transform job " job-id))
              (jobs/using-job-data {"job-id" job-id})
-             (jobs/of-type ExecuteTransforms)
+             (jobs/of-type RunTransforms)
              (jobs/store-durably))
         trigger (build-trigger job-id schedule)]
     (task/schedule-task! job trigger)))
@@ -104,7 +104,7 @@
   (log/info "Deleting schedule for transform job" job-id)
   (task/delete-task! (job-key job-id) (trigger-key job-id)))
 
-(defmethod task/init! ::ExecuteTransform [_]
+(defmethod task/init! ::RunTransform [_]
   (log/info "Initializing transform job execution jobs")
   (->> (t2/select :model/TransformJob)
        (run! initialize-job!)))

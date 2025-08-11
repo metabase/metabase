@@ -12,7 +12,7 @@
 (p/import-vars
  [metabase-enterprise.worker.api
   cancel!
-  execute-transform!
+  run-transform!
   get-status
   run-remote?]
  [metabase-enterprise.worker.canceling
@@ -27,9 +27,9 @@
   inactive-runs
   latest-runs
   model->work-type
-  paged-executions
+  paged-runs
   reducible-active-remote-runs
-  running-execution-for-work-id
+  running-run-for-work-id
   start-run!
   succeed-started-run!
   timeout-old-runs!

@@ -44,18 +44,18 @@
       first
       transforms-by-id))
 
-(defn execute-transforms! [run-id transform-ids-to-run {:keys [run-method start-promise]}]
+(defn run-transforms! [run-id transform-ids-to-run {:keys [run-method start-promise]}]
   (let [plan (get-plan transform-ids-to-run)]
     (when start-promise
       (deliver start-promise :started))
     (loop [complete #{}]
       (when-let [current-transform (next-transform plan complete)]
         (log/info "Executing job transform" (pr-str (:id current-transform)))
-        (transforms.execute/execute-mbql-transform! current-transform {:run-method run-method})
+        (transforms.execute/run-mbql-transform! current-transform {:run-method run-method})
         (transforms.job-run/add-run-activity! run-id)
         (recur (conj complete (:id current-transform)))))))
 
-(defn execute-job!
+(defn run-job!
   [job-id {:keys [run-method] :as opts}]
   (let [transforms (t2/select-fn-set :transform_id
                                      :transform_job_tags
@@ -69,7 +69,7 @@
     (log/info "Executing transform job" (pr-str job-id) "with transforms" (pr-str transforms))
     (transforms.job-run/start-run! run-id job-id run-method)
     (try
-      (execute-transforms! run-id transforms opts)
+      (run-transforms! run-id transforms opts)
       (transforms.job-run/succeed-started-run! run-id)
       (catch Throwable t
         (transforms.job-run/fail-started-run! run-id {:message (.getMessage t)})

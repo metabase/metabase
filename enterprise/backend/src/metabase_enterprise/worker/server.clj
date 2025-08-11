@@ -62,9 +62,9 @@
            (canceling/chan-start-timeout-vthread-worker-instance! run-id)
            (binding [qp.pipeline/*canceled-chan* (a/promise-chan)]
              (canceling/chan-start-run! run-id qp.pipeline/*canceled-chan*)
-             (driver/execute-transform! driver
-                                        transform-details
-                                        opts))
+             (driver/run-transform! driver
+                                    transform-details
+                                    opts))
            (tracking/track-finish! run-id)
            (catch Throwable t
              (log/error t "Error executing transform")

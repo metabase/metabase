@@ -35,9 +35,9 @@
     (into [] (map (comp t2.realize/realize #(dissoc % :rn)))
           (t2/reducible-select :model/TransformJobRun (latest-runs-query job-ids)))))
 
-(defn add-last-execution [job]
+(defn add-last-run [job]
   (assoc job
-         :last_execution
+         :last_run
          (t2/select-one :model/TransformJobRun
                         :job_id (:id job)
                         {:order-by [[:start_time :desc]]})))
@@ -95,15 +95,15 @@
                :is_active nil
                :message "Timed out by metabase"}))
 
-(defn running-execution-for-job-id
+(defn running-run-for-job-id
   "Return a single active job run or nil."
   [id]
   (t2/select-one :model/TransformJobRun
                  :job_id id
                  :is_active true))
 
-(defn paged-executions
-  "Return a page of the list of the executions.
+(defn paged-runs
+  "Return a page of the list of the runs.
 
   Follows the conventions used by the FE."
   [{:keys [offset

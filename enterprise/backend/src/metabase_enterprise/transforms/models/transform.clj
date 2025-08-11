@@ -14,7 +14,7 @@
 (t2/deftransforms :model/Transform
   {:source mi/transform-json
    :target mi/transform-json
-   :execution_trigger mi/transform-keyword})
+   :run_trigger mi/transform-keyword})
 
 (mi/define-batched-hydration-method with-transform
   :transform
@@ -27,16 +27,16 @@
       (for [run runs]
         (assoc run :transform (get id->transform (:work_id run)))))))
 
-(mi/define-batched-hydration-method with-last-execution
-  :last_execution
-  "Add last_execution to a transform"
+(mi/define-batched-hydration-method with-last-run
+  :last_run
+  "Add last_run to a transform"
   [transforms]
   (if-not (seq transforms)
     transforms
     (let [transform-ids (into #{} (map :id) transforms)
-          last-executions (m/index-by :work_id (worker/latest-runs :transform transform-ids))]
+          last-runs (m/index-by :work_id (worker/latest-runs :transform transform-ids))]
       (for [transform transforms]
-        (assoc transform :last_execution (get last-executions (:id transform)))))))
+        (assoc transform :last_run (get last-runs (:id transform)))))))
 
 (mi/define-batched-hydration-method transform-tag-ids
   :transform_tag_ids

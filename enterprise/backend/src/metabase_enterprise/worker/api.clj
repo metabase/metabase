@@ -28,8 +28,8 @@
   []
   (boolean (worker-uri)))
 
-(defn execute-transform!
-  "Execute a transform on the remote worker."
+(defn run-transform!
+  "Run a transform on the remote worker."
   [run-id driver transform-details opts]
   (json-body (http/put (worker-route (str "/transform/" run-id))
                        {:form-params {:driver driver

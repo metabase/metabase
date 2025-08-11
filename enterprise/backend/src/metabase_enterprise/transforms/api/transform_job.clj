@@ -105,7 +105,7 @@
   ;; Return updated job with hydration
   (-> (t2/select-one :model/TransformJob :id job-id)
       (t2/hydrate :tag_ids)
-      (assoc :last_execution nil)))
+      (assoc :last_run nil)))
 
 (api.macros/defendpoint :delete "/:job-id"
   "Delete a transform job."
@@ -117,19 +117,19 @@
   (transforms.schedule/delete-job! job-id)
   api/generic-204-no-content)
 
-(api.macros/defendpoint :post "/:job-id/execute"
-  "Execute a transform job manually."
+(api.macros/defendpoint :post "/:job-id/run"
+  "Run a transform job manually."
   [{:keys [job-id]} :- [:map [:job-id ms/PositiveInt]]]
-  (log/info "Manual execution of transform job" job-id)
+  (log/info "Manual run of transform job" job-id)
   (api/check-superuser)
   (let [job (api/check-404 (t2/select-one :model/TransformJob :id job-id))]
     (u.jvm/in-virtual-thread*
      (try
-       (transforms.jobs/execute-job! job-id {:run-method :manual})
+       (transforms.jobs/run-job! job-id {:run-method :manual})
        (catch Throwable t
          (log/error "Error executing transform job" job-id)
          (log/error t)))))
-  {:message    "Job execution started"
+  {:message    "Job run started"
    :job_run_id (str "stub-" job-id "-" (System/currentTimeMillis))})
 
 (api.macros/defendpoint :get "/:job-id"
@@ -139,10 +139,10 @@
   (log/info "Getting transform job" job-id)
   (api/check-superuser)
   (let [job (api/check-404 (t2/select-one :model/TransformJob :id job-id))]
-    ;; Hydrate tag_ids and add last_execution (null for now)
+    ;; Hydrate tag_ids and add last_run (null for now)
     (-> job
         (t2/hydrate :tag_ids)
-        transforms.job-run/add-last-execution)))
+        transforms.job-run/add-last-run)))
 
 (api.macros/defendpoint :get "/"
   "Get all transform jobs."
@@ -152,8 +152,8 @@
   (api/check-superuser)
   (let [jobs (t2/select :model/TransformJob {:order-by [[:created_at :desc]]})]
     ;; Hydrate tag_ids for all jobs
-    ;; Note: last_execution will be null until execution tracking is implemented
-    (map #(assoc % :last_execution nil)
+    ;; Note: last_run will be null until run tracking is implemented
+    (map #(assoc % :last_run nil)
          (t2/hydrate jobs :tag_ids))))
 
 (def ^{:arglists '([request respond raise])} routes

@@ -185,7 +185,7 @@
                         :message "Canceled by user but could not guarantee run stopped."})
     (cancel/delete-old-canceling-runs!)))
 
-(defn running-execution-for-work-id
+(defn running-run-for-work-id
   "Return a single active work run or nil."
   [id work-type]
   (t2/select-one :model/WorkerRun
@@ -195,8 +195,8 @@
 
 ;; This is kinda weird, having this code know anything about a Transform model; we may want to generalize
 ;; the tags feature or else make the worker run model oblivious to tags.
-(defn paged-executions
-  "Return a page of the list of the executions.
+(defn paged-runs
+  "Return a page of the list of the runs.
 
   Follows the conventions used by the FE."
   [{:keys [offset
@@ -249,7 +249,7 @@
 
                            ;; is_active condition for started status
                            (and (seq statuses)
-                                      (some #(= % "started") statuses))
+                                (some #(= % "started") statuses))
                            (conj [:= :is_active true]))
 
         where-clause     (when (seq where-conditions)
@@ -257,7 +257,7 @@
                              (first where-conditions)
                              (into [:and] where-conditions)))
         query-options    (cond-> {:order-by order-by
-                                                                 :offset offset
+                                  :offset offset
                                   :limit    limit}
                            where-clause (assoc :where where-clause))
         runs             (t2/select :model/WorkerRun query-options)
