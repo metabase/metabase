@@ -106,6 +106,13 @@ jobs:
             e2e/support
           sparse-checkout-cone-mode: false
 
+      - name: Install cypress-split for merging
+        run: |
+          echo "Installing cypress-split..."
+          npm install cypress-split@^1.24.20
+          echo "Verifying installation..."
+          npx cypress-split-merge --help || echo "merge command not available"
+      
       - name: Download all timing artifacts
         uses: actions/download-artifact@v4
         with:
@@ -122,7 +129,7 @@ jobs:
       - name: Merge split timings
         id: merge
         run: |
-          echo "Merging timing files using cypress-split-merge..."
+          echo "Merging timing files..."
           npx cypress-split-merge \
             --parent-folder timing-files \
             --split-file e2e/support/timings.json \
