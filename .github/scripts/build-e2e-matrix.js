@@ -5,21 +5,8 @@
 const DEFAULT_SPEC_PATTERN = "./e2e/test/scenarios/**/*.cy.spec.*";
 const EMBEDDING_SDK_SPEC_PATTERN =
   "./e2e/test/scenarios/embedding-sdk/**.cy.spec.*";
-const DEBUG_SPEC_PATTERN = "./e2e/test/scenarios/organization/official-collections.cy.spec.js,./e2e/test/scenarios/organization/bookmarks-question.cy.spec.js,./e2e/test/scenarios/organization/edit-history-metadata.cy.spec.js,./e2e/test/scenarios/organization/bookmarks-collection.cy.spec.js,./e2e/test/scenarios/organization/content-verification.cy.spec.js,./e2e/test/scenarios/organization/timelines-collection.cy.spec.js,./e2e/test/scenarios/organization/timelines-question.cy.spec.js,./e2e/test/scenarios/organization/bookmarks-dashboard.cy.spec.js,./e2e/test/scenarios/filters/filter-bulk.cy.spec.js,./e2e/test/scenarios/filters/filter-sources.cy.spec.js,./e2e/test/scenarios/filters/relative-datetime.cy.spec.js,./e2e/test/scenarios/filters/view.cy.spec.js";
-
-const specialTestConfigs = [
-  {
-    name: "embedding-sdk",
-    specs: EMBEDDING_SDK_SPEC_PATTERN,
-  },
-  {
-    name: "oss-subset",
-    edition: "oss",
-    tags: "@OSS @smoke+-@EE",
-    specs: DEFAULT_SPEC_PATTERN,
-  },
-  { name: "mongo", tags: "@mongo", specs: DEFAULT_SPEC_PATTERN },
-];
+const DEBUG_SPEC_PATTERN =
+  "./e2e/test/scenarios/organization/official-collections.cy.spec.js,./e2e/test/scenarios/organization/bookmarks-question.cy.spec.js,./e2e/test/scenarios/organization/edit-history-metadata.cy.spec.js,./e2e/test/scenarios/organization/bookmarks-collection.cy.spec.js,./e2e/test/scenarios/organization/content-verification.cy.spec.js,./e2e/test/scenarios/organization/timelines-collection.cy.spec.js,./e2e/test/scenarios/organization/timelines-question.cy.spec.js,./e2e/test/scenarios/organization/bookmarks-dashboard.cy.spec.js,./e2e/test/scenarios/filters/filter-bulk.cy.spec.js,./e2e/test/scenarios/filters/filter-sources.cy.spec.js,./e2e/test/scenarios/filters/relative-datetime.cy.spec.js,./e2e/test/scenarios/filters/view.cy.spec.js";
 
 /**
  *
@@ -41,7 +28,7 @@ function buildMatrix(options, inputSpecs, inputChunks) {
 
   const isDefaultSpecPattern =
     inputSpecs === "" || inputSpecs === DEFAULT_SPEC_PATTERN;
-    
+
   console.log("Debug mode enabled:", debugSpecs);
 
   console.log("Processed specs value:", inputSpecs);
@@ -52,9 +39,9 @@ function buildMatrix(options, inputSpecs, inputChunks) {
     // If debug mode, use much fewer chunks for faster testing
     if (debugSpecs) {
       console.log("Debug mode: using only 3 chunks instead of", inputChunks);
-      regularChunks = 3 - specialTestConfigs.length;
+      regularChunks = 3;
     } else {
-      regularChunks = inputChunks - specialTestConfigs.length;
+      regularChunks = inputChunks;
     }
   } else {
     // when pattern is not default, it means we passed some custom list of the changed specs
@@ -78,11 +65,7 @@ function buildMatrix(options, inputSpecs, inputChunks) {
     }),
   }));
 
-  const testSets = isDefaultSpecPattern
-    ? regularTests.concat(specialTestConfigs)
-    : regularTests;
-
-  const config = testSets.map((options) => ({
+  const config = regularTests.map((options) => ({
     ...defaultOptions,
     ...options,
   }));
