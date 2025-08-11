@@ -125,14 +125,24 @@ jobs:
         run: |
           echo "Downloaded timing files:"
           find timing-files -name "*.json" || echo "No timing files found"
+          echo "Directory structure:"
+          ls -la timing-files/
+          echo "Contents of each artifact folder:"
+          for dir in timing-files/*/; do
+            echo "=== $dir ==="
+            ls -la "$dir"
+          done
 
       - name: Merge split timings
         id: merge
         run: |
           echo "Merging timing files..."
+          echo "Looking for files matching pattern: timing-files/**/timings.json"
+          find timing-files -name "timings.json" -exec echo "Found: {}" \; -exec head -5 {} \;
+          
           npx cypress-split-merge \
             --parent-folder timing-files \
-            --split-file e2e/support/timings.json \
+            --split-file timings.json \
             --output e2e/support/timings.json
         env:
           DEBUG: cypress-split
