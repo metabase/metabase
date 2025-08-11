@@ -232,7 +232,12 @@ describe("scenarios > embedding > sdk iframe embedding", () => {
   });
 
   it("CSP nonces are set for custom expression styles (EMB-707)", () => {
-    const frame = H.loadSdkIframeEmbedTestPage({ template: "exploration" });
+    const frame = H.loadSdkIframeEmbedTestPage({
+      element: "metabase-question",
+      attributes: {
+        questionId: "new",
+      },
+    });
 
     frame.within(() => {
       cy.findByText("Orders").should("be.visible");
