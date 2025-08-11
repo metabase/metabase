@@ -65,12 +65,12 @@ jobs:
           cat > test-cypress-split/timings.json << 'EOF'
           {
             "durations": [
-              {"spec": "test-cypress-split/cypress/e2e/test1.cy.js", "duration": 2000},
-              {"spec": "test-cypress-split/cypress/e2e/test2.cy.js", "duration": 3000},
-              {"spec": "test-cypress-split/cypress/e2e/test3.cy.js", "duration": 1500},
-              {"spec": "test-cypress-split/cypress/e2e/test4.cy.js", "duration": 4000},
-              {"spec": "test-cypress-split/cypress/e2e/test5.cy.js", "duration": 2500},
-              {"spec": "test-cypress-split/cypress/e2e/test6.cy.js", "duration": 1800}
+              {"spec": "cypress/e2e/test1.cy.js", "duration": 2000},
+              {"spec": "cypress/e2e/test2.cy.js", "duration": 3000},
+              {"spec": "cypress/e2e/test3.cy.js", "duration": 1500},
+              {"spec": "cypress/e2e/test4.cy.js", "duration": 4000},
+              {"spec": "cypress/e2e/test5.cy.js", "duration": 2500},
+              {"spec": "cypress/e2e/test6.cy.js", "duration": 1800}
             ]
           }
           EOF
