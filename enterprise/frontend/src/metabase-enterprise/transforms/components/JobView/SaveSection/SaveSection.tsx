@@ -1,25 +1,28 @@
+import { Link } from "react-router";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { useDispatch } from "metabase/lib/redux";
 import { useMetadataToasts } from "metabase/metadata/hooks";
-import { Button, Icon } from "metabase/ui";
+import { Button, Group } from "metabase/ui";
 import { useCreateTransformJobMutation } from "metabase-enterprise/api";
 
-import { getJobUrl } from "../../../urls";
+import { getJobListUrl, getJobUrl } from "../../../urls";
+import type { TransformJobInfo } from "../types";
 
-const DEFAULT_SCHEDULE = "0 0 0 * * ? *";
+import S from "./SaveSection.module.css";
 
-export function CreateJobButton() {
+type SaveSectionProps = {
+  job: TransformJobInfo;
+};
+
+export function SaveSection({ job: jobInfo }: SaveSectionProps) {
   const [createJob, { isLoading }] = useCreateTransformJobMutation();
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
   const dispatch = useDispatch();
 
   const handleCreate = async () => {
-    const { data: job, error } = await createJob({
-      name: t`New job`,
-      schedule: DEFAULT_SCHEDULE,
-    });
+    const { data: job, error } = await createJob(jobInfo);
 
     if (error) {
       sendErrorToast(t`Failed to create a job`);
@@ -30,13 +33,11 @@ export function CreateJobButton() {
   };
 
   return (
-    <Button
-      variant="filled"
-      leftSection={<Icon name="add" />}
-      disabled={isLoading}
-      onClick={handleCreate}
-    >
-      {isLoading ? t`Creating a job…` : t`Create a job`}
-    </Button>
+    <Group className={S.section} pt="md">
+      <Button variant="filled" disabled={isLoading} onClick={handleCreate}>
+        {t`Save`}
+      </Button>
+      <Button component={Link} to={getJobListUrl()}>{t`Cancel`}</Button>
+    </Group>
   );
 }

@@ -4,6 +4,7 @@ import type { TransformTagId } from "metabase-types/api";
 import { HeaderSection } from "./HeaderSection";
 import { ManageSection } from "./ManageSection";
 import { NameSection } from "./NameSection";
+import { SaveSection } from "./SaveSection";
 import { ScheduleSection } from "./ScheduleSection";
 import { TagSection } from "./TagSection";
 import type { TransformJobInfo } from "./types";
@@ -36,6 +37,7 @@ export function JobView({
       <ScheduleSection job={job} onScheduleChange={onScheduleChange} />
       <TagSection job={job} onTagsChange={onTagListChange} />
       {job.id != null && <ManageSection job={job} />}
+      {job.id == null && <SaveSection job={job} />}
     </Stack>
   );
 }

@@ -35,6 +35,10 @@ export function getJobListUrl() {
   return `${ROOT_URL}/jobs`;
 }
 
+export function getNewJobUrl() {
+  return `${ROOT_URL}/jobs/new`;
+}
+
 export function getJobUrl(id: TransformJobId) {
   return `${ROOT_URL}/jobs/${id}`;
 }

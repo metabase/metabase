@@ -8,6 +8,7 @@ import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { JobListPage } from "./pages/JobListPage";
 import { JobPage } from "./pages/JobPage";
+import { NewJobPage } from "./pages/NewJobPage";
 import { NewTransformQueryPage } from "./pages/NewTransformQueryPage";
 import { RunListPage } from "./pages/RunListPage";
 import { TransformListPage } from "./pages/TransformListPage";
@@ -26,6 +27,7 @@ if (hasPremiumFeature("transforms")) {
         <Route component={TransformPageLayout}>
           <IndexRoute component={TransformListPage} />
           <Route path="jobs" component={JobListPage} />
+          <Route path="jobs/new" component={NewJobPage} />
           <Route path="jobs/:jobId" component={JobPage} />
           <Route path="runs" component={RunListPage} />
           <Route path=":transformId" component={TransformPage} />
