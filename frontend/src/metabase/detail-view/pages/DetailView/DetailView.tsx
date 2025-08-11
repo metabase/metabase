@@ -12,7 +12,7 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { Details, Nav, Relationships } from "metabase/detail-view/components";
 import { useDispatch } from "metabase/lib/redux";
 import { closeNavbar } from "metabase/redux/app";
-import { Box, Group, Stack } from "metabase/ui";
+import { Box, Group, Stack, rem } from "metabase/ui";
 import { extractRemappedColumns } from "metabase/visualizations";
 import type { StructuredDatasetQuery } from "metabase-types/api";
 
@@ -149,8 +149,8 @@ export function DetailView({
   }
 
   return (
-    <Stack bg="bg-white" h="100%">
-      <Box flex="0 0 auto" p="md">
+    <Stack bg="bg-white" gap={0} h="100%">
+      <Box className={S.nav} flex="0 0 auto" p="md">
         <Nav
           tableId={tableId}
           onBackClick={
@@ -173,8 +173,8 @@ export function DetailView({
         />
       </Box>
 
-      <Group className={S.content} flex="1" mih={0}>
-        <Group flex="1">
+      <Group className={S.content} flex="1" gap="lg" mih={0} mt={rem(64)}>
+        <Group justify="center" flex="1">
           <Details />
         </Group>
 
@@ -184,30 +184,4 @@ export function DetailView({
       </Group>
     </Stack>
   );
-
-  // return (
-  //   <TableDetailViewInner
-  //     tableId={tableId}
-  //     rowId={rowId}
-  //     row={row}
-  //     columns={columns}
-  //     table={table}
-  //     tableForeignKeys={tableForeignKeys}
-  //     onPreviousItemClick={
-  //       rows.length > 1 &&
-  //       typeof currentRowIndex === "number" &&
-  //       currentRowIndex > 0
-  //         ? handleViewPreviousObjectDetail
-  //         : undefined
-  //     }
-  //     onNextItemClick={
-  //       rows.length > 1 &&
-  //       typeof currentRowIndex === "number" &&
-  //       currentRowIndex < rows.length - 1
-  //         ? handleViewNextObjectDetail
-  //         : undefined
-  //     }
-  //     onBackClick={handleBackClick}
-  //   />
-  // );
 }

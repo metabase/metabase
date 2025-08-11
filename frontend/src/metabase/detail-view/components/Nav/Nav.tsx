@@ -39,7 +39,7 @@ export const Nav = ({
   }
 
   return (
-    <Group align="center" gap="md">
+    <Group align="center" className={S.nav} gap="md">
       {onBackClick && (
         <NavButton
           flex="0 0 auto"
