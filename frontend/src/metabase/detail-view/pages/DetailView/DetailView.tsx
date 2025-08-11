@@ -10,7 +10,7 @@ import {
 } from "metabase/api/table";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/LoadingAndErrorWrapper";
 import {
-  Details,
+  DetailsGroup,
   Header,
   Nav,
   Relationships,
@@ -191,11 +191,11 @@ export function DetailView({
       >
         <Group justify="center" flex="1" px="xl" py={rem(64)}>
           <Stack gap={rem(64)} maw={rem(900)} w="100%">
-            {headerColumns.length > 0 && (
-              <Header columns={headerColumns} row={row} />
-            )}
+            {headerColumns.length > 0 && <Header columns={columns} row={row} />}
 
-            <Details />
+            {columns.length - headerColumns.length > 0 && (
+              <DetailsGroup columns={columns} row={row} />
+            )}
           </Stack>
         </Group>
 
@@ -204,7 +204,7 @@ export function DetailView({
             bg="var(--mb-color-background-light)"
             flex="0 0 auto"
             h="100%"
-            w={440}
+            w={rem(440)}
           >
             <Relationships />
           </Box>

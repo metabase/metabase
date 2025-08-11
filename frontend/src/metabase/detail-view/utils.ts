@@ -21,7 +21,7 @@ import { createMockCard } from "metabase-types/api/mocks";
 
 export function renderValue(
   tc: ContentTranslationFunction,
-  value: RowValue,
+  value: RowValue | undefined,
   column: DatasetColumn,
   optionsOverride?: OptionsType,
 ) {
@@ -40,7 +40,7 @@ export function renderValue(
     },
   );
 
-  const NO_VALUE = "-";
+  const NO_VALUE = undefined;
 
   if (value === undefined) {
     return NO_VALUE;
