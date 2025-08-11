@@ -340,33 +340,33 @@
               :can_write :can_restore :can_delete))
 
 (defmethod collection-children-query :document
-  [_ collection {:keys [archived?]}]
-  {:select [:document.id
-            :document.name
-            :document.collection_id
-            :document.archived
-            :document.archived_directly
-            [:u.id :last_edit_user]
-            [:u.email :last_edit_email]
-            [:u.first_name :last_edit_first_name]
-            [:u.last_name :last_edit_last_name]
-            [:r.timestamp :last_edit_timestamp]
-            [(h2x/literal "document") :model]]
-   :from [[:document :document]]
-   :left-join [[:revision :r] [:and
-                               [:= :r.model_id :document.id]
-                               [:= :r.most_recent true]
-                               [:= :r.model (h2x/literal "Document")]]
-               [:core_user :u] [:= :u.id :r.user_id]]
-   :where [:and
-           (if (collection/is-trash? collection)
-             [:= :document.archived_directly true]
-             [:and
-              [:= :collection_id (:id collection)]
-              [:= :document.archived_directly false]])
-           (if archived?
-             [:= :document.archived true]
-             [:= :document.archived false])]})
+  [_ collection {:keys [archived? pinned-state]}]
+  (-> {:select [:document.id
+                :document.name
+                :document.collection_id
+                :document.collection_position
+                :document.archived
+                :document.archived_directly
+                [:u.id :last_edit_user]
+                [:u.email :last_edit_email]
+                [:u.first_name :last_edit_first_name]
+                [:u.last_name :last_edit_last_name]
+                [:r.timestamp :last_edit_timestamp]
+                [(h2x/literal "document") :model]]
+       :from [[:document :document]]
+       :left-join [[:revision :r] [:and
+                                   [:= :r.model_id :document.id]
+                                   [:= :r.most_recent true]
+                                   [:= :r.model (h2x/literal "Document")]]
+                   [:core_user :u] [:= :u.id :r.user_id]]
+       :where [:and
+               (if (collection/is-trash? collection)
+                 [:= :document.archived_directly true]
+                 [:and
+                  [:= :collection_id (:id collection)]
+                  [:= :document.archived_directly false]])
+               [:= :document.archived (boolean archived?)]]}
+      (sql.helpers/where (pinned-state->clause pinned-state :document.collection_position))))
 
 (defmethod collection-children-query :pulse
   [_ collection {:keys [archived? pinned-state]}]

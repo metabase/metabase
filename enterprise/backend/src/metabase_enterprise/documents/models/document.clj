@@ -45,23 +45,60 @@
 (defn sync-document-cards-collection!
   "Updates all cards associated with a document to match the document's collection.
   If the document is archived, also archives all associated cards.
+  When collection_position is provided, it's also synced to associated cards.
   Returns the number of cards updated."
-  [document-id collection-id & {:keys [archived archived-directly]}]
-  (let [update-map {:collection_id collection-id :archived (boolean archived) :archived_directly (boolean archived-directly)}]
+  [document-id collection-id & {:keys [archived archived-directly collection-position]}]
+  (let [update-map (cond-> {:collection_id collection-id
+                            :archived (boolean archived)
+                            :archived_directly (boolean archived-directly)}
+                     ;; Only include collection_position if it's explicitly provided
+                     (some? collection-position)
+                     (assoc :collection_position collection-position))]
     (t2/update! :model/Card
                 :document_id document-id
                 update-map)))
 
+(t2/define-before-insert :model/Document
+  [document]
+  ;; Handle collection position reconciliation for new documents
+  (when (and (:collection_id document) (:collection_position document))
+    (api/maybe-reconcile-collection-position! {:collection_id (:collection_id document)
+                                               :collection_position (:collection_position document)}))
+  document)
+
+(t2/define-before-update :model/Document
+  [document]
+  ;; Handle collection position reconciliation for document updates
+  (let [changes (t2/changes document)]
+    (api/maybe-reconcile-collection-position! document changes)
+    document))
+
 (t2/define-after-update :model/Document
-  [{:keys [id collection_id archived archived_directly]}]
-  ;; Sync cards to match document's collection and archival status
-  (sync-document-cards-collection! id collection_id :archived archived :archived-directly archived_directly))
+  [{:keys [id collection_id archived archived_directly collection_position]}]
+  ;; Sync cards to match document's collection, archival status, and position
+  (sync-document-cards-collection! id collection_id
+                                   :archived archived
+                                   :archived-directly archived_directly
+                                   :collection-position collection_position))
 
 ;;; ------------------------------------------------ Serdes Hashing -------------------------------------------------
 
 (defmethod serdes/hash-fields :model/Document
   [_table]
   [:name (serdes/hydrated-hash :collection) :created-at])
+
+(defmethod serdes/make-spec "Document"
+  [_model-name _opts]
+  {:copy [:archived :archived_directly :collection_position :description :entity_id :name :view_count]
+   :skip [;; instance-specific stats
+          :last_viewed_at
+               ;; skip until we implement serdes for documents
+          :document_id]
+   :transform {:created_at (serdes/date)
+               :updated_at (serdes/date)
+               :collection_id (serdes/fk :model/Collection)
+               :creator_id (serdes/fk :model/User)
+               :document :skip}})
 
  ;;;; ------------------------------------------------- Search ----------------------------------------------------------
 
@@ -73,7 +110,9 @@
            :view-count :view_count
            :created-at :created_at
            :updated-at :updated_at
-           :last-viewed-at :last_viewed_at}
+           :last-viewed-at :last_viewed_at
+           :pinned [:> [:coalesce :collection_position [:inline 0]] [:inline 0]]}
    :search-terms [:name]
    :render-terms {:document-name :name
-                  :document-id :id}})
+                  :document-id :id
+                  :collection-position true}})

@@ -5,9 +5,8 @@
    [metabase.app-db.cluster-lock :as cluster-lock]
    [metabase.batch-processing.core :as grouper]
    [metabase.events.core :as events]
-   [metabase.util :as u]
    [metabase.util.log :as log]
-   [metabase.view-log.events.view-log :as events.view-log]
+   [metabase.view-log.core :as view-log]
    [methodical.core :as m]
    [steffan-westcott.clj-otel.api.trace.span :as span]
    [toucan2.core :as t2]))
@@ -56,8 +55,8 @@
      :topic topic
      :user-id user-id}
     (try
-      ((resolve 'metabase.view-log.events.view-log/increment-view-counts!) :model/Document object-id)
+      (view-log/increment-view-counts! :model/Document object-id)
       (update-document-last-viewed-at! object-id)
-      ((resolve 'metabase.view-log.events.view-log/record-views!) ((resolve 'metabase.view-log.events.view-log/generate-view) :model :model/Document event))
+      (view-log/record-views! (view-log/generate-view :model :model/Document event))
       (catch Throwable e
         (log/warnf e "Failed to process document view event. %s" topic)))))

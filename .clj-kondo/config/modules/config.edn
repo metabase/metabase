@@ -1643,6 +1643,8 @@
           metabase-enterprise.documents.core
           metabase-enterprise.documents.init}
    :uses #{api
+           app-db
+           batch-processing
            collections
            events
            models
@@ -1651,7 +1653,8 @@
            query-permissions
            revisions
            users
-           util}}
+           util
+           view-log}}
 
   enterprise/email
   {:team "UX West"

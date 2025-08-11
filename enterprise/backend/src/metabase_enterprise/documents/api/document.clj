@@ -131,17 +131,19 @@
   "Create a new `Document`."
   [_route-params
    _query-params
-   {:keys [name document collection_id cards]}
+   {:keys [name document collection_id collection_position cards]}
    :- [:map
        [:name ms/NonBlankString]
        [:document :any]
        [:collection_id {:optional true} [:maybe ms/PositiveInt]]
+       [:collection_position {:optional true} [:maybe ms/PositiveInt]]
        [:cards {:optional true} [:maybe [:map-of [:int {:max -1}] CardCreateSchema]]]]]
   (collection/check-write-perms-for-collection collection_id)
   (let [document-id (t2/with-transaction [_conn]
             ;; Validate existing cards first if provided
                       (let [document-id (t2/insert-returning-pk! :model/Document {:name name
                                                                                   :collection_id collection_id
+                                                                                  :collection_position collection_position
                                                                                   :document document
                                                                                   :content_type prose-mirror/prose-mirror-content-type
                                                                                   :creator_id api/*current-user-id*})
@@ -176,12 +178,13 @@
   [{:keys [document-id]} :- [:map
                              [:document-id ms/PositiveInt]]
    _query-params
-   {:keys [name document collection_id cards] :as body} :- [:map
-                                                            [:name {:optional true} ms/NonBlankString]
-                                                            [:document {:optional true} :any]
-                                                            [:collection_id {:optional true} [:maybe ms/PositiveInt]]
-                                                            [:cards {:optional true} [:maybe [:map-of :int CardCreateSchema]]]
-                                                            [:archived {:optional true} [:maybe :boolean]]]]
+   {:keys [name document collection_id collection_position cards] :as body} :- [:map
+                                                                                [:name {:optional true} ms/NonBlankString]
+                                                                                [:document {:optional true} :any]
+                                                                                [:collection_id {:optional true} [:maybe ms/PositiveInt]]
+                                                                                [:collection_position {:optional true} [:maybe ms/PositiveInt]]
+                                                                                [:cards {:optional true} [:maybe [:map-of :int CardCreateSchema]]]
+                                                                                [:archived {:optional true} [:maybe :boolean]]]]
   (let [existing-document (api/check-404 (get-document document-id))]
     (api/check-403 (mi/can-write? existing-document))
     (when (api/column-will-change? :collection_id existing-document body)

@@ -183,3 +183,112 @@
             (is (= #{[archived-card-id "card"]
                      [archived-dash-id "dashboard"]}
                    (set (map (juxt :id :model) trash-test-items))))))))))
+
+(deftest document-pinning-collection-items
+  (testing "GET /api/collection/:id/items supports pinned_state parameter for documents"
+    (mt/with-premium-features #{:documents}
+      (mt/with-temp [:model/Collection {coll-id :id} {}
+                     :model/Document {pinned-doc-id :id} {:collection_id coll-id
+                                                          :name "Pinned Document"
+                                                          :collection_position 1}
+                     :model/Document {unpinned-doc-id :id} {:collection_id coll-id
+                                                            :name "Unpinned Document"
+                                                            :collection_position nil}
+                     :model/Card {pinned-card-id :id} {:collection_id coll-id
+                                                       :name "Pinned Card"
+                                                       :collection_position 2}
+                     :model/Card {unpinned-card-id :id} {:collection_id coll-id
+                                                         :name "Unpinned Card"
+                                                         :collection_position nil}]
+        (testing "pinned_state=is_pinned returns only pinned documents and cards"
+          (let [items (:data (mt/user-http-request :rasta :get 200
+                                                   (str "collection/" coll-id "/items?pinned_state=is_pinned")))
+                item-ids (set (map :id items))]
+            (is (contains? item-ids pinned-doc-id))
+            (is (contains? item-ids pinned-card-id))
+            (is (not (contains? item-ids unpinned-doc-id)))
+            (is (not (contains? item-ids unpinned-card-id)))))
+
+        (testing "pinned_state=is_not_pinned returns only unpinned documents and cards"
+          (let [items (:data (mt/user-http-request :rasta :get 200
+                                                   (str "collection/" coll-id "/items?pinned_state=is_not_pinned")))
+                item-ids (set (map :id items))]
+            (is (not (contains? item-ids pinned-doc-id)))
+            (is (not (contains? item-ids pinned-card-id)))
+            (is (contains? item-ids unpinned-doc-id))
+            (is (contains? item-ids unpinned-card-id))))
+
+        (testing "pinned_state=all returns all documents and cards"
+          (let [items (:data (mt/user-http-request :rasta :get 200
+                                                   (str "collection/" coll-id "/items?pinned_state=all")))
+                item-ids (set (map :id items))]
+            (is (contains? item-ids pinned-doc-id))
+            (is (contains? item-ids pinned-card-id))
+            (is (contains? item-ids unpinned-doc-id))
+            (is (contains? item-ids unpinned-card-id))))))))
+
+(deftest document-pinning-root-items
+  (testing "GET /api/collection/root/items supports pinned_state parameter for documents"
+    (mt/with-premium-features #{:documents}
+      (mt/with-temp [:model/Document {pinned-doc-id :id} {:collection_id nil
+                                                          :name "Pinned Root Document"
+                                                          :collection_position 1}
+                     :model/Document {unpinned-doc-id :id} {:collection_id nil
+                                                            :name "Unpinned Root Document"
+                                                            :collection_position nil}
+                     :model/Card {pinned-card-id :id} {:collection_id nil
+                                                       :name "Pinned Root Card"
+                                                       :collection_position 2}
+                     :model/Card {unpinned-card-id :id} {:collection_id nil
+                                                         :name "Unpinned Root Card"
+                                                         :collection_position nil}]
+        (testing "pinned_state=is_pinned returns only pinned root documents and cards"
+          (let [items (:data (mt/user-http-request :rasta :get 200 "collection/root/items?pinned_state=is_pinned"))
+                test-item-ids (set (filter #{pinned-doc-id unpinned-doc-id pinned-card-id unpinned-card-id}
+                                           (map :id items)))]
+            (is (contains? test-item-ids pinned-doc-id))
+            (is (contains? test-item-ids pinned-card-id))
+            (is (not (contains? test-item-ids unpinned-doc-id)))
+            (is (not (contains? test-item-ids unpinned-card-id)))))
+
+        (testing "pinned_state=is_not_pinned returns only unpinned root documents and cards"
+          (let [items (:data (mt/user-http-request :rasta :get 200 "collection/root/items?pinned_state=is_not_pinned"))
+                test-item-ids (set (filter #{pinned-doc-id unpinned-doc-id pinned-card-id unpinned-card-id}
+                                           (map :id items)))]
+            (is (not (contains? test-item-ids pinned-doc-id)))
+            (is (not (contains? test-item-ids pinned-card-id)))
+            (is (contains? test-item-ids unpinned-doc-id))
+            (is (contains? test-item-ids unpinned-card-id))))))))
+
+(deftest mixed-pinned-unpinned-documents-collection-view
+  (testing "Integration test for mixed pinned/unpinned documents in collection view"
+    (mt/with-premium-features #{:documents}
+      (mt/with-temp [:model/Collection {coll-id :id} {}
+                     :model/Document {doc1-id :id} {:collection_id coll-id
+                                                    :name "Document A"
+                                                    :collection_position 1}
+                     :model/Document {doc2-id :id} {:collection_id coll-id
+                                                    :name "Document B"
+                                                    :collection_position nil}
+                     :model/Document {doc3-id :id} {:collection_id coll-id
+                                                    :name "Document C"
+                                                    :collection_position 3}]
+        (testing "Default view includes all documents with collection_position field"
+          (let [items (:data (mt/user-http-request :rasta :get 200
+                                                   (str "collection/" coll-id "/items")))
+                docs (filter #(= "document" (:model %)) items)
+                doc-positions (map :collection_position docs)]
+            (is (= 3 (count docs)))
+            ;; Verify collection_position is included in the response
+            (is (some #(= 1 %) doc-positions))
+            (is (some nil? doc-positions))
+            (is (some #(= 3 %) doc-positions))))
+
+        (testing "Pinned documents have higher collection_position values and appear before unpinned"
+          (let [items (:data (mt/user-http-request :rasta :get 200
+                                                   (str "collection/" coll-id "/items?pinned_state=is_pinned")))
+                pinned-docs (filter #(= "document" (:model %)) items)]
+            (is (= 2 (count pinned-docs)))
+            ;; Verify all pinned docs have non-nil collection_position
+            (is (every? #(some? (:collection_position %)) pinned-docs))
+            (is (= #{doc1-id doc3-id} (set (map :id pinned-docs))))))))))

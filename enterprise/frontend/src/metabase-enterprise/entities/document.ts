@@ -73,6 +73,16 @@ const Documents = createEntity({
         },
         undo(opts, "document", "moved"),
       ),
+
+    setPinned: ({ id }, pinned, opts) =>
+      Documents.actions.update(
+        { id },
+        {
+          collection_position:
+            typeof pinned === "number" ? pinned : pinned ? 1 : null,
+        },
+        opts,
+      ),
   },
 
   objectSelectors: {

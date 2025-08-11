@@ -216,6 +216,12 @@ databaseChangeLog:
                   remarks: Keeps a running count of document views
                   constraints:
                     nullable: false
+              - column:
+                  name: collection_position
+                  type: integer
+                  remarks: Collection position used for pinning documents. Higher numbers = pinned, null = not pinned.
+                  constraints:
+                    nullable: true
 
   - changeSet:
       id: v57.2025-08-21T12:00:10
