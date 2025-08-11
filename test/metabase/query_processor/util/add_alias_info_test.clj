@@ -7,6 +7,7 @@
    [metabase.driver :as driver]
    [metabase.driver.h2 :as h2]
    [metabase.lib.core :as lib]
+   [metabase.lib.field-test]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.test-metadata :as meta]
@@ -19,7 +20,6 @@
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util.add-alias-info :as add]
-   [metabase.lib.field-test]
    [metabase.test :as mt]))
 
 (comment h2/keep-me)
@@ -1204,7 +1204,6 @@
                                    ::add/source-table  "Orders"}
                            "sum"]]}
                 (dissoc stage :joins)))))))
-
 
 (deftest ^:parallel nested-fields-test
   (let [mp    metabase.lib.field-test/grandparent-parent-child-metadata-provider
