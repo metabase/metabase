@@ -1,5 +1,6 @@
 (ns metabase-enterprise.transforms.execute-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase-enterprise.transforms.execute :as transforms.execute]
@@ -21,7 +22,7 @@
   ([source-table source-column constraint-fn & constraint-params]
    (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
          table (if (string? source-table)
-                 (m/find-first (comp #{source-table} u/lower-case-en :name) (lib.metadata/tables mp))
+                 (m/find-first (comp #(str/ends-with? % source-table) u/lower-case-en :name) (lib.metadata/tables mp))
                  source-table)
          query (lib/query mp table)
          column (when source-column
