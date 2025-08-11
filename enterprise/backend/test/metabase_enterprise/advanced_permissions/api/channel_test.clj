@@ -1,6 +1,7 @@
 (ns metabase-enterprise.advanced-permissions.api.channel-test
   (:require
    [clojure.test :refer :all]
+   [metabase.channel.impl.http-test :as channel.http-test]
    [metabase.notification.test-util :as notification.tu]
    [metabase.permissions.models.permissions :as perms]
    [metabase.test :as mt]))
@@ -23,9 +24,16 @@
                   (testing (format "create channel setting with %s user" (mt/user-descriptor user))
                     (mt/user-http-request user :post status "channel" (assoc notification.tu/default-can-connect-channel :name (mt/random-name)))))
                 (get-channel [user status]
-                  (testing (format "get user with %s user" (mt/user-descriptor user))
+                  (testing (format "get channel with %s user" (mt/user-descriptor user))
                     (mt/with-temp [:model/Channel {id :id} notification.tu/default-can-connect-channel]
                       (mt/user-http-request user :get status (str "channel/" id)))))
+                (test-channel [user status]
+                  (testing (format "test channel with %s user" (mt/user-descriptor user))
+                    (channel.http-test/with-server [url [channel.http-test/post-200 channel.http-test/post-400]]
+                      (mt/user-http-request user :post status "channel/test" {:type "channel/http"
+                                                                              :details {:url          (str url (:path channel.http-test/post-200))
+                                                                                        :auth-method  "none"
+                                                                                        :auth-info    {}}}))))
                 (include-details [user include-details?]
                   (mt/with-temp [:model/Channel {id :id} notification.tu/default-can-connect-channel]
                     (testing (format "GET /api/channel/:id with %s user" (mt/user-descriptor user))
@@ -39,6 +47,7 @@
               (create-channel user 403)
               (update-channel user 403)
               (get-channel user 403)
+              (test-channel :crowberto 200)
               (create-channel :crowberto 200)
               (update-channel :crowberto 200)
               (include-details :crowberto true)))

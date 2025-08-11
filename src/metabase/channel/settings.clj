@@ -302,3 +302,10 @@
   :export?    false
   :visibility :internal
   :audit      :getter)
+
+(defsetting http-channel-allow-localhost
+  (deferred-tru "Where it''s allowed to use localhost as destination for http channels.")
+  :type       :boolean
+  :visibility :internal
+  :default    false
+  :export?    false)

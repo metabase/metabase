@@ -4,8 +4,10 @@
    [java-time.api :as t]
    [metabase.channel.core :as channel]
    [metabase.channel.render.core :as channel.render]
+   [metabase.channel.settings :as channel.settings]
    [metabase.channel.shared :as channel.shared]
    [metabase.channel.urls :as urls]
+   [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
@@ -37,6 +39,10 @@
 (mu/defmethod channel/send! :channel/http
   [{{:keys [url method auth-method auth-info]} :details} :- HTTPChannel
    request]
+  (when-not (or (channel.settings/http-channel-allow-localhost)
+                (u/valid-remote-host? url))
+    (throw (ex-info (tru "URLs referring to hosts that supply internal hosting metadata are prohibited.")
+                    {:status-code 400})))
   (let [req (merge
              {:accept       :json
               :content-type :json

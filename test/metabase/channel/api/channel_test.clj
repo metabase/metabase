@@ -157,32 +157,55 @@
                                                                        :return-value {:errors {:email "Invalid email"}}}))))))
 
 (deftest test-channel-http-test
-  (channel.http-test/with-server [url [channel.http-test/post-200 channel.http-test/post-400]]
-    (testing "status-code=200 endpoint"
-      (is (= {:ok true}
-             (mt/user-http-request :crowberto :post 200 "channel/test"
-                                   {:type    "channel/http"
-                                    :details {:url          (str url (:path channel.http-test/post-200))
-                                              :auth-method  "none"
-                                              :auth-info    {}}}))))
-    (testing "status-code=400 endpoint"
-      (is (= {:message "Failed to connect to channel"
-              :data    {:request-status 400
-                        :request-body "Bad request"}}
-             (mt/user-http-request :crowberto :post 400 "channel/test"
-                                   {:type    "channel/http"
-                                    :details {:url          (str url (:path channel.http-test/post-400))
-                                              :auth-method  "none"
-                                              :auth-info    {}}}))))
-    (testing "status-code=404 endpoint"
-      (is (= {:message "Failed to connect to channel"
-              :data    {:request-status 404
-                        :request-body "Not found."}}
-             (mt/user-http-request :crowberto :post 400 "channel/test"
-                                   {:type    "channel/http"
-                                    :details {:url          (str url "/unknown42")
-                                              :auth-method  "none"
-                                              :auth-info    {}}}))))))
+  (mt/with-temporary-setting-values [http-channel-allow-localhost true]
+    (channel.http-test/with-server [url [channel.http-test/post-200 channel.http-test/post-400]]
+      (testing "status-code=200 endpoint"
+        (is (= {:ok true}
+               (mt/user-http-request :crowberto :post 200 "channel/test"
+                                     {:type    "channel/http"
+                                      :details {:url          (str url (:path channel.http-test/post-200))
+                                                :auth-method  "none"
+                                                :auth-info    {}}}))))
+      (testing "status-code=400 endpoint"
+        (is (= {:message "Failed to connect to channel"
+                :data    {:request-status 400
+                          :request-body "Bad request"}}
+               (mt/user-http-request :crowberto :post 400 "channel/test"
+                                     {:type    "channel/http"
+                                      :details {:url          (str url (:path channel.http-test/post-400))
+                                                :auth-method  "none"
+                                                :auth-info    {}}}))))
+      (testing "status-code=404 endpoint"
+        (is (= {:message "Failed to connect to channel"
+                :data    {:request-status 404
+                          :request-body "Not found."}}
+               (mt/user-http-request :crowberto :post 400 "channel/test"
+                                     {:type    "channel/http"
+                                      :details {:url          (str url "/unknown42")
+                                                :auth-method  "none"
+                                                :auth-info    {}}})))))))
+
+(deftest test-channel-block-localhost-endpoints-test
+  (let [channel-test (fn [url status-code]
+                       (mt/user-http-request :crowberto :post status-code "channel/test"
+                                             {:type    "channel/http"
+                                              :details {:url          url
+                                                        :auth-method  "none"
+                                                        :auth-info    {}}}))]
+
+    (testing "internal host endpoint"
+      (is (= "URLs referring to hosts that supply internal hosting metadata are prohibited."
+             (:message
+              (channel-test "http://127.0.0.1:3000/api/health" 400)))))
+    (testing "ban link local addresses"
+      (is (= "URLs referring to hosts that supply internal hosting metadata are prohibited."
+             (:message
+              (channel-test "http://169.254.1.100/api/health" 400)))))
+
+    (mt/with-temporary-setting-values [http-channel-allow-localhost true]
+      (channel.http-test/with-server [url [channel.http-test/post-200 channel.http-test/post-400]]
+        (testing "can use localhost if env var is specified"
+          (channel-test (str url (:path channel.http-test/post-200)) 200))))))
 
 (deftest channel-audit-log-test
   (testing "audit log for channel apis"
