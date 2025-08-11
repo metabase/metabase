@@ -219,14 +219,14 @@ From this filter editing view, you can wire up dashboard cards to the filter, or
 
 ### Rename filter
 
-1. In dashboard edit mode, click your filter's **gear** icon.
+1. In dashboard edit mode, click the filter you want to edit.
 2. Change the label text.
 
 Renaming the filter only affects the filter's display; the label has no effect on which columns Metabase filters.
 
 ### Set filter input type
 
-1. In dashboard edit mode, click your filter's **gear** icon.
+1. In dashboard edit mode, click the filter you want to edit.
 2. From the filter settings sidebar, set **How should people filter on this column?**:
 
 - [Dropdown list](#dropdown-list)
@@ -263,7 +263,7 @@ For example, you might want to set a default filter value like "Active", so that
 
 ### Remove a filter
 
-1. In dashboard edit mode, click your filter's **gear** icon.
+1. In dashboard edit mode, click the filter you want to edit.
 2. From the sidebar, click **Remove**.
 
 If you accidentally remove a filter, just click **Cancel** in the top-right to exit dashboard edit mode without saving your changes.
@@ -274,14 +274,14 @@ In dashboard edit mode, click on the grabber handle (six dots) on the left side 
 
 ### Make a multi-select filter
 
-1. In dashboard edit mode, click your filter's **gear** icon.
+1. In dashboard edit mode, click the filter you want to edit.
 2. From the sidebar, find **People can pick** and select "Multiple values".
 
 A multi-select filter with the widget type [Dropdown list](#dropdown-list) or [Search box](#search-box) will display a list of values with checkboxes.
 
 ### Change a filter's selectable values
 
-1. In dashboard edit mode, click your filter's **gear** icon.
+1. In dashboard edit mode, click the filter you want to edit.
 2. From the sidebar, find **How should users filter on this column?**.
 3. Select "Dropdown list".\*
 4. Click **Edit** (to the right of "Dropdown list") to specify where the values should come from:
