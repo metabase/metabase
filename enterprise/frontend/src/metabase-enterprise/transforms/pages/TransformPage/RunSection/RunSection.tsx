@@ -76,7 +76,7 @@ function RunStatusSection({ transform }: RunStatusSectionProps) {
   const errorInfo =
     message != null ? (
       <RunErrorInfo
-        error={message}
+        message={message}
         endTime={endTime ? endTime.toDate() : null}
       />
     ) : null;
