@@ -227,3 +227,17 @@ function getInitialSections(
 
   return [...sections, newUncategorizedSection];
 }
+
+export function getFieldsLimit(
+  section: ObjectViewSectionSettings,
+): number | undefined {
+  if (section.variant === "header") {
+    return 3;
+  }
+
+  if (section.variant === "subheader") {
+    return 4;
+  }
+
+  return undefined;
+}

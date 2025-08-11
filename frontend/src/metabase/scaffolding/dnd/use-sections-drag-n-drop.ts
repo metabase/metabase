@@ -20,6 +20,7 @@ import {
   isSectionDraggableKey,
   parseDraggableKey,
 } from "./utils";
+import { getFieldsLimit } from "../TableDetailView/use-detail-view-sections";
 
 type UseSectionsDragNDropProps = {
   updateSection: (
@@ -102,6 +103,11 @@ export function useSectionsDragNDrop({
       if (activeContainer !== overContainer) {
         const activeItems = activeContainer.fields;
         const overItems = overContainer.fields;
+        const fieldsLimit = getFieldsLimit(overContainer);
+
+        if (fieldsLimit && overItems.length >= fieldsLimit) {
+          return;
+        }
 
         let newIndex: number;
         const activeIndex =

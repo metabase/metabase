@@ -9,6 +9,7 @@ import type {
 
 import { ColumnPickerButton } from "./ColumnPickerButton";
 import { SectionAction } from "./SectionAction";
+import { getFieldsLimit } from "./use-detail-view-sections";
 
 type ObjectViewSectionProps = {
   columns: DatasetColumn[];
@@ -93,18 +94,4 @@ export function SectionActions({
       )}
     </Group>
   );
-}
-
-function getFieldsLimit(
-  section: ObjectViewSectionSettings,
-): number | undefined {
-  if (section.variant === "header") {
-    return 3;
-  }
-
-  if (section.variant === "subheader") {
-    return 4;
-  }
-
-  return undefined;
 }
