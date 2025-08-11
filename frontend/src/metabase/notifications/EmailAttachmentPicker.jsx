@@ -274,7 +274,8 @@ export default class EmailAttachmentPicker extends Component {
             <Text fw="bold">{t`Attach results as files`}</Text>
             <Icon
               name="info"
-              className={cx(CS.textMedium, CS.ml1)}
+              c="gray.6"
+              ml="0.5rem"
               size={12}
               tooltip={t`Attachments can contain up to 2,000 rows of data.`}
             />
@@ -351,7 +352,8 @@ export default class EmailAttachmentPicker extends Component {
                 <Text fw="bold">{t`Send only attachments (no charts)`}</Text>
                 <Icon
                   name="info"
-                  className={cx(CS.textMedium, CS.ml1)}
+                  c="gray"
+                  ml="0.5rem"
                   size={12}
                   tooltip={t`When enabled, only file attachments will be sent (no email content).`}
                 />
