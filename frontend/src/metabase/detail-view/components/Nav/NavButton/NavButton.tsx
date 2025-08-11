@@ -16,11 +16,17 @@ interface Props extends ButtonProps {
   tooltip: ReactNode;
 }
 
-export const NavButton = ({ icon, tooltip, onClick, ...props }: Props) => (
+export const NavButton = ({
+  className,
+  icon,
+  tooltip,
+  onClick,
+  ...props
+}: Props) => (
   <Tooltip disabled={!onClick} label={tooltip}>
     <Button
       c="text-dark"
-      className={cx(props.className, {
+      className={cx(className, {
         [S.disabled]: !onClick,
       })}
       disabled={!onClick}

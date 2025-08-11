@@ -6,7 +6,7 @@ import {
   useGetTableQuery,
   useListDatabaseSchemasQuery,
 } from "metabase/api";
-import { Box, Group, Icon, Text } from "metabase/ui";
+import { Box, Group, Icon, Text, rem } from "metabase/ui";
 import type { TableId } from "metabase-types/api";
 
 import S from "./Nav.module.css";
@@ -33,6 +33,7 @@ export const Nav = ({
       table && table.db_id && table.schema ? { id: table.db_id } : skipToken,
     );
 
+  // TODO: error handling, loading state handling
   if (!table || !table.db || isLoadingSchemas) {
     return null;
   }
@@ -73,7 +74,7 @@ export const Nav = ({
           fw="bold"
           to={`/browse/databases/${table.db_id}`}
         >
-          <Group align="center" gap={10} wrap="nowrap">
+          <Group align="center" gap={rem(10)} wrap="nowrap">
             <Icon flex="0 0 auto" name="database" size={20} />
 
             <Box>{table.db.name}</Box>
