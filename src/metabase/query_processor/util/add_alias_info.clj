@@ -199,10 +199,12 @@
      :source/aggregations
      :source/native)              ::none))
 
-(defn- update-field-ref [query path field-ref col]
-  (lib/update-options field-ref assoc
-                      ::source-table (source-table query path col)
-                      ::source-alias (escaped-source-alias query path (:metabase.lib.join/join-alias col) (:lib/source-column-alias col))))
+(defn- add-source-to-field-ref [query path field-ref col]
+  (lib/update-options
+   field-ref assoc
+   ::source-table (source-table query path col)
+   ::source-alias (escaped-source-alias query path (:metabase.lib.join/join-alias col) (:lib/source-column-alias col))
+   ::nfc-path     (not-empty (:nfc-path col))))
 
 (mu/defn- add-source-aliases :- ::lib.schema/stage.mbql
   [query :- ::lib.schema/query
@@ -215,7 +217,8 @@
 
     :field
     (let [col (resolve-field-ref query path &match)]
-      (-> (update-field-ref query path &match col)
+      (-> (add-source-to-field-ref query path &match col)
+          ;; record the column we resolved it to, so we can use this when we add desired aliases in the next pass.
           (lib/update-options assoc ::resolved col)))
 
     :expression
@@ -366,7 +369,7 @@
   (let [parent-stage-path (lib.walk/join-parent-stage-path join-path)
         update-other-ref  (fn [field-ref]
                             (let [col (resolve-field-ref query parent-stage-path field-ref)]
-                              (update-field-ref query parent-stage-path field-ref col)))
+                              (add-source-to-field-ref query parent-stage-path field-ref col)))
         update-conditions (fn [conditions]
                             ;; the only kind of ref join conditions can have is a `:field` ref
                             (lib.util.match/replace conditions
@@ -487,7 +490,12 @@
   ### `::desired-alias`
 
   If this clause is 'selected' (i.e., appears in `:fields`, `:aggregation`, or `:breakout`), select the clause `AS`
-  this alias. This alias is guaranteed to be unique."
+  this alias. This alias is guaranteed to be unique.
+
+  ### `::nfc-path`
+
+  If this is a nested column, the path to the column, e.g. for `grandparent.parent.child` this will be `[\"grandparent\"
+  \"child\"]."
   ([query]
    (add-alias-info query nil))
 

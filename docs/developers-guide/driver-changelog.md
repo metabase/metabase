@@ -31,6 +31,10 @@ title: Driver interface changelog
 
 - `driver/field-reference-mlv2` is now deprecated, and is no longer used. Please remove your implementations.
 
+- The key `metabase.driver-api.core/qp.add.nfc-path` is now more consistently populated; other `qp.add.*` keys no
+  longer include parent column names for drivers like MongoDB -- use `qp.add.nfc-path` instead to qualify the
+  `qp.add.source-column-alias` with parent column names as needed.
+
 ## Metabase 0.55.9
 
 - Add multi-method `driver/do-with-resilient-connection` for executing functions in a context where closed connections may be automatically reopened

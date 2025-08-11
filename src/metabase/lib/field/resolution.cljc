@@ -41,18 +41,20 @@
    {:keys [parent-id], :as metadata} :- ::lib.schema.metadata/column]
   (if-not parent-id
     metadata
-    (let [parent-metadata                                        (lib.metadata/field metadata-providerable parent-id)
-          {parent-name :name, parent-display-name :display-name} (add-parent-column-metadata metadata-providerable parent-metadata)
-          new-name                                               (str parent-name
-                                                                      \.
-                                                                      ((some-fn :lib/original-name :name) metadata))
-          new-display-name                                       (str parent-display-name
-                                                                      ": "
-                                                                      ((some-fn :lib/original-display-name :display-name)
-                                                                       metadata))]
+    (let [parent-metadata                     (lib.metadata/field metadata-providerable parent-id)
+          {parent-name         :name
+           parent-nfc-path     :nfc-path
+           parent-display-name :display-name} (add-parent-column-metadata metadata-providerable parent-metadata)
+          new-name                            (str parent-name
+                                                   \.
+                                                   ((some-fn :lib/original-name :name) metadata))
+          new-display-name                    (str parent-display-name
+                                                   ": "
+                                                   ((some-fn :lib/original-display-name :display-name)
+                                                    metadata))]
       (-> metadata
           (assoc :name                                   new-name
-                 :lib/source-column-alias                new-name
+                 :nfc-path                               (conj (vec parent-nfc-path) (:name parent-metadata))
                  :display-name                           new-display-name
                  ;; this is used by the `display-name-method` for `:metadata/column` in [[metabase.lib.field]]
                  :metabase.lib.field/simple-display-name new-display-name)))))

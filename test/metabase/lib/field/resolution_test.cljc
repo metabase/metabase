@@ -106,7 +106,8 @@
     (testing "For fields with parents we should return them with a combined name including parent's name"
       (is (=? {:table-id                (meta/id :venues)
                :name                    "grandparent.parent"
-               :lib/source-column-alias "grandparent.parent"
+               :nfc-path                ["grandparent"]
+               :lib/source-column-alias "parent"
                :parent-id               (metabase.lib.field-test/grandparent-parent-child-id :grandparent)
                :id                      (metabase.lib.field-test/grandparent-parent-child-id :parent)
                :visibility-type         :normal}
@@ -114,7 +115,8 @@
     (testing "nested-nested fields should include grandparent name (etc)"
       (is (=? {:table-id                (meta/id :venues)
                :name                    "grandparent.parent.child"
-               :lib/source-column-alias "grandparent.parent.child"
+               :nfc-path                ["grandparent" "parent"]
+               :lib/source-column-alias "child"
                :parent-id               (metabase.lib.field-test/grandparent-parent-child-id :parent)
                :id                      (metabase.lib.field-test/grandparent-parent-child-id :child)
                :visibility-type         :normal}

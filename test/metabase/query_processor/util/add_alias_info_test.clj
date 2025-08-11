@@ -1220,13 +1220,15 @@
                           any?]]
                         [:asc {}
                          [:field {::add/source-table  (meta/id :venues)
-                                  ::add/source-alias  "grandparent.parent"
-                                  ::add/desired-alias "grandparent.parent"}
+                                  ::add/nfc-path      ["grandparent"]
+                                  ::add/source-alias  "parent"
+                                  ::add/desired-alias "parent"}
                           any?]]
                         [:asc {}
                          [:field {::add/source-table  (meta/id :venues)
-                                  ::add/source-alias  "grandparent.parent.child"
-                                  ::add/desired-alias "grandparent.parent.child"}
+                                  ::add/nfc-path      ["grandparent" "parent"]
+                                  ::add/source-alias  "child"
+                                  ::add/desired-alias "child"}
                           any?]]]}
             (-> (add-alias-info query)
                 :stages

@@ -477,6 +477,14 @@
     ;; info about stuff like min and max values of the column, used for auto bucketing.
     [:fingerprint {:optional true} [:maybe [:ref ::lib.schema.metadata.fingerprint/fingerprint]]]
     ;;
+    ;; If this is a nested column, the names of the ancestor columns used to access it. E.g. if the column is
+    ;; `grandparent.parent.child` then `:nfc-path` would be `["grandparent" "parent"]`.
+    ;;
+    ;; This was originally added to power Postgres JSON column support; but is now used for any sort of nested column,
+    ;; including BigQuery `RECORD` columns and MongoDB nested columns. See
+    ;; https://metaboat.slack.com/archives/C0645JP1W81/p1754949404592539 for code archeology
+    [:nfc-path {:optional true} [:maybe [:sequential :string]]]
+    ;;
     ;; populated by the `metabase_field.settings` column in the application database; I'm not really sure what goes in
     ;; here and if it's actually used for anything important in Lib or the QP (I suspect it's not).
     [:settings {:optional true} [:maybe [:map-of {:decode/normalize lib.schema.common/normalize-map-no-kebab-case} :keyword :any]]]

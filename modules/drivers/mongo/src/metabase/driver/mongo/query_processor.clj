@@ -311,14 +311,20 @@ function(bin) {
   [[_ index]]
   (driver-api/aggregation-name (:query *query*) (driver-api/aggregation-at-index *query* index *nesting-level*)))
 
+(mu/defn- field-ref-opts->fully-qualified-source-alias :- :string
+  [opts :- :map]
+  (str/join \.
+            (concat (get opts driver-api/qp.add.nfc-path)
+                    [(get opts driver-api/qp.add.source-alias)])))
+
 (defmethod ->lvalue :field
-  [[_ id-or-name {:keys [join-alias]  :as opts} :as field]]
+  [[_ id-or-name {:keys [join-alias] :as opts} :as field]]
   (if (integer? id-or-name)
     (or (find-mapped-field-name field)
         (->lvalue (assoc (driver-api/field (driver-api/metadata-provider) id-or-name)
-                         ::source-alias (get opts driver-api/qp.add.source-alias)
+                         ::source-alias (field-ref-opts->fully-qualified-source-alias opts)
                          ::join-field (get-join-alias join-alias))))
-    (scope-with-join-field (name id-or-name) (get-join-alias join-alias) (get opts driver-api/qp.add.source-alias))))
+    (scope-with-join-field (name id-or-name) (get-join-alias join-alias) (field-ref-opts->fully-qualified-source-alias opts))))
 
 (defn- add-start-of-week-offset [expr offset]
   (cond
@@ -437,7 +443,7 @@ function(bin) {
 (defmethod ->rvalue :field
   [[_ id-or-name {:keys [temporal-unit join-alias] :as opts} :as field]]
   (let [join-field (get-join-alias join-alias)
-        source-alias (get opts driver-api/qp.add.source-alias)]
+        source-alias (field-ref-opts->fully-qualified-source-alias opts)]
     (cond-> (if (integer? id-or-name)
               (if-let [mapped (find-mapped-field-name field)]
                 (str \$ mapped)
@@ -1723,11 +1729,11 @@ function(bin) {
     (HACK-update-aliases (assoc m :alias (driver-api/qp.add.alias m)))
 
     [:field id-or-name (opts :guard (every-pred map?
-                                                #(not= (:name %) (driver-api/qp.add.source-alias %))))]
+                                                #(not= (:name %) (field-ref-opts->fully-qualified-source-alias %))))]
     (let [id-or-name' (if (string? id-or-name)
-                        (driver-api/qp.add.source-alias opts)
+                        (field-ref-opts->fully-qualified-source-alias opts)
                         id-or-name)]
-      (HACK-update-aliases [:field id-or-name' (assoc opts :name (driver-api/qp.add.source-alias opts))]))
+      (HACK-update-aliases [:field id-or-name' (assoc opts :name (field-ref-opts->fully-qualified-source-alias opts))]))
 
     [:field id-or-name (opts :guard (every-pred map?
                                                 :join-alias
