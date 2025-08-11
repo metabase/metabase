@@ -100,9 +100,9 @@ function RunStatusSection({ transform }: RunStatusSectionProps) {
       );
     case "failed":
       return (
-        <Group gap="sm">
-          <Icon c="error" name="warning" />
-          <Box>
+        <Group gap={0}>
+          <Icon c="error" name="warning" mr="sm" />
+          <Box mr={errorInfo ? "xs" : "sm"}>
             {endTimeText
               ? t`Last run failed ${endTimeText}.`
               : t`Last run failed.`}
@@ -112,9 +112,9 @@ function RunStatusSection({ transform }: RunStatusSectionProps) {
       );
     case "timeout":
       return (
-        <Group gap="sm">
-          <Icon c="error" name="warning" />
-          <Box>
+        <Group gap={0}>
+          <Icon c="error" name="warning" mr="sm" />
+          <Box mr={errorInfo ? "xs" : "sm"}>
             {endTimeText
               ? t`Last run timed out ${endTimeText}.`
               : t`Last run timed out.`}
