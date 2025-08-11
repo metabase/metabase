@@ -1,19 +1,36 @@
 import cx from "classnames";
-import { type RouteComponentProps, withRouter } from "react-router";
 import { t } from "ttag";
 
+import { useDispatch, useSelector } from "metabase/lib/redux";
+import { updateQuestion } from "metabase/query_builder/actions";
+import { getQuestion } from "metabase/query_builder/selectors";
 import { Flex, Icon } from "metabase/ui";
 
 import S from "./ViewStyleToggle.module.css";
 
 type ViewStyleToggleProps = {
   className?: string;
-} & RouteComponentProps<unknown, unknown, unknown, { view: "list" | "table" }>;
+};
 
-export const ViewStyleToggle = withRouter((props: ViewStyleToggleProps) => {
-  const { location, router, className } = props;
+export const ViewStyleToggle = ({ className }: ViewStyleToggleProps) => {
+  const question = useSelector(getQuestion);
+  const dispatch = useDispatch();
 
-  const isShowingListView = location.search.includes("list");
+  const isShowingListView = question?.display() === "list";
+
+  const handleTableClick = () => {
+    if (question) {
+      const nextQuestion = question.setDisplay("table");
+      dispatch(updateQuestion(nextQuestion));
+    }
+  };
+
+  const handleListClick = () => {
+    if (question) {
+      const nextQuestion = question.setDisplay("list");
+      dispatch(updateQuestion(nextQuestion));
+    }
+  };
 
   return (
     <Flex className={cx(S.Well, className)}>
@@ -22,7 +39,7 @@ export const ViewStyleToggle = withRouter((props: ViewStyleToggleProps) => {
           [S.active]: !isShowingListView,
         })}
         aria-label={t`Switch to table view`}
-        onClick={() => router.push({ ...location, query: { view: "table" } })}
+        onClick={handleTableClick}
       >
         <Icon name="table2" tooltip={t`Switch to table view`} />
       </Flex>
@@ -31,10 +48,10 @@ export const ViewStyleToggle = withRouter((props: ViewStyleToggleProps) => {
           [S.active]: isShowingListView,
         })}
         aria-label={t`Switch to list view`}
-        onClick={() => router.push({ ...location, query: { view: "list" } })}
+        onClick={handleListClick}
       >
         <Icon name="list" tooltip={t`Switch to list view`} />
       </Flex>
     </Flex>
   );
-});
+};
