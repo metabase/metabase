@@ -68,7 +68,7 @@
         clean-workspace-id (str/replace (str workspace-id) #"[^a-zA-Z0-9]" "_")]
     (format "mb_iso_%s_%s_%s" instance-slug clean-workspace-id (name user-type))))
 
-(mr/def ::rule :string)
+(mr/def ::rule any?)
 (mr/def ::options :map)
 (mr/def ::steps
   [:cat :keyword ::options [:* [:alt [:schema [:ref ::steps]] ::rule]]])
@@ -139,7 +139,7 @@
   shadow this back to the regular error strategy with any other value to prevent finding the continue on error
   strategy."
   [steps :- ::steps f]
-  (letfn [(subtree? [rule] (vector? rule))
+  (letfn [(subtree? [rule] (and (vector? rule) (keyword? (first rule))))
           (error-strategy [stackframes]
             (when (seq stackframes)
               (if-some [strategy (-> stackframes peek :options :error-strategy)]

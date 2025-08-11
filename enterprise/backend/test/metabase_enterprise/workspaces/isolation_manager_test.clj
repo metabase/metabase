@@ -168,7 +168,25 @@
                [:tree :subgoal2] [:success "action3"]
                [:tree :subsubgoal] [:success "action4"]]
               :running]
-             results)))))
+             results))))
+  (testing "rules can be opaque"
+    (let [steps [:compute {}
+                 [+ 1]
+                 [+ 1]
+                 [:multiply {}
+                  [* 10] [* 5]]
+                 [:divide {:error-strategy ::isolation-manager/continue-on-error}
+                  [/ 2] [/ 0]]
+                 [:subtract
+                  {}
+                  [- 10]]]]
+      (let [result (atom 0)
+            results
+            (#'isolation-manager/evaluate-steps steps (fn [[op x]]
+                                                        (try
+                                                          [:success (swap! result op x)]
+                                                          (catch Exception _e
+                                                           [:error :failed]))))]
 
 
 (comment
