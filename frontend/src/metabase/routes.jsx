@@ -30,6 +30,7 @@ import { DashboardMoveModalConnected } from "metabase/dashboard/components/Dashb
 import { ArchiveDashboardModalConnected } from "metabase/dashboard/containers/ArchiveDashboardModal";
 import { AutomaticDashboardApp } from "metabase/dashboard/containers/AutomaticDashboardApp";
 import { DashboardApp } from "metabase/dashboard/containers/DashboardApp/DashboardApp";
+import { DetailView } from "metabase/detail-view";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
 import { Route } from "metabase/hoc/Title";
 import { HomePage } from "metabase/home/components/HomePage";
@@ -311,6 +312,13 @@ export const getRoutes = (store) => {
             <Redirect
               from=":dbId/schema/:schemaName"
               to="databases/:dbId/schema/:schemaName"
+            />
+          </Route>
+
+          <Route path="table">
+            <Route
+              path=":tableId/detail/:rowId(/:mode)"
+              component={DetailView}
             />
           </Route>
 

@@ -14,10 +14,12 @@ import {
   useRef,
   useState,
 } from "react";
+import { withRouter } from "react-router";
 import { useLatest } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { createMockMetadata } from "__support__/metadata";
 import { ErrorMessage } from "metabase/common/components/ErrorMessage";
 import ExplicitSize from "metabase/common/components/ExplicitSize";
 import ExternalLink from "metabase/common/components/ExternalLink";
@@ -60,6 +62,7 @@ import type {
   QueryClickActionsMode,
   VisualizationProps,
 } from "metabase/visualizations/types";
+import * as Lib from "metabase-lib";
 import type { ClickObject, OrderByDirection } from "metabase-lib/types";
 import type Question from "metabase-lib/v1/Question";
 import { isFK, isID, isPK } from "metabase-lib/v1/types/utils/isa";
@@ -92,6 +95,7 @@ const getColumnIndexFromPivotedColumnId = (pivotedColumnId: string) =>
   parseInt(pivotedColumnId.split(":")[1]);
 
 interface TableProps extends VisualizationProps {
+  location: Location;
   rowIndexToPkMap?: Record<number, string>;
   isPivoted?: boolean;
   hasMetadataPopovers?: boolean;
@@ -164,6 +168,9 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     getColumnSortDirection: getServerColumnSortDirection,
     onVisualizationClick,
     onUpdateVisualizationSettings,
+    card,
+    metadata,
+    location,
   }: TableProps,
   ref: Ref<HTMLDivElement>,
 ) {
@@ -205,7 +212,21 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     return getColumnSizing(cols, columnWidths);
   }, [cols, columnWidths]);
 
-  const onOpenObjectDetail = useObjectDetail(data);
+  const query = useMemo(() => {
+    const metadataProvider = Lib.metadataProvider(
+      card.dataset_query.database,
+      metadata ?? createMockMetadata(),
+    );
+    const query = Lib.fromLegacyQuery(
+      card.dataset_query.database,
+      metadataProvider,
+      card.dataset_query,
+    );
+
+    return query;
+  }, [card.dataset_query, metadata]);
+
+  const onOpenObjectDetail = useObjectDetail(data, query, location);
 
   const getIsCellClickable = useMemoizedCallback(
     (clicked: ClickObject) => {
@@ -810,6 +831,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
 
 export const TableInteractive = _.compose(
   withMantineTheme,
+  withRouter,
   ExplicitSize({
     refreshMode: "throttle",
   }),
