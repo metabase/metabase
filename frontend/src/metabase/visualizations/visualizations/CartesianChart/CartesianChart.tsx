@@ -123,6 +123,7 @@ function _CartesianChart(props: VisualizationProps) {
 
   const { onSelectSeries, onOpenQuestion, eventHandlers } = useChartEvents(
     chartRef,
+    containerRef,
     chartModel,
     timelineEventsModel,
     option,
