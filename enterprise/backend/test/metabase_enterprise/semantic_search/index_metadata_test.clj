@@ -135,7 +135,7 @@
   (let [pgvector         semantic.tu/db
         embedding-model1 semantic.tu/mock-embedding-model
         embedding-model2 (assoc semantic.tu/mock-embedding-model
-                                :model-name "mock-harder")
+                                :model-name "mock2")
         sut              semantic.index-metadata/find-best-index!
         ;; warning: the setup-scenario can currently only set up a happy path
         ;; other variables include:

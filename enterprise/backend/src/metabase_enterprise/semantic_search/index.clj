@@ -577,7 +577,8 @@
 (defn- filter-can-read-indexed-entity
   "Check permissions for indexed entities by resolving to their parent model / card"
   [indexed-entity-docs]
-  (let [model-index-ids (into #{} (map #(-> % :id (str/split #":") first parse-long) indexed-entity-docs))
+  (let [->model-index-id #(-> % :id search/indexed-entity-id->model-index-id)
+        model-index-ids (into #{} (map ->model-index-id indexed-entity-docs))
         model-indexes (when (seq model-index-ids)
                         (t2/select :model/ModelIndex :id [:in model-index-ids]))
         index-id->card (when (seq model-indexes)
@@ -589,7 +590,7 @@
                                         [(:id model-index) (get cards-by-id (:model_id model-index))])
                                       model-indexes))))]
     (filterv (fn [doc]
-               (when-let [model-index-id (-> doc :id (str/split #":") first parse-long)]
+               (when-let [model-index-id (-> doc ->model-index-id)]
                  (when-let [parent-card (get index-id->card model-index-id)]
                    (mi/can-read? parent-card))))
              indexed-entity-docs)))
@@ -707,7 +708,7 @@
 
 (defn- apply-collection-filter
   "Apply personal collection filtering with logging."
-  [docs search-context]
+  [search-context docs]
   (let [filter-type (:filter-items-in-personal-collection search-context)]
     (if (or (nil? filter-type) (= filter-type "all"))
       docs
@@ -742,9 +743,10 @@
             raw-results (into [] xform reducible)
             db-query-time-ms (u/since-ms db-timer)
 
-            filtered-results (-> raw-results
-                                 filter-read-permitted
-                                 (apply-collection-filter search-context))
+            filtered-results (->> raw-results
+                                  filter-read-permitted
+                                  (apply-collection-filter search-context)
+                                  (mapv search/collapse-id))
 
             total-time-ms (u/since-ms timer)]
 

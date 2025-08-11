@@ -507,3 +507,55 @@
           (testing "handles non-existent model indexes"
             (let [non-existent-docs [{:id "99999:123" :model "indexed-entity" :content "Non-existent"}]]
               (is (= [] (#'semantic.index/filter-can-read-indexed-entity non-existent-docs))))))))))
+
+(deftest indexed-entity-collapse-id-test
+  (mt/with-premium-features #{:semantic-search}
+    (mt/with-temp [:model/Collection {coll-id :id} {}
+                   :model/Card model-1 (assoc (mt/card-with-source-metadata-for-query
+                                               (mt/mbql-query products {:fields [$id $title]
+                                                                        :limit 1}))
+                                              :type "model"
+                                              :name "Fish Tank Setup"
+                                              :database_id (mt/id)
+                                              :collection_id coll-id)
+                   :model/ModelIndex model-index-1 {:model_id (:id model-1)
+                                                    :pk_ref (mt/$ids :products $id)
+                                                    :value_ref (mt/$ids :products $title)
+                                                    :schedule "0 0 0 * * *"
+                                                    :state "initial"
+                                                    :creator_id (mt/user->id :rasta)}]
+      (let [docs [{:model "dataset"
+                   :id (:id model-1)
+                   :name (:name model-1)
+                   :searchable_text (:name model-1)
+                   :created_at #t "2025-01-01T12:00:00Z"
+                   :creator_id (mt/user->id :crowberto)
+                   :archived false
+                   :collection_id coll-id
+                   :legacy_input {:id (:id model-1)
+                                  :model "dataset"
+                                  :dataset_query (:dataset_query model-1)}
+                   :metadata {:title (:name model-1)}}
+                  {:id (str (:id model-index-1) ":1234")
+                   :name "Antarctic wildlife"
+                   :model "indexed-entity"
+                   :archived false
+                   :collection_id coll-id
+                   :searchable_text "Antarctic wildlife"
+                   :legacy_input {:id (str (:id model-index-1) ":1234")
+                                  :name "Antarctic wildlife"
+                                  :model "indexed-entity"}
+                   :metadata {:title "Antarctic wildlife"}}]]
+        (with-open [_ (semantic.tu/open-temp-index!)]
+          (testing "indexed-entity can be inserted into index"
+            (is (=
+                 {"indexed-entity" 1, "dataset" 1}
+                 (semantic.tu/upsert-index! docs))))
+          (testing "indexed-entity has id collapsed"
+            (is (= {:id 1234
+                    :name "Antarctic wildlife"
+                    :model "indexed-entity"}
+                   (mt/as-admin
+                     (-> (semantic.tu/query-index {:search-string "Antarctic wildlife"})
+                         first
+                         (select-keys [:id :name :model])))))))))))
