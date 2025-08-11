@@ -39,6 +39,7 @@ export type TransformExecution = {
   trigger: TransformExecutionTrigger;
   start_time: string;
   end_time: string | null;
+  message: string | null;
 
   // hydrated
   transform?: Transform;

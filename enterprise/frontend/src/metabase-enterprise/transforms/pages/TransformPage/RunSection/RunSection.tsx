@@ -1,7 +1,9 @@
+import dayjs from "dayjs";
+import { Link } from "react-router";
 import { t } from "ttag";
 
 import { useMetadataToasts } from "metabase/metadata/hooks";
-import { Box, Divider, Group, Icon, Stack, Text } from "metabase/ui";
+import { Anchor, Box, Divider, Group, Icon, Stack } from "metabase/ui";
 import {
   useExecuteTransformMutation,
   useLazyGetTransformQuery,
@@ -10,10 +12,10 @@ import {
 import type { Transform, TransformTagId } from "metabase-types/api";
 
 import { RunButton } from "../../../components/RunButton";
+import { RunErrorInfo } from "../../../components/RunErrorInfo";
 import { SplitSection } from "../../../components/SplitSection";
 import { TagMultiSelect } from "../../../components/TagMultiSelect";
-
-import { getRunStatusInfo } from "./utils";
+import { getRunListUrl } from "../../../urls";
 
 type RunSectionProps = {
   transform: Transform;
@@ -46,14 +48,83 @@ type RunStatusSectionProps = {
 };
 
 function RunStatusSection({ transform }: RunStatusSectionProps) {
-  const { message, icon, color } = getRunStatusInfo(transform);
+  const { id, last_execution } = transform;
 
-  return (
-    <Group gap="sm">
-      <Icon name={icon} c={color} />
-      <Text>{message}</Text>
-    </Group>
+  if (last_execution == null) {
+    return (
+      <Group gap="sm">
+        <Icon c="text-secondary" name="calendar" />
+        <Box>{t`This transform hasn’t been run before.`}</Box>
+      </Group>
+    );
+  }
+
+  const { status, end_time, message } = last_execution;
+  const endTimeText =
+    end_time != null ? dayjs(end_time).local().fromNow() : null;
+
+  const runsInfo = (
+    <Anchor
+      key="link"
+      component={Link}
+      to={getRunListUrl({ transformIds: [id] })}
+    >
+      {t`See all runs`}
+    </Anchor>
   );
+
+  const errorInfo =
+    message != null ? (
+      <RunErrorInfo title={t`Transform run error`} error={message} />
+    ) : null;
+
+  switch (status) {
+    case "started":
+      return (
+        <Group gap="sm">
+          <Icon c="text-primary" name="sync" />
+          <Box>{t`Run in progress…`}</Box>
+        </Group>
+      );
+    case "succeeded":
+      return (
+        <Group gap="sm">
+          <Icon c="success" name="check_filled" />
+          <Box>
+            {endTimeText
+              ? t`Last ran ${endTimeText} successfully.`
+              : t`Last ran successfully.`}
+          </Box>
+          {runsInfo}
+        </Group>
+      );
+    case "failed":
+      return (
+        <Group gap="sm">
+          <Icon c="error" name="warning" />
+          <Box>
+            {endTimeText
+              ? t`Last run failed ${endTimeText}.`
+              : t`Last run failed.`}
+          </Box>
+          {errorInfo ?? runsInfo}
+        </Group>
+      );
+    case "timeout":
+      return (
+        <Group gap="sm">
+          <Icon c="error" name="warning" />
+          <Box>
+            {endTimeText
+              ? t`Last run timed out ${endTimeText}.`
+              : t`Last run timed out.`}
+          </Box>
+          {errorInfo ?? runsInfo}
+        </Group>
+      );
+    default:
+      return null;
+  }
 }
 
 type RunButtonSectionProps = {
