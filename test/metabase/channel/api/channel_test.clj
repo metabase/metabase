@@ -135,6 +135,16 @@
               (mt/user-http-request :crowberto :put 400 (str "channel/" (:id chn-1))
                                     (assoc chn-1 :type "metabase/metabase-test")))))))
 
+(deftest test-cahnnel-permission-test
+  (testing "only admin can test channel"
+    (mt/user-http-request :crowberto :post 200 "channel/test"
+                          (assoc default-test-channel :details {:return-type  "return-value"
+                                                                :return-value true})))
+  (testing "non-admin gets 403"
+    (mt/user-http-request :rasta :post 403 "channel/test"
+                          (assoc default-test-channel :details {:return-type  "return-value"
+                                                                :return-value true}))))
+
 (deftest test-channel-connection-test
   (testing "return 200 if channel connects successfully"
     (is (= {:ok true}

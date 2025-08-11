@@ -213,28 +213,29 @@
                                             :auth-info   {:username "qnkhuat"
                                                           :password "wrongpassword"}})))))))
 
-(deftest ^:parallel can-connect-request-body-auth-test
-  (with-server [url [(make-route :post "/user"
-                                 (fn [x]
-                                   (if (= "SECRET_TOKEN" (get-in x [:body :token]))
-                                     {:status 200
-                                      :body   "Hello, world!"}
-                                     {:status 401
-                                      :body   "Unauthorized"})))]]
-    (testing "connect successfully with request-body auth"
-      (is (true? (can-connect? {:url         (str url "/user")
-                                :method      "post"
-                                :auth-method "request-body"
-                                :auth-info   {:token "SECRET_TOKEN"}}))))
-    (testing "fail to connect with request-body auth"
-      (is (= {:request-status 401
-              :request-body   "Unauthorized"}
-             (exception-data (can-connect? {:url         (str url "/user")
-                                            :method      "post"
-                                            :auth-method "request-body"
-                                            :auth-info   {:token "WRONG_TOKEN"}})))))))
+(deftest can-connect-request-body-auth-test
+  (mt/with-temporary-setting-values [http-channel-allow-localhost true]
+    (with-server [url [(make-route :post "/user"
+                                   (fn [x]
+                                     (if (= "SECRET_TOKEN" (get-in x [:body :token]))
+                                       {:status 200
+                                        :body   "Hello, world!"}
+                                       {:status 401
+                                        :body   "Unauthorized"})))]]
+      (testing "connect successfully with request-body auth"
+        (is (true? (can-connect? {:url         (str url "/user")
+                                  :method      "post"
+                                  :auth-method "request-body"
+                                  :auth-info   {:token "SECRET_TOKEN"}}))))
+      (testing "fail to connect with request-body auth"
+        (is (= {:request-status 401
+                :request-body   "Unauthorized"}
+               (exception-data (can-connect? {:url         (str url "/user")
+                                              :method      "post"
+                                              :auth-method "request-body"
+                                              :auth-info   {:token "WRONG_TOKEN"}}))))))))
 
-(deftest ^:parallel can-connect?-errors-test
+(deftest can-connect?-errors-test
   (testing "throws an appriopriate errors if details are invalid"
     (testing "invalid url"
       (is (= {:errors {:url [(deferred-tru "value must be a valid URL.")]}}
@@ -249,23 +250,24 @@
       (is (=? {:errors {:xyz ["disallowed key"]}}
               (exception-data (can-connect? {:xyz "hello world"})))))
 
-    (with-server [url [get-400]]
-      (is (= {:request-body   "Bad request"
-              :request-status 400}
-             (exception-data (can-connect? {:url         (str url (:path get-400))
-                                            :method      "get"
-                                            :auth-method "none"})))))
-
-    (with-server [url [(make-route :get "/test_http_channel_400"
-                                   (fn [_]
-                                     {:status 400
-                                      :body   {:message "too bad"}}))]]
-      (testing "attempt to json parse the response body if it's a string"
-        (is (= {:request-body   {"message" "too bad"}
+    (mt/with-temporary-setting-values [http-channel-allow-localhost true]
+      (with-server [url [get-400]]
+        (is (= {:request-body   "Bad request"
                 :request-status 400}
                (exception-data (can-connect? {:url         (str url (:path get-400))
                                               :method      "get"
-                                              :auth-method "none"}))))))))
+                                              :auth-method "none"})))))
+
+      (with-server [url [(make-route :get "/test_http_channel_400"
+                                     (fn [_]
+                                       {:status 400
+                                        :body   {:message "too bad"}}))]]
+        (testing "attempt to json parse the response body if it's a string"
+          (is (= {:request-body   {"message" "too bad"}
+                  :request-status 400}
+                 (exception-data (can-connect? {:url         (str url (:path get-400))
+                                                :method      "get"
+                                                :auth-method "none"})))))))))
 
 (deftest ^:parallel send!-test
   (testing "basic send"
@@ -322,29 +324,30 @@
              (first @requests))))))
 
 (deftest alert-http-channel-e2e-test
-  (let [received-message (atom nil)
-        receive-route    (make-route :post "/test_http_channel"
-                                     (fn [res]
-                                       (reset! received-message res)
-                                       {:status 200}))]
-    (with-server [url [receive-route]]
-      (mt/with-temp [:model/Channel      {chn-id :id}  {:type    :channel/http
-                                                        :details {:url         (str url (:path receive-route))
-                                                                  :auth-method "none"}}]
-        (notification.tu/with-card-notification
-          [notification {:card     {:dataset_query (mt/mbql-query checkins {:aggregation [:count]})}
-                         :handlers [{:channel_type :channel/http
-                                     :channel_id chn-id}]}]
-          (notification/send-notification! (t2/select-one :model/Notification (:id notification)) :notification/sync? true)
-          (is (=? {:body {:type               "alert"
-                          :alert_id           (-> notification :payload :id)
-                          :alert_creator_id   (mt/malli=? int?)
-                          :alert_creator_name (t2/select-one-fn :common_name :model/User (:creator_id notification))
-                          :data               {:type          "question"
-                                               :question_id   (-> notification :payload :card_id)
-                                               :question_name (-> notification :payload :card :name)
-                                               :question_url  (mt/malli=? [:fn #(str/ends-with? % (-> notification :payload :card_id str))])
-                                               :visualization (mt/malli=? [:fn #(str/starts-with? % "data:image/png;base64")])
-                                               :raw_data      {:cols ["count"] :rows [[1000]]}}
-                          :sent_at            (mt/malli=? :any)}}
-                  @received-message)))))))
+  (mt/with-temporary-setting-values [http-channel-allow-localhost true]
+    (let [received-message (atom nil)
+          receive-route    (make-route :post "/test_http_channel"
+                                       (fn [res]
+                                         (reset! received-message res)
+                                         {:status 200}))]
+      (with-server [url [receive-route]]
+        (mt/with-temp [:model/Channel      {chn-id :id}  {:type    :channel/http
+                                                          :details {:url         (str url (:path receive-route))
+                                                                    :auth-method "none"}}]
+          (notification.tu/with-card-notification
+            [notification {:card     {:dataset_query (mt/mbql-query checkins {:aggregation [:count]})}
+                           :handlers [{:channel_type :channel/http
+                                       :channel_id chn-id}]}]
+            (notification/send-notification! (t2/select-one :model/Notification (:id notification)) :notification/sync? true)
+            (is (=? {:body {:type               "alert"
+                            :alert_id           (-> notification :payload :id)
+                            :alert_creator_id   (mt/malli=? int?)
+                            :alert_creator_name (t2/select-one-fn :common_name :model/User (:creator_id notification))
+                            :data               {:type          "question"
+                                                 :question_id   (-> notification :payload :card_id)
+                                                 :question_name (-> notification :payload :card :name)
+                                                 :question_url  (mt/malli=? [:fn #(str/ends-with? % (-> notification :payload :card_id str))])
+                                                 :visualization (mt/malli=? [:fn #(str/starts-with? % "data:image/png;base64")])
+                                                 :raw_data      {:cols ["count"] :rows [[1000]]}}
+                            :sent_at            (mt/malli=? :any)}}
+                    @received-message))))))))
