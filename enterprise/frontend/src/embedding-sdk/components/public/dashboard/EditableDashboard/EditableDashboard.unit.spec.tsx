@@ -120,22 +120,13 @@ describe("EditableDashboard", () => {
     ).toBeInTheDocument();
 
     // Default `entityTypes` should be `["model", "table"]`
-    // Data picker makes two calls: model count and data sources
-    const dataPickerDataCalls = fetchMock.calls("path:/api/search");
+    // EmbeddingDataPicker makes a call to `/api/search` with limit=0 to decide if SimpleDataPicker should be used
+    // then SimpleDataPicker makes a call to `/api/search` to fetch the data
+    const dataPickerDataCalls = fetchMock.callHistory.calls("path:/api/search");
     expect(dataPickerDataCalls).toHaveLength(2);
-
-    // Should make a call to count the data sources (tables and models)
-    const countDataSourceCall = dataPickerDataCalls.filter(
-      ([url]) => url.includes("models=dataset") && url.includes("models=table"),
-    );
-    expect(countDataSourceCall).toHaveLength(1);
-
-    // Should make a call to count models
-    const countModelCall = dataPickerDataCalls.filter(
-      ([url]) =>
-        url.includes("models=dataset") && !url.includes("models=table"),
-    );
-    expect(countModelCall).toHaveLength(1);
+    const dataPickerDataCallUrl = dataPickerDataCalls[1].url;
+    expect(dataPickerDataCallUrl).toContain("models=dataset");
+    expect(dataPickerDataCallUrl).toContain("models=table");
   });
 
   it("should allow to go back to the dashboard after seeing the query builder", async () => {
@@ -196,9 +187,12 @@ describe("EditableDashboard", () => {
       await screen.findByRole("button", { name: "Pick your starting data" }),
     ).toBeInTheDocument();
 
-    const dataPickerDataCalls = fetchMock.calls("path:/api/search");
-    expect(dataPickerDataCalls).toHaveLength(1);
-    const [[dataPickerDataCallUrl]] = dataPickerDataCalls;
+    // Default `entityTypes` should be `["model", "table"]`
+    // EmbeddingDataPicker makes a call to `/api/search` with limit=0 to decide if SimpleDataPicker should be used
+    // then SimpleDataPicker makes a call to `/api/search` to fetch the data
+    const dataPickerDataCalls = fetchMock.callHistory.calls("path:/api/search");
+    expect(dataPickerDataCalls).toHaveLength(2);
+    const dataPickerDataCallUrl = dataPickerDataCalls[1].url;
     expect(dataPickerDataCallUrl).toContain("models=dataset");
     expect(dataPickerDataCallUrl).not.toContain("models=table");
   });
