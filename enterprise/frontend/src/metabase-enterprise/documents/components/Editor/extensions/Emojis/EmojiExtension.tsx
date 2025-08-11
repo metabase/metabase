@@ -2,7 +2,7 @@ import { type VirtualElement, computePosition } from "@floating-ui/dom";
 import Emoji, { gitHubEmojis } from "@tiptap/extension-emoji";
 import { ReactRenderer } from "@tiptap/react";
 
-import { EmojiList } from "./EmojiList";
+import { EmojiList, type EmojiListProps } from "./EmojiList";
 
 export const EmojiExtension = Emoji.configure({
   emojis: gitHubEmojis,
@@ -23,10 +23,10 @@ export const EmojiExtension = Emoji.configure({
     allowSpaces: false,
 
     render: () => {
-      let component: ReactRenderer | undefined;
+      let component: ReactRenderer<HTMLInputElement> | undefined;
 
-      function repositionComponent(clientRect: DOMRect | null) {
-        if (!component || !component.element) {
+      function repositionComponent(clientRect: DOMRect | null | undefined) {
+        if (!component || !component.element || !clientRect) {
           return;
         }
 
@@ -49,36 +49,43 @@ export const EmojiExtension = Emoji.configure({
 
       return {
         onStart: (props) => {
-          component = new ReactRenderer(EmojiList, {
-            props,
-            editor: props.editor,
-          });
+          component = new ReactRenderer<HTMLInputElement, EmojiListProps>(
+            EmojiList,
+            {
+              props,
+              editor: props.editor,
+            },
+          );
 
           document.body.appendChild(component.element);
-          repositionComponent(props.clientRect());
+          repositionComponent(props.clientRect?.());
         },
 
         onUpdate(props) {
-          component.updateProps(props);
-          repositionComponent(props.clientRect());
+          component?.updateProps(props);
+          repositionComponent(props.clientRect?.());
         },
 
         onKeyDown(props) {
           if (props.event.key === "Escape") {
-            document.body.removeChild(component.element);
-            component.destroy();
+            if (component) {
+              document.body.removeChild(component.element);
+              component.destroy();
 
-            return true;
+              return true;
+            }
           }
 
-          return component.ref?.onKeyDown(props);
+          return component?.ref?.onKeyDown(props);
         },
 
         onExit() {
-          if (document.body.contains(component.element)) {
-            document.body.removeChild(component.element);
+          if (component) {
+            if (document.body.contains(component.element)) {
+              document.body.removeChild(component.element);
+            }
+            component.destroy();
           }
-          component.destroy();
         },
       };
     },
