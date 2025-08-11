@@ -196,7 +196,12 @@ export function DetailView({
         </Group>
 
         {tableForeignKeys && tableForeignKeys.length > 0 && (
-          <Box flex="0 0 auto">
+          <Box
+            bg="var(--mb-color-background-light)"
+            flex="0 0 auto"
+            h="100%"
+            w={440}
+          >
             <Relationships />
           </Box>
         )}
