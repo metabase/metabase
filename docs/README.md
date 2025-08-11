@@ -34,7 +34,7 @@ With your data connected, get started asking questions, creating dashboards, and
 
 ### [A tour of Metabase](https://www.metabase.com/learn/metabase-basics/overview/tour-of-metabase)
 
-Metabase is a deep product with a lot of tools to simplify business intelligence, from embeddable charts and interactive dashboards, to GUI and SQL editors, to auditing and data sandboxing, and more.
+Metabase is a deep product with a lot of tools to simplify business intelligence, from embeddable charts and interactive dashboards, to GUI and SQL editors, to auditing and row and column security, and more.
 
 ## Documentation topics
 
@@ -127,7 +127,7 @@ Metabase's reference documentation.
 - [Model persistence](./data-modeling/model-persistence.md)
 - [Metrics](./data-modeling/metrics.md)
 - [Table metadata admin settings](./data-modeling/metadata-editing.md)
-- [Field types](./data-modeling/field-types.md)
+- [Field types](./data-modeling/semantic-types.md)
 - [Formatting defaults](./data-modeling/formatting.md)
 - [Working with JSON](./data-modeling/json-unfolding.md)
 - [Segments](./data-modeling/segments.md)
@@ -181,8 +181,8 @@ Metabase's reference documentation.
 - [Data permissions](./permissions/data.md)
 - [Collection permissions](./permissions/collections.md)
 - [Application permissions](./permissions/application.md)
-- [Data sandboxes](./permissions/data-sandboxes.md)
-- [Data sandbox examples](./permissions/data-sandbox-examples.md)
+- [Row and column security](./permissions/row-and-column-security.md)
+- [Row and column security examples](./permissions/row-and-column-security-examples.md)
 - [Connection impersonation](./permissions/impersonation.md)
 - [Database routing](./permissions/database-routing.md)
 - [Snippets folder permissions](./permissions/snippets.md)

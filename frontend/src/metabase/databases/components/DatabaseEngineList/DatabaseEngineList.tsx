@@ -28,6 +28,7 @@ import S from "./DatabaseEngineList.module.css";
 type DatabaseEngineListProps =
   | {
       isSetupStep: true;
+      showSampleDatabase?: boolean;
       engineKey?: string;
       onSelect: (engineKey?: string) => void;
     }
@@ -35,12 +36,14 @@ type DatabaseEngineListProps =
       isSetupStep?: never;
       engineKey?: never;
       onSelect: (engineKey: string) => void;
+      showSampleDatabase?: never;
     };
 
 export const DatabaseEngineList = ({
   onSelect,
   isSetupStep,
   engineKey,
+  showSampleDatabase = false,
 }: DatabaseEngineListProps) => {
   const combobox = useCombobox();
   const [search, setSearch] = useState("");
@@ -56,7 +59,7 @@ export const DatabaseEngineList = ({
 
   const databasesList = isExpanded ? searchResults : elevatedEngines;
 
-  const shouldShowSampleDatabaseIndicator = isSetupStep && !engineKey;
+  const sampleDatabaseIndicatorVisible = showSampleDatabase && !engineKey;
 
   const clearSelectedItem = useCallback(() => {
     if (isSetupStep) {
@@ -106,7 +109,7 @@ export const DatabaseEngineList = ({
 
         {databasesList.length > 0 ? (
           <ScrollArea type="hover" scrollHideDelay={300}>
-            {shouldShowSampleDatabaseIndicator && <SampleDatabaseIndicator />}
+            {sampleDatabaseIndicatorVisible && <SampleDatabaseIndicator />}
             <Combobox.Options>
               {databasesList.map(({ value: engineKey, name }) => {
                 return (

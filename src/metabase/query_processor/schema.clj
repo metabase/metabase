@@ -17,6 +17,7 @@
 (mr/def ::metadata :any)
 
 (mr/def ::rf
+  "Schema for a reducing function."
   [:function
    [:=> [:cat]           :any]
    [:=> [:cat :any]      :any]
@@ -30,6 +31,10 @@
    [:=>
     [:cat ::metadata]
     ::rf]])
+
+(mr/def ::xform
+  "Schema for a transducer (function that takes a reducing function and returns another reducing function)."
+  [:=> [:cat ::rf] ::rf])
 
 (mr/def ::qp
   [:=>

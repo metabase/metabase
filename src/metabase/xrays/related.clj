@@ -5,7 +5,6 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
-   [metabase.legacy-mbql.util :as mbql.u]
    [metabase.models.interface :as mi]
    [metabase.query-processor.util :as qp.util]
    [metabase.util.malli.registry :as mr]
@@ -26,17 +25,12 @@
            qp.util/normalize-token)]]
    [:* :any]])
 
-(defn- strip-idents [clause]
-  (cond-> clause
-    (mbql.u/is-clause? :field clause) (update 2 dissoc :ident)))
-
 (defn- collect-context-bearing-forms
   [form]
   (let [form (mbql.normalize/normalize-fragment [:query :filter] form)]
     (into #{}
           (comp (filter (mr/validator ContextBearingForm))
-                (map #(update % 0 qp.util/normalize-token))
-                (map strip-idents))
+                (map #(update % 0 qp.util/normalize-token)))
           (tree-seq sequential? identity form))))
 
 (defmulti definition

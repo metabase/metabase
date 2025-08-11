@@ -239,7 +239,9 @@
                                                    (meta/field-metadata :checkins :venue-id)
                                                    (meta/field-metadata :venues :id))])
                                 (lib/with-join-fields :all))))
-        columns (lib/filterable-columns query)
+        columns (into []
+                      (lib.field.util/add-source-and-desired-aliases-xform query)
+                      (lib/filterable-columns query))
         pk-operators [:= :!= :> :< :between :>= :<= :is-null :not-null]
         temporal-operators [:!= := :< :> :between :is-null :not-null]
         coordinate-operators [:= :!= :inside :> :< :between :>= :<=]
@@ -259,10 +261,7 @@
             "Venues__PRICE"
             "CATEGORIES__via__CATEGORY_ID__via__Venues__ID"
             "CATEGORIES__via__CATEGORY_ID__via__Venues__NAME"]
-           (into []
-                 (comp (lib.field.util/add-source-and-desired-aliases-xform query)
-                       (map :lib/desired-column-alias))
-                 columns)))
+           (map :lib/desired-column-alias columns)))
     (testing "Operators are attached to proper columns"
       (is (=? {"ID" pk-operators,
                "NAME" text-operators,
@@ -475,14 +474,14 @@
          :display-name   "Last Online Time"
          :base-type      :type/Time
          :effective-type :type/Time
-         :semantic-type  :type/Time))
+         :semantic-type  :type/UpdatedTime))
 
 (def ^:private is-active
   (assoc (meta/field-metadata :orders :discount)
          :display-name   "Is Active"
          :base-type      :type/Boolean
          :effective-type :type/Boolean
-         :semantic-type  :type/Boolean))
+         :semantic-type  nil))
 
 (defn- check-display-names [tests]
   (let [metadata-provider (lib/composed-metadata-provider

@@ -226,7 +226,7 @@ export function useTableLoader(path: TreePath) {
     tables.isFetching,
   ]);
 
-  return { tree };
+  return { tree, reload: load };
 }
 
 /**

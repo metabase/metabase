@@ -7,7 +7,9 @@
    [metabase.lib.join :as lib.join]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
+   [metabase.lib.metadata.result-metadata :as lib.metadata.result-metadata]
    [metabase.lib.schema :as lib.schema]
+   [metabase.lib.stage :as lib.stage]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
@@ -258,28 +260,28 @@
               :name "ID"
               :lib/source :source/previous-stage
               :effective-type :type/BigInteger
-              :lib/desired-column-alias "ID"
+              :lib/source-column-alias "ID"
               :display-name "ID"}
              {:base-type :type/Text
               :semantic-type :type/Name
               :name "NAME"
               :lib/source :source/previous-stage
               :effective-type :type/Text
-              :lib/desired-column-alias "NAME"
+              :lib/source-column-alias "NAME"
               :display-name "Name"}
              {:base-type :type/BigInteger
               :semantic-type :type/PK
               :name "ID"
               :lib/source :source/previous-stage
               :effective-type :type/BigInteger
-              :lib/desired-column-alias "Cat__ID"
+              :lib/source-column-alias "Cat__ID"
               :display-name "ID"}
              {:base-type :type/Text
               :semantic-type :type/Name
               :name "NAME"
               :lib/source :source/previous-stage
               :effective-type :type/Text
-              :lib/desired-column-alias "Cat__NAME"
+              :lib/source-column-alias "Cat__NAME"
               :display-name "Name"}]
             (lib/visible-columns query)))))
 
@@ -803,7 +805,7 @@
 
 (deftest ^:parallel return-correct-deduplicated-names-test
   (testing "Deduplicated names from previous stage should be preserved even when excluding certain fields"
-    ;; e.g. a field called CREATED_AT_2 in the previous stage should continue to be called that. See ;; see
+    ;; e.g. a field called CREATED_AT_2 in the previous stage should continue to be called that. See
     ;; https://metaboat.slack.com/archives/C0645JP1W81/p1750961267171999
     (let [query (-> (lib/query
                      meta/metadata-provider
@@ -818,16 +820,169 @@
                     lib/append-stage
                     lib/append-stage
                     (as-> query (lib/remove-field query -1 (first (lib/fieldable-columns query -1)))))]
-      (is (=? [{:name                     "CREATED_AT_2"
-                :lib/original-name        "CREATED_AT"
-                :lib/deduplicated-name    "CREATED_AT_2"
-                :lib/source-column-alias  "CREATED_AT_2"
-                :lib/desired-column-alias "CREATED_AT_2"
-                :display-name             "Created At: Month"}
-               {:name                     "count"
-                :lib/original-name        "count"
-                :lib/deduplicated-name    "count"
-                :lib/source-column-alias  "count"
-                :lib/desired-column-alias "count"
-                :display-name             "Count"}]
-              (lib/returned-columns query))))))
+      (testing "Stage 1 of 3"
+        (is (=? [{:name                     "CREATED_AT"
+                  :lib/original-name        "CREATED_AT"
+                  :lib/deduplicated-name    "CREATED_AT"
+                  :lib/source-column-alias  "CREATED_AT"
+                  :lib/desired-column-alias "CREATED_AT"
+                  :display-name             "Created At: Year"}
+                 {:name                     "CREATED_AT"
+                  :lib/original-name        "CREATED_AT"
+                  :lib/deduplicated-name    "CREATED_AT_2"
+                  :lib/source-column-alias  "CREATED_AT"
+                  :lib/desired-column-alias "CREATED_AT_2"
+                  :display-name             "Created At: Month"}
+                 {:name                     "count"
+                  :lib/original-name        "count"
+                  :lib/deduplicated-name    "count"
+                  :lib/source-column-alias  "count"
+                  :lib/desired-column-alias "count"
+                  :display-name             "Count"}]
+                (lib/returned-columns query 0))))
+      (testing "Stage 2 of 3"
+        (is (=? [{:name                     "CREATED_AT"
+                  :lib/original-name        "CREATED_AT"
+                  :lib/deduplicated-name    "CREATED_AT"
+                  :lib/source-column-alias  "CREATED_AT"
+                  :lib/desired-column-alias "CREATED_AT"
+                  :display-name             "Created At: Year"}
+                 {:name                     "CREATED_AT"
+                  :lib/original-name        "CREATED_AT"
+                  :lib/deduplicated-name    "CREATED_AT_2"
+                  :lib/source-column-alias  "CREATED_AT_2"
+                  :lib/desired-column-alias "CREATED_AT_2"
+                  :display-name             "Created At: Month"}
+                 {:name                     "count"
+                  :lib/original-name        "count"
+                  :lib/deduplicated-name    "count"
+                  :lib/source-column-alias  "count"
+                  :lib/desired-column-alias "count"
+                  :display-name             "Count"}]
+                (lib/returned-columns query 1))))
+      (testing "Stage 3 of 3"
+        (is (=? [{:name                     "CREATED_AT_2" ; name should get deduplicated in the last stage for historical reasons
+                  :lib/original-name        "CREATED_AT"
+                  :lib/deduplicated-name    "CREATED_AT_2"
+                  :lib/source-column-alias  "CREATED_AT_2"
+                  :lib/desired-column-alias "CREATED_AT_2"
+                  :display-name             "Created At: Month"}
+                 {:name                     "count"
+                  :lib/original-name        "count"
+                  :lib/deduplicated-name    "count"
+                  :lib/source-column-alias  "count"
+                  :lib/desired-column-alias "count"
+                  :display-name             "Count"}]
+                (lib/returned-columns query)))))))
+
+(deftest ^:parallel test-QUE-1607
+  (testing "QUE-1607"
+    (is (#'lib.stage/add-cols-from-join-duplicate?
+         {:base-type                    :type/Integer
+          :display-name                 "Sum of Quantity"
+          :effective-type               :type/Integer
+          :lib/deduplicated-name        "sum"
+          :lib/desired-column-alias     "Orders__sum"
+          :lib/original-join-alias      "Orders"
+          :lib/original-name            "sum"
+          :lib/source                   :source/joins
+          :lib/source-column-alias      "sum"
+          :lib/source-uuid              "4d059464-4190-40ae-bc4e-717ff016e157"
+          :lib/type                     :metadata/column
+          :metabase.lib.join/join-alias "Orders"
+          :name                         "sum"
+          :semantic-type                :type/Quantity
+          :source-alias                 "Orders"}
+         {:base-type                    :type/Integer
+          :display-name                 "Sum"
+          :effective-type               :type/Integer
+          :lib/original-join-alias      "Orders"
+          :lib/source                   :source/joins
+          :lib/source-uuid              "91b22976-279d-4052-b269-e4cd83a6683b"
+          :lib/type                     :metadata/column
+          :metabase.lib.join/join-alias "Orders"
+          :name                         "sum"}))))
+
+(deftest ^:parallel add-cols-from-join-duplicate?-test
+  (let [join-col     {:active                       true
+                      :base-type                    :type/Text
+                      :caveats                      nil
+                      :coercion-strategy            nil
+                      :custom-position              0
+                      :database-is-auto-increment   false
+                      :database-position            2
+                      :database-required            false
+                      :database-type                "CHARACTER VARYING"
+                      :description                  nil
+                      :display-name                 "Orders → Title"
+                      :effective-type               :type/Text,
+                      :fingerprint-version          5
+                      :fk-target-field-id           nil
+                      :has-field-values             :auto-list
+                      :id                           24504
+                      :name                         "TITLE"
+                      :nfc-path                     nil
+                      :parent-id                    nil
+                      :points-of-interest           nil
+                      :position                     2
+                      :preview-display              true
+                      :semantic-type                :type/Title
+                      :settings                     nil
+                      :source-alias                 "Orders"
+                      :table-id                     24050
+                      :visibility-type              :normal
+                      :lib/breakout?                false
+                      :lib/original-display-name    "Title"
+                      :lib/original-join-alias      "Orders"
+                      :lib/original-name            "TITLE"
+                      :lib/source                   :source/joins
+                      :lib/source-column-alias      "TITLE"
+                      :lib/type                     :metadata/column
+                      :metabase.lib.join/join-alias "Orders"}
+        existing-col {:base-type                    :type/Integer
+                      :display-name                 "Orders → Sum"
+                      :name                         "sum"
+                      :lib/source                   :source/previous-stage
+                      :lib/type                     :metadata/column
+                      :metabase.lib.join/join-alias "Orders"}]
+    (is (not (#'lib.stage/add-cols-from-join-duplicate? join-col existing-col)))))
+
+(deftest ^:parallel sane-desired-column-aliases-test
+  (testing "Do not 'double-dip' a desired-column alias and do `__via__` twice"
+    (let [query (lib/query
+                 meta/metadata-provider
+                 {:lib/type :mbql/query
+                  :database (meta/id)
+                  :stages   [{:lib/type     :mbql.stage/mbql
+                              :aggregation  [[:count {}]]
+                              :source-table (meta/id :orders)
+                              :breakout     [[:field
+                                              {:source-field (meta/id :orders :product-id)}
+                                              (meta/id :products :category)]]}
+                             {:lib/type :mbql.stage/mbql
+                              :fields   [[:field
+                                          ;; having `:source-field` here AGAIN is probably not necessary since the join
+                                          ;; was actually already done in the previous stage; at any rate we should
+                                          ;; still return correct info.
+                                          {:source-field (meta/id :orders :product-id)}
+                                          (meta/id :products :category)]
+                                         [:field {:base-type :type/Integer} "count"]]
+                              :filters  [[:>
+                                          {}
+                                          [:field {:base-type :type/Integer} "count"]
+                                          0]]}]})]
+      (binding [lib.metadata.calculation/*display-name-style* :long]
+        (doseq [f [#'lib/returned-columns
+                   #'lib.metadata.result-metadata/returned-columns]]
+          (testing (pr-str f)
+            (is (=? [{:name                     "CATEGORY"
+                      :display-name             "Product → Category"
+                      :lib/source-column-alias  "PRODUCTS__via__PRODUCT_ID__CATEGORY"
+                      :lib/desired-column-alias "PRODUCTS__via__PRODUCT_ID__CATEGORY"
+                      :fk-field-id              (symbol "nil #_\"key is not present.\"")
+                      :lib/original-fk-field-id (meta/id :orders :product-id)}
+                     {:name                     "count"
+                      :display-name             "Count"
+                      :lib/source-column-alias  "count"
+                      :lib/desired-column-alias "count"}]
+                    (f query)))))))))

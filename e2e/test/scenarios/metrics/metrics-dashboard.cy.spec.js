@@ -163,7 +163,6 @@ describe("scenarios > metrics > dashboard", () => {
           "eq",
           `/dashboard/${ORDERS_DASHBOARD_ID}-orders-in-a-dashboard`,
         );
-        cy.location("hash").should("eq", `#add=${metricId}&edit`);
         cy.findByTestId("scalar-value").should("have.text", "18,760");
 
         cy.log("Assert we can save the dashboard with the metric");

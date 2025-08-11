@@ -46,7 +46,9 @@ export interface LoadQuestionHookResult {
    */
   replaceQuestion(question: Question): void;
 
-  navigateToNewCard(params: NavigateToNewCardParams): Promise<void>;
+  navigateToNewCard:
+    | ((params: NavigateToNewCardParams) => Promise<void>)
+    | null;
 }
 
 export function useLoadQuestion({

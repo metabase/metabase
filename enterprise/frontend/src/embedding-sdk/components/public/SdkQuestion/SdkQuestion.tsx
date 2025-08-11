@@ -29,8 +29,8 @@ import {
   type SdkQuestionProviderProps,
 } from "embedding-sdk/components/private/SdkQuestion/context";
 import {
-  InteractiveQuestionDefaultView,
-  type InteractiveQuestionDefaultViewProps,
+  SdkQuestionDefaultView,
+  type SdkQuestionDefaultViewProps,
 } from "embedding-sdk/components/private/SdkQuestionDefaultView";
 
 import type { SdkQuestionIdProps } from "./types";
@@ -39,7 +39,7 @@ import type { SdkQuestionIdProps } from "./types";
  * @interface
  * @expand
  */
-export type BaseInteractiveQuestionProps = SdkQuestionIdProps & {
+export type BaseSdkQuestionProps = SdkQuestionIdProps & {
   /**
    * The children of the MetabaseProvider component.s
    */
@@ -65,53 +65,71 @@ export type BaseInteractiveQuestionProps = SdkQuestionIdProps & {
  * @category InteractiveQuestion
  */
 export type DrillThroughQuestionProps = Omit<
-  BaseInteractiveQuestionProps,
+  BaseSdkQuestionProps,
   "questionId"
 > &
-  InteractiveQuestionDefaultViewProps;
+  SdkQuestionDefaultViewProps;
 
 /**
  * @interface
  * @expand
  * @category InteractiveQuestion
  */
-export type InteractiveQuestionProps = BaseInteractiveQuestionProps &
-  InteractiveQuestionDefaultViewProps;
+export type SdkQuestionProps = SdkQuestionProviderProps &
+  SdkQuestionDefaultViewProps &
+  Omit<SdkQuestionProviderProps, "componentPlugins"> & {
+    plugins?: SdkQuestionProviderProps["componentPlugins"];
+  };
 
-export const _InteractiveQuestion = ({
+export const _SdkQuestion = ({
   questionId,
-  withResetButton = true,
-  title,
+  options,
+  deserializedCard,
   plugins,
+  onNavigateBack,
+  children = null,
+  onBeforeSave,
+  onSave,
+  onRun,
+  isSaveEnabled = true,
+  entityTypes,
+  targetCollection,
+  initialSqlParameters,
+  withDownloads = false,
+  targetDashboardId,
+  backToDashboard,
+  getClickActionMode,
+  navigateToNewCard,
+
   height,
   width,
   className,
   style,
-  children = null,
-  onBeforeSave,
-  onSave,
-  entityTypes,
-  isSaveEnabled,
-  targetCollection,
+  title,
+  withResetButton = true,
   withChartTypeSelector = true,
-  withDownloads = false,
-  initialSqlParameters,
-  onRun,
-}: InteractiveQuestionProps): JSX.Element | null => (
+}: SdkQuestionProps): JSX.Element | null => (
   <SdkQuestionProvider
     questionId={questionId}
+    options={options}
+    deserializedCard={deserializedCard}
     componentPlugins={plugins}
+    onNavigateBack={onNavigateBack}
     onBeforeSave={onBeforeSave}
     onSave={onSave}
-    entityTypes={entityTypes}
+    onRun={onRun}
     isSaveEnabled={isSaveEnabled}
+    entityTypes={entityTypes}
     targetCollection={targetCollection}
     initialSqlParameters={initialSqlParameters}
     withDownloads={withDownloads}
-    onRun={onRun}
+    targetDashboardId={targetDashboardId}
+    backToDashboard={backToDashboard}
+    getClickActionMode={getClickActionMode}
+    navigateToNewCard={navigateToNewCard}
   >
     {children ?? (
-      <InteractiveQuestionDefaultView
+      <SdkQuestionDefaultView
         height={height}
         width={width}
         className={className}
@@ -132,8 +150,8 @@ export const _InteractiveQuestion = ({
  * @param props
  */
 const SdkQuestion = withPublicComponentWrapper(
-  _InteractiveQuestion,
-) as typeof _InteractiveQuestion & {
+  _SdkQuestion,
+) as typeof _SdkQuestion & {
   BackButton: typeof BackButton;
   Filter: typeof Filter;
   FilterDropdown: typeof FilterDropdown;

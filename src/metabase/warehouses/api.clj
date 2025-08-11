@@ -256,23 +256,28 @@
   (let [filter-on-router-database-id (when (some->> router-database-id
                                                     (perms/user-has-permission-for-database? api/*current-user-id* :perms/manage-database :yes))
                                        router-database-id)
-        dbs (t2/select :model/Database {:order-by [:%lower.name :%lower.engine]
-                                        :where [:and
-                                                (when-not include-analytics?
-                                                  [:= :is_audit false])
-                                                (if filter-on-router-database-id
-                                                  [:= :router_database_id router-database-id]
-                                                  [:= :router_database_id nil])]})
         filter-by-data-access? (not (or include-editable-data-model?
                                         exclude-uneditable-details?
-                                        filter-on-router-database-id))]
+                                        filter-on-router-database-id))
+        user-info {:user-id api/*current-user-id* :is-superuser? (mi/superuser?)}
+        permission-mapping {:perms/create-queries :query-builder}
+        base-where [:and
+                    (when-not include-analytics?
+                      [:= :is_audit false])
+                    (if filter-on-router-database-id
+                      [:= :router_database_id router-database-id]
+                      [:= :router_database_id nil])]
+        where-clause (if filter-by-data-access?
+                       [:and base-where (mi/visible-filter-clause :model/Database :id user-info permission-mapping)]
+                       base-where)
+        dbs (t2/select :model/Database {:order-by [:%lower.name :%lower.engine]
+                                        :where where-clause})]
     (cond-> (add-native-perms-info dbs)
       include-tables?              add-tables
       true                         add-can-upload-to-dbs
       true                         (t2/hydrate :router_user_attribute)
       include-editable-data-model? filter-databases-by-data-model-perms
       exclude-uneditable-details?  (#(filter (some-fn :is_attached_dwh mi/can-write?) %))
-      filter-by-data-access?       (#(filter mi/can-read? %))
       include-saved-questions-db?  (add-saved-questions-virtual-database :include-tables? include-saved-questions-tables?)
       ;; Perms checks for uploadable DBs are handled by exclude-uneditable-details? (see below)
       include-only-uploadable?     (#(filter uploadable-db? %)))))

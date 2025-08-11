@@ -220,7 +220,7 @@
       (is (=? [{:name        "NAME"
                 :id          (meta/id :categories :name)
                 :fk-field-id (meta/id :venues :category-id)
-                :lib/source  :source/table-defaults}]
+                :lib/source  :source/implicitly-joinable}]
               (lib/returned-columns query -1 query))))))
 
 (deftest ^:parallel col-info-explicit-join-test
@@ -236,7 +236,6 @@
                                  :joins        [{:lib/type    :mbql/join
                                                  :lib/options {:lib/uuid "490a5abb-54c2-4e62-9196-7e9e99e8d291"}
                                                  :alias       "CATEGORIES__via__CATEGORY_ID"
-                                                 :ident       "dJbULfDmVAyTENMCo7q1q"
                                                  :conditions  [[:=
                                                                 {:lib/uuid "cc5f6c43-1acb-49c2-aeb5-e3ff9c70541f"}
                                                                 (lib.tu/field-clause :venues :category-id)
@@ -249,8 +248,7 @@
                  :database     (meta/id)
                  :lib/metadata meta/metadata-provider}
           metadata (lib/returned-columns query)]
-      (is (=? [(merge (-> (m/filter-vals some? (meta/field-metadata :categories :name))
-                          (dissoc :ident))
+      (is (=? [(merge (m/filter-vals some? (meta/field-metadata :categories :name))
                       {:display-name         "Name"
                        :lib/source           :source/joins
                        ::lib.join/join-alias "CATEGORIES__via__CATEGORY_ID"})]
@@ -266,14 +264,13 @@
   (let [metadata-provider (lib.tu/metadata-provider-with-cards-for-queries
                            meta/metadata-provider
                            [(lib.tu.macros/mbql-query checkins
-                              {:aggregation  [[:count]]
-                               :breakout     [$user-id]})])
+                              {:aggregation [[:count]]
+                               :breakout    [$user-id]})])
         join              {:lib/type    :mbql/join
                            :lib/options {:lib/uuid "d7ebb6bd-e7ac-411a-9d09-d8b18329ad46"}
                            :stages      [{:lib/type    :mbql.stage/mbql
                                           :source-card 1}]
                            :alias       "checkins_by_user"
-                           :ident       "t3Xq_zGttWJ3xht4ROnWv"
                            :conditions  [[:=
                                           {:lib/uuid "1cb124b0-757f-4717-b8ee-9cf12a7c3f62"}
                                           [:field
@@ -291,16 +288,16 @@
                            :stages       [{:lib/type     :mbql.stage/mbql
                                            :source-table (meta/id :checkins)
                                            :joins        [join]}]}]
-    (is (=? [{:id                       (meta/id :checkins :user-id)
-              :name                     "USER_ID"
-              :lib/source               :source/joins
-              :lib/source-column-alias  "USER_ID"
-              :lib/desired-column-alias "checkins_by_user__USER_ID"}
-             {:name                     "count"
-              :lib/source               :source/joins
-              :lib/source-column-alias  "count"
-              :lib/desired-column-alias "checkins_by_user__count"}]
-            (lib/returned-columns query -1 join)))
+    (is (=? [{:id                      (meta/id :checkins :user-id)
+              :name                    "USER_ID"
+              :lib/source              :source/joins
+              :lib/source-column-alias "USER_ID"
+              ::lib.join/join-alias    "checkins_by_user"}
+             {:name                    "count"
+              :lib/source              :source/joins
+              :lib/source-column-alias "count"
+              ::lib.join/join-alias    "checkins_by_user"}]
+            (lib.join/join-returned-columns-relative-to-parent-stage query -1 join)))
     (is (= (lib.metadata/card metadata-provider 1)
            (lib.join/joined-thing query join)))))
 
@@ -385,7 +382,6 @@
                                     :joins        [{:lib/type    :mbql/join
                                                     :lib/options {:lib/uuid "10ee93eb-6749-41ed-a48b-93c66427eb49"}
                                                     :alias       join-alias
-                                                    :ident       "AMaECnokvRTFgTVDTbrKG"
                                                     :fields      [[:field
                                                                    {:join-alias join-alias
                                                                     :lib/uuid   "87ad4bf3-a00b-462a-b9cc-3dde44945d66"}
@@ -706,15 +702,16 @@
                 (lib/join-condition-lhs-columns query nil nil rhs)))))))
 
 (deftest ^:parallel join-condition-lhs-columns-expression-test
-  (testing "Should not include expressions in LHS columns"
+  (testing "Should include expressions in LHS columns"
     (let [query (-> (lib.tu/venues-query)
                     (lib/expression "double-price" (lib/* (meta/field-metadata :venues :price) 2)))]
-      (is (=? [{:lib/desired-column-alias "ID"}
-               {:lib/desired-column-alias "CATEGORY_ID"}
-               {:lib/desired-column-alias "NAME"}
-               {:lib/desired-column-alias "LATITUDE"}
-               {:lib/desired-column-alias "LONGITUDE"}
-               {:lib/desired-column-alias "PRICE"}]
+      (is (=? [{:name "ID"}
+               {:name "CATEGORY_ID"}
+               {:name "NAME"}
+               {:name "LATITUDE"}
+               {:name "LONGITUDE"}
+               {:name "PRICE"}
+               {:name "double-price"}]
               (lib/join-condition-lhs-columns query nil nil nil))))))
 
 (deftest ^:parallel join-condition-lhs-columns-with-previous-join-test
@@ -724,15 +721,16 @@
                            (lib/with-join-alias "User")
                            lib/ref)]]
         (testing (str "rhs = " (pr-str rhs))
-          (is (=? [{:lib/desired-column-alias "ID"}
-                   {:lib/desired-column-alias "Cat__ID"}
-                   {:lib/desired-column-alias "CATEGORY_ID"}
-                   {:lib/desired-column-alias "NAME"}
-                   {:lib/desired-column-alias "LATITUDE"}
-                   {:lib/desired-column-alias "LONGITUDE"}
-                   {:lib/desired-column-alias "PRICE"}
-                   {:lib/desired-column-alias "Cat__NAME"}]
-                  (lib/join-condition-lhs-columns query nil nil rhs)))
+          (is (=? [[nil   "ID"]
+                   ["Cat" "ID"]
+                   [nil   "CATEGORY_ID"]
+                   [nil   "NAME"]
+                   [nil   "LATITUDE"]
+                   [nil   "LONGITUDE"]
+                   [nil   "PRICE"]
+                   ["Cat" "NAME"]]
+                  (map (juxt :metabase.lib.join/join-alias :lib/source-column-alias)
+                       (lib/join-condition-lhs-columns query nil nil rhs))))
           (is (= (lib/join-condition-lhs-columns query nil nil rhs)
                  (lib/join-condition-lhs-columns query -1 nil nil rhs))))))))
 
@@ -751,18 +749,22 @@
                :alias    "C3"}
               join-3))
       (are [join expected] (= expected
-                              (map :lib/desired-column-alias (lib/join-condition-lhs-columns query join nil nil)))
+                              (map (fn [col]
+                                     (if-let [join-alias (::lib.join/join-alias col)]
+                                       [join-alias (:lib/source-column-alias col)]
+                                       (:lib/source-column-alias col)))
+                                   (lib/join-condition-lhs-columns query join nil nil)))
         nil
-        ["ID" "Cat__ID" "C2__ID" "C3__ID" "CATEGORY_ID" "NAME" "LATITUDE" "LONGITUDE" "PRICE" "Cat__NAME" "C2__NAME" "C3__NAME"]
+        ["ID" ["Cat" "ID"] ["C2" "ID"] ["C3" "ID"] "CATEGORY_ID" "NAME" "LATITUDE" "LONGITUDE" "PRICE" ["Cat" "NAME"] ["C2" "NAME"] ["C3" "NAME"]]
 
         join-1
         ["ID" "CATEGORY_ID" "NAME" "LATITUDE" "LONGITUDE" "PRICE"]
 
         join-2
-        ["ID" "Cat__ID" "CATEGORY_ID" "NAME" "LATITUDE" "LONGITUDE" "PRICE" "Cat__NAME"]
+        ["ID" ["Cat" "ID"] "CATEGORY_ID" "NAME" "LATITUDE" "LONGITUDE" "PRICE" ["Cat" "NAME"]]
 
         join-3
-        ["ID" "Cat__ID" "C2__ID" "CATEGORY_ID" "NAME" "LATITUDE" "LONGITUDE" "PRICE" "Cat__NAME" "C2__NAME"]))))
+        ["ID" ["Cat" "ID"] ["C2" "ID"] "CATEGORY_ID" "NAME" "LATITUDE" "LONGITUDE" "PRICE" ["Cat" "NAME"] ["C2" "NAME"]]))))
 
 (def ^:private join-for-query-with-join
   (first (lib/joins (lib.tu/query-with-join))))
@@ -812,7 +814,31 @@
                    (lib/join-condition-lhs-columns query
                                                    join-for-query-with-join
                                                    (lib/+ (meta/field-metadata :venues :id) 1)
-                                                   (lib/+ (meta/field-metadata :categories :id) 1))))))))
+                                                   (lib/+ (meta/field-metadata :categories :id) 1)))))))
+  (testing "should mark custom columns from LHS columns as selected"
+    (let [query             (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                                (lib/expression "expr" (lib/* (meta/field-metadata :orders :total) 2)))
+          products          (meta/table-metadata :products)
+          lhs-columns       (lib/join-condition-lhs-columns query products nil nil)
+          lhs-custom-column (m/find-first (comp #{"expr"} :name) lhs-columns)
+          rhs-columns       (lib/join-condition-rhs-columns query products nil nil)
+          rhs-product-price (m/find-first (comp #{"PRICE"} :name) rhs-columns)
+          query             (lib/join query (lib/join-clause products [(lib/= lhs-custom-column rhs-product-price)]))]
+      (is (=? [{:name "ID"}
+               {:name "USER_ID"}
+               {:name "PRODUCT_ID"}
+               {:name "SUBTOTAL"}
+               {:name "TAX"}
+               {:name "TOTAL"}
+               {:name "DISCOUNT"}
+               {:name "CREATED_AT"}
+               {:name "QUANTITY"}
+               {:name "expr", :selected true}]
+              (map (partial lib/display-info query)
+                   (lib/join-condition-lhs-columns query
+                                                   (first (lib/joins query))
+                                                   (lib/ref lhs-custom-column)
+                                                   (lib/ref rhs-product-price))))))))
 
 (deftest ^:parallel join-condition-rhs-columns-join-table-test
   (testing "RHS columns when building a join against a Table"
@@ -1076,10 +1102,6 @@
           contact-f-organization-id 130
           account-card-id 1000
           contact-card-id 1100
-
-          account-f-ident              (lib/random-ident)
-          contact-f-organization-ident (lib/random-ident)
-
           metadata-provider (lib.tu/mock-metadata-provider
                              {:database meta/database
                               :tables   [{:id   account-tab-id
@@ -1090,24 +1112,20 @@
                                           :name "contact"}]
                               :fields   [{:id account-f-id
                                           :name "account__id"
-                                          :ident account-f-ident
                                           :table-id account-tab-id
                                           :base-type :type/Integer}
                                          {:id organization-f-id
                                           :name "organization__id"
-                                          :ident (lib/random-ident)
                                           :table-id organization-tab-id
                                           :base-type :type/Integer}
                                          {:id organization-f-account-id
                                           :name "organization__account_id"
-                                          :ident (lib/random-ident)
                                           :table-id organization-tab-id
                                           :base-type :type/Integer
                                           :semantic-type :type/FK
                                           :fk-target-field-id account-f-id}
                                          {:id contact-f-organization-id
                                           :name "contact__organization_id"
-                                          :ident contact-f-organization-ident
                                           :table-id contact-tab-id
                                           :base-type :type/Integer
                                           :semantic-type :type/FK
@@ -1119,7 +1137,6 @@
                                         :database-id (:id meta/database)
                                         :result-metadata [{:id account-f-id
                                                            :name "account__id"
-                                                           :ident account-f-ident
                                                            :table-id account-tab-id
                                                            :base-type :type/Integer}]
                                         :dataset-query {:lib/type :mbql.stage/mbql
@@ -1132,7 +1149,6 @@
                                         :database-id (:id meta/database)
                                         :result-metadata [{:id contact-f-organization-id
                                                            :name "contact__organization_id"
-                                                           :ident contact-f-organization-ident
                                                            :table-id contact-tab-id
                                                            :base-type :type/Integer
                                                            :semantic-type :type/FK
@@ -1718,9 +1734,9 @@
                     :fields   [$title $category]}))
           join (first (lib/joins query -1))]
       (binding [lib.metadata.calculation/*display-name-style* :long]
-        (is (= [["TITLE" "Orders__TITLE" "TITLE" "Orders → Title"]
-                ["sum"   "Orders__sum"   "sum"   "Orders → Sum of Quantity"]]
-               (map (juxt :name :lib/desired-column-alias :lib/source-column-alias :display-name)
+        (is (= [["TITLE" "Orders" "TITLE" "Orders → Title"]
+                ["sum"   "Orders" "sum"   "Orders → Sum of Quantity"]]
+               (map (juxt :name :metabase.lib.join/join-alias :lib/source-column-alias :display-name)
                     (lib.join/join-fields-to-add-to-parent-stage
                      query -1 join {:include-remaps? true}))))))))
 
@@ -1765,9 +1781,9 @@
                     :fields   [$title $category]}))
           join (first (lib/joins query -1))]
       (binding [lib.metadata.calculation/*display-name-style* :long]
-        (is (= [["PRODUCT_ID" "Orders__PRODUCT_ID" "PRODUCT_ID" "Orders → Product ID"]
-                ["TITLE"      "Orders__TITLE"      "TITLE"      "Orders → Title"]]
-               (map (juxt :name :lib/desired-column-alias :lib/source-column-alias :display-name)
+        (is (= [["PRODUCT_ID" "Orders" "PRODUCT_ID" "Orders → Product ID"]
+                ["TITLE"      "Orders" "TITLE"      "Orders → Title"]]
+               (map (juxt :name ::lib.join/join-alias :lib/source-column-alias :display-name)
                     (lib.join/join-fields-to-add-to-parent-stage
                      query -1 join {:include-remaps? true}))))))))
 
@@ -1795,7 +1811,7 @@
                                    :fields       :all}]
                     :filter      [:= &Products.products.category "Doohickey"]
                     :aggregation [[:distinct &Products.products.id]]
-                    :breakout    [&Products.!month.created-at]})
+                    :breakout    [&Products.!month.products.created-at]})
           mp     (lib.tu/mock-metadata-provider
                   meta/metadata-provider
                   {:cards [{:id 1, :name "18512#1", :dataset-query q1}
@@ -1836,3 +1852,59 @@
                  cols
                  {:display-name "18512#2"}
                  {:display-name "Products → Created At: Month"}))))))))
+
+(deftest ^:parallel do-not-incorrectly-propagate-temporal-unit-in-returned-columns-test
+  (testing "temporal unit should not be incorrectly propagated by join-fields-to-add-to-parent-stage in the refs in :fields are not bucketed (QUE-1621)"
+    (doseq [fields [[[:field (meta/id :people :birth-date) {:join-alias "Q2"}]
+                     [:field "count" {:base-type :type/Integer, :join-alias "Q2"}]]
+                    :all]]
+      (testing (str "\nfields =\n" (u/pprint-to-str fields))
+        (let [query (lib/query
+                     meta/metadata-provider
+                     (lib.tu.macros/mbql-query people
+                       {:source-query {:source-table $$people
+                                       :breakout     [!month.created-at]
+                                       :aggregation  [[:count]]}
+                        :joins        [{:source-query {:source-table $$people
+                                                       :breakout     [!month.birth-date]
+                                                       :aggregation  [[:count]]}
+                                        :alias        "Q2"
+                                        :condition    [:= !month.created-at !month.&Q2.birth-date]
+                                        :fields       fields}]}))]
+          ;; these SHOULD NOT include `:metabase.lib.field/temporal-unit`, so don't change this to `=?`.
+          (is (=? [{:lib/source                       :source/joins
+                    :lib/source-column-alias          "BIRTH_DATE"
+                    ::lib.join/join-alias             "Q2"
+                    :lib/original-name                "BIRTH_DATE"
+                    :metabase.lib.field/temporal-unit (symbol "nil #_\"key is not present.\"")
+                    :inherited-temporal-unit          :month}
+                   {:lib/source                       :source/joins
+                    :lib/source-column-alias          "count"
+                    ::lib.join/join-alias             "Q2"
+                    :metabase.lib.field/temporal-unit (symbol "nil #_\"key is not present.\"")
+                    :lib/original-name                "count"}]
+                  (lib.join/join-fields-to-add-to-parent-stage query -1 (first (lib/joins query -1)) {}))))))))
+
+(deftest ^:parallel do-not-incorrectly-propagate-temporal-unit-in-returned-columns-test-2
+  (testing "DO propagate temporal unit if it is included in join :fields"
+    (let [query (lib/query
+                 meta/metadata-provider
+
+                 (lib.tu.macros/mbql-query people
+                   {:source-query {:source-table $$people
+                                   :breakout     [!month.created-at]
+                                   :aggregation  [[:count]]}
+                    :joins        [{:source-query {:source-table $$people
+                                                   :breakout     [!year.birth-date]
+                                                   :aggregation  [[:count]]}
+                                    :alias        "Q2"
+                                    :condition    [:= !month.created-at !month.&Q2.birth-date]
+                                    :fields       [[:field (meta/id :people :birth-date) {:join-alias "Q2", :temporal-unit :month}]
+                                                   [:field "count" {:base-type :type/Integer, :join-alias "Q2"}]]}]}))]
+      (is (=? [{::lib.join/join-alias             "Q2"
+                :lib/source-column-alias          "BIRTH_DATE"
+                :metabase.lib.field/temporal-unit :month
+                :inherited-temporal-unit          :year}
+               {::lib.join/join-alias    "Q2"
+                :lib/source-column-alias "count"}]
+              (lib.join/join-fields-to-add-to-parent-stage query -1 (first (lib/joins query -1)) {}))))))

@@ -6,13 +6,12 @@
    [clojure.test :refer [deftest is]]
    [malli.core :as mc]
    [malli.transform :as mtx]
-   [medley.core :as m]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as metadata.protocols]
    [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.test-metadata :as meta]
-   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
 
@@ -28,12 +27,20 @@
   "Schema for the mock metadata passed in to [[mock-metadata-provider]]."
   [:map
    {:closed true}
-   [:database {:optional true} [:maybe (with-optional-lib-type ::lib.schema.metadata/database :metadata/database)]]
-   [:tables   {:optional true} [:maybe [:sequential (with-optional-lib-type ::lib.schema.metadata/table   :metadata/table)]]]
-   [:fields   {:optional true} [:maybe [:sequential (with-optional-lib-type ::lib.schema.metadata/column  :metadata/column)]]]
-   [:cards    {:optional true} [:maybe [:sequential (with-optional-lib-type ::lib.schema.metadata/card    :metadata/card)]]]
-   [:segments {:optional true} [:maybe [:sequential (with-optional-lib-type ::lib.schema.metadata/segment :metadata/segment)]]]
-   [:settings {:optional true} [:maybe [:map-of :keyword any?]]]])
+   [:database {:optional true}
+    [:maybe (with-optional-lib-type ::lib.schema.metadata/database :metadata/database)]]
+   [:tables {:optional true}
+    [:maybe [:sequential (with-optional-lib-type ::lib.schema.metadata/table :metadata/table)]]]
+   [:fields {:optional true}
+    [:maybe [:sequential (with-optional-lib-type ::lib.schema.metadata/column :metadata/column)]]]
+   [:cards {:optional true}
+    [:maybe [:sequential (with-optional-lib-type ::lib.schema.metadata/card :metadata/card)]]]
+   [:segments {:optional true}
+    [:maybe [:sequential (with-optional-lib-type ::lib.schema.metadata/segment :metadata/segment)]]]
+   [:native-query-snippets {:optional true}
+    [:maybe [:sequential (with-optional-lib-type ::lib.schema.metadata/native-query-snippet :metadata/native-query-snippet)]]]
+   [:settings {:optional true}
+    [:maybe [:map-of :keyword any?]]]])
 
 (defn- mock-database [metadata]
   (some-> (:database metadata)
@@ -42,10 +49,11 @@
 
 (defn- mock-metadatas [metadata metadata-type ids]
   (let [k   (case metadata-type
-              :metadata/table   :tables
-              :metadata/column  :fields
-              :metadata/card    :cards
-              :metadata/segment :segments)
+              :metadata/table                :tables
+              :metadata/column               :fields
+              :metadata/card                 :cards
+              :metadata/segment              :segments
+              :metadata/native-query-snippet :native-query-snippets)
         ids (set ids)]
     (into []
           (keep (fn [object]
@@ -159,8 +167,6 @@
   ([m]
    (-> m
        ->mock-metadata
-       (m/update-existing :fields #(for [field %]
-                                     (u/assoc-default field :ident (u/generate-nano-id))))
        ->MockMetadataProvider))
 
   ([parent-metadata-provider mock-metadata]
@@ -176,3 +182,12 @@
             {:fields [time-field]})
            (mock-metadata-provider
             {:fields [time-field]})))))
+
+(deftest ^:parallel native-query-snippet-test
+  (let [snippet {:id      1
+                 :name    "expensive-venues"
+                 :content "venues WHERE price = 4"}
+        mp       (mock-metadata-provider
+                  {:native-query-snippets [snippet]})]
+    (is (= (assoc snippet :lib/type :metadata/native-query-snippet)
+           (lib.metadata/native-query-snippet mp 1)))))

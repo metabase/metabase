@@ -1,5 +1,4 @@
 import dayjs from "dayjs";
-import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 import { match } from "ts-pattern";
 
 import { useRegisterMetabotContextProvider } from "metabase/metabot";
@@ -150,9 +149,7 @@ function processTimelineEvents(timelineEvents: TimelineEvent[]) {
     .map((event) => ({
       name: event.name,
       description: event.description ?? "",
-      timestamp: moment.isMoment(event.timestamp)
-        ? event.timestamp.toISOString()
-        : dayjs.tz(dayjs(event.timestamp)).format(),
+      timestamp: dayjs.tz(dayjs(event.timestamp)).format(),
     }))
     .sort((a, b) => a.timestamp.localeCompare(b.timestamp))
     .slice(0, 20);

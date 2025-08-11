@@ -221,7 +221,40 @@
                        (embed.settings/enable-embedding-sdk)
                        (embed.settings/embedding-app-origins-sdk))]
           (is (= "60" (get headers "Access-Control-Max-Age"))
-              "Expected Access-Control-Max-Age header to be set to 60"))))))
+              "Expected Access-Control-Max-Age header to be set to 60")))))
+  (testing "CORS should be enabled when enable-embedding-simple is true"
+    (mt/with-temporary-setting-values [enable-embedding-simple true
+                                       enable-embedding-sdk false]
+      (let [headers (mw.security/access-control-headers "https://example.com"
+                                                        (or (embed.settings/enable-embedding-sdk)
+                                                            (embed.settings/enable-embedding-simple))
+                                                        "https://example.com")]
+        (is (= "https://example.com"
+               (get headers "Access-Control-Allow-Origin"))
+            "CORS should work when enable-embedding-simple is true even if enable-embedding-sdk is false"))))
+  (testing "CORS should be enabled when both enable-embedding-simple and enable-embedding-sdk are true"
+    (mt/with-premium-features #{:embedding-sdk}
+      (mt/with-temporary-setting-values [enable-embedding-simple true
+                                         enable-embedding-sdk true
+                                         embedding-app-origins-sdk "https://example.com"]
+        (let [headers (mw.security/access-control-headers "https://example.com"
+                                                          (or (embed.settings/enable-embedding-sdk)
+                                                              (embed.settings/enable-embedding-simple))
+                                                          (embed.settings/embedding-app-origins-sdk))]
+          (is (= "https://example.com"
+                 (get headers "Access-Control-Allow-Origin"))
+              "CORS should work when both embedding options are enabled")))))
+  (testing "CORS should be disabled when both enable-embedding-simple and enable-embedding-sdk are false"
+    (mt/with-temporary-setting-values [enable-embedding-simple false
+                                       enable-embedding-sdk false
+                                       embedding-app-origins-sdk "https://example.com"]
+      (let [headers (mw.security/access-control-headers "https://example.com"
+                                                        (or (embed.settings/enable-embedding-sdk)
+                                                            (embed.settings/enable-embedding-simple))
+                                                        (embed.settings/embedding-app-origins-sdk))]
+        (is (= nil
+               (get headers "Access-Control-Allow-Origin"))
+            "CORS should be disabled when both embedding options are disabled")))))
 
 (deftest ^:parallel allowed-iframe-hosts-test
   (testing "The allowed iframe hosts parse in the expected way."
@@ -374,3 +407,67 @@
                                      (respond {:status 200 :headers {"Response-Header" "ok"} :body "ok"})))
                   response (wrapped-handler {:headers {"origin" request-origin} :uri request-uri} identity identity)]
               [enable-embedding-sdk embedding-app-origins-sdk request-origin request-uri (-> response :headers (get "Access-Control-Allow-Origin"))])))))
+
+(deftest ^:parallel add-cors-headers-for-auth-sso-test
+  (testing "Should add CORS headers for /auth/sso endpoint with 402 status (embedding disabled errors)"
+    (let [wrapped-handler (mw.security/add-security-headers
+                           (fn [_request respond _raise]
+                             (respond {:status 402
+                                       :headers {"Content-Type" "application/json"}
+                                       :body "{\"status\": \"error-embedding-sdk-disabled\"}"})))
+          response (wrapped-handler {:uri "/auth/sso" :headers {"origin" "https://example.com"}}
+                                    identity
+                                    identity)]
+      (is (= "*" (get-in response [:headers "Access-Control-Allow-Origin"]))
+          "Should set Access-Control-Allow-Origin to * for /auth/sso with 402 status")
+      (is (= "*" (get-in response [:headers "Access-Control-Allow-Headers"]))
+          "Should set Access-Control-Allow-Headers to * for /auth/sso with 402 status")
+      (is (= "*" (get-in response [:headers "Access-Control-Allow-Methods"]))
+          "Should set Access-Control-Allow-Methods to * for /auth/sso with 402 status")))
+
+  (testing "Should add CORS headers for /auth/sso endpoint with 400 status (client errors)"
+    (let [wrapped-handler (mw.security/add-security-headers
+                           (fn [_request respond _raise]
+                             (respond {:status 400
+                                       :headers {"Content-Type" "application/json"}
+                                       :body "{\"status\": \"error-sso-disabled\"}"})))
+          response (wrapped-handler {:uri "/auth/sso" :headers {"origin" "https://example.com"}}
+                                    identity
+                                    identity)]
+      (is (= "*" (get-in response [:headers "Access-Control-Allow-Origin"]))
+          "Should set Access-Control-Allow-Origin to * for /auth/sso with 400 status")
+      (is (= "*" (get-in response [:headers "Access-Control-Allow-Headers"]))
+          "Should set Access-Control-Allow-Headers to * for /auth/sso with 400 status")
+      (is (= "*" (get-in response [:headers "Access-Control-Allow-Methods"]))
+          "Should set Access-Control-Allow-Methods to * for /auth/sso with 400 status")))
+
+  (testing "Should add CORS headers for /auth/sso OPTIONS requests (preflight)"
+    (let [wrapped-handler (mw.security/add-security-headers
+                           (fn [_request respond _raise]
+                             (respond {:status 200
+                                       :headers {}
+                                       :body ""})))
+          response (wrapped-handler {:request-method :options
+                                     :uri "/auth/sso"
+                                     :headers {"origin" "https://example.com"}}
+                                    identity
+                                    identity)]
+      (is (= "*" (get-in response [:headers "Access-Control-Allow-Origin"]))
+          "Should set Access-Control-Allow-Origin to * for OPTIONS /auth/sso")
+      (is (= "*" (get-in response [:headers "Access-Control-Allow-Headers"]))
+          "Should set Access-Control-Allow-Headers to * for OPTIONS /auth/sso")
+      (is (= "*" (get-in response [:headers "Access-Control-Allow-Methods"]))
+          "Should set Access-Control-Allow-Methods to * for OPTIONS /auth/sso")))
+
+  (testing "Should not add CORS headers for /auth/sso endpoint with other status codes"
+    (doseq [status [200 201 500 503]]
+      (let [wrapped-handler (mw.security/add-security-headers
+                             (fn [_request respond _raise]
+                               (respond {:status status
+                                         :headers {"Content-Type" "application/json"}
+                                         :body "{\"status\": \"ok\"}"})))
+            response (wrapped-handler {:uri "/auth/sso" :headers {"origin" "https://example.com"}}
+                                      identity
+                                      identity)]
+        (is (nil? (get-in response [:headers "Access-Control-Allow-Origin"]))
+            (format "Should not set CORS headers for /auth/sso with %d status" status))))))

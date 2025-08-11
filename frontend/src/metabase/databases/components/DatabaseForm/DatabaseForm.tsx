@@ -19,10 +19,11 @@ import {
   getValidationSchema,
   getVisibleFields,
 } from "../../utils/schema";
+import { DatabaseConnectionStringField } from "../DatabaseConnectionUri";
 import DatabaseDetailField from "../DatabaseDetailField";
 import { DatabaseEngineField } from "../DatabaseEngineField";
 import DatabaseEngineWarning from "../DatabaseEngineWarning";
-import DatabaseNameField from "../DatabaseNameField";
+import { DatabaseNameField } from "../DatabaseNameField";
 
 export type EngineFieldState = "default" | "hidden" | "disabled";
 
@@ -39,6 +40,10 @@ export interface DatabaseFormConfig {
   };
 }
 
+type ContinueWithoutDataComponent = (props: {
+  onCancel?: () => void;
+}) => JSX.Element;
+
 interface DatabaseFormProps {
   initialValues?: Partial<DatabaseData>;
   autofocusFieldName?: string;
@@ -47,6 +52,13 @@ interface DatabaseFormProps {
   onCancel?: () => void;
   setIsDirty?: (isDirty: boolean) => void;
   config?: DatabaseFormConfig;
+  location: "admin" | "setup" | "embedding_setup";
+  /**
+   * Whether to show the sample database indicator in the engine list and change the "I'll add my data later" button to "Continue with sample data"
+   */
+  showSampleDatabase?: boolean;
+  /** Slot to replace the button to continue without data/with only sample data */
+  ContinueWithoutDataSlot?: ContinueWithoutDataComponent;
 }
 
 export const DatabaseForm = ({
@@ -56,6 +68,9 @@ export const DatabaseForm = ({
   onCancel,
   onEngineChange,
   setIsDirty,
+  location,
+  showSampleDatabase = false,
+  ContinueWithoutDataSlot,
   config = {},
 }: DatabaseFormProps): JSX.Element => {
   const isAdvanced = config.isAdvanced || false;
@@ -110,6 +125,9 @@ export const DatabaseForm = ({
         onCancel={onCancel}
         setIsDirty={setIsDirty}
         config={config}
+        showSampleDatabase={showSampleDatabase}
+        ContinueWithoutDataSlot={ContinueWithoutDataSlot}
+        location={location}
       />
     </FormProvider>
   );
@@ -126,6 +144,9 @@ interface DatabaseFormBodyProps {
   onCancel?: () => void;
   setIsDirty?: (isDirty: boolean) => void;
   config: DatabaseFormConfig;
+  showSampleDatabase?: boolean;
+  ContinueWithoutDataSlot?: ContinueWithoutDataComponent;
+  location: "admin" | "setup" | "embedding_setup";
 }
 
 const DatabaseFormBody = ({
@@ -139,8 +160,11 @@ const DatabaseFormBody = ({
   onCancel,
   setIsDirty,
   config,
+  showSampleDatabase = false,
+  ContinueWithoutDataSlot,
+  location,
 }: DatabaseFormBodyProps): JSX.Element => {
-  const { values, dirty } = useFormikContext<DatabaseData>();
+  const { values, dirty, setValues } = useFormikContext<DatabaseData>();
 
   useEffect(() => {
     setIsDirty?.(dirty);
@@ -160,6 +184,7 @@ const DatabaseFormBody = ({
             isAdvanced={isAdvanced}
             onChange={onEngineChange}
             disabled={engineFieldState === "disabled"}
+            showSampleDatabase={showSampleDatabase}
           />
           <DatabaseEngineWarning
             engineKey={engineKey}
@@ -168,6 +193,11 @@ const DatabaseFormBody = ({
           />
         </>
       )}
+      <DatabaseConnectionStringField
+        engineKey={engineKey}
+        location={location}
+        setValues={setValues}
+      />
       {engine && (
         <DatabaseNameField
           engine={engine}
@@ -187,6 +217,8 @@ const DatabaseFormBody = ({
         isDirty={dirty}
         isAdvanced={isAdvanced}
         onCancel={onCancel}
+        showSampleDatabase={showSampleDatabase}
+        ContinueWithoutDataSlot={ContinueWithoutDataSlot}
       />
     </Form>
   );
@@ -196,12 +228,16 @@ interface DatabaseFormFooterProps {
   isAdvanced: boolean;
   isDirty: boolean;
   onCancel?: () => void;
+  showSampleDatabase?: boolean;
+  ContinueWithoutDataSlot?: ContinueWithoutDataComponent;
 }
 
 const DatabaseFormFooter = ({
   isAdvanced,
   isDirty,
   onCancel,
+  showSampleDatabase,
+  ContinueWithoutDataSlot,
 }: DatabaseFormFooterProps) => {
   const { values } = useFormikContext<DatabaseData>();
   const isNew = values.id == null;
@@ -253,11 +289,15 @@ const DatabaseFormFooter = ({
     );
   }
 
+  if (ContinueWithoutDataSlot) {
+    return <ContinueWithoutDataSlot onCancel={onCancel} />;
+  }
+
   // This check happens only during setup where we cannot fetch databases.
   // Unless someone explicitly set the environment variable MB_LOAD_SAMPLE_CONTENT
   // to false, we can assume that the instance loads with the Sample Database.
   // https://www.metabase.com/docs/latest/configuring-metabase/environment-variables#mb_load_sample_content
-  if (hasSampleDatabase !== false) {
+  if (hasSampleDatabase !== false && showSampleDatabase) {
     return (
       <>
         <Button variant="filled" mb="md" mt="lg" onClick={onCancel}>

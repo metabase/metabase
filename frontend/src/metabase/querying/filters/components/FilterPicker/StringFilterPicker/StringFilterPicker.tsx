@@ -17,6 +17,7 @@ import { COMBOBOX_PROPS, WIDTH } from "../constants";
 import type { FilterChangeOpts, FilterPickerWidgetProps } from "../types";
 
 export function StringFilterPicker({
+  autoFocus,
   query,
   stageIndex,
   column,
@@ -91,6 +92,7 @@ export function StringFilterPicker({
       </FilterPickerHeader>
       <div>
         <StringValueInput
+          autoFocus={autoFocus}
           query={query}
           stageIndex={stageIndex}
           column={column}
@@ -118,6 +120,7 @@ export function StringFilterPicker({
 }
 
 interface StringValueInputProps {
+  autoFocus: boolean;
   query: Lib.Query;
   stageIndex: number;
   column: Lib.ColumnMetadata;
@@ -127,6 +130,7 @@ interface StringValueInputProps {
 }
 
 function StringValueInput({
+  autoFocus,
   query,
   stageIndex,
   column,
@@ -143,7 +147,7 @@ function StringValueInput({
           column={column}
           values={values}
           comboboxProps={COMBOBOX_PROPS}
-          autoFocus
+          autoFocus={autoFocus}
           onChange={onChange}
         />
         <Box pt="md" />

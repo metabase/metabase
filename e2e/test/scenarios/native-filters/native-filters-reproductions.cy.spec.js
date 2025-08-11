@@ -33,12 +33,9 @@ describe("issue 9357", () => {
       );
 
       // Drag the firstparameter to last position
-      H.moveDnDKitElement(
-        cy.get("fieldset").findAllByRole("listitem").first(),
-        {
-          vertical: 50,
-        },
-      );
+      H.moveDnDKitElement(H.filterWidget().findAllByRole("listitem").first(), {
+        vertical: 50,
+      });
 
       // Ensure they're in the right order
       cy.findAllByText("Variable name").parent().as("variableField");
@@ -281,7 +278,7 @@ describe.skip("issue 13961", () => {
     cy.location("search").should("eq", "?category=Doohickey");
 
     // Remove default filter (category)
-    cy.get("fieldset .Icon-close").click();
+    H.filterWidget().findByRole("button").click();
 
     cy.icon("play").first().should("be.visible").as("rerunQuestion").click();
     cy.wait("@cardQuery");

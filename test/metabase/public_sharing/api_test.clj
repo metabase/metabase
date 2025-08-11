@@ -632,7 +632,7 @@
                     (is (= {:id 1 :name "Red Medicine"} ; price is hidden
                            (mt/user-http-request :crowberto :get 200 execute-path :parameters (json/encode {:id 1})))))
                   (testing "Update should not allow hidden fields to be updated"
-                    (is (= {:rows-updated [1]}
+                    (is (= {:rows-updated 1}
                            (mt/user-http-request :crowberto :post 200 execute-path {:parameters {"id" 1 "name" "Blueberries"}})))
                     (is (= "An error occurred."
                            (mt/user-http-request :crowberto :post 400 execute-path {:parameters {"id" 1 "name" "Blueberries" "price" 1234}})))))))))))))

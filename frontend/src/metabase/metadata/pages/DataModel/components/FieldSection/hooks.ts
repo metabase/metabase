@@ -3,11 +3,7 @@ import { useState } from "react";
 
 const BUTTONS_GAP = 16;
 
-export const useResponsiveButtons = ({
-  isPreviewOpen,
-}: {
-  isPreviewOpen: boolean;
-}) => {
+export const useResponsiveButtons = () => {
   const { ref: buttonsContainerRef, width: buttonsContainerWidth } =
     useElementSize();
   const [previewButtonWidth, setPreviewButtonWidth] = useState(0);
@@ -19,16 +15,10 @@ export const useResponsiveButtons = ({
     : true;
 
   function getRequiredWidth() {
-    /* keep these conditions in sync with JSX in FieldSection */
-
-    let width = fieldValuesButtonWidth;
-
-    if (!isPreviewOpen) {
-      width += previewButtonWidth + BUTTONS_GAP;
-    }
-
-    return width;
+    /* keep this in sync with JSX in FieldSection */
+    return fieldValuesButtonWidth + BUTTONS_GAP + previewButtonWidth;
   }
+
   return {
     buttonsContainerRef,
     showButtonLabel,
