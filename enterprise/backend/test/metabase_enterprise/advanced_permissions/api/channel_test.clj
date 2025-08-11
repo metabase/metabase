@@ -30,10 +30,11 @@
                 (test-channel [user status]
                   (testing (format "test channel with %s user" (mt/user-descriptor user))
                     (channel.http-test/with-server [url [channel.http-test/post-200 channel.http-test/post-400]]
-                      (mt/user-http-request user :post status "channel/test" {:type "channel/http"
-                                                                              :details {:url          (str url (:path channel.http-test/post-200))
-                                                                                        :auth-method  "none"
-                                                                                        :auth-info    {}}}))))
+                      (mt/with-temporary-setting-values [http-channel-allow-localhost true]
+                        (mt/user-http-request user :post status "channel/test" {:type "channel/http"
+                                                                                :details {:url          (str url (:path channel.http-test/post-200))
+                                                                                          :auth-method  "none"
+                                                                                          :auth-info    {}}})))))
                 (include-details [user include-details?]
                   (mt/with-temp [:model/Channel {id :id} notification.tu/default-can-connect-channel]
                     (testing (format "GET /api/channel/:id with %s user" (mt/user-descriptor user))
@@ -47,9 +48,10 @@
               (create-channel user 403)
               (update-channel user 403)
               (get-channel user 403)
-              (test-channel :crowberto 200)
+              (test-channel user 403)
               (create-channel :crowberto 200)
               (update-channel :crowberto 200)
+              (test-channel :crowberto 200)
               (include-details :crowberto true)))
 
           (testing "if `advanced-permissions` is enabled"
@@ -58,15 +60,19 @@
                 (create-channel user 403)
                 (update-channel user 403)
                 (get-channel user 403)
+                (test-channel user 403)
                 (create-channel :crowberto 200)
                 (update-channel :crowberto 200)
+                (test-channel :crowberto 200)
                 (include-details :crowberto true))
 
               (testing "succeed if user's group has `setting` permission"
                 (perms/grant-application-permissions! group :setting)
                 (create-channel user 200)
                 (update-channel user 200)
-                (create-channel :crowberto 200)
+                (test-channel user 200)
                 (update-channel user 200)
+                (create-channel :crowberto 200)
                 (include-details :crowberto true)
+                (test-channel :crowberto 200)
                 (include-details user true)))))))))
