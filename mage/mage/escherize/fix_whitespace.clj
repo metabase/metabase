@@ -42,7 +42,7 @@
   (let [_ (u/debug (c/yellow "Using thread pool size: " pool-size))
         executor (Executors/newFixedThreadPool pool-size)]
     (try
-      (let [callables (mapv (fn [f] (reify Callable (call [_] (clean-whitespace-lines f)))) files)
+      (let [callables (mapv (fn [f] #(clean-whitespace-lines f)) files)
             futures (.invokeAll executor callables)
             results (mapv #(.get ^java.util.concurrent.Future %) futures)
             changed-files (filter :changed results)
