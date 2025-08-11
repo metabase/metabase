@@ -14,12 +14,10 @@ import {
   getMetabotId,
   getMetabotVisible,
   getToolCalls,
-  getUseStreaming,
   resetConversation as resetConversationAction,
   retryPrompt,
   setVisible as setVisibleAction,
   submitInput as submitInputAction,
-  toggleStreaming,
 } from "./state";
 
 export const useMetabotAgent = () => {
@@ -139,10 +137,6 @@ export const useMetabotAgent = () => {
     toolCalls: useSelector(getToolCalls as any) as ReturnType<
       typeof getToolCalls
     >,
-    useStreaming: useSelector(getUseStreaming as any) as ReturnType<
-      typeof getUseStreaming
-    >,
-    toggleStreaming: () => dispatch(toggleStreaming()),
     retryMessage,
   };
 };
