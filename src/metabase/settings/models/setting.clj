@@ -226,7 +226,11 @@
    ;; should be used for most non-sensitive settings, and will log the value returned by its getter, which may be a
    ;; the default getter or a custom one.
    ;; (default: `:no-value`)
-   [:audit [:maybe [:enum :never :no-value :raw-value :getter]]]])
+   [:audit [:maybe [:enum :never :no-value :raw-value :getter]]]
+
+   ;; If non-nil, determines the database driver feature required for this setting. This is only valid for database-local
+   ;; settings. If the database driver doesn't support the required feature, setting this will throw an exception.
+   [:database-feature [:maybe :keyword]]])
 
 (defonce ^{:doc "Map of loaded defsettings"}
   registered-settings
@@ -877,14 +881,14 @@
 (defn validate-settable-for-db!
   "Check whether the given setting can be set for the given database."
   [setting-definition-or-name database driver-supports?]
-  (let [{:keys [driver-feature] :as setting} (resolve-setting setting-definition-or-name)
+  (let [{:keys [database-feature] :as setting} (resolve-setting setting-definition-or-name)
         s-name (setting-name setting)]
     (validate-settable! setting)
-    ;; circular dependency
-    (when (and driver-feature (driver-supports? database driver-feature))
-      (throw (ex-info (tru "Setting {0} requires driver feature {1}" s-name driver-feature))))
-    ;; check things for this given database
-    ))
+    (when (and database-feature (not (driver-supports? database database-feature)))
+      (throw (ex-info (tru "Setting {0} requires driver feature {1}, but the database does not support it" s-name database-feature)
+                      {:setting s-name
+                       :required-feature database-feature
+                       :database-id (:id database)})))))
 
 (defn set!
   "Set the value of `setting-definition-or-name`. What this means depends on the Setting's `:setter`; by default, this
@@ -950,32 +954,33 @@
   (let [munged-name (munge-setting-name (name setting-name))]
     (u/prog1 (let [setting-type (mc/assert Type (or setting-type :string))]
                (merge
-                {:name           setting-name
-                 :munged-name    munged-name
-                 :namespace      setting-ns
-                 :description    nil
-                 :doc            nil
-                 :type           setting-type
-                 :default        default
-                 :on-change      nil
-                 :getter         (partial (default-getter-for-type setting-type) setting-name)
-                 :setter         (partial (default-setter-for-type setting-type) setting-name)
-                 :init           nil
-                 :tag            (default-tag-for-type setting-type)
-                 :visibility     :admin
-                 :encryption     (extract-encryption-or-default setting)
-                 :export?        false
-                 :sensitive?     false
-                 :cache?         true
-                 :feature        nil
-                 :database-local :never
-                 :user-local     :never
-                 :deprecated     nil
-                 :enabled?       nil
-                 :can-read-from-env?       true
-                 :include-in-list?         true
+                {:name               setting-name
+                 :munged-name        munged-name
+                 :namespace          setting-ns
+                 :description        nil
+                 :doc                nil
+                 :type               setting-type
+                 :default            default
+                 :on-change          nil
+                 :getter             (partial (default-getter-for-type setting-type) setting-name)
+                 :setter             (partial (default-setter-for-type setting-type) setting-name)
+                 :init               nil
+                 :tag                (default-tag-for-type setting-type)
+                 :visibility         :admin
+                 :encryption         (extract-encryption-or-default setting)
+                 :export?            false
+                 :sensitive?         false
+                 :cache?             true
+                 :feature            nil
+                 :database-local     :never
+                 :user-local         :never
+                 :database-feature   nil
+                 :deprecated         nil
+                 :enabled?           nil
+                 :can-read-from-env? true
+                 :include-in-list?   true
                  ;; Disable auditing by default for user- or database-local settings
-                 :audit          (if (site-wide-only? setting) :no-value :never)}
+                 :audit              (if (site-wide-only? setting) :no-value :never)}
                 (dissoc setting :name :type :default)))
       (mc/assert SettingDefinition <>)
       (validate-default-value-for-type <>)
@@ -1010,6 +1015,10 @@
                         {:setting setting})))
       (when (and (:enabled? setting) (:feature setting))
         (throw (ex-info (tru "Setting {0} uses both :enabled? and :feature options, which are mutually exclusive"
+                             setting-name)
+                        {:setting setting})))
+      (when (and (:database-feature setting) (not (allows-database-local-values? setting)))
+        (throw (ex-info (tru "Setting {0} has a :database-feature but does not allow database-local values"
                              setting-name)
                         {:setting setting})))
       (swap! registered-settings assoc setting-name <>))))
@@ -1192,6 +1201,12 @@
 
   The ability of this Setting to be /Database-local/. Valid values are `:only`, `:allowed`, and `:never`. Default:
   `:never`. See docstring for [[metabase.settings.models.setting]] for more information.
+
+  ###### `:database-feature`
+
+  If non-nil, determines the database driver feature required for this setting. This is only valid for database-local
+  settings (those with `:database-local` set to `:only` or `:allowed`). When setting a database-local setting, the
+  system will check if the database driver supports the specified feature. If not, an exception will be thrown.
 
   ###### `:user-local`
 
