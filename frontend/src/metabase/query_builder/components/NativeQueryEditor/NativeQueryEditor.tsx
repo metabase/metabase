@@ -62,6 +62,7 @@ type OwnProps = {
   nativeEditorSelectedText?: string;
   modalSnippet?: NativeQuerySnippet;
   viewHeight: number;
+  placeholder?: string;
   highlightedLineNumbers?: number[];
 
   isInitiallyOpen?: boolean;
@@ -248,6 +249,7 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
       forwardedRef,
       runQuery,
       highlightedLineNumbers,
+      placeholder,
     } = this.props;
 
     const dragHandle = resizable ? (
@@ -334,6 +336,7 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
                 ref={this.editor}
                 query={question.query()}
                 readOnly={readOnly}
+                placeholder={placeholder}
                 highlightedLineNumbers={highlightedLineNumbers}
                 onChange={this.onChange}
                 onRunQuery={runQuery}
