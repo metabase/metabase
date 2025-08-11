@@ -25,6 +25,7 @@
    [metabase.request.core :as request]
    [metabase.sample-data.core :as sample-data]
    [metabase.secrets.core :as secret]
+   [metabase.settings.models.setting :as setting]
    [metabase.sync.core :as sync]
    [metabase.sync.schedules :as sync.schedules]
    [metabase.sync.util :as sync-util]
@@ -134,7 +135,7 @@
   (set (filter (fn [db-id]
                  (try
                    (when-let [db (t2/select-one :model/Database :id db-id)]
-                     (driver.u/supports? (:engine db) :nested-queries db))
+                     (driver.u/supports? (driver.u/database->driver db) :nested-queries db))
                    (catch Throwable e
                      (log/error e "Error determining whether Database supports nested queries"))))
                (t2/select-pks-set :model/Database))))
@@ -944,33 +945,40 @@
       {:status 400
        :body   conn-error}
       ;; no error, proceed with update
-      (do
-       ;; TODO - is there really a reason to let someone change the engine on an existing database?
-       ;;       that seems like the kind of thing that will almost never work in any practical way
-       ;; TODO - this means one cannot unset the description. Does that matter?
-        (t2/update! :model/Database id
-                    (merge
-                     (m/remove-vals
-                      nil?
-                      (merge
-                       {:name               name
-                        :engine             engine
-                        :details            details
-                        :refingerprint      refingerprint
-                        :is_full_sync       full-sync?
-                        :is_on_demand       on-demand?
-                        :description        description
-                        :caveats            caveats
-                        :points_of_interest points_of_interest
-                        :auto_run_queries   auto_run_queries}
-                      ;; upsert settings with a PATCH-style update. `nil` key means unset the Setting.
-                       (when (seq settings)
-                         {:settings (into {}
-                                          (remove (fn [[_k v]] (nil? v)))
-                                          (merge (:settings existing-database) settings))})))
-                    ;; cache_field_values_schedule can be nil
-                     (when schedules
-                       (sync.schedules/schedule-map->cron-strings schedules))))
+      (let [pending-settings (into {}
+                                   ;; upsert settings with a PATCH-style update. `nil` key means unset the Setting.
+                                   (remove (fn [[_k v]] (nil? v)))
+                                   (merge (:settings existing-database) settings))
+            updates    (merge
+                        ;; TODO - is there really a reason to let someone change the engine on an existing database?
+                        ;;       that seems like the kind of thing that will almost never work in any practical way
+                        ;; TODO - this means one cannot unset the description. Does that matter?
+                        (m/remove-vals
+                         nil?
+                         (merge
+                          {:name               name
+                           :engine             engine
+                           :details            details
+                           :refingerprint      refingerprint
+                           :is_full_sync       full-sync?
+                           :is_on_demand       on-demand?
+                           :description        description
+                           :caveats            caveats
+                           :points_of_interest points_of_interest
+                           :auto_run_queries   auto_run_queries}
+                          (when (seq settings)
+                            {:settings pending-settings})))
+                        ;; cache_field_values_schedule can be nil
+                        (when schedules
+                          (sync.schedules/schedule-map->cron-strings schedules)))
+            pending-db (merge existing-database updates)]
+        ;; pass in this predicate to break circular dependency
+        (let [driver-supports? (fn [db feature] (driver.u/supports? (driver.u/database->driver db) feature db))]
+          ;; ensure we're not trying to set anything we should not be able to.
+          ;; Note: it's also possible for existing settings to become invalid when changing things like the engine.
+          (doseq [setting-kw (keys pending-settings)]
+            (setting/validate-settable-for-db! setting-kw pending-db driver-supports?)))
+        (t2/update! :model/Database id updates)
        ;; unlike the other fields, folks might want to nil out cache_ttl. it should also only be settable on EE
        ;; with the advanced-config feature enabled.
         (when (premium-features/enable-cache-granular-controls?)

@@ -857,6 +857,35 @@
           (audit-setting-change! setting previous-value (audit-value-fn))))
       (setter new-value))))
 
+(defn validate-settable!
+  "Check whether the given setting can be set, in general. For :database-local writes use [[validate-settable-for-db!]]"
+  ([setting]
+   (validate-settable! setting false))
+  ([setting-definition-or-name bypass-read-only?]
+   (let [{:keys [setter enabled? feature] :as setting} (resolve-setting setting-definition-or-name)
+         s-name (setting-name setting)]
+     (when (and feature (not (has-feature? feature)))
+       (throw (ex-info (tru "Setting {0} is not enabled because feature {1} is not available" s-name feature) setting)))
+     (when (and enabled? (not (enabled?)))
+       (throw (ex-info (tru "Setting {0} is not enabled" s-name) setting)))
+     (when-not (current-user-can-access-setting? setting)
+       (throw (ex-info (tru "You do not have access to the setting {0}" s-name) setting)))
+     (when-not bypass-read-only?
+       (when (= setter :none)
+         (throw (UnsupportedOperationException. ^String (tru "You cannot set {0}; it is a read-only setting." s-name))))))))
+
+(defn validate-settable-for-db!
+  "Check whether the given setting can be set for the given database."
+  [setting-definition-or-name database driver-supports?]
+  (let [{:keys [driver-feature] :as setting} (resolve-setting setting-definition-or-name)
+        s-name (setting-name setting)]
+    (validate-settable! setting)
+    ;; circular dependency
+    (when (and driver-feature (driver-supports? database driver-feature))
+      (throw (ex-info (tru "Setting {0} requires driver feature {1}" s-name driver-feature))))
+    ;; check things for this given database
+    ))
+
 (defn set!
   "Set the value of `setting-definition-or-name`. What this means depends on the Setting's `:setter`; by default, this
   just updates the Settings cache and writes its value to the DB.
@@ -869,17 +898,8 @@
 
   This method will throw an exception if trying to update a read-only setting, unless `:bypass-read-only?` is set."
   [setting-definition-or-name new-value & {:keys [bypass-read-only?]}]
-  (let [{:keys [setter cache? enabled? feature] :as setting} (resolve-setting setting-definition-or-name)
-        name                                                 (setting-name setting)]
-    (when (and feature (not (has-feature? feature)))
-      (throw (ex-info (tru "Setting {0} is not enabled because feature {1} is not available" name feature) setting)))
-    (when (and enabled? (not (enabled?)))
-      (throw (ex-info (tru "Setting {0} is not enabled" name) setting)))
-    (when-not (current-user-can-access-setting? setting)
-      (throw (ex-info (tru "You do not have access to the setting {0}" name) setting)))
-    (when-not bypass-read-only?
-      (when (= setter :none)
-        (throw (UnsupportedOperationException. (tru "You cannot set {0}; it is a read-only setting." name)))))
+  (let [{:keys [cache?] :as setting} (resolve-setting setting-definition-or-name)]
+    (validate-settable! setting bypass-read-only?)
     (binding [config/*disable-setting-cache* (not cache?)]
       (set-with-audit-logging! setting new-value bypass-read-only?))))
 
