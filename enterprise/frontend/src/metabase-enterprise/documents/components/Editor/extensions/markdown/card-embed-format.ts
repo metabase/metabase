@@ -1,5 +1,7 @@
 // Shared utility for generating card embed markdown format
-export function formatCardEmbed(attrs: { id: number; name?: string }): string {
+import type { CardEmbedAttributes } from "metabase-enterprise/documents/components/Editor/extensions/CardEmbed";
+
+export function formatCardEmbed(attrs: CardEmbedAttributes): string {
   if (attrs.name) {
     return `{% card id=${attrs.id} name="${attrs.name}" %}`;
   } else {

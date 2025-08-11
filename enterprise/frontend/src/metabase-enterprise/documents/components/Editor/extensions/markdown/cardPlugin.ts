@@ -1,5 +1,5 @@
 import type MarkdownIt from "markdown-it";
-import type { ParentType, StateBlock } from "markdown-it";
+import type { StateBlock } from "markdown-it";
 
 export function cardPlugin(md: MarkdownIt): void {
   md.block.ruler.before("paragraph", "card", cardBlock, {
@@ -44,7 +44,7 @@ function cardBlock(
 
   const oldParent = state.parentType;
   const oldLineMax = state.lineMax;
-  state.parentType = "card" as ParentType;
+  state.parentType = "card" as StateBlock.ParentType;
 
   // Create card token
   const token = state.push("card", "div", 0);

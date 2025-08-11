@@ -1,6 +1,8 @@
 /* eslint-disable react/prop-types */
+import type { EmojiItem } from "@tiptap/extension-emoji";
 import cx from "classnames";
 import {
+  type KeyboardEvent,
   forwardRef,
   useCallback,
   useEffect,
@@ -12,14 +14,19 @@ import { Button, Card } from "metabase/ui";
 
 import Styles from "./EmojiList.module.css";
 
+export interface EmojiListProps {
+  items: EmojiItem[];
+  command: (params: { name: string }) => void;
+}
+
 export const EmojiList = forwardRef(function InnerEmojiList(
-  { items, command },
+  { items, command }: EmojiListProps,
   ref,
 ) {
   const [selectedIndex, setSelectedIndex] = useState(0);
 
   const selectItem = useCallback(
-    (index) => {
+    (index: number) => {
       const item = items[index];
 
       if (item) {
@@ -45,7 +52,7 @@ export const EmojiList = forwardRef(function InnerEmojiList(
 
   useImperativeHandle(ref, () => {
     return {
-      onKeyDown: (x) => {
+      onKeyDown: (x: { event: KeyboardEvent }) => {
         if (x.event.key === "ArrowUp") {
           upHandler();
           return true;
