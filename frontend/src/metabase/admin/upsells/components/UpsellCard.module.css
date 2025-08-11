@@ -22,6 +22,7 @@
 
 .LargeUpsellCTALink {
   margin: 0;
-  margin-left: 3rem;
+  margin-inline-start: 2rem;
   width: 10rem;
+  max-width: 100%;
 }
