@@ -56,18 +56,17 @@ const MODEL_NAME = "Test Action Model";
             cy.wait(["@getModel", "@getModelActions"]);
           });
 
-          const newActionBtn = cy
-            .findByTestId("model-actions-header")
-            .findByText("New action");
+          const newActionBtn = () =>
+            cy.findByTestId("model-actions-header").findByText("New action");
 
           // click outside
-          newActionBtn.click();
+          newActionBtn().click();
           cy.findByTestId("action-creator").should("be.visible");
           cy.get("body").click("topLeft");
           cy.findByTestId("action-creator").should("not.exist");
 
           // ESC button
-          newActionBtn.click();
+          newActionBtn().click();
           cy.findByTestId("action-creator").should("be.visible");
           cy.get("body").type("{esc}");
           cy.findByTestId("action-creator").should("not.exist");

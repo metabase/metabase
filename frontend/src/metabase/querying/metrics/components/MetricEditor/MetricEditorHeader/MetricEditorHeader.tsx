@@ -1,9 +1,9 @@
 import cx from "classnames";
 import { t } from "ttag";
 
-import ActionButton from "metabase/components/ActionButton";
-import EditBar from "metabase/components/EditBar";
-import Button from "metabase/core/components/Button";
+import ActionButton from "metabase/common/components/ActionButton";
+import Button from "metabase/common/components/Button";
+import EditBar from "metabase/common/components/EditBar";
 import ButtonsS from "metabase/css/components/buttons.module.css";
 import type Question from "metabase-lib/v1/Question";
 

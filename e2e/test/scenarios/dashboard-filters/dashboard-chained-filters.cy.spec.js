@@ -5,7 +5,7 @@ import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 
 const { PEOPLE } = SAMPLE_DATABASE;
 
-describe("scenarios > dashboard > chained filter", () => {
+describe("scenarios > dashboard > chained filter", { tags: "@flaky" }, () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();

@@ -31,8 +31,6 @@ dataset_query:
           - v_view_log
           - user_id
         - base-type: type/Integer
-    aggregation-idents:
-      0: aggregation_p8ZML2ebd3ItzCyWsKXLa@0__0
     breakout:
     - - field
       - - Internal Metabase Database
@@ -48,9 +46,6 @@ dataset_query:
         - group_name
       - base-type: type/Text
         join-alias: Group Members - User
-    breakout-idents:
-      0: breakout_p8ZML2ebd3ItzCyWsKXLa@0__0
-      1: breakout_p8ZML2ebd3ItzCyWsKXLa@0__1
     joins:
     - alias: Group Members - User
       condition:

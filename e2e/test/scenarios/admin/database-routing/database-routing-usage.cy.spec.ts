@@ -26,7 +26,7 @@ describe("admin > database > database routing", { tags: ["@external"] }, () => {
 
     H.restore("postgres-writable");
     cy.signInAsAdmin();
-    H.setTokenFeatures("all");
+    H.activateToken("pro-self-hosted");
     Object.values(DB_ROUTER_USERS).forEach((user) => {
       // @ts-expect-error - this isn't typed yet
       cy.createUserFromRawData(user);

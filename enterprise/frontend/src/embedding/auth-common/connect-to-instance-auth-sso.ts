@@ -21,7 +21,7 @@ export async function connectToInstanceAuthSso(
     });
   }
 
-  const ssoUrl = new URL("/auth/sso", url);
+  const ssoUrl = new URL(`${url}/auth/sso`);
 
   if (preferredAuthMethod) {
     ssoUrl.searchParams.set("preferred_method", preferredAuthMethod);
@@ -29,10 +29,18 @@ export async function connectToInstanceAuthSso(
 
   try {
     const urlResponse = await fetch(ssoUrl, { headers });
+
     if (!urlResponse.ok) {
+      let errorData;
+
+      try {
+        errorData = await urlResponse.json();
+      } catch {}
+
       throw MetabaseError.CANNOT_CONNECT_TO_INSTANCE({
         instanceUrl: url,
         status: urlResponse.status,
+        message: errorData?.message,
       });
     }
     return await urlResponse.json();

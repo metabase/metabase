@@ -36,10 +36,6 @@ const sampleToken = "a".repeat(64);
 const airgapToken = "airgap_toucan";
 
 describe("setup (EE build, but no token)", () => {
-  beforeEach(() => {
-    fetchMock.reset();
-  });
-
   it("default step order should be correct, with the license step and data usage steps", async () => {
     await setupEnterprise();
     await skipWelcomeScreen();
@@ -64,7 +60,7 @@ describe("setup (EE build, but no token)", () => {
 
       expect(
         await screen.findByText(
-          "Unlock access to your paid features before starting",
+          "Unlock access to paid features if you'd like to try them out",
         ),
       ).toBeInTheDocument();
     }
@@ -145,7 +141,7 @@ describe("setup (EE build, but no token)", () => {
     it("should be possible to skip the step without a token", async () => {
       await setupForLicenseStep();
 
-      await skipTokenStep();
+      await skipTokenStep("I'll activate later");
 
       expect(trackLicenseTokenStepSubmitted).toHaveBeenCalledWith(false);
 
@@ -158,7 +154,6 @@ describe("setup (EE build, but no token)", () => {
     it("should pass the token to the settings endpoint", async () => {
       await setupForLicenseStep();
       setupForTokenCheckEndpoint({ valid: true });
-
       await inputToken(sampleToken);
       const submitCall = await submit();
 
@@ -182,6 +177,8 @@ const submit = async () => {
   await userEvent.click(await submitBtn());
 
   const settingEndpoint = "path:/api/setting/premium-embedding-token";
-  await waitFor(() => expect(fetchMock.done(settingEndpoint)).toBe(true));
-  return fetchMock.lastCall(settingEndpoint);
+  await waitFor(() =>
+    expect(fetchMock.callHistory.done(settingEndpoint)).toBe(true),
+  );
+  return fetchMock.callHistory.lastCall(settingEndpoint);
 };

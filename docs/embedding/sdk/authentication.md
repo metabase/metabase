@@ -23,7 +23,8 @@ Here's a high-level overview:
 ### 1. Enable JWT SSO in your Metabase
 
 1. Configure JWT by going to **Admin Settings** > **Settings** > **Authentication** and clicking on **Setup**
-2. Generate a key and copy it to your clipboard.
+2. Enter the JWT Identity Provider URI, for example `http://localhost:9090/sso/metabase`. This is a new endpoint you will add in your backend to handle authentication.
+3. Generate a key and copy it to your clipboard.
 
 ### 2. Add a new endpoint to your backend to handle authentication
 

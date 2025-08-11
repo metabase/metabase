@@ -3,7 +3,9 @@
   (:require
    [clojure.data :as data]
    [clojure.set :as set]
+   [java-time.api :as t]
    [medley.core :as m]
+   [metabase.app-db.core :as mdb]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.lib.schema.common :as lib.schema.common]
@@ -19,6 +21,8 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
+
+(set! *warn-on-reflection* true)
 
 ;;; ------------------------------------------------ "Crufty" Tables -------------------------------------------------
 
@@ -92,7 +96,8 @@
 (mu/defn- cruft-dependent-cols [{table-name :name :as table}
                                 database
                                 sync-stage :- [:enum ::reactivate ::create ::update]]
-  (let [is-crufty? (if (= sync-stage ::update)
+  (let [is-crufty? (if (and (= sync-stage ::update)
+                            (not (:is_attached_dwh database)))
                      ;; TODO: we should add an updated_by column to metabase_table in
                      ;; [[metabase.warehouse-schema.api.table/update-table!*]] to track occasions where the table was
                      ;; updated by an admin, and respect their choices during an update.
@@ -267,6 +272,56 @@
                 :schema schema
                 {:schema new-schema})))
 
+(def ^:private
+  ^{:doc "threshold after which deactivated tables will be archived"}
+  archive-tables-threshold [-14 :day])
+
+(defn- archive-tables!
+  "Mark tables that have been deactivated for longer than the configured threshold as archived
+  and suffixes their names."
+  [database]
+  (let [;; we use UTC offset time for suffix, may not match db time but
+        ;; it doesn't matter much, the source of time truth is `archived_at`,
+        ;; we're just using this as a cheap namespace
+        suffix (str "__mbarchiv__" (.toEpochSecond (t/offset-date-time)))
+        threshold-expr (apply
+                        (requiring-resolve 'metabase.driver.sql.query-processor/add-interval-honeysql-form)
+                        (mdb/db-type) :%now archive-tables-threshold)
+        tables-to-archive (t2/select :model/Table
+                                     :db_id (u/the-id database)
+                                     :active false
+                                     :archived_at nil
+                                     :deactivated_at [:< threshold-expr])
+        archived (atom 0)]
+    (doseq [table tables-to-archive
+            :let [new-name (str (:name table) suffix)]]
+
+      (if (> (count new-name) 256)
+        (log/warnf "Cannot archive table %s, name too long" (:name table))
+        (do
+          (log/infof "Archiving table %s (deactivated at %s, new-name %s)"
+                     (sync-util/name-for-logging table)
+                     (:deactivated_at table)
+                     new-name)
+          (let [[did-update err]
+                (try
+                  ;; in the extremely unlikely case that there already exists a table with our
+                  ;; archived name, we let it fail from hitting the unique constraints violation
+                  ;; and just report the failure
+                  [(t2/update! :model/Table
+                               {:id (:id table)
+                                :active false}
+                               {:archived_at (mi/now)
+                                :name new-name})]
+                  (catch Throwable t
+                    [0 t]))]
+            (when (zero? did-update)
+              (if err
+                (log/errorf err "Failed archiving table %s" (sync-util/name-for-logging table))
+                (log/warnf "Did not archive table %s" (sync-util/name-for-logging table))))
+            (swap! archived + did-update)))))
+    @archived))
+
 (mu/defn sync-tables-and-database!
   "Sync the Tables recorded in the Metabase application database with the ones obtained by calling `database`'s driver's
   implementation of `describe-database`.
@@ -318,5 +373,9 @@
        ;; we need to fetch the tables again because we might have retired tables in the previous steps
        (update-tables-metadata-if-needed! db-table-metadatas (db->our-metadata database) database))
 
-     {:updated-tables (+ (count new-table-metadatas) (count old-table-metadatas))
-      :total-tables   (count our-metadata)})))
+     (let [archived-tables (sync-util/with-error-handling (format "Error archiving tables for %s"
+                                                                  (sync-util/name-for-logging database))
+                             (archive-tables! database))]
+
+       {:updated-tables (+ (count new-table-metadatas) (count old-table-metadatas) (or archived-tables 0))
+        :total-tables   (count our-metadata)}))))

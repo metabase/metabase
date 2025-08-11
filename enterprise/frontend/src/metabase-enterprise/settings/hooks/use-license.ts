@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { t } from "ttag";
 
+import { reload } from "metabase/lib/dom";
 import { SettingsApi, StoreApi } from "metabase/services";
 import type { TokenStatus } from "metabase-types/api";
 
@@ -38,7 +39,7 @@ export const useLicense = (onActivated?: () => void) => {
       if (isValidTokenAccepted) {
         window.location.href += LICENSE_ACCEPTED_URL_HASH;
       }
-      window.location.reload();
+      reload();
     } catch {
       setError(INVALID_TOKEN_ERROR);
     } finally {

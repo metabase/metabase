@@ -81,7 +81,8 @@
            (types/coercion-possibilities :type/Number))))
   (testing "Non-inheritable coercions"
     ;; type/* has a coercion :Coercion/YYYYMMDDHHMMSSBytes->Temporal
-    (is (= {:type/* #{:Coercion/YYYYMMDDHHMMSSBytes->Temporal}}
+    (is (= {:type/* #{:Coercion/YYYYMMDDHHMMSSBytes->Temporal
+                      :Coercion/ISO8601Bytes->Temporal}}
            (types/coercion-possibilities :type/*)))
     ;; a random type descendant of type/* should not have this coercion
     (is (= nil (types/coercion-possibilities :type/DruidHyperUnique)))))

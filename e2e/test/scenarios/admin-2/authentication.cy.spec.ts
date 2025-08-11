@@ -24,7 +24,7 @@ describe("scenarios > admin > settings > user provisioning", () => {
 
   describe("scim settings management", () => {
     beforeEach(() => {
-      H.setTokenFeatures("all");
+      H.activateToken("pro-self-hosted");
     });
 
     it("should be able to setup and manage scim feature", () => {

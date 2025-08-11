@@ -7,7 +7,7 @@ import {
   setupUpdateSettingEndpoint,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import { UndoListing } from "metabase/containers/UndoListing";
+import { UndoListing } from "metabase/common/components/UndoListing";
 import type { SettingKey } from "metabase-types/api";
 import {
   createMockSettingDefinition,
@@ -77,13 +77,6 @@ describe("EmailSettingsPage", () => {
     ].forEach(async (text) => {
       expect(screen.getByText(text)).toBeInTheDocument();
     });
-  });
-
-  it("should not show SMTP connection card for hosted instances", async () => {
-    await setup({ hosted: true });
-
-    expect(screen.getByText("From Name")).toBeInTheDocument();
-    expect(screen.queryByText(/SMTP/)).not.toBeInTheDocument();
   });
 
   it("should not render premium features missing from token", async () => {

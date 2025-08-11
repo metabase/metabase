@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
 import { useAdminSetting } from "metabase/api/utils";
-import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { Modal } from "metabase/ui";
 
 import { SlackSetup } from "./SlackSetup";

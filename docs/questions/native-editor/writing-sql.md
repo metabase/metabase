@@ -2,6 +2,7 @@
 title: SQL editor
 redirect-from:
   - /docs/latest/users-guide/writing-sql
+  - /docs/latest/questions/native-editor
 ---
 
 # SQL editor
@@ -121,7 +122,7 @@ See [Caching question policies](../../configuring-metabase/caching.md#question-c
 
 [learn-sql]: https://www.metabase.com/learn/sql/working-with-sql
 [ref-models]: ./referencing-saved-questions-in-queries.md
-[sample-database-gloss]: https://www.metabase.com/glossary/sample_database
+[sample-database-gloss]: https://www.metabase.com/glossary/sample-database
 [sql-gloss]: https://www.metabase.com/glossary/sql
 [troubleshooting-sql]: ../../troubleshooting-guide/sql.md
 [variable-gloss]: https://www.metabase.com/glossary/variable

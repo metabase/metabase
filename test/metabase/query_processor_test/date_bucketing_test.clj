@@ -40,6 +40,7 @@
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
+   [metabase.util.random :as u.random]
    [metabase.util.regex :as u.regex]
    [potemkin.types :as p.types]
    [pretty.core :as pretty]
@@ -1164,10 +1165,10 @@
                :breakout    [!year.date]}))))))
 
 ;; RELATIVE DATES
-(p.types/deftype+ ^:private TimestampDatasetDef [intervalSeconds intervalCount]
+(p.types/deftype+ ^:private TimestampDatasetDef [randomName intervalSeconds intervalCount]
   pretty/PrettyPrintable
   (pretty [_]
-    (list 'TimestampDatasetDef. intervalSeconds intervalCount)))
+    (list 'TimestampDatasetDef. randomName intervalSeconds intervalCount)))
 
 (defn- driver->current-datetime-base-type
   "Returns the :base-type of the \"current timestamp\" HoneySQL form defined by the driver `d`. Relies upon the driver
@@ -1183,39 +1184,39 @@
   (let [interval-seconds (.intervalSeconds this)
         intervalCount    (.intervalCount this)]
     (mt/dataset-definition
-     (str "interval_" interval-seconds (when-not (= 30 intervalCount) (str "_" intervalCount)))
-     ["checkins"
-      [{:field-name "timestamp"
-        :base-type  (or (driver->current-datetime-base-type driver/*driver*) :type/DateTime)}]
-      (mapv (fn [i]
-              ;; TIMESTAMP FIXME — not sure if still needed
-              ;;
-              ;; Create timestamps using relative dates (e.g. `DATEADD(second, -195, GETUTCDATE())` instead of
-              ;; generating Java classes here so they'll be in the DB's native timezone. Some DBs refuse to use
-              ;; the same timezone we're running the tests from *cough* SQL Server *cough*
-              [(u/prog1 (if (and (isa? driver/hierarchy driver/*driver* :sql)
-                                 ;; BigQuery/Vertica don't insert rows using SQL statements
-                                 ;;
-                                 ;; TODO -- make 'insert-rows-using-statements?` a multimethod so we don't need to
-                                 ;; hardcode the whitelist here.
-                                 (not (#{:vertica :bigquery-cloud-sdk} driver/*driver*)))
-                          (sql.qp/compiled
-                           (sql.qp/add-interval-honeysql-form driver/*driver*
-                                                              (sql.qp/current-datetime-honeysql-form driver/*driver*)
-                                                              (* i interval-seconds)
-                                                              :second))
-                          (u.date/add :second (* i interval-seconds)))
-                 (assert <>))])
-            (let [shift (quot intervalCount 2)
-                  lower-bound (- shift)
-                  upper-bound (- intervalCount shift)]
-              (range lower-bound upper-bound)))])))
+     (str "interval_" interval-seconds (when-not (= 30 intervalCount) (str "_" intervalCount)) "_" (.randomName this))
+     [["checkins"
+       [{:field-name "timestamp"
+         :base-type  (or (driver->current-datetime-base-type driver/*driver*) :type/DateTime)}]
+       (mapv (fn [i]
+               ;; TIMESTAMP FIXME — not sure if still needed
+               ;;
+               ;; Create timestamps using relative dates (e.g. `DATEADD(second, -195, GETUTCDATE())` instead of
+               ;; generating Java classes here so they'll be in the DB's native timezone. Some DBs refuse to use
+               ;; the same timezone we're running the tests from *cough* SQL Server *cough*
+               [(u/prog1 (if (and (isa? driver/hierarchy driver/*driver* :sql)
+                                  ;; BigQuery/Vertica don't insert rows using SQL statements
+                                  ;;
+                                  ;; TODO -- make 'insert-rows-using-statements?` a multimethod so we don't need to
+                                  ;; hardcode the whitelist here.
+                                  (not (#{:vertica :bigquery-cloud-sdk} driver/*driver*)))
+                           (sql.qp/compiled
+                            (sql.qp/add-interval-honeysql-form driver/*driver*
+                                                               (sql.qp/current-datetime-honeysql-form driver/*driver*)
+                                                               (* i interval-seconds)
+                                                               :second))
+                           (u.date/add :second (* i interval-seconds)))
+                  (assert <>))])
+             (let [shift (quot intervalCount 2)
+                   lower-bound (- shift)
+                   upper-bound (- intervalCount shift)]
+               (range lower-bound upper-bound)))]])))
 
 (defn- dataset-def-with-timestamps
   ([interval-seconds]
    (dataset-def-with-timestamps interval-seconds 30))
   ([interval-seconds interval-count]
-   (TimestampDatasetDef. interval-seconds interval-count)))
+   (TimestampDatasetDef. (u.random/random-name) interval-seconds interval-count)))
 
 (def ^:private checkins:4-per-minute
   "Dynamically generated dataset with 30 checkins spaced 15 seconds apart, from 3 mins 45 seconds ago to 3 minutes 30

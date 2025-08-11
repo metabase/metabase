@@ -113,6 +113,8 @@ export const getDataColumn = <TRow, TValue>(
       enableReordering: true,
       enableSelection: true,
       headerClickTargetSelector,
+      formatter: columnOptions.formatter,
+      clipboardFormatter: columnOptions.clipboardFormatter,
     },
   };
 

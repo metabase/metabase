@@ -11,7 +11,7 @@ import {
 import type { LinkProps } from "react-router";
 import { Link } from "react-router";
 
-import { isEmbeddingSdk } from "metabase/env";
+import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { Box } from "metabase/ui";
 
 import S from "./LegendLabel.module.css";
@@ -51,6 +51,8 @@ export const LegendLabel = forwardRef(
           onClick={onClick}
           onFocus={onFocus}
           onMouseEnter={onMouseEnter}
+          data-testid="legend-label"
+          data-is-clickable={!!onClick}
         >
           {children}
         </div>
@@ -59,7 +61,7 @@ export const LegendLabel = forwardRef(
 
     // If we are in the Embedding SDK, we should not be using the
     // Link component, as internal links would be inaccessible.
-    if (isEmbeddingSdk) {
+    if (isEmbeddingSdk()) {
       return (
         <Box
           ref={ref}
@@ -67,6 +69,8 @@ export const LegendLabel = forwardRef(
           onClick={handleLinkClick}
           onFocus={onFocus}
           onMouseEnter={onMouseEnter}
+          data-testid="legend-label"
+          data-is-clickable={!!onClick}
         >
           {children}
         </Box>
@@ -81,6 +85,8 @@ export const LegendLabel = forwardRef(
         onClick={handleLinkClick}
         onFocus={onFocus}
         onMouseEnter={onMouseEnter}
+        data-testid="legend-label"
+        data-is-clickable={!!onClick}
       >
         {children}
       </Link>

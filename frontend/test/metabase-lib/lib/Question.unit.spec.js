@@ -713,6 +713,7 @@ describe("Question", () => {
               id: PRODUCTS.CATEGORY,
             }),
           ],
+          isMultiSelect: true,
           hasVariableTemplateTagTarget: false,
           id: "bbb",
           name: "Foo",
@@ -723,12 +724,13 @@ describe("Question", () => {
         },
         {
           default: undefined,
+          isMultiSelect: false,
           hasVariableTemplateTagTarget: true,
           id: "aaa",
           name: "Bar",
           slug: "bar",
           target: ["variable", ["template-tag", "bar"]],
-          type: "category",
+          type: "string/=",
           value: null,
         },
       ]);

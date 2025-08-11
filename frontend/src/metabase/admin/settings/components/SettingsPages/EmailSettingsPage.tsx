@@ -1,24 +1,23 @@
-import { useDisclosure } from "@mantine/hooks";
 import { t } from "ttag";
 
+import {
+  SettingsPageWrapper,
+  SettingsSection,
+} from "metabase/admin/components/SettingsSection";
 import { UpsellHostingBanner } from "metabase/admin/upsells";
 import { useGetSettingsQuery } from "metabase/api";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useHasTokenFeature } from "metabase/common/hooks";
-import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import { Center } from "metabase/ui";
 
 import { SMTPConnectionCard } from "../Email/SMTPConnectionCard";
-import { SMTPConnectionForm } from "../Email/SMTPConnectionForm";
-import { SettingsPageWrapper, SettingsSection } from "../SettingsSection";
 import { AdminSettingInput } from "../widgets/AdminSettingInput";
+import { EmailFromAddressWidget } from "../widgets/EmailFromAddressWidget";
 import { EmailReplyToWidget } from "../widgets/EmailReplyToWidget";
+import { SendTestEmailWidget } from "../widgets/SendTestEmailWidget";
 
 export function EmailSettingsPage() {
-  const [showModal, { open: openModal, close: closeModal }] =
-    useDisclosure(false);
-
   const { data: settingValues, isLoading } = useGetSettingsQuery();
-  const isHosted = settingValues?.["is-hosted?"];
   const isEmailConfigured = settingValues?.["email-configured?"];
   const hasEmailAllowListFeature = useHasTokenFeature("email_allow_list");
   const hasEmailRestrictRecipientsFeature = useHasTokenFeature(
@@ -32,7 +31,7 @@ export function EmailSettingsPage() {
   return (
     <>
       <SettingsPageWrapper title={t`Email`}>
-        {!isHosted && <SMTPConnectionCard onOpenSMTPModal={openModal} />}
+        <SMTPConnectionCard />
         {isEmailConfigured && (
           <SettingsSection>
             <AdminSettingInput
@@ -41,12 +40,7 @@ export function EmailSettingsPage() {
               placeholder="Metabase"
               inputType="text"
             />
-            <AdminSettingInput
-              name="email-from-address"
-              title={t`From Address`}
-              placeholder="metabase@yourcompany.com"
-              inputType="text"
-            />
+            <EmailFromAddressWidget />
             <EmailReplyToWidget />
             <AdminSettingInput
               name="bcc-enabled?"
@@ -80,13 +74,13 @@ export function EmailSettingsPage() {
                 { value: "none", label: t`Don't show suggestions` },
               ]}
             />
+            <SendTestEmailWidget />
           </SettingsSection>
         )}
         <Center>
-          <UpsellHostingBanner source="settings-email-migrate_to_cloud" />
+          <UpsellHostingBanner location="settings-email-migrate_to_cloud" />
         </Center>
       </SettingsPageWrapper>
-      {showModal && <SMTPConnectionForm onClose={closeModal} />}
     </>
   );
 }

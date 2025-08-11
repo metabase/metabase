@@ -149,15 +149,16 @@ export const expectSectionsToHaveLabelsInOrder = ({
 };
 
 export const getLastSettingsPutPayload = async () => {
-  const lastSettingsCall = fetchMock.lastCall("path:/api/setting", {
+  const settingsCalls = fetchMock.callHistory.calls("path:/api/setting", {
     method: "PUT",
   });
+  const lastSettingsCall = settingsCalls[settingsCalls.length - 1];
 
   expect(lastSettingsCall).toBeTruthy();
-  expect(lastSettingsCall![1]).toBeTruthy();
+  expect(lastSettingsCall.options?.body).toBeTruthy();
 
-  return JSON.parse((await lastSettingsCall![1]!.body!) as string);
+  return JSON.parse((await lastSettingsCall.options!.body!) as string);
 };
 
-export const skipTokenStep = async () =>
-  await userEvent.click(screen.getByRole("button", { name: "Skip" }));
+export const skipTokenStep = async (name = "Skip") =>
+  await userEvent.click(screen.getByRole("button", { name }));

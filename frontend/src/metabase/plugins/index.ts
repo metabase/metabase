@@ -1,3 +1,4 @@
+import type { Middleware } from "@reduxjs/toolkit";
 import React, {
   type ComponentType,
   type Dispatch,
@@ -31,8 +32,8 @@ import type {
   ModelFilterControlsProps,
   ModelFilterSettings,
 } from "metabase/browse/models";
-import type { LinkProps } from "metabase/core/components/Link";
-import type { DashCardMenuItem } from "metabase/dashboard/components/DashCard/DashCardMenu/DashCardMenu";
+import type { LinkProps } from "metabase/common/components/Link";
+import type { DashCardMenuItem } from "metabase/dashboard/components/DashCard/DashCardMenu/dashcard-menu";
 import type { DataSourceSelectorProps } from "metabase/embedding-sdk/types/components/data-picker";
 import type { ContentTranslationFunction } from "metabase/i18n/types";
 import { getIconBase } from "metabase/lib/icon";
@@ -68,8 +69,6 @@ import type {
   DashboardId,
   Database as DatabaseType,
   Dataset,
-  DatasetError,
-  DatasetErrorType,
   Group,
   GroupPermissions,
   GroupsPermissions,
@@ -82,6 +81,7 @@ import type {
   Timeline,
   TimelineEvent,
   User,
+  VisualizationDisplay,
 } from "metabase-types/api";
 import type {
   AdminPath,
@@ -94,24 +94,29 @@ import type { EmbeddingEntityType } from "metabase-types/store/embedding-data-pi
 import type { GetAuthProviders, PluginGroupManagersType } from "./types";
 
 // functions called when the application is started
-export const PLUGIN_APP_INIT_FUNCTIONS = [];
+export const PLUGIN_APP_INIT_FUNCTIONS: (() => void)[] = [];
 
-export const PLUGIN_LANDING_PAGE = {
+export const PLUGIN_LANDING_PAGE: {
+  getLandingPage: () => string | null | undefined;
+  LandingPageWidget: ComponentType;
+} = {
   getLandingPage: () => "/",
   LandingPageWidget: PluginPlaceholder,
 };
 
-export const PLUGIN_REDUX_MIDDLEWARES = [];
+export const PLUGIN_REDUX_MIDDLEWARES: Middleware[] = [];
 
 // override for LogoIcon
-export const PLUGIN_LOGO_ICON_COMPONENTS = [];
+export const PLUGIN_LOGO_ICON_COMPONENTS: ComponentType[] = [];
 
 // admin nav items and routes
 export const PLUGIN_ADMIN_ALLOWED_PATH_GETTERS: ((
   user: any,
 ) => AdminPathKey[])[] = [];
 
-export const PLUGIN_ADMIN_TOOLS = {
+export const PLUGIN_ADMIN_TOOLS: {
+  COMPONENT: ComponentType | null;
+} = {
   COMPONENT: null,
 };
 
@@ -120,14 +125,17 @@ export const PLUGIN_WHITELABEL = {
   WhiteLabelConcealSettingsPage: PluginPlaceholder,
 };
 
-export const PLUGIN_ADMIN_TROUBLESHOOTING = {
-  EXTRA_ROUTES: [] as ReactNode[],
-  GET_EXTRA_NAV: (): ReactNode[] => [],
-};
-
 export const PLUGIN_ADMIN_SETTINGS = {
   InteractiveEmbeddingSettings: NotFoundPlaceholder,
   LicenseAndBillingSettings: PluginPlaceholder,
+  useUpsellFlow: (_props: {
+    campaign: string;
+    location: string;
+  }): {
+    triggerUpsellFlow: (() => void) | undefined;
+  } => ({
+    triggerUpsellFlow: undefined,
+  }),
 };
 
 // admin permissions
@@ -232,7 +240,7 @@ const defaultLoginPageIllustration = {
   isDefault: true,
 };
 
-const getLoadingMessage = (isSlow: boolean = false) =>
+const getLoadingMessage = (isSlow: boolean | undefined = false) =>
   isSlow ? t`Waiting for results...` : t`Doing science...`;
 
 // selectors that customize behavior between app versions
@@ -249,10 +257,10 @@ export const PLUGIN_SELECTORS = {
   getLandingPageIllustration: (_state: State): IllustrationValue => {
     return defaultLandingPageIllustration;
   },
-  getNoDataIllustration: (_state: State): string => {
+  getNoDataIllustration: (_state: State): string | null => {
     return noResultsSource;
   },
-  getNoObjectIllustration: (_state: State): string => {
+  getNoObjectIllustration: (_state: State): string | null => {
     return noResultsSource;
   },
 };
@@ -531,8 +539,8 @@ export const PLUGIN_MODEL_PERSISTENCE = {
 export const PLUGIN_EMBEDDING = {
   isEnabled: () => false,
   isInteractiveEmbeddingEnabled: (_state: State) => false,
-  SimpleDataPicker: (_props: SimpleDataPickerProps) => null,
-  DataSourceSelector: (_props: DataSourceSelectorProps) => null,
+  SimpleDataPicker: (_props: SimpleDataPickerProps): ReactNode => null,
+  DataSourceSelector: (_props: DataSourceSelectorProps): ReactNode => null,
 };
 
 export interface SimpleDataPickerProps {
@@ -551,6 +559,12 @@ export const PLUGIN_EMBEDDING_SDK = {
 export const PLUGIN_EMBEDDING_IFRAME_SDK = {
   hasValidLicense: () => false,
   SdkIframeEmbedRoute: (): ReactNode => null,
+};
+
+export const PLUGIN_EMBEDDING_IFRAME_SDK_SETUP = {
+  isFeatureEnabled: () => false,
+  shouldShowEmbedInNewItemMenu: () => false,
+  SdkIframeEmbedSetup: (): ReactNode => null,
 };
 
 export const PLUGIN_CONTENT_VERIFICATION = {
@@ -595,16 +609,19 @@ type GdriveConnectionModalProps = {
   reconnect: boolean;
 };
 
+type GdriveAddDataPanelProps = {
+  onAddDataModalClose: () => void;
+};
+
 export const PLUGIN_UPLOAD_MANAGEMENT = {
   FileUploadErrorModal: _FileUploadErrorModal,
   UploadManagementTable: PluginPlaceholder,
   GdriveSyncStatus: PluginPlaceholder,
   GdriveConnectionModal:
     PluginPlaceholder as ComponentType<GdriveConnectionModalProps>,
-  GdriveSidebarMenuItem: PluginPlaceholder as ComponentType<{
-    onClick: () => void;
-  }>,
   GdriveDbMenu: PluginPlaceholder,
+  GdriveAddDataPanel:
+    PluginPlaceholder as ComponentType<GdriveAddDataPanelProps>,
 };
 
 export const PLUGIN_IS_EE_BUILD = {
@@ -624,20 +641,15 @@ export const PLUGIN_RESOURCE_DOWNLOADS = {
 };
 
 const defaultMetabotContextValue: MetabotContext = {
+  prompt: "",
+  setPrompt: () => {},
+  promptInputRef: undefined,
   getChatContext: () => ({}) as any,
   registerChatContextProvider: () => () => {},
 };
 
-export type FixSqlQueryButtonProps = {
-  query: Lib.Query;
-  queryError: DatasetError;
-  queryErrorType: DatasetErrorType | undefined;
-  onQueryFix: (fixedQuery: Lib.Query, fixedLineNumbers: number[]) => void;
-  onHighlightLines: (fixedLineNumbers: number[]) => void;
-};
-
 export type PluginAiSqlFixer = {
-  FixSqlQueryButton: ComponentType<FixSqlQueryButtonProps>;
+  FixSqlQueryButton: ComponentType<Record<string, never>>;
 };
 
 export const PLUGIN_AI_SQL_FIXER: PluginAiSqlFixer = {
@@ -681,6 +693,9 @@ export type PluginAIEntityAnalysis = {
   AIQuestionAnalysisSidebar: ComponentType<AIQuestionAnalysisSidebarProps>;
   AIDashboardAnalysisSidebar: ComponentType<AIDashboardAnalysisSidebarProps>;
   canAnalyzeQuestion: (question: Question) => boolean;
+  chartAnalysisRenderFormats: {
+    [display in VisualizationDisplay]?: "png" | "svg" | "none";
+  };
 };
 
 export const PLUGIN_AI_ENTITY_ANALYSIS: PluginAIEntityAnalysis = {
@@ -688,9 +703,11 @@ export const PLUGIN_AI_ENTITY_ANALYSIS: PluginAIEntityAnalysis = {
   AIQuestionAnalysisSidebar: PluginPlaceholder,
   AIDashboardAnalysisSidebar: PluginPlaceholder,
   canAnalyzeQuestion: () => false,
+  chartAnalysisRenderFormats: {},
 };
 
 export const PLUGIN_METABOT = {
+  isEnabled: () => false,
   Metabot: (_props: { hide?: boolean }) => null as React.ReactElement | null,
   defaultMetabotContextValue,
   MetabotContext: React.createContext(defaultMetabotContextValue),
@@ -761,6 +778,12 @@ export const PLUGIN_DB_ROUTING = {
   ): "default" | "hidden" | "disabled" => "default",
 };
 
+export const PLUGIN_DATABASE_REPLICATION = {
+  DatabaseReplicationSection: PluginPlaceholder as ComponentType<{
+    database: DatabaseType;
+  }>,
+};
+
 export const PLUGIN_API = {
   getRemappedCardParameterValueUrl: (
     dashboardId: DashboardId,
@@ -772,4 +795,12 @@ export const PLUGIN_API = {
     parameterId: ParameterId,
   ) =>
     `/api/dashboard/${dashboardId}/params/${encodeURIComponent(parameterId)}/remapping`,
+};
+
+export const PLUGIN_SMTP_OVERRIDE: {
+  CloudSMTPConnectionCard: ComponentType;
+  SMTPOverrideConnectionForm: ComponentType<{ onClose: () => void }>;
+} = {
+  CloudSMTPConnectionCard: PluginPlaceholder,
+  SMTPOverrideConnectionForm: PluginPlaceholder,
 };

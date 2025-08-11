@@ -11,6 +11,14 @@
   []
   (nil? @api/*current-user*))
 
+(defn- check-required-perms!
+  "Checks that we have the required permissions to change upload settings for this database."
+  [db-id]
+  (or (not-handling-api-request?)
+      (mi/can-write? :model/Database db-id)
+      (t2/select-one-fn :is_attached_dwh :model/Database db-id)
+      (api/throw-403)))
+
 (defsetting uploads-settings
   (deferred-tru "Upload settings")
   :encryption :when-encryption-key-set ; this doesn't really have an effect as this setting is not stored as a setting model
@@ -24,18 +32,15 @@
                    :schema_name  (:uploads_schema_name db)
                    :table_prefix (:uploads_table_prefix db)}))
   :setter     (fn [{:keys [db_id schema_name table_prefix]}]
-                (cond
-                  (nil? db_id)
+                (if (nil? db_id)
                   (t2/update! :model/Database :uploads_enabled true {:uploads_enabled      false
                                                                      :uploads_schema_name  nil
                                                                      :uploads_table_prefix nil})
-                  (or (not-handling-api-request?)
-                      (mi/can-write? :model/Database db_id))
-                  (t2/update! :model/Database db_id {:uploads_enabled      true
-                                                     :uploads_schema_name  schema_name
-                                                     :uploads_table_prefix table_prefix})
-                  :else
-                  (api/throw-403))))
+                  (do
+                    (check-required-perms! db_id)
+                    (t2/update! :model/Database db_id {:uploads_enabled      true
+                                                       :uploads_schema_name  schema_name
+                                                       :uploads_table_prefix table_prefix})))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Deprecated uploads settings begin

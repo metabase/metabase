@@ -5,7 +5,7 @@ import {
   useGetPersistedInfoByCardQuery,
   useRefreshModelCacheMutation,
 } from "metabase/api";
-import { DelayedLoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
+import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { PLUGIN_MODEL_PERSISTENCE } from "metabase/plugins";
 import { Box, Button, Flex, Icon } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";

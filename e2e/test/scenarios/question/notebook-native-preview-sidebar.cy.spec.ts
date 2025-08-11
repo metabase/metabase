@@ -20,7 +20,7 @@ describe("scenarios > question > notebook > native query preview sidebar", () =>
   });
 
   it("should not an show empty sidebar when no data source is selected", () => {
-    H.setTokenFeatures("all");
+    H.activateToken("pro-self-hosted");
     cy.intercept("POST", "/api/dataset/native").as("nativeDataset");
     H.openReviewsTable({ mode: "notebook", limit: 1 });
     cy.findByLabelText("View SQL").click();

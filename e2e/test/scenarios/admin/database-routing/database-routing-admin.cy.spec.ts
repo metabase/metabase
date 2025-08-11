@@ -32,7 +32,7 @@ describe("admin > database > database routing", () => {
 
   describe("EE", () => {
     beforeEach(() => {
-      H.setTokenFeatures("all");
+      H.activateToken("pro-self-hosted");
     });
 
     it("should be able to configure db routing and manage destination databases", () => {
@@ -247,11 +247,11 @@ describe("admin > database > database routing", () => {
         .should("exist");
 
       cy.log("should not see database in table metadata db list");
-      cy.visit("/admin/datamodel");
-      cy.findByTestId("selected-database").click();
-      H.popover()
-        .findByText(BASE_POSTGRES_DESTINATION_DB_INFO.name)
-        .should("not.exist");
+      H.DataModel.visit();
+
+      H.DataModel.TablePicker.getDatabase(
+        BASE_POSTGRES_DESTINATION_DB_INFO.name,
+      ).should("not.exist");
 
       cy.log("should not see database in permissions pages");
       cy.visit("/admin/permissions/data/database");
@@ -540,9 +540,7 @@ function assertDbRoutingDisabled() {
 
 function setupModelPersistence() {
   interceptPerformanceRoutes();
-  cy.visit("/admin");
-  cy.findByRole("link", { name: "Performance" }).click();
-  cy.findByRole("tab", { name: "Model persistence" }).click();
-  cy.findByRole("switch", { name: "Disabled" }).click({ force: true });
+  cy.visit("/admin/performance/models");
+  cy.findByTestId("admin-layout-content").findByText("Disabled").click();
   cy.wait("@enablePersistence");
 }

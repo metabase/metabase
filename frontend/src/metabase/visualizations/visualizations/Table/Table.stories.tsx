@@ -53,7 +53,7 @@ const DefaultTemplate: StoryFn<{
     ? createMockState({
         settings: createMockSettingsState({
           "token-features": createMockTokenFeatures({
-            "development-mode": true,
+            development_mode: true,
           }),
         }),
       })

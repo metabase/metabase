@@ -1,6 +1,6 @@
 import {
-  type BaseInteractiveQuestionProps,
   InteractiveQuestion,
+  type InteractiveQuestionProps,
 } from "../InteractiveQuestion";
 
 /**
@@ -9,7 +9,7 @@ import {
  * @category CreateQuestion
  */
 export type CreateQuestionProps = Omit<
-  Partial<BaseInteractiveQuestionProps>,
+  Partial<InteractiveQuestionProps>,
   "questionId" | "children"
 >;
 

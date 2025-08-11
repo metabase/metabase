@@ -4,18 +4,18 @@ import { jt, t } from "ttag";
 import {
   SettingsPageWrapper,
   SettingsSection,
-} from "metabase/admin/settings/components/SettingsSection";
+} from "metabase/admin/components/SettingsSection";
 import {
   useGetAdminSettingsDetailsQuery,
   useGetSettingsQuery,
   useUpdateGoogleAuthMutation,
 } from "metabase/api";
+import ExternalLink from "metabase/common/components/ExternalLink";
 import {
   useDocsUrl,
   useHasTokenFeature,
   useSetting,
 } from "metabase/common/hooks";
-import ExternalLink from "metabase/core/components/ExternalLink";
 import {
   Form,
   FormErrorMessage,

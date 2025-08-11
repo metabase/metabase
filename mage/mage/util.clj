@@ -5,7 +5,8 @@
    [clojure.edn :as edn]
    [clojure.java.io :as io]
    [clojure.string :as str]
-   [mage.color :as c]))
+   [mage.color :as c]
+   [puget.printer :as puget]))
 
 (set! *warn-on-reflection* true)
 
@@ -30,6 +31,11 @@
   "Run a shell command and return the output as a vector of lines."
   [& cmd]
   (-> (apply sh cmd) str/split-lines vec))
+
+(defn node
+  "Run a Node.js command string and print the output as a trimmed string."
+  [& cmd]
+  (apply sh "node" "-p" cmd))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Git Stuff
@@ -143,3 +149,9 @@
         (reset! done? true)))))
 
 (defn- without-slash [s] (str/replace s #"/$" ""))
+
+(defn pp [& xs]
+  (doseq [x xs] (puget/cprint x)))
+
+(defn pp-line [& xs]
+  (doseq [x xs] (puget/cprint x {:width 10e20})))

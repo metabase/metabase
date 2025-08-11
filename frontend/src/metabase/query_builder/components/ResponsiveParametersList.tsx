@@ -2,8 +2,8 @@ import cx from "classnames";
 import { useCallback, useMemo, useState } from "react";
 import { msgid, ngettext, t } from "ttag";
 
-import Button from "metabase/core/components/Button";
-import useIsSmallScreen from "metabase/hooks/use-is-small-screen";
+import Button from "metabase/common/components/Button";
+import useIsSmallScreen from "metabase/common/hooks/use-is-small-screen";
 import { Box, Flex } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type { Parameter } from "metabase-types/api";
@@ -38,7 +38,10 @@ export const ResponsiveParametersList = ({
   }, [parameters]);
 
   return (
-    <Box w={isSmallScreen && mobileShowParameterList ? "100%" : undefined}>
+    <Box
+      w={isSmallScreen && mobileShowParameterList ? "100%" : undefined}
+      style={{ alignSelf: "center" }}
+    >
       {isSmallScreen && (
         <Button
           className={ResponsiveParametersListS.filterButton}
@@ -57,6 +60,7 @@ export const ResponsiveParametersList = ({
         </Button>
       )}
       <Box
+        py="sm"
         className={cx(ResponsiveParametersListS.ParametersListContainer, {
           [ResponsiveParametersListS.isSmallScreen]: isSmallScreen,
           [ResponsiveParametersListS.isShowingMobile]: mobileShowParameterList,

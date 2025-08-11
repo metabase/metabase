@@ -12,6 +12,7 @@
     min-width: auto;
     /* stylelint-disable-next-line property-no-unknown */
     field-sizing: content;
+    max-width: 100%;
 
     &:not(:last-child) {
       padding-left: 0.5rem;

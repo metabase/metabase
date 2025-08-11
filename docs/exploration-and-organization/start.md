@@ -1,5 +1,7 @@
 ---
 title: "Organization overview"
+redirect_from:
+  - /docs/latest/exploration-and-organization
 ---
 
 # Organization overview

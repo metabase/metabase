@@ -23,8 +23,8 @@ import {
   screen,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
+import { BEFORE_UNLOAD_UNSAVED_MESSAGE } from "metabase/common/hooks/use-before-unload";
 import { DashboardApp } from "metabase/dashboard/containers/DashboardApp/DashboardApp";
-import { BEFORE_UNLOAD_UNSAVED_MESSAGE } from "metabase/hooks/use-before-unload";
 import { checkNotNull } from "metabase/lib/types";
 import type { Dashboard } from "metabase-types/api";
 import {
@@ -248,12 +248,12 @@ describe("DashboardApp", () => {
   it("should pass dashboard_load_id to dashboard and query_metadata endpoints", async () => {
     const { dashboardId } = await setup();
 
-    const dashboardURL = fetchMock.lastUrl(
+    const dashboardURL = fetchMock.callHistory.lastCall(
       `path:/api/dashboard/${dashboardId}`,
-    );
-    const queryMetadataURL = fetchMock.lastUrl(
+    )?.url;
+    const queryMetadataURL = fetchMock.callHistory.lastCall(
       `path:/api/dashboard/${dashboardId}/query_metadata`,
-    );
+    )?.url;
 
     const dashboardSearchParams = new URLSearchParams(
       dashboardURL?.split("?")[1],

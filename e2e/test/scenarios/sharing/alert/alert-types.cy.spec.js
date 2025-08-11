@@ -107,7 +107,7 @@ describe("scenarios > alert > types", { tags: "@external" }, () => {
       });
 
       H.modal().within(() => {
-        cy.findByText("Only send this alert once").click();
+        cy.findByText("Delete this Alert after it's triggered").click();
 
         cy.button("Done").click();
       });

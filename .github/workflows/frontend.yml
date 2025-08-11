@@ -9,6 +9,16 @@ on:
       skip-lint:
         type: boolean
         default: false
+  workflow_dispatch:
+    inputs:
+      skip:
+        description: "Skip main frontend jobs (type-check, unit tests, timezone tests)"
+        type: boolean
+        default: false
+      skip-lint:
+        description: "Skip linting jobs (prettier, eslint, css variables check)"
+        type: boolean
+        default: false
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}-frontend
@@ -63,8 +73,13 @@ jobs:
   fe-tests-unit:
     if: ${{ !inputs.skip }}
     runs-on: ubuntu-22.04
-    timeout-minutes: 60
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2] # 2 shards for parallel execution
     env:
+      SHARDS: 2 # should match matrix above
       JEST_JUNIT_OUTPUT_DIR: ./target/junit
       JEST_JUNIT_OUTPUT_NAME: test-report-frontend-unit.xml
     steps:
@@ -75,22 +90,11 @@ jobs:
         uses: ./.github/actions/prepare-backend
         with:
           m2-cache-key: "cljs"
-      - name: Run frontend unit tests and collect the code coverage information
-        if: github.ref_name == 'master'
-        run: yarn run test-unit --coverage --silent
       - name: Run frontend unit tests
-        if: github.ref_name != 'master'
-        run: yarn run test-unit --silent
-      - name: Upload coverage to codecov.io
-        if: github.ref_name == 'master'
-        uses: codecov/codecov-action@v4
-        with:
-          files: ./coverage/lcov.info
-          flags: front-end
-          token: ${{ secrets.CODECOV_TOKEN }}
+        run: yarn run test-unit --silent --shard=${{ matrix.shard }}/${{ env.SHARDS }}
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results
-        if: always()
+        if: always() && github.event_name != 'workflow_dispatch'
         with:
           input-path: ./target/junit
           output-name: frontend-unit

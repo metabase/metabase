@@ -5,12 +5,16 @@ import _ from "underscore";
 import { getEmbeddingSdkVersion } from "embedding-sdk/config";
 import { useSdkDispatch, useSdkSelector } from "embedding-sdk/store";
 import { initAuth } from "embedding-sdk/store/auth";
-import { setFetchRefreshTokenFn } from "embedding-sdk/store/reducer";
+import {
+  setFetchRefreshTokenFn,
+  setMetabaseInstanceVersion,
+} from "embedding-sdk/store/reducer";
 import {
   getFetchRefreshTokenFn,
   getLoginStatus,
 } from "embedding-sdk/store/selectors";
 import type { MetabaseAuthConfig } from "embedding-sdk/types";
+import { EMBEDDING_SDK_CONFIG } from "metabase/embedding-sdk/config";
 import api from "metabase/lib/api";
 import registerVisualizations from "metabase/visualizations/register";
 
@@ -63,8 +67,16 @@ export const useInitData = ({
 
     const EMBEDDING_SDK_VERSION = getEmbeddingSdkVersion();
     api.requestClient = {
-      name: "embedding-sdk-react",
+      name: EMBEDDING_SDK_CONFIG.metabaseClientRequestHeader,
       version: EMBEDDING_SDK_VERSION,
+    };
+
+    api.onResponseError = ({
+      metabaseVersion,
+    }: {
+      metabaseVersion: string;
+    }) => {
+      dispatch(setMetabaseInstanceVersion(metabaseVersion));
     };
 
     if (allowConsoleLog) {

@@ -2,7 +2,7 @@ import cx from "classnames";
 import { useCallback, useEffect, useState } from "react";
 import { t } from "ttag";
 
-import IconButtonWrapper from "metabase/components/IconButtonWrapper";
+import IconButtonWrapper from "metabase/common/components/IconButtonWrapper";
 import { Flex, Icon, Tooltip } from "metabase/ui";
 
 import NativeCodePanelS from "./NativeCodePanel.module.css";
