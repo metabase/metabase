@@ -1211,9 +1211,7 @@
           ;; this is data migration column
           :dataset_query_metrics_v2_migration_backup
           ;; this column is not used anymore
-          :cache_ttl
-          ;; skip until we implement serdes for documents
-          :document_id]
+          :cache_ttl]
    :transform
    {:created_at             (serdes/date)
     :database_id            (serdes/fk :model/Database :name)
@@ -1221,6 +1219,7 @@
     :source_card_id         (serdes/fk :model/Card)
     :collection_id          (serdes/fk :model/Collection)
     :dashboard_id           (serdes/fk :model/Dashboard)
+    :document_id            (serdes/fk :model/Document)
     :creator_id             (serdes/fk :model/User)
     :made_public_by_id      (serdes/fk :model/User)
     :dataset_query          {:export serdes/export-mbql :import serdes/import-mbql}
@@ -1232,7 +1231,7 @@
 (defmethod serdes/dependencies "Card"
   [{:keys [collection_id database_id dataset_query parameters parameter_mappings
            result_metadata table_id source_card_id visualization_settings
-           dashboard_id]}]
+           dashboard_id document_id]}]
   (set
    (concat
     (mapcat serdes/mbql-deps parameter_mappings)
@@ -1242,6 +1241,7 @@
     (when source_card_id #{[{:model "Card" :id source_card_id}]})
     (when collection_id #{[{:model "Collection" :id collection_id}]})
     (when dashboard_id #{[{:model "Dashboard" :id dashboard_id}]})
+    (when document_id #{[{:model "Document" :id document_id}]})
     (result-metadata-deps result_metadata)
     (serdes/mbql-deps dataset_query)
     (serdes/visualization-settings-deps visualization_settings))))

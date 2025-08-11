@@ -1652,6 +1652,7 @@
            queries
            query-permissions
            revisions
+           search
            users
            util
            view-log}}

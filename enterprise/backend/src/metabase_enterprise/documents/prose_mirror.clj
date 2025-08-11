@@ -7,6 +7,10 @@
   "Type of a card-embed node"
   "cardEmbed")
 
+(def smart-link-type
+  "Type of a smart-link node"
+  "smartLink")
+
 (def prose-mirror-content-type
   "The vendored 'mime-type' for documents saved using the prose-mirror ast."
   "application/json+vnd.prose-mirror")
@@ -25,7 +29,7 @@
   Args:
   - document - a :model/Document, this will check that content type is valid for prose mirror
   - predicate - a one-arg function returning true a given node should be updated
-  - updater - a one-arg function taking the node and return the new node
+  - updater - a one-arg function taking the node and returning the new node
 
   Returns:
   - the updated prose-mirror ast"
@@ -51,3 +55,10 @@
   (assert-prose-mirror doc)
   (->> (tree-seq :content :content document)
        (keep collector)))
+
+(defn card-ids
+  "Get all card-ids"
+  [document]
+  (collect-ast document #(when (and (= card-embed-type (:type %))
+                                    (pos? (-> % :attrs :id)))
+                           (-> % :attrs :id))))

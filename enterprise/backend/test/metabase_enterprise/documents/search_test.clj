@@ -113,7 +113,7 @@
 
           (testing "Search for documents returns empty results"
             (let [results (mt/user-http-request :crowberto :get 200 "search" :q "Test Document" :models "document")]
-              (is (empty? #p (:data results))
+              (is (empty? (:data results))
                   "Should not return any documents when premium feature is disabled")))
 
           (testing "Search for cards still works normally"

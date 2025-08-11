@@ -1,7 +1,7 @@
-name: AI Model
+name: Linked Card
 description: null
-entity_id: 4ahdpFn43jybRFVQTRjX_
-created_at: '2025-06-09T20:12:09.108945Z'
+entity_id: 1z82DAj_YUJAsCZZaacxK
+created_at: '2025-08-11T16:53:07.267346Z'
 creator_id: rasta@metabase.com
 display: table
 archived: false
@@ -23,12 +23,12 @@ visualization_settings:
   column_settings: null
 card_schema: 22
 serdes/meta:
-- id: 4ahdpFn43jybRFVQTRjX_
-  label: ai_model
+- id: 1z82DAj_YUJAsCZZaacxK
+  label: linked_card
   model: Card
 archived_directly: false
 dashboard_id: null
-metabase_version: v1.54.4-SNAPSHOT (4bc6d7c)
-source_card_id: null
-type: model
 document_id: null
+metabase_version: v0.55.1-SNAPSHOT (29786d3)
+source_card_id: null
+type: question
