@@ -94,6 +94,7 @@ export const DatabaseReplicationForm = ({
   preview: (
     fields: DatabaseReplicationFormFields,
     handleResponse: (_: PreviewDatabaseReplicationResponse) => void,
+    handleError: (error: unknown) => void,
   ) => void;
   initialValues: DatabaseReplicationFormFields;
 }) => {
@@ -109,10 +110,14 @@ export const DatabaseReplicationForm = ({
     useState<PreviewDatabaseReplicationResponse>();
   useEffect(() => {
     setPreviewResponseLoading(true);
-    preview({ databaseId: database.id, schemaSelect, schemaFilters }, (res) => {
-      setPreviewResponse(res);
-      setPreviewResponseLoading(false);
-    });
+    preview(
+      { databaseId: database.id, schemaSelect, schemaFilters },
+      (res) => {
+        setPreviewResponse(res);
+        setPreviewResponseLoading(false);
+      },
+      () => setPreviewResponseLoading(false),
+    );
   }, [preview, database.id, schemaFilters, schemaSelect]);
 
   return (

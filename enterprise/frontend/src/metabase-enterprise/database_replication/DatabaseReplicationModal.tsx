@@ -55,6 +55,7 @@ export const DatabaseReplicationModal = ({
     (
       { schemaSelect, schemaFilters }: DatabaseReplicationFormFields,
       handleResponse: (response: PreviewDatabaseReplicationResponse) => void,
+      handleError: (error: unknown) => void,
     ) => {
       previewDatabaseReplication({
         databaseId: database.id,
@@ -64,6 +65,7 @@ export const DatabaseReplicationModal = ({
         .then(handleResponse)
         .catch((error: unknown) => {
           isRTKQueryError(error) && handleDWHReplicationFieldError(error.data);
+          handleError(error);
         });
     },
     [previewDatabaseReplication, database.id],
