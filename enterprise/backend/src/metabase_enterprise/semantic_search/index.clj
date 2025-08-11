@@ -329,9 +329,7 @@
   "Inserts or updates documents in the index table. If a document with the same
   model + model_id already exists, it will be replaced. Parallelizes batch insertion
   using a shared thread pool with a configurable thread count (default: 2)."
-  ([connectable index documents-reducible]
-   (upsert-index! connectable index documents-reducible {}))
-  ([connectable index documents-reducible {:keys [serial?] :or {serial? false}}]
+  ([connectable index documents-reducible & {:keys [serial?] :or {serial? false}}]
    (not-empty
     (let [pool @index-update-executor
           results (transduce

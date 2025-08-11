@@ -282,7 +282,7 @@
                             (when (seq (second ret))
                               (reset! inter-batch-cache-hit? true))
                             ret)))]
-          (semantic.tu/upsert-index! test-documents {:serial? serial?}))
+          (semantic.tu/upsert-index! test-documents :serial? serial?))
         (is (= inter-batch? @inter-batch-cache-hit?))
         (is (= 1 (count @calls)))
         (is (= ["Dog Training Guide" "Elephant Migration"]

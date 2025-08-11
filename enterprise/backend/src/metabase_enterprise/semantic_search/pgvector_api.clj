@@ -86,7 +86,7 @@
   `documents` is a logical collection, but can be reducible to save memory usage."
   [pgvector index-metadata documents]
   (let [{:keys [index]} (ensure-active-index-state pgvector index-metadata)]
-    (semantic.index/upsert-index! pgvector index documents {})))
+    (semantic.index/upsert-index! pgvector index documents)))
 
 (defn gate-updates!
   "Stages document updates through the gate table to enable async indexing. See gate.clj.
