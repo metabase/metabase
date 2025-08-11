@@ -126,7 +126,6 @@ jobs:
           SPLIT: ${{ inputs.total_chunks }}
           SPLIT_INDEX: ${{ inputs.split_index }}
           SPLIT_FILE: "./e2e/support/timings.json"
-          SPLIT_OUTPUT_FILE: "newTimes.json"
           SPLIT_TIME_THRESHOLD: 0
           # do not write cypress-split summary to github
           SPLIT_SUMMARY: false
@@ -170,13 +169,11 @@ jobs:
           echo "All files in current directory (including hidden):"
           ls -la
           echo "Looking for any timing-related files recursively:"
-          find . -maxdepth 2 -name "*timing*" -o -name "*newTimes*" 2>/dev/null
-          echo "Looking for json files in current directory:"
-          find . -maxdepth 1 -name "*.json" 2>/dev/null
-          echo "Checking specific locations where timing file might be:"
-          ls -la newTimes.json 2>/dev/null || echo "newTimes.json does not exist in current dir"
-          ls -la ./newTimes.json 2>/dev/null || echo "./newTimes.json does not exist"
-          ls -la e2e/support/newTimes.json 2>/dev/null || echo "e2e/support/newTimes.json does not exist"
+          find . -maxdepth 2 -name "*timing*" 2>/dev/null
+          echo "Checking if cypress-split updated the timing file:"
+          ls -la ./e2e/support/timings.json 2>/dev/null || echo "e2e/support/timings.json does not exist"
+          echo "Content of timing file if it exists:"
+          head -20 ./e2e/support/timings.json 2>/dev/null || echo "Could not read timing file"
           echo "Checking if there are any cypress temp or output directories:"
           ls -la cypress/ 2>/dev/null || echo "No cypress directory found"
           echo "==============================="
@@ -188,7 +185,6 @@ jobs:
           SPLIT: ${{ inputs.total_chunks || 1 }}
           SPLIT_INDEX: ${{ inputs.split_index || 0 }}
           SPLIT_FILE: "./e2e/support/timings.json"
-          SPLIT_OUTPUT_FILE: "newTimes.json"
           SPLIT_TIME_THRESHOLD: 0
           SPEC_PATH: ${{ env.specs || inputs.specs }}
         run: |
@@ -216,11 +212,11 @@ jobs:
           echo "All files in current directory:"
           ls -la
           echo "Looking for any timing-related files:"
-          find . -maxdepth 2 -name "*timing*" -o -name "*newTimes*" 2>/dev/null
-          echo "Looking for json files in current directory:"
-          find . -maxdepth 1 -name "*.json" 2>/dev/null
-          echo "Checking if cypress-split wrote anything:"
-          ls -la newTimes.json 2>/dev/null || echo "newTimes.json does not exist after test"
+          find . -maxdepth 2 -name "*timing*" 2>/dev/null
+          echo "Checking if cypress-split updated the timing file:"
+          ls -la ./e2e/support/timings.json 2>/dev/null || echo "e2e/support/timings.json does not exist after test"
+          echo "Content of timing file if it exists:"
+          head -20 ./e2e/support/timings.json 2>/dev/null || echo "Could not read timing file"
           echo "==================================="
 
       - name: Upload Test Results
@@ -256,9 +252,10 @@ jobs:
       - name: Check for timing file
         if: always()
         run: |
-          echo "Looking for newTimes.json..."
-          ls -la newTimes.json || echo "newTimes.json not found"
-          ls -la . | grep -i timing || echo "No timing files found in current directory"
+          echo "Looking for updated timing file..."
+          ls -la ./e2e/support/timings.json || echo "e2e/support/timings.json not found"
+          echo "Content of timing file:"
+          head -20 ./e2e/support/timings.json 2>/dev/null || echo "Could not read timing file"
           pwd
           
       - name: Upload Timing Data
@@ -267,7 +264,7 @@ jobs:
         continue-on-error: true
         with:
           name: timing-data-${{ inputs.name }}-${{ inputs.split_index }}
-          path: newTimes.json
+          path: ./e2e/support/timings.json
           retention-days: 7
 
       - name: Publish Summary

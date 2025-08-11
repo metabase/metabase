@@ -103,8 +103,9 @@ jobs:
         with:
           sparse-checkout: |
             .github
+            e2e/support
           sparse-checkout-cone-mode: false
-      
+
       - name: Download all timing artifacts
         uses: actions/download-artifact@v4
         with:
@@ -117,12 +118,29 @@ jobs:
         run: |
           echo "Downloaded timing files:"
           find timing-files -name "*.json" || echo "No timing files found"
-          
-      - name: Upload all timing files
+
+      - name: Merge split timings
+        id: merge
+        run: |
+          echo "Merging timing files using cypress-split-merge..."
+          npx cypress-split-merge \
+            --parent-folder timing-files \
+            --split-file e2e/support/timings.json \
+            --output e2e/support/timings.json
+        env:
+          DEBUG: cypress-split
+        continue-on-error: true
+
+      - name: Show merged timings
+        run: |
+          echo "=== Merged Timing Results ==="
+          head -50 e2e/support/timings.json 2>/dev/null || echo "No merged timing file found"
+
+      - name: Upload merged timing files
         uses: actions/upload-artifact@v4
         with:
-          name: all-e2e-timings-${{ github.run_id }}
-          path: timing-files/
+          name: merged-e2e-timings-${{ github.run_id }}
+          path: e2e/support/timings.json
           retention-days: 30
         continue-on-error: true
 
