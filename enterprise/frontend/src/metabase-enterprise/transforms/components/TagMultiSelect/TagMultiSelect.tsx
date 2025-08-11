@@ -86,8 +86,8 @@ export function TagMultiSelect({ tagIds, onChange }: TagMultiSelectProps) {
         data={getOptions(tags, searchValue)}
         placeholder={t`Add tags`}
         searchValue={searchValue}
+        hidePickedOptions={false}
         searchable
-        nothingFoundMessage={t`Tag with this name is already added.`}
         rightSection={
           isLoading || isCreating ? <Loader size="sm" /> : undefined
         }
