@@ -61,6 +61,8 @@ export const SdkIframeEmbedRoute = () => {
 
   const { theme, locale } = embedSettings;
 
+  console.log("embedSettings", embedSettings);
+
   const authConfig = defineMetabaseAuthConfig({
     metabaseInstanceUrl: embedSettings.instanceUrl,
     apiKey: embedSettings.apiKey,
@@ -84,7 +86,7 @@ const SdkIframeEmbedView = ({
 
   return match(settings)
     .with(
-      P.union({ template: "exploration" }, { questionId: "new" }),
+      { componentName: "metabase-question", questionId: "new" },
       (settings) => (
         <InteractiveQuestion
           questionId="new"
@@ -100,6 +102,7 @@ const SdkIframeEmbedView = ({
     .with({ template: "view-content" }, (_settings) => null)
     .with(
       {
+        componentName: "metabase-dashboard",
         dashboardId: P.nonNullable,
         drills: false,
       },
@@ -116,6 +119,7 @@ const SdkIframeEmbedView = ({
     )
     .with(
       {
+        componentName: "metabase-dashboard",
         dashboardId: P.nonNullable,
         drills: P.optional(true),
       },
@@ -134,6 +138,7 @@ const SdkIframeEmbedView = ({
     )
     .with(
       {
+        componentName: "metabase-question",
         questionId: P.nonNullable,
       },
       (settings) => {
