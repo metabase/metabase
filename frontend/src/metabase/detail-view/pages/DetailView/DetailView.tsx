@@ -197,7 +197,7 @@ export function DetailView({
         gap={rem(72)}
         mih={0}
       >
-        <Group justify="center" flex="1" px="xl" py={rem(64)}>
+        <Group justify="center" flex="1" p={rem(64)}>
           <Stack gap={rem(64)} maw={rem(900)} w="100%">
             {headerColumns.length > 0 && <Header columns={columns} row={row} />}
 
