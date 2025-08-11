@@ -4,6 +4,7 @@ import { push } from "react-router-redux";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { zoomInRow } from "metabase/query_builder/actions";
 import { getRowIndexToPKMap } from "metabase/query_builder/selectors";
+import { closeNavbar } from "metabase/redux/app";
 import type { ObjectId } from "metabase/visualizations/components/ObjectDetail/types";
 import type { ColumnDescriptor } from "metabase/visualizations/lib/graph/columns";
 import * as Lib from "metabase-lib";
@@ -52,6 +53,7 @@ export const useObjectDetail = (
       if (tableId == null || !primaryKeyColumn) {
         dispatch(zoomInRow({ objectId }));
       } else {
+        dispatch(closeNavbar());
         dispatch(
           push({
             pathname: `/table/${tableId}/detail/${objectId}`,

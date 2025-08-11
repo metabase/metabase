@@ -9,25 +9,26 @@ import {
   useListTableForeignKeysQuery,
 } from "metabase/api/table";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/LoadingAndErrorWrapper";
+import { Details, Nav, Relationships } from "metabase/detail-view/components";
 import { useDispatch } from "metabase/lib/redux";
-import type { DatasetColumn, StructuredDatasetQuery } from "metabase-types/api";
+import { closeNavbar } from "metabase/redux/app";
+import { Box, Group, Stack } from "metabase/ui";
+import { extractRemappedColumns } from "metabase/visualizations";
+import type { StructuredDatasetQuery } from "metabase-types/api";
 
-import { getObjectQuery, getTableQuery, processRemappedColumns } from "./utils";
-
-const emptyColumns: DatasetColumn[] = [];
+import S from "./DetailView.module.css";
+import { getObjectQuery, getTableQuery } from "./utils";
 
 interface TableDetailViewLoaderProps {
   params: {
     tableId: string;
     rowId: string;
   };
-  isEdit?: boolean;
   router: { location: LocationDescriptorObject };
 }
 
 export function DetailView({
   params,
-  isEdit = false,
   router: { location },
 }: TableDetailViewLoaderProps) {
   const tableId = parseInt(params.tableId, 10);
@@ -46,23 +47,17 @@ export function DetailView({
   }, [table, rowId]);
 
   const { data: dataset } = useGetAdhocQueryQuery(query ? query : skipToken);
+  const data = useMemo(() => {
+    return dataset ? extractRemappedColumns(dataset.data) : undefined;
+  }, [dataset]);
 
   const [currentRowIndex, setCurrentRowIndex] = useState<number>();
 
-  const rows = useMemo(() => dataset?.data?.rows || [], [dataset]);
-  const columns = dataset?.data?.results_metadata?.columns ?? emptyColumns;
-
-  const { columns: processedColumns, rows: processedRows } = useMemo(() => {
-    if (columns.length > 0 && rows.length > 0) {
-      return processRemappedColumns(columns, rows);
-    }
-    return { columns, rows };
-  }, [columns, rows]);
+  const rows = useMemo(() => data?.rows ?? [], [data]);
+  const columns = useMemo(() => data?.results_metadata.columns ?? [], [data]);
 
   const rowFromList =
-    typeof currentRowIndex === "undefined"
-      ? undefined
-      : processedRows[currentRowIndex];
+    typeof currentRowIndex === "undefined" ? undefined : rows[currentRowIndex];
 
   const { data: objectDataset } = useGetAdhocQueryQuery(
     objectQuery ? objectQuery : skipToken,
@@ -75,12 +70,8 @@ export function DetailView({
   const row = rowFromList ?? rowFromObject;
 
   const [previousPathState] = useState<
-    | {
-        pathname: string;
-        hash: string;
-      }
-    | object
-  >(() => location.state || {});
+    { pathname: string; hash: string } | object
+  >(() => location.state ?? {});
 
   const handleBackClick = useMemo(() => {
     return "hash" in previousPathState
@@ -88,7 +79,56 @@ export function DetailView({
       : undefined;
   }, [dispatch, previousPathState]);
 
-  // Handle row selection based on rowId
+  const handleViewPreviousObjectDetail = useCallback(() => {
+    setCurrentRowIndex((currentIndex) => {
+      if (typeof currentIndex !== "number") {
+        return currentIndex;
+      }
+
+      const newIndex = currentIndex - 1;
+      const rowId = rows[newIndex]?.[0];
+
+      if (rowId !== undefined) {
+        dispatch(
+          push({
+            pathname: `/table/${tableId}/detail/${rowId}`,
+            state: {
+              hash: location.state?.hash,
+              pathname: location.state?.pathname,
+            },
+          }),
+        );
+      }
+
+      return newIndex;
+    });
+  }, [rows, dispatch, tableId, location.state?.hash, location.state?.pathname]);
+
+  const handleViewNextObjectDetail = useCallback(() => {
+    setCurrentRowIndex((currentIndex) => {
+      if (typeof currentIndex !== "number") {
+        return currentIndex;
+      }
+
+      const newIndex = currentIndex + 1;
+      const rowId = rows[newIndex]?.[0];
+
+      if (rowId !== undefined) {
+        dispatch(
+          push({
+            pathname: `/table/${tableId}/detail/${rowId}`,
+            state: {
+              hash: location.state?.hash,
+              pathname: location.state?.pathname,
+            },
+          }),
+        );
+      }
+
+      return newIndex;
+    });
+  }, [rows, dispatch, tableId, location.state?.hash, location.state?.pathname]);
+
   useEffect(() => {
     if (!row) {
       return;
@@ -102,73 +142,40 @@ export function DetailView({
     }
   }, [rowId, rows, row]);
 
-  const handleViewPreviousObjectDetail = useCallback(() => {
-    setCurrentRowIndex((i) => {
-      const newIndex = i - 1;
-      const rowId = rows[newIndex]?.[0];
-      if (rowId !== undefined) {
-        dispatch(
-          push({
-            pathname: `/table/${tableId}/detail/${rowId}${isEdit ? "/edit" : ""}`,
-            state: {
-              hash: location.state?.hash,
-              pathname: location.state?.pathname,
-            },
-          }),
-        );
-      }
-      return newIndex;
-    });
-  }, [
-    rows,
-    dispatch,
-    tableId,
-    isEdit,
-    location.state?.hash,
-    location.state?.pathname,
-  ]);
-
-  const handleViewNextObjectDetail = useCallback(() => {
-    setCurrentRowIndex((i) => {
-      const newIndex = i + 1;
-      const rowId = rows[newIndex]?.[0];
-      if (rowId !== undefined) {
-        dispatch(
-          push({
-            pathname: `/table/${tableId}/detail/${rowId}${isEdit ? "/edit" : ""}`,
-            state: {
-              hash: location.state?.hash,
-              pathname: location.state?.pathname,
-            },
-          }),
-        );
-      }
-      return newIndex;
-    });
-  }, [
-    rows,
-    dispatch,
-    tableId,
-    isEdit,
-    location.state?.hash,
-    location.state?.pathname,
-  ]);
+  useEffect(() => {
+    dispatch(closeNavbar());
+  }, [dispatch]);
 
   if (!table || !dataset || !row) {
     return <LoadingAndErrorWrapper loading />;
   }
 
-  return "asd";
+  return (
+    <Stack>
+      <Box flex="0 0 auto">
+        <Nav />
+      </Box>
+
+      <Group className={S.content} flex="1" h="100%" mih={0}>
+        <Group flex="1">
+          <Details />
+        </Group>
+
+        <Box flex="0 0 auto">
+          <Relationships />
+        </Box>
+      </Group>
+    </Stack>
+  );
 
   // return (
   //   <TableDetailViewInner
   //     tableId={tableId}
   //     rowId={rowId}
   //     row={row}
-  //     columns={processedColumns}
+  //     columns={columns}
   //     table={table}
   //     tableForeignKeys={tableForeignKeys}
-  //     isEdit={isEdit}
   //     onPreviousItemClick={
   //       rows.length > 1 &&
   //       typeof currentRowIndex === "number" &&
