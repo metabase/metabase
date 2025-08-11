@@ -128,7 +128,7 @@ export class Map extends Component {
         return t`Pin type`;
       },
       // Don't expose this in the UI for now
-      // widget: "select",
+      widget: "select",
       props: {
         options: [
           {
