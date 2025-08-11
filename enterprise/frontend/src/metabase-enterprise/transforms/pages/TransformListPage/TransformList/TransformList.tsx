@@ -12,9 +12,10 @@ import {
 import type { Transform } from "metabase-types/api";
 
 import { ListEmptyState } from "../../../components/ListEmptyState";
+import { RunStatusInfo } from "../../../components/RunStatusInfo";
 import { TagList } from "../../../components/TagList";
 import { getTransformUrl } from "../../../urls";
-import { formatStatus, parseLocalTimestamp } from "../../../utils";
+import { parseLocalTimestamp } from "../../../utils";
 
 import S from "./TransformList.module.css";
 
@@ -72,9 +73,19 @@ export function TransformList() {
                 : null}
             </td>
             <td>
-              {transform.last_execution?.status
-                ? formatStatus(transform.last_execution.status)
-                : null}
+              {transform.last_execution != null ? (
+                <RunStatusInfo
+                  status={transform.last_execution.status}
+                  message={transform.last_execution.message}
+                  endTime={
+                    transform.last_execution.end_time != null
+                      ? parseLocalTimestamp(
+                          transform.last_execution.end_time,
+                        ).toDate()
+                      : null
+                  }
+                />
+              ) : null}
             </td>
             <td>
               <TagList tags={tags} tagIds={transform.tag_ids ?? []} />
