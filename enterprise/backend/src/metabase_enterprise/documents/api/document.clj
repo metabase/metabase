@@ -140,7 +140,9 @@
        [:cards {:optional true} [:maybe [:map-of [:int {:max -1}] CardCreateSchema]]]]]
   (collection/check-write-perms-for-collection collection_id)
   (let [document-id (t2/with-transaction [_conn]
-            ;; Validate existing cards first if provided
+                      (when collection_position
+                        (api/maybe-reconcile-collection-position! {:collection_id collection_id
+                                                                   :collection_position collection_position}))
                       (let [document-id (t2/insert-returning-pk! :model/Document {:name name
                                                                                   :collection_id collection_id
                                                                                   :collection_position collection_position
@@ -153,7 +155,6 @@
                                                                                      :content_type prose-mirror/prose-mirror-content-type})
                                                           (when-not (empty? cards)
                                                             (create-cards-for-document! cards document-id collection_id @api/*current-user*)))]
-       ;; Create new cards if provided
                         (when (seq cards-to-update-in-ast)
                           (t2/update! :model/Document :id document-id
                                       (update-cards-in-ast
@@ -193,6 +194,11 @@
     ;; Handle archiving logic
     (let [document-updates (dissoc (api/updates-with-archived-directly existing-document body) :cards)]
       (t2/with-transaction [_conn]
+        (when collection_position
+          (api/maybe-reconcile-collection-position! existing-document {:collection_id (if (contains? body :collection_id)
+                                                                                        collection_id
+                                                                                        (:collection_id existing-document))
+                                                                       :collection_position collection_position}))
         (t2/update! :model/Document document-id
                     (cond-> document-updates
                       document (merge (update-cards-in-ast

@@ -1854,3 +1854,132 @@
           (let [delete-event (first (filter #(= :event/document-delete (:topic %)) @events))]
             (is (= "Event Test Document" (get-in delete-event [:event :object :name])))
             (is (= (mt/user->id :crowberto) (get-in delete-event [:event :user-id])))))))))
+
+(deftest document-position-reconciliation-on-create-test
+  (testing "Position reconciliation works for new documents via API"
+    (mt/with-temp [:model/Collection {collection-id :id} {:name "Test Collection"}]
+      ;; Create existing document with position 3 via API
+      (let [existing-doc-result (mt/user-http-request :crowberto
+                                                      :post 200 "ee/document/"
+                                                      {:name "Existing Document"
+                                                       :document (text->prose-mirror-ast "Existing doc")
+                                                       :collection_id collection-id
+                                                       :collection_position 3})
+            existing-doc-id (:id existing-doc-result)]
+
+        (testing "inserting document at existing position shifts others"
+          ;; Insert new document at position 3 via API - should shift existing document
+          (let [new-doc-result (mt/user-http-request :crowberto
+                                                     :post 200 "ee/document/"
+                                                     {:name "New Document"
+                                                      :document (text->prose-mirror-ast "New doc")
+                                                      :collection_id collection-id
+                                                      :collection_position 3})]
+            ;; New document should have position 3
+            (is (= 3 (:collection_position new-doc-result)))
+
+            ;; Existing document should be shifted to position 4
+            (let [shifted-document (t2/select-one :model/Document :id existing-doc-id)]
+              (is (= 4 (:collection_position shifted-document))))))
+
+        (testing "inserting document without position works"
+          (let [no-position-result (mt/user-http-request :crowberto
+                                                         :post 200 "ee/document/"
+                                                         {:name "No Position Document"
+                                                          :document (text->prose-mirror-ast "No position doc")
+                                                          :collection_id collection-id})]
+            (is (nil? (:collection_position no-position-result)))))))))
+
+(deftest document-position-reconciliation-on-update-test
+  (testing "Position reconciliation works for document updates via API"
+    (mt/with-temp [:model/Collection {collection-id :id} {:name "Test Collection"}]
+      ;; Create documents with positions via API
+      (let [doc1-result (mt/user-http-request :crowberto
+                                              :post 200 "ee/document/"
+                                              {:name "Document 1"
+                                               :document (text->prose-mirror-ast "Doc 1")
+                                               :collection_id collection-id
+                                               :collection_position 1})
+            doc2-result (mt/user-http-request :crowberto
+                                              :post 200 "ee/document/"
+                                              {:name "Document 2"
+                                               :document (text->prose-mirror-ast "Doc 2")
+                                               :collection_id collection-id
+                                               :collection_position 2})
+            doc3-result (mt/user-http-request :crowberto
+                                              :post 200 "ee/document/"
+                                              {:name "Document 3"
+                                               :document (text->prose-mirror-ast "Doc 3")
+                                               :collection_id collection-id
+                                               :collection_position 3})
+            doc1-id (:id doc1-result)
+            doc2-id (:id doc2-result)
+            doc3-id (:id doc3-result)]
+
+        (testing "moving document to different position reconciles others"
+          ;; Move document 3 to position 1 via API - should shift others
+          (let [updated-doc3 (mt/user-http-request :crowberto
+                                                   :put 200 (format "ee/document/%s" doc3-id)
+                                                   {:collection_position 1})]
+            ;; Document 3 should now be at position 1
+            (is (= 1 (:collection_position updated-doc3)))
+
+            ;; Check that other documents were shifted
+            (let [doc1 (t2/select-one :model/Document :id doc1-id)
+                  doc2 (t2/select-one :model/Document :id doc2-id)]
+              ;; Original documents should be shifted
+              (is (= 2 (:collection_position doc1)))
+              (is (= 3 (:collection_position doc2))))))
+
+        (testing "moving document to different collection reconciles both"
+          (mt/with-temp [:model/Collection {other-collection-id :id} {:name "Other Collection"}]
+            ;; Move document 1 to other collection at position 1 via API
+            (let [moved-doc (mt/user-http-request :crowberto
+                                                  :put 200 (format "ee/document/%s" doc1-id)
+                                                  {:collection_id other-collection-id
+                                                   :collection_position 1})]
+              ;; Moved document should be in new collection at position 1
+              (is (= other-collection-id (:collection_id moved-doc)))
+              (is (= 1 (:collection_position moved-doc)))
+
+              ;; Document 2 should be shifted down in original collection
+              (let [doc2 (t2/select-one :model/Document :id doc2-id)]
+                (is (= 2 (:collection_position doc2)))))))))))
+
+(deftest document-collection-position-field-handling-test
+  (testing "Document model supports collection_position field via API"
+    (mt/with-temp [:model/Collection {collection-id :id} {:name "Test Collection"}]
+      (testing "collection_position is stored and retrieved correctly"
+        (let [document-result (mt/user-http-request :crowberto
+                                                    :post 200 "ee/document/"
+                                                    {:name "Positioned Document"
+                                                     :document (text->prose-mirror-ast "Positioned doc")
+                                                     :collection_id collection-id
+                                                     :collection_position 5})]
+          (is (= 5 (:collection_position document-result)))))
+
+      (testing "collection_position can be updated"
+        (let [document-result (mt/user-http-request :crowberto
+                                                    :post 200 "ee/document/"
+                                                    {:name "Update Position Document"
+                                                     :document (text->prose-mirror-ast "Update position doc")
+                                                     :collection_id collection-id
+                                                     :collection_position 5})
+              document-id (:id document-result)
+              updated-result (mt/user-http-request :crowberto
+                                                   :put 200 (format "ee/document/%s" document-id)
+                                                   {:collection_position 10})]
+          (is (= 10 (:collection_position updated-result)))))
+
+      (testing "collection_position can be set to nil"
+        (let [document-result (mt/user-http-request :crowberto
+                                                    :post 200 "ee/document/"
+                                                    {:name "Nil Position Document"
+                                                     :document (text->prose-mirror-ast "Nil position doc")
+                                                     :collection_id collection-id
+                                                     :collection_position 5})
+              document-id (:id document-result)
+              updated-result (mt/user-http-request :crowberto
+                                                   :put 200 (format "ee/document/%s" document-id)
+                                                   {:collection_position nil})]
+          (is (nil? (:collection_position updated-result))))))))
