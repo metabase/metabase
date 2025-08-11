@@ -250,7 +250,9 @@ export const SmartLinkComponent = memo(
     const { entity, isLoading, error } = useEntityData(entityId, model);
 
     useEffect(() => {
-      updateAttributes({ name: entity?.name });
+      setTimeout(() => {
+        updateAttributes({ name: entity?.name });
+      }, 10); // setTimeout prevents `flushSync was called from inside a lifecycle method` error
     }, [updateAttributes, entity?.name]);
 
     if (isLoading) {
