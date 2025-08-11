@@ -144,74 +144,77 @@
      (catch Exception e#
        (ex-data e#))))
 
-(deftest ^:parallel can-connect-no-auth-test
-  (with-server [url [get-favicon get-200 get-302-redirect-200 get-400 get-302-redirect-400 get-500]]
-    (let [can-connect?* (fn [route]
-                          (can-connect? {:url         (str url (:path route))
-                                         :auth-method "none"
-                                         :method      "get"}))]
+(deftest can-connect-no-auth-test
+  (mt/with-temporary-setting-values [http-channel-allow-localhost true]
+    (with-server [url [get-favicon get-200 get-302-redirect-200 get-400 get-302-redirect-400 get-500]]
+      (let [can-connect?* (fn [route]
+                            (can-connect? {:url         (str url (:path route))
+                                           :auth-method "none"
+                                           :method      "get"}))]
 
-      (testing "connect successfully with 200"
-        (is (true? (can-connect?* get-200))))
-      (testing "connect successfully with 302 redirect to 200"
-        (is (true? (can-connect?* get-302-redirect-200))))
-      (testing "failed to connect with a 302 that redirects to 400"
-        (is (= {:request-status 400
-                :request-body   "Bad request"}
-               (exception-data (can-connect?* get-302-redirect-400)))))
-      (testing "failed to conenct to a 400"
-        (is (= {:request-status 400
-                :request-body   "Bad request"}
-               (exception-data (can-connect?* get-400)))))
-      (is (=? {:request-status 500
-               :request-body   "Internal server error"}
-              (exception-data (can-connect?* get-500)))))))
+        (testing "connect successfully with 200"
+          (is (true? (can-connect?* get-200))))
+        (testing "connect successfully with 302 redirect to 200"
+          (is (true? (can-connect?* get-302-redirect-200))))
+        (testing "failed to connect with a 302 that redirects to 400"
+          (is (= {:request-status 400
+                  :request-body   "Bad request"}
+                 (exception-data (can-connect?* get-302-redirect-400)))))
+        (testing "failed to conenct to a 400"
+          (is (= {:request-status 400
+                  :request-body   "Bad request"}
+                 (exception-data (can-connect?* get-400)))))
+        (is (=? {:request-status 500
+                 :request-body   "Internal server error"}
+                (exception-data (can-connect?* get-500))))))))
 
-(deftest ^:parallel can-connect-header-auth-test
-  (with-server [url [(make-route :get "/user"
-                                 (fn [x]
-                                   (if (= "SECRET" (get-in x [:headers "x-api-key"]))
-                                     {:status 200
-                                      :body   "Hello, world!"}
-                                     {:status 401
-                                      :body   "Unauthorized"})))]]
-    (testing "connect successfully with header auth"
-      (is (true? (can-connect? {:url         (str url "/user")
-                                :method      "get"
-                                :auth-method "header"
-                                :auth-info   {:x-api-key "SECRET"}}))))
+(deftest can-connect-header-auth-test
+  (mt/with-temporary-setting-values [http-channel-allow-localhost true]
+    (with-server [url [(make-route :get "/user"
+                                   (fn [x]
+                                     (if (= "SECRET" (get-in x [:headers "x-api-key"]))
+                                       {:status 200
+                                        :body   "Hello, world!"}
+                                       {:status 401
+                                        :body   "Unauthorized"})))]]
+      (testing "connect successfully with header auth"
+        (is (true? (can-connect? {:url         (str url "/user")
+                                  :method      "get"
+                                  :auth-method "header"
+                                  :auth-info   {:x-api-key "SECRET"}}))))
 
-    (testing "fail to connect with header auth"
-      (is (= {:request-status 401
-              :request-body   "Unauthorized"}
-             (exception-data (can-connect? {:url         (str url "/user")
-                                            :method      "get"
-                                            :auth-method "header"
-                                            :auth-info   {:x-api-key "WRONG"}})))))))
+      (testing "fail to connect with header auth"
+        (is (= {:request-status 401
+                :request-body   "Unauthorized"}
+               (exception-data (can-connect? {:url         (str url "/user")
+                                              :method      "get"
+                                              :auth-method "header"
+                                              :auth-info   {:x-api-key "WRONG"}}))))))))
 
-(deftest ^:parallel can-connect-query-param-auth-test
-  (with-server [url [(make-route :get "/user"
-                                 (fn [x]
-                                   (if (= ["qnkhuat" "secretpassword"]
-                                          [(get-in x [:query-params "username"]) (get-in x [:query-params "password"])])
-                                     {:status 200
-                                      :body   "Hello, world!"}
-                                     {:status 401
-                                      :body   "Unauthorized"})))]]
-    (testing "connect successfully with query-param auth"
-      (is (true? (can-connect? {:url         (str url "/user")
-                                :method      "get"
-                                :auth-method "query-param"
-                                :auth-info   {:username "qnkhuat"
-                                              :password "secretpassword"}}))))
-    (testing "fail to connect with query-param auth"
-      (is (= {:request-status 401
-              :request-body   "Unauthorized"}
-             (exception-data (can-connect? {:url         (str url "/user")
-                                            :method      "get"
-                                            :auth-method "query-param"
-                                            :auth-info   {:username "qnkhuat"
-                                                          :password "wrongpassword"}})))))))
+(deftest can-connect-query-param-auth-test
+  (mt/with-temporary-setting-values [http-channel-allow-localhost true]
+    (with-server [url [(make-route :get "/user"
+                                   (fn [x]
+                                     (if (= ["qnkhuat" "secretpassword"]
+                                            [(get-in x [:query-params "username"]) (get-in x [:query-params "password"])])
+                                       {:status 200
+                                        :body   "Hello, world!"}
+                                       {:status 401
+                                        :body   "Unauthorized"})))]]
+      (testing "connect successfully with query-param auth"
+        (is (true? (can-connect? {:url         (str url "/user")
+                                  :method      "get"
+                                  :auth-method "query-param"
+                                  :auth-info   {:username "qnkhuat"
+                                                :password "secretpassword"}}))))
+      (testing "fail to connect with query-param auth"
+        (is (= {:request-status 401
+                :request-body   "Unauthorized"}
+               (exception-data (can-connect? {:url         (str url "/user")
+                                              :method      "get"
+                                              :auth-method "query-param"
+                                              :auth-info   {:username "qnkhuat"
+                                                            :password "wrongpassword"}}))))))))
 
 (deftest can-connect-request-body-auth-test
   (mt/with-temporary-setting-values [http-channel-allow-localhost true]
@@ -269,59 +272,60 @@
                                                 :method      "get"
                                                 :auth-method "none"})))))))))
 
-(deftest ^:parallel send!-test
-  (testing "basic send"
-    (with-captured-http-requests [requests]
-      (channel/send! {:type        :channel/http
-                      :details     {:url         "https://www.secret_service.xyz"
-                                    :auth-method "none"
-                                    :method      "get"}}
-                     nil)
-      (is (= (merge default-request
-                    {:method       :get
-                     :url          "https://www.secret_service.xyz"})
-             (first @requests)))))
+(deftest send!-test
+  (mt/with-temporary-setting-values [http-channel-allow-localhost true]
+    (testing "basic send"
+      (with-captured-http-requests [requests]
+        (channel/send! {:type        :channel/http
+                        :details     {:url         "https://www.secret_service.xyz"
+                                      :auth-method "none"
+                                      :method      "get"}}
+                       nil)
+        (is (= (merge default-request
+                      {:method       :get
+                       :url          "https://www.secret_service.xyz"})
+               (first @requests)))))
 
-  (testing "default method is post"
-    (with-captured-http-requests [requests]
-      (channel/send! {:type    :channel/http
-                      :details {:url         "https://www.secret_service.xyz"
-                                :auth-method "none"}}
-                     nil)
-      (is (= (merge default-request
-                    {:method       :post
-                     :url          "https://www.secret_service.xyz"})
-             (first @requests)))))
+    (testing "default method is post"
+      (with-captured-http-requests [requests]
+        (channel/send! {:type    :channel/http
+                        :details {:url         "https://www.secret_service.xyz"
+                                  :auth-method "none"}}
+                       nil)
+        (is (= (merge default-request
+                      {:method       :post
+                       :url          "https://www.secret_service.xyz"})
+               (first @requests)))))
 
-  (testing "preserves req headers when use auth-method=:header"
-    (with-captured-http-requests [requests]
-      (channel/send! {:type    :channel/http
-                      :details {:url         "https://www.secret_service.xyz"
-                                :auth-method "header"
-                                :auth-info   {:Authorization "Bearer 123"}
-                                :method      "get"}}
-                     {:headers     {:X-Request-Id "123"}})
-      (is (= (merge default-request
-                    {:method  :get
-                     :url          "https://www.secret_service.xyz"
-                     :headers      {:Authorization "Bearer 123"
-                                    :X-Request-Id "123"}})
-             (first @requests)))))
+    (testing "preserves req headers when use auth-method=:header"
+      (with-captured-http-requests [requests]
+        (channel/send! {:type    :channel/http
+                        :details {:url         "https://www.secret_service.xyz"
+                                  :auth-method "header"
+                                  :auth-info   {:Authorization "Bearer 123"}
+                                  :method      "get"}}
+                       {:headers     {:X-Request-Id "123"}})
+        (is (= (merge default-request
+                      {:method  :get
+                       :url          "https://www.secret_service.xyz"
+                       :headers      {:Authorization "Bearer 123"
+                                      :X-Request-Id "123"}})
+               (first @requests)))))
 
-  (testing "preserves req query-params when use auth-method=:query-param"
-    (with-captured-http-requests [requests]
-      (channel/send! {:type    :channel/http
-                      :details {:url         "https://www.secret_service.xyz"
-                                :auth-method "query-param"
-                                :auth-info   {:token "123"}
-                                :method      "get"}}
-                     {:query-params {:page 1}})
-      (is (= (merge default-request
-                    {:method       :get
-                     :url          "https://www.secret_service.xyz"
-                     :query-params {:token "123"
-                                    :page 1}})
-             (first @requests))))))
+    (testing "preserves req query-params when use auth-method=:query-param"
+      (with-captured-http-requests [requests]
+        (channel/send! {:type    :channel/http
+                        :details {:url         "https://www.secret_service.xyz"
+                                  :auth-method "query-param"
+                                  :auth-info   {:token "123"}
+                                  :method      "get"}}
+                       {:query-params {:page 1}})
+        (is (= (merge default-request
+                      {:method       :get
+                       :url          "https://www.secret_service.xyz"
+                       :query-params {:token "123"
+                                      :page 1}})
+               (first @requests)))))))
 
 (deftest alert-http-channel-e2e-test
   (mt/with-temporary-setting-values [http-channel-allow-localhost true]
