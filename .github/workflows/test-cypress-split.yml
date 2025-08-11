@@ -125,7 +125,7 @@ jobs:
         env:
           SPLIT: ${{ strategy.job-total }}
           SPLIT_INDEX: ${{ strategy.job-index }}
-          SPLIT_FILE: 'test-cypress-split/timings.json'
+          SPLIT_FILE: 'timings.json'
           DEBUG: ${{ inputs.debug && 'cypress-split' || '' }}
         with:
           working-directory: test-cypress-split
