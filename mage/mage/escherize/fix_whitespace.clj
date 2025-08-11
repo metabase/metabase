@@ -44,7 +44,7 @@
     (try
       (let [callables (mapv (fn [f] #(clean-whitespace-lines f)) files)
             futures (.invokeAll executor callables)
-            results (mapv #(.get ^java.util.concurrent.Future %) futures)
+            results (mapv deref futures)
             changed-files (filter :changed results)
             error-files (filter :error results)]
 
