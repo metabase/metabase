@@ -865,7 +865,7 @@
           metadata-provider (lib.tu/metadata-provider-with-mock-card card)
           query (lib/query metadata-provider card)
           lib-col  (-> (m/find-first #(= (:name %) "CREATED_AT") (lib/returned-columns query))
-                       (dissoc :lib/deduplicated-name :lib/original-name))
+                       (dissoc :lib/deduplicated-name :lib/original-name :lib/desired-column-alias))
           card-col (m/find-first #(= (:name %) "CREATED_AT") (:result-metadata card))
           context {:column     card-col
                    :column-ref (lib/ref card-col)

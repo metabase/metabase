@@ -383,8 +383,6 @@ class MetabaseEmbed {
           error,
         });
       }
-
-      throw error;
     }
   }
 
@@ -579,7 +577,6 @@ const MetabaseDashboardElement = createCustomElement("metabase-dashboard", [
   "drills",
   "initial-parameters",
   "hidden-parameters",
-  "is-save-enabled",
 ]);
 
 const MetabaseQuestionElement = createCustomElement("metabase-question", [

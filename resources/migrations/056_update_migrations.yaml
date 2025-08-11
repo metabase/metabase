@@ -218,6 +218,24 @@ databaseChangeLog:
                     nullable: true
 
   - changeSet:
+      id: v56.2025-07-17T20:11:56
+      author: edpaget
+      comment: |
+        Add sync login_attributes with jwt_attributes, we need to replace jwt_attributes
+        with login attributes for users with sso_source jwt so that they will get the new
+        behavior where login_attributes can override jwt_attributes
+      changes:
+        - sql: >-
+           UPDATE core_user
+           SET jwt_attributes = login_attributes, login_attributes = '{}'
+           WHERE sso_source = 'jwt';
+      rollback:
+        - sql: >-
+           UPDATE core_user
+           SET login_attributes = jwt_attributes
+           WHERE sso_source = 'jwt';
+
+  - changeSet:
       id: v56.2025-07-30T10:35:00
       author: bronsa
       comment: Add deactivated_at column to metabase_table
@@ -354,7 +372,6 @@ databaseChangeLog:
                     AND (mt2.schema = metabase_table.schema OR (mt2.schema IS NULL AND metabase_table.schema IS NULL))
                     AND mt2.name = SUBSTRING(metabase_table.name, 1, POSITION('__mbarchiv__' IN metabase_table.name) - 1)
                     AND mt2.id != metabase_table.id);
-
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

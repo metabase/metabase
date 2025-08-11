@@ -89,6 +89,30 @@ describe("map", () => {
         );
       });
 
+      it("should handle an x-ray dashboard", () => {
+        const datasetQuery: JsonQuery = {
+          database: 1,
+          type: "query",
+          query: { "source-table": 1 },
+        } as JsonQuery;
+        const encodedQuery = encodeURIComponent(JSON.stringify(datasetQuery));
+
+        const url = getTileUrl({
+          dashboardId: "/auto/dashboard/table/5",
+          dashcardId: 20,
+          cardId: 30,
+          zoom,
+          coord,
+          latField,
+          lonField,
+          datasetQuery,
+        });
+
+        expect(url).toBe(
+          `/api/tiles/${zoom}/${coord.x}/${coord.y}/${latField}/${lonField}?query=${encodedQuery}`,
+        );
+      });
+
       it("should generate url for dashboard with parameters", () => {
         const datasetResult = createMockDataset({
           json_query: {

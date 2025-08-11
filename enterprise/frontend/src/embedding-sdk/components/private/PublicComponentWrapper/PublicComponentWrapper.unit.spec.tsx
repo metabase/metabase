@@ -40,10 +40,10 @@ const setup = (
 };
 
 describe("PublicComponentWrapper", () => {
-  it("renders Initializing message when loginStatus is uninitialized", () => {
+  it("renders loader message when loginStatus is uninitialized", () => {
     setup();
-    const message = screen.getByText("Initializing…");
-    expect(message).toBeInTheDocument();
+    const loader = screen.getByTestId("loading-indicator");
+    expect(loader).toBeInTheDocument();
   });
 
   it("renders loader when loginStatus is loading", () => {
