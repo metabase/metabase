@@ -267,9 +267,9 @@
                      :model/Document {doc1-id :id} {:collection_id coll-id
                                                     :name "Document A"
                                                     :collection_position 1}
-                     :model/Document {doc2-id :id} {:collection_id coll-id
-                                                    :name "Document B"
-                                                    :collection_position nil}
+                     :model/Document _ {:collection_id coll-id
+                                        :name "Document B"
+                                        :collection_position nil}
                      :model/Document {doc3-id :id} {:collection_id coll-id
                                                     :name "Document C"
                                                     :collection_position 3}]
