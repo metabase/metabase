@@ -70,7 +70,7 @@
       (throw (ex-info "No active semantic search index found" {:index-metadata index-metadata}))))
 
 (defn query
-  "Executes a semantic search query against the active index.
+  "Executes a semantic search query against the active index. Returns results and metadata about filtering.
   Requires init-semantic-search! to have been called first to establish active index, otherwise an exception will be thrown."
   [pgvector index-metadata search-context]
   (let [{:keys [index]} (ensure-active-index-state pgvector index-metadata)]

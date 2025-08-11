@@ -672,11 +672,13 @@
         filtered-docs))))
 
 (defn query-index
-  "Query the index for documents similar to the search string."
+  "Query the index for documents similar to the search string.
+  Returns a map with :results and :filtered-count."
   [db index search-context]
   (let [{:keys [embedding-model]} index
         search-string (:search-string search-context)]
-    (when-not (str/blank? search-string)
+    (if (str/blank? search-string)
+      {:results [] :filtered-count 0}
       (let [timer (u/start-timer)
 
             embedding (embedding/get-embedding embedding-model search-string)
@@ -720,7 +722,8 @@
         (comment
           (jdbc/execute! db (sql-format-quoted query)))
 
-        filtered-results))))
+        {:results filtered-results
+         :filtered-count (count raw-results)}))))
 
 (comment
   (def embedding-model (embedding/get-configured-model))

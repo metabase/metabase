@@ -34,7 +34,8 @@
               (with-redefs [semantic.pgvector-api/query
                             (fn [& _]
                               (reset! semantic-called? true)
-                              [{:id 1 :name "semantic-result" :model "card" :collection_id 1  :score 0}])
+                              {:results [{:id 1 :name "semantic-result" :model "card" :collection_id 1  :score 0}]
+                               :filtered-count 0})
                             appdb/results
                             (fn [_]
                               (reset! appdb-called? true)
@@ -51,7 +52,8 @@
               (with-redefs [semantic.pgvector-api/query
                             (fn [& _]
                               (reset! semantic-called? true)
-                              [{:id 1 :name "semantic-result" :model "card" :collection_id 1  :score 0.8}])
+                              {:results [{:id 1 :name "semantic-result" :model "card" :collection_id 1  :score 0.8}]
+                               :filtered-count 0})
                             appdb/results
                             (fn [_]
                               (reset! appdb-called? true)
@@ -69,7 +71,9 @@
   "Sets up search engine mocks for the semantic & appdb backends for testing fallback behavior.
    appdb-fn can be a collection of results or a function that takes a context."
   [semantic-results appdb-fn thunk]
-  (with-redefs [semantic.pgvector-api/query (fn [_pgvector _index-metadata _search-ctx] semantic-results)
+  (with-redefs [semantic.pgvector-api/query (fn [_pgvector _index-metadata _search-ctx]
+                                              {:results semantic-results
+                                               :filtered-count 0})
                 search.engine/supported-engine? (constantly true)
                 search.engine/results (fn [ctx]
                                         (case (:search-engine ctx)

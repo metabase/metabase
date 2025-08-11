@@ -145,7 +145,7 @@
           model2         (assoc semantic.tu/mock-embedding-model :model-name "judge-embedd")
           remove-scores  (fn [rows] (mapv #(dissoc % :score :all-scores) rows)) ; scores have time-sensitives components
           sut*           semantic.pgvector-api/query
-          sut            #(remove-scores (mt/as-admin (apply sut* %&))) ; see notes below about perms
+          sut            #(remove-scores (:results (mt/as-admin (apply sut* %&)))) ; see notes below about perms
           search-string  "insect patterns"              ; specifics of search will be handled under index tests
           _              (assert (semantic.tu/mock-embeddings search-string)
                                  "search string should have test embedding")
@@ -154,7 +154,7 @@
       (with-open [index-ref (open-semantic-search! pgvector index-metadata model1)]
         (semantic.pgvector-api/index-documents! pgvector index-metadata (vec (search.ingestion/searchable-documents)))
         (testing "search results are the same as direct index query"
-          (let [index-results (remove-scores (mt/as-admin (semantic.index/query-index pgvector @index-ref search)))
+          (let [index-results (remove-scores (:results (mt/as-admin (semantic.index/query-index pgvector @index-ref search))))
                 api-results   (sut pgvector index-metadata search)]
             (testing "sanity check the test is setup correctly" (is (seq api-results)))
             (is (= api-results index-results))))
@@ -182,7 +182,7 @@
               ;; can actually change
               (is (seq (sut pgvector index-metadata search))))
             (testing "querying previous index directly still works"
-              (is (= current-results (remove-scores (mt/as-admin (semantic.index/query-index pgvector @index-ref search))))))))
+              (is (= current-results (remove-scores (:results (mt/as-admin (semantic.index/query-index pgvector @index-ref search)))))))))
         (testing "throws exception when no active index exists"
           ;; corrupt the control table
           (jdbc/execute! pgvector (sql/format {:delete-from (keyword (:control-table-name index-metadata))}

@@ -31,24 +31,30 @@
    (semantic.settings/semantic-search-enabled)))
 
 (defenterprise results
-  "Enterprise implementation of semantic search results with fallback logic."
+  "Enterprise implementation of semantic search results with improved fallback logic.
+  Falls back to appdb search only when semantic search finds few raw results AND
+  there are some filtered results (indicating the search found relevant content)."
   :feature :semantic-search
   [search-ctx]
   (try
-    (let [semantic-results (semantic.pgvector-api/query
-                            (semantic.env/get-pgvector-datasource!)
-                            (semantic.env/get-index-metadata)
-                            search-ctx)
-          result-count (count semantic-results)]
-      (if (>= result-count (semantic.settings/semantic-search-min-results-threshold))
-        semantic-results
+    (let [{:keys [results filtered-count]} (semantic.pgvector-api/query
+                                            (semantic.env/get-pgvector-datasource!
+                                             (semantic.env/get-index-metadata)
+                                             search-ctx))
+          final-count (count results)
+          threshold (semantic.settings/semantic-search-min-results-threshold)]
+      (if (or (>= final-count threshold)
+              (zero? filtered-count))
+        results
+        ;; Fallback: semantic search found results but some were filtered out (e.g. due to permission checks), so try to
+        ;; supplement with appdb search.
         (let [fallback (fallback-engine)]
-          (log/debugf "Semantic search returned %d results (< %d), supplementing with %s search"
-                      result-count (semantic.settings/semantic-search-min-results-threshold) fallback)
+          (log/debugf "Semantic search returned %d final results (< %d) from %d raw results, supplementing with %s search"
+                      final-count threshold filtered-count fallback)
           (prometheus/inc! :metabase-search/semantic-fallback-triggered)
-          (prometheus/observe! :metabase-search/semantic-fallback-results result-count)
+          (prometheus/observe! :metabase-search/semantic-fallback-results final-count)
           (let [fallback-results (search.engine/results (assoc search-ctx :search-engine fallback))
-                combined-results (concat semantic-results fallback-results)
+                combined-results (concat results fallback-results)
                 deduped-results  (m/distinct-by (juxt :model :id) combined-results)]
             (take (semantic.settings/semantic-search-results-limit) deduped-results)))))
     (catch Exception e
