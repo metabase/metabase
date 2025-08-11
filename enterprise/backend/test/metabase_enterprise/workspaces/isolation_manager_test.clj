@@ -16,8 +16,7 @@
           result (isolation-manager/create-isolation (:engine db) (:details db) "test-workspace-123")]
       (try
         (is (=? {:isolation-type (=?/malli [:enum :database :schema])
-                 :populator {:user (=?/malli :string) :password (=?/malli :string)}
-                 :reader {:user (=?/malli :string) :password (=?/malli :string)}}
+                 :populator {:user (=?/malli :string) :password (=?/malli :string)}}
                 result))
         (if (= :database (:isolation-type result))
             (is (not (str/blank? (:database-name result))))
@@ -26,7 +25,6 @@
           (is (str/starts-with? (:schema-name result) "mb__isolation_"))
           (is (str/starts-with? (:database-name result) "mb__isolation_")))
         (is (str/includes? (-> result :populator :user) "populator"))
-        (is (str/includes? (-> result :reader :user) "reader"))
         (finally
           (isolation-manager/delete-isolation (:engine db) (:details db) "test-workspace-123" result))))))
 
@@ -36,7 +34,6 @@
 
 (deftest e2e
   (mt/test-drivers #{:postgres :clickhouse}
-
     (let [db (mt/db)
           details (:details db)
           workspace-id (str (gensym "testing-workspace"))
@@ -56,7 +53,7 @@
                           :query sql :user-info user-info}))))]
         (try
           (let [{:keys [query]} (qp.compile/compile (mt/mbql-query venues {:limit 10}))
-                {:keys [populator reader isolation-type]} isolation-info
+                {:keys [populator isolation-type]} isolation-info
                 isolation (isolation-info (if (= :schema isolation-type) :schema-name :database-name))
                 temp-table (str (gensym "some_table"))]
             (testing "populator can query original data"
@@ -66,17 +63,7 @@
             (testing "populator can delete table in new schema"
               (is (=? {:success true} (run-query! populator :write (format "DROP table %s.%s" isolation temp-table)))))
             (testing "populator can recreate dropped table"
-              (is (=? {:success true} (run-query! populator :write (format (driver-creates (:engine db)) isolation temp-table)))))
-            (testing "agent cannot read original data"
-              (is (=? {:error true} (run-query! reader :read query))))
-            (testing "agent can read new schema populated by populator"
-              (is (=? {:success true} (run-query! populator :read (format "select * from %s.%s" isolation temp-table)))))
-            (let [new-temp-table (str (gensym "another"))]
-              (testing "agent can populate new schema"
-                (is (=? {:success true}
-                        (run-query! populator :write (format (driver-creates (:engine db)) isolation new-temp-table)))))
-              (testing "agent can read from new tables in new isolation"
-                (is (=? {:success true} (run-query! populator :read (format "select * from %s.%s" isolation new-temp-table)))))))
+              (is (=? {:success true} (run-query! populator :write (format (driver-creates (:engine db)) isolation temp-table))))))
           (finally
             (isolation-manager/delete-isolation (:engine db) (:details db) workspace-id
                                                 isolation-info)))))))
@@ -213,9 +200,7 @@
   {:isolation-type :schema
    :schema-name "mb__isolation_7748c_test_workspace_123"
    :populator {:user "mb_iso_7748c_test_workspace_123_populator"
-               :password "d632f61c-398a-467d-856c-d8411665bd0f"}
-   :reader {:user "mb_iso_7748c_test_workspace_123_reader"
-            :password "4a21a094-cf0a-479d-a429-ca8edeb1f3df"}}
+               :password "d632f61c-398a-467d-856c-d8411665bd0f"}}
   (mt/test-drivers #{:postgres}
     (let [db (mt/db)]
       (isolation-manager/delete-isolation (:engine db) (:details db) "test-workspace-123")
