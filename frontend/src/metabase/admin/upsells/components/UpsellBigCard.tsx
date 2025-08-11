@@ -1,3 +1,4 @@
+import cx from "classnames";
 import { useMount } from "react-use";
 import { P, match } from "ts-pattern";
 
@@ -76,7 +77,10 @@ export const _UpsellBigCard: React.FC<UpsellBigCardProps> = ({
             .with(P.nonNullable, () => (
               <Box
                 component="button"
-                className={StylesUpsellCtaLink.UpsellCTALink}
+                className={cx(
+                  StylesUpsellCtaLink.UpsellCTALink,
+                  StylesUpsellCtaLink.Large,
+                )}
                 onClickCapture={() =>
                   trackUpsellClicked({ location, campaign })
                 }
@@ -87,7 +91,10 @@ export const _UpsellBigCard: React.FC<UpsellBigCardProps> = ({
             ))
             .otherwise(() => (
               <ExternalLink
-                className={StylesUpsellCtaLink.UpsellCTALink}
+                className={cx(
+                  StylesUpsellCtaLink.UpsellCTALink,
+                  StylesUpsellCtaLink.Large,
+                )}
                 href={url}
                 onClickCapture={() =>
                   trackUpsellClicked({ location, campaign })

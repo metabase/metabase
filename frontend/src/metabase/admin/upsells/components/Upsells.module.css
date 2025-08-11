@@ -16,16 +16,8 @@
   border-radius: 0.5rem;
   width: 100%;
 
-  .UpsellCTALink {
-    flex-shrink: 0;
-  }
-
   &.Large {
     align-items: flex-start;
-
-    .UpsellCTALink {
-      padding: 0.5rem 1rem;
-    }
   }
 }
 
@@ -49,11 +41,6 @@
     aspect-ratio: 4/3;
     max-height: 21.875rem;
   }
-
-  .UpsellCTALink {
-    font-size: 0.875rem;
-    padding: 0.75rem 1rem;
-  }
 }
 
 .UpsellCardComponent {
@@ -66,12 +53,6 @@
     .MainStack {
       padding-top: 2rem;
       padding-bottom: 3rem;
-    }
-
-    .UpsellCTALink {
-      margin: 0;
-      margin-left: 3rem;
-      width: 10rem;
     }
   }
 

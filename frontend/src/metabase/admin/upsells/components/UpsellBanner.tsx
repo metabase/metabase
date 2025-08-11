@@ -105,6 +105,7 @@ export const _UpsellBanner: React.FC<UpsellBannerProps> = ({
           internalLink={internalLink}
           buttonText={buttonText}
           onClickCapture={() => trackUpsellClicked({ location, campaign })}
+          size={large ? "large" : undefined}
         />
 
         {dismissible && (
