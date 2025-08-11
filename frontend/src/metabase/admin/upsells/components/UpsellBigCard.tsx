@@ -57,6 +57,11 @@ export const _UpsellBigCard: React.FC<UpsellBigCardProps> = ({
     trackUpsellViewed({ location, campaign });
   });
 
+  const ctaClassnames = cx(
+    StylesUpsellCtaLink.UpsellCTALink,
+    StylesUpsellCtaLink.Large,
+  );
+
   return (
     <Box
       data-testid="upsell-big-card"
@@ -77,10 +82,7 @@ export const _UpsellBigCard: React.FC<UpsellBigCardProps> = ({
             .with(P.nonNullable, () => (
               <Box
                 component="button"
-                className={cx(
-                  StylesUpsellCtaLink.UpsellCTALink,
-                  StylesUpsellCtaLink.Large,
-                )}
+                className={ctaClassnames}
                 onClickCapture={() =>
                   trackUpsellClicked({ location, campaign })
                 }
@@ -91,10 +93,7 @@ export const _UpsellBigCard: React.FC<UpsellBigCardProps> = ({
             ))
             .otherwise(() => (
               <ExternalLink
-                className={cx(
-                  StylesUpsellCtaLink.UpsellCTALink,
-                  StylesUpsellCtaLink.Large,
-                )}
+                className={ctaClassnames}
                 href={url}
                 onClickCapture={() =>
                   trackUpsellClicked({ location, campaign })

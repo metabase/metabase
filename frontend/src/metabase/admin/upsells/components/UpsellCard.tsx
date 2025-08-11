@@ -99,6 +99,7 @@ export const _UpsellCard: React.FC<UpsellCardProps> = ({
           </Text>
           <Box mx="md" mb="lg">
             <UpsellCta
+              className={large ? S.LargeUpsellCTALink : undefined}
               onClick={onClick}
               url={buttonLink ? urlWithParams : undefined}
               internalLink={internalLink}
