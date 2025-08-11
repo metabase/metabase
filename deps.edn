@@ -410,7 +410,7 @@
     org.clojars.mmb90/cljs-cache       {:mvn/version "0.1.4"}
     refactor-nrepl/refactor-nrepl      {:mvn/version "3.11.0"}
     ;; keep it in sync with package.json
-    thheller/shadow-cljs               {:mvn/version "3.1.4"}}}
+    thheller/shadow-cljs               {:mvn/version "3.1.8"}}}
 
   ;; for local dev -- include the drivers locally with :dev:drivers
   :drivers
