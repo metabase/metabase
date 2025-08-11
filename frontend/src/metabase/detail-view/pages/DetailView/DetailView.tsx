@@ -37,7 +37,7 @@ export function DetailView({
   const dispatch = useDispatch();
 
   const { data: table } = useGetTableQueryMetadataQuery({ id: tableId });
-  const { data: tableForeignKeys = [] } = useListTableForeignKeysQuery(tableId);
+  const { data: tableForeignKeys } = useListTableForeignKeysQuery(tableId);
 
   const query = useMemo<StructuredDatasetQuery | undefined>(() => {
     return table ? getTableQuery(table) : undefined;
@@ -189,9 +189,11 @@ export function DetailView({
           </Box>
         </Group>
 
-        <Box flex="0 0 auto">
-          <Relationships />
-        </Box>
+        {tableForeignKeys && tableForeignKeys.length > 0 && (
+          <Box flex="0 0 auto">
+            <Relationships />
+          </Box>
+        )}
       </Group>
     </Stack>
   );
