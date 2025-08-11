@@ -1,10 +1,8 @@
 import { useMemo } from "react";
-import _ from "underscore";
 
-import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 import { trackSimpleEvent } from "metabase/lib/analytics";
 import { useSelector } from "metabase/lib/redux";
-import { Center, Flex, Icon, Menu, SegmentedControl, Text } from "metabase/ui";
+import { Center, Icon, SegmentedControl } from "metabase/ui";
 import visualizations from "metabase/visualizations";
 import { getVisualizerRawSeries } from "metabase/visualizer/selectors";
 import type { VisualizationDisplay } from "metabase-types/api";
@@ -21,7 +19,7 @@ export function VisualizationPicker({
 }: VisualizationPickerProps) {
   const series = useSelector(getVisualizerRawSeries);
 
-  const vizOptions = useMemo(() => {
+  const options = useMemo(() => {
     const [mainSeries] = series ?? [];
     const { data } = mainSeries ?? {};
     return Array.from(visualizations)
@@ -36,14 +34,9 @@ export function VisualizationPicker({
       });
   }, [series]);
 
-  const [sensibleOptions, nonsensibleOptions] = useMemo(
-    () => _.partition(vizOptions, (option) => option.isSensible),
-    [vizOptions],
-  );
-
   const selectedOption = useMemo(
-    () => vizOptions.find((option) => option.value === value),
-    [value, vizOptions],
+    () => options.find((option) => option.value === value),
+    [value, options],
   );
 
   return (
@@ -53,7 +46,7 @@ export function VisualizationPicker({
           label: S.SegmentedControlLabel,
         }}
         value={selectedOption?.value}
-        data={sensibleOptions.map((o, i) => ({
+        data={options.map((o, i) => ({
           value: o.value,
           label: (
             <Center
@@ -63,7 +56,6 @@ export function VisualizationPicker({
                   event: "visualizer_data_changed",
                   event_detail: "visualizer_viz_type_changed",
                   triggered_from: "visualizer-modal",
-                  event_data: o.value,
                 });
 
                 onChange(o.value);
@@ -76,36 +68,6 @@ export function VisualizationPicker({
         }))}
         data-testid="viz-picker-main"
       />
-      {nonsensibleOptions.length > 0 && (
-        <Menu>
-          <Menu.Target>
-            <IconButtonWrapper
-              style={{ marginLeft: "4px" }}
-              data-testid="viz-picker-menu"
-            >
-              <Icon name="ellipsis" />
-              <Icon name="chevrondown" size={8} />
-            </IconButtonWrapper>
-          </Menu.Target>
-          <Menu.Dropdown>
-            {nonsensibleOptions.map(({ label, value, icon }) => (
-              <Menu.Item
-                key={value}
-                className={S.ListItem}
-                aria-selected={value === selectedOption?.value}
-                onClick={() => onChange(value)}
-              >
-                <Flex align="center">
-                  <Icon name={icon} />
-                  <Text className={S.ListItemLabel} ml="sm">
-                    {label}
-                  </Text>
-                </Flex>
-              </Menu.Item>
-            ))}
-          </Menu.Dropdown>
-        </Menu>
-      )}
     </>
   );
 }

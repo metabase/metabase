@@ -1,4 +1,4 @@
-import { DEFAULT_EMBEDDING_ENTITY_TYPES } from "metabase/embedding-sdk/store";
+import { DEFAULT_EMBEDDING_ENTITY_TYPES } from "metabase/redux/embedding-data-picker";
 
 import type { EmbeddingDataPickerState } from "../embedding-data-picker";
 

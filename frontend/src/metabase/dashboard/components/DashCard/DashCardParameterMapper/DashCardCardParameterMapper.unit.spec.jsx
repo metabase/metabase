@@ -11,7 +11,6 @@ import {
   createMockActionDashboardCard,
   createMockCard,
   createMockDashboardCard,
-  createMockHeadingDashboardCard,
   createMockIFrameDashboardCard,
   createMockLinkDashboardCard,
   createMockNativeDatasetQuery,
@@ -119,22 +118,6 @@ describe("DashCardCardParameterMapper", () => {
       expect(
         screen.getByText(
           "You can connect widgets to {{variables}} in iframe cards.",
-        ),
-      ).toBeInTheDocument();
-    });
-
-    it("should render an informative parameter mapping state for heading cards without variables", () => {
-      const headingCard = createMockHeadingDashboardCard({
-        size_y: 3,
-      });
-      setup({
-        dashcard: headingCard,
-        card: headingCard.card,
-      });
-      expect(getIcon("info")).toBeInTheDocument();
-      expect(
-        screen.getByText(
-          "You can connect widgets to {{variables}} in heading cards.",
         ),
       ).toBeInTheDocument();
     });
@@ -357,7 +340,7 @@ describe("DashCardCardParameterMapper", () => {
   });
 
   describe("Native question", () => {
-    it("should show native question variable warning if a native question variable is used", () => {
+    it("should not show native question variable warning if a native question variable is used", () => {
       const card = createMockCard({
         dataset_query: createMockNativeDatasetQuery({
           dataset_query: {
@@ -373,14 +356,10 @@ describe("DashCardCardParameterMapper", () => {
         dashcard: createMockDashboardCard({ card }),
         target: ["variable", ["template-tag", "source"]],
       });
-      expect(
-        screen.getByText(
-          /Native question variables only accept a single value\. They do not support dropdown lists/i,
-        ),
-      ).toBeInTheDocument();
+      expect(screen.queryByText(/Native question/i)).not.toBeInTheDocument();
     });
 
-    it("should show native question variable warning without single value explanation if parameter is date type", () => {
+    it("should not show native question variable warning without single value explanation if parameter is date type", () => {
       const card = createMockCard({
         dataset_query: createMockNativeDatasetQuery({
           dataset_query: {
@@ -402,11 +381,7 @@ describe("DashCardCardParameterMapper", () => {
         target: ["variable", ["template-tag", "created_at"]],
         editingParameter: createMockParameter({ type: "date/month-year" }),
       });
-      expect(
-        screen.getByText(
-          /Native question variables do not support dropdown lists/i,
-        ),
-      ).toBeInTheDocument();
+      expect(screen.queryByText(/Native question/i)).not.toBeInTheDocument();
     });
   });
 

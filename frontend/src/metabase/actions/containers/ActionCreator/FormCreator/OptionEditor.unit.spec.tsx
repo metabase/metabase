@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 
-import { getIcon, render, screen } from "__support__/ui";
+import { getIcon, render, screen, waitFor } from "__support__/ui";
 import type { FieldType, FieldValueOptions } from "metabase-types/api";
 
 import type { OptionEditorProps } from "./OptionEditor";
@@ -80,7 +80,9 @@ describe("OptionEditor", () => {
       await userEvent.type(input, options.join("\n"));
       await userEvent.click(saveButton);
 
-      expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
+      await waitFor(() =>
+        expect(screen.queryByRole("tooltip")).not.toBeInTheDocument(),
+      );
     });
   });
 

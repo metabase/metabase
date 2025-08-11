@@ -14,7 +14,7 @@ describe(
     });
 
     context("without a token", () => {
-      beforeEach(() => H.setTokenFeatures("none"));
+      beforeEach(() => H.deleteToken());
 
       it("should not be able to verify a saved question", () => {
         cy.log("Gate the API");
@@ -86,7 +86,7 @@ describe(
     });
 
     context("premium token with paid features", () => {
-      beforeEach(() => H.setTokenFeatures("all"));
+      beforeEach(() => H.activateToken("pro-self-hosted"));
 
       describe("an admin", () => {
         it("should be able to verify and unverify a saved question", () => {
@@ -362,7 +362,7 @@ describe(
 
     context("token expired or removed", () => {
       beforeEach(() => {
-        H.setTokenFeatures("all");
+        H.activateToken("pro-self-hosted");
         H.createModerationReview({
           status: "verified",
           moderated_item_type: "card",
@@ -375,7 +375,7 @@ describe(
           moderated_item_id: ORDERS_DASHBOARD_ID,
         });
 
-        H.setTokenFeatures("none");
+        H.deleteToken();
       });
 
       it("should not treat the question as verified anymore", () => {

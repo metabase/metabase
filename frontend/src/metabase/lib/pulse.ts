@@ -5,7 +5,7 @@ import { getEmailDomain } from "metabase/lib/email";
 import { formatDateTimeWithUnit } from "metabase/lib/formatting/date";
 import { formatTimeWithUnit } from "metabase/lib/formatting/time";
 import MetabaseSettings from "metabase/lib/settings";
-import { formatFrame } from "metabase/lib/time";
+import { formatFrame } from "metabase/lib/time-dayjs";
 import {
   getDefaultValuePopulatedParameters,
   normalizeParameterValue,
@@ -361,12 +361,12 @@ export const getHasConfiguredAnyChannel = (
     _.some(Object.values(formInput.channels), (c) => c.configured)) ||
   false;
 
-export const getHasConfiguredEmailChannel = (
+export const getHasConfiguredEmailOrSlackChannel = (
   formInput: ChannelApiResponse | undefined,
 ) =>
   (formInput?.channels &&
     _.some(
       Object.values(formInput.channels),
-      (c) => c.type === "email" && c.configured,
+      (c) => ["email", "slack"].includes(c.type) && c.configured,
     )) ||
   false;

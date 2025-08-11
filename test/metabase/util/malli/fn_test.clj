@@ -274,8 +274,10 @@
   (is (= 'Integer
          (-> '(^{:private true} add-ints :- :int ^{:tag Integer} [x :- :int y :- :int] (+ x y))
              mu.fn/parse-fn-tail
+             :values
              :arities
-             second
+             :value
+             :values
              :args
              meta
              :tag))))

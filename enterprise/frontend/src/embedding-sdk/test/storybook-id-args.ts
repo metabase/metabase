@@ -42,7 +42,7 @@ export const dashboardIdArgType = {
       [dashboardIds.wrongNumberId]: "Wrong Number ID",
     },
   },
-};
+} as const;
 
 export const collectionIds = generateIds(COLLECTION_ENTITY_ID);
 

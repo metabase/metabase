@@ -37,7 +37,6 @@ export const TYPE_HIERARCHIES = {
   [NUMBER]: {
     base: [TYPE.Number],
     effective: [TYPE.Number],
-    semantic: [TYPE.Number], // MySQL hack! See Lib.isNumeric
   },
   [INTEGER]: {
     base: [TYPE.Integer],

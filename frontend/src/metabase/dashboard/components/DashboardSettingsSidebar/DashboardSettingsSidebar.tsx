@@ -5,25 +5,18 @@ import { t } from "ttag";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { Sidesheet, SidesheetCard } from "metabase/common/components/Sidesheet";
-import { toggleAutoApplyFilters } from "metabase/dashboard/actions";
+import { useUniqueId } from "metabase/common/hooks/use-unique-id";
+import { toggleAutoApplyFilters } from "metabase/dashboard/actions/parameters";
+import { useDashboardContext } from "metabase/dashboard/context";
 import { isDashboardCacheable } from "metabase/dashboard/utils";
-import { useUniqueId } from "metabase/hooks/use-unique-id";
 import { useDispatch } from "metabase/lib/redux";
 import { PLUGIN_CACHING } from "metabase/plugins";
 import { Switch } from "metabase/ui";
 import type { CacheableDashboard, Dashboard } from "metabase-types/api";
 
-interface DashboardSettingsSidebarProps {
-  dashboard: Dashboard;
-  onClose: () => void;
-}
-
-export function DashboardSettingsSidebar({
-  dashboard,
-  onClose,
-}: DashboardSettingsSidebarProps) {
+export function DashboardSettingsSidebar() {
+  const { dashboard, closeSidebar } = useDashboardContext();
   const [page, setPage] = useState<"default" | "caching">("default");
-
   const [isOpen, setIsOpen] = useState(false);
 
   useMount(() => {
@@ -33,13 +26,17 @@ export function DashboardSettingsSidebar({
     setIsOpen(true);
   });
 
+  if (!dashboard) {
+    return null;
+  }
+
   if (page === "caching") {
     return (
       <PLUGIN_CACHING.SidebarCacheForm
         item={dashboard as CacheableDashboard}
         model="dashboard"
         onBack={() => setPage("default")}
-        onClose={onClose}
+        onClose={closeSidebar}
         pt="md"
       />
     );
@@ -50,7 +47,7 @@ export function DashboardSettingsSidebar({
       <Sidesheet
         isOpen={isOpen}
         title={t`Dashboard settings`}
-        onClose={onClose}
+        onClose={closeSidebar}
         data-testid="dashboard-settings-sidebar"
       >
         <DashboardSidesheetBody
@@ -58,7 +55,7 @@ export function DashboardSettingsSidebar({
           page={page}
           setPage={setPage}
           isOpen={isOpen}
-          onClose={onClose}
+          onClose={closeSidebar}
         />
       </Sidesheet>
     </ErrorBoundary>

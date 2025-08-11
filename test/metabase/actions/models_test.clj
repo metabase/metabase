@@ -30,7 +30,7 @@
         (testing "Implicit actions parameters and visualization_settings should be hydrated from the query"
           (mt/with-actions [_model {:type            :model
                                     :dataset_query   query
-                                    :result_metadata (assoc-in (qp.preprocess/query->expected-cols (mt/mbql-query categories))
+                                    :result_metadata (assoc-in (vec (qp.preprocess/query->expected-cols (mt/mbql-query categories)))
                                                                [1 :display_name] "Display Name")}
                             {:keys [action-id] :as _context} {:type :implicit}]
             (is (partial= {:id                     action-id

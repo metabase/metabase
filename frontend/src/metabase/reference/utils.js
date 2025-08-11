@@ -1,5 +1,5 @@
+import dayjs from "dayjs";
 import { assoc } from "icepick";
-import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 import { t } from "ttag";
 
 import { humanize, titleize } from "metabase/lib/formatting";
@@ -126,7 +126,7 @@ export const getQuestionUrl = (getQuestionArgs) =>
 export const has = (entity) => entity && entity.length > 0;
 
 export const getDescription = (question) => {
-  const timestamp = moment(question.getCreatedAt()).fromNow();
+  const timestamp = dayjs(question.getCreatedAt()).fromNow();
   const author = question.getCreator().common_name;
   return t`Created ${timestamp} by ${author}`;
 };

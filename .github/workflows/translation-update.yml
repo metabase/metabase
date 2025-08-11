@@ -43,6 +43,7 @@ jobs:
           command_args: |
             --config locales/crowdin.yml
             -e=el
+            -e=et
             -e=es-MX
             -e=gu-IN
             -e=hr

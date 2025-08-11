@@ -1,11 +1,12 @@
 import cx from "classnames";
-import type * as React from "react";
 import { t } from "ttag";
 
-import AccordionList from "metabase/core/components/AccordionList";
+import {
+  AccordionList,
+  type Section as BaseSection,
+} from "metabase/common/components/AccordionList";
 import CS from "metabase/css/core/index.css";
 import { isSyncCompleted } from "metabase/lib/syncing";
-import type { IconName } from "metabase/ui";
 import { Icon } from "metabase/ui";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type Schema from "metabase-lib/v1/metadata/Schema";
@@ -24,23 +25,17 @@ type DataSelectorDatabaseSchemaPicker = {
   selectedSchema: Schema;
   onBack: () => void;
   onChangeDatabase: (database: Database) => void;
-  onChangeSchema: (item: { schema?: Schema }) => void;
+  onChangeSchema: (schema?: Schema) => void;
 };
 
-type Section = {
-  name: string | React.ReactElement;
-  items?: {
-    schema: Schema;
-    name: string;
-  }[];
-  className?: string | null;
-  icon?: IconName;
-  loading?: boolean;
-  active: boolean;
-  type?: string;
+type Item = {
+  schema: Schema;
+  name: string;
 };
 
-type Sections = Section[];
+type Section = BaseSection<Item> & {
+  active?: boolean;
+};
 
 const DataSelectorDatabaseSchemaPicker = ({
   databases,
@@ -58,7 +53,7 @@ const DataSelectorDatabaseSchemaPicker = ({
     return <DataSelectorLoading />;
   }
 
-  const sections: Sections = databases.map((database) => ({
+  const sections: Section[] = databases.map((database) => ({
     name: database.is_saved_questions ? t`Saved Questions` : database.name,
     items:
       !database.is_saved_questions && database.getSchemas().length > 1
@@ -67,7 +62,7 @@ const DataSelectorDatabaseSchemaPicker = ({
             name: schema.displayName() ?? "",
           }))
         : [],
-    className: database.is_saved_questions ? CS.bgLight : null,
+    className: database.is_saved_questions ? CS.bgLight : undefined,
     icon: database.is_saved_questions ? "collection" : "database",
     loading:
       selectedDatabase?.id === database.id &&
@@ -95,9 +90,7 @@ const DataSelectorDatabaseSchemaPicker = ({
     return true;
   };
 
-  const showSpinner = ({ active }: { active?: boolean }) => active === false;
-
-  const renderSectionIcon = ({ icon }: { icon?: IconName }) =>
+  const renderSectionIcon = ({ icon }: Section) =>
     icon && (
       <Icon className={cx("Icon", CS.textDefault)} name={icon} size={18} />
     );
@@ -121,20 +114,22 @@ const DataSelectorDatabaseSchemaPicker = ({
   }
 
   return (
-    <AccordionList
+    <AccordionList<Item, Section>
       id="DatabaseSchemaPicker"
       key="databaseSchemaPicker"
       className={CS.textBrand}
       hasInitialFocus={hasInitialFocus}
       sections={sections}
-      onChange={({ schema }: any) => onChangeSchema(schema)}
+      onChange={({ schema }) => onChangeSchema(schema)}
       onChangeSection={handleChangeSection}
-      itemIsSelected={(schema: Schema) => schema === selectedSchema}
+      itemIsSelected={({ schema }) => schema === selectedSchema}
       renderSectionIcon={renderSectionIcon}
       renderItemIcon={() => <Icon name="folder" size={16} />}
       initiallyOpenSection={openSection}
       alwaysTogglable={true}
-      showSpinner={showSpinner}
+      showSpinner={(itemOrSection) =>
+        "active" in itemOrSection && !itemOrSection.active
+      }
       showItemArrows={hasNextStep}
       maxHeight={Infinity}
     />

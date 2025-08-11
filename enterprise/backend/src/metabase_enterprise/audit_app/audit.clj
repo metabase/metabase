@@ -107,7 +107,11 @@
                                                                :from [[(t2/table-name :model/Table) :self_table]]
                                                                :where [:and
                                                                        [:= :self_table.db_id :table.db_id]
-                                                                       [:= :self_table.schema :table.schema]
+                                                                       [:or
+                                                                        [:= :self_table.schema [:lower :table.schema]]
+                                                                        [:and
+                                                                         [:= :self_table.schema [:inline "public"]]
+                                                                         [:= :table.schema nil]]]
                                                                        [:= :self_table.name [:lower :table.name]]]}]]]})]
     (when (seq table-ids-to-update)
       (t2/update! :model/Table :id [:in (map :id table-ids-to-update)]
@@ -124,7 +128,11 @@
                                                                             [:= :self_table.id :self_field.table_id]]
                                                                :where [:and
                                                                        [:= :self_table.db_id :table.db_id]
-                                                                       [:= :self_table.schema :table.schema]
+                                                                       [:or
+                                                                        [:= :self_table.schema [:lower :table.schema]]
+                                                                        [:and
+                                                                         [:= :self_table.schema [:inline "public"]]
+                                                                         [:= :table.schema nil]]]
                                                                        [:= :self_field.name [:lower :field.name]]]}]]]})]
     (when (seq field-ids-to-update)
       (t2/update! :model/Field :id [:in (map :id field-ids-to-update)]

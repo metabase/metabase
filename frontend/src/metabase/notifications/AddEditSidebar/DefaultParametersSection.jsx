@@ -2,8 +2,10 @@ import cx from "classnames";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 
+import { Badge } from "metabase/common/components/Badge";
 import CS from "metabase/css/core/index.css";
 import { conjunct } from "metabase/lib/formatting";
+import { formatDateValue } from "metabase/parameters/utils/date-formatting";
 import { Icon } from "metabase/ui";
 
 import Heading from "./Heading";
@@ -12,8 +14,30 @@ import Heading from "./Heading";
 function formatDefaultParamValues(parameters) {
   return parameters
     .map((parameter) => {
-      const value = conjunct([].concat(parameter.default), t`and`);
-      return value && `${parameter.name} is ${value}`;
+      const { name, type, default: defaultValue } = parameter;
+
+      if (!defaultValue) {
+        return null;
+      }
+
+      let formattedValue;
+      if (type.startsWith("date/")) {
+        const values = [].concat(defaultValue);
+        const formattedValues = values
+          .map((val) => formatDateValue(parameter, val))
+          .filter(Boolean);
+
+        if (formattedValues.length > 0) {
+          formattedValue = conjunct(formattedValues, t`and`);
+        }
+      } else {
+        formattedValue = conjunct([].concat(defaultValue), t`and`);
+      }
+
+      if (formattedValue) {
+        return { name, value: formattedValue };
+      }
+      return null;
     })
     .filter(Boolean);
 }
@@ -34,11 +58,16 @@ function DefaultParametersSection({ className, parameters }) {
       </Heading>
       <div
         className={cx(CS.pt1, CS.textSmall, CS.textNormal, CS.textMedium)}
-      >{t`If a dashboard filter has a default value, it’ll be applied when your subscription is sent.`}</div>
-      {formattedParameterValues.map((formattedValue, index) => {
+      >{t`If a dashboard filter has a default value, it'll be applied when your subscription is sent.`}</div>
+      {formattedParameterValues.map((param, index) => {
         return (
-          <div className={cx(CS.pt1, CS.textMedium)} key={index}>
-            {formattedValue}
+          <div
+            className={cx(CS.pt1, CS.flex, CS.alignCenter, CS.flexWrap)}
+            key={index}
+          >
+            <Badge inactiveColor="text-dark" isSingleLine={true}>
+              {param.name}: {param.value}
+            </Badge>
           </div>
         );
       })}

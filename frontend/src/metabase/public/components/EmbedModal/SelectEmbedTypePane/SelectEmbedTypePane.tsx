@@ -1,13 +1,18 @@
 import cx from "classnames";
+import type React from "react";
 import { type ComponentProps, useState } from "react";
 import { t } from "ttag";
 
-import { useDocsUrl, useSetting, useUrlWithUtm } from "metabase/common/hooks";
-import ExternalLink from "metabase/core/components/ExternalLink";
-import Link from "metabase/core/components/Link";
+import {
+  UpsellSdkCta,
+  useUpsellSdkCta,
+} from "metabase/admin/upsells/UpsellSdkCta";
+import { UpsellGem } from "metabase/admin/upsells/components";
+import ExternalLink from "metabase/common/components/ExternalLink";
+import Link from "metabase/common/components/Link";
+import { useDocsUrl, useSetting } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import type { ExportFormatType } from "metabase/embedding/components/PublicLinkPopover/types";
-import { Badge } from "metabase/home/components/EmbedHomepage/Badge";
 import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_EMBEDDING } from "metabase/plugins";
 import { trackPublicLinkRemoved } from "metabase/public/lib/analytics";
@@ -17,7 +22,7 @@ import type {
   EmbedResourceType,
 } from "metabase/public/lib/types";
 import { getSetting } from "metabase/selectors/settings";
-import { Flex, Group, Icon, List, Stack, Text } from "metabase/ui";
+import { Group, Icon, List, Stack, Text, UnstyledButton } from "metabase/ui";
 
 import { PublicEmbedCard } from "./PublicEmbedCard";
 import { SharingPaneButton } from "./SharingPaneButton/SharingPaneButton";
@@ -42,9 +47,8 @@ export function SelectEmbedTypePane({
   getPublicUrl,
   goToNextStep,
 }: SelectEmbedTypePaneProps) {
+  const { url } = useUpsellSdkCta();
   const hasPublicLink = resource.public_uuid != null;
-
-  const interactiveEmbeddingCta = useInteractiveEmbeddingCta();
 
   const utmTags = {
     utm_content: "embed-modal",
@@ -122,18 +126,14 @@ export function SelectEmbedTypePane({
         </SharingPaneButton>
 
         {/* INTERACTIVE EMBEDDING */}
-        <MaybeLink
-          to={interactiveEmbeddingCta.url}
-          target={interactiveEmbeddingCta.target}
-          rel="noreferrer"
+        <MaybeLinkInteractiveEmbedding
           shouldRenderLink={
             !isInteractiveEmbeddingAvailable || isInteractiveEmbeddingEnabled
           }
-          aria-label={t`Interactive embedding`}
         >
           <SharingPaneButton
             title={t`Interactive embedding`}
-            badge={<Badge color="brand">{t`Pro`}</Badge>}
+            badge={<UpsellGem />}
             illustration={<InteractiveEmbeddingIllustration />}
             isDisabled={
               isInteractiveEmbeddingAvailable && !isInteractiveEmbeddingEnabled
@@ -146,18 +146,14 @@ export function SelectEmbedTypePane({
               {/* eslint-disable-next-line no-literal-metabase-strings -- only admin sees this */}
               <List.Item>{t`Embed all of Metabase in an iframe.`}</List.Item>
               <List.Item>{t`Let people click to explore.`}</List.Item>
-              <List.Item>{t`Customize appearance with your logo, font, and colors.`}</List.Item>
+              <List.Item>
+                {t`Customize appearance with your logo, font, and colors.`}{" "}
+                {!isInteractiveEmbeddingAvailable && <LearnMore url={url} />}
+              </List.Item>
             </List>
-            {!isInteractiveEmbeddingAvailable && (
-              <ExternalLink>
-                <Flex align="center">
-                  {t`Learn more`}
-                  <Icon name="share" ml="xs" />
-                </Flex>
-              </ExternalLink>
-            )}
+            {!isInteractiveEmbeddingAvailable && <UpsellSdkCta />}
           </SharingPaneButton>
-        </MaybeLink>
+        </MaybeLinkInteractiveEmbedding>
 
         {/* REACT SDK */}
         <MaybeLink
@@ -167,11 +163,7 @@ export function SelectEmbedTypePane({
         >
           <SharingPaneButton
             title={t`Embedded analytics SDK`}
-            badge={
-              <>
-                <Badge color="brand">{t`Pro`}</Badge>
-              </>
-            }
+            badge={<UpsellGem />}
             illustration={<SdkIllustration />}
             isDisabled={!isEmbeddingSdkEnabled}
             disabledLink={"/admin/settings/embedding-in-other-applications/sdk"}
@@ -215,36 +207,74 @@ export function SelectEmbedTypePane({
   );
 }
 
-export const useInteractiveEmbeddingCta = () => {
-  const isInteractiveEmbeddingEnabled = useSelector(
-    PLUGIN_EMBEDDING.isInteractiveEmbeddingEnabled,
-  );
-
-  const url = useUrlWithUtm(
-    `https://www.metabase.com/product/embedded-analytics`,
-    {
-      utm_source: "product",
-      utm_medium: "upsell",
-      utm_campaign: "embedding-interactive",
-      utm_content: "static-embed-popover",
-    },
-  );
-
-  if (isInteractiveEmbeddingEnabled) {
-    return {
-      url: "/admin/settings/embedding-in-other-applications/full-app",
-    };
+function LearnMore({ url }: { url: string | undefined }) {
+  if (!url) {
+    return null;
   }
 
-  return {
-    url,
-    target: "_blank",
-  };
-};
+  return (
+    <ExternalLink
+      href={url}
+      style={{ fontWeight: "bold" }}
+    >{t`Learn more`}</ExternalLink>
+  );
+}
+
+interface MaybeLinkInteractiveEmbeddingProps {
+  shouldRenderLink?: boolean;
+  children: React.ReactNode;
+}
+
+function MaybeLinkInteractiveEmbedding({
+  shouldRenderLink,
+  ...props
+}: MaybeLinkInteractiveEmbeddingProps) {
+  const { url, internalLink, triggerUpsellFlow } = useUpsellSdkCta();
+
+  if (!shouldRenderLink) {
+    return props.children;
+  }
+
+  if (triggerUpsellFlow) {
+    return (
+      <UnstyledButton
+        onClick={triggerUpsellFlow}
+        type="button"
+        aria-label={t`Interactive embedding`}
+      >
+        {props.children}
+      </UnstyledButton>
+    );
+  }
+
+  if (url) {
+    return (
+      <ExternalLink
+        {...props}
+        href={url}
+        target="_blank"
+        aria-label={t`Interactive embedding`}
+      />
+    );
+  }
+
+  if (internalLink) {
+    return (
+      <Link
+        {...props}
+        to={internalLink}
+        aria-label={t`Interactive embedding`}
+      />
+    );
+  }
+
+  return props.children;
+}
 
 interface MaybeLinkProps extends ComponentProps<typeof Link> {
   shouldRenderLink?: boolean;
 }
+
 function MaybeLink({ shouldRenderLink, ...props }: MaybeLinkProps) {
   if (shouldRenderLink) {
     return <Link {...props} />;

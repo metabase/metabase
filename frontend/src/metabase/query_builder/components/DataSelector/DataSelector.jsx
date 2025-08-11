@@ -5,8 +5,8 @@ import { Component } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import EmptyState from "metabase/components/EmptyState";
-import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
+import EmptyState from "metabase/common/components/EmptyState";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
 import Databases from "metabase/entities/databases";
 import Questions from "metabase/entities/questions";
@@ -155,6 +155,7 @@ export class UnconnectedDataSelector extends Component {
     useOnlyAvailableSchema: PropTypes.bool,
     isInitiallyOpen: PropTypes.bool,
     tableFilter: PropTypes.func,
+    fieldFilter: PropTypes.func,
     canChangeDatabase: PropTypes.bool,
     containerClassName: PropTypes.string,
     canSelectModel: PropTypes.bool,
@@ -218,7 +219,7 @@ export class UnconnectedDataSelector extends Component {
   // asynchronously loaded
   //
   _getComputedState(props, state) {
-    const { metadata, tableFilter } = props;
+    const { metadata, tableFilter, fieldFilter } = props;
     const {
       selectedDatabaseId,
       selectedSchemaId,
@@ -292,6 +293,10 @@ export class UnconnectedDataSelector extends Component {
 
     if (tables && tableFilter) {
       tables = tables.filter(tableFilter);
+    }
+
+    if (fields && fieldFilter) {
+      fields = fields.filter(fieldFilter);
     }
 
     return {
@@ -394,6 +399,7 @@ export class UnconnectedDataSelector extends Component {
     const invalidSchema =
       selectedDatabase &&
       selectedSchema &&
+      selectedSchema.database &&
       selectedSchema.database.id !== selectedDatabase.id &&
       selectedSchema.database.id !== SAVED_QUESTIONS_VIRTUAL_DB_ID;
 

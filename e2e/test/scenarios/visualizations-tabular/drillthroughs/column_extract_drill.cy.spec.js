@@ -386,8 +386,9 @@ function extractColumnAndCheck({
   // eslint-disable-next-line no-unsafe-element-filtering
   cy.findAllByRole("columnheader")
     .last()
+    .scrollIntoView()
     .should("have.text", newColumn)
-    .should("be.visible");
+    .and("be.visible");
 
   if (value) {
     cy.findByRole("gridcell", { name: value }).should("be.visible");

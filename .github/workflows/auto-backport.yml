@@ -1,18 +1,16 @@
 name: Auto-backport
+run-name: Auto Backport ${{ github.event.pull_request.title }}
 on:
   pull_request:
     types: [closed, labeled]
 
 jobs:
   create-backport:
-    if: | # the PR must be closed and have a backport label
-      (github.event.pull_request.merged == true || github.event.action == 'closed') && (
+    if: | # the PR must be merged and have a backport label
+      github.event.pull_request.merged == true && (
         contains(github.event.pull_request.labels.*.name, 'backport') ||
         contains(github.event.pull_request.labels.*.name, 'double-backport') ||
-        contains(github.event.pull_request.labels.*.name, 'triple-backport') ||
-        github.event.label.name == 'backport' ||
-        github.event.label.name == 'double-backport' ||
-        github.event.label.name == 'triple-backport'
+        contains(github.event.pull_request.labels.*.name, 'triple-backport')
       )
     runs-on: ubuntu-latest
     steps:
@@ -76,7 +74,7 @@ jobs:
           github-token-2: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Double Backport
-        if: ${{ fromJson(steps.how-many-backports.outputs.result) >= 2 }}
+        if: ${{ always() && fromJson(steps.how-many-backports.outputs.result) >= 2 }}
         uses: ./.github/actions/create-backport
         with:
           target-version: ${{ fromJson(steps.get-latest-release-version.outputs.result).secondLatest }}
@@ -85,7 +83,7 @@ jobs:
           github-token-2: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Triple Backport
-        if: ${{ fromJson(steps.how-many-backports.outputs.result) >= 3 }}
+        if: ${{ always() && fromJson(steps.how-many-backports.outputs.result) >= 3 }}
         uses: ./.github/actions/create-backport
         with:
           target-version: ${{ fromJson(steps.get-latest-release-version.outputs.result).thirdLatest }}

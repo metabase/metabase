@@ -236,12 +236,15 @@ const getDatasetParams = ({
       const params = new URLSearchParams(window.location.search);
 
       const convertSearchParamsToObject = (params: URLSearchParams) => {
-        const object: Record<string, string[]> = {};
+        const object: Record<string, string | string[]> = {};
         for (const [key, value] of params.entries()) {
           if (object[key]) {
-            object[key] = [...object[key], value];
+            object[key] = ([] as string[]).concat(
+              object[key] as string | string[],
+              value,
+            );
           } else {
-            object[key] = [value];
+            object[key] = value;
           }
         }
 

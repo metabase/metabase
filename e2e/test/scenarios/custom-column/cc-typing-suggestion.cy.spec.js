@@ -1,5 +1,9 @@
 const { H } = cy;
 
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+
+const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
+
 describe("scenarios > question > custom column > typing suggestion", () => {
   beforeEach(() => {
     H.restore();
@@ -202,6 +206,90 @@ describe("scenarios > question > custom column > typing suggestion", () => {
     cy.log("move cursor to baz using the mouse");
     H.CustomExpressionEditor.get().findByText('"baz"').click();
     verifyHelptextPosition('"baz"');
+  });
+
+  it("should not show helptext for functions that are not supported by the expression mode", () => {
+    addCustomColumn();
+    H.CustomExpressionEditor.type("Average([Price]){leftarrow}{leftarrow}");
+    H.CustomExpressionEditor.helpText().should("not.exist");
+  });
+
+  it("should not show an error when a snippet is still active", () => {
+    addCustomColumn();
+    H.CustomExpressionEditor.type("conca{tab}", {
+      delay: 50,
+    });
+    H.popover()
+      .findByText(/Unknown column/)
+      .should("not.exist");
+    H.CustomExpressionEditor.type("{tab}", {
+      focus: false,
+      delay: 50,
+    });
+    H.popover()
+      .findByText(/Unknown column/)
+      .should("be.visible");
+  });
+
+  it("should be possible to complete a custom column that is just a rename of another custom column", () => {
+    H.createQuestion(
+      {
+        query: {
+          "source-table": ORDERS_ID,
+          expressions: {
+            Foo: ["+", 1, 1],
+            Bar: [
+              "expression",
+              "Foo",
+              {
+                "base-type": "type/Integer",
+              },
+            ],
+          },
+        },
+      },
+      { visitQuestion: true },
+    );
+    H.openNotebook();
+
+    H.getNotebookStep("expression").icon("add").click();
+    H.CustomExpressionEditor.type("[Ba");
+    H.CustomExpressionEditor.completion("Bar").should("be.visible");
+  });
+
+  it("should be possible to complete an aggregation that is just a rename of another aggregation", () => {
+    H.createQuestion(
+      {
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [
+            [
+              "aggregation-options",
+              ["sum", ["field", ORDERS.TOTAL, null]],
+              {
+                name: "Foo",
+                "display-name": "Foo",
+              },
+            ],
+            [
+              "aggregation-options",
+              ["aggregation", 0],
+              {
+                name: "Bar",
+                "display-name": "Bar",
+              },
+            ],
+          ],
+        },
+      },
+      { visitQuestion: true },
+    );
+    H.openNotebook();
+
+    H.getNotebookStep("summarize").icon("add").click();
+    H.popover().findByText("Custom Expression").scrollIntoView().click();
+    H.CustomExpressionEditor.type("[Ba");
+    H.CustomExpressionEditor.completion("Bar").should("be.visible");
   });
 });
 

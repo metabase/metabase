@@ -32,8 +32,6 @@ import type {
   DrillThruDisplayInfo,
   FilterOperator,
   FilterOperatorDisplayInfo,
-  JoinConditionOperator,
-  JoinConditionOperatorDisplayInfo,
   JoinStrategy,
   JoinStrategyDisplayInfo,
   MetadataProvider,
@@ -130,11 +128,6 @@ declare function DisplayInfoFn(
   stageIndex: number,
   joinStrategy: JoinStrategy,
 ): JoinStrategyDisplayInfo;
-declare function DisplayInfoFn(
-  query: Query,
-  stageIndex: number,
-  joinConditionOperator: JoinConditionOperator,
-): JoinConditionOperatorDisplayInfo;
 declare function DisplayInfoFn(
   query: Query,
   stageIndex: number,

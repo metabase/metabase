@@ -3,7 +3,7 @@ import { msgid, ngettext } from "ttag";
 import {
   HoverParent,
   TableColumnInfoIcon,
-} from "metabase/components/MetadataInfo/ColumnInfoIcon";
+} from "metabase/common/components/MetadataInfo/ColumnInfoIcon";
 import type { IconName } from "metabase/ui";
 import { DelayGroup } from "metabase/ui";
 import type Field from "metabase-lib/v1/metadata/Field";

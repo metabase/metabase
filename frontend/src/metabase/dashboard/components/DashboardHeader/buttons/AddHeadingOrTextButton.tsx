@@ -1,38 +1,32 @@
 import { t } from "ttag";
 
-import { ToolbarButton } from "metabase/components/ToolbarButton";
-import {
-  addHeadingDashCardToDashboard,
-  addMarkdownDashCardToDashboard,
-} from "metabase/dashboard/actions";
-import { getDashboard, getSelectedTabId } from "metabase/dashboard/selectors";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { ToolbarButton } from "metabase/common/components/ToolbarButton";
+import { useDashboardContext } from "metabase/dashboard/context/context";
 import { Group, Icon, Menu } from "metabase/ui";
 
 export const AddHeadingOrTextButton = () => {
-  const dispatch = useDispatch();
-  const dashboard = useSelector(getDashboard);
-  const selectedTabId = useSelector(getSelectedTabId);
+  const {
+    dashboard,
+    selectedTabId,
+    addHeadingDashCardToDashboard,
+    addMarkdownDashCardToDashboard,
+  } = useDashboardContext();
 
   const onAddMarkdownBox = () => {
     if (dashboard) {
-      dispatch(
-        addMarkdownDashCardToDashboard({
-          dashId: dashboard.id,
-          tabId: selectedTabId,
-        }),
-      );
+      addMarkdownDashCardToDashboard({
+        dashId: dashboard.id,
+        tabId: selectedTabId,
+      });
     }
   };
 
   const onAddHeading = () => {
     if (dashboard) {
-      dispatch(
-        addHeadingDashCardToDashboard({
-          dashId: dashboard.id,
-          tabId: selectedTabId,
-        }),
-      );
+      addHeadingDashCardToDashboard({
+        dashId: dashboard.id,
+        tabId: selectedTabId,
+      });
     }
   };
 

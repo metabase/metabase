@@ -7,7 +7,6 @@ import {
 } from "@reduxjs/toolkit";
 import { useContext } from "react";
 
-import { DEFAULT_EMBEDDING_ENTITY_TYPES } from "metabase/embedding-sdk/store";
 import {
   MetabaseReduxContext,
   useDispatch,
@@ -16,11 +15,12 @@ import {
 import { PLUGIN_REDUCERS } from "metabase/plugins";
 import * as qb from "metabase/query_builder/reducers";
 import { commonReducers } from "metabase/reducers-common";
+import { DEFAULT_EMBEDDING_ENTITY_TYPES } from "metabase/redux/embedding-data-picker";
 import { getStore } from "metabase/store";
 import { reducer as visualizer } from "metabase/visualizer/visualizer.slice";
 
 import { sdk } from "./reducer";
-import type { SdkStoreState } from "./types";
+import type { SdkStore, SdkStoreState } from "./types";
 
 export const sdkReducers = {
   ...commonReducers,
@@ -38,7 +38,6 @@ export const getSdkStore = () =>
       options: {
         entity_types: DEFAULT_EMBEDDING_ENTITY_TYPES,
       },
-      isEmbeddingSdk: true,
     },
     app: {
       isDndAvailable: false,
@@ -54,7 +53,7 @@ export const useSdkDispatch = () => {
 export const useSdkStore = () => {
   useCheckSdkReduxContext();
 
-  return useStore();
+  return useStore() as SdkStore;
 };
 
 const useCheckSdkReduxContext = () => {

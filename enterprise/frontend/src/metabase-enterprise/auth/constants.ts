@@ -8,6 +8,7 @@ export const JWT_SCHEMA = Yup.object({
   "jwt-attribute-email": Yup.string().nullable().default(null),
   "jwt-attribute-firstname": Yup.string().nullable().default(null),
   "jwt-attribute-lastname": Yup.string().nullable().default(null),
+  "jwt-attribute-groups": Yup.string().nullable().default(null),
   "jwt-group-sync": Yup.boolean().default(false),
   "jwt-group-mappings": Yup.object().default(null),
 });

@@ -9,6 +9,7 @@
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.info :as lib.schema.info]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.lib.util.match :as lib.util.match]
@@ -161,7 +162,8 @@
                     (not= widget-type :none))
                [param-name widget-type]
 
-               (contains? lib.schema.template-tag/raw-value-template-tag-types tag-type)
+               (or (contains? lib.schema.template-tag/raw-value-template-tag-types tag-type)
+                   (= tag-type :temporal-unit))
                [param-name tag-type])))
       (filter some?))
      (get-in query [:native :template-tags]))))
@@ -237,7 +239,8 @@
 (defn process-query-for-card-default-run-fn
   "Create the default `:make-run` function for [[process-query-for-card]]."
   [qp export-format]
-  (^:once fn* [query info]
+  (mu/fn [query :- :map
+          info  :- [:maybe ::lib.schema.info/info]]
     (qp.streaming/streaming-response [rff export-format (u/slugify (:card-name info))]
       (qp (update query :info merge info) rff))))
 
@@ -322,7 +325,6 @@
         info       (cond-> {:executed-by            api/*current-user-id*
                             :context                context
                             :card-id                card-id
-                            :card-entity-id         (:entity_id card)
                             :card-name              (:name card)
                             :dashboard-id           dashboard-id
                             :visualization-settings merged-viz}

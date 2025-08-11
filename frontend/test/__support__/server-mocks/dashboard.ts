@@ -5,14 +5,15 @@ import type {
   Dashboard,
   DashboardId,
   DashboardQueryMetadata,
+  FieldId,
   GetPublicDashboard,
 } from "metabase-types/api";
 import { createMockDashboard } from "metabase-types/api/mocks";
 
 export function setupDashboardEndpoints(dashboard: Dashboard) {
   fetchMock.get(`path:/api/dashboard/${dashboard.id}`, dashboard);
-  fetchMock.put(`path:/api/dashboard/${dashboard.id}`, async (url) => {
-    const lastCall = fetchMock.lastCall(url);
+  fetchMock.put(`path:/api/dashboard/${dashboard.id}`, async (call) => {
+    const lastCall = fetchMock.callHistory.lastCall(call.url);
     return createMockDashboard(await lastCall?.request?.json());
   });
 }
@@ -57,4 +58,13 @@ export function setupListPublicDashboardsEndpoint(
   publicDashboards: GetPublicDashboard[],
 ) {
   fetchMock.get("path:/api/dashboard/public", publicDashboards);
+}
+
+export function setupValidFilterFieldsEndpoint(
+  filteringIdsByFilteredId: Record<FieldId, FieldId[]>,
+) {
+  fetchMock.get(
+    "path:/api/dashboard/params/valid-filter-fields",
+    filteringIdsByFilteredId,
+  );
 }

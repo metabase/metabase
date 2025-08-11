@@ -1,6 +1,5 @@
-import Markdown from "metabase/core/components/Markdown";
-import { Repeat } from "metabase/ui/components/feedback/Skeleton/Repeat";
-import { Skeleton } from "metabase/ui/components/feedback/Skeleton/Skeleton";
+import Markdown from "metabase/common/components/Markdown";
+import { Repeat, Skeleton } from "metabase/ui";
 
 import S from "./AIAnalysisContent.module.css";
 

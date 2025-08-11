@@ -9,28 +9,20 @@
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.driver :as driver]
+   [metabase.driver-api.core :as driver-api]
    [metabase.driver.common :as driver.common]
-   [metabase.driver.mongo.operators :refer [$add $addFields $addToSet $and $avg $concat $cond
-                                            $dayOfMonth $dayOfWeek $dayOfYear $divide $eq $expr
-                                            $group $gt $gte $hour $limit $literal $lookup $lt $lte $match $max $min
-                                            $minute $mod $month $multiply $ne $not $or $project $regexMatch $second
-                                            $size $skip $sort $strcasecmp $subtract $sum $toLower $unwind $year
-                                            $setWindowFields]]
+   [metabase.driver.mongo.operators :refer [$add $addFields $addToSet $and
+                                            $avg $concat $cond $dayOfMonth
+                                            $dayOfWeek $dayOfYear $divide $eq
+                                            $expr $group $gt $gte $hour $limit
+                                            $literal $lookup $lt $lte $match
+                                            $max $min $minute $mod $month
+                                            $multiply $ne $not $or $project
+                                            $regexMatch $second
+                                            $setWindowFields $size $skip $sort
+                                            $strcasecmp $subtract $sum
+                                            $toBool $toLower $unwind $year]]
    [metabase.driver.util :as driver.u]
-   [metabase.legacy-mbql.schema :as mbql.s]
-   [metabase.legacy-mbql.util :as mbql.u]
-   [metabase.lib-be.core :as lib-be]
-   [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.schema.common :as lib.schema.common]
-   [metabase.lib.schema.metadata :as lib.schema.metadata]
-   [metabase.lib.util.match :as lib.util.match]
-   [metabase.query-processor.error-type :as qp.error-type]
-   [metabase.query-processor.interface :as qp.i]
-   [metabase.query-processor.middleware.annotate :as annotate]
-   [metabase.query-processor.store :as qp.store]
-   [metabase.query-processor.timezone :as qp.timezone]
-   [metabase.query-processor.util.add-alias-info :as add]
-   [metabase.query-processor.util.transformations.nest-breakouts :as qp.util.transformations.nest-breakouts]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
@@ -49,22 +41,22 @@
 ;; this is just a very limited schema to make sure we're generating valid queries. We should expand it more in the
 ;; future
 
-(def ^:private $ProjectStage         [:map-of [:= $project]   [:map-of ::lib.schema.common/non-blank-string :any]])
-(def ^:private $SortStage            [:map-of [:= $sort]      [:map-of ::lib.schema.common/non-blank-string [:enum -1 1]]])
+(def ^:private $ProjectStage         [:map-of [:= $project]   [:map-of driver-api/schema.common.non-blank-string :any]])
+(def ^:private $SortStage            [:map-of [:= $sort]      [:map-of driver-api/schema.common.non-blank-string [:enum -1 1]]])
 (def ^:private $MatchStage           [:map-of [:= $match]     [:map-of
                                                                [:and
-                                                                [:or ::lib.schema.common/non-blank-string :keyword]
+                                                                [:or driver-api/schema.common.non-blank-string :keyword]
                                                                 [:fn
                                                                  {:error/message "not a $not condition"}
                                                                  (complement #{:$not "$not"})]]
                                                                :any]])
-(def ^:private $GroupStage           [:map-of [:= $group]     [:map-of ::lib.schema.common/non-blank-string :any]])
-(def ^:private $AddFieldsStage       [:map-of [:= $addFields] [:map-of ::lib.schema.common/non-blank-string :any]])
+(def ^:private $GroupStage           [:map-of [:= $group]     [:map-of driver-api/schema.common.non-blank-string :any]])
+(def ^:private $AddFieldsStage       [:map-of [:= $addFields] [:map-of driver-api/schema.common.non-blank-string :any]])
 (def ^:private $LookupStage          [:map-of [:= $lookup]    [:map-of [:or :keyword :string] :any]])
 (def ^:private $UnwindStage          [:map-of [:= $unwind]    [:map-of [:or :keyword :string] :any]])
 (def ^:private $LimitStage           [:map-of [:= $limit]     pos-int?])
 (def ^:private $SkipStage            [:map-of [:= $skip]      pos-int?])
-(def ^:private $SetWindowFieldsStage [:map-of [:= $setWindowFields] [:map-of ::lib.schema.common/non-blank-string :any]])
+(def ^:private $SetWindowFieldsStage [:map-of [:= $setWindowFields] [:map-of driver-api/schema.common.non-blank-string :any]])
 
 (def ^:private Stage
   [:and
@@ -149,24 +141,24 @@
   (some->> join-alias (str "join_alias_")))
 
 (defn- get-mongo-version []
-  (qp.store/cached ::version
-    (driver/dbms-version :mongo (lib.metadata/database (qp.store/metadata-provider)))))
+  (driver-api/cached ::version
+                     (driver/dbms-version :mongo (driver-api/database (driver-api/metadata-provider)))))
 
 (defmulti ^:private ->rvalue
   "Format this `Field` or value for use as the right hand value of an expression, e.g. by adding `$` to a `Field`'s
   name"
   {:arglists '([x])}
-  mbql.u/dispatch-by-clause-name-or-class)
+  driver-api/dispatch-by-clause-name-or-class)
 
 (defmulti ^:private ->lvalue
   "Return an escaped name that can be used as the name of a given Field."
   {:arglists '([field])}
-  mbql.u/dispatch-by-clause-name-or-class)
+  driver-api/dispatch-by-clause-name-or-class)
 
 (defn- field-name-components [{:keys [parent-id], field-name :name, :as _field}]
   (concat
    (when parent-id
-     (field-name-components (lib.metadata/field (qp.store/metadata-provider) parent-id)))
+     (field-name-components (driver-api/field (driver-api/metadata-provider) parent-id)))
    [field-name]))
 
 (mu/defn field->name
@@ -174,12 +166,12 @@
   ([field]
    (field->name field \.))
 
-  ([field     :- ::lib.schema.metadata/column
+  ([field     :- driver-api/schema.metadata.column
     separator :- [:or :string char?]]
    (str/join separator (field-name-components field))))
 
-(mu/defmethod add/field-reference-mlv2 :mongo
-  [_driver field-inst :- ::lib.schema.metadata/column]
+(mu/defmethod driver-api/field-reference-mlv2 :mongo
+  [_driver field-inst :- driver-api/schema.metadata.column]
   (field->name field-inst))
 
 (defmacro ^:private mongo-let
@@ -202,8 +194,8 @@
   (scope-with-join-field (field->name field) join-field source-alias))
 
 (defmethod ->lvalue :expression
-  [[_ expression-name {::add/keys [desired-alias]}]]
-  (or desired-alias expression-name))
+  [[_ expression-name opts]]
+  (or (get opts driver-api/qp.add.desired-alias) expression-name))
 
 (defmethod ->rvalue :default
   [x]
@@ -211,12 +203,52 @@
 
 (defmethod ->rvalue :expression
   [[_ expression-name]]
-  (->rvalue (mbql.u/expression-with-name (:query *query*) expression-name)))
+  (let [expression-value (driver-api/expression-with-name (:query *query*) expression-name)]
+    (cond->> (->rvalue expression-value)
+      (driver-api/is-clause? :value expression-value) (array-map $literal))))
+
+(def ^:private base64-decoder "
+function(bin) {
+          if (!bin) return null;
+          
+          try {
+            var base64 = bin.base64();
+            
+            // Manual base64 decode implementation
+            var chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+            var result = '';
+            var i = 0;
+            
+            // Remove any padding
+            base64 = base64.replace(/=+$/, '');
+            
+            while (i < base64.length) {
+              var a = chars.indexOf(base64.charAt(i++));
+              var b = chars.indexOf(base64.charAt(i++));
+              var c = chars.indexOf(base64.charAt(i++));
+              var d = chars.indexOf(base64.charAt(i++));
+              
+              var bitmap = (a << 18) | (b << 12) | (c << 6) | d;
+              
+              result += String.fromCharCode((bitmap >> 16) & 255);
+              if (c !== -1) result += String.fromCharCode((bitmap >> 8) & 255);
+              if (d !== -1) result += String.fromCharCode(bitmap & 255);
+            }
+            
+            return result;
+          } catch(e) {
+            return null;
+          }
+        }
+")
 
 (defmethod ->rvalue :metadata/column
   [{coercion :coercion-strategy, ::keys [source-alias join-field] :as field}]
   (let [field-name (str \$ (scope-with-join-field (field->name field) join-field source-alias))]
     (cond
+      (isa? coercion :Coercion/UNIXNanoSeconds->DateTime)
+      {:$dateFromParts {:millisecond {$divide [field-name 1000000]}, :year 1970, :timezone "UTC"}}
+
       (isa? coercion :Coercion/UNIXMicroSeconds->DateTime)
       {:$dateFromParts {:millisecond {$divide [field-name 1000]}, :year 1970, :timezone "UTC"}}
 
@@ -231,6 +263,21 @@
                           :format     "%Y%m%d%H%M%S"
                           :onError    field-name}}
 
+      (isa? coercion :Coercion/YYYYMMDDHHMMSSBytes->Temporal)
+      {"$dateFromString" {:dateString {"$function"
+                                       {:body base64-decoder
+                                        :args [field-name]
+                                        :lang "js"}}
+                          :format     "%Y%m%d%H%M%S"
+                          :onError    field-name}}
+
+      (isa? coercion :Coercion/ISO8601Bytes->Temporal)
+      {"$dateFromString" {:dateString {"$function"
+                                       {:body base64-decoder
+                                        :args [field-name]
+                                        :lang "js"}}
+                          :onError    field-name}}
+
       ;; mongo only supports datetime
       (isa? coercion :Coercion/ISO8601->DateTime)
       {"$dateFromString" {:dateString field-name
@@ -238,12 +285,12 @@
 
       (isa? coercion :Coercion/ISO8601->Date)
       (throw (ex-info (tru "MongoDB does not support parsing strings as dates. Try parsing to a datetime instead")
-                      {:type              qp.error-type/unsupported-feature
+                      {:type              driver-api/qp.error-type.unsupported-feature
                        :coercion-strategy coercion}))
 
       (isa? coercion :Coercion/ISO8601->Time)
       (throw (ex-info (tru "MongoDB does not support parsing strings as times. Try parsing to a datetime instead")
-                      {:type              qp.error-type/unsupported-feature
+                      {:type              driver-api/qp.error-type.unsupported-feature
                        :coercion-strategy coercion}))
 
       (isa? coercion :Coercion/DateTime->Date)
@@ -266,16 +313,16 @@
 ;;
 (defmethod ->lvalue :aggregation
   [[_ index]]
-  (annotate/aggregation-name (:query *query*) (mbql.u/aggregation-at-index *query* index *nesting-level*)))
+  (driver-api/aggregation-name (:query *query*) (driver-api/aggregation-at-index *query* index *nesting-level*)))
 
 (defmethod ->lvalue :field
-  [[_ id-or-name {:keys [join-alias] ::add/keys [source-alias]} :as field]]
+  [[_ id-or-name {:keys [join-alias]  :as opts} :as field]]
   (if (integer? id-or-name)
     (or (find-mapped-field-name field)
-        (->lvalue (assoc (lib.metadata/field (qp.store/metadata-provider) id-or-name)
-                         ::source-alias source-alias
+        (->lvalue (assoc (driver-api/field (driver-api/metadata-provider) id-or-name)
+                         ::source-alias (get opts driver-api/qp.add.source-alias)
                          ::join-field (get-join-alias join-alias))))
-    (scope-with-join-field (name id-or-name) (get-join-alias join-alias) source-alias)))
+    (scope-with-join-field (name id-or-name) (get-join-alias join-alias) (get opts driver-api/qp.add.source-alias))))
 
 (defn- add-start-of-week-offset [expr offset]
   (cond
@@ -286,7 +333,7 @@
 
 (defn- day-of-week
   [column]
-  (mongo-let [day_of_week (add-start-of-week-offset {$dayOfWeek {:date column :timezone (qp.timezone/results-timezone-id)}}
+  (mongo-let [day_of_week (add-start-of-week-offset {$dayOfWeek {:date column :timezone (driver-api/results-timezone-id)}}
                                                     (driver.common/start-of-week-offset :mongo))]
     {$cond {:if   {$eq [day_of_week 0]}
             :then 7
@@ -300,9 +347,9 @@
                           (* 24 60 60 1000)]}]})
 
 (defn- truncate-to-resolution [column resolution]
-  (mongo-let [parts {:$dateToParts {:timezone (qp.timezone/results-timezone-id)
+  (mongo-let [parts {:$dateToParts {:timezone (driver-api/results-timezone-id)
                                     :date column}}]
-    {:$dateFromParts (into {:timezone (qp.timezone/results-timezone-id)}
+    {:$dateFromParts (into {:timezone (driver-api/results-timezone-id)}
                            (for [part (concat (take-while (partial not= resolution)
                                                           [:year :month :day :hour :minute :second :millisecond])
                                               [resolution])]
@@ -326,7 +373,7 @@
 
 (defn- extract
   [op column]
-  {op {:date column :timezone (qp.timezone/results-timezone-id)}})
+  {op {:date column :timezone (driver-api/results-timezone-id)}})
 
 (defn- with-rvalue-temporal-bucketing
   [field unit]
@@ -340,8 +387,8 @@
                 (if supports-dateTrunc?
                   {:$dateTrunc {:date column
                                 :unit (name unit)
-                                :timezone (qp.timezone/results-timezone-id)
-                                :startOfWeek (name (lib-be/start-of-week))}}
+                                :timezone (driver-api/results-timezone-id)
+                                :startOfWeek (name (driver-api/start-of-week))}}
                   (truncate-to-resolution column unit)))]
         (case unit
           :default          column
@@ -375,12 +422,12 @@
           :quarter
           (if supports-dateTrunc?
             (truncate :quarter)
-            (mongo-let [#_{:clj-kondo/ignore [:unused-binding]} parts {:$dateToParts {:date column :timezone (qp.timezone/results-timezone-id)}}]
+            (mongo-let [#_{:clj-kondo/ignore [:unused-binding]} parts {:$dateToParts {:date column :timezone (driver-api/results-timezone-id)}}]
               {:$dateFromParts {:year  :$$parts.year
                                 :month {$subtract [:$$parts.month
                                                    {$mod [{$add [:$$parts.month 2]}
                                                           3]}]}
-                                :timezone (qp.timezone/results-timezone-id)}}))
+                                :timezone (driver-api/results-timezone-id)}}))
 
           :quarter-of-year
           {:$toInt {:$ceil {$divide [(extract $month column) 3.0]}}}
@@ -392,12 +439,13 @@
           (extract $year column))))))
 
 (defmethod ->rvalue :field
-  [[_ id-or-name {:keys [temporal-unit join-alias] ::add/keys [source-alias]} :as field]]
-  (let [join-field (get-join-alias join-alias)]
+  [[_ id-or-name {:keys [temporal-unit join-alias] :as opts} :as field]]
+  (let [join-field (get-join-alias join-alias)
+        source-alias (get opts driver-api/qp.add.source-alias)]
     (cond-> (if (integer? id-or-name)
               (if-let [mapped (find-mapped-field-name field)]
                 (str \$ mapped)
-                (->rvalue (assoc (lib.metadata/field (qp.store/metadata-provider) id-or-name)
+                (->rvalue (assoc (driver-api/field (driver-api/metadata-provider) id-or-name)
                                  ::source-alias source-alias
                                  ::join-field join-field)))
               (if-let [mapped (find-mapped-field-name field)]
@@ -445,7 +493,7 @@
 
 (defmethod ->rvalue :absolute-datetime
   [[_ t unit]]
-  (let [report-zone (t/zone-id (or (qp.timezone/report-timezone-id-if-supported :mongo (lib.metadata/database (qp.store/metadata-provider)))
+  (let [report-zone (t/zone-id (or (driver-api/report-timezone-id-if-supported :mongo (driver-api/database (driver-api/metadata-provider)))
                                    "UTC"))
         t           (condp = (class t)
                       java.time.LocalDate      t
@@ -479,7 +527,7 @@
 (defmethod ->rvalue :relative-datetime
   [[_ amount unit]]
   (let [t (-> (t/zoned-date-time)
-              (t/with-zone-same-instant (t/zone-id (or (qp.timezone/report-timezone-id-if-supported :mongo (lib.metadata/database (qp.store/metadata-provider)))
+              (t/with-zone-same-instant (t/zone-id (or (driver-api/report-timezone-id-if-supported :mongo (driver-api/database (driver-api/metadata-provider)))
                                                        "UTC"))))]
     ($date-from-string
      (t/offset-date-time
@@ -662,7 +710,7 @@
 (defmethod ->rvalue :coalesce [[_ & args]] {"$ifNull" (mapv ->rvalue args)})
 
 (defmethod ->rvalue :now [[_]]
-  (if (driver/database-supports? :mongo :now (lib.metadata/database (qp.store/metadata-provider)))
+  (if (driver/database-supports? :mongo :now (driver-api/database (driver-api/metadata-provider)))
     "$$NOW"
     (throw (ex-info (tru "now is not supported for MongoDB versions before 4.2")
                     {:database-version (:version (get-mongo-version))}))))
@@ -679,10 +727,51 @@
                 rvalue]}
       :day)))
 
-(defmethod ->rvalue :datetime [[_ expr]]
+(defmethod ->rvalue :today [[_]]
+  (->rvalue [:date [:now]]))
+
+(defmethod ->rvalue :datetime [[_ expr {:keys [mode]}]]
   (let [rvalue (->rvalue expr)]
-    {"$dateFromString" {:dateString rvalue
-                        :onError    rvalue}}))
+    (case (or mode :iso)
+      :iso
+      {"$dateFromString" {:dateString rvalue
+                          :onError    rvalue}}
+
+      :simple
+      {"$dateFromString" {:dateString rvalue
+                          :format     "%Y%m%d%H%M%S"
+                          :onError    rvalue}}
+
+      :simple-bytes
+      {"$dateFromString" {:dateString {"$function"
+                                       {:body base64-decoder
+                                        :args [rvalue]
+                                        :lang "js"}}
+                          :format     "%Y%m%d%H%M%S"
+                          :onError    rvalue}}
+
+      :iso-bytes
+      {"$dateFromString" {:dateString {"$function"
+                                       {:body base64-decoder
+                                        :args [rvalue]
+                                        :lang "js"}}
+                          :onError    rvalue}}
+
+      :unix-nanoseconds
+      {:$dateFromParts {:millisecond {$divide [rvalue 1000000]}, :year 1970, :timezone "UTC"}}
+
+      :unix-microseconds
+      {:$dateFromParts {:millisecond {$divide [rvalue 1000]}, :year 1970, :timezone "UTC"}}
+
+      :unix-milliseconds
+      {:$dateFromParts {:millisecond rvalue, :year 1970, :timezone "UTC"}}
+
+      :unix-seconds
+      {:$dateFromParts {:second rvalue, :year 1970, :timezone "UTC"}}
+
+      ;; else
+      (throw (ex-info (tru "Driver {0} does not support {1}" :mongo mode)
+                      {:type driver-api/qp.error-type.unsupported-feature})))))
 
 (defmethod ->rvalue :datetime-add [[_ inp amount unit]]
   (check-date-operations-supported)
@@ -759,7 +848,7 @@
   "Compile an mbql filter clause to datastructures suitable to query mongo. Note this is not the whole query but just
   compiling the \"where\" clause equivalent."
   {:added "0.39.0" :arglists '([clause])}
-  mbql.u/dispatch-by-clause-name-or-class)
+  driver-api/dispatch-by-clause-name-or-class)
 
 (defmethod compile-filter :between
   [[_ field min-val max-val]]
@@ -768,7 +857,7 @@
                    [:<= field max-val]]))
 
 (defn- str-match-pattern [field options prefix value suffix]
-  (if (mbql.u/is-clause? ::not value)
+  (if (driver-api/is-clause? ::not value)
     {$not (str-match-pattern field options prefix (second value) suffix)}
     (do
       (assert (and (contains? #{nil "^"} prefix) (contains? #{nil "$"} suffix))
@@ -787,9 +876,14 @@
 (defmethod compile-filter :starts-with [[_ field v opts]] {$expr (str-match-pattern field opts "^" v nil)})
 (defmethod compile-filter :ends-with   [[_ field v opts]] {$expr (str-match-pattern field opts nil v "$")})
 
+(defn- rvalue-is-variable? [rvalue]
+  (and (string? rvalue)
+       (str/starts-with? rvalue "$$")))
+
 (defn- rvalue-is-field? [rvalue]
   (and (string? rvalue)
-       (str/starts-with? rvalue "$")))
+       (str/starts-with? rvalue "$")
+       (not (rvalue-is-variable? rvalue))))
 
 (defn- rvalue-can-be-compared-directly?
   "Whether `rvalue` is something simple that can be compared directly e.g.
@@ -802,6 +896,7 @@
   [rvalue]
   (or (rvalue-is-field? rvalue)
       (and (not (map? rvalue))
+           (not (rvalue-is-variable? rvalue))
            (not (instance? java.util.regex.Pattern rvalue)))))
 
 (defn- filter-expr [operator field value]
@@ -843,10 +938,10 @@
 ;; clause (see `->rvalue` for `::not` above). `negate` below wraps the MBQL lib function
 (defmulti ^:private negate
   {:arglists '([mbql-clause])}
-  mbql.u/dispatch-by-clause-name-or-class)
+  driver-api/dispatch-by-clause-name-or-class)
 
 (defmethod negate :default [clause]
-  (mbql.u/negate-filter-clause clause))
+  (driver-api/negate-filter-clause clause))
 
 (defmethod negate :and [[_ & subclauses]] (apply vector :or  (map negate subclauses)))
 (defmethod negate :or  [[_ & subclauses]] (apply vector :and (map negate subclauses)))
@@ -858,6 +953,16 @@
 (defmethod compile-filter :not [[_ subclause]]
   (compile-filter (negate subclause)))
 
+(defmethod compile-filter :expression [[_ expression-name]]
+  (let [expression-value (driver-api/expression-with-name (:query *query*) expression-name)]
+    (compile-filter expression-value)))
+
+(defmethod compile-filter :field [field-clause]
+  {$expr {$toBool (->rvalue field-clause)}})
+
+(defmethod compile-filter :value [value-clause]
+  {$expr (->rvalue value-clause)})
+
 (defn- handle-filter [{filter-clause :filter} pipeline-ctx]
   (if-not filter-clause
     pipeline-ctx
@@ -865,7 +970,7 @@
 
 (defmulti ^:private compile-cond
   {:arglists '([mbql-clause])}
-  mbql.u/dispatch-by-clause-name-or-class)
+  driver-api/dispatch-by-clause-name-or-class)
 
 (defmethod compile-cond :between [[_ field min-val max-val]]
   (compile-cond [:and [:>= field min-val] [:<= field max-val]]))
@@ -914,6 +1019,16 @@
 (defmethod compile-cond :not [[_ subclause]]
   (compile-cond (negate subclause)))
 
+(defmethod compile-cond :expression [[_ expression-name]]
+  (let [expression-value (driver-api/expression-with-name (:query *query*) expression-name)]
+    (compile-cond expression-value)))
+
+(defmethod compile-cond :field [field-clause]
+  (->rvalue field-clause))
+
+(defmethod compile-cond :value [value-clause]
+  (->rvalue value-clause))
+
 ;;; ----------------------------------------------------- joins ------------------------------------------------------
 
 (defn- find-source-collection
@@ -921,14 +1036,14 @@
   clause in :source-query clauses."
   [join-or-query]
   (or (-> join-or-query :collection)
-      (some->> join-or-query :source-table (lib.metadata/table (qp.store/metadata-provider)) :name)
+      (some->> join-or-query :source-table (driver-api/table (driver-api/metadata-provider)) :name)
       (some-> join-or-query :source-query recur)))
 
 (defn- localize-join-alias
   "Rename :join-alias properties fields to ::join-local.
   See [[find-mapped-field-name]] for an explanation why this is done."
   [expr alias]
-  (lib.util.match/replace expr
+  (driver-api/replace expr
     [:field _ {:join-alias alias}]
     (update &match 2 set/rename-keys {:join-alias ::join-local})))
 
@@ -959,7 +1074,7 @@
         source-field-mappings (get-field-mappings source-query projections)
         ;; Find the fields the join condition refers to that are not coming from the joined query.
         ;; These have to be bound in the :let property of the $lookup stage, they cannot be referred to directly.
-        own-fields (lib.util.match/match condition
+        own-fields (driver-api/match condition
                      [:field _ (_ :guard #(not= (:join-alias %) alias))])
         ;; Map the own fields to a fresh alias and to its rvalue.
         mapping (map (fn [f] (let [alias (-> (format "let_%s_" (->lvalue f))
@@ -1005,7 +1120,7 @@
              :default  (->rvalue (:default options))}})
 
 (defn- aggregation->rvalue [ag]
-  (lib.util.match/match-one ag
+  (driver-api/match-one ag
     [:aggregation-options ag' _]
     (recur ag')
 
@@ -1044,10 +1159,10 @@
     ag))
 
 (defn- field-alias [field]
-  (or (get-in field [2 ::add/desired-alias])
+  (or (get-in field [2 driver-api/qp.add.desired-alias])
       (->lvalue field)))
 
-(mu/defn- breakouts-and-ags->projected-fields :- [:maybe [:sequential [:tuple ::lib.schema.common/non-blank-string :any]]]
+(mu/defn- breakouts-and-ags->projected-fields :- [:maybe [:sequential [:tuple driver-api/schema.common.non-blank-string :any]]]
   "Determine field projections for MBQL breakouts and aggregations. Returns a sequence of pairs like
   `[projected-field-name source]`."
   [breakout-fields aggregations]
@@ -1055,7 +1170,7 @@
    (for [field-or-expr breakout-fields]
      [(field-alias field-or-expr) (format "$_id.%s" (field-alias field-or-expr))])
    (for [ag aggregations
-         :let [ag-name (annotate/aggregation-name (:query *query*) ag)]]
+         :let [ag-name (driver-api/aggregation-name (:query *query*) ag)]]
      [ag-name true])))
 
 (defmulti ^:private expand-aggregation
@@ -1084,7 +1199,7 @@
                            pred)]
     {:group {(subs count-where-expr 1) (aggregation->rvalue [:count-where pred])
              (subs count-expr 1)       (aggregation->rvalue [:count])}
-     :post  [{(annotate/aggregation-name (:query *query*) ag) {$divide [count-where-expr count-expr]}}]}))
+     :post  [{(driver-api/aggregation-name (:query *query*) ag) {$divide [count-where-expr count-expr]}}]}))
 
 ;; MongoDB doesn't have a variance operator, but you calculate it by taking the square of the standard deviation.
 ;; However, `$pow` is not allowed in the `$group` stage. So calculate standard deviation in the
@@ -1093,24 +1208,24 @@
   (let [[_ expr]    (unwrap-named-ag ag)
         stddev-expr (name (gensym "$stddev-"))]
     {:group {(subs stddev-expr 1) (aggregation->rvalue [:stddev expr])}
-     :post  [{(annotate/aggregation-name (:query *query*) ag) {:$pow [stddev-expr 2]}}]}))
+     :post  [{(driver-api/aggregation-name (:query *query*) ag) {:$pow [stddev-expr 2]}}]}))
 
 (defmethod expand-aggregation :cum-sum
   [ag]
   (let [[_ expr] (unwrap-named-ag ag)
         sum-expr (name (gensym "$sum-"))]
     {:group {(subs sum-expr 1) (aggregation->rvalue [:sum expr])}
-     :window {(annotate/aggregation-name (:query *query*) ag) sum-expr}}))
+     :window {(driver-api/aggregation-name (:query *query*) ag) sum-expr}}))
 
 (defmethod expand-aggregation :cum-count
   [ag]
   (let [count-expr (name (gensym "$count-"))]
     {:group {(subs count-expr 1) (aggregation->rvalue [:count])}
-     :window {(annotate/aggregation-name (:query *query*) ag) count-expr}}))
+     :window {(driver-api/aggregation-name (:query *query*) ag) count-expr}}))
 
 (defmethod expand-aggregation :default
   [ag]
-  {:group {(annotate/aggregation-name (:query *query*) ag) (aggregation->rvalue ag)}})
+  {:group {(driver-api/aggregation-name (:query *query*) ag) (aggregation->rvalue ag)}})
 
 (defn- extract-aggregations
   "Extract aggregation expressions embedded in `aggr-expr` using `parent-name`
@@ -1145,7 +1260,7 @@
 
          (aggregation-op op)
          (let [aliases-taken (set (vals aggregations-seen))
-               aggr-name (annotate/aggregation-name (:query *query*) aggr-expr)
+               aggr-name (driver-api/aggregation-name (:query *query*) aggr-expr)
                desired-alias (str parent-name "~" aggr-name)
                ;; find a free alias by appending increasing integers
                ;; to the desired alias
@@ -1211,7 +1326,7 @@
   fields generated by the groups. Each map in the `:post` vector may (and
   usually does) refer to the fields introduced by the preceding maps."
   [aggr-expr]
-  (let [aggr-name (annotate/aggregation-name (:query *query*) aggr-expr)
+  (let [aggr-name (driver-api/aggregation-name (:query *query*) aggr-expr)
         [aggr-expr' aggregations-seen] (->> (extract-aggregations aggr-expr aggr-name)
                                             (simplify-extracted-aggregations aggr-name)
                                             adjust-distinct-aggregations)
@@ -1237,8 +1352,8 @@
     (for [i (range (apply max (map count posts)))]
       (into {} (map #(get % i)) posts))))
 
-(mu/defn- order-by->$sort :- [:map-of ::lib.schema.common/non-blank-string [:enum -1 1]]
-  [order-by :- [:sequential ::mbql.s/OrderBy]]
+(mu/defn- order-by->$sort :- [:map-of driver-api/schema.common.non-blank-string [:enum -1 1]]
+  [order-by :- [:sequential driver-api/mbql.schema.OrderBy]]
   (into
    (ordered-map/ordered-map)
    (for [[direction field] order-by]
@@ -1273,7 +1388,7 @@
   "Calculates the appropriate sort and partition fields for a `$setWindowFields` stage."
   [id breakouts order-by]
   (let [finest-temporal-index
-        (qp.util.transformations.nest-breakouts/finest-temporal-breakout-index breakouts 2)
+        (driver-api/finest-temporal-breakout-index breakouts 2)
 
         sort-index (or finest-temporal-index
                        (dec (count breakouts)))
@@ -1345,7 +1460,7 @@
    (fn [m field-clause]
      (assoc-in
       m
-      (lib.util.match/match-one field-clause
+      (driver-api/match-one field-clause
         [:field (field-id :guard integer?) _]
         (str/split (field-alias field-clause) #"\.")
 
@@ -1399,15 +1514,14 @@
 (defn- remove-parent-fields
   "Removes any and all entries in `fields` that are parents of another field in `fields`. This is necessary because as
   of MongoDB 4.4, including both will result in an error (see:
-  `https://docs.mongodb.com/manual/release-notes/4.4-compatibility/#path-collision-restrictions`).
+  `https://www.mongodb.com/docs/manual/reference/operator/aggregation/project/#path-collision-errors-in-embedded-fields`).
 
-  To preserve the previous behavior, we will include only the child fields (since the parent field always appears first
-  in the projection/field order list, and that is the stated behavior according to the link above)."
+  Removing parents is useful when sorting, because leaf fields sort."
   [fields]
   (let [parent->child-id (reduce (fn [acc [agg-type field-id & _]]
                                    (if (and (= agg-type :field)
                                             (integer? field-id))
-                                     (let [{:keys [parent-id], :as field} (lib.metadata/field (qp.store/metadata-provider) field-id)]
+                                     (let [{:keys [parent-id], :as field} (driver-api/field (driver-api/metadata-provider) field-id)]
                                        (if parent-id
                                          (update acc parent-id conj (u/the-id field))
                                          acc))
@@ -1418,13 +1532,34 @@
               (and (integer? field-id) (contains? parent->child-id field-id)))
             fields)))
 
+(defn- remove-child-fields
+  "Removes any and all entries in `fields` that are children of another field in `fields`. This is necessary because as
+  of MongoDB 4.4, including both will result in an error (see:
+  `https://www.mongodb.com/docs/manual/reference/operator/aggregation/project/#path-collision-errors-in-embedded-fields`).
+
+  Removing children is useful when projecting, because the return value of a mongo query is json, and so a parent
+  includes all of its children."
+  [fields]
+  (let [field-ids (into #{}
+                        (map (fn [[agg-type field-id]]
+                               (when (and (= agg-type :field)
+                                          (integer? field-id))
+                                 field-id)))
+                        fields)]
+    (remove (fn [[agg-type field-id]]
+              (when (and (= agg-type :field)
+                         (integer? field-id))
+                (let [{:keys [parent-id]} (driver-api/field (driver-api/metadata-provider) field-id)]
+                  (and parent-id (contains? field-ids parent-id)))))
+            fields)))
+
 (defn- handle-order-by [{:keys [order-by breakout aggregation]} pipeline-ctx]
   (let [breakout-fields (set breakout)
         sort-fields (for [field (remove-parent-fields (map second order-by))
                           ;; We only care about expressions and bucketing not added as breakout
                           :when (and (not (contains? breakout-fields field))
                                      (let [dispatch-value
-                                           (mbql.u/dispatch-by-clause-name-or-class field)]
+                                           (driver-api/dispatch-by-clause-name-or-class field)]
                                        (or (= :expression dispatch-value)
                                            (and (= :field dispatch-value)
                                                 (let [[_ _ {:keys [temporal-unit]}] field]
@@ -1444,7 +1579,7 @@
         cumulative-order-by
         (when-let [finest-temporal-index
                    (and (seq (filter (fn [[_ [agg-type]]] (#{:cum-sum :cum-count} agg-type)) aggregation))
-                        (qp.util.transformations.nest-breakouts/finest-temporal-breakout-index breakout 2))]
+                        (driver-api/finest-temporal-breakout-index breakout 2))]
           (let [id (projection-group-map breakout)]
             (as-> (keys id) lst
               (m/remove-nth finest-temporal-index lst)
@@ -1468,10 +1603,13 @@
 (defn- handle-fields [{:keys [fields]} pipeline-ctx]
   (if-not (seq fields)
     pipeline-ctx
-    (let [new-projections (for [field (remove-parent-fields fields)]
+    (let [new-projections (for [field (remove-child-fields fields)]
                             [(field-alias field) (->rvalue field)])]
       (-> pipeline-ctx
-          (assoc :projections (map first new-projections))
+          ;; we can't ask mongo for both a parent field and its child at the same time, because mongo will throw an
+          ;; error. It's also unnecessary, because the parent includes the child. However, we need to list all fields
+          ;; we think we want in :projections so that we know to look for them all once we get data back.
+          (assoc :projections (map field-alias fields))
           ;; add project _id = false to keep _id from getting automatically returned unless explicitly specified
           (update :query conj {$project (into
                                          (ordered-map/ordered-map "_id" false)
@@ -1517,13 +1655,13 @@
                                             [:projections Projections]
                                             [:query Pipeline]]
   "Generate the aggregation pipeline. Returns a sequence of maps representing each stage."
-  [inner-query :- mbql.s/MBQLQuery]
+  [inner-query :- driver-api/MBQLQuery]
   (add-aggregation-pipeline inner-query))
 
 (defn- query->collection-name
   "Return `:collection` from a source query, if it exists."
   [query]
-  (lib.util.match/match-one query
+  (driver-api/match-one query
     (_ :guard (every-pred map? :collection))
     ;; ignore source queries inside `:joins` or `:collection` outside of a `:source-query`
     (when (let [parents (set &parents)]
@@ -1532,7 +1670,7 @@
       (:collection &match))))
 
 (defn- log-aggregation-pipeline [form]
-  (when-not qp.i/*disable-qp-logging*
+  (when-not driver-api/*disable-qp-logging*
     (log/tracef "\nMongo aggregation pipeline:\n%s\n"
                 (u/pprint-to-str 'green (walk/postwalk #(if (symbol? %) (symbol (name %)) %) form)))))
 
@@ -1552,7 +1690,7 @@
           (org.bson.BsonArray/parse s))
     (catch Throwable e
       (throw (ex-info (tru "Unable to parse query: {0}" (.getMessage e))
-                      {:type  qp.error-type/invalid-query
+                      {:type  driver-api/qp.error-type.invalid-query
                        :query s}
                       e)))))
 
@@ -1576,9 +1714,42 @@
         (merge compiled (add-aggregation-pipeline inner-query compiled))))
     (simple-mbql->native inner-query)))
 
+;;; TODO (Cam 6/20/25) -- MongoDB QP code is completely broken and does not consistently look at the keys added
+;;; by [[driver-api/add-alias-info]]. Fixing all the busted code above is more work than I want to take on right now, so
+;;; until we get around to fixing that let's just walk the query and replace all the non-add-alias-info keys with the
+;;; values added by add-alias-info.
+(defn- HACK-update-aliases [form]
+  (driver-api/replace form
+    (m :guard (every-pred map?
+                          :alias
+                          driver-api/qp.add.alias
+                          #(not= (driver-api/qp.add.alias %) (:alias %))))
+    (HACK-update-aliases (assoc m :alias (driver-api/qp.add.alias m)))
+
+    [:field id-or-name (opts :guard (every-pred map?
+                                                #(not= (:name %) (driver-api/qp.add.source-alias %))))]
+    (let [id-or-name' (if (string? id-or-name)
+                        (driver-api/qp.add.source-alias opts)
+                        id-or-name)]
+      (HACK-update-aliases [:field id-or-name' (assoc opts :name (driver-api/qp.add.source-alias opts))]))
+
+    [:field id-or-name (opts :guard (every-pred map?
+                                                :join-alias
+                                                #(= (driver-api/qp.add.source-table %) driver-api/qp.add.source)))]
+    [:field id-or-name (-> opts
+                           (dissoc :join-alias)
+                           (assoc ::fixed true))]
+
+    [:field id-or-name (opts :guard (every-pred map?
+                                                :join-alias
+                                                #(string? (driver-api/qp.add.source-table %))))]
+    [:field id-or-name (assoc opts :join-alias (driver-api/qp.add.source-table opts))]))
+
 (defn- preprocess
   [inner-query]
-  (add/add-alias-info inner-query))
+  (-> inner-query
+      (driver-api/add-alias-info {:globally-unique-join-aliases? true})
+      HACK-update-aliases))
 
 (defn mbql->native
   "Compile an MBQL query."
@@ -1586,8 +1757,8 @@
   (let [query (update query :query preprocess)]
     (binding [*query* query
               *next-alias-index* (volatile! 0)]
-      (let [source-table-name (if-let [source-table-id (mbql.u/query->source-table-id query)]
-                                (:name (lib.metadata/table (qp.store/metadata-provider) source-table-id))
+      (let [source-table-name (if-let [source-table-id (driver-api/query->source-table-id query)]
+                                (:name (driver-api/table (driver-api/metadata-provider) source-table-id))
                                 (query->collection-name query))
             compiled (mbql->native-rec (:query query))]
         (log-aggregation-pipeline (:query compiled))

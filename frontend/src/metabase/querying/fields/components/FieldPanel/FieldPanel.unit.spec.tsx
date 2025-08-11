@@ -372,4 +372,48 @@ describe("QueryColumnPicker", () => {
     await userEvent.click(categoryColumn);
     expect(categoryColumn).toBeChecked();
   });
+
+  it("should add/remove all even when there is a search", async () => {
+    setup();
+
+    // search so we only see Orders columns
+    await userEvent.type(
+      screen.getByPlaceholderText("Search for a column…"),
+      "tal", // subtotal and total -> Orders only
+    );
+
+    // check that we only see the "Orders" group
+    expect(
+      screen.queryByRole("list", { name: "User" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("list", { name: "Products" }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole("list", { name: "Orders" })).toBeInTheDocument();
+
+    // check that subtotal is there and checked
+    const subtotalColumn = screen.getByRole("checkbox", { name: "Subtotal" });
+    expect(subtotalColumn).toBeInTheDocument();
+    expect(subtotalColumn).toBeChecked();
+
+    // check that total is there and checked
+    const totalColumn = screen.getByRole("checkbox", { name: "Total" });
+    expect(totalColumn).toBeInTheDocument();
+    expect(totalColumn).toBeChecked();
+
+    // check that we have 3 checkboxes (Orders, Subtotal, Total)
+    const checkboxes = screen.getAllByRole("checkbox");
+    expect(checkboxes.length).toBe(3);
+
+    // Get the "Remove all" checkbox for Orders group, which should be checked
+    // and click it to remove all columns in Orders group
+    const removeAll = screen.getByRole("checkbox", { name: "Orders" });
+    expect(removeAll).toBeInTheDocument();
+    expect(removeAll).toBeChecked();
+    await userEvent.click(removeAll);
+
+    // check that all visible columns are unchecked
+    expect(subtotalColumn).not.toBeChecked();
+    expect(totalColumn).not.toBeChecked();
+  });
 });

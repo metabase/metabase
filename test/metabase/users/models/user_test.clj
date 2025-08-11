@@ -525,3 +525,59 @@
       (t2/update! :model/User user-id {:is_active true})
       (let [deactivated-at (t2/select-one-fn :deactivated_at :model/User user-id)]
         (is (nil? deactivated-at))))))
+
+(deftest add-attributes-test
+  (testing "add-attributes function"
+    (testing "should add :attributes key with merged login attributes"
+      (let [user {:login_attributes {"user_attr" "user_value"}
+                  :jwt_attributes {"jwt_attr" "jwt_value"}
+                  :email "test@example.com"}
+            result (user/add-attributes user)]
+        (is (= {"jwt_attr" "jwt_value"
+                "user_attr" "user_value"}
+               (:attributes result)))
+        (is (= user (dissoc result :attributes)))))
+
+    (testing "should handle nil login_attributes"
+      (let [user {:email "test@example.com"
+                  :jwt_attributes {"jwt_attr" "jwt_value"}}
+            result (user/add-attributes user)]
+        (is (= {"jwt_attr" "jwt_value"}
+               (:attributes result)))))
+
+    (testing "should handle empty login_attributes"
+      (let [user {:login_attributes {}
+                  :jwt_attributes {"jwt_attr" "jwt_value"}
+                  :email "test@example.com"}
+            result (user/add-attributes user)]
+        (is (= {"jwt_attr" "jwt_value"}
+               (:attributes result)))))
+
+    (testing "user attributes should override jwt attributes with same keys"
+      (let [user {:login_attributes {"shared_key" "user_value"
+                                     "user_only" "user_val"}
+                  :jwt_attributes   {"shared_key" "jwt_value"
+                                     "jwt_only" "jwt_val"}
+                  :email "test@example.com"}
+            result (user/add-attributes user)]
+        (is (= {"shared_key" "user_value"
+                "jwt_only" "jwt_val"
+                "user_only" "user_val"}
+               (:attributes result)))))
+
+    (testing "should preserve all other user fields"
+      (let [user {:id 123
+                  :email "test@example.com"
+                  :first_name "John"
+                  :last_name "Doe"
+                  :jwt_attributes {"jwt_attr" "jwt_value"}
+                  :login_attributes {"user_attr" "user_value"}}
+            result (user/add-attributes user)]
+        (is (= 123 (:id result)))
+        (is (= "test@example.com" (:email result)))
+        (is (= "John" (:first_name result)))
+        (is (= "Doe" (:last_name result)))
+        (is (= {"user_attr" "user_value"} (:login_attributes result)))
+        (is (= {"jwt_attr" "jwt_value"
+                "user_attr" "user_value"}
+               (:attributes result)))))))

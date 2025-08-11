@@ -2,8 +2,8 @@ import { useEffect, useState } from "react";
 import { jt, t } from "ttag";
 
 import { useAdminSetting } from "metabase/api/utils";
+import ExternalLink from "metabase/common/components/ExternalLink";
 import { useDocsUrl } from "metabase/common/hooks";
-import ExternalLink from "metabase/core/components/ExternalLink";
 import {
   Box,
   type BoxProps,
@@ -17,6 +17,8 @@ import {
 import type {
   EnterpriseSettingKey,
   EnterpriseSettingValue,
+  SettingDefinition,
+  SettingKey,
 } from "metabase-types/api";
 
 import { SettingHeader } from "../SettingHeader";
@@ -57,6 +59,7 @@ export type AdminSettingInputProps<S extends EnterpriseSettingKey> = {
   title?: string;
   description?: React.ReactNode;
   hidden?: boolean;
+  disabled?: boolean;
   switchLabel?: React.ReactNode;
 } & InputDetails &
   BoxProps;
@@ -75,6 +78,7 @@ export function AdminSettingInput<SettingName extends EnterpriseSettingKey>({
   placeholder,
   switchLabel,
   options,
+  disabled,
   searchable,
   ...boxProps
 }: AdminSettingInputProps<SettingName>) {
@@ -116,6 +120,7 @@ export function AdminSettingInput<SettingName extends EnterpriseSettingKey>({
           inputType={inputType}
           switchLabel={switchLabel}
           searchable={searchable}
+          disabled={disabled}
         />
       )}
     </Box>
@@ -180,6 +185,7 @@ export function BasicAdminSettingInput({
           onChange={(e) => handleChange(e.target.checked)}
           label={switchLabel ?? (localValue ? t`Enabled` : t`Disabled`)}
           w="auto"
+          size="sm"
           disabled={disabled}
         />
       );
@@ -262,3 +268,33 @@ export const SetByEnvVar = ({ varName }: { varName: string }) => {
     </Box>
   );
 };
+
+type SetByEnvVarWrapperProps<S extends EnterpriseSettingKey> = {
+  settingKey: S;
+  settingDetails: SettingDefinition<S> | undefined;
+  children: React.ReactNode;
+};
+
+export function SetByEnvVarWrapper<SettingName extends SettingKey>({
+  settingKey,
+  settingDetails,
+  children,
+}: SetByEnvVarWrapperProps<SettingName>) {
+  if (
+    settingDetails &&
+    settingDetails?.is_env_setting &&
+    settingDetails?.env_name
+  ) {
+    return (
+      <Box mb="lg">
+        <SettingHeader
+          id={settingKey}
+          title={settingDetails.display_name}
+          description={settingDetails.description}
+        />
+        <SetByEnvVar varName={settingDetails.env_name} />
+      </Box>
+    );
+  }
+  return children;
+}

@@ -27,7 +27,9 @@ export function SliceNameWidget({
     <Box w="100%" pb="0.5rem">
       <SliceNameInput
         value={row.name}
-        subtitle={row.name !== row.originalName ? row.originalName : undefined}
+        description={
+          row.name !== row.originalName ? row.originalName : undefined
+        }
         onBlurChange={(event) => {
           const newName = event.target.value;
 

@@ -52,7 +52,6 @@ export interface Parameter extends ParameterValuesConfig {
   required?: boolean;
   options?: ParameterOptions;
   filteringParameters?: ParameterId[];
-  isMultiSelect?: boolean;
   value?: any;
   target?: ParameterTarget;
   temporal_units?: TemporalUnit[];
@@ -62,6 +61,8 @@ export interface ParameterValuesConfig {
   values_query_type?: ValuesQueryType;
   values_source_type?: ValuesSourceType;
   values_source_config?: ValuesSourceConfig;
+  temporal_units?: TemporalUnit[];
+  isMultiSelect?: boolean;
 }
 
 export type ValuesQueryType = "list" | "search" | "none";

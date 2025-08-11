@@ -428,7 +428,6 @@ result_metadata:
   semantic_type: type/Name
   settings: null
   source: fields
-  source_alias: Content - Card Qualified
   table_id:
   - Internal Metabase Database
   - public
@@ -460,7 +459,6 @@ result_metadata:
   semantic_type: type/PK
   settings: null
   source: fields
-  source_alias: Content - Card Qualified
   table_id:
   - Internal Metabase Database
   - public
@@ -492,7 +490,6 @@ result_metadata:
   semantic_type: type/Name
   settings: null
   source: fields
-  source_alias: Content - Dashboard Qualified
   table_id:
   - Internal Metabase Database
   - public
@@ -524,7 +521,6 @@ result_metadata:
   semantic_type: type/PK
   settings: null
   source: fields
-  source_alias: Content - Dashboard Qualified
   table_id:
   - Internal Metabase Database
   - public
@@ -556,7 +552,6 @@ result_metadata:
   semantic_type: type/PK
   settings: null
   source: fields
-  source_alias: Databases - Database Qualified
   table_id:
   - Internal Metabase Database
   - public
@@ -588,7 +583,6 @@ result_metadata:
   semantic_type: type/Name
   settings: null
   source: fields
-  source_alias: Databases - Database Qualified
   table_id:
   - Internal Metabase Database
   - public
@@ -620,7 +614,6 @@ result_metadata:
   semantic_type: type/PK
   settings: null
   source: fields
-  source_alias: People - User
   table_id:
   - Internal Metabase Database
   - public
@@ -652,7 +645,6 @@ result_metadata:
   semantic_type: type/Name
   settings: null
   source: fields
-  source_alias: People - User
   table_id:
   - Internal Metabase Database
   - public

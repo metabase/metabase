@@ -8,8 +8,7 @@
    [metabase.lib.drill-thru.test-util.canned :as canned]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
-   [metabase.lib.test-util :as lib.tu]
-   [metabase.lib.types.isa :as lib.types.isa]))
+   [metabase.lib.test-util :as lib.tu]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
@@ -17,10 +16,9 @@
   (testing "column-filter is available for any header click, and nothing else"
     (canned/canned-test
      :drill-thru/column-filter
-     (fn [test-case context {:keys [click]}]
+     (fn [test-case _context {:keys [click]}]
        (and (= click :header)
-            (not (:native? test-case))
-            (not (lib.types.isa/structured? (:column context))))))))
+            (not (:native? test-case)))))))
 
 (def ^:private key-ops
   [{:lib/type :operator/filter, :short :=,        :display-name-variant :default}
@@ -212,7 +210,7 @@
                :type         :drill-thru/column-filter
                :query        query
                :stage-number 1
-               :column       (-> query lib/returned-columns second)}
+               :column       (-> query lib/returned-columns second (dissoc :lib/desired-column-alias :lib/deduplicated-name))}
               (->> {:column     count-col
                     :column-ref (lib/ref count-col)
                     :value      nil}
@@ -253,12 +251,10 @@
 
 (deftest ^:parallel native-models-with-renamed-columns-test
   (testing "Generate sane queries for native query models with renamed columns (#22715 #36583)"
-    (let [card-eid          (lib/random-ident)
-          metadata-provider (-> {:name                   "Card 5"
+    (let [metadata-provider (-> {:name                   "Card 5"
                                  :result-metadata        [{:description        "This is a unique ID for the product. It is also called the “Invoice number” or “Confirmation number” in customer facing emails and screens."
                                                            :semantic_type      :type/PK
                                                            :name               "ID"
-                                                           :ident              (lib/native-ident "ID" card-eid)
                                                            :settings           nil
                                                            :fk_target_field_id nil
                                                            :field_ref          [:field "ID" {:base-type :type/Integer}]
@@ -271,7 +267,6 @@
                                                           {:description        "The date and time an order was submitted."
                                                            :semantic_type      :type/CreationTimestamp
                                                            :name               "ALIAS_CREATED_AT"
-                                                           :ident              (lib/native-ident "ALIAS_CREATED_AT" card-eid)
                                                            :settings           nil
                                                            :fk_target_field_id nil
                                                            :field_ref          [:field "ALIAS_CREATED_AT" {:base-type :type/DateTime}]
@@ -288,7 +283,6 @@
                                                           :native   {:query "select 1 as \"ID\", current_timestamp::datetime as \"ALIAS_CREATED_AT\"", :template-tags {}}
                                                           :type     :native}
                                  :id                     5
-                                 :entity-id              card-eid
                                  :parameter-mappings     []
                                  :display                :table
                                  :visualization-settings {:table.pivot_column "ID", :table.cell_column "ALIAS_CREATED_AT"}
@@ -326,15 +320,14 @@
                 (lib/drill-thru query -1 nil drill "=" (lib/relative-datetime :current :day))))))))
 
 (deftest ^:parallel column-filter-join-alias-test
-  (testing "an input column with `:source/fields`, `:source-alias` and no `:join-alias` should work properly (#36861)"
+  (testing "an input column with `:source-alias` and no `:join-alias` should work properly (#36861)"
     (let [query     (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
                         (lib/join (lib/join-clause (meta/table-metadata :products)
                                                    [(lib/= (meta/field-metadata :orders :product-id)
                                                            (meta/field-metadata :products :id))])))
           columns   (lib/returned-columns query)
           category  (-> (m/find-first #(= (:name %) "CATEGORY") columns)
-                        (dissoc :join-alias :metabase.lib.join/join-alias)
-                        (assoc :lib/source :source/fields))
+                        (dissoc :join-alias :metabase.lib.join/join-alias :lib/source))
           context   {:column     category
                      :column-ref (lib/ref category)
                      :value      nil}
@@ -371,10 +364,70 @@
                :column     {:operators text-ops}}
               (colfilter fk))))))
 
+(deftest ^:parallel structured-column-operators-test
+  (testing "different structured column types get appropriate operators"
+    (let [provider (lib.tu/merged-mock-metadata-provider
+                    meta/metadata-provider
+                    {:fields [{:id            (meta/id :products :vendor)
+                               :base-type     :type/Text
+                               :semantic-type :type/SerializedJSON} ; text-based JSON (base type = text)
+                              {:id             (meta/id :products :category)
+                               :base-type      :type/JSON ; native JSON type
+                               :effective-type :type/JSON
+                               :semantic-type  nil}]})
+          query (lib/query provider (meta/table-metadata :products))
+          columns (lib/returned-columns query)
+
+          serialized-json-col (m/find-first #(= (:name %) "VENDOR") columns)
+          native-json-col (m/find-first #(= (:name %) "CATEGORY") columns)
+
+          get-drill-operators (fn [column]
+                                (let [context {:column     column
+                                               :column-ref (lib/ref column)
+                                               :value      nil}
+                                      drill (->> (lib/available-drill-thrus query -1 context)
+                                                 (m/find-first #(= (:type %) :drill-thru/column-filter)))]
+                                  (when drill
+                                    (->> (:column drill)
+                                         :operators
+                                         (mapv :short)))))]
+      (testing "SerializedJSON (string-based) gets full text operators"
+        (is (= #{:= :!= :contains :does-not-contain :is-empty :not-empty :starts-with :ends-with}
+               (set (get-drill-operators serialized-json-col)))))
+
+      (testing "native JSON gets only default operators"
+        (is (= #{:is-null :not-null}
+               (set (get-drill-operators native-json-col))))))))
+
+(deftest ^:parallel applies-column-filter-test-structured
+  (testing "applying column-filter to structured JSON columns"
+    (lib.drill-thru.tu/test-drill-application
+     {:click-type     :header
+      :query-type     :unaggregated
+      :query-table    "PRODUCTS"
+      :column-name    "VENDOR"
+      :drill-type     :drill-thru/column-filter
+      :expected       {:type       :drill-thru/column-filter
+                       :initial-op {:short :=}
+                       :column     {:lib/type :metadata/column
+                                    :name "VENDOR"}}
+      :drill-args     ["contains" "Acme"]
+      :custom-query   (-> (lib.tu/merged-mock-metadata-provider
+                           meta/metadata-provider
+                           {:fields [{:id (meta/id :products :vendor)
+                                      :semantic-type :type/SerializedJSON}]})
+                          (lib/query (meta/table-metadata :products)))
+      :expected-query {:stages
+                       [{:filters
+                         [[:contains {}
+                           [:field {}
+                            (lib.drill-thru.tu/field-key= (meta/id :products :vendor) "VENDOR")]
+                           "Acme"]]}]}})))
+
 ;; TODO: Bring back this test. It doesn't work in CLJ due to the inconsistencies noted in #38558.
 #_(deftest ^:parallel leaky-model-ref-test
     (testing "input `:column-ref` must be used for the drill, in case a model leaks metadata like `:join-alias` (#38034)"
-      (let [query      (lib/query lib.tu/metadata-provider-with-mock-cards (lib.tu/mock-cards :model/products-and-reviews))
+      (let [query      (lib/query lib.tu/metadata-provider-with-mock-cards (:model/products-and-reviews (lib.tu/mock-cards)))
             retcols    (lib/returned-columns query)
             by-id      (m/index-by :id retcols)
             reviews-id (by-id (meta/id :reviews :id))

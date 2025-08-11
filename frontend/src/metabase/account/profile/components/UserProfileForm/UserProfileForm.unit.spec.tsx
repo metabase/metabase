@@ -1,10 +1,19 @@
 import userEvent from "@testing-library/user-event";
 
-import { render, screen } from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui";
 import { createMockUser } from "metabase-types/api/mocks";
+import { createMockState } from "metabase-types/store/mocks";
 
 import type { UserProfileFormProps } from "./UserProfileForm";
 import UserProfileForm from "./UserProfileForm";
+
+const setup = (props: UserProfileFormProps) => {
+  const state = createMockState();
+
+  renderWithProviders(<UserProfileForm {...props} />, {
+    storeInitialState: state,
+  });
+};
 
 describe("UserProfileForm", () => {
   it("should show a success message after form submit", async () => {
@@ -12,7 +21,8 @@ describe("UserProfileForm", () => {
       onSubmit: jest.fn().mockResolvedValue({}),
     });
 
-    render(<UserProfileForm {...props} />);
+    setup(props);
+
     await userEvent.clear(screen.getByLabelText("First name"));
     await userEvent.type(screen.getByLabelText("First name"), "New name");
     await userEvent.click(screen.getByText("Update"));

@@ -48,8 +48,9 @@
   "Pick out interesting fields and sort them by interestingness."
   [fields]
   (->> fields
-       (filter (fn [{:keys [semantic_type] :as field}]
+       (filter (fn [{:keys [base_type effective_type semantic_type] :as field}]
                  (or (temporal? field)
+                     (isa? (or effective_type base_type) :type/Boolean)
                      (isa? semantic_type :type/Category))))
        sort-by-interestingness))
 

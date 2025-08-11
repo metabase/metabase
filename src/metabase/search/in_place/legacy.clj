@@ -91,6 +91,7 @@
    :moderated_status    :text
    :display             :text
    :dashboard_id        :integer
+   :display_type        :text
    ;; returned for Metric and Segment
    :table_id            :integer
    :table_schema        :text
@@ -362,7 +363,9 @@
         [:collection.authority_level :collection_authority_level]
         [:dashboard.name :dashboard_name]
         :dashboard_id
-        bookmark-col dashboardcard-count-col))
+        bookmark-col dashboardcard-count-col
+        :result_metadata
+        [:display :display_type]))
 
 (defmethod columns-for-model "indexed-entity" [_]
   [[:model-index-value.name     :name]

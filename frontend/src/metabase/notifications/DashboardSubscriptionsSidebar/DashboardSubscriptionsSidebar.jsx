@@ -4,8 +4,9 @@ import PropTypes from "prop-types";
 import { Component } from "react";
 import _ from "underscore";
 
-import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { Sidebar } from "metabase/dashboard/components/Sidebar";
+import { useDashboardContext } from "metabase/dashboard/context";
 import Pulses from "metabase/entities/pulses";
 import {
   NEW_PULSE_TEMPLATE,
@@ -32,8 +33,8 @@ import {
 } from "metabase/notifications/pulse/selectors";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
 import { UserApi } from "metabase/services";
-import { isVisualizerDashboardCard } from "metabase/visualizer/utils";
-import { isVirtualCardDisplayType } from "metabase-types/api/visualization";
+
+import { getSupportedCardsForSubscriptions } from "./get-supported-cards-for-subscriptions";
 
 export const CHANNEL_ICONS = {
   email: "mail",
@@ -50,33 +51,6 @@ const EDITING_MODES = {
 const CHANNEL_TYPES = {
   EMAIL: "email",
   SLACK: "slack",
-};
-
-const cardsFromDashboard = (dashboard) => {
-  if (dashboard === undefined) {
-    return [];
-  }
-
-  return dashboard.dashcards.map((card) => ({
-    id: card.card.id,
-    collection_id: card.card.collection_id,
-    description: card.card.description,
-    display: card.card.display,
-    name: isVisualizerDashboardCard(card)
-      ? card.visualization_settings.visualization.settings["card.title"]
-      : card.card.name,
-    include_csv: false,
-    include_xls: false,
-    dashboard_card_id: card.id,
-    dashboard_id: dashboard.id,
-    parameter_mappings: [], // card.parameter_mappings, //TODO: this ended up as "[]" ?
-  }));
-};
-
-export const getSupportedCardsForSubscriptions = (dashboard) => {
-  return cardsFromDashboard(dashboard).filter(
-    (card) => !isVirtualCardDisplayType(card.display),
-  );
 };
 
 const cardsToPulseCards = (cards, pulseCards) => {
@@ -498,7 +472,7 @@ class DashboardSubscriptionsSidebarInner extends Component {
   }
 }
 
-const DashboardSubscriptionsSidebar = _.compose(
+const DashboardSubscriptionsSidebarConnected = _.compose(
   Pulses.loadList({
     query: (state, { dashboard }) => ({ dashboard_id: dashboard.id }),
     loadingAndErrorWrapper: false,
@@ -506,4 +480,17 @@ const DashboardSubscriptionsSidebar = _.compose(
   connect(mapStateToProps, mapDispatchToProps),
 )(DashboardSubscriptionsSidebarInner);
 
-export default DashboardSubscriptionsSidebar;
+export default function DashboardSubscriptionsSidebar() {
+  const { dashboard, setSharing } = useDashboardContext();
+
+  if (!dashboard) {
+    return null;
+  }
+
+  return (
+    <DashboardSubscriptionsSidebarConnected
+      dashboard={dashboard}
+      onCancel={() => setSharing(false)}
+    />
+  );
+}

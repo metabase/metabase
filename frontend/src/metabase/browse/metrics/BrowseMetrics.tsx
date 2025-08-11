@@ -4,11 +4,11 @@ import _ from "underscore";
 
 import NoResults from "assets/img/metrics_bot.svg";
 import { skipToken, useListDatabasesQuery } from "metabase/api";
+import EmptyState from "metabase/common/components/EmptyState";
+import Link, { ForwardRefLink } from "metabase/common/components/Link";
+import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { useDocsUrl } from "metabase/common/hooks";
 import { useFetchMetrics } from "metabase/common/hooks/use-fetch-metrics";
-import EmptyState from "metabase/components/EmptyState";
-import { DelayedLoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
-import Link, { ForwardRefLink } from "metabase/core/components/Link";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_CONTENT_VERIFICATION } from "metabase/plugins";

@@ -165,5 +165,5 @@ function createMockDimension(
     metadata,
     question.legacyNativeQuery() as NativeQuery,
   );
-  return Object.assign({}, dimension, mocks);
+  return Object.assign(dimension, mocks);
 }

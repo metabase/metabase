@@ -7,6 +7,7 @@ import { setupNotificationChannelsEndpoints } from "__support__/server-mocks/pul
 import { mockSettings } from "__support__/settings";
 import type { Screen } from "__support__/ui";
 import { renderWithProviders } from "__support__/ui";
+import { MockDashboardContext } from "metabase/public/containers/PublicOrEmbeddedDashboard/mock-context";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {
   Dashboard,
@@ -146,10 +147,11 @@ export function setup(
     users: [user],
   });
 
-  fetchMock.get(
-    { url: `path:/api/pulse`, query: { dashboard_id: dashboard.id } },
-    [],
-  );
+  fetchMock.get({
+    url: `path:/api/pulse`,
+    query: { dashboard_id: dashboard.id },
+    response: [],
+  });
 
   fetchMock.post("path:/api/pulse/test", 200);
 
@@ -161,10 +163,9 @@ export function setup(
   }
 
   renderWithProviders(
-    <DashboardSubscriptionsSidebar
-      dashboard={dashboard}
-      onCancel={jest.fn()}
-    />,
+    <MockDashboardContext dashboard={dashboard}>
+      <DashboardSubscriptionsSidebar />
+    </MockDashboardContext>,
     {
       storeInitialState: createMockState({
         settings: storeSettings,
@@ -198,7 +199,7 @@ export const hasAdvancedFilterOptionsHidden = (screen: Screen) => {
 export const hasBasicFilterOptions = (screen: Screen) => {
   expect(
     screen.getByText(
-      /If a dashboard filter has a default value, it’ll be applied when your subscription is sent./i,
+      /If a dashboard filter has a default value, it'll be applied when your subscription is sent./i,
     ),
   ).toBeVisible();
 

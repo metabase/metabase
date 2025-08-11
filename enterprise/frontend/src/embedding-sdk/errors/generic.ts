@@ -10,15 +10,22 @@ export function USER_FETCH_FAILED() {
 export function CANNOT_CONNECT_TO_INSTANCE({
   instanceUrl,
   status,
+  message,
 }: {
   instanceUrl: string;
   status?: number;
+  message?: string;
 }) {
-  return new MetabaseError(
-    "CANNOT_CONNECT_TO_INSTANCE",
-    `Unable to connect to instance at ${instanceUrl}${status ? ` (status: ${status})` : ""}`,
-    { status },
-  );
+  // If error status is 500 (internal server error) or no message is provided,
+  // we provide a generic error message.
+  const errorMessage =
+    !message || status === 500
+      ? `Unable to connect to instance at ${instanceUrl}${status ? ` (status: ${status})` : ""}`
+      : message;
+
+  return new MetabaseError("CANNOT_CONNECT_TO_INSTANCE", errorMessage, {
+    status,
+  });
 }
 
 export function INVALID_AUTH_METHOD({ method }: { method: string }) {
@@ -26,5 +33,12 @@ export function INVALID_AUTH_METHOD({ method }: { method: string }) {
     "INVALID_AUTH_METHOD",
     `Invalid auth method: '${method}'. Allowed values are 'saml' or 'jwt'.`,
     { method },
+  );
+}
+
+export function AUTH_TIMEOUT() {
+  return new MetabaseError(
+    "AUTH_TIMEOUT",
+    "Authentication has not been completed in time.",
   );
 }

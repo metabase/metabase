@@ -22,7 +22,7 @@ export const isMultipleOf = (value, base) => {
 };
 
 // We seem to run into float bugs if we get any more precise than this.
-const SMALLEST_PRECISION_EXP = -14;
+const SMALLEST_PRECISION_EXP = -13;
 
 export function precision(a) {
   if (!isFinite(a)) {
@@ -55,7 +55,7 @@ export function decimalCount(a) {
   return p;
 }
 
-export function computeNumericDataInverval(xValues) {
+export function computeNumericDataInterval(xValues) {
   let bestPrecision = Infinity;
   for (const value of xValues) {
     const p = precision(value) || 1;

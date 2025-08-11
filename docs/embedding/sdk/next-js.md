@@ -32,7 +32,7 @@ In your app, create a `metabase` directory, and add a `EmbeddingSdkProvider.tsx`
 {% include_file "{{ dirname }}/snippets/next-js/manual-wrapping-embedded-sdk-provider.tsx" snippet="example" %}
 ```
 
-Next, add an `index.tsx` file to that `metabase` directory. This file will include the `use client` directive, and it'll export a lazy-loaded version of the `EmbeddingSdkProvider` with  SSR disabled.
+Next, add an `index.tsx` file to that `metabase` directory. This file will include the `use client` directive, and it'll export a lazy-loaded version of the `EmbeddingSdkProvider` with SSR disabled.
 
 ```tsx
 {% include_file "{{ dirname }}/snippets/next-js/manual-wrapping-entrypoint.tsx" snippet="example" %}
@@ -52,7 +52,7 @@ App Router and Pages Router have different ways to define API routes. If you wan
 
 You can create a Route handler that signs people in to Metabase.
 
-Create a new `route.ts` file in your `app/*` directory, for example `app/sso/metabase/route.ts` that corresponds to an endpoint at /sso/metabase.
+Create a new `route.ts` file in your `app/*` directory, for example `app/sso/metabase/route.ts` that corresponds to an endpoint at /sso/metabase. This route handler should generate a JWT for the authenticated user and return the token in a JSON object with the shape `{ jwt: string }`.
 
 ```typescript
 {% include_file "{{ dirname }}/snippets/next-js/app-router-authentication-api-route.ts" snippet="imports" %}
@@ -70,7 +70,7 @@ Then, pass this `authConfig` to `MetabaseProvider`
 
 You can create an API route that signs people in to Metabase.
 
-Create a new `metabase.ts` file in your `pages/api/*` directory, for example `pages/api/sso/metabase.ts` that corresponds to an endpoint at /api/sso/metabase.
+Create a new `metabase.ts` file in your `pages/api/*` directory, for example `pages/api/sso/metabase.ts` that corresponds to an endpoint at /api/sso/metabase. This API route should generate a JWT for the authenticated user and return the token in a JSON object with the shape `{ jwt: string }`.
 
 ```typescript
 {% include_file "{{ dirname }}/snippets/next-js/pages-router-authentication-api-route.ts" snippet="imports" %}

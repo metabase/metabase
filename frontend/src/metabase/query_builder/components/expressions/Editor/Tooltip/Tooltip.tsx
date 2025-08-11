@@ -8,9 +8,9 @@ import {
   useState,
 } from "react";
 
+import { enclosingFunction } from "metabase/querying/expressions";
 import { Popover } from "metabase/ui";
 import type * as Lib from "metabase-lib";
-import { enclosingFunction } from "metabase-lib/v1/expressions";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 
 import { HelpText } from "../HelpText";
@@ -24,6 +24,7 @@ export function Tooltip({
   metadata,
   reportTimezone,
   tooltipRef,
+  expressionMode,
 
   state,
   view,
@@ -32,6 +33,7 @@ export function Tooltip({
   stageIndex: number;
   metadata: Metadata;
   reportTimezone?: string;
+  expressionMode: Lib.ExpressionMode;
 
   // from tooltip extension
   tooltipRef: RefObject<HTMLDivElement>;
@@ -104,6 +106,7 @@ export function Tooltip({
             reportTimezone={reportTimezone}
             open={shouldShowHelpText}
             onToggle={handleToggleHelpText}
+            expressionMode={expressionMode}
           />
           {shouldShowCompletions && (
             <Listbox

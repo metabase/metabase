@@ -63,3 +63,6 @@
 
 (mr/def ::pulse
   [:schema {:doc/title "Valid Pulse ID"} pos-int?])
+
+(mr/def ::native-query-snippet
+  [:schema {:doc/title "Valid Native Query Snippet ID"} pos-int?])

@@ -1,6 +1,9 @@
 import type { VisualizationDisplay } from "metabase-types/api";
 
-import { getDashboardCard } from "./e2e-dashboard-helpers";
+import {
+  getDashboardCard,
+  showDashboardCardActions,
+} from "./e2e-dashboard-helpers";
 import { modal, sidebar } from "./e2e-ui-elements-helpers";
 
 export function clickVisualizeAnotherWay(name: string) {
@@ -10,7 +13,11 @@ export function clickVisualizeAnotherWay(name: string) {
       .findByLabelText("Visualize another way")
       .click({ force: true });
   });
-  cy.findByTestId("visualization-canvas-loader").should("not.exist");
+
+  modal().within(() => {
+    cy.findByTestId("visualization-canvas-loader").should("not.exist");
+    dataImporter().findByTestId("loading-indicator").should("not.exist");
+  });
 }
 
 export function dataImporter() {
@@ -36,12 +43,42 @@ export function showUnderlyingQuestion(index: number, title: string) {
  * Only works in "ColumnList" mode, despite the name...
  *
  * @param dataSourceName the data source name
+ * @param opts options
+ * @param opts.throughMenu if true, will open the data source actions menu and select
+ * "Remove data source" from there, otherwise will click the "Remove" button directly.
  */
-export function removeDataSource(dataSourceName: string) {
+export function removeDataSource(
+  dataSourceName: string,
+  opts: { throughMenu?: boolean } = {},
+) {
+  if (opts.throughMenu) {
+    dataSource(dataSourceName)
+      .realHover()
+      .findByLabelText("Datasource actions")
+      .click({ force: true });
+    cy.document()
+      .its("body")
+      .findByTestId("datasource-actions-dropdown")
+      .findByLabelText("Remove data source")
+      .click({ force: true });
+  } else {
+    dataSource(dataSourceName)
+      .findAllByLabelText("Remove")
+      .first()
+      .click({ force: true });
+  }
+}
+
+export function resetDataSourceButton(dataSourceName: string) {
   dataSource(dataSourceName)
-    .findAllByLabelText("Remove")
-    .first()
+    .realHover()
+    .findByLabelText("Datasource actions")
     .click({ force: true });
+  return cy
+    .document()
+    .its("body")
+    .findByTestId("datasource-actions-dropdown")
+    .findByLabelText("Reset data source");
 }
 
 export function dataSourceColumn(dataSourceName: string, columnName: string) {
@@ -62,9 +99,21 @@ export function assertDataSourceColumnSelected(
   );
 }
 
+export function deselectDatasetFromColumnList(datasetName: string) {
+  dataSource(datasetName)
+    .findAllByLabelText("Remove")
+    .first()
+    .realHover()
+    .click({ force: true });
+}
+
 export function selectDataset(datasetName: string) {
   cy.findByPlaceholderText("Search for something").clear().type(datasetName);
-  cy.findAllByText(datasetName).first().click({ force: true });
+  cy.findAllByText(datasetName)
+    .first()
+    .closest("[data-testid='swap-dataset-button']")
+    .should("not.have.attr", "aria-pressed", "true")
+    .click({ force: true });
   cy.wait("@cardQuery");
 }
 
@@ -72,20 +121,8 @@ export function deselectDataset(datasetName: string) {
   cy.findByPlaceholderText("Search for something").clear().type(datasetName);
   cy.findAllByText(datasetName)
     .first()
-    .closest("button")
-    .siblings('[data-testid="remove-dataset-button"]')
-    .first()
-    .click({ force: true });
-  cy.wait("@cardQuery");
-}
-
-export function addDataset(datasetName: string) {
-  cy.findByPlaceholderText("Search for something").clear().type(datasetName);
-  cy.findAllByText(datasetName)
-    .first()
-    .closest("button")
-    .siblings('[data-testid="add-dataset-button"]')
-    .first()
+    .closest("[data-testid='swap-dataset-button']")
+    .should("have.attr", "aria-pressed", "true")
     .click({ force: true });
   cy.wait("@cardQuery");
 }
@@ -233,16 +270,34 @@ export function chartLegendItem(name: string) {
   return chartLegend().findByText(name);
 }
 
-export function showDashcardVisualizerModal(index = 0) {
-  return getDashboardCard(index)
-    .realHover()
-    .within(() => {
-      cy.findByLabelText("Edit visualization").click({ force: true });
-    });
+type ShowDashcardVisualizerModalOptions = {
+  isVisualizerCard?: boolean;
+};
+
+export function showDashcardVisualizerModal(
+  index = 0,
+  options: ShowDashcardVisualizerModalOptions = {},
+) {
+  const { isVisualizerCard = true } = options;
+  showDashboardCardActions(index);
+
+  getDashboardCard(index)
+    .findByLabelText(
+      isVisualizerCard ? "Edit visualization" : "Visualize another way",
+    )
+    .click({ force: true });
+
+  modal().within(() => {
+    cy.findByTestId("visualization-canvas-loader").should("not.exist");
+    dataImporter().findByTestId("loading-indicator").should("not.exist");
+  });
 }
 
-export function showDashcardVisualizerModalSettings(index = 0) {
-  showDashcardVisualizerModal(index);
+export function showDashcardVisualizerModalSettings(
+  index = 0,
+  options: ShowDashcardVisualizerModalOptions = {},
+) {
+  showDashcardVisualizerModal(index, options);
 
   return modal().within(() => {
     toggleVisualizerSettingsSidebar();
@@ -254,13 +309,19 @@ export function toggleVisualizerSettingsSidebar() {
 }
 
 export function saveDashcardVisualizerModal(
-  mode: "create" | "update" = "update",
+  options: {
+    mode?: "create" | "update";
+    waitMs?: number;
+  } = {},
 ) {
+  const { mode = "update", waitMs = 1 } = options;
+
   modal().within(() => {
     cy.findByText(mode === "create" ? "Add to dashboard" : "Save").click();
   });
 
   modal({ timeout: 6000 }).should("not.exist");
+  cy.wait(waitMs); // Wait for the modal to close and the dashboard to update
 }
 
 export function closeDashcardVisualizerModal() {
@@ -271,4 +332,12 @@ export function closeDashcardVisualizerModal() {
 
 export function saveDashcardVisualizerModalSettings() {
   return saveDashcardVisualizerModal();
+}
+
+export function clickUndoButton() {
+  cy.findByLabelText("Undo").click();
+}
+
+export function clickRedoButton() {
+  cy.findByLabelText("Redo").click();
 }

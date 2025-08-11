@@ -44,7 +44,8 @@
      (fn [_query _path stage]
        (lib.util.match/match stage
          [macro-type _opts (id :guard pos-int?)]
-         (conj! ids id))))
+         (conj! ids id))
+       nil))
     (not-empty (persistent! ids))))
 
 ;;; a legacy Segment has one or more filter clauses.
@@ -59,7 +60,7 @@
                                  definition)
                 :database (u/the-id (lib.metadata/database metadata-providerable))}
                (lib/->query metadata-providerable)
-               (lib.util/query-stage -1))
+               (lib/query-stage -1))
     (log/tracef "to pMBQL\n%s" (u/pprint-to-str <>))))
 
 (mu/defn- legacy-macro-filters :- [:maybe [:sequential ::lib.schema.expression/boolean]]
