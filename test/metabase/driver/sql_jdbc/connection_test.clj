@@ -129,7 +129,7 @@
                      (str/includes? (:host details) "127.0.0.1"))
                 (update :host str/replace "127.0.0.1" "localhost")
 
-                :else
+                #_else
                 (assoc :new-config "something"))))))
 
 (deftest connection-pool-invalidated-on-details-change
