@@ -19,6 +19,7 @@
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util.add-alias-info :as add]
+   [metabase.lib.field-test]
    [metabase.test :as mt]))
 
 (comment h2/keep-me)
@@ -1139,83 +1140,95 @@
                  ::add/original-alias "PRODUCTS__via__PRODUCT_ID"
                  ::add/alias          "PRODUCTS__via__PRODUCT_ID"
                  :alias               "PRODUCTS__via__PRODUCT_ID"
-                 :conditions          [[:=
-                                        {}
-                                        [:field
-                                         {::add/source-table (meta/id :orders)
-                                          ::add/source-alias "PRODUCT_ID"}
+                 :conditions          [[:= {}
+                                        [:field {::add/source-table (meta/id :orders)
+                                                 ::add/source-alias "PRODUCT_ID"}
                                          any?]
-                                        [:field
-                                         {:join-alias        "PRODUCTS__via__PRODUCT_ID"
-                                          ::add/source-alias "ID"
-                                          ::add/source-table "PRODUCTS__via__PRODUCT_ID"}
+                                        [:field {:join-alias        "PRODUCTS__via__PRODUCT_ID"
+                                                 ::add/source-alias "ID"
+                                                 ::add/source-table "PRODUCTS__via__PRODUCT_ID"}
                                          any?]]]}
                 stage-join-stage-join)))
       (testing ":stages -> first -> :joins -> first -> :stages -> first"
-        (is (=? {:breakout    [[:field
-                                {::add/source-alias  "TITLE"
-                                 :join-alias         "PRODUCTS__via__PRODUCT_ID"
-                                 ::add/desired-alias "PRODUCTS__via__PRODUC_8b0b9fea"
-                                 ::add/source-table  "PRODUCTS__via__PRODUCT_ID"}
+        (is (=? {:breakout    [[:field {::add/source-alias  "TITLE"
+                                        :join-alias         "PRODUCTS__via__PRODUCT_ID"
+                                        ::add/desired-alias "PRODUCTS__via__PRODUC_8b0b9fea"
+                                        ::add/source-table  "PRODUCTS__via__PRODUCT_ID"}
                                 any?]
-                               [:field
-                                {::add/source-alias  "PRODUCT_ID"
-                                 ::add/desired-alias "PRODUCT_ID"
-                                 ::add/source-table  (meta/id :orders)}
+                               [:field {::add/source-alias  "PRODUCT_ID"
+                                        ::add/desired-alias "PRODUCT_ID"
+                                        ::add/source-table  (meta/id :orders)}
                                 any?]]
-                 :order-by    [[:asc
-                                {}
-                                [:field
-                                 {::add/source-alias  "TITLE"
-                                  :join-alias         "PRODUCTS__via__PRODUCT_ID"
-                                  ::add/desired-alias "PRODUCTS__via__PRODUC_8b0b9fea"
-                                  ::add/source-table  "PRODUCTS__via__PRODUCT_ID"}
+                 :order-by    [[:asc {}
+                                [:field {::add/source-alias  "TITLE"
+                                         :join-alias         "PRODUCTS__via__PRODUCT_ID"
+                                         ::add/desired-alias "PRODUCTS__via__PRODUC_8b0b9fea"
+                                         ::add/source-table  "PRODUCTS__via__PRODUCT_ID"}
                                  any?]]]
-                 :aggregation [[:sum
-                                {:name               "sum"
-                                 ::add/source-table  ::add/none
-                                 ::add/source-alias  "sum"
-                                 ::add/desired-alias "sum"}
-                                [:field
-                                 {::add/source-table  (meta/id :orders)
-                                  ::add/source-alias  "QUANTITY"
-                                  ::add/desired-alias nil}
+                 :aggregation [[:sum {:name               "sum"
+                                      ::add/source-table  ::add/none
+                                      ::add/source-alias  "sum"
+                                      ::add/desired-alias "sum"}
+                                [:field {::add/source-table  (meta/id :orders)
+                                         ::add/source-alias  "QUANTITY"
+                                         ::add/desired-alias nil}
                                  any?]]]}
                 (dissoc stage-join-stage :joins))))
       (testing ":stages -> first -> :joins -> first"
-        (is (=? {:conditions [[:=
-                               {}
-                               [:field
-                                {::add/source-table (meta/id :products)
-                                 ::add/source-alias "ID"}
+        (is (=? {:conditions [[:= {}
+                               [:field {::add/source-table (meta/id :products)
+                                        ::add/source-alias "ID"}
                                 any?]
-                               [:field
-                                {:join-alias        "Orders"
-                                 ::add/source-alias "PRODUCT_ID"
-                                 ::add/source-table "Orders"}
+                               [:field {:join-alias        "Orders"
+                                        ::add/source-alias "PRODUCT_ID"
+                                        ::add/source-table "Orders"}
                                 any?]]]}
                 (dissoc stage-join :stages))))
       (testing ":stages -> first"
-        (is (=? {:fields [[:field
-                           {::add/desired-alias "TITLE"
-                            ::add/source-alias  "TITLE"
-                            ::add/source-table  (meta/id :products)}
+        (is (=? {:fields [[:field {::add/desired-alias "TITLE"
+                                   ::add/source-alias  "TITLE"
+                                   ::add/source-table  (meta/id :products)}
                            any?]
-                          [:field
-                           {::add/desired-alias "CATEGORY"
-                            ::add/source-alias  "CATEGORY"
-                            ::add/source-table  (meta/id :products)}
+                          [:field {::add/desired-alias "CATEGORY"
+                                   ::add/source-alias  "CATEGORY"
+                                   ::add/source-table  (meta/id :products)}
                            any?]
-                          [:field
-                           {:join-alias         "Orders"
-                            ::add/desired-alias "Orders__PRODUCTS__via_6256d0ed"
-                            ::add/source-alias  "PRODUCTS__via__PRODUC_8b0b9fea"
-                            ::add/source-table  "Orders"}
+                          [:field {:join-alias         "Orders"
+                                   ::add/desired-alias "Orders__PRODUCTS__via_6256d0ed"
+                                   ::add/source-alias  "PRODUCTS__via__PRODUC_8b0b9fea"
+                                   ::add/source-table  "Orders"}
                            any?]
-                          [:field
-                           {:join-alias         "Orders"
-                            ::add/desired-alias "Orders__sum"
-                            ::add/source-alias  "sum"
-                            ::add/source-table  "Orders"}
+                          [:field {:join-alias         "Orders"
+                                   ::add/desired-alias "Orders__sum"
+                                   ::add/source-alias  "sum"
+                                   ::add/source-table  "Orders"}
                            "sum"]]}
                 (dissoc stage :joins)))))))
+
+
+(deftest ^:parallel nested-fields-test
+  (let [mp    metabase.lib.field-test/grandparent-parent-child-metadata-provider
+        query (lib/query
+               mp
+               (lib.tu.macros/mbql-query venues
+                 {:order-by [[:asc [:field (metabase.lib.field-test/grandparent-parent-child-id :grandparent) nil]]
+                             [:asc [:field (metabase.lib.field-test/grandparent-parent-child-id :parent) nil]]
+                             [:asc [:field (metabase.lib.field-test/grandparent-parent-child-id :child) nil]]]}))]
+    (is (=? {:order-by [[:asc {}
+                         [:field {::add/source-table  (meta/id :venues)
+                                  ::add/source-alias  "grandparent"
+                                  ::add/desired-alias "grandparent"}
+                          any?]]
+                        [:asc {}
+                         [:field {::add/source-table  (meta/id :venues)
+                                  ::add/source-alias  "grandparent.parent"
+                                  ::add/desired-alias "grandparent.parent"}
+                          any?]]
+                        [:asc {}
+                         [:field {::add/source-table  (meta/id :venues)
+                                  ::add/source-alias  "grandparent.parent.child"
+                                  ::add/desired-alias "grandparent.parent.child"}
+                          any?]]]}
+            (-> (add-alias-info query)
+                :stages
+                first)))))

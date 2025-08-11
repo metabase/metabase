@@ -52,6 +52,7 @@
                                                                        metadata))]
       (-> metadata
           (assoc :name                                   new-name
+                 :lib/source-column-alias                new-name
                  :display-name                           new-display-name
                  ;; this is used by the `display-name-method` for `:metadata/column` in [[metabase.lib.field]]
                  :metabase.lib.field/simple-display-name new-display-name)))))

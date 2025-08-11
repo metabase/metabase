@@ -104,18 +104,20 @@
              -1
              a-field-clause))]
     (testing "For fields with parents we should return them with a combined name including parent's name"
-      (is (=? {:table-id          (meta/id :venues)
-               :name              "grandparent.parent"
-               :parent-id         (metabase.lib.field-test/grandparent-parent-child-id :grandparent)
-               :id                (metabase.lib.field-test/grandparent-parent-child-id :parent)
-               :visibility-type   :normal}
+      (is (=? {:table-id                (meta/id :venues)
+               :name                    "grandparent.parent"
+               :lib/source-column-alias "grandparent.parent"
+               :parent-id               (metabase.lib.field-test/grandparent-parent-child-id :grandparent)
+               :id                      (metabase.lib.field-test/grandparent-parent-child-id :parent)
+               :visibility-type         :normal}
               (col-info [:field {:lib/uuid (str (random-uuid))} (metabase.lib.field-test/grandparent-parent-child-id :parent)]))))
     (testing "nested-nested fields should include grandparent name (etc)"
-      (is (=? {:table-id          (meta/id :venues)
-               :name              "grandparent.parent.child"
-               :parent-id         (metabase.lib.field-test/grandparent-parent-child-id :parent)
-               :id                (metabase.lib.field-test/grandparent-parent-child-id :child)
-               :visibility-type   :normal}
+      (is (=? {:table-id                (meta/id :venues)
+               :name                    "grandparent.parent.child"
+               :lib/source-column-alias "grandparent.parent.child"
+               :parent-id               (metabase.lib.field-test/grandparent-parent-child-id :parent)
+               :id                      (metabase.lib.field-test/grandparent-parent-child-id :child)
+               :visibility-type         :normal}
               (col-info [:field {:lib/uuid (str (random-uuid))} (metabase.lib.field-test/grandparent-parent-child-id :child)]))))))
 
 (deftest ^:parallel fallback-metadata-from-saved-question-when-missing-from-metadata-provider-test
