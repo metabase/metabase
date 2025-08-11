@@ -29,8 +29,6 @@ export type VerifiedFilterProps = true | null;
 export type NativeQueryFilterProps = true | null;
 export type SearchTrashedItemsFilterProps = true | undefined;
 
-export type SemanticSearchFilterProps = true | undefined;
-
 export type SearchFilterPropTypes = {
   [SearchFilterKeys.Type]: TypeFilterProps;
   [SearchFilterKeys.Verified]: VerifiedFilterProps;
@@ -40,7 +38,6 @@ export type SearchFilterPropTypes = {
   [SearchFilterKeys.LastEditedAt]: LastEditedAtFilterProps;
   [SearchFilterKeys.NativeQuery]: NativeQueryFilterProps;
   [SearchFilterKeys.SearchTrashedItems]: SearchTrashedItemsFilterProps;
-  [SearchFilterKeys.DisableSemanticSearch]: SemanticSearchFilterProps;
 };
 
 export type FilterTypeKeys = keyof SearchFilterPropTypes;
