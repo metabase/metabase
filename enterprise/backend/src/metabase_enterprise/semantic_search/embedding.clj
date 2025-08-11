@@ -202,7 +202,16 @@
 
 ;;;; OpenAI impl
 
-(defn- openai-get-embeddings-batch [model-name texts]
+(defn- supports-dimensions?
+  "Check whether the model's API supports dimensions in request's body. At the time of writing supported on OpenAI's
+  text-embedding-3-small and text-embedding-3-large. Should be supported also on newer models when those are out."
+  [{:keys [model-name] :as _embedding-model}]
+  (boolean
+   (when (string? model-name)
+     (re-find #"^text-embedding-3" model-name))))
+
+(defn- openai-get-embeddings-batch
+  [{:keys [model-name vector-dimensions] :as embedding-model} texts]
   (let [api-key (semantic-settings/openai-api-key)
         endpoint (str (semantic-settings/openai-api-base-url) "/v1/embeddings")]
     (when-not api-key
@@ -212,9 +221,11 @@
       (let [response (-> (http/post endpoint
                                     {:headers {"Content-Type" "application/json"
                                                "Authorization" (str "Bearer " api-key)}
-                                     :body    (json/encode {:model model-name
-                                                            :input texts
-                                                            :encoding_format "base64"})})
+                                     :body    (json/encode (merge {:model model-name
+                                                                   :input texts
+                                                                   :encoding_format "base64"}
+                                                                  (when (supports-dimensions? embedding-model)
+                                                                    {:dimensions vector-dimensions})))})
                          :body
                          (json/decode true))]
         (analytics/inc! :metabase-search/semantic-embedding-tokens
@@ -225,16 +236,16 @@
         (log/error e "OpenAI embeddings API call failed" {:documents (count texts) :tokens (count-tokens-batch texts)})
         (throw e)))))
 
-(defn- openai-get-embedding [model-name text]
+(defn- openai-get-embedding [embedding-model text]
   (try
     (log/debug "Generating OpenAI embedding for text of length:" (count text))
-    (first (openai-get-embeddings-batch model-name text))
+    (first (openai-get-embeddings-batch embedding-model text))
     (catch Exception e
       (log/error e "Failed to generate OpenAI embedding for text of length:" (count text))
       (throw e))))
 
-(defmethod get-embedding        "openai" [{:keys [model-name]} text] (openai-get-embedding model-name text))
-(defmethod get-embeddings-batch "openai" [{:keys [model-name]} text] (openai-get-embeddings-batch model-name text))
+(defmethod get-embedding        "openai" [embedding-model text] (openai-get-embedding embedding-model text))
+(defmethod get-embeddings-batch "openai" [embedding-model text] (openai-get-embeddings-batch embedding-model text))
 (defmethod pull-model           "openai" [_] (log/debug "OpenAI provider does not require pulling a model"))
 
 ;;;; Global embedding model
@@ -273,7 +284,7 @@
                 (fn [batch-idx batch-texts]
                   (let [embeddings (u/profile (format "Embedding batch %d/%d %s"
                                                       (inc batch-idx) (count batches) (str (calc-token-metrics batch-texts)))
-                                     (openai-get-embeddings-batch model-name batch-texts))
+                                     (openai-get-embeddings-batch embedding-model batch-texts))
                         text-embedding-map (zipmap batch-texts embeddings)]
                     (process-fn text-embedding-map)))]
 
@@ -291,6 +302,7 @@
   ;;   - OpenAI default: "text-embedding-3-small"
   ;;   - Ollama default: "mxbai-embed-large"
   ;; MB_EE_OPENAI_API_KEY your OpenAI API key
+  ;; MB_EE_EMBEDDING_MODEL_DIMENSIONS: defaults to 1024.
 
   (def embedding-model (get-configured-model))
   embedding-model
