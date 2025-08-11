@@ -57,7 +57,7 @@ describe("LegaleseStep", () => {
     const { goToNextStep } = setup();
     await userEvent.click(screen.getByText("Agree and continue"));
 
-    const settingPutCalls = fetchMock.calls(
+    const settingPutCalls = fetchMock.callHistory.calls(
       "path:/api/setting/show-static-embed-terms",
     );
 

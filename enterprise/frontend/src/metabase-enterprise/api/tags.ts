@@ -1,10 +1,8 @@
 import type { TagDescription } from "@reduxjs/toolkit/query";
 
-export const METABOT_TAG = "metabot";
-
 export const ENTERPRISE_TAG_TYPES = [
   "scim",
-  METABOT_TAG,
+  "metabot",
   "metabot-entities-list",
   "metabot-prompt-suggestions",
   "gsheets-status",

@@ -390,11 +390,12 @@
                                            :dashboard_id       dash-id
                                            :parameter_mappings [{:parameter_id "__ID__"
                                                                  :card_id      orders-card-id
-                                                                 :target       [:dimension (mt/$ids orders $product_id)]}]}]
-      (is (=? {"__ID__" [{:id                 (mt/id :orders :product_id)
+                                                                 :target       [:dimension (mt/$ids orders $user_id)]}]}]
+      (is (=? {"__ID__" [{:id                 (mt/id :orders :user_id)
                           :semantic_type      :type/FK
-                          :fk_target_field_id (mt/id :products :id)
-                          :target             {:id (mt/id :products :id)}}]}
+                          :fk_target_field_id (mt/id :people :id)
+                          :target             {:id (mt/id :people :id)
+                                               :name_field {:id (mt/id :people :name)}}}]}
               (:param_fields (mt/with-test-user :crowberto
                                (#'api.dashboard/get-dashboard dash-id))))))))
 
@@ -692,6 +693,20 @@
         [:model/Dashboard {dash-id :id} {:collection_id (:id crowberto-personal-coll)}]
         (is (= (assoc crowberto-personal-coll :is_personal true :effective_location "/")
                (:collection (mt/user-http-request :crowberto :get 200 (format "dashboard/%d" dash-id)))))))))
+
+(deftest dashboard-entity-id-test
+  (testing "Dashboard endpoints accept entity IDs"
+    (mt/with-temp [:model/Dashboard {dashboard-id :id dashboard-entity-id :entity_id}
+                   {:name "Test Dashboard"}]
+      (with-dashboards-in-readable-collection! [dashboard-id]
+
+        (testing "GET /api/dashboard/:id works with entity ID"
+          (is (=? {:name "Test Dashboard"}
+                  (dashboard-response (mt/user-http-request :rasta :get 200 (str "dashboard/" dashboard-entity-id))))))
+
+        (testing "GET /api/dashboard/:id/query_metadata works with entity ID"
+          (is (map? (mt/user-http-request :rasta :get 200
+                                          (str "dashboard/" dashboard-entity-id "/query_metadata")))))))))
 
 (deftest ^:parallel fetch-a-dashboard-with-param-linked-to-a-field-filter-that-is-not-existed
   (testing "when fetching a dashboard that has a param linked to a field filter that no longer exists, we shouldn't throw an error (#15494)"
@@ -2332,6 +2347,7 @@
                 :row                        0
                 :series                     []
                 :parameter_mappings         []
+                :inline_parameters          []
                 :visualization_settings     {}
                 :created_at                 true
                 :updated_at                 true}
@@ -2341,6 +2357,7 @@
                 :col                        0
                 :row                        0
                 :parameter_mappings         []
+                :inline_parameters          []
                 :visualization_settings     {}
                 :series                     []
                 :created_at                 true
@@ -2365,6 +2382,7 @@
                 :col                        0
                 :row                        0
                 :parameter_mappings         []
+                :inline_parameters          []
                 :visualization_settings     {}
                 :series                     [{:name                   "Series Card"
                                               :description            nil
@@ -2380,6 +2398,7 @@
                 :col                        1
                 :row                        3
                 :parameter_mappings         []
+                :inline_parameters          []
                 :visualization_settings     {}
                 :series                     []
                 :created_at                 true
@@ -3142,7 +3161,6 @@
                                                                                   {:query "SELECT category FROM products LIMIT 10;"})
                                                                  :type          :model}]
         (let [metadata (-> (:dataset_query native-card)
-                           (assoc-in [:info :card-entity-id] (:entity_id native-card))
                            qp/process-query :data :results_metadata :columns)]
           (is (seq metadata) "Did not get metadata")
           (t2/update! 'Card {:id model-id}
@@ -3517,6 +3535,39 @@
                    (mt/$ids (mt/user-http-request :rasta :get 403 "dashboard/params/valid-filter-fields"
                                                   :filtered [%venues.price] :filtering [%categories.name]))))))))))
 
+(deftest uuid-id-column-is-not-implicitly-remapped-test
+  (mt/test-drivers
+    (mt/normal-drivers-with-feature :native-parameters :uuid-type
+                                    :test/uuids-in-create-table-statements
+                                    :test/dynamic-dataset-loading)
+    (testing "Values for uuid fields are searched using test pattern (#59020)"
+      (mt/dataset
+        uuid-dogs
+        (mt/with-temp
+          [:model/Card          card      {:dataset_query (let [mp (mt/metadata-provider)]
+                                                            (-> (lib/query mp (lib.metadata/table mp (mt/id :dogs)))
+                                                                (lib.convert/->legacy-MBQL)))}
+           :model/Dashboard     dashboard {:parameters [{:name      "Text"
+                                                         :slug      "text"
+                                                         :id        "_text_"
+                                                         :type      "string/="
+                                                         :sectionId "string"
+                                                         :default   ["Doohickey"]}]}
+           :model/DashboardCard _dashcard {:parameter_mappings     [{:parameter_id "_text_"
+                                                                     :card_id      (:id card)
+                                                                     :target
+                                                                     [:dimension [:field (mt/id :dogs :id) nil]]}]
+                                           :card_id                (:id card)
+                                           :visualization_settings {}
+                                           :dashboard_id           (:id dashboard)}]
+          (is (=? {:values [["27e164bc-54f8-47a0-a85a-9f0e90dd7667"]
+                            ["3a0c0508-6b00-40ff-97f6-549666b2d16b"]]}
+                  (mt/user-http-request :rasta :get 200 (format "/dashboard/%d/params/%s/search/%s"
+                                                                (:id dashboard)
+                                                                "_text_"
+                                                              ;; a0 is part of first 2 rows of queried table
+                                                                "a0")))))))))
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                             POST /api/dashboard/:dashboard-id/card/:card-id/query                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -3856,7 +3907,7 @@
                                                                  :action_id action-id}]
             (let [execute-path (format "dashboard/%s/dashcard/%s/execute" dashboard-id dashcard-id)]
               (testing "Should be able to update"
-                (is (= {:rows-updated [1]}
+                (is (= {:rows-updated 1}
                        (mt/user-http-request :crowberto :post 200 execute-path
                                              {:parameters {"id" 1 "name" "Birds"}}))))
               (testing "Extra parameter should fail gracefully"
@@ -3883,7 +3934,7 @@
                                                                  :action_id action-id}]
             (let [execute-path (format "dashboard/%s/dashcard/%s/execute" dashboard-id dashcard-id)]
               (testing "Should be able to delete"
-                (is (= {:rows-deleted [1]}
+                (is (= {:rows-deleted 1}
                        (mt/user-http-request :crowberto :post 200 execute-path
                                              {:parameters {"id" 1}}))))
               (testing "Extra parameter should fail gracefully"
@@ -4102,7 +4153,7 @@
                 (let [values (mt/user-http-request :crowberto :get 200 execute-path :parameters (json/encode {:id 1}))]
                   (is (= {:id 1 :name "Red Medicine"} values))))
               (testing "Update should only allow name"
-                (is (= {:rows-updated [1]}
+                (is (= {:rows-updated 1}
                        (mt/user-http-request :crowberto :post 200 execute-path {:parameters {"id" 1 "name" "Blueberries"}})))
                 (is (partial= {:message "No destination parameter found for #{\"price\"}. Found: #{\"id\" \"name\"}"}
                               (mt/user-http-request :crowberto :post 400 execute-path {:parameters {"id" 1 "name" "Blueberries" "price" 1234}})))))))))))
@@ -4132,7 +4183,7 @@
                 (is (= {:id 1 :name "Red Medicine"} ; price is hidden
                        (mt/user-http-request :crowberto :get 200 execute-path :parameters (json/encode {:id 1})))))
               (testing "Update should only allow name"
-                (is (= {:rows-updated [1]}
+                (is (= {:rows-updated 1}
                        (mt/user-http-request :crowberto :post 200 execute-path {:parameters {"id" 1 "name" "Blueberries"}})))
                 (is (partial= {:message "No destination parameter found for #{\"price\"}. Found: #{\"id\" \"name\"}"}
                               (mt/user-http-request :crowberto :post 400 execute-path {:parameters {"id" 1 "name" "Blueberries" "price" 1234}})))))))))))
@@ -5330,3 +5381,12 @@
                                           :size_x  4
                                           :size_y  4}]})
       (is (not (nil? (t2/select-one :model/PulseCard :card_id new-card-id)))))))
+
+(deftest save-dashboard-test
+  (let [response (mt/user-http-request :crowberto :post 200 "dashboard/save" {:auto_apply_filters true,
+                                                                              :name               "Test Dashboard",
+                                                                              :description        "A test dashboard to save"
+                                                                              :creator_id         399381 ;; any passed creator_id is ignored
+                                                                              })]
+    (is (partial= {:name       "Test Dashboard"
+                   :creator_id (mt/user->id :crowberto)} response))))

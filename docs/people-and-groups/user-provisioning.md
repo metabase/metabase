@@ -57,10 +57,6 @@ Once you've enabled SCIM in Metabase and gotten your SCIM endpoint URL and SCIM 
 
 With Microsoft Entra ID, Metabase only supports user provisioning (groups aren't created or populated).
 
-## Notify admins of new users provisioned from SSO
-
-If you're not using SCIM to provision user accounts, you can optionally have Metabase send an email to admins whenever someone signs in to Metabase via SSO for the first time (which creates a Metabase account). This setting doesn't require you to set up SCIM.
-
 ## Further reading
 
 - [Authenticating with SAML](./authenticating-with-saml.md)

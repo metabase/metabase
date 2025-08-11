@@ -106,9 +106,9 @@ describe("GenerateSqlQueryButton", () => {
     });
     await userEvent.click(screen.getByRole("button"));
     await waitFor(() =>
-      expect(fetchMock.called("path:/api/ee/ai-sql-generation/generate")).toBe(
-        true,
-      ),
+      expect(
+        fetchMock.callHistory.called("path:/api/ee/ai-sql-generation/generate"),
+      ).toBe(true),
     );
     await waitFor(() => expect(screen.getByRole("button")).toBeEnabled());
     expect(onGenerateQuery).not.toHaveBeenCalled();

@@ -6,6 +6,8 @@ import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { DatasetEditorTab, QueryBuilderMode } from "metabase-types/store";
 
+import ViewTitleHeaderS from "../../ViewTitleHeader.module.css";
+
 type QuestionNotebookButtonProps = {
   isShowingNotebook: boolean;
   setQueryBuilderMode: (
@@ -34,6 +36,7 @@ export function QuestionNotebookButton({
   return (
     <Button
       data-testid="notebook-button"
+      className={ViewTitleHeaderS.NotebookButton}
       leftSection={
         isShowingNotebook ? (
           <Icon name="lineandbar" />

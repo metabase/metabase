@@ -3,7 +3,7 @@
    [metabase-enterprise.sandbox.api.util :as sandbox.api.util]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
@@ -64,8 +64,8 @@
        table
          ;; if the user has sandboxed perms, temporarily upgrade their perms to read perms for the Table so they can
          ;; fetch the metadata
-       (data-perms/with-additional-table-permission :perms/view-data (:db_id table) (u/the-id table) :unrestricted
-         (data-perms/with-additional-table-permission :perms/create-queries (:db_id table) (u/the-id table) :query-builder
+       (perms/with-additional-table-permission :perms/view-data (:db_id table) (u/the-id table) :unrestricted
+         (perms/with-additional-table-permission :perms/create-queries (:db_id table) (u/the-id table) :query-builder
            (thunk))))
       ;; Not sandboxed, so user can fetch full metadata
       (thunk))))
@@ -80,8 +80,8 @@
        table
          ;; if the user has sandboxed perms, temporarily upgrade their perms to read perms for the Table so they can
          ;; fetch the metadata
-       (data-perms/with-additional-table-permission :perms/view-data (:db_id table) (u/the-id table) :unrestricted
-         (data-perms/with-additional-table-permission :perms/create-queries (:db_id table) (u/the-id table) :query-builder
+       (perms/with-additional-table-permission :perms/view-data (:db_id table) (u/the-id table) :unrestricted
+         (perms/with-additional-table-permission :perms/create-queries (:db_id table) (u/the-id table) :query-builder
            table)))
       ;; Not sandboxed, so user can fetch full metadata
       table)))

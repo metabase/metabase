@@ -32,7 +32,7 @@
    :max-interval-millis 1000
    :retry-on-exception-pred retryable?})
 
-(defn prepare-statement
+(defn- prepare-statement
   "Create a prepared statement to query cache"
   ^PreparedStatement [^Connection conn lock-name-str timeout]
   (let [stmt (.prepareStatement conn ^String (first (mdb.query/compile {:select [:lock.lock_name]

@@ -1,1 +1,1 @@
-export { TextInputBlurChange } from "./TextInputBlurChange";
+export * from "./TextInputBlurChange";

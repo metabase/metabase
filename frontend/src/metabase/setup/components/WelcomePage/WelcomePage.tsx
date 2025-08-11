@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { useTimeout } from "react-use";
 import { t } from "ttag";
 
-import { DefaultLogoIcon } from "metabase/components/LogoIcon";
+import { DefaultLogoIcon } from "metabase/common/components/LogoIcon";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 
 import { goToNextStep, loadDefaults } from "../../actions";

@@ -10,8 +10,6 @@ title: Introduction to actions
 
 ## What are actions?
 
-> Want to edit data directly in your database through Metabase and build data apps? Join our [Early Access Program](https://form.fillout.com/t/j9cymCcLGVus) to explore this new feature, try it with your team, and help shape what we build next.
-
 **Actions** are entities in Metabase that let you build custom forms and business logic.
 
 Actions let you write parameterized SQL that writes back to your database. Actions can be attached to [buttons on dashboards](../dashboards/actions.md) to create custom workflows. You can even publicly share the parameterized forms that actions generate to collect data.

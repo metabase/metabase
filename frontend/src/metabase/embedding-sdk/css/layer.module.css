@@ -1,0 +1,6 @@
+/**
+ * Defines the CSS layers for the embedding SDK.
+ */
+@layer embedding-sdk {
+  @layer reset, vendor, main;
+}

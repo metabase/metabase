@@ -9,11 +9,11 @@ import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { checkNotNull } from "metabase/lib/types";
 import { getMetadata } from "metabase/selectors/metadata";
-import type { Card, TemplateTag } from "metabase-types/api";
+import { getTemplateTagParameter } from "metabase-lib/v1/parameters/utils/template-tags";
+import type { Card, TemplateTag, TemplateTagType } from "metabase-types/api";
 import {
   createMockCard,
   createMockNativeDatasetQuery,
-  createMockParameter,
   createMockTemplateTag,
 } from "metabase-types/api/mocks";
 import {
@@ -70,7 +70,7 @@ const setup = ({
       tag={tag}
       database={databaseMetadata}
       databases={metadata.databasesList()}
-      parameter={createMockParameter()}
+      parameter={getTemplateTagParameter(tag)}
       setTemplateTag={setTemplateTag}
       setParameterValue={setParameterValue}
     />,
@@ -252,6 +252,80 @@ describe("TagEditorParam", () => {
     }, 40000);
   });
 
+  describe("field alias", () => {
+    it.each<TemplateTagType>(["dimension", "temporal-unit"])(
+      "should be possible to set a field alias for %s variables",
+      async (type) => {
+        const tag = createMockTemplateTag({
+          type,
+          dimension: ["field", PEOPLE.CREATED_AT, null],
+          "widget-type": type === "dimension" ? "date/all-options" : undefined,
+        });
+        const { setTemplateTag } = setup({ tag });
+        await userEvent.type(
+          screen.getByTestId("field-alias-input"),
+          "p.created_at",
+        );
+        await userEvent.tab();
+        expect(setTemplateTag).toHaveBeenCalledWith({
+          ...tag,
+          alias: "p.created_at",
+        });
+      },
+    );
+
+    it("should trim the field alias", async () => {
+      const tag = createMockTemplateTag({
+        type: "dimension",
+        dimension: ["field", PEOPLE.CREATED_AT, null],
+        "widget-type": "date/all-options",
+      });
+      const { setTemplateTag } = setup({ tag });
+      await userEvent.type(
+        screen.getByTestId("field-alias-input"),
+        " p.created_at ",
+      );
+      await userEvent.tab();
+      expect(setTemplateTag).toHaveBeenCalledWith({
+        ...tag,
+        alias: "p.created_at",
+      });
+    });
+
+    it.each<TemplateTagType>(["dimension", "temporal-unit"])(
+      "should be possible to remove a field alias for %s variables",
+      async (type) => {
+        const tag = createMockTemplateTag({
+          type,
+          dimension: ["field", PEOPLE.CREATED_AT, null],
+          alias: "p.created_at",
+          "widget-type": type === "dimension" ? "date/all-options" : undefined,
+        });
+        const { setTemplateTag } = setup({ tag });
+        await userEvent.clear(screen.getByTestId("field-alias-input"));
+        await userEvent.tab();
+        expect(setTemplateTag).toHaveBeenCalledWith({
+          ...tag,
+          alias: undefined,
+        });
+      },
+    );
+
+    it.each<TemplateTagType>(["text", "number", "date"])(
+      "should not show the field alias input for % variables",
+      (type) => {
+        const tag = createMockTemplateTag({ type });
+        setup({ tag });
+        expect(
+          screen.queryByText("Table and field alias"),
+        ).not.toBeInTheDocument();
+        expect(
+          screen.queryByTestId("field-alias-input"),
+        ).not.toBeInTheDocument();
+      },
+    );
+  });
+
   describe("tag widget type", () => {
     it("should be able to set the widget type with options", async () => {
       const tag = createMockTemplateTag({
@@ -345,6 +419,55 @@ describe("TagEditorParam", () => {
         required: false,
         default: "abc",
       });
+    });
+  });
+
+  describe("multi select", () => {
+    it.each<TemplateTagType>(["text", "number"])(
+      "should support single and multiple values with %s variables",
+      async (type) => {
+        const tag = createMockTemplateTag({ type });
+        setup({ tag });
+        expect(screen.getByLabelText("Multiple values")).toBeInTheDocument();
+        expect(screen.getByLabelText("A single value")).toBeInTheDocument();
+
+        await userEvent.hover(screen.getByTestId("multi-select-info-icon"));
+        expect(await screen.findByText(/category IN/)).toBeInTheDocument();
+      },
+    );
+
+    it("should support single and multiple values with field filters", () => {
+      const tag = createMockTemplateTag({
+        type: "dimension",
+        dimension: ["field", PEOPLE.SOURCE, null],
+      });
+      setup({ tag });
+      expect(screen.getByLabelText("Multiple values")).toBeInTheDocument();
+      expect(screen.getByLabelText("A single value")).toBeInTheDocument();
+      expect(
+        screen.queryByTestId("multi-select-info-icon"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("should not support single and multiple values with date variables", () => {
+      const tag = createMockTemplateTag({ type: "date" });
+      setup({ tag });
+      expect(
+        screen.queryByLabelText("Multiple values"),
+      ).not.toBeInTheDocument();
+      expect(screen.queryByLabelText("A single value")).not.toBeInTheDocument();
+    });
+
+    it("should not support single and multiple values with time grouping", () => {
+      const tag = createMockTemplateTag({
+        type: "temporal-unit",
+        dimension: ["field", PEOPLE.CREATED_AT, null],
+      });
+      setup({ tag });
+      expect(
+        screen.queryByLabelText("Multiple values"),
+      ).not.toBeInTheDocument();
+      expect(screen.queryByLabelText("A single value")).not.toBeInTheDocument();
     });
   });
 });

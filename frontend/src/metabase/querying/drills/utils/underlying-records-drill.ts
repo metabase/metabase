@@ -38,7 +38,9 @@ export const underlyingRecordsDrill: Drill<
       question: () =>
         applyDrill(drill)
           .setDisplay("table")
-          .updateSettings({ "table.pivot": false }),
+          // Sometimes the "graph.dimensions" setting lingers around
+          // from a previous graph visualization, so we reset it here. (see metabase#55484)
+          .updateSettings({ "table.pivot": false, "graph.dimensions": [] }),
     },
   ];
 };

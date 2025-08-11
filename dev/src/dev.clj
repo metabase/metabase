@@ -55,6 +55,8 @@
    [clojure.test]
    [dev.debug-qp :as debug-qp]
    [dev.explain :as dev.explain]
+   [dev.h2 :as dev.h2]
+   [dev.malli :as dev.malli]
    [dev.memory :as dev.memory]
    [dev.migrate :as dev.migrate]
    [dev.model-tracking :as model-tracking]
@@ -95,7 +97,8 @@
 
 (comment
   debug-qp/keep-me
-  model-tracking/keep-me)
+  model-tracking/keep-me
+  dev.h2/keep-me)
 
 #_:clj-kondo/ignore
 (defn tap>-spy [x]
@@ -106,6 +109,8 @@
   pprint-sql]
  [dev.explain
   explain-query]
+ [dev.malli
+  visualize-schema!]
  [dev.migrate
   migrate!
   rollback!

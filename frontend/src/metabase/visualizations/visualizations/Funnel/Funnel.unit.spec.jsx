@@ -31,7 +31,7 @@ const setup = (funnelProps, visualizationSettings = {}) => {
             id: 2,
             name: "bar",
             display_name: "bar",
-            semantic_type: "type/Number",
+            effective_type: "type/Number",
           }),
         ],
         rows: [

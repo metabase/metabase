@@ -143,6 +143,15 @@
     (.batchSize 100)
     (.maxTime timeout-ms TimeUnit/MILLISECONDS)))
 
+(defn aggregate-database
+  "Used in testing to enable aggregate on pipelines sourced with $documents stage."
+  [^MongoDatabase db
+   ^ClientSession session
+   stages timeout-ms]
+  (let [pipe      (ArrayList. ^Collection (mongo.conversion/to-document stages))
+        aggregate (.aggregate db session pipe)]
+    (init-aggregate! aggregate timeout-ms)))
+
 (defn- ^:dynamic *aggregate*
   [^MongoDatabase db
    ^String coll

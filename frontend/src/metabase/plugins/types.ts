@@ -1,6 +1,6 @@
 import type { ComponentType } from "react";
 
-import type { ConfirmationState } from "metabase/hooks/use-confirmation";
+import type { ConfirmationState } from "metabase/common/hooks/use-confirmation";
 import type { Member, Membership, User } from "metabase-types/api";
 
 export interface AuthProvider {

@@ -145,8 +145,12 @@ export function useMultiAutocomplete({
   };
 
   const handleFieldKeyDown = (event: ReactKeyboardEvent<HTMLInputElement>) => {
+    if (event.nativeEvent.isComposing) {
+      return;
+    }
     if (
       event.key === "Enter" &&
+      !event.nativeEvent.isComposing &&
       combobox.selectedOptionIndex < 0 &&
       fieldSelection.length > 0
     ) {
@@ -241,6 +245,9 @@ export function useMultiAutocomplete({
   };
 
   const handleWindowKeydownCapture = (event: KeyboardEvent) => {
+    if (event.isComposing) {
+      return;
+    }
     if (event.key === "Escape" && combobox.dropdownOpened) {
       event.stopImmediatePropagation();
       combobox.closeDropdown();

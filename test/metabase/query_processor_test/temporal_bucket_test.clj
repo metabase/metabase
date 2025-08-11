@@ -42,10 +42,10 @@
                  (cols-display-name-by-index
                   (qp/process-query (lib/breakout multi-stage-query 1 (lib/with-temporal-bucket col :quarter)))
                   0)))))
-      (testing "Second bucketing of a column on a next stage by different unit appends it into displa_name"
+      (testing "Second bucketing of a column on a next stage by different unit appends it into display_name"
         (let [col (m/find-first (comp #{"Created At: Quarter"} :display-name)
                                 (lib/breakoutable-columns multi-stage-query 1))]
-          (is (= "Created At: Quarter: Year"
+          (is (= "Created At: Year"
                  (cols-display-name-by-index
                   (qp/process-query (lib/breakout multi-stage-query 1 (lib/with-temporal-bucket col :year)))
                   0))))))))

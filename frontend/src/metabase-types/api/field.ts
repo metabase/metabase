@@ -59,6 +59,7 @@ export type FieldValuesType = "list" | "search" | "none";
 export type FieldDimensionType = "internal" | "external";
 
 export type FieldDimension = {
+  id: number;
   type: FieldDimensionType;
   name: string;
   human_readable_field_id?: FieldId;
@@ -132,18 +133,18 @@ export interface GetFieldRequest {
 
 export interface UpdateFieldRequest {
   id: FieldId;
-  caveats?: string;
-  description?: string;
+  caveats?: string | null;
+  description?: string | null;
   display_name?: string;
-  fk_target_field_id?: FieldId;
+  fk_target_field_id?: FieldId | null;
   points_of_interest?: string;
-  semantic_type?: string;
-  coercion_strategy?: string;
+  semantic_type?: string | null;
+  coercion_strategy?: string | null;
   visibility_type?: FieldVisibilityType;
   has_field_values?: FieldValuesType;
   settings?: FieldFormattingSettings;
-  nfc_path?: string[];
-  json_unfolding?: boolean;
+  nfc_path?: string[] | null;
+  json_unfolding?: boolean | null;
 }
 
 export interface GetFieldValuesResponse {
@@ -169,7 +170,7 @@ export interface CreateFieldDimensionRequest {
   id: FieldId;
   type: FieldDimensionType;
   name: string;
-  human_readable_field_id?: FieldId;
+  human_readable_field_id?: FieldId | null;
 }
 
 export interface UpdateFieldValuesRequest {

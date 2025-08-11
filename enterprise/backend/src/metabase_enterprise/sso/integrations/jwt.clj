@@ -14,7 +14,8 @@
    [metabase.session.models.session :as session]
    [metabase.sso.core :as sso]
    [metabase.util.i18n :refer [tru]]
-   [ring.util.response :as response])
+   [ring.util.response :as response]
+   [toucan2.core :as t2])
   (:import
    (java.net URLEncoder)))
 
@@ -31,7 +32,7 @@
               :last_name        last-name
               :email            email
               :sso_source       :jwt
-              :login_attributes user-attributes}]
+              :jwt_attributes   user-attributes}]
     (or (sso-utils/fetch-and-update-login-attributes! user (sso-settings/jwt-user-provisioning-enabled?))
         (sso-utils/check-user-provisioning :jwt)
         (sso-utils/create-new-sso-user! user))))
@@ -53,12 +54,14 @@
   [:iss :iat :sub :aud :exp :nbf :jti])
 
 (defn- jwt-data->login-attributes [jwt-data]
-  (apply dissoc
-         jwt-data
-         (jwt-attribute-email)
-         (jwt-attribute-firstname)
-         (jwt-attribute-lastname)
-         registered-claims))
+  (sso-utils/filter-non-stringable-attributes
+   (apply dissoc
+          jwt-data
+          (jwt-attribute-email)
+          (jwt-attribute-firstname)
+          (jwt-attribute-lastname)
+          (jwt-attribute-groups)
+          registered-claims)))
 
 ;; JWTs use seconds since Epoch, not milliseconds since Epoch for the `iat` and `max_age` time. 3 minutes is the time
 ;; used by Zendesk for their JWT SSO, so it seemed like a good place for us to start
@@ -67,9 +70,11 @@
 (defn- group-names->ids
   "Translate a user's group names to a set of MB group IDs using the configured mappings"
   [group-names]
-  (set
-   (mapcat (sso-settings/jwt-group-mappings)
-           (map keyword group-names))))
+  (if-let [name-mappings (not-empty (sso-settings/jwt-group-mappings))]
+    (set
+     (mapcat name-mappings
+             (map keyword group-names)))
+    (t2/select-pks-set :model/PermissionsGroup :name [:in group-names])))
 
 (defn- all-mapped-group-ids
   "Returns the set of all MB group IDs that have configured mappings"
@@ -85,9 +90,11 @@
   (when (sso-settings/jwt-group-sync)
     (when-let [groups-attribute (jwt-attribute-groups)]
       (when-let [group-names (get jwt-data groups-attribute)]
-        (sso/sync-group-memberships! user
-                                     (group-names->ids group-names)
-                                     (all-mapped-group-ids))))))
+        (if (empty? (sso-settings/jwt-group-mappings))
+          (sso/sync-group-memberships! user (group-names->ids group-names))
+          (sso/sync-group-memberships! user
+                                       (group-names->ids group-names)
+                                       (all-mapped-group-ids)))))))
 
 (defn- session-data
   [jwt {{redirect :return_to} :params, :as request}]
@@ -99,8 +106,7 @@
                          (catch Throwable e
                            (throw
                             (ex-info (ex-message e)
-                                     {:status      "error-jwt-bad-unsigning"
-                                      :status-code 401}))))
+                                     {:status-code 401}))))
           login-attrs  (jwt-data->login-attributes jwt-data)
           email        (get jwt-data (jwt-attribute-email))
           first-name   (get jwt-data (jwt-attribute-firstname))
@@ -110,23 +116,32 @@
       (sync-groups! user jwt-data)
       {:session session, :redirect-url redirect-url, :jwt-data jwt-data})))
 
-(defn- throw-embedding-disabled
+(defn jwt->session
+  "Given a JWT, return a valid session token for the associated user (creating the user if necessary)."
+  [jwt request]
+  (-> (session-data jwt request) :session :key))
+
+(defn- throw-react-sdk-embedding-disabled
   []
   (throw
-   (ex-info (tru "SDK Embedding is disabled. Enable it in the Embedding settings.")
+   (ex-info (tru "Embedding SDK for React is disabled. Enable it in the embedding settings.")
             {:status      "error-embedding-sdk-disabled"
+             :status-code 402})))
+
+(defn- throw-simple-embedding-disabled
+  []
+  (throw
+   (ex-info (tru "Embedded Analytics JS is disabled. Enable it in the embedding settings.")
+            {:status      "error-embedding-simple-disabled"
              :status-code 402})))
 
 (defn ^:private generate-response-token
   [session jwt-data]
-  (if  (embed.settings/enable-embedding-sdk)
-
-    (response/response
-     {:status :ok
-      :id     (:key session)
-      :exp    (:exp jwt-data)
-      :iat    (:iat jwt-data)})
-    (throw-embedding-disabled)))
+  (response/response
+   {:status :ok
+    :id     (:key session)
+    :exp    (:exp jwt-data)
+    :iat    (:iat jwt-data)}))
 
 (defn ^:private redirect-to-idp
   [idp redirect]
@@ -140,11 +155,14 @@
   [{{:keys [jwt redirect]} :params, :as request}]
   (premium-features/assert-has-feature :sso-jwt (tru "JWT-based authentication"))
   (let [jwt-data (when jwt (session-data jwt request))
-        is-sdk? (sso-utils/is-embedding-sdk-header? request)]
+        is-react-sdk? (sso-utils/is-react-sdk-header? request)
+        is-simple-embed? (sso-utils/is-simple-embed-header? request)
+        is-embed? (or is-react-sdk? is-simple-embed?)]
     (cond
-      (and is-sdk? (not (embed.settings/enable-embedding-sdk))) (throw-embedding-disabled)
-      (and is-sdk? jwt (token-utils/has-token request)) (generate-response-token (:session jwt-data) (:jwt-data jwt-data))
-      is-sdk?           (response/response (token-utils/with-token {:url (sso-settings/jwt-identity-provider-uri) :method "jwt"}))
+      (and is-react-sdk? (not (embed.settings/enable-embedding-sdk))) (throw-react-sdk-embedding-disabled)
+      (and is-simple-embed? (not (embed.settings/enable-embedding-simple))) (throw-simple-embedding-disabled)
+      (and is-embed? jwt (token-utils/has-token request)) (generate-response-token (:session jwt-data) (:jwt-data jwt-data))
+      is-embed?           (response/response (token-utils/with-token {:url (sso-settings/jwt-identity-provider-uri) :method "jwt"}))
       jwt               (request/set-session-cookies request
                                                      (response/redirect (:redirect-url jwt-data))
                                                      (:session jwt-data)

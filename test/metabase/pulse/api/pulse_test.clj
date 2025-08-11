@@ -1303,14 +1303,24 @@
   (testing "GET /api/pulse/preview_card/:id"
     (mt/with-temp [:model/Collection _ {}
                    :model/Card       card {:dataset_query (mt/mbql-query checkins {:limit 5})}]
-      (letfn [(preview [expected-status-code]
-                (client/client-full-response (mt/user->credentials :rasta)
-                                             :get expected-status-code (format "pulse/preview_card_png/%d" (u/the-id card))))]
+      (letfn [(preview [expected-status-code & [width]]
+                (let [url (str "pulse/preview_card_png/" (u/the-id card)
+                               (when width (str "?width=" width)))]
+                  (client/client-full-response (mt/user->credentials :rasta)
+                                               :get expected-status-code url)))]
         (testing "Should be able to preview a Pulse"
           (let [{{:strs [Content-Type]} :headers, :keys [body]} (preview 200)]
             (is (= "image/png"
                    Content-Type))
             (is (some? body))))
+
+        (testing "Should respect the width query parameter"
+          (let [width 600
+                resp1 (preview 200)
+                resp2 (preview 200 width)]
+            (is (= "image/png" (get-in resp2 [:headers "Content-Type"])))
+            (is (not= (:body resp1) (:body resp2))) ;; crude check: different width should yield different PNG bytes
+            (is (some? (:body resp2)))))
 
         (testing "If rendering a Pulse fails (e.g. because font registration failed) the endpoint should return the error message"
           (with-redefs [style/register-fonts-if-needed! (fn []

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { t } from "ttag";
 
-import EmptyState from "metabase/components/EmptyState";
+import EmptyState from "metabase/common/components/EmptyState";
 import { CONTAINER_WIDTH } from "metabase/query_builder/components/DataSelector/constants";
 import { Flex, Icon, NavLink, Paper, ScrollArea, TextInput } from "metabase/ui";
 import type { TableId } from "metabase-types/api";

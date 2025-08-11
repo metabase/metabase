@@ -316,3 +316,42 @@
 
                  [:field (id :guard id-is-datetime-field?) opts]
                  [:field id (assoc opts :temporal-unit :day)]))))))
+
+(t/deftest ^:parallel match-lite-test
+  (t/is (= 6 (lib.util.match/match-lite [1 2 3]
+               [a b c] (+ a b c))))
+  (t/is (= 5 (lib.util.match/match-lite [1 :value1 4]
+               [var1 :value1 var2] (+ var1 var2))))
+  (t/is (= [1 2 [3 4 5]] (lib.util.match/match-lite [1 2 3 4 5]
+                           [a b & rest] [a b rest])))
+  (t/is (= 48 (lib.util.match/match-lite [2 4 6]
+                [a (b :guard even?) c] (* a b c))))
+  (t/is (= "matched odd"
+           (lib.util.match/match-lite [1 3 5]
+             [a (b :guard even?) c] "matched even"
+             [a b c] "matched odd")))
+  (t/is (= "fallback: not a vector"
+           (lib.util.match/match-lite "not a vector"
+             x (str "fallback: " x))))
+  ;; Rest with guard
+  (t/is (= "a=1 b=2 rest=(3 4 5)"
+           (lib.util.match/match-lite [1 2 3 4 5]
+             [a b & (rst :guard #(> (count %) 2))] (str "a=" a " b=" b " rest=" rst))))
+
+  (t/testing "Edge cases"
+    (t/testing "Empty collections"
+      (t/is (= :empty-vec (lib.util.match/match-lite []
+                            [] :empty-vec)))
+      (t/is (= :empty-map (lib.util.match/match-lite {}
+                            {} :empty-map))))
+    (t/testing "Nil values"
+      (t/is (= :nil-value (lib.util.match/match-lite nil
+                            nil :nil-value
+                            _ :not-nil))))
+    (t/testing "Boolean values"
+      (t/is (= :true-value (lib.util.match/match-lite true
+                             true :true-value
+                             false :false-value)))
+      (t/is (= :false-value (lib.util.match/match-lite false
+                              true :true-value
+                              false :false-value))))))

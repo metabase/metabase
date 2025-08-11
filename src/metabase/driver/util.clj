@@ -523,7 +523,8 @@
                                             :contact (driver/contact-info driver)}
                                    :details-fields props
                                    :driver-name    (driver/display-name driver)
-                                   :superseded-by  (driver/superseded-by driver)})
+                                   :superseded-by  (driver/superseded-by driver)
+                                   :extra-info     (driver/extra-info driver)})
                acc))
            (transient {}) (available-drivers))))
 

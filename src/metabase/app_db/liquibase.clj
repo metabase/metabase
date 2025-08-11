@@ -372,12 +372,12 @@
               unrun-migrations-count (count to-run-migrations)]
           (if (pos? unrun-migrations-count)
             (let [^Contexts contexts nil
-                  start-time         (System/currentTimeMillis)]
+                  timer              (u/start-timer)]
               (log/infof "Running %s migrations ..." unrun-migrations-count)
               (doseq [^ChangeSet change to-run-migrations]
                 (log/tracef "To run migration %s" (.getId change)))
               (.update liquibase contexts)
-              (log/infof "Migration complete in %s" (u/format-milliseconds (- (System/currentTimeMillis) start-time))))
+              (log/infof "Migration complete in %s" (u/format-milliseconds (u/since-ms timer))))
             (log/info "Migration lock cleared, but nothing to do here! Migrations were finished by another instance.")))))
     (log/info "No unrun migrations found.")))
 

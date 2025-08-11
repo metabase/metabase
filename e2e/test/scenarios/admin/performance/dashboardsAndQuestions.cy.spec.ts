@@ -129,7 +129,7 @@ describe(
         H.restore("postgres-writable");
         H.resetTestTable({ type: "postgres", table: TEST_TABLE });
         cy.signInAsAdmin();
-        H.setTokenFeatures("all");
+        H.activateToken("pro-self-hosted");
       });
 
       describe("adaptive and duration strategies", () => {

@@ -5,7 +5,7 @@ import { t } from "ttag";
 import {
   DataPickerModal,
   getDataPickerValue,
-} from "metabase/common/components/DataPicker";
+} from "metabase/common/components/Pickers/DataPicker";
 import { METAKEY } from "metabase/lib/browser";
 import { useDispatch, useSelector, useStore } from "metabase/lib/redux";
 import { checkNotNull } from "metabase/lib/types";

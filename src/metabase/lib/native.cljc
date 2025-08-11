@@ -36,17 +36,6 @@
    :name tag-name
    :id   (str (random-uuid))})
 
-(defn- fresh-function-tag [function-name args]
-  (case function-name
-    "mb.time_grouping" (let [param-name (first args)]
-                         (when (and (string? param-name)
-                                    (= (count args) 2)
-                                    (every? (comp not empty?) args))
-                           {:type :temporal-unit
-                            :name param-name
-                            :id (str (random-uuid))}))
-    nil))
-
 (defn- recognize-template-tags [query-text]
   (let [parsed (lib.parse/parse {} query-text)]
     (loop [found {}
@@ -60,12 +49,6 @@
                              (recur (cond-> found
                                       (and matched-name (not (found matched-name))) (assoc matched-name (fresh-tag matched-name)))
                                     more))
-        [{:type ::lib.parse/function-param
-          :name function-name
-          :args args}] (let [new-tag (fresh-function-tag function-name args)]
-                         (if (and new-tag (not (found (:name new-tag))))
-                           (recur (assoc found (:name new-tag) new-tag) more)
-                           (recur found more)))
         [{:type ::lib.parse/optional
           :contents contents}] (recur found (apply conj more contents))))))
 
@@ -104,20 +87,6 @@
         (dissoc old-name)
         (assoc new-name new-tag))))
 
-(defn- update-tags
-  [tags query-tags]
-  (into {}
-        (map (fn [[tag-name current-tag]]
-               (let [new-tag (query-tags tag-name)]
-                 ;; if a tag swapped to or from temporal unit, use the new tag instead of the old tag
-                 (if (and new-tag current-tag
-                          (not= (:type new-tag) (:type current-tag))
-                          (or (= (:type new-tag) :temporal-unit)
-                              (= (:type current-tag) :temporal-unit)))
-                   [tag-name new-tag]
-                   [tag-name current-tag]))))
-        tags))
-
 (defn- unify-template-tags
   [query-tags query-tag-names existing-tags existing-tag-names]
   (let [new-tags (set/difference query-tag-names existing-tag-names)
@@ -128,8 +97,7 @@
                    ;; With more than one change, just drop the old ones and add the new.
                    (merge (m/remove-keys old-tags existing-tags)
                           (m/filter-keys new-tags query-tags)))]
-    (-> (update-tags tags query-tags)
-        (update-vals finish-tag))))
+    (update-vals tags finish-tag)))
 
 (mu/defn extract-template-tags :- ::lib.schema.template-tag/template-tag-map
   "Extract the template tags from a native query's text.
@@ -213,97 +181,6 @@
                                         :template-tags      tags
                                         :native             sql-or-other-native-query}])
          (with-native-extras native-extras)))))
-
-;; map of function names to min/max expected arguments
-(def ^:private function-expected-args
-  {"mb.time_grouping" {:args-count      [2 2]
-                       :args-validators [(comp not empty?) (comp not empty?)]}})
-
-(def ^:private tag-type->display-name
-  {:temporal-unit "time grouping"
-   :text "variable"
-   :card "card reference"
-   :snippet "snippet"})
-
-(defn- validate-function-tags
-  [query-text]
-  (let [parsed (lib.parse/parse {} query-text)]
-    (loop [found {}
-           errors []
-           [current & more] (vec parsed)]
-      (match [current]
-        [nil] errors
-        [_ :guard string?] (recur found errors more)
-        [{:type ::lib.parse/param
-          :name tag-name}]
-        (let [full-tag         (str "{{" tag-name "}}")
-              [_ matched-name] (some #(re-matches % full-tag) tag-regexes)
-              prev             (found matched-name)
-              current          (some-> matched-name fresh-tag finish-tag)
-              error            (cond
-                                 (not current)
-                                 (str "Syntax error in: " tag-name)
-
-                                 (and prev (not= (:type prev) (:type current)))
-                                 (str "Parameter " matched-name
-                                      " is used as both a " (-> prev :type tag-type->display-name)
-                                      " and a " (-> current :type tag-type->display-name)
-                                      ". This is not allowed.")
-
-                                 (function-expected-args matched-name)
-                                 (str matched-name " should be used as a function call, e.g. "
-                                      matched-name "('arg1', ...)"))]
-          (recur (cond-> found
-                   (and current (not error)) (assoc matched-name current))
-                 (cond-> errors
-                   error (conj error))
-                 more))
-        [{:type ::lib.parse/function-param
-          :name function-name
-          :args args}]
-        (let [current (fresh-function-tag function-name args)
-              args-count (count args)
-              {[args-min args-max] :args-count
-               :keys               [args-validators]} (function-expected-args function-name)
-              prev (some-> current :name found)
-              error (cond
-                      (not args-min)
-                      (str "Unknown function: " function-name)
-
-                      (< args-count args-min)
-                      (str function-name " got too few parameters.  Got "
-                           args-count ", expected at least " args-min ".")
-
-                      (> args-count args-max)
-                      (str function-name " got too many parameters.  Got "
-                           args-count ", expected at most " args-max ".")
-
-                      (not-every? identity (map #(%1 %2) args-validators args))
-                      (str function-name " got invalid parameters")
-
-                      (not current)
-                      (str "Invalid call to function: " function-name)
-
-                      (and prev (not= (:type prev) (:type current)))
-                      (str "Parameter " (:name current)
-                           " is used as both a " (-> prev :type tag-type->display-name)
-                           " and a " (-> current :type tag-type->display-name)
-                           ". This is not allowed."))]
-          (recur (cond-> found
-                   (and current (not error)) (assoc (:name current) current))
-                 (cond-> errors
-                   error (conj error))
-                 more))
-        [{:type ::lib.parse/optional
-          :contents contents}] (recur found errors (apply conj more contents))))))
-
-(defn validate-native-query
-  "Validates the syntax of a native query.
-
-  Native in this sense means a pMBQL query with a first stage that is a native query."
-  [query]
-  (let [sql (get-in query [:stages 0 :native])]
-    (validate-function-tags sql)))
 
 (mu/defn with-different-database :- ::lib.schema/query
   "Changes the database for this query. The first stage must be a native type.
@@ -392,7 +269,7 @@
    (set/subset? (required-native-extras query)
                 (set (keys (native-extras query))))
    (not (str/blank? (raw-native-query query)))
-   (every? #(if (= :dimension (:type %))
+   (every? #(if (#{:dimension :temporal-unit} (:type %))
               (:dimension %)
               true)
            (vals (template-tags query)))))

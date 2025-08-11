@@ -61,7 +61,7 @@
                         ;;
                         ;; So if neither of those cases apply, we can just return the original query and stage index.
                         (not (or (= (:lib/source column) :source/aggregations)
-                                 (and (= (:lib/source column) :source/breakouts)
+                                 (and (:lib/breakout? column)
                                       (= adding :expression))))
                         {:query        query
                          :stage-number stage-number}

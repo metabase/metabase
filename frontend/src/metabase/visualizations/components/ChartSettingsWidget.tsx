@@ -1,7 +1,7 @@
 import cx from "classnames";
 import type * as React from "react";
 
-import PopoverS from "metabase/components/Popover/Popover.module.css";
+import PopoverS from "metabase/common/components/Popover/Popover.module.css";
 import FormS from "metabase/css/components/form.module.css";
 import { Box, Group, Icon, Text, Tooltip } from "metabase/ui";
 
