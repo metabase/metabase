@@ -90,6 +90,7 @@ export function TagMultiSelect({ tagIds, onChange }: TagMultiSelectProps) {
         rightSection={
           isLoading || isCreating ? <Loader size="sm" /> : undefined
         }
+        nothingFoundMessage={t`No tags found.`}
         renderOption={(item) =>
           item.option.value === NEW_VALUE ? (
             <NewTagSelectItem
