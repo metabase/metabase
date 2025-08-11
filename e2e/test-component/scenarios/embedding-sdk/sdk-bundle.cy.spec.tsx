@@ -5,13 +5,14 @@ import {
   useCreateDashboardApi,
   useMetabaseAuthStatus,
 } from "@metabase/embedding-sdk-react";
-import { type ReactNode, StrictMode, useEffect, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
 import {
   DEFAULT_SDK_AUTH_PROVIDER_CONFIG,
   getSdkBundleScriptElement,
+  mountSdk,
   mountSdkContent,
 } from "e2e/support/helpers/embedding-sdk-component-testing";
 import { signInAsAdminAndEnableEmbeddingSdk } from "e2e/support/helpers/embedding-sdk-testing";
@@ -37,76 +38,99 @@ describe("scenarios > embedding-sdk > sdk-bundle", () => {
     mockAuthProviderAndJwtSignIn();
   });
 
-  describe("Common cases", () => {
-    beforeEach(() => {
-      sdkBundleCleanup();
-    });
+  [{ strictMode: false }, { strictMode: true }].forEach(({ strictMode }) => {
+    describe(`Common cases ${strictMode ? "with" : "without"} strict mode`, () => {
+      beforeEach(() => {
+        sdkBundleCleanup();
+      });
 
-    it("should add and cleanup the MetabaseProviderPropsStore in a global object", () => {
-      const metabaseProvideElement = (
-        <MetabaseProvider
-          authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}
-          locale="en"
-        >
-          <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />
-        </MetabaseProvider>
-      );
+      it("should display an SDK question", () => {
+        sdkBundleCleanup();
 
-      cy.mount(
-        <StrictMode>
-          {metabaseProvideElement}
-          {metabaseProvideElement}
-        </StrictMode>,
-      );
+        cy.window().then((win) => {
+          cy.spy(win.console, "warn").as("consoleWarn");
+        });
 
-      cy.mount(metabaseProvideElement);
-
-      cy.window().its("METABASE_PROVIDER_PROPS_STORE").should("exist");
-
-      cy.window().its("METABASE_PROVIDER_PROPS_STORE").should("exist");
-
-      // Unmount
-      cy.mount(<></>);
-
-      cy.window().its("METABASE_PROVIDER_PROPS_STORE").should("not.exist");
-
-      cy.mount(metabaseProvideElement);
-
-      cy.window().its("METABASE_PROVIDER_PROPS_STORE").should("exist");
-
-      // Unmount
-      cy.mount(<></>);
-
-      cy.window().its("METABASE_PROVIDER_PROPS_STORE").should("not.exist");
-    });
-
-    it("should properly render global Mantine and Emotion styles once for multiple rendered components", () => {
-      const checkStyles = ({
-        expectedMantineStylesLength,
-        expectedEmotionStylesLength,
-      }: {
-        expectedMantineStylesLength?: number;
-        expectedEmotionStylesLength?: number;
-      }) => {
-        cy.get('[data-cy-root] > style[data-mantine-styles="true"]').should(
-          "have.length",
-          expectedMantineStylesLength,
+        mountSdkContent(
+          <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />,
+          { strictMode },
         );
-        cy.get('[data-cy-root] > style[data-mantine-styles="classes"]').should(
-          "have.length",
-          expectedMantineStylesLength,
+
+        getSdkRoot().within(() => {
+          cy.findByText(
+            /The loading state is `Loaded` but the SDK bundle is not loaded yet/,
+          ).should("not.exist");
+
+          cy.findByText("Orders").should("exist");
+
+          cy.findByTestId("visualization-root").should("be.visible");
+        });
+      });
+
+      it("should add and cleanup the MetabaseProviderPropsStore in a global object", () => {
+        const metabaseProvideElement = (
+          <MetabaseProvider
+            authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}
+            locale="en"
+          >
+            <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />
+          </MetabaseProvider>
         );
-        // We have 3 usages of `<Global />` component from Emotion, all are wrapped within the RenderSingleCopy
-        cy.get('style[data-emotion="emotion-global"]').should(
-          "have.length",
+
+        mountSdk(
+          <>
+            {metabaseProvideElement}
+            {metabaseProvideElement}
+          </>,
+          { strictMode },
+        );
+
+        cy.mount(metabaseProvideElement);
+
+        cy.window().its("METABASE_PROVIDER_PROPS_STORE").should("exist");
+
+        cy.window().its("METABASE_PROVIDER_PROPS_STORE").should("exist");
+
+        // Unmount
+        cy.mount(<></>);
+
+        cy.window().its("METABASE_PROVIDER_PROPS_STORE").should("not.exist");
+
+        cy.mount(metabaseProvideElement);
+
+        cy.window().its("METABASE_PROVIDER_PROPS_STORE").should("exist");
+
+        // Unmount
+        cy.mount(<></>);
+
+        cy.window().its("METABASE_PROVIDER_PROPS_STORE").should("not.exist");
+      });
+
+      it("should properly render global Mantine and Emotion styles once for multiple rendered components", () => {
+        const checkStyles = ({
+          expectedMantineStylesLength,
           expectedEmotionStylesLength,
-        );
-      };
+        }: {
+          expectedMantineStylesLength?: number;
+          expectedEmotionStylesLength?: number;
+        }) => {
+          cy.get('[data-cy-root] > style[data-mantine-styles="true"]').should(
+            "have.length",
+            expectedMantineStylesLength,
+          );
+          cy.get(
+            '[data-cy-root] > style[data-mantine-styles="classes"]',
+          ).should("have.length", expectedMantineStylesLength);
+          // We have 3 usages of `<Global />` component from Emotion, all are wrapped within the RenderSingleCopy
+          cy.get('style[data-emotion="emotion-global"]').should(
+            "have.length",
+            expectedEmotionStylesLength,
+          );
+        };
 
-      const componentsCount = 10;
+        const componentsCount = 10;
 
-      cy.mount(
-        <StrictMode>
+        mountSdk(
           <MetabaseProvider
             authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}
             locale="en"
@@ -117,161 +141,147 @@ describe("scenarios > embedding-sdk > sdk-bundle", () => {
                 questionId={ORDERS_QUESTION_ID}
               />
             ))}
-          </MetabaseProvider>
-        </StrictMode>,
-      );
+          </MetabaseProvider>,
+          { strictMode },
+        );
 
-      checkStyles({
-        expectedMantineStylesLength: 1,
-        // We have 3 usages of `<Global />` component from Emotion, all are wrapped within the RenderSingleCopy
-        expectedEmotionStylesLength: 3,
-      });
-
-      // Unmount
-      cy.mount(<></>);
-
-      checkStyles({
-        expectedMantineStylesLength: 0,
-        expectedEmotionStylesLength: 0,
-      });
-    });
-
-    it("should update props passed to MetabaseProvider", () => {
-      cy.mount(
-        <MetabaseProvider
-          authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}
-          locale="en"
-        >
-          <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />
-        </MetabaseProvider>,
-      ).then(({ rerender }) => {
-        getSdkRoot().within(() => {
-          cy.findByText("Filter").should("exist");
+        checkStyles({
+          expectedMantineStylesLength: 1,
+          // We have 3 usages of `<Global />` component from Emotion, all are wrapped within the RenderSingleCopy
+          expectedEmotionStylesLength: 3,
         });
 
-        // Update props via the declarative API
-        rerender(
+        // Unmount
+        mountSdk(<></>);
+
+        checkStyles({
+          expectedMantineStylesLength: 0,
+          expectedEmotionStylesLength: 0,
+        });
+      });
+
+      it("should update props passed to MetabaseProvider", () => {
+        mountSdk(
           <MetabaseProvider
             authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}
-            locale="es"
+            locale="en"
           >
             <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />
           </MetabaseProvider>,
-        );
-
-        getSdkRoot().within(() => {
-          cy.findByText("Filtro").should("exist");
-        });
-
-        // Update props via the imperative API (via window)
-        cy.window().then((win) => {
-          (win as any).METABASE_PROVIDER_PROPS_STORE.setProps({
-            authConfig: DEFAULT_SDK_AUTH_PROVIDER_CONFIG,
-            locale: "fr",
+          { strictMode },
+        ).then(({ rerender }) => {
+          getSdkRoot().within(() => {
+            cy.findByText("Filter").should("exist");
           });
+
+          // Update props via the declarative API
+          rerender(
+            <MetabaseProvider
+              authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}
+              locale="es"
+            >
+              <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />
+            </MetabaseProvider>,
+          );
 
           getSdkRoot().within(() => {
-            cy.findByText("Filtre").should("exist");
+            cy.findByText("Filtro").should("exist");
+          });
+
+          // Update props via the imperative API (via window)
+          cy.window().then((win) => {
+            (win as any).METABASE_PROVIDER_PROPS_STORE.setProps({
+              authConfig: DEFAULT_SDK_AUTH_PROVIDER_CONFIG,
+              locale: "fr",
+            });
+
+            getSdkRoot().within(() => {
+              cy.findByText("Filtre").should("exist");
+            });
           });
         });
       });
-    });
 
-    it("should show a custom loader when the SDK bundle is loading", () => {
-      mountSdkContent(<InteractiveQuestion questionId={ORDERS_QUESTION_ID} />, {
-        sdkProviderProps: {
-          loaderComponent: () => <div>Loading...</div>,
-        },
-        waitForUser: false,
-      });
-
-      cy.findByTestId("loading-indicator").should("have.text", "Loading...");
-    });
-  });
-
-  [
-    {
-      removeScriptTag: false,
-    },
-    {
-      removeScriptTag: true,
-    },
-  ].forEach(({ removeScriptTag }) => {
-    describe(`${removeScriptTag ? "With" : "Without"} the script tag removal between tests`, () => {
-      beforeEach(() => {
-        if (removeScriptTag) {
-          sdkBundleCleanup();
-        }
-      });
-
-      it("should log a warning message if multiple MetabaseProvider components are used", () => {
-        cy.window().then((win) => {
-          cy.spy(win.console, "warn").as("consoleWarn");
-        });
-
-        cy.mount(
-          <>
-            <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}>
-              <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />
-            </MetabaseProvider>
-            <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}>
-              <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />
-            </MetabaseProvider>
-          </>,
-        );
-
-        cy.get("@consoleWarn").should(
-          "be.calledWithMatch",
-          "Multiple instances of MetabaseProvider detected",
-        );
-
-        cy.findAllByTestId("loading-indicator").should("have.length", 2);
-      });
-
-      it("should display an SDK question", () => {
-        cy.window().then((win) => {
-          cy.spy(win.console, "warn").as("consoleWarn");
-        });
-
+      it("should show a custom loader when the SDK bundle is loading", () => {
         mountSdkContent(
           <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />,
+          {
+            strictMode,
+            sdkProviderProps: {
+              loaderComponent: () => <div>Loading...</div>,
+            },
+            waitForUser: false,
+          },
         );
 
-        getSdkRoot().within(() => {
-          cy.findByText("Orders").should("exist");
+        cy.findByTestId("loading-indicator").should("have.text", "Loading...");
+      });
+
+      [
+        {
+          removeScriptTag: false,
+        },
+        {
+          removeScriptTag: true,
+        },
+      ].forEach(({ removeScriptTag }) => {
+        describe(`${removeScriptTag ? "With" : "Without"} the script tag removal between tests`, () => {
+          beforeEach(() => {
+            if (removeScriptTag) {
+              sdkBundleCleanup();
+            }
+          });
+
+          it("should log a warning message if multiple MetabaseProvider components are used", () => {
+            cy.window().then((win) => {
+              cy.spy(win.console, "warn").as("consoleWarn");
+            });
+
+            mountSdk(
+              <>
+                <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}>
+                  <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />
+                </MetabaseProvider>
+                <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}>
+                  <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />
+                </MetabaseProvider>
+              </>,
+              { strictMode },
+            );
+
+            cy.get("@consoleWarn").should(
+              "be.calledWithMatch",
+              "Multiple instances of MetabaseProvider detected",
+            );
+
+            cy.findAllByTestId("loading-indicator").should("have.length", 2);
+          });
+
+          it("should display an SDK question", () => {
+            cy.window().then((win) => {
+              cy.spy(win.console, "warn").as("consoleWarn");
+            });
+
+            mountSdkContent(
+              <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />,
+              { strictMode },
+            );
+
+            getSdkRoot().within(() => {
+              cy.findByText("Orders").should("exist");
+            });
+
+            cy.get("@consoleWarn").should(
+              "not.be.calledWithMatch",
+              "Multiple instances of MetabaseProvider detected",
+            );
+          });
         });
-
-        cy.get("@consoleWarn").should(
-          "not.be.calledWithMatch",
-          "Multiple instances of MetabaseProvider detected",
-        );
       });
     });
   });
 
   describe("Components", () => {
-    it("should display an SDK question in StrictMode", () => {
-      sdkBundleCleanup();
-
-      cy.window().then((win) => {
-        cy.spy(win.console, "warn").as("consoleWarn");
-      });
-
-      mountSdkContent(<InteractiveQuestion questionId={ORDERS_QUESTION_ID} />, {
-        strictMode: true,
-      });
-
-      getSdkRoot().within(() => {
-        cy.findByText(
-          /The loading state is `Loaded` but the SDK bundle is not loaded yet/,
-        ).should("not.exist");
-
-        cy.findByText("Orders").should("exist");
-
-        cy.findByTestId("visualization-root").should("be.visible");
-      });
-    });
-
     it("should display an SDK question with custom layout components", () => {
       cy.window().then((win) => {
         cy.spy(win.console, "warn").as("consoleWarn");
