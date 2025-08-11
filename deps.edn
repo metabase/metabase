@@ -117,15 +117,15 @@
   net.thisptr/jackson-jq                    {:mvn/version "1.3.0"}              ; Java implementation of the JQ json query language
   org.apache.commons/commons-compress       {:mvn/version "1.27.1"}             ; compression utils
   org.apache.commons/commons-lang3          {:mvn/version "3.17.0"}             ; helper methods for working with java.lang stuff
-  org.apache.logging.log4j/log4j-1.2-api    {:mvn/version "2.24.3"}             ; apache logging framework
-  org.apache.logging.log4j/log4j-api        {:mvn/version "2.24.3"}             ; add compatibility with log4j 1.2
+  org.apache.logging.log4j/log4j-1.2-api    {:mvn/version "2.25.1"}             ; apache logging framework
+  org.apache.logging.log4j/log4j-api        {:mvn/version "2.25.1"}             ; add compatibility with log4j 1.2
   org.apache.logging.log4j/log4j-core       {:mvn/version "2.25.1"}             ; apache logging framework
   org.apache.logging.log4j/log4j-jcl        {:mvn/version "2.25.1"}             ; allows the commons-logging API to work with log4j 2
-  org.apache.logging.log4j/log4j-jul        {:mvn/version "2.24.3"}             ; java.util.logging (JUL) -> Log4j2 adapter
+  org.apache.logging.log4j/log4j-jul        {:mvn/version "2.25.1"}             ; java.util.logging (JUL) -> Log4j2 adapter
   org.apache.logging.log4j/log4j-layout-template-json
-  {:mvn/version "2.24.3"}             ; allows the custom json logging format
+  {:mvn/version "2.25.1"}             ; allows the custom json logging format
   org.apache.logging.log4j/log4j-slf4j2-impl
-  {:mvn/version "2.24.3"}             ; allows the slf4j2 API to work with log4j 2
+  {:mvn/version "2.25.1"}             ; allows the slf4j2 API to work with log4j 2
   org.apache.poi/poi                        {:mvn/version "5.4.1"}              ; Work with Office documents (e.g. Excel spreadsheets) -- newer version than one specified by Docjure
   org.apache.poi/poi-ooxml                  {:mvn/version "5.4.1"
                                              :exclusions  [org.bouncycastle/bcpkix-jdk15on
