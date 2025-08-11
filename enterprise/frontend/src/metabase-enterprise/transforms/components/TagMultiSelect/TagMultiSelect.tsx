@@ -41,14 +41,21 @@ export function TagMultiSelect({ tagIds, onChange }: TagMultiSelectProps) {
   const [selectedTagId, setSelectedTagId] = useState<TransformTagId>();
   const { sendErrorToast } = useMetadataToasts();
 
+  const handleCreate = async () => {
+    if (isCreating) {
+      return;
+    }
+    const { data: tag } = await createTag({ name: searchValue });
+    if (!tag) {
+      sendErrorToast(t`Failed to create a tag`);
+    } else {
+      onChange([...tagIds, tag.id]);
+    }
+  };
+
   const handleChange = async (value: string[]) => {
     if (value.includes(NEW_VALUE)) {
-      const { data: tag } = await createTag({ name: searchValue });
-      if (!tag) {
-        sendErrorToast(t`Failed to create a tag`);
-      } else {
-        onChange([...tagIds, tag.id]);
-      }
+      handleCreate();
     } else {
       onChange(value.map(getTagId));
     }
@@ -59,23 +66,23 @@ export function TagMultiSelect({ tagIds, onChange }: TagMultiSelectProps) {
     setSelectedTagId(undefined);
   };
 
-  const handleUpdate = () => {
-    handleModalClose();
-  };
-
-  const handleDelete = () => {
-    handleModalClose();
-    onChange(tagIds.filter((tagId) => tagId !== selectedTagId));
-  };
-
   const handleUpdateClick = (tag: TransformTag) => {
     setModalType("update");
     setSelectedTagId(tag.id);
   };
 
+  const handleUpdate = () => {
+    handleModalClose();
+  };
+
   const handleDeleteClick = (tag: TransformTag) => {
     setModalType("delete");
     setSelectedTagId(tag.id);
+  };
+
+  const handleDelete = () => {
+    handleModalClose();
+    onChange(tagIds.filter((tagId) => tagId !== selectedTagId));
   };
 
   return (
@@ -96,6 +103,7 @@ export function TagMultiSelect({ tagIds, onChange }: TagMultiSelectProps) {
             <NewTagSelectItem
               searchValue={searchValue}
               selected={item.checked}
+              onCreate={handleCreate}
             />
           ) : (
             <ExistingTagSelectItem
@@ -129,11 +137,21 @@ export function TagMultiSelect({ tagIds, onChange }: TagMultiSelectProps) {
 
 type NewTagSelectItemProps = SelectItemProps & {
   searchValue: string;
+  onCreate: () => void;
 };
 
-function NewTagSelectItem({ searchValue, selected }: NewTagSelectItemProps) {
+function NewTagSelectItem({
+  searchValue,
+  selected,
+  onCreate,
+}: NewTagSelectItemProps) {
+  const handleClick = (event: MouseEvent) => {
+    event.stopPropagation();
+    onCreate();
+  };
+
   return (
-    <SelectItem selected={selected} mih="2.25rem">
+    <SelectItem selected={selected} mih="2.25rem" onClick={handleClick}>
       <Text c="inherit" lh="inherit">
         {jt`Create ${(<strong key="value">{searchValue}</strong>)}`}
       </Text>
