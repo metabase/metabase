@@ -18,16 +18,19 @@
 
   NOTE: The 'immediate mode' indexing apis in the libs: (index, pgvector-api) are still available and work as document
   but are not coordinated with any gated updates and therefore might race if gate indexers are also running."
-  (:require [buddy.core.hash :as buddy-hash]
-            [honey.sql :as sql]
-            [metabase.util :as u]
-            [metabase.util.json :as json]
-            [metabase.util.log :as log]
-            [next.jdbc :as jdbc]
-            [next.jdbc.result-set :as jdbc.rs])
+  (:require
+   [buddy.core.hash :as buddy-hash]
+   [honey.sql :as sql]
+   [metabase.util :as u]
+   [metabase.util.json :as json]
+   [metabase.util.log :as log]
+   [next.jdbc :as jdbc]
+   [next.jdbc.result-set :as jdbc.rs])
   (:import (java.sql Timestamp)
            (java.time Duration Instant OffsetDateTime)
            (org.postgresql.util PGobject)))
+
+(set! *warn-on-reflection* true)
 
 ;; multiple threads can hit the gating table, row states can be committed in any order,
 ;; gated table provides a gated_at value which never decreases with new writes
@@ -36,7 +39,12 @@
 ;; ideal maximum write time (we can allow for some error in lag-tolerance).
 ;; we should see tx timeout policies set accordingly e.g: SET LOCAL statement_timeout
 ;; we should use one transaction per write to limit opportunity for error here.
-(def ^Duration gate-write-timeout (Duration/ofSeconds 5))
+(def ^Duration gate-write-timeout
+  "The time in which gate-documents! transactions should commit.
+  Optimistically enforced by SET LOCAL statement_timeout.
+  This value is used to determine the lag-tolerance, and the degree to which we might
+  expect to see out of order commits (e.g. lag-tolerance = gate-write-timeout * 2)."
+  (Duration/ofSeconds 5))
 
 (def max-batch-size
   "The maximum number of documents that can be sent to (gate-documents!) without causing an error"
@@ -258,15 +266,14 @@
 
   (jdbc/execute! pgvector ["delete from index_gate"])
 
-  (time
-   (doseq [chunk (partition-all 512 search-docs)]
-     (gate-documents! pgvector
-                      index-metadata
-                      (for [search-doc chunk
-                            :let [search-doc (if (< (rand) 0.5)
-                                               (assoc search-doc :updated_at (java.time.Instant/now))
-                                               search-doc)]]
-                        (search-doc->gate-doc search-doc (Instant/now))))))
+  (doseq [chunk (partition-all 512 search-docs)]
+    (gate-documents! pgvector
+                     index-metadata
+                     (for [search-doc chunk
+                           :let [search-doc (if (< (rand) 0.5)
+                                              (assoc search-doc :updated_at (java.time.Instant/now))
+                                              search-doc)]]
+                       (search-doc->gate-doc search-doc (Instant/now)))))
 
   (jdbc/execute! pgvector ["select * from index_gate limit 100"])
 

@@ -1,18 +1,23 @@
 (ns metabase-enterprise.semantic-search.indexer
-  (:require [honey.sql :as sql]
-            [metabase-enterprise.semantic-search.gate :as semantic.gate]
-            [metabase-enterprise.semantic-search.index :as semantic.index]
-            [metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]
-            [metabase.util.log :as log]
-            [next.jdbc :as jdbc]
-            [next.jdbc.result-set :as jdbc.rs])
+  (:require
+   [honey.sql :as sql]
+   [metabase-enterprise.semantic-search.gate :as semantic.gate]
+   [metabase-enterprise.semantic-search.index :as semantic.index]
+   [metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]
+   [metabase.util.log :as log]
+   [next.jdbc :as jdbc]
+   [next.jdbc.result-set :as jdbc.rs])
   (:import (java.time Duration Instant)))
+
+(set! *warn-on-reflection* true)
 
 (def ^:private poll-limit 1000)
 
 (def ^:private lag-tolerance (.multipliedBy semantic.gate/gate-write-timeout 2))
 
-(defn indexing-step [pgvector index-metadata index indexing-state]
+(defn indexing-step
+  "Runs a single blocking step of the indexing loop."
+  [pgvector index-metadata index indexing-state]
   (letfn [(poll []
             (let [{:keys [watermark]} @indexing-state]
               (semantic.gate/poll pgvector index-metadata watermark
@@ -67,7 +72,9 @@
 (defn- sleep [ms]
   (Thread/sleep (long ms)))
 
-(defn on-indexing-idle [indexing-state]
+(defn on-indexing-idle
+  "Runs any loop idle behaviour (such as waiting), called after each step."
+  [indexing-state]
   (let [{:keys [last-poll-count last-indexed-count]} @indexing-state
         novelty-ratio (if (zero? last-poll-count) 0 (/ last-indexed-count last-poll-count))]
     (cond
@@ -108,10 +115,14 @@
        last-seen-change
        (.isAfter now (.plus last-seen-change exit-early-cold-duration))))
 
-(defn indexing-loop [pgvector
-                     index-metadata
-                     index
-                     indexing-state]
+(defn indexing-loop
+  "Runs the indexing loop on the current thread, blocks until exit or interrupted.
+  See (max-run-time-elapsed?) and (exit-early-due-to-cold-data?) for automatic
+  exit conditions."
+  [pgvector
+   index-metadata
+   index
+   indexing-state]
   (vswap! indexing-state assoc :start-time (Instant/now))
   (loop []
     (cond
@@ -142,12 +153,17 @@
           (recur))))))
 
 (def default-max-run-duration
+  "The default amount of time we expect to run the loop for before yielding to quartz."
   (Duration/ofMinutes 60))
 
 (def default-exit-early-cold-duration
+  "The default time we should wait to see new data before yielding back to quartz."
   (Duration/ofSeconds 30))
 
-(defn init-indexing-state [metadata-row]
+(defn init-indexing-state
+  "Initialises the indexing state variable, contains the watermark position, statistics on
+  what has been seen, and parameters for policy such as the :max-run-duration."
+  [metadata-row]
   (let [watermark (semantic.gate/resume-watermark metadata-row)
         {:keys [last-seen]} watermark]
     (volatile! {:watermark                watermark
@@ -162,6 +178,10 @@
                 :exit-early-cold-duration default-exit-early-cold-duration})))
 
 (defn quartz-job-run!
+  "Quartz job (execute) implementation. Determines the active index before running
+  a (indexing-loop) with the default parameters.
+
+  Blocks until exit or interrupt if an active index exists."
   [pgvector
    index-metadata]
   (let [{:keys [index metadata-row]} (semantic.index-metadata/get-active-index-state pgvector index-metadata)]

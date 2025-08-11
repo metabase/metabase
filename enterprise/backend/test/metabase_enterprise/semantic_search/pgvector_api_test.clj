@@ -15,6 +15,8 @@
    [next.jdbc.result-set :as jdbc.rs])
   (:import (java.time Duration)))
 
+(set! *warn-on-reflection* true)
+
 (use-fixtures :once #'semantic.tu/once-fixture)
 
 ;; NOTE: isolation tests are absent, in prod there is only one index-metadata

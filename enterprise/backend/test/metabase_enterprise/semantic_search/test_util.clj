@@ -11,7 +11,6 @@
    [metabase.search.core :as search.core]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.test :as mt]
-   [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [next.jdbc :as jdbc]

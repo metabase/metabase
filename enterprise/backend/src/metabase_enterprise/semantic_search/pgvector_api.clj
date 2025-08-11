@@ -15,6 +15,8 @@
    [metabase.util.log :as log])
   (:import (java.time Instant)))
 
+(set! *warn-on-reflection* true)
+
 #_{:clj-kondo/ignore [unresolved-require]}
 (comment
   (require '[metabase-enterprise.semantic-search.db :as semantic.db])

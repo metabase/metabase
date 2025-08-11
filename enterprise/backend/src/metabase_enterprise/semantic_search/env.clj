@@ -1,7 +1,8 @@
 (ns metabase-enterprise.semantic-search.env
-  (:require [metabase-enterprise.semantic-search.db :as semantic.db]
-            [metabase-enterprise.semantic-search.embedding :as semantic.embedding]
-            [metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]))
+  (:require
+   [metabase-enterprise.semantic-search.db :as semantic.db]
+   [metabase-enterprise.semantic-search.embedding :as semantic.embedding]
+   [metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]))
 
 ;; global configuration / state containment facility
 ;; only core and the task definitions (for which integration with metabase demands globals)

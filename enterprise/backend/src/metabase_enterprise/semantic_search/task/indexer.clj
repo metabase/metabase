@@ -1,13 +1,14 @@
 (ns metabase-enterprise.semantic-search.task.indexer
-  (:require [clojurewerkz.quartzite.jobs :as jobs]
-            [clojurewerkz.quartzite.schedule.simple :as simple]
-            [clojurewerkz.quartzite.triggers :as triggers]
-            [metabase-enterprise.semantic-search.env :as semantic.env]
-            [metabase-enterprise.semantic-search.indexer :as semantic-search.indexer]
-            [metabase.premium-features.core :as premium-features]
-            [metabase.search.engine :as search.engine]
-            [metabase.task.core :as task]
-            [metabase.util.log :as log])
+  (:require
+   [clojurewerkz.quartzite.jobs :as jobs]
+   [clojurewerkz.quartzite.schedule.simple :as simple]
+   [clojurewerkz.quartzite.triggers :as triggers]
+   [metabase-enterprise.semantic-search.env :as semantic.env]
+   [metabase-enterprise.semantic-search.indexer :as semantic-search.indexer]
+   [metabase.premium-features.core :as premium-features]
+   [metabase.search.engine :as search.engine]
+   [metabase.task.core :as task]
+   [metabase.util.log :as log])
   (:import (java.time Duration Instant)
            (java.util Date)
            (org.quartz DisallowConcurrentExecution)))
