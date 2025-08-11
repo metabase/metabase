@@ -84,13 +84,11 @@ export function renderValue(
 }
 
 export function getHeaderColumns(columns: DatasetColumn[]): DatasetColumn[] {
-  const titleColumn = getTitleColumn(columns);
-  const subtitleColumn = getSubtitleColumn(columns);
-  const avatarColumn = getAvatarColumn(columns);
-  const headerColumns = [titleColumn, subtitleColumn, avatarColumn].filter(
-    (column): column is DatasetColumn => column != null,
-  );
-  return headerColumns;
+  return [
+    getTitleColumn(columns),
+    getSubtitleColumn(columns),
+    getAvatarColumn(columns),
+  ].filter((column): column is DatasetColumn => column != null);
 }
 
 export function getTitleColumn(
