@@ -9,6 +9,13 @@ import {
   getGlobalSettingsForColumn,
   getSettingDefinitionsForColumn,
 } from "metabase/visualizations/lib/settings/column";
+import {
+  isAvatarURL,
+  isEntityName,
+  isImageURL,
+  isPK,
+  isTitle,
+} from "metabase-lib/v1/types/utils/isa";
 import type { DatasetColumn, RowValue } from "metabase-types/api";
 import { createMockCard } from "metabase-types/api/mocks";
 
@@ -74,4 +81,51 @@ export function renderValue(
   return formattedValue != null && formattedValue !== ""
     ? formattedValue
     : NO_VALUE;
+}
+
+export function getHeaderColumns(columns: DatasetColumn[]): DatasetColumn[] {
+  const titleColumn = getTitleColumn(columns);
+  const subtitleColumn = getSubtitleColumn(columns);
+  const avatarColumn = getAvatarColumn(columns);
+  const headerColumns = [titleColumn, subtitleColumn, avatarColumn].filter(
+    (column): column is DatasetColumn => column != null,
+  );
+  return headerColumns;
+}
+
+export function getTitleColumn(
+  columns: DatasetColumn[],
+): DatasetColumn | undefined {
+  const entityName = columns.find(isEntityName);
+  const title = columns.find(isTitle);
+  const pk = columns.find(isPK);
+
+  return entityName ?? title ?? pk;
+}
+
+export function getSubtitleColumn(
+  columns: DatasetColumn[],
+): DatasetColumn | undefined {
+  const titleColumn = getTitleColumn(columns);
+  const pk = columns.find(isPK);
+
+  if (titleColumn) {
+    return titleColumn === pk ? undefined : pk;
+  }
+
+  return undefined;
+}
+
+export function getAvatarColumn(
+  columns: DatasetColumn[],
+): DatasetColumn | undefined {
+  const avatar = columns.find(isAvatarURL);
+  const image = columns.find(isImageURL);
+
+  return avatar ?? image;
+}
+
+export function getBodyColumns(columns: DatasetColumn[]): DatasetColumn[] {
+  const headerColumns = getHeaderColumns(columns);
+  return columns.filter((column) => !headerColumns.includes(column));
 }
