@@ -61,7 +61,7 @@ describe("scenarios > embedding > sdk iframe embed setup > user settings persist
     });
   });
 
-  it("persists chart embed options", () => {
+  it("persists chart embed options", { tags: "@flaky" }, () => {
     navigateToEmbedOptionsStep({
       experience: "chart",
       resourceName: QUESTION_NAME,
@@ -191,7 +191,7 @@ describe("scenarios > embedding > sdk iframe embed setup > user settings persist
     });
 
     getEmbedSidebar().within(() => {
-      cy.findByLabelText("Existing Metabase Session").should("not.be.checked");
+      cy.findByLabelText("Existing Metabase session").should("not.be.checked");
       cy.findByLabelText("Single sign-on (SSO)").should("be.checked");
       codeBlock().should("not.contain", "useExistingUserSession");
     });

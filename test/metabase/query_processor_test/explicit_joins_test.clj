@@ -582,9 +582,9 @@
                                         :limit        2})))]
         (is (= (mapv
                 mt/format-name
-                ["id"   "date"   "user_id"     "venue_id"                       ; checkins
-                 "id_2" "name"   "last_login"                                   ; users
-                 "id_3" "name_2" "category_id" "latitude" "longitude" "price"]) ; venues
+                ["id"     "date"   "user_id"     "venue_id"                       ; checkins
+                 "id_2"   "name"   "last_login"                                   ; users
+                 #_"id_3" "id_2_2" "name_2" "category_id" "latitude" "longitude" "price"]) ; venues
                columns))
         (is (= [[1 "2014-04-07T00:00:00Z" 5 12
                  5 "Quentin Sören" "2014-10-03T17:30:00Z"
@@ -1139,6 +1139,7 @@
                   ["2016-06-01T00:00:00Z" 2 "2016-06-01T00:00:00Z" 1]]
                  (mt/rows (qp/process-query query)))))))))
 
+;;; see also [[metabase.query-processor.preprocess-test/test-31769]]
 (deftest ^:parallel test-31769
   (testing "Make sure queries built with MLv2 that have source Cards with joins work correctly (#31769) (#33083)"
     (let [metadata-provider (lib.tu.mocks-31769/mock-metadata-provider
@@ -1148,9 +1149,15 @@
         (let [legacy-query (lib.convert/->legacy-MBQL
                             (lib.tu.mocks-31769/query metadata-provider))]
           (mt/with-native-query-testing-context legacy-query
-            (is (= [["Doohickey" 3976 "Doohickey"]
-                    ["Gadget"    4939 "Gadget"]]
-                   (mt/rows (qp/process-query legacy-query))))))))))
+            (let [results (qp/process-query legacy-query)]
+              (is (= [["Products → Category"                     "Products__CATEGORY"]
+                      ["Count"                                   "count"]
+                      ["Card 2 - Products → Category → Category" "Card 2 - Products → Category__CATEGORY"]]
+                     (map (juxt :display_name :lib/desired-column-alias)
+                          (mt/cols results))))
+              (is (= [["Doohickey" 3976 "Doohickey"]
+                      ["Gadget"    4939 "Gadget"]]
+                     (mt/rows results))))))))))
 
 (deftest ^:parallel test-13000
   (testing "Should join MBQL Saved Questions (#13000, #13649, #13744)"

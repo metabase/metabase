@@ -1,4 +1,5 @@
 name: Test database driver
+description: Test database driver
 inputs:
   junit-name:
     required: true

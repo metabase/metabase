@@ -14,7 +14,6 @@
    [metabase.session.models.session :as session]
    [metabase.sso.core :as sso]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.log :as log]
    [ring.util.response :as response]
    [toucan2.core :as t2])
   (:import
@@ -33,7 +32,6 @@
               :last_name        last-name
               :email            email
               :sso_source       :jwt
-              :login_attributes {}
               :jwt_attributes   user-attributes}]
     (or (sso-utils/fetch-and-update-login-attributes! user (sso-settings/jwt-user-provisioning-enabled?))
         (sso-utils/check-user-provisioning :jwt)
@@ -55,17 +53,8 @@
   "Registered claims in the JWT standard which we should not interpret as login attributes"
   [:iss :iat :sub :aud :exp :nbf :jti])
 
-(defn- filter-non-string-attributes
-  [jwt-data]
-  (->> jwt-data
-       (filter (fn [[key value]]
-                 (if (string? value)
-                   value
-                   (log/warnf "Dropping JWT claim '%s' with non-string value: %s" (name key) value))))
-       (into {})))
-
 (defn- jwt-data->login-attributes [jwt-data]
-  (filter-non-string-attributes
+  (sso-utils/filter-non-stringable-attributes
    (apply dissoc
           jwt-data
           (jwt-attribute-email)
@@ -117,8 +106,7 @@
                          (catch Throwable e
                            (throw
                             (ex-info (ex-message e)
-                                     {:status      "error-jwt-bad-unsigning"
-                                      :status-code 401}))))
+                                     {:status-code 401}))))
           login-attrs  (jwt-data->login-attributes jwt-data)
           email        (get jwt-data (jwt-attribute-email))
           first-name   (get jwt-data (jwt-attribute-firstname))
@@ -127,6 +115,11 @@
           session      (session/create-session! :sso user (request/device-info request))]
       (sync-groups! user jwt-data)
       {:session session, :redirect-url redirect-url, :jwt-data jwt-data})))
+
+(defn jwt->session
+  "Given a JWT, return a valid session token for the associated user (creating the user if necessary)."
+  [jwt request]
+  (-> (session-data jwt request) :session :key))
 
 (defn- throw-react-sdk-embedding-disabled
   []
@@ -138,7 +131,7 @@
 (defn- throw-simple-embedding-disabled
   []
   (throw
-   (ex-info (tru "Simple Embedding is disabled. Enable it in the embedding settings.")
+   (ex-info (tru "Embedded Analytics JS is disabled. Enable it in the embedding settings.")
             {:status      "error-embedding-simple-disabled"
              :status-code 402})))
 
