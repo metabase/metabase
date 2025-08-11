@@ -35,7 +35,7 @@
                             (fn [& _]
                               (reset! semantic-called? true)
                               {:results [{:id 1 :name "semantic-result" :model "card" :collection_id 1  :score 0}]
-                               :filtered-count 1})
+                               :filtered-count 0})
                             appdb/results
                             (fn [_]
                               (reset! appdb-called? true)
@@ -53,7 +53,7 @@
                             (fn [& _]
                               (reset! semantic-called? true)
                               {:results [{:id 1 :name "semantic-result" :model "card" :collection_id 1  :score 0.8}]
-                               :filtered-count 1})
+                               :filtered-count 0})
                             appdb/results
                             (fn [_]
                               (reset! appdb-called? true)
@@ -73,6 +73,8 @@
   [semantic-results appdb-fn thunk]
   (with-redefs [semantic.pgvector-api/query (fn [_pgvector _index-metadata _search-ctx]
                                               {:results semantic-results
+                                               ;; Set filtered-count to a non-zero value to ensure fallback logic is
+                                               ;; triggered
                                                :filtered-count 1})
                 search.engine/supported-engine? (constantly true)
                 search.engine/results (fn [ctx]
