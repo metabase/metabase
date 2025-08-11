@@ -115,7 +115,7 @@ export function sendEmailAndAssert(callback) {
   clickSend();
 
   cy.request("GET", `http://localhost:${WEB_PORT}/email`).then(({ body }) => {
-    callback(body[-1]);
+    callback(body[0]);
   });
 }
 
