@@ -1,4 +1,3 @@
-import { Link } from "react-router";
 import { t } from "ttag";
 
 import {
@@ -9,6 +8,7 @@ import {
 import { Box, Group, Icon, Text, rem } from "metabase/ui";
 import type { TableId } from "metabase-types/api";
 
+import { Breadcrumb } from "./Breadcrumb";
 import S from "./Nav.module.css";
 import { NavButton } from "./NavButton";
 import { getExploreTableUrl } from "./utils";
@@ -39,7 +39,7 @@ export const Nav = ({
   }
 
   return (
-    <Group align="center" className={S.nav} gap="md">
+    <Group align="center" gap="md">
       {onBackClick && (
         <NavButton
           flex="0 0 auto"
@@ -66,50 +66,31 @@ export const Nav = ({
       )}
 
       <Group align="center" gap={0}>
-        <Box
-          c="text-light"
-          className={S.breadcrumb}
-          component={Link}
-          flex="0 0 auto"
-          fw="bold"
-          to={`/browse/databases/${table.db_id}`}
-        >
+        <Breadcrumb href={`/browse/databases/${table.db_id}`}>
           <Group align="center" gap={rem(10)} wrap="nowrap">
             <Icon flex="0 0 auto" name="database" size={20} />
 
             <Box>{table.db.name}</Box>
           </Group>
-        </Box>
+        </Breadcrumb>
 
         {schemas && schemas.length > 1 && table.schema && (
           <>
             <Separator />
 
-            <Box
-              c="text-light"
-              className={S.breadcrumb}
-              component={Link}
-              flex="0 0 auto"
-              fw="bold"
-              to={`/browse/databases/${table.db_id}/schema/${table.schema}`}
+            <Breadcrumb
+              href={`/browse/databases/${table.db_id}/schema/${table.schema}`}
             >
               {table.schema}
-            </Box>
+            </Breadcrumb>
           </>
         )}
 
         <Separator />
 
-        <Box
-          c="text-light"
-          className={S.breadcrumb}
-          component={Link}
-          flex="0 0 auto"
-          fw="bold"
-          to={getExploreTableUrl(table)}
-        >
+        <Breadcrumb href={getExploreTableUrl(table)}>
           {table.display_name}
-        </Box>
+        </Breadcrumb>
       </Group>
     </Group>
   );

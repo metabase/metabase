@@ -1,0 +1,7 @@
+.breadcrumb {
+  font-size: 20px; /* var(--mantine-font-size-md) */
+
+  &:hover {
+    color: var(--mb-color-brand) !important;
+  }
+}
