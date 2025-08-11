@@ -1,4 +1,20 @@
 (ns metabase-enterprise.semantic-search.indexer
+  "Companion to the gate lib defining an indexing loop to be invoked as a singleton Quartz job.
+
+  - A (cluster singleton) interruptible quartz job should invoke (quartz-job-run!) (see task/indexer.clj).
+  - The job will poll the gate table in a loop and index anything new it finds (inserts, updates & deletes)
+  - Saves watermark state back to index metadata for each batch of documents indexed
+    (if interrupted / crashes / process dies, polling can continue from its watermark position).
+  - The job can run the indexing-loop for a time, eventually yielding back to quartz
+    - we do not poll once per job invocation, indexing-loop can poll and index data many, many times before yielding.
+    - it will exit if it has run for default-max-run-duration
+    - it will exit if it has not seen any new data in default-exit-early-cold-duration
+    - it will exit if it is interrupted (e.g. node shutdown)
+  - Polling behaviour respects the limitations of gate.clj (there is a 2x gate-write-timeout lag tolerance)
+    - if there is a lot of new write activity you might see the indexer stall for a short time
+      to wait for commit-races to become very unlikely.
+    - when reindexing cold gate entries the loop is free to index using straightforward key-set pagination, no stalls.
+  - Any kind of exception will immediately exit the loop (quartz is free to reschedule)."
   (:require
    [honey.sql :as sql]
    [metabase-enterprise.semantic-search.gate :as semantic.gate]
