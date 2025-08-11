@@ -48,6 +48,7 @@ export const MetabotNode = Node.create<{
   marks: "",
   draggable: true,
   selectable: false,
+  code: true, // disallows adding markdown (headings, blockquote, etc) to metabot block
 
   addOptions() {
     return {
@@ -65,18 +66,6 @@ export const MetabotNode = Node.create<{
 
   addKeyboardShortcuts() {
     return {
-      // newline on Enter
-      Enter: ({ editor }) => {
-        const { state } = editor;
-        const { selection } = state;
-        const { $from, empty } = selection;
-
-        if (!empty || $from.parent.type !== this.type) {
-          return false;
-        }
-        return editor.commands.setHardBreak();
-      },
-
       // run metabot on mod-Enter
       "mod-Enter": ({ editor }) => {
         const { state } = editor;
