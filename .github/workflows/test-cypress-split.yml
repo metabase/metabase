@@ -43,12 +43,21 @@ jobs:
     strategy:
       fail-fast: false
       matrix: ${{ fromJSON(needs.prepare.outputs.matrix) }}
+    env:
+      # Essential environment variables from e2e-test.yml
+      DISPLAY: ""
+      TZ: US/Pacific
+      CYPRESS_CI: true
+      COMMIT_INFO_MESSAGE: "Test cypress-split timing generation"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
+
+      - name: Prepare Cypress environment
+        uses: ./.github/actions/prepare-cypress
 
       - name: Create test timing file
         run: |
