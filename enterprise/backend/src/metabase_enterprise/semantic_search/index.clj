@@ -296,28 +296,29 @@
     is used to block the caller thread until a thread is available, to prevent realizing documents until they can be
     processed."}
   index-update-executor
-  (let [n (long (semantic-settings/index-update-thread-count))
-        retry-handler (reify RejectedExecutionHandler
-                        (^void rejectedExecution [_ ^Runnable task ^ThreadPoolExecutor executor]
-                          (if *retrying*
-                            (throw (RejectedExecutionException.))
-                            (loop [attempt 0]
-                              (let [op
-                                    (if (.isShutdown executor)
-                                      (.run task)
-                                      (try
-                                        (binding [*retrying* true]
-                                          (.execute executor task))
-                                        (catch RejectedExecutionException _ ::retry)))]
-                                (case op
-                                  ::retry
-                                  (let [delay-ms (min 500 (* 10 (Math/pow 2 attempt)))]
-                                    (Thread/sleep (long delay-ms))
-                                    (recur (inc attempt)))
-                                  nil))))))]
-    (ThreadPoolExecutor. n n 0 TimeUnit/SECONDS
-                         (ArrayBlockingQueue. n)
-                         retry-handler)))
+  (delay
+    (let [n (long (semantic-settings/index-update-thread-count))
+          retry-handler (reify RejectedExecutionHandler
+                          (^void rejectedExecution [_ ^Runnable task ^ThreadPoolExecutor executor]
+                            (if *retrying*
+                              (throw (RejectedExecutionException.))
+                              (loop [attempt 0]
+                                (let [op
+                                      (if (.isShutdown executor)
+                                        (.run task)
+                                        (try
+                                          (binding [*retrying* true]
+                                            (.execute executor task))
+                                          (catch RejectedExecutionException _ ::retry)))]
+                                  (case op
+                                    ::retry
+                                    (let [delay-ms (min 500 (* 10 (Math/pow 2 attempt)))]
+                                      (Thread/sleep (long delay-ms))
+                                      (recur (inc attempt)))
+                                    nil))))))]
+      (ThreadPoolExecutor. n n 0 TimeUnit/SECONDS
+                           (ArrayBlockingQueue. n)
+                           retry-handler))))
 
 (defn upsert-index-pooled!
   "Returns a future which upserts the provided documents into the index table, executed using the provided thread pool."
