@@ -1,0 +1,9 @@
+.listItem {
+  cursor: pointer;
+  border: 1px solid var(--mb-color-border);
+  border-radius: var(--mantine-radius-md);
+
+  &:hover {
+    background-color: color-mix(in srgb, var(--mb-color-brand), white 80%);
+  }
+}
