@@ -15,7 +15,7 @@ import {
   Nav,
   Relationships,
 } from "metabase/detail-view/components";
-import { getRowName } from "metabase/detail-view/utils";
+import { getHeaderColumns, getRowName } from "metabase/detail-view/utils";
 import { useDispatch } from "metabase/lib/redux";
 import { closeNavbar } from "metabase/redux/app";
 import { Box, Group, Stack, rem } from "metabase/ui";
@@ -61,6 +61,7 @@ export function DetailView({
 
   const rows = useMemo(() => data?.rows ?? [], [data]);
   const columns = useMemo(() => data?.results_metadata.columns ?? [], [data]);
+  const headerColumns = useMemo(() => getHeaderColumns(columns), [columns]);
 
   const rowFromList =
     typeof currentRowIndex === "undefined" ? undefined : rows[currentRowIndex];
@@ -190,7 +191,10 @@ export function DetailView({
       >
         <Group justify="center" flex="1" px="xl" py={rem(64)}>
           <Stack gap={rem(64)} maw={rem(900)} w="100%">
-            <Header columns={columns} row={row} />
+            {headerColumns.length > 0 && (
+              <Header columns={headerColumns} row={row} />
+            )}
+
             <Details />
           </Stack>
         </Group>
