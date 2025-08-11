@@ -10,9 +10,6 @@ on:
         type: string
         required: false
         default: ""
-      debug_specs:
-        type: boolean
-        default: false
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}-e2e
@@ -24,7 +21,6 @@ jobs:
     with:
       chunks: 50
       specs: ${{ inputs.specs }}
-      debug_specs: false
 
   reset-e2e-test-comment:
     if: ${{ github.event_name == 'pull_request' }}

@@ -22,10 +22,6 @@ on:
         description: "Reuse latest existing artifacts instead of building (for testing workflows)"
         type: boolean
         default: false
-      debug_specs:
-        description: "Use minimal specs for debugging (much faster)"
-        type: boolean
-        default: false
 
 jobs:
   files-changed:
@@ -230,9 +226,7 @@ jobs:
     secrets: inherit
     with:
       skip: ${{ needs.files-changed.outputs.e2e_all != 'true' && !inputs.run_e2e_tests }}
-      # Always use empty specs to trigger auto-split branch, handle debug specs via environment
       specs: ${{ needs.files-changed.outputs.e2e_all_files == needs.files-changed.outputs.e2e_specs_files && needs.files-changed.outputs.e2e_specs_files || '' }}
-      debug_specs: ${{ inputs.debug_specs }}
 
   # sdk-tests:
   #   needs: files-changed

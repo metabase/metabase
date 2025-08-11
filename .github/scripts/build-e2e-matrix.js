@@ -3,10 +3,6 @@
 // grouping some specific tests together, other tests are split into chunks
 
 const DEFAULT_SPEC_PATTERN = "./e2e/test/scenarios/**/*.cy.spec.*";
-const EMBEDDING_SDK_SPEC_PATTERN =
-  "./e2e/test/scenarios/embedding-sdk/**.cy.spec.*";
-const DEBUG_SPEC_PATTERN =
-  "./e2e/test/scenarios/organization/official-collections.cy.spec.js,./e2e/test/scenarios/organization/bookmarks-question.cy.spec.js,./e2e/test/scenarios/organization/edit-history-metadata.cy.spec.js,./e2e/test/scenarios/organization/bookmarks-collection.cy.spec.js,./e2e/test/scenarios/organization/content-verification.cy.spec.js,./e2e/test/scenarios/organization/timelines-collection.cy.spec.js,./e2e/test/scenarios/organization/timelines-question.cy.spec.js,./e2e/test/scenarios/organization/bookmarks-dashboard.cy.spec.js,./e2e/test/scenarios/filters/filter-bulk.cy.spec.js,./e2e/test/scenarios/filters/filter-sources.cy.spec.js,./e2e/test/scenarios/filters/relative-datetime.cy.spec.js,./e2e/test/scenarios/filters/view.cy.spec.js";
 
 /**
  *
@@ -15,7 +11,7 @@ const DEBUG_SPEC_PATTERN =
  * or a pattern like DEFAULT_SPEC_PATTERN
  */
 function buildMatrix(options, inputSpecs, inputChunks) {
-  const { java, defaultRunner, debugSpecs } = options;
+  const { java, defaultRunner } = options;
 
   // number of specs per chunk when running specific specs
   const SPECS_PER_CHUNK = 5;
@@ -29,20 +25,10 @@ function buildMatrix(options, inputSpecs, inputChunks) {
   const isDefaultSpecPattern =
     inputSpecs === "" || inputSpecs === DEFAULT_SPEC_PATTERN;
 
-  console.log("Debug mode enabled:", debugSpecs);
-
-  console.log("Processed specs value:", inputSpecs);
-  console.log("Is default pattern:", isDefaultSpecPattern);
 
   let regularChunks;
   if (isDefaultSpecPattern) {
-    // If debug mode, use much fewer chunks for faster testing
-    if (debugSpecs) {
-      console.log("Debug mode: using only 3 chunks instead of", inputChunks);
-      regularChunks = 3;
-    } else {
-      regularChunks = inputChunks;
-    }
+    regularChunks = inputChunks;
   } else {
     // when pattern is not default, it means we passed some custom list of the changed specs
     // so we need to calculate how many chunks we need to run

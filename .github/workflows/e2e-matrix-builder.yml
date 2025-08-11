@@ -11,10 +11,6 @@ on:
         required: false
         type: string
         default: "./e2e/test/scenarios/**/*.cy.spec.*"
-      debug_specs:
-        required: false
-        type: boolean
-        default: false
     outputs:
       matrix:
         value: ${{ jobs.build-matrix.outputs.matrix }}
@@ -45,26 +41,19 @@ jobs:
         id: matrix
         env:
           chunks: ${{ inputs.chunks }}
-          debug_specs: ${{ inputs.debug_specs }}
         with:
           script: | # js
             const { buildMatrix } = require('${{ github.workspace }}/.github/scripts/build-e2e-matrix.js');
             const inputSpecs = "${{ inputs.specs }}";
             const inputChunks = Number(process.env.chunks);
-            const debugSpecs = process.env.debug_specs === 'true';
             const java = 21;
             const defaultRunner = "ubuntu-22.04";
             const options = {
               java,
               defaultRunner,
-              debugSpecs,
             };
             const { config, regularChunks, isDefaultSpecPattern } = buildMatrix(options, inputSpecs, inputChunks);
 
             core.setOutput("regularChunks", JSON.stringify(regularChunks));
             core.setOutput("config", JSON.stringify({ include: config }));
             core.setOutput("isDefaultSpecPattern", JSON.stringify(isDefaultSpecPattern));
-
-            console.log({ regularChunks });
-            console.log("matrix config", config);
-            console.log("isDefaultSpecPattern", isDefaultSpecPattern);
