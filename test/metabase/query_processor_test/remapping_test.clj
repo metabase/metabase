@@ -343,18 +343,20 @@
                          :limit    3})]
             (is (= ["Title"                     ; products.title
                     "Category"                  ; products.category
-                    "Orders → Title"            ; orders.title
+                    ;; when generating the display name for Product ID -> Orders Title we take the name of the FK
+                    ;; column and strip off ID (`Product`) which results in `Product → Title`.
+                    "Product → Title"           ; product.title, remapped from orders.product_id
                     "Orders → Sum of Quantity"] ; sum(orders.quantity)
                    (map :display_name (qp.preprocess/query->expected-cols query))))
             (mt/with-native-query-testing-context query
               (let [results (qp/process-query query)]
                 (when (= driver/*driver* :h2)
                   (testing "Metadata"
-                    (is (= [["TITLE"    "Title"]          ; products.title
-                            ["CATEGORY" "Category"]       ; products.category
-                            ["TITLE_2"  "Orders → Title"] ; Orders.title (remapped from orders.product-id => products.title)
-                            ["sum"      "Orders → Sum of Quantity"]] ; sum(orders.quantity)
-                           (map (juxt :name :display_name) (mt/cols results))))))
+                    (is (= [["TITLE"    nil      "Title"]                     ; products.title
+                            ["CATEGORY" nil      "Category"]                  ; products.category
+                            ["TITLE_2"  "Orders" "Product → Title"]           ; product.title, remapped from orders.product_id
+                            ["sum"      "Orders" "Orders → Sum of Quantity"]] ; sum(orders.quantity)
+                           (map (juxt :name :metabase.lib.join/join-alias :display_name) (mt/cols results))))))
                 (is (= [["Rustic Paper Wallet"       "Gizmo"     "Rustic Paper Wallet"       347]
                         ["Small Marble Shoes"        "Doohickey" "Small Marble Shoes"        352]
                         ["Synergistic Granite Chair" "Doohickey" "Synergistic Granite Chair" 286]]
@@ -467,19 +469,19 @@
               ;; The order of remaps is not important to the FE. If it changes in the future that is ok.
               ;;
               ;; 2 remaps from the join against `VENUES`
-              "J__NAME_2"
-              "J__NAME_3"
+              "J__CATEGORIES__via__ID__NAME"
+              "J__CATEGORIES__via__CATEGORY_ID__NAME"
               ;; 2 remaps for the top-level query
               "CATEGORIES__via__CATEGORY_ID__NAME"
               "CATEGORIES__via__ID__NAME"
               ;; BROKEN! This is a duplicate and should not be returned. Interestingly enough, both Lib and QP
               ;; incorrectly calculate the set of returned columns and both include this. (Probably because Lib and QP
               ;; use mostly the same code these days.)
-              "J__NAME_2_2"]
+              "J__CATEGORIES__via__ID__NAME_2"]
              (map :lib/desired-column-alias (mt/cols results))))
       ;; The extra incorrect duplicate column seems to be sorta indetermiate? I've seen it match the value of
-      ;; `J__NAME_2` and `J__NAME_3` in different test runs and I'm not sure why. Not bothering to debug since it's not
-      ;; even supposed to be returned anyway.
+      ;; `J__CATEGORIES__via__ID__NAME` and `J__CATEGORIES__via__CATEGORY_ID__NAME` in different test runs and I'm not
+      ;; sure why. Not bothering to debug since it's not even supposed to be returned anyway.
       ;;
       ;;      <top-level :fields>          <join>                                           <join remaps>       <fields remaps>     <incorrect duplicate>
       (is (=? [[11 2 "Stout Burgers & Beers" 1 "Red Medicine"          4  10.0646 -165.374 3 "African"  "Asian"  "Burger" "American" string?]

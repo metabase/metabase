@@ -1,1 +1,1 @@
-export * from ".//embedding-sdk-helpers";
+export * from "./embedding-sdk-helpers";

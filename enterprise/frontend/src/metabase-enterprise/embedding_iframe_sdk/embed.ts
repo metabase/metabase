@@ -251,6 +251,16 @@ class MetabaseEmbed {
   private _getIsLocalhost() {
     const { hostname } = window.location;
 
+    try {
+      const instanceUrl = new URL(this._settings?.instanceUrl);
+
+      if (hostname === instanceUrl.hostname) {
+        return true;
+      }
+    } catch (error) {
+      console.error("unable to construct the URL:", error);
+    }
+
     return hostname === "localhost" || hostname === "127.0.0.1";
   }
 
@@ -373,8 +383,6 @@ class MetabaseEmbed {
           error,
         });
       }
-
-      throw error;
     }
   }
 
@@ -569,7 +577,6 @@ const MetabaseDashboardElement = createCustomElement("metabase-dashboard", [
   "drills",
   "initial-parameters",
   "hidden-parameters",
-  "is-save-enabled",
 ]);
 
 const MetabaseQuestionElement = createCustomElement("metabase-question", [

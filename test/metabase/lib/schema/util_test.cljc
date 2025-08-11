@@ -65,8 +65,8 @@
   (is (= ["Duplicate :lib/uuid #{\"00000000-0000-0000-0000-000000000001\"}"]
          (me/humanize (mr/explain ::lib.schema.util/unique-uuids query-with-duplicate-uuids)))))
 
-(deftest ^:parallel distinct-refs-test
-  (are [refs] (not (lib.schema.util/distinct-refs? refs))
+(deftest ^:parallel distinct-mbql-clauses-test
+  (are [refs] (not (lib.schema.util/distinct-mbql-clauses? refs))
     [[:field {:lib/uuid "00000000-0000-0000-0000-000000000000"} 1]
      [:field {:lib/uuid "00000000-0000-0000-0000-000000000001"} 1]]
 
@@ -79,18 +79,22 @@
     [[:field {:lib/uuid "00000000-0000-0000-0000-000000000000", :effective-type :type/Integer} 1]
      [:field {:lib/uuid "00000000-0000-0000-0000-000000000001"} 1]]))
 
-(deftest ^:parallel distinct-ignoring-uuids-schema-test
-  (testing "distinct values ignoring uuids"
-    (are [x] (not (mr/explain ::lib.schema.util/distinct-ignoring-uuids x))
-      [1 2 3]
-      [{:a 1, :lib/uuid "00000000-0000-0000-0000-000000000000"}
-       {:b 2, :lib/uuid "00000000-0000-0000-0000-000000000000"}]
+(deftest ^:parallel distinct-mbql-clauses-schema-test
+  (testing "distinct MBQL clauses ignoring named keys and type info"
+    (are [x] (not (mr/explain ::lib.schema.util/distinct-mbql-clauses x))
+      [[:x {} 1]
+       [:x {} 2]
+       [:x {} 3]]
+
+      [[:x {:a 1, :lib/uuid "00000000-0000-0000-0000-000000000000"} :y]
+       [:x {:b 2, :lib/uuid "00000000-0000-0000-0000-000000000000"} :y]]
+
       [[:asc
         {:lib/uuid "00000000-0000-0000-0000-000000000000"}
         [:field
          {:lib/uuid "00000000-0000-0000-0000-000000000000"
-          :base-type :type/BigInteger
-          :effective-type :type/BigInteger}
+          :base-type :type/Integer
+          :effective-type :type/Integer}
          63400]]
        [:asc
         {:lib/uuid "00000000-0000-0000-0000-000000000000"}
@@ -98,20 +102,24 @@
          {:lib/uuid "00000000-0000-0000-0000-000000000000"
           :base-type :type/BigInteger
           :effective-type :type/BigInteger}
-         63401]]])))
+         63401]]]
 
-(deftest ^:parallel distinct-ignoring-uuids-schema-test-2
-  (testing "non-distinct values ignoring uuids"
-    (are [x] (mr/explain ::lib.schema.util/distinct-ignoring-uuids x)
+      [])))
+
+(deftest ^:parallel distinct-mbql-clauses-schema-test-2
+  (testing "non-distinct MBQL clauses ignoring named keys and type info"
+    (are [x] (mr/explain ::lib.schema.util/distinct-mbql-clauses x)
       [1 2 1 3]
+
       [{:a 1, :lib/uuid "00000000-0000-0000-0000-000000000000"}
        {:a 1, :lib/uuid "00000000-0000-0000-0000-000000000001"}]
+
       [[:asc
         {:lib/uuid "00000000-0000-0000-0000-000000000000"}
         [:field
          {:lib/uuid "00000000-0000-0000-0000-000000000000"
-          :base-type :type/BigInteger
-          :effective-type :type/BigInteger}
+          :base-type :type/Integer
+          :effective-type :type/Integer}
          63400]]
        [:asc
         {:lib/uuid "00000000-0000-0000-0000-000000000001"}
@@ -119,11 +127,15 @@
          {:lib/uuid "00000000-0000-0000-0000-000000000001"
           :base-type :type/BigInteger
           :effective-type :type/BigInteger}
-         63400]]])))
+         63400]]]
 
-(deftest ^:parallel distinct-ignoring-uuids-schema-test-3
+      nil
+
+      {})))
+
+(deftest ^:parallel distinct-mbql-clauses-schema-test-3
   (testing "humanized error message"
-    (is (= ["Duplicate values ignoring uuids in: [{:a 1} {:a 1}]"]
-           (me/humanize (mr/explain ::lib.schema.util/distinct-ignoring-uuids
-                                    [{:a 1, :lib/uuid "00000000-0000-0000-0000-000000000000"}
-                                     {:a 1, :lib/uuid "00000000-0000-0000-0000-000000000001"}]))))))
+    (is (= ["values must be distinct MBQL clauses ignoring namespaced keys and type info: ([:x {:a 1} :y] [:x {:a 1} :y])"]
+           (me/humanize (mr/explain ::lib.schema.util/distinct-mbql-clauses
+                                    [[:x {:a 1, :lib/uuid "00000000-0000-0000-0000-000000000000"} :y]
+                                     [:x {:a 1, :lib/uuid "00000000-0000-0000-0000-000000000001"} :y]]))))))

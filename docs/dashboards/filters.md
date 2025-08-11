@@ -28,7 +28,7 @@ There are two basic types of widgets you can add. The type of filter or paramete
 
 ### Parameter widgets
 
- **Parameters** determine _how_ to show the data. The time grouping parameter, for example, changes the granularity of time-based visualizations (like showing data by month instead of by day) without removing any data points.
+**Parameters** determine _how_ to show the data. The time grouping parameter, for example, changes the granularity of time-based visualizations (like showing data by month instead of by day) without removing any data points.
 
 - [Time grouping](#time-grouping-parameter)
 
@@ -38,12 +38,13 @@ There are two basic types of widgets you can add. The type of filter or paramete
 
 1. Click the **pencil icon** to enter dashboard editing mode.
 2. You can add a filter or parameter widget to:
-    
-    - **The whole dashboard**. You'll need to connect these dashboard-level filters to individual cards. Metabase will only display dashboard-level widgets if they're connected to a card on the current tab.
-    - **Heading cards**. Not text cards, only [heading cards](./introduction.md#adding-headings-or-descriptions-with-text-cards). Can only be connected to cards on the current tab.
-    - **Question cards**. Can only be connected to cards on the current tab.
-   
+
+   - **The whole dashboard**. You'll need to connect these dashboard-level filters to individual cards. Metabase will only display dashboard-level widgets if they're connected to a card on the current tab.
+   - **Heading cards**. Not text cards, only [heading cards](./introduction.md#adding-headings-or-descriptions-with-text-cards). Can only be connected to cards on the current tab.
+   - **Question cards**. Can only be connected to cards on the current tab.
+
    Go to where you want to add a filter and click the **filter icon**.
+
 3. Select a [filter type](#filter-and-parameter-widgets).
 4. [Connect your filter or parameter widget to one or more dashboard cards](#connecting-a-filter-or-parameter-widget-to-dashboard-cards). Only dashboard-level widgets can be connected to cards on multiple tabs.
 5. [Configure your filter](#editing-a-filter).
@@ -182,7 +183,7 @@ To undo this auto-connecting of cards, click on the toast that pops up when Meta
 
 ## Filtering dashboards with native/SQL questions
 
-For filters, you'll need to [add a variable or field filter to your query](../questions/native-editor/sql-parameters.md). 
+For filters, you'll need to [add a variable or field filter to your query](../questions/native-editor/sql-parameters.md).
 
 For parameters, check out [Time grouping parameters](../questions/native-editor/time-grouping-parameters.md).
 
@@ -204,7 +205,7 @@ You might want to require a filter value if:
 To edit a filter's settings:
 
 1. Click the **pencil** icon to enter dashboard editing mode.
-2. Click the **gear** icon on the filter you want to edit.
+2. Click the filter you want to edit.
 
 From this filter editing view, you can wire up dashboard cards to the filter, or use the filter settings sidebar to:
 
@@ -218,14 +219,14 @@ From this filter editing view, you can wire up dashboard cards to the filter, or
 
 ### Rename filter
 
-1. In dashboard edit mode, click your filter's **gear** icon.
+1. In dashboard edit mode, click the filter you want to edit.
 2. Change the label text.
 
 Renaming the filter only affects the filter's display; the label has no effect on which columns Metabase filters.
 
 ### Set filter input type
 
-1. In dashboard edit mode, click your filter's **gear** icon.
+1. In dashboard edit mode, click the filter you want to edit.
 2. From the filter settings sidebar, set **How should people filter on this column?**:
 
 - [Dropdown list](#dropdown-list)
@@ -255,14 +256,14 @@ Useful for looking up partial matches (such as the ["contains" filter](#text-or-
 
 ### Set a default filter value
 
-1. In dashboard edit mode, click your filter's **gear** icon.
+1. In dashboard edit mode, click the filter you want to edit.
 2. From the sidebar, choose a value from the **Default value** input field.
 
 For example, you might want to set a default filter value like "Active", so that when people load your dashboard, they only see data for "Active" records (not "Inactive", "Cancelled", etc).
 
 ### Remove a filter
 
-1. In dashboard edit mode, click your filter's **gear** icon.
+1. In dashboard edit mode, click the filter you want to edit.
 2. From the sidebar, click **Remove**.
 
 If you accidentally remove a filter, just click **Cancel** in the top-right to exit dashboard edit mode without saving your changes.
@@ -273,14 +274,14 @@ In dashboard edit mode, click on the grabber handle (six dots) on the left side 
 
 ### Make a multi-select filter
 
-1. In dashboard edit mode, click your filter's **gear** icon.
+1. In dashboard edit mode, click the filter you want to edit.
 2. From the sidebar, find **People can pick** and select "Multiple values".
 
 A multi-select filter with the widget type [Dropdown list](#dropdown-list) or [Search box](#search-box) will display a list of values with checkboxes.
 
 ### Change a filter's selectable values
 
-1. In dashboard edit mode, click your filter's **gear** icon.
+1. In dashboard edit mode, click the filter you want to edit.
 2. From the sidebar, find **How should users filter on this column?**.
 3. Select "Dropdown list".\*
 4. Click **Edit** (to the right of "Dropdown list") to specify where the values should come from:

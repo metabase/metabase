@@ -206,10 +206,6 @@ function setupSavedNative(props = {}) {
 }
 
 describe("ViewTitleHeader", () => {
-  beforeEach(() => {
-    fetchMock.reset();
-  });
-
   const TEST_CASE = {
     SAVED_GUI_QUESTION: {
       card: getSavedGUIQuestionCard(),

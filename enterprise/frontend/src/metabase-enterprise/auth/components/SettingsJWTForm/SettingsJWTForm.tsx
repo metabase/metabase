@@ -145,12 +145,8 @@ export const SettingsJWTForm = () => {
                   />
                 </Stack>
               </FormSection>
-              <FormSection
-                title={"Group Schema"}
-                data-testid="jwt-group-schema"
-              >
+              <FormSection title={"Group Sync"} data-testid="jwt-group-schema">
                 <GroupMappingsWidget
-                  isFormik
                   setting={{ key: "jwt-group-sync" }}
                   onChange={handleSubmit}
                   settingValues={settingValues}
@@ -182,6 +178,7 @@ const getFormValues = (
     "jwt-user-provisioning-enabled?",
     "jwt-identity-provider-uri",
     "jwt-shared-secret",
+    "jwt-group-sync",
     "jwt-attribute-email",
     "jwt-attribute-firstname",
     "jwt-attribute-lastname",
