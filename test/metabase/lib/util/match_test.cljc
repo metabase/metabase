@@ -90,11 +90,10 @@
     (t/is (= [[:field 1 nil]
               [:field 2 {:temporal-unit :day}]
               [:field 4 {:source-field 3, :temporal-unit :month}]]
-             (let [some-pred? (fn [[tag]]
-                                (= tag :field))]
+             (let [some-pred? (constantly true)]
                (lib.util.match/match another-query
                  :field
-                 (when some-pred?
+                 (when (some-pred? &match)
                    &match)))))))
 
 (t/deftest ^:parallel match-&parents-test

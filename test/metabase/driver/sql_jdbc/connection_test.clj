@@ -119,18 +119,18 @@
               :databricks
               (assoc details :log-level 0)
 
-              (cond-> details
+              (cond
                 ;; swap localhost and 127.0.0.1
                 (and (string? (:host details))
                      (str/includes? (:host details) "localhost"))
-                (update :host str/replace "localhost" "127.0.0.1")
+                (update details :host str/replace "localhost" "127.0.0.1")
 
                 (and (string? (:host details))
                      (str/includes? (:host details) "127.0.0.1"))
-                (update :host str/replace "127.0.0.1" "localhost")
+                (update details :host str/replace "127.0.0.1" "localhost")
 
-                #_else
-                (assoc :new-config "something"))))))
+                :else
+                (assoc details :new-config "something"))))))
 
 (deftest connection-pool-invalidated-on-details-change
   (mt/test-drivers (mt/driver-select {:+parent :sql-jdbc})
