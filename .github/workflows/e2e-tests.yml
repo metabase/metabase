@@ -23,8 +23,8 @@ jobs:
     uses: ./.github/workflows/e2e-matrix-builder.yml
     with:
       chunks: 50
-      specs: ${{ inputs.debug_specs && './e2e/test/scenarios/organization/official-collections.cy.spec.js,./e2e/test/scenarios/organization/bookmarks-question.cy.spec.js,./e2e/test/scenarios/filters/filter-bulk.cy.spec.js' || inputs.specs }}
-      debug_specs: ${{ inputs.debug_specs }}
+      specs: ${{ inputs.specs }}
+      debug_specs: false
 
   reset-e2e-test-comment:
     if: ${{ github.event_name == 'pull_request' }}
