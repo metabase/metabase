@@ -70,18 +70,17 @@
 (defn- with-search-engine-mocks!
   "Sets up search engine mocks for the semantic & appdb backends for testing fallback behavior.
    appdb-fn can be a collection of results or a function that takes a context."
-  [semantic-results appdb-fn thunk]
+  [semantic-results appdb-results thunk]
   (with-redefs [semantic.pgvector-api/query (fn [_pgvector _index-metadata _search-ctx]
                                               {:results semantic-results
                                                ;; Set filtered-count to a non-zero value to ensure fallback logic is
                                                ;; triggered
                                                :filtered-count 1})
-                search.engine/supported-engine? (constantly true)
                 search.engine/results (fn [ctx]
                                         (case (:search-engine ctx)
-                                          :search.engine/appdb (if (fn? appdb-fn)
-                                                                 (appdb-fn ctx)
-                                                                 appdb-fn)
+                                          :search.engine/appdb (if (fn? appdb-results)
+                                                                 (appdb-results ctx)
+                                                                 appdb-results)
                                           :search.engine/semantic (semantic.core/results ctx)))]
     (thunk)))
 

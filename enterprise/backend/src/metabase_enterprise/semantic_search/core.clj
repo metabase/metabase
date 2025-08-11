@@ -8,7 +8,6 @@
    [metabase-enterprise.semantic-search.pgvector-api :as semantic.pgvector-api]
    [metabase-enterprise.semantic-search.settings :as semantic.settings]
    [metabase.analytics.core :as analytics]
-   [metabase.analytics.prometheus :as prometheus]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.search.engine :as search.engine]
    [metabase.util.log :as log]
@@ -38,10 +37,10 @@
   :feature :semantic-search
   [search-ctx]
   (try
-    (let [{:keys [results filtered-count]} (semantic.pgvector-api/query
-                                            (semantic.env/get-pgvector-datasource!)
-                                            (semantic.env/get-index-metadata)
-                                            search-ctx)
+    (let [{:keys [results filtered-count]}
+          (semantic.pgvector-api/query (semantic.env/get-pgvector-datasource!)
+                                       (semantic.env/get-index-metadata)
+                                       search-ctx)
           final-count (count results)
           threshold (semantic.settings/semantic-search-min-results-threshold)]
       (if (or (>= final-count threshold)
@@ -60,7 +59,7 @@
             (take (semantic.settings/semantic-search-results-limit) deduped-results)))))
     (catch Exception e
       (log/error e "Error executing semantic search")
-      [])))
+      (throw (ex-info "Error executing semantic search" {:type :semantic-search-error} e)))))
 
 (defenterprise update-index!
   "Enterprise implementation of semantic index updating."
