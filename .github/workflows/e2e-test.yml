@@ -121,7 +121,6 @@ jobs:
         run: node e2e/runner/run_cypress_ci.js snapshot
 
       - name: Run auto-split Cypress tests on ${{ inputs.name }}
-        if: ${{ !inputs.specs }}
         env:
           SPLIT: ${{ inputs.total_chunks }}
           SPLIT_INDEX: ${{ inputs.split_index }}
@@ -146,19 +145,19 @@ jobs:
           ls -la . | grep -i timing || echo "No timing files found before test"
           ls -la newTimes.json 2>/dev/null || echo "newTimes.json does not exist before test"
           echo "================================"
-          
+
           # Capture both stdout and stderr, and save cypress logs
           node e2e/runner/run_cypress_ci.js e2e \
             --env grepTags="-@mongo+-@flaky+-@OSS+-@skip",grepOmitFiltered=true \
             --spec "$SPEC_PATH" \
             --browser ${{ steps.cypress-prep.outputs.chrome-path }} 2>&1 | tee cypress-output.log
-          
+
           echo "=== CYPRESS OUTPUT ANALYSIS ==="
           echo "Looking for cypress-split messages in the output:"
           grep -i "cypress-split\|timing\|newTimes" cypress-output.log || echo "No cypress-split timing messages found"
           echo "Last 20 lines of cypress output:"
           tail -20 cypress-output.log
-          
+
           CYPRESS_EXIT_CODE=$?
           echo "=== AFTER TEST EXECUTION ==="
           echo "Exit code from cypress run: $CYPRESS_EXIT_CODE"
@@ -200,12 +199,12 @@ jobs:
           ls -la . | grep -i timing || echo "No timing files found before test"
           ls -la newTimes.json 2>/dev/null || echo "newTimes.json does not exist before test"
           echo "====================================="
-          
+
           node e2e/runner/run_cypress_ci.js e2e \
           --env grepTags="${{inputs.tags}}+-@skip",grepOmitFiltered=true \
           --spec "$SPEC_PATH" \
           --browser ${{ steps.cypress-prep.outputs.chrome-path }}
-          
+
           echo "=== AFTER TAGGED TEST EXECUTION ==="
           echo "Exit code from cypress run: $?"
           echo "Current directory: $(pwd)"
@@ -257,7 +256,7 @@ jobs:
           echo "Content of timing file:"
           head -20 ./e2e/support/timings.json 2>/dev/null || echo "Could not read timing file"
           pwd
-          
+
       - name: Upload Timing Data
         uses: actions/upload-artifact@v4
         if: always()
