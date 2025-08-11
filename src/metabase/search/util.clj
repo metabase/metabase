@@ -22,10 +22,29 @@
       :or  (every? impossible-condition? (rest where))
       false)))
 
+(defn- explode-multipart-ids
+  "Split integer IDs from a `multi-part-id-string` like \"123:456\" => (\"123\" \"456\")"
+  [multi-part-id-string]
+  (str/split multi-part-id-string #":"))
+
+(defn indexed-entity-id->model-index-id
+  "Extract the model-index-id from a composite indexed-entity id like <model-index-id>:<model-pk>"
+  [indexed-entity-id]
+  (-> (explode-multipart-ids indexed-entity-id)
+      first
+      parse-long))
+
+(defn indexed-entity-id->model-pk
+  "Extract the model-pk from a composite indexed-entity id like <model-index-id>:<model-pk>"
+  [indexed-entity-id]
+  (-> (explode-multipart-ids indexed-entity-id)
+      last
+      parse-long))
+
 (defn collapse-id
   "Collapse the id of search results that may contain multiple ids (like indexed-entities)."
   [{:keys [id] :as row}]
-  (assoc row :id (if (number? id) id (parse-long (last (str/split id #":"))))))
+  (assoc row :id (if (number? id) id (indexed-entity-id->model-pk id))))
 
 ;;; ============================================================================
 ;;; Postgres-specific utilities

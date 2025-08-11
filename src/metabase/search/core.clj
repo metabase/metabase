@@ -50,6 +50,8 @@
 
  [search.util
   collapse-id
+  indexed-entity-id->model-index-id
+  indexed-entity-id->model-pk
   tsv-language
   to-tsquery-expr
   weighted-tsvector])
