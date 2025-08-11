@@ -32,7 +32,6 @@ const setupConfigWatcher = () => {
     new Proxy(target, {
       set(metabaseConfig, prop, newValue) {
         metabaseConfig[prop as string] = newValue;
-        console.log("updating one prop", prop, newValue);
         updateAllEmbeds({ [prop]: newValue });
         return true;
       },
@@ -48,30 +47,22 @@ const setupConfigWatcher = () => {
       return proxyConfig;
     },
     set(newVal: Record<string, unknown>) {
+      assertFieldCanbeUpdated(newVal);
+
       currentConfig = { ...currentConfig, ...newVal };
       proxyConfig = createProxy(currentConfig);
-      console.log("updating all props", currentConfig);
       updateAllEmbeds(currentConfig);
     },
   });
 
   // Trigger initial update if there was existing config
   if (Object.keys(currentConfig).length > 0) {
-    console.log("updating all props on init", currentConfig);
     updateAllEmbeds(currentConfig);
   }
 };
 
 export const updateAllEmbeds = (config: Partial<SdkIframeEmbedSettings>) => {
-  const currentConfig = (window as any).metabaseConfig || {};
-  for (const field of DISABLE_UPDATE_FOR_KEYS) {
-    if (
-      currentConfig[field] !== undefined &&
-      currentConfig[field] !== config[field]
-    ) {
-      raiseError(`${field} cannot be updated after the embed is created`);
-    }
-  }
+  assertFieldCanbeUpdated(config);
 
   _activeEmbeds.forEach((embedElement) => {
     embedElement._updateSettings(config);
@@ -93,6 +84,18 @@ if (typeof window !== "undefined") {
 const raiseError = (message: string) => {
   throw new MetabaseError("EMBED_ERROR", message);
 };
+
+function assertFieldCanbeUpdated(newValues: Partial<SdkIframeEmbedSettings>) {
+  const currentConfig = (window as any).metabaseConfig || {};
+  for (const field of DISABLE_UPDATE_FOR_KEYS) {
+    if (
+      currentConfig[field] !== undefined &&
+      currentConfig[field] !== newValues[field]
+    ) {
+      raiseError(`${field} cannot be updated after the embed is created`);
+    }
+  }
+}
 
 export abstract class MetabaseEmbedElement extends HTMLElement {
   private _iframe: HTMLIFrameElement | null = null;
@@ -197,7 +200,6 @@ export abstract class MetabaseEmbedElement extends HTMLElement {
    * Send a message with the new settings
    */
   _updateSettings(settings: Partial<SdkIframeEmbedSettings>) {
-    console.log("updating settings", { current: this.properties, settings });
     const newValues = { ...this.properties, ...settings };
 
     // If the iframe isn't ready yet, don't send the message now.

@@ -33,8 +33,6 @@ const onSettingsChanged = (settings: SdkIframeEmbedSettings) => {
 export const SdkIframeEmbedRoute = () => {
   const { embedSettings } = useSdkIframeEmbedEventBus({ onSettingsChanged });
 
-  console.log("[INSIDE THE IFRAME] embedSettings", embedSettings);
-
   // The embed settings won't be available until the parent sends it via postMessage.
   // The SDK will show its own loading indicator, so we don't need to show it twice.
   if (!embedSettings || !embedSettings.instanceUrl) {
