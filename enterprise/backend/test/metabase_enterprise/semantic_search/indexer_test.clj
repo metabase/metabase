@@ -45,9 +45,9 @@
         t1             (ts "2025-01-01T00:01:00Z")
         t2             (ts "2025-01-02T00:03:10Z")
         t3             (ts "2025-01-03T00:02:42Z")
-        c1             {:model "card" :id "1" :searchable_text "Dog Training Guide"}
-        c2             {:model "card" :id "2" :searchable_text "Dog Training Guide 2"}
-        c3             {:model "card" :id "3" :searchable_text "Dog Training Guide 3"}
+        c1             {:model "card" :id "1" :name "Poodle" :searchable_text "Dog Training Guide"}
+        c2             {:model "card" :id "2" :name "Pug"    :searchable_text "Dog Training Guide 2"}
+        c3             {:model "card" :id "3" :name "Collie" :searchable_text "Dog Training Guide 3"}
         version        (fn [doc t] (semantic.gate/search-doc->gate-doc doc t))
         delete         (fn [doc t] (semantic.gate/deleted-search-doc->gate-doc (:model doc) (:id doc) t))]
     (with-open [_ (open-metadata! pgvector index-metadata)
@@ -277,7 +277,7 @@
         model          semantic.tu/mock-embedding-model
         index          (semantic.index-metadata/qualify-index (semantic.index/default-index model) index-metadata)
         t1             (ts "2025-01-01T00:01:00Z")
-        c1             {:model "card" :id "1" :searchable_text "Dog Training Guide"}
+        c1             {:model "card" :id "1" :name "Dog" :searchable_text "Dog Training Guide"}
         version        (fn [doc t] (semantic.gate/search-doc->gate-doc doc t))]
     (with-open [_ (open-metadata! pgvector index-metadata)
                 _ (open-index! pgvector index)]

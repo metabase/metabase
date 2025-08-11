@@ -34,7 +34,8 @@
 
 (deftest db-url-validation-test
   (testing "init-db! throws exception when DB URL is missing"
-    (with-redefs [semantic.db/db-url nil]
+    (with-redefs [semantic.db/db-url nil
+                  semantic.db/data-source (atom nil)]
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
            #"MB_PGVECTOR_DB_URL environment variable is required"

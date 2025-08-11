@@ -7,19 +7,10 @@
 ;; only core and the task definitions (for which integration with metabase demands globals)
 ;; should need these
 
-(defn pgvector-configured?
-  "Returns true if a pgvector database connection is configured for this instance."
-  []
-  (some? semantic.db/db-url))
-
-;; delay provides race-free initialisation
-(defonce ^:private init-once
-  (delay (or @semantic.db/data-source (semantic.db/init-db!))))
-
 (defn get-pgvector-datasource!
   "Returns the instances pgvector Datasource, initializing lazily if needed."
   []
-  @init-once)
+  (or @semantic.db/data-source (semantic.db/init-db!)))
 
 (defn get-configured-embedding-model
   "Returns the currently configured embedding model from settings."

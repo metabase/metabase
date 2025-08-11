@@ -40,13 +40,15 @@
   "Initialize c3p0 connection pool for semantic search database.
    Requires MB_PGVECTOR_DB_URL environment variable."
   []
-  (let [db-config   (build-db-config)
-        unpooled-ds (jdbc/get-datasource db-config)
-        pooled-ds   (DataSources/pooledDataSource
-                     ^javax.sql.DataSource unpooled-ds
-                     (connection-pool/map->properties semantic-search-connection-pool-props))]
-    (log/info "Initializing semantic search connection pool with properties:" semantic-search-connection-pool-props)
-    (reset! data-source pooled-ds)))
+  (locking data-source
+    (or @data-source
+        (let [db-config   (build-db-config)
+              unpooled-ds (jdbc/get-datasource db-config)
+              pooled-ds   (DataSources/pooledDataSource
+                           ^javax.sql.DataSource unpooled-ds
+                           (connection-pool/map->properties semantic-search-connection-pool-props))]
+          (log/info "Initializing semantic search connection pool with properties:" semantic-search-connection-pool-props)
+          (reset! data-source pooled-ds)))))
 
 (defn test-connection!
   "Test database connectivity"

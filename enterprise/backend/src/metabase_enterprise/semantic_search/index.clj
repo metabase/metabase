@@ -18,7 +18,7 @@
    [next.jdbc.result-set :as jdbc.rs]
    [toucan2.core :as t2])
   (:import
-   [java.time Instant LocalDate OffsetDateTime]
+   [java.time Instant LocalDate OffsetDateTime ZonedDateTime]
    [org.postgresql.util PGobject]))
 
 (set! *warn-on-reflection* true)
@@ -91,9 +91,11 @@
     (string? document-timestamp)
     (Instant/parse document-timestamp)
 
-    ;; needs special handling as (inst-ms) is not extended to OffsetDateTime
     (instance? OffsetDateTime document-timestamp)
     (.toInstant ^OffsetDateTime document-timestamp)
+
+    (instance? ZonedDateTime document-timestamp)
+    (.toInstant ^ZonedDateTime document-timestamp)
 
     :else (Instant/ofEpochMilli (inst-ms document-timestamp))))
 
