@@ -280,7 +280,7 @@ export abstract class MetabaseEmbedElement extends HTMLElement {
     this._validateEmbedSettings(this.properties);
 
     this._iframe = document.createElement("iframe");
-    this._iframe.src = `${this.properties.instanceUrl}/${EMBEDDING_ROUTE}`;
+    this._iframe.src = `${this.globalSettings.instanceUrl}/${EMBEDDING_ROUTE}`;
     this._iframe.style.width = "100%";
     this._iframe.style.height = "100%";
     this._iframe.style.border = "none";

@@ -105,7 +105,7 @@ export const SdkIframeEmbedPreview = () => {
 
   useEffect(() => {
     if (embedRef.current) {
-      embedRef.current.updateSettings({
+      embedRef.current._updateSettings({
         // Clear the existing experiences.
         // This is necessary as `updateSettings` merges new settings with existing ones.
         template: undefined,
