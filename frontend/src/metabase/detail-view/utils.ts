@@ -137,13 +137,20 @@ export function getRowName(
   }
 
   const title = getTitleColumn(columns);
+  const rowName = getRowValue(columns, title, row);
+  return String(rowName || "");
+}
 
-  if (!title) {
+export function getRowValue(
+  columns: DatasetColumn[],
+  column: DatasetColumn | undefined,
+  row: RowValue[] | undefined,
+): RowValue | undefined {
+  if (!row || !column) {
     return undefined;
   }
 
-  const titleIndex = columns.indexOf(title);
-  const titleValue = row[titleIndex];
-  const rowName = String(titleValue || "");
-  return rowName;
+  const index = columns.indexOf(column);
+  const value = row[index];
+  return value;
 }

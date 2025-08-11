@@ -9,7 +9,12 @@ import {
   useListTableForeignKeysQuery,
 } from "metabase/api/table";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/LoadingAndErrorWrapper";
-import { Details, Nav, Relationships } from "metabase/detail-view/components";
+import {
+  Details,
+  Header,
+  Nav,
+  Relationships,
+} from "metabase/detail-view/components";
 import { getRowName } from "metabase/detail-view/utils";
 import { useDispatch } from "metabase/lib/redux";
 import { closeNavbar } from "metabase/redux/app";
@@ -184,9 +189,10 @@ export function DetailView({
         mih={0}
       >
         <Group justify="center" flex="1" px="xl" py={rem(64)}>
-          <Box maw={rem(900)}>
+          <Stack gap={rem(64)} maw={rem(900)} w="100%">
+            <Header columns={columns} row={row} />
             <Details />
-          </Box>
+          </Stack>
         </Group>
 
         {tableForeignKeys && tableForeignKeys.length > 0 && (

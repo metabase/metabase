@@ -1,0 +1,5 @@
+.avatarFrame {
+  border: 4px solid var(--mb-color-border);
+  border-radius: 50% 50%;
+  overflow: hidden;
+}
