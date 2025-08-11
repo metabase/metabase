@@ -10,8 +10,6 @@ import {
 } from "react";
 import { t } from "ttag";
 
-import { QuestionPickerModal } from "metabase/common/components/Pickers/QuestionPicker/components/QuestionPickerModal";
-import type { QuestionPickerValueItem } from "metabase/common/components/Pickers/QuestionPicker/types";
 import {
   Box,
   Divider,
@@ -22,19 +20,18 @@ import {
   Text,
   UnstyledButton,
 } from "metabase/ui";
-import type { RecentItem, SearchModel, SearchResult } from "metabase-types/api";
+import type { RecentItem, SearchResult } from "metabase-types/api";
 
-import {
-  MenuItemComponent,
-  SearchResultsFooter,
-} from "../../shared/MenuComponents";
+import { MenuItemComponent } from "../../shared/MenuComponents";
 import S from "../../shared/MenuItems.module.css";
 import {
   LoadingSuggestionPaper,
   SuggestionPaper,
 } from "../../shared/SuggestionPaper";
+import { EntitySearchSection } from "../shared/EntitySearchSection";
 import { EMBED_SEARCH_MODELS } from "../shared/constants";
 import { useEntitySearch } from "../shared/useEntitySearch";
+import { useEntitySuggestions } from "../shared/useEntitySuggestions";
 
 interface CommandSuggestionProps {
   items: SearchResult[];
@@ -131,7 +128,6 @@ const CommandSuggestionComponent = forwardRef<
   const [showEmbedSearch, setShowEmbedSearch] = useState(false);
   const [pendingLinkMode, setPendingLinkMode] = useState(false);
   const [pendingEmbedMode, setPendingEmbedMode] = useState(false);
-  const [modal, setModal] = useState<"question-picker" | null>(null);
   const itemRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
   useEffect(() => {
@@ -236,27 +232,8 @@ const CommandSuggestionComponent = forwardRef<
     );
   }, [allCommandOptions, query, showLinkSearch, showEmbedSearch]);
 
-  const handleRecentSelect = useCallback(
-    (item: RecentItem) => {
-      if (showEmbedSearch) {
-        command({
-          embedItem: true,
-          entityId: item.id,
-          model: item.model,
-        });
-      } else {
-        command({
-          selectItem: true,
-          entityId: item.id,
-          model: item.model,
-        });
-      }
-    },
-    [command, showEmbedSearch],
-  );
-
-  const handleSearchResultSelect = useCallback(
-    (item: SearchResult) => {
+  const onSelectLinkEntity = useCallback(
+    (item: { id: number | string; model: string }) => {
       if (showEmbedSearch) {
         command({
           embedItem: true,
@@ -305,18 +282,23 @@ const CommandSuggestionComponent = forwardRef<
     });
   };
 
-  // Search for entities when in link/embed mode
+  // Use shared entity suggestions for link/embed mode
+  const entitySuggestions = useEntitySuggestions({
+    query: effectiveQuery,
+    editor,
+    onSelectEntity: onSelectLinkEntity,
+    enabled: showLinkSearch || showEmbedSearch,
+    searchModels: showEmbedSearch ? EMBED_SEARCH_MODELS : undefined,
+  });
+
   const {
     menuItems: linkMenuItems,
     isLoading: isLinkSearchLoading,
     searchResults,
-  } = useEntitySearch({
-    query: effectiveQuery,
-    onSelectRecent: handleRecentSelect,
-    onSelectSearchResult: handleSearchResultSelect,
-    enabled: showLinkSearch || showEmbedSearch,
-    searchModels: showEmbedSearch ? EMBED_SEARCH_MODELS : undefined,
-  });
+    selectedIndex: entitySelectedIndex,
+    modal: entityModal,
+    handlers: entityHandlers,
+  } = entitySuggestions;
 
   const { menuItems: searchMenuItems } = useEntitySearch({
     query,
@@ -372,11 +354,7 @@ const CommandSuggestionComponent = forwardRef<
 
   const selectItem = (index: number) => {
     if (showLinkSearch || showEmbedSearch) {
-      if (index < linkMenuItems.length) {
-        linkMenuItems[index].action();
-      } else {
-        setModal("question-picker");
-      }
+      entityHandlers.selectItem(index);
     } else {
       // When searching in command mode, handle both entity results and commands
       if (query && searchMenuItems.length > 0) {
@@ -426,6 +404,10 @@ const CommandSuggestionComponent = forwardRef<
 
   useImperativeHandle(ref, () => ({
     onKeyDown: ({ event }: { event: KeyboardEvent }) => {
+      if (showLinkSearch || showEmbedSearch) {
+        return entityHandlers.onKeyDown({ event });
+      }
+
       if (event.key === "ArrowUp") {
         upHandler();
         return true;
@@ -445,30 +427,6 @@ const CommandSuggestionComponent = forwardRef<
     },
   }));
 
-  const handleModalSelect = (item: QuestionPickerValueItem) => {
-    if (showEmbedSearch) {
-      command({
-        embedItem: true,
-        entityId: item.id,
-        model: item.model as SearchModel,
-      });
-    } else {
-      command({
-        selectItem: true,
-        entityId: item.id,
-        model: item.model as SearchModel,
-      });
-    }
-    setModal(null);
-  };
-
-  const handleModalClose = () => {
-    setModal(null);
-    setTimeout(() => {
-      editor.commands.focus();
-    }, 0);
-  };
-
   if ((showLinkSearch || showEmbedSearch) && isLinkSearchLoading) {
     return <LoadingSuggestionPaper aria-label={t`Command Dialog`} />;
   }
@@ -476,28 +434,17 @@ const CommandSuggestionComponent = forwardRef<
   return (
     <SuggestionPaper aria-label={t`Command Dialog`}>
       {showLinkSearch || showEmbedSearch ? (
-        <>
-          {linkMenuItems.map((item, index) => (
-            <MenuItemComponent
-              key={index}
-              item={item}
-              isSelected={selectedIndex === index}
-              onClick={() => selectItem(index)}
-            />
-          ))}
-          {effectiveQuery.length > 0 &&
-          searchResults.length === 0 &&
-          !isLinkSearchLoading ? (
-            <Box p="sm" ta="center">
-              <Text size="sm" c="dimmed">{t`No results found`}</Text>
-            </Box>
-          ) : null}
-          <Divider my="sm" mx="sm" />
-          <SearchResultsFooter
-            isSelected={selectedIndex === linkMenuItems.length}
-            onClick={() => setModal("question-picker")}
-          />
-        </>
+        <EntitySearchSection
+          menuItems={linkMenuItems}
+          selectedIndex={entitySelectedIndex}
+          onItemSelect={entityHandlers.selectItem}
+          onFooterClick={entityHandlers.openModal}
+          query={effectiveQuery}
+          searchResults={searchResults}
+          modal={entityModal}
+          onModalSelect={entityHandlers.handleModalSelect}
+          onModalClose={entityHandlers.handleModalClose}
+        />
       ) : (
         <>
           {commandOptions.length > 0 ||
@@ -579,12 +526,6 @@ const CommandSuggestionComponent = forwardRef<
             </Box>
           )}
         </>
-      )}
-      {modal === "question-picker" && (
-        <QuestionPickerModal
-          onChange={handleModalSelect}
-          onClose={handleModalClose}
-        />
       )}
     </SuggestionPaper>
   );
