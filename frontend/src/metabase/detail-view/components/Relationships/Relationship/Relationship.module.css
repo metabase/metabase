@@ -1,0 +1,4 @@
+.clickable {
+  cursor: pointer;
+  color: var(--mb-color-text-dark) !important;
+}

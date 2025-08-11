@@ -3,3 +3,8 @@
   border-radius: 50% 50%;
   overflow: hidden;
 }
+
+.text {
+  overflow-wrap: break-word;
+  word-break: break-word;
+}

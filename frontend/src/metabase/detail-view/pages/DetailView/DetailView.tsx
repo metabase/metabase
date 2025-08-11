@@ -23,6 +23,7 @@ import { extractRemappedColumns } from "metabase/visualizations";
 import type { StructuredDatasetQuery } from "metabase-types/api";
 
 import S from "./DetailView.module.css";
+import { useForeignKeyReferences } from "./use-foreign-key-references";
 import { getObjectQuery, getTableQuery } from "./utils";
 
 interface TableDetailViewLoaderProps {
@@ -75,7 +76,14 @@ export function DetailView({
   );
 
   const row = rowFromList ?? rowFromObject;
-  const rowName = getRowName(columns, row);
+  const rowName = getRowName(columns, row) || rowId;
+
+  const { tableForeignKeyReferences } = useForeignKeyReferences({
+    tableForeignKeys,
+    row,
+    columns,
+    tableDatabaseId: table?.db_id,
+  });
 
   const [previousPathState] = useState<
     { pathname: string; hash: string } | object
@@ -206,7 +214,14 @@ export function DetailView({
             h="100%"
             w={rem(440)}
           >
-            <Relationships />
+            <Relationships
+              columns={columns}
+              row={row}
+              rowName={rowName}
+              table={table}
+              tableForeignKeys={tableForeignKeys}
+              tableForeignKeyReferences={tableForeignKeyReferences}
+            />
           </Box>
         )}
       </Group>

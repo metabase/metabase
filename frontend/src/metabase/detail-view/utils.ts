@@ -9,6 +9,7 @@ import {
   getGlobalSettingsForColumn,
   getSettingDefinitionsForColumn,
 } from "metabase/visualizations/lib/settings/column";
+import type ForeignKey from "metabase-lib/v1/metadata/ForeignKey";
 import {
   isAvatarURL,
   isEntityName,
@@ -153,4 +154,10 @@ export function getRowValue(
   const index = columns.indexOf(column);
   const value = row[index];
   return value;
+}
+
+export function extractDisplayName(fk: ForeignKey) {
+  return (
+    fk.origin?.table?.displayName?.() ?? fk.origin?.table?.display_name ?? ""
+  );
 }

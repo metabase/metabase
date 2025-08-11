@@ -48,7 +48,13 @@ export const Header = ({ columns, row }: Props) => {
 
       <Stack gap="md">
         {titleColumn && title && (
-          <Text c="text-primary" fw="bold" fz={rem(32)} lh={1}>
+          <Text
+            c="text-primary"
+            className={S.text}
+            fw="bold"
+            fz={rem(32)}
+            lh={1}
+          >
             {renderValue(tc, title, titleColumn)}
           </Text>
         )}
@@ -57,7 +63,13 @@ export const Header = ({ columns, row }: Props) => {
           <Group gap="sm">
             <Icon name="label" />
 
-            <Text c="text-secondary" fw="bold" fz={rem(14)} lh={1}>
+            <Text
+              c="text-secondary"
+              className={S.text}
+              fw="bold"
+              fz={rem(14)}
+              lh={1}
+            >
               {renderValue(tc, subtitle, subtitleColumn)}
             </Text>
           </Group>
