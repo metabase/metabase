@@ -304,7 +304,7 @@
   :audit      :getter)
 
 (defsetting http-channel-allow-localhost
-  (deferred-tru "Where it''s allowed to use localhost as destination for http channels.")
+  (deferred-tru "Whether it''s allowed to use localhost as destination for http channels.")
   :type       :boolean
   :visibility :internal
   :default    false
