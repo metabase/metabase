@@ -20,7 +20,7 @@
    [toucan2.core :as t2])
   (:import
    [java.time Instant LocalDate OffsetDateTime ZonedDateTime]
-   [java.util.concurrent TimeUnit ThreadPoolExecutor]
+   [java.util.concurrent ArrayBlockingQueue RejectedExecutionHandler RejectedExecutionException TimeUnit ThreadPoolExecutor]
    [org.postgresql.util PGobject]))
 
 (set! *warn-on-reflection* true)
@@ -289,21 +289,35 @@
             upsert-embedding!)))
        (merge-with + stats)))))
 
-(defonce ^:private
-  ^{:doc "A shared thread pool for processing batched documents, including fetching embeddings.
+(def ^:private ^:dynamic *retrying* false)
 
-    A custom RejectedExecutionHandler is used which runs the rejected task in the caller thread (CallerRunsPolicy),
-    ensuring that we don't continue realizing documents until a new thread is available. This requires us to set the
-    thread pool to one less than the desired degree of parallelism, since the caller thread is also being used."}
+(defonce ^:private
+  ^{:doc "A shared thread pool for processing batched documents, including fetching embeddings. A custom retry handler
+    is used to block the caller thread until a thread is available, to prevent realizing documents until they can be
+    processed."}
   index-update-executor
-  (delay
-    (let [n (semantic-settings/index-update-thread-count)
-          ^long thread-count (dec n)]
-      (ThreadPoolExecutor. thread-count
-                           thread-count
-                           0 TimeUnit/SECONDS
-                           (java.util.concurrent.LinkedBlockingQueue. thread-count)
-                           (java.util.concurrent.ThreadPoolExecutor$CallerRunsPolicy.)))))
+  (let [n (long (semantic-settings/index-update-thread-count))
+        retry-handler (reify RejectedExecutionHandler
+                        (^void rejectedExecution [_ ^Runnable task ^ThreadPoolExecutor executor]
+                          (if *retrying*
+                            (throw (RejectedExecutionException.))
+                            (loop [attempt 0]
+                              (let [op
+                                    (if (.isShutdown executor)
+                                      (.run task)
+                                      (try
+                                        (binding [*retrying* true]
+                                          (.execute executor task))
+                                        (catch RejectedExecutionException _ ::retry)))]
+                                (case op
+                                  ::retry
+                                  (let [delay-ms (min 500 (* 10 (Math/pow 2 attempt)))]
+                                    (Thread/sleep (long delay-ms))
+                                    (recur (inc attempt)))
+                                  nil))))))]
+    (ThreadPoolExecutor. n n 0 TimeUnit/SECONDS
+                         (ArrayBlockingQueue. n)
+                         retry-handler)))
 
 (defn upsert-index-pooled!
   "Returns a future which upserts the provided documents into the index table, executed using the provided thread pool."
