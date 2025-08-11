@@ -81,7 +81,7 @@ export const setup = async (
   setupUpdateSettingEndpoint();
   setupSettingsEndpoints([]);
   setupApiKeyEndpoints(testApiKeys);
-  setupTokenStatusEndpoint(isEnterprise);
+  setupTokenStatusEndpoint({ valid: isEnterprise });
 
   renderWithProviders(
     <div>
