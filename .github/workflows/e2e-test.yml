@@ -119,7 +119,6 @@ jobs:
         run: node e2e/runner/run_cypress_ci.js snapshot
 
       - name: Run auto-split Cypress tests on ${{ inputs.name }}
-        if: ${{ !inputs.specs }}
         env:
           SPLIT: ${{ inputs.total_chunks }}
           SPLIT_INDEX: ${{ inputs.split_index }}
@@ -147,7 +146,7 @@ jobs:
           
           # Capture both stdout and stderr, and save cypress logs
           node e2e/runner/run_cypress_ci.js e2e \
-            --env grepTags="-@mongo+-@flaky+-@OSS --@quarantine",grepOmitFiltered=true \
+            --env grepTags="${{ inputs.tags || '-@mongo+-@flaky+-@OSS --@quarantine' }}",grepOmitFiltered=true \
             --spec "$SPEC_PATH" \
             --browser ${{ steps.cypress-prep.outputs.chrome-path }} 2>&1 | tee cypress-output.log
           
@@ -176,46 +175,6 @@ jobs:
           ls -la cypress/ 2>/dev/null || echo "No cypress directory found"
           echo "==============================="
 
-      - name: Run Tagged EE Cypress tests on ${{ inputs.name }}
-        if: ${{ inputs.specs }}
-        shell: bash
-        env:
-          SPLIT: ${{ inputs.total_chunks || 1 }}
-          SPLIT_INDEX: ${{ inputs.split_index || 0 }}
-          SPLIT_FILE: "./e2e/support/timings.json"
-          SPLIT_TIME_THRESHOLD: 0
-          SPEC_PATH: ${{ env.specs || inputs.specs }}
-        run: |
-          echo "Running tests with specs: $SPEC_PATH"
-          echo "=== BEFORE TAGGED TEST EXECUTION ==="
-          echo "Cypress split environment variables:"
-          echo "  SPLIT_FILE: $SPLIT_FILE"
-          echo "  SPLIT_OUTPUT_FILE: $SPLIT_OUTPUT_FILE"
-          echo "  SPLIT_TIME_THRESHOLD: $SPLIT_TIME_THRESHOLD"
-          echo "  CYPRESS_CI: $CYPRESS_CI"
-          echo "Current directory: $(pwd)"
-          echo "Files before test:"
-          ls -la . | grep -i timing || echo "No timing files found before test"
-          ls -la newTimes.json 2>/dev/null || echo "newTimes.json does not exist before test"
-          echo "====================================="
-          
-          node e2e/runner/run_cypress_ci.js e2e \
-          --env grepTags="${{inputs.tags}} --@quarantine",grepOmitFiltered=true \
-          --spec "$SPEC_PATH" \
-          --browser ${{ steps.cypress-prep.outputs.chrome-path }}
-          
-          echo "=== AFTER TAGGED TEST EXECUTION ==="
-          echo "Exit code from cypress run: $?"
-          echo "Current directory: $(pwd)"
-          echo "All files in current directory:"
-          ls -la
-          echo "Looking for any timing-related files:"
-          find . -maxdepth 2 -name "*timing*" 2>/dev/null
-          echo "Checking if cypress-split updated the timing file:"
-          ls -la ./e2e/support/timings.json 2>/dev/null || echo "e2e/support/timings.json does not exist after test"
-          echo "Content of timing file if it exists:"
-          head -20 ./e2e/support/timings.json 2>/dev/null || echo "Could not read timing file"
-          echo "==================================="
 
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results
