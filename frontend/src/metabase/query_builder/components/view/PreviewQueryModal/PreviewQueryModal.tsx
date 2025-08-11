@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
 import { useGetNativeDatasetQuery } from "metabase/api";
-import ExternalLink from "metabase/core/components/ExternalLink";
+import ExternalLink from "metabase/common/components/ExternalLink";
 import { formatNativeQuery } from "metabase/lib/engine";
 import { getResponseErrorMessage } from "metabase/lib/errors";
 import { useSelector } from "metabase/lib/redux";

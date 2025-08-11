@@ -10,8 +10,26 @@ export function setupTableEndpoints(
 ) {
   fetchMock.get(`path:/api/table/${table.id}`, table);
   fetchMock.get(`path:/api/table/${table.id}/fks`, foreignKeys);
-  fetchMock.post(`path:/api/table/${table.id}/rescan_values`, {});
-  fetchMock.post(`path:/api/table/${table.id}/discard_values`, {});
+  fetchMock.put(
+    `path:/api/table/${table.id}`,
+    {},
+    { name: `table-${table.id}-put` },
+  );
+  fetchMock.post(
+    `path:/api/table/${table.id}/rescan_values`,
+    {},
+    { name: `table-${table.id}-rescan-values` },
+  );
+  fetchMock.post(
+    `path:/api/table/${table.id}/sync_schema`,
+    {},
+    { name: `table-${table.id}-sync-schema` },
+  );
+  fetchMock.post(
+    `path:/api/table/${table.id}/discard_values`,
+    {},
+    { name: `table-${table.id}-discard-values` },
+  );
   setupTableQueryMetadataEndpoint(table);
   table.fields?.forEach((field) => setupFieldEndpoints({ ...field, table }));
 }
@@ -34,11 +52,14 @@ export function setupUploadManagementEndpoint(tables: Table[]) {
  * @param failureId - the id of the table that should fail to delete, any other id will succeed
  */
 export function setupDeleteUploadManagementDeleteEndpoint(failureId?: number) {
-  fetchMock.delete(`glob:*/api/ee/upload-management/tables/*`, (url) => {
-    return url.includes(`/${failureId}`)
+  fetchMock.delete(`glob:*/api/ee/upload-management/tables/*`, (call) => {
+    return call.url.includes(`/${failureId}`)
       ? {
           throws: { data: { message: "It's dead Jim" } },
         }
-      : true;
+      : // fetch-mock doesn't like returning true directly
+        new Response(JSON.stringify(true), {
+          status: 200,
+        });
   });
 }

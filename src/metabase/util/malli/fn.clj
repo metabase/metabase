@@ -9,7 +9,8 @@
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
    [metabase.util.malli.humanize :as mu.humanize]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [net.cgrand.macrovich :as macros]))
 
 (set! *warn-on-reflection* true)
 
@@ -314,7 +315,8 @@
         (instrumented-arity error-context schema)))))
 
 (defn instrumented-fn-form
-  "Given a `fn-tail` like
+  "Nota Bene: not safe for expansion into Clojurescript!
+  Given a `fn-tail` like
 
     ([x :- :int y] (+ 1 2))
 
@@ -392,7 +394,10 @@
   fix this later."
   [& fn-tail]
   (let [parsed (parse-fn-tail fn-tail)
-        instrument? (instrument-ns? *ns*)]
+        ;; Match mu/defn behavior:
+        instrument? (macros/case
+                      :cljs false
+                      :clj (instrument-ns? *ns*))]
     (if-not instrument?
       (deparameterized-fn-form parsed)
       (let [error-context (if (symbol? (first fn-tail))

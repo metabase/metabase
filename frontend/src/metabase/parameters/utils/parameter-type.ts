@@ -11,10 +11,7 @@ export function isSingleOrMultiSelectable(
   const type: string = getParameterType(parameter);
   const subType: string = getParameterSubType(parameter);
 
-  if (
-    !SINGLE_OR_MULTI_SELECTABLE_TYPES[type] ||
-    parameter.hasVariableTemplateTagTarget
-  ) {
+  if (!SINGLE_OR_MULTI_SELECTABLE_TYPES[type]) {
     return false;
   }
   if (SINGLE_OR_MULTI_SELECTABLE_TYPES[type] === "any") {

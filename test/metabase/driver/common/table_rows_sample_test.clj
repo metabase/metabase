@@ -85,30 +85,27 @@
 (deftest ^:synchronized coerced-field-substring-integration-test
   (testing "For coerced fields, effective type is used for fingerprinting (string -> number exmaple)"
     (mt/dataset
-      string-nums-db
-      (mt/with-temp-copy-of-db
-        (doseq [id (t2/select-fn-vec :id :model/Field :table_id (mt/id :string_nums))]
-          (t2/update! :model/Field :id id {:coercion_strategy :Coercion/String->Float
-                                           :effective_type    :type/Float
-                                           :fingerprint nil
-                                           :fingerprint_version 0}))
-        (let [fingerprints (atom [])
-              fingerprint-query (atom nil)
-              orig-table-rows-sample-query @#'table-rows-sample/table-rows-sample-query]
-          (with-redefs [fingerprint/save-fingerprint! (fn [_field fingerprint]
-                                                        (swap! fingerprints conj fingerprint))
-                        table-rows-sample/table-rows-sample-query (fn [& args]
-                                                                    (reset! fingerprint-query
-                                                                            (apply orig-table-rows-sample-query args)))]
-            (fingerprint/fingerprint-table! (t2/select-one :model/Table :id (mt/id :string_nums)))
-            (testing "empty expressions = no substring optimization in sample query = use of effective type"
-              (is (empty? (-> @fingerprint-query :query :expressions)))
-              (is (seq (-> @fingerprint-query :query :fields))))
-            (testing "query returns number types due coercion -> numbers are fingerprinted"
-              (is (=? [{:type {:type/Number {}}}
-                       {:type {:type/Number {}}}
-                       {:type {:type/Number {}}}]
-                      @fingerprints)))))))))
+      coerced-string-nums-db
+      (doseq [id (t2/select-fn-vec :id :model/Field :table_id (mt/id :string_nums))]
+        (t2/update! :model/Field :id id {:fingerprint nil
+                                         :fingerprint_version 0}))
+      (let [fingerprints (atom [])
+            fingerprint-query (atom nil)
+            orig-table-rows-sample-query @#'table-rows-sample/table-rows-sample-query]
+        (with-redefs [fingerprint/save-fingerprint! (fn [_field fingerprint]
+                                                      (swap! fingerprints conj fingerprint))
+                      table-rows-sample/table-rows-sample-query (fn [& args]
+                                                                  (reset! fingerprint-query
+                                                                          (apply orig-table-rows-sample-query args)))]
+          (fingerprint/fingerprint-table! (t2/select-one :model/Table :id (mt/id :string_nums)))
+          (testing "empty expressions = no substring optimization in sample query = use of effective type"
+            (is (empty? (-> @fingerprint-query :query :expressions)))
+            (is (seq (-> @fingerprint-query :query :fields))))
+          (testing "query returns number types due coercion -> numbers are fingerprinted"
+            (is (=? [{:type {:type/Number {}}}
+                     {:type {:type/Number {}}}
+                     {:type {:type/Number {}}}]
+                    @fingerprints))))))))
 
 (deftest mbql-on-table-requires-filter-will-include-the-filter-test
   (mt/with-temp

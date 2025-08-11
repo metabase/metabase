@@ -7,7 +7,7 @@ import {
   isRootPersonalCollection,
   nonPersonalOrArchivedCollection,
 } from "metabase/collections/utils";
-import { Tree } from "metabase/components/tree";
+import { Tree } from "metabase/common/components/tree";
 import CS from "metabase/css/core/index.css";
 import Collections, {
   PERSONAL_COLLECTIONS,

@@ -1,10 +1,13 @@
 import { t } from "ttag";
 
+import {
+  SettingsPageWrapper,
+  SettingsSection,
+} from "metabase/admin/components/SettingsSection";
 import { UpsellUploads } from "metabase/admin/upsells";
 import { PLUGIN_UPLOAD_MANAGEMENT } from "metabase/plugins";
 import { Box, Flex } from "metabase/ui";
 
-import { SettingsPageWrapper, SettingsSection } from "../SettingsSection";
 import { UploadSettingsForm } from "../UploadSettings/UploadSettingsForm";
 
 export function UploadSettingsPage() {
@@ -16,7 +19,7 @@ export function UploadSettingsPage() {
           <PLUGIN_UPLOAD_MANAGEMENT.UploadManagementTable />
         </SettingsSection>
         <Box>
-          <UpsellUploads source="settings-uploads" />
+          <UpsellUploads location="settings-uploads" />
         </Box>
       </Flex>
     </SettingsPageWrapper>

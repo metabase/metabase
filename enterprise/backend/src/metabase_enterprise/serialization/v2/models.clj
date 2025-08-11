@@ -5,6 +5,7 @@
   "Schema model types"
   ["Database"
    "Field"
+   "FieldUserSettings"
    "Segment"
    "Table"
    "Channel"])
@@ -89,6 +90,7 @@
    "Secret"
    "Session"
    "TaskHistory"
+   "Undo"
    "User"
    "UserKeyValue"
    "UserParameterValue"

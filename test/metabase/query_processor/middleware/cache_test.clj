@@ -347,7 +347,6 @@
             (is (true?
                  (boolean (#'cache/is-cacheable? query)))
                 "Query should be cacheable")
-
             (mt/with-clock #t "2020-02-19T04:44:26.056Z[UTC]"
               (let [original-result (qp/process-query query)
                     ;; clear any existing values in the `save-chan`
@@ -429,11 +428,9 @@
                     (:result_metadata the-model)))))
         (with-mock-cache! [save-chan]
           (let [inner1 (-> (:dataset_query model1)
-                           (assoc :cache-strategy (ttl-strategy))
-                           (assoc-in [:info :card-entity-id] (:entity_id model1)))
+                           (assoc :cache-strategy (ttl-strategy)))
                 inner2 (-> (:dataset_query model2)
-                           (assoc :cache-strategy (ttl-strategy))
-                           (assoc-in [:info :card-entity-id] (:entity_id model2)))]
+                           (assoc :cache-strategy (ttl-strategy)))]
             (testing (format "\ninner1 = %s\ninner2 = %s" (pr-str inner1) (pr-str inner2))
               (is (true?
                    (boolean (#'cache/is-cacheable? inner1)))
@@ -520,11 +517,9 @@
 
         (with-mock-cache! [save-chan]
           (let [query1 (-> (:dataset_query card1)
-                           (assoc :cache-strategy (ttl-strategy))
-                           (assoc-in [:info :card-entity-id] (:entity_id card1)))
+                           (assoc :cache-strategy (ttl-strategy)))
                 query2 (-> (:dataset_query card2)
-                           (assoc :cache-strategy (ttl-strategy))
-                           (assoc-in [:info :card-entity-id] (:entity_id card2)))]
+                           (assoc :cache-strategy (ttl-strategy)))]
             (testing (format "\nquery1 = %s\nquery2 = %s" (pr-str query1) (pr-str query2))
               (is (true?
                    (boolean (#'cache/is-cacheable? query1)))

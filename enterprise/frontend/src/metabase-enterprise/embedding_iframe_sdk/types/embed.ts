@@ -39,7 +39,7 @@ export type SdkIframeEmbedMessage =
 export interface DashboardEmbedOptions {
   dashboardId: number | string;
 
-  isDrillThroughEnabled?: boolean;
+  drills?: boolean;
   withTitle?: boolean;
   withDownloads?: boolean;
 
@@ -55,9 +55,12 @@ export interface DashboardEmbedOptions {
 export interface QuestionEmbedOptions {
   questionId: number | string;
 
-  isDrillThroughEnabled?: boolean;
+  drills?: boolean;
   withTitle?: boolean;
   withDownloads?: boolean;
+  targetCollection?: CollectionId;
+  entityTypes?: EntityTypeFilterKeys[];
+  isSaveEnabled?: boolean;
 
   // parameters
   initialSqlParameters?: SqlParameterValues;
@@ -75,8 +78,8 @@ export interface ExplorationEmbedOptions {
   entityTypes?: EntityTypeFilterKeys[];
 
   // incompatible options
-  questionId?: never;
   dashboardId?: never;
+  questionId?: never;
 }
 
 export interface CurateContentEmbedOptions {
@@ -105,17 +108,21 @@ type CollectionBrowserEntityTypes =
   | "question"
   | "model";
 
-type SdkIframeEmbedBaseSettings = {
-  apiKey: string;
+export type SdkIframeEmbedBaseSettings = {
+  apiKey?: string;
   instanceUrl: string;
   theme?: MetabaseTheme;
   locale?: string;
   preferredAuthMethod?: MetabaseAuthMethod;
+
+  /** Whether we should use the existing user session (i.e. admin user's cookie) */
+  useExistingUserSession?: boolean;
+
   // Whether the embed is running on localhost. Cannot be set by the user.
   _isLocalhost?: boolean;
 };
 
-type SdkIframeEmbedTemplateSettings =
+export type SdkIframeEmbedTemplateSettings =
   | DashboardEmbedOptions
   | QuestionEmbedOptions
   | ExplorationEmbedOptions
@@ -131,3 +138,16 @@ export type SdkIframeEmbedTagSettings = SdkIframeEmbedSettings & {
   target: string | HTMLElement;
   iframeClassName?: string;
 };
+
+export type SdkIframeEmbedEvent = { type: "ready" };
+
+export type SdkIframeEmbedEventHandler = () => void;
+
+/** Keys that can be used to update the embed settings */
+export type SdkIframeEmbedSettingKey =
+  | keyof SdkIframeEmbedBaseSettings
+  | keyof DashboardEmbedOptions
+  | keyof QuestionEmbedOptions
+  | keyof ExplorationEmbedOptions
+  | keyof CurateContentEmbedOptions
+  | keyof ViewContentEmbedOptions;

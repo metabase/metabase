@@ -31,13 +31,16 @@
     (.deleteOnExit)))
 
 (defn- write-to-file!
-  [^File file data]
-  (nippy/freeze-to-file file data))
+  [^File file data preamble]
+  (nippy/freeze-to-file file {:data data :preamble preamble}))
 
 (defn- read-from-file
   [^File file]
   (when (.exists file)
-    (nippy/thaw-from-file file)))
+    (let [{:keys [data preamble]} (nippy/thaw-from-file file)]
+      (when (seq preamble)
+        (log/infof "reading file with preamble: %s" (pr-str preamble)))
+      data)))
 
 (.addShutdownHook
  (Runtime/getRuntime)
@@ -53,6 +56,18 @@
   Object
   (cleanup! [_] nil))
 
+(defn- human-readable-size [bytes]
+  (cond (nil? bytes) "0 bytes"
+        (zero? bytes) "0 bytes"
+        :else
+        (let [units ["b" "kb" "mb" "gb" "tb"]
+              magnitude 1024.0]
+          (loop [[unit & remaining] units
+                 current (double bytes)]
+            (if (and (seq remaining) (> current magnitude))
+              (recur remaining (/ current magnitude))
+              (format "%.1f %s" current unit))))))
+
 (deftype TempFileStorage [^File file]
   Cleanable
   (cleanup! [_]
@@ -62,7 +77,9 @@
   clojure.lang.IDeref
   (deref [_]
     (if (.exists file)
-      (read-from-file file)
+      (do
+        (log/infof "reading temp storage file of size: %s" (human-readable-size (.length file)))
+        (read-from-file file))
       (throw (ex-info "File no longer exists" {:file file}))))
 
   Object
@@ -89,9 +106,14 @@
 (defn to-temp-file!
   "Write data to a temporary file. Returns a TempFileStorage type that:
    - Implements IDeref - use @ to read the data from the file
-   - Implements Cleanable - call cleanup! when the file is no longer needed"
-  ^TempFileStorage [data]
-  (let [f (temp-file!)]
-    (write-to-file! f data)
-    (log/debug "stored data in temp file" {:length (.length ^File f)})
-    (TempFileStorage. f)))
+   - Implements Cleanable - call cleanup! when the file is no longer needed
+
+  You may include an optional `preamble` which will be logged when the file is read. Helpful to leave a breadcrumb of
+  which dashboard/card the file might be from. "
+  ^TempFileStorage
+  ([data] (to-temp-file! data {}))
+  ([data preamble]
+   (let [f (temp-file!)]
+     (write-to-file! f data preamble)
+     (log/debug "stored data in temp file" {:length (.length ^File f)})
+     (TempFileStorage. f))))

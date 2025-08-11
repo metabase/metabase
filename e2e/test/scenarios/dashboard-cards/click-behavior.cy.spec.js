@@ -131,7 +131,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
     H.restore();
     cy.signInAsAdmin();
     cy.intercept("/api/dataset").as("dataset");
-    H.setTokenFeatures("all");
+    H.activateToken("pro-self-hosted");
   });
 
   describe("dashcards without click behavior", () => {
@@ -316,7 +316,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       H.saveDashboard({ waitMs: 250 });
 
       clickLineChartPoint();
-      cy.findAllByTestId("field-set")
+      cy.findAllByTestId("parameter-widget")
         .should("have.length", 1)
         .should("contain.text", POINT_COUNT);
       cy.get("@targetDashboardId").then((targetDashboardId) => {
@@ -372,7 +372,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       H.saveDashboard({ waitMs: 250 });
 
       clickLineChartPoint();
-      cy.findAllByTestId("field-set")
+      cy.findAllByTestId("parameter-widget")
         .should("have.length", 2)
         .should("contain.text", POINT_COUNT)
         .should("contain.text", POINT_CREATED_AT_FORMATTED);
@@ -445,7 +445,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       H.saveDashboard({ waitMs: 250 });
 
       clickLineChartPoint();
-      cy.findAllByTestId("field-set")
+      cy.findAllByTestId("parameter-widget")
         .should("have.length", 1)
         .should("contain.text", POINT_COUNT);
       cy.get("@targetDashboardId").then((targetDashboardId) => {
@@ -697,11 +697,11 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
       clickLineChartPoint();
 
-      cy.findAllByTestId("field-set")
+      cy.findAllByTestId("parameter-widget")
         .contains(DASHBOARD_FILTER_TEXT.name)
         .parent()
         .should("contain.text", POINT_COUNT);
-      cy.findAllByTestId("field-set")
+      cy.findAllByTestId("parameter-widget")
         .contains(DASHBOARD_FILTER_TEXT_WITH_DEFAULT.name)
         .parent()
         .should("contain.text", DASHBOARD_FILTER_TEXT_WITH_DEFAULT.default);
@@ -751,7 +751,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
           H.visitDashboard(dashboardId);
         });
 
-      cy.findAllByTestId("field-set")
+      cy.findAllByTestId("parameter-widget")
         .contains(DASHBOARD_FILTER_TEXT.name)
         .parent()
         .click();
@@ -760,7 +760,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         cy.button("Add filter").click();
       });
 
-      cy.findAllByTestId("field-set")
+      cy.findAllByTestId("parameter-widget")
         .contains(DASHBOARD_FILTER_TEXT_WITH_DEFAULT.name)
         .parent()
         .click();
@@ -787,7 +787,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       H.saveDashboard({ waitMs: 250 });
 
       clickLineChartPoint();
-      cy.findAllByTestId("field-set")
+      cy.findAllByTestId("parameter-widget")
         .contains(DASHBOARD_FILTER_TEXT_WITH_DEFAULT.name)
         .parent()
         .should("contain.text", POINT_COUNT);
@@ -1135,7 +1135,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       H.saveDashboard({ waitMs: 250 });
 
       clickLineChartPoint();
-      cy.findAllByTestId("field-set")
+      cy.findAllByTestId("parameter-widget")
         .should("have.length", 1)
         .should("contain.text", POINT_COUNT);
       cy.get("@originalPathname").then((originalPathname) => {
@@ -1200,7 +1200,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       H.saveDashboard({ waitMs: 250 });
 
       clickLineChartPoint();
-      cy.findAllByTestId("field-set")
+      cy.findAllByTestId("parameter-widget")
         .should("have.length", 1)
         .should("contain.text", POINT_CREATED_AT_FORMATTED);
       cy.get("@originalPathname").then((originalPathname) => {
@@ -1255,7 +1255,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       H.saveDashboard({ waitMs: 250 });
 
       clickLineChartPoint();
-      cy.findAllByTestId("field-set")
+      cy.findAllByTestId("parameter-widget")
         .should("have.length", 2)
         .should("contain.text", POINT_COUNT)
         .should("contain.text", POINT_CREATED_AT_FORMATTED);
@@ -1376,7 +1376,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         })();
 
         cy.get("aside").button("Done").click();
-        H.saveDashboard({ waitMs: 250 });
+        H.saveDashboard({ waitMs: 500 });
 
         (function testDashboardDestinationClick() {
           cy.log("it handles 'Count' column click");
@@ -1384,10 +1384,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
           getTableCell(COLUMN_INDEX.COUNT)
             .should("have.text", `Count: ${POINT_COUNT}`)
             .click();
-          cy.findAllByTestId("field-set")
-            .should("have.length", 2)
-            .should("contain.text", POINT_COUNT)
-            .should("contain.text", POINT_CREATED_AT_FORMATTED);
+
           cy.get("@targetDashboardId").then((targetDashboardId) => {
             cy.location().should(({ pathname, search }) => {
               expect(pathname).to.equal(`/dashboard/${targetDashboardId}`);
@@ -1396,6 +1393,11 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
               );
             });
           });
+
+          cy.findAllByTestId("parameter-widget")
+            .should("have.length", 2)
+            .should("contain.text", POINT_COUNT)
+            .should("contain.text", POINT_CREATED_AT_FORMATTED);
         })();
 
         cy.go("back");
@@ -1504,7 +1506,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       getTableCell(COLUMN_INDEX.COUNT)
         .should("have.text", String(POINT_COUNT))
         .click();
-      cy.findAllByTestId("field-set")
+      cy.findAllByTestId("parameter-widget")
         .should("have.length", 2)
         .should("contain.text", POINT_COUNT);
 
@@ -1590,15 +1592,19 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         cy.get("aside").findByText(CREATED_AT_COLUMN_NAME).click();
         addUrlDestination();
         H.modal().within(() => {
-          const urlInput = cy.findAllByRole("textbox").eq(0);
-          const customLinkTextInput = cy.findAllByRole("textbox").eq(1);
-          urlInput.type(URL_WITH_PARAMS, {
-            parseSpecialCharSequences: false,
-          });
-          customLinkTextInput.type(`Created at: {{${CREATED_AT_COLUMN_ID}}}`, {
-            parseSpecialCharSequences: false,
-          });
-          customLinkTextInput.blur();
+          cy.findAllByRole("textbox")
+            .eq(0)
+            .as("urlInput")
+            .type(URL_WITH_PARAMS, {
+              parseSpecialCharSequences: false,
+            });
+          cy.findAllByRole("textbox")
+            .eq(1)
+            .as("customLinkTextInput")
+            .type(`Created at: {{${CREATED_AT_COLUMN_ID}}}`, {
+              parseSpecialCharSequences: false,
+            })
+            .blur();
 
           cy.button("Done").click();
         });
@@ -1619,7 +1625,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         cy.log("it handles 'Count' column click");
 
         getTableCell(COLUMN_INDEX.COUNT).click();
-        cy.findAllByTestId("field-set")
+        cy.findAllByTestId("parameter-widget")
           .should("have.length", 1)
           .should("contain.text", POINT_COUNT);
         cy.get("@originalPathname").then((originalPathname) => {
@@ -1919,7 +1925,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       });
 
       clickLineChartPoint();
-      cy.findAllByTestId("field-set")
+      cy.findAllByTestId("parameter-widget")
         .should("have.length", 2)
         .should("contain.text", POINT_COUNT)
         .should("contain.text", POINT_CREATED_AT_FORMATTED);
@@ -2202,7 +2208,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         {
           joins: [
             {
-              lhsTable: "Previous results",
+              lhsTable: "Orders",
               rhsTable: "Reviews",
               type: "left-join",
               conditions: [
@@ -2371,15 +2377,16 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
     addUrlDestination();
 
     H.modal().within(() => {
-      const urlInput = cy.findAllByRole("textbox").eq(0);
-
       cy.get("@targetDashboardId").then((targetDashboardId) => {
-        urlInput.type(
-          `http://localhost:4000/dashboard/${targetDashboardId}?source={{source}}&category={{category}}&count={{count}}`,
-          {
-            parseSpecialCharSequences: false,
-          },
-        );
+        cy.findAllByRole("textbox")
+          .eq(0)
+          .as("urlInput")
+          .type(
+            `http://localhost:4000/dashboard/${targetDashboardId}?source={{source}}&category={{category}}&count={{count}}`,
+            {
+              parseSpecialCharSequences: false,
+            },
+          );
       });
       cy.button("Done").click();
     });
@@ -2456,15 +2463,16 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
     addUrlDestination();
 
     H.modal().within(() => {
-      const urlInput = cy.findAllByRole("textbox").eq(0);
-
       cy.get("@targetDashboardId").then((targetDashboardId) => {
-        urlInput.type(
-          `http://localhost:4000/dashboard/${targetDashboardId}?source={{source}}`,
-          {
-            parseSpecialCharSequences: false,
-          },
-        );
+        cy.findAllByRole("textbox")
+          .eq(0)
+          .as("urlInput")
+          .type(
+            `http://localhost:4000/dashboard/${targetDashboardId}?source={{source}}`,
+            {
+              parseSpecialCharSequences: false,
+            },
+          );
       });
       cy.button("Done").click();
     });
@@ -2519,15 +2527,16 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
     addUrlDestination();
 
     H.modal().within(() => {
-      const urlInput = cy.findAllByRole("textbox").eq(0);
-
       cy.get("@targetDashboardId").then((targetDashboardId) => {
-        urlInput.type(
-          `http://localhost:4000/dashboard/${targetDashboardId}?discount={{sum_2}}&total={{sum}}`,
-          {
-            parseSpecialCharSequences: false,
-          },
-        );
+        cy.findAllByRole("textbox")
+          .eq(0)
+          .as("urlInput")
+          .type(
+            `http://localhost:4000/dashboard/${targetDashboardId}?discount={{sum_2}}&total={{sum}}`,
+            {
+              parseSpecialCharSequences: false,
+            },
+          );
       });
       cy.button("Done").click();
     });

@@ -123,7 +123,7 @@
   (classloader/require 'metabase.test.initialize.row-lock)
   ((resolve 'metabase.test.initialize.row-lock/init!)))
 
-(defn- all-components
+(defn all-components
   "Set of all components/initialization steps that are defined."
   []
   (set (keys (methods do-initialization!))))

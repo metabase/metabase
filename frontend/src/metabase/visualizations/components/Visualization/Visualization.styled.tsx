@@ -1,7 +1,7 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import LoadingSpinner from "metabase/components/LoadingSpinner";
+import LoadingSpinner from "metabase/common/components/LoadingSpinner";
 import { color } from "metabase/lib/colors";
 
 export const VisualizationRoot = styled.div`
@@ -11,7 +11,7 @@ export const VisualizationRoot = styled.div`
 `;
 
 export const VisualizationHeader = styled.div`
-  padding: 0.5rem;
+  padding: 0.625rem 0.5rem 0.375rem 0.5rem;
   flex-shrink: 0;
 `;
 

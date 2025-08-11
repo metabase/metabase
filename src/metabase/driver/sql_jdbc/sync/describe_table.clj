@@ -652,13 +652,14 @@
   (let [fields-with-json-unfolding-disabled
         (->> (t2/select-fn-set :name [:model/Field :name]
                                :table_id (u/the-id table)
+                               :base_type :type/JSON
                                :json_unfolding false)
              ;; in a delay so we'll query only if there's at least one json field
              (delay))]
     (into #{}
           (comp
-           (remove #(contains? @fields-with-json-unfolding-disabled (:name %)))
            (filter #(isa? (:base-type %) :type/JSON))
+           (remove #(contains? @fields-with-json-unfolding-disabled (:name %)))
            (describe-table-fields-xf driver table))
           (describe-table-fields driver conn table nil))))
 

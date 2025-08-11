@@ -50,12 +50,14 @@ function setup({
 
   render(
     <TimeFilterPicker
+      autoFocus
       query={query}
       stageIndex={0}
       column={column}
       filter={filter}
       isNew={!filter}
       withAddButton={withAddButton}
+      withSubmitButton
       onChange={onChange}
       onBack={onBack}
     />,

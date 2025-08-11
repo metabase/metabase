@@ -1,8 +1,10 @@
+import cx from "classnames";
 import type { JSX, ReactNode } from "react";
 import { t } from "ttag";
 
 import type { NotificationListItem } from "metabase/account/notifications/types";
-import { TextButton } from "metabase/components/Button.styled";
+import CS from "metabase/css/core/index.css";
+import { UnstyledButton } from "metabase/ui";
 import type { User } from "metabase-types/api";
 
 import {
@@ -45,9 +47,14 @@ export const NotificationList = ({
     <div data-testid="notifications-list">
       <NotificationHeader>
         <NotificationLabel>{t`You receive or created these`}</NotificationLabel>
-        <TextButton size="small" onClick={onHelp}>
+        <UnstyledButton
+          fz="sm"
+          fw="bold"
+          onClick={onHelp}
+          className={cx(CS.textMedium, CS.textBrandHover)}
+        >
           {t`Not seeing one here?`}
-        </TextButton>
+        </UnstyledButton>
       </NotificationHeader>
       {listItems.map((listItem) =>
         listItem.type === "pulse" ? (

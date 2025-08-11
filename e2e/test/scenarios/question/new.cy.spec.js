@@ -61,9 +61,7 @@ describe("scenarios > question > new", () => {
         cy.findByText("Everywhere").click();
         cy.findAllByTestId("result-item").should("have.length.at.least", 4);
 
-        const searchResultItems = cy.findAllByTestId("result-item");
-
-        searchResultItems.then(($results) => {
+        cy.findAllByTestId("result-item").then(($results) => {
           const types = $results
             .toArray()
             .map((element) => element.getAttribute("data-model-type"));

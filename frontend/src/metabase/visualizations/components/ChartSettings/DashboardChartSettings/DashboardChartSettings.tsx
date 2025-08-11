@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
 import _ from "underscore";
 
+import { useDashboardContext } from "metabase/dashboard/context";
 import { Divider, Flex } from "metabase/ui";
 import { getClickBehaviorSettings } from "metabase/visualizations/lib/settings";
 import { getSettingsWidgetsForSeries } from "metabase/visualizations/lib/settings/visualization";
@@ -13,7 +14,6 @@ import { useChartSettingsState } from "../hooks";
 import type { DashboardChartSettingsProps } from "./types";
 
 export const DashboardChartSettings = ({
-  dashboard,
   dashcard,
   onChange,
   series,
@@ -21,6 +21,8 @@ export const DashboardChartSettings = ({
   widgets: propWidgets,
   settings,
 }: DashboardChartSettingsProps) => {
+  const { dashboard } = useDashboardContext();
+
   const [tempSettings, setTempSettings] = useState<
     VisualizationSettings | undefined
   >(settings);
@@ -80,16 +82,18 @@ export const DashboardChartSettings = ({
         transformedSeries={transformedSeries}
       />
       <Divider orientation="vertical"></Divider>
-      <ChartSettingsVisualization
-        flex="2 0 0"
-        rawSeries={chartSettingsRawSeries}
-        dashboard={dashboard}
-        dashcard={dashcard}
-        onUpdateVisualizationSettings={handleChangeSettings}
-        onDone={handleDone}
-        onCancel={() => onClose?.()}
-        onReset={onResetToDefault}
-      />
+      {dashboard && (
+        <ChartSettingsVisualization
+          flex="2 0 0"
+          rawSeries={chartSettingsRawSeries}
+          dashboard={dashboard}
+          dashcard={dashcard}
+          onUpdateVisualizationSettings={handleChangeSettings}
+          onDone={handleDone}
+          onCancel={() => onClose?.()}
+          onReset={onResetToDefault}
+        />
+      )}
     </Flex>
   );
 };

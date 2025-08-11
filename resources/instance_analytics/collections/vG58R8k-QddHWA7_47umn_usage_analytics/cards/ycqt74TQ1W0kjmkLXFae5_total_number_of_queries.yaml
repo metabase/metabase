@@ -25,15 +25,11 @@ dataset_query:
   query:
     aggregation:
     - - count
-    aggregation-idents:
-      0: aggregation_ycqt74TQ1W0kjmkLXFae5@0__0
     breakout:
     - - field
       - started_at
       - base-type: type/DateTimeWithLocalTZ
         temporal-unit: week
-    breakout-idents:
-      0: breakout_ycqt74TQ1W0kjmkLXFae5@0__0
     filter:
     - time-interval
     - - field

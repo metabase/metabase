@@ -2,22 +2,21 @@ import cx from "classnames";
 import { getIn } from "icepick";
 import { t } from "ttag";
 
-import ErrorDetails from "metabase/components/ErrorDetails/ErrorDetails";
-import { ErrorMessage } from "metabase/components/ErrorMessage";
-import ExternalLink from "metabase/core/components/ExternalLink";
+import ErrorDetails from "metabase/common/components/ErrorDetails/ErrorDetails";
+import { ErrorMessage } from "metabase/common/components/ErrorMessage";
+import ExternalLink from "metabase/common/components/ExternalLink";
 import CS from "metabase/css/core/index.css";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
 import { getEngineNativeType } from "metabase/lib/engine";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_AI_SQL_FIXER } from "metabase/plugins";
-import { setUIControls, updateQuestion } from "metabase/query_builder/actions";
 import { getIsResultDirty } from "metabase/query_builder/selectors";
 import { getLearnUrl } from "metabase/selectors/settings";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
 import { Box, Flex, Icon } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
-import type { DatasetError, DatasetErrorType } from "metabase-types/api";
+import type { DatasetError } from "metabase-types/api";
 
 import { VISUALIZATION_SLOW_TIMEOUT } from "../../constants";
 
@@ -31,7 +30,6 @@ interface VisualizationErrorProps {
   question: Question;
   duration: number;
   error: DatasetError;
-  errorType?: DatasetErrorType;
 }
 
 export function VisualizationError({
@@ -40,33 +38,10 @@ export function VisualizationError({
   question,
   duration,
   error,
-  errorType,
 }: VisualizationErrorProps) {
   const query = question.query();
   const isResultDirty = useSelector(getIsResultDirty);
   const showMetabaseLinks = useSelector(getShowMetabaseLinks);
-  const dispatch = useDispatch();
-
-  const handleNativeQueryFix = (
-    fixedQuery: Lib.Query,
-    fixedLineNumbers: number[],
-  ) => {
-    const newQuestion = question.setQuery(fixedQuery);
-    dispatch(updateQuestion(newQuestion));
-    dispatch(
-      setUIControls({
-        highlightedNativeQueryLineNumbers: fixedLineNumbers,
-        isNativeEditorOpen: true,
-        isNativeQueryFixApplied: true,
-      }),
-    );
-  };
-
-  const handleNativeQueryHighlight = (fixedLineNumbers: number[]) => {
-    dispatch(
-      setUIControls({ highlightedNativeQueryLineNumbers: fixedLineNumbers }),
-    );
-  };
 
   const isNative = question && Lib.queryDisplayInfo(query).isNative;
   if (typeof error === "object" && error.status != null) {
@@ -150,15 +125,7 @@ export function VisualizationError({
                 {t`Learn how to debug SQL errors`}
               </ExternalLink>
             )}
-            {!isResultDirty && (
-              <PLUGIN_AI_SQL_FIXER.FixSqlQueryButton
-                query={query}
-                queryError={error}
-                queryErrorType={errorType}
-                onQueryFix={handleNativeQueryFix}
-                onHighlightLines={handleNativeQueryHighlight}
-              />
-            )}
+            {!isResultDirty && <PLUGIN_AI_SQL_FIXER.FixSqlQueryButton />}
           </Flex>
         </Flex>
       </Box>

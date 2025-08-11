@@ -239,7 +239,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
       cy.wait("@queryMetadata");
       editParameter(parameterDetails.name);
       H.getDashboardCard().findByText("Select…").click();
-      H.popover().findByText("Created At").click();
+      H.popover().findByText("Created At: Month").click();
       H.saveDashboard();
 
       cy.wait("@cardQuery");
@@ -260,8 +260,8 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
       editParameter(parameterDetails.name);
       H.getDashboardCard().findByText("Select…").click();
       H.popover()
-        .findAllByText("Created At")
-        .should("have.length", 2)
+        .findAllByText("Created At: Month")
+        .should("have.length", 1)
         .eq(0)
         .click();
       H.saveDashboard();
@@ -284,16 +284,16 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
       addQuestion(multiStageQuestionDetails.name);
       editParameter(parameterDetails.name);
       H.getDashboardCard().findByText("Select…").click();
-      H.popover().findByText("Created At: Month").click();
+      H.popover().findByText("Created At: Month: Year").click();
       H.saveDashboard();
       H.filterWidget().click();
       H.popover().findByText("Quarter").click();
       H.getDashboardCard().within(() => {
-        cy.findByText("Created At: Month: Quarter").should("be.visible");
+        cy.findByText("Created At: Quarter").should("be.visible");
         cy.findByText(multiStageQuestionDetails.name).click();
       });
       H.tableInteractive()
-        .findByText("Created At: Month: Quarter")
+        .findByText("Created At: Quarter")
         .should("be.visible");
       backToDashboard();
       H.editDashboard();
@@ -310,7 +310,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
       addQuestion(expressionBreakoutQuestionDetails.name);
       editParameter(parameterDetails.name);
       H.getDashboardCard().findByText("Select…").click();
-      H.popover().findByText("Date").click();
+      H.popover().findByText("Date: Day").click();
       H.saveDashboard();
       H.filterWidget().click();
       H.popover().findByText("Quarter").click();
@@ -366,7 +366,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
       addQuestion(singleBreakoutQuestionDetails.name);
       editParameter(parameterDetails.name);
       H.getDashboardCard().findByText("Select…").click();
-      H.popover().findByText("Created At").click();
+      H.popover().findByText("Created At: Month").click();
       H.saveDashboard();
       H.filterWidget().click();
       H.popover().findByText("Year").click();
@@ -389,10 +389,10 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
       addQuestion(multiBreakoutQuestionDetails.name);
       addTemporalUnitParameter();
       H.getDashboardCard().findByText("Select…").click();
-      H.popover().findAllByText("Created At").eq(0).click();
+      H.popover().findAllByText("Created At: Month").eq(0).click();
       addTemporalUnitParameter();
       H.getDashboardCard().findByText("Select…").click();
-      H.popover().findAllByText("Created At").eq(1).click();
+      H.popover().findAllByText("Created At: Year").click();
       H.saveDashboard();
 
       H.filterWidget().eq(0).click();
@@ -460,9 +460,9 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
         .should("have.length", 2)
         .eq(0)
         .click();
-      H.popover().findByText("Created At").click();
+      H.popover().findByText("Created At: Month").click();
       H.getDashboardCard().findByText("Select…").click();
-      H.popover().findByText("Created At").click();
+      H.popover().findByText("Created At: Month").click();
       H.saveDashboard();
 
       H.filterWidget().click();
@@ -1039,7 +1039,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
           query: `
         SELECT
           count(*),
-          {{mb.time_grouping("unit", "created_at")}} as unit
+          {{unit}} as unit
         FROM
           ORDERS
         GROUP BY
@@ -1051,6 +1051,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
               name: "unit",
               id: "eb345703-001c-4b2a-b7d5-71cb3efe4beb",
               "display-name": "Unit",
+              dimension: ["field", ORDERS.CREATED_AT, null],
               required: true,
             },
           },
@@ -1085,7 +1086,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
           query: `
         SELECT
           count(*),
-          {{mb.time_grouping("unit", "created_at")}} as unit
+          {{unit}} as unit
         FROM
           ORDERS
         GROUP BY
@@ -1097,6 +1098,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
               name: "unit",
               id: "eb345703-001c-4b2a-b7d5-71cb3efe4beb",
               "display-name": "Unit",
+              dimension: ["field", ORDERS.CREATED_AT, null],
               required: true,
             },
           },

@@ -19,6 +19,7 @@ import { css, Global, useTheme } from "@emotion/react";
 import { baseStyle, rootStyle } from "metabase/css/core/base.styled";
 import { defaultFontFiles } from "metabase/css/core/fonts.styled";
 import { saveDomImageStyles } from "metabase/visualizations/lib/image-exports";
+import { initialize, mswLoader } from "msw-storybook-addon";
 
 // Note: Changing the names of the stories may impact loki visual testing. Please ensure that
 // Any story name changes are also reflected in the loki.config.js storiesFilter array.
@@ -124,6 +125,15 @@ function CssVariables() {
   return <Global styles={styles} />;
 }
 
-const preview = { parameters, decorators };
+/*
+ * Initializes MSW
+ * See https://github.com/mswjs/msw-storybook-addon#configuring-msw
+ * to learn how to customize it
+ */
+
+initialize({
+  onUnhandledRequest: "bypass",
+});
+const preview = { parameters, decorators, loaders: [mswLoader] };
 
 export default preview;

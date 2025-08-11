@@ -18,9 +18,9 @@ describe("ParameterWidget (OSS)", () => {
           },
         ],
       });
-      expect(await screen.findByTestId("field-set-legend")).toHaveTextContent(
-        "Text contains",
-      );
+      expect(
+        await screen.findByTestId("parameter-value-widget-target"),
+      ).toHaveTextContent("Text contains");
       expect(translateContentStringSpy()).not.toHaveBeenCalled();
     });
   });

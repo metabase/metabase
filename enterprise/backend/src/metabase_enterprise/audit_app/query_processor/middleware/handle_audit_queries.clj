@@ -40,7 +40,7 @@
   (:require
    [clojure.data :as data]
    [metabase-enterprise.audit-app.interface :as audit.i]
-   [metabase.permissions.validation :as validation]
+   [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.pipeline :as qp.pipeline]
@@ -123,7 +123,7 @@
   [{qualified-fn-str :fn, args :args, :as query} :- InternalQuery
    rff                                           :- ::qp.schema/rff]
   ;; Make sure current user is a superuser or has monitoring permissions
-  (validation/check-has-application-permission :monitoring)
+  (perms/check-has-application-permission :monitoring)
   ;; Make sure audit app is enabled (currently the only use case for internal queries). We can figure out a way to
   ;; allow non-audit-app queries if and when we add some
   (when-not (premium-features/enable-audit-app?)

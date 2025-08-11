@@ -8,7 +8,7 @@ import { type SetupOpts, setup as baseSetup } from "./setup";
 const setup = (opts: SetupOpts = {}) =>
   baseSetup({
     hasEnterprisePlugins: true,
-    tokenFeatures: { embedding_sdk: true },
+    tokenFeatures: { embedding_sdk: opts.isEmbeddingSdkEnabled },
     ...opts,
   });
 
@@ -32,7 +32,9 @@ describe("EmbeddingSdkSettings (EE with Embedding SDK token)", () => {
     expect(
       alertInfo.queryByText("upgrade to Metabase Pro"),
     ).not.toBeInTheDocument();
-    expect(alertInfo.getByText("implement JWT SSO")).toBeInTheDocument();
+    expect(
+      alertInfo.getByText("implement JWT or SAML SSO"),
+    ).toBeInTheDocument();
   });
 
   it("should allow users to update CORS settings", async () => {

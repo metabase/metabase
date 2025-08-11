@@ -7,7 +7,7 @@ describe("scenarios > admin > permissions > database details permissions", () =>
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    H.setTokenFeatures("all");
+    H.activateToken("pro-self-hosted");
   });
 
   it("allows database managers to see and edit database details but not to delete a database (metabase#22293)", () => {

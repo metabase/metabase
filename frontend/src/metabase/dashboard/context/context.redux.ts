@@ -7,6 +7,7 @@ import {
   addHeadingDashCardToDashboard,
   addLinkDashCardToDashboard,
   addMarkdownDashCardToDashboard,
+  addParameter,
   cancelFetchDashboardCardData,
   closeDashboard,
   closeSidebar,
@@ -23,8 +24,10 @@ import {
   setArchivedDashboard,
   setDashboardAttributes,
   setEditingDashboard,
+  setEditingParameter,
   setParameterDefaultValue,
   setParameterFilteringParameters,
+  setParameterIndex,
   setParameterIsMultiSelect,
   setParameterName,
   setParameterQueryType,
@@ -39,9 +42,20 @@ import {
   setSidebar,
   showAddParameterPopover,
   toggleSidebar,
+  updateDashboard,
   updateDashboardAndCards,
 } from "metabase/dashboard/actions";
+import {
+  createNewTab,
+  deleteTab,
+  duplicateTab,
+  moveTab,
+  renameTab,
+  selectTab,
+  undoDeleteTab,
+} from "metabase/dashboard/actions/tabs";
 import { connect } from "metabase/lib/redux";
+import { getIsEmbeddingIframe } from "metabase/selectors/embed";
 import {
   canManageSubscriptions,
   getUserIsAdmin,
@@ -52,7 +66,9 @@ import {
   getClickBehaviorSidebarDashcard,
   getDashboardBeforeEditing,
   getDashboardComplete,
+  getDashboardHeaderParameters,
   getDraftParameterValues,
+  getEditingParameter,
   getIsAddParameterPopoverOpen,
   getIsAdditionalInfoVisible,
   getIsDashCardsLoadingComplete,
@@ -77,6 +93,7 @@ import {
 export const mapStateToProps = (state: State) => ({
   dashboard: getDashboardComplete(state),
   parameters: getParameters(state),
+  headerParameters: getDashboardHeaderParameters(state),
   tabs: getTabs(state),
   canManageSubscriptions: canManageSubscriptions(state),
   isAdmin: getUserIsAdmin(state),
@@ -84,6 +101,7 @@ export const mapStateToProps = (state: State) => ({
   isSharing: getIsSharing(state),
   dashboardBeforeEditing: getDashboardBeforeEditing(state),
   isEditingParameter: getIsEditingParameter(state),
+  editingParameter: getEditingParameter(state),
   isDirty: getIsDirty(state),
   slowCards: getSlowCards(state),
   parameterValues: getParameterValues(state),
@@ -100,6 +118,7 @@ export const mapStateToProps = (state: State) => ({
   isNavigatingBackToDashboard: getIsNavigatingBackToDashboard(state),
   isLoading: getIsLoading(state),
   isLoadingWithoutCards: getIsLoadingWithoutCards(state),
+  isEmbeddingIframe: getIsEmbeddingIframe(state),
 });
 
 export const mapDispatchToProps = {
@@ -114,10 +133,13 @@ export const mapDispatchToProps = {
   setSharing,
   toggleSidebar,
   closeSidebar,
+  addParameter,
   setParameterName,
   setParameterType,
   setParameterValue,
+  setParameterIndex,
   setParameterValueToDefault,
+  setEditingParameter,
   setParameterDefaultValue,
   setParameterRequired,
   setParameterTemporalUnits,
@@ -132,6 +154,7 @@ export const mapDispatchToProps = {
   onUpdateDashCardVisualizationSettings,
   onUpdateDashCardColumnSettings,
   updateDashboardAndCards,
+  updateDashboard,
   setSidebar,
   hideAddParameterPopover,
   fetchDashboard,
@@ -142,8 +165,18 @@ export const mapDispatchToProps = {
   setArchivedDashboard,
   deletePermanently,
   moveDashboardToCollection,
+
+  createNewTab,
+  deleteTab,
+  duplicateTab,
+  moveTab,
+  renameTab,
+  selectTab,
+  undoDeleteTab,
 };
 
-export const connector = connect(mapStateToProps, mapDispatchToProps);
+export const connector = connect(mapStateToProps, mapDispatchToProps, null, {
+  forwardRef: true,
+});
 
 export type ReduxProps = ConnectedProps<typeof connector>;

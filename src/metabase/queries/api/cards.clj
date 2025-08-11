@@ -4,15 +4,8 @@
    [metabase.api.macros :as api.macros]
    [metabase.models.interface :as mi]
    [metabase.queries.api.card :as api.card]
-   [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
-
-(mu/defn get-dashboards
-  "Get dashboards that a card with id `card-id` appears in."
-  [card-id :- ms/PositiveInt]
-  (let [card (t2/select-one :model/Card :id card-id)]
-    (:in_dashboards (t2/hydrate card :in_dashboards))))
 
 (defn- present-dashboard [dashboard]
   (-> (cond
@@ -30,9 +23,13 @@
    _query-params
    {:keys [card_ids]} :- [:map
                           [:card_ids [:sequential ms/PositiveInt]]]]
-  (->> card_ids
-       (mapv (fn [card-id]
-               {:card_id card-id :dashboards (map present-dashboard (get-dashboards card-id))}))))
+  (let [id->card (t2/select-fn->fn :id identity :model/Card :id [:in card_ids])]
+    (as-> card_ids $
+      (mapv id->card $)
+      (t2/hydrate $ :in_dashboards)
+      (mapv (fn [{:keys [id in_dashboards]}]
+              {:card_id id :dashboards (map present-dashboard in_dashboards)})
+            $))))
 
 (api.macros/defendpoint :post "/move"
   "Moves a number of Cards to a single collection or dashboard.

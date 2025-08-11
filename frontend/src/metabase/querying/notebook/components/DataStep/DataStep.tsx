@@ -1,7 +1,7 @@
 import { type CSSProperties, useMemo } from "react";
 import { t } from "ttag";
 
-import IconButtonWrapper from "metabase/components/IconButtonWrapper";
+import IconButtonWrapper from "metabase/common/components/IconButtonWrapper";
 import { Icon, Popover, Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
 

@@ -156,7 +156,7 @@ describe("(metabase#45042)", () => {
     cy.visit("/admin");
 
     //Ensure tabs are present in normal view
-    cy.findByRole("navigation").within(() => {
+    cy.findByTestId("admin-navbar").within(() => {
       cy.findByRole("link", { name: "Settings" }).should("exist");
       cy.findByRole("link", { name: "Exit admin" }).should("exist");
     });
@@ -165,7 +165,7 @@ describe("(metabase#45042)", () => {
     cy.viewport(500, 750);
 
     //ensure that hamburger is visible and functional
-    cy.findByRole("navigation").within(() => {
+    cy.findByTestId("admin-navbar").within(() => {
       cy.findByRole("button", { name: /burger/ })
         .should("be.visible")
         .click();
@@ -195,8 +195,8 @@ describe("(metabase#46714)", () => {
       cy.findByText("Orders").click();
     });
 
-    //TODO: Fix this shame
-    cy.wait(2000);
+    cy.findByTestId("entity-picker-modal").should("not.exist");
+    cy.findByTestId("segment-editor").findByText("Orders").should("be.visible");
 
     cy.findByTestId("segment-editor")
       .findByText("Add filters to narrow your answer")

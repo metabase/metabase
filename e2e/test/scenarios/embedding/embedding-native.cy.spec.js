@@ -113,12 +113,7 @@ describe("scenarios > embedding > native questions", () => {
       cy.contains("Affiliate").should("not.exist");
 
       // Let's try to remove one filter
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Q2 2023")
-        .closest("fieldset")
-        .within(() => {
-          cy.icon("close").click();
-        });
+      H.filterWidget({ name: "Q2 2023" }).icon("close").click();
 
       // Order ID is 926 - there should be only one result after this
       H.filterWidget().contains("Order ID").click();
@@ -266,7 +261,7 @@ describe("scenarios > embedding > native questions", () => {
         cy.findByDisplayValue("Organic");
 
         // Total's value should fall back to the default one (`0`) because we didn't set it explicitly
-        cy.get("legend").contains("Total").parent("fieldset").contains("0");
+        H.filterWidget({ name: "Total" }).should("contain", "0");
 
         cy.contains("Emilie Goyette");
         cy.contains("35.7");
@@ -276,7 +271,7 @@ describe("scenarios > embedding > native questions", () => {
           setFilters: { total: 80 },
         });
 
-        cy.get("legend").contains("Total").parent("fieldset").contains("80");
+        H.filterWidget({ name: "Total" }).should("contain", "80");
 
         cy.contains("35.7").should("not.exist");
       });

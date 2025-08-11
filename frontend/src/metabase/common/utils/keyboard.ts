@@ -2,3 +2,7 @@
 export const isPlainKey = (e: React.KeyboardEvent, key: string) => {
   return e.key === key && !e.ctrlKey && !e.metaKey && !e.altKey && !e.shiftKey;
 };
+
+export const hasModifierKeys = (e: React.MouseEvent) => {
+  return e.shiftKey || e.ctrlKey || e.metaKey || e.altKey;
+};

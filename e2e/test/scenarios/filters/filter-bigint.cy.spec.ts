@@ -476,10 +476,6 @@ SELECT CAST('${POSITIVE_DECIMAL_VALUE}' AS DECIMAL) AS NUMBER`,
       );
     }
 
-    function findFilterWidget(parameterName: string) {
-      return H.filterWidget().filter(`:contains(${parameterName})`);
-    }
-
     function testFilter({
       parameterName,
       setParameterValue,
@@ -499,12 +495,12 @@ SELECT CAST('${POSITIVE_DECIMAL_VALUE}' AS DECIMAL) AS NUMBER`,
       H.getDashboardCard()
         .findByTestId("scalar-value")
         .should("have.text", "3");
-      findFilterWidget(parameterName).click();
+      H.filterWidget({ name: parameterName }).click();
       H.popover().within(() => {
         setParameterValue();
         cy.button("Add filter").click();
       });
-      findFilterWidget(parameterName)
+      H.filterWidget({ name: parameterName })
         .findByText(filterArgsDisplayName)
         .should("be.visible");
       H.getDashboardCard()
@@ -521,7 +517,7 @@ SELECT CAST('${POSITIVE_DECIMAL_VALUE}' AS DECIMAL) AS NUMBER`,
         H.queryBuilderHeader().findByLabelText("Back to Dashboard").click();
       }
 
-      findFilterWidget(parameterName).icon("close").click();
+      H.filterWidget({ name: parameterName }).icon("close").click();
     }
 
     function testFilters({

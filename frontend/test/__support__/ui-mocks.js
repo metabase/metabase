@@ -1,4 +1,4 @@
-jest.mock("metabase/components/Popover");
+jest.mock("metabase/common/components/Popover");
 
 // Replace addEventListener with a test implementation which collects all event listeners to `eventListeners` map
 export const eventListeners = {};

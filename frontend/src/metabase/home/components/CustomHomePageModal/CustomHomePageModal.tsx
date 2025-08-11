@@ -3,10 +3,10 @@ import { t } from "ttag";
 
 import { trackCustomHomepageDashboardEnabled } from "metabase/admin/settings/analytics";
 import { updateSettings } from "metabase/admin/settings/settings";
-import { DashboardSelector } from "metabase/components/DashboardSelector/DashboardSelector";
-import Modal from "metabase/components/Modal";
-import ModalContent from "metabase/components/ModalContent";
-import Button from "metabase/core/components/Button/Button";
+import Button from "metabase/common/components/Button/Button";
+import { DashboardSelector } from "metabase/common/components/DashboardSelector/DashboardSelector";
+import Modal from "metabase/common/components/Modal";
+import ModalContent from "metabase/common/components/ModalContent";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { addUndo, dismissUndo } from "metabase/redux/undo";
 import { refreshCurrentUser } from "metabase/redux/user";

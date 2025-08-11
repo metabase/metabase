@@ -58,6 +58,7 @@
 
 (doseq [[feature supported?] {:actions                   true
                               :actions/custom            true
+                              :actions/data-editing      true
                               :datetime-diff             true
                               :expression-literals       true
                               :full-join                 false
@@ -68,7 +69,8 @@
                               :regex                     true
                               :test/jvm-timezone-setting false
                               :uuid-type                 true
-                              :uploads                   true}]
+                              :uploads                   true
+                              :database-routing          true}]
   (defmethod driver/database-supports? [:h2 feature]
     [_driver _feature _database]
     supported?))
@@ -344,6 +346,11 @@
 (defmethod sql.qp/cast-temporal-byte [:h2 :Coercion/YYYYMMDDHHMMSSBytes->Temporal]
   [driver _coercion-strategy expr]
   (sql.qp/cast-temporal-string driver :Coercion/YYYYMMDDHHMMSSString->Temporal
+                               [:utf8tostring expr]))
+
+(defmethod sql.qp/cast-temporal-byte [:h2 :Coercion/ISO8601Bytes->Temporal]
+  [driver _coercion-strategy expr]
+  (sql.qp/cast-temporal-string driver :Coercion/ISO8601->DateTime
                                [:utf8tostring expr]))
 
 ;; H2 v2 added date_trunc and extract

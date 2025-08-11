@@ -1,29 +1,27 @@
 import { t } from "ttag";
+import { uniq } from "underscore";
 
-import Button from "metabase/core/components/Button";
-import { Sortable } from "metabase/core/components/Sortable";
-import type { TabButtonMenuItem } from "metabase/core/components/TabButton";
-import { TabButton } from "metabase/core/components/TabButton";
-import { TabRow } from "metabase/core/components/TabRow";
+import Button from "metabase/common/components/Button";
+import Link from "metabase/common/components/Link";
+import { Sortable } from "metabase/common/components/Sortable";
+import type { TabButtonMenuItem } from "metabase/common/components/TabButton";
+import { TabButton } from "metabase/common/components/TabButton";
+import { TabRow } from "metabase/common/components/TabRow";
+import { useConfirmation } from "metabase/common/hooks/use-confirmation";
+import CS from "metabase/css/core/index.css";
+import { useDashboardContext } from "metabase/dashboard/context";
+import { isVirtualDashCard } from "metabase/dashboard/utils";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
-import { Flex } from "metabase/ui";
-import type { DashboardId } from "metabase-types/api";
+import { Flex, List } from "metabase/ui";
 import type { SelectedTabId } from "metabase-types/store";
 
 import S from "./DashboardTabs.module.css";
 import { useDashboardTabs } from "./use-dashboard-tabs";
 
-export type DashboardTabsProps = {
-  dashboardId: DashboardId;
-  isEditing?: boolean;
-  className?: string;
-};
+export function DashboardTabs() {
+  const { isEditing = false, dashboard } = useDashboardContext();
+  const { modalContent, show } = useConfirmation();
 
-export function DashboardTabs({
-  dashboardId,
-  isEditing = false,
-  className,
-}: DashboardTabsProps) {
   const {
     tabs,
     createNewTab,
@@ -33,7 +31,7 @@ export function DashboardTabs({
     selectTab,
     selectedTabId,
     moveTab,
-  } = useDashboardTabs({ dashboardId });
+  } = useDashboardTabs();
   const hasMultipleTabs = tabs.length > 1;
   const showTabs = hasMultipleTabs || isEditing;
   const showPlaceholder = tabs.length === 0 && isEditing;
@@ -70,12 +68,57 @@ export function DashboardTabs({
   if (hasMultipleTabs) {
     menuItems.push({
       label: t`Delete`,
-      action: (_, value) => deleteTab(value),
+      action: (_, value) => {
+        const performDelete = () => deleteTab(value);
+        const tabQuestions = dashboard?.dashcards.filter(
+          (dashcard) =>
+            dashcard.dashboard_tab_id === value && !isVirtualDashCard(dashcard),
+        );
+        const tabDashboardQuestions = tabQuestions?.filter(
+          (dashcard) => dashcard.card.dashboard_id !== null,
+        );
+        const hasDashboardQuestions = !!tabDashboardQuestions?.length;
+        if (!hasDashboardQuestions) {
+          performDelete();
+          return;
+        }
+        const areAllDashboardQuestions =
+          tabQuestions?.length === tabDashboardQuestions.length;
+        show({
+          size: areAllDashboardQuestions ? "sm" : undefined,
+          title: areAllDashboardQuestions
+            ? t`Delete this tab and its charts?`
+            : t`Delete this tab?`,
+          message: areAllDashboardQuestions ? (
+            t`If you'd like to keep any of them, you can move them to a different tab, dashboard, or collection.`
+          ) : (
+            <>
+              {t`This will also delete any questions saved in it. If you'd like to keep any of these, move them to a different tab, dashboard, or collection.`}
+              <List ml="md" mt="sm">
+                {uniq(tabDashboardQuestions, (dc) => dc.card.id).map(
+                  (dashcard) => (
+                    <List.Item key={dashcard.card.id}>
+                      <Link
+                        to={`/question/${dashcard.card.id}`}
+                        className={CS.link}
+                      >
+                        {dashcard.card.name}
+                      </Link>
+                    </List.Item>
+                  ),
+                )}
+              </List>
+            </>
+          ),
+          confirmButtonText: t`Delete tab`,
+          onConfirm: performDelete,
+        });
+      },
     });
   }
 
   return (
-    <Flex align="start" gap="lg" w="100%" className={className}>
+    <Flex align="start" gap="lg" w="100%" className={S.dashboardTabs}>
       <TabRow<SelectedTabId>
         value={selectedTabId}
         onChange={selectTab}
@@ -84,7 +127,6 @@ export function DashboardTabs({
       >
         {showPlaceholder ? (
           <TabButton
-            className={S.tabButton}
             label={t`Tab 1`}
             value={null}
             showMenu
@@ -92,12 +134,7 @@ export function DashboardTabs({
           />
         ) : (
           tabs.map((tab) => (
-            <Sortable
-              key={tab.id}
-              id={tab.id}
-              className={S.tabButton}
-              disabled={!isEditing}
-            >
+            <Sortable key={tab.id} id={tab.id} disabled={!isEditing}>
               <TabButton.Renameable
                 value={tab.id}
                 label={tab.name}
@@ -119,6 +156,7 @@ export function DashboardTabs({
           />
         )}
       </TabRow>
+      {modalContent}
     </Flex>
   );
 }

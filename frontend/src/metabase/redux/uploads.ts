@@ -26,7 +26,7 @@ export const UPLOAD_FILE_CLEAR = "metabase/collection/UPLOAD_FILE_CLEAR";
 export const UPLOAD_FILE_CLEAR_ALL =
   "metabase/collection/UPLOAD_FILE_CLEAR_ALL";
 
-const MAX_UPLOAD_SIZE = 50 * 1024 * 1024;
+export const MAX_UPLOAD_SIZE = 50 * 1024 * 1024;
 export const MAX_UPLOAD_STRING = "50";
 
 const CLEAR_AFTER_MS = 8000;

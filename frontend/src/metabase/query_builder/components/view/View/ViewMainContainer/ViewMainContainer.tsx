@@ -1,7 +1,7 @@
 import cx from "classnames";
 import type { ResizableBoxProps } from "react-resizable";
 
-import DebouncedFrame from "metabase/components/DebouncedFrame";
+import DebouncedFrame from "metabase/common/components/DebouncedFrame";
 import CS from "metabase/css/core/index.css";
 import type {
   SelectionRange,

@@ -2,10 +2,10 @@ import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import EntityMenu from "metabase/components/EntityMenu";
-import type { InputProps } from "metabase/core/components/Input";
+import EntityMenu from "metabase/common/components/EntityMenu";
+import type { InputProps } from "metabase/common/components/Input";
+import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import ButtonsS from "metabase/css/components/buttons.module.css";
-import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 import { parseTimestamp } from "metabase/lib/time-dayjs";
 import { getTimelineName } from "metabase/lib/timelines";
@@ -97,6 +97,7 @@ const TimelineDetailsModal = ({
             <ModalToolbarLink
               className={ButtonsS.Button}
               to={Urls.newEventInCollection(timeline)}
+              role="button"
             >{t`Create event`}</ModalToolbarLink>
           )}
         </ModalToolbar>

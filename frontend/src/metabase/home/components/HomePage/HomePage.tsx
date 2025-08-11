@@ -2,8 +2,8 @@ import { useEffect } from "react";
 import { replace } from "react-router-redux";
 import { t } from "ttag";
 
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useHomepageDashboard } from "metabase/common/hooks/use-homepage-dashboard";
-import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { updateUserSetting } from "metabase/redux/settings";
 import { addUndo } from "metabase/redux/undo";

@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
+import { type ButtonHTMLAttributes, useEffect, useState } from "react";
 import { t } from "ttag";
 
-import { Box, Popover } from "metabase/ui";
+import { useDashboardContext } from "metabase/dashboard/context";
+import { type ActionIconProps, Box, Popover } from "metabase/ui";
 
 import { RefreshOption } from "./RefreshOption";
 import { RefreshWidgetTarget } from "./RefreshWidgetTarget";
@@ -53,15 +54,12 @@ const OPTIONS = [
   },
 ];
 
-export const RefreshWidget = ({
-  setRefreshElapsedHook,
-  period,
-  onChangePeriod,
-}: {
-  setRefreshElapsedHook?: (hook: (elapsed: number | null) => void) => void;
-  period: number | null;
-  onChangePeriod: (period: number | null) => void;
-}) => {
+export const RefreshWidget = (
+  props: ActionIconProps & ButtonHTMLAttributes<HTMLButtonElement>,
+) => {
+  const { setRefreshElapsedHook, refreshPeriod, onRefreshPeriodChange } =
+    useDashboardContext();
+
   const [elapsed, setElapsed] = useState<number | null>(null);
 
   const [isOpen, setIsOpen] = useState(false);
@@ -78,7 +76,11 @@ export const RefreshWidget = ({
     <Popover position="bottom-end" opened={isOpen} onChange={setIsOpen}>
       <Popover.Target>
         <Box onClick={() => setIsOpen(!isOpen)}>
-          <RefreshWidgetTarget elapsed={elapsed} period={period} />
+          <RefreshWidgetTarget
+            elapsed={elapsed}
+            period={refreshPeriod}
+            {...props}
+          />
         </Box>
       </Popover.Target>
       <Popover.Dropdown>
@@ -97,10 +99,10 @@ export const RefreshWidget = ({
                 key={option.period}
                 name={option.name}
                 period={option.period}
-                selected={option.period === period}
+                selected={option.period === refreshPeriod}
                 onClick={() => {
                   setIsOpen(false);
-                  onChangePeriod(option.period);
+                  onRefreshPeriodChange(option.period);
                 }}
               />
             ))}

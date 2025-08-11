@@ -97,7 +97,7 @@ describe("scenarios > metrics > dashboard", () => {
     ).click();
     H.modal().within(() => {
       H.switchToAddMoreData();
-      H.addDataset(PRODUCTS_SCALAR_METRIC.name);
+      H.selectDataset(PRODUCTS_SCALAR_METRIC.name);
       cy.findByTestId("visualization-canvas").within(() => {
         // On the funnel and on the horizontal well
         cy.findAllByText(ORDERS_SCALAR_METRIC.name).should("have.length", 2);
@@ -122,10 +122,12 @@ describe("scenarios > metrics > dashboard", () => {
     });
     H.editDashboard();
 
-    H.findDashCardAction(H.getDashboardCard(0), "Edit visualization").click();
+    H.showDashcardVisualizerModal(0, {
+      isVisualizerCard: false,
+    });
     H.modal().within(() => {
       H.switchToAddMoreData();
-      H.addDataset(PRODUCTS_TIMESERIES_METRIC.name);
+      H.selectDataset(PRODUCTS_TIMESERIES_METRIC.name);
       H.chartLegendItem(ORDERS_TIMESERIES_METRIC.name).should("exist");
       H.chartLegendItem(PRODUCTS_TIMESERIES_METRIC.name).should("exist");
       cy.button("Save").click();
@@ -161,7 +163,6 @@ describe("scenarios > metrics > dashboard", () => {
           "eq",
           `/dashboard/${ORDERS_DASHBOARD_ID}-orders-in-a-dashboard`,
         );
-        cy.location("hash").should("eq", `#add=${metricId}&edit`);
         cy.findByTestId("scalar-value").should("have.text", "18,760");
 
         cy.log("Assert we can save the dashboard with the metric");

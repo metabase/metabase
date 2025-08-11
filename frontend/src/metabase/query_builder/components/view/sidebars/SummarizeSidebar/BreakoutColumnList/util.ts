@@ -12,8 +12,11 @@ export function getBreakoutListItem(
     return;
   }
 
-  const columnWithoutBinning = Lib.withBinning(column, null);
-  const columnInfo = Lib.displayInfo(query, stageIndex, columnWithoutBinning);
+  const columnWithoutBucketing = Lib.withBinning(
+    Lib.withTemporalBucket(column, null),
+    null,
+  );
+  const columnInfo = Lib.displayInfo(query, stageIndex, columnWithoutBucketing);
   return { ...columnInfo, column, breakout };
 }
 

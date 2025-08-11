@@ -4,16 +4,16 @@ import _ from "underscore";
 import {
   SettingsPageWrapper,
   SettingsSection,
-} from "metabase/admin/settings/components/SettingsSection";
+} from "metabase/admin/components/SettingsSection";
 import { AdminSettingInput } from "metabase/admin/settings/components/widgets/AdminSettingInput";
-import GroupMappingsWidget from "metabase/admin/settings/containers/GroupMappingsWidget";
+import { GroupMappingsWidget } from "metabase/admin/settings/components/widgets/GroupMappingsWidget";
 import { getExtraFormFieldProps } from "metabase/admin/settings/utils";
 import {
   useGetAdminSettingsDetailsQuery,
   useGetSettingsQuery,
 } from "metabase/api";
 import { useAdminSetting } from "metabase/api/utils";
-import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import {
   Form,
   FormErrorMessage,
@@ -136,14 +136,17 @@ export const SettingsJWTForm = () => {
                       settingDetails?.["jwt-attribute-lastname"],
                     )}
                   />
+                  <FormTextInput
+                    name="jwt-attribute-groups"
+                    label={t`Group assignment attribute`}
+                    {...getExtraFormFieldProps(
+                      settingDetails?.["jwt-attribute-groups"],
+                    )}
+                  />
                 </Stack>
               </FormSection>
-              <FormSection
-                title={"Group Schema"}
-                data-testid="jwt-group-schema"
-              >
+              <FormSection title={"Group Sync"} data-testid="jwt-group-schema">
                 <GroupMappingsWidget
-                  isFormik
                   setting={{ key: "jwt-group-sync" }}
                   onChange={handleSubmit}
                   settingValues={settingValues}
@@ -175,9 +178,11 @@ const getFormValues = (
     "jwt-user-provisioning-enabled?",
     "jwt-identity-provider-uri",
     "jwt-shared-secret",
+    "jwt-group-sync",
     "jwt-attribute-email",
     "jwt-attribute-firstname",
     "jwt-attribute-lastname",
+    "jwt-attribute-groups",
   ]);
 
   if (jwtSettings["jwt-user-provisioning-enabled?"] == null) {

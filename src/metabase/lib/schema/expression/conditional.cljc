@@ -75,26 +75,33 @@
 ;;; believe it or not, a `:case` clause really has the syntax [:case {} [[pred1 expr1] [pred2 expr2] ...]]
 ;;; `:if` is an alias to `:case`
 (doseq [tag [:case :if]]
-  (mbql-clause/define-catn-mbql-clause tag
-    ;; TODO -- we should further constrain this so all of the exprs are of the same type
-    [:pred-expr-pairs [:sequential {:min 1} [:tuple
-                                             {:error/message "Valid [pred expr] pair"}
-                                             #_pred [:ref ::expression/boolean]
-                                             #_expr [:ref ::expression/expression]]]]
-    [:default [:? [:schema [:ref ::expression/expression]]]])
+  (mbql-clause/define-mbql-clause
+    tag
+    [:schema
+     (mbql-clause/catn-clause-schema tag
+                                     [:pred-expr-pairs
+                                      [:sequential {:min 1}
+                                       [:tuple
+                                        {:error/message "Valid [pred expr] pair"}
+                                        #_pred [:ref ::expression/boolean]
+                                        #_expr [:ref ::expression/expression]]]]
+                                     [:default [:? [:schema [:ref ::expression/expression]]]])])
+
   (defmethod expression/type-of-method tag
     [[_tag _opts pred-expr-pairs default]]
     (let [exprs (concat
                  (map second pred-expr-pairs)
-                 (when default
+                 (when (some? default)
                    [default]))
           types (keep expression/type-of exprs)]
       (case-coalesce-return-type types))))
 
-;;; TODO -- add constraint that these types have to be compatible
-(mbql-clause/define-catn-mbql-clause :coalesce
-  [:exprs [:repeat {:min 2} [:schema [:ref ::expression/expression]]]])
+(mbql-clause/define-mbql-clause
+  :coalesce
+  [:schema
+   (mbql-clause/catn-clause-schema :coalesce
+                                   [:exprs [:repeat {:min 2} [:schema [:ref ::expression/expression]]]])])
 
 (defmethod expression/type-of-method :coalesce
-  [[_coalesce _opts expr null-expr]]
-  (case-coalesce-return-type (map expression/type-of [expr null-expr])))
+  [[_coalesce _opts & exprs]]
+  (case-coalesce-return-type (map expression/type-of exprs)))
