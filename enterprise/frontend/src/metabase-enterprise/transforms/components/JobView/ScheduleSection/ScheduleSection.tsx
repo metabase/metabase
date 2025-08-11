@@ -9,8 +9,8 @@ import {
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Box, Divider, Group, Icon, Tooltip } from "metabase/ui";
 import {
-  useExecuteTransformJobMutation,
   useLazyGetTransformJobQuery,
+  useRunTransformJobMutation,
 } from "metabase-enterprise/api";
 
 import { RunButton } from "../../../components/RunButton";
@@ -87,8 +87,7 @@ type RunButtonSectionProps = {
 
 function RunButtonSection({ job }: RunButtonSectionProps) {
   const [fetchJob, { isFetching }] = useLazyGetTransformJobQuery();
-  const [executeJob, { isLoading: isExecuting }] =
-    useExecuteTransformJobMutation();
+  const [runJob, { isLoading: isRunning }] = useRunTransformJobMutation();
   const { sendErrorToast } = useMetadataToasts();
   const isSaved = job.id != null;
   const hasTags = job.tag_ids?.length !== 0;
@@ -97,7 +96,7 @@ function RunButtonSection({ job }: RunButtonSectionProps) {
     if (job.id == null) {
       return;
     }
-    const { error } = await executeJob(job.id);
+    const { error } = await runJob(job.id);
     if (error) {
       sendErrorToast(t`Failed to run job`);
     } else {
@@ -108,8 +107,8 @@ function RunButtonSection({ job }: RunButtonSectionProps) {
   return (
     <Tooltip label={t`This job doesn't have tags to run.`} disabled={hasTags}>
       <RunButton
-        execution={job.last_execution}
-        isLoading={isFetching || isExecuting}
+        run={job.last_run}
+        isLoading={isFetching || isRunning}
         isDisabled={!isSaved || !hasTags}
         onRun={handleRun}
       />

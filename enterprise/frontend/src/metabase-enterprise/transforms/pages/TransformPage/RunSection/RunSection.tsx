@@ -4,8 +4,8 @@ import { t } from "ttag";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Anchor, Box, Divider, Group, Icon, Stack } from "metabase/ui";
 import {
-  useExecuteTransformMutation,
   useLazyGetTransformQuery,
+  useRunTransformMutation,
   useUpdateTransformMutation,
 } from "metabase-enterprise/api";
 import type { Transform, TransformTagId } from "metabase-types/api";
@@ -48,9 +48,9 @@ type RunStatusSectionProps = {
 };
 
 function RunStatusSection({ transform }: RunStatusSectionProps) {
-  const { id, last_execution } = transform;
+  const { id, last_run } = transform;
 
-  if (last_execution == null) {
+  if (last_run == null) {
     return (
       <Group gap="sm">
         <Icon c="text-secondary" name="calendar" />
@@ -59,7 +59,7 @@ function RunStatusSection({ transform }: RunStatusSectionProps) {
     );
   }
 
-  const { status, end_time, message } = last_execution;
+  const { status, end_time, message } = last_run;
   const endTime = end_time != null ? parseLocalTimestamp(end_time) : null;
   const endTimeText = endTime != null ? endTime.fromNow() : null;
 
@@ -136,12 +136,11 @@ type RunButtonSectionProps = {
 
 function RunButtonSection({ transform }: RunButtonSectionProps) {
   const [fetchTransform, { isFetching }] = useLazyGetTransformQuery();
-  const [executeTransform, { isLoading: isExecuting }] =
-    useExecuteTransformMutation();
+  const [runTransform, { isLoading: isRunning }] = useRunTransformMutation();
   const { sendErrorToast } = useMetadataToasts();
 
   const handleRun = async () => {
-    const { error } = await executeTransform(transform.id);
+    const { error } = await runTransform(transform.id);
     if (error) {
       sendErrorToast(t`Failed to run transform`);
     } else {
@@ -152,8 +151,8 @@ function RunButtonSection({ transform }: RunButtonSectionProps) {
 
   return (
     <RunButton
-      execution={transform.last_execution}
-      isLoading={isFetching || isExecuting}
+      run={transform.last_run}
+      isLoading={isFetching || isRunning}
       onRun={handleRun}
     />
   );

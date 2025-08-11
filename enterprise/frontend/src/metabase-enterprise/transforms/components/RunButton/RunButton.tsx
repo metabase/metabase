@@ -3,12 +3,12 @@ import { useUpdateEffect } from "react-use";
 import { t } from "ttag";
 
 import { Button, Icon, Loader } from "metabase/ui";
-import type { TransformExecution } from "metabase-types/api";
+import type { TransformRun } from "metabase-types/api";
 
 const RECENT_TIMEOUT = 5000;
 
 type RunButtonProps = {
-  execution: TransformExecution | null | undefined;
+  run: TransformRun | null | undefined;
   isLoading: boolean;
   isDisabled?: boolean;
   onRun: () => void;
@@ -16,7 +16,7 @@ type RunButtonProps = {
 
 export const RunButton = forwardRef(function RunButton(
   {
-    execution,
+    run,
     isLoading,
     isDisabled: isExternallyDisabled = false,
     onRun,
@@ -25,7 +25,7 @@ export const RunButton = forwardRef(function RunButton(
 ) {
   const [isRecent, setIsRecent] = useState(false);
   const { label, color, leftSection, isDisabled } = getRunButtonInfo({
-    execution,
+    run,
     isLoading,
     isRecent,
     isDisabled: isExternallyDisabled,
@@ -35,7 +35,7 @@ export const RunButton = forwardRef(function RunButton(
     setIsRecent(true);
     const timeoutId = setTimeout(() => setIsRecent(false), RECENT_TIMEOUT);
     return () => clearTimeout(timeoutId);
-  }, [execution]);
+  }, [run]);
 
   return (
     <Button
@@ -52,7 +52,7 @@ export const RunButton = forwardRef(function RunButton(
 });
 
 type RunButtonOpts = {
-  execution: TransformExecution | null | undefined;
+  run: TransformRun | null | undefined;
   isLoading: boolean;
   isRecent: boolean;
   isDisabled: boolean;
@@ -66,12 +66,12 @@ type RunButtonInfo = {
 };
 
 function getRunButtonInfo({
-  execution,
+  run,
   isLoading,
   isRecent,
   isDisabled,
 }: RunButtonOpts): RunButtonInfo {
-  if (execution?.status === "started" || isLoading) {
+  if (run?.status === "started" || isLoading) {
     return {
       label: t`Running now…`,
       leftSection: <Loader size="sm" />,
@@ -79,7 +79,7 @@ function getRunButtonInfo({
     };
   }
 
-  if (execution == null || !isRecent || isDisabled) {
+  if (run == null || !isRecent || isDisabled) {
     return {
       label: t`Run now`,
       leftSection: <Icon name="play_outlined" />,
@@ -87,7 +87,7 @@ function getRunButtonInfo({
     };
   }
 
-  if (execution.status === "succeeded") {
+  if (run.status === "succeeded") {
     return {
       label: t`Ran successfully`,
       color: "success",

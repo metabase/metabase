@@ -1,11 +1,11 @@
 import { Box, Group } from "metabase/ui";
-import type { TransformExecutionStatus } from "metabase-types/api";
+import type { TransformRunStatus } from "metabase-types/api";
 
 import { formatStatus } from "../../utils";
 import { RunErrorInfo } from "../RunErrorInfo";
 
 type RunStatusInfoProps = {
-  status: TransformExecutionStatus;
+  status: TransformRunStatus;
   message: string | null;
   endTime: Date | null;
 };

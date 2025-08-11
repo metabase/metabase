@@ -59,22 +59,18 @@ export function JobList() {
           >
             <td>{job.name}</td>
             <td>
-              {job.last_execution?.start_time
-                ? parseLocalTimestamp(job.last_execution?.start_time).format(
-                    "lll",
-                  )
+              {job.last_run?.start_time
+                ? parseLocalTimestamp(job.last_run?.start_time).format("lll")
                 : null}
             </td>
             <td>
-              {job.last_execution != null ? (
+              {job.last_run != null ? (
                 <RunStatusInfo
-                  status={job.last_execution.status}
-                  message={job.last_execution.message}
+                  status={job.last_run.status}
+                  message={job.last_run.message}
                   endTime={
-                    job.last_execution.end_time != null
-                      ? parseLocalTimestamp(
-                          job.last_execution.end_time,
-                        ).toDate()
+                    job.last_run.end_time != null
+                      ? parseLocalTimestamp(job.last_run.end_time).toDate()
                       : null
                   }
                 />

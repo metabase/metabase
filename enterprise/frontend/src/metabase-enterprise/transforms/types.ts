@@ -1,12 +1,12 @@
 import type {
-  TransformExecutionStatus,
   TransformId,
+  TransformRunStatus,
   TransformTagId,
 } from "metabase-types/api";
 
 export type RunListParams = {
   page?: number;
-  statuses?: TransformExecutionStatus[];
+  statuses?: TransformRunStatus[];
   transformIds?: TransformId[];
   transformTagIds?: TransformTagId[];
 };

@@ -1,7 +1,7 @@
 import type {
   CreateTransformRequest,
-  ListTransformExecutionsRequest,
-  ListTransformExecutionsResponse,
+  ListTransformRunsRequest,
+  ListTransformRunsResponse,
   Transform,
   TransformId,
   UpdateTransformRequest,
@@ -12,8 +12,8 @@ import {
   idTag,
   invalidateTags,
   listTag,
-  provideTransformExecutionListTags,
   provideTransformListTags,
+  provideTransformRunListTags,
   provideTransformTags,
   tag,
 } from "./tags";
@@ -28,17 +28,17 @@ export const transformApi = EnterpriseApi.injectEndpoints({
       }),
       providesTags: (transforms = []) => provideTransformListTags(transforms),
     }),
-    listTransformExecutions: builder.query<
-      ListTransformExecutionsResponse,
-      ListTransformExecutionsRequest
+    listTransformRuns: builder.query<
+      ListTransformRunsResponse,
+      ListTransformRunsRequest
     >({
       query: (params) => ({
         method: "GET",
-        url: "/api/ee/transform/execution",
+        url: "/api/ee/transform/runs",
         params,
       }),
       providesTags: (response) =>
-        response ? provideTransformExecutionListTags(response.data) : [],
+        response ? provideTransformRunListTags(response.data) : [],
     }),
     getTransform: builder.query<Transform, TransformId>({
       query: (id) => ({
@@ -48,10 +48,10 @@ export const transformApi = EnterpriseApi.injectEndpoints({
       providesTags: (transform) =>
         transform ? provideTransformTags(transform) : [],
     }),
-    executeTransform: builder.mutation<void, TransformId>({
+    runTransform: builder.mutation<void, TransformId>({
       query: (id) => ({
         method: "POST",
-        url: `/api/ee/transform/${id}/execute`,
+        url: `/api/ee/transform/${id}/run`,
       }),
       invalidatesTags: (_, error, id) =>
         invalidateTags(error, [idTag("transform", id), tag("table")]),
@@ -110,10 +110,10 @@ export const transformApi = EnterpriseApi.injectEndpoints({
 
 export const {
   useListTransformsQuery,
-  useListTransformExecutionsQuery,
+  useListTransformRunsQuery,
   useGetTransformQuery,
   useLazyGetTransformQuery,
-  useExecuteTransformMutation,
+  useRunTransformMutation,
   useCreateTransformMutation,
   useUpdateTransformMutation,
   useDeleteTransformMutation,

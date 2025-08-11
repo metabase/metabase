@@ -73,5 +73,5 @@ export function getParsedParams({
 }
 
 export function isPollingNeeded(transform?: Transform) {
-  return transform?.last_execution?.status === "started";
+  return transform?.last_run?.status === "started";
 }

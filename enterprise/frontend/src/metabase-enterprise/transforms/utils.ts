@@ -2,15 +2,15 @@ import { t } from "ttag";
 
 import { parseTimestamp } from "metabase/lib/time-dayjs";
 import type {
-  TransformExecutionStatus,
-  TransformExecutionTrigger,
+  TransformRunStatus,
+  TransformRunTrigger,
 } from "metabase-types/api";
 
 export function parseLocalTimestamp(timestamp: string) {
   return parseTimestamp(timestamp, null, true);
 }
 
-export function formatStatus(status: TransformExecutionStatus) {
+export function formatStatus(status: TransformRunStatus) {
   switch (status) {
     case "started":
       return t`In-progress`;
@@ -23,7 +23,7 @@ export function formatStatus(status: TransformExecutionStatus) {
   }
 }
 
-export function formatTrigger(trigger: TransformExecutionTrigger) {
+export function formatTrigger(trigger: TransformRunTrigger) {
   switch (trigger) {
     case "manual":
       return t`Manual`;

@@ -5,8 +5,8 @@ import { Group } from "metabase/ui";
 import { getRunListUrl } from "metabase-enterprise/transforms/urls";
 import type {
   Transform,
-  TransformExecutionStatus,
   TransformId,
+  TransformRunStatus,
   TransformTag,
   TransformTagId,
 } from "metabase-types/api";
@@ -30,7 +30,7 @@ export function FilterList({ transforms, tags, params }: FilterListProps) {
     dispatch(replace(getRunListUrl({ ...params, transformIds: transformIds })));
   };
 
-  const handleStatusesChange = (statuses: TransformExecutionStatus[]) => {
+  const handleStatusesChange = (statuses: TransformRunStatus[]) => {
     dispatch(replace(getRunListUrl({ ...params, statuses })));
   };
 

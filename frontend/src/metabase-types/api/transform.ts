@@ -5,7 +5,7 @@ import type { Table } from "./table";
 export type TransformId = number;
 export type TransformTagId = number;
 export type TransformJobId = number;
-export type TransformExecutionId = number;
+export type TransformRunId = number;
 
 export type Transform = {
   id: TransformId;
@@ -17,7 +17,7 @@ export type Transform = {
   // hydrated fields
   tag_ids?: TransformTagId[];
   table?: Table | null;
-  last_execution?: TransformExecution | null;
+  last_run?: TransformRun | null;
 };
 
 export type TransformSource = {
@@ -33,10 +33,10 @@ export type TransformTarget = {
   schema: string | null;
 };
 
-export type TransformExecution = {
-  id: TransformExecutionId;
-  status: TransformExecutionStatus;
-  trigger: TransformExecutionTrigger;
+export type TransformRun = {
+  id: TransformRunId;
+  status: TransformRunStatus;
+  trigger: TransformRunTrigger;
   start_time: string;
   end_time: string | null;
   message: string | null;
@@ -45,13 +45,9 @@ export type TransformExecution = {
   transform?: Transform;
 };
 
-export type TransformExecutionStatus =
-  | "started"
-  | "succeeded"
-  | "failed"
-  | "timeout";
+export type TransformRunStatus = "started" | "succeeded" | "failed" | "timeout";
 
-export type TransformExecutionTrigger = "manual" | "cron";
+export type TransformRunTrigger = "manual" | "cron";
 
 export type TransformTag = {
   id: TransformTagId;
@@ -66,7 +62,7 @@ export type TransformJob = {
 
   // hydrated fields
   tag_ids?: TransformTagId[];
-  last_execution?: TransformExecution | null;
+  last_run?: TransformRun | null;
 };
 
 export type CreateTransformRequest = {
@@ -110,12 +106,12 @@ export type UpdateTransformTagRequest = {
   name?: string;
 };
 
-export type ListTransformExecutionsRequest = {
-  statuses?: TransformExecutionStatus[];
+export type ListTransformRunsRequest = {
+  statuses?: TransformRunStatus[];
   transform_ids?: TransformId[];
   transform_tag_ids?: TransformTagId[];
 } & PaginationRequest;
 
-export type ListTransformExecutionsResponse = {
-  data: TransformExecution[];
+export type ListTransformRunsResponse = {
+  data: TransformRun[];
 } & PaginationResponse;

@@ -66,21 +66,19 @@ export function TransformList() {
             <td>{transform.name}</td>
             <td>{transform.target.name}</td>
             <td>
-              {transform.last_execution?.end_time
-                ? parseLocalTimestamp(transform.last_execution.end_time).format(
-                    "lll",
-                  )
+              {transform.last_run?.end_time
+                ? parseLocalTimestamp(transform.last_run.end_time).format("lll")
                 : null}
             </td>
             <td>
-              {transform.last_execution != null ? (
+              {transform.last_run != null ? (
                 <RunStatusInfo
-                  status={transform.last_execution.status}
-                  message={transform.last_execution.message}
+                  status={transform.last_run.status}
+                  message={transform.last_run.message}
                   endTime={
-                    transform.last_execution.end_time != null
+                    transform.last_run.end_time != null
                       ? parseLocalTimestamp(
-                          transform.last_execution.end_time,
+                          transform.last_run.end_time,
                         ).toDate()
                       : null
                   }

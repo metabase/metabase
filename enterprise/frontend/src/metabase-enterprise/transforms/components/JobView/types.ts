@@ -1,6 +1,6 @@
 import type {
-  TransformExecution,
   TransformJobId,
+  TransformRun,
   TransformTagId,
 } from "metabase-types/api";
 
@@ -10,5 +10,5 @@ export type TransformJobInfo = {
   description: string | null;
   schedule: string;
   tag_ids?: TransformTagId[];
-  last_execution?: TransformExecution | null;
+  last_run?: TransformRun | null;
 };
