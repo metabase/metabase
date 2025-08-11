@@ -79,48 +79,48 @@ const CommandMenuItem = forwardRef<
     isSelected?: boolean;
     onClick?: () => void;
   }
->(({ option, isSelected, onClick }, ref) => (
-  <UnstyledButton
-    ref={ref}
-    className={S.menuItem}
-    onClick={onClick}
-    role="option"
-    aria-selected={isSelected}
-    aria-label={option.label}
-  >
-    <Group gap="sm" wrap="nowrap" align="center">
-      {option.icon ? (
-        <Icon name={option.icon} size={16} color="inherit" />
-      ) : option.text ? (
-        <Box
-          w={16}
-          h={16}
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          <Text size="xs" fw={700} c="inherit">
-            {option.text}
+>(function CommandMenuItem({ option, isSelected, onClick }, ref) {
+  return (
+    <UnstyledButton
+      ref={ref}
+      className={S.menuItem}
+      onClick={onClick}
+      role="option"
+      aria-selected={isSelected}
+      aria-label={option.label}
+    >
+      <Group gap="sm" wrap="nowrap" align="center">
+        {option.icon ? (
+          <Icon name={option.icon} size={16} color="inherit" />
+        ) : option.text ? (
+          <Box
+            w={16}
+            h={16}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <Text size="xs" fw={700} c="inherit">
+              {option.text}
+            </Text>
+          </Box>
+        ) : null}
+        <Stack gap={2} style={{ flex: 1 }}>
+          <Text size="md" lh="lg" c="inherit">
+            {option.label}
           </Text>
-        </Box>
-      ) : null}
-      <Stack gap={2} style={{ flex: 1 }}>
-        <Text size="md" lh="lg" c="inherit">
-          {option.label}
-        </Text>
-        {option.description && (
-          <Text size="sm" c="text-light" lh="md">
-            {option.description}
-          </Text>
-        )}
-      </Stack>
-    </Group>
-  </UnstyledButton>
-));
-
-CommandMenuItem.displayName = "CommandMenuItem";
+          {option.description && (
+            <Text size="sm" c="text-light" lh="md">
+              {option.description}
+            </Text>
+          )}
+        </Stack>
+      </Group>
+    </UnstyledButton>
+  );
+});
 
 const CommandSuggestionComponent = forwardRef<
   SuggestionRef,
@@ -492,7 +492,7 @@ const CommandSuggestionComponent = forwardRef<
               <Text size="sm" c="dimmed">{t`No results found`}</Text>
             </Box>
           ) : null}
-          <Divider my="xs" mx="sm" />
+          <Divider my="sm" mx="sm" />
           <SearchResultsFooter
             isSelected={selectedIndex === linkMenuItems.length}
             onClick={() => setModal("question-picker")}
@@ -515,7 +515,7 @@ const CommandSuggestionComponent = forwardRef<
                     />
                   ))}
                   {searchMenuItems.length > 0 && commandOptions.length > 0 && (
-                    <Divider my="xs" mx="sm" />
+                    <Divider my="sm" mx="sm" />
                   )}
                   {commandOptions.map((option, cmdIndex) => {
                     const index = searchMenuItems.length + cmdIndex;
@@ -544,7 +544,7 @@ const CommandSuggestionComponent = forwardRef<
                     <Box key={sectionIndex}>
                       {section.title && sectionIndex > 0 && (
                         <Box>
-                          <Divider my="xs" mx="sm" />
+                          <Divider my="sm" mx="sm" />
                           <Text
                             size="sm"
                             c="text-primary"

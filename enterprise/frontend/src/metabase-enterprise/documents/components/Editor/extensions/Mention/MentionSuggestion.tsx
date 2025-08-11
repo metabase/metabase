@@ -159,7 +159,7 @@ const MentionSuggestionComponent = forwardRef<
             <Text size="sm" c="dimmed">{t`No results found`}</Text>
           </Box>
         ) : null}
-        <Divider my="xs" mx="sm" />
+        <Divider my="sm" mx="sm" />
         <SearchResultsFooter
           isSelected={selectedIndex === menuItems.length}
           onClick={() => setModal("question-picker")}
