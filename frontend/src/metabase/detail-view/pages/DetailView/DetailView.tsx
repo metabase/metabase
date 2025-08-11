@@ -102,7 +102,7 @@ export function DetailView({
 
       return newIndex;
     });
-  }, [rows, dispatch, tableId, location.state?.hash, location.state?.pathname]);
+  }, [rows, dispatch, tableId, location.state]);
 
   const handleViewNextObjectDetail = useCallback(() => {
     setCurrentRowIndex((currentIndex) => {
@@ -127,7 +127,7 @@ export function DetailView({
 
       return newIndex;
     });
-  }, [rows, dispatch, tableId, location.state?.hash, location.state?.pathname]);
+  }, [rows, dispatch, tableId, location.state]);
 
   useEffect(() => {
     if (!row) {
@@ -151,9 +151,24 @@ export function DetailView({
   }
 
   return (
-    <Stack>
-      <Box flex="0 0 auto">
-        <Nav />
+    <Stack bg="bg-white">
+      <Box flex="0 0 auto" p="md">
+        <Nav
+          onPreviousClick={
+            rows.length > 1 &&
+            typeof currentRowIndex === "number" &&
+            currentRowIndex > 0
+              ? handleViewPreviousObjectDetail
+              : undefined
+          }
+          onNextClick={
+            rows.length > 1 &&
+            typeof currentRowIndex === "number" &&
+            currentRowIndex < rows.length - 1
+              ? handleViewNextObjectDetail
+              : undefined
+          }
+        />
       </Box>
 
       <Group className={S.content} flex="1" h="100%" mih={0}>
