@@ -4,6 +4,7 @@
    [com.climate.claypoole :as cp]
    [honey.sql :as sql]
    [honey.sql.helpers :as sql.helpers]
+   ;; TODO: extract schema code to go under db.migration
    [metabase-enterprise.semantic-search.embedding :as embedding]
    [metabase-enterprise.semantic-search.scoring :as scoring]
    [metabase-enterprise.semantic-search.settings :as semantic-settings]
@@ -26,8 +27,8 @@
 (set! *warn-on-reflection* true)
 
 (comment
-  ((requiring-resolve 'metabase-enterprise.semantic-search.db/init-db!))
-  (def db @@(requiring-resolve 'metabase-enterprise.semantic-search.db/data-source)))
+  ((requiring-resolve 'metabase-enterprise.semantic-search.db.datasource/init-db!))
+  (def db @@(requiring-resolve 'metabase-enterprise.semantic-search.db.datasource/data-source)))
 
 (defn sql-format-quoted
   "Call [[sql/format]] with {:quoted true}.
@@ -839,8 +840,8 @@
           explain-sql (str "EXPLAIN (ANALYZE true, BUFFERS true, FORMAT text) " sql)]
       (jdbc/execute! db (into [explain-sql] params))))
 
-  ((requiring-resolve 'metabase-enterprise.semantic-search.db/init-db!))
-  (def db @@(requiring-resolve 'metabase-enterprise.semantic-search.db/data-source))
+  ((requiring-resolve 'metabase-enterprise.semantic-search.db.datasource/init-db!))
+  (def db @@(requiring-resolve 'metabase-enterprise.semantic-search.db.datasource/data-source))
   (jdbc/execute! db ["SHOW random_page_cost;"])      ; makes index scans appear cheaper
   (jdbc/execute! db ["SHOW seq_page_cost;"])         ; default 1
   (jdbc/execute! db ["SHOW hnsw.ef_search;"])

@@ -1,4 +1,4 @@
-(ns metabase-enterprise.semantic-search.db
+(ns metabase-enterprise.semantic-search.db.datasource
   (:require
    [environ.core :refer [env]]
    [metabase.connection-pool :as connection-pool]
@@ -68,3 +68,7 @@
   (.doReset #'db-url "jdbc:postgres://localhost:55432/mb_semantic_search?user=postgres&password=postgres")
   (init-db!)
   (test-connection!))
+
+(defn ensure-initialized-data-source!
+  []
+  (or @data-source (init-db!)))

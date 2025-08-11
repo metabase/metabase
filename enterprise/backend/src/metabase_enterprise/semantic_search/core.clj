@@ -2,15 +2,15 @@
   "Enterprise implementations of semantic search core functions using defenterprise."
   (:require
    [medley.core :as m]
-   [metabase-enterprise.semantic-search.db :as semantic.db]
+   [metabase-enterprise.semantic-search.db.connection :as semantic.db.connection]
+   [metabase-enterprise.semantic-search.db.datasource :as semantic.db.datasource]
    [metabase-enterprise.semantic-search.env :as semantic.env]
    [metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]
    [metabase-enterprise.semantic-search.pgvector-api :as semantic.pgvector-api]
    [metabase-enterprise.semantic-search.settings :as semantic.settings]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.search.engine :as search.engine]
-   [metabase.util.log :as log]
-   [next.jdbc :as jdbc]))
+   [metabase.util.log :as log]))
 
 (defn- fallback-engine
   "Find the highest priority search engine available for fallback."
@@ -21,12 +21,13 @@
 (defn- index-active? [pgvector index-metadata]
   (boolean (semantic.index-metadata/get-active-index-state pgvector index-metadata)))
 
+;; TODO: url should likely reside in settings
 (defenterprise supported?
   "Enterprise implementation of semantic search engine support check."
   :feature :semantic-search
   []
   (and
-   (some? semantic.db/db-url)
+   (some? semantic.db.datasource/db-url)
    (semantic.settings/semantic-search-enabled)))
 
 (defenterprise results
@@ -34,74 +35,79 @@
   :feature :semantic-search
   [search-ctx]
   (try
-    (let [semantic-results (semantic.pgvector-api/query
-                            (semantic.env/get-pgvector-datasource!)
-                            (semantic.env/get-index-metadata)
-                            search-ctx)
-          result-count (count semantic-results)]
-      (if (>= result-count (semantic.settings/semantic-search-min-results-threshold))
-        semantic-results
-        (let [fallback (fallback-engine)]
-          (log/debugf "Semantic search returned %d results (< %d), supplementing with %s search"
-                      result-count (semantic.settings/semantic-search-min-results-threshold) fallback)
-          (let [fallback-results (search.engine/results (assoc search-ctx :search-engine fallback))
-                combined-results (concat semantic-results fallback-results)
-                deduped-results  (m/distinct-by (juxt :model :id) combined-results)]
-            (take (semantic.settings/semantic-search-results-limit) deduped-results)))))
+    (semantic.db.connection/with-read-connection [conn]
+      (let [semantic-results (semantic.pgvector-api/query
+                              conn
+                              (semantic.env/get-index-metadata)
+                              search-ctx)
+            result-count (count semantic-results)]
+        (if (>= result-count (semantic.settings/semantic-search-min-results-threshold))
+          semantic-results
+          (let [fallback (fallback-engine)]
+            (log/debugf "Semantic search returned %d results (< %d), supplementing with %s search"
+                        result-count (semantic.settings/semantic-search-min-results-threshold) fallback)
+            (let [fallback-results (search.engine/results (assoc search-ctx :search-engine fallback))
+                  combined-results (concat semantic-results fallback-results)
+                  deduped-results  (m/distinct-by (juxt :model :id) combined-results)]
+              (take (semantic.settings/semantic-search-results-limit) deduped-results))))))
     (catch Exception e
       (log/error e "Error executing semantic search")
       [])))
 
+;; TODO: tx-write
 (defenterprise update-index!
   "Enterprise implementation of semantic index updating."
   :feature :semantic-search
   [document-reducible]
-  (let [pgvector       (semantic.env/get-pgvector-datasource!)
-        index-metadata (semantic.env/get-index-metadata)]
-    (if-not (index-active? pgvector index-metadata)
-      (log/warn "update-index! called prior to init!")
-      (semantic.pgvector-api/gate-updates!
-       pgvector
-       index-metadata
-       document-reducible))))
+  (semantic.db.connection/with-read-connection [conn]
+    (let [index-metadata (semantic.env/get-index-metadata)]
+      (if-not (index-active? conn index-metadata)
+        (log/warn "update-index! called prior to init!")
+        (semantic.db.connection/with-write-tx [tx conn]
+          ;; TODO: tx should go lower probably to avoid blocking migration?
+          (semantic.pgvector-api/gate-updates!
+           tx
+           index-metadata
+           document-reducible))))))
 
 (defenterprise delete-from-index!
   "Enterprise implementation of semantic index deletion."
   :feature :semantic-search
   [model ids]
-  (let [pgvector       (semantic.env/get-pgvector-datasource!)
-        index-metadata (semantic.env/get-index-metadata)]
-    (if-not (index-active? pgvector index-metadata)
-      (log/warn "delete-from-index! called prior to init!")
-      (semantic.pgvector-api/gate-deletes!
-       pgvector
-       index-metadata
-       model
-       ids))))
+  (semantic.db.connection/with-read-connection [conn]
+    (let [index-metadata (semantic.env/get-index-metadata)]
+      (if-not (index-active? conn index-metadata)
+        (log/warn "delete-from-index! called prior to init!")
+        (semantic.db.connection/with-write-tx [tx conn]
+          (semantic.pgvector-api/gate-deletes!
+           tx
+           index-metadata
+           model
+           ids))))))
 
 ;; TODO: add reindexing/table-swapping logic when index is detected as stale
 (defenterprise init!
   "Initialize the semantic search table and populate it with initial data."
   :feature :semantic-search
   [searchable-documents _opts]
-  (let [pgvector        (semantic.env/get-pgvector-datasource!)
-        index-metadata  (semantic.env/get-index-metadata)
+  (let [index-metadata  (semantic.env/get-index-metadata)
         embedding-model (semantic.env/get-configured-embedding-model)]
-    (jdbc/with-transaction [tx pgvector]
+    (semantic.db.connection/with-migrate-tx [tx]
       (semantic.pgvector-api/init-semantic-search! tx index-metadata embedding-model))
-    (semantic.pgvector-api/index-documents! pgvector index-metadata searchable-documents)))
+    (semantic.db.connection/with-write-tx [tx]
+      (semantic.pgvector-api/index-documents! tx index-metadata searchable-documents))))
 
 (defenterprise reindex!
   "Reindex the semantic search index."
   :feature :semantic-search
   [searchable-documents _opts]
-  (let [pgvector        (semantic.env/get-pgvector-datasource!)
-        index-metadata  (semantic.env/get-index-metadata)
-        embedding-model (semantic.env/get-configured-embedding-model)]
+  (let [index-metadata (get-index-metadata)
+        embedding-model (get-configured-embedding-model)]
     ;; todo force a new index
-    (jdbc/with-transaction [tx pgvector]
+    (semantic.db.connection/with-migrate-tx [tx]
       (semantic.pgvector-api/init-semantic-search! tx index-metadata embedding-model))
-    (semantic.pgvector-api/index-documents! pgvector index-metadata searchable-documents)))
+    (semantic.db.connection/with-write-tx [tx]
+      (semantic.pgvector-api/index-documents! tx index-metadata searchable-documents))))
 
 ;; TODO: implement
 (defenterprise reset-tracking!
