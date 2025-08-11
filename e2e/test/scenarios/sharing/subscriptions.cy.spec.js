@@ -331,9 +331,7 @@ describe("scenarios > dashboard > subscriptions", () => {
       assignRecipient();
 
       cy.findByLabelText("Attach results").click();
-      H.sidebar().within(() => {
-        cy.findByText("Questions to attach").click();
-      });
+      cy.findByText("Questions to attach").click();
       cy.findAllByRole("listitem")
         .contains("Orders")
         .closest("li")
