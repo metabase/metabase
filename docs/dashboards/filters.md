@@ -205,7 +205,7 @@ You might want to require a filter value if:
 To edit a filter's settings:
 
 1. Click the **pencil** icon to enter dashboard editing mode.
-2. Click the **gear** icon on the filter you want to edit.
+2. Click the filter you want to edit.
 
 From this filter editing view, you can wire up dashboard cards to the filter, or use the filter settings sidebar to:
 
@@ -256,7 +256,7 @@ Useful for looking up partial matches (such as the ["contains" filter](#text-or-
 
 ### Set a default filter value
 
-1. In dashboard edit mode, click your filter's **gear** icon.
+1. In dashboard edit mode, click the filter you want to edit.
 2. From the sidebar, choose a value from the **Default value** input field.
 
 For example, you might want to set a default filter value like "Active", so that when people load your dashboard, they only see data for "Active" records (not "Inactive", "Cancelled", etc).
