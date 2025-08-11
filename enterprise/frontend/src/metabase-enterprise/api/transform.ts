@@ -34,7 +34,7 @@ export const transformApi = EnterpriseApi.injectEndpoints({
     >({
       query: (params) => ({
         method: "GET",
-        url: "/api/ee/transform/runs",
+        url: "/api/ee/transform/run",
         params,
       }),
       providesTags: (response) =>
