@@ -2,6 +2,7 @@ import type {
   DeleteSuggestedMetabotPromptRequest,
   MetabotApiEntity,
   MetabotEntity,
+  MetabotFeedback,
   MetabotId,
   MetabotInfo,
   PaginationRequest,
@@ -111,6 +112,13 @@ export const metabotApi = EnterpriseApi.injectEndpoints({
       invalidatesTags: (_, error, metabot_id) =>
         !error ? [idTag("metabot-prompt-suggestions", metabot_id)] : [],
     }),
+    submitMetabotFeedback: builder.mutation<void, MetabotFeedback>({
+      query: (feedback) => ({
+        method: "POST",
+        url: `/api/ee/metabot-v3/metabot/feedback`,
+        body: feedback,
+      }),
+    }),
   }),
 });
 
@@ -122,4 +130,5 @@ export const {
   useGetSuggestedMetabotPromptsQuery,
   useDeleteSuggestedMetabotPromptMutation,
   useRegenerateSuggestedMetabotPromptsMutation,
+  useSubmitMetabotFeedbackMutation,
 } = metabotApi;

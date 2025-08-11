@@ -189,6 +189,15 @@ export type DeleteSuggestedMetabotPromptRequest = {
   prompt_id: SuggestedMetabotPrompt["id"];
 };
 
+export interface MetabotFeedback {
+  metabot_id: MetabotId;
+  message_id: string;
+  positive: boolean;
+  issue_type?: string | undefined;
+  freeform_feedback: string;
+  conversation_data: any;
+}
+
 /* Metabot v3 - Entity Types */
 
 export type MetabotId = number;
