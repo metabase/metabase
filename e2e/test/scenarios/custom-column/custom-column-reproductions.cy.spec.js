@@ -1138,20 +1138,20 @@ describe("issue 49882", () => {
   });
 
   it("should update currently selected suggestion when suggestions list is updated (metabase#49882-4)", () => {
-    const selectProductVendor =
+    const selectProductRating =
       "{downarrow}{downarrow}{downarrow}{downarrow}{downarrow}";
 
     H.enterCustomColumnDetails({
-      formula: `[Produ${selectProductVendor}`,
+      formula: `[Produ${selectProductRating}`,
       blur: false,
     });
 
-    H.CustomExpressionEditor.completion("Product → Vendor").should(
+    H.CustomExpressionEditor.completion("Product → Rating").should(
       "be.visible",
     );
     H.CustomExpressionEditor.acceptCompletion("tab");
 
-    H.CustomExpressionEditor.value().should("equal", "[Product → Vendor]");
+    H.CustomExpressionEditor.value().should("equal", "[Product → Rating]");
   });
 });
 
@@ -2152,9 +2152,6 @@ describe("Issue 25189", () => {
             },
           ],
         },
-        "expression-idents": {
-          "CCreated At": "fch45EQTl38tSb9N-zkvL",
-        },
       },
     }).then((res) => {
       H.createQuestion(
@@ -2198,9 +2195,6 @@ describe("Issue 25189", () => {
               "base-type": "type/DateTime",
             },
           ],
-        },
-        "expression-idents": {
-          "Created At": "fch45EQTl38tSb9N-zkvL",
         },
       },
     }).then((res) => {

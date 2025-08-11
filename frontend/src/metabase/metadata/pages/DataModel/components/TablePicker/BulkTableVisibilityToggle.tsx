@@ -76,6 +76,7 @@ export function BulkTableVisibilityToggle({
 
   const handleClick = (event: MouseEvent<HTMLButtonElement>) => {
     event.stopPropagation();
+    event.preventDefault();
 
     if (areAllHidden) {
       unhide();

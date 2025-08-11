@@ -3,6 +3,7 @@ import type { Action, Store } from "@reduxjs/toolkit";
 import { type JSX, type ReactNode, memo, useEffect, useRef } from "react";
 
 import { SdkThemeProvider } from "embedding-sdk/components/private/SdkThemeProvider";
+import { SdkIncompatibilityWithInstanceBanner } from "embedding-sdk/components/private/SdkVersionCompatibilityHandler/SdkIncompatibilityWithInstanceBanner";
 import { useInitData } from "embedding-sdk/hooks";
 import { getSdkStore } from "embedding-sdk/store";
 import {
@@ -18,12 +19,12 @@ import type { SdkEventHandlersConfig } from "embedding-sdk/types/events";
 import type { MetabasePluginsConfig } from "embedding-sdk/types/plugins";
 import type { CommonStylingProps } from "embedding-sdk/types/props";
 import type { SdkErrorComponent } from "embedding-sdk/types/ui";
+import { useInstanceLocale } from "metabase/common/hooks/use-instance-locale";
 import { EMBEDDING_SDK_ROOT_ELEMENT_ID } from "metabase/embedding-sdk/config";
 import type { MetabaseTheme } from "metabase/embedding-sdk/theme";
 import { MetabaseReduxProvider } from "metabase/lib/redux";
 import { LocaleProvider } from "metabase/public/LocaleProvider";
 import { setOptions } from "metabase/redux/embed";
-import { getSetting } from "metabase/selectors/settings";
 import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
 import { Box } from "metabase/ui";
 import { MetabotProvider } from "metabase-enterprise/metabot/context";
@@ -33,9 +34,6 @@ import { SdkContextProvider } from "../private/SdkContext";
 import { SdkFontsGlobalStyles } from "../private/SdkGlobalFontsStyles";
 import { PortalContainer } from "../private/SdkPortalContainer";
 import { SdkUsageProblemDisplay } from "../private/SdkUsageProblem";
-
-import "metabase/css/index.module.css";
-import "metabase/css/vendor.css";
 
 /**
  * @expand
@@ -136,7 +134,7 @@ export const MetabaseProviderInternal = ({
     store.dispatch(setMetabaseClientUrl(authConfig.metabaseInstanceUrl));
   }, [store, authConfig.metabaseInstanceUrl]);
 
-  const instanceLocale = getSetting(store.getState(), "site-locale");
+  const instanceLocale = useInstanceLocale();
 
   return (
     <SdkContextProvider>
@@ -147,7 +145,10 @@ export const MetabaseProviderInternal = ({
           <Box className={className} id={EMBEDDING_SDK_ROOT_ELEMENT_ID}>
             <LocaleProvider locale={locale || instanceLocale}>
               {children}
+
+              <SdkIncompatibilityWithInstanceBanner />
             </LocaleProvider>
+
             <SdkUsageProblemDisplay
               authConfig={authConfig}
               allowConsoleLog={allowConsoleLog}

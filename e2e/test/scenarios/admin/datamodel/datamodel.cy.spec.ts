@@ -426,6 +426,31 @@ describe("scenarios > admin > datamodel", () => {
               `/admin/datamodel/database/${WRITABLE_DB_ID}/schema/${WRITABLE_DB_ID}:Domestic/table/`,
             );
           });
+
+          cy.log("databases, schemas, and tables should be links");
+          TablePicker.getDatabase("Sample Database").click();
+          TablePicker.getDatabase("Writable Postgres12").click();
+          TablePicker.getDatabase("Writable Postgres12")
+            .should("have.prop", "tagName", "A")
+            .and(
+              "have.attr",
+              "href",
+              `/admin/datamodel/database/${WRITABLE_DB_ID}`,
+            );
+          TablePicker.getSchema("Domestic")
+            .should("have.prop", "tagName", "A")
+            .and(
+              "have.attr",
+              "href",
+              `/admin/datamodel/database/${WRITABLE_DB_ID}/schema/${WRITABLE_DB_ID}:Domestic`,
+            );
+          TablePicker.getTable("Orders")
+            .should("have.prop", "tagName", "A")
+            .and(
+              "have.attr",
+              "href",
+              `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}`,
+            );
         });
 
         it("should allow to search for tables", () => {
@@ -828,6 +853,16 @@ describe("scenarios > admin > datamodel", () => {
         "have.value",
         "Creation timestamp",
       );
+    });
+
+    it("should be able to preview the table in the query builder", () => {
+      H.DataModel.visit({
+        databaseId: SAMPLE_DB_ID,
+        schemaId: SAMPLE_DB_SCHEMA_ID,
+        tableId: ORDERS_ID,
+      });
+      TableSection.getQueryBuilderLink().click();
+      H.queryBuilderHeader().findByText("Orders").should("be.visible");
     });
 
     it("should be able to see details of a table", () => {
@@ -3230,6 +3265,25 @@ describe("scenarios > admin > datamodel", () => {
         .findByPlaceholderText("Enter a number")
         .should("be.visible")
         .and("not.be.focused");
+    });
+
+    it("should not crash when viewing filtering preview of a hidden table", () => {
+      H.DataModel.visit({
+        databaseId: SAMPLE_DB_ID,
+        schemaId: SAMPLE_DB_SCHEMA_ID,
+        tableId: ORDERS_ID,
+        fieldId: ORDERS.PRODUCT_ID,
+      });
+
+      TablePicker.getTable("Orders").button("Hide table").click();
+      cy.wait("@updateTable");
+
+      FieldSection.getPreviewButton().click();
+      PreviewSection.getPreviewTypeInput().findByText("Filtering").click();
+      PreviewSection.get()
+        .findByPlaceholderText("Enter an ID")
+        .should("be.visible");
+      H.main().findByText("Something’s gone wrong").should("not.exist");
     });
   });
 

@@ -122,14 +122,14 @@
 }
 
 .ButtonOnlyIcon {
-  border-color: transparent;
+  border: none;
   background: transparent;
   color: var(--mb-color-text-dark);
   padding: 0;
 }
 
 .ButtonOnlyIcon:focus {
-  border-color: var(--mb-color-background);
+  border: none;
   outline-color: var(--mb-color-brand);
 }
 

@@ -24,6 +24,7 @@
    [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
+   [metabase.lib.types.isa :as lib.types]
    [metabase.lib.util :as lib.util]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
@@ -43,6 +44,7 @@
    [metabase.util.embed :refer [maybe-populate-initially-published-at]]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.warehouse-schema.models.field-values :as field-values]
@@ -57,6 +59,11 @@
 (methodical/defmethod t2.hydrate/model-for-automagic-hydration [#_model :default #_k :card]
   [_original-model _k]
   :model/Card)
+
+(def starting-card-schema-version
+  "The default schema version assigned to all cards that existed before the `:card_schema` column was added in v0.55.
+  This value is used when loading old revision records that predate the schema versioning system."
+  20)
 
 (def ^:private current-schema-version
   "Latest schema version number. This is an increasing integer stored in each card's `:card_schema` column.
@@ -167,35 +174,38 @@
   (mi/instances-with-hydrated-data
    cards k
    (fn []
-     (let [card-ids (map :id cards)
-           ;; First get dashboards from direct card connections
-           direct-dashboards (t2/query {:select [[:dc.card_id :card_id]
-                                                 :d.name
-                                                 :d.collection_id
-                                                 :d.description
-                                                 :d.id
-                                                 :d.archived]
-                                        :from [[:report_dashboardcard :dc]]
-                                        :join [[:report_dashboard :d] [:= :dc.dashboard_id :d.id]]
-                                        :where [:in :dc.card_id card-ids]})
-           ;; Then get dashboards from series
-           series-dashboards (t2/query {:select [[:dcs.card_id :card_id]
-                                                 :d.name
-                                                 :d.collection_id
-                                                 :d.description
-                                                 :d.id
-                                                 :d.archived]
-                                        :from [[:dashboardcard_series :dcs]]
-                                        :join [[:report_dashboardcard :dc] [:= :dc.id :dcs.dashboardcard_id]
-                                               [:report_dashboard :d] [:= :d.id :dc.dashboard_id]]
-                                        :where [:in :dcs.card_id card-ids]})
-           ;; Combine and group all results
-           all-dashboards (concat direct-dashboards series-dashboards)]
+     (let [card-ids       (map u/the-id cards)
+           all-dashboards (t2/query {:union-all [;; First get dashboards from direct card connections
+                                                 {:nest
+                                                  {:select   [[:dc.card_id :card_id]
+                                                              :d.name
+                                                              :d.collection_id
+                                                              :d.description
+                                                              :d.id
+                                                              :d.archived]
+                                                   :from     [[:report_dashboardcard :dc]]
+                                                   :join     [[:report_dashboard :d] [:= :dc.dashboard_id :d.id]]
+                                                   :where    [:in :dc.card_id [:inline card-ids]]
+                                                   :order-by [[:d.id :asc]]}}
+                                                 ;; Then get dashboards from series
+                                                 {:nest
+                                                  {:select   [[:dcs.card_id :card_id]
+                                                              :d.name
+                                                              :d.collection_id
+                                                              :d.description
+                                                              :d.id
+                                                              :d.archived]
+                                                   :from     [[:dashboardcard_series :dcs]]
+                                                   :join     [[:report_dashboardcard :dc] [:= :dc.id :dcs.dashboardcard_id]
+                                                              [:report_dashboard :d] [:= :d.id :dc.dashboard_id]]
+                                                   :where    [:in :dcs.card_id [:inline card-ids]]
+                                                   :order-by [[:d.id :asc]]}}]})]
        (update-vals
         (group-by :card_id all-dashboards)
         (fn [dashes]
           (->> dashes
                (map #(dissoc % :card_id))
+               ;; TODO (Cam 7/30/25) -- we could probably do the 'distinct' in the query itself
                distinct
                (mapv #(t2/instance :model/Dashboard %)))))))
    :id
@@ -690,6 +700,9 @@
 ;; - Early on, some old "field__Database__Schema__TableName__FieldName" idents got saved for models.
 ;; - A bug in #56244 computed bad idents given a fresh column (like an aggregation) while the source was a model.
 ;; To avoid both of these issues, the upgrade to 22 simply discards any old idents.
+;;
+;; NOTE: the idents project was ultimately abandoned and `:ident` and `:model/inner_ident` are no longer populated or
+;; used.
 (defmethod upgrade-card-schema-to 22
   [card _schema-version]
   (update card :result_metadata (fn [cols]
@@ -1254,33 +1267,60 @@
 
 ;;;; ------------------------------------------------- Search ----------------------------------------------------------
 
+(defn- dataset-query->dimensions
+  "Extract dimensions (non-aggregation columns) from a dataset query."
+  [dataset-query-str]
+  (when dataset-query-str
+    (lib.metadata.jvm/with-metadata-provider-cache
+      (let [dataset-query     ((:out mi/transform-metabase-query) dataset-query-str)
+            metadata-provider (lib.metadata.jvm/application-database-metadata-provider (:database dataset-query))
+            lib-query         (lib/query metadata-provider dataset-query)
+            columns           (lib/returned-columns lib-query)]
+        ;; Dimensions are columns that are not aggregations
+        (remove (comp #{:source/aggregations} :lib/source) columns)))))
+
+(defn extract-non-temporal-dimension-ids
+  "Extract list of nontemporal dimension field IDs, stored as JSON string. See PR 60912"
+  [{:keys [dataset_query]}]
+  (let [dimensions (dataset-query->dimensions dataset_query)
+        dim-ids    (->> dimensions
+                        (remove lib.types/temporal?)
+                        (keep :id)
+                        sort)]
+    (json/encode (or dim-ids []))))
+
+(defn has-temporal-dimension?
+  "Return true if the query has any temporal dimensions. See PR 60912"
+  [{:keys [dataset_query]}]
+  (let [dimensions (dataset-query->dimensions dataset_query)]
+    (boolean (some lib.types/temporal? dimensions))))
+
 (defn ^:private base-search-spec
   []
   {:model        :model/Card
-   :attrs        {:archived            true
-                  :collection-id       true
-                  :creator-id          true
-                  :dashboard-id        true
-                  :dashboardcard-count {:select [:%count.*]
-                                        :from   [:report_dashboardcard]
-                                        :where  [:= :report_dashboardcard.card_id :this.id]}
-                  :database-id         true
-                  :last-viewed-at      :last_used_at
-                  :native-query        (search/searchable-value-trim-sql [:case [:= "native" :query_type] :dataset_query])
-                  :official-collection [:= "official" :collection.authority_level]
-                  :last-edited-at      :r.timestamp
-                  :last-editor-id      :r.user_id
-                  :pinned              [:> [:coalesce :collection_position [:inline 0]] [:inline 0]]
-                  :verified            [:= "verified" :mr.status]
-                  :view-count          true
-                  :created-at          true
-                  :updated-at          true
-                  :display-type        :this.display
-                  ;; Visualizer compatibility filtering
-                  :has-temporal-dimensions [:case
-                                            [:and [:is-not :this.result_metadata nil]
-                                             [:like :this.result_metadata "%\"temporal_unit\":%"]] true
-                                            :else false]}
+   :attrs        {:archived             true
+                  :collection-id        true
+                  :creator-id           true
+                  :dashboard-id         true
+                  :dashboardcard-count  {:select [:%count.*]
+                                         :from   [:report_dashboardcard]
+                                         :where  [:= :report_dashboardcard.card_id :this.id]}
+                  :database-id          true
+                  :last-viewed-at       :last_used_at
+                  :native-query         (search/searchable-value-trim-sql [:case [:= "native" :query_type] :dataset_query])
+                  :official-collection  [:= "official" :collection.authority_level]
+                  :last-edited-at       :r.timestamp
+                  :last-editor-id       :r.user_id
+                  :pinned               [:> [:coalesce :collection_position [:inline 0]] [:inline 0]]
+                  :verified             [:= "verified" :mr.status]
+                  :view-count           true
+                  :created-at           true
+                  :updated-at           true
+                  :display-type         :this.display
+                  :non-temporal-dim-ids {:fn extract-non-temporal-dimension-ids
+                                         :req-fields [:dataset_query]}
+                  :has-temporal-dim     {:fn has-temporal-dimension?
+                                         :req-fields [:dataset_query]}}
    :search-terms [:name :description]
    :render-terms {:archived-directly          true
                   :collection-authority_level :collection.authority_level
@@ -1307,11 +1347,11 @@
                                                         [:= :mr.moderated_item_type "card"]
                                                         [:= :mr.moderated_item_id :this.id]
                                                         [:= :mr.most_recent true]]]}
-                  ;; Workaround for dataflow :((((((
-                  ;; NOTE: disabled for now, as this is not a very important ranker and can afford to have stale data,
-                  ;;       and could cause a large increase in the query count for dashboard updates.
-                  ;;       (see the test failures when this hook is added back)
-                  ;:dashcard  [:model/DashboardCard [:= :dashcard.card_id :this.id]]
+   ;; Workaround for dataflow :((((((
+   ;; NOTE: disabled for now, as this is not a very important ranker and can afford to have stale data,
+   ;;       and could cause a large increase in the query count for dashboard updates.
+   ;;       (see the test failures when this hook is added back)
+   ;:dashcard  [:model/DashboardCard [:= :dashcard.card_id :this.id]]
    #_:end})
 
 (search/define-spec "card"

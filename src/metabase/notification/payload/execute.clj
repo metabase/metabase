@@ -139,14 +139,14 @@
   1000)
 
 (defn- data-rows-to-disk!
-  [qp-result]
+  [qp-result context]
   (if (<= (:row_count qp-result) rows-to-disk-threadhold)
     (do
       (log/debugf "Less than %d rows, skip storing %d rows to disk" rows-to-disk-threadhold (:row_count qp-result))
       qp-result)
     (do
       (log/debugf "Storing %d rows to disk" (:row_count qp-result))
-      (update-in qp-result [:data :rows] notification.temp-storage/to-temp-file!))))
+      (update-in qp-result [:data :rows] notification.temp-storage/to-temp-file! context))))
 
 (defn- fixup-viz-settings
   "The viz-settings from :data :viz-settings might be incorrect if there is a cached of the same query.
@@ -215,7 +215,7 @@
         ;; memory
         ;; TODO: we need to store series result data rows to disk too
         (-> (execute-dashboard-subscription-card dashcard parameters)
-            (m/update-existing :result data-rows-to-disk!)
+            (m/update-existing :result data-rows-to-disk! (select-keys dashcard [:dashboard_tab_id :card_id :dashboard_id]))
             (m/update-existing :dashcard resolve-inline-parameters parameters))))
 
     (virtual-card-of-type? dashcard "iframe")
@@ -309,5 +309,5 @@
 
     (log/debugf "Result has %d rows" (:row_count result))
     {:card   (t2/select-one :model/Card card-id)
-     :result (data-rows-to-disk! result)
+     :result (data-rows-to-disk! result {:card-id card-id})
      :type   :card}))

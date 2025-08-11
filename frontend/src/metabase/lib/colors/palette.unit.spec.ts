@@ -1,4 +1,5 @@
-import { color, colors } from "./palette";
+import { colors } from "./colors";
+import { color } from "./palette";
 
 describe("palette", () => {
   it("should get a color from the palette", () => {

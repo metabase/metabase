@@ -12,6 +12,8 @@
    [metabase.lib.options :as lib.options]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.expression :as lib.schema.expression]
+   [metabase.lib.schema.join :as lib.schema.join]
    [metabase.lib.schema.util :as lib.schema.util]
    [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
@@ -87,10 +89,10 @@
      query-modified stage-number
      #(lib.util.match/replace
         %
-        #{:field}
+        :field
         (let [old-matching-column (lib.equality/find-matching-column &match old-columns)]
           (if-let [new-column (some-> old-matching-column :lib/source-uuid source-uuid->new-column)]
-            (assoc &match 2 ((some-fn :lib/desired-column-alias :name) new-column))
+            (assoc &match 2 ((some-fn :lib/source-column-alias :name) new-column))
             (do
               (log/warnf "Failed to match downstream ref %s against visible columns, ref is on stage %d at %s"
                          &match stage-number &parents)
@@ -110,7 +112,7 @@
   in stage 1.
 
   These aggregation columns have same `:name`. Field refs, intended for use in stage 1, generated out of those
-  columns, are then identified by `:lib/desired-column-alias`. Stage 1 will be using ref
+  columns, are then identified by `:lib/source-column-alias`. Stage 1 will be using ref
   `[:field <opts> \"sum_2\"]` for the second aggregation.
 
   Removing the first from the stage 0, will remove clauses refeencing it in further stages. So far so good.
@@ -203,11 +205,10 @@
 (defn- remove-stage-references
   [query previous-stage-number unmodified-query-for-stage target-uuid]
   (if-let [stage-number (lib.util/next-stage-number unmodified-query-for-stage previous-stage-number)]
-    (let [stage (lib.util/query-stage unmodified-query-for-stage stage-number)
-          target-ref-id (->> (lib.metadata.calculation/visible-columns unmodified-query-for-stage stage-number stage)
+    (let [target-ref-id (->> (lib.metadata.calculation/visible-columns unmodified-query-for-stage stage-number)
                              (some (fn [{:keys [lib/source lib/source-uuid] :as column}]
                                      (when (and (= :source/previous-stage source) (= target-uuid source-uuid))
-                                       (:lib/desired-column-alias column)))))]
+                                       (:lib/source-column-alias column)))))]
       (cond-> query
         ;; We are moving to the next stage, so pass the current query as the unmodified-query-for-stage
         target-ref-id
@@ -231,9 +232,7 @@
           location (find-location query stage-number target-clause)
           replace? (= :replace remove-or-replace)
           replacement-clause (when replace?
-                               (cond-> (lib.common/->op-arg replacement)
-                                 (lib.options/ident target-clause) (lib.common/preserve-ident-of target-clause)
-                                 (:ident target-clause)            (assoc :ident (:ident target-clause))))
+                               (lib.common/->op-arg replacement))
           remove-replace-fn (if replace?
                               #(lib.util/replace-clause %1 %2 %3 replacement-clause)
                               #(lib.util/remove-clause %1 %2 %3 stage-number))
@@ -250,7 +249,7 @@
                        query
                        stage-number
                        target-clause
-                       (dissoc (second replacement-clause) :lib/uuid :ident))
+                       (dissoc (second replacement-clause) :lib/uuid))
 
                       changing-breakout?
                       (remove-breakout-order-by query stage-number target-clause)
@@ -262,18 +261,27 @@
                           (remove-replace-location stage-number new-query location target-clause remove-replace-fn)
                           (normalize-fields-clauses location))
                       new-query)
-          new-stage (lib.util/query-stage new-query stage-number)]
-      (if (or (not changing-breakout?) (lib.schema.util/distinct-refs? (:breakout new-stage)))
+          new-stage (lib.util/query-stage new-query stage-number)
+          valid-change? (if changing-breakout?
+                          (or
+                           ;; breakout was removed
+                           (not (contains? new-stage :breakout))
+                           ;; breakout updated -- check for distinct refs. We can actually just use normalization to
+                           ;; clean this up -- why don't we do that?
+                           (lib.schema.util/distinct-mbql-clauses? (:breakout new-stage)))
+                          ;; any change to something other than breakouts is always considered valid
+                          true)]
+      (if valid-change?
         new-query
         query))))
 
-(mu/defn remove-clause :- :metabase.lib.schema/query
+(mu/defn remove-clause :- ::lib.schema/query
   "Removes the `target-clause` from the stage specified by `stage-number` of `query`.
   If `stage-number` is not specified, the last stage is used."
-  ([query :- :metabase.lib.schema/query
+  ([query :- ::lib.schema/query
     target-clause]
    (remove-clause query -1 target-clause))
-  ([query :- :metabase.lib.schema/query
+  ([query :- ::lib.schema/query
     stage-number :- :int
     target-clause]
    (if (and (map? target-clause) (= (:lib/type target-clause) :mbql/join))
@@ -289,8 +297,7 @@
                                 (lib.util.match/replace stage
                                   [:expression _ target-ref-id]
                                   (-> replacement-ref
-                                      fresh-ref
-                                      (lib.common/preserve-ident-of &match))))]
+                                      fresh-ref)))]
     (replace-embedded-refs stage)))
 
 (defn- local-replace-expression
@@ -299,9 +306,7 @@
                              (-> replacement lib.options/options :name))
         top-level-replacement (-> replacement
                                   (lib.util/top-level-expression-clause replacement-name)
-                                  fresh-ref
-                                  ;; Preserve the `:ident` of the target; the expression's identity is unchanged.
-                                  (lib.common/preserve-ident-of target))
+                                  fresh-ref)
         replaced (update stage :expressions (fn [exprs] (mapv #(if (= % target) top-level-replacement %) exprs)))
         target-name (lib.util/expression-name target)
         replacement-type (-> replacement lib.options/options :effective-type)
@@ -310,11 +315,10 @@
 
 (defn- local-replace
   [stage target replacement]
-  (let [replacement (lib.common/preserve-ident-of replacement target)]
-    (->> (if (lib.util/expression-name target)
-           (local-replace-expression stage target replacement)
-           (walk/postwalk #(if (= % target) replacement %) stage))
-         (walk/postwalk #(if (= % (lib.options/uuid target)) (lib.options/uuid replacement) %)))))
+  (->> (if (lib.util/expression-name target)
+         (local-replace-expression stage target replacement)
+         (walk/postwalk #(if (= % target) replacement %) stage))
+       (walk/postwalk #(if (= % (lib.options/uuid target)) (lib.options/uuid replacement) %))))
 
 (defn- returned-columns-at-stage
   [query stage-number]
@@ -345,7 +349,7 @@
     (let [t (lib.metadata.calculation/type-of query stage-number expression)]
       (lib.options/update-options expression assoc :effective-type t))))
 
-(def ^:private expression-validator (mr/validator :metabase.lib.schema.expression/expression))
+(def ^:private expression-validator (mr/validator ::lib.schema.expression/expression))
 
 (defn- expression-replacement?
   "Returns if `an-expression` and `new-expression` are both expressions."
@@ -426,11 +430,11 @@
                   (dissoc &match :effective-type))]
     (not (lib.equality/= a-conds b-conds))))
 
-(mu/defn- replace-expression-removing-erroneous-parts :- :metabase.lib.schema/query
-  [unmodified-query :- :metabase.lib.schema/query
+(mu/defn- replace-expression-removing-erroneous-parts :- ::lib.schema/query
+  [unmodified-query :- ::lib.schema/query
    stage-number     :- :int
-   target           :- :metabase.lib.schema.expression/expression
-   replacement      :- :metabase.lib.schema.expression/expression]
+   target           :- ::lib.schema.expression/expression
+   replacement      :- ::lib.schema.expression/expression]
   (mu/disable-enforcement
     (let [location (find-location unmodified-query stage-number target)
           query (loop [query (tweak-expression unmodified-query stage-number target replacement)]
@@ -465,15 +469,13 @@
           (if (and (not= new-name (:alias join))
                    (conditions-changed-for-aliases? (:alias join) (:conditions join)
                                                     (:alias old-join) (:conditions old-join)))
-            ;; TODO: This is pretty ugly and specific; this is an example of how hopelessly coupled and intricate
-            ;; this namespace is.
-            (rename-join query stage-number (assoc join :ident (:ident old-join)) new-name)
+            (rename-join query stage-number join new-name)
             query))
         query))))
 
 (declare replace-join)
 
-(mu/defn replace-clause :- :metabase.lib.schema/query
+(mu/defn replace-clause :- ::lib.schema/query
   "Replaces the `target-clause` with `new-clause` in the `query` stage specified by `stage-number`.
   If `stage-number` is not specified, the last stage is used.
 
@@ -485,11 +487,11 @@
   but the *identity* of the clause is retained. That means the `:ident` of the `target-clause` is always retained,
   even if the `new-clause` has a different one! If you want to drop the old clause and replace it, that's
   [[remove-clause]] plus adding the new one with [[lib.expression/expression]] and similar."
-  ([query :- :metabase.lib.schema/query
+  ([query :- ::lib.schema/query
     target-clause
     new-clause]
    (replace-clause query -1 target-clause new-clause))
-  ([query :- :metabase.lib.schema/query
+  ([query :- ::lib.schema/query
     stage-number :- :int
     target-clause
     new-clause]
@@ -528,7 +530,7 @@
             (replace-join-alias old-name unique-name)))
       stage)))
 
-(defn- join-spec->clause
+(defn- join-spec->index
   [query stage-number join-spec]
   (if (integer? join-spec)
     join-spec
@@ -539,7 +541,7 @@
                 idx))
             (m/indexed (:joins (lib.util/query-stage query stage-number)))))))
 
-(mu/defn rename-join :- :metabase.lib.schema/query
+(mu/defn rename-join :- ::lib.schema/query
   "Rename the join specified by `join-spec` in `query` at `stage-number` to `new-name`.
   The join can be specified either by itself (as returned by [[joins]]), by its alias
   or by its index in the list of joins as returned by [[joins]].
@@ -550,38 +552,41 @@
   ([query join-spec new-name]
    (rename-join query -1 join-spec new-name))
 
-  ([query        :- :metabase.lib.schema/query
+  ([query        :- ::lib.schema/query
     stage-number :- :int
-    join-spec    :- [:or :metabase.lib.schema.join/join :string :int]
-    new-name     :- :metabase.lib.schema.common/non-blank-string]
-   (if-let [idx (join-spec->clause query stage-number join-spec)]
+    join-spec    :- [:or ::lib.schema.join/join ::lib.schema.join/alias :int]
+    new-name     :- ::lib.schema.join/alias]
+   (if-let [idx (join-spec->index query stage-number join-spec)]
      (lib.util/update-query-stage query stage-number rename-join-in-stage idx new-name)
      query)))
 
 (defn- remove-matching-missing-columns
   [query-after query-before stage-number match-spec]
   (let [removed-cols (set/difference
-                      (set (lib.metadata.calculation/visible-columns query-before stage-number (lib.util/query-stage query-before stage-number)))
-                      (set (lib.metadata.calculation/visible-columns query-after stage-number (lib.util/query-stage query-after stage-number))))]
+                      (set (lib.metadata.calculation/visible-columns query-before stage-number))
+                      (set (lib.metadata.calculation/visible-columns query-after stage-number)))]
     (reduce
      #(apply remove-local-references %1 stage-number query-after (match-spec %2))
      query-after
      removed-cols)))
 
 (defn- remove-invalidated-refs
+  "Remove refs that are now invalid because a join has been removed."
   [query-after query-before stage-number]
   (let [query-without-local-refs (remove-matching-missing-columns
                                   query-after
                                   query-before
                                   stage-number
                                   (fn [column] [:field {:join-alias (::lib.join/join-alias column)} (:id column)]))]
-    ;; Because joins can use :all or :none, we cannot just use `remove-local-references` we have to manually look at the next stage as well
-    (if-let [stage-number (lib.util/next-stage-number query-without-local-refs stage-number)]
+    ;; Because joins can use :all or :none, we cannot just use `remove-local-references` we have to manually look at
+    ;; the next stage as well
+    (if-let [next-stage-number (lib.util/next-stage-number query-without-local-refs stage-number)]
       (remove-matching-missing-columns
        query-without-local-refs
        query-before
-       stage-number
-       (fn [column] [:field {} (:lib/desired-column-alias column)]))
+       next-stage-number
+       (fn [column]
+         [:field {} (:lib/source-column-alias column)]))
       query-without-local-refs)))
 
 (defn- join-spec->alias
@@ -619,7 +624,7 @@
   (or (= (:alias join) join-alias)
       (field-clause-with-join-alias? join join-alias)))
 
-(mu/defn remove-join :- :metabase.lib.schema/query
+(mu/defn remove-join :- ::lib.schema/query
   "Remove the join specified by `join-spec` in `query` at `stage-number`.
   The join can be specified either by itself (as returned by [[joins]]), by its alias
   or by its index in the list of joins as returned by [[joins]].
@@ -629,9 +634,9 @@
   ([query join-spec]
    (remove-join query -1 join-spec))
 
-  ([query        :- :metabase.lib.schema/query
+  ([query        :- ::lib.schema/query
     stage-number :- :int
-    join-spec    :- [:or :metabase.lib.schema.join/join :string :int]]
+    join-spec    :- [:or ::lib.schema.join/join :string :int]]
    (try
      (update-joins query stage-number join-spec (fn [joins join-alias]
                                                   (not-empty (filterv #(not (dependent-join? % join-alias))
@@ -644,7 +649,7 @@
                (remove-join stage-number join-spec))
            (throw e)))))))
 
-(mu/defn replace-join :- :metabase.lib.schema/query
+(mu/defn replace-join :- ::lib.schema/query
   "Replace the join specified by `join-spec` in `query` at `stage-number` with `new-join`.
   If `new-join` is nil, the join is removed as if by [[remove-join]].
   The join can be specified either by itself (as returned by [[joins]]), by its alias
@@ -655,9 +660,9 @@
   ([query join-spec new-join]
    (replace-join query -1 join-spec new-join))
 
-  ([query        :- :metabase.lib.schema/query
+  ([query        :- ::lib.schema/query
     stage-number :- :int
-    join-spec    :- [:or :metabase.lib.schema.join/join :string :int]
+    join-spec    :- [:or ::lib.schema.join/join :string :int]
     new-join]
    (if (nil? new-join)
      (remove-join query stage-number join-spec)
@@ -675,10 +680,7 @@
                                                              (:source-card %)))]
                                 (cond-> new-join
                                   ;; We need to tag the join so that add-default-alias knows to replace this alias
-                                  should-rename? (assoc ::lib.join/replace-alias true)
-                                  ;; TODO: Maybe join idents *should* change under the same conditions as aliases?
-                                  ;; All the column idents are going to change anyway, so it doesn't matter that much.
-                                  (:ident %)     (assoc :ident (:ident %))))
+                                  should-rename? (assoc ::lib.join/replace-alias true)))
                               %)
                            joins))))))
 
@@ -721,15 +723,15 @@
       (lib.util/update-query-stage stage-number update :joins
                                    (partial mapv #(normalize-fields-for-join query stage-number removed-location %))))))
 
-(mu/defn normalize-fields-clauses :- :metabase.lib.schema/query
+(mu/defn normalize-fields-clauses :- ::lib.schema/query
   "Check all the `:fields` clauses in the query - on the stages and any joins - and drops them if they are equal to the
   defaults.
   - For stages, if the `:fields` list is identical to the default fields for this stage.
   - For joins, replace it with `:all` if it's all the fields that are in the join by default.
   - For joins, remove it if the list is empty (the default for joins is no fields)."
-  ([query :- :metabase.lib.schema/query]
+  ([query :- ::lib.schema/query]
    (normalize-fields-clauses query nil))
-  ([query            :- :metabase.lib.schema/query
+  ([query            :- ::lib.schema/query
     removed-location :- [:maybe [:sequential :any]]]
    (reduce #(normalize-fields-for-stage %1 %2 removed-location)
            query

@@ -61,7 +61,8 @@
                               :convert-timezone                true
                               :connection/multiple-databases   true
                               :metadata/key-constraints        false
-                              :now                             true}]
+                              :now                             true
+                              :database-routing                true}]
   (defmethod driver/database-supports? [:starburst feature] [_ _ _] supported?))
 
 (defn- format-field
