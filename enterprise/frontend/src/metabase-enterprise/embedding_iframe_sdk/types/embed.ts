@@ -133,11 +133,9 @@ export type SdkIframeEmbedTemplateSettings =
 export type SdkIframeEmbedSettings = SdkIframeEmbedBaseSettings &
   Record<string, unknown>;
 
+// TODO: remove?
 /** Settings used by the embed.js constructor */
-export type SdkIframeEmbedTagSettings = SdkIframeEmbedSettings & {
-  target: string | HTMLElement;
-  iframeClassName?: string;
-};
+export type SdkIframeEmbedTagSettings = SdkIframeEmbedSettings;
 
 export type SdkIframeEmbedEvent = { type: "ready" };
 
