@@ -111,7 +111,7 @@ export function getSubtitleColumn(
     return titleColumn === pk ? undefined : pk;
   }
 
-  return undefined;
+  return pk;
 }
 
 export function getAvatarColumn(
