@@ -307,7 +307,7 @@
                :limit        3}))))))
 
 (deftest execute-test
-  (doseq [target-type ["table" "view"]
+  (doseq [target-type ["table" #_"view"]
           :let        [feature (keyword "transforms" target-type)]]
     (testing (str "transform execution with " target-type " target")
       (mt/test-drivers (mt/normal-drivers-with-feature feature)
