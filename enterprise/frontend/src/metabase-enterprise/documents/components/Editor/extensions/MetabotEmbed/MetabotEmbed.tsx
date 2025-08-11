@@ -159,20 +159,16 @@ export const MetabotComponent = memo(
         }),
       );
 
-      editor
-        .chain()
-        .insertContentAt(nodePosition, {
+      editor.commands.insertContentAt(nodePosition, [
+        {
           type: "cardEmbed",
           attrs: {
             id: newCardId,
           },
-        })
-        .insertContentAt(
-          nodePosition + 1,
-          createTextNode(`🤖 ${t`Created with Metabot`} 💙`),
-        )
-        .insertContentAt(nodePosition + 1, createTextNode(data.description))
-        .run();
+        },
+        createTextNode(data.description),
+        createTextNode(`🤖 ${t`Created with Metabot`} 💙`),
+      ]);
 
       deleteNode();
     }, [prompt, editor, queryMetabot, deleteNode, getPos, documentsDispatch]);
