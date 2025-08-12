@@ -1,4 +1,4 @@
-import { useSyncExternalStore } from "react";
+import { useCallback, useSyncExternalStore } from "react";
 
 import { useMetabaseProviderPropsStore } from "embedding-sdk/sdk-shared/hooks/use-metabase-provider-props-store";
 import type { SdkStoreState } from "embedding-sdk/store/types";
@@ -12,11 +12,16 @@ export function useLazySelector<TSelected>(
     props: { reduxStore },
   } = useMetabaseProviderPropsStore();
 
-  const subscribe = (notify: () => void) =>
-    reduxStore && selector ? reduxStore.subscribe(notify) : noop;
+  const subscribe = useCallback(
+    (notify: () => void) =>
+      reduxStore && selector ? reduxStore.subscribe(notify) : noop,
+    [reduxStore, selector],
+  );
 
-  const getSnapshot = () =>
-    reduxStore && selector ? selector(reduxStore.getState()) : null;
+  const getSnapshot = useCallback(
+    () => (reduxStore && selector ? selector(reduxStore.getState()) : null),
+    [reduxStore, selector],
+  );
 
   return useSyncExternalStore(subscribe, getSnapshot, () => null);
 }
