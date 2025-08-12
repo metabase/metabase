@@ -1028,11 +1028,11 @@
                              setting-name)
                         {:setting setting})))
       (when (and (:driver-feature setting) (not (database-local-only? setting)))
-        (throw (ex-info (tru "Setting {0} requires a :driver-feature, but is not limited to only database-local values."
+        (throw (ex-info (tru "Setting {0} requires a driver feature, but is not limited to only database-local values"
                              setting-name)
                         {:setting setting})))
       (when (and (:enabled-for-db? setting) (not (database-local-only? setting)))
-        (throw (ex-info (tru "Setting {0} uses :enabled-for-db?, but is not limited to only database-local values."
+        (throw (ex-info (tru "Setting {0} uses :enabled-for-db?, but is not limited to only database-local values"
                              setting-name)
                         {:setting setting})))
       (swap! registered-settings assoc setting-name <>))))
