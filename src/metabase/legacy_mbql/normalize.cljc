@@ -408,7 +408,7 @@
                            _ (when (= k :fingerprint)
                                (when-let [base-type (first (keys (:type v)))]
                                  (assert (isa? base-type :type/*)
-                                         (str "BAD FINGERPRINT! " (pr-str v)))))
+                                         (str "BAD FINGERPRINT! Invalid base-type: " (pr-str base type) " " (pr-str v)))))
                            v (case k
                                (:base_type
                                 :effective_type

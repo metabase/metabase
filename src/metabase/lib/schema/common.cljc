@@ -39,11 +39,15 @@
     (cond-> m
       (string? (:lib/type m)) (update :lib/type keyword))))
 
-(def ^:private ^{:arglists '([k])} memoized-kebab-key
+(def ^{:arglists '([k])} memoized-kebab-key
   "Calculating the kebab-case version of a key every time is pretty slow (even with the LRU caching
   [[u/->kebab-case-en]] has), since the keys here are static and finite we can just memoize them forever and
   get a nice performance boost."
-  (u.memo/fast-memo u/->kebab-case-en))
+  (u.memo/fast-memo
+   (fn [k]
+     ;; sanity check: make sure we're not accidentally using this on a base type
+     (assert (not= k :type/Text))
+     (u/->kebab-case-en k))))
 
 (defn map->kebab-case
   "Convert a map to kebab case, for use with `:decode/normalize`."

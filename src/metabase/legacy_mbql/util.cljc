@@ -5,7 +5,6 @@
    #?@(:clj
        [[metabase.legacy-mbql.jvm-util :as mbql.jvm-u]
         [metabase.models.dispatch :as models.dispatch]])
-   [clojure.string :as str]
    [metabase.legacy-mbql.predicates :as mbql.preds]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.schema.helpers :as schema.helpers]
@@ -28,11 +27,11 @@
   "Convert a string or keyword in various cases (`lisp-case`, `snake_case`, or `SCREAMING_SNAKE_CASE`) to a lisp-cased
   keyword."
   [token :- schema.helpers/KeywordOrString]
-  #_{:clj-kondo/ignore [:discouraged-var]}
-  (-> (u/qualified-name token)
-      str/lower-case
-      (str/replace \_ \-)
-      keyword))
+  ;; sanity check: this should not be performed on base types
+  {:pre [(not (#{"type/Text" :type/Text} token))]}
+  (-> token
+      lib.schema.common/normalize-keyword-lower
+      lib.schema.common/memoized-kebab-key))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                       Functions for manipulating queries                                       |
