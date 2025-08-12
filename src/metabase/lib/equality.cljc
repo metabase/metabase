@@ -113,6 +113,10 @@
 (defn- columns-equal-by-fn [f col-1 col-2]
   (clojure.core/= (f col-1) (f col-2)))
 
+(defn- ignore-default-temporal-bucket [bucket]
+  (when-not (clojure.core/= bucket :default)
+    bucket))
+
 (defmethod = :metadata/column
   [col-1 col-2]
   (and
@@ -126,19 +130,11 @@
    ;; columns that don't have the same binning or temporal bucketing are never the same.
    ;;
    ;; same binning
-   (columns-equal-by-fn lib.binning/binning col-1 col-2)
+   (columns-equal-by-fn :metabase.lib.field/binning col-1 col-2)
    ;; same bucketing
-   (letfn [(bucket [col]
-             (when-let [bucket (lib.temporal-bucket/raw-temporal-bucket col)]
-               (when-not (clojure.core/= bucket :default)
-                 bucket)))]
-     (columns-equal-by-fn bucket col-1 col-2))
+   (columns-equal-by-fn (comp ignore-default-temporal-bucket lib.temporal-bucket/raw-temporal-bucket) col-1 col-2)
    ;; check `:inherited-temporal-unit` as well if both columns have it.
-   (letfn [(inherited-bucket [col]
-             (when-let [bucket (:inherited-temporal-unit col)]
-               (when-not (clojure.core/= bucket :default)
-                 bucket)))]
-     (columns-equal-by-fn-when-non-nil-in-both inherited-bucket col-1 col-2))
+   (columns-equal-by-fn-when-non-nil-in-both (comp ignore-default-temporal-bucket :inherited-temporal-unit) col-1 col-2)
    ;; finally make sure they have the same `:lib/source-column-alias` (if both columns have it) or `:name` (if for
    ;; some reason they do not)
    (let [k (m/find-first (fn [k]

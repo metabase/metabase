@@ -1233,3 +1233,37 @@
             (-> (add-alias-info query)
                 :stages
                 first)))))
+
+(deftest ^:parallel multiple-breakouts-on-same-column-test
+  (let [query (lib/query
+               meta/metadata-provider
+               {:database (meta/id)
+                :type     :query
+                :query    {:source-table (meta/id :orders)
+                           :aggregation  [[:count]]
+                           :breakout     [[:field
+                                           (meta/id :orders :total)
+                                           {:base-type :type/Float, :binning {:strategy :num-bins, :num-bins 10}}]
+                                          [:field
+                                           (meta/id :orders :total)
+                                           {:base-type :type/Float, :binning {:strategy :num-bins, :num-bins 50}}]]}})]
+    (is (=? {:aggregation [[:count
+                            {:name               "count"
+                             ::add/source-table  ::add/none
+                             ::add/source-alias  "count"
+                             ::add/desired-alias "count"}]]
+             :breakout    [[:field
+                            {:binning            {:strategy :num-bins, :num-bins 10}
+                             ::add/source-table  (meta/id :orders)
+                             ::add/source-alias  "TOTAL"
+                             ::add/desired-alias "TOTAL"}
+                            any?]
+                           [:field
+                            {:binning            {:strategy :num-bins, :num-bins 50}
+                             ::add/source-table  (meta/id :orders)
+                             ::add/source-alias  "TOTAL"
+                             ::add/desired-alias "TOTAL_2"}
+                            any?]]}
+            (-> (add-alias-info query)
+                :stages
+                first)))))
