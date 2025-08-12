@@ -85,7 +85,10 @@ dataset_query:
         - archived
       - base-type: type/Boolean
     - - field
-      - is_verified
+      - - Internal Metabase Database
+        - public
+        - v_content
+        - is_verified
       - base-type: type/Boolean
     filter:
     - =
