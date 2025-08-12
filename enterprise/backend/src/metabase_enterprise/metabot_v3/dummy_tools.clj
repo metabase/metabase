@@ -38,10 +38,7 @@
   (some->
    id
    id->values
-   (or
-    (do
-      (field-values/create-or-update-full-field-values! (t2/select-one :model/Field :id id))
-      (field-values/get-latest-full-field-values id)))
+   (or (field-values/get-or-create-full-field-values! (t2/select-one :model/Field :id id)))
    :values))
 
 (defn- add-field-values

@@ -11,18 +11,11 @@
 (defn- field-statistics
   [column limit]
   (let [id (:id column)
-        fvs (field-values/get-latest-full-field-values id)
-        field (when-not (and fvs (:fingerprint column))
-                ;; trying to be lazy, only fetch the field if we'll need it to
-                ;; compute fingerprint or field values
-                (t2/select-one :model/Field :id id))
-        fvs (or fvs
-                (do
-                  (field-values/create-or-update-full-field-values! field :field-values fvs)
-                  (field-values/get-latest-full-field-values id)))
+        field (t2/select-one :model/Field :id id)
+        fvs (field-values/get-or-create-full-field-values! field)
         fp (or (:fingerprint column)
                (and (pos? (:updated-fingerprints (sync/refingerprint-field! field)))
-                    (:fingerprint (t2/select-one [:model/Field :fingerprint] :id id))))]
+                    (t2/select-one-fn :fingerprint [:model/Field :fingerprint] :id id)))]
     (merge (when fp
              {:statistics (-> (or (:global fp) {})
                               (set/rename-keys {:nil% :percent-null})
