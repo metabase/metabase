@@ -1044,26 +1044,26 @@
   :encryption     :when-encryption-key-set)
 
 (deftest driver-feature-validation-test
-  (testing "A setting with :driver-feature must be database-local"
+  (testing "A setting with :driver-feature must be :database-local"
     (is (thrown-with-msg?
          Throwable
-         #"Setting :test-driver-feature-non-local-setting requires a :driver-feature but is not limited to only database-local values."
+         #"Setting :test-driver-feature-non-local-setting requires a :driver-feature, but is not limited to only database-local values."
          (defsetting test-driver-feature-non-local-setting
            (deferred-tru "test Setting")
            :driver-feature :actions
            :encryption     :when-encryption-key-set))))
 
-  (testing "A setting with :driver-feature and :database-local :allowed should be valid"
+  (testing "Having :database-local :allowed is not enough"
     (is (thrown-with-msg?
          Throwable
-         #"Setting :test-driver-feature-allowed-setting requires a :driver-feature but is not limited to only database-local values."
+         #"Setting :test-driver-feature-allowed-setting requires a :driver-feature, but is not limited to only database-local values."
          (defsetting test-driver-feature-allowed-setting
-           (deferred-tru "test Setting")
+           (deferred-tru "test Setting 2")
            :database-local :allowed
            :driver-feature :actions/data-editing
            :encryption     :when-encryption-key-set))))
 
-  (testing "A setting with :driver-feature and :database-local :only should be valid"
+  (testing "Having :database-local :only is OK"
     (is (some? test-driver-feature-only-setting))))
 
 (deftest validate-settable-for-db-test
