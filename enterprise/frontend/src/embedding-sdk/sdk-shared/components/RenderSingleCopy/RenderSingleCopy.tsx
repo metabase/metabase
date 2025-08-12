@@ -72,12 +72,12 @@ export const RenderSingleCopy = ({
 
   useEffect(
     function showWarningOnMultipleRegisteredInstances() {
-      const shouldShowWaring =
+      const shouldShowWarning =
         !!multipleRegisteredInstancesWarningMessage &&
         isSingleCopyToRender &&
         singleCopyIds.length > 1;
 
-      if (shouldShowWaring) {
+      if (shouldShowWarning) {
         console.warn(multipleRegisteredInstancesWarningMessage);
       }
     },
