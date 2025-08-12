@@ -3,6 +3,9 @@
    [clojure.test :refer :all]
    [metabase-enterprise.semantic-search.embedding :as embedding]
    [metabase.test :as mt]))
+  (:import
+   [java.nio ByteBuffer ByteOrder]
+   [java.util Base64]))
 
 (set! *warn-on-reflection* true)
 
@@ -86,3 +89,97 @@
           batches (#'embedding/create-batches 5 #'embedding/count-tokens texts)]
       ;; Should skip the long text and batch the short ones
       (is (= [["Short" "Also short"]] batches)))))
+
+
+(defn- float-vectors-approx=
+  "Compare two vectors of floats for approximate equality within a given tolerance."
+  ([v1 v2]
+   (float-vectors-approx= v1 v2 0.0001))
+  ([v1 v2 tolerance]
+   (and (= (count v1) (count v2))
+        (every? #(< (Math/abs ^double %) tolerance)
+                (map - v1 v2)))))
+
+(defn- encode-floats-to-base64
+  "Helper function to base64 encode a vector of floats using little-endian byte order.
+   Inverse of [[metabase-enterprise.semantic-search.embedding/extract-base64-response-embeddings]] "
+  [float-vector]
+  (let [byte-count (* (count float-vector) 4)
+        buffer (doto (ByteBuffer/allocate byte-count)
+                 (.order ByteOrder/LITTLE_ENDIAN))]
+    (doseq [f float-vector]
+      (.putFloat buffer (float f)))
+    (.encodeToString (Base64/getEncoder) (.array buffer))))
+
+(deftest test-extract-base64-response-embeddings
+  (testing "extracts single embedding correctly"
+    (let [test-embedding [1.0 2.5 -0.5 3.14159]
+          base64-str (encode-floats-to-base64 test-embedding)
+          response {:data [{:embedding base64-str}]}
+          result (#'embedding/extract-base64-response-embeddings response)]
+      (is (= 1 (count result)))
+      (is (= (count test-embedding) (count (first result))))
+      (is (float-vectors-approx= test-embedding (first result)))))
+
+  (testing "extracts multiple embeddings correctly"
+    (let [embedding1 [1.0 2.0 3.0]
+          embedding2 [-1.0 -2.0 -3.0]
+          embedding3 [0.0 0.5 -0.5]
+          base64-str1 (encode-floats-to-base64 embedding1)
+          base64-str2 (encode-floats-to-base64 embedding2)
+          base64-str3 (encode-floats-to-base64 embedding3)
+          response {:data [{:embedding base64-str1}
+                           {:embedding base64-str2}
+                           {:embedding base64-str3}]}
+          result (#'embedding/extract-base64-response-embeddings response)]
+      (is (= 3 (count result)))
+      (is (float-vectors-approx= embedding1 (nth result 0)))
+      (is (float-vectors-approx= embedding2 (nth result 1)))
+      (is (float-vectors-approx= embedding3 (nth result 2)))))
+
+  (testing "edge cases that return empty results"
+    (testing "handles empty data array"
+      (let [response {:data []}
+            result (#'embedding/extract-base64-response-embeddings response)]
+        (is (= [] result))))
+
+    (testing "handles missing :data key"
+      (let [response {}
+            result (#'embedding/extract-base64-response-embeddings response)]
+        (is (= [] result))))
+
+    (testing "handles zero-length embedding"
+      (let [base64-str (encode-floats-to-base64 [])
+            response {:data [{:embedding base64-str}]}
+            result (#'embedding/extract-base64-response-embeddings response)]
+        (is (= 1 (count result)))
+        (is (= [] (first result))))))
+
+  (testing "handles large embedding vectors"
+    (let [large-embedding (vec (map float (range 1536)))
+          base64-str (encode-floats-to-base64 large-embedding)
+          response {:data [{:embedding base64-str}]}
+          result (#'embedding/extract-base64-response-embeddings response)]
+      (is (= 1 (count result)))
+      (is (= 1536 (count (first result))))
+      (is (float-vectors-approx= (take 5 large-embedding) (take 5 (first result))))
+      (is (float-vectors-approx= (take-last 5 large-embedding) (take-last 5 (first result))))))
+
+  (testing "error cases"
+    (testing "invalid base64 string throws exception"
+      (is (thrown? Exception
+                   (#'embedding/extract-base64-response-embeddings
+                     {:data [{:embedding "not-valid-base64!@#$"}]}))))
+
+    (testing "non-string embedding value throws exception"
+      (is (thrown? Exception
+                   (#'embedding/extract-base64-response-embeddings
+                     {:data [{:embedding 123}]}))))
+
+    (testing "base64 string with invalid byte count (not multiple of 4) throws exception"
+      ;; Create a base64 string that decodes to 3 bytes
+      (let [encoder (Base64/getEncoder)
+            invalid-base64 (.encodeToString encoder (byte-array [1 2 3]))]
+        (is (thrown? Exception
+                     (#'embedding/extract-base64-response-embeddings
+                       {:data [{:embedding invalid-base64}]})))))))
