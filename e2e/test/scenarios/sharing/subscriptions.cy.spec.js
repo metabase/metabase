@@ -331,6 +331,7 @@ describe("scenarios > dashboard > subscriptions", () => {
       assignRecipient();
 
       cy.findByLabelText("Attach results").click();
+      cy.findByLabelText("Questions to attach").click();
       cy.findByLabelText("Send only attachments").click();
       cy.findByLabelText("Send only attachments").should("be.checked");
 
@@ -340,7 +341,7 @@ describe("scenarios > dashboard > subscriptions", () => {
           (attachment) => attachment.contentType === "text/csv",
         );
         expect(csvAttachment).to.exist;
-        expect(csvAttachment.generatedFileName).to.include("Orders");
+        expect(csvAttachment.fileName).to.include("Orders");
         expect(email.html).to.not.include("Orders chart");
         expect(email.html).to.include(
           "Dashboard content available in attached files",
