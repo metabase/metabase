@@ -1,6 +1,7 @@
 import { useCallback, useMemo } from "react";
 import { push } from "react-router-redux";
 
+import { createMockMetadata } from "__support__/metadata";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { zoomInRow } from "metabase/query_builder/actions";
 import { getRowIndexToPKMap } from "metabase/query_builder/selectors";
@@ -8,15 +9,31 @@ import { closeNavbar } from "metabase/redux/app";
 import type { ObjectId } from "metabase/visualizations/components/ObjectDetail/types";
 import type { ColumnDescriptor } from "metabase/visualizations/lib/graph/columns";
 import * as Lib from "metabase-lib";
+import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import { isPK } from "metabase-lib/v1/types/utils/isa";
-import type { DatasetData } from "metabase-types/api";
+import type { Card, DatasetData } from "metabase-types/api";
 
 export const useObjectDetail = (
   { rows, cols }: DatasetData,
-  query: Lib.Query,
-  location: { hash: string; pathname: string },
+  card: Card,
+  metadata: Metadata | undefined,
 ) => {
   const dispatch = useDispatch();
+
+  const query = useMemo(() => {
+    const metadataProvider = Lib.metadataProvider(
+      card.dataset_query.database,
+      metadata ?? createMockMetadata(),
+    );
+    const query = Lib.fromLegacyQuery(
+      card.dataset_query.database,
+      metadataProvider,
+      card.dataset_query,
+    );
+
+    return query;
+  }, [card.dataset_query, metadata]);
+
   const rowIndexToPkMap: Record<number, ObjectId> = useSelector((state) =>
     state.qb != null ? getRowIndexToPKMap(state) : {},
   );
@@ -54,15 +71,10 @@ export const useObjectDetail = (
         dispatch(zoomInRow({ objectId }));
       } else {
         dispatch(closeNavbar());
-        dispatch(
-          push({
-            pathname: `/table/${tableId}/detail/${objectId}`,
-            state: { hash: location.hash, pathname: location.pathname },
-          }),
-        );
+        dispatch(push(`/table/${tableId}/detail/${objectId}`));
       }
     },
-    [dispatch, primaryKeyColumn, rowIndexToPkMap, rows, tableId, location],
+    [dispatch, primaryKeyColumn, rowIndexToPkMap, rows, tableId],
   );
 
   return onOpenObjectDetail;

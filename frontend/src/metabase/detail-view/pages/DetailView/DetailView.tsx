@@ -1,4 +1,3 @@
-import type { LocationDescriptorObject } from "history";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { push } from "react-router-redux";
 
@@ -31,13 +30,9 @@ interface TableDetailViewLoaderProps {
     tableId: string;
     rowId: string;
   };
-  router: { location: LocationDescriptorObject };
 }
 
-export function DetailView({
-  params,
-  router: { location },
-}: TableDetailViewLoaderProps) {
+export function DetailView({ params }: TableDetailViewLoaderProps) {
   const tableId = parseInt(params.tableId, 10);
   const rowId = params.rowId;
   const dispatch = useDispatch();
@@ -85,14 +80,6 @@ export function DetailView({
     tableDatabaseId: table?.db_id,
   });
 
-  const [previousPathState] = useState<
-    { pathname: string; hash: string } | object
-  >(() => location.state ?? {});
-
-  const handleBackClick = useCallback(() => {
-    dispatch(push(previousPathState));
-  }, [dispatch, previousPathState]);
-
   const handleViewPreviousObjectDetail = useCallback(() => {
     setCurrentRowIndex((currentIndex) => {
       if (typeof currentIndex !== "number") {
@@ -103,20 +90,12 @@ export function DetailView({
       const rowId = rows[newIndex]?.[0];
 
       if (rowId !== undefined) {
-        dispatch(
-          push({
-            pathname: `/table/${tableId}/detail/${rowId}`,
-            state: {
-              hash: location.state?.hash,
-              pathname: location.state?.pathname,
-            },
-          }),
-        );
+        dispatch(push(`/table/${tableId}/detail/${rowId}`));
       }
 
       return newIndex;
     });
-  }, [rows, dispatch, tableId, location.state]);
+  }, [rows, dispatch, tableId]);
 
   const handleViewNextObjectDetail = useCallback(() => {
     setCurrentRowIndex((currentIndex) => {
@@ -128,20 +107,12 @@ export function DetailView({
       const rowId = rows[newIndex]?.[0];
 
       if (rowId !== undefined) {
-        dispatch(
-          push({
-            pathname: `/table/${tableId}/detail/${rowId}`,
-            state: {
-              hash: location.state?.hash,
-              pathname: location.state?.pathname,
-            },
-          }),
-        );
+        dispatch(push(`/table/${tableId}/detail/${rowId}`));
       }
 
       return newIndex;
     });
-  }, [rows, dispatch, tableId, location.state]);
+  }, [rows, dispatch, tableId]);
 
   useEffect(() => {
     if (!row) {
@@ -170,9 +141,6 @@ export function DetailView({
         <Nav
           rowName={rowName}
           tableId={tableId}
-          onBackClick={
-            "hash" in previousPathState ? handleBackClick : undefined
-          }
           onPreviousClick={
             rows.length > 1 &&
             typeof currentRowIndex === "number" &&

@@ -17,7 +17,6 @@ import { getExploreTableUrl } from "./utils";
 interface Props {
   rowName: ReactNode;
   tableId: TableId;
-  onBackClick?: () => void;
   onNextClick?: () => void;
   onPreviousClick?: () => void;
 }
@@ -25,7 +24,6 @@ interface Props {
 export const Nav = ({
   rowName,
   tableId,
-  onBackClick,
   onNextClick,
   onPreviousClick,
 }: Props) => {
@@ -43,15 +41,6 @@ export const Nav = ({
 
   return (
     <Group align="center" gap="md">
-      {onBackClick && (
-        <NavButton
-          flex="0 0 auto"
-          icon="arrow_left"
-          tooltip={t`Back to table`}
-          onClick={onBackClick}
-        />
-      )}
-
       {(onNextClick || onPreviousClick) && (
         <Group align="center" flex="0 0 auto" gap="sm">
           <NavButton
