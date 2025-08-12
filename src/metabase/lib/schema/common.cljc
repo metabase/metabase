@@ -39,6 +39,8 @@
     (cond-> m
       (string? (:lib/type m)) (update :lib/type keyword))))
 
+;;; TODO (Cam 8/12/25) -- this doesn't really do what I'd expect with keys like `:-` or `:-a` or `:a-` -- it strips
+;;; out preceding and trailing dashes
 (def ^{:arglists '([k])} memoized-kebab-key
   "Calculating the kebab-case version of a key every time is pretty slow (even with the LRU caching
   [[u/->kebab-case-en]] has), since the keys here are static and finite we can just memoize them forever and

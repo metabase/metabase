@@ -405,10 +405,6 @@
                            k ((if (simple-keyword? k)
                                 u/->snake_case_en
                                 u/->kebab-case-en) k)
-                           _ (when (= k :fingerprint)
-                               (when-let [base-type (first (keys (:type v)))]
-                                 (assert (isa? base-type :type/*)
-                                         (str "BAD FINGERPRINT! Invalid base-type: " (pr-str base-type) " " (pr-str v)))))
                            v (case k
                                (:base_type
                                 :effective_type
@@ -422,6 +418,12 @@
                                :binning_info (m/update-existing v :binning_strategy keyword)
                                #_else
                                v)]
+                       ;; sanity check
+                       (when (= k :fingerprint)
+                         (when-let [base-type (first (keys (:type v)))]
+                           (assert (isa? base-type :type/*)
+                                   (str "BAD FINGERPRINT! Invalid base-type: " (pr-str base-type) " " (pr-str v)))))
+
                        [k v]))))
         metadata))
 
@@ -433,6 +435,7 @@
       (seq (:template-tags native-query)) (update :template-tags normalize-template-tags))))
 
 (defn- normalize-actions-row [row]
+
   (cond-> row
     (map? row) (update-keys u/qualified-name)))
 

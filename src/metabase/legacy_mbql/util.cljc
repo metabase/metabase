@@ -5,6 +5,7 @@
    #?@(:clj
        [[metabase.legacy-mbql.jvm-util :as mbql.jvm-u]
         [metabase.models.dispatch :as models.dispatch]])
+   [clojure.string :as str]
    [metabase.legacy-mbql.predicates :as mbql.preds]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.schema.helpers :as schema.helpers]
@@ -29,9 +30,11 @@
   [token :- schema.helpers/KeywordOrString]
   ;; sanity check: this should not be performed on base types
   {:pre [(not (#{"type/Text" :type/Text} token))]}
-  (-> token
-      lib.schema.common/normalize-keyword-lower
-      lib.schema.common/memoized-kebab-key))
+  (-> (u/qualified-name token)
+      #_{:clj-kondo/ignore [:discouraged-var]}
+      #?(:clj u/lower-case-en :cljs str/lower-case)
+      (str/replace \_ \-)
+      keyword))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                       Functions for manipulating queries                                       |
