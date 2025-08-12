@@ -15,7 +15,7 @@ import {
   getNewTransformFromTypeUrl,
 } from "../../../urls";
 
-export function NewTransformMenu() {
+export function CreateTransformMenu() {
   const dispatch = useDispatch();
   const [isPickerOpened, { open: openPicker, close: closePicker }] =
     useDisclosure();
@@ -28,11 +28,14 @@ export function NewTransformMenu() {
     <>
       <Menu>
         <Menu.Target>
-          <Button variant="filled" leftSection={<Icon name="add" />}>
+          <Button
+            variant="filled"
+            leftSection={<Icon name="add" aria-hidden />}
+          >
             {t`Create a transform`}
           </Button>
         </Menu.Target>
-        <Menu.Dropdown>
+        <Menu.Dropdown data-testid="create-transform-dropdown">
           <Menu.Label>{t`Create your transform with…`}</Menu.Label>
           <Menu.Item
             component={ForwardRefLink}

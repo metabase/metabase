@@ -2,7 +2,7 @@ import { t } from "ttag";
 
 import { Box, Group, Stack, Title } from "metabase/ui";
 
-import { NewTransformMenu } from "./NewTransformMenu";
+import { CreateTransformMenu } from "./CreateTransformMenu";
 import { TransformList } from "./TransformList";
 
 export function TransformListPage() {
@@ -13,7 +13,7 @@ export function TransformListPage() {
           <Title order={1}>{t`Transforms`}</Title>
           <Box>{t`Create custom tables with transforms, and run them on a schedule.`}</Box>
         </Stack>
-        <NewTransformMenu />
+        <CreateTransformMenu />
       </Group>
       <TransformList />
     </Stack>

@@ -1,45 +1,50 @@
-/* transform list */
-
 export const TransformListPage = {
-  visit: visitTransformList,
-  getCreateTransformButton,
-  getCreateTransformDropdown,
+  visit: () => {
+    cy.visit("/admin/transforms");
+  },
+  get: () => {
+    return cy.findByTestId("transform-list-page");
+  },
+  createTransformButton: () => {
+    return TransformListPage.get().button("Create a transform");
+  },
+  createTransformDropdown: () => {
+    return cy.findByTestId("create-transform-dropdown");
+  },
 };
-
-function visitTransformList() {
-  return cy.visit("/admin/transforms");
-}
-
-function getTransformListPage() {
-  return cy.findByTestId("transform-list-page");
-}
-
-function getCreateTransformButton() {
-  return getTransformListPage().button("Create a transform");
-}
-
-function getCreateTransformDropdown() {
-  return cy.findByTestId("create-transform-dropdown");
-}
-
-/* transform query editor */
 
 export const TransformQueryEditor = {
-  getQueryEditor: getQueryEditor,
-  getSaveButton: getQueryEditorSaveButton,
-  getCancelButton: getQueryEditorCancelButton,
+  get: () => {
+    return cy.findByTestId("transform-query-editor");
+  },
+  saveButton: () => {
+    return TransformQueryEditor.get().button("Save");
+  },
+  cancelButton: () => {
+    return TransformQueryEditor.get().button("Cancel");
+  },
 };
 
-function getQueryEditor() {
-  return cy.findByTestId("transform-query-editor");
-}
-
-function getQueryEditorSaveButton() {
-  return getQueryEditor().button("Save");
-}
-
-function getQueryEditorCancelButton() {
-  return getQueryEditor().button("Cancel");
-}
-
-/* create transform modal */
+export const CreateTransformModal = {
+  get: () => {
+    return cy.findByTestId("create-transform-modal");
+  },
+  nameInput: () => {
+    return CreateTransformModal.get().findByLabelText("Name");
+  },
+  descriptionInput: () => {
+    return CreateTransformModal.get().findByLabelText("Description");
+  },
+  schemaSelect: () => {
+    return CreateTransformModal.get().findByLabelText("Schema");
+  },
+  tableNameInput: () => {
+    return CreateTransformModal.get().findByLabelText("Table name");
+  },
+  saveButton: () => {
+    return CreateTransformModal.get().button("Save");
+  },
+  cancelButton: () => {
+    return CreateTransformModal.get().button("Cancel");
+  },
+};
