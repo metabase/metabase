@@ -1,4 +1,5 @@
 import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
+import type { TransformId } from "metabase-types/api";
 
 const { H } = cy;
 
@@ -13,56 +14,112 @@ describe("scenarios > admin > transforms", () => {
     H.resyncDatabase({ dbId: WRITABLE_DB_ID });
   });
 
-  describe("mbql transform", () => {
-    function createMbqlTransform() {
-      TransformListPage.visit();
-      TransformListPage.createTransformButton().click();
-      TransformListPage.createTransformDropdown()
-        .findByText("Query builder")
-        .click();
-      H.entityPickerModal().within(() => {
-        cy.findByText(DB_NAME).click();
-        cy.findByText("Schema a").click();
-        cy.findByText("Animals").click();
-      });
-      TransformQueryEditor.saveButton().click();
-      CreateTransformModal.nameInput().type("My transform");
-      CreateTransformModal.tableNameInput().type("my_table");
-      CreateTransformModal.save();
-    }
+  it("should be able to create and run an mbql transform", () => {
+    TransformListPage.visit();
+    TransformListPage.createTransformButton().click();
+    TransformListPage.createTransformDropdown()
+      .findByText("Query builder")
+      .click();
 
-    it("should be able to create and run an mbql transform", () => {
-      createMbqlTransform();
-      TransformPage.runAndWaitForSuccess();
-      TransformPage.tableLink().click();
-      H.queryBuilderHeader().findByText("My Table").should("be.visible");
-      H.assertQueryBuilderRowCount(3);
+    H.entityPickerModal().within(() => {
+      cy.findByText(DB_NAME).click();
+      cy.findByText("Schema a").click();
+      cy.findByText("Animals").click();
     });
+    TransformQueryEditor.saveButton().click();
+    CreateTransformModal.nameInput().type("MBQL transform");
+    CreateTransformModal.tableNameInput().type("transform_table");
+    CreateTransformModal.save();
 
-    it("should be able to change the table name and schema before running a transform", () => {
-      createMbqlTransform();
-      TransformPage.changeTargetButton().click();
-      UpdateTargetModal.nameInput().should("have.value", "my_table");
-      UpdateTargetModal.schemaSelect().should("have.value", "Schema A");
-      UpdateTargetModal.keepTargetRadio().should("not.exist");
-      UpdateTargetModal.deleteTargetRadio().should("not.exist");
+    TransformPage.runAndWaitForSuccess();
+    TransformPage.tableLink().click();
+    H.queryBuilderHeader().findByText("Transform Table").should("be.visible");
+    H.assertQueryBuilderRowCount(3);
+  });
 
-      UpdateTargetModal.nameInput().clear().type("my_table_changed");
-      UpdateTargetModal.schemaSelect().click();
-      H.popover().findByText("Schema B").click();
-      UpdateTargetModal.save();
-      TransformPage.tableLink().should("have.text", "my_table_changed");
-      TransformPage.schemaLink().should("have.text", "Schema B");
+  it("should be able to change the target before running a transform", () => {
+    cy.log("create but do not run the transform");
+    createMbqlTransform();
+    cy.get<TransformId>("@transformId").then((id) => TransformPage.visit(id));
 
-      TransformPage.runAndWaitForSuccess();
-      TransformPage.tableLink().click();
-      H.queryBuilderHeader()
-        .findByText("My Table Changed")
-        .should("be.visible");
-      H.assertQueryBuilderRowCount(3);
-    });
+    cy.log("modify the transform before running");
+    TransformPage.changeTargetButton().click();
+    UpdateTargetModal.nameInput().should("have.value", "transform_table");
+    UpdateTargetModal.schemaSelect().should("have.value", "Schema A");
+    UpdateTargetModal.keepTargetRadio().should("not.exist");
+    UpdateTargetModal.deleteTargetRadio().should("not.exist");
+    UpdateTargetModal.nameInput().clear().type("transform_table_2");
+    UpdateTargetModal.schemaSelect().click();
+    H.popover().findByText("Schema B").click();
+    UpdateTargetModal.save();
+    TransformPage.tableLink().should("have.text", "transform_table_2");
+    TransformPage.schemaLink().should("have.text", "Schema B");
+
+    cy.log("run the transform and verify the table");
+    TransformPage.runAndWaitForSuccess();
+    TransformPage.tableLink().click();
+    H.queryBuilderHeader().findByText("Transform Table 2").should("be.visible");
+    H.assertQueryBuilderRowCount(3);
+  });
+
+  it("should be able to change the target after running a transform and keep the old target", () => {
+    cy.log("create and run a transform");
+    createMbqlTransform();
+    cy.get<TransformId>("@transformId").then((id) => TransformPage.visit(id));
+    TransformPage.runAndWaitForSuccess();
+
+    cy.log("modify the transform after running");
+    TransformPage.changeTargetButton().click();
+    UpdateTargetModal.nameInput().should("have.value", "transform_table");
+    UpdateTargetModal.schemaSelect().should("have.value", "Schema A");
+    UpdateTargetModal.keepTargetRadio().should("be.checked");
+    UpdateTargetModal.nameInput().clear().type("transform_table_2");
+    UpdateTargetModal.save();
+    TransformPage.tableLink().should("have.text", "transform_table_2");
+
+    cy.log("run the transform and verify the table");
+    TransformPage.runAndWaitForSuccess();
+    TransformPage.tableLink().click();
+    H.queryBuilderHeader().findByText("Transform Table 2").should("be.visible");
+    H.assertQueryBuilderRowCount(3);
+
+    cy.log("verify that the original question still works");
+    H.createNativeQuestion(
+      {
+        database: WRITABLE_DB_ID,
+        native: { query: 'SELECT * FROM "Schema A".transform_table' },
+      },
+      { visitQuestion: true },
+    );
+    H.assertTableRowsCount(3);
   });
 });
+
+function createMbqlTransform() {
+  H.getTableId({ name: "Animals" }).then((tableId) => {
+    H.createTransform(
+      {
+        name: "MBQL transform",
+        source: {
+          type: "query",
+          query: {
+            database: WRITABLE_DB_ID,
+            type: "query",
+            query: {
+              "source-table": tableId,
+            },
+          },
+        },
+        target: {
+          type: "table",
+          name: "transform_table",
+          schema: "Schema A",
+        },
+      },
+      { wrapId: true },
+    );
+  });
+}
 
 const TransformListPage = {
   visit() {
@@ -70,6 +127,9 @@ const TransformListPage = {
   },
   get() {
     return cy.findByTestId("transform-list-page");
+  },
+  transformTable() {
+    return this.get().findByTestId("admin-content-table");
   },
   createTransformButton() {
     return this.get().button("Create a transform");
@@ -80,6 +140,9 @@ const TransformListPage = {
 };
 
 const TransformPage = {
+  visit(id: TransformId) {
+    cy.visit(`/admin/transforms/${id}`);
+  },
   get() {
     return cy.findByTestId("transform-page");
   },
@@ -162,10 +225,10 @@ const UpdateTargetModal = {
     return this.get().findByLabelText("In which schema should it go?");
   },
   keepTargetRadio() {
-    return this.get().findByText(/^Keep/);
+    return this.get().findByTestId("keep-target-radio");
   },
   deleteTargetRadio() {
-    return this.get().findByText(/^Delete/);
+    return this.get().findByTestId("delete-target-radio");
   },
   saveButton() {
     return this.get().button(/^Change target/);

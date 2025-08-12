@@ -127,8 +127,16 @@ function UpdateTargetForm({
                 onChange={(value) => setShouldDeleteTarget(value === "true")}
               >
                 <Stack gap="sm">
-                  <Radio value="false" label={t`Keep ${target.name}`} />
-                  <Radio value="true" label={t`Delete ${target.name}`} />
+                  <Radio
+                    value="false"
+                    label={t`Keep ${target.name}`}
+                    data-testid="keep-target-radio"
+                  />
+                  <Radio
+                    value="true"
+                    label={t`Delete ${target.name}`}
+                    data-testid="delete-target-radio"
+                  />
                 </Stack>
               </Radio.Group>
             )}
