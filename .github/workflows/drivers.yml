@@ -48,7 +48,7 @@ jobs:
 
             # Initialize an empty array to store folders with changes
             CHANGED_FOLDERS=()
-            for folder in "src/metabase/lib" "src/metabase/query_processor" "modules/drivers"; do
+            for folder in "src/metabase/lib" "src/metabase/query_processor" "modules/drivers" "src/metabase/driver"; do
               if echo "$CHANGED_FILES" | grep -q "$folder"; then
                 CHANGED_FOLDERS+=("$folder")
               fi

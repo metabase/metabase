@@ -89,11 +89,10 @@ jobs:
           done
           echo "run_id=$(jq -r '.workflow_runs[0].id' e2e-tests.json)" >> $GITHUB_OUTPUT
       - name: Retrieve uberjar artifact for ee
-        uses: actions/download-artifact@v4
+        uses: ./.github/actions/fetch-artifact
         with:
           name: metabase-ee-${{ github.event.pull_request.head.sha || github.sha }}-uberjar
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          run-id: ${{ inputs.wait_for_uberjar && steps.wait_for_uberjar.outputs.run_id || github.run_id }}
+          extract-path: "target/uberjar"
       - name: Move uberjar to bin/docker
         run: |
           jar xf target/uberjar/metabase.jar

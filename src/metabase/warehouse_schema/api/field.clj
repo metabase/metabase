@@ -128,7 +128,7 @@
               [(:base_type field) nil]
 
               :else
-              (when-let [coercion-strategy (keyword coercion-strategy)]
+              (when-let [coercion-strategy (some-> coercion-strategy keyword)]
                 (let [effective (types/effective-type-for-coercion coercion-strategy)]
                   (if (types/is-coercible? coercion-strategy (:base_type field) effective)
                     [effective coercion-strategy]

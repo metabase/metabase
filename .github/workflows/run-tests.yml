@@ -130,3 +130,14 @@ jobs:
       contains(github.event.pull_request.labels.*.name, 'PR-Env')
     uses: ./.github/workflows/pr-env.yml
     secrets: inherit
+
+  containerize:
+    needs: [uberjar]
+    if: |
+      !cancelled() &&
+      (
+        (github.event_name == 'push' && contains(fromJson('["master", "metabot-v3-main", "internal-tools"]'), github.ref_name)) ||
+        (github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'build-docker-uberjar'))
+      )
+    uses: ./.github/workflows/containerize-uberjar.yml
+    secrets: inherit

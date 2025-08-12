@@ -156,6 +156,11 @@
    :requires [[mage.stats-repl :as stats-repl]]
    :task     (stats-repl/connect (cli/parse! (current-task)))}
 
+  ls {:doc      "List all mage public and private tasks"
+      :examples [["./bin/mage ls" "List all tasks"]]
+      :requires [[mage.util :as u]]
+      :task     (task! (u/print-tasks parsed))}
+
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   ;; Private Tasks:
   ;; These tasks are more for internal tooling, e.g. for use from git hooks etc.
@@ -260,4 +265,11 @@
   {:doc      "Print a day's PR summary for the metabase/metabase repo"
    :requires [[mage.escherize.pr-summary :as eps]]
    :examples [["./bin/mage -escherize-pr-summary | pbcopy" "Copy your daily"]]
-   :task     (task! (eps/summarize-prs parsed))}}}
+   :task     (task! (eps/summarize-prs parsed))}
+
+  -escherize-fix-whitespace
+  {:doc "Removes all lines like '^<space>+$' from files in glob pattern."
+   :requires [[mage.escherize.fix-whitespace :as fix-whitespace]]
+   :examples [["mage -escherize-fix-whitespace '**/*.clj'" "Removes all lines like '  ' from all clj files"]]
+   :arg-schema [:sequential [:string {:description "Glob pattern to match files"}]]
+   :task     (task! (fix-whitespace/run-clean parsed))}}}
