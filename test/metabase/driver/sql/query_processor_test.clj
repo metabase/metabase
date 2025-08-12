@@ -1417,7 +1417,7 @@
 
 (deftest ^:parallel nested-array-query-test
   (testing "A nested array query should be returned in a readable format"
-    (mt/test-drivers (mt/driver-select {:+features [:test/nested-arrays]})
+    (mt/test-drivers (mt/normal-driver-select {:+features [:test/nested-arrays]})
       (mt/dataset test-data
         (is (= [[(native-nested-array-results driver/*driver*)]]
                (->> (mt/native-query {:query (native-nested-array-query driver/*driver*)})
