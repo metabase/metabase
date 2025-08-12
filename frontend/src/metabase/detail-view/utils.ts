@@ -1,9 +1,5 @@
 import type { ContentTranslationFunction } from "metabase/i18n/types";
-import {
-  type OptionsType,
-  formatUrl,
-  formatValue,
-} from "metabase/lib/formatting";
+import { type OptionsType, formatValue } from "metabase/lib/formatting";
 import { getComputedSettings } from "metabase/visualizations/lib/settings";
 import {
   getGlobalSettingsForColumn,
@@ -51,23 +47,6 @@ export function renderValue(
     return String(value) || NO_VALUE;
   }
 
-  if (column.settings?.view_as === "link") {
-    return formatUrl(String(tc(value)), {
-      ...column.settings,
-      ...finalSettings,
-      column,
-      type: "cell",
-      jsx: true,
-      rich: true,
-      remap: true,
-      clicked: {
-        type: "cell",
-        value,
-        column,
-      },
-    });
-  }
-
   const formattedValue = formatValue(tc(value), {
     ...column.settings,
     ...finalSettings,
@@ -76,6 +55,17 @@ export function renderValue(
     jsx: true,
     rich: true,
     remap: true,
+    clicked: {
+      type: "cell",
+      value,
+      column,
+      data: [
+        {
+          col: column,
+          value,
+        },
+      ],
+    },
     ...optionsOverride,
   });
 
