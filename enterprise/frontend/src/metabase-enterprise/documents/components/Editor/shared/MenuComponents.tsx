@@ -1,10 +1,16 @@
-import cx from "classnames";
 import { t } from "ttag";
 
-import { Box, Group, Icon, type IconName, Text } from "metabase/ui";
+import {
+  Group,
+  Icon,
+  type IconName,
+  Stack,
+  Text,
+  UnstyledButton,
+} from "metabase/ui";
 import type { SearchModel } from "metabase-types/api";
 
-import styles from "../Editor.module.css";
+import S from "./MenuItems.module.css";
 
 interface ExtraItemProps {
   isSelected?: boolean;
@@ -30,68 +36,60 @@ export const MenuItemComponent = ({
   isSelected?: boolean;
   onClick?: () => void;
 }) => (
-  <Box
-    p="sm"
-    className={styles.suggestionMenuItem}
-    data-selected={isSelected || undefined}
+  <UnstyledButton
+    className={S.menuItem}
     onClick={onClick || item.action}
+    role="option"
+    aria-selected={isSelected}
   >
-    <Group gap="sm" wrap="nowrap">
-      <Icon
-        name={item.icon}
-        size={16}
-        color={item.iconColor || "var(--mb-color-text-medium)"}
-      />
-      <Box style={{ flex: 1, minWidth: 0 }}>
-        <Text size="md" fw={500} truncate>
+    <Group gap="sm" wrap="nowrap" align="center">
+      <Icon name={item.icon} size={16} color={item.iconColor || "inherit"} />
+      <Stack gap={2} style={{ flex: 1 }}>
+        <Text size="md" lh="lg" c="inherit">
           {item.label}
         </Text>
         {item.description && (
-          <Text size="sm" c="text-medium" truncate>
+          <Text size="sm" c="text-light" lh="md">
             {item.description}
           </Text>
         )}
-      </Box>
+      </Stack>
     </Group>
-  </Box>
+  </UnstyledButton>
 );
 
 export const SearchResultsFooter = ({
   isSelected,
   onClick,
 }: ExtraItemProps) => (
-  <Box
-    p="sm"
-    className={styles.suggestionMenuItem}
-    data-selected={isSelected || undefined}
+  <UnstyledButton
+    className={S.menuItem}
     onClick={onClick}
+    role="option"
+    aria-selected={isSelected}
   >
-    <Group gap="sm" wrap="nowrap">
-      <Icon name="search" size={16} color="var(--mb-color-text-medium)" />
-      <Text size="md" fw={500}>
-        {t`Browse all`}
-      </Text>
+    <Group gap="sm" wrap="nowrap" align="center">
+      <Icon name="search" size={16} color="inherit" />
+      <Text size="md" lh="lg" c="inherit">{t`Browse all`}</Text>
     </Group>
-  </Box>
+  </UnstyledButton>
 );
 
 export const MetabotFooter = ({ isSelected, onClick }: ExtraItemProps) => (
-  <Box
-    p="sm"
-    className={cx(styles.suggestionMenuItem, styles.suggestionMenuFooter)}
-    data-selected={isSelected || undefined}
+  <UnstyledButton
+    className={S.menuItemWithBorder}
     onClick={onClick}
+    role="option"
+    aria-selected={isSelected}
   >
-    <Group gap="sm" wrap="nowrap">
-      <Icon name="metabot" size={16} color="var(--mb-color-text-medium)" />
-      <Box style={{ flex: 1, minWidth: 0 }}>
-        <Text size="md" fw={500} truncate>
-          {t`Ask Metabot`}
-        </Text>
-        <Text size="sm" c="text-medium" truncate>
+    <Group gap="sm" wrap="nowrap" align="center">
+      <Icon name="metabot" size={16} color="inherit" />
+      <Stack gap={2}>
+        <Text size="md" lh="lg" c="inherit">{t`Ask Metabot`}</Text>
+        <Text size="sm" c="text-light" lh="md">
           {t`It wants to help!`}
         </Text>
-      </Box>
+      </Stack>
     </Group>
-  </Box>
+  </UnstyledButton>
 );

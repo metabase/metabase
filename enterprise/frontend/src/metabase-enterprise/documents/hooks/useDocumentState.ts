@@ -1,3 +1,4 @@
+import type { JSONContent } from "@tiptap/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { useDispatch } from "metabase/lib/redux";
@@ -15,7 +16,9 @@ export function useDocumentState(documentData?: {
   const dispatch = useDispatch();
   const cardEmbeds = useDocumentsSelector(getCardEmbeds);
   const [documentTitle, setDocumentTitle] = useState("");
-  const [documentContent, setDocumentContent] = useState("");
+  const [documentContent, setDocumentContent] = useState<JSONContent | null>(
+    null,
+  );
   const [documentCollectionId, setDocumentCollectionId] =
     useState<CollectionId | null>(null);
   const previousEmbedsRef = useRef<CardEmbedRef[]>([]);
@@ -24,12 +27,11 @@ export function useDocumentState(documentData?: {
   useEffect(() => {
     if (documentData) {
       setDocumentTitle(documentData.name);
-      // Convert document to string if it's an object
-      const docContent =
-        typeof documentData.document === "string"
-          ? documentData.document
-          : JSON.stringify(documentData.document);
-      setDocumentContent(docContent);
+      // Document is always a JSON object
+      setDocumentContent((documentData.document as JSONContent) || null);
+    } else {
+      // When switching to new document, reset content
+      setDocumentContent(null);
     }
   }, [documentData]);
 

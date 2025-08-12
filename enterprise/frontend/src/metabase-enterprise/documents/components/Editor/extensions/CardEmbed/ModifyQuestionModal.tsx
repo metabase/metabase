@@ -1,5 +1,5 @@
 import type { Editor } from "@tiptap/react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -15,13 +15,12 @@ import type { Card } from "metabase-types/api";
 import {
   createDraftCard,
   generateDraftCardId,
+  loadMetadataForDocumentCard,
 } from "../../../../documents.slice";
 import {
   useDocumentsDispatch,
   useDocumentsSelector,
 } from "../../../../redux-utils";
-
-import { useCardMetadata } from "./useCardMetadata";
 
 interface ModifyQuestionModalProps {
   card: Card;
@@ -47,7 +46,11 @@ export const ModifyQuestionModal = ({
   );
 
   // Load metadata for card
-  useCardMetadata(card, isOpen);
+  useEffect(() => {
+    if (isOpen && card) {
+      documentsDispatch(loadMetadataForDocumentCard(card));
+    }
+  }, [isOpen, card, documentsDispatch]);
 
   const question = useMemo(() => {
     if (!card || !metadata || !isOpen) {

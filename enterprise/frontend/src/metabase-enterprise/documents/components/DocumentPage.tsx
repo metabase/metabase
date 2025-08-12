@@ -1,4 +1,5 @@
 import { useDisclosure } from "@mantine/hooks";
+import type { Editor as TiptapEditor } from "@tiptap/core";
 import cx from "classnames";
 import dayjs from "dayjs";
 import { useCallback, useEffect, useState } from "react";
@@ -7,6 +8,7 @@ import { push, replace } from "react-router-redux";
 import { usePrevious, useUnmount } from "react-use";
 import useBeforeUnload from "react-use/lib/useBeforeUnload";
 import { t } from "ttag";
+import _ from "underscore";
 
 import { skipToken } from "metabase/api";
 import { canonicalCollectionId } from "metabase/collections/utils";
@@ -69,10 +71,14 @@ export const DocumentPage = ({
   const selectedQuestionId = useDocumentsSelector(getSelectedQuestionId);
   const selectedEmbedIndex = useDocumentsSelector(getSelectedEmbedIndex);
   const draftCards = useDocumentsSelector(getDraftCards);
-  const [editorInstance, setEditorInstance] = useState<any>(null);
-  const [currentContent, setCurrentContent] = useState<string>("");
-  const [createDocument] = useCreateDocumentMutation();
-  const [updateDocument] = useUpdateDocumentMutation();
+  const [editorInstance, setEditorInstance] = useState<TiptapEditor | null>(
+    null,
+  );
+  const [hasUnsavedEditorChanges, setHasUnsavedEditorChanges] = useState(false);
+  const [createDocument, { isLoading: isCreating }] =
+    useCreateDocumentMutation();
+  const [updateDocument, { isLoading: isUpdating }] =
+    useUpdateDocumentMutation();
   const [
     isShowingCollectionPicker,
     { open: showCollectionPicker, close: hideCollectionPicker },
@@ -116,41 +122,37 @@ export const DocumentPage = ({
     dispatch(resetDocuments());
   });
 
-  // Reset current content when document changes
-  useEffect(() => {
-    if (documentId !== previousDocumentId) {
-      setCurrentContent(documentContent || "");
-    }
-  }, [documentId, previousDocumentId, documentContent]);
-
   useRegisterDocumentMetabotContext();
   useBeforeUnload(() => {
     // warn if you try to navigate away with unsaved changes
     return hasUnsavedChanges();
   });
 
-  // Update current content when document content changes
+  // Reset state when document changes
   useEffect(() => {
-    setCurrentContent(documentContent || "");
-  }, [documentContent]);
-
-  // Reset state when creating a new document
-  useEffect(() => {
-    if (isNewDocument && previousDocumentId !== "new") {
-      setDocumentTitle("");
-      setDocumentContent("");
-      setCurrentContent("");
-      // Clear the Redux state to ensure no card embeds from previous document
-      dispatch(resetDocuments());
+    if (documentId !== previousDocumentId) {
+      setHasUnsavedEditorChanges(false);
+      if (isNewDocument && previousDocumentId !== "new") {
+        setDocumentTitle("");
+        setDocumentContent(null);
+        dispatch(resetDocuments());
+      }
     }
   }, [
     documentId,
+    previousDocumentId,
+    isNewDocument,
     setDocumentTitle,
     setDocumentContent,
-    previousDocumentId,
     dispatch,
-    isNewDocument,
   ]);
+
+  // Reset dirty state when document content loads from API
+  useEffect(() => {
+    if (documentContent && !isNewDocument) {
+      setHasUnsavedEditorChanges(false);
+    }
+  }, [documentContent, isNewDocument]);
 
   useEffect(() => {
     // Set current document when document loads (includes collection_id and all other data)
@@ -169,33 +171,49 @@ export const DocumentPage = ({
     // Check if there are any draft cards
     const hasDraftCards = Object.keys(draftCards).length > 0;
 
-    // For new documents, show Save if there's title or content exists or draft cards
+    // For new documents, show Save if there's title or editor changes or draft cards
     if (isNewDocument) {
-      const emptyDocAst = '{"type":"doc","content":[{"type":"paragraph"}]}';
-      const hasContent =
-        currentContent !== emptyDocAst && currentContent !== "";
-      return currentTitle.length > 0 || hasContent || hasDraftCards;
+      return (
+        currentTitle.length > 0 || hasUnsavedEditorChanges || hasDraftCards
+      );
     }
 
-    // For existing documents, compare current content with document content
-    // documentContent is already stringified from the hook
-    const contentChanged = currentContent !== (documentContent ?? "");
-
-    return titleChanged || contentChanged || hasDraftCards;
+    // For existing documents, use simple change tracking
+    return titleChanged || hasUnsavedEditorChanges || hasDraftCards;
   }, [
     documentTitle,
     isNewDocument,
     documentData,
-    currentContent,
-    documentContent,
+    hasUnsavedEditorChanges,
     draftCards,
   ]);
 
-  const showSaveButton = (isNewDocument || hasUnsavedChanges()) && canWrite;
+  const isSaving = isCreating || isUpdating;
+  const showSaveButton = hasUnsavedChanges() && canWrite && !isSaving;
+
+  const handleContentChanged = useCallback(() => {
+    if (!editorInstance) {
+      return;
+    }
+
+    // Compare current content with original content
+    const currentContent = editorInstance.getJSON();
+    const originalContent = documentContent;
+
+    // For new documents, any content means changes
+    if (isNewDocument) {
+      setHasUnsavedEditorChanges(!editorInstance.isEmpty);
+      return;
+    }
+
+    // For existing documents, compare with original content
+    const hasChanges = !_.isEqual(currentContent, originalContent);
+    setHasUnsavedEditorChanges(hasChanges);
+  }, [editorInstance, documentContent, isNewDocument]);
 
   const handleSave = useCallback(
     async (collectionId: RegularCollectionId | null = null) => {
-      if (!editorInstance) {
+      if (!editorInstance || isSaving) {
         return;
       }
 
@@ -216,7 +234,7 @@ export const DocumentPage = ({
           }
         });
 
-        const documentAst = currentContent ? JSON.parse(currentContent) : null;
+        const documentAst = editorInstance ? editorInstance.getJSON() : null;
         const name =
           documentTitle ||
           t`Untitled document - ${dayjs().local().format("MMMM D, YYYY")}`;
@@ -255,6 +273,8 @@ export const DocumentPage = ({
             message: documentData?.id ? t`Document saved` : t`Document created`,
           });
           dispatch(clearDraftCards());
+          // Mark document as clean
+          setHasUnsavedEditorChanges(false);
         }
       } catch (error) {
         console.error("Failed to save document:", error);
@@ -263,8 +283,8 @@ export const DocumentPage = ({
     },
     [
       editorInstance,
+      isSaving,
       documentTitle,
-      currentContent,
       draftCards,
       documentData?.id,
       updateDocument,
@@ -329,6 +349,7 @@ export const DocumentPage = ({
             <Box className={styles.header} mt="xl" pt="xl">
               <Flex direction="column" w="100%">
                 <TextInput
+                  aria-label={t`Document Title`}
                   autoFocus={isNewDocument}
                   value={documentTitle}
                   onChange={(event) =>
@@ -409,23 +430,25 @@ export const DocumentPage = ({
               onEditorReady={setEditorInstance}
               onCardEmbedsChange={updateCardEmbeds}
               onQuestionSelect={handleQuestionSelect}
-              content={documentContent || ""}
-              onChange={setCurrentContent}
+              initialContent={documentContent}
+              onContentChanged={handleContentChanged}
               editable={canWrite}
               isLoading={isDocumentLoading}
             />
           </Box>
         </Box>
 
-        {selectedQuestionId && selectedEmbedIndex !== null && (
-          <Box className={styles.sidebar}>
-            <EmbedQuestionSettingsSidebar
-              cardId={selectedQuestionId}
-              onClose={() => dispatch(closeSidebar())}
-              editorInstance={editorInstance}
-            />
-          </Box>
-        )}
+        {selectedQuestionId &&
+          selectedEmbedIndex !== null &&
+          editorInstance && (
+            <Box className={styles.sidebar}>
+              <EmbedQuestionSettingsSidebar
+                cardId={selectedQuestionId}
+                onClose={() => dispatch(closeSidebar())}
+                editorInstance={editorInstance}
+              />
+            </Box>
+          )}
 
         {isShowingCollectionPicker && (
           <CollectionPickerModal

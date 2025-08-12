@@ -17,7 +17,10 @@
     :creator_id
     :created_at
     :updated_at
-    :collection_id})
+    :view_count
+    :last_viewed_at
+    :collection_id
+    :collection_position})
 
 (defmethod revisions/serialize-instance :model/Document
   [_model _id instance]

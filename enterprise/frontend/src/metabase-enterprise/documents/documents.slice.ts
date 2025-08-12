@@ -1,6 +1,12 @@
-import { type PayloadAction, createSlice } from "@reduxjs/toolkit";
+import {
+  type PayloadAction,
+  createAsyncThunk,
+  createSlice,
+} from "@reduxjs/toolkit";
+import _ from "underscore";
 
 import { CLOSE_QB } from "metabase/query_builder/actions";
+import { loadMetadataForCard } from "metabase/questions/actions";
 import type {
   Card,
   CardDisplayType,
@@ -9,8 +15,23 @@ import type {
 } from "metabase-types/api";
 
 import type { CardEmbedRef } from "./components/Editor/types";
+import { getMentionsCacheKey } from "./utils/mentionsUtils";
 
 let nextDraftCardId = -1;
+
+export const loadMetadataForDocumentCard = createAsyncThunk(
+  "documents/loadMetadataForDocumentCard",
+  async (card: Card, { dispatch }) => {
+    const cardForMetadata = card.id < 0 ? _.omit(card, "id") : card;
+    await dispatch(loadMetadataForCard(cardForMetadata));
+  },
+);
+
+interface MentionCacheItem {
+  entityId: string;
+  model: string;
+  name: string;
+}
 
 export interface DocumentsState {
   selectedEmbedIndex: number | null;
@@ -18,6 +39,7 @@ export interface DocumentsState {
   currentDocument: Document | null;
   showNavigateBackToDocumentButton: boolean;
   draftCards: Record<number, Card>;
+  mentionsCache: Record<string, MentionCacheItem>;
 }
 
 const initialState: DocumentsState = {
@@ -26,6 +48,7 @@ const initialState: DocumentsState = {
   currentDocument: null,
   showNavigateBackToDocumentButton: false,
   draftCards: {},
+  mentionsCache: {},
 };
 
 const documentsSlice = createSlice({
@@ -110,6 +133,12 @@ const documentsSlice = createSlice({
     clearDraftCards: (state) => {
       state.draftCards = {};
     },
+    updateMentionsCache: (
+      state,
+      { payload }: PayloadAction<MentionCacheItem>,
+    ) => {
+      state.mentionsCache[getMentionsCacheKey(payload)] = payload;
+    },
   },
   extraReducers: (builder) => {
     builder.addCase(CLOSE_QB, (state) => {
@@ -130,6 +159,7 @@ export const {
   createDraftCard,
   updateDraftCard,
   clearDraftCards,
+  updateMentionsCache,
 } = documentsSlice.actions;
 
 export const generateDraftCardId = (): number => {

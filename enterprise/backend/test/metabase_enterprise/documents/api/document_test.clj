@@ -468,6 +468,135 @@
           (is (nil? (:collection_id card))) ; should inherit nil from document
           (is (= (:id result) (:document_id card))))))))
 
+(deftest post-document-cards-type-normalization-test
+  (testing "POST /api/ee/document/ - normalizes card type from :model to :question and removes dashboard_id"
+    (mt/with-model-cleanup [:model/Document :model/Card]
+      (mt/with-temp [:model/Collection {col-id :id} {}
+                     :model/Dashboard {dash-id :id} {:name "Test Dashboard"}]
+        (let [cards-to-create {-1 {:name "Model Card"
+                                   :type :model
+                                   :dataset_query (mt/mbql-query venues)
+                                   :display :table
+                                   :visualization_settings {}
+                                   :dashboard_id dash-id}}
+              result (mt/user-http-request :crowberto
+                                           :post 200 "ee/document/"
+                                           {:name "Document with Model Card"
+                                            :document {:type "doc"
+                                                       :content [{:type "cardEmbed"
+                                                                  :attrs {:id -1
+                                                                          :name nil}}]}
+                                            :collection_id col-id
+                                            :cards cards-to-create})
+              created-cards (t2/select :model/Card :document_id (:id result))
+              card (first created-cards)]
+
+          (testing "should create document successfully"
+            (is (pos? (:id result)))
+            (is (= "Document with Model Card" (:name result))))
+
+          (testing "should normalize card type from :model to :question"
+            (is (= 1 (count created-cards)))
+            (is (= "Model Card" (:name card)))
+            (is (= :question (:type card)))
+            (is (not= :model (:type card))))
+
+          (testing "should remove dashboard_id"
+            (is (nil? (:dashboard_id card))))
+
+          (testing "should preserve other card properties"
+            (is (= (:id result) (:document_id card)))
+            (is (= col-id (:collection_id card)))
+            (is (= :table (:display card)))))))))
+
+(deftest put-document-cards-type-normalization-test
+  (testing "PUT /api/ee/document/:id - normalizes card type from :model to :question and removes dashboard_id"
+    (mt/with-temp [:model/Collection {col-id :id} {}
+                   :model/Document {document-id :id} {:name "Test Document"
+                                                      :document (text->prose-mirror-ast "Initial Doc")
+                                                      :collection_id col-id}
+                   :model/Dashboard {dash-id :id} {:name "Test Dashboard"}]
+      (let [cards-to-create {-10 {:name "Updated Model Card"
+                                  :type :model
+                                  :dataset_query (mt/mbql-query venues)
+                                  :display :bar
+                                  :visualization_settings {}
+                                  :dashboard_id dash-id}}
+            result (mt/user-http-request :crowberto
+                                         :put 200 (format "ee/document/%s" document-id)
+                                         {:name "Updated Document with Model Card"
+                                          :document {:type "doc"
+                                                     :content [{:type "cardEmbed"
+                                                                :attrs {:id -10
+                                                                        :name nil}}]}
+                                          :collection_id col-id
+                                          :cards cards-to-create})
+            created-cards (t2/select :model/Card :document_id document-id)
+            card (first created-cards)]
+
+        (testing "should update document successfully"
+          (is (= document-id (:id result)))
+          (is (= "Updated Document with Model Card" (:name result))))
+
+        (testing "should normalize card type from :model to :question"
+          (is (= 1 (count created-cards)))
+          (is (= "Updated Model Card" (:name card)))
+          (is (= :question (:type card)))
+          (is (not= :model (:type card))))
+
+        (testing "should remove dashboard_id"
+          (is (nil? (:dashboard_id card))))
+
+        (testing "should preserve other card properties"
+          (is (= document-id (:document_id card)))
+          (is (= col-id (:collection_id card)))
+          (is (= :bar (:display card))))))))
+
+(deftest cards-type-normalization-mixed-types-test
+  (testing "POST /api/ee/document/ - handles mixed card types correctly"
+    (mt/with-model-cleanup [:model/Document :model/Card]
+      (mt/with-temp [:model/Collection {col-id :id} {}
+                     :model/Dashboard {dash-id :id} {:name "Test Dashboard"}]
+        (let [cards-to-create {-1 {:name "Model Card"
+                                   :type :model
+                                   :dataset_query (mt/mbql-query venues)
+                                   :display :table
+                                   :visualization_settings {}
+                                   :dashboard_id dash-id}
+                               -2 {:name "Question Card"
+                                   :type :question
+                                   :dataset_query (mt/mbql-query users)
+                                   :display :scalar
+                                   :visualization_settings {}}}
+              result (mt/user-http-request :crowberto
+                                           :post 200 "ee/document/"
+                                           {:name "Document with Mixed Card Types"
+                                            :document {:type "doc"
+                                                       :content [{:type "cardEmbed"
+                                                                  :attrs {:id -1
+                                                                          :name nil}}
+                                                                 {:type "cardEmbed"
+                                                                  :attrs {:id -2
+                                                                          :name nil}}]}
+                                            :collection_id col-id
+                                            :cards cards-to-create})
+              created-cards (t2/select :model/Card :document_id (:id result))
+              model-card (first (filter #(= "Model Card" (:name %)) created-cards))
+              question-card (first (filter #(= "Question Card" (:name %)) created-cards))]
+
+          (testing "should create both cards"
+            (is (= 2 (count created-cards)))
+            (is (some? model-card))
+            (is (some? question-card)))
+
+          (testing "model card should be normalized to question type"
+            (is (= :question (:type model-card)))
+            (is (nil? (:dashboard_id model-card))))
+
+          (testing "question card should remain unchanged"
+            (is (= :question (:type question-card)))
+            (is (nil? (:dashboard_id question-card)))))))))
+
 (deftest post-document-clone-existing-cards-test
   (testing "POST /api/ee/document/ - clones existing cards and substitutes IDs in AST"
     (mt/with-model-cleanup [:model/Document :model/Card]
@@ -656,7 +785,7 @@
                                                        :dataset_query (mt/mbql-query users)
                                                        :display :bar
                                                        :visualization_settings {}}]
-      ;; Update the document with both cards
+        ;; Update the document with both cards
       (let [result (mt/user-http-request :crowberto
                                          :put 200 (format "ee/document/%s" document-id)
                                          {:document {:type "doc"
@@ -688,10 +817,10 @@
 
             (testing "should update AST correctly"
               (let [[existing-embed cloned-embed] (get-in result [:document :content])]
-                ;; Card already in document should keep same ID
+                  ;; Card already in document should keep same ID
                 (is (= existing-card-in-doc
                        (get-in existing-embed [:attrs :id])))
-                ;; Card without document should have cloned ID
+                  ;; Card without document should have cloned ID
                 (is (= (:id cloned-card)
                        (get-in cloned-embed [:attrs :id])))))))))))
 
@@ -953,7 +1082,7 @@
                                                     :dataset_query (mt/mbql-query venues)
                                                     :display :table
                                                     :visualization_settings {}}]
-      ;; First update - should clone the card
+        ;; First update - should clone the card
       (mt/user-http-request :crowberto
                             :put 200 (format "ee/document/%s" document-id)
                             {:document {:type "doc"
@@ -966,7 +1095,7 @@
         (testing "first update creates one clone"
           (is (= 1 (count first-cloned-cards))))
 
-        ;; Second update with the already-cloned card ID - should NOT create another clone
+          ;; Second update with the already-cloned card ID - should NOT create another clone
         (let [second-result (mt/user-http-request :crowberto
                                                   :put 200 (format "ee/document/%s" document-id)
                                                   {:document {:type "doc"
@@ -990,13 +1119,13 @@
                      :model/Collection {write-col :id} {:name "Write Collection"}
                      :model/Collection {no-access-col :id} {:name "No Access Collection"}]
 
-        ;; Set up permissions for :rasta user
+          ;; Set up permissions for :rasta user
         (mt/with-group-for-user [group :rasta {:name "Rasta Group"}]
-          ;; Grant read-only access to read-only-col
+            ;; Grant read-only access to read-only-col
           (perms/grant-collection-read-permissions! group read-only-col)
-          ;; Grant write access to write-col
+            ;; Grant write access to write-col
           (perms/grant-collection-readwrite-permissions! group write-col)
-          ;; No permissions for no-access-col (implicitly)
+            ;; No permissions for no-access-col (implicitly)
 
           (testing "POST /api/ee/document/ - :rasta can create documents in collections with write access"
             (mt/with-model-cleanup [:model/Document]
@@ -1030,13 +1159,13 @@
                      :model/Collection {write-col :id} {:name "Write Collection"}
                      :model/Collection {no-access-col :id} {:name "No Access Collection"}]
 
-        ;; Set up permissions for :rasta user
+          ;; Set up permissions for :rasta user
         (mt/with-group-for-user [group :rasta {:name "Rasta Group"}]
-          ;; Grant read-only access to read-only-col
+            ;; Grant read-only access to read-only-col
           (perms/grant-collection-read-permissions! group read-only-col)
-          ;; Grant write access to write-col
+            ;; Grant write access to write-col
           (perms/grant-collection-readwrite-permissions! group write-col)
-          ;; No permissions for no-access-col (implicitly)
+            ;; No permissions for no-access-col (implicitly)
 
           (testing "PUT /api/ee/document/:id - :rasta can update documents in collections with write access"
             (mt/with-temp [:model/Document {doc-id :id} {:name "Original Document"
@@ -1073,13 +1202,13 @@
                      :model/Collection {write-col :id} {:name "Write Collection"}
                      :model/Collection {destination-col :id} {:name "Destination Collection"}]
 
-        ;; Set up permissions for :rasta user
+          ;; Set up permissions for :rasta user
         (mt/with-group-for-user [group :rasta {:name "Rasta Group"}]
-          ;; Grant read-only access to read-only-col
+            ;; Grant read-only access to read-only-col
           (perms/grant-collection-read-permissions! group read-only-col)
-          ;; Grant write access to write-col
+            ;; Grant write access to write-col
           (perms/grant-collection-readwrite-permissions! group write-col)
-          ;; Grant write access to destination-col
+            ;; Grant write access to destination-col
           (perms/grant-collection-readwrite-permissions! group destination-col)
 
           (testing "PUT /api/ee/document/:id - :rasta can move documents between collections with write access to both"
@@ -1091,7 +1220,7 @@
                                                  {:collection_id destination-col})]
                 (is (= doc-id (:id result)))
                 (is (= destination-col (:collection_id result)))
-                ;; Verify document was actually moved
+                  ;; Verify document was actually moved
                 (is (= destination-col (:collection_id (t2/select-one :model/Document :id doc-id)))))))
 
           (testing "PUT /api/ee/document/:id - :rasta cannot move documents from collections without write access"
@@ -1101,7 +1230,7 @@
               (mt/user-http-request :rasta
                                     :put 403 (format "ee/document/%s" doc-id)
                                     {:collection_id destination-col})
-              ;; Verify document wasn't moved
+                ;; Verify document wasn't moved
               (is (= read-only-col (:collection_id (t2/select-one :model/Document :id doc-id))))))
 
           (testing "PUT /api/ee/document/:id - :rasta cannot move documents to collections without write access"
@@ -1111,7 +1240,7 @@
               (mt/user-http-request :rasta
                                     :put 403 (format "ee/document/%s" doc-id)
                                     {:collection_id read-only-col})
-              ;; Verify document wasn't moved
+                ;; Verify document wasn't moved
               (is (= write-col (:collection_id (t2/select-one :model/Document :id doc-id)))))))))))
 
 (deftest rasta-document-read-permissions-test
@@ -1121,13 +1250,13 @@
                      :model/Collection {write-col :id} {:name "Write Collection"}
                      :model/Collection {no-access-col :id} {:name "No Access Collection"}]
 
-        ;; Set up permissions for :rasta user
+          ;; Set up permissions for :rasta user
         (mt/with-group-for-user [group :rasta {:name "Rasta Group"}]
-          ;; Grant read-only access to read-only-col
+            ;; Grant read-only access to read-only-col
           (perms/grant-collection-read-permissions! group read-only-col)
-          ;; Grant write access to write-col
+            ;; Grant write access to write-col
           (perms/grant-collection-readwrite-permissions! group write-col)
-          ;; No permissions for no-access-col (implicitly)
+            ;; No permissions for no-access-col (implicitly)
 
           (testing "GET /api/ee/document/:id - :rasta can read documents from collections with write access"
             (mt/with-temp [:model/Document {doc-id :id} {:name "Write Access Document"
@@ -1165,13 +1294,13 @@
                      :model/Collection {write-col :id} {:name "Write Collection"}
                      :model/Collection {no-access-col :id} {:name "No Access Collection"}]
 
-        ;; Set up permissions for :rasta user
+          ;; Set up permissions for :rasta user
         (mt/with-group-for-user [group :rasta {:name "Rasta Group"}]
-          ;; Grant read-only access to read-only-col
+            ;; Grant read-only access to read-only-col
           (perms/grant-collection-read-permissions! group read-only-col)
-          ;; Grant write access to write-col
+            ;; Grant write access to write-col
           (perms/grant-collection-readwrite-permissions! group write-col)
-          ;; No permissions for no-access-col (implicitly)
+            ;; No permissions for no-access-col (implicitly)
 
           (testing "GET /api/ee/document - :rasta only sees documents from accessible collections"
             (mt/with-temp [:model/Document _ {:name "Doc in Write Collection"
@@ -1210,7 +1339,7 @@
                                            {:archived true})]
           (is (true? (:archived result)))
 
-          ;; Verify document is actually archived in database
+            ;; Verify document is actually archived in database
           (is (true? (:archived (t2/select-one :model/Document :id doc-id))))))
 
       (testing "archived document doesn't appear in normal listings"
@@ -1223,7 +1352,7 @@
                                            {:archived false})]
           (is (false? (:archived result)))
 
-          ;; Verify document is actually unarchived in database
+            ;; Verify document is actually unarchived in database
           (is (false? (:archived (t2/select-one :model/Document :id doc-id)))))))))
 
 (deftest document-archive-with-cards-test
@@ -1249,14 +1378,14 @@
                               :put 200 (format "ee/document/%s" doc-id)
                               {:archived true})
 
-        ;; Verify document is archived
+          ;; Verify document is archived
         (is (true? (:archived (t2/select-one :model/Document :id doc-id))))
 
-        ;; Verify associated cards are archived
+          ;; Verify associated cards are archived
         (is (true? (:archived (t2/select-one :model/Card :id card1-id))))
         (is (true? (:archived (t2/select-one :model/Card :id card2-id))))
 
-        ;; Verify non-associated card is NOT archived
+          ;; Verify non-associated card is NOT archived
         (is (false? (:archived (t2/select-one :model/Card :id other-card-id)))))
 
       (testing "unarchiving document unarchives associated cards"
@@ -1264,14 +1393,14 @@
                               :put 200 (format "ee/document/%s" doc-id)
                               {:archived false})
 
-        ;; Verify document is unarchived
+          ;; Verify document is unarchived
         (is (false? (:archived (t2/select-one :model/Document :id doc-id))))
 
-        ;; Verify associated cards are unarchived
+          ;; Verify associated cards are unarchived
         (is (false? (:archived (t2/select-one :model/Card :id card1-id))))
         (is (false? (:archived (t2/select-one :model/Card :id card2-id))))
 
-        ;; Verify other card remains unchanged
+          ;; Verify other card remains unchanged
         (is (false? (:archived (t2/select-one :model/Card :id other-card-id))))))))
 
 (deftest document-archive-permissions-test
@@ -1287,9 +1416,9 @@
                                                          :collection_id write-col}]
 
         (mt/with-group-for-user [group :rasta]
-          ;; Grant read-only access to read-only collection
+            ;; Grant read-only access to read-only collection
           (perms/grant-collection-read-permissions! group read-only-col)
-          ;; Grant write access to write collection
+            ;; Grant write access to write collection
           (perms/grant-collection-readwrite-permissions! group write-col)
 
           (testing "user with write permissions can archive document"
@@ -1303,7 +1432,7 @@
                                   :put 403 (format "ee/document/%s" read-only-doc-id)
                                   {:archived true})
 
-            ;; Verify document wasn't archived
+              ;; Verify document wasn't archived
             (is (false? (:archived (t2/select-one :model/Document :id read-only-doc-id)))))
 
           (testing "user with write permissions can unarchive document"
@@ -1338,16 +1467,16 @@
                               :put 200 (format "collection/%s" coll-id)
                               {:archived true})
 
-        ;; Verify collection is archived
+          ;; Verify collection is archived
         (is (true? (:archived (t2/select-one :model/Collection :id coll-id))))
 
-        ;; Verify documents are archived (not directly)
+          ;; Verify documents are archived (not directly)
         (is (true? (:archived (t2/select-one :model/Document :id doc1-id))))
         (is (false? (:archived_directly (t2/select-one :model/Document :id doc1-id))))
         (is (true? (:archived (t2/select-one :model/Document :id doc2-id))))
         (is (false? (:archived_directly (t2/select-one :model/Document :id doc2-id))))
 
-        ;; Verify all cards are archived (not directly)
+          ;; Verify all cards are archived (not directly)
         (is (true? (:archived (t2/select-one :model/Card :id card1-id))))
         (is (false? (:archived_directly (t2/select-one :model/Card :id card1-id))))
         (is (true? (:archived (t2/select-one :model/Card :id card2-id))))
@@ -1360,14 +1489,14 @@
                               :put 200 (format "collection/%s" coll-id)
                               {:archived false})
 
-        ;; Verify collection is unarchived
+          ;; Verify collection is unarchived
         (is (false? (:archived (t2/select-one :model/Collection :id coll-id))))
 
-        ;; Verify documents are unarchived
+          ;; Verify documents are unarchived
         (is (false? (:archived (t2/select-one :model/Document :id doc1-id))))
         (is (false? (:archived (t2/select-one :model/Document :id doc2-id))))
 
-        ;; Verify cards are unarchived
+          ;; Verify cards are unarchived
         (is (false? (:archived (t2/select-one :model/Card :id card1-id))))
         (is (false? (:archived (t2/select-one :model/Card :id card2-id))))
         (is (false? (:archived (t2/select-one :model/Card :id standalone-card-id))))))))
@@ -1407,7 +1536,7 @@
           (is (false? (:archived card)))
           (is (false? (:archived_directly card)))))
 
-      ;; Archive via collection to test indirect archiving
+        ;; Archive via collection to test indirect archiving
       (testing "indirectly archiving via collection sets archived_directly=false"
         (mt/user-http-request :crowberto
                               :put 200 (format "collection/%s" coll-id)
@@ -1421,7 +1550,7 @@
           (is (false? (:archived_directly card)))))
 
       (testing "directly archived documents stay archived when collection is unarchived"
-        ;; First, directly archive the document
+          ;; First, directly archive the document
         (mt/user-http-request :crowberto
                               :put 200 (format "ee/document/%s" doc-id)
                               {:archived false})
@@ -1429,12 +1558,12 @@
                               :put 200 (format "ee/document/%s" doc-id)
                               {:archived true})
 
-        ;; Then unarchive the collection
+          ;; Then unarchive the collection
         (mt/user-http-request :crowberto
                               :put 200 (format "collection/%s" coll-id)
                               {:archived false})
 
-        ;; Document should remain archived because it was archived directly
+          ;; Document should remain archived because it was archived directly
         (let [doc (t2/select-one :model/Document :id doc-id)
               card (t2/select-one :model/Card :id card-id)]
           (is (true? (:archived doc)))
@@ -1460,10 +1589,10 @@
           (is (not (contains? document-names "Archived Document")))))
 
       (testing "GET /api/ee/document/:id returns 200 for archived documents"
-        ;; Active document should be accessible
+          ;; Active document should be accessible
         (mt/user-http-request :crowberto :get 200 (format "ee/document/%s" active-doc-id))
 
-        ;; Archived document should return 404
+          ;; Archived document should return 404
         (mt/user-http-request :crowberto :get 200 (format "ee/document/%s" archived-doc-id)))
 
       (testing "Collection items endpoint excludes archived documents"
@@ -1486,7 +1615,7 @@
                                     :put 200 (format "ee/document/%s" doc-id)
                                     {:archived true})
 
-              ;; Should have published document-archive event
+                ;; Should have published document-archive event
               (is (some #(= :event/document-delete (:topic %)) @events))))))
 
       (testing "unarchiving document publishes update event"
@@ -1498,7 +1627,7 @@
                                     :put 200 (format "ee/document/%s" doc-id)
                                     {:archived false})
 
-              ;; Should have published document-update event (not archive event)
+                ;; Should have published document-update event (not archive event)
               (is (some #(= :event/document-update (:topic %)) @events))
               (is (not (some #(= :event/document-delete (:topic %)) @events))))))))))
 
@@ -1510,7 +1639,7 @@
                                               :document_id doc-id
                                               :dataset_query (mt/mbql-query venues)}]
 
-      ;; Simulate a failure during card archiving
+        ;; Simulate a failure during card archiving
       (testing "failure during card archiving rolls back document archiving"
         (with-redefs [t2/update! (fn [model id updates]
                                    (if (and (= model :model/Card) (:archived updates))
@@ -1520,7 +1649,7 @@
                                 :put 500 (format "ee/document/%s" doc-id)
                                 {:archived true})
 
-          ;; Verify document wasn't archived due to rollback
+            ;; Verify document wasn't archived due to rollback
           (is (false? (:archived (t2/select-one :model/Document :id doc-id))))
           (is (false? (:archived (t2/select-one :model/Card :id card-id)))))))))
 
@@ -1549,15 +1678,15 @@
                               :put 200 (format "collection/%s" coll-id)
                               {:archived false})
 
-        ;; Directly archived document should remain archived
+          ;; Directly archived document should remain archived
         (is (true? (:archived (t2/select-one :model/Document :id directly-archived-doc))))
         (is (true? (:archived_directly (t2/select-one :model/Document :id directly-archived-doc))))
 
-        ;; Collection archived document should be unarchived
+          ;; Collection archived document should be unarchived
         (is (false? (:archived (t2/select-one :model/Document :id collection-archived-doc))))
         (is (false? (:archived_directly (t2/select-one :model/Document :id collection-archived-doc))))
 
-        ;; Active document should remain active
+          ;; Active document should remain active
         (is (false? (:archived (t2/select-one :model/Document :id active-doc))))))))
 
 (deftest document-archive-edge-cases-test
@@ -1587,7 +1716,7 @@
         (mt/with-temp [:model/Document {doc-id :id} {:name "Document in Trash"
                                                      :document (text->prose-mirror-ast "In trash")
                                                      :collection_id trash-collection-id}]
-          ;; Should be able to archive document in trash
+            ;; Should be able to archive document in trash
           (let [result (mt/user-http-request :crowberto
                                              :put 200 (format "ee/document/%s" doc-id)
                                              {:archived true})]
@@ -1600,7 +1729,7 @@
                                            :put 200 (format "ee/document/%s" doc-id)
                                            {:archived true})]
           (is (true? (:archived result)))
-          ;; Should not fail even with no associated cards
+            ;; Should not fail even with no associated cards
           (is (zero? (t2/count :model/Card :document_id doc-id))))))
 
     (testing "archiving and updating other fields simultaneously"
@@ -1623,7 +1752,7 @@
       (testing "can delete archived document"
         (mt/user-http-request :crowberto :delete (format "ee/document/%s" doc-id))
 
-        ;; Verify document is actually deleted from database
+          ;; Verify document is actually deleted from database
         (is (nil? (t2/select-one :model/Document :id doc-id))))
 
       (testing "cannot delete same document twice"
@@ -1637,7 +1766,7 @@
       (testing "returns 400 error when trying to delete non-archived document"
         (mt/user-http-request :crowberto :delete 400 (format "ee/document/%s" doc-id))
 
-        ;; Verify document still exists
+          ;; Verify document still exists
         (is (some? (t2/select-one :model/Document :id doc-id)))))))
 
 (deftest delete-document-permissions-test
@@ -1655,21 +1784,21 @@
                                                          :archived true}]
 
         (mt/with-group-for-user [group :rasta]
-          ;; Grant read-only access to read-only collection
+            ;; Grant read-only access to read-only collection
           (perms/grant-collection-read-permissions! group read-only-col)
-          ;; Grant write access to write collection
+            ;; Grant write access to write collection
           (perms/grant-collection-readwrite-permissions! group write-col)
 
           (testing "user with write permissions can delete archived document"
             (mt/user-http-request :rasta :delete (format "ee/document/%s" write-doc-id))
 
-            ;; Verify document is deleted
+              ;; Verify document is deleted
             (is (nil? (t2/select-one :model/Document :id write-doc-id))))
 
           (testing "user without write permissions cannot delete archived document"
             (mt/user-http-request :rasta :delete 403 (format "ee/document/%s" read-only-doc-id))
 
-            ;; Verify document still exists
+              ;; Verify document still exists
             (is (some? (t2/select-one :model/Document :id read-only-doc-id)))))))))
 
 (deftest delete-document-with-cards-test
@@ -1696,14 +1825,14 @@
       (testing "deleting document also deletes associated cards via cascade"
         (mt/user-http-request :crowberto :delete (format "ee/document/%s" doc-id))
 
-        ;; Verify document is deleted
+          ;; Verify document is deleted
         (is (nil? (t2/select-one :model/Document :id doc-id)))
 
-        ;; Verify associated cards are deleted (assuming CASCADE DELETE in schema)
+          ;; Verify associated cards are deleted (assuming CASCADE DELETE in schema)
         (is (nil? (t2/select-one :model/Card :id card1-id)))
         (is (nil? (t2/select-one :model/Card :id card2-id)))
 
-        ;; Verify non-associated card still exists
+          ;; Verify non-associated card still exists
         (is (some? (t2/select-one :model/Card :id other-card-id)))))))
 
 (deftest delete-document-nonexistent-test
@@ -1720,8 +1849,137 @@
                                               (swap! events conj {:topic topic :event event}))]
           (mt/user-http-request :crowberto :delete 204 (format "ee/document/%s" doc-id))
 
-          ;; Should have published document-delete event
+            ;; Should have published document-delete event
           (is (some #(= :event/document-delete (:topic %)) @events))
           (let [delete-event (first (filter #(= :event/document-delete (:topic %)) @events))]
             (is (= "Event Test Document" (get-in delete-event [:event :object :name])))
             (is (= (mt/user->id :crowberto) (get-in delete-event [:event :user-id])))))))))
+
+(deftest document-position-reconciliation-on-create-test
+  (testing "Position reconciliation works for new documents via API"
+    (mt/with-temp [:model/Collection {collection-id :id} {:name "Test Collection"}]
+      ;; Create existing document with position 3 via API
+      (let [existing-doc-result (mt/user-http-request :crowberto
+                                                      :post 200 "ee/document/"
+                                                      {:name "Existing Document"
+                                                       :document (text->prose-mirror-ast "Existing doc")
+                                                       :collection_id collection-id
+                                                       :collection_position 3})
+            existing-doc-id (:id existing-doc-result)]
+
+        (testing "inserting document at existing position shifts others"
+          ;; Insert new document at position 3 via API - should shift existing document
+          (let [new-doc-result (mt/user-http-request :crowberto
+                                                     :post 200 "ee/document/"
+                                                     {:name "New Document"
+                                                      :document (text->prose-mirror-ast "New doc")
+                                                      :collection_id collection-id
+                                                      :collection_position 3})]
+            ;; New document should have position 3
+            (is (= 3 (:collection_position new-doc-result)))
+
+            ;; Existing document should be shifted to position 4
+            (let [shifted-document (t2/select-one :model/Document :id existing-doc-id)]
+              (is (= 4 (:collection_position shifted-document))))))
+
+        (testing "inserting document without position works"
+          (let [no-position-result (mt/user-http-request :crowberto
+                                                         :post 200 "ee/document/"
+                                                         {:name "No Position Document"
+                                                          :document (text->prose-mirror-ast "No position doc")
+                                                          :collection_id collection-id})]
+            (is (nil? (:collection_position no-position-result)))))))))
+
+(deftest document-position-reconciliation-on-update-test
+  (testing "Position reconciliation works for document updates via API"
+    (mt/with-temp [:model/Collection {collection-id :id} {:name "Test Collection"}]
+      ;; Create documents with positions via API
+      (let [doc1-result (mt/user-http-request :crowberto
+                                              :post 200 "ee/document/"
+                                              {:name "Document 1"
+                                               :document (text->prose-mirror-ast "Doc 1")
+                                               :collection_id collection-id
+                                               :collection_position 1})
+            doc2-result (mt/user-http-request :crowberto
+                                              :post 200 "ee/document/"
+                                              {:name "Document 2"
+                                               :document (text->prose-mirror-ast "Doc 2")
+                                               :collection_id collection-id
+                                               :collection_position 2})
+            doc3-result (mt/user-http-request :crowberto
+                                              :post 200 "ee/document/"
+                                              {:name "Document 3"
+                                               :document (text->prose-mirror-ast "Doc 3")
+                                               :collection_id collection-id
+                                               :collection_position 3})
+            doc1-id (:id doc1-result)
+            doc2-id (:id doc2-result)
+            doc3-id (:id doc3-result)]
+
+        (testing "moving document to different position reconciles others"
+          ;; Move document 3 to position 1 via API - should shift others
+          (let [updated-doc3 (mt/user-http-request :crowberto
+                                                   :put 200 (format "ee/document/%s" doc3-id)
+                                                   {:collection_position 1})]
+            ;; Document 3 should now be at position 1
+            (is (= 1 (:collection_position updated-doc3)))
+
+            ;; Check that other documents were shifted
+            (let [doc1 (t2/select-one :model/Document :id doc1-id)
+                  doc2 (t2/select-one :model/Document :id doc2-id)]
+              ;; Original documents should be shifted
+              (is (= 2 (:collection_position doc1)))
+              (is (= 3 (:collection_position doc2))))))
+
+        (testing "moving document to different collection reconciles both"
+          (mt/with-temp [:model/Collection {other-collection-id :id} {:name "Other Collection"}]
+            ;; Move document 1 to other collection at position 1 via API
+            (let [moved-doc (mt/user-http-request :crowberto
+                                                  :put 200 (format "ee/document/%s" doc1-id)
+                                                  {:collection_id other-collection-id
+                                                   :collection_position 1})]
+              ;; Moved document should be in new collection at position 1
+              (is (= other-collection-id (:collection_id moved-doc)))
+              (is (= 1 (:collection_position moved-doc)))
+
+              ;; Document 2 should be shifted down in original collection
+              (let [doc2 (t2/select-one :model/Document :id doc2-id)]
+                (is (= 2 (:collection_position doc2)))))))))))
+
+(deftest document-collection-position-field-handling-test
+  (testing "Document model supports collection_position field via API"
+    (mt/with-temp [:model/Collection {collection-id :id} {:name "Test Collection"}]
+      (testing "collection_position is stored and retrieved correctly"
+        (let [document-result (mt/user-http-request :crowberto
+                                                    :post 200 "ee/document/"
+                                                    {:name "Positioned Document"
+                                                     :document (text->prose-mirror-ast "Positioned doc")
+                                                     :collection_id collection-id
+                                                     :collection_position 5})]
+          (is (= 5 (:collection_position document-result)))))
+
+      (testing "collection_position can be updated"
+        (let [document-result (mt/user-http-request :crowberto
+                                                    :post 200 "ee/document/"
+                                                    {:name "Update Position Document"
+                                                     :document (text->prose-mirror-ast "Update position doc")
+                                                     :collection_id collection-id
+                                                     :collection_position 5})
+              document-id (:id document-result)
+              updated-result (mt/user-http-request :crowberto
+                                                   :put 200 (format "ee/document/%s" document-id)
+                                                   {:collection_position 10})]
+          (is (= 10 (:collection_position updated-result)))))
+
+      (testing "collection_position can be set to nil"
+        (let [document-result (mt/user-http-request :crowberto
+                                                    :post 200 "ee/document/"
+                                                    {:name "Nil Position Document"
+                                                     :document (text->prose-mirror-ast "Nil position doc")
+                                                     :collection_id collection-id
+                                                     :collection_position 5})
+              document-id (:id document-result)
+              updated-result (mt/user-http-request :crowberto
+                                                   :put 200 (format "ee/document/%s" document-id)
+                                                   {:collection_position nil})]
+          (is (nil? (:collection_position updated-result))))))))

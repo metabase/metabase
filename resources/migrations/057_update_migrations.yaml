@@ -189,7 +189,7 @@ databaseChangeLog:
                     nullable: false
 
   - changeSet:
-      id: v57.2025-08-03-worker-runs-app-db
+      id: v57.2025-08-03T10:00:00
       author: eric
       comment: Create worker_run table in app database to track worker execution
       preConditions:
@@ -229,7 +229,7 @@ databaseChangeLog:
                     nullable: false
               - column:
                   name: is_local
-                  type: boolean
+                  type: ${boolean.type}
                   remarks: 'Is this run local?'
                   constraints:
                     nullable: false
@@ -241,7 +241,7 @@ databaseChangeLog:
                     nullable: false
               - column:
                   name: is_active
-                  type: boolean
+                  type: ${boolean.type}
                   remarks: 'True only for currently running jobs, null for the others'
                   constraints:
                     nullable: true
@@ -352,7 +352,7 @@ databaseChangeLog:
                   name: work_id
 
   - changeSet:
-      id: v57.2025-08-06-worker_run_cancelation-app-db
+      id: v57.2025-08-06T10:00:00
       author: eric
       comment: Create worker_run_cancelation table to track cancelation.
       preConditions:
@@ -385,7 +385,7 @@ databaseChangeLog:
                     nullable: false
 
   - changeSet:
-      id: v57.2025-08-07T10:00:00-add-transform-tag-table
+      id: v57.2025-08-07T10:00:00
       author: galdre
       comment: Add transform_tag table for grouping transforms
       preConditions:
@@ -408,24 +408,27 @@ databaseChangeLog:
               - column:
                   name: name
                   type: VARCHAR(254)
+                  remarks: Name of the tag
                   constraints:
                     nullable: false
                     unique: true
               - column:
                   name: created_at
                   type: ${timestamp_type}
+                  remarks: When the tag was created
                   defaultValueComputed: current_timestamp
                   constraints:
                     nullable: false
               - column:
                   name: updated_at
                   type: ${timestamp_type}
+                  remarks: When the tag was updated
                   defaultValueComputed: current_timestamp
                   constraints:
                     nullable: false
 
   - changeSet:
-      id: v57.2025-08-07T10:01:00-add-transform-job-table
+      id: v57.2025-08-07T10:01:00
       author: galdre
       comment: Add transform_job table for scheduled execution of tagged transforms
       preConditions:
@@ -448,11 +451,13 @@ databaseChangeLog:
               - column:
                   name: name
                   type: ${text.type}
+                  remarks: Job name
                   constraints:
                     nullable: false
               - column:
                   name: description
                   type: ${text.type}
+                  remarks: Job description
               - column:
                   name: schedule
                   type: ${text.type}
@@ -469,18 +474,20 @@ databaseChangeLog:
               - column:
                   name: created_at
                   type: ${timestamp_type}
+                  remarks: When the job was created
                   defaultValueComputed: current_timestamp
                   constraints:
                     nullable: false
               - column:
                   name: updated_at
                   type: ${timestamp_type}
+                  remarks: When the job was updated
                   defaultValueComputed: current_timestamp
                   constraints:
                     nullable: false
 
   - changeSet:
-      id: v57.2025-08-07T10:02:00-add-transform-tags-table
+      id: v57.2025-08-07T10:02:00
       author: galdre
       comment: Add transform_tags join table for transform-tag associations
       preConditions:
@@ -496,6 +503,7 @@ databaseChangeLog:
               - column:
                   name: id
                   type: int
+                  remarks: Primary key
                   autoIncrement: true
                   constraints:
                     primaryKey: true
@@ -503,11 +511,13 @@ databaseChangeLog:
               - column:
                   name: transform_id
                   type: int
+                  remarks: Transform ID
                   constraints:
                     nullable: false
               - column:
                   name: tag_id
                   type: int
+                  remarks: Tag ID
                   constraints:
                     nullable: false
         - addForeignKeyConstraint:
@@ -530,7 +540,7 @@ databaseChangeLog:
             constraintName: unique_transform_tag
 
   - changeSet:
-      id: v57.2025-08-07T10:03:00-add-transform-job-tags-table
+      id: v57.2025-08-07T10:03:00
       author: galdre
       comment: Add transform_job_tags join table for job-tag associations
       preConditions:
@@ -546,6 +556,7 @@ databaseChangeLog:
               - column:
                   name: id
                   type: int
+                  remarks: Primary key
                   autoIncrement: true
                   constraints:
                     primaryKey: true
@@ -553,11 +564,13 @@ databaseChangeLog:
               - column:
                   name: job_id
                   type: int
+                  remarks: Job ID
                   constraints:
                     nullable: false
               - column:
                   name: tag_id
                   type: int
+                  remarks: Tag ID
                   constraints:
                     nullable: false
         - addForeignKeyConstraint:
@@ -592,7 +605,7 @@ databaseChangeLog:
         - dropTable:
             tableName: transform_job_tags
   - changeSet:
-      id: v57.2025-08-07T10:06:00-add-default-tags
+      id: v57.2025-08-07T10:06:00
       author: galdre
       comment: Add default transform tags and jobs for common scheduling patterns
       preConditions:
@@ -697,7 +710,7 @@ databaseChangeLog:
             dbms: h2
 
   - changeSet:
-      id: v57.2025-08-07T11-populate-default-job-tags
+      id: v57.2025-08-07T11:00:00
       author: galdre
       comment: Populate transform_job_tags join table to link default jobs with their corresponding tags
       preConditions:
@@ -740,7 +753,7 @@ databaseChangeLog:
               );
 
   - changeSet:
-      id: v57.2025-08-08-transform-job-runs-app-db
+      id: v57.2025-08-08T10:00:00
       author: william
       comment: Create transform_job_run table in app database to track transform job execution
       preConditions:
@@ -780,7 +793,7 @@ databaseChangeLog:
                     nullable: false
               - column:
                   name: is_active
-                  type: boolean
+                  type: ${boolean.type}
                   remarks: 'True only for currently running jobs, null for the others'
                   constraints:
                     nullable: true
@@ -816,6 +829,334 @@ databaseChangeLog:
                   defaultValueComputed: current_timestamp
                   constraints:
                     nullable: false
+
+  - changeSet:
+      id: v57.2025-08-21T12:00:00
+      author: edpaget
+      comment: Create document table
+      changes:
+        - createTable:
+            tableName: document
+            remarks: Documents table
+            columns:
+              - column:
+                  name: id
+                  remarks: Unique ID
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: name
+                  remarks: Document name
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  remarks: The timestamp of when the document was created
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: document
+                  remarks: content of the document
+                  type: ${text.type}
+              - column:
+                  name: content_type
+                  remarks: the content_type of the document column
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+              - column:
+                  name: creator_id
+                  remarks: User who created this document
+                  type: int
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  remarks: The timestamp of when the document was updated
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: collection_id
+                  remarks: What collection I live in. Null if it's Our Analytics.
+                  type: int
+                  constraints:
+                    nullable: true
+              - column:
+                  name: archived
+                  remarks: Has this document been archived?
+                  type: ${boolean.type}
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+              - column:
+                  name: archived_directly
+                  remarks: Was this thing trashed directly
+                  type: ${boolean.type}
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: true
+              - column:
+                  name: entity_id
+                  type: char(21)
+                  remarks: Random NanoID tag for unique identity
+                  constraints:
+                    nullable: true
+                    unique: true
+              - column:
+                  name: last_viewed_at
+                  type: ${timestamp_type}
+                  remarks: Timestamp of when this document was last viewed
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: view_count
+                  type: integer
+                  defaultValueNumeric: 0
+                  remarks: Keeps a running count of document views
+                  constraints:
+                    nullable: false
+              - column:
+                  name: collection_position
+                  type: integer
+                  remarks: Collection position used for pinning documents. Higher numbers = pinned, null = not pinned.
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v57.2025-08-21T12:00:10
+      author: edpaget
+      comment: Add index on document.creator_id
+      changes:
+        - createIndex:
+            tableName: document
+            indexName: idx_document_creator_id
+            columns:
+              - column:
+                  name: creator_id
+      rollback:
+        - dropIndex:
+            tableName: document
+            indexName: idx_document_creator_id
+
+  - changeSet:
+      id: v57.2025-08-21T12:00:11
+      author: edpaget
+      comment: Add `document.creator_id` foreign key constraint
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: document
+            baseColumnNames: creator_id
+            referencedTableName: core_user
+            referencedColumnNames: id
+            constraintName: fk_document_ref_creator_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v57.2025-08-21T12:00:30
+      author: edpaget
+      comment: Add index on document.collection_id
+      changes:
+        - createIndex:
+            tableName: document
+            indexName: idx_document_collection_id
+            columns:
+              - column:
+                  name: collection_id
+      rollback:
+        - dropIndex:
+            tableName: document
+            indexName: idx_document_collection_id
+
+  - changeSet:
+      id: v57.2025-08-21T12:00:59
+      author: johnswanson
+      comment: Add `document.collection_id` foreign key constraint
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: document
+            baseColumnNames: collection_id
+            referencedTableName: collection
+            referencedColumnNames: id
+            constraintName: fk_document_ref_collection_id
+            onDelete: SET NULL
+
+  - changeSet:
+      id: v57.2025-08-21T17:23:20
+      author: edpaget
+      comment: Add document_id column to report_card table
+      changes:
+        - addColumn:
+            tableName: report_card
+            columns:
+              - column:
+                  name: document_id
+                  remarks: Associates cards with a particular document
+                  type: int
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v57.2025-08-21T17:23:30
+      author: edpaget
+      comment: Add index on report_card.document_id
+      changes:
+        - createIndex:
+            tableName: report_card
+            indexName: idx_repord_card_document_id
+            columns:
+              - column:
+                  name: document_id
+      rollback:
+        - dropIndex:
+            tableName: report_card
+            indexName: idx_repord_card_document_id
+
+  - changeSet:
+      id: v57.2025-08-21T17:23:33
+      author: edpaget
+      comment: Add foreign key constraint for document_id in report_card
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: report_card
+            baseColumnNames: document_id
+            referencedTableName: document
+            referencedColumnNames: id
+            constraintName: fk_report_card_document_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v57.2025-08-21T17:42:32
+      author: edpaget
+      comment: Create document_bookmark table
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: document_bookmark
+      changes:
+        - createTable:
+            tableName: document_bookmark
+            remarks: Store user bookmarks for documents
+            columns:
+              - column:
+                  name: id
+                  remarks: Unique ID
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: user_id
+                  remarks: User who bookmarked the document
+                  type: int
+                  constraints:
+                    nullable: false
+              - column:
+                  name: document_id
+                  remarks: The document that was bookmarked
+                  type: int
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  remarks: The timestamp when the bookmark was created
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+      rollback:
+        - dropTable:
+            tableName: document_bookmark
+
+  - changeSet:
+      id: v57.2025-08-21T17:42:33
+      author: edpaget
+      comment: Add index on document_bookmark.user_id
+      changes:
+        - createIndex:
+            tableName: document_bookmark
+            indexName: idx_document_bookmark_user_id
+            columns:
+              - column:
+                  name: user_id
+      rollback:
+        - dropIndex:
+            tableName: document_bookmark
+            indexName: idx_document_bookmark_user_id
+
+  - changeSet:
+      id: v57.2025-08-21T17:42:34
+      author: edpaget
+      comment: Add index on document_bookmark.document_id
+      changes:
+        - createIndex:
+            tableName: document_bookmark
+            indexName: idx_document_bookmark_document_id
+            columns:
+              - column:
+                  name: document_id
+      rollback:
+        - dropIndex:
+            tableName: document_bookmark
+            indexName: idx_document_bookmark_document_id
+
+  - changeSet:
+      id: v57.2025-08-21T17:42:35
+      author: edpaget
+      comment: Add foreign key constraint for document_bookmark.user_id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: document_bookmark
+            baseColumnNames: user_id
+            referencedTableName: core_user
+            referencedColumnNames: id
+            constraintName: fk_document_bookmark_user_id
+            onDelete: CASCADE
+      rollback:
+        - dropForeignKeyConstraint:
+            baseTableName: document_bookmark
+            constraintName: fk_document_bookmark_user_id
+
+  - changeSet:
+      id: v57.2025-08-21T17:42:36
+      author: edpaget
+      comment: Add foreign key constraint for document_bookmark.document_id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: document_bookmark
+            baseColumnNames: document_id
+            referencedTableName: document
+            referencedColumnNames: id
+            constraintName: fk_document_bookmark_document_id
+            onDelete: CASCADE
+      rollback:
+        - dropForeignKeyConstraint:
+            baseTableName: document_bookmark
+            constraintName: fk_document_bookmark_document_id
+
+  - changeSet:
+      id: v57.2025-08-21T17:42:37
+      author: edpaget
+      comment: Add unique constraint for document_bookmark user_id and document_id
+      changes:
+        - addUniqueConstraint:
+            tableName: document_bookmark
+            columnNames: user_id, document_id
+            constraintName: idx_document_bookmark_user_document_unique
+      rollback:
+        - dropUniqueConstraint:
+            tableName: document_bookmark
+            constraintName: idx_document_bookmark_user_document_unique
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

@@ -1,3 +1,4 @@
+import { browseDatabase } from "./browse";
 import { collection } from "./collections";
 import { dashboard } from "./dashboards";
 import { metric, model } from "./models";
@@ -19,6 +20,8 @@ export function modelToUrl(item: UrlableModel) {
         ...item,
         model: "card", // somehow typescript is not smart enough to infer this
       });
+    case "database":
+      return browseDatabase(item);
     case "dataset":
       return model(item);
     case "metric":

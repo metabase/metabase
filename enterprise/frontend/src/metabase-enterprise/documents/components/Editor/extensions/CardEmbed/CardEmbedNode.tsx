@@ -17,10 +17,14 @@ import { getUrl } from "metabase-lib/v1/urls";
 import type { Card } from "metabase-types/api";
 
 import {
+  loadMetadataForDocumentCard,
   openVizSettingsSidebar,
   setShowNavigateBackToDocumentButton,
 } from "../../../../documents.slice";
-import { useDocumentsSelector } from "../../../../redux-utils";
+import {
+  useDocumentsDispatch,
+  useDocumentsSelector,
+} from "../../../../redux-utils";
 import { getCardWithDraft } from "../../../../selectors";
 import { EDITOR_STYLE_BOUNDARY_CLASS } from "../../constants";
 import { formatCardEmbed } from "../markdown/card-embed-format";
@@ -28,7 +32,6 @@ import { formatCardEmbed } from "../markdown/card-embed-format";
 import styles from "./CardEmbedNode.module.css";
 import { ModifyQuestionModal } from "./ModifyQuestionModal";
 import { NativeQueryModal } from "./NativeQueryModal";
-import { useCardMetadata } from "./useCardMetadata";
 
 export interface CardEmbedAttributes {
   id: number;
@@ -225,8 +228,14 @@ export const CardEmbedComponent = memo(
       }
     };
 
+    const documentsDispatch = useDocumentsDispatch();
+
     // Load metadata for the card
-    useCardMetadata(cardToUse);
+    useEffect(() => {
+      if (cardToUse) {
+        documentsDispatch(loadMetadataForDocumentCard(cardToUse));
+      }
+    }, [cardToUse, documentsDispatch]);
 
     const handleEditVisualizationSettings = () => {
       if (embedIndex !== -1) {
@@ -257,7 +266,7 @@ export const CardEmbedComponent = memo(
       if (typeof pos === "number") {
         editor.commands.insertContentAt(
           { from: pos, to: pos + node.nodeSize },
-          "@",
+          "/",
         );
         editor.commands.focus();
       }
@@ -339,7 +348,10 @@ export const CardEmbedComponent = memo(
     }
 
     return (
-      <NodeViewWrapper className={styles.embedWrapper}>
+      <NodeViewWrapper
+        className={styles.embedWrapper}
+        data-testid="document-card-embed"
+      >
         <Box
           className={cx(styles.cardEmbed, EDITOR_STYLE_BOUNDARY_CLASS, {
             [styles.selected]: selected,
@@ -450,7 +462,7 @@ export const CardEmbedComponent = memo(
                         disabled={!canWrite}
                         leftSection={<Icon name="refresh" size={14} />}
                       >
-                        {t`Replace question`}
+                        {t`Replace`}
                       </Menu.Item>
                     </Menu.Dropdown>
                   </Menu>

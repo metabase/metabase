@@ -1,6 +1,6 @@
 import { Node, mergeAttributes, nodePasteRule } from "@tiptap/core";
 import { type NodeViewProps, NodeViewWrapper } from "@tiptap/react";
-import { memo } from "react";
+import { memo, useEffect } from "react";
 import { t } from "ttag";
 
 import { cardApi } from "metabase/api";
@@ -12,6 +12,8 @@ import { getIcon } from "metabase/lib/icon";
 import { modelToUrl } from "metabase/lib/urls/modelToUrl";
 import { extractEntityId } from "metabase/lib/urls/utils";
 import { Icon } from "metabase/ui";
+import { updateMentionsCache } from "metabase-enterprise/documents/documents.slice";
+import { useDocumentsDispatch } from "metabase-enterprise/documents/redux-utils";
 import type { SearchModel } from "metabase-types/api";
 
 import styles from "./SmartLinkNode.module.css";
@@ -247,6 +249,15 @@ export const SmartLinkComponent = memo(
   ({ node }: NodeViewProps) => {
     const { entityId, model } = node.attrs;
     const { entity, isLoading, error } = useEntityData(entityId, model);
+
+    const documentsDispatch = useDocumentsDispatch();
+    useEffect(() => {
+      if (entity?.name) {
+        documentsDispatch(
+          updateMentionsCache({ entityId, model, name: entity.name }),
+        );
+      }
+    }, [documentsDispatch, entity?.name, entityId, model]);
 
     if (isLoading) {
       return (

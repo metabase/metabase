@@ -11,6 +11,7 @@
    [metabase.models.interface :as mi]
    [metabase.queries.core :as card]
    [metabase.query-permissions.core :as query-perms]
+   [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -20,7 +21,6 @@
   "Schema for creating a new card - simplified version to avoid circular dependencies"
   [:map
    [:name ms/NonBlankString]
-   [:type {:optional true} [:maybe [:= "question"]]]
    [:dataset_query ms/Map]
    [:entity_id {:optional true} [:maybe ms/NonBlankString]]
    [:parameters {:optional true} [:maybe [:sequential ms/Map]]]
@@ -35,7 +35,7 @@
   "Checks that the query is runnable by the current user then saves"
   [{query :dataset_query :as card} creator]
   (query-perms/check-run-permissions-for-query query)
-  (card/create-card! card creator))
+  (card/create-card! (assoc card :type :question :dashboard_id nil) creator))
 
 (mu/defn- update-cards-in-ast :- [:map [:document :any]
                                   [:content_type :string]]
@@ -111,9 +111,12 @@
 (defn get-document
   "Get document by id checking if the current user has permission to access and if the document exists."
   [id]
-  (api/check-404
-   (api/read-check
-    (t2/hydrate (t2/select-one :model/Document :id id) :creator :can_write))))
+  (u/prog1 (api/check-404
+            (api/read-check
+             (t2/hydrate (t2/select-one :model/Document :id id) :creator :can_write)))
+    (events/publish-event! :event/document-read
+                           {:object-id id
+                            :user-id api/*current-user-id*})))
 
 (api.macros/defendpoint :get "/"
   "Gets existing `Documents`."
@@ -128,17 +131,21 @@
   "Create a new `Document`."
   [_route-params
    _query-params
-   {:keys [name document collection_id cards]}
+   {:keys [name document collection_id collection_position cards]}
    :- [:map
        [:name ms/NonBlankString]
        [:document :any]
        [:collection_id {:optional true} [:maybe ms/PositiveInt]]
+       [:collection_position {:optional true} [:maybe ms/PositiveInt]]
        [:cards {:optional true} [:maybe [:map-of [:int {:max -1}] CardCreateSchema]]]]]
   (collection/check-write-perms-for-collection collection_id)
   (let [document-id (t2/with-transaction [_conn]
-            ;; Validate existing cards first if provided
+                      (when collection_position
+                        (api/maybe-reconcile-collection-position! {:collection_id collection_id
+                                                                   :collection_position collection_position}))
                       (let [document-id (t2/insert-returning-pk! :model/Document {:name name
                                                                                   :collection_id collection_id
+                                                                                  :collection_position collection_position
                                                                                   :document document
                                                                                   :content_type prose-mirror/prose-mirror-content-type
                                                                                   :creator_id api/*current-user-id*})
@@ -148,7 +155,6 @@
                                                                                      :content_type prose-mirror/prose-mirror-content-type})
                                                           (when-not (empty? cards)
                                                             (create-cards-for-document! cards document-id collection_id @api/*current-user*)))]
-       ;; Create new cards if provided
                         (when (seq cards-to-update-in-ast)
                           (t2/update! :model/Document :id document-id
                                       (update-cards-in-ast
@@ -173,12 +179,13 @@
   [{:keys [document-id]} :- [:map
                              [:document-id ms/PositiveInt]]
    _query-params
-   {:keys [name document collection_id cards] :as body} :- [:map
-                                                            [:name {:optional true} ms/NonBlankString]
-                                                            [:document {:optional true} :any]
-                                                            [:collection_id {:optional true} [:maybe ms/PositiveInt]]
-                                                            [:cards {:optional true} [:maybe [:map-of :int CardCreateSchema]]]
-                                                            [:archived {:optional true} [:maybe :boolean]]]]
+   {:keys [name document collection_id collection_position cards] :as body} :- [:map
+                                                                                [:name {:optional true} ms/NonBlankString]
+                                                                                [:document {:optional true} :any]
+                                                                                [:collection_id {:optional true} [:maybe ms/PositiveInt]]
+                                                                                [:collection_position {:optional true} [:maybe ms/PositiveInt]]
+                                                                                [:cards {:optional true} [:maybe [:map-of :int CardCreateSchema]]]
+                                                                                [:archived {:optional true} [:maybe :boolean]]]]
   (let [existing-document (api/check-404 (get-document document-id))]
     (api/check-403 (mi/can-write? existing-document))
     (when (api/column-will-change? :collection_id existing-document body)
@@ -187,6 +194,11 @@
     ;; Handle archiving logic
     (let [document-updates (dissoc (api/updates-with-archived-directly existing-document body) :cards)]
       (t2/with-transaction [_conn]
+        (when collection_position
+          (api/maybe-reconcile-collection-position! existing-document {:collection_id (if (contains? body :collection_id)
+                                                                                        collection_id
+                                                                                        (:collection_id existing-document))
+                                                                       :collection_position collection_position}))
         (t2/update! :model/Document document-id
                     (cond-> document-updates
                       document (merge (update-cards-in-ast
