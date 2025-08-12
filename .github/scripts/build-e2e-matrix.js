@@ -3,6 +3,22 @@
 // grouping some specific tests together, other tests are split into chunks
 
 const DEFAULT_SPEC_PATTERN = "./e2e/test/scenarios/**/*.cy.spec.*";
+const EMBEDDING_SDK_SPEC_PATTERN =
+  "./e2e/test/scenarios/embedding-sdk/**.cy.spec.*";
+
+const specialTestConfigs = [
+  {
+    name: "embedding-sdk",
+    specs: EMBEDDING_SDK_SPEC_PATTERN,
+  },
+  {
+    name: "oss-subset",
+    edition: "oss",
+    tags: "@OSS @smoke+-@EE",
+    specs: DEFAULT_SPEC_PATTERN,
+  },
+  { name: "mongo", tags: "@mongo", specs: DEFAULT_SPEC_PATTERN },
+];
 
 /**
  *
@@ -25,10 +41,12 @@ function buildMatrix(options, inputSpecs, inputChunks) {
   const isDefaultSpecPattern =
     inputSpecs === "" || inputSpecs === DEFAULT_SPEC_PATTERN;
 
+  console.log("Processed specs value:", inputSpecs);
+  console.log("Is default pattern:", isDefaultSpecPattern);
 
   let regularChunks;
   if (isDefaultSpecPattern) {
-    regularChunks = inputChunks;
+    regularChunks = inputChunks - specialTestConfigs.length;
   } else {
     // when pattern is not default, it means we passed some custom list of the changed specs
     // so we need to calculate how many chunks we need to run
@@ -51,10 +69,23 @@ function buildMatrix(options, inputSpecs, inputChunks) {
     }),
   }));
 
-  const config = regularTests.map((options) => ({
+  const testSets = isDefaultSpecPattern
+    ? regularTests.concat(specialTestConfigs)
+    : regularTests;
+
+  const config = testSets.map((options) => ({
     ...defaultOptions,
     ...options,
   }));
+
+  console.log(`Matrix builder debug:`);
+  console.log(`  inputSpecs: "${inputSpecs}"`);
+  console.log(`  inputChunks: ${inputChunks}`);
+  console.log(`  isDefaultSpecPattern: ${isDefaultSpecPattern}`);
+  console.log(`  regularChunks: ${regularChunks}`);
+  console.log(`  regularTests length: ${regularTests.length}`);
+  console.log(`  config length: ${config.length}`);
+  console.log(`  First few config items:`, config.slice(0, 3));
 
   return { config, regularChunks, isDefaultSpecPattern };
 }
