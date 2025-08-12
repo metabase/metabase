@@ -23,7 +23,7 @@ export const EmojiExtension = Emoji.configure({
     allowSpaces: false,
 
     render: () => {
-      let component: ReactRenderer<HTMLInputElement> | undefined;
+      let component: ReactRenderer | undefined;
 
       function repositionComponent(clientRect: DOMRect | null | undefined) {
         if (!component || !component.element || !clientRect) {
@@ -49,13 +49,10 @@ export const EmojiExtension = Emoji.configure({
 
       return {
         onStart: (props) => {
-          component = new ReactRenderer<HTMLInputElement, EmojiListProps>(
-            EmojiList,
-            {
-              props,
-              editor: props.editor,
-            },
-          );
+          component = new ReactRenderer<unknown, EmojiListProps>(EmojiList, {
+            props,
+            editor: props.editor,
+          });
 
           document.body.appendChild(component.element);
           repositionComponent(props.clientRect?.());
@@ -76,6 +73,7 @@ export const EmojiExtension = Emoji.configure({
             }
           }
 
+          // @ts-expect-error -- not sure what should be here
           return component?.ref?.onKeyDown(props);
         },
 

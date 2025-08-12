@@ -4,9 +4,9 @@ import { dashboard } from "./dashboards";
 import { metric, model } from "./models";
 import { question, tableRowsQuery } from "./questions";
 
-type UrlableModel = {
-  model: string;
+export type UrlableModel = {
   id: number;
+  model: string;
   name: string;
   database?: {
     id: number;
@@ -35,7 +35,6 @@ export function modelToUrl(item: UrlableModel) {
       return null;
     case "collection":
       return collection(item);
-    case "report":
     case "document":
       return `/document/${item.id}`;
     default:

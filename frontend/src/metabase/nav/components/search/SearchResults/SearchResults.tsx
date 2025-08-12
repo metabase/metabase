@@ -49,7 +49,6 @@ export type SearchResultsProps = {
   footerComponent?: SearchResultsFooter;
   onFooterSelect?: () => void;
   isSearchBar?: boolean;
-  showFooterOnNoResults?: boolean;
 };
 
 export const SearchLoadingSpinner = () => (
@@ -70,7 +69,6 @@ export const SearchResults = ({
   models,
   footerComponent,
   onFooterSelect,
-  showFooterOnNoResults = false,
   isSearchBar = false,
 }: SearchResultsProps) => {
   const dispatch = useDispatch();
@@ -117,10 +115,8 @@ export const SearchResults = ({
   const showFooter = hasResults && footerComponent && metadata;
 
   const dropdownItemList = useMemo(() => {
-    return showFooter || showFooterOnNoResults
-      ? [...list, footerComponent]
-      : list;
-  }, [footerComponent, list, showFooter, showFooterOnNoResults]);
+    return showFooter ? [...list, footerComponent] : list;
+  }, [footerComponent, list, showFooter]);
 
   const onEnterSelect = (item?: CollectionItem | SearchResultsFooter) => {
     if (showFooter && cursorIndex === dropdownItemList.length - 1) {
@@ -193,18 +189,6 @@ export const SearchResults = ({
   ) : (
     <EmptyStateContainer data-testid="search-results-empty-state">
       <EmptyState message={t`Didn't find anything`} icon="search" />
-      {showFooterOnNoResults && footerComponent && (
-        <ResultsFooter
-          ref={getRef(footerComponent)}
-          style={{ marginTop: "0.5rem" }}
-        >
-          {footerComponent({
-            metadata,
-            isSelected: cursorIndex === dropdownItemList.length - 1,
-            onFooterSelect,
-          })}
-        </ResultsFooter>
-      )}
     </EmptyStateContainer>
   );
 };

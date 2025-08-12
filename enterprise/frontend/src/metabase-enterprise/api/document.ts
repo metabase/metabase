@@ -1,9 +1,8 @@
 import type {
-  Card,
   CreateDocumentRequest,
   Document,
-  DocumentContent,
-  DocumentId,
+  GetDocumentRequest,
+  UpdateDocumentRequest,
 } from "metabase-types/api";
 
 import { EnterpriseApi } from "./api";
@@ -11,7 +10,7 @@ import { idTag, listTag } from "./tags";
 
 export const documentApi = EnterpriseApi.injectEndpoints({
   endpoints: (builder) => ({
-    getDocument: builder.query<Document, { id: DocumentId }>({
+    getDocument: builder.query<Document, GetDocumentRequest>({
       query: ({ id }) => ({
         method: "GET",
         url: `/api/ee/document/${id}`,
@@ -27,13 +26,7 @@ export const documentApi = EnterpriseApi.injectEndpoints({
       }),
       invalidatesTags: (_, error) => (error ? [] : [listTag("document")]), // TODO: invalidate parent collection?
     }),
-    updateDocument: builder.mutation<
-      Document,
-      Pick<Document, "id" | "name"> & {
-        document?: DocumentContent;
-        cards?: Record<number, Card>;
-      }
-    >({
+    updateDocument: builder.mutation<Document, UpdateDocumentRequest>({
       query: (document) => ({
         method: "PUT",
         url: `/api/ee/document/${document.id}`,
