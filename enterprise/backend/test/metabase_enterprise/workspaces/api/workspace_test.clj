@@ -145,7 +145,7 @@
 ;;; Workspace Plans API Tests
 
 (deftest api-add-plan-to-workspace-test
-  (testing "PUT /api/ee/workspace/:workspace-id/plan - add plan to workspace"
+  (testing "POST /api/ee/workspace/:workspace-id/plan - add new plan to workspace"
     (mt/with-model-cleanup [:model/Workspace]
       (mt/with-temp [:model/Collection {col-id :id} {}
                      :model/Workspace {workspace-id :id} (test-workspace-data {:collection_id col-id})]
@@ -154,7 +154,7 @@
                            :description "Test plan description"
                            :content {:steps ["Step 1" "Step 2" "Step 3"]
                                      :timeline "Q1 2025"}}
-                result (mt/user-http-request :crowberto :put 200
+                result (mt/user-http-request :crowberto :post 200
                                              (format "ee/workspace/%s/plan" workspace-id)
                                              plan-data)]
             (is (= workspace-id (:id result)))
@@ -167,26 +167,26 @@
           (let [second-plan {:title "Second Plan"
                              :description "Second plan description"
                              :content {:steps ["Another step"]}}]
-            (mt/user-http-request :crowberto :put 200
+            (mt/user-http-request :crowberto :post 200
                                   (format "ee/workspace/%s/plan" workspace-id)
                                   second-plan)
             (let [updated-workspace (t2/select-one :model/Workspace :id workspace-id)]
               (is (= 2 (count (:plans updated-workspace)))))))
 
         (testing "should validate required fields"
-          (mt/user-http-request :crowberto :put 400
+          (mt/user-http-request :crowberto :post 400
                                 (format "ee/workspace/%s/plan" workspace-id)
                                 {:description "Missing title"
                                  :content {}}))
 
         (testing "should return 404 for non-existent workspace"
-          (mt/user-http-request :crowberto :put 404 "ee/workspace/99999/plan"
+          (mt/user-http-request :crowberto :post 404 "ee/workspace/99999/plan"
                                 {:title "Plan" :description "Desc" :content {}}))))))
 
 ;;; Workspace Transforms API Tests
 
 (deftest api-add-transform-to-workspace-test
-  (testing "PUT /api/ee/workspace/:workspace-id/transform - add transform to workspace"
+  (testing "POST /api/ee/workspace/:workspace-id/transform - add transform to workspace"
     (mt/with-model-cleanup [:model/Workspace]
       (mt/with-temp [:model/Collection {col-id :id} {}
                      :model/Workspace {workspace-id :id} (test-workspace-data {:collection_id col-id})]
@@ -196,7 +196,7 @@
                                 :source {:type "database" :connection "source-db"}
                                 :target {:type "warehouse" :connection "target-db"}
                                 :config {:schedule "daily"}}
-                result (mt/user-http-request :crowberto :put 200
+                result (mt/user-http-request :crowberto :post 200
                                              (format "ee/workspace/%s/transform" workspace-id)
                                              transform-data)]
             (is (= workspace-id (:id result)))
@@ -206,18 +206,18 @@
               (is (contains? added-transform :created_at)))))
 
         (testing "should validate required fields"
-          (mt/user-http-request :crowberto :put 400
+          (mt/user-http-request :crowberto :post 400
                                 (format "ee/workspace/%s/transform" workspace-id)
                                 {:description "Missing name and source/target"})
 
-          (mt/user-http-request :crowberto :put 400
+          (mt/user-http-request :crowberto :post 400
                                 (format "ee/workspace/%s/transform" workspace-id)
                                 {:name "Transform"
                                  :description "Missing source"
                                  :target {}}))))))
 
 (deftest api-add-user-to-workspace-test
-  (testing "PUT /api/ee/workspace/:workspace-id/user - add user to workspace"
+  (testing "POST /api/ee/workspace/:workspace-id/user - add user to workspace"
     (mt/with-temp [:model/Collection {col-id :id} {}
                    :model/Workspace {workspace-id :id} (test-workspace-data {:collection_id col-id})]
       (testing "should add user successfully"
@@ -225,10 +225,9 @@
                          :name "John Doe"
                          :email "john@example.com"
                          :type "workspace-user"}
-              result (mt/user-http-request :crowberto :put 200
+              result (mt/user-http-request :crowberto :post 200
                                            (format "ee/workspace/%s/user" workspace-id)
                                            user-data)]
-          (def result result)
           (is (= workspace-id (:id result)))
           (is (= 1 (count (:users result))))
           (let [added-user (first (:users result))]
@@ -236,7 +235,7 @@
             (is (contains? added-user :created_at)))))
 
       (testing "should validate required fields"
-        (mt/user-http-request :crowberto :put 400
+        (mt/user-http-request :crowberto :post 400
                               (format "ee/workspace/%s/user" workspace-id)
                               {:name "Missing user_id and email"
                                :type "user"})))))
@@ -360,7 +359,6 @@
                                   write-permission)
             (let [updated-workspace (t2/select-one :model/Workspace :id workspace-id)
                   perm-set (set (mapv #(dissoc % :created_at) (:permissions updated-workspace)))]
-              (def perm-set perm-set)
               (is (= 2 (count perm-set)))
               (is (contains? perm-set
                              {:table "orders" :permission "write"})))))
@@ -385,12 +383,13 @@
                      ["POST" "ee/workspace/"]
                      ["PUT" "ee/workspace/1"]
                      ["DELETE" "ee/workspace/1"]
-                     ["PUT" "ee/workspace/1/plan"]
-                     ["PUT" "ee/workspace/1/transform"]
-                     ["PUT" "ee/workspace/1/user"]
-                     ["PUT" "ee/workspace/1/document"]
-                     ["PUT" "ee/workspace/1/dwh"]
-                     ["PUT" "ee/workspace/1/permission"]]]
+
+                     ["POST" "ee/workspace/1/plan"]
+                     ["POST" "ee/workspace/1/transform"]
+                     ["POST" "ee/workspace/1/user"]
+                     ["POST" "ee/workspace/1/document"]
+                     ["POST" "ee/workspace/1/data_warehouse"]
+                     ["POST" "ee/workspace/1/permission"]]]
       (doseq [[method endpoint] endpoints]
         (testing (format "%s /api/%s should require authentication" method endpoint)
           (case method

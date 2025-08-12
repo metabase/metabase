@@ -2,6 +2,7 @@
 (ns metabase-enterprise.workspaces.api.workspace
   #_{:clj-kondo/ignore [:metabase/modules]}
   (:require
+   [metabase-enterprise.workspaces.common :as w.common]
    [metabase-enterprise.workspaces.models.workspace :as m.workspace]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -16,74 +17,6 @@
 
 (set! *warn-on-reflection* true)
 
-(mu/defn- add-workspace-entity*
-  "Adds a workspace entity, such as a plan or transform, to the workspace.
-
-   Args:
-   - workspace-id: The workspace ID
-   - entity-key: The key in the workspace map (:plans, :transforms, etc.)
-   - new-entity: The new entity to add, which should be a map with the necessary fields"
-  [workspace-id
-   entity-key :- ::m.workspace/entity-column
-   new-entity :- :map]
-  (let [workspace (t2/select-one :model/Workspace :id workspace-id)
-        _ (when-not workspace (throw (ex-info "Workspace not found" {:error :no-workspace})))
-        current-entities (or (get workspace entity-key) [])
-        entity-with-created-at (assoc new-entity :created_at (str (java.time.Instant/now)))
-        updated-entities (conj current-entities entity-with-created-at)]
-    (t2/update! :model/Workspace workspace-id {entity-key updated-entities})))
-
-(defn update-workspace-entity-at-index*
-  "Updates an entity at a specific index in the workspace's entity collection.
-
-   Args:
-   - workspace-id: The workspace ID
-   - entity-key: The key in the workspace map (:plans, :transforms, etc.)
-   - index: The 0-based index of the entity to update
-   - update-fn: Function that takes the current entity and returns the updated entity"
-  [workspace-id entity-key index update-fn]
-  (let [workspace (t2/select-one :model/Workspace :id workspace-id)
-        _ (when-not workspace (throw (ex-info "Workspace not found" {:error :no-workspace})))
-        current-items (vec (get workspace entity-key []))
-        item-count (count current-items)
-        _ (when (or (nil? index) (>= index item-count))
-            (throw (ex-info "Index out of bounds" {:error :no-index
-                                                   :item-count item-count})))
-        current-item (nth current-items index nil)
-        new-item (update-fn current-item)
-        updated-items (assoc current-items index new-item)]
-    (t2/update! :model/Workspace workspace-id {entity-key updated-items})))
-
-(mu/defn- drop-index [current-items :- :vector index]
-  (vec (concat (subvec current-items 0 index)
-               (subvec current-items (inc index)))))
-
-(comment
-  (mapv #(drop-index [:a :b :c] %)
-        [0 1 2])
-  ;; => [[:b :c] [:a :c] [:a :b]]
-  )
-
-(defn- delete-workspace-entity-at-index*
-  "Deletes an entity at a specific index in the workspace's entity collection.
-
-   Args:
-   - workspace-id: The workspace ID
-   - entity-key: The key in the workspace map (:plans, :transforms, etc.)
-   - index: The 0-based index of the entity to delete"
-  [workspace-id entity-key index]
-  (let [workspace (t2/select-one :model/Workspace :id workspace-id)
-        _ (when-not workspace (throw (ex-info "Workspace not found" {:error :no-workspace})))
-        current-items (vec (get workspace entity-key []))
-        _ (when (or (nil? index) (>= index (count current-items)))
-            (throw (ex-info "Index out of bounds" {:error :no-index
-                                                   :item-count (count current-items)})))
-        updated-items (drop-index current-items index)]
-    (t2/update! :model/Workspace workspace-id {entity-key updated-items})
-    (m.workspace/sort-workspace (t2/select-one :model/Workspace :id workspace-id))))
-
-;;; API functions:
-
 (mu/defn- add-workspace-entity
   "Adds a workspace entity, such as a plan or transform, to the workspace.
 
@@ -94,7 +27,7 @@
   [workspace-id
    entity-key :- ::m.workspace/entity-column
    new-entity]
-  (try (add-workspace-entity* workspace-id entity-key new-entity)
+  (try (w.common/add-workspace-entity workspace-id entity-key new-entity)
        (catch Exception e
          (case (:error (ex-data e))
            :no-workspace (throw (ex-info "Workspace not found" {:status-code 404
@@ -103,7 +36,7 @@
 
 (defn update-workspace-entity-at-index
   [workspace-id entity-key index update-fn]
-  (try (update-workspace-entity-at-index* workspace-id entity-key index update-fn)
+  (try (w.common/update-workspace-entity-at-index workspace-id entity-key index update-fn)
        (catch Exception e
          (case (:error (ex-data e))
            :no-workspace [404 "Workspace not found"]
@@ -118,7 +51,7 @@
    - entity-key: The key in the workspace map (:plans, :transforms, etc.)
    - index: The 0-based index of the entity to delete"
   [workspace-id entity-key index]
-  (try (delete-workspace-entity-at-index* workspace-id entity-key index)
+  (try (w.common/delete-workspace-entity-at-index workspace-id entity-key index)
        (catch Exception e
          (case (:error (ex-data e))
            :no-workspace (#'api/generic-404 "Workspace not found")
@@ -169,8 +102,9 @@
 
 (comment
 
-  (doseq [del-id (map :id (rest (t2/select [:model/Collection :id] :name "Workspace Collection")))]
-    (t2/delete! :model/Collection :id del-id))
+;; delete all but 1 Workspace Collection:
+  (doseq [ids (rest (map :id (t2/select [:model/Collection :id] :name "Workspace Collection")))]
+    (t2/delete! :model/Collection :id ids))
 
   #_:clj-kondo/ignore
   (require '[metabase.test :as mt]
@@ -225,8 +159,8 @@
   (delete-workspace! workspace-id)
   api/generic-204-no-content)
 
-;; PUT /api/ee/workspace/:workspace-id/plan
-(api.macros/defendpoint :put "/:workspace-id/plan"
+;; POST /api/ee/workspace/:workspace-id/plan
+(api.macros/defendpoint :post "/:workspace-id/plan"
   "Add a plan to the workspace.
 
    Request body:
@@ -281,8 +215,8 @@
   (delete-workspace-entity-at-index workspace-id :plans index)
   api/generic-204-no-content)
 
-;; PUT /api/ee/workspace/:workspace-id/transform
-(api.macros/defendpoint :put "/:workspace-id/transform"
+;; POST /api/ee/workspace/:workspace-id/transform
+(api.macros/defendpoint :post "/:workspace-id/transform"
   "Add a transform to the workspace.
 
    Request body:
@@ -375,8 +309,8 @@
     (t2/update! :model/Workspace workspace-id {:transforms updated-transforms})
     (m.workspace/sort-workspace (t2/select-one :model/Workspace :id workspace-id))))
 
-;; PUT /api/ee/workspace/:workspace-id/document
-(api.macros/defendpoint :put "/:workspace-id/document"
+;; POST /api/ee/workspace/:workspace-id/document
+(api.macros/defendpoint :post "/:workspace-id/document"
   "Add a document to the workspace.
 
    Request body:
@@ -390,8 +324,8 @@
     (t2/update! :model/Workspace workspace-id {:documents updated-docs})
     (m.workspace/sort-workspace (t2/select-one :model/Workspace :id workspace-id))))
 
-;; PUT /api/ee/workspace/:workspace-id/data_warehouse
-(api.macros/defendpoint :put "/:workspace-id/data_warehouse"
+;; POST /api/ee/workspace/:workspace-id/data_warehouse
+(api.macros/defendpoint :post "/:workspace-id/data_warehouse"
   "Add a data warehouse to the workspace.
 
    Request body:
@@ -463,8 +397,8 @@
   (delete-workspace-entity-at-index workspace-id :data_warehouses index)
   api/generic-204-no-content)
 
-;; PUT /api/ee/workspace/:workspace-id/user
-(api.macros/defendpoint :put "/:workspace-id/user"
+;; POST /api/ee/workspace/:workspace-id/user
+(api.macros/defendpoint :post "/:workspace-id/user"
   "Add a user to the workspace.
 
    Request body:
@@ -532,8 +466,8 @@
   (delete-workspace-entity-at-index workspace-id :users index)
   api/generic-204-no-content)
 
-;; PUT /api/ee/workspace/:workspace-id/permission
-(api.macros/defendpoint :put "/:workspace-id/permission"
+;; POST /api/ee/workspace/:workspace-id/permission
+(api.macros/defendpoint :post "/:workspace-id/permission"
   "Add a permission to the workspace.
 
    Request body:
