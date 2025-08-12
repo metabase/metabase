@@ -39,40 +39,26 @@ describe("scenarios > admin > transforms", () => {
       H.assertQueryBuilderRowCount(3);
     });
 
-    it("should be able to change the table name before running a transform", () => {
+    it("should be able to change the table name and schema before running a transform", () => {
       createMbqlTransform();
       TransformPage.changeTargetButton().click();
       UpdateTargetModal.nameInput().should("have.value", "my_table");
       UpdateTargetModal.schemaSelect().should("have.value", "Schema A");
+      UpdateTargetModal.keepTargetRadio().should("not.exist");
+      UpdateTargetModal.deleteTargetRadio().should("not.exist");
+
       UpdateTargetModal.nameInput().clear().type("my_table_changed");
-      UpdateTargetModal.save();
-      TransformPage.tableLink().should("have.text", "my_table_changed");
-      TransformPage.runAndWaitForSuccess();
-
-      TransformPage.tableLink().click();
-      H.queryBuilderHeader().within(() => {
-        cy.findByText("Schema A").should("be.visible");
-        cy.findByText("My Table Changed").should("be.visible");
-      });
-      H.assertQueryBuilderRowCount(3);
-    });
-
-    it("should be able to change the schema before running a transform", () => {
-      createMbqlTransform();
-      TransformPage.changeTargetButton().click();
-      UpdateTargetModal.nameInput().should("have.value", "my_table");
-      UpdateTargetModal.schemaSelect().should("have.value", "Schema A");
       UpdateTargetModal.schemaSelect().click();
       H.popover().findByText("Schema B").click();
       UpdateTargetModal.save();
+      TransformPage.tableLink().should("have.text", "my_table_changed");
       TransformPage.schemaLink().should("have.text", "Schema B");
-      TransformPage.runAndWaitForSuccess();
 
+      TransformPage.runAndWaitForSuccess();
       TransformPage.tableLink().click();
-      H.queryBuilderHeader().within(() => {
-        cy.findByText("Schema B").should("be.visible");
-        cy.findByText("My Table").should("be.visible");
-      });
+      H.queryBuilderHeader()
+        .findByText("My Table Changed")
+        .should("be.visible");
       H.assertQueryBuilderRowCount(3);
     });
   });
