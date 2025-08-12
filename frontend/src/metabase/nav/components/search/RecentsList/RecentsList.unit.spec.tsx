@@ -45,7 +45,7 @@ describe("RecentsList", () => {
     expect(screen.getByText("Recently viewed")).toBeInTheDocument();
 
     const [questionType, dashboardType, tableType] = screen.queryAllByTestId(
-      "recently-viewed-item-model",
+      "result-link-wrapper",
     );
 
     expect(screen.getByText("Question I visited")).toBeInTheDocument();
