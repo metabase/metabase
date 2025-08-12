@@ -86,15 +86,16 @@
   (let [expression (resolve-expression query stage-number expression-name)]
     (lib.metadata.calculation/type-of query stage-number expression)))
 
-(defmethod lib.metadata.calculation/metadata-method :expression
+(mu/defmethod lib.metadata.calculation/metadata-method :expression :- ::lib.metadata.calculation/visible-column
   [query stage-number [_expression opts expression-name, :as expression-ref-clause]]
-  (merge {:lib/type            :metadata/column
-          :lib/source-uuid     (:lib/uuid opts)
-          :name                expression-name
-          :lib/expression-name expression-name
-          :display-name        (lib.metadata.calculation/display-name query stage-number expression-ref-clause)
-          :base-type           (lib.metadata.calculation/type-of query stage-number expression-ref-clause)
-          :lib/source          :source/expressions}
+  (merge {:lib/type                :metadata/column
+          :lib/source-uuid         (:lib/uuid opts)
+          :name                    expression-name
+          :lib/expression-name     expression-name
+          :lib/source-column-alias expression-name
+          :display-name            (lib.metadata.calculation/display-name query stage-number expression-ref-clause)
+          :base-type               (lib.metadata.calculation/type-of query stage-number expression-ref-clause)
+          :lib/source              :source/expressions}
          (when-let [unit (lib.temporal-bucket/raw-temporal-bucket expression-ref-clause)]
            {:metabase.lib.field/temporal-unit unit})
          (when lib.metadata.calculation/*propagate-binning-and-bucketing*
@@ -265,8 +266,7 @@
   temporal-unit)
 
 #_(defn- conflicting-name? [query stage-number expression-name]
-    (let [stage     (lib.util/query-stage query stage-number)
-          cols      (lib.metadata.calculation/visible-columns query stage-number stage)
+    (let [cols      (lib.metadata.calculation/visible-columns query stage-number)
           expr-name (u/lower-case-en expression-name)]
       (some #(-> % :name u/lower-case-en (= expr-name)) cols)))
 
@@ -414,9 +414,10 @@
         ;; not the properties of the expression.
         (select-keys [:base-type :effective-type :lib/desired-column-alias
                       :lib/source-column-alias :lib/source-uuid :lib/type])
-        (assoc :lib/source   :source/expressions
-               :name         expression-name
-               :display-name expression-name))))
+        (assoc :lib/source          :source/expressions
+               :lib/expression-name expression-name
+               :name                expression-name
+               :display-name        expression-name))))
 
 (mu/defn expressions-metadata :- [:maybe [:sequential ::lib.schema.metadata/column]]
   "Get metadata about the expressions in a given stage of a `query`."
@@ -475,12 +476,11 @@
     ;; Changing the legacy/wire format is probably the right way to go, but that's a bigger
     ;; endeavor.
     expression-position :- [:maybe ::lib.schema.common/int-greater-than-or-equal-to-zero]]
-   (let [stage (lib.util/query-stage query stage-number)
-         expr-name (when expression-position
+   (let [expr-name (when expression-position
                      (some-> (expressions query stage-number)
                              (nth expression-position nil)
                              lib.util/expression-name))
-         columns (cond->> (lib.metadata.calculation/visible-columns query stage-number stage)
+         columns (cond->> (lib.metadata.calculation/visible-columns query stage-number)
                    expr-name (into [] (remove #(and (= (:lib/source %) :source/expressions)
                                                     (= (:name %) expr-name)))))]
      (not-empty columns))))
