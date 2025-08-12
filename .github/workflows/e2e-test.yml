@@ -28,10 +28,6 @@ on:
       split_index: # index of the chunk
         required: false
         type: number
-      debug_specs:
-        required: false
-        type: boolean
-        default: false
 
 jobs:
   e2e-tests:
@@ -125,7 +121,7 @@ jobs:
           SPLIT: ${{ inputs.total_chunks }}
           SPLIT_INDEX: ${{ inputs.split_index }}
           SPLIT_FILE: "./e2e/support/timings.json"
-          SPLIT_TIME_THRESHOLD: 0
+          SPLIT_TIME_THRESHOLD: 1
           # do not write cypress-split summary to github
           SPLIT_SUMMARY: false
           SPEC_PATH: ${{ env.specs || inputs.specs }}
