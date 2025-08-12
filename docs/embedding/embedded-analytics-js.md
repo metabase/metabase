@@ -10,7 +10,7 @@ Embedded analytics JS allows you to embed Metabase entities like questions, dash
 Embedded Analytics JS is a JavaScript library built on top of Metabase's [Embedded Analytics React SDK](./sdk/introduction.md). But it does not require using React or setting up full SDK embedding.
 Unlike with [interactive embedding](./interactive-embedding.md), where you embed the entire Metabase app in an iframe, Embedded Analytics JS lets you choose from a set of predefined components like a single chart, a dashboard with optional drill-through, or query builder, and customize those components.
 
-Embedded Analytics JS leverages [JWT](../people-and-groups/authenticating-with-jwt.md) or [SAML](../people-and-groups/authenticating-with-saml.md) to authenticate people and automatically apply permissions to show people the right data upon sign-in.
+Embedded Analytics JS uses [JWT](../people-and-groups/authenticating-with-jwt.md) or [SAML](../people-and-groups/authenticating-with-saml.md) to authenticate people and automatically apply the right permissions.
 
 Currently you can choose to embed:
 
