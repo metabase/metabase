@@ -68,7 +68,8 @@
            query-processor
            search
            settings
-           util}}
+           util
+           warehouses}}
 
   activity-feed
   {:team "UX West"
