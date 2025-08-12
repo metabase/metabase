@@ -92,7 +92,6 @@ const getColumnIndexFromPivotedColumnId = (pivotedColumnId: string) =>
   parseInt(pivotedColumnId.split(":")[1]);
 
 interface TableProps extends VisualizationProps {
-  location: Location;
   rowIndexToPkMap?: Record<number, string>;
   isPivoted?: boolean;
   hasMetadataPopovers?: boolean;

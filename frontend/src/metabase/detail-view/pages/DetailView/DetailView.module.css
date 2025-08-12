@@ -2,6 +2,6 @@
   border-bottom: 1px solid var(--mb-color-border);
 }
 
-.content {
+.scrollable {
   overflow: auto;
 }

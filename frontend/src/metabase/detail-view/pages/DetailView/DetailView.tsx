@@ -158,14 +158,15 @@ export function DetailView({ params }: TableDetailViewLoaderProps) {
         />
       </Box>
 
-      <Group
-        align="flex-start"
-        className={S.content}
-        flex="1"
-        gap={rem(72)}
-        mih={0}
-      >
-        <Group justify="center" flex="1" p={rem(64)}>
+      <Group align="flex-start" flex="1" gap={0} mih={0}>
+        <Group
+          align="flex-start"
+          className={S.scrollable}
+          justify="center"
+          flex="1"
+          h="100%"
+          p={rem(64)}
+        >
           <Stack gap={rem(64)} maw={rem(900)} w="100%">
             {headerColumns.length > 0 && <Header columns={columns} row={row} />}
 
@@ -178,6 +179,7 @@ export function DetailView({ params }: TableDetailViewLoaderProps) {
         {tableForeignKeys && tableForeignKeys.length > 0 && (
           <Box
             bg="var(--mb-color-background-light)"
+            className={S.scrollable}
             flex="0 0 auto"
             h="100%"
             w={rem(440)}
