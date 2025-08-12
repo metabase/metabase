@@ -158,7 +158,7 @@ export function DetailView({ params }: TableDetailViewLoaderProps) {
         />
       </Box>
 
-      <Group align="flex-start" flex="1" gap={0} mih={0}>
+      <Group align="flex-start" flex="1" gap={0} key={rowId} mih={0}>
         <Group
           align="flex-start"
           className={S.scrollable}
