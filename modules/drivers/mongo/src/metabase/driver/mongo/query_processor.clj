@@ -155,20 +155,21 @@
   {:arglists '([field])}
   driver-api/dispatch-by-clause-name-or-class)
 
-(defn- field-name-components [{:keys [parent-id], field-name :name, :as _field}]
+(defn- col->name-components [{:keys [parent-id], field-name :name, :as _col}]
   (concat
+   ;; TODO (Cam 8/11/25) -- this should be using `:nfc-path` instead of looking this up the hard way
    (when parent-id
-     (field-name-components (driver-api/field (driver-api/metadata-provider) parent-id)))
+     (col->name-components (driver-api/field (driver-api/metadata-provider) parent-id)))
    [field-name]))
 
 (mu/defn field->name
-  "Return a single string name for `field`. For nested fields, this creates a combined qualified name."
-  ([field]
-   (field->name field \.))
+  "Return a single string name for column metadata `col` For nested fields, this creates a combined qualified name."
+  ([col]
+   (field->name col \.))
 
-  ([field     :- driver-api/schema.metadata.column
+  ([col       :- driver-api/schema.metadata.column
     separator :- [:or :string char?]]
-   (str/join separator (field-name-components field))))
+   (str/join separator (col->name-components col))))
 
 (defmacro ^:private mongo-let
   {:style/indent 1}
@@ -311,20 +312,14 @@ function(bin) {
   [[_ index]]
   (driver-api/aggregation-name (:query *query*) (driver-api/aggregation-at-index *query* index *nesting-level*)))
 
-(mu/defn- field-ref-opts->fully-qualified-source-alias :- :string
-  [opts :- :map]
-  (str/join \.
-            (concat (get opts driver-api/qp.add.nfc-path)
-                    [(get opts driver-api/qp.add.source-alias)])))
-
 (defmethod ->lvalue :field
   [[_ id-or-name {:keys [join-alias] :as opts} :as field]]
   (if (integer? id-or-name)
     (or (find-mapped-field-name field)
         (->lvalue (assoc (driver-api/field (driver-api/metadata-provider) id-or-name)
-                         ::source-alias (field-ref-opts->fully-qualified-source-alias opts)
+                         ::source-alias (driver-api/qp.add.source-alias opts)
                          ::join-field (get-join-alias join-alias))))
-    (scope-with-join-field (name id-or-name) (get-join-alias join-alias) (field-ref-opts->fully-qualified-source-alias opts))))
+    (scope-with-join-field (name id-or-name) (get-join-alias join-alias) (driver-api/qp.add.source-alias opts))))
 
 (defn- add-start-of-week-offset [expr offset]
   (cond
@@ -443,7 +438,7 @@ function(bin) {
 (defmethod ->rvalue :field
   [[_ id-or-name {:keys [temporal-unit join-alias] :as opts} :as field]]
   (let [join-field (get-join-alias join-alias)
-        source-alias (field-ref-opts->fully-qualified-source-alias opts)]
+        source-alias (driver-api/qp.add.source-alias opts)]
     (cond-> (if (integer? id-or-name)
               (if-let [mapped (find-mapped-field-name field)]
                 (str \$ mapped)
@@ -1160,9 +1155,9 @@ function(bin) {
     (recur arg)
     ag))
 
-(defn- field-alias [field]
-  (or (get-in field [2 driver-api/qp.add.desired-alias])
-      (->lvalue field)))
+(defn- field-alias [[_tag _id-or-name opts, :as field-ref]]
+  (or (driver-api/qp.add.desired-alias opts)
+      (->lvalue field-ref)))
 
 (mu/defn- breakouts-and-ags->projected-fields :- [:maybe [:sequential [:tuple driver-api/schema.common.non-blank-string :any]]]
   "Determine field projections for MBQL breakouts and aggregations. Returns a sequence of pairs like
@@ -1645,13 +1640,13 @@ function(bin) {
    (reduce (fn [pipeline-ctx f]
              (f inner-query pipeline-ctx))
            pipeline-ctx
-           [handle-joins
-            handle-filter
-            handle-breakout+aggregation
-            handle-order-by
-            handle-fields
-            handle-limit
-            handle-page])))
+           [#'handle-joins
+            #'handle-filter
+            #'handle-breakout+aggregation
+            #'handle-order-by
+            #'handle-fields
+            #'handle-limit
+            #'handle-page])))
 
 (mu/defn- generate-aggregation-pipeline :- [:map
                                             [:projections Projections]
@@ -1721,31 +1716,53 @@ function(bin) {
 ;;; until we get around to fixing that let's just walk the query and replace all the non-add-alias-info keys with the
 ;;; values added by add-alias-info.
 (defn- HACK-update-aliases [form]
-  (driver-api/replace form
-    (m :guard (every-pred map?
-                          :alias
-                          driver-api/qp.add.alias
-                          #(not= (driver-api/qp.add.alias %) (:alias %))))
-    (HACK-update-aliases (assoc m :alias (driver-api/qp.add.alias m)))
+  (letfn [(prepend-nfc-path [{nfc-path      driver-api/qp.add.nfc-path,
+                              source-alias  driver-api/qp.add.source-alias,
+                              desired-alias driver-api/qp.add.desired-alias,
+                              :as           opts}]
+            (when (seq nfc-path)
+              (let [nfc-path-str (str/join \. nfc-path)]
+                (-> opts
+                    (assoc driver-api/qp.add.source-alias  (str nfc-path-str \. source-alias)
+                           driver-api/qp.add.desired-alias (str nfc-path-str \. desired-alias))
+                    (dissoc driver-api/qp.add.nfc-path)))))
+          (update-name [{field-name :name, source-alias  driver-api/qp.add.source-alias, :as opts}]
+            (when-not (= field-name source-alias)
+              (assoc opts :name source-alias)))
+          (remove-bad-join-alias [{:keys [join-alias], source-table driver-api/qp.add.source-table, :as opts}]
+            (when (and join-alias
+                       (= source-table driver-api/qp.add.source))
+              (dissoc opts :join-alias)))
+          (update-join-alias [{:keys [join-alias], source-table driver-api/qp.add.source-table, :as opts}]
+            (when (and join-alias
+                       source-table
+                       (not= join-alias source-table))
+              (assoc opts :join-alias source-table)))
+          (update-opts [opts]
+            (reduce
+             (fn
+               [opts f]
+               (or (f opts)
+                   opts))
+             opts
+             [prepend-nfc-path
+              update-join-alias
+              update-name
+              remove-bad-join-alias
+              update-join-alias]))
+          (update-field-ref [[_tag id-or-name opts]]
+            (let [opts (update-opts opts)]
+              (if (string? id-or-name)
+                [:field (driver-api/qp.add.source-alias opts) opts]
+                [:field id-or-name opts])))]
+    (driver-api/replace form
+      :field
+      (update-field-ref &match)
 
-    [:field id-or-name (opts :guard (every-pred map?
-                                                #(not= (:name %) (field-ref-opts->fully-qualified-source-alias %))))]
-    (let [id-or-name' (if (string? id-or-name)
-                        (field-ref-opts->fully-qualified-source-alias opts)
-                        id-or-name)]
-      (HACK-update-aliases [:field id-or-name' (assoc opts :name (field-ref-opts->fully-qualified-source-alias opts))]))
-
-    [:field id-or-name (opts :guard (every-pred map?
-                                                :join-alias
-                                                #(= (driver-api/qp.add.source-table %) driver-api/qp.add.source)))]
-    [:field id-or-name (-> opts
-                           (dissoc :join-alias)
-                           (assoc ::fixed true))]
-
-    [:field id-or-name (opts :guard (every-pred map?
-                                                :join-alias
-                                                #(string? (driver-api/qp.add.source-table %))))]
-    [:field id-or-name (assoc opts :join-alias (driver-api/qp.add.source-table opts))]))
+      (join :guard (every-pred map?
+                               driver-api/qp.add.alias
+                               #(not= (driver-api/qp.add.alias %) (:alias %))))
+      (recur (assoc join :alias (driver-api/qp.add.alias join))))))
 
 (defn- preprocess
   [inner-query]

@@ -201,10 +201,10 @@
 
 (defn- add-source-to-field-ref [query path field-ref col]
   (lib/update-options
-   field-ref assoc
-   ::source-table (source-table query path col)
-   ::source-alias (escaped-source-alias query path (:metabase.lib.join/join-alias col) (:lib/source-column-alias col))
-   ::nfc-path     (not-empty (:nfc-path col))))
+   field-ref #(-> %
+                  (assoc ::source-table (source-table query path col)
+                         ::source-alias (escaped-source-alias query path (:metabase.lib.join/join-alias col) (:lib/source-column-alias col)))
+                  (m/assoc-some ::nfc-path (not-empty (:nfc-path col))))))
 
 (mu/defn- add-source-aliases :- ::lib.schema/stage.mbql
   [query :- ::lib.schema/query
