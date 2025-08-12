@@ -801,13 +801,6 @@ databaseChangeLog:
         - sql:
             sql: "delete from transform_job where \"ENTITY_ID\" = 'weekly000000000000000'"
             dbms: h2
-      rollback:
-        - delete:
-            tableName: transform_job
-            whereParams:
-              - param:
-                  name: entity_id
-                  value: weekly000000000000000
   - changeSet:
       id: v57.2025-08-07T10:06:07
       author: galdre
@@ -839,13 +832,6 @@ databaseChangeLog:
         - sql:
             sql: "delete from transform_job where \"ENTITY_ID\" = 'monthly00000000000000'"
             dbms: h2
-      rollback:
-        - delete:
-            tableName: transform_job
-            whereParams:
-              - param:
-                  name: entity_id
-                  value: monthly00000000000000
   - changeSet:
       id: v57.2025-08-07T11:00:00
       author: galdre
