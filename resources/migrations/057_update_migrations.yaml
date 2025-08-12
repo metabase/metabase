@@ -385,7 +385,7 @@ databaseChangeLog:
                     nullable: false
 
   - changeSet:
-      id: v57.2025-08-07T10:00:00-add-transform-tag-table
+      id: v57.2025-08-07-add-transform_tag-table
       author: galdre
       comment: Add transform_tag table for grouping transforms
       preConditions:
@@ -425,7 +425,7 @@ databaseChangeLog:
                     nullable: false
 
   - changeSet:
-      id: v57.2025-08-07T10:01:00-add-transform-job-table
+      id: v57.2025-08-07-add-transform_job-table
       author: galdre
       comment: Add transform_job table for scheduled execution of tagged transforms
       preConditions:
@@ -480,7 +480,7 @@ databaseChangeLog:
                     nullable: false
 
   - changeSet:
-      id: v57.2025-08-07T10:02:00-add-transform-tags-table
+      id: v57.2025-08-07-add-transform_tags-table
       author: galdre
       comment: Add transform_tags join table for transform-tag associations
       preConditions:
@@ -530,7 +530,7 @@ databaseChangeLog:
             constraintName: unique_transform_tag
 
   - changeSet:
-      id: v57.2025-08-07T10:03:00-add-transform-job-tags-table
+      id: v57.2025-08-07-add-transform_job_tags-table
       author: galdre
       comment: Add transform_job_tags join table for job-tag associations
       preConditions:
@@ -592,7 +592,7 @@ databaseChangeLog:
         - dropTable:
             tableName: transform_job_tags
   - changeSet:
-      id: v57.2025-08-07T10:06:00-add-default-tags
+      id: v57.2025-08-07-add-default-tags
       author: galdre
       comment: Add default transform tags and jobs for common scheduling patterns
       preConditions:
@@ -697,7 +697,7 @@ databaseChangeLog:
             dbms: h2
 
   - changeSet:
-      id: v57.2025-08-07T11-populate-default-job-tags
+      id: v57.2025-08-12-populate-default-job-tags
       author: galdre
       comment: Populate transform_job_tags join table to link default jobs with their corresponding tags
       preConditions:
