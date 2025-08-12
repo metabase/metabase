@@ -21,7 +21,7 @@ import type { Document } from "metabase-types/api";
 const Documents = createEntity({
   name: "documents",
   nameOne: "document",
-  path: "/api/ee/documents",
+  path: "/api/ee/document",
   schema: DocumentSchema,
 
   // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
