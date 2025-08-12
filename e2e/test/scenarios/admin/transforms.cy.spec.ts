@@ -52,7 +52,7 @@ describe("scenarios > admin > transforms", () => {
       cy.findByLabelText("Schema").click();
     });
     H.popover().findByText("Schema B").click();
-    H.modal().button("Save").click();
+    H.modal().button("Change target").click();
     getTableLink().should("have.text", "transform_table_2");
     getSchemaLink().should("have.text", "Schema B");
 
@@ -155,7 +155,7 @@ function getTableLink() {
 }
 
 function getSchemaLink() {
-  return cy.findByTestId("table-link");
+  return cy.findByTestId("schema-link");
 }
 
 function getQueryVisualization() {
