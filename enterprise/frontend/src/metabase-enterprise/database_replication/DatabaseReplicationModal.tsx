@@ -94,7 +94,16 @@ export const DatabaseReplicationModal = ({
       onClose={onClose}
       size="36rem"
       padding="2.5rem"
-      title={t`Set up database replication`}
+      py={
+        setupStep === "setting-up" || setupStep === "success"
+          ? undefined
+          : "5rem"
+      }
+      title={
+        setupStep === "setting-up" || setupStep === "success"
+          ? undefined
+          : t`Set up database replication`
+      }
     >
       {setupStep === "form" ? (
         <DatabaseReplicationForm
