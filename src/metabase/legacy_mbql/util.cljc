@@ -28,13 +28,20 @@
   "Convert a string or keyword in various cases (`lisp-case`, `snake_case`, or `SCREAMING_SNAKE_CASE`) to a lisp-cased
   keyword."
   [token :- schema.helpers/KeywordOrString]
-  ;; sanity check: this should not be performed on base types
-  {:pre [(not (#{"type/Text" :type/Text} token))]}
-  (-> (u/qualified-name token)
-      #_{:clj-kondo/ignore [:discouraged-var]}
-      #?(:clj u/lower-case-en :cljs str/lower-case)
-      (str/replace \_ \-)
-      keyword))
+  (let [s (u/qualified-name token)]
+    (if (str/starts-with? s "type/")
+      ;; TODO (Cam 8/12/25) -- there's tons of code using incorrect parameter types or normalizing base types
+      ;; incorrectly, for example [[metabase.actions.models/implicit-action-parameters]]. We need to actually start
+      ;; validating parameters against the `:metabase.lib.schema.parameter/parameter` schema. We should probably throw
+      ;; an error here instead of silently correcting it... I was going to do that but it broke too many things
+      (do
+        (log/warn "normalize-token should not be getting called on a base type! This probably means we're using a base type in the wrong place, like as a parameter type")
+        (keyword s))
+      (-> s
+          #_{:clj-kondo/ignore [:discouraged-var]}
+          #?(:clj u/lower-case-en :cljs str/lower-case)
+          (str/replace \_ \-)
+          keyword))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                       Functions for manipulating queries                                       |

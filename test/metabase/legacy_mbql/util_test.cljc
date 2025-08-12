@@ -1123,3 +1123,8 @@
                  {:default ""}]
                 (mbql.u/desugar-expression [:day-name [:field 1 nil]]))
              "`day-name` should desugar to a `:case` clause with values for each weekday"))))
+
+(t/deftest ^:parallel normalize-token-handle-types-test
+  (t/testing "If this gets called incorrectly with a base type keyword then handle it gracefully"
+    (t/is (= :type/Text
+             (mbql.u/normalize-token "type/Text")))))
