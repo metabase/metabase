@@ -171,7 +171,7 @@ export function DetailView({ params }: TableDetailViewLoaderProps) {
             {headerColumns.length > 0 && <Header columns={columns} row={row} />}
 
             {columns.length - headerColumns.length > 0 && (
-              <DetailsGroup columns={columns} row={row} />
+              <DetailsGroup columns={columns} row={row} table={table} />
             )}
           </Stack>
         </Group>
