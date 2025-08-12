@@ -65,6 +65,8 @@
         feature (transforms.util/required-database-feature transform)]
     (api/check-400 (not (:is_sample database))
                    (deferred-tru "Cannot run transforms on the sample database."))
+    (api/check-400 (not (:is_audit database))
+                   (deferred-tru "Cannot run transforms on audit databases."))
     (api/check-400 (driver.u/supports? (:engine database) feature database)
                    (deferred-tru "The database does not support the requested transform target type."))))
 
