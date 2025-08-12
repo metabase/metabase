@@ -9,13 +9,12 @@
    [toucan2.core :as t2]))
 
 (defn- field-statistics
-  [column limit]
-  (let [id (:id column)
-        field (t2/select-one :model/Field :id id)
+  [{:keys [id] :as column} limit]
+  (let [field (t2/select-one :model/Field :id id)
         fvs (field-values/get-or-create-full-field-values! field)
         fp (or (:fingerprint column)
                (and (pos? (:updated-fingerprints (sync/refingerprint-field! field)))
-                    (t2/select-one-fn :fingerprint [:model/Field :fingerprint] :id id)))]
+                    (t2/select-one-fn :fingerprint :model/Field :id id)))]
     (merge (when fp
              {:statistics (-> (or (:global fp) {})
                               (set/rename-keys {:nil% :percent-null})
