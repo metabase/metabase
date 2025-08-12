@@ -893,7 +893,6 @@
                       {:setting s-name
                        :required-feature driver-feature
                        :database-id (:id database)})))
-    ;; check that setting is enabled for this specific database
     (when (and enabled-for-db? (not (enabled-for-db? database)))
       (throw (ex-info (tru "Setting {0} is not enabled for this database" s-name)
                       {:setting s-name
