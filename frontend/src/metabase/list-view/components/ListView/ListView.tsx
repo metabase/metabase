@@ -6,9 +6,10 @@ import { formatValue } from "metabase/lib/formatting";
 import { Box, Flex, Image, Stack, Text } from "metabase/ui";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import * as Lib from "metabase-lib";
-import type { DatasetData } from "metabase-types/api";
+import type { DatasetColumn, DatasetData } from "metabase-types/api";
 
 import styles from "./ListView.module.css";
+import { useObjectDetail } from "metabase/visualizations/components/TableInteractive/hooks/use-object-detail";
 
 const ListWrapper = ({ children, ...props }: { children: React.ReactNode }) => (
   <Stack gap="xs" {...props}>
@@ -24,35 +25,8 @@ export interface ListViewProps {
 export function ListView({ data, settings }: ListViewProps) {
   const { cols, rows } = data;
 
-  const titleColumn = useMemo(() => {
-    return (
-      cols.find((col) => Lib.isEntityName(Lib.legacyColumnTypeInfo(col))) ||
-      cols.find((col) => Lib.isTitle(Lib.legacyColumnTypeInfo(col))) ||
-      cols.find((col) => Lib.isID(Lib.legacyColumnTypeInfo(col)))
-    );
-  }, [cols]);
-
-  const subtitleColumn = useMemo(() => {
-    return titleColumn && Lib.isID(Lib.legacyColumnTypeInfo(titleColumn))
-      ? null
-      : cols.find((col) => Lib.isID(Lib.legacyColumnTypeInfo(col)));
-  }, [cols, titleColumn]);
-
-  const imageColumn = useMemo(() => {
-    return cols.find(
-      (col) =>
-        Lib.isAvatarURL(Lib.legacyColumnTypeInfo(col)) ||
-        Lib.isImageURL(Lib.legacyColumnTypeInfo(col)),
-    );
-  }, [cols]);
-
-  const usedColumns = useMemo(() => {
-    return new Set([titleColumn, subtitleColumn, imageColumn].filter(Boolean));
-  }, [titleColumn, subtitleColumn, imageColumn]);
-
-  const rightColumns = useMemo(() => {
-    return cols.filter((col) => !usedColumns.has(col)).slice(0, 5);
-  }, [cols, usedColumns]);
+  const { titleColumn, subtitleColumn, imageColumn, rightColumns } =
+    useListColumns(cols);
 
   const formattedRows = useMemo(() => {
     return rows.map((row) => {
@@ -86,6 +60,8 @@ export function ListView({ data, settings }: ListViewProps) {
   const firstColumnWidth = imageColumn ? "320px" : "280px";
   const otherColumnWidths = "160px";
 
+  const openObjectDetail = useObjectDetail(data);
+
   return (
     <Stack
       w="100%"
@@ -93,7 +69,7 @@ export function ListView({ data, settings }: ListViewProps) {
       gap="xs"
       px="9rem"
       pt="xl"
-      style={{ overflowY: "auto" }}
+      style={{ overflow: "auto" }}
     >
       <Flex justify="space-between" align="center" px="lg" mb="sm">
         <Flex
@@ -134,6 +110,7 @@ export function ListView({ data, settings }: ListViewProps) {
                 className={styles.listItem}
                 px="1.4rem"
                 py="md"
+                onClick={() => openObjectDetail(rowIndex)}
               >
                 <Flex justify="space-between" align="center">
                   <Flex
@@ -193,4 +170,43 @@ export function ListView({ data, settings }: ListViewProps) {
       </VirtualizedList>
     </Stack>
   );
+}
+
+function useListColumns(cols: DatasetColumn[]) {
+  const titleColumn = useMemo(() => {
+    return (
+      cols.find((col) => Lib.isEntityName(Lib.legacyColumnTypeInfo(col))) ||
+      cols.find((col) => Lib.isTitle(Lib.legacyColumnTypeInfo(col))) ||
+      cols.find((col) => Lib.isID(Lib.legacyColumnTypeInfo(col)))
+    );
+  }, [cols]);
+
+  const subtitleColumn = useMemo(() => {
+    return titleColumn && Lib.isID(Lib.legacyColumnTypeInfo(titleColumn))
+      ? null
+      : cols.find((col) => Lib.isID(Lib.legacyColumnTypeInfo(col)));
+  }, [cols, titleColumn]);
+
+  const imageColumn = useMemo(() => {
+    return cols.find(
+      (col) =>
+        Lib.isAvatarURL(Lib.legacyColumnTypeInfo(col)) ||
+        Lib.isImageURL(Lib.legacyColumnTypeInfo(col)),
+    );
+  }, [cols]);
+
+  const rightColumns = useMemo(() => {
+    const usedColumns = new Set(
+      [titleColumn, subtitleColumn, imageColumn].filter(Boolean),
+    );
+
+    return cols.filter((col) => !usedColumns.has(col)).slice(0, 5);
+  }, [cols, titleColumn, subtitleColumn, imageColumn]);
+
+  return {
+    titleColumn,
+    subtitleColumn,
+    imageColumn,
+    rightColumns,
+  };
 }
