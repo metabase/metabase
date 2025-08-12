@@ -1,60 +1,84 @@
 import cx from "classnames";
 import { inflect } from "inflection";
+import { useMemo } from "react";
 import { Link } from "react-router";
-import { t } from "ttag";
 
-import CS from "metabase/css/core/index.css";
+import { skipToken, useGetAdhocQueryQuery } from "metabase/api";
 import { Loader, Stack, Text, rem } from "metabase/ui";
-import type { ForeignKey } from "metabase-types/api";
+import { isNumeric, isPK } from "metabase-lib/v1/types/utils/isa";
+import type { ForeignKey, Table } from "metabase-types/api";
 
 import S from "./Relationship.module.css";
 
 interface Props {
   fk: ForeignKey;
-  fkCount: number;
-  fkCountInfo: { status: number; value: number } | undefined;
   href: string | undefined;
+  rowId: string | number;
+  table: Table;
 }
 
-export const Relationship = ({ fk, fkCount, fkCountInfo, href }: Props) => {
-  const fkCountValue = fkCountInfo?.value || 0;
-  const isLoaded = fkCountInfo?.status === 1;
-  const fkClickable = isLoaded && fkCountInfo.value > 0;
+export const Relationship = ({ fk, href, rowId, table }: Props) => {
+  const pk = (table.fields ?? []).find(isPK);
+  const fkOriginId =
+    fk.origin && typeof fk.origin.id == "number" ? fk.origin.id : undefined;
+
+  const { data: dataset, isFetching } = useGetAdhocQueryQuery(
+    fk.origin != null && fkOriginId != null
+      ? {
+          type: "query",
+          query: {
+            "source-table": fk.origin?.table_id,
+            filter: [
+              "=",
+              ["field", fkOriginId, null],
+              isNumeric(pk) && typeof rowId === "string"
+                ? parseFloat(rowId)
+                : rowId,
+            ],
+            aggregation: [["count"]],
+          },
+          database: fk.origin.table?.db_id ?? table.db_id,
+        }
+      : skipToken,
+  );
+
+  const count = useMemo(() => dataset?.data.rows[0][0], [dataset]);
+  const clickable = typeof count === "number" && count > 0;
   const originTableName = fk.origin?.table?.display_name ?? "";
-  const relationName = inflect(originTableName, fkCountValue);
+  const relationName =
+    typeof count === "number"
+      ? inflect(originTableName, count)
+      : originTableName;
 
   return (
     <Stack
       className={cx({
-        [S.clickable]: fkClickable,
+        [S.clickable]: clickable,
       })}
       gap={rem(12)}
-      {...(fkClickable ? { component: Link, to: href } : undefined)}
+      {...(clickable ? { component: Link, to: href } : undefined)}
     >
-      <Text
-        c={fkCountValue === 0 ? "text-light" : "text-medium"}
-        className={S.text}
-        fw="bold"
-        fz={rem(24)}
-        lh={1}
-      >
-        {isLoaded ? fkCountValue : <Loader size="xs" />}
-      </Text>
+      {isFetching && <Loader size="md" />}
+
+      {!isFetching && (
+        <Text
+          c={count === 0 ? "text-light" : "text-medium"}
+          className={S.text}
+          fw="bold"
+          fz={rem(24)}
+          lh={1}
+        >
+          {String(count)}
+        </Text>
+      )}
 
       <Text
-        c={fkCountValue === 0 ? "text-light" : "text-medium"}
+        c={count === 0 ? "text-light" : "text-medium"}
         className={S.text}
         fw="bold"
         lh={1}
       >
         {relationName}
-
-        {fkCount > 1 && (
-          <span className={cx(CS.textMedium, CS.textNormal)}>
-            {" "}
-            {t`via ${originTableName}`}
-          </span>
-        )}
       </Text>
     </Stack>
   );

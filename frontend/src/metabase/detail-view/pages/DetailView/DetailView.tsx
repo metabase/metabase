@@ -22,7 +22,6 @@ import { extractRemappedColumns } from "metabase/visualizations";
 import type { StructuredDatasetQuery } from "metabase-types/api";
 
 import S from "./DetailView.module.css";
-import { useForeignKeyReferences } from "./use-foreign-key-references";
 import { getObjectQuery, getTableQuery } from "./utils";
 
 interface TableDetailViewLoaderProps {
@@ -72,13 +71,6 @@ export function DetailView({ params }: TableDetailViewLoaderProps) {
 
   const row = rowFromList ?? rowFromObject;
   const rowName = getRowName(columns, row) || rowId;
-
-  const { tableForeignKeyReferences } = useForeignKeyReferences({
-    tableForeignKeys,
-    row,
-    columns,
-    tableDatabaseId: table?.db_id,
-  });
 
   const handleViewPreviousObjectDetail = useCallback(() => {
     setCurrentRowIndex((currentIndex) => {
@@ -187,10 +179,10 @@ export function DetailView({ params }: TableDetailViewLoaderProps) {
             <Relationships
               columns={columns}
               row={row}
+              rowId={rowId}
               rowName={rowName}
               table={table}
               tableForeignKeys={tableForeignKeys}
-              tableForeignKeyReferences={tableForeignKeyReferences}
             />
           </Box>
         )}
