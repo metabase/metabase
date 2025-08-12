@@ -1,5 +1,6 @@
 import cx from "classnames";
 import { inflect } from "inflection";
+import { Link } from "react-router";
 import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
@@ -12,10 +13,10 @@ interface Props {
   fk: ForeignKey;
   fkCount: number;
   fkCountInfo: { status: number; value: number } | undefined;
-  onClick: (fk: ForeignKey) => void;
+  href: string | undefined;
 }
 
-export const Relationship = ({ fk, fkCount, fkCountInfo, onClick }: Props) => {
+export const Relationship = ({ fk, fkCount, fkCountInfo, href }: Props) => {
   const fkCountValue = fkCountInfo?.value || 0;
   const isLoaded = fkCountInfo?.status === 1;
   const fkClickable = isLoaded && Boolean(fkCountInfo.value);
@@ -28,7 +29,7 @@ export const Relationship = ({ fk, fkCount, fkCountInfo, onClick }: Props) => {
         [S.clickable]: fkClickable,
       })}
       gap={rem(12)}
-      onClick={fkClickable ? () => onClick(fk) : undefined}
+      {...(fkClickable ? { component: Link, to: href } : undefined)}
     >
       <Text
         c={fkCountValue === 0 ? "text-light" : "text-medium"}
