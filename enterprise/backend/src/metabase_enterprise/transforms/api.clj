@@ -122,8 +122,7 @@
   (letfn [(work-run->api-run [run]
             (set/rename-keys run
                              {:run_id     :id
-                              :work_id    :transform_id
-                              :run_method :trigger}))]
+                              :work_id    :transform_id}))]
     (update (worker/paged-runs {:work_type      "transform"
                                 :work_ids       transform_ids
                                 :work_tag_ids   transform_tag_ids

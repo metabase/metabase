@@ -109,7 +109,7 @@ function UpdateTargetForm({
               name="name"
               label={t`What should it be called in the database?`}
             />
-            {schemas.length > 0 && (
+            {schemas.length > 1 && (
               <FormSelect
                 name="schema"
                 label={t`In which schema should it go?`}

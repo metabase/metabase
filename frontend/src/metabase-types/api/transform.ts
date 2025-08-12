@@ -5,7 +5,7 @@ import type { Table } from "./table";
 export type TransformId = number;
 export type TransformTagId = number;
 export type TransformJobId = number;
-export type TransformRunId = number;
+export type TransformRunId = string;
 
 export type Transform = {
   id: TransformId;
@@ -38,10 +38,10 @@ export type TransformTarget = {
 export type TransformRun = {
   id: TransformRunId;
   status: TransformRunStatus;
-  trigger: TransformRunTrigger;
   start_time: string;
   end_time: string | null;
   message: string | null;
+  run_method: TransformRunMethod;
 
   // hydrated fields
   transform?: Transform;
@@ -49,7 +49,7 @@ export type TransformRun = {
 
 export type TransformRunStatus = "started" | "succeeded" | "failed" | "timeout";
 
-export type TransformRunTrigger = "manual" | "cron";
+export type TransformRunMethod = "manual" | "cron";
 
 export type TransformTag = {
   id: TransformTagId;

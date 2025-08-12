@@ -11,7 +11,7 @@ import { ListEmptyState } from "../../../components/ListEmptyState";
 import { RunStatusInfo } from "../../../components/RunStatusInfo";
 import type { RunListParams } from "../../../types";
 import { getRunListUrl, getTransformUrl } from "../../../urls";
-import { formatTrigger, parseLocalTimestamp } from "../../../utils";
+import { formatRunMethod, parseLocalTimestamp } from "../../../utils";
 import { PAGE_SIZE } from "../constants";
 
 import S from "./RunList.module.css";
@@ -95,7 +95,7 @@ function RunTable({ runs }: RunTableProps) {
                 }
               />
             </td>
-            <td>{formatTrigger(run.trigger)}</td>
+            <td>{formatRunMethod(run.run_method)}</td>
           </tr>
         ))}
       </AdminContentTable>

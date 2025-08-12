@@ -2,8 +2,8 @@ import { t } from "ttag";
 
 import { parseTimestamp } from "metabase/lib/time-dayjs";
 import type {
+  TransformRunMethod,
   TransformRunStatus,
-  TransformRunTrigger,
 } from "metabase-types/api";
 
 export function parseLocalTimestamp(timestamp: string) {
@@ -23,7 +23,7 @@ export function formatStatus(status: TransformRunStatus) {
   }
 }
 
-export function formatTrigger(trigger: TransformRunTrigger) {
+export function formatRunMethod(trigger: TransformRunMethod) {
   switch (trigger) {
     case "manual":
       return t`Manual`;
