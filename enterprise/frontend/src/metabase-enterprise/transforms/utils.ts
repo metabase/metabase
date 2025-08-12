@@ -1,16 +1,16 @@
-import dayjs from "dayjs";
 import { t } from "ttag";
 
+import { parseTimestamp } from "metabase/lib/time-dayjs";
 import type {
-  TransformExecutionStatus,
-  TransformExecutionTrigger,
+  TransformRunMethod,
+  TransformRunStatus,
 } from "metabase-types/api";
 
-export function formatTimestamp(timestamp: string) {
-  return dayjs(timestamp).local().format("lll");
+export function parseLocalTimestamp(timestamp: string) {
+  return parseTimestamp(timestamp, null, true);
 }
 
-export function formatStatus(status: TransformExecutionStatus) {
+export function formatStatus(status: TransformRunStatus) {
   switch (status) {
     case "started":
       return t`In-progress`;
@@ -23,11 +23,11 @@ export function formatStatus(status: TransformExecutionStatus) {
   }
 }
 
-export function formatTrigger(trigger: TransformExecutionTrigger) {
+export function formatRunMethod(trigger: TransformRunMethod) {
   switch (trigger) {
     case "manual":
       return t`Manual`;
-    case "schedule":
+    case "cron":
       return t`Schedule`;
   }
 }

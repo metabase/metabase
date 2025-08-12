@@ -11,13 +11,13 @@ import {
   Popover,
   Stack,
 } from "metabase/ui";
-import type { TransformExecutionStatus } from "metabase-types/api";
+import type { TransformRunStatus } from "metabase-types/api";
 
 import { formatStatus } from "../../../../utils";
-import { FilterButton } from "../FilterButton";
+import { FilterFieldSet } from "../FilterFieldSet";
 import { MIN_WIDTH } from "../constants";
 
-const STATUSES: TransformExecutionStatus[] = [
+const STATUSES: TransformRunStatus[] = [
   "started",
   "succeeded",
   "failed",
@@ -25,8 +25,8 @@ const STATUSES: TransformExecutionStatus[] = [
 ];
 
 type StatusFilterWidgetProps = {
-  statuses: TransformExecutionStatus[];
-  onChange: (statuses: TransformExecutionStatus[]) => void;
+  statuses: TransformRunStatus[];
+  onChange: (statuses: TransformRunStatus[]) => void;
 };
 
 export function StatusFilterWidget({
@@ -35,7 +35,7 @@ export function StatusFilterWidget({
 }: StatusFilterWidgetProps) {
   const [isOpened, { toggle, close }] = useDisclosure();
 
-  const handleSubmit = (statuses: TransformExecutionStatus[]) => {
+  const handleSubmit = (statuses: TransformRunStatus[]) => {
     close();
     onChange(statuses);
   };
@@ -47,7 +47,7 @@ export function StatusFilterWidget({
   return (
     <Popover opened={isOpened} position="bottom-start" onDismiss={close}>
       <Popover.Target>
-        <FilterButton
+        <FilterFieldSet
           label={t`Status`}
           icon="check_filled"
           displayValue={getDisplayValue(statuses)}
@@ -62,7 +62,7 @@ export function StatusFilterWidget({
   );
 }
 
-function getDisplayValue(statuses: TransformExecutionStatus[]) {
+function getDisplayValue(statuses: TransformRunStatus[]) {
   const count = statuses.length;
   switch (count) {
     case 0:
@@ -75,8 +75,8 @@ function getDisplayValue(statuses: TransformExecutionStatus[]) {
 }
 
 type StatusFilterForm = {
-  statuses: TransformExecutionStatus[];
-  onSubmit: (statuses: TransformExecutionStatus[]) => void;
+  statuses: TransformRunStatus[];
+  onSubmit: (statuses: TransformRunStatus[]) => void;
 };
 
 function StatusFilterForm({
@@ -87,7 +87,7 @@ function StatusFilterForm({
   const isValid = statuses.length > 0;
 
   const handleChange = (values: string[]) => {
-    setStatuses(values as TransformExecutionStatus[]);
+    setStatuses(values as TransformRunStatus[]);
   };
 
   const handleSubmit = (event: FormEvent) => {

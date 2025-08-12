@@ -5,23 +5,26 @@ import { useMetadataToasts } from "metabase/metadata/hooks";
 import {
   ActionIcon,
   Icon,
+  Loader,
   MultiSelect,
   SelectItem,
   type SelectItemProps,
   Text,
   Tooltip,
 } from "metabase/ui";
-import { useListTransformTagsQuery } from "metabase-enterprise/api/transform-tag";
+import {
+  useCreateTransformTagMutation,
+  useListTransformTagsQuery,
+} from "metabase-enterprise/api/transform-tag";
 import type { TransformTag, TransformTagId } from "metabase-types/api";
 
-import { CreateTagModal } from "./CreateTagModal";
 import { DeleteTagModal } from "./DeleteTagModal";
 import S from "./TagMultiSelect.module.css";
 import { UpdateTagModal } from "./UpdateTagModal";
 
 const NEW_VALUE = "";
 
-type TagModalType = "create" | "update" | "delete";
+type TagModalType = "update" | "delete";
 
 type TagMultiSelectProps = {
   tagIds: TransformTagId[];
@@ -29,18 +32,30 @@ type TagMultiSelectProps = {
 };
 
 export function TagMultiSelect({ tagIds, onChange }: TagMultiSelectProps) {
-  const { data: tags = [] } = useListTransformTagsQuery();
+  const { data: tags = [], isLoading } = useListTransformTagsQuery();
+  const [createTag, { isLoading: isCreating }] =
+    useCreateTransformTagMutation();
   const tagById = getTagById(tags);
   const [searchValue, setSearchValue] = useState("");
   const [modalType, setModalType] = useState<TagModalType>();
-  const [newTagName, setNewTagName] = useState("");
   const [selectedTagId, setSelectedTagId] = useState<TransformTagId>();
-  const { sendSuccessToast } = useMetadataToasts();
+  const { sendErrorToast } = useMetadataToasts();
+
+  const handleCreate = async () => {
+    if (isCreating) {
+      return;
+    }
+    const { data: tag } = await createTag({ name: searchValue });
+    if (!tag) {
+      sendErrorToast(t`Failed to create a tag`);
+    } else {
+      onChange([...tagIds, tag.id]);
+    }
+  };
 
   const handleChange = async (value: string[]) => {
     if (value.includes(NEW_VALUE)) {
-      setModalType("create");
-      setNewTagName(searchValue);
+      handleCreate();
     } else {
       onChange(value.map(getTagId));
     }
@@ -48,24 +63,7 @@ export function TagMultiSelect({ tagIds, onChange }: TagMultiSelectProps) {
 
   const handleModalClose = () => {
     setModalType(undefined);
-    setNewTagName("");
     setSelectedTagId(undefined);
-  };
-
-  const handleCreate = (tag: TransformTag) => {
-    handleModalClose();
-    sendSuccessToast(t`Tag created`);
-    onChange([...tagIds, tag.id]);
-  };
-
-  const handleUpdate = () => {
-    handleModalClose();
-    sendSuccessToast(t`Tag renamed`);
-  };
-
-  const handleDelete = () => {
-    handleModalClose();
-    sendSuccessToast(t`Tag deleted`);
   };
 
   const handleUpdateClick = (tag: TransformTag) => {
@@ -73,9 +71,18 @@ export function TagMultiSelect({ tagIds, onChange }: TagMultiSelectProps) {
     setSelectedTagId(tag.id);
   };
 
+  const handleUpdate = () => {
+    handleModalClose();
+  };
+
   const handleDeleteClick = (tag: TransformTag) => {
     setModalType("delete");
     setSelectedTagId(tag.id);
+  };
+
+  const handleDelete = () => {
+    handleModalClose();
+    onChange(tagIds.filter((tagId) => tagId !== selectedTagId));
   };
 
   return (
@@ -85,13 +92,18 @@ export function TagMultiSelect({ tagIds, onChange }: TagMultiSelectProps) {
         data={getOptions(tags, searchValue)}
         placeholder={t`Add tags`}
         searchValue={searchValue}
+        hidePickedOptions={false}
         searchable
-        nothingFoundMessage={t`Tag with this name is already added.`}
+        rightSection={
+          isLoading || isCreating ? <Loader size="sm" /> : undefined
+        }
+        nothingFoundMessage={t`No tags found.`}
         renderOption={(item) =>
           item.option.value === NEW_VALUE ? (
             <NewTagSelectItem
               searchValue={searchValue}
               selected={item.checked}
+              onCreate={handleCreate}
             />
           ) : (
             <ExistingTagSelectItem
@@ -105,13 +117,6 @@ export function TagMultiSelect({ tagIds, onChange }: TagMultiSelectProps) {
         onChange={handleChange}
         onSearchChange={setSearchValue}
       />
-      {modalType === "create" && (
-        <CreateTagModal
-          initialName={newTagName}
-          onCreate={handleCreate}
-          onClose={handleModalClose}
-        />
-      )}
       {modalType === "update" && selectedTagId != null && (
         <UpdateTagModal
           tag={tagById[selectedTagId]}
@@ -132,11 +137,22 @@ export function TagMultiSelect({ tagIds, onChange }: TagMultiSelectProps) {
 
 type NewTagSelectItemProps = SelectItemProps & {
   searchValue: string;
+  onCreate: () => void;
 };
 
-function NewTagSelectItem({ searchValue, selected }: NewTagSelectItemProps) {
+function NewTagSelectItem({
+  searchValue,
+  selected,
+  onCreate,
+}: NewTagSelectItemProps) {
+  const handleClick = (event: MouseEvent) => {
+    // prevent item selection
+    event.stopPropagation();
+    onCreate();
+  };
+
   return (
-    <SelectItem selected={selected} mih="2.25rem">
+    <SelectItem selected={selected} mih="2.25rem" onClick={handleClick}>
       <Text c="inherit" lh="inherit">
         {jt`Create ${(<strong key="value">{searchValue}</strong>)}`}
       </Text>
@@ -157,11 +173,13 @@ function ExistingTagSelectItem({
   onDeleteClick,
 }: ExistingTagSelectItemProps) {
   const handleUpdateClick = (event: MouseEvent) => {
+    // prevent item selection
     event.stopPropagation();
     onUpdateClick(tag);
   };
 
   const handleDeleteClick = (event: MouseEvent) => {
+    // prevent item selection
     event.stopPropagation();
     onDeleteClick(tag);
   };

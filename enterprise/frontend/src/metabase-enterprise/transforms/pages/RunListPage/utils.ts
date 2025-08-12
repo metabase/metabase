@@ -2,7 +2,7 @@ import type { Location } from "history";
 
 import { isNotNull } from "metabase/lib/types";
 import type { RunListParams } from "metabase-enterprise/transforms/types";
-import type { TransformExecutionStatus } from "metabase-types/api";
+import type { TransformRunStatus } from "metabase-types/api";
 
 export function getParsedParams(location: Location): RunListParams {
   const { page, statuses, transformIds, transformTagIds } = location.query;
@@ -31,7 +31,7 @@ function parseList<T>(
   }
 }
 
-function parseStatus(value: unknown): TransformExecutionStatus | undefined {
+function parseStatus(value: unknown): TransformRunStatus | undefined {
   switch (value) {
     case "started":
     case "succeeded":

@@ -5,7 +5,7 @@ import { useSelector } from "metabase/lib/redux";
 import { CodeMirrorEditor as Editor } from "metabase/query_builder/components/NativeQueryEditor/CodeMirrorEditor";
 import { Notebook } from "metabase/querying/notebook/components/Notebook";
 import { getMetadata } from "metabase/selectors/metadata";
-import { Loader } from "metabase/ui";
+import { Center, Loader } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type { DatasetQuery } from "metabase-types/api";
@@ -27,7 +27,11 @@ export function QueryView({ query }: QueryViewProps) {
   const reportTimezone = useSetting("report-timezone-long");
 
   if (!isInitiallyLoaded) {
-    return <Loader />;
+    return (
+      <Center>
+        <Loader />
+      </Center>
+    );
   }
 
   if (isNative) {

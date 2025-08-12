@@ -5,7 +5,7 @@ import type { Table } from "./table";
 export type TransformId = number;
 export type TransformTagId = number;
 export type TransformJobId = number;
-export type TransformExecutionId = number;
+export type TransformRunId = string;
 
 export type Transform = {
   id: TransformId;
@@ -13,11 +13,13 @@ export type Transform = {
   description: string | null;
   source: TransformSource;
   target: TransformTarget;
+  created_at: string;
+  updated_at: string;
 
   // hydrated fields
   tag_ids?: TransformTagId[];
   table?: Table | null;
-  last_execution?: TransformExecution | null;
+  last_run?: TransformRun | null;
 };
 
 export type TransformSource = {
@@ -33,28 +35,27 @@ export type TransformTarget = {
   schema: string | null;
 };
 
-export type TransformExecution = {
-  id: TransformExecutionId;
-  status: TransformExecutionStatus;
-  trigger: TransformExecutionTrigger;
+export type TransformRun = {
+  id: TransformRunId;
+  status: TransformRunStatus;
   start_time: string;
   end_time: string | null;
+  message: string | null;
+  run_method: TransformRunMethod;
 
-  // hydrated
+  // hydrated fields
   transform?: Transform;
 };
 
-export type TransformExecutionStatus =
-  | "started"
-  | "succeeded"
-  | "failed"
-  | "timeout";
+export type TransformRunStatus = "started" | "succeeded" | "failed" | "timeout";
 
-export type TransformExecutionTrigger = "manual" | "schedule";
+export type TransformRunMethod = "manual" | "cron";
 
 export type TransformTag = {
   id: TransformTagId;
   name: string;
+  created_at: string;
+  updated_at: string;
 };
 
 export type TransformJob = {
@@ -62,10 +63,12 @@ export type TransformJob = {
   name: string;
   description: string | null;
   schedule: string;
+  created_at: string;
+  updated_at: string;
 
   // hydrated fields
   tag_ids?: TransformTagId[];
-  last_execution?: TransformExecution | null;
+  last_run?: TransformRun | null;
 };
 
 export type CreateTransformRequest = {
@@ -109,12 +112,12 @@ export type UpdateTransformTagRequest = {
   name?: string;
 };
 
-export type ListTransformExecutionsRequest = {
-  statuses?: TransformExecutionStatus[];
+export type ListTransformRunsRequest = {
+  statuses?: TransformRunStatus[];
   transform_ids?: TransformId[];
   transform_tag_ids?: TransformTagId[];
 } & PaginationRequest;
 
-export type ListTransformExecutionsResponse = {
-  data: TransformExecution[];
+export type ListTransformRunsResponse = {
+  data: TransformRun[];
 } & PaginationResponse;

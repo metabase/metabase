@@ -185,7 +185,7 @@
                         :message "Canceled by user but could not guarantee run stopped."})
     (cancel/delete-old-canceling-runs!)))
 
-(defn running-execution-for-work-id
+(defn running-run-for-work-id
   "Return a single active work run or nil."
   [id work-type]
   (t2/select-one :model/WorkerRun
@@ -193,8 +193,10 @@
                  :work_type work-type
                  :is_active true))
 
-(defn paged-executions
-  "Return a page of the list of the executions.
+;; This is kinda weird, having this code know anything about a Transform model; we may want to generalize
+;; the tags feature or else make the worker run model oblivious to tags.
+(defn paged-runs
+  "Return a page of the list of the runs.
 
   Follows the conventions used by the FE."
   [{:keys [offset
@@ -202,8 +204,9 @@
            sort_column
            sort_direction
            work_type
-           work_id
-           status]}]
+           work_ids
+           work_tag_ids
+           statuses]}]
   (let [offset (or offset 0)
         limit  (or limit 20)
         sort-direction (or (keyword sort_direction) :desc)
@@ -216,22 +219,55 @@
                    :ended_at   [[sort-column sort-direction nulls-sort]]
                    [[:start_time sort-direction]
                     [:end_time   sort-direction nulls-sort]])
-        conditions (concat (when work_type
-                             [:work_type work_type])
-                           (when work_id
-                             [:work_id work_id])
-                           (when status
-                             [:= :status status])
-                           (when (= status "started")
-                             [:is_active true]))
-        conditions-with-sort-and-pagination (concat conditions [{:order-by order-by
-                                                                 :offset offset
-                                                                 :limit limit}])
-        runs (apply t2/select :model/WorkerRun conditions-with-sort-and-pagination)]
+        ;; Build WHERE clause conditions
+        where-conditions (cond-> []
+                           ;; work_type condition
+                           work_type
+                           (conj [:= :work_type work_type])
+
+                           ;; work_ids and work_tag_ids (intersection)
+                           (and (seq work_ids) (seq work_tag_ids))
+                           (conj [:and
+                                  [:in :work_id work_ids]
+                                  [:in :work_id {:select [:transform_id]
+                                                 :from [:transform_tags]
+                                                 :where [:in :tag_id work_tag_ids]}]])
+
+                           ;; Only work_ids
+                           (and (seq work_ids) (not (seq work_tag_ids)))
+                           (conj [:in :work_id work_ids])
+
+                           ;; Only work_tag_ids
+                           (and (seq work_tag_ids) (not (seq work_ids)))
+                           (conj [:in :work_id {:select [:transform_id]
+                                                :from [:transform_tags]
+                                                :where [:in :tag_id work_tag_ids]}])
+
+                           ;; statuses condition
+                           (seq statuses)
+                           (conj [:in :status statuses])
+
+                           ;; is_active condition for started status
+                           (and (seq statuses)
+                                (some #(= % "started") statuses))
+                           (conj [:= :is_active true]))
+
+        where-clause     (when (seq where-conditions)
+                           (if (= 1 (count where-conditions))
+                             (first where-conditions)
+                             (into [:and] where-conditions)))
+        query-options    (cond-> {:order-by order-by
+                                  :offset offset
+                                  :limit    limit}
+                           where-clause (assoc :where where-clause))
+        runs             (t2/select :model/WorkerRun query-options)
+        count-options    (cond-> {}
+                           where-clause (assoc :where where-clause))]
+
     {:data (t2/hydrate runs :transform)
      :limit limit
      :offset offset
-     :total (apply t2/count :model/WorkerRun conditions)}))
+     :total (t2/count :model/WorkerRun count-options)}))
 
 (comment
   (t2/select :model/WorkerRun)

@@ -1,5 +1,6 @@
-(ns metabase-enterprise.transforms.execute-test
+(ns ^:mb/driver-tests metabase-enterprise.transforms.execute-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase-enterprise.transforms.execute :as transforms.execute]
@@ -21,7 +22,7 @@
   ([source-table source-column constraint-fn & constraint-params]
    (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
          table (if (string? source-table)
-                 (m/find-first (comp #{source-table} u/lower-case-en :name) (lib.metadata/tables mp))
+                 (m/find-first (comp #(str/ends-with? % source-table) u/lower-case-en :name) (lib.metadata/tables mp))
                  source-table)
          query (lib/query mp table)
          column (when source-column
@@ -57,14 +58,14 @@
                                               :source {:type :query
                                                        :query (lib.convert/->legacy-MBQL t1-query)}
                                               :target target1}]
-            (transforms.execute/execute-mbql-transform! t1 {:run-method :manual})
+            (transforms.execute/run-mbql-transform! t1 {:run-method :manual})
             (let [table1 (wait-for-table table1-name 10000)
                   t2-query (make-query table1 "category" lib/= "Gizmo")]
               (mt/with-temp [:model/Transform t2 {:name "transform2"
                                                   :source {:type :query
                                                            :query (lib.convert/->legacy-MBQL t2-query)}
                                                   :target target2}]
-                (transforms.execute/execute-transforms! [t1 t2] {:run-method :cron})
+                (transforms.execute/run-mbql-transform! t2 {:run-method :cron})
                 (let [table2 (wait-for-table table2-name 10000)
                       check-query (lib/aggregate (make-query table2) (lib/count))]
                   (is (=? {:data {:cols [{:name "count"}]

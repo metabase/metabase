@@ -32,10 +32,10 @@ export const transformJobApi = EnterpriseApi.injectEndpoints({
       }),
       providesTags: (job) => (job ? provideTransformJobTags(job) : []),
     }),
-    executeTransformJob: builder.mutation<void, TransformJobId>({
+    runTransformJob: builder.mutation<void, TransformJobId>({
       query: (id) => ({
         method: "POST",
-        url: `/api/ee/transform-job/${id}/execute`,
+        url: `/api/ee/transform-job/${id}/run`,
       }),
       invalidatesTags: (_, error, id) =>
         invalidateTags(error, [
@@ -67,6 +67,25 @@ export const transformJobApi = EnterpriseApi.injectEndpoints({
       }),
       invalidatesTags: (_, error, { id }) =>
         invalidateTags(error, [idTag("transform-job", id)]),
+      onQueryStarted: async (
+        { id, ...patch },
+        { dispatch, queryFulfilled },
+      ) => {
+        const patchResult = dispatch(
+          transformJobApi.util.updateQueryData(
+            "getTransformJob",
+            id,
+            (draft) => {
+              Object.assign(draft, patch);
+            },
+          ),
+        );
+        try {
+          await queryFulfilled;
+        } catch {
+          patchResult.undo();
+        }
+      },
     }),
     deleteTransformJob: builder.mutation<void, TransformJobId>({
       query: (id) => ({
@@ -83,7 +102,7 @@ export const {
   useListTransformJobsQuery,
   useGetTransformJobQuery,
   useLazyGetTransformJobQuery,
-  useExecuteTransformJobMutation,
+  useRunTransformJobMutation,
   useCreateTransformJobMutation,
   useUpdateTransformJobMutation,
   useDeleteTransformJobMutation,

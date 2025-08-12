@@ -12,9 +12,10 @@ import {
 import type { TransformJob } from "metabase-types/api";
 
 import { ListEmptyState } from "../../../components/ListEmptyState";
+import { RunStatusInfo } from "../../../components/RunStatusInfo";
 import { TagList } from "../../../components/TagList";
 import { getJobUrl } from "../../../urls";
-import { formatStatus, formatTimestamp } from "../../../utils";
+import { parseLocalTimestamp } from "../../../utils";
 
 import S from "./JobList.module.css";
 
@@ -58,14 +59,22 @@ export function JobList() {
           >
             <td>{job.name}</td>
             <td>
-              {job.last_execution?.start_time
-                ? formatTimestamp(job.last_execution?.start_time)
+              {job.last_run?.start_time
+                ? parseLocalTimestamp(job.last_run?.start_time).format("lll")
                 : null}
             </td>
             <td>
-              {job.last_execution?.status
-                ? formatStatus(job.last_execution.status)
-                : null}
+              {job.last_run != null ? (
+                <RunStatusInfo
+                  status={job.last_run.status}
+                  message={job.last_run.message}
+                  endTime={
+                    job.last_run.end_time != null
+                      ? parseLocalTimestamp(job.last_run.end_time).toDate()
+                      : null
+                  }
+                />
+              ) : null}
             </td>
             <td>
               <TagList tags={tags} tagIds={job.tag_ids ?? []} />

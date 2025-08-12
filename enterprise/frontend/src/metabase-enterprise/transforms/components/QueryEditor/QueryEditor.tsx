@@ -1,5 +1,6 @@
-import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { Flex } from "metabase/ui";
+import { useHotkeys } from "@mantine/hooks";
+
+import { Center, Flex, Loader } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { DatasetQuery } from "metabase-types/api";
@@ -28,7 +29,7 @@ export function QueryEditor({
   onSave,
   onCancel,
 }: QueryEditorProps) {
-  const { question, setQuestion } = useQueryState(initialQuery);
+  const { question, isQueryDirty, setQuestion } = useQueryState(initialQuery);
   const { isInitiallyLoaded } = useQueryMetadata(question);
   const {
     result,
@@ -50,16 +51,37 @@ export function QueryEditor({
     onSave(question.datasetQuery());
   };
 
+  const handleCmdEnter = () => {
+    if (isRunning) {
+      cancelQuery();
+    } else if (isRunnable) {
+      runQuery();
+    }
+  };
+
+  useHotkeys([["mod+Enter", handleCmdEnter]], []);
+
   if (!isInitiallyLoaded) {
-    return <LoadingAndErrorWrapper loading />;
+    return (
+      <Center>
+        <Loader />
+      </Center>
+    );
   }
 
   return (
-    <Flex className={S.root} w="100%" h="100%" direction="column" bg="bg-white">
+    <Flex
+      className={S.root}
+      w="100%"
+      h="100%"
+      direction="column"
+      bg="bg-white"
+      data-testid="transform-query-editor"
+    >
       <EditorHeader
-        canSave={canSave}
         isNew={isNew}
         isSaving={isSaving}
+        canSave={isQueryDirty && canSave}
         onSave={handleSave}
         onCancel={onCancel}
       />

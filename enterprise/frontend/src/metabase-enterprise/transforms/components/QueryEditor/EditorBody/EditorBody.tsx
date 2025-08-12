@@ -66,6 +66,7 @@ export function EditorBody({
       question={question}
       query={question.legacyNativeQuery()}
       resizableBoxProps={resizableBoxProps}
+      placeholder="SELECT * FROM TABLE_NAME"
       isRunnable={isRunnable}
       isRunning={isRunning}
       isResultDirty={isResultDirty}

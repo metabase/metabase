@@ -1,19 +1,28 @@
+import { Link } from "react-router";
 import { t } from "ttag";
 
-import { Box, Group, Stack, Title } from "metabase/ui";
+import { Box, Button, Group, Icon, Stack, Title } from "metabase/ui";
 
-import { CreateJobButton } from "./CreateJobButton";
+import { getNewJobUrl } from "../../urls";
+
 import { JobList } from "./JobList";
 
 export function JobListPage() {
   return (
-    <Stack gap="xl">
+    <Stack gap="xl" data-testid="transform-job-list-page">
       <Group justify="space-between">
         <Stack gap="sm">
           <Title order={1}>{t`Jobs`}</Title>
           <Box>{t`Jobs let you run groups of transforms on a schedule.`}</Box>
         </Stack>
-        <CreateJobButton />
+        <Button
+          component={Link}
+          to={getNewJobUrl()}
+          variant="filled"
+          leftSection={<Icon name="add" aria-hidden />}
+        >
+          {t`Create a job`}
+        </Button>
       </Group>
       <JobList />
     </Stack>

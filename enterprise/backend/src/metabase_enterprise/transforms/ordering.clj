@@ -2,6 +2,7 @@
   (:require
    [clojure.core.match]
    [clojure.set :as set]
+   [clojure.string :as str]
    [flatland.ordered.set :refer [ordered-set]]
    [metabase-enterprise.transforms.util :as transforms.util]
    [metabase.driver :as driver]
@@ -9,7 +10,8 @@
    [metabase.lib.util :as lib.util]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.store :as qp.store]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [toucan2.core :as t2]))
 
 (defn- transform-deps [transform]
   (let [query (-> (get-in transform [:source :query])
@@ -71,24 +73,49 @@
     (update-vals dependencies #(into #{} (keep output-tables) %))))
 
 (defn find-cycle
-  "Finds a path containing a cycle in the directed graph `node->children`."
-  [node->children]
-  (loop [stack (into [] (map #(vector % (ordered-set))) (keys node->children))
-         visited #{}]
-    (when-let [[node path] (peek stack)]
-      (cond
-        (contains? path node)
-        (into [] (drop-while (complement #{node})) (conj path node))
+  "Finds a path containing a cycle in the directed graph `node->children`.
 
-        (contains? visited node)
-        (recur (pop stack) visited)
+  Optionally takes a set of starting nodes.  If starting nodes are specified, `node->children` can be any
+  function-equivalent.  Without starting nodes, `node->children` must specifically be a map."
+  ([node->children]
+   (find-cycle node->children (keys node->children)))
+  ([node->children starting-nodes]
+   (loop [stack (into [] (map #(vector % (ordered-set))) starting-nodes)
+          visited #{}]
+     (when-let [[node path] (peek stack)]
+       (cond
+         (contains? path node)
+         (into [] (drop-while (complement #{node})) (conj path node))
 
-        :else
-        (let [path' (conj path node)
-              stack' (into (pop stack)
-                           (map #(vector % path'))
-                           (node->children node))]
-          (recur stack' (conj visited node)))))))
+         (contains? visited node)
+         (recur (pop stack) visited)
+
+         :else
+         (let [path' (conj path node)
+               stack' (into (pop stack)
+                            (map #(vector % path'))
+                            (node->children node))]
+           (recur stack' (conj visited node))))))))
+
+(defn get-transform-cycle [{transform-id :id :as to-check}]
+  (let [transforms (map (fn [{:keys [id] :as transform}]
+                          (if (= id transform-id)
+                            to-check
+                            transform))
+                        (t2/select :model/Transform))
+        transforms-by-id (into {}
+                               (map (juxt :id identity))
+                               transforms)
+        db-id (get-in to-check [:source :query :database])]
+    (qp.store/with-metadata-provider db-id
+      (let [output-tables (output-table-map (filter #(= (get-in % [:source :query :database]) db-id)
+                                                    transforms))
+            node->children #(->> % transforms-by-id transform-deps (keep output-tables))
+            id->name (comp :name transforms-by-id)
+            cycle (find-cycle node->children [transform-id])]
+        (when cycle
+          {:cycle-str (str/join " -> " (map id->name cycle))
+           :cycle cycle})))))
 
 (defn available-transforms
   "Given an ordering (see transform-ordering), a set of running transform ids, and a set of completed transform ids,

@@ -1,26 +1,23 @@
 (ns metabase-enterprise.transforms.api.transform-job
   (:require
-   [metabase-enterprise.transforms.jobs :as jobs]
+   [metabase-enterprise.transforms.jobs :as transforms.jobs]
+   [metabase-enterprise.transforms.models.job-run :as transforms.job-run]
    [metabase-enterprise.transforms.models.transform-job :as transform-job]
+   [metabase-enterprise.transforms.schedule :as transforms.schedule]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
-   [metabase.api.util.handlers :as handlers]
    [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.util.jvm :as u.jvm]
    [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2])
   (:import
-   (java.util.concurrent
-    Executors
-    ExecutorService)
    (org.quartz CronExpression)))
 
 (set! *warn-on-reflection* true)
 
 (comment transform-job/keep-me)
-
-(defonce ^:private ^ExecutorService executor (Executors/newVirtualThreadPerTaskExecutor))
 
 (api.macros/defendpoint :post "/"
   "Create a new transform job."
@@ -49,6 +46,7 @@
                                            {:name name
                                             :description description
                                             :schedule schedule})]
+    (transforms.schedule/initialize-job! job)
     ;; Add tag associations if provided
     (when (seq tag_ids)
       (t2/insert! :transform_job_tags
@@ -92,6 +90,8 @@
                   schedule (assoc :schedule schedule))]
     (when (seq updates)
       (t2/update! :model/TransformJob job-id updates)))
+  (when schedule
+    (transforms.schedule/update-job! job-id schedule))
   ;; Update tag associations if provided
   (when (some? tag_ids)
     ;; Delete existing associations
@@ -105,7 +105,7 @@
   ;; Return updated job with hydration
   (-> (t2/select-one :model/TransformJob :id job-id)
       (t2/hydrate :tag_ids)
-      (assoc :last_execution nil)))
+      (assoc :last_run nil)))
 
 (api.macros/defendpoint :delete "/:job-id"
   "Delete a transform job."
@@ -114,17 +114,22 @@
   (api/check-superuser)
   (api/check-404 (t2/select-one :model/TransformJob :id job-id))
   (t2/delete! :model/TransformJob :id job-id)
+  (transforms.schedule/delete-job! job-id)
   api/generic-204-no-content)
 
-(api.macros/defendpoint :post "/:job-id/execute"
-  "Execute a transform job manually."
+(api.macros/defendpoint :post "/:job-id/run"
+  "Run a transform job manually."
   [{:keys [job-id]} :- [:map [:job-id ms/PositiveInt]]]
-  (log/info "Manual execution of transform job" job-id "(stub)")
+  (log/info "Manual run of transform job" job-id)
   (api/check-superuser)
   (let [job (api/check-404 (t2/select-one :model/TransformJob :id job-id))]
-    (.submit executor
-             ^Runnable #(jobs/execute-jobs! [job])))
-  {:message    "Job execution started"
+    (u.jvm/in-virtual-thread*
+     (try
+       (transforms.jobs/run-job! job-id {:run-method :manual})
+       (catch Throwable t
+         (log/error "Error executing transform job" job-id)
+         (log/error t)))))
+  {:message    "Job run started"
    :job_run_id (str "stub-" job-id "-" (System/currentTimeMillis))})
 
 (api.macros/defendpoint :get "/:job-id"
@@ -134,10 +139,10 @@
   (log/info "Getting transform job" job-id)
   (api/check-superuser)
   (let [job (api/check-404 (t2/select-one :model/TransformJob :id job-id))]
-    ;; Hydrate tag_ids and add last_execution (null for now)
+    ;; Hydrate tag_ids and add last_run (null for now)
     (-> job
         (t2/hydrate :tag_ids)
-        (assoc :last_execution nil))))
+        transforms.job-run/add-last-run)))
 
 (api.macros/defendpoint :get "/"
   "Get all transform jobs."
@@ -147,8 +152,8 @@
   (api/check-superuser)
   (let [jobs (t2/select :model/TransformJob {:order-by [[:created_at :desc]]})]
     ;; Hydrate tag_ids for all jobs
-    ;; Note: last_execution will be null until execution tracking is implemented
-    (map #(assoc % :last_execution nil)
+    ;; Note: last_run will be null until run tracking is implemented
+    (map #(assoc % :last_run nil)
          (t2/hydrate jobs :tag_ids))))
 
 (def ^{:arglists '([request respond raise])} routes

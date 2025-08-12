@@ -6,6 +6,8 @@ import {
   AdminNavWrapper,
 } from "metabase/admin/components/AdminNav";
 import { AdminSettingsLayout } from "metabase/common/components/AdminLayout/AdminSettingsLayout";
+import { useSelector } from "metabase/lib/redux";
+import { getLocation } from "metabase/selectors/routing";
 
 import { getJobListUrl, getRunListUrl, getTransformListUrl } from "../../urls";
 
@@ -38,21 +40,25 @@ type TransformSidebarProps = {
 };
 
 function TransformSidebar({ params }: TransformSidebarProps) {
-  const { transformId, jobId } = params;
+  const { transformId } = params;
+  const location = useSelector(getLocation);
+  const pathname = location?.pathname;
+  const transformListUrl = getTransformListUrl();
+  const jobListUrl = getJobListUrl();
 
   return (
-    <AdminNavWrapper>
+    <AdminNavWrapper data-testid="transform-sidebar">
       <AdminNavItem
         label={t`Transforms`}
-        path={getTransformListUrl()}
+        path={transformListUrl}
         icon="refresh_downstream"
-        {...(transformId != null ? { active: true } : {})}
+        active={pathname === transformListUrl || transformId != null}
       />
       <AdminNavItem
         label={t`Jobs`}
-        path={getJobListUrl()}
+        path={jobListUrl}
         icon="play_outlined"
-        {...(jobId != null ? { active: true } : {})}
+        active={pathname?.startsWith(jobListUrl)}
       />
       <AdminNavItem label={t`Runs`} path={getRunListUrl()} icon="list" />
     </AdminNavWrapper>

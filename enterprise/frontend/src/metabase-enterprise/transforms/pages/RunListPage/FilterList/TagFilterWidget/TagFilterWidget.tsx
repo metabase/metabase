@@ -13,8 +13,8 @@ import {
 } from "metabase/ui";
 import type { TransformTag, TransformTagId } from "metabase-types/api";
 
-import { FilterButton } from "../FilterButton";
-import { MIN_WIDTH } from "../constants";
+import { FilterFieldSet } from "../FilterFieldSet";
+import { MAX_HEIGHT, MIN_WIDTH } from "../constants";
 
 type TagFilterWidgetProps = {
   tagIds: TransformTagId[];
@@ -41,7 +41,7 @@ export function TagFilterWidget({
   return (
     <Popover opened={isOpened} position="bottom-start" onDismiss={close}>
       <Popover.Target>
-        <FilterButton
+        <FilterFieldSet
           label={t`Tags`}
           icon="label"
           displayValue={getDisplayValue(tagIds, tags)}
@@ -95,17 +95,26 @@ function TagFilterForm({
 
   return (
     <Box component="form" miw={MIN_WIDTH} onSubmit={handleSubmit}>
-      <Checkbox.Group value={tagIds.map(getTagIdValue)} onChange={handleChange}>
-        <Stack p="md">
-          {tags.map((tag) => (
-            <Checkbox
-              key={tag.id}
-              value={getTagIdValue(tag.id)}
-              label={tag.name}
-            />
-          ))}
-        </Stack>
-      </Checkbox.Group>
+      {tags.length > 0 ? (
+        <Box mah={MAX_HEIGHT} style={{ overflow: "auto" }}>
+          <Checkbox.Group
+            value={tagIds.map(getTagIdValue)}
+            onChange={handleChange}
+          >
+            <Stack p="md">
+              {tags.map((tag) => (
+                <Checkbox
+                  key={tag.id}
+                  value={getTagIdValue(tag.id)}
+                  label={tag.name}
+                />
+              ))}
+            </Stack>
+          </Checkbox.Group>
+        </Box>
+      ) : (
+        <Box p="md" c="text-secondary" ta="center">{t`No tags found.`}</Box>
+      )}
       <Divider />
       <Group p="md" justify="end">
         <Button type="submit" variant="filled" disabled={!isValid}>

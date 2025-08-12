@@ -1120,8 +1120,8 @@
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
-(defmulti execute-transform!
-  "Executes a transform.
+(defmulti run-transform!
+  "Runs a transform.
 
   Drivers that support any of the `:transforms/...` features must implement this method for the appropriate transform
   types."

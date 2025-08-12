@@ -5,6 +5,7 @@
    [metabase-enterprise.transforms.api.transform-tag]
    [metabase-enterprise.transforms.execute :as transforms.execute]
    [metabase-enterprise.transforms.models.transform :as transform.model]
+   [metabase-enterprise.transforms.ordering :as transforms.ordering]
    [metabase-enterprise.transforms.util :as transforms.util]
    [metabase-enterprise.worker.core :as worker]
    [metabase.api.common :as api]
@@ -14,21 +15,17 @@
    [metabase.driver.util :as driver.u]
    [metabase.request.core :as request]
    [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.util.jvm :as u.jvm]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [ring.util.response :as response]
-   [toucan2.core :as t2])
-  (:import (java.util.concurrent
-            Executors
-            ExecutorService)))
+   [toucan2.core :as t2]))
 
 (comment metabase-enterprise.transforms.api.transform-job/keep-me
          metabase-enterprise.transforms.api.transform-tag/keep-me)
 
 (set! *warn-on-reflection* true)
-
-(defonce ^:private ^ExecutorService executor (Executors/newVirtualThreadPerTaskExecutor))
 
 (mr/def ::transform-source
   [:map
@@ -41,7 +38,7 @@
    [:schema {:optional true} :string]
    [:name :string]])
 
-(mr/def ::execution-trigger
+(mr/def ::run-trigger
   [:enum "none" "global-schedule"])
 
 (comment
@@ -55,8 +52,7 @@
                               :template-tags {}}}}
     :target {:type "table"
              :schema "transforms"
-             :name "gadget_products"}}]
-  -)
+             :name "gadget_products"}}])
 
 (defn- source-database-id
   [transform]
@@ -67,6 +63,8 @@
   (let [database (api/check-400 (t2/select-one :model/Database (source-database-id transform))
                                 (deferred-tru "The source database cannot be found."))
         feature (transforms.util/required-database-feature transform)]
+    (api/check-400 (not (:is_sample database))
+                   (deferred-tru "Cannot run transforms on the sample database."))
     (api/check-400 (driver.u/supports? (:engine database) feature database)
                    (deferred-tru "The database does not support the requested transform target type."))))
 
@@ -75,7 +73,7 @@
   [_route-params
    _query-params]
   (api/check-superuser)
-  (t2/hydrate (t2/select :model/Transform) :last_execution :transform_tag_ids))
+  (t2/hydrate (t2/select :model/Transform) :last_run :transform_tag_ids))
 
 (api.macros/defendpoint :post "/"
   [_route-params
@@ -85,7 +83,7 @@
             [:description {:optional true} [:maybe :string]]
             [:source ::transform-source]
             [:target ::transform-target]
-            [:execution_trigger {:optional true} ::execution-trigger]
+            [:run_trigger {:optional true} ::run-trigger]
             [:tag_ids {:optional true} [:sequential ms/PositiveInt]]]]
   (api/check-superuser)
   (check-database-feature body)
@@ -93,7 +91,7 @@
     (api/throw-403))
   (let [tag-ids (:tag_ids body)
         transform (t2/insert-returning-instance!
-                   :model/Transform (select-keys body [:name :description :source :target :execution_trigger]))]
+                   :model/Transform (select-keys body [:name :description :source :target :run_trigger]))]
     ;; Add tag associations if provided
     (when (seq tag-ids)
       (transform.model/update-transform-tags! (:id transform) tag-ids))
@@ -109,29 +107,33 @@
         database-id (source-database-id transform)
         target-table (transforms.util/target-table database-id target :active true)]
     (-> transform
-        (t2/hydrate :last_execution :transform_tag_ids)
+        (t2/hydrate :last_run :transform_tag_ids)
         (assoc :table target-table))))
 
-(api.macros/defendpoint :get "/execution"
-  [params :-
+(api.macros/defendpoint :get "/run"
+  [_route-params
+   {:keys [sort_column sort_direction transform_ids statuses transform_tag_ids]} :-
    [:map
     [:sort_column    {:optional true} [:enum "started_at" "ended_at"]]
     [:sort_direction {:optional true} [:enum "asc" "desc"]]
-    [:transform_id   {:optional true} ms/IntGreaterThanOrEqualToZero]
-    [:status         {:optional true} [:enum "started" "succeeded" "failed" "timeout"]]]]
-  (log/info "get executions")
+    [:transform_ids {:optional true} [:maybe (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]]
+    [:statuses {:optional true} [:maybe (ms/QueryVectorOf [:enum "started" "succeeded" "failed" "timeout"])]]
+    [:transform_tag_ids {:optional true} [:maybe (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]]]]
+  (log/info "get runs")
   (api/check-superuser)
-  (update (worker/paged-executions (-> params
-                                       (set/rename-keys {:transform_id :work_id})
-                                       (assoc :work_type "transform"
-                                              :offset    (request/offset)
-                                              :limit     (request/limit))))
-          :data #(mapv (fn [run]
-                         (-> run
-                             (set/rename-keys {:run_id     :id
-                                               :work_id    :transform_id
-                                               :run_method :trigger})))
-                       %)))
+  (letfn [(work-run->api-run [run]
+            (set/rename-keys run
+                             {:run_id     :id
+                              :work_id    :transform_id}))]
+    (update (worker/paged-runs {:work_type      "transform"
+                                :work_ids       transform_ids
+                                :work_tag_ids   transform_tag_ids
+                                :statuses       statuses
+                                :sort_column    sort_column
+                                :sort_direction sort_direction
+                                :offset         (request/offset)
+                                :limit          (request/limit)})
+            :data #(mapv work-run->api-run %))))
 
 (api.macros/defendpoint :put "/:id"
   [{:keys [id]} :- [:map
@@ -142,7 +144,7 @@
             [:description {:optional true} [:maybe :string]]
             [:source {:optional true} ::transform-source]
             [:target {:optional true} ::transform-target]
-            [:execution_trigger {:optional true} ::execution-trigger]
+            [:run_trigger {:optional true} ::run-trigger]
             [:tag_ids {:optional true} [:sequential ms/PositiveInt]]]]
   (log/info "put transform" id)
   (api/check-superuser)
@@ -150,6 +152,9 @@
         new (merge old body)
         target-fields #(-> % :target (select-keys [:schema :name]))]
     (check-database-feature new)
+    (when-let [{:keys [cycle-str]} (transforms.ordering/get-transform-cycle new)]
+      (throw (ex-info (str "Cyclic transform definitions detected: " cycle-str)
+                      {:status-code 400})))
     (when (and (not= (target-fields old) (target-fields new))
                (transforms.util/target-table-exists? new))
       (api/throw-403)))
@@ -180,28 +185,28 @@
                     [:id :string]]]
   (log/info "canceling transform " id)
   (api/check-superuser)
-  (let [run (api/check-404 (worker/running-execution-for-work-id id "transform"))]
+  (let [run (api/check-404 (worker/running-run-for-work-id id "transform"))]
     (if (:is_local run)
       (worker/mark-cancel-started-run! (:run_id run))
       (worker/cancel! (:run_id run))))
   nil)
 
-(api.macros/defendpoint :post "/:id/execute"
+(api.macros/defendpoint :post "/:id/run"
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
-  (log/info "execute transform" id)
+  (log/info "run transform" id)
   (api/check-superuser)
   (let [transform (api/check-404 (t2/select-one :model/Transform id))
         start-promise (promise)]
-    (.submit executor ^Runnable
-             (bound-fn* #(transforms.execute/execute-mbql-transform! transform {:start-promise start-promise
-                                                                                :run-method :manual})))
+    (u.jvm/in-virtual-thread*
+     (transforms.execute/run-mbql-transform! transform {:start-promise start-promise
+                                                        :run-method :manual}))
     (when (instance? Throwable @start-promise)
       (throw @start-promise))
     (let [result @start-promise
           run-id (when (and (vector? result) (= (first result) :started))
                    (second result))]
-      (-> (response/response {:message (deferred-tru "Transform execution started")
+      (-> (response/response {:message (deferred-tru "Transform run started")
                               :run_id run-id})
           (assoc :status 202)))))
 

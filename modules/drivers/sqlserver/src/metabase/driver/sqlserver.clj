@@ -57,6 +57,7 @@
                               :now                                    true
                               :regex                                  false
                               :test/jvm-timezone-setting              false
+                              :transforms/table true
                               :transforms/view true
                               :metadata/table-existence-check true}]
   (defmethod driver/database-supports? [:sqlserver feature] [_driver _feature _db] supported?))
@@ -937,6 +938,14 @@
 (defmethod sql-jdbc/impl-table-known-to-not-exist? :sqlserver
   [_ e]
   (= (sql-jdbc/get-sql-state e) "S0002"))
+
+(defmethod driver/compile-transform :sqlserver
+  [driver {:keys [query output-table]}]
+  ;; SQL Server doesn't support CREATE TABLE AS SELECT
+  ;; Instead it uses SELECT ... INTO syntax
+  (let [table-name (first (sql.qp/format-honeysql driver (keyword output-table)))]
+    ;; Return a vector to match the expected contract - all compile methods should return vectors
+    [(str/replace query #"\bFROM\b(?!.*\bFROM\b)" (str " INTO " table-name " FROM "))]))
 
 (defmethod driver/table-exists? :sqlserver
   [driver database {:keys [schema name] :as _table}]

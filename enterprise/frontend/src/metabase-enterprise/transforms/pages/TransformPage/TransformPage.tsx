@@ -52,7 +52,7 @@ export function TransformPage({ params }: TransformPageProps) {
   }
 
   return (
-    <Stack gap="3.5rem">
+    <Stack gap="3.5rem" data-testid="transform-page">
       <Stack gap="lg">
         <HeaderSection transform={transform} />
         <NameSection transform={transform} />
@@ -73,5 +73,5 @@ export function getParsedParams({
 }
 
 export function isPollingNeeded(transform?: Transform) {
-  return transform?.last_execution?.status === "started";
+  return transform?.last_run?.status === "started";
 }

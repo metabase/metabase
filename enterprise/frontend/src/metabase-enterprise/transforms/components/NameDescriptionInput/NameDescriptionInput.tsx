@@ -33,7 +33,7 @@ export function NameDescriptionInput({
         p={0}
         fw="bold"
         fz="h2"
-        lh="1.5rem"
+        lh="h2"
         onChange={onNameChange}
       />
       <EditableText
@@ -42,6 +42,7 @@ export function NameDescriptionInput({
         p={0}
         fz="md"
         lh="1.25rem"
+        isOptional
         onChange={handleDescriptionChange}
       />
     </Stack>

@@ -105,17 +105,10 @@ function UpdateTargetForm({
       {({ dirty }) => (
         <Form>
           <Stack gap="lg">
-            <FormTextInput
-              name="name"
-              label={t`What should it be called in the database?`}
-            />
-            {schemas.length > 0 && (
-              <FormSelect
-                name="schema"
-                label={t`In which schema should it go?`}
-                data={schemas}
-              />
+            {schemas.length > 1 && (
+              <FormSelect name="schema" label={t`Schema`} data={schemas} />
             )}
+            <FormTextInput name="name" label={t`Table name`} />
             {table != null && (
               <Radio.Group
                 value={shouldDeleteTarget.toString()}
@@ -126,8 +119,16 @@ function UpdateTargetForm({
                 onChange={(value) => setShouldDeleteTarget(value === "true")}
               >
                 <Stack gap="sm">
-                  <Radio value="false" label={t`Keep ${target.name}`} />
-                  <Radio value="true" label={t`Delete ${target.name}`} />
+                  <Radio
+                    value="false"
+                    label={t`Keep ${target.name}`}
+                    data-testid="keep-target-radio"
+                  />
+                  <Radio
+                    value="true"
+                    label={t`Delete ${target.name}`}
+                    data-testid="delete-target-radio"
+                  />
                 </Stack>
               </Radio.Group>
             )}

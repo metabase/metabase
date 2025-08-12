@@ -4,7 +4,7 @@ import { t } from "ttag";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { Box, Stack, Title } from "metabase/ui";
 import {
-  useListTransformExecutionsQuery,
+  useListTransformRunsQuery,
   useListTransformTagsQuery,
   useListTransformsQuery,
 } from "metabase-enterprise/api";
@@ -40,9 +40,9 @@ function RunListPageBody({ params }: RunListPageBodyProps) {
   const { page = 0, statuses, transformIds, transformTagIds } = params;
   const {
     data,
-    isLoading: isLoadingExecutions,
-    error: executionsError,
-  } = useListTransformExecutionsQuery({
+    isLoading: isLoadingRuns,
+    error: runsError,
+  } = useListTransformRunsQuery({
     offset: page * PAGE_SIZE,
     limit: PAGE_SIZE,
     statuses,
@@ -59,17 +59,17 @@ function RunListPageBody({ params }: RunListPageBodyProps) {
     isLoading: isLoadingTags,
     error: tagsError,
   } = useListTransformTagsQuery();
-  const isLoading = isLoadingExecutions || isLoadingTransforms || isLoadingTags;
-  const error = executionsError ?? transformsError ?? tagsError;
+  const isLoading = isLoadingRuns || isLoadingTransforms || isLoadingTags;
+  const error = runsError ?? transformsError ?? tagsError;
 
   if (!data || isLoading || error != null) {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
   }
 
   return (
-    <Stack>
+    <Stack data-testid="transform-run-list-page">
       <FilterList transforms={transforms} tags={tags} params={params} />
-      <RunList executions={data.data} totalCount={data.total} params={params} />
+      <RunList runs={data.data} totalCount={data.total} params={params} />
     </Stack>
   );
 }
