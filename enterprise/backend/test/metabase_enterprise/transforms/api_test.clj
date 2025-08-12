@@ -340,8 +340,7 @@
                                                               :native   {:query         query2
                                                                          :template-tags {}}}}
                                         :target      target2}]
-                (is (=? (assoc updated
-                               :run_trigger "none")
+                (is (=? updated
                         (mt/user-http-request :crowberto :put 200 (format "ee/transform/%s" transform-id) updated)))
                 (test-run transform-id)
                 (is (true? (transforms.util/target-table-exists? original)))
