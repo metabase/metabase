@@ -8,6 +8,8 @@ import {
   SdkLoadingState,
 } from "embedding-sdk/sdk-shared/types/sdk-loading";
 
+import { SDK_BUNDLE_FULL_PATH } from "../../../../../../../frontend/build/embedding-sdk/constants/sdk-bundle";
+
 const ERROR_MESSAGE = "Failed to load Embedding SDK bundle";
 
 const loadSdkBundle = (
@@ -36,7 +38,7 @@ const loadSdkBundle = (
     script.dataset[SDK_BUNDLE_SCRIPT_DATA_ATTRIBUTE_PASCAL_CASED] = "true";
     script.src = `${
       process.env.EMBEDDING_SDK_BUNDLE_HOST || metabaseInstanceUrl
-    }/app/embedding-sdk.js`;
+    }/${SDK_BUNDLE_FULL_PATH}`;
 
     script.addEventListener("load", () => resolve());
     script.addEventListener("error", () => reject(new Error(ERROR_MESSAGE)));

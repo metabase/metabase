@@ -32,12 +32,15 @@ const {
 const {
   getBannerOptions,
 } = require("./frontend/build/shared/rspack/get-banner-options");
+const {
+  SDK_BUNDLE_PATH,
+  SDK_BUNDLE_FILENAME,
+} = require("./frontend/build/embedding-sdk/constants/sdk-bundle");
 
 const SDK_SRC_PATH = __dirname + "/enterprise/frontend/src/embedding-sdk";
 
 const BUILD_PATH = __dirname + "/resources/frontend_client";
 const TMP_BUILD_PATH = path.resolve(BUILD_PATH, "tmp-embed-js");
-const OUT_FILE_NAME = "embedding-sdk.js";
 
 const ENTERPRISE_SRC_PATH =
   __dirname + "/enterprise/frontend/src/metabase-enterprise";
@@ -70,7 +73,7 @@ const config = {
     // otherwise the path conflicts and the output bundle will not appear.
     path: TMP_BUILD_PATH,
     publicPath: "",
-    filename: OUT_FILE_NAME,
+    filename: SDK_BUNDLE_FILENAME,
     library: {
       type: "umd",
       name: "MetabaseEmbeddingSDK",
@@ -174,9 +177,9 @@ const config = {
         reportFilename: BUILD_PATH + "/dist/report.html",
       }),
     CopyJsFromTmpDirectoryPlugin({
-      fileName: OUT_FILE_NAME,
+      fileName: SDK_BUNDLE_FILENAME,
       tmpPath: TMP_BUILD_PATH,
-      outputPath: path.join(BUILD_PATH, "app/"),
+      outputPath: path.join(BUILD_PATH, SDK_BUNDLE_PATH),
       copySourceMap: true,
       cleanupInDevMode: false,
     }),
