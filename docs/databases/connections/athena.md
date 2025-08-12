@@ -211,9 +211,9 @@ There aren't (yet) any model features available for Athena.
 
 ## Database routing
 
-With database routing, an admin can build a question once using one data connection, and the question will run its query against a different data connection same schema depending on who is viewing the question.
+With database routing, an admin can build a question once using a single data connection, and the question will run its query against a different data connection with the same schema depending on who is viewing the question.
 
-Note that the name "database routing" is misleading for Athena, because the term "database" in Athena is closer to "schema" in other databases. You can't use database routing to route queries between different _databases_ in Athena, but you can route between different data connections, e.g. different regions or buckets, or different IAM users, or different data sources/catalogs.
+Admittedly, the name "database routing" is misleading for Athena, because the term "database" in Athena is closer to "schema" in other databases. You _can't_ use database routing to route queries between different _databases_ in Athena, but you _can_ route between different data _connections_, e.g., different regions or buckets, or different IAM users, or different data sources/catalogs.
 
 See [Database routing](../../permissions/database-routing.md).
 
