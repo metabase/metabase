@@ -38,9 +38,7 @@ const ReduxDecorator = (Story: StoryFn) => {
   );
 };
 
-const DefaultTemplate = () => (
-  <Editor content={JSON.stringify(Data.markdownTest)} />
-);
+const DefaultTemplate = () => <Editor content={Data.markdownTest} />;
 
 export default {
   title: "Components/Documents",
