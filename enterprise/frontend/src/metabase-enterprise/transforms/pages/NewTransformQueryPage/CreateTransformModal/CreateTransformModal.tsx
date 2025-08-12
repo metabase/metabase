@@ -33,13 +33,7 @@ export function CreateTransformModal({
   onClose,
 }: CreateTransformModalProps) {
   return (
-    <Modal
-      title={t`Save your transform`}
-      opened
-      padding="xl"
-      data-testid="create-transform-modal"
-      onClose={onClose}
-    >
+    <Modal title={t`Save your transform`} opened padding="xl" onClose={onClose}>
       <FocusTrap.InitialFocus />
       <CreateTransformForm
         query={query}

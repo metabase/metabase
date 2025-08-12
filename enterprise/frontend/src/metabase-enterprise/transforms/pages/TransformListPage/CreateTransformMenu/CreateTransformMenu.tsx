@@ -35,7 +35,7 @@ export function CreateTransformMenu() {
             {t`Create a transform`}
           </Button>
         </Menu.Target>
-        <Menu.Dropdown data-testid="create-transform-dropdown">
+        <Menu.Dropdown>
           <Menu.Label>{t`Create your transform with…`}</Menu.Label>
           <Menu.Item
             component={ForwardRefLink}

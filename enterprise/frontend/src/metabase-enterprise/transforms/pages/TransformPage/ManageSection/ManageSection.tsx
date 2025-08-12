@@ -45,7 +45,7 @@ function EditQueryButton({ transform }: EditQueryButtonProps) {
     <Button
       component={Link}
       to={getTransformQueryUrl(transform.id)}
-      leftSection={<Icon name="pencil_lines" />}
+      leftSection={<Icon name="pencil_lines" aria-hidden />}
     >
       {t`Edit query`}
     </Button>
@@ -69,7 +69,10 @@ function DeleteTransformButton({ transform }: DeleteTransformButtonProps) {
 
   return (
     <>
-      <Button leftSection={<Icon name="trash" />} onClick={openModal}>
+      <Button
+        leftSection={<Icon name="trash" aria-hidden />}
+        onClick={openModal}
+      >
         {t`Delete`}
       </Button>
       {isModalOpened && (

@@ -149,8 +149,7 @@ function EditTargetButton({ transform }: EditTargetButtonProps) {
   return (
     <>
       <Button
-        leftSection={<Icon name="pencil_lines" />}
-        data-testid="change-target-button"
+        leftSection={<Icon name="pencil_lines" aria-hidden />}
         onClick={openModal}
       >
         {t`Change target`}
@@ -180,7 +179,7 @@ function EditMetadataButton({ transform }: EditMetadataButtonProps) {
     <Button
       component={Link}
       to={getTableMetadataUrl(table.id, table.schema, table.db_id)}
-      leftSection={<Icon name="label" />}
+      leftSection={<Icon name="label" aria-hidden />}
       data-testid="table-metadata-link"
     >
       {t`Edit this table’s metadata`}

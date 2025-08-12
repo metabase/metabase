@@ -36,7 +36,6 @@ export function UpdateTargetModal({
       title={t`Change the target for this transform`}
       opened
       padding="xl"
-      data-testid="update-target-modal"
       onClose={onClose}
     >
       <FocusTrap.InitialFocus />
@@ -106,17 +105,10 @@ function UpdateTargetForm({
       {({ dirty }) => (
         <Form>
           <Stack gap="lg">
-            <FormTextInput
-              name="name"
-              label={t`What should it be called in the database?`}
-            />
             {schemas.length > 1 && (
-              <FormSelect
-                name="schema"
-                label={t`In which schema should it go?`}
-                data={schemas}
-              />
+              <FormSelect name="schema" label={t`Schema`} data={schemas} />
             )}
+            <FormTextInput name="name" label={t`Table name`} />
             {table != null && (
               <Radio.Group
                 value={shouldDeleteTarget.toString()}

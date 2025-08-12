@@ -46,7 +46,10 @@ function DeleteJobButton({ job }: DeleteJobButtonProps) {
 
   return (
     <>
-      <Button leftSection={<Icon name="trash" />} onClick={openModal}>
+      <Button
+        leftSection={<Icon name="trash" aria-hidden />}
+        onClick={openModal}
+      >
         {t`Delete this job`}
       </Button>
       {isModalOpened && (
