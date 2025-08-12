@@ -1039,31 +1039,32 @@
 
 (defsetting ^:private test-driver-feature-only-setting
   (deferred-tru "test Setting")
-  :database-local   :only
+  :database-local :only
   :driver-feature :actions
-  :encryption       :when-encryption-key-set)
-
-(defsetting ^:private test-driver-feature-allowed-setting
-  (deferred-tru "test Setting")
-  :database-local   :allowed
-  :driver-feature :actions/data-editing
-  :encryption       :when-encryption-key-set)
+  :encryption     :when-encryption-key-set)
 
 (deftest driver-feature-validation-test
   (testing "A setting with :driver-feature must be database-local"
     (is (thrown-with-msg?
          Throwable
-         #"Setting :test-driver-feature-non-local-setting has a :driver-feature but does not allow database-local values"
+         #"Setting :test-driver-feature-non-local-setting requires a :driver-feature but is not limited to only database-local values."
          (defsetting test-driver-feature-non-local-setting
            (deferred-tru "test Setting")
            :driver-feature :actions
-           :encryption :when-encryption-key-set))))
-
-  (testing "A setting with :driver-feature and :database-local :only should be valid"
-    (is (some? test-driver-feature-only-setting)))
+           :encryption     :when-encryption-key-set))))
 
   (testing "A setting with :driver-feature and :database-local :allowed should be valid"
-    (is (some? test-driver-feature-allowed-setting))))
+    (is (thrown-with-msg?
+         Throwable
+         #"Setting :test-driver-feature-allowed-setting requires a :driver-feature but is not limited to only database-local values."
+         (defsetting test-driver-feature-allowed-setting
+           (deferred-tru "test Setting")
+           :database-local :allowed
+           :driver-feature :actions/data-editing
+           :encryption     :when-encryption-key-set))))
+
+  (testing "A setting with :driver-feature and :database-local :only should be valid"
+    (is (some? test-driver-feature-only-setting))))
 
 (deftest validate-settable-for-db-test
   (testing "validate-settable-for-db! validates database feature requirements"

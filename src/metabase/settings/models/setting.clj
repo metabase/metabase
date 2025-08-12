@@ -1017,8 +1017,8 @@
         (throw (ex-info (tru "Setting {0} uses both :enabled? and :feature options, which are mutually exclusive"
                              setting-name)
                         {:setting setting})))
-      (when (and (:driver-feature setting) (not (allows-database-local-values? setting)))
-        (throw (ex-info (tru "Setting {0} has a :driver-feature but does not allow database-local values"
+      (when (and (:driver-feature setting) (not (database-local-only? setting)))
+        (throw (ex-info (tru "Setting {0} requires a :driver-feature but is not limited to only database-local values."
                              setting-name)
                         {:setting setting})))
       (swap! registered-settings assoc setting-name <>))))
@@ -1204,9 +1204,9 @@
 
   ###### `:driver-feature`
 
-  If non-nil, determines the database driver feature required for this setting. This is only valid for database-local
-  settings (those with `:database-local` set to `:only` or `:allowed`). When setting a database-local setting, the
-  system will check if the database driver supports the specified feature. If not, an exception will be thrown.
+  If non-nil, determines the database driver feature required to use this setting. This is only valid for database-local
+  settings (those with `:database-local` set to `:only`). When setting a database-local setting, the system will check
+  if the database driver supports the specified feature. If not, an exception will be thrown.
 
   ###### `:user-local`
 
