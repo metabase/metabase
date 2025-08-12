@@ -1037,38 +1037,38 @@
 
 ;;; ------------------------------------------------ Database-feature Settings ----------------------------------------
 
-(defsetting ^:private test-database-feature-only-setting
+(defsetting ^:private test-driver-feature-only-setting
   (deferred-tru "test Setting")
   :database-local   :only
-  :database-feature :actions
+  :driver-feature :actions
   :encryption       :when-encryption-key-set)
 
-(defsetting ^:private test-database-feature-allowed-setting
+(defsetting ^:private test-driver-feature-allowed-setting
   (deferred-tru "test Setting")
   :database-local   :allowed
-  :database-feature :actions/data-editing
+  :driver-feature :actions/data-editing
   :encryption       :when-encryption-key-set)
 
-(deftest database-feature-validation-test
-  (testing "A setting with :database-feature must be database-local"
+(deftest driver-feature-validation-test
+  (testing "A setting with :driver-feature must be database-local"
     (is (thrown-with-msg?
          Throwable
-         #"Setting :test-database-feature-non-local-setting has a :database-feature but does not allow database-local values"
-         (defsetting test-database-feature-non-local-setting
+         #"Setting :test-driver-feature-non-local-setting has a :driver-feature but does not allow database-local values"
+         (defsetting test-driver-feature-non-local-setting
            (deferred-tru "test Setting")
-           :database-feature :actions
+           :driver-feature :actions
            :encryption :when-encryption-key-set))))
 
-  (testing "A setting with :database-feature and :database-local :only should be valid"
-    (is (some? test-database-feature-only-setting)))
+  (testing "A setting with :driver-feature and :database-local :only should be valid"
+    (is (some? test-driver-feature-only-setting)))
 
-  (testing "A setting with :database-feature and :database-local :allowed should be valid"
-    (is (some? test-database-feature-allowed-setting))))
+  (testing "A setting with :driver-feature and :database-local :allowed should be valid"
+    (is (some? test-driver-feature-allowed-setting))))
 
 (deftest validate-settable-for-db-test
   (testing "validate-settable-for-db! validates database feature requirements"
     (let [database                       {:id 1, :engine :h2}
-          setting-with-driver-feature    :test-database-feature-only-setting
+          setting-with-driver-feature    :test-driver-feature-only-setting
           setting-without-driver-feature :test-database-local-allowed-setting
           driver-supports-everything?    (constantly true)
           driver-supports-nothing?       (constantly false)]
@@ -1079,10 +1079,10 @@
       (testing "should throw when driver does not support required feature"
         (is (thrown-with-msg?
              ExceptionInfo
-             #"Setting test-database-feature-only-setting requires driver feature :actions, but the database does not support it"
+             #"Setting test-driver-feature-only-setting requires driver feature :actions, but the database does not support it"
              (setting/validate-settable-for-db! setting-with-driver-feature database driver-supports-nothing?))))
 
-      (testing "should succeed for settings without database-feature requirement"
+      (testing "should succeed for settings without driver-feature requirement"
         (is (nil? (setting/validate-settable-for-db! setting-without-driver-feature database driver-supports-nothing?)))))))
 
 (deftest identity-hash-test

@@ -230,7 +230,7 @@
 
    ;; If non-nil, determines the database driver feature required for this setting. This is only valid for database-local
    ;; settings. If the database driver doesn't support the required feature, setting this will throw an exception.
-   [:database-feature [:maybe :keyword]]])
+   [:driver-feature [:maybe :keyword]]])
 
 (defonce ^{:doc "Map of loaded defsettings"}
   registered-settings
@@ -881,13 +881,13 @@
 (defn validate-settable-for-db!
   "Check whether the given setting can be set for the given database."
   [setting-definition-or-name database driver-supports?]
-  (let [{:keys [database-feature] :as setting} (resolve-setting setting-definition-or-name)
+  (let [{:keys [driver-feature] :as setting} (resolve-setting setting-definition-or-name)
         s-name (setting-name setting)]
     (validate-settable! setting)
-    (when (and database-feature (not (driver-supports? database database-feature)))
-      (throw (ex-info (tru "Setting {0} requires driver feature {1}, but the database does not support it" s-name database-feature)
+    (when (and driver-feature (not (driver-supports? database driver-feature)))
+      (throw (ex-info (tru "Setting {0} requires driver feature {1}, but the database does not support it" s-name driver-feature)
                       {:setting s-name
-                       :required-feature database-feature
+                       :required-feature driver-feature
                        :database-id (:id database)})))))
 
 (defn set!
@@ -974,7 +974,7 @@
                  :feature            nil
                  :database-local     :never
                  :user-local         :never
-                 :database-feature   nil
+                 :driver-feature   nil
                  :deprecated         nil
                  :enabled?           nil
                  :can-read-from-env? true
@@ -1017,8 +1017,8 @@
         (throw (ex-info (tru "Setting {0} uses both :enabled? and :feature options, which are mutually exclusive"
                              setting-name)
                         {:setting setting})))
-      (when (and (:database-feature setting) (not (allows-database-local-values? setting)))
-        (throw (ex-info (tru "Setting {0} has a :database-feature but does not allow database-local values"
+      (when (and (:driver-feature setting) (not (allows-database-local-values? setting)))
+        (throw (ex-info (tru "Setting {0} has a :driver-feature but does not allow database-local values"
                              setting-name)
                         {:setting setting})))
       (swap! registered-settings assoc setting-name <>))))
@@ -1202,7 +1202,7 @@
   The ability of this Setting to be /Database-local/. Valid values are `:only`, `:allowed`, and `:never`. Default:
   `:never`. See docstring for [[metabase.settings.models.setting]] for more information.
 
-  ###### `:database-feature`
+  ###### `:driver-feature`
 
   If non-nil, determines the database driver feature required for this setting. This is only valid for database-local
   settings (those with `:database-local` set to `:only` or `:allowed`). When setting a database-local setting, the
