@@ -306,9 +306,9 @@
 (defsetting http-channel-host-strategy
   (deferred-tru (str "Controls which types of hosts are allowed as HTTP channel destinations.\n"
                      "Options:\n"
-                     "-external-only (default - only external hosts)\n"
-                     "-allow-private (external + private networks but NOT localhost)\n"
-                     "-allow-all (no restrictions including localhost).\n"))
+                     "- external-only (default - only external hosts)\n"
+                     "- allow-private (external + private networks but NOT localhost)\n"
+                     "- allow-all (no restrictions including localhost).\n"))
   :type       :keyword
   :visibility :internal
   :default    :external-only
