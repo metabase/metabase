@@ -11,7 +11,6 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.test-util :as lib.tu]
-   [metabase.lib.util :as lib.util]
    [metabase.query-processor :as qp]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.store :as qp.store]
@@ -79,9 +78,8 @@
                         (lib/join (lib/join-clause card-meta
                                                    [(lib/= (lib.metadata/field mp (mt/id :reviews :id))
                                                            id-col)])))
-          stage     (lib.util/query-stage query -1)
-          visible   (lib.metadata.calculation/visible-columns query -1 stage)
-          returned  (lib.metadata.calculation/returned-columns query -1 stage)
+          visible   (lib.metadata.calculation/visible-columns query -1)
+          returned  (lib.metadata.calculation/returned-columns query -1)
           marked    (lib.equality/mark-selected-columns query -1 visible returned)]
       (is (=? [{:name "ID",         :display-name "ID"}
                {:name "PRODUCT_ID", :display-name "Product ID"}
@@ -143,9 +141,8 @@
                         (lib/join (lib/join-clause card-meta
                                                    [(lib/= (lib.metadata/field mp (mt/id :orders :id))
                                                            count-col)])))
-          stage     (lib.util/query-stage query -1)
-          visible   (lib.metadata.calculation/visible-columns query -1 stage)
-          returned  (lib.metadata.calculation/returned-columns query -1 stage)
+          visible   (lib.metadata.calculation/visible-columns query -1)
+          returned  (lib.metadata.calculation/returned-columns query -1)
           marked    (lib.equality/mark-selected-columns query -1 visible returned)]
       (is (=? [{:name "ID", :display-name "ID"}
                {:name "USER_ID", :display-name "User ID"}
@@ -277,9 +274,8 @@
                            :fields :all}]})])
           card-meta (lib.metadata/card mp 1)
           query     (lib/query mp card-meta)
-          stage     (lib.util/query-stage query -1)
-          visible   (lib.metadata.calculation/visible-columns query -1 stage)
-          returned  (lib.metadata.calculation/returned-columns query -1 stage)
+          visible   (lib.metadata.calculation/visible-columns query -1)
+          returned  (lib.metadata.calculation/returned-columns query -1)
           marked    (lib.equality/mark-selected-columns query -1 visible returned)]
       (is (=? [{:name "ID",           :display-name "ID",              :selected? true}
                {:name "USER_ID",      :display-name "User ID",         :selected? true}
@@ -446,7 +442,7 @@
                       ;; The order of these columns seems to be 'flexible' (I would consider either to be correct), and
                       ;; I've seen both in two different branches of mine attempting to fix this bug. The order doesn't
                       ;; matter at all to the FE, so if this changes in the future it's ok. -- Cam
-                      "j__EMAIL"
+                      "j__PEOPLE__via__USER_ID__EMAIL" #_"j__EMAIL"
                       "PEOPLE__via__USER_ID__EMAIL"]
                      (map :lib/desired-column-alias (mt/cols results))))
               (is (= [[1                ; <= orders.id

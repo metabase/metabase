@@ -76,6 +76,7 @@ export const EditorBubbleMenu: React.FC<EditorBubbleMenuProps> = ({
           borderRadius: "6px",
           boxShadow: "0 2px 12px var(--mb-color-shadow)",
         }}
+        data-testid="document-formatting-menu"
       >
         <FormatButton
           isActive={editor.isActive("bold")}

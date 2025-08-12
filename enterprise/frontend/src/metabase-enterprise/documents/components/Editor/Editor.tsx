@@ -2,15 +2,12 @@ import Image from "@tiptap/extension-image";
 import Link from "@tiptap/extension-link";
 import { Placeholder } from "@tiptap/extension-placeholder";
 import type { EditorState } from "@tiptap/pm/state";
-import {
-  EditorContent,
-  type Editor as TiptapEditor,
-  useEditor,
-} from "@tiptap/react";
+import type { JSONContent, Editor as TiptapEditor } from "@tiptap/react";
+import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import cx from "classnames";
 import type React from "react";
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo } from "react";
 import { t } from "ttag";
 
 import { DND_IGNORE_CLASS_NAME } from "metabase/common/components/dnd";
@@ -18,6 +15,10 @@ import CS from "metabase/css/core/index.css";
 import { useSelector } from "metabase/lib/redux";
 import { getSetting } from "metabase/selectors/settings";
 import { Box, Loader } from "metabase/ui";
+import { useDocumentsStore } from "metabase-enterprise/documents/redux-utils";
+import { getMentionsCache } from "metabase-enterprise/documents/selectors";
+import type { DocumentsStoreState } from "metabase-enterprise/documents/types";
+import { getMentionsCacheKey } from "metabase-enterprise/documents/utils/mentionsUtils";
 
 import styles from "./Editor.module.css";
 import { EditorBubbleMenu } from "./EditorBubbleMenu";
@@ -36,24 +37,30 @@ import { createSuggestionRenderer } from "./extensions/suggestionRenderer";
 import { useCardEmbedsTracking, useQuestionSelection } from "./hooks";
 import type { CardEmbedRef } from "./types";
 
-const metabotPromptSerializer: PromptSerializer = (node) => {
-  const payload: ReturnType<PromptSerializer> = { instructions: "" };
-  return node.content.content.reduce((acc, child) => {
-    // Serialize @ mentions in the metabot prompt
-    if (child.type.name === SmartLinkEmbed.name) {
-      const key = `${child.attrs.model}:${child.attrs.entityId}`;
-      const value = child.attrs.name;
-      acc.instructions += `[${value}](${key})`;
-      if (!acc.references) {
-        acc.references = {};
+const getMetabotPromptSerializer =
+  (getState: () => DocumentsStoreState): PromptSerializer =>
+  (node) => {
+    const payload: ReturnType<PromptSerializer> = { instructions: "" };
+    return node.content.content.reduce((acc, child) => {
+      // Serialize @ mentions in the metabot prompt
+      if (child.type.name === SmartLinkEmbed.name) {
+        const { model, entityId } = child.attrs;
+        const key = getMentionsCacheKey({ model, entityId });
+        const value = getMentionsCache(getState())[key];
+        if (!value) {
+          return acc;
+        }
+        acc.instructions += `[${value.name}](${key})`;
+        if (!acc.references) {
+          acc.references = {};
+        }
+        acc.references[key] = value.name;
+      } else {
+        acc.instructions += child.textContent;
       }
-      acc.references[key] = value;
-    } else {
-      acc.instructions += child.textContent;
-    }
-    return acc;
-  }, payload);
-};
+      return acc;
+    }, payload);
+  };
 
 const isMetabotBlock = (state: EditorState): boolean =>
   state.selection.$head.parent.type.name === "metabot";
@@ -61,8 +68,9 @@ const isMetabotBlock = (state: EditorState): boolean =>
 interface EditorProps {
   onEditorReady?: (editor: TiptapEditor) => void;
   onCardEmbedsChange?: (refs: CardEmbedRef[]) => void;
-  content: string;
-  onChange?: (content: string) => void;
+  initialContent?: JSONContent | null;
+  onChange?: (content: JSONContent) => void;
+  onContentChanged?: () => void; // Simple dirty flag callback
   onQuestionSelect?: (cardId: number | null) => void;
   editable?: boolean;
   isLoading?: boolean;
@@ -71,100 +79,95 @@ interface EditorProps {
 export const Editor: React.FC<EditorProps> = ({
   onEditorReady,
   onCardEmbedsChange,
-  content,
+  initialContent,
   onChange,
+  onContentChanged,
   editable = true,
   onQuestionSelect,
   isLoading = false,
 }) => {
   const siteUrl = useSelector((state) => getSetting(state, "site-url"));
-  const editor = useEditor(
-    {
-      extensions: [
-        StarterKit,
-        Image.configure({
-          inline: false,
-          HTMLAttributes: {
-            class: styles.img,
-          },
-        }),
-        SmartLinkEmbed.configure({
-          HTMLAttributes: {
-            class: "smart-link",
-          },
-          siteUrl,
-        }),
-        Link.configure({
-          HTMLAttributes: {
-            class: CS.link,
-          },
-        }),
-        Placeholder.configure({
-          placeholder: t`Start writing, press "/" to open command palette, or "@" to insert a link...`,
-        }),
-        Markdown,
-        CardEmbed.configure({
-          HTMLAttributes: {
-            class: "card-embed",
-          },
-        }),
-        MetabotNode.configure({ serializePrompt: metabotPromptSerializer }),
-        DisableMetabotSidebar,
-        MentionExtension.configure({
-          suggestion: {
-            allow: ({ state }) => !isMetabotBlock(state),
-            render: createSuggestionRenderer(MentionSuggestion),
-          },
-        }),
-        CommandExtension.configure({
-          suggestion: {
-            allow: ({ state }) => !isMetabotBlock(state),
-            render: createSuggestionRenderer(CommandSuggestion),
-          },
-        }),
-        MetabotMentionExtension.configure({
-          suggestion: {
-            allow: ({ state }) => isMetabotBlock(state),
-            render: createSuggestionRenderer(MetabotMentionSuggestion),
-          },
-        }),
-      ],
-      autofocus: false,
-      immediatelyRender: false,
-    },
-    [siteUrl],
+  const { getState } = useDocumentsStore();
+
+  const extensions = useMemo(
+    () => [
+      StarterKit,
+      Image.configure({
+        inline: false,
+        HTMLAttributes: {
+          class: styles.img,
+        },
+      }),
+      SmartLinkEmbed.configure({
+        HTMLAttributes: {
+          class: "smart-link",
+        },
+        siteUrl,
+      }),
+      Link.configure({
+        HTMLAttributes: {
+          class: CS.link,
+        },
+      }),
+      Placeholder.configure({
+        placeholder: t`Start writing, press "/" to open command palette, or "@" to insert a link...`,
+      }),
+      Markdown,
+      CardEmbed,
+      MetabotNode.configure({
+        serializePrompt: getMetabotPromptSerializer(getState),
+      }),
+      DisableMetabotSidebar,
+      MentionExtension.configure({
+        suggestion: {
+          allow: ({ state }) => !isMetabotBlock(state),
+          render: createSuggestionRenderer(MentionSuggestion),
+        },
+      }),
+      CommandExtension.configure({
+        suggestion: {
+          allow: ({ state }) => !isMetabotBlock(state),
+          render: createSuggestionRenderer(CommandSuggestion),
+        },
+      }),
+      MetabotMentionExtension.configure({
+        suggestion: {
+          allow: ({ state }) => isMetabotBlock(state),
+          render: createSuggestionRenderer(MetabotMentionSuggestion),
+        },
+      }),
+    ],
+    [siteUrl, getState],
   );
 
-  // Track the previous content to avoid unnecessary updates
-  const previousContent = useRef<string>("");
+  const editor = useEditor(
+    {
+      extensions,
+      content: initialContent || "",
+      autofocus: false,
+      immediatelyRender: false,
+      onUpdate: ({ editor }) => {
+        const currentContent = editor.getJSON();
+        onChange?.(currentContent);
 
-  // Update editor content when content prop changes
+        // Simple content changed notification
+        if (!editor.isEmpty) {
+          onContentChanged?.();
+        }
+      },
+    },
+    [],
+  );
+
+  // Handle content updates when initialContent changes
   useEffect(() => {
-    if (editor && !editor.isDestroyed && content !== previousContent.current) {
-      // Use microtask to defer content update and avoid flushSync warning
-      queueMicrotask(() => {
-        if (editor.isDestroyed) {
-          return;
-        }
-
-        try {
-          if (!content || content.trim() === "") {
-            editor.commands.setContent("");
-          } else {
-            // Expect JSON AST format
-            const parsedContent = JSON.parse(content);
-            editor.commands.setContent(parsedContent);
-          }
-          previousContent.current = content;
-        } catch (error) {
-          console.error("Failed to parse JSON AST content:", error);
-          // Set empty document if JSON parsing fails
-          editor.commands.setContent("");
-          previousContent.current = content;
-        }
+    if (editor && initialContent !== undefined) {
+      // Use Promise.resolve() to avoid flushSync warning
+      Promise.resolve().then(() => {
+        editor.commands.setContent(initialContent || "");
       });
     }
-  }, [editor, content]);
+  }, [editor, initialContent]);
 
   // Notify parent when editor is ready
   useEffect(() => {
@@ -172,24 +175,6 @@ export const Editor: React.FC<EditorProps> = ({
       onEditorReady(editor);
     }
   }, [editor, onEditorReady]);
-
-  // Set up change handler
-  useEffect(() => {
-    if (!editor || !onChange) {
-      return;
-    }
-
-    const handleUpdate = () => {
-      const currentAst = JSON.stringify(editor.state.doc.toJSON());
-      onChange(currentAst);
-    };
-
-    editor.on("update", handleUpdate);
-
-    return () => {
-      editor.off("update", handleUpdate);
-    };
-  }, [editor, onChange]);
 
   // Update editor editable state
   useEffect(() => {

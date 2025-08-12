@@ -108,8 +108,7 @@
    (when-let [;; TODO: This is clumsy and expensive; there is likely a neater way to find the full FK column.
               ;; Note that using `lib.metadata/field` is out - we need to respect metadata overrides etc. in models, and
               ;; `lib.metadata/field` uses the field's original status.
-              fk-column (->> (lib.util/query-stage query stage-number)
-                             (lib.metadata.calculation/visible-columns query stage-number)
+              fk-column (->> (lib.metadata.calculation/visible-columns query stage-number)
                              (m/find-first #(and (= (:id %) fk-field-id)
                                                  (= (lib.field.util/inherited-column-name %) fk-field-name)
                                                  (= (lib.join.util/current-join-alias %) fk-join-alias)
@@ -141,7 +140,7 @@
    :fk-join-alias (:fk-join-alias column-metadata)})
 
 (defmethod column-group-info-method :source/joins
-  [{:keys [table-id], card-id :lib/card-id, :as column-metadata}]
+  [{:keys [table-id], card-id :lib/card-id, :as col}]
   (merge
    {::group-type :group-type/join.explicit}
    ;; if we're in the process of BUILDING a join and using this in combination
@@ -149,7 +148,7 @@
    ;; joinable -- either the Card we're joining, or the Table we're joining. Prefer `:lib/card-id` because when we
    ;; join a Card the Fields might have `:table-id` but we want the entire Card to appear as one group. See #32493
    (or
-    (when-let [join-alias (lib.join.util/current-join-alias column-metadata)]
+    (when-let [join-alias (lib.join.util/current-join-alias col)]
       {:join-alias join-alias})
     (when card-id
       {:card-id card-id})

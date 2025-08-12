@@ -16,6 +16,8 @@ import {
 import { type UrlableModel, modelToUrl } from "metabase/lib/urls/modelToUrl";
 import { extractEntityId } from "metabase/lib/urls/utils";
 import { Icon } from "metabase/ui";
+import { updateMentionsCache } from "metabase-enterprise/documents/documents.slice";
+import { useDocumentsDispatch } from "metabase-enterprise/documents/redux-utils";
 import type {
   Card,
   CardDisplayType,
@@ -124,7 +126,6 @@ export const SmartLinkNode = Node.create<{
         default: null,
         parseHTML: (element) => element.getAttribute("data-model"),
       },
-      name: {},
     };
   },
 
@@ -254,15 +255,18 @@ const useEntityData = (entityId: number | null, model: SearchModel | null) => {
 };
 
 export const SmartLinkComponent = memo(
-  ({ node, updateAttributes }: NodeViewProps) => {
+  ({ node }: NodeViewProps) => {
     const { entityId, model } = node.attrs;
     const { entity, isLoading, error } = useEntityData(entityId, model);
 
+    const documentsDispatch = useDocumentsDispatch();
     useEffect(() => {
-      setTimeout(() => {
-        updateAttributes({ name: entity?.name });
-      }, 10); // setTimeout prevents `flushSync was called from inside a lifecycle method` error
-    }, [updateAttributes, entity?.name]);
+      if (entity?.name) {
+        documentsDispatch(
+          updateMentionsCache({ entityId, model, name: entity.name }),
+        );
+      }
+    }, [documentsDispatch, entity?.name, entityId, model]);
 
     if (isLoading) {
       return (
