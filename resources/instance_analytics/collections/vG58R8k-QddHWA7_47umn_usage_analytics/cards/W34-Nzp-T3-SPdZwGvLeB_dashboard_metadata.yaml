@@ -437,7 +437,10 @@ result_metadata:
   effective_type: type/Boolean
   field_ref:
   - field
-  - is_verified
+  - - Internal Metabase Database
+    - public
+    - v_content
+    - is_verified
   - base-type: type/Boolean
   id:
   - Internal Metabase Database
