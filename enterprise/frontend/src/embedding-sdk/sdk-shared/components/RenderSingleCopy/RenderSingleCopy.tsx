@@ -32,6 +32,8 @@ export const RenderSingleCopy = ({
 
   if (singleCopyIdsMap && !singleCopyIdsMap[groupId]) {
     // Mutate the singleCopyIdsMap to ensure it has an entry to compare with during the first render
+    // It works with React StrictMode and does not cause any unexpected side effects,
+    // but it requires the passing the `instanceId` from a parent component.
     singleCopyIdsMap[groupId] = [currentInstanceId];
   }
 
