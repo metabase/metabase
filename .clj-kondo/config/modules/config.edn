@@ -1793,12 +1793,15 @@
 
   enterprise/semantic-search
   {:team "Metabot"
-   :api  #{metabase-enterprise.semantic-search.core
+   :api  #{metabase-enterprise.semantic-search.api
+           metabase-enterprise.semantic-search.core
            metabase-enterprise.semantic-search.init}
    :uses #{analytics
+           api
            connection-pool
            models
            premium-features
+           permissions
            search
            settings
            task
