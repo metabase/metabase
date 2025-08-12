@@ -19,7 +19,6 @@
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.malli.registry :as mr]
-   [metabase.warehouse-schema.models.field-values :as field-values]
    [toucan2.core :as t2]))
 
 (def missing-value (symbol "nil #_\"key is not present.\""))
