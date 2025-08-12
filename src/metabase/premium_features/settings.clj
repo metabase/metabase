@@ -275,6 +275,10 @@
   "Should we allow users to edit the data within tables?"
   :table-data-editing)
 
+(define-premium-feature ^{:added "0.57.0"} enable-transforms?
+  "Should we allow users to use transforms?"
+  :transforms)
+
 (defn- -token-features []
   {:advanced_permissions           (enable-advanced-permissions?)
    :ai_sql_fixer                   (enable-ai-sql-fixer?)
@@ -316,6 +320,7 @@
    :sso_ldap                       (enable-sso-ldap?)
    :sso_saml                       (enable-sso-saml?)
    :table_data_editing             (table-data-editing?)
+   :transforms                     (enable-transforms?)
    :upload_management              (enable-upload-management?)
    :whitelabel                     (enable-whitelabeling?)})
 

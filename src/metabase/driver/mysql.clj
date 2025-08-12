@@ -87,7 +87,10 @@
                               ;; and make this work.
                               :window-functions/offset                false
                               :expression-literals                    true
-                              :database-routing                       true}]
+                              :database-routing                       true
+                              :transforms/table                       true
+                              :transforms/view true
+                              :metadata/table-existence-check true}]
   (defmethod driver/database-supports? [:mysql feature] [_driver _feature _db] supported?))
 
 ;; This is a bit of a lie since the JSON type was introduced for MySQL since 5.7.8.

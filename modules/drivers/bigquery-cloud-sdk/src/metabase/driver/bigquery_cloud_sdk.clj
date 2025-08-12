@@ -133,6 +133,12 @@
 (def ^:private empty-table-options
   (u/varargs BigQuery$TableOption))
 
+(defn- get-table*
+  [^BigQuery client project-id dataset-id table-id]
+  (if project-id
+    (.getTable client (TableId/of project-id dataset-id table-id) empty-table-options)
+    (.getTable client dataset-id table-id empty-table-options)))
+
 (mu/defn- get-table :- (driver-api/instance-of-class Table)
   (^Table [{{:keys [project-id]} :details, :as database} dataset-id table-id]
    (get-table (database-details->client (:details database)) project-id dataset-id table-id))
@@ -141,9 +147,16 @@
            project-id       :- [:maybe driver-api/schema.common.non-blank-string]
            dataset-id       :- driver-api/schema.common.non-blank-string
            table-id         :- driver-api/schema.common.non-blank-string]
-   (if project-id
-     (.getTable client (TableId/of project-id dataset-id table-id) empty-table-options)
-     (.getTable client dataset-id table-id empty-table-options))))
+   (get-table* client project-id dataset-id table-id)))
+
+(defmethod driver/table-exists? :bigquery-cloud-sdk
+  [_ {:keys [details] :as _database} {table-id :name, dataset-id :schema :as _table}]
+  ;; BigQuery's .getTable returns nil for non-existent tables
+  ;; get-table* call to avoid the non-nil schema enforcement on get-table
+  (let [client     (database-details->client details)
+        project-id (get-project-id details)]
+    (boolean
+     (get-table* client project-id dataset-id table-id))))
 
 (declare ^:dynamic *process-native*)
 
@@ -735,7 +748,8 @@
                               ;; tests expect the converted values.
                               :set-timezone             true
                               :expression-literals      true
-                              :database-routing         true}]
+                              :database-routing true
+                              :metadata/table-existence-check true}]
   (defmethod driver/database-supports? [:bigquery-cloud-sdk feature] [_driver _feature _db] supported?))
 
 ;; BigQuery is always in UTC

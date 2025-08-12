@@ -41,3 +41,4 @@ import "./metabot";
 import "./database_replication";
 import "./documents";
 import "./entities";
+import "./transforms";

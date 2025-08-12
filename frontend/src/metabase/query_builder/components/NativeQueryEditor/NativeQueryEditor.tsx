@@ -79,6 +79,7 @@ type OwnProps = {
   hasTopBar?: boolean;
   hasParametersList?: boolean;
   hasEditingSidebar?: boolean;
+  hasRunButton?: boolean;
   sidebarFeatures?: SidebarFeatures;
   resizable?: boolean;
   resizableBoxProps?: Partial<Omit<ResizableBoxProps, "axis">>;
@@ -235,6 +236,7 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
       },
       hasTopBar = true,
       hasEditingSidebar = true,
+      hasRunButton = hasEditingSidebar,
       resizableBoxProps = {},
       snippetCollections = [],
       question,
@@ -346,7 +348,7 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
                 }
               />
 
-              {hasEditingSidebar && !readOnly && (
+              {hasRunButton && !readOnly && (
                 <NativeQueryEditorRunButton
                   cancelQuery={this.props.cancelQuery}
                   isResultDirty={this.props.isResultDirty}

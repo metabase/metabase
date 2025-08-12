@@ -1872,6 +1872,26 @@
            settings
            util}}
 
+  enterprise/transforms
+  {:team "Querying"
+   :api  #{metabase-enterprise.transforms.api
+           metabase-enterprise.transforms.core
+           metabase-enterprise.transforms.init}
+   :uses #{api
+           config
+           driver
+           events
+           lib
+           models
+           permissions
+           query-processor
+           settings
+           sync
+           task
+           task-history
+           util
+           enterprise/worker}}
+
   enterprise/upload-management
   {:team "UX West"
    :api #{metabase-enterprise.upload-management.api}
@@ -1879,6 +1899,16 @@
            models
            premium-features
            upload
+           util}}
+
+  enterprise/worker
+  {:team "Querying"
+   :api  #{metabase-enterprise.worker.api
+           metabase-enterprise.worker.core
+           metabase-enterprise.worker.init}
+   :uses #{config
+           system
+           task
            util}}}
 
  ;; namespaces matching these patterns (with `re-find`) are excluded from the module linter. Since regex literals

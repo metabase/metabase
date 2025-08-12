@@ -1,12 +1,24 @@
 import type { TagDescription } from "@reduxjs/toolkit/query";
 
+import { TAG_TYPES } from "metabase/api/tags";
+import type {
+  Transform,
+  TransformExecution,
+  TransformJob,
+  TransformTag,
+} from "metabase-types/api";
+
 export const ENTERPRISE_TAG_TYPES = [
+  ...TAG_TYPES,
   "scim",
   "metabot",
   "metabot-entities-list",
   "metabot-prompt-suggestions",
   "gsheets-status",
-  "document",
+  "transform",
+  "transform-tag",
+  "transform-job",
+  "transform-execution",
 ] as const;
 
 export type EnterpriseTagType = (typeof ENTERPRISE_TAG_TYPES)[number];
@@ -35,4 +47,58 @@ export function invalidateTags(
   tags: TagDescription<EnterpriseTagType>[],
 ): TagDescription<EnterpriseTagType>[] {
   return !error ? tags : [];
+}
+
+export function provideTransformTags(
+  transform: Transform,
+): TagDescription<EnterpriseTagType>[] {
+  return [idTag("transform", transform.id)];
+}
+
+export function provideTransformListTags(
+  transforms: Transform[],
+): TagDescription<EnterpriseTagType>[] {
+  return [listTag("transform"), ...transforms.flatMap(provideTransformTags)];
+}
+
+export function provideTransformExecutionTags(
+  execution: TransformExecution,
+): TagDescription<EnterpriseTagType>[] {
+  return [
+    idTag("transform-execution", execution.id),
+    ...(execution.transform ? provideTransformTags(execution.transform) : []),
+  ];
+}
+
+export function provideTransformExecutionListTags(
+  executions: TransformExecution[],
+): TagDescription<EnterpriseTagType>[] {
+  return [
+    listTag("transform-execution"),
+    ...executions.flatMap(provideTransformExecutionTags),
+  ];
+}
+
+export function provideTransformTagTags(
+  tag: TransformTag,
+): TagDescription<EnterpriseTagType>[] {
+  return [idTag("transform-tag", tag.id)];
+}
+
+export function provideTransformTagListTags(
+  tags: TransformTag[],
+): TagDescription<EnterpriseTagType>[] {
+  return [listTag("transform-tag"), ...tags.flatMap(provideTransformTagTags)];
+}
+
+export function provideTransformJobTags(
+  job: TransformJob,
+): TagDescription<EnterpriseTagType>[] {
+  return [idTag("transform-job", job.id)];
+}
+
+export function provideTransformJobListTags(
+  jobs: TransformJob[],
+): TagDescription<EnterpriseTagType>[] {
+  return [listTag("transform-job"), ...jobs.flatMap(provideTransformJobTags)];
 }

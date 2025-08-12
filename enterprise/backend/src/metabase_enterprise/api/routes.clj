@@ -29,6 +29,7 @@
    [metabase-enterprise.scim.routes]
    [metabase-enterprise.serialization.api]
    [metabase-enterprise.stale.api]
+   [metabase-enterprise.transforms.api]
    [metabase-enterprise.upload-management.api]
    [metabase.api.macros :as api.macros]
    [metabase.api.util.handlers :as handlers]
@@ -54,6 +55,7 @@
    :scim                       (deferred-tru "SCIM configuration")
    :serialization              (deferred-tru "Serialization")
    :table-data-editing         (deferred-tru "Table Data Editing")
+   :transforms                 (deferred-tru "Transforms")
    :upload-management          (deferred-tru "Upload Management")
    :database-routing           (deferred-tru "Database Routing")
    :cloud-custom-smtp          (deferred-tru "Custom SMTP")})
@@ -104,6 +106,9 @@
    "/scim"                         (premium-handler metabase-enterprise.scim.routes/routes :scim)
    "/serialization"                (premium-handler metabase-enterprise.serialization.api/routes :serialization)
    "/stale"                        (premium-handler metabase-enterprise.stale.api/routes :collection-cleanup)
+   "/transform"                    (premium-handler metabase-enterprise.transforms.api/routes :transforms)
+   "/transform-job"                (premium-handler metabase-enterprise.transforms.api/transform-job-routes :transforms)
+   "/transform-tag"                (premium-handler metabase-enterprise.transforms.api/transform-tag-routes :transforms)
    "/upload-management"            (premium-handler metabase-enterprise.upload-management.api/routes :upload-management)})
 ;;; ↑↑↑ KEEP THIS SORTED OR ELSE ↑↑↑
 

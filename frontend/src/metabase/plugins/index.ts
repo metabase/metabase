@@ -816,3 +816,13 @@ export const PLUGIN_DOCUMENTS = {
 export const PLUGIN_ENTITIES = {
   entities: {} as Record<string, any>,
 };
+
+export type TransformsPlugin = {
+  getAdminPaths(): AdminPath[];
+  getAdminRoutes(): ReactNode;
+};
+
+export const PLUGIN_TRANSFORMS: TransformsPlugin = {
+  getAdminPaths: () => [],
+  getAdminRoutes: () => null,
+};
