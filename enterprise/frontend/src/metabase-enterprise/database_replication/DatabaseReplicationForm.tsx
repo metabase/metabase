@@ -243,7 +243,6 @@ export const DatabaseReplicationForm = ({
                 </Stack>
               </Card>
             ) : undefined}
-            <Text c="text-light">{t`You will get an email once your data is ready to use.`}</Text>
             <Flex justify="end">
               <Group>
                 <FormSubmitButton
