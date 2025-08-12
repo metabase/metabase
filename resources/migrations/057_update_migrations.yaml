@@ -327,11 +327,6 @@ databaseChangeLog:
       id: v57.2025-08-21T17:42:32
       author: edpaget
       comment: Create document_bookmark table
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - tableExists:
-                tableName: document_bookmark
       changes:
         - createTable:
             tableName: document_bookmark
