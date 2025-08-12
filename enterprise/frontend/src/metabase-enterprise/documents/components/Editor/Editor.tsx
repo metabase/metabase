@@ -15,6 +15,10 @@ import CS from "metabase/css/core/index.css";
 import { useSelector } from "metabase/lib/redux";
 import { getSetting } from "metabase/selectors/settings";
 import { Box, Loader } from "metabase/ui";
+import { useDocumentsStore } from "metabase-enterprise/documents/redux-utils";
+import { getMentionsCache } from "metabase-enterprise/documents/selectors";
+import type { DocumentsStoreState } from "metabase-enterprise/documents/types";
+import { getMentionsCacheKey } from "metabase-enterprise/documents/utils/mentionsUtils";
 
 import styles from "./Editor.module.css";
 import { EditorBubbleMenu } from "./EditorBubbleMenu";
@@ -33,24 +37,30 @@ import { createSuggestionRenderer } from "./extensions/suggestionRenderer";
 import { useCardEmbedsTracking, useQuestionSelection } from "./hooks";
 import type { CardEmbedRef } from "./types";
 
-const metabotPromptSerializer: PromptSerializer = (node) => {
-  const payload: ReturnType<PromptSerializer> = { instructions: "" };
-  return node.content.content.reduce((acc, child) => {
-    // Serialize @ mentions in the metabot prompt
-    if (child.type.name === SmartLinkEmbed.name) {
-      const key = `${child.attrs.model}:${child.attrs.entityId}`;
-      const value = child.attrs.name;
-      acc.instructions += `[${value}](${key})`;
-      if (!acc.references) {
-        acc.references = {};
+const getMetabotPromptSerializer =
+  (getState: () => DocumentsStoreState): PromptSerializer =>
+  (node) => {
+    const payload: ReturnType<PromptSerializer> = { instructions: "" };
+    return node.content.content.reduce((acc, child) => {
+      // Serialize @ mentions in the metabot prompt
+      if (child.type.name === SmartLinkEmbed.name) {
+        const { model, entityId } = child.attrs;
+        const key = getMentionsCacheKey({ model, entityId });
+        const value = getMentionsCache(getState())[key];
+        if (!value) {
+          return acc;
+        }
+        acc.instructions += `[${value.name}](${key})`;
+        if (!acc.references) {
+          acc.references = {};
+        }
+        acc.references[key] = value.name;
+      } else {
+        acc.instructions += child.textContent;
       }
-      acc.references[key] = value;
-    } else {
-      acc.instructions += child.textContent;
-    }
-    return acc;
-  }, payload);
-};
+      return acc;
+    }, payload);
+  };
 
 const isMetabotBlock = (state: EditorState): boolean =>
   state.selection.$head.parent.type.name === "metabot";
@@ -77,6 +87,7 @@ export const Editor: React.FC<EditorProps> = ({
   isLoading = false,
 }) => {
   const siteUrl = useSelector((state) => getSetting(state, "site-url"));
+  const { getState } = useDocumentsStore();
 
   const extensions = useMemo(
     () => [
@@ -103,7 +114,9 @@ export const Editor: React.FC<EditorProps> = ({
       }),
       Markdown,
       CardEmbed,
-      MetabotNode.configure({ serializePrompt: metabotPromptSerializer }),
+      MetabotNode.configure({
+        serializePrompt: getMetabotPromptSerializer(getState),
+      }),
       DisableMetabotSidebar,
       MentionExtension.configure({
         suggestion: {
@@ -124,7 +137,7 @@ export const Editor: React.FC<EditorProps> = ({
         },
       }),
     ],
-    [siteUrl],
+    [siteUrl, getState],
   );
 
   const editor = useEditor(
