@@ -9,21 +9,25 @@
    [toucan2.core :as t2]))
 
 (defn- build-field-statistics [fvs fp limit]
-  (merge (when fp
-           {:statistics (-> (or (:global fp) {})
-                            (set/rename-keys {:nil% :percent-null})
-                            (into (vals (:type fp))))})
-         (when-let [fvs (-> fvs :values not-empty)]
-           {:values (into [] (if limit (take limit) identity) fvs)})))
+  (merge
+   (when fp
+     {:statistics (-> (or (:global fp) {})
+                      (set/rename-keys {:nil% :percent-null})
+                      (into (vals (:type fp))))})
+   (when-let [fvs (-> fvs :values not-empty)]
+     {:values (into [] (if limit (take limit) identity) fvs)})))
+
+(defn- get-or-create-fingerprint! [{:keys [id fingerprint] :as field}]
+  (or fingerprint
+      (and (pos? (:updated-fingerprints (sync/refingerprint-field! field)))
+           (t2/select-one-fn :fingerprint :model/Field :id id))))
 
 (defn- field-statistics
   [{:keys [id fingerprint]} limit]
   (if id
     (let [field (t2/select-one :model/Field :id id)
           fvs (field-values/get-or-create-full-field-values! field)
-          fp (or fingerprint
-                 (and (pos? (:updated-fingerprints (sync/refingerprint-field! field)))
-                      (t2/select-one-fn :fingerprint :model/Field :id id)))]
+          fp (or fingerprint (get-or-create-fingerprint! field))]
       (build-field-statistics fvs fp limit))
     (build-field-statistics nil fingerprint limit)))
 
