@@ -89,8 +89,9 @@
             [:tag_ids {:optional true} [:sequential ms/PositiveInt]]]]
   (api/check-superuser)
   (check-database-feature body)
-  (when (transforms.util/target-table-exists? body)
-    (api/throw-403))
+  (api/check (not (transforms.util/target-table-exists? body))
+             403
+             (deferred-tru "A table with that name already exists."))
   (let [tag-ids (:tag_ids body)
         transform (t2/insert-returning-instance!
                    :model/Transform (select-keys body [:name :description :source :target :run_trigger]))]
@@ -157,9 +158,10 @@
     (when-let [{:keys [cycle-str]} (transforms.ordering/get-transform-cycle new)]
       (throw (ex-info (str "Cyclic transform definitions detected: " cycle-str)
                       {:status-code 400})))
-    (when (and (not= (target-fields old) (target-fields new))
-               (transforms.util/target-table-exists? new))
-      (api/throw-403)))
+    (api/check (not (and (not= (target-fields old) (target-fields new))
+                         (transforms.util/target-table-exists? new)))
+               403
+               (deferred-tru "A table with that name already exists.")))
   (t2/update! :model/Transform id (dissoc body :tag_ids))
   ;; Update tag associations if provided
   (when (contains? body :tag_ids)
