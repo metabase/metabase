@@ -69,10 +69,10 @@
     (str "sha_" (tx/hash-dataset db-def) "_" (normalize-name database-name))))
 
 (defn- test-db-details []
-  {:project-id (tx/db-test-env-var-or-throw :bigquery-cloud-sdk :project-id)
+  {:project-id (tx/db-test-env-var :bigquery-cloud-sdk :project-id)
    :service-account-json (if tx/*use-routing-details*
-                           (tx/db-test-env-var-or-throw :bigquery-cloud-sdk :service-account-json-routing)
-                           (tx/db-test-env-var-or-throw :bigquery-cloud-sdk :service-account-json))})
+                           (tx/db-test-env-var :bigquery-cloud-sdk :service-account-json-routing)
+                           (tx/db-test-env-var :bigquery-cloud-sdk :service-account-json))})
 
 (defn- bigquery
   "Get an instance of a `Bigquery` client."
