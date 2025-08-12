@@ -208,7 +208,7 @@
   [{:keys [model-name] :as _embedding-model}]
   (boolean
    (when (string? model-name)
-     (re-find #"^text-embedding-3" model-name))))
+     (str/starts-with? model-name "text-embedding-3"))))
 
 (defn- openai-get-embeddings-batch
   [{:keys [model-name vector-dimensions] :as embedding-model} texts]
