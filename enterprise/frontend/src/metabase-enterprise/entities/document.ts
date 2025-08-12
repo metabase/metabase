@@ -54,6 +54,12 @@ const Documents = createEntity({
         dispatch,
         documentApi.endpoints.updateDocument,
       ),
+    delete: (entityQuery, dispatch) =>
+      entityCompatibleQuery(
+        entityQuery,
+        dispatch,
+        documentApi.endpoints.deleteDocument,
+      ),
   },
 
   objectActions: {

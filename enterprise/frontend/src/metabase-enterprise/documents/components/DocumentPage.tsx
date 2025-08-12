@@ -63,6 +63,7 @@ import {
   getSelectedQuestionId,
 } from "../selectors";
 
+import { DocumentArchivedEntityBanner } from "./DocumentArchivedEntityBanner";
 import styles from "./DocumentPage.module.css";
 import { Editor } from "./Editor";
 import { EmbedQuestionSettingsSidebar } from "./EmbedQuestionSettingsSidebar";
@@ -379,6 +380,7 @@ export const DocumentPage = ({
 
   return (
     <Box className={styles.documentPage}>
+      {documentData?.archived && <DocumentArchivedEntityBanner />}
       <Box className={styles.contentArea}>
         <Box className={styles.mainContent}>
           <Box className={styles.documentContainer}>

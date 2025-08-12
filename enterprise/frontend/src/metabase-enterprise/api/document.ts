@@ -34,6 +34,14 @@ export const documentApi = EnterpriseApi.injectEndpoints({
       invalidatesTags: (_, error, { id }) =>
         !error ? [listTag("document"), idTag("document", id)] : [],
     }),
+    deleteDocument: builder.mutation<void, Pick<Document, "id">>({
+      query: (document) => ({
+        method: "DELETE",
+        url: `/api/ee/document/${document.id}`,
+      }),
+      invalidatesTags: (_, error, { id }) =>
+        !error ? [listTag("document"), idTag("document", id)] : [],
+    }),
   }),
 });
 
