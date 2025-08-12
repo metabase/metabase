@@ -28,7 +28,7 @@ describe("scenarios > admin > transforms", () => {
       TransformQueryEditor.saveButton().click();
       CreateTransformModal.nameInput().type("My transform");
       CreateTransformModal.tableNameInput().type("my_table");
-      CreateTransformModal.saveButton().click();
+      CreateTransformModal.save();
     }
 
     it("should be able to create and run an mbql transform", () => {
@@ -39,9 +39,41 @@ describe("scenarios > admin > transforms", () => {
       H.assertQueryBuilderRowCount(3);
     });
 
-    it("should be able to change the target before running a transform", () => {
+    it("should be able to change the table name before running a transform", () => {
       createMbqlTransform();
       TransformPage.changeTargetButton().click();
+      UpdateTargetModal.nameInput().should("have.value", "my_table");
+      UpdateTargetModal.schemaSelect().should("have.value", "Schema A");
+      UpdateTargetModal.nameInput().clear().type("my_table_changed");
+      UpdateTargetModal.save();
+      TransformPage.tableLink().should("have.text", "my_table_changed");
+      TransformPage.runAndWaitForSuccess();
+
+      TransformPage.tableLink().click();
+      H.queryBuilderHeader().within(() => {
+        cy.findByText("Schema A").should("be.visible");
+        cy.findByText("My Table Changed").should("be.visible");
+      });
+      H.assertQueryBuilderRowCount(3);
+    });
+
+    it("should be able to change the schema before running a transform", () => {
+      createMbqlTransform();
+      TransformPage.changeTargetButton().click();
+      UpdateTargetModal.nameInput().should("have.value", "my_table");
+      UpdateTargetModal.schemaSelect().should("have.value", "Schema A");
+      UpdateTargetModal.schemaSelect().click();
+      H.popover().findByText("Schema B").click();
+      UpdateTargetModal.save();
+      TransformPage.schemaLink().should("have.text", "Schema B");
+      TransformPage.runAndWaitForSuccess();
+
+      TransformPage.tableLink().click();
+      H.queryBuilderHeader().within(() => {
+        cy.findByText("Schema B").should("be.visible");
+        cy.findByText("My Table").should("be.visible");
+      });
+      H.assertQueryBuilderRowCount(3);
     });
   });
 });
@@ -68,9 +100,8 @@ const TransformPage = {
   runButton() {
     return this.get().findByTestId("run-button");
   },
-  runAndWaitForSuccess() {
-    this.runButton().click();
-    this.runButton().should("have.text", "Ran successfully");
+  schemaLink() {
+    return this.get().findByTestId("schema-link");
   },
   tableLink() {
     return this.get().findByTestId("table-link");
@@ -80,6 +111,10 @@ const TransformPage = {
   },
   changeTargetButton() {
     return this.get().findByTestId("change-target-button");
+  },
+  runAndWaitForSuccess() {
+    this.runButton().click();
+    this.runButton().should("have.text", "Ran successfully");
   },
 };
 
@@ -116,5 +151,49 @@ const CreateTransformModal = {
   },
   cancelButton() {
     return this.get().button("Cancel");
+  },
+  save() {
+    H.interceptIfNotPreviouslyDefined({
+      method: "POST",
+      url: "/api/ee/transform",
+      alias: "createTransform",
+    });
+    this.saveButton().click();
+    cy.wait("@createTransform");
+  },
+};
+
+const UpdateTargetModal = {
+  get() {
+    return cy.findByTestId("update-target-modal");
+  },
+  nameInput() {
+    return this.get().findByLabelText(
+      "What should it be called in the database?",
+    );
+  },
+  schemaSelect() {
+    return this.get().findByLabelText("In which schema should it go?");
+  },
+  keepTargetRadio() {
+    return this.get().findByText(/^Keep/);
+  },
+  deleteTargetRadio() {
+    return this.get().findByText(/^Delete/);
+  },
+  saveButton() {
+    return this.get().button(/^Change target/);
+  },
+  cancelButton() {
+    return this.get().button("Cancel");
+  },
+  save() {
+    H.interceptIfNotPreviouslyDefined({
+      method: "PUT",
+      url: "/api/ee/transform/*",
+      alias: "updateTransform",
+    });
+    this.saveButton().click();
+    cy.wait("@updateTransform");
   },
 };

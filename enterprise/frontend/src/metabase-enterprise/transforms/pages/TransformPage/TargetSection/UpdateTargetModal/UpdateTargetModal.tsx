@@ -36,6 +36,7 @@ export function UpdateTargetModal({
       title={t`Change the target for this transform`}
       opened
       padding="xl"
+      data-testid="update-target-modal"
       onClose={onClose}
     >
       <FocusTrap.InitialFocus />
