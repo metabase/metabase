@@ -16,16 +16,21 @@
   (:require
    [honey.sql.helpers :as sql.helpers]
    [java-time.api :as t]
+   [medley.core :as m]
    [metabase.api-keys.core :as api-key]
+   [metabase.api-keys.schema :as api-keys.schema]
    [metabase.app-db.core :as mdb]
    [metabase.config.core :as config]
    [metabase.core.initialization-status :as init-status]
    [metabase.premium-features.core :as premium-features]
    [metabase.request.core :as request]
+   [metabase.request.schema :as request.schema]
    [metabase.session.core :as session]
+   [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    [metabase.util.password :as u.password]
    [metabase.util.string :as string]
    [toucan2.core :as t2]
@@ -134,6 +139,8 @@
       (t2.pipeline/compile*
        (cond-> {:select    [[:api_key.user_id :metabase-user-id]
                             [:api_key.key :api-key]
+                            [:api_key.scope (u/qualified-name ::api-key.scope)]
+                            [:api_key.single_collection_id (u/qualified-name ::api-key.single-collection-id)]
                             [:user.is_superuser :is-superuser?]
                             [:user.locale :user-locale]]
                 :from      :api_key
@@ -160,7 +167,7 @@
   [session-key]
   (or (not session-key) (string/valid-uuid? session-key)))
 
-(defn- current-user-info-for-session
+(mu/defn- current-user-info-for-session :- [:maybe ::request.schema/current-user-info]
   "Return User ID and superuser status for Session with `session-key` if it is valid and not expired."
   [session-key anti-csrf-token]
   (when (and session-key (valid-session-key? session-key) (init-status/complete?))
@@ -191,16 +198,21 @@
     (u.password/verify-password passed-api-key "" api-key)
     (do-useless-hash)))
 
-(defn- current-user-info-for-api-key
+(mu/defn- current-user-info-for-api-key :- [:maybe ::request.schema/current-user-info]
   "Return User ID and superuser status for an API Key with `api-key-id"
-  [api-key]
+  [api-key :- ::api-keys.schema/key.unhashed]
   (when (and api-key (init-status/complete?))
-    (let [user-data (some-> (t2/query-one (cons (user-data-for-api-key-prefix-query
-                                                 (premium-features/enable-advanced-permissions?))
-                                                [(api-key/prefix api-key)]))
-                            (update :is-group-manager? boolean))]
-      (when (matching-api-key? user-data api-key)
-        (dissoc user-data :api-key)))))
+    (let [user-info (-> (t2/query-one (cons (user-data-for-api-key-prefix-query
+                                             (premium-features/enable-advanced-permissions?))
+                                            [(api-key/prefix api-key)]))
+                        (m/update-existing :is-group-manager? boolean)
+                        (m/update-existing ::api-key.scope keyword))]
+      (when (matching-api-key? user-info api-key)
+        (let [allowed-collection-id (when (= (::api-key.scope user-info) :api-key.scope/single-collection)
+                                      (::api-key.single-collection-id user-info))]
+          (-> user-info
+              (dissoc :api-key ::api-key.scope ::api-key.single-collection-id)
+              (m/assoc-some :api-key/allowed-collection-id allowed-collection-id)))))))
 
 (defn- merge-current-user-info
   [{:keys [metabase-session-key anti-csrf-token], {:strs [x-metabase-locale x-api-key]} :headers, :as request}]

@@ -120,6 +120,27 @@ databaseChangeLog:
                   constraints:
                     nullable: false
 
+  - changeSet:
+      id: v57.2025-08-12T13:00:00
+      author: camsaul
+      comment: Add single_collection_id FK to api_key to support API keys tied to one specific Collection
+      changes:
+        - addColumn:
+            tableName: api_key
+            columns:
+              - column:
+                  name: single_collection_id
+                  remarks: If this API Key is tied to a single Collection, this is the ID of that Collection
+                  type: int
+                  constraints:
+                    nullable: true
+                    referencedTableName: collection
+                    referencedColumnNames: id
+                    foreignKeyName: fk_api_key_collection_id
+                    deleteCascade: true
+
+
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

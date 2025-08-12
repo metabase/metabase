@@ -8,7 +8,6 @@
    [metabase.permissions.core :as perms]
    [metabase.users.models.user :as user]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.schema :as ms]
    [metabase.util.secret :as u.secret]
    [toucan2.core :as t2]))
@@ -34,16 +33,6 @@
       (maybe-expose-key)
       (update :updated_by #(select-keys % [:common_name :id]))))
 
-(defn- key-with-unique-prefix []
-  (u/auto-retry 5
-    (let [api-key (api-key/generate-key)
-          prefix (api-key/prefix (u.secret/expose api-key))]
-     ;; we could make this more efficient by generating 5 API keys up front and doing one select to remove any
-     ;; duplicates. But a duplicate should be rare enough to just do multiple queries for now.
-      (if-not (t2/exists? :model/ApiKey :key_prefix prefix)
-        api-key
-        (throw (ex-info (tru "could not generate key with unique prefix") {}))))))
-
 (defn- with-updated-by [api-key]
   (assoc api-key :updated_by_id api/*current-user-id*))
 
@@ -60,7 +49,7 @@
   (api/check-superuser)
   (api/checkp (not (t2/exists? :model/ApiKey :name name))
               "name" "An API key with this name already exists.")
-  (let [unhashed-key (key-with-unique-prefix)
+  (let [unhashed-key (api-key/key-with-unique-prefix)
         email        (format "api-key-user-%s@api-key.invalid" (random-uuid))]
     (t2/with-transaction [_conn]
       (let [user (first
@@ -126,10 +115,10 @@
   (let [api-key-before (-> (t2/select-one :model/ApiKey id)
                            (t2/hydrate :group)
                            (api/check-404))
-        unhashed-key (key-with-unique-prefix)
+        unhashed-key (api-key/key-with-unique-prefix)
         api-key-after (assoc api-key-before
                              :unhashed_key unhashed-key
-                             :key_prefix (api-key/prefix (u.secret/expose unhashed-key)))]
+                             :key_prefix (api-key/prefix unhashed-key))]
     (t2/update! :model/ApiKey :id id (with-updated-by
                                        (select-keys api-key-after [:unhashed_key])))
     (events/publish-event! :event/api-key-regenerate
