@@ -138,6 +138,13 @@ export const InputLeftButton = styled(InputButton)<InputButtonProps>`
   left: 0;
 `;
 
+export const InputLeftSection = styled.div`
+  padding: 12px;
+  position: absolute;
+  display: flex;
+  align-items: center;
+`;
+
 export const InputRightButton = styled(InputButton)<InputButtonProps>`
   right: 0;
 `;
