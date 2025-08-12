@@ -63,7 +63,6 @@ interface CommandOption {
   icon?: IconName;
   text?: string;
   label: string;
-  description?: string;
   command: string;
 }
 
@@ -111,11 +110,6 @@ const CommandMenuItem = forwardRef<
           <Text size="md" lh="lg" c="inherit">
             {option.label}
           </Text>
-          {option.description && (
-            <Text size="sm" c="text-light" lh="md">
-              {option.description}
-            </Text>
-          )}
         </Stack>
       </Group>
     </UnstyledButton>
