@@ -34,11 +34,21 @@
         {:structured-output (-> dashboard (dissoc :collection_id) (assoc :type :dashboard))})
     {:output "dashboard not found"}))
 
+(defn- get-field-values [id->values id]
+  (some->
+   id
+   id->values
+   (or
+    (do
+      (field-values/create-or-update-full-field-values! (t2/select-one :model/Field :id id))
+      (field-values/get-latest-full-field-values id)))
+   :values))
+
 (defn- add-field-values
   [cols]
   (if-let [field-ids (seq (keep :id cols))]
     (let [id->values (field-values/batched-get-latest-full-field-values field-ids)]
-      (map #(m/assoc-some % :field-values (-> % :id id->values :values)) cols))
+      (map #(m/assoc-some % :field-values (get-field-values id->values (:id %))) cols))
     cols))
 
 (defn- add-table-reference

@@ -12,7 +12,9 @@
   [column limit]
   (let [id (:id column)
         fvs (field-values/get-latest-full-field-values id)
-        field (when (or (not fvs) (not (:fingerprint column)))
+        field (when-not (and fvs (:fingerprint column))
+                ;; trying to be lazy, only fetch the field if we'll need it to
+                ;; compute fingerprint or field values
                 (t2/select-one :model/Field :id id))
         fvs (or fvs
                 (do
