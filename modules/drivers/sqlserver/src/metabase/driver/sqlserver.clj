@@ -944,7 +944,9 @@
   ;; SQL Server doesn't support CREATE TABLE AS SELECT
   ;; Instead it uses SELECT ... INTO syntax
   (let [table-name (first (sql.qp/format-honeysql driver (keyword output-table)))]
-    ;; Return a vector to match the expected contract - all compile methods should return vectors
+    ;; SQL Server doesn't support CREATE TABLE AS SELECT
+    ;; Instead it uses SELECT ... INTO syntax
+    ;; The regex finds the last FROM and inserts INTO before it
     [(str/replace query #"\bFROM\b(?!.*\bFROM\b)" (str " INTO " table-name " FROM "))]))
 
 (defmethod driver/table-exists? :sqlserver

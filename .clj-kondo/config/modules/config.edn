@@ -1869,6 +1869,7 @@
            sync
            task
            task-history
+           test
            util
            enterprise/worker}}
 

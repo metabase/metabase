@@ -5,7 +5,8 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase-enterprise.transforms.models.transform-tag]
-   [metabase-enterprise.transforms.test-util :refer [with-transform-cleanup! with-isolated-test-db]]
+   [metabase-enterprise.transforms.test-dataset :as transforms-dataset]
+   [metabase-enterprise.transforms.test-util :refer [with-transform-cleanup!]]
    [metabase-enterprise.transforms.util :as transforms.util]
    [metabase-enterprise.worker.models.worker-run]
    [metabase.driver :as driver]
@@ -103,13 +104,13 @@
         (str "Expected transform IDs " expected-ids ", got " actual-ids))))
 
 (defn- make-query [category]
-  (let [q   (if (= :clickhouse driver/*driver*)
-              (mt/mbql-query products {:filter      [:= $category category]
+  (mt/dataset transforms-dataset/transforms-test
+    (let [q (if (= :clickhouse driver/*driver*)
+              (mt/mbql-query products {:filter [:= $category category]
                                        :expressions {"clickhouse_merge_table_id" $id}})
               (mt/mbql-query products {:filter [:= $category category]}))
         sql (:query (qp.compile/compile q))]
-    ;; inline the parameter
-    (str/replace-first sql "?" (str \' category \'))))
+      (str/replace-first sql "?" (str \' category \')))))
 
 (comment
   (binding [driver/*driver* :clickhouse]
@@ -119,7 +120,7 @@
 (deftest create-transform-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
     (mt/with-premium-features #{:transforms}
-      (with-isolated-test-db
+      (mt/dataset transforms-dataset/transforms-test
         (with-transform-cleanup! [table-name "gadget_products"]
           (mt/user-http-request :crowberto :post 200 "ee/transform"
                                 {:name   "Gadget Products"
@@ -143,7 +144,7 @@
         (mt/user-http-request :crowberto :get 200 "ee/transform")))
     (testing "Can list with query parameters"
       (mt/with-premium-features #{:transforms}
-        (with-isolated-test-db
+        (mt/dataset transforms-dataset/transforms-test
           (with-transform-cleanup! [table-name "gadget_products"]
             (let [body      {:name        "Gadget Products"
                              :description "Desc"
@@ -162,7 +163,7 @@
 (deftest get-transforms-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
     (mt/with-premium-features #{:transforms}
-      (with-isolated-test-db
+      (mt/dataset transforms-dataset/transforms-test
         (with-transform-cleanup! [table-name "gadget_products"]
           (let [body {:name        "Gadget Products"
                       :description "Desc"
@@ -182,7 +183,7 @@
 (deftest put-transforms-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
     (mt/with-premium-features #{:transforms}
-      (with-isolated-test-db
+      (mt/dataset transforms-dataset/transforms-test
         (with-transform-cleanup! [table-name "gadget_products"]
           (let [query2 (make-query "None")
                 resp   (mt/user-http-request :crowberto :post 200 "ee/transform"
@@ -211,7 +212,7 @@
 (deftest change-target-table-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
     (mt/with-premium-features #{:transforms}
-      (with-isolated-test-db
+      (mt/dataset transforms-dataset/transforms-test
         (with-transform-cleanup! [table1-name "dookey_products"
                                   table2-name "doohickey_products"]
           (let [query2   (make-query "Doohickey")
@@ -242,7 +243,7 @@
 (deftest delete-transforms-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
     (mt/with-premium-features #{:transforms}
-      (with-isolated-test-db
+      (mt/dataset transforms-dataset/transforms-test
         (with-transform-cleanup! [table-name "gadget_products"]
           (let [resp (mt/user-http-request :crowberto :post 200 "ee/transform"
                                            {:name   "Gadget Products"
@@ -260,7 +261,7 @@
 (deftest delete-table-transforms-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
     (mt/with-premium-features #{:transforms}
-      (with-isolated-test-db
+      (mt/dataset transforms-dataset/transforms-test
         (with-transform-cleanup! [table-name "gadget_products"]
           (let [resp (mt/user-http-request :crowberto :post 200 "ee/transform"
                                            {:name   "Gadget Products"
@@ -293,10 +294,39 @@
           (recur))))))
 
 (defn- check-query-results
+  "Verifies that a transform successfully created a table with expected data.
+
+   Queries the created table and checks that it contains the expected ID/CATEGORY pairs.
+   The transform filters products by category (e.g., 'Gadget' or 'Doohickey') and this
+   function verifies the correct products were included.
+
+   Args:
+     table-name - Name of the table created by the transform
+     ids - Vector of expected product IDs (e.g., [5 11 16] for Gadget products)
+     category - The category filter used (e.g., \"Gadget\" or \"Doohickey\")
+
+   The function handles database differences in field name casing by doing
+   case-insensitive field name matching."
   [table-name ids category]
+  ;; First, find the table that was created by the transform
   (let [table-id          (t2/select-one-fn :id :model/Table :db_id (mt/id) :name table-name)
-        id-field-id       (t2/select-one-fn :id :model/Field :table_id table-id :position 0)
-        category-field-id (t2/select-one-fn :id :model/Field :table_id table-id :position 3)]
+        ;; Find the ID and CATEGORY fields in the table
+        ;; We need case-insensitive matching because different databases store field names differently
+        ;; (e.g., PostgreSQL might use lowercase, Oracle might use uppercase)
+        fields (t2/select :model/Field :table_id table-id)
+        id-field-id (some #(when (= (u/upper-case-en (:name %)) "ID") (:id %)) fields)
+        category-field-id (some #(when (= (u/upper-case-en (:name %)) "CATEGORY") (:id %)) fields)]
+    ;; Ensure we found both required fields, with helpful error messages if not
+    (when-not id-field-id
+      (throw (ex-info (str "Could not find ID field in table " table-name ". Available fields: "
+                           (mapv :name fields))
+                      {:table-name table-name :fields fields})))
+    (when-not category-field-id
+      (throw (ex-info (str "Could not find CATEGORY field in table " table-name ". Available fields: "
+                           (mapv :name fields))
+                      {:table-name table-name :fields fields})))
+    ;; Query the created table to verify it contains the expected data
+    ;; We expect each product to have its ID and the filtered category
     (is (= (mapv vector ids (repeat category))
            (mt/rows
             (mt/run-mbql-query nil
@@ -311,7 +341,7 @@
     (testing (str "transform execution with " target-type " target")
       (mt/test-drivers (mt/normal-drivers-with-feature feature)
         (mt/with-premium-features #{:transforms}
-          (with-isolated-test-db
+          (mt/dataset transforms-dataset/transforms-test
             (let [schema (t2/select-one-fn :schema :model/Table (mt/id :products))]
               (with-transform-cleanup! [{table1-name :name :as target1} {:type   target-type
                                                                          :schema schema
@@ -345,6 +375,8 @@
                   (test-run transform-id)
                   (is (true? (transforms.util/target-table-exists? original)))
                   (is (true? (transforms.util/target-table-exists? updated)))
+                  ;; Doohickey products in our test dataset have IDs 2, 3, 4, 13
+                  ;; We check the first 3 (ordered by ID) which are 2, 3, 4
                   (check-query-results table2-name [2 3 4] "Doohickey"))))))))))
 
 (deftest get-runs-filter-by-single-transform-id-test
