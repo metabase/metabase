@@ -1,5 +1,6 @@
-import Markdown from "metabase/common/components/Markdown";
 import type { PropsWithChildren } from "react";
+
+import Markdown from "metabase/common/components/Markdown";
 import {
   Box,
   Card,
