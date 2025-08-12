@@ -153,19 +153,16 @@ const CommandSuggestionComponent = forwardRef<
           {
             icon: "metabot",
             label: t`Ask Metabot`,
-            description: t`It wants to help!`,
             command: "metabot",
           },
           {
-            icon: "table",
-            label: t`Question`,
-            description: t`Add a visualization to your document`,
+            icon: "lineandbar",
+            label: t`Chart`,
             command: "embedQuestion",
           },
           {
             icon: "link",
-            label: t`Link to...`,
-            description: t`Link to questions, dashboards, and more`,
+            label: t`Link`,
             command: "linkTo",
           },
         ],
