@@ -213,7 +213,7 @@
 
 (defmethod router-dataset-name :default [_driver] "db-router-data")
 
-(doseq [driver [:redshift :databricks :athena]]
+(doseq [driver [:redshift :databricks :athena :presto-jdbc]]
   (defmethod router-dataset-name driver [_driver] "db-routing-data"))
 
 (defmulti routed-dataset-name
@@ -224,7 +224,7 @@
 
 (defmethod routed-dataset-name :default [_driver] "db-routed-data")
 
-(doseq [driver [:redshift :databricks :athena]]
+(doseq [driver [:redshift :databricks :athena :presto-jdbc]]
   (defmethod routed-dataset-name driver [_driver] "db-routing-data"))
 
 (deftest db-routing-e2e-test
@@ -250,9 +250,13 @@
                     (mt/with-temp [:model/DatabaseRouter _ {:database_id    (u/the-id router)
                                                             :user_attribute "db_name"}]
                       (met/with-user-attributes! :rasta {"db_name" (:name routed)}
-                        (is (= [[1 "original-foo"] [2 "original-bar"]]
-                               (mt/with-current-user (mt/user->id :crowberto)
-                                 (mt/rows (mt/process-query (mt/query t))))))
-                        (is (= [[1 "routed-foo"] [2 "routed-bar"]]
-                               (mt/with-current-user (mt/user->id :rasta)
-                                 (mt/rows (mt/process-query (mt/query t))))))))))))))))))
+                        (mt/with-current-user (mt/user->id :crowberto)
+                          (is (= [[1 "original-foo"] [2 "original-bar"]]
+                                 (->> (mt/query t)
+                                      (mt/process-query)
+                                      (mt/formatted-rows [int str])))))
+                        (mt/with-current-user (mt/user->id :rasta)
+                          (is (= [[1 "routed-foo"] [2 "routed-bar"]]
+                                 (->> (mt/query t)
+                                      (mt/process-query)
+                                      (mt/formatted-rows [int str])))))))))))))))))
