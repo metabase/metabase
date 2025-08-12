@@ -1,4 +1,4 @@
-import { Node, mergeAttributes } from "@tiptap/core";
+import { type JSONContent, Node, mergeAttributes } from "@tiptap/core";
 import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
 import { Selection } from "@tiptap/pm/state";
 import {
@@ -26,10 +26,16 @@ import type { Card, MetabotDocumentNodeRequest } from "metabase-types/api";
 
 import Styles from "./MetabotEmbed.module.css";
 
-const createTextNode = (str: string) => ({
-  type: "paragraph",
-  content: [{ type: "text", text: str }],
-});
+const createTextNode = (text: string, marks?: JSONContent["marks"]) => {
+  return { type: "text", text, marks };
+};
+
+// unsets bold/italic/etc when user edits around `content`
+const padWithUnstyledText = (content: JSONContent): JSONContent[] => [
+  createTextNode(" "),
+  content,
+  createTextNode(" "),
+];
 
 export type PromptSerializer = (
   node: ProseMirrorNode,
@@ -248,8 +254,19 @@ export const MetabotComponent = memo(
             id: newCardId,
           },
         },
-        createTextNode(data.description),
-        createTextNode(`🤖 ${t`Created with Metabot`} 💙`),
+        {
+          type: "paragraph",
+          content: [createTextNode(data.description)],
+        },
+        {
+          type: "paragraph",
+          content: padWithUnstyledText(
+            createTextNode(t`Created with Metabot`, [
+              { type: "bold" },
+              { type: "italic" },
+            ]),
+          ),
+        },
       ]);
 
       deleteNode();
