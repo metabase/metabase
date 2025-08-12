@@ -44,17 +44,6 @@ export const DatabaseReplicationApi = EnterpriseApi.injectEndpoints({
       invalidatesTags: (_, error) =>
         invalidateTags(error, [tag("session-properties")]),
     }),
-    getDatabaseReplication: builder.query<
-      GetDatabaseReplicationResponse,
-      {
-        databaseId: DatabaseId;
-      }
-    >({
-      query: ({ databaseId }) => ({
-        method: "GET",
-        url: `/api/ee/database-replication/connection/${databaseId}`,
-      }),
-    }),
     createDatabaseReplication: builder.mutation<
       void,
       {
@@ -82,7 +71,6 @@ export const DatabaseReplicationApi = EnterpriseApi.injectEndpoints({
 });
 
 export const {
-  useGetDatabaseReplicationQuery,
   usePreviewDatabaseReplicationMutation,
   useCreateDatabaseReplicationMutation,
   useDeleteDatabaseReplicationMutation,

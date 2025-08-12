@@ -1,6 +1,5 @@
 (ns metabase-enterprise.database-replication.api
   (:require
-   [clojure.set :as set]
    [clojure.string :as str]
    [medley.core :as m]
    [metabase-enterprise.database-replication.settings :as database-replication.settings]
@@ -114,16 +113,6 @@
   replicated."
   [database schemas]
   (:can-set-replication (token-check-quotas-info database schemas)))
-
-(api.macros/defendpoint :get "/connection/:database-id"
-  "Return info about pg-replication connection."
-  [{:keys [database-id]} :- [:map [:database-id ms/PositiveInt]]]
-  (let [connection-id (-> (pruned-database-replication-connections)
-                          (database-id->connection-id database-id)
-                          api/check-404)]
-    (u/recursive-map-keys u/->camelCaseEn (-> (hm.client/call :get-connection, :connection-id connection-id)
-                                              (select-keys [:id :status :status-reason :error :error-detail :type])
-                                              (set/rename-keys {:id :connection-id})))))
 
 (api.macros/defendpoint :post "/connection/:database-id"
   "Create a new PG replication connection for the specified database."

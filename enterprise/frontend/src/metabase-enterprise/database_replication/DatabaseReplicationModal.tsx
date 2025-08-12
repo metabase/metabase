@@ -70,18 +70,19 @@ export const DatabaseReplicationModal = ({
   );
 
   const onSubmit = useCallback(
-    async ({ schemaSelect, schemaFilters }: DatabaseReplicationFormFields) =>
+    async ({ schemaSelect, schemaFilters }: DatabaseReplicationFormFields) => {
+      setSetupStep("setting-up");
       createDatabaseReplication({
         databaseId: database.id,
         schemaFilters: transformSchemaFilters(schemaSelect, schemaFilters),
       })
         .unwrap()
-        .then(() => {
-          setSetupStep("setting-up");
-        })
+        .then(() => setSetupStep("success"))
         .catch((error: unknown) => {
+          setSetupStep("form");
           isRTKQueryError(error) && handleDWHReplicationFieldError(error.data);
-        }),
+        });
+    },
     [createDatabaseReplication, database.id, setSetupStep],
   );
 
@@ -105,10 +106,7 @@ export const DatabaseReplicationModal = ({
           }}
         />
       ) : setupStep === "setting-up" ? (
-        <DatabaseReplicationSettingUp
-          database={database}
-          proceed={() => setSetupStep("success")}
-        />
+        <DatabaseReplicationSettingUp />
       ) : setupStep === "success" ? (
         <DatabaseReplicationSuccess onClose={onClose} />
       ) : undefined}
