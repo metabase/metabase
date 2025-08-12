@@ -132,15 +132,13 @@ describe("scenarios > admin > transforms", () => {
         cy.button("Change target").click();
         cy.wait("@updateTransform");
       });
-      getTableLink().should("have.text", TARGET_TABLE);
+      getTableLink().should("have.text", TARGET_TABLE_2);
       getSchemaLink().should("have.text", TARGET_SCHEMA_2);
 
       cy.log("run the transform and verify the table");
       runAndWaitForSuccess();
       getTableLink().click();
-      H.queryBuilderHeader()
-        .findByText("Transform Table 2")
-        .should("be.visible");
+      H.queryBuilderHeader().findByText(TARGET_SCHEMA_2).should("be.visible");
       H.assertQueryBuilderRowCount(3);
     });
 
@@ -155,7 +153,7 @@ describe("scenarios > admin > transforms", () => {
         cy.findByLabelText("Table name").should("have.value", TARGET_TABLE);
         cy.findByLabelText("Schema").should("have.value", TARGET_SCHEMA);
         cy.findByLabelText("Keep transform_table").should("be.checked");
-        cy.findByLabelText("Table name").clear().type(TARGET_TABLE);
+        cy.findByLabelText("Table name").clear().type(TARGET_TABLE_2);
         cy.button("Change target").click();
         cy.wait("@updateTransform");
       });
@@ -390,15 +388,16 @@ function visitTableQuestion({
   targetTable = TARGET_TABLE,
   targetSchema = TARGET_SCHEMA,
 }: { targetTable?: string; targetSchema?: string } = {}) {
-  H.visitQuestionAdhoc({
-    dataset_query: {
+  H.createNativeQuestion(
+    {
       database: WRITABLE_DB_ID,
-      type: "native",
       native: {
         query: `SELECT * FROM "${targetSchema}"."${targetTable}"`,
+        "template-tags": {},
       },
     },
-  });
+    { visitQuestion: true },
+  );
 }
 
 function assertTableDoesNotExistError({

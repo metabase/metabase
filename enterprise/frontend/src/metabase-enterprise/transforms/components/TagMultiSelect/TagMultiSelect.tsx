@@ -194,6 +194,7 @@ function ExistingTagSelectItem({
           className={S.actionIcon}
           c="inherit"
           bg="none"
+          aria-label={t`Rename tag`}
           onClick={handleUpdateClick}
         >
           <Icon name="pencil_lines" />
@@ -204,6 +205,7 @@ function ExistingTagSelectItem({
           className={S.actionIcon}
           c="inherit"
           bg="none"
+          aria-label={t`Delete tag`}
           onClick={handleDeleteClick}
         >
           <Icon name="trash" />
