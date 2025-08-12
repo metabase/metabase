@@ -255,13 +255,29 @@
   [_ _]
   nil)
 
-(defmulti describe-database
-  "Return a map containing information that describes all of the tables in a `database`, an instance of the `Database`
-  model. It is expected that this function will be peformant and avoid draining meaningful resources of the database.
-  Results should match the [[metabase.sync.interface/DatabaseMetadata]] schema."
+(defmulti do-with-resilient-connection
+  "Execute function `f` within a context that may recover (on-demand) from connection failures.
+  `f` must be eager."
+  {:added "0.55.9" :arglists '([driver database f])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmethod do-with-resilient-connection
+  ::driver
+  [driver database f] (f driver database))
+
+(defmulti describe-database*
+  "Impl multimethod for [[describe-database]]"
   {:added "0.32.0" :arglists '([driver database])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
+
+(defn describe-database
+  "Return a map containing information that describes all of the tables in a `database`, an instance of the `Database`
+  model. It is expected that this function will be peformant and avoid draining meaningful resources of the database.
+  Results should match the [[metabase.sync.interface/DatabaseMetadata]] schema."
+  [driver database]
+  (do-with-resilient-connection driver database describe-database*))
 
 (defmulti describe-table
   "Return a map containing a single field `:fields` that describes the fields in a `table`. `database` will be an
@@ -1362,14 +1378,3 @@
   :hierarchy #'hierarchy)
 
 (defmethod set-database-used! ::driver [_driver _conn _db] nil)
-
-(defmulti do-with-resilient-connection
-  "Execute function `f` within a context that may recover (on-demand) from connection failures.
-  `f` must be eager."
-  {:added "0.55.9" :arglists '([driver database f])}
-  dispatch-on-initialized-driver
-  :hierarchy #'hierarchy)
-
-(defmethod do-with-resilient-connection
-  ::driver
-  [driver database f] (f driver database))

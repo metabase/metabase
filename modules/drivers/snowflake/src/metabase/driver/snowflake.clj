@@ -593,7 +593,7 @@
                             :from   [[table-identifier]]}]
       (sql-jdbc/query driver database query))))
 
-(defmethod driver/describe-database :snowflake
+(defmethod driver/describe-database* :snowflake
   [driver database]
   (let [db-name          (db-name database)
         excluded-schemas (set (sql-jdbc.sync/excluded-schemas driver))]
