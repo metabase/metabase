@@ -231,7 +231,20 @@ describe("scenarios > admin > transforms", () => {
 
   describe("deletion", () => {
     it("should be able to delete a transform before creating the table", () => {
-      cy.log("TBD");
+      cy.log("create a transform without running");
+      createMbqlTransform({ visitTransform: true });
+
+      cy.log("delete the transform");
+      getTransformPage().button("Delete").click();
+      H.modal().within(() => {
+        cy.findByLabelText("Delete the transform only").should("not.exist");
+        cy.findByLabelText("Delete the transform and the table").should(
+          "not.exist",
+        );
+        cy.button("Delete transform").click();
+        cy.wait("@deleteTransform");
+      });
+      getTransformListPage().should("be.visible");
     });
 
     it("should be able to delete a transform and keep the table", () => {
