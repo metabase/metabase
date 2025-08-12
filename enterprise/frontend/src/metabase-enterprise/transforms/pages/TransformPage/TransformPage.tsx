@@ -6,7 +6,6 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import * as Urls from "metabase/lib/urls";
 import { Stack } from "metabase/ui";
 import { useGetTransformQuery } from "metabase-enterprise/api";
-import { parseLocalTimestamp } from "metabase-enterprise/transforms/utils";
 import type { Transform, TransformId } from "metabase-types/api";
 
 import { POLLING_INTERVAL } from "../../constants";
@@ -74,31 +73,5 @@ export function getParsedParams({
 }
 
 export function isPollingNeeded(transform?: Transform) {
-  if (transform == null) {
-    return false;
-  }
-
-  const { last_run, updated_at, table } = transform;
-  if (last_run == null) {
-    return false;
-  }
-
-  const { status, end_time } = last_run;
-  if (status === "started") {
-    return true;
-  }
-
-  // If the transform has succeeded but there is no table yet, the sync might be
-  // still running. In this case continue polling, but only if the transform has
-  // not been updated since the last run. It prevents infinite polling for a
-  // case where a target gets deleted for a previously succeeded transform.
-  if (status === "succeeded") {
-    return (
-      table == null &&
-      end_time != null &&
-      parseLocalTimestamp(end_time).isAfter(parseLocalTimestamp(updated_at))
-    );
-  }
-
-  return false;
+  return transform?.last_run?.status === "started";
 }
