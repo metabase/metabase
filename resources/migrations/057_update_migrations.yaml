@@ -664,6 +664,27 @@ databaseChangeLog:
               - column:
                   name: entity_id
                   value: monthly00000000000000
+      rollback:
+         - sql:
+            sql: "delete from transform_tag where \"name\" in ('hourly', 'daily', 'weekly', 'monthly')"
+            dbms: postgresql
+        - sql:
+            sql: "delete from transform_tag where `name` in ('hourly', 'daily', 'weekly', 'monthly')"
+            dbms: mysql,mariadb
+        - sql:
+            sql: "delete from transform_tag where \"NAME\" in ('hourly', 'daily', 'weekly', 'monthly')"
+            dbms: h2
+
+         - sql:
+            sql: "delete from transform_job where \"entity_id\" in ('hourly000000000000000', 'daily0000000000000000', 'weekly000000000000000', 'monthly00000000000000')"
+            dbms: postgresql
+        - sql:
+            sql: "delete from transform_job where `entity_id` in ('hourly000000000000000', 'daily0000000000000000', 'weekly000000000000000', 'monthly00000000000000')"
+            dbms: mysql,mariadb
+        - sql:
+            sql: "delete from transform_job where \"ENTITY_ID\" in ('hourly000000000000000', 'daily0000000000000000', 'weekly000000000000000', 'monthly00000000000000')"
+            dbms: h2
+
 
 
   - changeSet:
