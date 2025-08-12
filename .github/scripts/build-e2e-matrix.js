@@ -57,6 +57,10 @@ function buildMatrix(options, inputSpecs, inputChunks) {
     );
   }
 
+  console.log({ regularChunks });
+  console.log("matrix config", config);
+  console.log("isDefaultSpecPattern", isDefaultSpecPattern);
+
   const regularTests = new Array(regularChunks).fill(1).map((files, index) => ({
     name: `e2e-group-${index + 1}`,
     // works when specs less than 5, otherwise seems all chunks will contain
