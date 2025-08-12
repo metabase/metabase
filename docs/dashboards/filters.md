@@ -175,17 +175,17 @@ Which cards you can connect a filter or parameter widget to depends on:
 - Whether the card has a relevant field (i.e., the field the widget is filtering).
 - Where the widget is located: on the dashboard, heading card, or question card. Only dashboard widgets can be connected to cards across all [dashboard tabs](./introduction.md#dashboard-tabs). Widgets on heading and question cards are restricted to the cards on their respective tabs.
 
+## Filtering dashboards with native/SQL questions
+
+To connect a dashboard filter widget to a card with question created with the native editor, you'll need to [add a field filter or basic variable to your query](../questions/native-editor/sql-parameters.md).
+
+For parameters, check out [Time grouping parameters](../questions/native-editor/time-grouping-parameters.md).
+
 ## Auto-connecting filters to cards
 
 If there are other cards that also have the field you select, Metabase will offer to automatically connect the filter to those cards too (including to relevant cards on other tabs). If you later add a card with the selected field, Metabase will also try to connect that filter to the new card.
 
 To undo this auto-connecting of cards, click on the toast that pops up when Metabase auto-connects the cards, or manually disconnect the cards by clicking on the "X" next to the connected field.
-
-## Filtering dashboards with native/SQL questions
-
-For filters, you'll need to [add a variable or field filter to your query](../questions/native-editor/sql-parameters.md).
-
-For parameters, check out [Time grouping parameters](../questions/native-editor/time-grouping-parameters.md).
 
 ## Wiring up dashboard filters to text cards
 
@@ -202,7 +202,7 @@ You might want to require a filter value if:
 
 ## Editing a filter
 
-To edit a filter's settings:
+To edit a dashboard filter's settings:
 
 1. Click the **pencil** icon to enter dashboard editing mode.
 2. Click the filter you want to edit.
@@ -305,7 +305,7 @@ If a dashboard is particularly large or slow, or you have multiple filters that 
 
 To turn off the automatic application of filters.
 
-1. Click on the three-dot menu **...**.
+1. View the dashboard (not in edit mode) and click on the three-dot menu **...**.
 2. Select **Edit settings**.
 3. In the **General** section, toggle off **Auto-apply filters**.
 
