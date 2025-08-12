@@ -4,7 +4,19 @@
    [metabase.api.common :as api]
    [metabase.driver :as driver]
    [metabase.test :as mt]
-   [metabase.util :as u]))
+   [metabase.test.data :as data]
+   [metabase.test.data.dataset-definitions :as defs]
+   [metabase.test.data.interface :as tx]
+   [metabase.util :as u]
+   [metabase.util.random :as u.random]))
+
+(defmacro with-isolated-test-db
+  "Transforms are creating new tables all the time; we need to do this in test-unique databases."
+  [& body]
+  `(data/dataset (update (tx/get-dataset-definition defs/test-data)
+                         :database-name
+                         #(str % "-" (u.random/random-name)))
+     ~@body))
 
 (defn drop-target!
   "Drop transform target `target`. `target` can be a string or a map.  If `target` is a string,

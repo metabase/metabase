@@ -5,7 +5,7 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase-enterprise.transforms.models.transform-tag]
-   [metabase-enterprise.transforms.test-util :refer [with-transform-cleanup!]]
+   [metabase-enterprise.transforms.test-util :refer [with-transform-cleanup! with-isolated-test-db]]
    [metabase-enterprise.transforms.util :as transforms.util]
    [metabase-enterprise.worker.models.worker-run]
    [metabase.driver :as driver]
@@ -119,6 +119,7 @@
 (deftest create-transform-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
     (mt/with-premium-features #{:transforms}
+      (with-isolated-test-db
       (with-transform-cleanup! [table-name "gadget_products"]
         (mt/user-http-request :crowberto :post 200 "ee/transform"
                               {:name   "Gadget Products"
@@ -133,7 +134,7 @@
                                :target {:type "table"
                                         ;; leave out schema for now
                                         ;;:schema (str (rand-int 10000))
-                                        :name table-name}})))))
+                                          :name table-name}}))))))
 
 (deftest list-transforms-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
@@ -142,6 +143,7 @@
         (mt/user-http-request :crowberto :get 200 "ee/transform")))
     (testing "Can list with query parameters"
       (mt/with-premium-features #{:transforms}
+        (with-isolated-test-db
         (with-transform-cleanup! [table-name "gadget_products"]
           (let [body      {:name        "Gadget Products"
                            :description "Desc"
@@ -155,11 +157,12 @@
                                          :name table-name}}
                 _         (mt/user-http-request :crowberto :post 200 "ee/transform" body)
                 list-resp (mt/user-http-request :crowberto :get 200 "ee/transform")]
-            (is (seq list-resp))))))))
+              (is (seq list-resp)))))))))
 
 (deftest get-transforms-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
     (mt/with-premium-features #{:transforms}
+      (with-isolated-test-db
       (with-transform-cleanup! [table-name "gadget_products"]
         (let [body {:name        "Gadget Products"
                     :description "Desc"
@@ -174,11 +177,12 @@
               resp (mt/user-http-request :crowberto :post 200 "ee/transform" body)]
           (is (=? (assoc body
                          :last_run nil)
-                  (mt/user-http-request :crowberto :get 200 (format "ee/transform/%s" (:id resp))))))))))
+                    (mt/user-http-request :crowberto :get 200 (format "ee/transform/%s" (:id resp)))))))))))
 
 (deftest put-transforms-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
     (mt/with-premium-features #{:transforms}
+      (with-isolated-test-db
       (with-transform-cleanup! [table-name "gadget_products"]
         (let [query2 (make-query "None")
               resp   (mt/user-http-request :crowberto :post 200 "ee/transform"
@@ -202,11 +206,12 @@
                                              :name table-name}}]
           (is (=? transform
                   (mt/user-http-request :crowberto :put 200 (format "ee/transform/%s" (:id resp))
-                                        transform))))))))
+                                          transform)))))))))
 
 (deftest change-target-table-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
     (mt/with-premium-features #{:transforms}
+      (with-isolated-test-db
       (with-transform-cleanup! [table1-name "dookey_products"
                                 table2-name "doohickey_products"]
         (let [query2   (make-query "Doohickey")
@@ -232,11 +237,12 @@
                                       :name table2-name}}]
           (is (=? updated
                   (mt/user-http-request :crowberto :put 200 (format "ee/transform/%s" (:id resp)) updated)))
-          (is (false? (transforms.util/target-table-exists? original))))))))
+            (is (false? (transforms.util/target-table-exists? original)))))))))
 
 (deftest delete-transforms-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
     (mt/with-premium-features #{:transforms}
+      (with-isolated-test-db
       (with-transform-cleanup! [table-name "gadget_products"]
         (let [resp (mt/user-http-request :crowberto :post 200 "ee/transform"
                                          {:name   "Gadget Products"
@@ -249,11 +255,12 @@
                                                    ;;:schema "transforms"
                                                    :name table-name}})]
           (mt/user-http-request :crowberto :delete 204 (format "ee/transform/%s" (:id resp)))
-          (mt/user-http-request :crowberto :get 404 (format "ee/transform/%s" (:id resp))))))))
+            (mt/user-http-request :crowberto :get 404 (format "ee/transform/%s" (:id resp)))))))))
 
 (deftest delete-table-transforms-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
     (mt/with-premium-features #{:transforms}
+      (with-isolated-test-db
       (with-transform-cleanup! [table-name "gadget_products"]
         (let [resp (mt/user-http-request :crowberto :post 200 "ee/transform"
                                          {:name   "Gadget Products"
@@ -265,7 +272,7 @@
                                           :target {:type "table"
                                                    ;;:schema "transforms"
                                                    :name table-name}})]
-          (mt/user-http-request :crowberto :delete 204 (format "ee/transform/%s/table" (:id resp))))))))
+            (mt/user-http-request :crowberto :delete 204 (format "ee/transform/%s/table" (:id resp)))))))))
 
 (defn- test-run
   [transform-id]
@@ -304,6 +311,7 @@
     (testing (str "transform execution with " target-type " target")
       (mt/test-drivers (mt/normal-drivers-with-feature feature)
         (mt/with-premium-features #{:transforms}
+          (with-isolated-test-db
           (let [schema (t2/select-one-fn :schema :model/Table (mt/id :products))]
             (with-transform-cleanup! [{table1-name :name :as target1} {:type   target-type
                                                                        :schema schema
@@ -337,7 +345,7 @@
                 (test-run transform-id)
                 (is (true? (transforms.util/target-table-exists? original)))
                 (is (true? (transforms.util/target-table-exists? updated)))
-                (check-query-results table2-name [2 3 4] "Doohickey")))))))))
+                  (check-query-results table2-name [2 3 4] "Doohickey"))))))))))
 
 (deftest get-runs-filter-by-single-transform-id-test
   (testing "GET /api/ee/transform/run - filter by single transform ID"
