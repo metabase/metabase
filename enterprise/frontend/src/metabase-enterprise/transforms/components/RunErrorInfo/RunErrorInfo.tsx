@@ -28,11 +28,13 @@ export function RunErrorInfo({ message, endTime }: RunErrorInfoProps) {
   const [isOpened, { open, close }] = useDisclosure();
 
   const handleIconClick = (event: MouseEvent) => {
+    // prevent the outer element from being clicked when the icon is clicked
     event.stopPropagation();
     open();
   };
 
   const handleModalClick = (event: MouseEvent) => {
+    // prevent the outer element from being clicked on any click in the modal
     event.stopPropagation();
   };
 

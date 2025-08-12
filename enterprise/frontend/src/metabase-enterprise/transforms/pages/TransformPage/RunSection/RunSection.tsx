@@ -144,6 +144,7 @@ function RunButtonSection({ transform }: RunButtonSectionProps) {
     if (error) {
       sendErrorToast(t`Failed to run transform`);
     } else {
+      // fetch the transform to get the correct `last_run` info
       fetchTransform(transform.id);
     }
     return { error };

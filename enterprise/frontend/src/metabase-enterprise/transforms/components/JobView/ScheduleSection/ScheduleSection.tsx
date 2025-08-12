@@ -100,6 +100,7 @@ function RunButtonSection({ job }: RunButtonSectionProps) {
     if (error) {
       sendErrorToast(t`Failed to run job`);
     } else {
+      // fetch the job to get the correct `last_run` info
       fetchJob(job.id);
     }
   };

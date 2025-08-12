@@ -146,6 +146,7 @@ function NewTagSelectItem({
   onCreate,
 }: NewTagSelectItemProps) {
   const handleClick = (event: MouseEvent) => {
+    // prevent item selection
     event.stopPropagation();
     onCreate();
   };
@@ -172,11 +173,13 @@ function ExistingTagSelectItem({
   onDeleteClick,
 }: ExistingTagSelectItemProps) {
   const handleUpdateClick = (event: MouseEvent) => {
+    // prevent item selection
     event.stopPropagation();
     onUpdateClick(tag);
   };
 
   const handleDeleteClick = (event: MouseEvent) => {
+    // prevent item selection
     event.stopPropagation();
     onDeleteClick(tag);
   };

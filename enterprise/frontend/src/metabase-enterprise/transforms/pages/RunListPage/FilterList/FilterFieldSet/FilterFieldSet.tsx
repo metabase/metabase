@@ -32,6 +32,7 @@ export const FilterFieldSet = forwardRef(function FilterWidget(
   const hasValue = displayValue != null;
 
   const handleRemove = (event: MouseEvent) => {
+    // do not toggle the widget on the remove button click
     event.stopPropagation();
     onRemove?.();
   };

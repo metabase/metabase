@@ -32,6 +32,7 @@ export function SaveSection({ job: jobInfo }: SaveSectionProps) {
     if (error) {
       sendErrorToast(t`Failed to create a job`);
     } else if (job != null) {
+      // prefetch the job to avoid the loader on the job details page
       await fetchJob(job.id);
       sendSuccessToast(t`New job created`);
       dispatch(push(getJobUrl(job.id)));

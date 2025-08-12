@@ -13,6 +13,8 @@ export type Transform = {
   description: string | null;
   source: TransformSource;
   target: TransformTarget;
+  created_at: string;
+  updated_at: string;
 
   // hydrated fields
   tag_ids?: TransformTagId[];
@@ -41,7 +43,7 @@ export type TransformRun = {
   end_time: string | null;
   message: string | null;
 
-  // hydrated
+  // hydrated fields
   transform?: Transform;
 };
 
@@ -52,6 +54,8 @@ export type TransformRunTrigger = "manual" | "cron";
 export type TransformTag = {
   id: TransformTagId;
   name: string;
+  created_at: string;
+  updated_at: string;
 };
 
 export type TransformJob = {
@@ -59,6 +63,8 @@ export type TransformJob = {
   name: string;
   description: string | null;
   schedule: string;
+  created_at: string;
+  updated_at: string;
 
   // hydrated fields
   tag_ids?: TransformTagId[];
