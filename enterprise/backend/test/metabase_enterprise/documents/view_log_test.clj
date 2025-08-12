@@ -119,3 +119,31 @@
   (testing "Document statistics lock is properly defined"
     (is (= :metabase-enterprise.documents.view-log/document-statistics-lock
            @#'documents.view-log/document-statistics-lock))))
+
+(deftest document-read-updates-recent-views-test
+  (mt/with-premium-features #{:audit-app :documents}
+    (mt/with-temp [:model/Collection collection {}
+                   :model/User user {}
+                   :model/Document document {:collection_id (:id collection)
+                                             :name "Test Document"
+                                             :document "{\"type\":\"doc\",\"content\":[]}"
+                                             :creator_id (:id user)}]
+      (testing "Document read event updates user's recent views"
+        ;; Verify no recent views initially
+        (is (empty? (t2/select :model/RecentViews
+                               :user_id (:id user)
+                               :model "Document"
+                               :model_id (:id document))))
+
+        ;; Publish document read event
+        (events/publish-event! :event/document-read {:object-id (:id document) :user-id (:id user)})
+
+        ;; Verify recent view was created
+        (let [recent-view (t2/select-one :model/RecentViews
+                                         :user_id (:id user)
+                                         :model "Document"
+                                         :model_id (:id document))]
+          (is (some? recent-view) "Recent view should be created")
+          (is (= (:id user) (:user_id recent-view)))
+          (is (= "document" (:model recent-view)))
+          (is (= (:id document) (:model_id recent-view))))))))
