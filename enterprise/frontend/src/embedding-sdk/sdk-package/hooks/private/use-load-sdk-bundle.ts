@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 
+import { SDK_BUNDLE_FULL_PATH } from "build-configs/embedding-sdk/constants/sdk-bundle";
 import { SDK_BUNDLE_SCRIPT_DATA_ATTRIBUTE_PASCAL_CASED } from "embedding-sdk/sdk-package/config";
 import { getSdkBundleScriptElement } from "embedding-sdk/sdk-package/lib/private/get-sdk-bundle-script-element";
 import { ensureMetabaseProviderPropsStore } from "embedding-sdk/sdk-shared/lib/ensure-metabase-provider-props-store";
@@ -8,51 +9,46 @@ import {
   SdkLoadingState,
 } from "embedding-sdk/sdk-shared/types/sdk-loading";
 
-import { SDK_BUNDLE_FULL_PATH } from "../../../../../../../frontend/build/embedding-sdk/constants/sdk-bundle";
-
 const ERROR_MESSAGE = "Failed to load Embedding SDK bundle";
+
+const waitForScriptLoading = (script: HTMLScriptElement) => {
+  return new Promise<void>((resolve, reject) => {
+    script.addEventListener("load", () => resolve());
+    script.addEventListener("error", () => reject(new Error(ERROR_MESSAGE)));
+  });
+};
 
 const loadSdkBundle = (
   metabaseInstanceUrl: string,
-  loadingPromise: Promise<void> | null | undefined,
+  existingLoadingPromise: Promise<void> | null | undefined,
 ): Promise<void> => {
-  if (loadingPromise) {
-    return loadingPromise;
+  if (existingLoadingPromise) {
+    return existingLoadingPromise;
   }
 
-  loadingPromise = new Promise<void>((resolve, reject) => {
-    const existingScript = getSdkBundleScriptElement();
+  const existingScript = getSdkBundleScriptElement();
 
-    if (existingScript) {
-      existingScript.addEventListener("load", () => resolve());
-      existingScript.addEventListener("error", () =>
-        reject(new Error(ERROR_MESSAGE)),
-      );
+  if (existingScript) {
+    return waitForScriptLoading(existingScript);
+  }
 
-      return;
-    }
+  const script = document.createElement("script");
 
-    const script = document.createElement("script");
+  script.async = true;
+  script.dataset[SDK_BUNDLE_SCRIPT_DATA_ATTRIBUTE_PASCAL_CASED] = "true";
+  script.src = `${
+    process.env.EMBEDDING_SDK_BUNDLE_HOST || metabaseInstanceUrl
+  }/${SDK_BUNDLE_FULL_PATH}`;
 
-    script.async = true;
-    script.dataset[SDK_BUNDLE_SCRIPT_DATA_ATTRIBUTE_PASCAL_CASED] = "true";
-    script.src = `${
-      process.env.EMBEDDING_SDK_BUNDLE_HOST || metabaseInstanceUrl
-    }/${SDK_BUNDLE_FULL_PATH}`;
+  document.body.appendChild(script);
 
-    script.addEventListener("load", () => resolve());
-    script.addEventListener("error", () => reject(new Error(ERROR_MESSAGE)));
-
-    document.body.appendChild(script);
-  });
-
-  return loadingPromise;
+  return waitForScriptLoading(script);
 };
 
 export function useLoadSdkBundle(metabaseInstanceUrl: string) {
   useEffect(() => {
     const metabaseProviderPropsStore = ensureMetabaseProviderPropsStore();
-    const { loadingPromise, loadingState } =
+    const { loadingPromise: existingLoadingPromise, loadingState } =
       metabaseProviderPropsStore.getSnapshot();
 
     // The SDK bundle script was loaded before
@@ -70,15 +66,21 @@ export function useLoadSdkBundle(metabaseInstanceUrl: string) {
       return;
     }
 
+    const loadingPromise = loadSdkBundle(
+      metabaseInstanceUrl,
+      existingLoadingPromise,
+    );
+
     metabaseProviderPropsStore.updateInternalProps({
+      loadingPromise,
       loadingState: SdkLoadingState.Loading,
       loadingError: null,
     });
 
-    loadSdkBundle(metabaseInstanceUrl, loadingPromise)
+    loadingPromise
       .then(() => {
         metabaseProviderPropsStore.updateInternalProps({
-          loadingPromise,
+          loadingPromise: null,
           loadingState: SdkLoadingState.Loaded,
           loadingError: null,
         });
