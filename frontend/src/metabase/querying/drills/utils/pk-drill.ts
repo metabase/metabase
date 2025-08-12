@@ -22,13 +22,15 @@ export const pkDrill: Drill<Lib.PKDrillThruInfo> = ({
       buttonType: "horizontal",
       icon: "expand",
       default: true,
-      action: () => (dispatch: Dispatch) => {
-        if (tableId == null) {
-          return applyDrill(drill, objectId);
-        } else {
-          dispatch(push(`/table/${tableId}/detail/${objectId}`));
-        }
-      },
+      ...(tableId == null
+        ? {
+            question: () => applyDrill(drill, objectId),
+          }
+        : {
+            action: () => (dispatch: Dispatch) => {
+              dispatch(push(`/table/${tableId}/detail/${objectId}`));
+            },
+          }),
     },
   ];
 };
