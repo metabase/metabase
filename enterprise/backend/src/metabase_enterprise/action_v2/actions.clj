@@ -2,6 +2,7 @@
   (:require
    [metabase-enterprise.action-v2.data-editing :as data-editing]
    [metabase-enterprise.action-v2.models.undo :as undo]
+   [metabase-enterprise.action-v2.validation :as validation]
    [metabase.actions.args :as actions.args]
    [metabase.actions.core :as actions]
    [metabase.driver.util :as driver.u]
@@ -69,8 +70,21 @@
         [op pretty-row] (map vector (map :op diffs) pretty-rows)]
     {:op op, :table-id table-id, :row pretty-row}))
 
+#_(let [table-id->inputs (group-by :table-id inputs)
+        errors           (u/for-map [[table-id inputs] table-id->inputs
+                                     :let [error (validation/batch-validate table-id (map :row inputs))]
+                                     :when error]
+                           [table-id error])]
+    errors)
+
 (defn- coerce-inputs [inputs]
-  (let [input->coerced (u/for-map [[table-id inputs] (group-by :table-id inputs)
+  (def inputs inputs)
+  (let [table-id->inputs (group-by :table-id inputs)
+        errors           (u/for-map [[table-id inputs] table-id->inputs]
+                           [table-id (validation/batch-validate table-id (map :row inputs))])
+        #__                #_(when errors
+                               (throw (ex-info "Failed validation" {:errors errors})))
+        input->coerced (u/for-map [[table-id inputs] table-id->inputs
                                    :let [coerced (data-editing/apply-coercions table-id (map :row inputs))]
                                    input+row (map vector inputs coerced)]
                          input+row)]

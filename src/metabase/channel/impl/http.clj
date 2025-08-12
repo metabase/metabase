@@ -37,17 +37,17 @@
 (mu/defmethod channel/send! :channel/http
   [{{:keys [url method auth-method auth-info]} :details} :- HTTPChannel
    request]
-  (let [req (merge
-             {:accept       :json
-              :content-type :json
-              :method       :post
-              :url          url}
-             (when method
-               {:method (keyword method)})
-             (cond-> request
-               (= "request-body" auth-method) (update :body merge auth-info)
-               (= "header" auth-method)       (update :headers merge auth-info)
-               (= "query-param" auth-method)  (update :query-params merge auth-info)))]
+  (let [req #p (merge
+                {:accept       :json
+                 :content-type :json
+                 :method       :get
+                 :url          url}
+                (when method
+                  {:method (keyword method)})
+                (cond-> request
+                  (= "request-body" auth-method) (update :body merge auth-info)
+                  (= "header" auth-method)       (update :headers merge auth-info)
+                  (= "query-param" auth-method)  (update :query-params merge auth-info)))]
     (http/request (cond-> req
                     (or (map? (:body req))
                         (sequential? (:body req))) (update :body json/encode)))))

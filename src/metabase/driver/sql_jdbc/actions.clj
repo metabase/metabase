@@ -716,7 +716,7 @@
      :type       :query
      :query      {:source-table table-id
                   :filter       (row->mbql-filter-clause pk-name->id pk-column->value)}
-     :update-row (apply dissoc row pk-names)}))
+     :update-row #p (apply dissoc row pk-names)}))
 
 (mu/defn- table-row-update!
   [_action context inputs :- [:sequential ::table-row-input]]
