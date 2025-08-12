@@ -876,7 +876,7 @@
        (throw (ex-info (tru "You do not have access to the setting {0}" s-name) setting)))
      (when-not bypass-read-only?
        (when (= setter :none)
-         (throw (UnsupportedOperationException. ^String (tru "You cannot set {0}; it is a read-only setting." s-name))))))))
+         (throw (UnsupportedOperationException. (tru "You cannot set {0}; it is a read-only setting." s-name))))))))
 
 (defn validate-settable-for-db!
   "Check whether the given setting can be set for the given database."
