@@ -1,5 +1,6 @@
 .listViewContainer {
   --max-width: 75rem;
+
   background: var(--mb-color-background-light);
   width: 100%;
   height: 100%;
@@ -8,6 +9,7 @@
   overflow: auto;
   padding-inline: calc(50% - var(--max-width) / 2);
 }
+
 @media (max-width: 75rem) {
   .listViewContainer {
     padding-inline: 1rem;
@@ -20,13 +22,11 @@
   /* TODO: Customize VariableHeightVirtualizedList */
   [data-testid="scroll-container"] {
     overflow-y: initial !important;
-    overflow: auto;
   }
 }
 
 .listHeader {
   padding-inline: var(--mantine-spacing-lg);
-  margin-bottom: var(--mantine-spacing-sm);
 }
 
 .listBody {
@@ -49,6 +49,6 @@
 .listItem {
   display: grid;
   grid-template-columns: 1fr repeat(var(--grid-columns), 10%);
-  gap: var(--mantine-spacing-sm);
+  gap: var(--mantine-spacing-lg);
   align-items: center;
 }

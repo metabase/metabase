@@ -141,7 +141,7 @@ export function ListView({
                         {titleValue}
                       </Text>
                       {subtitleValue && (
-                        <Text size="xs" c="text-secondary" truncate fw="bold">
+                        <Text size="sm" c="text-secondary" truncate fw="bold">
                           {subtitleValue}
                         </Text>
                       )}
@@ -161,7 +161,7 @@ export function ListView({
                           flexShrink: 0,
                         }}
                       >
-                        <Text size="sm" c="text-secondary" truncate>
+                        <Text size="sm" c="text-secondary" fw="bold" truncate>
                           {value}
                         </Text>
                       </div>
