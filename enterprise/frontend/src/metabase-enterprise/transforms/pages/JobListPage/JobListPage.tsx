@@ -19,7 +19,7 @@ export function JobListPage() {
           component={Link}
           to={getNewJobUrl()}
           variant="filled"
-          leftSection={<Icon name="add" />}
+          leftSection={<Icon name="add" aria-hidden />}
         >
           {t`Create a job`}
         </Button>
