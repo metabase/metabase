@@ -665,7 +665,7 @@ databaseChangeLog:
                   name: entity_id
                   value: monthly00000000000000
       rollback:
-         - sql:
+        - sql:
             sql: "delete from transform_tag where \"name\" in ('hourly', 'daily', 'weekly', 'monthly')"
             dbms: postgresql
         - sql:
@@ -675,7 +675,7 @@ databaseChangeLog:
             sql: "delete from transform_tag where \"NAME\" in ('hourly', 'daily', 'weekly', 'monthly')"
             dbms: h2
 
-         - sql:
+        - sql:
             sql: "delete from transform_job where \"entity_id\" in ('hourly000000000000000', 'daily0000000000000000', 'weekly000000000000000', 'monthly00000000000000')"
             dbms: postgresql
         - sql:
