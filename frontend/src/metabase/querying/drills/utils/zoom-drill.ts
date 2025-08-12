@@ -31,7 +31,7 @@ export const zoomDrill: Drill<Lib.ZoomDrillThruInfo> = ({
         : {
             action: () => (dispatch: Dispatch) => {
               if (tableId == null || !isPk) {
-                zoomInRow({ objectId });
+                dispatch(zoomInRow({ objectId }));
               } else {
                 dispatch(push(`/table/${tableId}/detail/${objectId}`));
               }
