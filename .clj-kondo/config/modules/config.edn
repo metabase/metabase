@@ -1800,8 +1800,8 @@
            api
            connection-pool
            models
-           premium-features
            permissions
+           premium-features
            search
            settings
            task

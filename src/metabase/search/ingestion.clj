@@ -170,14 +170,14 @@
 (defn search-items-count
   "Returns a count of all searchable items in the database."
   []
-  (reduce
-   +
-   (for [model search.spec/search-models]
-     (-> (spec-index-query-where model nil)
-         (assoc :select [:%count.*])
-         t2/query
-         first
-         :count))))
+  (->> (for [model search.spec/search-models]
+         (-> (spec-index-query-where model nil)
+             (assoc :select [[:%count.* :count]])
+             t2/query
+             first
+             :count))
+       (filter some?)
+       (reduce + 0)))
 
 (def ^:dynamic *force-sync*
   "Force ingestion to happen immediately, on the same thread."

@@ -26,18 +26,20 @@
    :indexed_count <number of indexed items>
    :total_est     <estimated total number of items to index>
 
-  If no index is active, returns an empty map.
-   "
+  If no index is active, returns an empty map."
   []
   (perms/check-has-application-permission :setting)
   (let [pgvector       (semantic.env/get-pgvector-datasource!)
         index-metadata (semantic.env/get-index-metadata)
         active-index   (when (and pgvector index-metadata)
                          (semantic.index-metadata/get-active-index-state pgvector index-metadata))]
-    (if active-index
-      {:indexed_count (active-index-document-count pgvector active-index)
-       :total_est     (indexible-items-count)}
-      {})))
+    (try
+      (if active-index
+        {:indexed_count (active-index-document-count pgvector active-index)
+         :total_est     (indexible-items-count)}
+        {})
+      (catch Exception e
+        (throw (ex-info "Error fetching semantic search index status" {:cause e}))))))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/semantic-search` routes."
