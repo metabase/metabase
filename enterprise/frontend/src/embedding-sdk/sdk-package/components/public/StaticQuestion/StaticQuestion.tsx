@@ -2,7 +2,7 @@ import type { StaticQuestionComponents } from "embedding-sdk/components/public/S
 import { createComponent } from "embedding-sdk/sdk-package/components/private/ComponentWrapper/ComponentWrapper";
 import { getWindow } from "embedding-sdk/sdk-shared/lib/get-window";
 
-export const _StaticQuestion = createComponent(
+const _StaticQuestion = createComponent(
   () => getWindow()?.MetabaseEmbeddingSDK?.StaticQuestion,
 );
 
