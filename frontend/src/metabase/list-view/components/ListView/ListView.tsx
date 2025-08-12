@@ -1,15 +1,15 @@
-import { useMemo } from "react";
+import { type CSSProperties, useMemo } from "react";
 import { t } from "ttag";
 
 import { VirtualizedList } from "metabase/common/components/VirtualizedList";
 import { formatValue } from "metabase/lib/formatting";
 import { Box, Flex, Image, Stack, Text } from "metabase/ui";
+import { useObjectDetail } from "metabase/visualizations/components/TableInteractive/hooks/use-object-detail";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import * as Lib from "metabase-lib";
 import type { DatasetColumn, DatasetData } from "metabase-types/api";
 
 import styles from "./ListView.module.css";
-import { useObjectDetail } from "metabase/visualizations/components/TableInteractive/hooks/use-object-detail";
 
 const ListWrapper = ({ children, ...props }: { children: React.ReactNode }) => (
   <Stack gap="xs" {...props}>
@@ -77,26 +77,24 @@ export function ListView({ data, settings }: ListViewProps) {
           gap="md"
           style={{ width: firstColumnWidth, flexShrink: 0 }}
         >
-          <Text fw="bold" size="sm" c="text-medium">
-            {titleColumn?.display_name}
-            {subtitleColumn && " " + t`and` + " " + subtitleColumn.display_name}
-          </Text>
+          {!!titleColumn && (
+            <ColumnHeader
+              column={titleColumn}
+              subtitleColumn={subtitleColumn}
+            />
+          )}
         </Flex>
 
         <Flex gap="lg" align="center" style={{ flex: 1 }}>
           {rightColumns.map((col, colIndex) => (
-            <Text
+            <ColumnHeader
               key={colIndex}
-              fw="bold"
-              size="sm"
-              c="text-medium"
+              column={col}
               style={{
                 width: otherColumnWidths,
                 flexShrink: 0,
               }}
-            >
-              {col.display_name}
-            </Text>
+            />
           ))}
         </Flex>
       </Flex>
@@ -169,6 +167,21 @@ export function ListView({ data, settings }: ListViewProps) {
         )}
       </VirtualizedList>
     </Stack>
+  );
+}
+
+interface ColumnHeaderProps {
+  column: DatasetColumn;
+  subtitleColumn?: DatasetColumn | null;
+  style?: CSSProperties;
+}
+
+function ColumnHeader({ column, subtitleColumn, style }: ColumnHeaderProps) {
+  return (
+    <Text fw="bold" size="sm" c="text-medium" style={style}>
+      {column.display_name}
+      {subtitleColumn && " " + t`and` + " " + subtitleColumn.display_name}
+    </Text>
   );
 }
 
