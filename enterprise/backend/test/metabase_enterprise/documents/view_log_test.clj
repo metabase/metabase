@@ -132,7 +132,7 @@
         ;; Verify no recent views initially
         (is (empty? (t2/select :model/RecentViews
                                :user_id (:id user)
-                               :model "Document"
+                               :model "document"
                                :model_id (:id document))))
 
         ;; Publish document read event
@@ -141,7 +141,7 @@
         ;; Verify recent view was created
         (let [recent-view (t2/select-one :model/RecentViews
                                          :user_id (:id user)
-                                         :model "Document"
+                                         :model "document"
                                          :model_id (:id document))]
           (is (some? recent-view) "Recent view should be created")
           (is (= (:id user) (:user_id recent-view)))
