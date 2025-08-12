@@ -44,7 +44,7 @@
 
 (defn- parent-collection-valid?
   "Returns true when a parent collection actually exists for this document.
-  Follows the same pattern as cards - returns false when the collection has a 
+  Follows the same pattern as cards - returns false when the collection has a
   collection_id but no collection_name (indicating the collection no longer exists)."
   [{:keys [collection_id entity-coll-id]}]
   (not (and entity-coll-id (nil? collection_id))))
