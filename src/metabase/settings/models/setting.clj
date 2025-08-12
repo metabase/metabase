@@ -230,7 +230,11 @@
 
    ;; If non-nil, determines the database driver feature required for this setting. This is only valid for database-local
    ;; settings. If the database driver doesn't support the required feature, setting this will throw an exception.
-   [:driver-feature [:maybe :keyword]]])
+   [:driver-feature [:maybe :keyword]]
+
+   ;; Function that takes a database and returns true if this setting should be enabled for that specific database.
+   ;; This is only valid for database-local settings. If the function returns false, setting this will throw an exception.
+   [:enabled-for-db? [:maybe ifn?]]])
 
 (defonce ^{:doc "Map of loaded defsettings"}
   registered-settings
@@ -881,13 +885,18 @@
 (defn validate-settable-for-db!
   "Check whether the given setting can be set for the given database."
   [setting-definition-or-name database driver-supports?]
-  (let [{:keys [driver-feature] :as setting} (resolve-setting setting-definition-or-name)
+  (let [{:keys [driver-feature enabled-for-db?] :as setting} (resolve-setting setting-definition-or-name)
         s-name (setting-name setting)]
     (validate-settable! setting)
     (when (and driver-feature (not (driver-supports? database driver-feature)))
       (throw (ex-info (tru "Setting {0} requires driver feature {1}, but the database does not support it" s-name driver-feature)
                       {:setting s-name
                        :required-feature driver-feature
+                       :database-id (:id database)})))
+    ;; check that setting is enabled for this specific database
+    (when (and enabled-for-db? (not (enabled-for-db? database)))
+      (throw (ex-info (tru "Setting {0} is not enabled for this database" s-name)
+                      {:setting s-name
                        :database-id (:id database)})))))
 
 (defn set!
@@ -975,6 +984,7 @@
                  :database-local     :never
                  :user-local         :never
                  :driver-feature   nil
+                 :enabled-for-db?    nil
                  :deprecated         nil
                  :enabled?           nil
                  :can-read-from-env? true
@@ -1019,6 +1029,10 @@
                         {:setting setting})))
       (when (and (:driver-feature setting) (not (database-local-only? setting)))
         (throw (ex-info (tru "Setting {0} requires a :driver-feature, but is not limited to only database-local values."
+                             setting-name)
+                        {:setting setting})))
+      (when (and (:enabled-for-db? setting) (not (database-local-only? setting)))
+        (throw (ex-info (tru "Setting {0} uses :enabled-for-db?, but is not limited to only database-local values."
                              setting-name)
                         {:setting setting})))
       (swap! registered-settings assoc setting-name <>))))
@@ -1207,6 +1221,13 @@
   If non-nil, determines the database driver feature required to use this setting. This is only valid for database-local
   settings (those with `:database-local` set to `:only`). When setting a database-local setting, the system will check
   if the database driver supports the specified feature. If not, an exception will be thrown.
+
+  ###### `:enabled-for-db?`
+
+  Function which takes a specific database, and returns true if this setting should be enabled for it.
+  This is only valid for database-local settings. When setting a database-local setting, the system will call this
+  function with the database. If it returns false, an exception will be thrown. Useful for disabling settings based
+  on database-specific conditions like routing configuration.
 
   ###### `:user-local`
 

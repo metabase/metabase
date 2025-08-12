@@ -16,6 +16,7 @@
   :default        false
   :feature        :table-data-editing
   :driver-feature :actions/data-editing
+  :enabled-for-db?  (fn [db] (not (:router_database_id db)))
   :type           :boolean
   :visibility     :public
   :database-local :only
