@@ -8,6 +8,7 @@
    [metabase-enterprise.semantic-search.core]
    [metabase-enterprise.semantic-search.db.datasource :as semantic.db.datasource]
    [metabase-enterprise.semantic-search.db.migration :as semantic.db.migration]
+   [metabase-enterprise.semantic-search.dlq :as semantic.dlq]
    [metabase-enterprise.semantic-search.embedding :as semantic.embedding]
    [metabase-enterprise.semantic-search.index :as semantic.index]
    [metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]
@@ -225,7 +226,7 @@
   [results]
   (filter #(contains? mock-embeddings (:name %)) results))
 
-(defn closeable [o close-fn]
+(defn closeable ^Closeable [o close-fn]
   (reify
     IDeref
     (deref [_] o)
@@ -310,7 +311,7 @@
                         :indexer_last_seen Instant/EPOCH}
         indexing-state (semantic.indexer/init-indexing-state metadata-row)
         step (fn [] (semantic.indexer/indexing-step db mock-index-metadata mock-index indexing-state))]
-    (while (do (step) (pos? (:last-indexed-count @indexing-state))))))
+    (while (do (step) (pos? (:last-novel-count @indexing-state))))))
 
 (defmacro blocking-index!
   "Execute body ensuring [[index-all!]] is invoked at the end"
@@ -371,10 +372,11 @@
 (defn cleanup-index-metadata!
   "A-la-carte drop everything related to the index-metdata root (including index tables themselves)"
   [pgvector index-metadata]
-  (doseq [{:keys [table_name]}
+  (doseq [{index-id :id, :keys [table_name]}
           (when (table-exists-in-db? (:metadata-table-name index-metadata))
             (get-metadata-rows pgvector index-metadata))]
-    (semantic.index/drop-index-table! pgvector {:table-name table_name}))
+    (semantic.index/drop-index-table! pgvector {:table-name table_name})
+    (semantic.dlq/drop-dlq-table-if-exists! pgvector index-metadata index-id))
   (semantic.index-metadata/drop-tables-if-exists! pgvector index-metadata)
   (semantic.db.migration/drop-migration-table! pgvector))
 
