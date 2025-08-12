@@ -20,8 +20,8 @@ docs/developers-guide # exclude from tech-writer ownership
 #
 
 # modules/drivers @metabase/drivers
-src/metabase/driver/sql_jdbc/actions.clj       @metabase/core-workflows
-test/metabase/driver/sql_jdbc/actions_test.clj @metabase/core-workflows
+src/metabase/driver/sql_jdbc/actions.clj       @metabase/core-ux-east
+test/metabase/driver/sql_jdbc/actions_test.clj @metabase/core-ux-east
 
 # enterprise/backend/src/metabase_enterprise/advanced_config @metabase/core-backend-admin-webapp
 # enterprise/backend/test/metabase_enterprise/advanced_config @metabase/core-backend-admin-webapp
@@ -53,8 +53,8 @@ test/metabase/driver/sql_jdbc/actions_test.clj @metabase/core-workflows
 # enterprise/backend/src/metabase_enterprise/core @metabase/devexp
 # enterprise/backend/test/metabase_enterprise/core @metabase/devexp
 
-# enterprise/backend/src/metabase_enterprise/dashboard_subscription_filters @metabase/core-workflows
-# enterprise/backend/test/metabase_enterprise/dashboard_subscription_filters @metabase/core-workflows
+# enterprise/backend/src/metabase_enterprise/dashboard_subscription_filters @metabase/core-ux-east
+# enterprise/backend/test/metabase_enterprise/dashboard_subscription_filters @metabase/core-ux-east
 
 # enterprise/backend/src/metabase_enterprise/enhancements @metabase/core-backend-admin-webapp
 # enterprise/backend/test/metabase_enterprise/enhancements @metabase/core-backend-admin-webapp
@@ -74,8 +74,8 @@ test/metabase/driver/sql_jdbc/actions_test.clj @metabase/core-workflows
 # enterprise/backend/src/metabase_enterprise/search @metabase/core-workflows
 # enterprise/backend/test/metabase_enterprise/search @metabase/core-workflows
 
-# enterprise/backend/src/metabase_enterprise/serialization @metabase/core-workflows
-# enterprise/backend/test/metabase_enterprise/serialization @metabase/core-workflows
+# enterprise/backend/src/metabase_enterprise/serialization @metabase/core-ux-east
+# enterprise/backend/test/metabase_enterprise/serialization @metabase/core-ux-east
 
 # enterprise/backend/src/metabase_enterprise/snippet_collections @metabase/core-backend-admin-webapp
 # enterprise/backend/test/metabase_enterprise/snippet_collections @metabase/core-backend-admin-webapp
@@ -122,8 +122,8 @@ test/metabase/actions @metabase/core-ux-east
 # src/metabase/cmd @metabase/devexp
 # test/metabase/cmd @metabase/devexp
 
-# src/metabase/channel @metabase/core-workflows
-# test/metabase/channel @metabase/core-workflows
+# src/metabase/channel @metabase/core-ux-east
+# test/metabase/channel @metabase/core-ux-east
 
 # src/metabase/cloud_migration @metabase/core-workflows
 # test/metabase/cloud_migration @metabase/core-workflows
@@ -182,8 +182,8 @@ test/metabase/actions @metabase/core-ux-east
 # src/metabase/moderation @metabase/core-backend-admin-webapp
 # test/metabase/moderation @metabase/core-backend-admin-webapp
 
-# src/metabase/notification @metabase/core-workflows
-# test/metabase/notification @metabase/core-workflows
+# src/metabase/notification @metabase/core-ux-east
+# test/metabase/notification @metabase/core-ux-east
 
 # src/metabase/permissions @metabase/core-backend-admin-webapp
 # test/metabase/permissions @metabase/core-backend-admin-webapp
@@ -200,8 +200,8 @@ test/metabase/actions @metabase/core-ux-east
 # src/metabase/public_sharing @metabase/core-backend-admin-webapp
 # test/metabase/public_sharing @metabase/core-backend-admin-webapp
 
-# src/metabase/pulse @metabase/core-workflows
-# test/metabase/pulse @metabase/core-workflows
+# src/metabase/pulse @metabase/core-ux-east
+# test/metabase/pulse @metabase/core-ux-east
 
 # src/metabase/query_analysis @metabase/core-backend-querying
 # test/metabase/query_analysis @metabase/core-backend-querying
