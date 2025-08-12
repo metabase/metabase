@@ -173,7 +173,6 @@
                                   :name table-name}}
               resp (mt/user-http-request :crowberto :post 200 "ee/transform" body)]
           (is (=? (assoc body
-                         :run_trigger "none"
                          :last_run nil)
                   (mt/user-http-request :crowberto :get 200 (format "ee/transform/%s" (:id resp))))))))))
 
@@ -191,26 +190,19 @@
                                                                         :template-tags {}}}}
                                             :target {:type "table"
                                                    ;;:schema "transforms"
-                                                     :name table-name}})]
-          (is (=? {:name              "Gadget Products 2"
-                   :description       "Desc"
-                   :source            {:type  "query"
-                                       :query {:database (mt/id)
-                                               :type     "native",
-                                               :native   {:query         query2
-                                                          :template-tags {}}}}
-                   :target            {:type "table"
-                                       :name table-name}
-                   :run_trigger "global-schedule"}
+                                                     :name table-name}})
+              transform {:name              "Gadget Products 2"
+                         :description       "Desc"
+                         :source            {:type  "query"
+                                             :query {:database (mt/id)
+                                                     :type     "native",
+                                                     :native   {:query         query2
+                                                                :template-tags {}}}}
+                         :target            {:type "table"
+                                             :name table-name}}]
+          (is (=? transform
                   (mt/user-http-request :crowberto :put 200 (format "ee/transform/%s" (:id resp))
-                                        {:name              "Gadget Products 2"
-                                         :description       "Desc"
-                                         :source            {:type  "query"
-                                                             :query {:database (mt/id)
-                                                                     :type     "native"
-                                                                     :native   {:query         query2
-                                                                                :template-tags {}}}}
-                                         :run_trigger "global-schedule"}))))))))
+                                        transform))))))))
 
 (deftest change-target-table-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
@@ -340,8 +332,7 @@
                                                               :native   {:query         query2
                                                                          :template-tags {}}}}
                                         :target      target2}]
-                (is (=? (assoc updated
-                               :run_trigger "none")
+                (is (=? updated
                         (mt/user-http-request :crowberto :put 200 (format "ee/transform/%s" transform-id) updated)))
                 (test-run transform-id)
                 (is (true? (transforms.util/target-table-exists? original)))
