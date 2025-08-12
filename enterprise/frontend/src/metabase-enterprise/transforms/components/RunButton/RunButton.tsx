@@ -44,6 +44,7 @@ export const RunButton = forwardRef(function RunButton(
       color={color}
       leftSection={leftSection}
       disabled={isDisabled}
+      data-testid="transform-run-button"
       onClick={onRun}
     >
       {label}

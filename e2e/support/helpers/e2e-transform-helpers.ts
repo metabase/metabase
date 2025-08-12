@@ -1,50 +1,65 @@
 export const TransformListPage = {
-  visit: () => {
+  visit() {
     cy.visit("/admin/transforms");
   },
-  get: () => {
+  get() {
     return cy.findByTestId("transform-list-page");
   },
-  createTransformButton: () => {
-    return TransformListPage.get().button("Create a transform");
+  createTransformButton() {
+    return this.get().button("Create a transform");
   },
-  createTransformDropdown: () => {
+  createTransformDropdown() {
     return cy.findByTestId("create-transform-dropdown");
   },
 };
 
+export const TransformPage = {
+  get() {
+    return cy.findByTestId("transform-page");
+  },
+  runButton() {
+    return this.get().findByTestId("transform-run-button");
+  },
+  tableLink() {
+    return this.get().findByTestId("table-link");
+  },
+  tableMetadataLink() {
+    return this.get().findByTestId("table-metadata-link");
+  },
+};
+
 export const TransformQueryEditor = {
-  get: () => {
+  get() {
     return cy.findByTestId("transform-query-editor");
   },
-  saveButton: () => {
-    return TransformQueryEditor.get().button("Save");
+  saveButton() {
+    return this.get().button("Save");
   },
-  cancelButton: () => {
-    return TransformQueryEditor.get().button("Cancel");
+  cancelButton() {
+    return this.get().button("Cancel");
   },
 };
 
 export const CreateTransformModal = {
-  get: () => {
+  get() {
     return cy.findByTestId("create-transform-modal");
   },
-  nameInput: () => {
-    return CreateTransformModal.get().findByLabelText("Name");
+  nameInput() {
+    return this.get().findByLabelText("Name");
   },
-  descriptionInput: () => {
-    return CreateTransformModal.get().findByLabelText("Description");
+  descriptionInput() {
+    return this.get().findByLabelText("Description");
   },
-  schemaSelect: () => {
-    return CreateTransformModal.get().findByLabelText("Schema");
+  schemaSelect() {
+    return this.get().findByLabelText("Schema");
   },
-  tableNameInput: () => {
-    return CreateTransformModal.get().findByLabelText("Table name");
+  tableNameInput() {
+    return this.get().findByLabelText("Table name");
   },
-  saveButton: () => {
-    return CreateTransformModal.get().button("Save");
+  saveButton() {
+    return this.get().button("Save");
   },
-  cancelButton: () => {
-    return CreateTransformModal.get().button("Cancel");
+  cancelButton() {
+    return this.get().button("Cancel");
   },
 };

@@ -72,6 +72,7 @@ function TargetInfo({ transform }: TargetInfoProps) {
             label={database.name}
             icon="database"
             to={getBrowseDatabaseUrl(database.id)}
+            data-testid="database-link"
           />
           <TargetItemDivider />
         </>
@@ -82,6 +83,7 @@ function TargetInfo({ transform }: TargetInfoProps) {
             label={target.schema}
             icon="folder"
             to={getBrowseSchemaUrl(database.id, target.schema)}
+            data-testid="schema-link"
           />
           <TargetItemDivider />
         </>
@@ -91,6 +93,7 @@ function TargetInfo({ transform }: TargetInfoProps) {
           label={target.name}
           icon="table2"
           to={table ? getQueryBuilderUrl(table.id, table.db_id) : undefined}
+          data-testid="table-link"
         />
       </Group>
     </Group>
@@ -101,11 +104,22 @@ type TargetItemLinkProps = {
   label: string;
   icon: IconName;
   to?: string;
+  "data-testid"?: string;
 };
 
-function TargetItemLink({ label, icon, to }: TargetItemLinkProps) {
+function TargetItemLink({
+  label,
+  icon,
+  to,
+  "data-testid": dataTestId,
+}: TargetItemLinkProps) {
   return (
-    <Link className={CS.link} to={to ?? ""} disabled={to == null}>
+    <Link
+      className={CS.link}
+      to={to ?? ""}
+      disabled={to == null}
+      data-testid={dataTestId}
+    >
       <Group gap="xs">
         <Icon name={icon} />
         <Text c="inherit">{label}</Text>
@@ -163,6 +177,7 @@ function EditMetadataButton({ transform }: EditMetadataButtonProps) {
       component={Link}
       to={getTableMetadataUrl(table.id, table.schema, table.db_id)}
       leftSection={<Icon name="label" />}
+      data-testid="table-metadata-link"
     >
       {t`Edit this table’s metadata`}
     </Button>

@@ -21,6 +21,7 @@ describe("scenarios > admin > transforms", () => {
     H.TransformListPage.createTransformDropdown()
       .findByText("Query builder")
       .click();
+
     H.entityPickerModal().within(() => {
       cy.findByText(DB_NAME).click();
       cy.findByText(SCHEMA_NAME).click();
@@ -30,5 +31,11 @@ describe("scenarios > admin > transforms", () => {
     H.CreateTransformModal.nameInput().type("My transform");
     H.CreateTransformModal.tableNameInput().type("my_table");
     H.CreateTransformModal.saveButton().click();
+
+    H.TransformPage.runButton().click();
+    H.TransformPage.runButton().should("have.text", "Ran successfully");
+    H.TransformPage.tableLink().click();
+    H.queryBuilderHeader().findByText("My Table").should("be.visible");
+    H.assertQueryBuilderRowCount(3);
   });
 });
