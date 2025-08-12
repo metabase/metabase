@@ -52,7 +52,10 @@ export type DatabaseFeature =
   | "window-functions/offset"
   | "distinct-where"
   | "saved-question-sandboxing"
-  | "split-part";
+  | "split-part"
+  | "transforms/table"
+  | "transforms/view"
+  | "transforms/materialized-view";
 
 export interface Database extends DatabaseData {
   id: DatabaseId;
