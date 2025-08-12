@@ -21,10 +21,15 @@ export type Document = {
   creator_id: UserId;
 };
 
-export type DocumentVersions = Document[];
+export type GetDocumentRequest = { id: DocumentId };
 
 export type CreateDocumentRequest = Pick<Document, "name"> & {
   document: DocumentContent;
   collection_id?: CollectionId;
   cards?: Record<number, Card>;
 };
+
+export type UpdateDocumentRequest = Pick<Document, "id"> &
+  Partial<Omit<Document, "id">>;
+
+export type DeleteDocumentRequest = Pick<Document, "id">;

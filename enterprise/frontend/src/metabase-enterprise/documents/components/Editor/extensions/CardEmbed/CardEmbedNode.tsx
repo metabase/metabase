@@ -15,7 +15,7 @@ import ChartSkeleton from "metabase/visualizations/components/skeletons/ChartSke
 import { getGenericErrorMessage } from "metabase/visualizations/lib/errors";
 import Question from "metabase-lib/v1/Question";
 import { getUrl } from "metabase-lib/v1/urls";
-import type { Card, Dataset } from "metabase-types/api";
+import type { Card, CardDisplayType, Dataset } from "metabase-types/api";
 
 import {
   loadMetadataForDocumentCard,
@@ -44,8 +44,9 @@ const getDatasetError = (dataset: Dataset) => {
 };
 
 export interface CardEmbedAttributes {
-  id: number;
+  id?: number;
   name?: string;
+  class?: string;
 }
 export const CardEmbedNode: Node<{
   HTMLAttributes: CardEmbedAttributes;
@@ -500,7 +501,9 @@ export const CardEmbedComponent = memo(
             </>
           ) : (
             <Box className={styles.questionResults}>
-              <ChartSkeleton display={cardToUse?.display || "table"} />
+              <ChartSkeleton
+                display={(cardToUse?.display as CardDisplayType) || "table"}
+              />
             </Box>
           )}
         </Box>

@@ -13,7 +13,15 @@ import {
 import * as Urls from "metabase/lib/urls";
 import { DocumentSchema } from "metabase/schema";
 import { documentApi, useGetDocumentQuery } from "metabase-enterprise/api";
-import type { Document } from "metabase-types/api";
+import type {
+  Collection,
+  CreateDocumentRequest,
+  DeleteDocumentRequest,
+  Document,
+  GetDocumentRequest,
+  UpdateDocumentRequest,
+} from "metabase-types/api";
+import type { Dispatch } from "metabase-types/store";
 
 /**
  * @deprecated use "metabase/api" instead
@@ -36,25 +44,29 @@ const Documents = createEntity({
   },
 
   api: {
-    get: (entityQuery, options, dispatch) =>
+    get: (
+      entityQuery: GetDocumentRequest,
+      _options: unknown,
+      dispatch: Dispatch,
+    ) =>
       entityCompatibleQuery(
         entityQuery,
         dispatch,
         documentApi.endpoints.getDocument,
       ),
-    create: (entityQuery, dispatch) =>
+    create: (entityQuery: CreateDocumentRequest, dispatch: Dispatch) =>
       entityCompatibleQuery(
         entityQuery,
         dispatch,
         documentApi.endpoints.createDocument,
       ),
-    update: (entityQuery, dispatch) =>
+    update: (entityQuery: UpdateDocumentRequest, dispatch: Dispatch) =>
       entityCompatibleQuery(
         entityQuery,
         dispatch,
         documentApi.endpoints.updateDocument,
       ),
-    delete: (entityQuery, dispatch) =>
+    delete: (entityQuery: DeleteDocumentRequest, dispatch: Dispatch) =>
       entityCompatibleQuery(
         entityQuery,
         dispatch,
@@ -63,31 +75,33 @@ const Documents = createEntity({
   },
 
   objectActions: {
-    setArchived: ({ id }, archived, opts) =>
+    setArchived: ({ id }: Document, archived: boolean) =>
       Documents.actions.update(
         { id },
         { archived },
-        undo(opts, t`document`, archived ? t`trashed` : t`restored`),
+        undo({}, t`document`, archived ? t`trashed` : t`restored`),
       ),
 
-    setCollection: ({ id }, collection, opts) =>
+    setCollection: (
+      { id }: Document,
+      collection: Pick<Collection, "type" | "id">,
+    ) =>
       Documents.actions.update(
         { id },
         {
           collection_id: canonicalCollectionId(collection && collection.id),
           archived: isRootTrashCollection(collection),
         },
-        undo(opts, "document", "moved"),
+        undo({}, "document", "moved"),
       ),
 
-    setPinned: ({ id }, pinned, opts) =>
+    setPinned: ({ id }: Document, pinned: number | boolean) =>
       Documents.actions.update(
         { id },
         {
           collection_position:
             typeof pinned === "number" ? pinned : pinned ? 1 : null,
         },
-        opts,
       ),
   },
 

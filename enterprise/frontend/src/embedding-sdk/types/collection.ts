@@ -33,7 +33,6 @@ export type MetabaseCollectionItem = {
     | "model"
     | "question"
     | "metric"
-    | "in_document"
     | null;
   "last-edit-info"?: {
     email: string;

@@ -129,8 +129,8 @@ export type MetabotAdhocQueryInfo = {
   error?: any;
 };
 
-export type MetabotReportInfo = {
-  type: "report";
+export type MetabotDocumentInfo = {
+  type: "document";
   id: number;
 };
 
@@ -138,7 +138,7 @@ export type MetabotEntityInfo =
   | MetabotCardInfo
   | MetabotDashboardInfo
   | MetabotAdhocQueryInfo
-  | MetabotReportInfo;
+  | MetabotDocumentInfo;
 
 /* Metabot v3 - API Request Types */
 

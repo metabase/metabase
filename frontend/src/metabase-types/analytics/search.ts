@@ -31,7 +31,8 @@ type SearchContentType =
   | "database"
   | "table"
   | "action"
-  | "indexed-entity";
+  | "indexed-entity"
+  | "document";
 
 type SearchContext =
   | "search-app"

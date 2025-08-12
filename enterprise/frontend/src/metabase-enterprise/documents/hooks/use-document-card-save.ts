@@ -52,6 +52,11 @@ export const useDocumentCardSave = (
         await updateCard({
           id: card.id,
           ...modifiedCardData,
+          description: modifiedCardData.description || undefined,
+          embedding_params: modifiedCardData.embedding_params || undefined,
+          collection_position:
+            modifiedCardData.collection_position || undefined,
+          cache_ttl: modifiedCardData.cache_ttl || undefined,
         });
 
         return {
@@ -63,8 +68,12 @@ export const useDocumentCardSave = (
         const savedCard = await createCard({
           ...cardData,
           ...modifiedCardData,
-          collection_id: documentCollectionId,
-          dashboard_id: null,
+          description: modifiedCardData.description || undefined,
+          collection_position:
+            modifiedCardData.collection_position || undefined,
+          cache_ttl: modifiedCardData.cache_ttl || undefined,
+          collection_id: documentCollectionId || undefined,
+          dashboard_id: undefined,
         }).unwrap();
 
         return {

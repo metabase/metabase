@@ -220,9 +220,7 @@ class Question {
   }
 
   type(): CardType {
-    const type = this._card?.type ?? "question";
-    // HACK: Treat "in_document" cards as regular questions
-    return type === "in_document" ? "question" : type;
+    return this._card?.type ?? "question";
   }
 
   setType(type: CardType) {

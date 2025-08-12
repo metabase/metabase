@@ -1,7 +1,9 @@
 import type {
   CreateDocumentRequest,
+  DeleteDocumentRequest,
   Document,
-  DocumentId,
+  GetDocumentRequest,
+  UpdateDocumentRequest,
 } from "metabase-types/api";
 
 import { EnterpriseApi } from "./api";
@@ -9,7 +11,7 @@ import { idTag, listTag } from "./tags";
 
 export const documentApi = EnterpriseApi.injectEndpoints({
   endpoints: (builder) => ({
-    getDocument: builder.query<Document, { id: DocumentId }>({
+    getDocument: builder.query<Document, GetDocumentRequest>({
       query: ({ id }) => ({
         method: "GET",
         url: `/api/ee/document/${id}`,
@@ -25,7 +27,7 @@ export const documentApi = EnterpriseApi.injectEndpoints({
       }),
       invalidatesTags: (_, error) => (error ? [] : [listTag("document")]), // TODO: invalidate parent collection?
     }),
-    updateDocument: builder.mutation<Document, Partial<Document>>({
+    updateDocument: builder.mutation<Document, UpdateDocumentRequest>({
       query: (document) => ({
         method: "PUT",
         url: `/api/ee/document/${document.id}`,
@@ -34,7 +36,7 @@ export const documentApi = EnterpriseApi.injectEndpoints({
       invalidatesTags: (_, error, { id }) =>
         !error ? [listTag("document"), idTag("document", id)] : [],
     }),
-    deleteDocument: builder.mutation<void, Pick<Document, "id">>({
+    deleteDocument: builder.mutation<void, DeleteDocumentRequest>({
       query: (document) => ({
         method: "DELETE",
         url: `/api/ee/document/${document.id}`,

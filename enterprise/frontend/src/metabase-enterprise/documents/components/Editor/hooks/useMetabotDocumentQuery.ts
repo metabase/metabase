@@ -4,6 +4,7 @@ import { t } from "ttag";
 import { useCreateCardMutation } from "metabase/api";
 import { uuid } from "metabase/lib/uuid";
 import { aiStreamingQuery } from "metabase-enterprise/api/ai-streaming";
+import type { KnownDataPart } from "metabase-enterprise/api/ai-streaming/schemas";
 
 const ENDPOINT = "/api/ee/metabot-v3/v2/agent-streaming"; // TODO: we should get our own endpoint
 const EXTRA_PROMPT = ", do not ask me any further clarifying questions";
@@ -35,13 +36,13 @@ export const useMetabotDocumentQuery = () => {
 
       const navigateTo = response.data.find(
         (d: any) => d.type === "navigate_to",
-      );
+      ) as KnownDataPart | undefined;
 
       if (!navigateTo) {
         return { error: description };
       }
 
-      const encodedQuery = navigateTo?.value?.replace?.("/question#", "");
+      const encodedQuery = navigateTo.value?.replace?.("/question#", "");
 
       let query = {};
 

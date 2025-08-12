@@ -328,8 +328,10 @@ export const DocumentPage = ({
     collection_id?: CollectionId | null;
     archived?: boolean;
   }) => {
-    await updateDocument({ id: documentData?.id, ...payload });
-    setCollectionPickerMode(null);
+    if (documentData?.id) {
+      await updateDocument({ id: documentData.id, ...payload });
+      setCollectionPickerMode(null);
+    }
   };
 
   useEffect(() => {

@@ -46,6 +46,7 @@ export function useDraftCardOperations(
           };
 
           dispatch(
+            // @ts-expect-error -- not sure why
             datasetApi.util.upsertQueryData(
               "getAdhocQuery",
               draftQueryArgs,
