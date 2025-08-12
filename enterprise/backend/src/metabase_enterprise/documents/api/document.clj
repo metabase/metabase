@@ -113,7 +113,7 @@
   [id]
   (u/prog1 (api/check-404
             (api/read-check
-             (t2/hydrate (t2/select-one :model/Document :id id) :creator :can_write)))
+             (t2/hydrate (t2/select-one :model/Document :id id) :creator :can_write :can_delete :can_restore)))
     (events/publish-event! :event/document-read
                            {:object-id id
                             :user-id api/*current-user-id*})))
