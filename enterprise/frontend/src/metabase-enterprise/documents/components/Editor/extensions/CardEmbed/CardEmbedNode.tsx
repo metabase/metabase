@@ -5,8 +5,6 @@ import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
-import { skipToken, useGetCardQuery, useGetCardQueryQuery } from "metabase/api";
-import { useGetAdhocQueryQuery } from "metabase/api/dataset";
 import { useDispatch } from "metabase/lib/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Box, Flex, Icon, Loader, Menu, Text, TextInput } from "metabase/ui";
@@ -22,11 +20,11 @@ import {
   openVizSettingsSidebar,
   setShowNavigateBackToDocumentButton,
 } from "../../../../documents.slice";
+import { useCardEmbedData } from "../../../../hooks/useCardEmbedData";
 import {
   useDocumentsDispatch,
   useDocumentsSelector,
 } from "../../../../redux-utils";
-import { getCardWithDraft } from "../../../../selectors";
 import { EDITOR_STYLE_BOUNDARY_CLASS } from "../../constants";
 import { formatCardEmbed } from "../markdown/card-embed-format";
 
@@ -146,55 +144,17 @@ export const CardEmbedComponent = memo(
       });
     }
 
-    const { data: card, isLoading: isLoadingCard } = useGetCardQuery(
-      { id },
-      { skip: !id || id < 0 }, // Skip if draft card (negative ID)
-    );
+    // Use the custom hook for all data fetching
+    const {
+      card: cardToUse,
+      dataset,
+      isLoading,
+      rawSeries,
+      error,
+    } = useCardEmbedData({ id });
 
-    // Get card with draft if available
-    const cardWithDraft = useDocumentsSelector((state) =>
-      getCardWithDraft(state, id, card),
-    );
-
-    // Use the draft card if available, otherwise use the fetched card
-    const cardToUse = cardWithDraft ?? card;
-
-    // Use different endpoints for draft vs regular cards
-    const { data: regularDataset, isLoading: isLoadingRegularDataset } =
-      useGetCardQueryQuery(
-        { cardId: id },
-        { skip: !id || id < 0 || !card }, // Skip for draft cards
-      );
-
-    const { data: draftDataset, isLoading: isLoadingDraftDataset } =
-      useGetAdhocQueryQuery(
-        id < 0 && cardToUse?.dataset_query
-          ? {
-              ...cardToUse.dataset_query,
-              database: cardToUse.database_id ?? null,
-              parameters: [],
-            }
-          : skipToken,
-      );
-
-    // Use appropriate dataset based on card type
-    const dataset = id < 0 ? draftDataset : regularDataset;
-    const isLoadingDataset =
-      id < 0 ? isLoadingDraftDataset : isLoadingRegularDataset;
-
-    const rawSeries =
-      cardToUse && dataset?.data
-        ? [
-            {
-              card: cardToUse,
-              started_at: dataset.started_at,
-              data: dataset.data,
-            },
-          ]
-        : null;
-
-    const datasetError = dataset && getDatasetError(dataset);
     const metadata = useDocumentsSelector(getMetadata);
+    const datasetError = dataset && getDatasetError(dataset);
     const [isEditingTitle, setIsEditingTitle] = useState(false);
     const [editedTitle, setEditedTitle] = useState(name || "");
     const titleInputRef = useRef<HTMLInputElement>(null);
@@ -202,15 +162,6 @@ export const CardEmbedComponent = memo(
 
     const displayName = name || cardToUse?.name;
     const isNativeQuestion = cardToUse?.dataset_query?.type === "native";
-    const isLoading = isLoadingCard || isLoadingDataset;
-
-    // Only show error if we've tried to load and failed, not if we haven't tried yet
-    const hasTriedToLoad =
-      cardToUse !== undefined || isLoadingCard || isLoadingDataset;
-    const error =
-      hasTriedToLoad && !isLoading && id && !cardToUse
-        ? "Failed to load question"
-        : null;
 
     useEffect(() => {
       if (isEditingTitle && titleInputRef.current) {
@@ -320,7 +271,7 @@ export const CardEmbedComponent = memo(
       [dispatch, metadata],
     );
 
-    if (isLoadingCard && !cardToUse) {
+    if (isLoading && !cardToUse) {
       return (
         <NodeViewWrapper className={styles.embedWrapper}>
           <Box
