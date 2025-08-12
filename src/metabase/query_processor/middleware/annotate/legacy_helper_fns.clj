@@ -12,6 +12,7 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.util.add-alias-info :as add]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]))
 
@@ -36,9 +37,12 @@
   These names are also used directly in queries, e.g. in the equivalent of a SQL `AS` clause."
   [legacy-inner-query :- :map
    legacy-ag-clause]
-  (lib/column-name
-   (legacy-inner-query->mlv2-query legacy-inner-query)
-   (lib/->pMBQL legacy-ag-clause)))
+  (let [ag-clause (lib/->pMBQL legacy-ag-clause)]
+    (or (::add/desired-alias (lib/options ag-clause))
+        (:name (lib/options ag-clause))
+        (lib/column-name
+         (legacy-inner-query->mlv2-query legacy-inner-query)
+         (lib/->pMBQL legacy-ag-clause)))))
 
 (mu/defn merged-column-info :- :metabase.query-processor.middleware.annotate/cols
   "Returns deduplicated and merged column metadata (`:cols`) for query results by combining (a) the initial results
