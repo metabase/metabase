@@ -8,6 +8,7 @@ import type {
   PaginationResponse,
   RowValue,
   SearchModel,
+  UnsavedCard,
 } from ".";
 
 export type MetabotFeedbackType =
@@ -128,10 +129,16 @@ export type MetabotAdhocQueryInfo = {
   error?: any;
 };
 
+export type MetabotReportInfo = {
+  type: "report";
+  id: number;
+};
+
 export type MetabotEntityInfo =
   | MetabotCardInfo
   | MetabotDashboardInfo
-  | MetabotAdhocQueryInfo;
+  | MetabotAdhocQueryInfo
+  | MetabotReportInfo;
 
 /* Metabot v3 - API Request Types */
 
@@ -210,3 +217,15 @@ export type MetabotEntity = {
 export type MetabotApiEntity = Omit<MetabotEntity, "id"> & {
   model_id: MetabotEntity["id"];
 };
+
+/* Metabot v3 - Document Types */
+
+export interface MetabotDocumentNodeRequest {
+  instructions: string;
+}
+
+export interface MetabotDocumentNodeResponse {
+  draft_card: (UnsavedCard & { name?: string }) | null;
+  description: string;
+  error: string | null;
+}

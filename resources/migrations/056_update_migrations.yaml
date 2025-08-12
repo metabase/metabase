@@ -236,6 +236,175 @@ databaseChangeLog:
            WHERE sso_source = 'jwt';
 
   - changeSet:
+      id: v56.2025-07-21T12:00:00
+      author: edpaget
+      comment: Create document table
+      changes:
+        - createTable:
+            tableName: document
+            remarks: Documents table
+            columns:
+              - column:
+                  name: id
+                  remarks: Unique ID
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: name
+                  remarks: Document name
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  remarks: The timestamp of when the document was created
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: document
+                  remarks: content of the document
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+              - column:
+                  name: content_type
+                  remarks: the content_type of the document column
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+              - column:
+                  name: creator_id
+                  remarks: User who created this document
+                  type: int
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  remarks: The timestamp of when the document was updated
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: collection_id
+                  remarks: What collection I live in. Null if it's Our Analytics.
+                  type: int
+                  constraints:
+                    nullable: true
+              - column:
+                  name: archived
+                  remarks: Has this document been archived?
+                  type: ${boolean.type}
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+              - column:
+                  name: archived_directly
+                  remarks: Was this thing trashed directly
+                  type: ${boolean.type}
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: true
+              - column:
+                  name: entity_id
+                  type: char(21)
+                  remarks: Random NanoID tag for unique identity
+                  constraints:
+                    nullable: true
+                    unique: true
+
+  - changeSet:
+      id: v56.2025-07-21T12:00:10
+      author: edpaget
+      comment: Add index on document.creator_id
+      changes:
+        - createIndex:
+            tableName: document
+            indexName: idx_document_creator_id
+            columns:
+              - column:
+                  name: creator_id
+      rollback:
+        - dropIndex:
+            tableName: document
+            indexName: idx_document_creator_id
+
+  - changeSet:
+      id: v56.2025-07-21T12:00:11
+      author: edpaget
+      comment: Add `document.creator_id` foreign key constraint
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: document
+            baseColumnNames: creator_id
+            referencedTableName: core_user
+            referencedColumnNames: id
+            constraintName: fk_document_ref_creator_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v56.2025-07-21T12:00:30
+      author: edpaget
+      comment: Add index on document.collection_id
+      changes:
+        - createIndex:
+            tableName: document
+            indexName: idx_document_collection_id
+            columns:
+              - column:
+                  name: collection_id
+      rollback:
+        - dropIndex:
+            tableName: document
+            indexName: idx_document_collection_id
+
+  - changeSet:
+      id: v56.2025-07-21T12:00:59
+      author: johnswanson
+      comment: Add `document.collection_id` foreign key constraint
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: document
+            baseColumnNames: collection_id
+            referencedTableName: collection
+            referencedColumnNames: id
+            constraintName: fk_document_ref_collection_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v56.2025-07-29T17:23:20
+      author: edpaget
+      comment: Add document_id column to report_card table
+      changes:
+        - addColumn:
+            tableName: report_card
+            columns:
+              - column:
+                  name: document_id
+                  remarks: Associates cards with a particular document
+                  type: int
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v56.2025-07-29T17:23:33
+      author: edpaget
+      comment: Add foreign key constraint for document_id in report_card
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: report_card
+            baseColumnNames: document_id
+            referencedTableName: document
+            referencedColumnNames: id
+            constraintName: fk_report_card_document_id
+            onDelete: CASCADE
+
+  - changeSet:
       id: v56.2025-07-30T10:35:00
       author: bronsa
       comment: Add deactivated_at column to metabase_table
@@ -373,7 +542,148 @@ databaseChangeLog:
                     AND mt2.name = SUBSTRING(metabase_table.name, 1, POSITION('__mbarchiv__' IN metabase_table.name) - 1)
                     AND mt2.id != metabase_table.id);
 
-# >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
+  - changeSet:
+      id: v56.2025-08-06T17:23:30
+      author: edpaget
+      comment: Add index on report_card.document_id
+      changes:
+        - createIndex:
+            tableName: report_card
+            indexName: idx_repord_card_document_id
+            columns:
+              - column:
+                  name: document_id
+      rollback:
+        - dropIndex:
+            tableName: report_card
+            indexName: idx_repord_card_document_id
+
+  - changeSet:
+      id: v56.2025-08-06T17:42:32
+      author: edpaget
+      comment: Create document_bookmark table
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: document_bookmark
+      changes:
+        - createTable:
+            tableName: document_bookmark
+            remarks: Store user bookmarks for documents
+            columns:
+              - column:
+                  name: id
+                  remarks: Unique ID
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: user_id
+                  remarks: User who bookmarked the document
+                  type: int
+                  constraints:
+                    nullable: false
+              - column:
+                  name: document_id
+                  remarks: The document that was bookmarked
+                  type: int
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  remarks: The timestamp when the bookmark was created
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+      rollback:
+        - dropTable:
+            tableName: document_bookmark
+
+  - changeSet:
+      id: v56.2025-08-06T17:42:33
+      author: edpaget
+      comment: Add index on document_bookmark.user_id
+      changes:
+        - createIndex:
+            tableName: document_bookmark
+            indexName: idx_document_bookmark_user_id
+            columns:
+              - column:
+                  name: user_id
+      rollback:
+        - dropIndex:
+            tableName: document_bookmark
+            indexName: idx_document_bookmark_user_id
+
+  - changeSet:
+      id: v56.2025-08-06T17:42:34
+      author: edpaget
+      comment: Add index on document_bookmark.document_id
+      changes:
+        - createIndex:
+            tableName: document_bookmark
+            indexName: idx_document_bookmark_document_id
+            columns:
+              - column:
+                  name: document_id
+      rollback:
+        - dropIndex:
+            tableName: document_bookmark
+            indexName: idx_document_bookmark_document_id
+
+  - changeSet:
+      id: v56.2025-08-06T17:42:35
+      author: edpaget
+      comment: Add foreign key constraint for document_bookmark.user_id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: document_bookmark
+            baseColumnNames: user_id
+            referencedTableName: core_user
+            referencedColumnNames: id
+            constraintName: fk_document_bookmark_user_id
+            onDelete: CASCADE
+      rollback:
+        - dropForeignKeyConstraint:
+            baseTableName: document_bookmark
+            constraintName: fk_document_bookmark_user_id
+
+  - changeSet:
+      id: v56.2025-08-06T17:42:36
+      author: edpaget
+      comment: Add foreign key constraint for document_bookmark.document_id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: document_bookmark
+            baseColumnNames: document_id
+            referencedTableName: document
+            referencedColumnNames: id
+            constraintName: fk_document_bookmark_document_id
+            onDelete: CASCADE
+      rollback:
+        - dropForeignKeyConstraint:
+            baseTableName: document_bookmark
+            constraintName: fk_document_bookmark_document_id
+
+  - changeSet:
+      id: v56.2025-08-06T17:42:37
+      author: edpaget
+      comment: Add unique constraint for document_bookmark user_id and document_id
+      changes:
+        - addUniqueConstraint:
+            tableName: document_bookmark
+            columnNames: user_id, document_id
+            constraintName: idx_document_bookmark_user_document_unique
+      rollback:
+        - dropUniqueConstraint:
+            tableName: document_bookmark
+            constraintName: idx_document_bookmark_user_document_unique
+
+  # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
 #

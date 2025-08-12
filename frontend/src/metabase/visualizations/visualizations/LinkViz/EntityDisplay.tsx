@@ -65,7 +65,7 @@ export const UrlLinkDisplay = ({ url }: { url?: string }) => {
   );
 };
 
-function getSearchIconName(entity: WrappedUnrestrictedLinkEntity) {
+export function getSearchIconName(entity: WrappedUnrestrictedLinkEntity) {
   const entityIcon = entity.getIcon?.() ?? { name: "link" };
 
   // we need to change this icon to make it match the icon in the search results

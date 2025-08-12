@@ -16,6 +16,7 @@
    "Card"
    "Collection"
    "Dashboard"
+   "Document"
    "NativeQuerySnippet"
    "Timeline"])
 
@@ -57,6 +58,8 @@
    "DatabaseRouter"
    "DashboardBookmark"
    "DataPermissions"
+   "Document"
+   "DocumentBookmark"
    "GroupTableAccessPolicy"
    "HTTPAction"
    "ImplicitAction"
