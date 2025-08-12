@@ -35,18 +35,16 @@
     {:output "dashboard not found"}))
 
 (defn- get-field-values [id->values id]
-  (when id
-    (->
-     id
-     id->values
-     (or (field-values/get-or-create-full-field-values! (t2/select-one :model/Field :id id)))
-     :values)))
+  (->
+   (get id->values id)
+   (or (field-values/get-or-create-full-field-values! (t2/select-one :model/Field :id id)))
+   :values))
 
 (defn- add-field-values
   [cols]
   (if-let [field-ids (seq (keep :id cols))]
     (let [id->values (field-values/batched-get-latest-full-field-values field-ids)]
-      (map #(m/assoc-some % :field-values (get-field-values id->values (:id %))) cols))
+      (map #(m/assoc-some % :field-values (some->> % :id (get-field-values id->values))) cols))
     cols))
 
 (defn- add-table-reference

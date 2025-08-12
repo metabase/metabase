@@ -8,19 +8,24 @@
    [metabase.warehouse-schema.models.field-values :as field-values]
    [toucan2.core :as t2]))
 
+(defn- build-field-statistics [fvs fp limit]
+  (merge (when fp
+           {:statistics (-> (or (:global fp) {})
+                            (set/rename-keys {:nil% :percent-null})
+                            (into (vals (:type fp))))})
+         (when-let [fvs (-> fvs :values not-empty)]
+           {:values (into [] (if limit (take limit) identity) fvs)})))
+
 (defn- field-statistics
-  [{:keys [id] :as column} limit]
-  (let [field (t2/select-one :model/Field :id id)
-        fvs (field-values/get-or-create-full-field-values! field)
-        fp (or (:fingerprint column)
-               (and (pos? (:updated-fingerprints (sync/refingerprint-field! field)))
-                    (t2/select-one-fn :fingerprint :model/Field :id id)))]
-    (merge (when fp
-             {:statistics (-> (or (:global fp) {})
-                              (set/rename-keys {:nil% :percent-null})
-                              (into (vals (:type fp))))})
-           (when-let [fvs (-> fvs :values not-empty)]
-             {:values (into [] (if limit (take limit) identity) fvs)}))))
+  [{:keys [id fingerprint]} limit]
+  (if id
+    (let [field (t2/select-one :model/Field :id id)
+          fvs (field-values/get-or-create-full-field-values! field)
+          fp (or fingerprint
+                 (and (pos? (:updated-fingerprints (sync/refingerprint-field! field)))
+                      (t2/select-one-fn :fingerprint :model/Field :id id)))]
+      (build-field-statistics fvs fp limit))
+    (build-field-statistics nil fingerprint limit)))
 
 (defn- table-field-stats
   [table-id agent-field-id limit]
