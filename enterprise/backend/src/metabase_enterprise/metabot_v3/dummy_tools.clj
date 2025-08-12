@@ -306,6 +306,34 @@
         {:output (str "error fetching report: " (.getMessage e))}))
     {:output "invalid document_id"}))
 
+(defn- base-type->type [field]
+  (case field
+    :type/Integer   "number"
+    :type/Float     "number"
+    :type/Text      "string"
+    :type/Date      "date"
+    :type/DateTime  "datetime"
+    :type/Time      "time"
+    :type/Boolean   "boolean"
+    :type/Null      "null"
+    "string"))
+
+(defn get-tables
+  "Get information about the tables in a database."
+  [{:keys [database-id] :or {database-id 1}}]
+  (if (int? database-id)
+    (let [db (t2/select-one [:model/Database :id :name :description :engine] database-id)
+          tables (t2/select [:model/Table :id :name :description]
+                            :db_id database-id
+                            :active true)
+          columns (group-by :table_id (map #(-> %
+                                                (assoc :type (base-type->type (:base_type %)))
+                                                (dissoc :base_type))
+                                           (t2/select [:model/Field :id :table_id :name :description :base_type])))]
+      {:structured-output {:database db
+                           :tables   (map #(assoc % :columns (get columns (:id %) [])) tables)}})
+    {:output "invalid database_id"}))
+
 (defn- execute-query
   [query-id legacy-query]
   (let [legacy-query (mbql.normalize/normalize legacy-query)
