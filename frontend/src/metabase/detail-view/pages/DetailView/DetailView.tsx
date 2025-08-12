@@ -140,7 +140,7 @@ export function DetailView({ params }: TableDetailViewLoaderProps) {
       <Box className={S.nav} flex="0 0 auto" p="md">
         <Nav
           rowName={rowName}
-          tableId={tableId}
+          table={table}
           onPreviousClick={
             rows.length > 1 &&
             typeof currentRowIndex === "number" &&

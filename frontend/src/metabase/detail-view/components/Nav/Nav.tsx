@@ -1,13 +1,9 @@
 import type { ReactNode } from "react";
 import { t } from "ttag";
 
-import {
-  skipToken,
-  useGetTableQuery,
-  useListDatabaseSchemasQuery,
-} from "metabase/api";
+import { skipToken, useListDatabaseSchemasQuery } from "metabase/api";
 import { Box, Group, Icon, Text, rem } from "metabase/ui";
-import type { TableId } from "metabase-types/api";
+import type { Table } from "metabase-types/api";
 
 import { Breadcrumb } from "./Breadcrumb";
 import S from "./Nav.module.css";
@@ -16,19 +12,17 @@ import { getExploreTableUrl } from "./utils";
 
 interface Props {
   rowName: ReactNode;
-  tableId: TableId;
+  table: Table;
   onNextClick?: () => void;
   onPreviousClick?: () => void;
 }
 
 export const Nav = ({
   rowName,
-  tableId,
+  table,
   onNextClick,
   onPreviousClick,
 }: Props) => {
-  const { data: table } = useGetTableQuery({ id: tableId });
-
   const { data: schemas, isLoading: isLoadingSchemas } =
     useListDatabaseSchemasQuery(
       table && table.db_id && table.schema ? { id: table.db_id } : skipToken,
