@@ -1,4 +1,3 @@
-import { useDisclosure } from "@mantine/hooks";
 import type { Editor as TiptapEditor } from "@tiptap/core";
 import cx from "classnames";
 import dayjs from "dayjs";
@@ -10,7 +9,12 @@ import useBeforeUnload from "react-use/lib/useBeforeUnload";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { skipToken } from "metabase/api";
+import {
+  skipToken,
+  useCreateBookmarkMutation,
+  useDeleteBookmarkMutation,
+  useListBookmarksQuery,
+} from "metabase/api";
 import { canonicalCollectionId } from "metabase/collections/utils";
 import DateTime, {
   getFormattedTime,
@@ -38,7 +42,11 @@ import {
   useGetDocumentQuery,
   useUpdateDocumentMutation,
 } from "metabase-enterprise/api";
-import type { Card, RegularCollectionId } from "metabase-types/api";
+import type {
+  Card,
+  CollectionId,
+  RegularCollectionId,
+} from "metabase-types/api";
 
 import {
   clearDraftCards,
@@ -55,6 +63,7 @@ import {
   getSelectedQuestionId,
 } from "../selectors";
 
+import { DocumentArchivedEntityBanner } from "./DocumentArchivedEntityBanner";
 import styles from "./DocumentPage.module.css";
 import { Editor } from "./Editor";
 import { EmbedQuestionSettingsSidebar } from "./EmbedQuestionSettingsSidebar";
@@ -79,16 +88,27 @@ export const DocumentPage = ({
     useCreateDocumentMutation();
   const [updateDocument, { isLoading: isUpdating }] =
     useUpdateDocumentMutation();
-  const [
-    isShowingCollectionPicker,
-    { open: showCollectionPicker, close: hideCollectionPicker },
-  ] = useDisclosure(false);
+  const [collectionPickerMode, setCollectionPickerMode] = useState<
+    "save" | "move" | null
+  >(null);
   const [sendToast] = useToast();
 
   const documentId = entityId === "new" ? "new" : extractEntityId(entityId);
   const previousDocumentId = usePrevious(documentId);
   const [isNavigationScheduled, scheduleNavigation] = useCallbackEffect();
   const isNewDocument = documentId === "new";
+
+  const { data: bookmarks = [] } = useListBookmarksQuery(undefined, {
+    skip: isNewDocument,
+  });
+  const [createBookmark] = useCreateBookmarkMutation();
+  const [deleteBookmark] = useDeleteBookmarkMutation();
+
+  const isBookmarked = Boolean(
+    bookmarks.find(
+      ({ type, item_id }) => type === "document" && item_id === documentId,
+    ),
+  );
 
   let {
     data: documentData,
@@ -211,6 +231,15 @@ export const DocumentPage = ({
     setHasUnsavedEditorChanges(hasChanges);
   }, [editorInstance, documentContent, isNewDocument]);
 
+  const handleToggleBookmark = useCallback(() => {
+    if (!documentId) {
+      return;
+    }
+    isBookmarked
+      ? deleteBookmark({ type: "document", id: documentId })
+      : createBookmark({ type: "document", id: documentId });
+  }, [isBookmarked, deleteBookmark, createBookmark, documentId]);
+
   const handleSave = useCallback(
     async (collectionId: RegularCollectionId | null = null) => {
       if (!editorInstance || isSaving) {
@@ -295,6 +324,16 @@ export const DocumentPage = ({
     ],
   );
 
+  const handleUpdate = async (payload: {
+    collection_id?: CollectionId | null;
+    archived?: boolean;
+  }) => {
+    if (documentData?.id) {
+      await updateDocument({ id: documentData.id, ...payload });
+      setCollectionPickerMode(null);
+    }
+  };
+
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       // Save shortcut: Cmd+S (Mac) or Ctrl+S (Windows/Linux)
@@ -304,7 +343,7 @@ export const DocumentPage = ({
           return;
         }
 
-        isNewDocument ? showCollectionPicker() : handleSave();
+        isNewDocument ? setCollectionPickerMode("save") : handleSave();
       }
     };
 
@@ -317,7 +356,7 @@ export const DocumentPage = ({
     hasUnsavedChanges,
     handleSave,
     isNewDocument,
-    showCollectionPicker,
+    setCollectionPickerMode,
     canWrite,
   ]);
 
@@ -343,6 +382,7 @@ export const DocumentPage = ({
 
   return (
     <Box className={styles.documentPage}>
+      {documentData?.archived && <DocumentArchivedEntityBanner />}
       <Box className={styles.contentArea}>
         <Box className={styles.mainContent}>
           <Box className={styles.documentContainer}>
@@ -396,7 +436,9 @@ export const DocumentPage = ({
                 >
                   <Button
                     onClick={() => {
-                      isNewDocument ? showCollectionPicker() : handleSave();
+                      isNewDocument
+                        ? setCollectionPickerMode("save")
+                        : handleSave();
                     }}
                     variant="filled"
                     data-hide-on-print
@@ -422,6 +464,37 @@ export const DocumentPage = ({
                     >
                       {t`Print Document`}
                     </Menu.Item>
+                    {!isNewDocument && (
+                      <>
+                        {canWrite && (
+                          <Menu.Item
+                            leftSection={<Icon name="move" />}
+                            onClick={() => setCollectionPickerMode("move")}
+                          >
+                            {t`Move`}
+                          </Menu.Item>
+                        )}
+                        <Menu.Item
+                          leftSection={<Icon name={"bookmark"} />}
+                          onClick={handleToggleBookmark}
+                        >
+                          {isBookmarked
+                            ? t`Remove from Bookmarks`
+                            : t`Bookmark`}
+                        </Menu.Item>
+                        {canWrite && (
+                          <>
+                            <Menu.Divider />
+                            <Menu.Item
+                              leftSection={<Icon name="trash" />}
+                              onClick={() => handleUpdate({ archived: true })}
+                            >
+                              {t`Move to trash`}
+                            </Menu.Item>
+                          </>
+                        )}
+                      </>
+                    )}
                   </Menu.Dropdown>
                 </Menu>
               </Flex>
@@ -450,18 +523,25 @@ export const DocumentPage = ({
             </Box>
           )}
 
-        {isShowingCollectionPicker && (
+        {collectionPickerMode && (
           <CollectionPickerModal
             title={t`Where should we save this document?`}
-            onClose={hideCollectionPicker}
+            onClose={() => setCollectionPickerMode(null)}
             value={{ id: "root", model: "collection" }}
             options={{
               showPersonalCollections: true,
               showRootCollection: true,
             }}
-            onChange={(collection) => {
-              handleSave(canonicalCollectionId(collection.id));
-              hideCollectionPicker();
+            onChange={async (collection) => {
+              if (collectionPickerMode === "save") {
+                handleSave(canonicalCollectionId(collection.id));
+                setCollectionPickerMode(null);
+              } else if (collectionPickerMode === "move") {
+                (await collection) &&
+                  handleUpdate({
+                    collection_id: canonicalCollectionId(collection.id),
+                  });
+              }
             }}
           />
         )}

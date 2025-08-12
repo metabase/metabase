@@ -12,9 +12,10 @@ import { getMetadata } from "metabase/selectors/metadata";
 import { Box, Flex, Icon, Loader, Menu, Text, TextInput } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
 import ChartSkeleton from "metabase/visualizations/components/skeletons/ChartSkeleton";
+import { getGenericErrorMessage } from "metabase/visualizations/lib/errors";
 import Question from "metabase-lib/v1/Question";
 import { getUrl } from "metabase-lib/v1/urls";
-import type { Card, CardDisplayType } from "metabase-types/api";
+import type { Card, CardDisplayType, Dataset } from "metabase-types/api";
 
 import {
   loadMetadataForDocumentCard,
@@ -32,6 +33,15 @@ import { formatCardEmbed } from "../markdown/card-embed-format";
 import styles from "./CardEmbedNode.module.css";
 import { ModifyQuestionModal } from "./ModifyQuestionModal";
 import { NativeQueryModal } from "./NativeQueryModal";
+
+const getDatasetError = (dataset: Dataset) => {
+  if (dataset.error) {
+    return {
+      message: getGenericErrorMessage(),
+      icon: "warning" as const,
+    };
+  }
+};
 
 export interface CardEmbedAttributes {
   id?: number;
@@ -183,6 +193,7 @@ export const CardEmbedComponent = memo(
           ]
         : null;
 
+    const datasetError = dataset && getDatasetError(dataset);
     const metadata = useDocumentsSelector(getMetadata);
     const [isEditingTitle, setIsEditingTitle] = useState(false);
     const [editedTitle, setEditedTitle] = useState(name || "");
@@ -483,6 +494,8 @@ export const CardEmbedComponent = memo(
                   isDashboard={false}
                   isDocument={true}
                   showTitle={false}
+                  error={datasetError?.message}
+                  errorIcon={datasetError?.icon}
                 />
               </Box>
             </>

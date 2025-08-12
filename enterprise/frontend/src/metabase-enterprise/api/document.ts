@@ -1,5 +1,6 @@
 import type {
   CreateDocumentRequest,
+  DeleteDocumentRequest,
   Document,
   GetDocumentRequest,
   UpdateDocumentRequest,
@@ -31,6 +32,14 @@ export const documentApi = EnterpriseApi.injectEndpoints({
         method: "PUT",
         url: `/api/ee/document/${document.id}`,
         body: document,
+      }),
+      invalidatesTags: (_, error, { id }) =>
+        !error ? [listTag("document"), idTag("document", id)] : [],
+    }),
+    deleteDocument: builder.mutation<void, DeleteDocumentRequest>({
+      query: (document) => ({
+        method: "DELETE",
+        url: `/api/ee/document/${document.id}`,
       }),
       invalidatesTags: (_, error, { id }) =>
         !error ? [listTag("document"), idTag("document", id)] : [],

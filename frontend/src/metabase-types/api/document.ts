@@ -7,15 +7,18 @@ export type DocumentContent = Record<string, unknown>; // ProseMirror AST
 
 export type Document = {
   id: DocumentId;
+  creator: BaseUser;
   document: DocumentContent;
   name: string;
   version: number;
-  collection_id: CollectionId;
+  collection_id: CollectionId | null;
   created_at: string;
   updated_at: string;
+  archived: boolean;
+  can_delete: boolean;
+  can_restore: boolean;
   can_write: boolean;
   creator_id: UserId;
-  creator: BaseUser;
 };
 
 export type GetDocumentRequest = { id: DocumentId };
@@ -26,7 +29,7 @@ export type CreateDocumentRequest = Pick<Document, "name"> & {
   cards?: Record<number, Card>;
 };
 
-export type UpdateDocumentRequest = Pick<Document, "id" | "name"> & {
-  document?: DocumentContent;
-  cards?: Record<number, Card>;
-};
+export type UpdateDocumentRequest = Pick<Document, "id"> &
+  Partial<Omit<Document, "id">>;
+
+export type DeleteDocumentRequest = Pick<Document, "id">;

@@ -16,6 +16,7 @@ import { documentApi, useGetDocumentQuery } from "metabase-enterprise/api";
 import type {
   Collection,
   CreateDocumentRequest,
+  DeleteDocumentRequest,
   Document,
   GetDocumentRequest,
   UpdateDocumentRequest,
@@ -28,7 +29,7 @@ import type { Dispatch } from "metabase-types/store";
 const Documents = createEntity({
   name: "documents",
   nameOne: "document",
-  path: "/api/ee/documents",
+  path: "/api/ee/document",
   schema: DocumentSchema,
 
   // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
@@ -64,6 +65,12 @@ const Documents = createEntity({
         entityQuery,
         dispatch,
         documentApi.endpoints.updateDocument,
+      ),
+    delete: (entityQuery: DeleteDocumentRequest, dispatch: Dispatch) =>
+      entityCompatibleQuery(
+        entityQuery,
+        dispatch,
+        documentApi.endpoints.deleteDocument,
       ),
   },
 
