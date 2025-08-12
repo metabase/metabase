@@ -55,35 +55,74 @@ jobs:
           echo "Found artifacts:"
           cat timing-artifacts/artifact-list.json
 
+          # Check if we have any artifacts
+          TOTAL_ARTIFACTS=$(jq '. | length' timing-artifacts/artifact-list.json 2>/dev/null || echo "0")
+          echo "Found $TOTAL_ARTIFACTS artifact(s) to process"
+          
+          if [ "$TOTAL_ARTIFACTS" -eq "0" ]; then
+            echo "❌ No timing artifacts found in the specified time range"
+            exit 1
+          fi
+          
           # Download each artifact
           ARTIFACT_COUNT=0
-          while read -r artifact; do
-            if [ -n "$artifact" ]; then
-              NAME=$(echo "$artifact" | jq -r '.name')
-              URL=$(echo "$artifact" | jq -r '.archive_download_url')
-              CREATED=$(echo "$artifact" | jq -r '.created_at')
-              
-              echo "Downloading artifact: $NAME (created: $CREATED)"
-              curl -L -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" "$URL" -o "timing-artifacts/${NAME}.zip"
-              
-              # Extract the timing file
-              mkdir -p "timing-artifacts/${NAME}"
-              unzip -q "timing-artifacts/${NAME}.zip" -d "timing-artifacts/${NAME}/"
-              
-              # Check if timing file exists
-              if [ -f "timing-artifacts/${NAME}/e2e/support/timings.json" ]; then
-                cp "timing-artifacts/${NAME}/e2e/support/timings.json" "timing-artifacts/${NAME}-timings.json"
-                ARTIFACT_COUNT=$((ARTIFACT_COUNT + 1))
-                echo "✓ Extracted timing data from $NAME"
-              else
-                echo "⚠ No timing data found in $NAME"
-              fi
-              
-              # Cleanup extracted directory
-              rm -rf "timing-artifacts/${NAME}"
-              rm "timing-artifacts/${NAME}.zip"
+          
+          # Handle both single object and array cases
+          if [ "$TOTAL_ARTIFACTS" -eq "1" ]; then
+            # Single artifact - read directly
+            NAME=$(jq -r '.name' timing-artifacts/artifact-list.json)
+            URL=$(jq -r '.archive_download_url' timing-artifacts/artifact-list.json)
+            CREATED=$(jq -r '.created_at' timing-artifacts/artifact-list.json)
+            
+            echo "Downloading artifact: $NAME (created: $CREATED)"
+            curl -L -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" "$URL" -o "timing-artifacts/${NAME}.zip"
+            
+            # Extract the timing file
+            mkdir -p "timing-artifacts/${NAME}"
+            unzip -q "timing-artifacts/${NAME}.zip" -d "timing-artifacts/${NAME}/"
+            
+            # Check if timing file exists
+            if [ -f "timing-artifacts/${NAME}/e2e/support/timings.json" ]; then
+              cp "timing-artifacts/${NAME}/e2e/support/timings.json" "timing-artifacts/${NAME}-timings.json"
+              ARTIFACT_COUNT=$((ARTIFACT_COUNT + 1))
+              echo "✓ Extracted timing data from $NAME"
+            else
+              echo "⚠ No timing data found in $NAME"
             fi
-          done < <(jq -c '.[]' timing-artifacts/artifact-list.json)
+            
+            # Cleanup extracted directory
+            rm -rf "timing-artifacts/${NAME}"
+            rm "timing-artifacts/${NAME}.zip"
+          else
+            # Multiple artifacts - iterate through array
+            while read -r artifact; do
+              if [ -n "$artifact" ]; then
+                NAME=$(echo "$artifact" | jq -r '.name')
+                URL=$(echo "$artifact" | jq -r '.archive_download_url')
+                CREATED=$(echo "$artifact" | jq -r '.created_at')
+                
+                echo "Downloading artifact: $NAME (created: $CREATED)"
+                curl -L -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" "$URL" -o "timing-artifacts/${NAME}.zip"
+                
+                # Extract the timing file
+                mkdir -p "timing-artifacts/${NAME}"
+                unzip -q "timing-artifacts/${NAME}.zip" -d "timing-artifacts/${NAME}/"
+                
+                # Check if timing file exists
+                if [ -f "timing-artifacts/${NAME}/e2e/support/timings.json" ]; then
+                  cp "timing-artifacts/${NAME}/e2e/support/timings.json" "timing-artifacts/${NAME}-timings.json"
+                  ARTIFACT_COUNT=$((ARTIFACT_COUNT + 1))
+                  echo "✓ Extracted timing data from $NAME"
+                else
+                  echo "⚠ No timing data found in $NAME"
+                fi
+                
+                # Cleanup extracted directory
+                rm -rf "timing-artifacts/${NAME}"
+                rm "timing-artifacts/${NAME}.zip"
+              fi
+            done < <(jq -c '.[]' timing-artifacts/artifact-list.json)
+          fi
 
           echo "Successfully collected $ARTIFACT_COUNT timing artifacts"
           ls -la timing-artifacts/
