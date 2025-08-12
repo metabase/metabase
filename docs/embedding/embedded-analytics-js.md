@@ -10,7 +10,7 @@ Embedded analytics JS allows you to embed Metabase entities like questions, dash
 Embedded Analytics JS is a JavaScript library built on top of Metabase's [Embedded Analytics React SDK](./sdk/introduction.md). But it does not require using React or setting up full SDK embedding.
 Unlike with [interactive embedding](./interactive-embedding.md), where you embed the entire Metabase app in an iframe, Embedded Analytics JS lets you choose from a set of predefined components like a single chart, a dashboard with optional drill-through, or query builder, and customize those components.
 
-Embedded Analytics JS leverages [JWT SSO](../people-and-groups/authenticating-with-jwt.md) to authenticate people and automatically apply permissions to show people the right data upon sign-in.
+Embedded Analytics JS leverages [JWT](../people-and-groups/authenticating-with-jwt.md) or [SAML](../people-and-groups/authenticating-with-saml.md) to authenticate people and automatically apply permissions to show people the right data upon sign-in.
 
 Currently you can choose to embed:
 
@@ -202,11 +202,11 @@ Keep in mind that API keys should only be used for testing with trusted users. A
 
 ### Set up SSO
 
-SSO is required to embed in a domain other than localhost.
+SSO is required to embed in a domain other than localhost. You can use JWT or SAML SSO. To configure SAML, see (Authenticating with SAML)[./sdk/authentication#authenticating-with-saml-sso]. To configure JWT, see the steps below.
 
-### 1. In Metabase, configure [JWT SSO](../people-and-groups/authenticating-with-jwt.md).
+#### 1. In Metabase, configure [JWT SSO](../people-and-groups/authenticating-with-jwt.md).
 
-### 2. In your app's backend, add a new endpoint to handle authentication.
+#### 2. In your app's backend, add a new endpoint to handle authentication.
 
 You’ll need add a library to your backend to sign your JSON Web Tokens.
 
@@ -274,7 +274,7 @@ app.get("/sso/metabase", async (req, res) => {
 
 See more examples in the [Embedding SDK docs](./sdk/authentication.md#2-add-a-new-endpoint-to-your-backend-to-handle-authentication).
 
-### 3. Embeds will use SSO automatically by default
+#### 3. Embeds will use SSO automatically by default
 
 Metabase will use JWT SSO by default if no other auth method is specified. Make sure you don't use `apiKey` or `useExistingUserSession` in your configuration to enable SSO use.
 
