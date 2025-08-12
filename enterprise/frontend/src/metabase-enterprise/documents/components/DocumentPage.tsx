@@ -327,7 +327,7 @@ export const DocumentPage = ({
     collection_id?: CollectionId | null;
     archived?: boolean;
   }) => {
-    await updateDocument({ id: documentId, ...payload });
+    await updateDocument({ id: documentData?.id, ...payload });
     setCollectionPickerMode(null);
   };
 
@@ -478,14 +478,16 @@ export const DocumentPage = ({
                             ? t`Remove from Bookmarks`
                             : t`Bookmark`}
                         </Menu.Item>
-                        <Menu.Divider />
                         {canWrite && (
-                          <Menu.Item
-                            leftSection={<Icon name="trash" />}
-                            onClick={() => handleUpdate({ archived: true })}
-                          >
-                            {t`Move to trash`}
-                          </Menu.Item>
+                          <>
+                            <Menu.Divider />
+                            <Menu.Item
+                              leftSection={<Icon name="trash" />}
+                              onClick={() => handleUpdate({ archived: true })}
+                            >
+                              {t`Move to trash`}
+                            </Menu.Item>
+                          </>
                         )}
                       </>
                     )}
