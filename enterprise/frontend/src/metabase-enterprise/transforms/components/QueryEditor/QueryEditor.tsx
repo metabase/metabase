@@ -70,7 +70,14 @@ export function QueryEditor({
   }
 
   return (
-    <Flex className={S.root} w="100%" h="100%" direction="column" bg="bg-white">
+    <Flex
+      className={S.root}
+      w="100%"
+      h="100%"
+      direction="column"
+      bg="bg-white"
+      data-testid="transform-query-editor"
+    >
       <EditorHeader
         isNew={isNew}
         isSaving={isSaving}

@@ -7,7 +7,7 @@ import { TransformList } from "./TransformList";
 
 export function TransformListPage() {
   return (
-    <Stack gap="xl">
+    <Stack gap="xl" data-testid="transform-list-page">
       <Group justify="space-between">
         <Stack gap="sm" flex={1}>
           <Title order={1}>{t`Transforms`}</Title>

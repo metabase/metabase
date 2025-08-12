@@ -67,7 +67,7 @@ function RunListPageBody({ params }: RunListPageBodyProps) {
   }
 
   return (
-    <Stack>
+    <Stack data-testid="transform-run-list-page">
       <FilterList transforms={transforms} tags={tags} params={params} />
       <RunList runs={data.data} totalCount={data.total} params={params} />
     </Stack>

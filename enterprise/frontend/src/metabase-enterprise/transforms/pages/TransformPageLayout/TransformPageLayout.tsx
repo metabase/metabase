@@ -47,7 +47,7 @@ function TransformSidebar({ params }: TransformSidebarProps) {
   const jobListUrl = getJobListUrl();
 
   return (
-    <AdminNavWrapper>
+    <AdminNavWrapper data-testid="transform-sidebar">
       <AdminNavItem
         label={t`Transforms`}
         path={transformListUrl}
