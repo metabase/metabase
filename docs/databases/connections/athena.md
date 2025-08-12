@@ -209,6 +209,14 @@ If Metabase also needs to create tables, you'll need additional AWS Glue permiss
 
 There aren't (yet) any model features available for Athena.
 
+## Database routing
+
+With database routing, an admin can build a question once using one data connection, and the question will run its query against a different data connection same schema depending on who is viewing the question.
+
+Note that the name "database routing" is misleading for Athena, because the term "database" in Athena is closer to "schema" in other databases. You can't use database routing to route queries between different _databases_ in Athena, but you can route between different data connections, e.g. different regions or buckets, or different IAM users, or different data sources/catalogs.
+
+See [Database routing](../../permissions/database-routing.md).
+
 ## Danger zone
 
 See [Danger Zone](../danger-zone.md).

@@ -16,16 +16,15 @@ Database routing is useful for:
 - Changing the target data warehouse for certain teams.
 - Managing separate connections to the same data warehouse, with each connection having separate privileges. This connection management is akin to [connection impersonation](./impersonation.md) for databases that prevent the same connection from changing roles.
 
-## Databases that support database routing
+## Database routing limitations
 
-- [BigQuery](../databases/connections/bigquery.md)
-- [Druid](../databases/connections/druid.md)
-- [MongoDB](../databases/connections/mongodb.md)
-- [MariaDB](../databases/connections/mariadb.md)
-- [MySQL](../databases/connections/mysql.md)
-- [PostgreSQL](../databases/connections/postgresql.md)
-- [SQL Server](../databases/connections/sql-server.md)
-- [SQLite](../databases/connections/sqlite.md)
+> Database routing is **not supported** on ClickHouse, Oracle, Spark SQL, and Vertica.
+
+There are limitations on the data sources available for database routing:
+
+- [Athena](../databases/connections/athena.md): Only routing between different connections, e.g. different buckets, roles, or catalogs is supported
+- [BigQuery](../databases/connections/bigquery.md): Only routing between databases in different projects is supported
+- [Databricks](../databases/connections/databricks.md): When multi-catalog is not enabled, you can route between catalogs on the same host. If multi-catalog is enabled, then you can only route between databases on separate hosts.
 
 ## How database routing works
 
