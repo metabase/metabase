@@ -10,6 +10,7 @@
   (:require
    [metabase-enterprise.semantic-search.db.connection :as semantic.db.connection]
    [metabase-enterprise.semantic-search.db.migration :as semantic.db.migration]
+   [metabase-enterprise.semantic-search.dlq :as semantic.dlq]
    [metabase-enterprise.semantic-search.gate :as semantic.gate]
    [metabase-enterprise.semantic-search.index :as semantic.index]
    [metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]
@@ -29,8 +30,8 @@
   (def embedding-model (semantic.embedding/get-configured-model)))
 
 (defn- initialize-index!
-  [tx index-metadata embedding-model]
-  (let [active-index-state (semantic.index-metadata/get-active-index-state tx index-metadata)
+  [pgvector index-metadata embedding-model]
+  (let [active-index-state (semantic.index-metadata/get-active-index-state pgvector index-metadata)
         active-index       (:index active-index-state)
         active-model       (:embedding-model active-index)
           ;; Model switching: compare configured embedding-model vs currently active model.
@@ -43,14 +44,12 @@
       (log/infof "Configured model does not match active index, switching. Previous active: %s" (u/pprint-to-str active-index)))
     (if model-changed
       (let [{:keys [index metadata-row]}
-            (semantic.index-metadata/find-best-index! tx index-metadata embedding-model)]
-          ;; Metadata might exist without table (deleted manually) or table without metadata
-          ;; (created outside this system). Both cases are handled gracefully.
-          ;; We might delete some of this fancyness later once schema / setup etc solidifies
-        (semantic.index/create-index-table-if-not-exists! tx index)
-        (let [index-id (or (:id metadata-row) (semantic.index-metadata/record-new-index-table! tx index-metadata index))]
-          (semantic.index-metadata/activate-index! tx index-metadata index-id)
-          index))
+            (semantic.index-metadata/find-best-index! pgvector index-metadata embedding-model)]
+        (semantic.index/create-index-table-if-not-exists! pgvector index)
+        (let [index-id (or (:id metadata-row) (semantic.index-metadata/record-new-index-table! pgvector index-metadata index))]
+          (semantic.dlq/create-dlq-table-if-not-exists! pgvector index-metadata index-id)
+          (semantic.index-metadata/activate-index! pgvector index-metadata index-id))
+        index)
       active-index)))
 
 (defn init-semantic-search!

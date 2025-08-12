@@ -109,6 +109,7 @@
   {:pre [;; countable only
          (seqable? gate-document-batch)
          ;; too many documents and we might see buffer size limits get hit in the driver, TODO: bench/play with this - document expectations
+         ;; (or timeout due to the gate-write-timeout!)
          (<= (bounded-count (inc max-batch-size) gate-document-batch) max-batch-size)]}
   ;; We will fix the transaction policy here (rather than letting caller decide) to encapsulate timeout behaviour
   ;; and to ensure the READ COMMITTED :isolation level is set.
