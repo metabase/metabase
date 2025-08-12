@@ -1,18 +1,4 @@
-.name,
-.value {
+.name {
   overflow-wrap: break-word;
   word-break: break-word;
-}
-
-.value {
-  a {
-    color: var(--mb-color-text-primary);
-    text-decoration: underline solid #92999e 1px;
-  }
-}
-
-.fk {
-  background-color: #fafafb;
-  border-radius: 12px;
-  border: 1px solid #d8dadd;
 }

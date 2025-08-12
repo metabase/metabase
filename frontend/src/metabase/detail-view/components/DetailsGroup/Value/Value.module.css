@@ -1,0 +1,22 @@
+.value {
+  overflow-wrap: break-word;
+  word-break: break-word;
+
+  a {
+    color: var(--mb-color-text-primary);
+    text-decoration: underline solid #92999e 1px;
+  }
+}
+
+.fk {
+  background-color: #fafafb;
+  border-radius: 12px;
+  border: 1px solid #d8dadd;
+}
+
+.imageFrame {
+  border: 1px solid var(--mb-color-border);
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 1px 3px 0 hsla(220, 43%, 11%, 0.1);
+}
