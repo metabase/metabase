@@ -537,15 +537,15 @@
 
 (deftest ^:parallel breakoutable-columns-include-all-visible-columns-test
   (testing "Include all visible columns, not just projected ones (#31233)"
-    (is (= ["ID"
-            "NAME"
-            "CATEGORY_ID"
-            "LATITUDE"
-            "LONGITUDE"
-            "PRICE"
-            "Categories__ID" ; this column is not projected, but should still be returned.
-            "Categories__NAME"]
-           (map :lib/desired-column-alias
+    (is (= [[nil          "ID"]
+            [nil          "NAME"]
+            [nil          "CATEGORY_ID"]
+            [nil          "LATITUDE"]
+            [nil          "LONGITUDE"]
+            [nil          "PRICE"]
+            ["Categories" "ID"] ; this column is not projected, but should still be returned.
+            ["Categories" "NAME"]]
+           (map (juxt :metabase.lib.join/join-alias :lib/source-column-alias)
                 (-> (lib.tu/venues-query)
                     (lib/join (-> (lib/join-clause
                                    (meta/table-metadata :categories)

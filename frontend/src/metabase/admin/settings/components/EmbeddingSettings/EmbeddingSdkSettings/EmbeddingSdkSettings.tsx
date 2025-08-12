@@ -16,7 +16,6 @@ import {
 } from "metabase/plugins";
 import {
   Alert,
-  Badge,
   Box,
   Button,
   Flex,
@@ -28,6 +27,7 @@ import {
 
 import { SettingHeader } from "../../SettingHeader";
 import { AdminSettingInput } from "../../widgets/AdminSettingInput";
+import { LinkButton } from "../EmbeddingOption/LinkButton";
 import { EmbeddingToggle } from "../EmbeddingToggle";
 
 import S from "./EmbeddingSdkSettings.module.css";
@@ -174,8 +174,6 @@ export function EmbeddingSdkSettings() {
             <Text fz="h3" fw={600} c="text-dark">
               {t`Embedded Analytics JS`}
             </Text>
-
-            <Badge size="sm">{t`Beta`}</Badge>
           </Group>
 
           <Group gap="sm" align="center" justify="space-between" w="100%">
@@ -189,27 +187,14 @@ export function EmbeddingSdkSettings() {
 
             {isSimpleEmbedFeatureEnabled ? (
               <Group gap="md">
-                <Button
+                <LinkButton
                   size="compact-xs"
                   variant="outline"
-                  component={ExternalLink}
-                  href={quickStartUrl}
-                  rightSection={<Icon size={12} name="external" />}
+                  to="/embed-js"
                   fz="sm"
                 >
-                  {t`Quick start`}
-                </Button>
-
-                <Button
-                  size="compact-xs"
-                  variant="outline"
-                  component={ExternalLink}
-                  href={documentationUrl}
-                  rightSection={<Icon size={12} name="external" />}
-                  fz="sm"
-                >
-                  {t`Documentation`}
-                </Button>
+                  {t`Try it out`}
+                </LinkButton>
               </Group>
             ) : (
               <UpsellEmbeddingButton

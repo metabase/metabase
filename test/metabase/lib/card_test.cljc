@@ -119,7 +119,6 @@
       (is (=? (->> (cols-of :orders)
                    sort-cols)
               (sort-cols (get-in (lib.tu/mock-cards) [:orders :result-metadata]))))
-
       (is (=? (->> (concat (from :source/card (cols-of :orders))
                            (implicitly-joined (cols-of :people))
                            (implicitly-joined (cols-of :products)))
@@ -234,8 +233,10 @@
           rhs (m/find-first (comp #{"ID"} :name) (lib/join-condition-rhs-columns query 0 people-card nil nil))
           join-clause (lib/join-clause people-card [(lib/= lhs rhs)])
           query (lib/join query join-clause)
-          filter-col (m/find-first (comp #{"Mock people card__ID"} :lib/desired-column-alias)
+          filter-col (m/find-first #(and (= (:metabase.lib.join/join-alias %) "Mock people card")
+                                         (= (:lib/source-column-alias %) "ID"))
                                    (lib/filterable-columns query))
+          _ (assert (some? filter-col) "Failed to find filter column")
           query (-> query
                     (lib/filter (lib/= filter-col 1))
                     (lib/aggregate (lib/distinct filter-col))
