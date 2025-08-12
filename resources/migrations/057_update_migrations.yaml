@@ -530,7 +530,7 @@ databaseChangeLog:
   - changeSet:
       id: v57.2025-08-07T10:02:01
       author: galdre
-      comment: Add unique constraints on transform_tags(transform_id, tag_id).
+      comment: Add unique constraints on transform_tags(transform_id, tag_id). Deleting foreign keys needed for mysql.
       preConditions:
         - onFail: MARK_RAN
         - tableExists:
@@ -540,7 +540,16 @@ databaseChangeLog:
             tableName: transform_tags
             columnNames: transform_id, tag_id
             constraintName: unique_transform_tag
-
+      rollback:
+        - dropForeignKeyConstraint:
+            baseTableName: transform_tags
+            constraintName: fk_transform_tags_transform_id
+        - dropForeignKeyConstraint:
+            baseTableName: transform_tags
+            constraintName: fk_transform_tags_tag_id
+        - dropUniqueConstraint:
+            tableName: transform_tags
+            constraintName: unique_transform_tag
   - changeSet:
       id: v57.2025-08-07T10:03:00
       author: galdre
@@ -595,7 +604,6 @@ databaseChangeLog:
             tableName: transform_job_tags
             columnNames: job_id, tag_id
             constraintName: unique_job_tag
-
       rollback:
         - dropForeignKeyConstraint:
             baseTableName: transform_job_tags
