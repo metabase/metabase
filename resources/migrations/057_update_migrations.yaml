@@ -579,6 +579,18 @@ databaseChangeLog:
             columnNames: job_id, tag_id
             constraintName: unique_job_tag
 
+      rollback:
+        - dropForeignKeyConstraint:
+            baseTableName: transform_job_tags
+            constraintName: fk_transform_job_tags_job_id
+        - dropForeignKeyConstraint:
+            baseTableName: transform_job_tags
+            constraintName: fk_transform_job_tags_tag_id
+        - dropUniqueConstraint:
+            tableName: transform_job_tags
+            constraintName: unique_job_tag
+        - dropTable:
+            tableName: transform_job_tags
   - changeSet:
       id: v57.2025-08-07T10:06:00-add-default-tags
       author: galdre
