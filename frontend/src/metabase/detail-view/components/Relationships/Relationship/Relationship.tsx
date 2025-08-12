@@ -19,7 +19,7 @@ interface Props {
 export const Relationship = ({ fk, fkCount, fkCountInfo, href }: Props) => {
   const fkCountValue = fkCountInfo?.value || 0;
   const isLoaded = fkCountInfo?.status === 1;
-  const fkClickable = isLoaded && Boolean(fkCountInfo.value);
+  const fkClickable = isLoaded && fkCountInfo.value > 0;
   const originTableName = fk.origin?.table?.display_name ?? "";
   const relationName = inflect(originTableName, fkCountValue);
 
