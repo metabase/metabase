@@ -148,7 +148,11 @@ function EditTargetButton({ transform }: EditTargetButtonProps) {
 
   return (
     <>
-      <Button leftSection={<Icon name="pencil_lines" />} onClick={openModal}>
+      <Button
+        leftSection={<Icon name="pencil_lines" />}
+        data-testid="change-target-button"
+        onClick={openModal}
+      >
         {t`Change target`}
       </Button>
       {isModalOpened && (
