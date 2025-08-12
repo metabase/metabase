@@ -169,26 +169,22 @@
       (contains? env-vars-not-to-mess-with (format-prefix env-var))))
 
 (defn- setter-none?
-  "Used to filter out environment variables that lack a setter (`:setter :none`).
-   For example, settings that are derived from other settings.
-   If, however, a `defsetting` has `:setter :none`, but the setting includes a `:doc` string,
-   we should still include the setting in the environment variable docs."
-  [env-var] 
-  (and
-   (= :none (:setter env-var))
+  "Used to remove settings that lack a setter (`:setter :none`).
+   For example, settings that are derived from other settings."
+  [env-var]
    ;; If the `defsetting` has a `:doc` key with a string, we should document it.
-   ;; Checking that the `:doc` value is not a string because `:doc false` is a valid value.
-   (and (contains? env-var :doc)
-        (not (string? (:doc env-var))))))
+   ;; Checking that the `:doc` value is truthy because `:doc false` is a valid value.
+  (when-not (boolean (:doc env-var))
+    (= :none (:setter env-var))))
 
 (defn- only-local?
-  "Used to filter out environment variables that are only local."
+  "Used to filter out settings that are only local."
   [env-var]
   (or (= (:user-local env-var) :only)
       (= (:database-local env-var) :only)))
 
 (defn remove-env-vars-we-should-not-document
-  "Filters for valid environment variables."
+  "Removes environment variables."
   [settings]
   (->> settings
        (remove avoid?)
