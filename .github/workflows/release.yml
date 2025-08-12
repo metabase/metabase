@@ -190,8 +190,8 @@ jobs:
         sparse-checkout: release
     - name: prepare release scripts
       run: cd release && yarn && yarn build
-    - name: Retrieve uberjar artifact
-      uses: ./.github/actions/fetch-artifact
+    - uses: actions/download-artifact@v4
+      name: Retrieve uberjar artifact
       with:
         name: metabase-${{ matrix.edition }}-uberjar
     - name: Determine the upload path ## EE is always v1.x.y, OSS is always v0.x.y
@@ -227,10 +227,8 @@ jobs:
       matrix:
         edition: [oss, ee]
     steps:
-    - name: Check out the code
-      uses: actions/checkout@v4
-    - name: Retrieve uberjar artifact
-      uses: ./.github/actions/fetch-artifact
+    - uses: actions/download-artifact@v4
+      name: Retrieve uberjar artifact
       with:
         name: metabase-${{ matrix.edition }}-uberjar
     - name: Determine the download path ## EE is always v1.x.y, OSS is always v0.x.y

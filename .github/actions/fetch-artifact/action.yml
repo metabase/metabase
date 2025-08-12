@@ -61,7 +61,7 @@ runs:
           if [ "$EXTRACT_PATH" == "." ]; then
             echo "$OUTPUT_NAME"
           else
-            echo "$EXTRACT_PATH/metabase.jar"
+            echo "$EXTRACT_PATH/$OUTPUT_NAME.jar"
           fi
         }
 
