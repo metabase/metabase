@@ -12,7 +12,7 @@ import type { DatasetColumn, DatasetData } from "metabase-types/api";
 import styles from "./ListView.module.css";
 
 const ListWrapper = ({ children, ...props }: { children: React.ReactNode }) => (
-  <Stack gap="xs" {...props}>
+  <Stack gap="sm" {...props}>
     {children}
   </Stack>
 );
@@ -63,109 +63,108 @@ export function ListView({ data, settings }: ListViewProps) {
   const openObjectDetail = useObjectDetail(data);
 
   return (
-    <Stack
-      w="100%"
-      h="100%"
-      gap="xs"
-      px="9rem"
-      pt="xl"
-      style={{ overflow: "auto" }}
-    >
-      <Flex justify="space-between" align="center" px="lg" mb="sm">
-        <Flex
-          align="center"
-          gap="md"
-          style={{ width: firstColumnWidth, flexShrink: 0 }}
-        >
-          {!!titleColumn && (
-            <ColumnHeader
-              column={titleColumn}
-              subtitleColumn={subtitleColumn}
-            />
-          )}
+    <Stack className={styles.listViewContainer}>
+      <Stack className={styles.listContainer}>
+        <Flex justify="space-between" align="center" px="lg" mb="sm">
+          <Flex
+            align="center"
+            gap="md"
+            style={{ width: firstColumnWidth, flexShrink: 0 }}
+          >
+            {!!titleColumn && (
+              <ColumnHeader
+                column={titleColumn}
+                subtitleColumn={subtitleColumn}
+              />
+            )}
+          </Flex>
+
+          <Flex gap="lg" align="center" style={{ flex: 1 }}>
+            {rightColumns.map((col, colIndex) => (
+              <ColumnHeader
+                key={colIndex}
+                column={col}
+                style={{
+                  width: otherColumnWidths,
+                  flexShrink: 0,
+                }}
+              />
+            ))}
+          </Flex>
         </Flex>
 
-        <Flex gap="lg" align="center" style={{ flex: 1 }}>
-          {rightColumns.map((col, colIndex) => (
-            <ColumnHeader
-              key={colIndex}
-              column={col}
-              style={{
-                width: otherColumnWidths,
-                flexShrink: 0,
-              }}
-            />
-          ))}
-        </Flex>
-      </Flex>
-
-      <VirtualizedList Wrapper={ListWrapper}>
-        {formattedRows.map(
-          ({ row, titleValue, subtitleValue, imageValue }, rowIndex) => {
-            return (
-              <Box
-                key={rowIndex}
-                className={styles.listItem}
-                px="1.4rem"
-                py="md"
-                onClick={() => openObjectDetail(rowIndex)}
-              >
-                <Flex justify="space-between" align="center">
-                  <Flex
-                    align="center"
-                    gap="md"
-                    style={{ width: firstColumnWidth, flexShrink: 0 }}
-                  >
-                    {imageValue && (
-                      <Image
-                        src={imageValue}
-                        alt=""
-                        w={32}
-                        h={32}
-                        radius="xl"
-                        style={{ flexShrink: 0 }}
-                      />
-                    )}
-                    <div style={{ minWidth: 0, flex: 1 }}>
-                      <Text fw="bold" truncate>
-                        {titleValue}
-                      </Text>
-                      {subtitleValue && (
-                        <Text size="xs" c="text-secondary" truncate fw="bold">
-                          {subtitleValue}
-                        </Text>
+        <VirtualizedList Wrapper={ListWrapper}>
+          {formattedRows.map(
+            ({ row, titleValue, subtitleValue, imageValue }, rowIndex) => {
+              return (
+                <Box
+                  key={rowIndex}
+                  className={styles.listItem}
+                  px="1.4rem"
+                  py="md"
+                  onClick={() => openObjectDetail(rowIndex)}
+                >
+                  <Flex justify="space-between" align="center">
+                    <Flex
+                      align="center"
+                      gap="md"
+                      style={{ width: firstColumnWidth, flexShrink: 0 }}
+                    >
+                      {imageValue && (
+                        <Image
+                          src={imageValue}
+                          alt=""
+                          w={32}
+                          h={32}
+                          radius="xl"
+                          style={{ flexShrink: 0 }}
+                        />
                       )}
-                    </div>
-                  </Flex>
-
-                  <Flex gap="lg" align="center" style={{ flex: 1 }}>
-                    {rightColumns.map((col, colIndex) => {
-                      const value = formatValue(row[cols.indexOf(col)], {
-                        ...(settings.column?.(col) || {}),
-                        jsx: true,
-                        rich: true,
-                      });
-                      return (
-                        <div
-                          key={colIndex}
-                          style={{
-                            width: otherColumnWidths,
-                            flexShrink: 0,
-                          }}
+                      <div style={{ minWidth: 0, flex: 1 }}>
+                        <Text
+                          fw="bold"
+                          truncate
+                          style={{ color: "var(--mb-color-brand)" }}
                         >
-                          <Text size="sm" c="text-secondary" truncate>
-                            {value}
+                          {titleValue}
+                        </Text>
+                        {subtitleValue && (
+                          <Text size="xs" c="text-secondary" truncate fw="bold">
+                            {subtitleValue}
                           </Text>
-                        </div>
-                      );
-                    })}
+                        )}
+                      </div>
+                    </Flex>
+
+                    <Flex gap="lg" align="center" style={{ flex: 1 }}>
+                      {rightColumns.map((col, colIndex) => {
+                        const value = formatValue(row[cols.indexOf(col)], {
+                          ...(settings.column?.(col) || {}),
+                          jsx: true,
+                          rich: true,
+                        });
+                        return (
+                          <div
+                            key={colIndex}
+                            style={{
+                              width: otherColumnWidths,
+                              flexShrink: 0,
+                            }}
+                          >
+                            <Text size="sm" c="text-secondary" truncate>
+                              {value}
+                            </Text>
+                          </div>
+                        );
+                      })}
+                    </Flex>
                   </Flex>
-                </Flex>
-              </Box>
-            );
-          },
-        )}
-      </VirtualizedList>
+                </Box>
+              );
+            },
+          )}
+        </VirtualizedList>
+      </Stack>
     </Stack>
   );
 }
