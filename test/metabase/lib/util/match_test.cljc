@@ -93,7 +93,7 @@
              (let [some-pred? (constantly true)]
                (lib.util.match/match another-query
                  :field
-                 (when some-pred?
+                 (when (some-pred? &match)
                    &match)))))))
 
 (t/deftest ^:parallel match-&parents-test

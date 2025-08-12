@@ -263,7 +263,7 @@
 
 (defn- card-columns-from-names
   [card names]
-  (when-let [names (set names)]
+  (when-let [names (not-empty (set names))]
     (filter #(names (:name %)) (:result_metadata card))))
 
 (defn- cols->kebab-case
