@@ -130,7 +130,11 @@ export const RecentsListContent = ({
                       size={14}
                     />
                   </Group>
-                  <Text size="sm" c="text-medium">
+                  <Text
+                    size="sm"
+                    c="text-medium"
+                    data-testid="recently-viewed-item-model"
+                  >
                     {getTranslatedEntityName(item.model)}
                   </Text>
                 </ResultNameSection>
