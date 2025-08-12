@@ -97,7 +97,7 @@ export const DatabaseReplicationModal = ({
       py={
         setupStep === "setting-up" || setupStep === "success"
           ? undefined
-          : "5rem"
+          : "7rem"
       }
       title={
         setupStep === "setting-up" || setupStep === "success"
