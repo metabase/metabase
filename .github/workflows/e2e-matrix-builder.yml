@@ -57,3 +57,7 @@ jobs:
             core.setOutput("regularChunks", JSON.stringify(regularChunks));
             core.setOutput("config", JSON.stringify({ include: config }));
             core.setOutput("isDefaultSpecPattern", JSON.stringify(isDefaultSpecPattern));
+
+            console.log({ regularChunks });
+            console.log("matrix config", config);
+            console.log("isDefaultSpecPattern", isDefaultSpecPattern);
