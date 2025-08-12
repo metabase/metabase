@@ -18,6 +18,9 @@ export type Document = {
   collection_id: CollectionId;
   created_at: string;
   updated_at: string;
+  archived: boolean;
+  can_delete: boolean;
+  can_restore: boolean;
   can_write: boolean;
   creator_id: UserId;
   creator: BaseUser;
