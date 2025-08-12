@@ -1053,7 +1053,7 @@
            :driver-feature :actions
            :encryption     :when-encryption-key-set))))
 
-  (testing "Having :database-local :allowed is not enough"
+  (testing "Having :database-local :allowed is not enough to use :driver-feature"
     (is (thrown-with-msg?
          Throwable
          #"Setting :test-driver-feature-allowed-setting requires a :driver-feature, but is not limited to only database-local values."
@@ -1085,6 +1085,60 @@
 
       (testing "should succeed for settings without driver-feature requirement"
         (is (nil? (setting/validate-settable-for-db! setting-without-driver-feature database driver-supports-nothing?)))))))
+
+;;; ------------------------------------------------ Database-enabled Settings ----------------------------------------
+
+(defsetting ^:private test-database-enabled-for-db-setting
+  (deferred-tru "test Setting")
+  :database-local   :only
+  :enabled-for-db?  (fn [db] (not (:router_database_id db)))
+  :encryption       :when-encryption-key-set)
+
+(deftest enabled-for-db-validation-test
+  (testing ":enabled-for-db? must only be used with database-local settings"
+    (is (thrown-with-msg?
+         ExceptionInfo
+         #"Setting .* uses :enabled-for-db\?, but is not limited to only database-local values"
+         (defsetting test-enabled-for-db-non-local-setting
+           (deferred-tru "test Setting")
+           :enabled-for-db? (constantly true)
+           :encryption :when-encryption-key-set))))
+
+  (testing "Having :database-local :allowed is not enough to use :enabled-for-db?"
+    (is (thrown-with-msg?
+         ExceptionInfo
+         #"Setting .* uses :enabled-for-db\?, but is not limited to only database-local values"
+         (defsetting test-enabled-for-db-allowed-setting
+           (deferred-tru "test Setting")
+           :database-local :allowed
+           :enabled-for-db? (constantly true)
+           :encryption :when-encryption-key-set))))
+
+  (testing "A setting with :enabled-for-db? and :database-local :only should be valid"
+    (is (some? test-database-enabled-for-db-setting))))
+
+(deftest validate-settable-for-db-enabled-test
+  (testing "validate-settable-for-db! validates database-specific enablement"
+    (let [regular-database {:id 1 :engine :h2}
+          routed-database  {:id 2 :engine :h2 :router_database_id 3}]
+
+      (testing "should succeed when database passes enabled-for-db? predicate"
+        (is (nil? (setting/validate-settable-for-db! :test-database-enabled-for-db-setting
+                                                     regular-database
+                                                     (constantly true)))))
+
+      (testing "should throw when database fails enabled-for-db? predicate"
+        (is (thrown-with-msg?
+             ExceptionInfo
+             #"Setting test-database-enabled-for-db-setting is not enabled for this database"
+             (setting/validate-settable-for-db! :test-database-enabled-for-db-setting
+                                                routed-database
+                                                (constantly true)))))
+
+      (testing "should succeed for settings without enabled-for-db? requirement"
+        (is (nil? (setting/validate-settable-for-db! :test-database-local-allowed-setting
+                                                     routed-database
+                                                     (constantly true))))))))
 
 (deftest identity-hash-test
   (testing "Settings are hashed based on the key"
