@@ -1,7 +1,11 @@
+import { useMemo } from "react";
 import { t } from "ttag";
 
 import { displayNameForColumn } from "metabase/lib/formatting";
 import type { OptionsType } from "metabase/lib/formatting/types";
+import { useDispatch, useSelector } from "metabase/lib/redux";
+import { updateQuestion } from "metabase/query_builder/actions";
+import { getQuestion } from "metabase/query_builder/selectors";
 import { Box } from "metabase/ui";
 import ChartSettingLinkUrlInput from "metabase/visualizations/components/settings/ChartSettingLinkUrlInput";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
@@ -9,6 +13,7 @@ import type {
   ColumnSettingDefinition,
   VisualizationProps,
 } from "metabase/visualizations/types";
+import * as Lib from "metabase-lib";
 import {
   isAvatarURL,
   isCoordinate,
@@ -34,6 +39,7 @@ const vizDefinition = {
   supportPreviewing: false,
 
   checkRenderable: () => {},
+  isSensible: () => true,
 
   settings: {
     ...columnSettings({ hidden: true }),
@@ -187,9 +193,63 @@ const vizDefinition = {
 };
 
 export function ListViz({ data, settings }: VisualizationProps) {
+  const question = useSelector(getQuestion);
+  const dispatch = useDispatch();
+
+  const { sortedColumnName, sortingDirection } = useMemo(() => {
+    if (!question) {
+      return {};
+    }
+    const query = question.query();
+    const [orderBy] = Lib.orderBys(query, -1);
+    if (orderBy) {
+      const { name, direction } = Lib.displayInfo(query, -1, orderBy);
+      return {
+        sortedColumnName: name,
+        sortingDirection: direction,
+      };
+    }
+    return {};
+  }, [question]);
+
+  // TODO Rework (with drill-thru?)
+  const handleSort = (datasetColumn: DatasetColumn) => {
+    if (!question) {
+      return;
+    }
+    const query = question.query();
+    const [orderBy] = Lib.orderBys(query, -1);
+    const column = Lib.fromLegacyColumn(query, -1, datasetColumn);
+
+    let nextQuery = query;
+    if (orderBy) {
+      if (sortedColumnName === datasetColumn.name) {
+        nextQuery = Lib.changeDirection(query, orderBy);
+      } else {
+        nextQuery = Lib.replaceClause(
+          nextQuery,
+          -1,
+          orderBy,
+          Lib.orderByClause(column),
+        );
+      }
+    } else {
+      nextQuery = Lib.orderBy(nextQuery, -1, column, "asc");
+    }
+
+    const nextQuestion = question.setQuery(nextQuery);
+    dispatch(updateQuestion(nextQuestion));
+  };
+
   return (
     <Box w="100%" h="100%" pos="absolute">
-      <ListView data={data} settings={settings} />
+      <ListView
+        data={data}
+        settings={settings}
+        sortedColumnName={sortedColumnName}
+        sortingDirection={sortingDirection}
+        onSortClick={handleSort}
+      />
     </Box>
   );
 }

@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import { VirtualizedList } from "metabase/common/components/VirtualizedList";
 import { formatValue } from "metabase/lib/formatting";
-import { Box, Flex, Image, Stack, Text } from "metabase/ui";
+import { Box, Flex, Icon, Image, Stack, Text } from "metabase/ui";
 import { useObjectDetail } from "metabase/visualizations/components/TableInteractive/hooks/use-object-detail";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import * as Lib from "metabase-lib";
@@ -20,9 +20,18 @@ const ListWrapper = ({ children, ...props }: { children: React.ReactNode }) => (
 export interface ListViewProps {
   data: DatasetData;
   settings: ComputedVisualizationSettings;
+  sortedColumnName?: string;
+  sortingDirection?: "asc" | "desc";
+  onSortClick: (column: DatasetColumn) => void;
 }
 
-export function ListView({ data, settings }: ListViewProps) {
+export function ListView({
+  data,
+  settings,
+  sortedColumnName,
+  sortingDirection,
+  onSortClick,
+}: ListViewProps) {
   const { cols, rows } = data;
 
   const { titleColumn, subtitleColumn, imageColumn, rightColumns } =
@@ -58,7 +67,6 @@ export function ListView({ data, settings }: ListViewProps) {
   }, [rows, titleColumn, subtitleColumn, imageColumn, cols, settings]);
 
   const firstColumnWidth = imageColumn ? "320px" : "280px";
-  const otherColumnWidths = "160px";
   const rightColumnCount = rightColumns.length;
 
   const openObjectDetail = useObjectDetail(data);
@@ -79,6 +87,9 @@ export function ListView({ data, settings }: ListViewProps) {
               <ColumnHeader
                 column={titleColumn}
                 subtitleColumn={subtitleColumn}
+                sortedColumnName={sortedColumnName}
+                sortingDirection={sortingDirection}
+                onSortClick={onSortClick}
               />
             )}
           </Flex>
@@ -87,6 +98,9 @@ export function ListView({ data, settings }: ListViewProps) {
             <ColumnHeader
               key={colIndex}
               column={col}
+              sortedColumnName={sortedColumnName}
+              sortingDirection={sortingDirection}
+              onSortClick={onSortClick}
               style={{
                 flexShrink: 0,
               }}
@@ -94,7 +108,7 @@ export function ListView({ data, settings }: ListViewProps) {
           ))}
         </Flex>
 
-        <VirtualizedList Wrapper={ListWrapper}>
+        <VirtualizedList Wrapper={ListWrapper} estimatedItemSize={805}>
           {formattedRows.map(
             ({ row, titleValue, subtitleValue, imageValue }, rowIndex) => {
               return (
@@ -166,15 +180,38 @@ export function ListView({ data, settings }: ListViewProps) {
 interface ColumnHeaderProps {
   column: DatasetColumn;
   subtitleColumn?: DatasetColumn | null;
+  sortedColumnName?: string;
+  sortingDirection?: "asc" | "desc";
+  onSortClick: (column: DatasetColumn) => void;
   style?: CSSProperties;
 }
 
-function ColumnHeader({ column, subtitleColumn, style }: ColumnHeaderProps) {
+function ColumnHeader({
+  column,
+  subtitleColumn,
+  sortedColumnName,
+  sortingDirection,
+  style,
+  onSortClick,
+}: ColumnHeaderProps) {
   return (
-    <Text fw="bold" size="sm" c="text-medium" style={style}>
-      {column.display_name}
-      {subtitleColumn && " " + t`and` + " " + subtitleColumn.display_name}
-    </Text>
+    <button
+      onClick={() => onSortClick(column)}
+      style={{ ...style, cursor: "pointer" }}
+    >
+      <Text fw="bold" size="sm" c="text-medium" style={{ display: "inline" }}>
+        {column.display_name}
+        {subtitleColumn && " " + t`and` + " " + subtitleColumn.display_name}
+      </Text>
+      {sortedColumnName === column.name && (
+        <Icon
+          name={sortingDirection === "asc" ? "arrow_up" : "arrow_down"}
+          c="text-medium"
+          size={12}
+          style={{ display: "inline", marginLeft: 4 }}
+        />
+      )}
+    </button>
   );
 }
 
