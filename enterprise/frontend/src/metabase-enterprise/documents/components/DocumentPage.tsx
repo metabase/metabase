@@ -441,7 +441,7 @@ export const DocumentPage = ({
         {selectedQuestionId &&
           selectedEmbedIndex !== null &&
           editorInstance && (
-            <Box className={styles.sidebar}>
+            <Box className={styles.sidebar} data-testid="document-card-sidebar">
               <EmbedQuestionSettingsSidebar
                 cardId={selectedQuestionId}
                 onClose={() => dispatch(closeSidebar())}
