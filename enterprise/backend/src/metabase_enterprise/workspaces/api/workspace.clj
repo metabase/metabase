@@ -87,18 +87,7 @@
        [:name ms/NonBlankString]
        [:collection_id ms/PositiveInt]
        [:description {:optional true} [:maybe :string]]]]
-  (let [workspace-data {:name name
-                        :description description
-                        :collection_id collection_id
-                        :users []
-                        :plans []
-                        :transforms []
-                        :activity_logs []
-                        :permissions []
-                        :documents []
-                        :data_warehouses []}]
-    (m.workspace/sort-workspace
-     (t2/insert-returning-instance! :model/Workspace workspace-data))))
+  (w.common/create-workspace! name description collection_id))
 
 (comment
 
