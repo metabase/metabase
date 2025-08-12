@@ -151,7 +151,7 @@
     ;; so we just manually nullify it here
     (assoc database :cache_field_values_schedule nil)))
 
-(defn- is-destination?
+(defn is-destination?
   "Is this database a destination database for some router database?"
   [db]
   (boolean (:router_database_id db)))
