@@ -107,8 +107,8 @@
     (mt/with-premium-features #{:transforms}
       (mt/with-temp [:model/TransformJob job {:name "To Execute" :schedule "0 0 0 * * ?"}]
         (testing "Returns stub execution response"
-          (let [response (mt/user-http-request :crowberto :post 200 (str "ee/transform-job/" (:id job) "/execute"))]
-            (is (= "Job execution started" (:message response)))
+          (let [response (mt/user-http-request :crowberto :post 200 (str "ee/transform-job/" (:id job) "/run"))]
+            (is (= "Job run started" (:message response)))
             (is (string? (:job_run_id response)))
             (is (re-matches #"stub-\d+-\d+" (:job_run_id response)))))))))
 
@@ -123,4 +123,4 @@
         (mt/user-http-request :rasta :put 403 (str "ee/transform-job/" (:id job))
                               {:name "Updated"})
         (mt/user-http-request :rasta :delete 403 (str "ee/transform-job/" (:id job)))
-        (mt/user-http-request :rasta :post 403 (str "ee/transform-job/" (:id job) "/execute"))))))
+        (mt/user-http-request :rasta :post 403 (str "ee/transform-job/" (:id job) "/run"))))))
