@@ -3,3 +3,10 @@
   overflow-wrap: break-word;
   word-break: break-word;
 }
+
+.value {
+  a {
+    color: var(--mb-color-text-primary);
+    text-decoration: underline solid #92999e 1px;
+  }
+}
