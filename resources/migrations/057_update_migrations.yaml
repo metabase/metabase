@@ -261,7 +261,7 @@ databaseChangeLog:
                     nullable: true
               - column:
                   name: message
-                  type: text
+                  type: ${text.type}
                   remarks: 'Human-readable message about the run; may contain error message in case status is error'
                   constraints:
                     nullable: true
@@ -579,6 +579,18 @@ databaseChangeLog:
             columnNames: job_id, tag_id
             constraintName: unique_job_tag
 
+      rollback:
+        - dropForeignKeyConstraint:
+            baseTableName: transform_job_tags
+            constraintName: fk_transform_job_tags_job_id
+        - dropForeignKeyConstraint:
+            baseTableName: transform_job_tags
+            constraintName: fk_transform_job_tags_tag_id
+        - dropUniqueConstraint:
+            tableName: transform_job_tags
+            constraintName: unique_job_tag
+        - dropTable:
+            tableName: transform_job_tags
   - changeSet:
       id: v57.2025-08-07T10:06:00-add-default-tags
       author: galdre
@@ -674,7 +686,6 @@ databaseChangeLog:
         - sql:
             sql: "delete from transform_tag where \"NAME\" in ('hourly', 'daily', 'weekly', 'monthly')"
             dbms: h2
-
         - sql:
             sql: "delete from transform_job where \"entity_id\" in ('hourly000000000000000', 'daily0000000000000000', 'weekly000000000000000', 'monthly00000000000000')"
             dbms: postgresql
@@ -685,7 +696,48 @@ databaseChangeLog:
             sql: "delete from transform_job where \"ENTITY_ID\" in ('hourly000000000000000', 'daily0000000000000000', 'weekly000000000000000', 'monthly00000000000000')"
             dbms: h2
 
+  - changeSet:
+      id: v57.2025-08-07T11-populate-default-job-tags
+      author: galdre
+      comment: Populate transform_job_tags join table to link default jobs with their corresponding tags
+      preConditions:
+        - onFail: MARK_RAN
+        - tableExists:
+            tableName: transform_job_tags
+        - tableExists:
+            tableName: transform_job
+        - tableExists:
+            tableName: transform_tag
+      changes:
+        - sql:
+            sql: |
+              INSERT INTO transform_job_tags (job_id, tag_id)
+              SELECT j.id, t.id
+              FROM transform_job j, transform_tag t
+              WHERE j.entity_id = 'hourly000000000000000' AND t.name = 'hourly';
 
+              INSERT INTO transform_job_tags (job_id, tag_id)
+              SELECT j.id, t.id
+              FROM transform_job j, transform_tag t
+              WHERE j.entity_id = 'daily0000000000000000' AND t.name = 'daily';
+
+              INSERT INTO transform_job_tags (job_id, tag_id)
+              SELECT j.id, t.id
+              FROM transform_job j, transform_tag t
+              WHERE j.entity_id = 'weekly000000000000000' AND t.name = 'weekly';
+
+              INSERT INTO transform_job_tags (job_id, tag_id)
+              SELECT j.id, t.id
+              FROM transform_job j, transform_tag t
+              WHERE j.entity_id = 'monthly00000000000000' AND t.name = 'monthly';
+      rollback:
+        - sql:
+            sql: |
+              DELETE FROM transform_job_tags
+              WHERE job_id IN (
+                SELECT id FROM transform_job
+                WHERE entity_id IN ('hourly000000000000000', 'daily0000000000000000', 'weekly000000000000000', 'monthly00000000000000')
+              );
 
   - changeSet:
       id: v57.2025-08-08-transform-job-runs-app-db
@@ -748,7 +800,7 @@ databaseChangeLog:
                     nullable: true
               - column:
                   name: message
-                  type: text
+                  type: ${text.type}
                   remarks: 'Human-readable message about the run; may contain error message in case status is error'
                   constraints:
                     nullable: true
