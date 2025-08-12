@@ -1,8 +1,11 @@
 (ns metabase-enterprise.semantic-search.embedding-test
   (:require
+   [clj-http.client :as http]
    [clojure.test :refer :all]
    [metabase-enterprise.semantic-search.embedding :as embedding]
-   [metabase.test :as mt]))
+   [metabase.analytics.core :as analytics]
+   [metabase.test :as mt]
+   [metabase.util.json :as json])
   (:import
    [java.nio ByteBuffer ByteOrder]
    [java.util Base64]))
@@ -90,7 +93,6 @@
       ;; Should skip the long text and batch the short ones
       (is (= [["Short" "Also short"]] batches)))))
 
-
 (defn- float-vectors-approx=
   "Compare two vectors of floats for approximate equality within a given tolerance."
   ([v1 v2]
@@ -169,12 +171,12 @@
     (testing "invalid base64 string throws exception"
       (is (thrown? Exception
                    (#'embedding/extract-base64-response-embeddings
-                     {:data [{:embedding "not-valid-base64!@#$"}]}))))
+                    {:data [{:embedding "not-valid-base64!@#$"}]}))))
 
     (testing "non-string embedding value throws exception"
       (is (thrown? Exception
                    (#'embedding/extract-base64-response-embeddings
-                     {:data [{:embedding 123}]}))))
+                    {:data [{:embedding 123}]}))))
 
     (testing "base64 string with invalid byte count (not multiple of 4) throws exception"
       ;; Create a base64 string that decodes to 3 bytes
@@ -182,4 +184,49 @@
             invalid-base64 (.encodeToString encoder (byte-array [1 2 3]))]
         (is (thrown? Exception
                      (#'embedding/extract-base64-response-embeddings
-                       {:data [{:embedding invalid-base64}]})))))))
+                      {:data [{:embedding invalid-base64}]})))))))
+
+(deftest test-get-embedding
+  (mt/with-temporary-setting-values [ee-openai-api-key "mock-openai-api-key"]
+    (let [mock-embedding [1.0 2.0 3.0 4.0]
+          openai-response {:data [{:object "embedding"
+                                   :embedding (encode-floats-to-base64 mock-embedding)
+                                   :index 0}]
+                           :model "some-model"
+                           :usage {:prompt_tokens 1
+                                   :total_tokens 1}}
+          analytics-calls (atom [])]
+      (doseq [{:keys [provider mock-response counts-tokens?]}
+              [{:provider "openai"
+                :mock-response openai-response
+                :counts-tokens? true}
+               {:provider "ai-service"
+                :mock-response openai-response
+                :counts-tokens? true}
+               {:provider "ollama"
+                :mock-response {:embedding mock-embedding}
+                :counts-tokens? false}]]
+        (mt/with-dynamic-fn-redefs [analytics/inc! (fn [metric & args]
+                                                     (swap! analytics-calls conj [metric args]))
+                                    http/post (fn post-mock [_url & _options]
+                                                {:status 200
+                                                 :headers {"Content-Type" "application/json"}
+                                                 :body (json/encode mock-response)})]
+          (testing provider
+            (reset! analytics-calls [])
+            (is (= mock-embedding (#'embedding/get-embedding {:provider provider
+                                                              :model-name "some-model"
+                                                              :vector-dimensions 4}
+                                                             "hello")))
+            (is (= [mock-embedding] (#'embedding/get-embeddings-batch {:provider provider
+                                                                       :model-name "some-model"
+                                                                       :vector-dimensions 4}
+                                                                      ["hello"])))
+            (when counts-tokens?
+              (let [tokens-calls (filter #(= :metabase-search/semantic-embedding-tokens (first %)) @analytics-calls)]
+                (is (= 2 (count tokens-calls)))
+                (is (= {:provider provider
+                        :model "some-model"}
+                       (-> tokens-calls first second first)))
+                (is (= (get-in mock-response [:usage :total_tokens])
+                       (-> tokens-calls first second second)))))))))))
