@@ -24,7 +24,7 @@ export const pkDrill: Drill<Lib.PKDrillThruInfo> = ({
       default: true,
       action: () => (dispatch: Dispatch) => {
         if (tableId == null) {
-          applyDrill(drill, objectId);
+          return applyDrill(drill, objectId);
         } else {
           dispatch(push(`/table/${tableId}/detail/${objectId}`));
         }
