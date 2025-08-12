@@ -6,7 +6,7 @@ import {
   FormProvider,
   FormSubmitButton,
 } from "metabase/forms";
-import { Button, FocusTrap, Group, Modal, Stack, Text } from "metabase/ui";
+import { Box, Button, FocusTrap, Group, Modal, Stack, Text } from "metabase/ui";
 import { useDeleteTransformJobMutation } from "metabase-enterprise/api";
 
 import type { TransformJobInfo } from "../../types";
@@ -51,8 +51,10 @@ function DeleteJobForm({ job, onDelete, onClose }: DeleteJobFormProps) {
       <Form>
         <Stack gap="lg">
           <Text>{t`Deleting this job won’t delete any transforms.`}</Text>
-          <FormErrorMessage />
-          <Group justify="end">
+          <Group>
+            <Box flex={1}>
+              <FormErrorMessage />
+            </Box>
             <Button onClick={onClose}>{t`Cancel`}</Button>
             <FormSubmitButton
               label={t`Delete job`}

@@ -10,7 +10,7 @@ import {
   FormTextInput,
 } from "metabase/forms";
 import * as Errors from "metabase/lib/errors";
-import { Button, FocusTrap, Group, Modal, Stack } from "metabase/ui";
+import { Box, Button, FocusTrap, Group, Modal, Stack } from "metabase/ui";
 import { useUpdateTransformTagMutation } from "metabase-enterprise/api";
 import type { TransformTag } from "metabase-types/api";
 
@@ -69,8 +69,10 @@ function UpdateTagForm({ tag, onUpdate, onClose }: UpdateTagFormProps) {
       <Form>
         <Stack gap="lg">
           <FormTextInput name="name" label={t`Name`} placeholder={t`My tag`} />
-          <FormErrorMessage />
-          <Group justify="end">
+          <Group>
+            <Box flex={1}>
+              <FormErrorMessage />
+            </Box>
             <Button onClick={onClose}>{t`Cancel`}</Button>
             <FormSubmitButton label={t`Save`} variant="filled" />
           </Group>

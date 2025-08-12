@@ -6,7 +6,7 @@ import {
   FormProvider,
   FormSubmitButton,
 } from "metabase/forms";
-import { Button, FocusTrap, Group, Modal, Stack, Text } from "metabase/ui";
+import { Box, Button, FocusTrap, Group, Modal, Stack, Text } from "metabase/ui";
 import { useDeleteTransformTagMutation } from "metabase-enterprise/api";
 import type { TransformTag } from "metabase-types/api";
 
@@ -48,8 +48,10 @@ function DeleteTagForm({ tag, onDelete, onClose }: DeleteTagFormProps) {
       <Form>
         <Stack gap="lg">
           <Text>{t`The tag will be deleted from transforms and jobs that use it.`}</Text>
-          <FormErrorMessage />
-          <Group justify="end">
+          <Group>
+            <Box flex={1}>
+              <FormErrorMessage />
+            </Box>
             <Button onClick={onClose}>{t`Cancel`}</Button>
             <FormSubmitButton
               label={t`Delete tag`}

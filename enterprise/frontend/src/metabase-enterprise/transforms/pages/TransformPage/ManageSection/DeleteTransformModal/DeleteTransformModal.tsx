@@ -8,6 +8,7 @@ import {
   FormSubmitButton,
 } from "metabase/forms";
 import {
+  Box,
   Button,
   FocusTrap,
   Group,
@@ -92,8 +93,10 @@ function DeleteTransformForm({
               </Stack>
             </Radio.Group>
           )}
-          <FormErrorMessage />
-          <Group justify="end">
+          <Group>
+            <Box flex={1}>
+              <FormErrorMessage />
+            </Box>
             <Button onClick={onClose}>{t`Cancel`}</Button>
             <FormSubmitButton
               label={getSubmitButtonLabel(transform, shouldDeleteTarget)}

@@ -13,7 +13,7 @@ import {
   FormTextInput,
 } from "metabase/forms";
 import * as Errors from "metabase/lib/errors";
-import { Button, FocusTrap, Group, Modal, Stack } from "metabase/ui";
+import { Box, Button, FocusTrap, Group, Modal, Stack } from "metabase/ui";
 import { useCreateTransformMutation } from "metabase-enterprise/api";
 import type {
   CreateTransformRequest,
@@ -120,8 +120,10 @@ function CreateTransformForm({
             label={t`Table name`}
             placeholder={t`some_name`}
           />
-          <FormErrorMessage />
-          <Group justify="end">
+          <Group>
+            <Box flex={1}>
+              <FormErrorMessage />
+            </Box>
             <Button variant="subtle" onClick={onClose}>{t`Back`}</Button>
             <FormSubmitButton label={t`Save`} variant="filled" />
           </Group>
