@@ -37,21 +37,21 @@
   :feature :semantic-search
   [search-ctx]
   (try
-    (let [{:keys [results filtered-count]}
+    (let [{:keys [results raw-count]}
           (semantic.pgvector-api/query (semantic.env/get-pgvector-datasource!)
                                        (semantic.env/get-index-metadata)
                                        search-ctx)
           final-count (count results)
           threshold (semantic.settings/semantic-search-min-results-threshold)]
       (if (or (>= final-count threshold)
-              (zero? filtered-count))
+              (zero? raw-count))
         results
         ;; Fallback: semantic search found results but some were filtered out (e.g. due to permission checks), so try to
         ;; supplement with appdb search.
         (let [fallback (fallback-engine)]
           (log/debugf "Semantic search returned %d final results (< %d) from %d raw results, supplementing with %s search"
-                      final-count threshold filtered-count fallback)
-          (analytics/inc! :metabase-search/semantic-fallback-triggered)
+                      final-count threshold raw-count fallback)
+          (analytics/inc! :metabase-search/semantic-fallback-triggered {:fallback-engine fallback})
           (analytics/observe! :metabase-search/semantic-results-before-fallback final-count)
           (let [fallback-results (search.engine/results (assoc search-ctx :search-engine fallback))
                 combined-results (concat results fallback-results)
