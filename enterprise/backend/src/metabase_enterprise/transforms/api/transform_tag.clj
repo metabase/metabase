@@ -42,7 +42,7 @@
 (api.macros/defendpoint :delete "/:tag-id"
   "Delete a transform tag. Removes it from all transforms and jobs."
   [{:keys [tag-id]} :- [:map
-            [:tag-id ms/PositiveInt]]]
+                        [:tag-id ms/PositiveInt]]]
   (log/info "Deleting transform tag" tag-id)
   (api/check-superuser)
   (api/check-404 (t2/select-one :model/TransformTag :id tag-id))
