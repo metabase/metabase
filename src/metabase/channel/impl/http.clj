@@ -39,8 +39,7 @@
 (mu/defmethod channel/send! :channel/http
   [{{:keys [url method auth-method auth-info]} :details} :- HTTPChannel
    request]
-  (when-not (or (channel.settings/http-channel-allow-localhost)
-                (u/valid-remote-host? url))
+  (when-not (u/valid-host? url (channel.settings/http-channel-host-strategy))
     (throw (ex-info (tru "URLs referring to hosts that supply internal hosting metadata are prohibited.")
                     {:status-code 400})))
   (let [req (merge

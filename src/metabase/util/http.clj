@@ -22,18 +22,29 @@
 (def ^:private invalid-hosts
   #{"metadata.google.internal"}) ; internal metadata for GCP
 
-(defn valid-remote-host?
-  "Check whether url is a valid url and also is an external host."
-  [url]
-  (let [^URL url   (if (string? url)
-                     (URL. url)
-                     url)
-        host       (.getHost url)
-        host->url (fn [host] (URL. (str "http://" host)))
-        base-url  (host->url (.getHost url))
-        host-name  (InetAddress/getByName host)]
-    (and (not-any? (fn [invalid-url] (.equals ^URL base-url invalid-url))
-                   (map host->url invalid-hosts))
-         (not (.isLinkLocalAddress host-name))
-         (not (.isLoopbackAddress host-name))
-         (not (.isSiteLocalAddress host-name)))))
+(defn valid-host?
+  "Check whether url is valid based on the given strategy:
+   :external-only - only external hosts
+   :allow-private - external + private networks but not localhost/loopback
+   :allow-all - no restrictions
+
+   If no strategy is provided, defaults to :external-only."
+  ([url]
+   (valid-host? url :external-only))
+  ([url strategy]
+   (case strategy
+     :allow-all true
+     ;; For both :external-only and :allow-private, we need to check the host
+     (let [^URL url   (if (string? url) (URL. url) url)
+           host       (.getHost url)
+           host->url (fn [host] (URL. (str "http://" host)))
+           base-url  (host->url (.getHost url))
+           host-name  (InetAddress/getByName host)]
+       (and
+        (not-any? (fn [invalid-url] (.equals ^URL base-url invalid-url))
+                  (map host->url invalid-hosts))
+        (not (.isLinkLocalAddress host-name))
+        (not (.isLoopbackAddress host-name))
+        ;; Only block site-local (private) addresses for :external-only
+        (or (= strategy :allow-private)
+            (not (.isSiteLocalAddress host-name))))))))

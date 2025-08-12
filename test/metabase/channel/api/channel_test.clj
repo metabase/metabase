@@ -167,7 +167,7 @@
                                                                        :return-value {:errors {:email "Invalid email"}}}))))))
 
 (deftest test-channel-http-test
-  (mt/with-temporary-setting-values [http-channel-allow-localhost true]
+  (mt/with-temporary-setting-values [http-channel-host-strategy :allow-all]
     (channel.http-test/with-server [url [channel.http-test/post-200 channel.http-test/post-400]]
       (testing "status-code=200 endpoint"
         (is (= {:ok true}
@@ -195,7 +195,7 @@
                                                 :auth-method  "none"
                                                 :auth-info    {}}})))))))
 
-(deftest test-channel-block-localhost-endpoints-test
+(deftest test-channel-host-strategy-test
   (let [channel-test (fn [url status-code]
                        (mt/user-http-request :crowberto :post status-code "channel/test"
                                              {:type    "channel/http"
@@ -203,18 +203,34 @@
                                                         :auth-method  "none"
                                                         :auth-info    {}}}))]
 
-    (testing "internal host endpoint"
-      (is (= "URLs referring to hosts that supply internal hosting metadata are prohibited."
-             (:message
-              (channel-test "http://127.0.0.1:3000/api/health" 400)))))
-    (testing "ban link local addresses"
-      (is (= "URLs referring to hosts that supply internal hosting metadata are prohibited."
-             (:message
-              (channel-test "http://169.254.1.100/api/health" 400)))))
+    (testing "external-only strategy (default)"
+      (testing "blocks localhost addresses"
+        (is (= "URLs referring to hosts that supply internal hosting metadata are prohibited."
+               (:message
+                (channel-test "http://127.0.0.1:3000/api/health" 400)))))
+      (testing "blocks private network addresses"
+        (is (= "URLs referring to hosts that supply internal hosting metadata are prohibited."
+               (:message
+                (channel-test "http://192.168.1.100/api/health" 400)))))
+      (testing "blocks link local addresses"
+        (is (= "URLs referring to hosts that supply internal hosting metadata are prohibited."
+               (:message
+                (channel-test "http://169.254.1.100/api/health" 400))))))
 
-    (mt/with-temporary-setting-values [http-channel-allow-localhost true]
+    (testing "allow-private strategy"
+      (mt/with-temporary-setting-values [http-channel-host-strategy :allow-private]
+        (testing "still blocks localhost addresses"
+          (is (= "URLs referring to hosts that supply internal hosting metadata are prohibited."
+                 (:message
+                  (channel-test "http://127.0.0.1:3000/api/health" 400)))))
+        (testing "still blocks link local addresses"
+          (is (= "URLs referring to hosts that supply internal hosting metadata are prohibited."
+                 (:message
+                  (channel-test "http://169.254.1.100/api/health" 400)))))))
+
+    (mt/with-temporary-setting-values [http-channel-host-strategy :allow-all]
       (channel.http-test/with-server [url [channel.http-test/post-200 channel.http-test/post-400]]
-        (testing "can use localhost if env var is specified"
+        (testing "allow-all strategy allows localhost"
           (channel-test (str url (:path channel.http-test/post-200)) 200))))))
 
 (deftest channel-audit-log-test

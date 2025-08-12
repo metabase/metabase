@@ -81,7 +81,7 @@
                        [u.str
                         build-sentence]
                        [u.http
-                        valid-remote-host?]))
+                        valid-host?]))
 
 (defmacro or-with
   "Like or, but determines truthiness with `pred`."

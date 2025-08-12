@@ -303,9 +303,14 @@
   :visibility :internal
   :audit      :getter)
 
-(defsetting http-channel-allow-localhost
-  (deferred-tru "Whether it''s allowed to use localhost as destination for http channels.")
-  :type       :boolean
+(defsetting http-channel-host-strategy
+  (deferred-tru "Controls which types of hosts are allowed as HTTP channel destinations. Options: 'external-only' (default - only external hosts), 'allow-private' (external + private networks but NOT localhost), 'allow-all' (no restrictions including localhost).")
+  :type       :keyword
   :visibility :internal
-  :default    false
-  :export?    false)
+  :default    :external-only
+  :export?    false
+  :setter     (fn [new-value]
+                (when (some? new-value)
+                  (assert (#{:external-only :allow-private :allow-all} (keyword new-value))
+                          (tru "Invalid http-channel-host-strategy! Only values of external-only, allow-private, and allow-all are allowed.")))
+                (setting/set-value-of-type! :keyword :http-channel-host-strategy new-value)))

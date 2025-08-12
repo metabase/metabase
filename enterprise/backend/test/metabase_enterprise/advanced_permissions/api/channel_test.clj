@@ -30,7 +30,7 @@
                 (test-channel [user status]
                   (testing (format "test channel with %s user" (mt/user-descriptor user))
                     (channel.http-test/with-server [url [channel.http-test/post-200 channel.http-test/post-400]]
-                      (mt/with-temporary-setting-values [http-channel-allow-localhost true]
+                      (mt/with-temporary-setting-values [http-channel-host-strategy :allow-all]
                         (mt/user-http-request user :post status "channel/test" {:type "channel/http"
                                                                                 :details {:url          (str url (:path channel.http-test/post-200))
                                                                                           :auth-method  "none"
