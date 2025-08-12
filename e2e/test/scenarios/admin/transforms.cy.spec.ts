@@ -35,7 +35,6 @@ describe("scenarios > admin > transforms", () => {
       cy.log("set the query");
       H.entityPickerModal().within(() => {
         cy.findByText(DB_NAME).click();
-        cy.findByText(TARGET_SCHEMA).click();
         cy.findByText(SOURCE_TABLE).click();
       });
       getQueryEditor().button("Save").click();
