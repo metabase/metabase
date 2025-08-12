@@ -15,13 +15,8 @@
 }
 
 .listContainer {
+  height: 100%;
   padding-inline: 1rem;
-
-  /* TODO: Customize VariableHeightVirtualizedList */
-  [data-testid="scroll-container"] {
-    overflow-y: initial !important;
-    overflow: auto;
-  }
 }
 
 .listHeader {
