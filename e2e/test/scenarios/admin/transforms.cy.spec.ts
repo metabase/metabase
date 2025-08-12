@@ -179,9 +179,7 @@ describe("scenarios > admin > transforms", () => {
 
       cy.log("verify that the original question still works");
       visitTableQuestion();
-      getQueryVisualization()
-        .contains(`"${TRANSFORM_SCHEMA}.${TRANSFORM_TABLE}" does not exist`)
-        .should("be.visible");
+      assertTableDoesNotExistError();
     });
 
     it("should be able to delete the target and restore the same target back", () => {
@@ -256,7 +254,23 @@ describe("scenarios > admin > transforms", () => {
     });
 
     it("should be able to delete a transform and delete the table", () => {
-      cy.log("TBD");
+      cy.log("create a transform and the table");
+      createMbqlTransform({ visitTransform: true });
+      runAndWaitForSuccess();
+
+      cy.log("delete the transform and the table");
+      getTransformPage().button("Delete").click();
+      H.modal().within(() => {
+        cy.findByLabelText("Delete the transform and the table").click();
+        cy.button("Delete transform and table").click();
+        cy.wait("@deleteTransformTable");
+        cy.wait("@deleteTransform");
+      });
+      getTransformListPage().should("be.visible");
+
+      cy.log("make sure the table is deleted");
+      visitTableQuestion();
+      assertTableDoesNotExistError();
     });
   });
 });
@@ -336,16 +350,24 @@ function createMbqlTransform({
 
 function visitTableQuestion({
   tableName = TRANSFORM_TABLE,
-}: { tableName?: string } = {}) {
-  H.getTableId({ name: tableName }).then((tableId) => {
-    H.visitQuestionAdhoc({
-      dataset_query: {
-        database: WRITABLE_DB_ID,
-        type: "query",
-        query: {
-          "source-table": tableId,
-        },
+  schemaName = TRANSFORM_SCHEMA,
+}: { tableName?: string; schemaName?: string } = {}) {
+  H.visitQuestionAdhoc({
+    dataset_query: {
+      database: WRITABLE_DB_ID,
+      type: "native",
+      native: {
+        query: `SELECT * FROM "${schemaName}"."${tableName}"`,
       },
-    });
+    },
   });
+}
+
+function assertTableDoesNotExistError({
+  tableName = TRANSFORM_TABLE,
+  schemaName = TRANSFORM_SCHEMA,
+}: { tableName?: string; schemaName?: string } = {}) {
+  getQueryVisualization()
+    .contains(`"${tableName}.${schemaName}" does not exist`)
+    .should("be.visible");
 }
