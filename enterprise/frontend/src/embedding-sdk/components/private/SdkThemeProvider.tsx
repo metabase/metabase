@@ -3,7 +3,7 @@ import { useContext, useId, useMemo } from "react";
 
 import { DEFAULT_FONT } from "embedding-sdk/config";
 import { getEmbeddingThemeOverride } from "embedding-sdk/lib/theme";
-import { RenderSingleCopy } from "embedding-sdk/sdk-shared/components/RenderSingleCopy/RenderSingleCopy";
+import { EnsureSingleInstance } from "embedding-sdk/sdk-shared/components/EnsureSingleInstance/EnsureSingleInstance";
 import type { MetabaseTheme } from "embedding-sdk/types/ui";
 import { setGlobalEmbeddingColors } from "metabase/embedding-sdk/theme/embedding-color-palette";
 import { useSelector } from "metabase/lib/redux";
@@ -36,28 +36,28 @@ export const SdkThemeProvider = ({ theme, children }: Props) => {
   const { withCssVariables, withGlobalClasses } =
     useContext(ThemeProviderContext);
 
-  const renderSingleCopyInstanceId = useId();
+  const ensureSingleInstanceId = useId();
 
   return (
-    <RenderSingleCopy
+    <EnsureSingleInstance
       groupId="sdk-theme-provider"
-      instanceId={renderSingleCopyInstanceId}
+      instanceId={ensureSingleInstanceId}
     >
-      {({ isSingleCopyToRender }) => (
+      {({ isInstanceToRender }) => (
         <ThemeProviderContext.Provider
           value={{
-            withCssVariables: withCssVariables ?? isSingleCopyToRender,
-            withGlobalClasses: withGlobalClasses ?? isSingleCopyToRender,
+            withCssVariables: withCssVariables ?? isInstanceToRender,
+            withGlobalClasses: withGlobalClasses ?? isInstanceToRender,
           }}
         >
           <ThemeProvider theme={themeOverride}>
-            {isSingleCopyToRender && <GlobalSdkCssVariables />}
+            {isInstanceToRender && <GlobalSdkCssVariables />}
 
             {children}
           </ThemeProvider>
         </ThemeProviderContext.Provider>
       )}
-    </RenderSingleCopy>
+    </EnsureSingleInstance>
   );
 };
 

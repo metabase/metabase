@@ -1,13 +1,13 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import { type ReactNode, useId, useState } from "react";
 
-import { useSingleCopyWrapperIds } from "embedding-sdk/sdk-shared/hooks/use-single-copy-wrapper-ids";
+import { useSingleInstanceIdsData } from "embedding-sdk/sdk-shared/hooks/use-single-instance-ids-data";
 
-import { RenderSingleCopy } from "./RenderSingleCopy";
+import { EnsureSingleInstance } from "./EnsureSingleInstance";
 
-jest.mock("embedding-sdk/sdk-shared/hooks/use-single-copy-wrapper-ids");
+jest.mock("embedding-sdk/sdk-shared/hooks/use-single-instance-ids-data");
 
-const useSingleCopyWrapperIdsMock = useSingleCopyWrapperIds as jest.Mock;
+const useSingleInstanceIdsDataMock = useSingleInstanceIdsData as jest.Mock;
 
 const setup = () => {
   const warningMessage = "Only one instance allowed!";
@@ -16,7 +16,7 @@ const setup = () => {
   return { warningMessage, warnSpy };
 };
 
-describe("RenderSingleCopy", () => {
+describe("EnsureSingleInstance", () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
@@ -34,21 +34,21 @@ describe("RenderSingleCopy", () => {
     }) {
       const [map, setMap] = useState<Record<string, string[]>>({});
 
-      useSingleCopyWrapperIdsMock.mockReturnValue({
-        singleCopyIdsMap: map,
-        setSingleCopyIdsMap: setMap,
+      useSingleInstanceIdsDataMock.mockReturnValue({
+        singleInstanceIdsMap: map,
+        setSingleInstanceIdsMap: setMap,
       });
 
       const instanceId = useId();
 
       return (
-        <RenderSingleCopy
+        <EnsureSingleInstance
           groupId={groupId}
           instanceId={instanceId}
           multipleRegisteredInstancesWarningMessage={multipleWarning}
         >
           {children}
-        </RenderSingleCopy>
+        </EnsureSingleInstance>
       );
     }
 
@@ -69,9 +69,9 @@ describe("RenderSingleCopy", () => {
     function Wrapper() {
       const [map, setMap] = useState<Record<string, string[]>>({});
 
-      useSingleCopyWrapperIdsMock.mockReturnValue({
-        singleCopyIdsMap: map,
-        setSingleCopyIdsMap: setMap,
+      useSingleInstanceIdsDataMock.mockReturnValue({
+        singleInstanceIdsMap: map,
+        setSingleInstanceIdsMap: setMap,
       });
 
       const instanceId1 = useId();
@@ -80,27 +80,27 @@ describe("RenderSingleCopy", () => {
 
       return (
         <>
-          <RenderSingleCopy
+          <EnsureSingleInstance
             groupId={groupId}
             instanceId={instanceId1}
             multipleRegisteredInstancesWarningMessage={warningMessage}
           >
             <div>First</div>
-          </RenderSingleCopy>
-          <RenderSingleCopy
+          </EnsureSingleInstance>
+          <EnsureSingleInstance
             groupId={groupId}
             instanceId={instanceId2}
             multipleRegisteredInstancesWarningMessage={warningMessage}
           >
             <div>Second</div>
-          </RenderSingleCopy>
-          <RenderSingleCopy
+          </EnsureSingleInstance>
+          <EnsureSingleInstance
             groupId={groupId}
             instanceId={instanceId3}
             multipleRegisteredInstancesWarningMessage={warningMessage}
           >
             <div>Third</div>
-          </RenderSingleCopy>
+          </EnsureSingleInstance>
         </>
       );
     }
@@ -122,9 +122,9 @@ describe("RenderSingleCopy", () => {
     function Wrapper() {
       const [map, setMap] = useState<Record<string, string[]>>({});
 
-      useSingleCopyWrapperIdsMock.mockReturnValue({
-        singleCopyIdsMap: map,
-        setSingleCopyIdsMap: setMap,
+      useSingleInstanceIdsDataMock.mockReturnValue({
+        singleInstanceIdsMap: map,
+        setSingleInstanceIdsMap: setMap,
       });
 
       const groupOneInstanceId = useId();
@@ -132,12 +132,12 @@ describe("RenderSingleCopy", () => {
 
       return (
         <>
-          <RenderSingleCopy groupId="one" instanceId={groupOneInstanceId}>
+          <EnsureSingleInstance groupId="one" instanceId={groupOneInstanceId}>
             <div>ChildOne</div>
-          </RenderSingleCopy>
-          <RenderSingleCopy groupId="two" instanceId={groupTwoInstanceId}>
+          </EnsureSingleInstance>
+          <EnsureSingleInstance groupId="two" instanceId={groupTwoInstanceId}>
             <div>ChildTwo</div>
-          </RenderSingleCopy>
+          </EnsureSingleInstance>
         </>
       );
     }

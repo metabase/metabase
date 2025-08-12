@@ -8,7 +8,7 @@ import {
   SDK_NOT_LOADED_YET_MESSAGE,
   SDK_NOT_STARTED_LOADING_MESSAGE,
 } from "embedding-sdk/sdk-package/config";
-import { RenderSingleCopy } from "embedding-sdk/sdk-shared/components/RenderSingleCopy/RenderSingleCopy";
+import { EnsureSingleInstance } from "embedding-sdk/sdk-shared/components/EnsureSingleInstance/EnsureSingleInstance";
 import { useMetabaseProviderPropsStore } from "embedding-sdk/sdk-shared/hooks/use-metabase-provider-props-store";
 import { useSdkLoadingState } from "embedding-sdk/sdk-shared/hooks/use-sdk-loading-state";
 import { ensureMetabaseProviderPropsStore } from "embedding-sdk/sdk-shared/lib/ensure-metabase-provider-props-store";
@@ -106,16 +106,16 @@ export const createComponent = <
   getComponent: () => FunctionComponent<TComponentProps> | null | undefined,
 ): ComponentWrapperFunction<TComponentProps> => {
   return function ComponentWrapper(props: TComponentProps) {
-    const renderSingleCopyInstanceId = useId();
+    const ensureSingleInstanceId = useId();
 
     return (
       <ClientSideOnlyWrapper ssrFallback={null}>
-        <RenderSingleCopy
+        <EnsureSingleInstance
           groupId="component-wrapper"
-          instanceId={renderSingleCopyInstanceId}
+          instanceId={ensureSingleInstanceId}
         >
           <NotStartedLoadingTrigger />
-        </RenderSingleCopy>
+        </EnsureSingleInstance>
 
         <ComponentWrapperInner
           getComponent={getComponent}

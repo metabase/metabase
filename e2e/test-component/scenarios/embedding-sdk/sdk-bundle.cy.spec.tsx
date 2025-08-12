@@ -120,7 +120,6 @@ describe(
             cy.get(
               '[data-cy-root] > style[data-mantine-styles="classes"]',
             ).should("have.length", expectedMantineStylesLength);
-            // We have 3 usages of `<Global />` component from Emotion, all are wrapped within the RenderSingleCopy
             cy.get('style[data-emotion="emotion-global"]').should(
               "have.length",
               expectedEmotionStylesLength,
@@ -146,7 +145,7 @@ describe(
 
           checkStyles({
             expectedMantineStylesLength: 1,
-            // We have 3 usages of `<Global />` component from Emotion, all are wrapped within the RenderSingleCopy
+            // We have 3 usages of `<Global />` component from Emotion, all are wrapped within the EnsureSingleInstance
             expectedEmotionStylesLength: 3,
           });
 

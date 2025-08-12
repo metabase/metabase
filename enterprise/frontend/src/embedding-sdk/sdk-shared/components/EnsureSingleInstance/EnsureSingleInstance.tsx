@@ -1,13 +1,13 @@
 import { type ReactNode, useEffect, useMemo } from "react";
 
-import { useSingleCopyWrapperIds } from "embedding-sdk/sdk-shared/hooks/use-single-copy-wrapper-ids";
+import { useSingleInstanceIdsData } from "embedding-sdk/sdk-shared/hooks/use-single-instance-ids-data";
 
-type RenderSingleCopyData = {
-  isSingleCopyToRender: boolean;
+type EnsureSingleInstanceData = {
+  isInstanceToRender: boolean;
 };
 
 type Props = {
-  children: ReactNode | ((data: RenderSingleCopyData) => ReactNode);
+  children: ReactNode | ((data: EnsureSingleInstanceData) => ReactNode);
   groupId: string;
   instanceId: string;
   multipleRegisteredInstancesWarningMessage?: string;
@@ -18,36 +18,37 @@ type Props = {
  *
  * This component:
  * Accepts a group id and a unique component instance id.
- * Registers itself in a `singleCopyIdsMap` on the first render.
+ * Registers itself in a `singleInstanceIdsMap` on the first render.
  * Removes itself from that map on unmount.
  * Only the very first-registered instance for this `id` will render its `children`; all others return `null`.
  */
-export const RenderSingleCopy = ({
+export const EnsureSingleInstance = ({
   groupId,
   instanceId: currentInstanceId,
   children,
   multipleRegisteredInstancesWarningMessage,
 }: Props) => {
-  const { singleCopyIdsMap, setSingleCopyIdsMap } = useSingleCopyWrapperIds();
+  const { singleInstanceIdsMap, setSingleInstanceIdsMap } =
+    useSingleInstanceIdsData();
 
-  if (singleCopyIdsMap && !singleCopyIdsMap[groupId]) {
-    // Mutate the singleCopyIdsMap to ensure it has an entry to compare with during the first render
+  if (singleInstanceIdsMap && !singleInstanceIdsMap[groupId]) {
+    // Mutate the singleInstanceIdsMap to ensure it has an entry to compare with during the first render
     // It works with React StrictMode and does not cause any unexpected side effects,
     // but it requires the passing the `instanceId` from a parent component.
-    singleCopyIdsMap[groupId] = [currentInstanceId];
+    singleInstanceIdsMap[groupId] = [currentInstanceId];
   }
 
-  const singleCopyIds = useMemo(
-    () => (singleCopyIdsMap ?? {})[groupId] ?? [],
-    [groupId, singleCopyIdsMap],
+  const singleInstanceIds = useMemo(
+    () => (singleInstanceIdsMap ?? {})[groupId] ?? [],
+    [groupId, singleInstanceIdsMap],
   );
 
   useEffect(() => {
-    setSingleCopyIdsMap((singleCopyIdsMap) => {
-      const idsOnMount = singleCopyIdsMap[groupId] ?? [];
+    setSingleInstanceIdsMap((singleInstanceIdsMap) => {
+      const idsOnMount = singleInstanceIdsMap[groupId] ?? [];
 
       return {
-        ...singleCopyIdsMap,
+        ...singleInstanceIdsMap,
         [groupId]: !idsOnMount.includes(currentInstanceId)
           ? [...idsOnMount, currentInstanceId]
           : idsOnMount,
@@ -55,29 +56,29 @@ export const RenderSingleCopy = ({
     });
 
     return () => {
-      setSingleCopyIdsMap((singleCopyIdsMap) => {
-        const idsOnUnmount = singleCopyIdsMap[groupId] ?? [];
+      setSingleInstanceIdsMap((singleInstanceIdsMap) => {
+        const idsOnUnmount = singleInstanceIdsMap[groupId] ?? [];
 
         return {
-          ...singleCopyIdsMap,
+          ...singleInstanceIdsMap,
           [groupId]: idsOnUnmount.filter(
             (instanceId) => instanceId !== currentInstanceId,
           ),
         };
       });
     };
-  }, [groupId, currentInstanceId, setSingleCopyIdsMap]);
+  }, [groupId, currentInstanceId, setSingleInstanceIdsMap]);
 
-  const singleCopyDetected = singleCopyIds.length > 0;
-  const isSingleCopyToRender =
-    singleCopyDetected && singleCopyIds[0] === currentInstanceId;
+  const initialized = singleInstanceIds.length > 0;
+  const isInstanceToRender =
+    initialized && singleInstanceIds[0] === currentInstanceId;
 
   useEffect(
     function showWarningOnMultipleRegisteredInstances() {
       const shouldShowWarning =
         !!multipleRegisteredInstancesWarningMessage &&
-        isSingleCopyToRender &&
-        singleCopyIds.length > 1;
+        isInstanceToRender &&
+        singleInstanceIds.length > 1;
 
       if (shouldShowWarning) {
         console.warn(multipleRegisteredInstancesWarningMessage);
@@ -85,16 +86,16 @@ export const RenderSingleCopy = ({
     },
     [
       multipleRegisteredInstancesWarningMessage,
-      isSingleCopyToRender,
-      singleCopyIds,
+      isInstanceToRender,
+      singleInstanceIds,
     ],
   );
 
   const isChildrenAsFunction = typeof children === "function";
 
   if (isChildrenAsFunction) {
-    return children({ isSingleCopyToRender });
+    return children({ isInstanceToRender });
   }
 
-  return isSingleCopyToRender ? children : null;
+  return isInstanceToRender ? children : null;
 };

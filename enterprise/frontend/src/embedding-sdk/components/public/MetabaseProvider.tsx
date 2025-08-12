@@ -4,7 +4,7 @@ import { type JSX, memo, useEffect, useId, useRef } from "react";
 import { SdkThemeProvider } from "embedding-sdk/components/private/SdkThemeProvider";
 import { SdkIncompatibilityWithInstanceBanner } from "embedding-sdk/components/private/SdkVersionCompatibilityHandler/SdkIncompatibilityWithInstanceBanner";
 import { useInitData } from "embedding-sdk/hooks";
-import { RenderSingleCopy } from "embedding-sdk/sdk-shared/components/RenderSingleCopy/RenderSingleCopy";
+import { EnsureSingleInstance } from "embedding-sdk/sdk-shared/components/EnsureSingleInstance/EnsureSingleInstance";
 import { getSdkStore } from "embedding-sdk/store";
 import {
   setErrorComponent,
@@ -74,16 +74,16 @@ export const MetabaseProviderInternal = ({
 
   const instanceLocale = useInstanceLocale();
 
-  const renderSingleCopyInstanceId = useId();
+  const ensureSingleInstanceId = useId();
 
   return (
     <EmotionCacheProvider>
       <SdkThemeProvider theme={theme}>
-        <RenderSingleCopy
+        <EnsureSingleInstance
           groupId="component-level-providers"
-          instanceId={renderSingleCopyInstanceId}
+          instanceId={ensureSingleInstanceId}
         >
-          {({ isSingleCopyToRender }) => (
+          {({ isInstanceToRender }) => (
             <>
               <LocaleProvider locale={locale || instanceLocale}>
                 {children}
@@ -91,7 +91,7 @@ export const MetabaseProviderInternal = ({
                 <SdkIncompatibilityWithInstanceBanner />
               </LocaleProvider>
 
-              {isSingleCopyToRender && (
+              {isInstanceToRender && (
                 <>
                   <Global styles={SCOPED_CSS_RESET} />
 
@@ -109,7 +109,7 @@ export const MetabaseProviderInternal = ({
               )}
             </>
           )}
-        </RenderSingleCopy>
+        </EnsureSingleInstance>
       </SdkThemeProvider>
     </EmotionCacheProvider>
   );

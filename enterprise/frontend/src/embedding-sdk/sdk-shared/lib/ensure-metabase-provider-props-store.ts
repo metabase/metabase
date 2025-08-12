@@ -19,7 +19,7 @@ export type MetabaseProviderPropsStoreInternalProps = {
   loadingState?: SdkLoadingState;
   loadingError?: SdkLoadingError | null;
   reduxStore?: InternalMetabaseProviderProps["reduxStore"] | null;
-  singleCopyWrapperIdsMap?: Record<string, string[]>;
+  singleInstanceIdsMap?: Record<string, string[]>;
 };
 
 export type MetabaseProviderPropsStore = {
@@ -38,7 +38,7 @@ const INTERNAL_PROP_NAMES: (keyof MetabaseProviderPropsStoreInternalProps)[] = [
   "loadingState",
   "loadingError",
   "reduxStore",
-  "singleCopyWrapperIdsMap",
+  "singleInstanceIdsMap",
 ];
 
 const KEY = "METABASE_PROVIDER_PROPS_STORE";
@@ -48,7 +48,7 @@ const getEmptyProps = (): MetabaseProviderPropsStoreInternalProps =>
     loadingState: SdkLoadingState.Initial,
     loadingError: null,
     reduxStore: null,
-    singleCopyWrapperIdsMap: {},
+    singleInstanceIdsMap: {},
   }) satisfies MetabaseProviderPropsStoreInternalProps;
 
 export function ensureMetabaseProviderPropsStore(): MetabaseProviderPropsStore {
