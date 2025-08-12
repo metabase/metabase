@@ -136,16 +136,13 @@
   (update-workspace workspace-id name description)
   (t2/select-one :model/Workspace :id workspace-id))
 
-(defn- delete-workspace! [workspace-id]
-  (t2/delete! :model/Workspace :id workspace-id))
-
 ;; DELETE /api/ee/workspace/:workspace-id
 (api.macros/defendpoint :delete "/:workspace-id"
   "Delete a workspace."
   [{:keys [workspace-id]} :- [:map
                               [:workspace-id ms/PositiveInt]]]
   (api/check-404 (t2/select-one :model/Workspace :id workspace-id))
-  (delete-workspace! workspace-id)
+  (w.common/delete-workspace! workspace-id)
   api/generic-204-no-content)
 
 ;; POST /api/ee/workspace/:workspace-id/plan
