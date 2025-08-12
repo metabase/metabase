@@ -585,7 +585,7 @@ databaseChangeLog:
   - changeSet:
       id: v57.2025-08-07T10:03:01
       author: galdre
-      comment: Add unique constraint on transform_job_tags(job_id, tag_id)
+      comment: Add unique constraint on transform_job_tags(job_id, tag_id). Mysql needs the foreign keys dropped on rollback.
       preConditions:
         - onFail: MARK_RAN
         - tableExists:
@@ -606,8 +606,6 @@ databaseChangeLog:
         - dropUniqueConstraint:
             tableName: transform_job_tags
             constraintName: unique_job_tag
-        - dropTable:
-            tableName: transform_job_tags
   - changeSet:
       id: v57.2025-08-07T10:06:00
       author: galdre
