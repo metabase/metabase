@@ -56,13 +56,13 @@ export const Nav = ({
         <Group align="center" flex="0 0 auto" gap="sm">
           <NavButton
             icon="chevronup"
-            tooltip={t`Previous row`}
+            tooltip={t`Previous record`}
             onClick={onPreviousClick}
           />
 
           <NavButton
             icon="chevrondown"
-            tooltip={t`Next row`}
+            tooltip={t`Next record`}
             onClick={onNextClick}
           />
         </Group>
