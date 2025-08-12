@@ -330,6 +330,7 @@ describe("scenarios > dashboard > subscriptions", () => {
     it("should send only attachments without email content when 'Send only attachments' is enabled", () => {
       assignRecipient();
 
+      cy.findByLabelText("Attach results").click();
       cy.findByLabelText("Send only attachments").click();
       cy.findByLabelText("Send only attachments").should("be.checked");
 
