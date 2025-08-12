@@ -24,8 +24,8 @@ export { useCurrentUser } from "embedding-sdk/sdk-package/hooks/public/use-curre
 export { useCreateDashboardApi } from "embedding-sdk/sdk-package/hooks/public/use-create-dashboard-api";
 export { useMetabaseAuthStatus } from "embedding-sdk/sdk-package/hooks/public/use-metabase-auth-status";
 
-export * from "embedding-sdk/sdk-package/lib/public/define-metabase-auth-config";
-export * from "embedding-sdk/sdk-package/lib/public/define-metabase-theme";
+export { defineMetabaseAuthConfig } from "embedding-sdk/sdk-package/lib/public/define-metabase-auth-config";
+export { defineMetabaseTheme } from "embedding-sdk/sdk-package/lib/public/define-metabase-theme";
 
 export {
   type CollectionBrowserProps,
