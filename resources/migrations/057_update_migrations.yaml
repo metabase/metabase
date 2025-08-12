@@ -624,12 +624,15 @@ databaseChangeLog:
                   name: name
                   value: hourly
       rollback:
-        - delete:
-            tableName: transform_tag
-            whereParams:
-              - param:
-                  name: name
-                  value: hourly
+        - sql:
+            sql: "delete from transform_tag where \"name\" = 'hourly'"
+            dbms: postgresql
+        - sql:
+            sql: "delete from transform_tag where `name` = 'hourly'"
+            dbms: mysql,mariadb
+        - sql:
+            sql: "delete from transform_tag where \"NAME\" = 'hourly'"
+            dbms: h2
   - changeSet:
       id: v57.2025-08-07T10:06:01
       author: galdre
@@ -646,12 +649,15 @@ databaseChangeLog:
                   name: name
                   value: daily
       rollback:
-        - delete:
-            tableName: transform_tag
-            whereParams:
-              - param:
-                  name: name
-                  value: daily
+        - sql:
+            sql: "delete from transform_tag where \"name\" = 'daily'"
+            dbms: postgresql
+        - sql:
+            sql: "delete from transform_tag where `name` = 'daily'"
+            dbms: mysql,mariadb
+        - sql:
+            sql: "delete from transform_tag where \"NAME\" = 'daily'"
+            dbms: h2
   - changeSet:
       id: v57.2025-08-07T10:06:02
       author: galdre
@@ -668,12 +674,15 @@ databaseChangeLog:
                   name: name
                   value: weekly
       rollback:
-        - delete:
-            tableName: transform_tag
-            whereParams:
-              - param:
-                  name: name
-                  value: weekly
+        - sql:
+            sql: "delete from transform_tag where \"name\" = 'weekly'"
+            dbms: postgresql
+        - sql:
+            sql: "delete from transform_tag where `name` = 'weekly'"
+            dbms: mysql,mariadb
+        - sql:
+            sql: "delete from transform_tag where \"NAME\" = 'weekly'"
+            dbms: h2
   - changeSet:
       id: v57.2025-08-07T10:06:03
       author: galdre
@@ -690,12 +699,15 @@ databaseChangeLog:
                   name: name
                   value: monthly
       rollback:
-        - delete:
-            tableName: transform_tag
-            whereParams:
-              - param:
-                  name: name
-                  value: montly
+        - sql:
+            sql: "delete from transform_tag where \"name\" = 'monthly'"
+            dbms: postgresql
+        - sql:
+            sql: "delete from transform_tag where `name` = 'monthly'"
+            dbms: mysql,mariadb
+        - sql:
+            sql: "delete from transform_tag where \"NAME\" = 'monthly'"
+            dbms: h2
   - changeSet:
       id: v57.2025-08-07T10:06:04
       author: galdre
@@ -718,12 +730,15 @@ databaseChangeLog:
                   name: entity_id
                   value: hourly000000000000000
       rollback:
-        - delete:
-            tableName: transform_job
-            whereParams:
-              - param:
-                  name: entity_id
-                  value: hourly000000000000000
+        - sql:
+            sql: "delete from transform_job where \"entity_id\" = 'hourly000000000000000'"
+            dbms: postgresql
+        - sql:
+            sql: "delete from transform_job where `entity_id` = 'hourly000000000000000'"
+            dbms: mysql,mariadb
+        - sql:
+            sql: "delete from transform_job where \"ENTITY_ID\" = 'hourly000000000000000'"
+            dbms: h2
   - changeSet:
       id: v57.2025-08-07T10:06:05
       author: galdre
@@ -746,12 +761,15 @@ databaseChangeLog:
                   name: entity_id
                   value: daily0000000000000000
       rollback:
-        - delete:
-            tableName: transform_job
-            whereParams:
-              - param:
-                  name: entity_id
-                  value: daily0000000000000000
+        - sql:
+            sql: "delete from transform_job where \"entity_id\" = 'daily0000000000000000'"
+            dbms: postgresql
+        - sql:
+            sql: "delete from transform_job where `entity_id` = 'daily0000000000000000'"
+            dbms: mysql,mariadb
+        - sql:
+            sql: "delete from transform_job where \"ENTITY_ID\" = 'daily0000000000000000'"
+            dbms: h2
   - changeSet:
       id: v57.2025-08-07T10:06:06
       author: galdre
@@ -773,6 +791,16 @@ databaseChangeLog:
               - column:
                   name: entity_id
                   value: weekly000000000000000
+      rollback:
+        - sql:
+            sql: "delete from transform_job where \"entity_id\" = 'weekly000000000000000'"
+            dbms: postgresql
+        - sql:
+            sql: "delete from transform_job where `entity_id` = 'weekly000000000000000'"
+            dbms: mysql,mariadb
+        - sql:
+            sql: "delete from transform_job where \"ENTITY_ID\" = 'weekly000000000000000'"
+            dbms: h2
       rollback:
         - delete:
             tableName: transform_job
@@ -801,6 +829,16 @@ databaseChangeLog:
               - column:
                   name: entity_id
                   value: monthly00000000000000
+      rollback:
+        - sql:
+            sql: "delete from transform_job where \"entity_id\" = 'monthly00000000000000'"
+            dbms: postgresql
+        - sql:
+            sql: "delete from transform_job where `entity_id` = 'monthly00000000000000'"
+            dbms: mysql,mariadb
+        - sql:
+            sql: "delete from transform_job where \"ENTITY_ID\" = 'monthly00000000000000'"
+            dbms: h2
       rollback:
         - delete:
             tableName: transform_job
