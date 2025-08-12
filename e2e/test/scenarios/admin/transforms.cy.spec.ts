@@ -45,6 +45,46 @@ describe("scenarios > admin > transforms", () => {
       H.queryBuilderHeader().findByText("Transform Table").should("be.visible");
       H.assertQueryBuilderRowCount(3);
     });
+
+    it("should be able to create and run a native transform", () => {
+      cy.log("TBD");
+    });
+
+    it("should be able to create and run a transform from an mbql question", () => {
+      cy.log("TBD");
+    });
+
+    it("should be able to create and run a transform from a native model", () => {
+      cy.log("TBD");
+    });
+  });
+
+  describe("runs", () => {
+    it("should be able to navigate to a list of runs", () => {
+      cy.log("TBD");
+    });
+
+    it("should display the error message from a failed run", () => {
+      cy.log("TBD");
+    });
+  });
+
+  describe("tags", () => {
+    it("should be able to set tags", () => {
+      cy.log("TBD");
+    });
+
+    it("should be able to create tags inline", () => {
+      cy.log("TBD");
+    });
+
+    it("should be able to update tags inline", () => {
+      cy.log("TBD");
+    });
+
+    it("should be able to delete tags inline", () => {
+      cy.log("TBD");
+    });
   });
 
   describe("targets", () => {
@@ -191,6 +231,34 @@ describe("scenarios > admin > transforms", () => {
       getTableLink().click();
       H.queryBuilderHeader().findByText("Transform Table").should("be.visible");
       H.assertQueryBuilderRowCount(3);
+    });
+  });
+
+  describe("metadata", () => {
+    it("should be able to edit table metadata after table creation", () => {
+      cy.log("TBD");
+    });
+
+    it("should be able to see all tables within the schema", () => {
+      cy.log("TBD");
+    });
+
+    it("should be able to see all schemas within the database", () => {
+      cy.log("TBD");
+    });
+  });
+
+  describe("deletion", () => {
+    it("should be able to delete a transform before creating the table", () => {
+      cy.log("TBD");
+    });
+
+    it("should be able to delete a transform and keep the table", () => {
+      cy.log("TBD");
+    });
+
+    it("should be able to delete a transform and delete the table", () => {
+      cy.log("TBD");
     });
   });
 });
