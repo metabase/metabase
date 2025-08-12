@@ -12,14 +12,6 @@
    [next.jdbc :as jdbc]
    [next.jdbc.result-set :as jdbc.rs]))
 
-(defn- ->col-expr
-  "For a given `col-name` return a :coalesce expression to reference it from the outer hybrid search query.
-
-   (->col-expr :model_id) -> [:coalesce :v.model_id :t.model_id]"
-  [col-name]
-  (let [prefix #(keyword (str %1 (name %2)))]
-    [:coalesce (prefix "v." col-name) (prefix "t." col-name)]))
-
 (defn- view-count-percentile-query
   [index-table p-value]
   (let [expr [:raw "percentile_cont(" [:lift p-value] ") WITHIN GROUP (ORDER BY view_count)"]]
@@ -50,7 +42,7 @@
                  :ttl/threshold (u/hours->ms 1))
     view-count-percentiles*))
 
-(defn- view-count-expr [index-table percentile]
+(defn- view-count-expr [index-table ->col-expr percentile]
   (let [views (view-count-percentiles index-table percentile)
         cases (for [[sm v] views]
                 [[:= (->col-expr :model) [:inline (name sm)]] (max (or v 0) 1)])]
@@ -58,7 +50,7 @@
                                                     (into [:case] cat cases)
                                                     1))))
 
-(defn- model-rank-exp [{:keys [context]}]
+(defn- model-rank-exp [->col-expr {:keys [context]}]
   (let [search-order search.config/models-search-order
         n (double (count search-order))
         cases (map-indexed (fn [i sm]
@@ -82,13 +74,13 @@
 
 (defn base-scorers
   "The default constituents of the search ranking scores."
-  [index-table {:keys [search-string limit-int] :as search-ctx}]
+  [index-table ->col-expr {:keys [search-string limit-int] :as search-ctx}]
   (if (and limit-int (zero? limit-int))
     {:model [:inline 1]}
     ;; NOTE: we calculate scores even if the weight is zero, so that it's easy to consider how we could affect any
     ;; given set of results. At some point, we should optimize away the irrelevant scores for any given context.
     {:rrf       rrf-rank-exp
-     :view-count (view-count-expr index-table search.config/view-count-scaling-percentile)
+     :view-count (view-count-expr index-table ->col-expr search.config/view-count-scaling-percentile)
      :pinned     (search.scoring/truthy (->col-expr :pinned))
      :recency    (search.scoring/inverse-duration [:coalesce
                                                    (->col-expr :last_viewed_at)
@@ -96,7 +88,7 @@
                                                   [:now]
                                                   search.config/stale-time-in-days)
      :dashboard  (search.scoring/size (->col-expr :dashboardcard_count) search.config/dashboard-count-ceiling)
-     :model      (model-rank-exp search-ctx)
+     :model      (model-rank-exp ->col-expr search-ctx)
      :mine       (search.scoring/equal (->col-expr :creator_id) (:current-user-id search-ctx))
      :exact      (if search-string
                    ;; perform the lower casing within the database, in case it behaves differently to our helper
@@ -107,7 +99,8 @@
                    (search.scoring/prefix [:lower (->col-expr :name)] (u/lower-case-en search-string))
                    [:inline 0])}))
 
-(def ^:private enterprise-scorers
+(defn- enterprise-scorers
+  [->col-expr]
   {:official-collection {:expr (search.scoring/truthy (->col-expr :official_collection))
                          :pred #(premium-features/has-feature? :official-collections)}
    :verified            {:expr (search.scoring/truthy (->col-expr :verified))
@@ -115,18 +108,18 @@
 
 (defn- additional-scorers
   "Which additional scorers are active?"
-  []
+  [->col-expr]
   (into {}
         (keep (fn [[k {:keys [expr pred]}]]
                 (when (pred)
                   [k expr])))
-        enterprise-scorers))
+        (enterprise-scorers ->col-expr)))
 
 (defn semantic-scorers
   "Return the select-item expressions used to calculate the score for semantic search results."
-  [index-table search-ctx]
-  (merge (base-scorers index-table search-ctx)
-         (additional-scorers)))
+  [index-table ->col-expr search-ctx]
+  (merge (base-scorers index-table ->col-expr search-ctx)
+         (additional-scorers ->col-expr)))
 
 (defn with-scores
   "Add a bunch of SELECT columns for the individual and total scores, and a corresponding ORDER BY."
