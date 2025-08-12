@@ -8,4 +8,4 @@
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/workspace` routes."
-  metabase-enterprise.workspaces.api.workspace/routes)
+  #'metabase-enterprise.workspaces.api.workspace/routes)

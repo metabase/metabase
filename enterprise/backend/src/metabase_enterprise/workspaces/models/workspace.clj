@@ -39,7 +39,7 @@
                 [:title :string]
                 [:description :string]
                 [:content :map]
-                [:created_at ::created_at]])
+                [:created_at {:optional true} ::created_at]])
 
 ;; maybe another table?
 (mr/def ::activity-log [:map
@@ -119,6 +119,12 @@
    [:permissions [:sequential ::permission]]
    [:created_at [:any {:description "The date and time the workspace was created"}]]
    [:updated_at [:any {:description "The date and time the workspace was last updated"}]]])
+
+(def entity-cols
+  "Columns that are considered entities in the workspace model. They are stored as json on the workspace table."
+  [:plans :activity_logs :transforms :documents :users :data_warehouses :permissions])
+
+(mr/def ::entity-column (into [:enum] entity-cols))
 
 (methodical/defmethod t2/table-name :model/Workspace [_model] :workspace)
 

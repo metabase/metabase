@@ -96,19 +96,18 @@
         (is (some #(= "API Workspace 2" (:name %)) result))))))
 
 (deftest api-get-workspace-by-id-test
-  (testing "GET /api/ee/workspace/:id - get specific workspace"
+  (testing "GET /api/ee/workspace/:workspace-id - get specific workspace"
     (mt/with-temp [:model/Collection {collection-id :id} {:name "Test Workspace Collection"}
-                   :model/Workspace {workspace-id :id :as test-workspace} {:name "Test Workspace"
-                                                                           :collection_id collection-id}]
-      (def tw test-workspace)
+                   :model/Workspace {workspace-id :id} {:name "Test Workspace"
+                                                        :collection_id collection-id}]
       (testing "should get existing workspace"
         (let [result (mt/user-http-request :crowberto :get 200 (format "ee/workspace/%s" workspace-id))]
           (is (= workspace-id (:id result)))))
       (testing "should return 404 for non-existent workspace"
-        (mt/user-http-request :crowberto :get 404 "ee/workspace/99999")))))
+        (mt/user-http-request :crowberto :get 404 "ee/workspace/888888")))))
 
 (deftest api-update-workspace-test
-  (testing "PUT /api/ee/workspace/:id - update workspace"
+  (testing "PUT /api/ee/workspace/:workspace-id - update workspace"
     (mt/with-temp [:model/Collection {col-id :id} {}
                    :model/Workspace {workspace-id :id} (test-workspace-data {:collection_id col-id})]
       (testing "should update workspace successfully"
@@ -129,7 +128,7 @@
                               {:name "Non-existent"})))))
 
 (deftest api-delete-workspace-test
-  (testing "DELETE /api/ee/workspace/:id - delete workspace"
+  (testing "DELETE /api/ee/workspace/:workspace-id - delete workspace"
     (mt/with-model-cleanup [:model/Workspace]
       (mt/with-temp [:model/Collection {col-id :id} {}
                      :model/Workspace {workspace-id :id} (test-workspace-data {:collection_id col-id})]
@@ -146,7 +145,7 @@
 ;;; Workspace Plans API Tests
 
 (deftest api-add-plan-to-workspace-test
-  (testing "PUT /api/ee/workspace/:id/plan - add plan to workspace"
+  (testing "PUT /api/ee/workspace/:workspace-id/plan - add plan to workspace"
     (mt/with-model-cleanup [:model/Workspace]
       (mt/with-temp [:model/Collection {col-id :id} {}
                      :model/Workspace {workspace-id :id} (test-workspace-data {:collection_id col-id})]
@@ -187,7 +186,7 @@
 ;;; Workspace Transforms API Tests
 
 (deftest api-add-transform-to-workspace-test
-  (testing "PUT /api/ee/workspace/:id/transform - add transform to workspace"
+  (testing "PUT /api/ee/workspace/:workspace-id/transform - add transform to workspace"
     (mt/with-model-cleanup [:model/Workspace]
       (mt/with-temp [:model/Collection {col-id :id} {}
                      :model/Workspace {workspace-id :id} (test-workspace-data {:collection_id col-id})]
@@ -218,7 +217,7 @@
                                  :target {}}))))))
 
 (deftest api-add-user-to-workspace-test
-  (testing "PUT /api/ee/workspace/:id/user - add user to workspace"
+  (testing "PUT /api/ee/workspace/:workspace-id/user - add user to workspace"
     (mt/with-temp [:model/Collection {col-id :id} {}
                    :model/Workspace {workspace-id :id} (test-workspace-data {:collection_id col-id})]
       (testing "should add user successfully"
@@ -229,7 +228,6 @@
               result (mt/user-http-request :crowberto :put 200
                                            (format "ee/workspace/%s/user" workspace-id)
                                            user-data)]
-          result
           (def result result)
           (is (= workspace-id (:id result)))
           (is (= 1 (count (:users result))))
@@ -244,7 +242,7 @@
                                :type "user"})))))
 
 (deftest api-add-document-to-workspace-test
-  (testing "PUT /api/ee/workspace/:id/document - add document to workspace"
+  (testing "PUT /api/ee/workspace/:workspace-id/document - add document to workspace"
     (mt/with-temp [:model/Collection {col-id :id} {}
                    :model/Workspace {workspace-id :id} (test-workspace-data {:collection_id col-id})]
       (testing "should add document successfully"
@@ -281,7 +279,7 @@
 ;;; Workspace Data Warehouses API Tests
 
 (deftest api-add-data-warehouse-to-workspace-test
-  (testing "PUT /api/ee/workspace/:id/data_warehouse - add data warehouse to workspace"
+  (testing "PUT /api/ee/workspace/:workspace-id/data_warehouse - add data warehouse to workspace"
     (mt/with-model-cleanup [:model/Workspace]
       (mt/with-temp [:model/Collection {col-id :id} {}
                      :model/Workspace {workspace-id :id} (test-workspace-data {:collection_id col-id})]
@@ -338,7 +336,7 @@
 ;;; Workspace Permissions API Tests
 
 (deftest api-add-permission-to-workspace-test
-  (testing "PUT /api/ee/workspace/:id/permission - add permission to workspace"
+  (testing "PUT /api/ee/workspace/:workspace-id/permission - add permission to workspace"
     (mt/with-model-cleanup [:model/Workspace]
       (mt/with-temp [:model/Collection {col-id :id} {}
                      :model/Workspace {workspace-id :id} (test-workspace-data {:collection_id col-id})]
@@ -509,8 +507,12 @@
                         (format "ee/workspace/%s" (:id w)))
 
   (mt/user-http-request :crowberto :put 200
-                        (format "ee/workspace/%s/user" (:id w))
-                        {:id (next-id) :name "name" :email "email" :type "type"})
+                        (format "ee/workspace/%s" (:id w))
+                        {:name "boop"})
+
+  (mt/user-http-request :crowberto :put 200
+                        (format "ee/workspace/%s" (:id w))
+                        {:name "XXX"})
 
   (mt/user-http-request :crowberto :put 200
                         (format "ee/workspace/%s/user" (:id w))
@@ -531,14 +533,14 @@
 
   (mt/user-http-request :crowberto :put 200
                         (format "ee/workspace/%s/plan" (:id w))
-                        {:title "x" :content {}})
+                        {:title "x" :description "?" :content {}})
 
   (mt/user-http-request :crowberto :put 200
                         (format "ee/workspace/%s/plan/0" (:id w))
                         {:title (str "xx" (rand)) :content {}})
 
-  (mt/user-http-request :crowberto :put 400
-                        (format "ee/workspace/%s/plan" (:id w))
+  (mt/user-http-request :crowberto :delete 200
+                        (format "ee/workspace/%s/plan/0" (:id w))
                         {:title "X" :content {}})
 
   [(mt/user-http-request :crowberto :put 200 (format "ee/workspace/%s/document" (:id w))
