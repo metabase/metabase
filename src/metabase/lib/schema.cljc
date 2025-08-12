@@ -123,7 +123,9 @@
 (defn- expression-ref-errors-for-stage [stage]
   (let [expression-names (into #{} (map (comp :lib/expression-name second)) (:expressions stage))
         pred #(bad-ref-clause? :expression expression-names %)
-        form (stage-with-joins-and-namespaced-keys-removed stage)]
+        form (-> (stage-with-joins-and-namespaced-keys-removed stage)
+                 ;; also ignore expression refs inside `:parameters` since they still use legacy syntax these days.
+                 (dissoc :parameters))]
     (when (mbql.u/pred-matches-form? form pred)
       (mbql.u/matching-locations form pred))))
 

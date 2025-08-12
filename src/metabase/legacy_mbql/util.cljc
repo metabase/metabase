@@ -37,8 +37,8 @@
       (do
         (log/warn "normalize-token should not be getting called on a base type! This probably means we're using a base type in the wrong place, like as a parameter type")
         (keyword s))
+      #_{:clj-kondo/ignore [:discouraged-var]}
       (-> s
-          #_{:clj-kondo/ignore [:discouraged-var]}
           #?(:clj u/lower-case-en :cljs str/lower-case)
           (str/replace \_ \-)
           keyword))))
