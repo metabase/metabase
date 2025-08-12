@@ -171,9 +171,9 @@
       (log/error e "Failed to pull embedding model")
       (throw e))))
 
-(defmethod get-embedding        "ollama" [{:keys [model-name]} text] (ollama-get-embedding model-name text))
-(defmethod get-embeddings-batch "ollama" [{:keys [model-name]} text] (ollama-get-embeddings-batch model-name text))
-(defmethod pull-model           "ollama" [{:keys [model-name]}]      (ollama-pull-model model-name))
+(defmethod get-embedding        "ollama" [{:keys [model-name]} text]  (ollama-get-embedding model-name text))
+(defmethod get-embeddings-batch "ollama" [{:keys [model-name]} texts] (ollama-get-embeddings-batch model-name texts))
+(defmethod pull-model           "ollama" [{:keys [model-name]}]       (ollama-pull-model model-name))
 
 ;;;; AI Service impl
 
@@ -192,13 +192,13 @@
 (defn- ai-service-get-embedding [model-name text]
   (try
     (log/debug "Generating AI Service embedding for text of length:" (count text))
-    (first (ai-service-get-embeddings-batch model-name text))
+    (first (ai-service-get-embeddings-batch model-name [text]))
     (catch Exception e
       (log/error e "Failed to generate AI Service embedding for text of length:" (count text))
       (throw e))))
 
-(defmethod get-embedding        "ai-service" [{:keys [model-name]} text] (ai-service-get-embedding model-name text))
-(defmethod get-embeddings-batch "ai-service" [{:keys [model-name]} text] (ai-service-get-embeddings-batch model-name text))
+(defmethod get-embedding        "ai-service" [{:keys [model-name]} text]  (ai-service-get-embedding model-name text))
+(defmethod get-embeddings-batch "ai-service" [{:keys [model-name]} texts] (ai-service-get-embeddings-batch model-name texts))
 
 ;;;; OpenAI impl
 
@@ -239,13 +239,13 @@
 (defn- openai-get-embedding [embedding-model text]
   (try
     (log/debug "Generating OpenAI embedding for text of length:" (count text))
-    (first (openai-get-embeddings-batch embedding-model text))
+    (first (openai-get-embeddings-batch embedding-model [text]))
     (catch Exception e
       (log/error e "Failed to generate OpenAI embedding for text of length:" (count text))
       (throw e))))
 
-(defmethod get-embedding        "openai" [embedding-model text] (openai-get-embedding embedding-model text))
-(defmethod get-embeddings-batch "openai" [embedding-model text] (openai-get-embeddings-batch embedding-model text))
+(defmethod get-embedding        "openai" [embedding-model text]  (openai-get-embedding embedding-model text))
+(defmethod get-embeddings-batch "openai" [embedding-model texts] (openai-get-embeddings-batch embedding-model texts))
 (defmethod pull-model           "openai" [_] (log/debug "OpenAI provider does not require pulling a model"))
 
 ;;;; Global embedding model
@@ -290,7 +290,6 @@
 
             (transduce (map-indexed process-batch) (partial merge-with +) batches))
 
-          ;; No batching for other providers
           (let [embeddings (get-embeddings-batch embedding-model texts)
                 text-embedding-map (zipmap texts embeddings)]
             (process-fn text-embedding-map)))))))
