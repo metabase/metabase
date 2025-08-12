@@ -31,9 +31,8 @@
    (semantic.settings/semantic-search-enabled)))
 
 (defenterprise results
-  "Enterprise implementation of semantic search results with improved fallback logic.
-  Falls back to appdb search only when semantic search finds few raw results AND
-  there are some filtered results (indicating the search found relevant content)."
+  "Enterprise implementation of semantic search results with improved fallback logic. Falls back to appdb search only
+  when semantic search returns too few results and some results were filtered out (e.g. due to permission checks)."
   :feature :semantic-search
   [search-ctx]
   (try
