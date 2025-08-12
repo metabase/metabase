@@ -48,19 +48,45 @@ jobs:
 
           # Find all merged timing artifacts
           mkdir -p timing-artifacts
+          echo "Querying GitHub API for artifacts..."
+          
+          # First, let's see what artifacts are actually available
+          echo "=== DEBUG: All recent artifacts ==="
           gh api repos/${{ github.repository }}/actions/artifacts \
-            --jq ".artifacts[] | select(.name | startswith(\"merged-e2e-timings-\")) | select(.created_at > \"$CUTOFF_DATE\") | select(.expired == false) | {name, created_at, archive_download_url}" \
+            --jq ".artifacts[] | select(.created_at > \"$CUTOFF_DATE\") | select(.expired == false) | {name, created_at}" | head -20
+          
+          echo "=== DEBUG: All artifacts containing 'timing' ==="
+          gh api repos/${{ github.repository }}/actions/artifacts \
+            --jq ".artifacts[] | select(.name | contains(\"timing\")) | select(.expired == false) | {name, created_at}" | head -10
+          
+          echo "=== DEBUG: All artifacts starting with 'merged' ==="
+          gh api repos/${{ github.repository }}/actions/artifacts \
+            --jq ".artifacts[] | select(.name | startswith(\"merged\")) | select(.expired == false) | {name, created_at}" | head -10
+          
+          # Now try our actual query
+          gh api repos/${{ github.repository }}/actions/artifacts \
+            --jq "[.artifacts[] | select(.name | startswith(\"merged-e2e-timings-\")) | select(.created_at > \"$CUTOFF_DATE\") | select(.expired == false) | {name, created_at, archive_download_url}]" \
             > timing-artifacts/artifact-list.json
             
           echo "Found artifacts:"
           cat timing-artifacts/artifact-list.json
 
           # Check if we have any artifacts
-          TOTAL_ARTIFACTS=$(jq '. | length' timing-artifacts/artifact-list.json 2>/dev/null || echo "0")
+          if [ ! -s timing-artifacts/artifact-list.json ]; then
+            echo "❌ No timing artifacts found in the specified time range"
+            echo "This might be because:"
+            echo "  - No e2e test runs have completed in the last $DAYS_BACK days"
+            echo "  - No merged timing artifacts were generated"
+            echo "  - The artifacts have expired (GitHub expires artifacts after 90 days by default)"
+            exit 1
+          fi
+          
+          # Try to count artifacts, handling both array and single object cases
+          TOTAL_ARTIFACTS=$(jq -r 'if type == "array" then length else 1 end' timing-artifacts/artifact-list.json 2>/dev/null || echo "0")
           echo "Found $TOTAL_ARTIFACTS artifact(s) to process"
           
           if [ "$TOTAL_ARTIFACTS" -eq "0" ]; then
-            echo "❌ No timing artifacts found in the specified time range"
+            echo "❌ No valid timing artifacts found"
             exit 1
           fi
           
