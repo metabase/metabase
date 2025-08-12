@@ -3,17 +3,25 @@ import type { CreateTransformRequest, Transform } from "metabase-types/api";
 export type Options = {
   wrapId?: boolean;
   idAlias?: string;
+  visitTransform?: boolean;
 };
 
 export function createTransform(
   request: CreateTransformRequest,
-  { wrapId = false, idAlias = "transformId" }: Options = {},
+  {
+    wrapId = false,
+    idAlias = "transformId",
+    visitTransform = false,
+  }: Options = {},
 ): Cypress.Chainable<Cypress.Response<Transform>> {
   return cy
     .request<Transform>("POST", "/api/ee/transform", request)
     .then(({ body }) => {
       if (wrapId) {
         cy.wrap(body.id).as(idAlias);
+      }
+      if (visitTransform) {
+        cy.visit(`/admin/transforms/${body.id}`);
       }
     });
 }
