@@ -52,10 +52,10 @@ export const MetabotFeedbackModal = ({
         onSubmit={handleSubmit}
       >
         <Form>
-          <Stack gap="sm">
+          <Stack gap="md">
             {!positive && (
               <Stack gap="xs">
-                <Text>{t`What type of issue do you wish to report? (optional)`}</Text>
+                <Text>{t`What kind of issue are you reporting? (optional)`}</Text>
                 <FormSelect
                   name="issue_type"
                   placeholder={t`Select issue type`}
@@ -81,7 +81,7 @@ export const MetabotFeedbackModal = ({
               </Stack>
             )}
             <Stack gap="xs">
-              <Text>{t`Please provide details: (optional)`}</Text>
+              <Text>{t`Any details that you'd like to share? (optional)`}</Text>
               <FormTextarea
                 name="freeform_feedback"
                 placeholder={t`What could be improved about this response?`}
@@ -92,9 +92,9 @@ export const MetabotFeedbackModal = ({
               />
             </Stack>
 
-            <Text size="sm">
+            <Text size="sm" color="text-secondary">
               {/* eslint-disable-next-line no-literal-metabase-strings -- TODO: do we need to hide feedback because it goes to us in some cases? */}
-              {t`Submitting this report will send the entire current conversation to Metabase. Please note that your conversation may contain sensitive data.`}
+              {t`Submitting this report will send the entire current Metabot conversation to Metabase. Note that your conversation may contain sensitive data.`}
             </Text>
 
             <Group justify="flex-end" gap="md" mt="md">
