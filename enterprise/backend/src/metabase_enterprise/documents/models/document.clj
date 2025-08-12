@@ -1,5 +1,6 @@
 (ns metabase-enterprise.documents.models.document
   (:require
+   [clojure.string :as str]
    [metabase-enterprise.documents.prose-mirror :as prose-mirror]
    [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
@@ -7,7 +8,9 @@
    [metabase.models.serialization :as serdes]
    [metabase.search.spec :as search.spec]
    [metabase.util :as u]
+   [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -21,6 +24,18 @@
   (derive :perms/use-parent-collection-perms)
   (derive :hook/timestamped?)
   (derive :hook/entity-id))
+
+(def DocumentName
+  "Validations for the name of a document"
+  (mu/with-api-error-message
+   [:and
+    {:error/message "invalid document name"
+     :json-schema   {:type "string" :minLength 1 :maxLength 254}}
+    [:string {:min 1 :max 254}]
+    [:fn
+     {:error/message "invalid document name"}
+     (complement str/blank?)]]
+   (deferred-tru "value must be a non-blank string between 1 and 254 characters.")))
 
 (defn validate-collection-move-permissions
   "Validates that the current user has write permissions for both old and new collections
