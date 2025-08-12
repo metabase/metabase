@@ -44,7 +44,8 @@
   [database target]
   (when-let [table (sync-table! database target {:create? true})]
     ;; TODO this should probably be a function in the sync module
-    (t2/update! :model/Table (:id table) {:active true})))
+    (when (not (:active table))
+      (t2/update! :model/Table (:id table) {:active true}))))
 
 (defn deactivate-table!
   "Deactivate table for `target` in `database` in the app db."

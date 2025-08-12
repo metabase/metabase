@@ -187,13 +187,6 @@ databaseChangeLog:
                   defaultValueComputed: current_timestamp
                   constraints:
                     nullable: false
-              - column:
-                  name: run_trigger
-                  type: varchar(32)
-                  remarks: The type of automatic trigger (e.g., 'global-schedule') or 'none'
-                  defaultValue: none
-                  constraints:
-                    nullable:  false
 
   - changeSet:
       id: v57.2025-08-03-worker-runs-app-db

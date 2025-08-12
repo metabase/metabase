@@ -30,12 +30,6 @@
   [:map
    [:overwrite? :boolean]])
 
-(defn- sync-table!
-  [database target]
-  (let [table (or (transforms.util/target-table (:id database) target)
-                  (sync/create-table! database (select-keys target [:schema :name])))]
-    (sync/sync-table! table)))
-
 ;; should be run in virtual thread (please :)
 (defn- run-transform-remote! [run-id driver transform-details opts]
   (try
@@ -58,7 +52,7 @@
   ([target database _run-id]
    ;; sync the new table (note that even a failed sync status means that the execution succeeded)
    (log/info "Syncing target" (pr-str target) "for transform")
-   (sync-table! database target)))
+   (transforms.util/activate-table! database target)))
 
 (defn- run-transform-local!
   [run-id driver transform-details opts]

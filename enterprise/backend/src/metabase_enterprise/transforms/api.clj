@@ -5,6 +5,7 @@
    [metabase-enterprise.transforms.api.transform-tag]
    [metabase-enterprise.transforms.execute :as transforms.execute]
    [metabase-enterprise.transforms.models.transform :as transform.model]
+   [metabase-enterprise.transforms.ordering :as transforms.ordering]
    [metabase-enterprise.transforms.util :as transforms.util]
    [metabase-enterprise.worker.core :as worker]
    [metabase.api.common :as api]
@@ -51,8 +52,7 @@
                               :template-tags {}}}}
     :target {:type "table"
              :schema "transforms"
-             :name "gadget_products"}}]
-  -)
+             :name "gadget_products"}}])
 
 (defn- source-database-id
   [transform]
@@ -63,6 +63,8 @@
   (let [database (api/check-400 (t2/select-one :model/Database (source-database-id transform))
                                 (deferred-tru "The source database cannot be found."))
         feature (transforms.util/required-database-feature transform)]
+    (api/check-400 (not (:is_sample database))
+                   (deferred-tru "Cannot run transforms on the sample database."))
     (api/check-400 (driver.u/supports? (:engine database) feature database)
                    (deferred-tru "The database does not support the requested transform target type."))))
 
@@ -150,6 +152,9 @@
         new (merge old body)
         target-fields #(-> % :target (select-keys [:schema :name]))]
     (check-database-feature new)
+    (when-let [{:keys [cycle-str]} (transforms.ordering/get-transform-cycle new)]
+      (throw (ex-info (str "Cyclic transform definitions detected: " cycle-str)
+                      {:status-code 400})))
     (when (and (not= (target-fields old) (target-fields new))
                (transforms.util/target-table-exists? new))
       (api/throw-403)))
