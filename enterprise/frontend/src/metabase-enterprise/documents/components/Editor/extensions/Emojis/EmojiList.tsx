@@ -1,4 +1,3 @@
-/* eslint-disable react/prop-types */
 import type { EmojiItem } from "@tiptap/extension-emoji";
 import cx from "classnames";
 import {
