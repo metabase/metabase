@@ -3,6 +3,7 @@ import { updateQuestion } from "metabase/query_builder/actions/core";
 import type { QueryModalType } from "metabase/query_builder/constants";
 import { Flex } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
+import type Database from "metabase-lib/v1/metadata/Database";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import type {
   Collection,
@@ -49,6 +50,7 @@ interface NativeQueryEditorTopBarProps {
   setParameterValue: (parameterId: ParameterId, value: string) => void;
   focus: () => void;
   setDatasetQuery: (query: NativeQuery) => Promise<Question>;
+  databaseIsDisabled?: (database: Database) => boolean;
 }
 
 const NativeQueryEditorTopBar = (props: NativeQueryEditorTopBarProps) => {
@@ -80,6 +82,7 @@ const NativeQueryEditorTopBar = (props: NativeQueryEditorTopBarProps) => {
     onSetDatabaseId,
     hasParametersList = true,
     setDatasetQuery,
+    databaseIsDisabled,
   } = props;
 
   const dispatch = useDispatch();
@@ -127,6 +130,7 @@ const NativeQueryEditorTopBar = (props: NativeQueryEditorTopBarProps) => {
           setDatabaseId={setDatabaseId}
           setTableId={setTableId}
           editorContext={editorContext}
+          databaseIsDisabled={databaseIsDisabled}
         />
       )}
       {hasParametersList && (
