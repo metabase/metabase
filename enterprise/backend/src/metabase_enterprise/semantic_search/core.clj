@@ -101,8 +101,8 @@
   "Reindex the semantic search index."
   :feature :semantic-search
   [searchable-documents _opts]
-  (let [index-metadata (get-index-metadata)
-        embedding-model (get-configured-embedding-model)]
+  (let [index-metadata (semantic.env/get-index-metadata)
+        embedding-model (semantic.env/get-configured-embedding-model)]
     ;; todo force a new index
     (semantic.db.connection/with-migrate-tx [tx]
       (semantic.pgvector-api/init-semantic-search! tx index-metadata embedding-model))
