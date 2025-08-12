@@ -63,15 +63,14 @@
       (= db-version semantic.db.migration.impl/code-version)
       (log/info "Migration already performed, skipping.")
 
-       ;; TODO: Migration should be written in a way that I could execute it in between any versions.
-      (= db-version (dec semantic.db.migration.impl/code-version))
+      (< db-version semantic.db.migration.impl/code-version)
       (do
         (log/infof "Starting migration from version %d to %d."
                    db-version semantic.db.migration.impl/code-version)
-        (do (semantic.db.migration.impl/migrate! tx opts)
-            (write-successful-migration! tx)))
+        (semantic.db.migration.impl/migrate! tx opts)
+        (write-successful-migration! tx))
 
       :else
-      (log/errorf "Incompatible datatabase (%d) and code (%d) versions found."
-                  db-version semantic.db.migration.impl/code-version)))
+      (log/infof "Database schema version (%d) is newer than code version (%d). Not performing migration."
+                 db-version semantic.db.migration.impl/code-version)))
   nil)
