@@ -32,6 +32,7 @@ export const Relationship = ({ fk, fkCount, fkCountInfo, onClick }: Props) => {
     >
       <Text
         c={fkCountValue === 0 ? "text-light" : "text-medium"}
+        className={S.text}
         fw="bold"
         fz={rem(24)}
         lh={1}
@@ -41,6 +42,7 @@ export const Relationship = ({ fk, fkCount, fkCountInfo, onClick }: Props) => {
 
       <Text
         c={fkCountValue === 0 ? "text-light" : "text-medium"}
+        className={S.text}
         fw="bold"
         lh={1}
       >
