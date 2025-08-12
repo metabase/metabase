@@ -1,14 +1,18 @@
+import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import type { Drill } from "metabase/visualizations/types/click-actions";
-import type * as Lib from "metabase-lib";
+import * as Lib from "metabase-lib";
+import type { Dispatch } from "metabase-types/store";
 
 export const pkDrill: Drill<Lib.PKDrillThruInfo> = ({
   drill,
   drillInfo,
   applyDrill,
+  query,
 }) => {
   const { objectId } = drillInfo;
+  const tableId = Lib.sourceTableOrCardId(query);
 
   return [
     {
@@ -18,7 +22,13 @@ export const pkDrill: Drill<Lib.PKDrillThruInfo> = ({
       buttonType: "horizontal",
       icon: "expand",
       default: true,
-      question: () => applyDrill(drill, objectId),
+      action: () => (dispatch: Dispatch) => {
+        if (tableId == null) {
+          applyDrill(drill, objectId);
+        } else {
+          dispatch(push(`/table/${tableId}/detail/${objectId}`));
+        }
+      },
     },
   ];
 };
