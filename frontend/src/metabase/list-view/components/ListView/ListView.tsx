@@ -12,7 +12,7 @@ import type { DatasetColumn, DatasetData } from "metabase-types/api";
 import styles from "./ListView.module.css";
 
 const ListWrapper = ({ children, ...props }: { children: React.ReactNode }) => (
-  <Stack gap="sm" {...props}>
+  <Stack className={styles.listBody} {...props}>
     {children}
   </Stack>
 );
@@ -59,13 +59,17 @@ export function ListView({ data, settings }: ListViewProps) {
 
   const firstColumnWidth = imageColumn ? "320px" : "280px";
   const otherColumnWidths = "160px";
+  const rightColumnCount = rightColumns.length;
 
   const openObjectDetail = useObjectDetail(data);
 
   return (
-    <Stack className={styles.listViewContainer}>
+    <Stack
+      className={styles.listViewContainer}
+      style={{ "--grid-columns": rightColumnCount }}
+    >
       <Stack className={styles.listContainer}>
-        <Flex justify="space-between" align="center" px="lg" mb="sm">
+        <Flex className={styles.listHeader}>
           <Flex
             align="center"
             gap="md"
@@ -79,18 +83,15 @@ export function ListView({ data, settings }: ListViewProps) {
             )}
           </Flex>
 
-          <Flex gap="lg" align="center" style={{ flex: 1 }}>
-            {rightColumns.map((col, colIndex) => (
-              <ColumnHeader
-                key={colIndex}
-                column={col}
-                style={{
-                  width: otherColumnWidths,
-                  flexShrink: 0,
-                }}
-              />
-            ))}
-          </Flex>
+          {rightColumns.map((col, colIndex) => (
+            <ColumnHeader
+              key={colIndex}
+              column={col}
+              style={{
+                flexShrink: 0,
+              }}
+            />
+          ))}
         </Flex>
 
         <VirtualizedList Wrapper={ListWrapper}>
@@ -100,65 +101,58 @@ export function ListView({ data, settings }: ListViewProps) {
                 <Box
                   key={rowIndex}
                   className={styles.listItem}
-                  px="1.4rem"
-                  py="md"
                   onClick={() => openObjectDetail(rowIndex)}
                 >
-                  <Flex justify="space-between" align="center">
-                    <Flex
-                      align="center"
-                      gap="md"
-                      style={{ width: firstColumnWidth, flexShrink: 0 }}
-                    >
-                      {imageValue && (
-                        <Image
-                          src={imageValue}
-                          alt=""
-                          w={32}
-                          h={32}
-                          radius="xl"
-                          style={{ flexShrink: 0 }}
-                        />
-                      )}
-                      <div style={{ minWidth: 0, flex: 1 }}>
-                        <Text
-                          fw="bold"
-                          truncate
-                          style={{ color: "var(--mb-color-brand)" }}
-                        >
-                          {titleValue}
+                  <Flex
+                    align="center"
+                    gap="md"
+                    style={{ width: firstColumnWidth, flexShrink: 0 }}
+                  >
+                    {imageValue && (
+                      <Image
+                        src={imageValue}
+                        alt=""
+                        w={32}
+                        h={32}
+                        radius="xl"
+                        style={{ flexShrink: 0 }}
+                      />
+                    )}
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <Text
+                        fw="bold"
+                        truncate
+                        style={{ color: "var(--mb-color-brand)" }}
+                      >
+                        {titleValue}
+                      </Text>
+                      {subtitleValue && (
+                        <Text size="xs" c="text-secondary" truncate fw="bold">
+                          {subtitleValue}
                         </Text>
-                        {subtitleValue && (
-                          <Text size="xs" c="text-secondary" truncate fw="bold">
-                            {subtitleValue}
-                          </Text>
-                        )}
-                      </div>
-                    </Flex>
-
-                    <Flex gap="lg" align="center" style={{ flex: 1 }}>
-                      {rightColumns.map((col, colIndex) => {
-                        const value = formatValue(row[cols.indexOf(col)], {
-                          ...(settings.column?.(col) || {}),
-                          jsx: true,
-                          rich: true,
-                        });
-                        return (
-                          <div
-                            key={colIndex}
-                            style={{
-                              width: otherColumnWidths,
-                              flexShrink: 0,
-                            }}
-                          >
-                            <Text size="sm" c="text-secondary" truncate>
-                              {value}
-                            </Text>
-                          </div>
-                        );
-                      })}
-                    </Flex>
+                      )}
+                    </div>
                   </Flex>
+
+                  {rightColumns.map((col, colIndex) => {
+                    const value = formatValue(row[cols.indexOf(col)], {
+                      ...(settings.column?.(col) || {}),
+                      jsx: true,
+                      rich: true,
+                    });
+                    return (
+                      <div
+                        key={colIndex}
+                        style={{
+                          flexShrink: 0,
+                        }}
+                      >
+                        <Text size="sm" c="text-secondary" truncate>
+                          {value}
+                        </Text>
+                      </div>
+                    );
+                  })}
                 </Box>
               );
             },

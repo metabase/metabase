@@ -16,7 +16,21 @@
 
 .listContainer {
   padding-inline: 1rem;
-  overflow: auto;
+
+  /* TODO: Customize VariableHeightVirtualizedList */
+  [data-testid="scroll-container"] {
+    overflow-y: initial !important;
+    overflow: auto;
+  }
+}
+
+.listHeader {
+  padding-inline: var(--mantine-spacing-lg);
+  margin-bottom: var(--mantine-spacing-sm);
+}
+
+.listBody {
+  gap: var(--mantine-spacing-sm);
 }
 
 .listItem {
@@ -24,8 +38,16 @@
   border: 1px solid var(--mb-color-border);
   border-radius: var(--mantine-radius-md);
   background: var(--mb-color-bg-white);
+  padding: var(--mantine-spacing-md) 1.4rem;
 
   &:hover {
     background-color: var(--mb-color-brand-lighter);
   }
+}
+
+.listHeader,
+.listItem {
+  display: grid;
+  grid-template-columns: 1fr repeat(var(--grid-columns), 10%);
+  gap: var(--mantine-spacing-sm);
 }
