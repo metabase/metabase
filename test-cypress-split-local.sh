@@ -12,7 +12,7 @@ export SPLIT=1
 export SPLIT_INDEX=0  
 export SPLIT_FILE="./e2e/support/timings.json"
 export SPLIT_OUTPUT_FILE="test-newTimes.json"
-export SPLIT_TIME_THRESHOLD=0.01 # 1% variation threshold
+export SPLIT_TIME_THRESHOLD=1 # 1% variation threshold
 export CYPRESS_CI=true
 export MB_EDITION=ee
 
