@@ -90,7 +90,7 @@
 
 (defn- older-than-42?
   [version]
-  (when-let [version (drop 1 (re-find #"(\d+)\.(\d+)\.(\d+)" (str version)))]
+  (when-let [version (not-empty (drop 1 (re-find #"(\d+)\.(\d+)\.(\d+)" (str version))))]
     (< (compare (mapv #(Integer/parseInt %) version)
                 [0 42 0])
        0)))
