@@ -4,7 +4,9 @@ import { getComputedSettings } from "metabase/visualizations/lib/settings";
 import {
   getGlobalSettingsForColumn,
   getSettingDefinitionsForColumn,
+  getTitleForColumn,
 } from "metabase/visualizations/lib/settings/column";
+import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import {
   isAvatarURL,
   isEntityName,
@@ -144,3 +146,9 @@ export function getRowValue(
   const value = row[index];
   return value;
 }
+
+export const getColumnTitle = (column: DatasetColumn) => {
+  const series = [{ data: { cols: [column] }, card: createMockCard() }];
+  const settings = getComputedSettingsForSeries(series);
+  return getTitleForColumn(column, series, settings);
+};

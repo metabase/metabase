@@ -2,6 +2,7 @@ import { useMemo } from "react";
 
 import {
   getBodyColumns,
+  getColumnTitle,
   getRowValue,
   renderValue,
 } from "metabase/detail-view/utils";
@@ -36,7 +37,7 @@ export const DetailsGroup = ({ columns, row, table }: Props) => {
               flex="0 0 auto"
               w={rem(224)}
             >
-              {column.display_name}
+              {getColumnTitle(column)}
             </Text>
 
             <Value column={column} field={field} value={value}>
