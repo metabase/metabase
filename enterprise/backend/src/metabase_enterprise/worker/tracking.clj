@@ -126,9 +126,9 @@ WHERE EXISTS (
   (run-update! :postgres (worker-db)
                "UPDATE worker_runs
                   SET status = 'canceled', end_time = NOW(), note = ?
-                  WHERE status = 'running' AND 
+                  WHERE status = 'running' AND
                         run_id IN (
-       SELECT run_id 
+       SELECT run_id
        FROM worker_runs_cancelation
        WHERE time < (NOW() - INTERVAL '1 minute')
                                   )"
