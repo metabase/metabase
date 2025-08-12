@@ -35,11 +35,12 @@
     {:output "dashboard not found"}))
 
 (defn- get-field-values [id->values id]
-  (some->
-   id
-   id->values
-   (or (field-values/get-or-create-full-field-values! (t2/select-one :model/Field :id id)))
-   :values))
+  (when id
+    (->
+     id
+     id->values
+     (or (field-values/get-or-create-full-field-values! (t2/select-one :model/Field :id id)))
+     :values)))
 
 (defn- add-field-values
   [cols]
