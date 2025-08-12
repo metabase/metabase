@@ -15,3 +15,4 @@ export * from "./transform";
 export * from "./transform-job";
 export * from "./transform-tag";
 export * from "./upload-management";
+export * from "./workspace";

@@ -1158,6 +1158,102 @@ databaseChangeLog:
             tableName: document_bookmark
             constraintName: idx_document_bookmark_user_document_unique
 
+  - changeSet:
+      id: v57.2025-08-06T13:00:00
+      author: escherize
+      comment: Create workspace table
+      changes:
+        - createTable:
+            tableName: workspace
+            remarks: Workspaces table
+            columns:
+              - column:
+                  name: id
+                  remarks: Unique ID
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: name
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+              - column:
+                  name: description
+                  type: ${text.type}
+                  constraints:
+                    nullable: true
+              - column:
+                  name: created_at
+                  remarks: The timestamp of when the document was created
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  remarks: The timestamp of when the document was updated
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              # Json cols:
+              - column:
+                  name: plans
+                  remarks: JSON object containing plans, keyed by path
+                  type: ${text.type}
+                  constraints:
+                    nullable: true
+              - column:
+                  name: transforms
+                  remarks: JSON object containing transforms
+                  type: ${text.type}
+                  constraints:
+                    nullable: true
+              - column:
+                  name: activity_logs
+                  remarks: JSON object containing activity_logs, keyed by run-id
+                  type: ${text.type}
+                  constraints:
+                    nullable: true
+              - column:
+                  name: permissions
+                  remarks: JSON object containing permissions
+                  type: ${text.type}
+                  constraints:
+                    nullable: true
+              - column:
+                  name: users
+                  remarks: JSON object containing info about workspace-users
+                  type: ${text.type}
+                  constraints:
+                    nullable: true
+              - column:
+                  name: data_warehouses
+                  remarks: JSON object containing data warehouses
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+              - column:
+                  name: documents
+                  remarks: seq of document ids linked to this workspace
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+              - column:
+                  name: collection_id
+                  type: int
+                  remarks: The collection containing the workspace
+                  constraints:
+                    nullable: false
+                    referencedTableName: collection
+                    referencedColumnNames: id
+                    foreignKeyName: fk_workspace_ref_collection_id
+                    deleteCascade: true
+
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

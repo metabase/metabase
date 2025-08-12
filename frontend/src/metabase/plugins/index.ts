@@ -826,3 +826,9 @@ export const PLUGIN_TRANSFORMS: TransformsPlugin = {
   getAdminPaths: () => [],
   getAdminRoutes: () => null,
 };
+
+export const PLUGIN_WORKSPACES = {
+  getRoutes: () => null as React.ReactElement | null,
+  shouldShowWorkspaceInCollections: () => false,
+  WorkspaceListComponent: null as React.ComponentType<any> | null,
+};
