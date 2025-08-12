@@ -1,11 +1,13 @@
 import { useMemo, useState } from "react";
 import { ResizableBox, type ResizableBoxProps } from "react-resizable";
 
+import { hasFeature } from "metabase/admin/databases/utils";
 import { useSetting } from "metabase/common/hooks";
 import NativeQueryEditor from "metabase/query_builder/components/NativeQueryEditor";
 import { Notebook } from "metabase/querying/notebook/components/Notebook";
 import { Box } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
+import type Database from "metabase-lib/v1/metadata/Database";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 
 import S from "./EditorBody.module.css";
@@ -81,6 +83,9 @@ export function EditorBody({
       runQuery={onRunQuery}
       cancelQuery={onCancelQuery}
       setDatasetQuery={handleNativeQueryChange}
+      databaseIsDisabled={(database: Database) =>
+        database.is_sample || !hasFeature(database, "transforms/table")
+      }
     />
   ) : (
     <ResizableBox
