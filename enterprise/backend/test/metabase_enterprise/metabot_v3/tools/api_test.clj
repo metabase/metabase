@@ -376,14 +376,8 @@
   [coll]
   (boolean (and (seqable? coll) (seq coll) (every? string? coll))))
 
-(defn- ensure-field-values!
-  [table-name-or-id]
-  (run! field-values/create-or-update-full-field-values!
-        (t2/reducible-select :model/Field :table_id (cond-> table-name-or-id (keyword? table-name-or-id) mt/id))))
-
 (deftest answer-sources-test
   (mt/with-premium-features #{:metabot-v3}
-    (ensure-field-values! :products)
     (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
           model-source-query (lib/query mp (lib.metadata/table mp (mt/id :products)))
           metric-source-query (-> model-source-query
@@ -536,8 +530,6 @@
 
 (deftest get-metric-details-test
   (mt/with-premium-features #{:metabot-v3}
-    (ensure-field-values! :orders)
-    (ensure-field-values! :products)
     (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
           source-query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
                            (lib/aggregate (lib/avg (lib.metadata/field mp (mt/id :orders :subtotal))))
@@ -670,7 +662,6 @@
 
 (deftest get-report-details-test
   (mt/with-premium-features #{:metabot-v3}
-    (ensure-field-values! :products)
     (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
           source-query (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
                            (lib/aggregate (lib/avg (lib.metadata/field mp (mt/id :products :rating))))
@@ -727,8 +718,6 @@
 
 (deftest get-model-details-test
   (mt/with-premium-features #{:metabot-v3}
-    (ensure-field-values! :orders)
-    (ensure-field-values! :products)
     (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
           source-query (lib/query mp (lib.metadata/table mp (mt/id :orders)))
           model-data {:name "Model model"
@@ -892,8 +881,6 @@
 
 (deftest get-table-details-test
   (mt/with-premium-features #{:metabot-v3}
-    (ensure-field-values! :orders)
-    (ensure-field-values! :products)
     (let [table-id (mt/id :orders)
           metric-data {:name "Metric"
                        :description "Model based metric"
