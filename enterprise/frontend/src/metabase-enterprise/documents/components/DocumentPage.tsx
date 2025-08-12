@@ -532,7 +532,8 @@ export const DocumentPage = ({
             }}
             onChange={async (collection) => {
               if (collectionPickerMode === "save") {
-                await handleSave(canonicalCollectionId(collection.id));
+                handleSave(canonicalCollectionId(collection.id));
+                setCollectionPickerMode(null);
               } else if (collectionPickerMode === "move") {
                 (await collection) &&
                   handleUpdate({
