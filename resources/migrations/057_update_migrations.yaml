@@ -261,7 +261,7 @@ databaseChangeLog:
                     nullable: true
               - column:
                   name: message
-                  type: text
+                  type: ${text.type}
                   remarks: 'Human-readable message about the run; may contain error message in case status is error'
                   constraints:
                     nullable: true
@@ -800,7 +800,7 @@ databaseChangeLog:
                     nullable: true
               - column:
                   name: message
-                  type: text
+                  type: ${text.type}
                   remarks: 'Human-readable message about the run; may contain error message in case status is error'
                   constraints:
                     nullable: true
