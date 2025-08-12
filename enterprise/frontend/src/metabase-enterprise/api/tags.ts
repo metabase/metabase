@@ -12,6 +12,7 @@ export const ENTERPRISE_TAG_TYPES = [
   "gsheets-status",
   "transform",
   "document",
+  "workspace",
 ] as const;
 
 export type EnterpriseTagType = (typeof ENTERPRISE_TAG_TYPES)[number];
@@ -52,4 +53,13 @@ export function provideTransformListTags(
   transforms: Transform[],
 ): TagDescription<EnterpriseTagType>[] {
   return [listTag("transform"), ...transforms.flatMap(provideTransformTags)];
+}
+
+export function provideWorkspaceTags(
+  workspaces: Array<{ id: number }>,
+): TagDescription<EnterpriseTagType>[] {
+  return [
+    listTag("workspace"),
+    ...workspaces.map(workspace => idTag("workspace", workspace.id)),
+  ];
 }

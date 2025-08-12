@@ -323,6 +323,7 @@ databaseChangeLog:
             constraintName: fk_report_card_document_id
             onDelete: CASCADE
 
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

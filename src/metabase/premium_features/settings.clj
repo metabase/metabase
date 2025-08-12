@@ -279,6 +279,10 @@
   "Should we allow users to use transforms?"
   :transforms)
 
+(define-premium-feature ^{:added "0.58.0"} enable-workspaces?
+  "Should we allow users to use workspaces?"
+  :workspaces)
+
 (defn- -token-features []
   {:advanced_permissions           (enable-advanced-permissions?)
    :ai_sql_fixer                   (enable-ai-sql-fixer?)
@@ -321,7 +325,9 @@
    :sso_saml                       (enable-sso-saml?)
    :table_data_editing             (table-data-editing?)
    :upload_management              (enable-upload-management?)
-   :whitelabel                     (enable-whitelabeling?)})
+   :whitelabel (enable-whitelabeling?)
+   :workspaces true #_(enable-workspaces?) ;;FIXME workspaces prereq
+   })
 
 (defsetting token-features
   "Features registered for this instance's token"

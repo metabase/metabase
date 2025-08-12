@@ -821,6 +821,12 @@ export const PLUGIN_DOCUMENTS = {
   DocumentBackButton: PluginPlaceholder as React.ComponentType<any>,
 };
 
+export const PLUGIN_WORKSPACES = {
+  getRoutes: () => null as React.ReactElement | null,
+  shouldShowWorkspaceInCollections: () => false,
+  WorkspaceListComponent: null as React.ComponentType<any> | null,
+};
+
 export const PLUGIN_ENTITIES = {
   entities: {} as Record<string, any>,
 };
