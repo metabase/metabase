@@ -89,10 +89,11 @@
                                                           {:base-type :type/Float, :binning {:strategy :num-bins, :num-bins 50}}]]}
                            :expressions  {"Expression1" [:+ [:field "TOTAL" {:base-type :type/Float}] 100]
                                           "Expression2" [:+ [:field "TOTAL" {:base-type :type/Float}] 200]}
-                           :order-by     [[:asc [:expression "Expression1"]]
-                                          [:asc [:expression "Expression2"]]]
+                           :order-by     [[:asc [:field "TOTAL" {:base-type :type/Float}]]
+                                          [:asc [:field "TOTAL_2" {:base-type :type/Float}]]
+                                          [:asc [:field "count" {:base-type :type/Integer}]]]
                            :limit        3}})]
     (is (= [[-60.0 -50.0 1  40 140]
-            [0.0   10.0  5 100 200]
-            [0.0   15.0 45 100 200]]
+            [0.0   5.0   1 100 200]
+            [0.0   10.0  5 100 200]]
            (mt/formatted-rows [1.0 1.0 int int int] (qp/process-query query))))))

@@ -1726,8 +1726,9 @@ function(bin) {
                     (assoc driver-api/qp.add.source-alias  (str nfc-path-str \. source-alias)
                            driver-api/qp.add.desired-alias (str nfc-path-str \. desired-alias))
                     (dissoc driver-api/qp.add.nfc-path)))))
-          (update-name [{field-name :name, source-alias  driver-api/qp.add.source-alias, :as opts}]
-            (when-not (= field-name source-alias)
+          (update-name [{field-name :name, source-alias driver-api/qp.add.source-alias, :as opts}]
+            (when (and source-alias
+                       (not= field-name source-alias))
               (assoc opts :name source-alias)))
           (remove-bad-join-alias [{:keys [join-alias], source-table driver-api/qp.add.source-table, :as opts}]
             (when (and join-alias
@@ -1750,10 +1751,11 @@ function(bin) {
               update-name
               remove-bad-join-alias
               update-join-alias]))
-          (update-field-ref [[_tag id-or-name opts]]
+          (update-field-ref [[_tag id-or-name {source-alias driver-api/qp.add.source-alias, :as opts}]]
             (let [opts (update-opts opts)]
-              (if (string? id-or-name)
-                [:field (driver-api/qp.add.source-alias opts) opts]
+              (if (and (string? id-or-name)
+                       source-alias)
+                [:field source-alias opts]
                 [:field id-or-name opts])))]
     (driver-api/replace form
       :field
