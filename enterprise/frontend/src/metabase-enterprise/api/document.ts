@@ -1,8 +1,6 @@
 import type {
-  Card,
   CreateDocumentRequest,
   Document,
-  DocumentContent,
   DocumentId,
 } from "metabase-types/api";
 
@@ -27,13 +25,7 @@ export const documentApi = EnterpriseApi.injectEndpoints({
       }),
       invalidatesTags: (_, error) => (error ? [] : [listTag("document")]), // TODO: invalidate parent collection?
     }),
-    updateDocument: builder.mutation<
-      Document,
-      Pick<Document, "id" | "name"> & {
-        document?: DocumentContent;
-        cards?: Record<number, Card>;
-      }
-    >({
+    updateDocument: builder.mutation<Document, Partial<Document>>({
       query: (document) => ({
         method: "PUT",
         url: `/api/ee/document/${document.id}`,
