@@ -33,7 +33,7 @@ runs:
           });
 
           if (!artifacts.data?.artifacts?.[0]?.id) {
-            throw new Error(`No artifacts found for ${{ inputs.commit }}`);
+            throw new Error(`No artifacts found for: ${{ inputs.name }}`);
           }
 
           const artifact_id = artifacts.data.artifacts[0].id;
