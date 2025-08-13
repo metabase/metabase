@@ -12,6 +12,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.app-db.core :as mdb]
+   [metabase.collections.common :as c.common]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.driver.common.parameters :as params]
@@ -1210,46 +1211,6 @@
 
 ;;; ----------------------------------------- Creating/Editing a Collection ------------------------------------------
 
-(defn- write-check-collection-or-root-collection
-  "Check that you're allowed to write Collection with `collection-id`; if `collection-id` is `nil`, check that you have
-  Root Collection perms."
-  [collection-id collection-namespace]
-  (when (collection/is-trash? collection-id)
-    (throw (ex-info (tru "You cannot modify the Trash Collection.")
-                    {:status-code 400})))
-  (api/write-check (if collection-id
-                     (t2/select-one :model/Collection :id collection-id)
-                     (cond-> collection/root-collection
-                       collection-namespace (assoc :namespace collection-namespace)))))
-
-(defn create-collection!
-  "Create a new collection."
-  [{:keys [name description parent_id namespace authority_level] :as params}]
-  ;; To create a new collection, you need write perms for the location you are going to be putting it in...
-  (write-check-collection-or-root-collection parent_id namespace)
-  (when (some? authority_level)
-    ;; make sure only admin and an EE token is present to be able to create an Official token
-    (premium-features/assert-has-feature :official-collections (tru "Official Collections"))
-    (api/check-superuser))
-  ;; Get namespace from parent collection if not provided
-  (let [parent-collection (when parent_id
-                            (t2/select-one [:model/Collection :location :id :namespace] :id parent_id))
-        effective-namespace (cond
-                              (contains? params :namespace) namespace
-                              parent-collection (:namespace parent-collection)
-                              :else nil)]
-  ;; Now create the new Collection :)
-    (u/prog1 (t2/insert-returning-instance!
-              :model/Collection
-              (merge
-               {:name            name
-                :description     description
-                :authority_level authority_level
-                :namespace       effective-namespace}
-               (when parent-collection
-                 {:location (collection/children-location parent-collection)})))
-      (events/publish-event! :event/collection-touch {:collection-id (:id <>) :user-id api/*current-user-id*}))))
-
 (api.macros/defendpoint :post "/"
   "Create a new Collection."
   [_route-params
@@ -1260,7 +1221,7 @@
             [:parent_id       {:optional true} [:maybe ms/PositiveInt]]
             [:namespace       {:optional true} [:maybe ms/NonBlankString]]
             [:authority_level {:optional true} [:maybe collection/AuthorityLevel]]]]
-  (create-collection! body))
+  (c.common/create-collection! body))
 
 (defn- maybe-send-archived-notifications!
   "When a collection is archived, all of it's cards are also marked as archived, but this is down in the model layer

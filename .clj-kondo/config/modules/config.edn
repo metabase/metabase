@@ -1915,6 +1915,7 @@
    :api #{metabase-enterprise.workspaces.api
           metabase-enterprise.workspaces.common}
    :uses #{api
+           collections
            util}}
 
   enterprise/worker

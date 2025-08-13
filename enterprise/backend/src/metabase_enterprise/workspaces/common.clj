@@ -1,6 +1,8 @@
 (ns metabase-enterprise.workspaces.common
   (:require
    [metabase-enterprise.workspaces.models.workspace :as m.workspace]
+   [metabase.api.common :as api]
+   [metabase.collections.common :as c.common]
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
@@ -9,10 +11,14 @@
 (defn create-workspace!
   "Creates a workspace"
   ;; TODO: workspaces create their own collections
-  [name description collection_id]
-  (let [workspace-data {:name name
+  [name description]
+  (let [containing-coll (c.common/create-collection!
+                         {:name name
+                          :description description
+                          :namespace "workspaces"})
+        workspace-data {:name name
                         :description description
-                        :collection_id collection_id
+                        :collection_id (:id containing-coll)
                         :users []
                         :plans []
                         :transforms []
@@ -39,7 +45,7 @@
    new-entity :- :map]
   (let [workspace (t2/select-one :model/Workspace :id workspace-id)
         _ (when-not workspace (throw (ex-info "Workspace not found" {:error :no-workspace})))
-        current-entities (or (get workspace entity-key) [])
+        current-entities (vec (or (get workspace entity-key) []))
         entity-with-created-at (assoc new-entity :created_at (str (java.time.Instant/now)))
         updated-entities (conj current-entities entity-with-created-at)]
     (t2/update! :model/Workspace workspace-id {entity-key updated-entities})))
@@ -73,9 +79,6 @@
         (subvec current-items (inc index))))
 
 (comment
-
-  (into [:a] [:b])
-
   (mapv #(drop-index [:a :b :c] %)
         [0 1 2])
   ;; => [[:b :c] [:a :c] [:a :b]]
@@ -98,3 +101,54 @@
         updated-items (drop-index current-items index)]
     (t2/update! :model/Workspace workspace-id {entity-key updated-items})
     (m.workspace/sort-workspace (t2/select-one :model/Workspace :id workspace-id))))
+
+(comment
+
+  (binding [api/*current-user-permissions-set* (atom #{"/"})]
+    (let [w (create-workspace! "repl workspace" nil)]
+      (def w w)
+      w))
+
+  (add-workspace-entity (:id w)
+                        :plans
+                        {:name "Test Plan 1"
+                         :description "This is a test plan"
+                         :content {}})
+  (add-workspace-entity (:id w)
+                        :plans
+                        {:name "Test Plan 2"
+                         :description "This is another test plan"
+                         :content {}})
+  (:plans (t2/select-one :model/Workspace :id (:id w)))
+  ;; => ({:name "Test Plan 1", :description "This is a test plan", :content {}, :created_at "2025-08-13T15:50:20.203613Z"}
+  ;;     {:name "Test Plan 2",
+  ;;      :description "This is another test plan",
+  ;;      :content {},
+  ;;      :created_at "2025-08-13T15:50:21.296516Z"})
+
+  (update-workspace-entity-at-index
+   (:id w)
+   :plans
+   0
+   (fn [plan]
+     (assoc plan :name "Super Test Plan 1")))
+  ;; => 1
+
+  (:plans (t2/select-one :model/Workspace :id (:id w)))
+  ;; => ({:name "Super Test Plan 1",
+  ;;      :description "This is a test plan",
+  ;;      :content {},
+  ;;      :created_at "2025-08-13T15:50:20.203613Z"}
+  ;;     {:name "Test Plan 2",
+  ;;      :description "This is another test plan",
+  ;;      :content {},
+  ;;      :created_at "2025-08-13T15:50:21.296516Z"})
+
+  (delete-workspace-entity-at-index (:id w) :plans 1)
+
+  (:plans (t2/select-one :model/Workspace :id (:id w)))
+  ;; => ({:name "Super Test Plan 1",
+  ;;      :description "This is a test plan",
+  ;;      :content {},
+  ;;      :created_at "2025-08-13T15:50:20.203613Z"})
+  )
