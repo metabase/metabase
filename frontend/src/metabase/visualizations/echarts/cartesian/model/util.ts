@@ -1,8 +1,4 @@
 import type { OptionsType } from "metabase/lib/formatting/types";
-import {
-  expectedTickCount,
-  maxTicksForChartWidth,
-} from "../utils/timeseries";
 import type {
   ComputedVisualizationSettings,
   RemappingHydratedDatasetColumn,
@@ -13,6 +9,7 @@ import {
   NEGATIVE_BAR_DATA_LABEL_KEY_SUFFIX,
   POSITIVE_BAR_DATA_LABEL_KEY_SUFFIX,
 } from "../constants/dataset";
+import { expectedTickCount, maxTicksForChartWidth } from "../utils/timeseries";
 
 import type {
   DataKey,
