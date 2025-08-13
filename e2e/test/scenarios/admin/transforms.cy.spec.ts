@@ -114,11 +114,39 @@ describe("scenarios > admin > transforms", () => {
 
   describe("runs", () => {
     it("should be able to navigate to a list of runs", () => {
-      cy.log("TBD");
+      cy.log("create and run a transform");
+      createMbqlTransform({
+        targetTable: TARGET_TABLE,
+        visitTransform: true,
+      });
+      runAndWaitForSuccess();
+
+      cy.log("create and run another transform");
+      createNativeTransform({
+        sourceQuery: `SELECT * FROM "${TARGET_SCHEMA}"."${SOURCE_TABLE}"`,
+        targetTable: TARGET_TABLE_2,
+        visitTransform: true,
+      });
+      runAndWaitForSuccess();
+
+      cy.log("assert that the list is filtered by the current transform");
+      getRunListLink().click();
+      getContentTable().within(() => {
+        cy.findByText("Native transform").should("be.visible");
+        cy.findByText("MBQL transform").should("not.exist");
+        cy.findByText("Success").should("be.visible");
+        cy.findByText("Manual").should("be.visible");
+      });
     });
 
     it("should display the error message from a failed run", () => {
-      cy.log("TBD");
+      createNativeTransform({
+        sourceQuery: "SELECT * FROM abc",
+        visitTransform: true,
+      });
+      runAndWaitForFailure();
+      getRunErrorInfoButton().click();
+      H.modal().should("contain.text", 'relation "abc" does not exist');
     });
   });
 
@@ -469,6 +497,14 @@ function getRunButton() {
   return cy.findByTestId("run-button");
 }
 
+function getRunListLink() {
+  return cy.findByRole("link", { name: "See all runs" });
+}
+
+function getRunErrorInfoButton() {
+  return cy.findByLabelText("See error");
+}
+
 function getTableLink() {
   return cy.findByTestId("table-link");
 }
@@ -489,6 +525,10 @@ function getTagMultiSelectField() {
   return cy.findByPlaceholderText("Add tags");
 }
 
+function getContentTable() {
+  return cy.findByTestId("admin-content-table");
+}
+
 function visitTransformListPage() {
   return cy.visit("/admin/transforms");
 }
@@ -498,19 +538,22 @@ function runAndWaitForSuccess() {
   getRunButton().should("have.text", "Ran successfully");
 }
 
-type CreateTransformOpts = {
-  sourceTable?: string;
-  targetTable?: string;
-  targetSchema?: string;
-  visitTransform?: boolean;
-};
+function runAndWaitForFailure() {
+  getRunButton().click();
+  getRunButton().should("have.text", "Run failed");
+}
 
 function createMbqlTransform({
   sourceTable = SOURCE_TABLE,
   targetTable = TARGET_TABLE,
   targetSchema = TARGET_SCHEMA,
   visitTransform,
-}: CreateTransformOpts = {}) {
+}: {
+  sourceTable?: string;
+  targetTable?: string;
+  targetSchema?: string;
+  visitTransform?: boolean;
+} = {}) {
   H.getTableId({ name: sourceTable }).then((tableId) => {
     H.createTransform(
       {
@@ -534,6 +577,40 @@ function createMbqlTransform({
       { wrapId: true, visitTransform },
     );
   });
+}
+
+function createNativeTransform({
+  sourceQuery,
+  targetTable = TARGET_TABLE,
+  targetSchema = TARGET_SCHEMA,
+  visitTransform,
+}: {
+  sourceQuery: string;
+  targetTable?: string;
+  targetSchema?: string;
+  visitTransform?: boolean;
+}) {
+  H.createTransform(
+    {
+      name: "Native transform",
+      source: {
+        type: "query",
+        query: {
+          database: WRITABLE_DB_ID,
+          type: "native",
+          native: {
+            query: sourceQuery,
+          },
+        },
+      },
+      target: {
+        type: "table",
+        name: targetTable,
+        schema: targetSchema,
+      },
+    },
+    { wrapId: true, visitTransform },
+  );
 }
 
 function visitTableQuestion({

@@ -41,7 +41,7 @@ export function RunErrorInfo({ message, endTime }: RunErrorInfoProps) {
   return (
     <>
       <Tooltip label={t`See error`}>
-        <ActionIcon onClick={handleIconClick}>
+        <ActionIcon aria-label={t`See error`} onClick={handleIconClick}>
           <Icon name="document" />
         </ActionIcon>
       </Tooltip>
