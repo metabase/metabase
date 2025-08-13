@@ -7,10 +7,12 @@
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
+(def ^:private strip-namespace-hack (comp keyword name))
+
 (mr/def ::input-type
   ;; TODO this is a clumsy workaround due to the api encoders not being run for some reason
   (mapv
-   #(if (keyword? %) (keyword (name %)) %)
+   #(if (keyword? %) (strip-namespace-hack %) %)
 
    [:enum
     {:encode/api name
@@ -126,7 +128,7 @@
                           :display_name            (:display_name field)
                           :semantic_type           (:semantic_type field)
                           ;; TODO we are manually removing the namespace due to an issue with encoder/api not running
-                          :input_type              (keyword (name (field-input-type field field-values)))
+                          :input_type              (strip-namespace-hack (field-input-type field field-values))
                           :field_id                (:id field)
                           :human_readable_field_id (-> field :dimensions first :human_readable_field_id)
                           :optional                (not required)
