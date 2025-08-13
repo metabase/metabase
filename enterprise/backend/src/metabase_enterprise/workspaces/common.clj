@@ -16,6 +16,7 @@
                          {:name name
                           :description description
                           :namespace "workspaces"})
+        ;; TODO: merge + use: create-single-collection-api-key!
         workspace-data {:name name
                         :description description
                         :collection_id (:id containing-coll)
@@ -104,7 +105,12 @@
 
 (comment
 
-  (binding [api/*current-user-permissions-set* (atom #{"/"})]
+  (require '[metabase.test :as mt])
+
+  ;; will id alone work here? ^
+  ;; current user is used to generate the api key
+  (binding [api/*current-user-id* (mt/user->id :rasta)
+            api/*current-user-permissions-set* (atom #{"/"})]
     (let [w (create-workspace! "repl workspace" nil)]
       (def w w)
       w))
@@ -145,7 +151,6 @@
   ;;      :created_at "2025-08-13T15:50:21.296516Z"})
 
   (delete-workspace-entity-at-index (:id w) :plans 1)
-
   (:plans (t2/select-one :model/Workspace :id (:id w)))
   ;; => ({:name "Super Test Plan 1",
   ;;      :description "This is a test plan",
