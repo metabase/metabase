@@ -4,11 +4,6 @@ databaseChangeLog:
       id: v57.2025-08-01T10:00:00
       author: qnkhuat
       comment: Add undo/redo change tracking table
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - tableExists:
-                tableName: data_edit_undo_chain
       changes:
         - createTable:
             tableName: data_edit_undo_chain
@@ -96,11 +91,6 @@ databaseChangeLog:
       id: v57.2025-08-01T10:02:00
       author: qnkhuat
       comment: A table for generating atomic sequence numbers
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - tableExists:
-                tableName: sequences
       changes:
         - createTable:
             tableName: sequences
@@ -124,11 +114,6 @@ databaseChangeLog:
       id: v57.2025-08-02T15:55:38
       author: metamben
       comment: Create transform table
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - tableExists:
-                tableName: transform
       changes:
         - createTable:
             tableName: transform
@@ -192,11 +177,6 @@ databaseChangeLog:
       id: v57.2025-08-03T00:00:00
       author: eric
       comment: Create worker_run table in app database to track worker execution
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - tableExists:
-                tableName: worker_run
       changes:
         - createTable:
             tableName: worker_run
@@ -355,11 +335,6 @@ databaseChangeLog:
       id: v57.2025-08-06T00:00:00
       author: eric
       comment: Create worker_run_cancelation table to track cancelation.
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - tableExists:
-                tableName: worker_run_cancelation
       changes:
         - createTable:
             tableName: worker_run_cancelation
@@ -388,11 +363,6 @@ databaseChangeLog:
       id: v57.2025-08-07T10:00:00
       author: galdre
       comment: Add transform_tag table for grouping transforms
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - tableExists:
-                tableName: transform_tag
       changes:
         - createTable:
             tableName: transform_tag
@@ -431,11 +401,6 @@ databaseChangeLog:
       id: v57.2025-08-07T10:01:00
       author: galdre
       comment: Add transform_job table for scheduled execution of tagged transforms
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - tableExists:
-                tableName: transform_job
       changes:
         - createTable:
             tableName: transform_job
@@ -490,11 +455,6 @@ databaseChangeLog:
       id: v57.2025-08-07T10:02:00
       author: galdre
       comment: Add transform_tags join table for transform-tag associations
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - tableExists:
-                tableName: transform_tags
       changes:
         - createTable:
             tableName: transform_tags
@@ -554,11 +514,6 @@ databaseChangeLog:
       id: v57.2025-08-07T10:03:00
       author: galdre
       comment: Add transform_job_tags join table for job-tag associations
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - tableExists:
-                tableName: transform_job_tags
       changes:
         - createTable:
             tableName: transform_job_tags
@@ -617,7 +572,7 @@ databaseChangeLog:
   - changeSet:
       id: v57.2025-08-07T10:06:00
       author: galdre
-      comment: Add default transform tags and jobs for common scheduling patterns
+      comment: Add default hourly transform tag
       preConditions:
         - onFail: MARK_RAN
         - tableExists:
@@ -642,7 +597,7 @@ databaseChangeLog:
   - changeSet:
       id: v57.2025-08-07T10:06:01
       author: galdre
-      comment: Add default transform tags and jobs for common scheduling patterns
+      comment: Add default daily transform tag
       preConditions:
         - onFail: MARK_RAN
         - tableExists:
@@ -667,7 +622,7 @@ databaseChangeLog:
   - changeSet:
       id: v57.2025-08-07T10:06:02
       author: galdre
-      comment: Add default transform tags and jobs for common scheduling patterns
+      comment: Add default weekly transform tag
       preConditions:
         - onFail: MARK_RAN
         - tableExists:
@@ -692,7 +647,7 @@ databaseChangeLog:
   - changeSet:
       id: v57.2025-08-07T10:06:03
       author: galdre
-      comment: Add default transform tags and jobs for common scheduling patterns
+      comment: Add default monthly transform tag
       preConditions:
         - onFail: MARK_RAN
         - tableExists:
@@ -717,7 +672,7 @@ databaseChangeLog:
   - changeSet:
       id: v57.2025-08-07T10:06:04
       author: galdre
-      comment: Add default transform tags and jobs for common scheduling patterns
+      comment: Add default Hourly transform job
       preConditions:
         - onFail: MARK_RAN
         - tableExists:
@@ -728,7 +683,7 @@ databaseChangeLog:
             columns:
               - column:
                   name: name
-                  value: hourly
+                  value: Hourly job
               - column:
                   name: schedule
                   value: 0 0 * * * ? *
@@ -748,7 +703,7 @@ databaseChangeLog:
   - changeSet:
       id: v57.2025-08-07T10:06:05
       author: galdre
-      comment: Add default transform tags and jobs for common scheduling patterns
+      comment: Add default Daily transform job
       preConditions:
         - onFail: MARK_RAN
         - tableExists:
@@ -759,7 +714,7 @@ databaseChangeLog:
             columns:
               - column:
                   name: name
-                  value: daily
+                  value: Daily job
               - column:
                   name: schedule
                   value: 0 0 0 * * ? *
@@ -779,7 +734,7 @@ databaseChangeLog:
   - changeSet:
       id: v57.2025-08-07T10:06:06
       author: galdre
-      comment: Add default transform tags and jobs for common scheduling patterns
+      comment: Add default Weekly transform job
       preConditions:
         - onFail: MARK_RAN
         - tableExists:
@@ -790,7 +745,7 @@ databaseChangeLog:
             columns:
               - column:
                   name: name
-                  value: weekly
+                  value: Weekly job
               - column:
                   name: schedule
                   value: 0 0 0 ? * 1 *
@@ -810,7 +765,7 @@ databaseChangeLog:
   - changeSet:
       id: v57.2025-08-07T10:06:07
       author: galdre
-      comment: Add default transform tags and jobs for common scheduling patterns
+      comment: Add default Monthly transform job
       preConditions:
         - onFail: MARK_RAN
         - tableExists:
@@ -821,7 +776,7 @@ databaseChangeLog:
             columns:
               - column:
                   name: name
-                  value: monthly
+                  value: Monthly job
               - column:
                   name: schedule
                   value: 0 0 0 1 * ? *
@@ -885,11 +840,6 @@ databaseChangeLog:
       id: v57.2025-08-08T00:00:00
       author: william
       comment: Create transform_job_run table in app database to track transform job execution
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - tableExists:
-                tableName: transform_job_run
       changes:
         - createTable:
             tableName: transform_job_run

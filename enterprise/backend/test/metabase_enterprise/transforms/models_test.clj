@@ -21,10 +21,10 @@
 
 (deftest default-jobs-test
   (testing "Default jobs were inserted by migration"
-    (doseq [[job-name entity-id] [["hourly" "hourly000000000000000"]
-                                  ["daily" "daily0000000000000000"]
-                                  ["weekly" "weekly000000000000000"]
-                                  ["monthly" "monthly00000000000000"]]]
+    (doseq [[job-name entity-id] [["Hourly job" "hourly000000000000000"]
+                                  ["Daily job" "daily0000000000000000"]
+                                  ["Weekly job" "weekly000000000000000"]
+                                  ["Monthly job" "monthly00000000000000"]]]
       (testing (str "Job '" job-name "' exists")
         (is (t2/exists? :transform_job :entity_id entity-id)
             (str "Default job '" job-name "' with entity_id '" entity-id "' should exist"))))))
