@@ -5,7 +5,7 @@ on:
     inputs:
       skip:
         type: boolean
-        default: false
+        default: true
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}-backend

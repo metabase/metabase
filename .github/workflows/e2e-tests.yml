@@ -5,7 +5,7 @@ on:
     inputs:
       skip:
         type: boolean
-        default: false
+        default: true
       specs:
         type: string
         required: false

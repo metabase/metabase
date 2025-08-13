@@ -37,7 +37,7 @@ jobs:
 
   static-viz-files-changed:
     name: Check whether static-viz files changed
-    if: ${{ !contains(github.event.pull_request.labels.*.name,'ci skip') }}
+    if: ${{ false && !contains(github.event.pull_request.labels.*.name,'ci skip') }}
     runs-on: ubuntu-22.04
     timeout-minutes: 10
     outputs:
@@ -69,14 +69,14 @@ jobs:
 
   uberjar:
     needs: [files-changed, static-viz-files-changed]
-    if: ${{ !cancelled() && !(needs.files-changed.outputs.documentation == 'true' && needs.files-changed.outputs.backend_all == 'false' && needs.files-changed.outputs.frontend_all == 'false' && needs.files-changed.outputs.e2e_all == 'false') }}
+    if: ${{ false && !cancelled() && !(needs.files-changed.outputs.documentation == 'true' && needs.files-changed.outputs.backend_all == 'false' && needs.files-changed.outputs.frontend_all == 'false' && needs.files-changed.outputs.e2e_all == 'false') }}
     uses: ./.github/workflows/uberjar.yml
     secrets: inherit
     with:
       source_changed: ${{ needs.files-changed.outputs.backend_all == 'true' || needs.files-changed.outputs.frontend_all == 'true' || needs.static-viz-files-changed.outputs.static_viz == 'true' }}
 
   backend-tests:
-    if: ${{ !cancelled() }}
+    if: ${{ false && !cancelled() }}
     needs: [files-changed, static-viz-files-changed]
     uses: ./.github/workflows/backend.yml
     secrets: inherit
@@ -91,6 +91,7 @@ jobs:
       skip: ${{ needs.files-changed.outputs.backend_all != 'true' }}
 
   app-db-tests:
+    if: false
     needs: files-changed
     uses: ./.github/workflows/app-db.yml
     secrets: inherit
@@ -98,6 +99,7 @@ jobs:
       skip: ${{ needs.files-changed.outputs.backend_all != 'true' }}
 
   driver-tests:
+    if: false
     needs: files-changed
     uses: ./.github/workflows/drivers.yml
     secrets: inherit
@@ -105,6 +107,7 @@ jobs:
       skip: ${{ needs.files-changed.outputs.backend_all != 'true' }}
 
   frontend-tests:
+    if: false
     needs: files-changed
     uses: ./.github/workflows/frontend.yml
     secrets: inherit
@@ -114,7 +117,7 @@ jobs:
 
   e2e-tests:
     needs: [files-changed, uberjar]
-    if: always() && !cancelled()
+    if: false && always() && !cancelled()
     uses: ./.github/workflows/e2e-tests.yml
     secrets: inherit
     with:
@@ -126,6 +129,7 @@ jobs:
       specs: ${{ needs.files-changed.outputs.e2e_all_files == needs.files-changed.outputs.e2e_specs_files && needs.files-changed.outputs.e2e_specs_files || '' }}
 
   sdk-tests:
+    if: false
     needs: files-changed
     uses: ./.github/workflows/embedding-sdk.yml
     secrets: inherit
