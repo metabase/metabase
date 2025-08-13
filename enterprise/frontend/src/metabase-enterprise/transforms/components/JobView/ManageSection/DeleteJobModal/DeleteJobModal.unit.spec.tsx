@@ -5,14 +5,13 @@ import {
   setupDeleteTransformJobEndpointWithError,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import type { TransformJob } from "metabase-types/api";
 import { createMockTransformJob } from "metabase-types/api/mocks";
-
-import type { TransformJobInfo } from "../../types";
 
 import { DeleteJobModal } from "./DeleteJobModal";
 
 type SetupOpts = {
-  job?: TransformJobInfo;
+  job?: TransformJob;
   isError?: boolean;
 };
 
@@ -20,12 +19,10 @@ function setup({ job = createMockTransformJob(), isError }: SetupOpts = {}) {
   const onDelete = jest.fn();
   const onClose = jest.fn();
 
-  if (job.id != null) {
-    if (isError) {
-      setupDeleteTransformJobEndpointWithError(job.id);
-    } else {
-      setupDeleteTransformJobEndpoint(job.id);
-    }
+  if (isError) {
+    setupDeleteTransformJobEndpointWithError(job.id);
+  } else {
+    setupDeleteTransformJobEndpoint(job.id);
   }
 
   renderWithProviders(
