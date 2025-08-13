@@ -1,5 +1,6 @@
 import { useState } from "react";
 
+import { CommonSdkStoryWrapper } from "embedding-sdk/test/CommonSdkStoryWrapper";
 import { Box, Stack } from "metabase/ui";
 
 import { BadgeList } from "./BadgeList";
@@ -7,6 +8,7 @@ import { BadgeList } from "./BadgeList";
 export default {
   title: "BadgeList",
   component: BadgeList,
+  decorators: [CommonSdkStoryWrapper],
   parameters: {
     layout: "fullscreen",
   },

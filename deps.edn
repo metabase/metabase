@@ -48,7 +48,7 @@
   com.github.oliyh/martian-clj-http         {:mvn/version "0.1.31"}             ; openapi client
   com.github.pangloss/transducers           {:git/sha "c91d39046c8c64dc31b84ebb27154a8084fcda4c" ; like medley for transducers
                                              :git/url "https://github.com/pangloss/transducers"}
-  com.github.seancorfield/honeysql          {:mvn/version "2.7.1325"}           ; Honey SQL 2. SQL generation from Clojure data maps
+  com.github.seancorfield/honeysql          {:mvn/version "2.7.1340"}           ; Honey SQL 2. SQL generation from Clojure data maps
   com.github.seancorfield/next.jdbc         {:mvn/version "1.3.1048"}            ; Talk to JDBC DBs
   com.github.steffan-westcott/clj-otel-api  {:mvn/version "0.2.8"}              ; Telemetry library
   com.github.vertical-blank/sql-formatter   {:mvn/version "2.0.5"}              ; Java SQL formatting library https://github.com/vertical-blank/sql-formatter
@@ -115,7 +115,7 @@
                                              :exclusions  [org.slf4j/slf4j-api
                                                            junit/junit]}
   net.thisptr/jackson-jq                    {:mvn/version "1.4.0"}              ; Java implementation of the JQ json query language
-  org.apache.commons/commons-compress       {:mvn/version "1.27.1"}             ; compression utils
+  org.apache.commons/commons-compress       {:mvn/version "1.28.0"}             ; compression utils
   org.apache.commons/commons-lang3          {:mvn/version "3.18.0"}             ; helper methods for working with java.lang stuff
   org.apache.logging.log4j/log4j-1.2-api    {:mvn/version "2.25.1"}             ; apache logging framework
   org.apache.logging.log4j/log4j-api        {:mvn/version "2.25.1"}             ; add compatibility with log4j 1.2
