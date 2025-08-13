@@ -25,7 +25,7 @@ export function JobView({
   onTagListChange,
 }: JobPageProps) {
   return (
-    <Stack gap="3.5rem" data-testid="transform-job-view">
+    <Stack gap="3.5rem" data-testid="job-view">
       <Stack gap="lg">
         <HeaderSection job={job} />
         <NameSection

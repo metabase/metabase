@@ -9,7 +9,7 @@ import { JobList } from "./JobList";
 
 export function JobListPage() {
   return (
-    <Stack gap="xl" data-testid="transform-job-list-page">
+    <Stack gap="xl" data-testid="job-list-page">
       <Group justify="space-between">
         <Stack gap="sm">
           <Title order={1}>{t`Jobs`}</Title>

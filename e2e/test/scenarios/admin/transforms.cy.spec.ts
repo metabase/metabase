@@ -553,6 +553,7 @@ describe("scenarios > admin > transforms", () => {
         cy.wait("@deleteTransform");
       });
       getTransformListPage().should("be.visible");
+      getTransformListPage().findByText("MBQL transform").should("not.exist");
     });
 
     it("should be able to delete a transform and keep the table", () => {
@@ -605,20 +606,20 @@ describe("scenarios > admin > transforms > jobs", () => {
     H.resyncDatabase({ dbId: WRITABLE_DB_ID });
 
     cy.intercept("POST", "/api/ee/transform-job").as("createJob");
+    cy.intercept("PUT", "/api/ee/transform-job/*").as("updateJob");
+    cy.intercept("DELETE", "/api/ee/transform-job/*").as("deleteJob");
   });
 
   describe("creation", () => {
     it("should be able to create a job with default properties", () => {
       visitJobListPage();
-      getTransformJobListPage()
-        .findByRole("link", { name: "Create a job" })
-        .click();
+      getJobListPage().findByRole("link", { name: "Create a job" }).click();
 
-      getTransformJobPage().button("Save").click();
+      getJobPage().button("Save").click();
       cy.wait("@createJob");
       H.undoToast().findByText("New job created").should("be.visible");
 
-      getTransformJobPage().within(() => {
+      getJobPage().within(() => {
         cy.findByPlaceholderText("Name").should("have.value", "New job");
         cy.findByPlaceholderText("No description yet").should("have.value", "");
         getCronInput().should("have.value", "0 0 * * ?");
@@ -629,11 +630,9 @@ describe("scenarios > admin > transforms > jobs", () => {
     it("should be able to create a job with custom property values", () => {
       createTransformTags(["main", "replica"]);
       visitJobListPage();
-      getTransformJobListPage()
-        .findByRole("link", { name: "Create a job" })
-        .click();
+      getJobListPage().findByRole("link", { name: "Create a job" }).click();
 
-      getTransformJobPage().within(() => {
+      getJobPage().within(() => {
         cy.findByPlaceholderText("Name").clear().type("Job");
         cy.findByPlaceholderText("No description yet")
           .clear()
@@ -642,11 +641,11 @@ describe("scenarios > admin > transforms > jobs", () => {
         getTagsInput().click();
       });
       H.popover().findByText("replica").click();
-      getTransformJobPage().button("Save").click();
+      getJobPage().button("Save").click();
       cy.wait("@createJob");
       H.undoToast().findByText("New job created").should("be.visible");
 
-      getTransformJobPage().within(() => {
+      getJobPage().within(() => {
         cy.findByPlaceholderText("Name").should("have.value", "Job");
         cy.findByPlaceholderText("No description yet").should(
           "have.value",
@@ -679,6 +678,27 @@ describe("scenarios > admin > transforms > jobs", () => {
       });
     });
   });
+
+  describe("deletion", () => {
+    it("should be able to delete a job", () => {
+      cy.log("create a job with a tag");
+      H.createTransformTag({ name: "New tag" }).then(({ body: tag }) => {
+        H.createTransformJob(
+          { name: "New job", tag_ids: [tag.id] },
+          { visitTransformJob: true },
+        );
+      });
+
+      cy.log("delete the job");
+      getJobPage().button("Delete this job").click();
+      H.modal().within(() => {
+        cy.button("Delete job").click();
+        cy.wait("@deleteJob");
+      });
+      getJobListPage().should("be.visible");
+      getJobListPage().findByText("New job").should("not.exist");
+    });
+  });
 });
 
 function getTransformListPage() {
@@ -689,12 +709,12 @@ function getTransformPage() {
   return cy.findByTestId("transform-page");
 }
 
-function getTransformJobListPage() {
-  return cy.findByTestId("transform-job-list-page");
+function getJobListPage() {
+  return cy.findByTestId("job-list-page");
 }
 
-function getTransformJobPage() {
-  return cy.findByTestId("transform-job-view");
+function getJobPage() {
+  return cy.findByTestId("job-view");
 }
 
 function getQueryEditor() {
