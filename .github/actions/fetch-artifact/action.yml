@@ -55,7 +55,7 @@ runs:
 
         # Create a temporary directory for extraction to avoid conflicts
         TEMP_DIR=$(mktemp -d)
-        
+
         # Extract to temporary directory
         unzip mb.zip -d "$TEMP_DIR"
 
