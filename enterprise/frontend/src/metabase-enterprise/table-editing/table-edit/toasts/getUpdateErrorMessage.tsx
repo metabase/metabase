@@ -13,12 +13,16 @@ export const getUpdateApiErrorMessage = (
 
   if (
     Array.isArray(maybeError.data?.errors) &&
-    "error" in maybeError.data?.errors[0]
+    ("message" in maybeError.data?.errors[0] ||
+      "error" in maybeError.data?.errors[0])
   ) {
     return maybeError.data.errors[0].message ?? maybeError.data.errors[0].error;
   }
 
-  if (Array.isArray(maybeError.errors) && "error" in maybeError.errors[0]) {
+  if (
+    Array.isArray(maybeError.errors) &&
+    ("message" in maybeError.errors[0] || "error" in maybeError.errors[0])
+  ) {
     return maybeError.errors[0].message ?? maybeError.errors[0].error;
   }
 
