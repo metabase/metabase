@@ -20,3 +20,8 @@
   overflow: hidden;
   box-shadow: 0 1px 3px 0 hsla(220, 43%, 11%, 0.1);
 }
+
+.maxHeight {
+  max-height: 560px;
+  overflow: auto;
+}

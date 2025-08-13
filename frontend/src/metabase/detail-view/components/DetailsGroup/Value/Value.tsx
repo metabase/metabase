@@ -1,3 +1,4 @@
+import cx from "classnames";
 import type { ReactNode } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
@@ -57,6 +58,7 @@ export const Value = ({ children, column, field, value }: Props) => {
 
         <Text
           c="text-primary"
+          className={S.maxHeight}
           component="a"
           fw="bold"
           href={String(value)}
@@ -70,7 +72,12 @@ export const Value = ({ children, column, field, value }: Props) => {
   }
 
   return (
-    <Text c="text-primary" className={S.value} flex="1" fw="bold">
+    <Text
+      c="text-primary"
+      className={cx(S.value, S.maxHeight)}
+      flex="1"
+      fw="bold"
+    >
       {children}
     </Text>
   );
