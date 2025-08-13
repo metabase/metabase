@@ -45,26 +45,26 @@
 (defn- write-successful-migration!
   [tx]
   (jdbc/execute-one! tx (sql/format (-> (sql.helpers/insert-into :migration)
-                                        (sql.helpers/values [{:version semantic.db.migration.impl/code-version
+                                        (sql.helpers/values [{:version semantic.db.migration.impl/schema-version
                                                               :status "success"}])))))
 
 (defn maybe-migrate-schema!
   [tx opts]
   (let [db-version (db-version tx)]
     (cond
-      (= db-version semantic.db.migration.impl/code-version)
+      (= db-version semantic.db.migration.impl/schema-version)
       (log/info "Migration already performed, skipping.")
 
-      (< db-version semantic.db.migration.impl/code-version)
+      (< db-version semantic.db.migration.impl/schema-version)
       (do
         (log/infof "Starting migration from version %d to %d."
-                   db-version semantic.db.migration.impl/code-version)
+                   db-version semantic.db.migration.impl/schema-version)
         (semantic.db.migration.impl/migrate-schema! tx opts)
         (write-successful-migration! tx))
 
       :else
       (log/infof "Database schema version (%d) is newer than code version (%d). Not performing migration."
-                 db-version semantic.db.migration.impl/code-version)))
+                 db-version semantic.db.migration.impl/schema-version)))
   nil)
 
 (defn- index-metadata-table-exists?
@@ -90,18 +90,18 @@
   [tx opts]
   (let [db-version (lowest-dynamic-db-version tx)]
     (cond
-      (= db-version semantic.db.migration.impl/dynamic-code-version)
+      (= db-version semantic.db.migration.impl/dynamic-schema-version)
       (log/info "Dynamic tables migration already performed, skipping.")
 
-      (< db-version semantic.db.migration.impl/dynamic-code-version)
+      (< db-version semantic.db.migration.impl/dynamic-schema-version)
       (do
         (log/infof "Starting dynamic tables migration from version %d to %d."
-                   db-version semantic.db.migration.impl/code-version)
+                   db-version semantic.db.migration.impl/dynamic-schema-version)
         (semantic.db.migration.impl/migrate-dynamic-schema! tx opts))
 
       :else
       (log/infof "Dynamic tables database schema version (%d) is newer than code version (%d). Not performing migration."
-                 db-version semantic.db.migration.impl/dynamic-code-version)))
+                 db-version semantic.db.migration.impl/dynamic-schema-version)))
   nil)
 
 (defn maybe-migrate!
