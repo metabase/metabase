@@ -110,6 +110,7 @@
                         :profile_id      profile-id
                         :user_id         api/*current-user-id*}
                        (metabot-v3.u/recursive-update-keys metabot-v3.u/safe->snake_case_en)
+                       ;; BOT-327 Do not apply key transformation to state
                        (assoc :state state))
           _        (metabot-v3.context/log body :llm.log/be->llm)
           _        (log/debugf "V2 request to AI Service:\n%s" (u/pprint-to-str body))
@@ -168,6 +169,7 @@
                         :profile_id      profile-id
                         :user_id         api/*current-user-id*}
                        (metabot-v3.u/recursive-update-keys metabot-v3.u/safe->snake_case_en)
+                       ;; BOT-327 Do not apply key transformation to state
                        (assoc :state state))
           _        (metabot-v3.context/log body :llm.log/be->llm)
           _        (log/debugf "V2 request to AI Proxy:\n%s" (u/pprint-to-str body))
