@@ -309,7 +309,10 @@ H.describeWithSnowplow(suiteTitle, () => {
       event_detail: "isSaveEnabled",
     });
 
-    H.getSimpleEmbedIframeContent().findByText("Save").should("be.visible");
+    H.getSimpleEmbedIframeContent().within(() => {
+      cy.findByText("Orders").click();
+      cy.findByText("Save").should("be.visible");
+    });
 
     cy.log("snippet should be updated");
     getEmbedSidebar().findByText("Get Code").click();
