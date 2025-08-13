@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-import { Box, Loader, Paper } from "metabase/ui";
+import { Box, Loader } from "metabase/ui";
 
 interface SuggestionPaperProps {
   children: ReactNode;
@@ -15,46 +15,28 @@ export const SuggestionPaper = ({
   children,
   "aria-label": ariaLabel,
 }: SuggestionPaperProps) => (
-  <Paper
-    shadow="md"
-    radius="md"
-    withBorder
-    w={320}
+  <Box
     aria-label={ariaLabel}
     role="dialog"
-    styles={{
-      root: {
-        backgroundColor: "var(--mb-color-background)",
-        borderColor: "var(--mb-color-border)",
-        padding: "0.75rem",
-        overflow: "auto",
-        maxHeight: "400px",
-      },
+    style={{
+      minHeight: "fit-content",
     }}
   >
     {children}
-  </Paper>
+  </Box>
 );
 
 export const LoadingSuggestionPaper = ({
   "aria-label": ariaLabel,
 }: LoadingSuggestionPaperProps) => (
-  <Paper
-    shadow="md"
-    radius="md"
-    withBorder
-    w={320}
+  <Box
     aria-label={ariaLabel}
-    styles={{
-      root: {
-        backgroundColor: "var(--mb-color-background)",
-        borderColor: "var(--mb-color-border)",
-        padding: "0.75rem",
-      },
+    ta="center"
+    py="lg"
+    style={{
+      minHeight: "fit-content",
     }}
   >
-    <Box ta="center" py="lg">
-      <Loader size="sm" />
-    </Box>
-  </Paper>
+    <Loader size="sm" />
+  </Box>
 );

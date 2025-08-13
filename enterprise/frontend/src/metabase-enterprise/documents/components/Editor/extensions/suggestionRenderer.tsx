@@ -1,4 +1,11 @@
-import { type VirtualElement, computePosition } from "@floating-ui/dom";
+import {
+  type VirtualElement,
+  autoUpdate,
+  computePosition,
+  flip,
+  shift,
+  size,
+} from "@floating-ui/dom";
 import { ReactRenderer } from "@tiptap/react";
 import type {
   SuggestionKeyDownProps,
@@ -12,6 +19,7 @@ export const createSuggestionRenderer = <I = unknown, TSelected = unknown>(
   return () => {
     let component: ReactRenderer | undefined;
     let currentClientRect: (() => DOMRect | null) | null | undefined;
+    let cleanupAutoUpdate: (() => void) | undefined;
 
     function repositionComponent(clientRect: DOMRect | null) {
       if (!component || !component.element) {
@@ -35,22 +43,77 @@ export const createSuggestionRenderer = <I = unknown, TSelected = unknown>(
 
       computePosition(virtualElement, element, {
         placement: "bottom-start",
+        strategy: "fixed",
+        middleware: [
+          flip({
+            fallbackPlacements: ["top-start", "bottom-end", "top-end"],
+            padding: 4,
+          }),
+          shift({
+            padding: 4,
+          }),
+          size({
+            padding: 4,
+            apply({ availableHeight, elements }) {
+              // Dynamically adjust max height based on available space
+              const maxHeight = Math.min(400, availableHeight - 8);
+              Object.assign(elements.floating.style, {
+                maxHeight: `${maxHeight}px`,
+                overflow: "auto",
+              });
+            },
+          }),
+        ],
       }).then((pos) => {
         if (component?.element instanceof HTMLElement) {
           Object.assign(component.element.style, {
             left: `${pos.x}px`,
             top: `${pos.y}px`,
-            position: pos.strategy === "fixed" ? "fixed" : "absolute",
+            position: "fixed",
             zIndex: "3",
+            backgroundColor: "var(--mb-color-background)",
+            border: "1px solid var(--mb-color-border)",
+            borderRadius: "8px",
+            boxShadow: "0 4px 10px var(--mb-color-shadow)",
+            width: "320px",
+            padding: "0.75rem",
+            boxSizing: "border-box",
+            overflowY: "auto",
           });
         }
       });
     }
 
-    const handleScroll = () => {
-      if (currentClientRect) {
-        repositionComponent(currentClientRect());
+    const setupAutoUpdate = () => {
+      if (!component?.element || !(component.element instanceof HTMLElement)) {
+        return;
       }
+
+      const element = component.element;
+      const virtualElement: VirtualElement = {
+        getBoundingClientRect() {
+          return currentClientRect?.() ?? new DOMRect();
+        },
+      };
+
+      // Clean up previous auto update if it exists
+      if (cleanupAutoUpdate) {
+        cleanupAutoUpdate();
+      }
+
+      // Set up auto update to handle scroll and resize
+      cleanupAutoUpdate = autoUpdate(
+        virtualElement,
+        element,
+        () => {
+          if (currentClientRect) {
+            repositionComponent(currentClientRect());
+          }
+        },
+        {
+          animationFrame: true,
+        },
+      );
     };
 
     return {
@@ -65,16 +128,18 @@ export const createSuggestionRenderer = <I = unknown, TSelected = unknown>(
         }
         currentClientRect = props.clientRect;
         repositionComponent(props.clientRect?.() ?? null);
-
-        // Add scroll listeners to reposition on scroll
-        window.addEventListener("scroll", handleScroll, true);
-        window.addEventListener("resize", handleScroll);
+        setupAutoUpdate();
       },
 
       onUpdate(props: SuggestionProps<I, TSelected>) {
         component?.updateProps(props);
         currentClientRect = props.clientRect;
         repositionComponent(props.clientRect?.() ?? null);
+
+        // Re-setup auto update if clientRect changed
+        if (props.clientRect !== currentClientRect) {
+          setupAutoUpdate();
+        }
       },
 
       onKeyDown(props: SuggestionKeyDownProps) {
@@ -102,9 +167,11 @@ export const createSuggestionRenderer = <I = unknown, TSelected = unknown>(
       },
 
       onExit() {
-        // Remove scroll listeners
-        window.removeEventListener("scroll", handleScroll, true);
-        window.removeEventListener("resize", handleScroll);
+        // Clean up auto update
+        if (cleanupAutoUpdate) {
+          cleanupAutoUpdate();
+          cleanupAutoUpdate = undefined;
+        }
 
         if (
           component?.element instanceof HTMLElement &&
