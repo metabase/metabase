@@ -109,7 +109,7 @@
                                properties
                                {:status    :succeeded
                                 :is_active nil}))
-     (cancel/delete-old-canceling-runs!))))
+     (cancel/delete-cancelation! run-id))))
 
 (defn fail-started-run!
   "Mark the started active run as failed and inactive."
@@ -121,7 +121,7 @@
                               properties
                               {:status :failed
                                :is_active nil}))
-    (cancel/delete-old-canceling-runs!)))
+    (cancel/delete-cancelation! run-id)))
 
 (defn reducible-active-remote-runs
   "Return a reducible sequence of active remote runs."
@@ -140,7 +140,7 @@
                                properties
                                {:status    :canceled
                                 :is_active nil}))
-     (cancel/delete-old-canceling-runs!))))
+     (cancel/delete-cancelation! run-id))))
 
 (defn timeout-run!
   "Mark a started run as timed out."
@@ -155,7 +155,7 @@
                                properties
                                {:status    :timeout
                                 :is_active nil}))
-     (cancel/delete-old-canceling-runs!))))
+     (cancel/delete-cancelation! run-id))))
 
 (defn timeout-old-runs!
   "Time out all active runs older than the specified age."

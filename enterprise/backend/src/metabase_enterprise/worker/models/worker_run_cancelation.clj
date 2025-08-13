@@ -34,13 +34,12 @@
   "Delete a cancelation once it has been handled."
   [run-id]
   (t2/delete! :model/WorkerRunCancelation
-              :run-id run-id))
+              :run_id run-id))
 
 (defn delete-old-canceling-runs!
-  "Delete cancelations that are no longer running."
+  "Delete cancelations for runs that are no longer running."
   []
   (t2/delete! :model/WorkerRunCancelation
-              :run_id [:not-in {:select :wrc.run_id
-                                :from   [[:worker_run_cancelation :wrc]]
-                                :join   [[:worker_run :wr] [:= :wr.run_id :wrc.run_id]]
+              :run_id [:not-in {:select :wr.run_id
+                                :from   [[:worker_run :wr]]
                                 :where  :wr.is_active}]))
