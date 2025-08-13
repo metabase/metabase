@@ -4,6 +4,7 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase-enterprise.transforms.ordering :as transforms.ordering]
+   [metabase-enterprise.transforms.settings :as transforms.settings]
    [metabase-enterprise.transforms.util :as transforms.util]
    [metabase-enterprise.worker.core :as worker]
    [metabase.driver :as driver]
@@ -38,7 +39,7 @@
     (catch Throwable t
       (log/error t "Remote execution request failed; still syncing")))
   ;; poll the server until it's not running
-  (u.jvm/poll {:timeout-ms (* 4 60 1000 1000)
+  (u.jvm/poll {:timeout-ms (* (transforms.settings/transform-timeout) 60 1000)
                :interval-ms (+ 2000 (- 500 (* 1000 (rand))))
                :done? #(not= "running" (:status %))
                :thunk #(worker/sync-single-run! run-id)}))
@@ -56,7 +57,7 @@
 
 (defn- run-transform-local!
   [run-id driver transform-details opts]
-  (worker/chan-start-timeout-vthread! run-id)
+  (worker/chan-start-timeout-vthread! run-id (transforms.settings/transform-timeout))
   ;; local run is responsible for status
   (try
     (binding [qp.pipeline/*canceled-chan* (a/promise-chan)]
