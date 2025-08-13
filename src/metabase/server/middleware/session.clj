@@ -23,6 +23,7 @@
    [metabase.premium-features.core :as premium-features]
    [metabase.request.core :as request]
    [metabase.session.core :as session]
+   [metabase.test :as mt]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
@@ -191,6 +192,8 @@
     (u.password/verify-password passed-api-key "" api-key)
     (do-useless-hash)))
 
+;; workspace api key for collection N is `x-metabase-workspace-N`
+
 (defn- current-user-info-for-api-key
   "Return User ID and superuser status for an API Key with `api-key-id"
   [api-key]
@@ -206,8 +209,13 @@
   [{:keys [metabase-session-key anti-csrf-token], {:strs [x-metabase-locale x-api-key]} :headers, :as request}]
   (merge
    request
-   (or (current-user-info-for-session metabase-session-key anti-csrf-token)
-       (current-user-info-for-api-key x-api-key))
+   (or
+    (when-let [api-key-collection (and x-api-key
+                                       (->> x-api-key (re-matches #"^x-metabase-workspace-(\d+)$") second))]
+      (prn "coll key for " api-key-collection)
+      {:permissions-set (str "/collection/" api-key-collection "/")})
+    (current-user-info-for-api-key x-api-key)
+    (current-user-info-for-session metabase-session-key anti-csrf-token))
    (when x-metabase-locale
      (log/tracef "Found X-Metabase-Locale header: using %s as user locale" (pr-str x-metabase-locale))
      {:user-locale (i18n/normalized-locale-string x-metabase-locale)})))
