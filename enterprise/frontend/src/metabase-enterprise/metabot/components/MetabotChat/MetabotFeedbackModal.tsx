@@ -1,9 +1,12 @@
-import { t } from "ttag";
+import { c, t } from "ttag";
 
+import { useSetting } from "metabase/common/hooks";
 import { Form, FormProvider } from "metabase/forms";
 import { FormSelect } from "metabase/forms/components/FormSelect";
 import { FormTextarea } from "metabase/forms/components/FormTextarea";
 import { useSelector } from "metabase/lib/redux";
+import { getUserIsAdmin } from "metabase/selectors/user";
+import { getApplicationName } from "metabase/selectors/whitelabel";
 import { Button, Group, Modal, Stack, Text } from "metabase/ui";
 import { getMetabot, getMetabotId } from "metabase-enterprise/metabot/state";
 import type { MetabotFeedback } from "metabase-types/api";
@@ -11,20 +14,20 @@ import type { MetabotFeedback } from "metabase-types/api";
 interface MetabotFeedbackModalProps {
   onClose: () => void;
   onSubmit: (feedback: MetabotFeedback) => void;
-  messageId?: string;
-  positive?: boolean;
-  isSubmitting: boolean;
-  error: unknown;
+  messageId: string;
+  positive: boolean;
 }
 
 export const MetabotFeedbackModal = ({
   onClose,
   onSubmit,
   messageId,
-  positive = false,
-  isSubmitting,
-  error: _error, // TODO: render somewhere
+  positive,
 }: MetabotFeedbackModalProps) => {
+  const applicationName = useSelector(getApplicationName);
+  const isAdmin = useSelector(getUserIsAdmin);
+  const version = useSetting("version");
+
   const metabotId = useSelector(getMetabotId as any) as ReturnType<
     typeof getMetabotId
   >;
@@ -32,20 +35,29 @@ export const MetabotFeedbackModal = ({
     typeof getMetabot
   >;
 
-  const handleSubmit = (values: Omit<MetabotFeedback, "conversation_data">) =>
-    onSubmit({ ...values, conversation_data: metabotState });
-
-  if (!messageId) {
-    return undefined;
-  }
+  const handleSubmit = (
+    values: Pick<
+      MetabotFeedback["feedback"],
+      "issue_type" | "freeform_feedback"
+    >,
+  ) =>
+    onSubmit({
+      version,
+      metabot_id: metabotId,
+      feedback: {
+        message_id: messageId,
+        positive,
+        ...values,
+      },
+      conversation_data: metabotState,
+      is_admin: isAdmin,
+      submission_time: new Date().toISOString(),
+    });
 
   return (
     <Modal opened onClose={onClose} size="md" title={t`Metabot feedback`}>
       <FormProvider
         initialValues={{
-          metabot_id: metabotId,
-          message_id: messageId,
-          positive,
           issue_type: positive ? undefined : "",
           freeform_feedback: "",
         }}
@@ -84,7 +96,11 @@ export const MetabotFeedbackModal = ({
               <Text>{t`Any details that you'd like to share? (optional)`}</Text>
               <FormTextarea
                 name="freeform_feedback"
-                placeholder={t`What could be improved about this response?`}
+                placeholder={
+                  positive
+                    ? t`Tell us what you liked!`
+                    : t`What could be improved about this response?`
+                }
                 minRows={6}
                 maxRows={12}
                 resize="vertical"
@@ -93,20 +109,18 @@ export const MetabotFeedbackModal = ({
             </Stack>
 
             <Text size="sm" color="text-secondary">
-              {/* eslint-disable-next-line no-literal-metabase-strings -- TODO: do we need to hide feedback because it goes to us in some cases? */}
-              {t`Submitting this report will send the entire current Metabot conversation to Metabase. Note that your conversation may contain sensitive data.`}
+              {/* eslint-disable-next-line no-literal-metabase-strings -- this is a translation context string, not shown to users */}
+              {c("{0} is the name of the application, usually 'Metabase'")
+                .t`Please submit this report to ${applicationName}. Note that it may contain sensitive data from your conversation.`}
             </Text>
 
             <Group justify="flex-end" gap="md" mt="md">
               <Button variant="subtle" onClick={onClose}>
                 {t`Cancel`}
               </Button>
-              <Button
-                variant="filled"
-                type="submit"
-                disabled={isSubmitting}
-                loading={isSubmitting}
-              >{t`Submit`}</Button>
+              <Button variant="filled" type="submit">{c(
+                "This is a verb, not a noun",
+              ).t`Download`}</Button>
             </Group>
           </Stack>
         </Form>

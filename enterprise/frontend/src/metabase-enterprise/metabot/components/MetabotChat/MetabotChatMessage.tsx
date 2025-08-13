@@ -2,6 +2,8 @@ import { useClipboard } from "@mantine/hooks";
 import cx from "classnames";
 import { useCallback, useState } from "react";
 
+import { useToast } from "metabase/common/hooks";
+import { downloadObjectAsJson } from "metabase/lib/download";
 import {
   ActionIcon,
   Flex,
@@ -10,7 +12,6 @@ import {
   type IconName,
   Text,
 } from "metabase/ui";
-import { useSubmitMetabotFeedbackMutation } from "metabase-enterprise/api";
 import type {
   MetabotChatMessage,
   MetabotErrorMessage,
@@ -235,27 +236,28 @@ export const Messages = ({
   isDoingScience: boolean;
 }) => {
   const clipboard = useClipboard();
+  const [sendToast] = useToast();
 
-  const [submittedFeedback, setSubmittedFeedback] = useState<
-    Record<string, "positive" | "negative" | undefined>
-  >({});
-  const [feedbackState, setFeedbackState] = useState<
-    { messageId: string; positive: boolean } | undefined
-  >();
+  const [feedbackState, setFeedbackState] = useState<{
+    submitted: Record<string, "positive" | "negative" | undefined>;
+    modal: { messageId: string; positive: boolean } | undefined;
+  }>({
+    submitted: {},
+    modal: undefined,
+  });
 
-  const [
-    submitFeedbackReq,
-    { isLoading: isSubmitting, error: submissionError },
-  ] = useSubmitMetabotFeedbackMutation();
+  const submitFeedback = async (metabotFeedback: MetabotFeedback) => {
+    const { message_id, positive } = metabotFeedback.feedback;
 
-  const submitFeedback = async (feedback: MetabotFeedback) => {
-    await submitFeedbackReq(feedback);
-    // TODO: move the two useState used below into a single state
-    setFeedbackState(undefined);
-    setSubmittedFeedback((prevState) => ({
-      ...prevState,
-      [feedback.message_id]:
-        feedback.issue_type === undefined ? "positive" : "negative",
+    downloadObjectAsJson(metabotFeedback, `metabot-feedback-${message_id}`);
+    sendToast({ icon: "check", message: "Feedback downloaded successfully" });
+
+    setFeedbackState((prevState) => ({
+      submitted: {
+        ...prevState.submitted,
+        [message_id]: positive ? "positive" : "negative",
+      },
+      modal: undefined,
     }));
   };
 
@@ -265,6 +267,13 @@ export const Messages = ({
       clipboard.copy(allMessages.map((msg) => msg.message).join("\n\n"));
     },
     [messages, clipboard],
+  );
+
+  const setFeedbackModal = useCallback(
+    (data: { messageId: string; positive: boolean } | undefined) => {
+      setFeedbackState((prev) => ({ ...prev, modal: data }));
+    },
+    [],
   );
 
   return (
@@ -278,8 +287,8 @@ export const Messages = ({
             onRetry={onRetryMessage}
             onCopy={onAgentMessageCopy}
             isLastAgentMessage={messages[index + 1]?.role !== "agent"}
-            setFeedbackMessage={setFeedbackState}
-            submittedFeedback={submittedFeedback[message.id]}
+            setFeedbackMessage={setFeedbackModal}
+            submittedFeedback={feedbackState.submitted[message.id]}
             hideActions={messages[index + 1]?.role === "agent"}
           />
         ) : (
@@ -301,13 +310,13 @@ export const Messages = ({
         />
       ))}
 
-      <MetabotFeedbackModal
-        {...feedbackState}
-        onClose={() => setFeedbackState(undefined)}
-        onSubmit={submitFeedback}
-        isSubmitting={isSubmitting}
-        error={submissionError}
-      />
+      {feedbackState.modal && (
+        <MetabotFeedbackModal
+          {...feedbackState.modal}
+          onClose={() => setFeedbackModal(undefined)}
+          onSubmit={submitFeedback}
+        />
+      )}
     </>
   );
 };
