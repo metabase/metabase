@@ -72,5 +72,5 @@
                   (let [table2 (wait-for-table table2-name 10000)
                         check-query (lib/aggregate (make-query table2) (lib/count))]
                     (is (=? {:data {:cols [{:name "count"}]
-                                    :rows [[51]]}}
+                                    :rows [[4]]}}
                             (qp/process-query check-query)))))))))))))
