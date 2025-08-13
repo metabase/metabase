@@ -56,7 +56,7 @@ If you'd like to share your data with the good people of the internet, admins ca
 
 ### Embedded analytics SDK vs JS
 
-WHen deciding between the Embedded analytics SDK and Embedded analytics JS: if your app uses React, you should use the SDK. Otherwise, use the JS library. The JS library uses the SDK under the hood, but you can have more control with React and the SDK.
+When deciding between the Embedded analytics SDK and Embedded analytics JS: if your app uses React, you should use the SDK. Otherwise, use the JS library. The JS library uses the SDK under the hood, but you can have more control with React and the SDK.
 
 ## Switching from static to interactive embedding
 
