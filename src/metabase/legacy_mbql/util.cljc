@@ -29,14 +29,23 @@
   keyword."
   [token :- schema.helpers/KeywordOrString]
   (let [s (u/qualified-name token)]
-    (if (str/starts-with? s "type/")
+    (cond
+      (str/starts-with? s "type/")
       ;; TODO (Cam 8/12/25) -- there's tons of code using incorrect parameter types or normalizing base types
       ;; incorrectly, for example [[metabase.actions.models/implicit-action-parameters]]. We need to actually start
       ;; validating parameters against the `:metabase.lib.schema.parameter/parameter` schema. We should probably throw
       ;; an error here instead of silently correcting it... I was going to do that but it broke too many things
       (do
-        (log/warn "normalize-token should not be getting called on a base type! This probably means we're using a base type in the wrong place, like as a parameter type")
+        (log/error "normalize-token should not be getting called on a base type! This probably means we're using a base type in the wrong place, like as a parameter type")
         (keyword s))
+
+      ;; NOCOMMIT -- this is just for debugging failing tests
+      (re-matches #"^my_[a-z]+Literal$" "my_stringLiteral")
+      (do
+        (log/error "normalize-token should not be getting called on an expression name!!!")
+        s)
+
+      :else
       #_{:clj-kondo/ignore [:discouraged-var]}
       (-> s
           #?(:clj u/lower-case-en :cljs str/lower-case)
@@ -598,23 +607,25 @@
 
 (mu/defn expression-with-name :- ::mbql.s/FieldOrExpressionDef
   "Return the expression referenced by a given `expression-name`."
-  [inner-query expression-name :- [:or :keyword ::lib.schema.common/non-blank-string]]
-  (let [allowed-names [(u/qualified-name expression-name) (keyword expression-name)]]
-    (loop [{:keys [expressions source-query]} inner-query, found #{}]
-      (or
-       ;; look for either string or keyword version of `expression-name` in `expressions`
-       (some (partial get expressions) allowed-names)
-       ;; otherwise, if we have a source query recursively look in that (do we allow that??)
-       (let [found (into found (keys expressions))]
-         (if source-query
-           (recur source-query found)
-           ;; failing that throw an Exception with detailed info about what we tried and what the actual expressions
-           ;; were
-           (throw (ex-info (i18n/tru "No expression named ''{0}''" (u/qualified-name expression-name))
-                           {:type            :invalid-query
-                            :expression-name expression-name
-                            :tried           allowed-names
-                            :found           found}))))))))
+  [inner-query expression-name :- ::lib.schema.common/non-blank-string]
+  (loop [{:keys [expressions source-query]} inner-query, found #{}]
+    (when (seq expressions)
+      (assert (every? string? (keys expressions))
+              (str ":expressions should always use string keys, got: " (pr-str expressions))))
+    (or
+     ;; look for`expression-name` in `expressions`
+     (get expressions expression-name)
+     ;; otherwise, if we have a source query recursively look in that (do we allow that??)
+     (let [found (into found (keys expressions))]
+       (if source-query
+         (recur source-query found)
+         ;; failing that throw an Exception with detailed info about what we tried and what the actual expressions
+         ;; were
+         (throw (ex-info (i18n/tru "No expression named ''{0}''" (u/qualified-name expression-name))
+                         {:type            :invalid-query
+                          :expression-name expression-name
+                          :tried           expression-name
+                          :found           found})))))))
 
 (mu/defn aggregation-at-index :- ::mbql.s/Aggregation
   "Fetch the aggregation at index. This is intended to power aggregate field references (e.g. [:aggregation 0]).
