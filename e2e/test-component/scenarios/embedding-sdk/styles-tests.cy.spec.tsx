@@ -536,6 +536,36 @@ describe("scenarios > embedding-sdk > styles", () => {
     });
   });
 
+  describe("Portal root element position and size", () => {
+    it("should properly render full-page portal root element", () => {
+      mountSdkContent(
+        <>
+          <div
+            style={{
+              padding: "30%",
+            }}
+          >
+            <div style={{ overflow: "hidden", position: "relative" }}>
+              <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />
+            </div>
+          </div>
+
+          <div data-testid="second-question">
+            <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />
+          </div>
+        </>,
+      );
+
+      cy.findByTestId("second-question").within(() => {
+        cy.findByText("Summarize").click();
+      });
+
+      getSdkRoot().within(() => {
+        cy.findByText("Count of rows").should("be.visible");
+      });
+    });
+  });
+
   describe("styles should not leak outside of the provider", () => {
     const elements = [
       { tag: "body", jsx: undefined }, // no need to render anything specific, the body tag is rendered by cypress
