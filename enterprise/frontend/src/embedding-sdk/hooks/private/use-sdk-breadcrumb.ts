@@ -6,20 +6,8 @@ import {
   type SdkBreadcrumbContextType,
 } from "embedding-sdk/components/private/Breadcrumb";
 
-interface BreadcrumbOptions {
-  consumer?: "collection" | "dashboard" | "question";
-}
-
-export const useSdkBreadcrumb = (
-  _options: BreadcrumbOptions = {},
-): SdkBreadcrumbContextType => {
+export const useSdkBreadcrumb = (): SdkBreadcrumbContextType => {
   const context = useContext(SdkBreadcrumbContext);
 
-  // The breadcrumb is optional.
-  // We return an empty context if the breadcrumb is not available.
-  if (!context) {
-    return EmptyBreadcrumbContext;
-  }
-
-  return context;
+  return context ?? EmptyBreadcrumbContext;
 };

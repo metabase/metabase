@@ -27,7 +27,7 @@ export const SdkBreadcrumbs = ({
   style,
   onBreadcrumbClick,
 }: SdkBreadcrumbProps) => {
-  const { breadcrumbs } = useSdkBreadcrumb();
+  const { breadcrumbs, navigateTo } = useSdkBreadcrumb();
 
   if (breadcrumbs.length === 0) {
     return null;
@@ -43,12 +43,10 @@ export const SdkBreadcrumbs = ({
               inactiveColor="text-light"
               isSingleLine
               onClick={() => {
-                // TODO: navigate to that breadcrumb item on click.
-                // Be mindful that there are multiple actions that are possible:
-                // - click on collection -> pop navigation stack, go to that collection
-                // - click on question -> pop navigation stack, go to that question
-                // - click on dashboard -> pop navigation stack, go to that dashboard
+                // Navigate using the breadcrumb context
+                navigateTo(breadcrumb);
 
+                // Also call the optional callback for backwards compatibility
                 onBreadcrumbClick?.(breadcrumb);
               }}
             >

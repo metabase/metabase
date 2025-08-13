@@ -5,6 +5,7 @@ import {
   SdkLoader,
   withPublicComponentWrapper,
 } from "embedding-sdk/components/private/PublicComponentWrapper";
+import { useSdkBreadcrumb } from "embedding-sdk/hooks/private/use-sdk-breadcrumb";
 import { useTranslatedCollectionId } from "embedding-sdk/hooks/private/use-translated-collection-id";
 import { getCollectionIdSlugFromReference } from "embedding-sdk/store/collections";
 import { useSdkSelector } from "embedding-sdk/store/use-sdk-selector";
@@ -109,14 +110,18 @@ export const CollectionBrowserInner = ({
   const [internalCollectionId, setInternalCollectionId] =
     useState<CollectionId>(baseCollectionId);
 
-  // TODO: use the breadcrumb state here.
-  // const { breadcrumbs } = useSdkBreadcrumb({ consumer: "collection" });
+  const { isBreadcrumbEnabled, currentLocation, reportLocation } =
+    useSdkBreadcrumb();
 
   const effectiveCollectionId = useMemo(() => {
-    // TODO: use breadcrumb state when breadcrumb context is available. otherwise use internal state!
+    // Use breadcrumb state when available and the current location is a collection
+    if (isBreadcrumbEnabled && currentLocation?.type === "collection") {
+      return currentLocation.id as CollectionId;
+    }
 
+    // Otherwise fall back to internal state
     return internalCollectionId;
-  }, [internalCollectionId]);
+  }, [isBreadcrumbEnabled, currentLocation, internalCollectionId]);
 
   const { data: currentCollection, isFetching: isFetchingCollection } =
     useGetCollectionQuery({ id: effectiveCollectionId });
@@ -126,18 +131,36 @@ export const CollectionBrowserInner = ({
   }, [baseCollectionId]);
 
   useEffect(() => {
-    if (currentCollection && !isFetchingCollection) {
-      // TODO: update the location in the breadcrumb.
-      // This cannot be done in the onClickItem click handler, as we need to populate the
-      // initial collection's name (i.e. the first collection that gets loaded) in the breadcrumb.
+    if (currentCollection && !isFetchingCollection && isBreadcrumbEnabled) {
+      reportLocation({
+        type: "collection",
+        id: currentCollection.id,
+        name: currentCollection.name || "Collection",
+      });
     }
-  }, [currentCollection, isFetchingCollection]);
+  }, [
+    currentCollection,
+    isFetchingCollection,
+    isBreadcrumbEnabled,
+    reportLocation,
+  ]);
 
   const onClickItem = (item: MetabaseCollectionItem) => {
     onClick?.(item);
 
     if (item.model === "collection") {
+      // Update internal state for navigation (used when breadcrumbs are not available)
       setInternalCollectionId(item.id as CollectionId);
+
+      // If breadcrumbs are enabled, report the new location which will build the breadcrumb stack
+      // and trigger the useEffect that updates currentLocation
+      if (isBreadcrumbEnabled) {
+        reportLocation({
+          type: "collection",
+          id: item.id,
+          name: item.name,
+        });
+      }
     }
   };
 

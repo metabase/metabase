@@ -1,8 +1,6 @@
 import { createContext, useContext, useEffect, useMemo } from "react";
 
-import { StaticQuestionSdkMode } from "embedding-sdk/components/public/StaticQuestion/mode";
 import { useLoadQuestion } from "embedding-sdk/hooks/private/use-load-question";
-import { useSdkBreadcrumb } from "embedding-sdk/hooks/private/use-sdk-breadcrumb";
 import { transformSdkQuestion } from "embedding-sdk/lib/transform-question";
 import { useSdkDispatch, useSdkSelector } from "embedding-sdk/store";
 import { getPlugins } from "embedding-sdk/store/selectors";
@@ -135,10 +133,6 @@ export const SdkQuestionProvider = ({
 
   const mode = (question && getClickActionMode({ question })) ?? null;
 
-  const { updateCurrentLocation } = useSdkBreadcrumb({
-    consumer: "question",
-  });
-
   const questionContext: SdkQuestionContextType = {
     originalId: questionId,
     isQuestionLoading,
@@ -176,16 +170,6 @@ export const SdkQuestionProvider = ({
   useEffect(() => {
     dispatch(setEntityTypes(entityTypes));
   }, [dispatch, entityTypes]);
-
-  useEffect(() => {
-    if (question) {
-      updateCurrentLocation({
-        type: "question",
-        id: question.id(),
-        name: question.displayName() ?? "Question",
-      });
-    }
-  }, [question, updateCurrentLocation]);
 
   return (
     <SdkQuestionContext.Provider value={questionContext}>
