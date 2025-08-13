@@ -1,7 +1,7 @@
 import { action } from "@storybook/addon-actions";
 
 import { ReduxProvider } from "__support__/storybook";
-import { Flex } from "metabase/ui";
+import { Flex, Text } from "metabase/ui";
 
 import { type UpsellCardProps, _UpsellCard } from "./UpsellCard";
 
@@ -45,12 +45,23 @@ const argTypes = {
   },
 };
 
+const Wrapper = (args: {
+  children: React.ReactNode;
+  style?: React.CSSProperties;
+}) => {
+  return (
+    <ReduxProvider>
+      <Flex justify="center" style={args.style}>
+        {args.children}
+      </Flex>
+    </ReduxProvider>
+  );
+};
+
 const DefaultTemplate = (args: UpsellCardProps) => (
-  <ReduxProvider>
-    <Flex justify="center">
-      <_UpsellCard {...args} />
-    </Flex>
-  </ReduxProvider>
+  <Wrapper>
+    <_UpsellCard {...args} />
+  </Wrapper>
 );
 
 export default {
@@ -89,12 +100,17 @@ export const FullWidthVariant = {
   args: { ...args, fullWidth: true },
 };
 
-export const LargeMaxWidth500Variant = {
-  render: DefaultTemplate,
-  args: { ...args, large: true, maxWidth: 500 },
-};
-
 export const LargeFullWidthVariant = {
-  render: DefaultTemplate,
-  args: { ...args, large: true, fullWidth: true },
+  render: (args: UpsellCardProps) => {
+    return (
+      <Wrapper style={{ width: 600 }}>
+        <_UpsellCard {...args}>
+          <Text lh="1.5rem" style={{ paddingInlineStart: "2rem" }}>
+            learn more
+          </Text>
+        </_UpsellCard>
+      </Wrapper>
+    );
+  },
+  args: { ...args, large: true, fullWidth: true, maxWidth: 800 },
 };
