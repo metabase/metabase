@@ -21,7 +21,7 @@ interface UseCardEmbedDataResult {
   card?: Card;
   dataset?: Dataset;
   isLoading: boolean;
-  rawSeries: RawSeries[] | null;
+  rawSeries: RawSeries | null;
   error?: string | null;
 }
 
@@ -34,7 +34,7 @@ function buildAdhocQueryParams(card: Card) {
   };
 }
 
-function buildRawSeries(card: Card, dataset: Dataset): RawSeries[] {
+function buildRawSeries(card: Card, dataset: Dataset): RawSeries {
   return [
     {
       card,
