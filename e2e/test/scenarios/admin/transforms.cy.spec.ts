@@ -31,12 +31,10 @@ describe("scenarios > admin > transforms", () => {
 
   describe("creation", () => {
     it("should be able to create and run an mbql transform", () => {
-      cy.log("open the new transform page");
+      cy.log("create a new transform");
       visitTransformListPage();
       getTransformListPage().button("Create a transform").click();
       H.popover().findByText("Query builder").click();
-
-      cy.log("set the query");
       H.entityPickerModal().within(() => {
         cy.findByText(DB_NAME).click();
         cy.findByText(SOURCE_TABLE).click();
@@ -57,12 +55,10 @@ describe("scenarios > admin > transforms", () => {
     });
 
     it("should be able to create and run a SQL transform", () => {
-      cy.log("open the new transform page");
+      cy.log("create a new transform");
       visitTransformListPage();
       getTransformListPage().button("Create a transform").click();
       H.popover().findByText("SQL query").click();
-
-      cy.log("set the query");
       H.popover().findByText(DB_NAME).click();
       H.NativeEditor.type(`SELECT * FROM "${TARGET_SCHEMA}"."${SOURCE_TABLE}"`);
       getQueryEditor().button("Save").click();
@@ -81,7 +77,36 @@ describe("scenarios > admin > transforms", () => {
     });
 
     it("should be able to create and run a transform from a question", () => {
-      cy.log("TBD");
+      cy.log("create a query in the target database");
+      H.getTableId({ name: SOURCE_TABLE, databaseId: WRITABLE_DB_ID }).then(
+        (tableId) =>
+          H.createQuestion({
+            name: "Test question",
+            database: WRITABLE_DB_ID,
+            query: {
+              "source-table": tableId,
+            },
+          }),
+      );
+
+      cy.log("create a new transform");
+      visitTransformListPage();
+      getTransformListPage().button("Create a transform").click();
+      H.popover().findByText("A saved question").click();
+      H.entityPickerModal().findByText("Test question").click();
+      getQueryEditor().button("Save").click();
+      H.modal().within(() => {
+        cy.findByLabelText("Name").type("SQL transform");
+        cy.findByLabelText("Table name").type(TARGET_TABLE);
+        cy.button("Save").click();
+        cy.wait("@createTransform");
+      });
+
+      cy.log("run the transform and make sure its table can be queried");
+      runAndWaitForSuccess();
+      getTableLink().click();
+      H.queryBuilderHeader().findByText(DB_NAME).should("be.visible");
+      H.assertQueryBuilderRowCount(3);
     });
 
     it("should be able to create and run a transform from a model", () => {

@@ -81,7 +81,7 @@ export function QueryEditor({
       <EditorHeader
         isNew={isNew}
         isSaving={isSaving}
-        canSave={isQueryDirty && canSave}
+        canSave={canSave && (isNew || isQueryDirty)}
         onSave={handleSave}
         onCancel={onCancel}
       />
