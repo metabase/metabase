@@ -20,8 +20,11 @@
 }
 
 .listBody {
+  position: relative;
+  max-width: 75rem;
   width: 100%;
   height: 100%;
+  margin: auto;
   gap: var(--mantine-spacing-sm);
   padding-inline: calc(50% - var(--max-width) / 2);
   overflow: auto;
@@ -38,6 +41,11 @@
 }
 
 .listItem {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  max-width: 75rem;
   cursor: pointer;
   border: 1px solid var(--mb-color-border);
   border-radius: var(--mantine-radius-md);

@@ -75,75 +75,93 @@ export function ListView({
           ))}
         </Flex>
 
-        <Stack className={styles.listBody} ref={scrollRef}>
-          {virtualRows.map(({ key, index }) => {
-            const row = rows[index];
-            return (
-              <Box
-                key={key}
-                className={styles.listItem}
-                onClick={() => openObjectDetail(index)}
-              >
-                <Flex align="center" gap="md" style={{ flexShrink: 0 }}>
-                  {imageColumn && (
-                    <Image
-                      src={row[cols.indexOf(imageColumn)]}
-                      alt=""
-                      w={32}
-                      h={32}
-                      radius="xl"
-                      style={{ flexShrink: 0 }}
-                    />
-                  )}
-                  <div style={{ minWidth: 0, flex: 1 }}>
-                    {titleColumn && (
-                      <Text
-                        fw="bold"
-                        truncate
-                        style={{ color: "var(--mb-color-brand)" }}
-                      >
-                        {formatValue(row[cols.indexOf(titleColumn)], {
-                          ...(settings.column?.(titleColumn) || {}),
-                          jsx: true,
-                          rich: true,
-                        })}
-                      </Text>
-                    )}
-                    {subtitleColumn && (
-                      <Text size="xs" c="text-secondary" truncate fw="bold">
-                        {formatValue(row[cols.indexOf(subtitleColumn)], {
-                          ...(settings.column?.(subtitleColumn) || {}),
-                          jsx: true,
-                          rich: true,
-                        })}
-                      </Text>
-                    )}
-                  </div>
-                </Flex>
+        <div
+          style={{
+            height: "100%",
+            overflowY: "auto",
+          }}
+          ref={scrollRef}
+        >
+          <div
+            style={{
+              height: virtualizer.getTotalSize(),
+              position: "relative",
+            }}
+          >
+            <Stack className={styles.listBody}>
+              {virtualRows.map(({ key, index, start }) => {
+                const row = rows[index];
+                return (
+                  <Box
+                    key={key}
+                    className={styles.listItem}
+                    onClick={() => openObjectDetail(index)}
+                    style={{
+                      transform: `translateY(${start}px)`,
+                    }}
+                  >
+                    <Flex align="center" gap="md" style={{ flexShrink: 0 }}>
+                      {imageColumn && (
+                        <Image
+                          src={row[cols.indexOf(imageColumn)]}
+                          alt=""
+                          w={32}
+                          h={32}
+                          radius="xl"
+                          style={{ flexShrink: 0 }}
+                        />
+                      )}
+                      <div style={{ minWidth: 0, flex: 1 }}>
+                        {titleColumn && (
+                          <Text
+                            fw="bold"
+                            truncate
+                            style={{ color: "var(--mb-color-brand)" }}
+                          >
+                            {formatValue(row[cols.indexOf(titleColumn)], {
+                              ...(settings.column?.(titleColumn) || {}),
+                              jsx: true,
+                              rich: true,
+                            })}
+                          </Text>
+                        )}
+                        {subtitleColumn && (
+                          <Text size="xs" c="text-secondary" truncate fw="bold">
+                            {formatValue(row[cols.indexOf(subtitleColumn)], {
+                              ...(settings.column?.(subtitleColumn) || {}),
+                              jsx: true,
+                              rich: true,
+                            })}
+                          </Text>
+                        )}
+                      </div>
+                    </Flex>
 
-                {rightColumns.map((col, colIndex) => {
-                  const value = formatValue(row[cols.indexOf(col)], {
-                    ...(settings.column?.(col) || {}),
-                    jsx: true,
-                    rich: true,
-                  });
-                  return (
-                    <div
-                      key={colIndex}
-                      style={{
-                        flexShrink: 0,
-                      }}
-                    >
-                      <Text size="sm" c="text-secondary" truncate>
-                        {value}
-                      </Text>
-                    </div>
-                  );
-                })}
-              </Box>
-            );
-          })}
-        </Stack>
+                    {rightColumns.map((col, colIndex) => {
+                      const value = formatValue(row[cols.indexOf(col)], {
+                        ...(settings.column?.(col) || {}),
+                        jsx: true,
+                        rich: true,
+                      });
+                      return (
+                        <div
+                          key={colIndex}
+                          style={{
+                            flexShrink: 0,
+                          }}
+                        >
+                          <Text size="sm" c="text-secondary" truncate>
+                            {value}
+                          </Text>
+                        </div>
+                      );
+                    })}
+                  </Box>
+                );
+              })}
+            </Stack>
+          </div>
+        </div>
       </Stack>
     </Stack>
   );
