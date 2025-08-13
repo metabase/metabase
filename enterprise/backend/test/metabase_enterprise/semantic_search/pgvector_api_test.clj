@@ -26,8 +26,6 @@
         index-metadata (semantic.tu/unique-index-metadata)
         model1         semantic.tu/mock-embedding-model
         model2         (assoc semantic.tu/mock-embedding-model :model-name "embed-harder")
-             ;; this takes transaction!!! -- maybe should create transaction our of pgvector!!!
-             ;;
         sut*           semantic.pgvector-api/init-semantic-search!
         cleanup        (fn [_] (semantic.tu/cleanup-index-metadata! pgvector index-metadata))
         sut            #(semantic.tu/closeable (apply sut* %&) cleanup)]
@@ -39,7 +37,7 @@
           (is (= (:model-name model1) (:model_name (:metadata-row active-state))))
           (testing "idempotent"
             (let [new-index @(sut pgvector index-metadata model1)]
-              (is (= @index-ref @(def nn new-index)))
+              (is (= @index-ref new-index))
               (is (= active-state (semantic.index-metadata/get-active-index-state pgvector index-metadata)))))))
       (testing "switch to model1"
         (let [new-index    @(sut pgvector index-metadata model2)
