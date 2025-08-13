@@ -203,6 +203,10 @@ export function ListView({
                       const isBooleanColumn = col.base_type === "type/Boolean";
                       const rawValue = row[cols.indexOf(col)];
 
+                      // Check if this is a category column
+                      const isCategoryColumn =
+                        col.semantic_type === "type/Category";
+
                       return (
                         <div key={colIndex}>
                           {isBooleanColumn ? (
@@ -223,6 +227,23 @@ export function ListView({
                                 {value}
                               </Text>
                             </Flex>
+                          ) : isCategoryColumn &&
+                            rawValue != null &&
+                            rawValue !== "" ? (
+                            <Box
+                              style={{
+                                padding: "4px 8px",
+                                borderRadius: "100px",
+                                border: "1px solid var(--mb-color-border)",
+                                backgroundColor:
+                                  "var(--mb-color-background-light)",
+                                display: "inline-block",
+                              }}
+                            >
+                              <Text fw="bold" size="sm" c="text-secondary">
+                                {value}
+                              </Text>
+                            </Box>
                           ) : (
                             <Text
                               fw="bold"
