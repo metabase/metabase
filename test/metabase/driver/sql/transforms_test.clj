@@ -9,6 +9,7 @@
 (deftest compile-transform-contract-test
   (testing "compile-transform should return [sql params] format"
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+      (testing "simple table name"
       (let [result (driver/compile-transform driver/*driver*
                                              {:query "SELECT * FROM products"
                                               :output-table :my_table})]
@@ -22,11 +23,32 @@
           ;; Different drivers may use different syntax
           (is (or (re-find #"(?i)INTO\s+.*my_table.*FROM" (first result))
                   (re-find #"(?i)CREATE\s+TABLE.*AS" (first result))
-                  (re-find #"(?i)CREATE\s+.*TABLE.*my_table" (first result)))))))))
+                    (re-find #"(?i)CREATE\s+.*TABLE.*my_table" (first result)))))))
+
+      (testing "schema-qualified table name"
+        (let [result (driver/compile-transform driver/*driver*
+                                               {:query "SELECT * FROM products"
+                                                :output-table :my_schema/my_table})]
+          (testing "returns a vector"
+            (is (vector? result)))
+          (testing "first element is SQL string"
+            (is (string? (first result))))
+          (testing "has at least 1 element (sql required)"
+            (is (>= (count result) 1)))
+          (testing "includes both schema and table parts"
+            (let [sql (first result)]
+              ;; Both parts should appear in the SQL
+              (is (re-find #"my_schema" sql) "Schema name should be present")
+              (is (re-find #"my_table" sql) "Table name should be present")
+              ;; Should generate valid create statement
+              (is (or (re-find #"(?i)INTO\s+.*my_table.*FROM" sql)
+                      (re-find #"(?i)CREATE\s+TABLE.*AS" sql)
+                      (re-find #"(?i)CREATE\s+.*TABLE" sql))))))))))
 
 (deftest compile-drop-table-contract-test
   (testing "compile-drop-table should return [sql params] format"
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+      (testing "simple table name"
       (let [result (driver/compile-drop-table driver/*driver* :my_table)]
         (testing "returns a vector"
           (is (vector? result)))
@@ -35,7 +57,24 @@
         (testing "has at least 1 element (sql required)"
           (is (>= (count result) 1)))
         (testing "generates DROP TABLE IF EXISTS statement"
-          (is (re-find #"(?i)DROP\s+TABLE\s+IF\s+EXISTS" (first result))))))))
+            (is (re-find #"(?i)DROP\s+TABLE\s+IF\s+EXISTS" (first result))))
+          (testing "includes table name"
+            (is (re-find #"my_table" (first result))))))
+
+      (testing "schema-qualified table name"
+        (let [result (driver/compile-drop-table driver/*driver* :my_schema/my_table)]
+          (testing "returns a vector"
+            (is (vector? result)))
+          (testing "first element is SQL string"
+            (is (string? (first result))))
+          (testing "has at least 1 element (sql required)"
+            (is (>= (count result) 1)))
+          (testing "generates DROP TABLE IF EXISTS statement"
+            (is (re-find #"(?i)DROP\s+TABLE\s+IF\s+EXISTS" (first result))))
+          (testing "includes both schema and table parts"
+            (let [sql (first result)]
+              (is (re-find #"my_schema" sql) "Schema name should be present")
+              (is (re-find #"my_table" sql) "Table name should be present"))))))))
 
 (deftest execute-transform-assembles-queries-test
   (testing "execute-transform! should pass correct format to execute-raw-queries!"
