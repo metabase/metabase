@@ -73,19 +73,19 @@
 
 (defmethod tx/sorts-nil-first? :clickhouse [_ _] false)
 
-(defmethod tx/dbdef->connection-details :clickhouse [_ context {:keys [database-name]}]
+(defmethod tx/dbdef->connection-details :clickhouse [driver context {:keys [database-name]}]
   (merge
    {:host     (mt/db-test-env-var :clickhouse :host)
     :port     (Integer/parseInt (mt/db-test-env-var :clickhouse :port))
-    :enable-multiple-db true}
+    :enable-multiple-db (not tx/*use-routing-dataset*)}
    (when-let [user (mt/db-test-env-var :clickhouse :user)]
      {:user user})
    (when-let [password (mt/db-test-env-var :clickhouse :password)]
      {:password password})
    (when (= context :db)
-     {:db database-name
+     {:db (ddl.i/format-name driver database-name)
       :db-filters-type "inclusion"
-      :db-filters-patterns database-name})))
+      :db-filters-patterns (ddl.i/format-name driver database-name)})))
 
 (defmethod sql.tx/qualified-name-components :clickhouse
   ([_ db-name]                       [db-name])

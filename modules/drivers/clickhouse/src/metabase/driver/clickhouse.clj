@@ -53,7 +53,7 @@
                               :describe-fks                    false
                               :actions                         false
                               :metadata/key-constraints        (not driver-api/is-test?)
-                              :database-routing                false}]
+                              :database-routing                true}]
   (defmethod driver/database-supports? [:clickhouse feature] [_driver _feature _db] supported?))
 
 (defmethod driver/database-supports? [:clickhouse :schemas]
@@ -65,17 +65,17 @@
 
 (defn- connection-details->spec* [details]
   (let [;; ensure defaults merge on top of nils
-        details (reduce-kv (fn [m k v] (assoc m k (or v (k default-connection-details))))
+        details (reduce-kv (fn [m k v] (assoc m k (if (nil? v) (k default-connection-details) v)))
                            default-connection-details
                            details)
-        {:keys [user password dbname host port ssl clickhouse-settings max-open-connections]} details
+        {:keys [user password dbname db enable-multiple-db host port ssl clickhouse-settings max-open-connections]} details
         host   (cond ; JDBCv1 used to accept schema in the `host` configuration option
                  (str/starts-with? host "http://")  (subs host 7)
                  (str/starts-with? host "https://") (subs host 8)
                  :else host)]
     (-> {:classname                      "com.clickhouse.jdbc.ClickHouseDriver"
          :subprotocol                    "clickhouse"
-         :subname                        (str "//" host ":" port "/" dbname)
+         :subname                        (str "//" host ":" port "/" (if enable-multiple-db dbname db))
          :password                       (or password "")
          :user                           user
          :ssl                            (boolean ssl)
