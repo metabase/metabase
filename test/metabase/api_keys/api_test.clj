@@ -10,9 +10,9 @@
    [metabase.test.http-client :as client]
    [toucan2.core :as t2]))
 
-(use-fixtures :once (fixtures/initialize :test-users :web-server))
+(use-fixtures :once (fixtures/initialize :db :test-users :web-server))
 
-(deftest ^:parallel api-key-creation-test
+(deftest api-key-creation-test
   (mt/with-temp [:model/PermissionsGroup {group-id :id} {:name "Cool Friends"}]
     (testing "POST /api/api-key works"
       (let [name (str (random-uuid))
@@ -26,7 +26,7 @@
         (is (= {:name "Cool Friends" :id group-id} (:group resp)))
         (is (= name (:name resp)))))))
 
-(deftest ^:parallel api-key-creation-test-2
+(deftest api-key-creation-test-2
   (mt/with-temp [:model/PermissionsGroup {group-id :id} {:name "Cool Friends"}]
     (testing "Trying to create another API key with the same name fails"
       (let [key-name (str (random-uuid))]
@@ -81,7 +81,7 @@
                                                    {:group_id group-id
                                                     :name     (str (random-uuid))}))))))))))
 
-(deftest ^:parallel api-key-creation-test-5
+(deftest api-key-creation-test-5
   (testing "POST /api/api-key"
     (testing "A group is required"
       (is (= {:errors          {:group_id "value must be an integer greater than zero."}
@@ -90,7 +90,7 @@
                                    {:group_id nil
                                     :name     (str (random-uuid))}))))))
 
-(deftest ^:parallel api-key-creation-test-6
+(deftest api-key-creation-test-6
   (testing "POST /api/api-key"
     (testing "The group can be 'All Users'"
       (is (mt/user-http-request :crowberto :post 200 "api-key"
@@ -102,7 +102,7 @@
                                             :name (str (random-uuid))})
                      [:group :name]))))))
 
-(deftest ^:parallel api-key-creation-test-7
+(deftest api-key-creation-test-7
   (mt/with-temp [:model/PermissionsGroup {group-id :id} {:name "Cool Friends"}]
     (testing "A non-empty name is required"
       (is (= {:errors          {:name "value must be a non-blank string."}
@@ -111,7 +111,7 @@
                                    {:group_id group-id
                                     :name     ""}))))))
 
-(deftest ^:parallel api-key-creation-test-8
+(deftest api-key-creation-test-8
   (mt/with-temp [:model/PermissionsGroup {group-id :id} {:name "Cool Friends"}]
     (testing "A non-blank name is required"
       (is (= {:errors          {:name "value must be a non-blank string."}
@@ -161,7 +161,7 @@
         (is (= "Unauthenticated"
                (client/client :get 401 "user/current" {:request-options {:headers {"x-api-key" api-key}}})))))))
 
-(deftest ^:parallel api-keys-can-be-updated
+(deftest api-keys-can-be-updated
   (mt/with-temp [:model/PermissionsGroup {group-id-1 :id} {:name "Cool Friends"}
                  :model/PermissionsGroup {group-id-2 :id} {:name "Uncool Friends"}]
     ;; create the API Key
@@ -187,7 +187,7 @@
         (is (not (member-of-group? group-id-1)))
         (is (member-of-group? group-id-2))))))
 
-(deftest ^:parallel api-keys-can-be-updated-2
+(deftest api-keys-can-be-updated-2
   (mt/with-temp [:model/PermissionsGroup {group-id-1 :id} {:name "Cool Friends"}]
     (testing "You can change the name of an API key"
       (let [name-1      (str "My First Name" (random-uuid))
@@ -208,11 +208,11 @@
                  (set (keys (mt/user-http-request :crowberto :put 200 (str "api-key/" id)
                                                   {:name name-1}))))))))))
 
-(deftest ^:parallel api-keys-can-be-updated-3
+(deftest api-keys-can-be-updated-3
   (testing "A nonexistent API Key can't be updated"
     (mt/user-http-request :crowberto :put 404 (format "api-key/%s/regenerate" (+ 13371337 (rand-int 100))))))
 
-(deftest ^:parallel api-keys-can-be-regenerated
+(deftest api-keys-can-be-regenerated
   (testing "You can regenerate an API key"
     (mt/with-temp [:model/PermissionsGroup {group-id :id} {:name "Cool Friends"}]
       (let [{id :id old-key :unmasked_key, :as response}
@@ -236,7 +236,7 @@
         (is (=? {}
                 (client/client :get 200 "user/current" {:request-options {:headers {"x-api-key" new-key}}})))))))
 
-(deftest ^:parallel api-keys-can-be-regenerated-2
+(deftest api-keys-can-be-regenerated-2
   (testing "A nonexistent API Key can't be regenerated"
     (mt/user-http-request :crowberto
                           :put 404 (format "api-key/%s/regenerate" (+ 13371337 (rand-int 100))))))
@@ -382,7 +382,7 @@
                      :user_id  (mt/user->id :crowberto)}
                     (mt/latest-audit-log-entry :api-key-delete id)))))))))
 
-(deftest ^:parallel do-not-mark-user-inactive-when-deleting-api-key-for-normal-user-test
+(deftest do-not-mark-user-inactive-when-deleting-api-key-for-normal-user-test
   (mt/with-temp [:model/ApiKey {api-key-id :id} {::api-keys/unhashed-key "mb_1234567890"
                                                  :name                   (mt/random-name)
                                                  :user_id                (mt/user->id :crowberto)
