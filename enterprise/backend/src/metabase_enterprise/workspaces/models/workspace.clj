@@ -105,6 +105,7 @@
 (mr/def ::workspace
   [:map
    [:id {:optional true} [:maybe [:int {:min 1}]]]
+   [:slug {:optional true} [:maybe [:string {:min 1}]]]
    [:collection_id {:optional true} [:maybe [:int {:min 1}]]]
    [:name [:string {:min 1}]]
    [:description {:optional true} [:maybe :string]]
@@ -154,9 +155,12 @@
 (defn- sort-toplevel-keys
   "Sorts top-level keys in the order they're defined in the schema."
   [k1 k2]
-  (let [order (zipmap (mut/keys (mr/resolve-schema ::workspace)) (range))]
-    (compare (get order k1 Integer/MAX_VALUE)
-             (get order k2 Integer/MAX_VALUE))))
+  (let [order (zipmap (mut/keys (mr/resolve-schema ::workspace)) (range))
+        a (get order k1)
+        b (get order k2)]
+    (if (and a b)
+      (compare a b)
+      (compare (name k1) (name k2)))))
 
 (defn- created-at-sort
   "Sort a collection of workspaces by their `created_at` timestamp, newest first.
