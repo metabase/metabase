@@ -14,12 +14,15 @@
    [metabase.server.middleware.session :as mw.session]
    [metabase.session.core :as session]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [metabase.util.i18n :as i18n]
    [metabase.util.secret :as u.secret]
    [ring.mock.request :as ring.mock]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
+
+(use-fixtures :once (fixtures/initialize :db :test-users :web-server))
 
 (def ^:private session-cookie request/metabase-session-cookie)
 (def ^:private session-timeout-cookie request/metabase-session-timeout-cookie)
@@ -103,7 +106,7 @@
               :uri                 "/anyurl"}
              (select-keys (wrapped-handler request) [:anti-csrf-token :cookies :metabase-session-key :uri]))))))
 
-(deftest ^:parallel current-user-info-for-api-key-test
+(deftest current-user-info-for-api-key-test
   (mt/with-temp [:model/ApiKey _ {:name                  "An API Key"
                                   :user_id               (mt/user->id :lucky)
                                   :creator_id            (mt/user->id :lucky)
