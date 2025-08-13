@@ -64,8 +64,7 @@
                               :identifiers-with-spaces                true
                               :split-part                             true
                               :now                                    true
-                              :database-routing                       true
-                              :metadata/table-existence-check true}]
+                              :database-routing                       true}]
   (defmethod driver/database-supports? [:snowflake feature] [_driver _feature _db] supported?))
 
 (defmethod driver/humanize-connection-error-message :snowflake
@@ -846,44 +845,7 @@
 (defmethod sql-jdbc/impl-query-canceled? :snowflake [_ e]
   (= (sql-jdbc/get-sql-state e) "57014"))
 
-(defmethod sql-jdbc/impl-table-known-to-not-exist? :snowflake
-  [_ e]
-  (= (sql-jdbc/get-sql-state e) "42S02"))
-
-(defmethod driver/table-exists? :snowflake
-  [driver database {:keys [schema name]}]
-  (let [db-name (db-name database)]
-    (sql-jdbc.execute/do-with-connection-with-options
-     driver
-     database
-     nil
-     (fn [^Connection conn]
-       (let [^DatabaseMetaData metadata (.getMetaData conn)
-             schema-name (escape-name-for-metadata schema)
-             table-name (escape-name-for-metadata name)]
-         (with-open [rs (.getTables metadata db-name schema-name table-name nil)]
-           (.next rs)))))))
-
 (defmethod driver/set-database-used! :snowflake [_driver conn db]
   (let [sql (format "USE DATABASE \"%s\"" (db-name db))]
     (with-open [stmt (.createStatement ^java.sql.Connection conn)]
       (.execute stmt sql))))
-
-;; Override run-transform! to set the database context first
-(defmethod driver/run-transform! [:snowflake :table]
-  [driver {:keys [connection-details query output-table]} opts]
-  ;; We need to ensure the database is set in the connection before executing queries,
-  ;; otherwise Snowflake will complain about missing database context
-  (let [driver (keyword driver)
-        queries (cond->> [(driver/compile-transform driver
-                                                    {:query query
-                                                     :output-table output-table})]
-                  (:overwrite? opts) (cons (driver/compile-drop-table driver output-table)))
-        ;; Get database name from connection details
-        db-name-val (or (:db connection-details)
-                        (:dbname connection-details))
-        ;; Only add USE DATABASE if we have a database name
-        all-queries (if db-name-val
-                      (cons [(format "USE DATABASE \"%s\"" db-name-val)] queries)
-                      queries)]
-    {:rows-affected (last (driver/execute-raw-queries! driver connection-details all-queries))}))
