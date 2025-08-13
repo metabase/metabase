@@ -3,6 +3,7 @@
    #_[honey.sql :as sql]
    #_[metabase-enterprise.semantic-search.env :as semantic.env]
    #_[metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]
+   #_[metabase-enterprise.semantic-search.pgvector-api :as semantic.pgvector-api]
    #_[metabase-enterprise.semantic-search.test-util :as semantic.tu]
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
@@ -73,35 +74,37 @@
 
 ;; TODO: mechanism to completely avoid any migration (init, reindex) calls during this test!
 ;; TODO: scheduler.pauseJob(JobKey.jobKey("myJob", "myGroup"));
-(deftest versions-test
+(deftest migraion-table-versions-test
   (with-test-db "my_test_db"
-    (with-redefs [semantic.db.migration.impl/migrate! (constantly nil)]
-      (letfn [(migrate-and-get-db-version
-                [attempted-version]
-                (with-redefs [semantic.db.migration.impl/code-version attempted-version]
-                  (log.capture/with-log-messages-for-level [messages [metabase-enterprise.semantic-search.db.migration :info]]
-                    (semantic.db.connection/with-migrate-tx [tx]
-                      (semantic.db.migration/maybe-migrate! tx nil)
-                      {:messages (messages)
-                       :db-version (@#'semantic.db.migration/db-version tx)}))))]
-        (testing "Migration up works"
-          (u/prog1 (migrate-and-get-db-version 130)
-            (is (= 130 (:db-version <>)))
-            (is (m/find-first (comp #{"Starting migration from version -1 to 130."} :message)
-                              (:messages <>)))))
-        (testing "Migration down is noop"
-          (u/prog1 (migrate-and-get-db-version 1)
-            (is (= 130 (:db-version <>)))
-            (is (m/find-first
-                 (comp #{(str "Database schema version (130) is newer than "
-                              "code version (1). Not performing migration.")}
-                       :message)
-                 (:messages <>)))))
-        (testing "Migration to the same version is noop"
-          (u/prog1 (migrate-and-get-db-version 130)
-            (is (= 130 (:db-version <>)))
-            (is (m/find-first (comp #{"Migration already performed, skipping."} :message)
-                              (:messages <>)))))))))
+    (letfn [(migrate-and-get-db-version
+              [attempted-version]
+              (with-redefs [semantic.db.migration.impl/code-version attempted-version
+                            semantic.db.migration.impl/migrate-schema! (constantly nil)
+                                 ;; TODO:
+                            semantic.db.migration/maybe-migrate-dynamic-schema! (constantly 303)]
+                (log.capture/with-log-messages-for-level [messages [metabase-enterprise.semantic-search.db.migration :info]]
+                  (semantic.db.connection/with-migrate-tx [tx]
+                    (semantic.db.migration/maybe-migrate! tx nil)
+                    {:messages @(def ahoj (messages))
+                     :db-version (@#'semantic.db.migration/db-version tx)}))))]
+      (testing "Migration up works"
+        (u/prog1 (migrate-and-get-db-version 130)
+          (is (= 130 (:db-version <>)))
+          (is (m/find-first (comp #{"Starting migration from version -1 to 130."} :message)
+                            (:messages <>)))))
+      (testing "Migration down is noop"
+        (u/prog1 (migrate-and-get-db-version 1)
+          (is (= 130 (:db-version <>)))
+          (is (m/find-first
+               (comp #{(str "Database schema version (130) is newer than "
+                            "code version (1). Not performing migration.")}
+                     :message)
+               (:messages <>)))))
+      (testing "Migration to the same version is noop"
+        (u/prog1 (migrate-and-get-db-version 130)
+          (is (= 130 (:db-version <>)))
+          (is (m/find-first (comp #{"Migration already performed, skipping."} :message)
+                            (:messages <>))))))))
 
 ;; TODO: Should ensure this will run also in CI (env, etc.)
 ;; TODO: Ensure some documents? -- probably supefluous
@@ -137,7 +140,7 @@
                     f1 (future
                          (swap! results assoc :tid-first (.getId (Thread/currentThread)))
                          (semantic.core/init! (eduction (take 3) (search.ingestion/searchable-documents)) nil))
-                    ;; thread 2 attempts migration shortly
+                    ;; thread 2 attempts migration 
                     f2 (future
                          (swap! results assoc :tid-second (.getId (Thread/currentThread)))
                          (Thread/sleep 100)
@@ -170,76 +173,85 @@
   (when (and (= "openai" (semantic.settings/ee-embedding-provider))
              (str/starts-with? (semantic.settings/ee-embedding-model) "text-embedding-3")
              (string? (not-empty (semantic.settings/openai-api-key))))
-    (testing "pgvector database has expected schema"
-      (with-test-db "my_migration_testing_db"
-        (semantic.core/init! (eduction (take 3) (search.ingestion/searchable-documents)) nil)
-        (testing "migration table"
+    (with-test-db "my_migration_testing_db"
+      (semantic.core/init! (eduction (take 3) (search.ingestion/searchable-documents)) nil)
+      (testing "migration table has expected columns"
+        (is (map-contains-keys?
+             (jdbc/execute-one! (semantic.db.datasource/ensure-initialized-data-source!)
+                                (sql/format {:select [:*]
+                                             :from [:migration]}))
+             (qualify :migration [:finished_at
+                                  :status
+                                  :version]))))
+      (testing "control table has expected columns"
+        (is (map-contains-keys?
+             (jdbc/execute-one! (semantic.db.datasource/ensure-initialized-data-source!)
+                                (sql/format {:select [:*]
+                                             :from [:index_control]}))
+             (qualify :index_control [:active_id
+                                      :active_updated_at
+                                      :id
+                                      :version]))))
+      (testing "metadata table has expected columns"
+        (is  (map-contains-keys?
+              (jdbc/execute-one! (semantic.db.datasource/ensure-initialized-data-source!)
+                                 (sql/format {:select [:*]
+                                              :from [:index_metadata]}))
+              (qualify :index_metadata [:id
+                                        :index_created_at
+                                        :index_version
+                                        :indexer_last_poll
+                                        :indexer_last_seen
+                                        :indexer_last_seen_hash
+                                        :indexer_last_seen_id
+                                        :model_name
+                                        :provider
+                                        :table_name
+                                        :vector_dimensions]))))
+      (testing "index table has expected columns"
+        (let [index-table-kw (->
+                              (jdbc/execute-one! (semantic.db.datasource/ensure-initialized-data-source!)
+                                                 (sql/format {:select [[:im.table_name]]
+                                                              :from [[:index_control :ic]]
+                                                              :join [[:index_metadata :im]
+                                                                     [:= :ic.active_id :im.id]]}))
+                              :index_metadata/table_name keyword)]
           (is (map-contains-keys?
                (jdbc/execute-one! (semantic.db.datasource/ensure-initialized-data-source!)
                                   (sql/format {:select [:*]
-                                               :from [:migration]}))
-               (qualify :migration [:finished_at
-                                    :status
-                                    :version]))))
-        (testing "control table has expected columns"
-          (is (map-contains-keys?
-               (jdbc/execute-one! (semantic.db.datasource/ensure-initialized-data-source!)
-                                  (sql/format {:select [:*]
-                                               :from [:index_control]}))
-               (qualify :index_control [:active_id
-                                        :active_updated_at
+                                               :from [index-table-kw]}))
+               (qualify index-table-kw [:archived
+                                        :collection_id
+                                        :content
+                                        :created_at
+                                        :creator_id
+                                        :dashboardcard_count
+                                        :database_id
+                                        :display_type
+                                        :embedding
                                         :id
-                                        :version]))))
-        (testing "metadata table has expected columns"
-          (is  (map-contains-keys?
-                (jdbc/execute-one! (semantic.db.datasource/ensure-initialized-data-source!)
-                                   (sql/format {:select [:*]
-                                                :from [:index_metadata]}))
-                (qualify :index_metadata [:id
-                                          :index_created_at
-                                          :index_version
-                                          :indexer_last_poll
-                                          :indexer_last_seen
-                                          :indexer_last_seen_hash
-                                          :indexer_last_seen_id
-                                          :model_name
-                                          :provider
-                                          :table_name
-                                          :vector_dimensions]))))
-        (testing "index table has expected columns"
-          (let [index-table-kw (->
-                                (jdbc/execute-one! (semantic.db.datasource/ensure-initialized-data-source!)
-                                                   (sql/format {:select [[:im.table_name]]
-                                                                :from [[:index_control :ic]]
-                                                                :join [[:index_metadata :im]
-                                                                       [:= :ic.active_id :im.id]]}))
-                                :index_metadata/table_name keyword)]
-            (is (map-contains-keys?
-                 (jdbc/execute-one! (semantic.db.datasource/ensure-initialized-data-source!)
-                                    (sql/format {:select [:*]
-                                                 :from [index-table-kw]}))
-                 (qualify index-table-kw [:archived
-                                          :collection_id
-                                          :content
-                                          :created_at
-                                          :creator_id
-                                          :dashboardcard_count
-                                          :database_id
-                                          :display_type
-                                          :embedding
-                                          :id
-                                          :last_editor_id
-                                          :last_viewed_at
-                                          :legacy_input
-                                          :metadata
-                                          :model
-                                          :model_created_at
-                                          :model_id
-                                          :model_updated_at
-                                          :name
-                                          :official_collection
-                                          :pinned
-                                          :text_search_vector
-                                          :text_search_with_native_query_vector
-                                          :verified
-                                          :view_count])))))))))
+                                        :last_editor_id
+                                        :last_viewed_at
+                                        :legacy_input
+                                        :metadata
+                                        :model
+                                        :model_created_at
+                                        :model_id
+                                        :model_updated_at
+                                        :name
+                                        :official_collection
+                                        :pinned
+                                        :text_search_vector
+                                        :text_search_with_native_query_vector
+                                        :verified
+                                        :view_count])))))
+      ;; Init does not add any row into this table, hence have to check information_schema
+      (testing "index table has expected columns"
+        (is (= ["document" "document_hash" "gated_at" "id" "model" "model_id" "updated_at"]
+               (->> (jdbc/execute! (semantic.db.datasource/ensure-initialized-data-source!)
+                                   (sql/format {:select [:column_name]
+                                                :from [:information_schema.columns]
+                                                :where [[:= :table_name [:inline "index_gate"]]]}))
+                    (map :columns/column_name)
+                    sort
+                    vec)))))))
