@@ -92,7 +92,7 @@ const Documents = createEntity({
           collection_id: canonicalCollectionId(collection && collection.id),
           archived: isRootTrashCollection(collection),
         },
-        undo({}, "document", "moved"),
+        undo({}, t`document`, t`moved`),
       ),
 
     setPinned: ({ id }: Document, pinned: number | boolean) =>

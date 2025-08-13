@@ -1,4 +1,9 @@
-import { PLUGIN_DOCUMENTS, PLUGIN_REDUCERS } from "metabase/plugins";
+import {
+  PLUGIN_DOCUMENTS,
+  PLUGIN_ENTITIES,
+  PLUGIN_REDUCERS,
+} from "metabase/plugins";
+import Documents from "metabase-enterprise/entities/document";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { DocumentBackButton } from "./components/DocumentBackButton";
@@ -13,4 +18,6 @@ if (hasPremiumFeature("documents")) {
   PLUGIN_DOCUMENTS.getCurrentDocument = getCurrentDocument;
 
   PLUGIN_REDUCERS.documents = documentsReducer;
+
+  PLUGIN_ENTITIES.entities["documents"] = Documents;
 }
