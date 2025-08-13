@@ -93,6 +93,7 @@ function getRunButtonInfo({
       label: t`Ran successfully`,
       color: "success",
       leftSection: <Icon name="check" aria-hidden />,
+      isDisabled,
     };
   }
 
@@ -100,5 +101,6 @@ function getRunButtonInfo({
     label: t`Run failed`,
     color: "error",
     leftSection: <Icon name="warning" aria-hidden />,
+    isDisabled,
   };
 }

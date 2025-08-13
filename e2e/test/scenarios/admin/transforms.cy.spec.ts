@@ -1,7 +1,11 @@
 const { H } = cy;
 
 import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
-import type { CardType, TransformTagId } from "metabase-types/api";
+import type {
+  CardType,
+  ListTransformRunsResponse,
+  TransformTagId,
+} from "metabase-types/api";
 
 const DB_NAME = "Writable Postgres12";
 const SOURCE_TABLE = "Animals";
@@ -689,6 +693,26 @@ describe("scenarios > admin > transforms > jobs", () => {
   });
 
   describe("schedule", () => {
+    it("should be able to run a job on a schedule", () => {
+      H.createTransformTag({ name: "New tag" }).then(({ body: tag }) => {
+        createMbqlTransform({
+          tagIds: [tag.id],
+        });
+        H.createTransformJob({
+          name: "New job",
+          schedule: "* * * * * ? *", // every second
+          tag_ids: [tag.id],
+        });
+      });
+      waitForRuns();
+      visitRunListPage();
+      getContentTable().within(() => {
+        cy.findAllByText("MBQL transform").should("have.length.gte", 1);
+        cy.findAllByText("Success").should("have.length.gte", 1);
+        cy.findAllByText("Schedule").should("have.length.gte", 1);
+      });
+    });
+
     it("should be able to change the schedule after creation", () => {
       H.createTransformJob({ name: "New job" }, { visitTransformJob: true });
       getJobPage().within(() => {
@@ -1057,6 +1081,10 @@ function visitJobListPage() {
   return cy.visit("/admin/transforms/jobs");
 }
 
+function visitRunListPage() {
+  return cy.visit("/admin/transforms/runs");
+}
+
 function runAndWaitForSuccess() {
   getRunButton().click();
   getRunButton().should("have.text", "Ran successfully");
@@ -1101,7 +1129,7 @@ function createMbqlTransform({
         },
         tag_ids: tagIds,
       },
-      { wrapId: true, visitTransform },
+      { visitTransform },
     );
   });
 }
@@ -1161,6 +1189,24 @@ function visitTableQuestion({
     },
     { visitQuestion: true },
   );
+}
+
+const WAIT_TIMEOUT = 10000;
+const WAIT_INTERVAL = 100;
+
+function waitForRuns(timeout = WAIT_TIMEOUT): Cypress.Chainable {
+  return cy
+    .request<ListTransformRunsResponse>("GET", "/api/ee/transform/run")
+    .then((response) => {
+      if (response.body.data.length > 0) {
+        return cy.wrap(response);
+      } else if (timeout > 0) {
+        cy.wait(WAIT_INTERVAL);
+        return waitForRuns(timeout - WAIT_INTERVAL);
+      } else {
+        throw new Error("Run retry timeout");
+      }
+    });
 }
 
 function assertTableDoesNotExistError({
