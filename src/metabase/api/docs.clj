@@ -3,8 +3,10 @@
   (:require
    [clojure.string :as str]
    [compojure.core :refer [GET]]
+   [medley.core :as m]
    [metabase.api.open-api :as open-api]
    [metabase.api.util.handlers :as handlers]
+   [metabase.util.log :as log]
    [ring.middleware.content-type :as content-type]
    [ring.util.response :as response]))
 
@@ -28,16 +30,35 @@
      (catch Throwable e
        (raise e)))))
 
+(defn- json [root-handler host session-token]
+  (m/deep-merge
+   (open-api/root-open-api-object root-handler)
+   {:servers [{:url         host
+               :description "Metabase API"}]
+    :components {:headers {"X-Metabase-Session"
+                           {:required true
+                            :schema   {:type    :string
+                                       :default session-token}}}}}))
+
+#_:clj-format/ignore
+(comment
+  (require '[metabase.logger.core :refer [set-ns-log-level!]])
+  (set-ns-log-level! :trace)
+  (json
+   (metabase.api.macros/ns-handler 'metabase.api.geojson)
+   "localhost:3000"
+   "AAA"))
+
 (defn- json-handler
   "Given the [[metabase.api-routes.core/routes]] handler, return a Ring handler that returns `openapi.json`."
   [root-handler]
   (fn handler*
-    ([_request]
-     {:status 200
-      :body  (merge
-              (open-api/root-open-api-object root-handler)
-              {:servers [{:url         ""
-                          :description "Metabase API"}]})})
+    ([request]
+     (let [session-token (get-in request [:cookies "metabase.SESSION" :value])]
+       (log/trace "session-token:" session-token)
+       (log/trace "(:host request):" (:host request))
+       {:status 200
+        :body  (json root-handler (:host request) session-token)}))
 
     ([request respond raise]
      (try

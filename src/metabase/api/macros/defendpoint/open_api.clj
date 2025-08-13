@@ -166,7 +166,10 @@
           params          (concat
                            (for [param route-params]
                              (assoc param :in :path))
-                           query-params)
+                           query-params
+                           [{:name "X-Metabase-Session"
+                             :in   :header
+                             :$ref "#/components/headers/X-Metabase-Session"}])
           ctype           (if (get-in form [:metadata :multipart])
                             "multipart/form-data"
                             "application/json")
@@ -178,7 +181,7 @@
           response-schema (:response-schema form)]
       ;; summary is the string in the sidebar of Scalar
       (cond-> {:summary     (str (u/upper-case-en (name method)) " " full-path)
-               :description (some-> (:docstr form) str)
+               :description (or (some-> (:docstr form) str) "TODO: add description")
                :parameters params
                :responses  default-response-schema}
         body-schema     (assoc :requestBody {:content {ctype {:schema body-schema}}})
@@ -205,23 +208,28 @@
   use [[metabase.api.open-api/root-open-api-object]] to get something complete."
   [endpoints :- :metabase.api.macros/ns-endpoints
    prefix    :- :string]
-  (binding [*definitions* (atom (sorted-map))]
-    {:paths (transduce
-             (map (fn [endpoint]
-                    (let [local-path (-> (get-in endpoint [:form :route :path])
-                                         (str/replace #"/:([^/]+)" "/{$1}"))
-                          full-path  (str prefix local-path)
-                          method     (get-in endpoint [:form :method])]
-                      {full-path {method (assoc (path-item full-path (:form endpoint))
-                                                :tags [prefix])}})))
-             m/deep-merge
-             (sorted-map)
-             (vals endpoints))
-     :components {:schemas @*definitions*}}))
+  (let [prefix (u/without-trailing-slash prefix)]
+    (binding [*definitions* (atom (sorted-map))]
+      {:paths (transduce
+               (map (fn [endpoint]
+                      (let [local-path (-> (get-in endpoint [:form :route :path])
+                                           (str/replace #"/:([^/]+)" "/{$1}"))
+                            full-path  (str prefix local-path)
+                            method     (get-in endpoint [:form :method])]
+                        {full-path {method (assoc (path-item full-path (:form endpoint))
+                                                  :tags [prefix])}})))
+               m/deep-merge
+               (sorted-map)
+               (vals endpoints))
+       :components {:schemas @*definitions*}})))
 
 #_:clj-kondo/ignore
 (comment
-  (open-api-spec (metabase.api.macros/ns-routes 'metabase.geojson.api) "/api/geojson")
+
+  (try
+    (open-api-spec (metabase.api.macros/ns-routes 'metabase-enterprise.transforms.api) "/api/ee/transform/")
+    (catch Throwable e
+      (ex-data e)))
 
   (metabase.api.macros.defendpoint.open-api/path-item
    "/api/card/:id/series"

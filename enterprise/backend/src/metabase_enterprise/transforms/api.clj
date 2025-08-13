@@ -69,13 +69,22 @@
                    (deferred-tru "The database does not support the requested transform target type."))))
 
 (api.macros/defendpoint :get "/"
-  "Get a list of transforms."
+  "Get a list of all transforms available to the current user.
+  
+  Returns a collection of transform objects, each hydrated with their last run status
+  and associated tag IDs. Requires superuser permissions."
   [_route-params
    _query-params]
   (api/check-superuser)
   (t2/hydrate (t2/select :model/Transform) :last_run :transform_tag_ids))
 
 (api.macros/defendpoint :post "/"
+  "Create a new transform with the specified configuration.
+  
+  Creates a transform that defines how to extract data from a source query and materialize it
+  into a target table or view. Validates that the database supports the requested feature and
+  that the target table doesn't already exist. Returns the created transform with associated
+  tag IDs. Requires superuser permissions."
   [_route-params
    _query-params
    body :- [:map
@@ -99,6 +108,7 @@
     (t2/hydrate transform :transform_tag_ids)))
 
 (api.macros/defendpoint :get "/:id"
+  "Get details of a specific transform by ID."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
   (log/info "get transform" id)
@@ -111,10 +121,11 @@
         (assoc :table target-table))))
 
 (api.macros/defendpoint :get "/run"
+  "Get a paginated list of transform run history."
   [_route-params
    {:keys [sort_column sort_direction transform_ids statuses transform_tag_ids]} :-
    [:map
-    [:sort_column    {:optional true} [:enum "started_at" "ended_at"]]
+    [:sort_column {:optional true} [:enum "started_at" "ended_at"]]
     [:sort_direction {:optional true} [:enum "asc" "desc"]]
     [:transform_ids {:optional true} [:maybe (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]]
     [:statuses {:optional true} [:maybe (ms/QueryVectorOf [:enum "started" "succeeded" "failed" "timeout"])]]
@@ -123,19 +134,20 @@
   (api/check-superuser)
   (letfn [(work-run->api-run [run]
             (set/rename-keys run
-                             {:run_id     :id
-                              :work_id    :transform_id}))]
-    (update (worker/paged-runs {:work_type      "transform"
-                                :work_ids       transform_ids
-                                :work_tag_ids   transform_tag_ids
-                                :statuses       statuses
-                                :sort_column    sort_column
+                             {:run_id :id
+                              :work_id :transform_id}))]
+    (update (worker/paged-runs {:work_type "transform"
+                                :work_ids transform_ids
+                                :work_tag_ids transform_tag_ids
+                                :statuses statuses
+                                :sort_column sort_column
                                 :sort_direction sort_direction
-                                :offset         (request/offset)
-                                :limit          (request/limit)})
+                                :offset (request/offset)
+                                :limit (request/limit)})
             :data #(mapv work-run->api-run %))))
 
 (api.macros/defendpoint :put "/:id"
+  "Update an existing transform configuration."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]
    _query-params
@@ -165,6 +177,7 @@
   (t2/hydrate (t2/select-one :model/Transform id) :transform_tag_ids))
 
 (api.macros/defendpoint :delete "/:id"
+  "Delete a transform by ID."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
   (log/info "delete transform" id)
@@ -173,6 +186,7 @@
   nil)
 
 (api.macros/defendpoint :delete "/:id/table"
+  "Delete the target table for a transform."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
   (log/info "delete transform target table" id)
@@ -181,6 +195,7 @@
   nil)
 
 (api.macros/defendpoint :post "/:id/cancel"
+  "Cancel a running transform job."
   [{:keys [id]} :- [:map
                     [:id :string]]]
   (log/info "canceling transform " id)
@@ -192,6 +207,7 @@
   nil)
 
 (api.macros/defendpoint :post "/:id/run"
+  "Manually trigger a transform to run."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
   (log/info "run transform" id)

@@ -41,15 +41,32 @@
    - workspace-id: The workspace ID
    - entity-key: The key in the workspace map (:plans, :transforms, etc.)
    - new-entity: The new entity to add, which should be a map with the necessary fields"
-  [workspace-id
+  [workspace-id-or-workspace :- [:or :map :int]
    entity-key :- ::m.workspace/entity-column
    new-entity :- :map]
-  (let [workspace (t2/select-one :model/Workspace :id workspace-id)
+  (let [{workspace-id :id
+         :as workspace} (if (map? workspace-id-or-workspace)
+                          workspace-id-or-workspace
+                          (t2/select-one :model/Workspace :id workspace-id-or-workspace))
         _ (when-not workspace (throw (ex-info "Workspace not found" {:error :no-workspace})))
         current-entities (vec (or (get workspace entity-key) []))
         entity-with-created-at (assoc new-entity :created_at (str (java.time.Instant/now)))
         updated-entities (conj current-entities entity-with-created-at)]
     (t2/update! :model/Workspace workspace-id {entity-key updated-entities})))
+
+(defn- link-transform! [workspace-id transform_id]
+  (let [workspace (t2/select-one :model/Workspace :id workspace-id)
+        _ (when-not workspace (throw (ex-info "Workspace not found" {:error :no-workspace})))
+        transform (t2/select-one :model/Transform :id transform_id)
+        _ (when-not transform (throw (ex-info "Transform not found" {:error :no-transform})))
+        copied-transform {:id (:id transform)
+                          :name (:name transform)
+                          :description (:description transform)
+                          :source (:source transform)
+                          :target (:target transform)
+                          :config (:config transform)
+                          :created_at (str (java.time.Instant/now))}]
+    (add-workspace-entity workspace :transforms copied-transform)))
 
 (defn update-workspace-entity-at-index
   "Updates an entity at a specific index in the workspace's entity collection.

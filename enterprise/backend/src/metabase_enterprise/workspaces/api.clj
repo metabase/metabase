@@ -218,7 +218,9 @@
        [:source :map]
        [:target :map]
        [:config {:optional true} [:maybe :map]]]]
-  (add-workspace-entity workspace-id :transforms {:name name :description description :source source :target target :config config})
+  (add-workspace-entity
+   workspace-id :transforms
+   {:name name :description description :source source :target target :config config})
   (m.workspace/sort-workspace (t2/select-one :model/Workspace :id workspace-id)))
 
 (api.macros/defendpoint :put "/:workspace-id/transform/:index"
@@ -245,14 +247,15 @@
        [:source :map]
        [:target :map]
        [:config {:optional true} [:maybe :map]]]]
-  (update-workspace-entity-at-index workspace-id :transforms index
-                                    (fn [current-transform]
-                                      (merge current-transform {:name name
-                                                                :description description
-                                                                :source source
-                                                                :target target
-                                                                :config config
-                                                                :created_at (str (java.time.Instant/now))})))
+  (update-workspace-entity-at-index
+   workspace-id :transforms index
+   (fn [current-transform]
+     (merge current-transform {:name name
+                               :description description
+                               :source source
+                               :target target
+                               :config config
+                               :created_at (str (java.time.Instant/now))})))
   (m.workspace/sort-workspace (t2/select-one :model/Workspace :id workspace-id)))
 
 (api.macros/defendpoint :delete "/:workspace-id/transform/:index"
@@ -268,6 +271,14 @@
   (delete-workspace-entity-at-index workspace-id :transforms index)
   api/generic-204-no-content)
 
+(defn- link-transform! [workspace-id transform_id]
+  (try (w.common/link-transform! workspace-id transform_id)
+       (catch Exception e
+         (case (:error (ex-data e))
+           :no-workspace (throw (ex-info "Workspace not found" {:status-code 404 :error :no-workspace}))
+           :no-transform (throw (ex-info "Transform not found" {:status-code 404 :error :no-transform}))
+           (throw e)))))
+
 ;; POST /api/ee/workspace/:workspace-id/transform/link
 (api.macros/defendpoint :post "/:workspace-id/transform/link"
   "Link an existing transform to the workspace.
@@ -278,20 +289,8 @@
    _query-params
    {:keys [transform_id]} :- [:map [:transform_id ms/PositiveInt]]]
   (api/check-superuser)
-  (let [workspace (api/check-404 (t2/select-one :model/Workspace :id workspace-id))
-        transform (api/check-404 (t2/select-one :model/Transform :id transform_id))
-        current-transforms (or (:transforms workspace) [])
-        ;; Convert the existing transform to workspace format
-        linked-transform {:id (:id transform)
-                          :name (:name transform)
-                          :description (:description transform)
-                          :source (:source transform)
-                          :target (:target transform)
-                          :config (:config transform)
-                          :created_at (str (java.time.Instant/now))}
-        updated-transforms (conj current-transforms linked-transform)]
-    (t2/update! :model/Workspace workspace-id {:transforms updated-transforms})
-    (m.workspace/sort-workspace (t2/select-one :model/Workspace :id workspace-id))))
+  (link-transform! workspace-id transform_id)
+  (m.workspace/sort-workspace (t2/select-one :model/Workspace :id workspace-id)))
 
 ;; POST /api/ee/workspace/:workspace-id/document
 (api.macros/defendpoint :post "/:workspace-id/document"
