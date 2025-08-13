@@ -17,7 +17,7 @@ driver:
     - name: enable-multiple-db
       display-name: Enable multiple databases
       type: boolean
-      default: false
+      default: true
       description: Enable syncing and scanning tables from multiple ClickHouse databases except the system ones.
     - name: dbname
       visible-if:
@@ -31,7 +31,7 @@ driver:
       type: schema-filters
       display-name: Databases
       placeholder: >-
-        E.g. database_1, database_2
+        database_1, database_2
       helper-text: Optionally filter which databases are visible.
 
     - ssl

@@ -83,7 +83,9 @@
    (when-let [password (mt/db-test-env-var :clickhouse :password)]
      {:password password})
    (when (= context :db)
-     {:db database-name})))
+     {:db database-name
+      :db-filters-type "inclusion"
+      :db-filters-patterns database-name})))
 
 (defmethod sql.tx/qualified-name-components :clickhouse
   ([_ db-name]                       [db-name])
