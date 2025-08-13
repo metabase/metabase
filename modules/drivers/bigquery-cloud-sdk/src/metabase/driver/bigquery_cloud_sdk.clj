@@ -819,11 +819,6 @@
 ;;; |                                                Transforms Support                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-;; Enable table transforms for BigQuery
-(defmethod driver/database-supports? [:bigquery-cloud-sdk :transforms/table]
-  [_driver _feature _database]
-  true)
-
 (defmethod driver/compile-transform :bigquery-cloud-sdk
   [_driver {:keys [query output-table]}]
   ;; BigQuery uses CREATE OR REPLACE TABLE syntax
