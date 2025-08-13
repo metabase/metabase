@@ -1,13 +1,13 @@
 import type { Dayjs } from "dayjs";
 import dayjs from "dayjs";
 
-import { shouldPinInterval } from "../model/util";
 import type { ContinuousDomain } from "metabase/visualizations/shared/types/scale";
 
 import type {
   TimeSeriesAxisFormatter,
   TimeSeriesXAxisModel,
 } from "../model/types";
+import { shouldPinInterval } from "../model/util";
 import {
   computeTimeseriesTicksInterval,
   getLargestInterval,
@@ -109,6 +109,8 @@ export const getTicksOptions = (
   if (
     interval.unit === "month" &&
     interval.count === 1 &&
+    computedInterval.unit === "month" &&
+    computedInterval.count === 1 &&
     shouldPinInterval(interval, timeRangeMs, chartWidth, xAxisModel.formatter)
   ) {
     const dur = getTimeSeriesIntervalDuration(interval);
