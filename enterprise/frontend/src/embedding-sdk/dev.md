@@ -5,7 +5,7 @@ These docs are for building the sdk locally, if you just want to use the sdk, pl
 ## Build
 
 You can build the SDK NPM package with `yarn build-embedding-sdk-package`.
-You can build the SDK bundle with `build-release:embedding-sdk-bundle`
+You can build the SDK bundle with `yarn build-release:embedding-sdk-bundle`
 
 #### embedding-sdk:dev
 
