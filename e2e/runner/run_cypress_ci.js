@@ -1,5 +1,5 @@
 const { FAILURE_EXIT_CODE } = require("./constants/exit-code");
-const CypressBackend = require("./cypress-runner-backend");
+const { JarBackend } = require("./cypress-runner-backend");
 const runCypress = require("./cypress-runner-run-tests");
 const { printBold } = require("./cypress-runner-utils");
 
@@ -28,7 +28,8 @@ if (
 
 const startServer = async () => {
   printBold("Starting backend");
-  await CypressBackend.start();
+  const backend = new JarBackend();
+  await backend.start();
 };
 
 const runTests = async (testSuite) => {

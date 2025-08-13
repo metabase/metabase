@@ -8,47 +8,48 @@ const path = require("path");
 
 const { delay } = require("./cypress-runner-utils");
 
-const CypressBackend = {
-  server: null,
+class BaseBackend {
+  constructor() {
+    this.server = null;
+  }
+
   createServer(port = process.env.BACKEND_PORT || 4000) {
     const generateTempDbPath = () =>
       path.join(os.tmpdir(), `metabase-test-${process.pid}.db`);
 
-    const server = {
+    this.server = {
       dbFile: generateTempDbPath(),
       host: `http://localhost:${port}`,
       port,
     };
+  }
 
-    this.server = server;
-  },
+  // subclasses must return { cmd, args }
+  getCommand() {
+    throw new Error("buildCommand() not implemented in base class");
+  }
+
+  getEnv() {
+    return {
+      MB_DB_TYPE: "h2",
+      MB_DB_FILE: this.server.dbFile,
+      MB_JETTY_HOST: "0.0.0.0",
+      MB_JETTY_PORT: this.server.port,
+      MB_ENABLE_TEST_ENDPOINTS: "true",
+      MB_DANGEROUS_UNSAFE_ENABLE_TESTING_H2_CONNECTIONS_DO_NOT_ENABLE: "true",
+      MB_LAST_ANALYTICS_CHECKSUM: "-1",
+      MB_DB_CONNECTION_URI: "", // ignore connection URI in favor of the db file
+      MB_CONFIG_FILE_PATH: "__cypress__", // ignore config.yml
+    };
+  }
+
   async start() {
     if (!this.server) {
       this.createServer();
     }
-    if (!this.server.process) {
-      const javaFlags = [
-        "-XX:+IgnoreUnrecognizedVMOptions", // ignore options not recognized by this Java version (e.g. Java 8 should ignore Java 9 options)
-        "-Dh2.bindAddress=localhost", // fix H2 randomly not working (?)
-        "-Djava.awt.headless=true", // when running on macOS prevent little Java icon from popping up in Dock
-        "-Dmail.smtps.ssl.trust=*", // trust self signed certs for testing
-        "-Duser.timezone=US/Pacific",
-        process.env.SHOW_BACKEND_LOGS === "true"
-          ? null
-          : `-Dlog4j.configurationFile=file:${__dirname}/../../frontend/test/__runner__/log4j2.xml`,
-      ].filter(Boolean);
 
-      const metabaseConfig = {
-        MB_DB_TYPE: "h2",
-        MB_DB_FILE: this.server.dbFile,
-        MB_JETTY_HOST: "0.0.0.0",
-        MB_JETTY_PORT: this.server.port,
-        MB_ENABLE_TEST_ENDPOINTS: "true",
-        MB_DANGEROUS_UNSAFE_ENABLE_TESTING_H2_CONNECTIONS_DO_NOT_ENABLE: "true",
-        MB_LAST_ANALYTICS_CHECKSUM: "-1",
-        MB_DB_CONNECTION_URI: "", // ignore connection URI in favor of the db file
-        MB_CONFIG_FILE_PATH: "__cypress__", // ignore config.yml
-      };
+    if (!this.server.process) {
+      const { cmd, args } = this.getCommand();
 
       /**
        * This ENV is used for Cloud instances only, and is subject to change.
@@ -69,23 +70,19 @@ const CypressBackend = {
         }),
       };
 
-      this.server.process = spawn(
-        "java",
-        [...javaFlags, "-jar", "target/uberjar/metabase.jar"],
-        {
-          env: {
-            ...process.env,
-            ...metabaseConfig,
-            ...userDefaults,
-          },
-          stdio:
-            process.env["DISABLE_LOGGING"] ||
-            process.env["DISABLE_LOGGING_BACKEND"]
-              ? "ignore"
-              : "inherit",
-          detached: true,
+      this.server.process = spawn(cmd, args, {
+        env: {
+          ...process.env,
+          ...this.getEnv(),
+          ...userDefaults,
         },
-      );
+        stdio:
+          process.env["DISABLE_LOGGING"] ||
+          process.env["DISABLE_LOGGING_BACKEND"]
+            ? "ignore"
+            : "inherit",
+        detached: true,
+      });
     }
 
     if (!(await isReady(this.server.host))) {
@@ -140,7 +137,8 @@ const CypressBackend = {
       } catch (e) {}
       return false;
     }
-  },
+  }
+
   async stop() {
     if (this?.server?.process) {
       this.server.process.kill("SIGKILL");
@@ -153,7 +151,35 @@ const CypressBackend = {
         fs.unlinkSync(`${this.server.dbFile}.mv.db`);
       }
     } catch (e) {}
-  },
-};
+  }
+}
 
-module.exports = CypressBackend;
+class JarBackend extends BaseBackend {
+  getCommand() {
+    const javaFlags = [
+      "-XX:+IgnoreUnrecognizedVMOptions", // ignore options not recognized by this Java version (e.g. Java 8 should ignore Java 9 options)
+      "-Dh2.bindAddress=localhost", // fix H2 randomly not working (?)
+      "-Djava.awt.headless=true", // when running on macOS prevent little Java icon from popping up in Dock
+      "-Dmail.smtps.ssl.trust=*", // trust self signed certs for testing
+      "-Duser.timezone=US/Pacific",
+      process.env.SHOW_BACKEND_LOGS === "true"
+        ? null
+        : `-Dlog4j.configurationFile=file:${__dirname}/../../frontend/test/__runner__/log4j2.xml`,
+    ].filter(Boolean);
+
+    return {
+      cmd: "java",
+      args: [...javaFlags, "-jar", "target/uberjar/metabase.jar"],
+    };
+  }
+}
+
+class LiveBackend extends BaseBackend {
+  getCommand() {
+    const mbEdition = process.env.MB_EDITION || "ee";
+    const alias = mbEdition === "oss" ? "-M:dev:run" : "-M:dev:run:ee";
+    return { cmd: "clojure", args: [alias] };
+  }
+}
+
+module.exports = { JarBackend, LiveBackend };
