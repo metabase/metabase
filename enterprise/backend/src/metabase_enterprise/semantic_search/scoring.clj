@@ -3,6 +3,7 @@
    [clojure.core.memoize :as memoize]
    [honey.sql :as sql]
    [honey.sql.helpers :as sql.helpers]
+   [metabase-enterprise.semantic-search.db.datasource :as semantic.db.datasource]
    [metabase.config.core :as config]
    [metabase.premium-features.core :as premium-features]
    [metabase.search.config :as search.config]
@@ -28,9 +29,12 @@
      :having   [:is-not expr nil]}))
 
 (defn- view-count-percentiles*
-  [db index-table p-value]
+  [index-table p-value]
   (into {} (for [{:keys [model vcp]}
-                 (jdbc/execute! db
+                 ;; Get the db data-source directly rather than passing it in as an argument to this function to
+                 ;; side-step potential issues with using the db as a cache key for the memoized version.
+                 ;; https://github.com/metabase/metabase/pull/62086#discussion_r2272790618
+                 (jdbc/execute! (semantic.db.datasource/ensure-initialized-data-source!)
                                 (-> (view-count-percentile-query
                                      index-table
                                      p-value)
@@ -39,15 +43,15 @@
              [(keyword model) vcp])))
 
 (def ^{:private true
-       :arglists '([db index-table p-value])}
+       :arglists '([index-table p-value])}
   view-count-percentiles
   (if config/is-prod?
     (memoize/ttl view-count-percentiles*
                  :ttl/threshold (u/hours->ms 1))
     view-count-percentiles*))
 
-(defn- view-count-expr [db index-table percentile]
-  (let [views (view-count-percentiles db index-table percentile)
+(defn- view-count-expr [index-table percentile]
+  (let [views (view-count-percentiles index-table percentile)
         cases (for [[sm v] views]
                 [[:= (->col-expr :model) [:inline (name sm)]] (max (or v 0) 1)])]
     (search.scoring/size (->col-expr :view_count) (if (seq cases)
@@ -78,13 +82,13 @@
 
 (defn base-scorers
   "The default constituents of the search ranking scores."
-  [db index-table {:keys [search-string limit-int] :as search-ctx}]
+  [index-table {:keys [search-string limit-int] :as search-ctx}]
   (if (and limit-int (zero? limit-int))
     {:model [:inline 1]}
     ;; NOTE: we calculate scores even if the weight is zero, so that it's easy to consider how we could affect any
     ;; given set of results. At some point, we should optimize away the irrelevant scores for any given context.
     {:rrf       rrf-rank-exp
-     :view-count (view-count-expr db index-table search.config/view-count-scaling-percentile)
+     :view-count (view-count-expr index-table search.config/view-count-scaling-percentile)
      :pinned     (search.scoring/truthy (->col-expr :pinned))
      :recency    (search.scoring/inverse-duration [:coalesce
                                                    (->col-expr :last_viewed_at)
@@ -120,8 +124,8 @@
 
 (defn semantic-scorers
   "Return the select-item expressions used to calculate the score for semantic search results."
-  [db index-table search-ctx]
-  (merge (base-scorers db index-table search-ctx)
+  [index-table search-ctx]
+  (merge (base-scorers index-table search-ctx)
          (additional-scorers)))
 
 (defn with-scores
@@ -136,7 +140,6 @@
   (search.scoring/all-scores weights scorers index-row))
 
 (comment
-  (def db @@(requiring-resolve 'metabase-enterprise.semantic-search.db/data-source))
   (def embedding-model ((requiring-resolve 'metabase-enterprise.semantic-search.embedding/get-configured-model)))
   (def index ((requiring-resolve 'metabase-enterprise.semantic-search.index/default-index) embedding-model))
   (def index-table (:table-name index)))
