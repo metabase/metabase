@@ -12,7 +12,7 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.store :as qp.store]
-   [metabase.query-processor.util.add-alias-info :as add]
+   [metabase.query-processor.util.add-alias-info :as-alias add]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]))
 
