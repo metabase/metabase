@@ -105,7 +105,6 @@ const FeedbackButton = ({
 );
 
 interface AgentMessageProps extends BaseMessageProps {
-  isLastAgentMessage: boolean;
   onRetry: (messageId: string) => void;
   onCopy: (messageId: string) => void;
   setFeedbackMessage?: (data: { messageId: string; positive: boolean }) => void;
@@ -286,7 +285,6 @@ export const Messages = ({
             message={message}
             onRetry={onRetryMessage}
             onCopy={onAgentMessageCopy}
-            isLastAgentMessage={messages[index + 1]?.role !== "agent"}
             setFeedbackMessage={setFeedbackModal}
             submittedFeedback={feedbackState.submitted[message.id]}
             hideActions={messages[index + 1]?.role === "agent"}

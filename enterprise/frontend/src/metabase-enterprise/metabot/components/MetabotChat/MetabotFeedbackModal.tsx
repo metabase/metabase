@@ -55,7 +55,13 @@ export const MetabotFeedbackModal = ({
     });
 
   return (
-    <Modal opened onClose={onClose} size="md" title={t`Metabot feedback`}>
+    <Modal
+      opened
+      onClose={onClose}
+      size="md"
+      title={t`Metabot feedback`}
+      data-testid="metabot-feedback-modal"
+    >
       <FormProvider
         initialValues={{
           issue_type: positive ? undefined : "",
