@@ -76,7 +76,7 @@ export function TransformQueryPageBody({
 
   return (
     <QueryEditor
-      query={transform.source.query}
+      initialQuery={transform.source.query}
       isNew={false}
       isSaving={isLoading}
       onSave={handleSave}
