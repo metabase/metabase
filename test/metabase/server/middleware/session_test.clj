@@ -111,11 +111,19 @@
                                   ::api-key/unhashed-key (u.secret/secret "mb_foobar123")}]
     (testing "A valid API key works, and user info is added to the request"
       (let [req {:headers {"x-api-key" "mb_foobar123"}}]
-        (is (= (merge req {:metabase-user-id  (mt/user->id :lucky)
-                           :is-superuser?     false
-                           :is-group-manager? false
-                           :user-locale       nil})
-               (#'mw.session/merge-current-user-info req)))))))
+        (testing "No premium features, do not include :is-group-manager?"
+          (mt/with-premium-features #{}
+            (is (= (merge req {:metabase-user-id  (mt/user->id :lucky)
+                               :is-superuser?     false
+                               :user-locale       nil})
+                   (#'mw.session/merge-current-user-info req)))))
+        (testing "Include :is-group-manager? if we have :advanced-permissions"
+          (mt/with-premium-features #{:advanced-permissions}
+            (is (= (merge req {:metabase-user-id  (mt/user->id :lucky)
+                               :is-superuser?     false
+                               :is-group-manager? false
+                               :user-locale       nil})
+                   (#'mw.session/merge-current-user-info req)))))))))
 
 (deftest ^:parallel current-user-info-for-api-key-test-1b
   (testing "Various invalid API keys do not modify the request"
@@ -133,20 +141,20 @@
   (testing "Log an error about invalid API keys"
     (mt/with-log-messages-for-level [messages [metabase.server.middleware.session :error]]
       (#'mw.session/merge-current-user-info {:headers {"x-api-key" "mb_fooby"}})
-      (is (= {:namespace 'metabase.server.middleware.session
-              :level     :error
-              :e         nil
-              :message   "Ignoring invalid API Key: [\"should be at least 12 characters\"]"}
+      (is (= [{:namespace 'metabase.server.middleware.session
+               :level     :error
+               :e         nil
+               :message   "Ignoring invalid API Key: [\"should be at least 12 characters\"]"}]
              (messages))))))
 
 (deftest ^:parallel current-user-info-for-api-key-log-errors-test-2
   (testing "Do not include the key itself in the error message -- fall back to a generic error message"
     (mt/with-log-messages-for-level [messages [metabase.server.middleware.session :error]]
       (#'mw.session/merge-current-user-info {:headers {"x-api-key" "characters"}})
-      (is (= {:namespace 'metabase.server.middleware.session
-              :level     :error
-              :e         nil
-              :message   "Ignoring invalid API Key"}
+      (is (= [{:namespace 'metabase.server.middleware.session
+               :level     :error
+               :e         nil
+               :message   "Ignoring invalid API Key"}]
              (messages))))))
 
 (deftest ^:parallel current-user-info-for-api-key-test-2
