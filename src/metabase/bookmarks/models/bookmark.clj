@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [metabase.app-db.core :as mdb]
+   [metabase.config.core :as config]
    [metabase.premium-features.core :as premium-features]
    [metabase.queries.schema :as queries.schema]
    [metabase.util.honey-sql-2 :as h2x]
@@ -107,7 +108,8 @@
   "Get all bookmarks for a user. Each bookmark will have a string id made of the model and model-id, a type, and
   item_id, name, and description from the underlying bookmarked item."
   [user-id]
-  (let [has-documents? (premium-features/has-feature? :documents)
+  (let [has-documents? (and (premium-features/has-feature? :documents)
+                            config/ee-available?)
         select-fields (cond-> [[:bookmark.created_at :created_at]
                                [:bookmark.type              :type]
                                [:bookmark.item_id           :item_id]
