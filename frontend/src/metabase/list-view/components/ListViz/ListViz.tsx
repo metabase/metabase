@@ -24,7 +24,7 @@ import {
 } from "metabase-lib/v1/types/utils/isa";
 import type { DatasetColumn } from "metabase-types/api";
 
-import { ListView } from "../ListView";
+import { ListView } from "../ListView/ListView";
 
 const vizDefinition = {
   identifier: "list",
@@ -214,6 +214,28 @@ export function ListViz({
     return {};
   }, [question]);
 
+  // Get the entity type from the question's source table
+  const entityType = useMemo(() => {
+    if (!question) {
+      return undefined;
+    }
+
+    try {
+      const query = question.query();
+      const sourceTableId = Lib.sourceTableOrCardId(query);
+      const metadata = question.metadata();
+      const table = metadata.table(sourceTableId);
+
+      // Return the entity type if available, otherwise undefined
+      // Use type assertion since entity_type exists in the database but not in TypeScript types
+      return (table as any)?.entity_type;
+    } catch (error) {
+      // If there's an error getting the entity type, return undefined
+      console.warn("Could not determine entity type:", error);
+      return undefined;
+    }
+  }, [question]);
+
   const handleSort = (column: DatasetColumn) => {
     onVisualizationClick({ column });
   };
@@ -226,6 +248,7 @@ export function ListViz({
         sortedColumnName={sortedColumnName}
         sortingDirection={sortingDirection}
         onSortClick={handleSort}
+        entityType={entityType}
       />
     </Box>
   );

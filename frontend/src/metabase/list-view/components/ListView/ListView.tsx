@@ -17,6 +17,7 @@ export interface ListViewProps {
   sortedColumnName?: string;
   sortingDirection?: "asc" | "desc";
   onSortClick: (column: DatasetColumn) => void;
+  entityType?: string;
 }
 
 export function ListView({
@@ -25,6 +26,7 @@ export function ListView({
   sortedColumnName,
   sortingDirection,
   onSortClick,
+  entityType,
 }: ListViewProps) {
   const { cols, rows } = data;
 
@@ -42,14 +44,39 @@ export function ListView({
 
   const openObjectDetail = useObjectDetail(data);
 
+  // Get the appropriate icon based on entity type
+  const getEntityIcon = (entityType?: string) => {
+    switch (entityType) {
+      case "entity/UserTable":
+        return "person";
+      case "entity/CompanyTable":
+        return "globe";
+      case "entity/TransactionTable":
+        return "document";
+      case "entity/SubscriptionTable":
+        return "sync";
+      case "entity/ProductTable":
+      case "entity/EventTable":
+      case "entity/GenericTable":
+      default:
+        return "index";
+    }
+  };
+
+  const entityIcon = getEntityIcon(entityType);
+
   return (
     <Stack
       className={styles.listViewContainer}
       style={{ "--grid-columns": rightColumns.length }}
     >
       <Stack className={styles.listContainer}>
-        <Flex className={styles.listHeader}>
-          <Flex align="center" gap="md" style={{ flexShrink: 0 }}>
+        <div className={styles.listHeader}>
+          {/* Entity Type Icon Column Header */}
+          <div style={{ width: 32, flexShrink: 0 }} />
+
+          {/* Title and Subtitle Column */}
+          <div>
             {!!titleColumn && (
               <ColumnHeader
                 column={titleColumn}
@@ -59,21 +86,23 @@ export function ListView({
                 onSortClick={onSortClick}
               />
             )}
-          </Flex>
+          </div>
 
+          {/* Right Columns */}
           {rightColumns.map((col, colIndex) => (
-            <ColumnHeader
-              key={colIndex}
-              column={col}
-              sortedColumnName={sortedColumnName}
-              sortingDirection={sortingDirection}
-              onSortClick={onSortClick}
-              style={{
-                flexShrink: 0,
-              }}
-            />
+            <div key={colIndex}>
+              <ColumnHeader
+                column={col}
+                sortedColumnName={sortedColumnName}
+                sortingDirection={sortingDirection}
+                onSortClick={onSortClick}
+                style={{
+                  flexShrink: 0,
+                }}
+              />
+            </div>
           ))}
-        </Flex>
+        </div>
 
         <div
           style={{
@@ -100,43 +129,69 @@ export function ListView({
                       transform: `translateY(${start}px)`,
                     }}
                   >
-                    <Flex align="center" gap="md" style={{ flexShrink: 0 }}>
-                      {imageColumn && (
-                        <Image
-                          src={row[cols.indexOf(imageColumn)]}
-                          alt=""
-                          w={32}
-                          h={32}
-                          radius="xl"
-                          style={{ flexShrink: 0 }}
-                        />
-                      )}
-                      <div style={{ minWidth: 0, flex: 1 }}>
-                        {titleColumn && (
-                          <Text
-                            fw="bold"
-                            truncate
-                            style={{ color: "var(--mb-color-brand)" }}
-                          >
-                            {formatValue(row[cols.indexOf(titleColumn)], {
-                              ...(settings.column?.(titleColumn) || {}),
-                              jsx: true,
-                              rich: true,
-                            })}
-                          </Text>
-                        )}
-                        {subtitleColumn && (
-                          <Text size="sm" c="text-secondary" truncate fw="bold">
-                            {formatValue(row[cols.indexOf(subtitleColumn)], {
-                              ...(settings.column?.(subtitleColumn) || {}),
-                              jsx: true,
-                              rich: true,
-                            })}
-                          </Text>
-                        )}
-                      </div>
-                    </Flex>
+                    {/* Entity Type Icon */}
+                    <Box
+                      w={32}
+                      h={32}
+                      style={{
+                        border: "1px solid var(--mb-color-border)",
+                        borderRadius: "50%",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        flexShrink: 0,
+                        backgroundColor: "var(--mb-color-background-light)",
+                      }}
+                    >
+                      <Icon name={entityIcon} size={16} c="text-light" />
+                    </Box>
 
+                    {/* Title and Subtitle Content */}
+                    <div>
+                      <Flex align="center" gap="md" style={{ flexShrink: 0 }}>
+                        {imageColumn && (
+                          <Image
+                            src={row[cols.indexOf(imageColumn)]}
+                            alt=""
+                            w={32}
+                            h={32}
+                            radius="xl"
+                            style={{ flexShrink: 0 }}
+                          />
+                        )}
+                        <div style={{ minWidth: 0, flex: 1 }}>
+                          {titleColumn && (
+                            <Text
+                              fw="bold"
+                              truncate
+                              style={{ color: "var(--mb-color-brand)" }}
+                            >
+                              {formatValue(row[cols.indexOf(titleColumn)], {
+                                ...(settings.column?.(titleColumn) || {}),
+                                jsx: true,
+                                rich: true,
+                              })}
+                            </Text>
+                          )}
+                          {subtitleColumn && (
+                            <Text
+                              size="sm"
+                              c="text-secondary"
+                              truncate
+                              fw="bold"
+                            >
+                              {formatValue(row[cols.indexOf(subtitleColumn)], {
+                                ...(settings.column?.(subtitleColumn) || {}),
+                                jsx: true,
+                                rich: true,
+                              })}
+                            </Text>
+                          )}
+                        </div>
+                      </Flex>
+                    </div>
+
+                    {/* Right Columns */}
                     {rightColumns.map((col, colIndex) => {
                       const value = formatValue(row[cols.indexOf(col)], {
                         ...(settings.column?.(col) || {}),
@@ -144,12 +199,7 @@ export function ListView({
                         rich: true,
                       });
                       return (
-                        <div
-                          key={colIndex}
-                          style={{
-                            flexShrink: 0,
-                          }}
-                        >
+                        <div key={colIndex}>
                           <Text fw="bold" size="sm" c="text-secondary" truncate>
                             {value}
                           </Text>
