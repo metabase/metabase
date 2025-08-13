@@ -5,12 +5,12 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [medley.core :as m]
+   [metabase-enterprise.transforms.models.transform-run]
    [metabase-enterprise.transforms.models.transform-tag]
    [metabase-enterprise.transforms.test-dataset :as transforms-dataset]
    [metabase-enterprise.transforms.test-query-util :as test-query-util]
    [metabase-enterprise.transforms.test-util :refer [with-transform-cleanup!]]
    [metabase-enterprise.transforms.util :as transforms.util]
-   [metabase-enterprise.worker.models.worker-run]
    [metabase.driver :as driver]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
@@ -49,35 +49,33 @@
      :target {:type "table"
               :name table-name}}))
 
-(defn create-worker-run
-  "Create a worker run with default values.
+(defn create-transform-run
+  "Create a transform run with default values.
    Can override any field by passing opts map."
   ([transform-id]
-   (create-worker-run transform-id {}))
+   (create-transform-run transform-id {}))
   ([transform-id opts]
-   (merge {:work_type  "transform"
-           :work_id    transform-id
-           :status     "succeeded"
-           :run_id     (u/generate-nano-id)
-           :run_method "manual"
-           :is_local   true
-           :start_time (t/instant)
-           :end_time   (t/instant)}
+   (merge {:transform_id transform-id
+           :status       "succeeded"
+           :id           (u/generate-nano-id)
+           :run_method   "manual"
+           :start_time   (t/instant)
+           :end_time     (t/instant)}
           opts)))
 
 ;; mt/with-temp assumes ID as primary key
-(defmacro with-worker-runs
-  "Create worker runs and ensure they are cleaned up after the test.
+(defmacro with-transform-runs
+  "Create transform runs and ensure they are cleaned up after the test.
    Binds the run IDs to the provided binding symbol."
   [[binding runs] & body]
   `(let [runs#    ~runs
-         ~binding (mapv :run_id runs#)]
-     (t2/insert! :model/WorkerRun runs#)
+         ~binding (mapv :id runs#)]
+     (t2/insert! :model/TransformRun runs#)
      (try
        ~@body
        (finally
          (when (seq ~binding)
-           (t2/delete! :model/WorkerRun :run_id [:in ~binding]))))))
+           (t2/delete! :model/TransformRun :id [:in ~binding]))))))
 
 (defmacro with-transform-tags
   "Create transform-tag associations and ensure cleanup.
@@ -391,8 +389,8 @@
     (mt/with-premium-features #{:transforms}
       (mt/with-temp [:model/Transform transform1 (test-transform "Transform 1")
                      :model/Transform transform2 (test-transform "Transform 2")]
-        (with-worker-runs [run-ids [(create-worker-run (:id transform1))
-                                    (create-worker-run (:id transform2))]]
+        (with-transform-runs [run-ids [(create-transform-run (:id transform1))
+                                       (create-transform-run (:id transform2))]]
           (testing "Filter by transform1 ID only returns transform1 runs"
             (let [response (mt/user-http-request :crowberto :get 200 "ee/transform/run"
                                                  :transform_ids [(:id transform1)])]
@@ -413,9 +411,9 @@
       (mt/with-temp [:model/Transform transform1 (test-transform "Transform 1")
                      :model/Transform transform2 (test-transform "Transform 2")
                      :model/Transform transform3 (test-transform "Transform 3")]
-        (with-worker-runs [_run-ids [(create-worker-run (:id transform1))
-                                     (create-worker-run (:id transform2))
-                                     (create-worker-run (:id transform3))]]
+        (with-transform-runs [_run-ids [(create-transform-run (:id transform1))
+                                        (create-transform-run (:id transform2))
+                                        (create-transform-run (:id transform3))]]
           (testing "Filter by transform1 and transform2 IDs returns only those runs"
             (let [response (mt/user-http-request :crowberto :get 200 "ee/transform/run"
                                                  :transform_ids [(:id transform1) (:id transform2)])]
@@ -426,9 +424,9 @@
   (testing "GET /api/ee/transform/run - filter by single status"
     (mt/with-premium-features #{:transforms}
       (mt/with-temp [:model/Transform transform (test-transform "Transform with multiple runs")]
-        (with-worker-runs [_run-ids [(create-worker-run (:id transform) {:status "succeeded"})
-                                     (create-worker-run (:id transform) {:status "failed"})
-                                     (create-worker-run (:id transform) {:status "failed"})]]
+        (with-transform-runs [_run-ids [(create-transform-run (:id transform) {:status "succeeded"})
+                                        (create-transform-run (:id transform) {:status "failed"})
+                                        (create-transform-run (:id transform) {:status "failed"})]]
           (testing "Filter by 'failed' status returns only failed runs"
             (let [response (mt/user-http-request :crowberto :get 200 "ee/transform/run"
                                                  :statuses ["failed"])]
@@ -455,10 +453,10 @@
                                                                              :template-tags {}}}}
                                                  :target {:type "table"
                                                           :name (str "test_table_" (u/generate-nano-id))}}]
-        (with-worker-runs [_run-ids [(create-worker-run (:id transform) {:status "succeeded"})
-                                     (create-worker-run (:id transform) {:status "succeeded"})
-                                     (create-worker-run (:id transform) {:status "failed"})
-                                     (create-worker-run (:id transform) {:status "timeout"})]]
+        (with-transform-runs [_run-ids [(create-transform-run (:id transform) {:status "succeeded"})
+                                        (create-transform-run (:id transform) {:status "succeeded"})
+                                        (create-transform-run (:id transform) {:status "failed"})
+                                        (create-transform-run (:id transform) {:status "timeout"})]]
           (testing "Filter by 'succeeded' and 'failed' returns both types"
             (let [response (mt/user-http-request :crowberto :get 200 "ee/transform/run"
                                                  :statuses ["succeeded" "failed"])
@@ -475,9 +473,9 @@
                      :model/TransformTag tag1 {:name (str "test-tag-" (u/generate-nano-id))}]
         (with-transform-tags [{:transform_id (:id transform1) :tag_id (:id tag1)}
                               {:transform_id (:id transform2) :tag_id (:id tag1)}]
-          (with-worker-runs [_run-ids [(create-worker-run (:id transform1))
-                                       (create-worker-run (:id transform2))
-                                       (create-worker-run (:id transform3))]]
+          (with-transform-runs [_run-ids [(create-transform-run (:id transform1))
+                                          (create-transform-run (:id transform2))
+                                          (create-transform-run (:id transform3))]]
             (testing "Filter by tag1 returns only tagged transforms' runs"
               (let [response (mt/user-http-request :crowberto :get 200 "ee/transform/run"
                                                    :transform_tag_ids [(:id tag1)])]
@@ -528,10 +526,10 @@
                               {:transform_id (:id transform2) :tag_id (:id tag1)}
                               {:transform_id (:id transform2) :tag_id (:id tag2)}
                               {:transform_id (:id transform3) :tag_id (:id tag2)}]
-          (with-worker-runs [_run-ids [(create-worker-run (:id transform1))
-                                       (create-worker-run (:id transform2))
-                                       (create-worker-run (:id transform3))
-                                       (create-worker-run (:id transform4))]]
+          (with-transform-runs [_run-ids [(create-transform-run (:id transform1))
+                                          (create-transform-run (:id transform2))
+                                          (create-transform-run (:id transform3))
+                                          (create-transform-run (:id transform4))]]
             (testing "Filter by tag1 and tag2 returns union (transforms with either tag)"
               (let [response (mt/user-http-request :crowberto :get 200 "ee/transform/run"
                                                    :transform_tag_ids [(:id tag1) (:id tag2)])
@@ -560,10 +558,10 @@
                                                   :target {:type "table"
                                                            :name (str "test_table_2_" (u/generate-nano-id))}}]
         ;; Create multiple runs with different statuses for transform1
-        (with-worker-runs [_run-ids [(create-worker-run (:id transform1) {:status "succeeded"})
-                                     (create-worker-run (:id transform1) {:status "failed"})
-                                     (create-worker-run (:id transform1) {:status "failed"})
-                                     (create-worker-run (:id transform2) {:status "failed"})]]
+        (with-transform-runs [_run-ids [(create-transform-run (:id transform1) {:status "succeeded"})
+                                        (create-transform-run (:id transform1) {:status "failed"})
+                                        (create-transform-run (:id transform1) {:status "failed"})
+                                        (create-transform-run (:id transform2) {:status "failed"})]]
           (testing "Filter by transform1 ID and failed status"
             (let [response (mt/user-http-request :crowberto :get 200 "ee/transform/run"
                                                  :transform_ids [(:id transform1)]
@@ -604,10 +602,10 @@
         ;; Associate tag1 with transform1 and transform2
         (with-transform-tags [{:transform_id (:id transform1) :tag_id (:id tag1)}
                               {:transform_id (:id transform2) :tag_id (:id tag1)}]
-          (with-worker-runs [_run-ids [(create-worker-run (:id transform1) {:status "succeeded"})
-                                       (create-worker-run (:id transform2) {:status "failed"})
-                                       (create-worker-run (:id transform3) {:status "failed"})
-                                       (create-worker-run (:id transform2) {:status "succeeded"})]]
+          (with-transform-runs [_run-ids [(create-transform-run (:id transform1) {:status "succeeded"})
+                                          (create-transform-run (:id transform2) {:status "failed"})
+                                          (create-transform-run (:id transform3) {:status "failed"})
+                                          (create-transform-run (:id transform2) {:status "succeeded"})]]
             (testing "Filter by tag1 and failed status returns only failed runs of tagged transforms"
               (let [response (mt/user-http-request :crowberto :get 200 "ee/transform/run"
                                                    :transform_tag_ids [(:id tag1)]
@@ -625,8 +623,8 @@
                      :model/TransformTag tag2 {:name (str "test-tag-2-" (u/generate-nano-id))}]
         (with-transform-tags [{:transform_id (:id transform1) :tag_id (:id tag1)}
                               {:transform_id (:id transform2) :tag_id (:id tag2)}]
-          (with-worker-runs [_run-ids [(create-worker-run (:id transform1))
-                                       (create-worker-run (:id transform2))]]
+          (with-transform-runs [_run-ids [(create-transform-run (:id transform1))
+                                          (create-transform-run (:id transform2))]]
 
             (testing "Filter by transform1 ID and tag1 returns transform1 (has both)"
               (let [response (mt/user-http-request :crowberto :get 200 "ee/transform/run"

@@ -270,14 +270,6 @@
       (log/error e "ERROR REMOVING ENCRYPTION.")
       (system-exit! 1))))
 
-(defn ^:command worker-mode
-  []
-  (call-enterprise 'metabase-enterprise.worker.core/start!))
-
-(defn ^:command worker-migrations
-  []
-  (call-enterprise 'metabase-enterprise.worker-db.migrations/run!))
-
 ;;; ------------------------------------------------ Validate Commands ----------------------------------------------
 
 (defn- arg-list-count-ok? [arg-list arg-count]

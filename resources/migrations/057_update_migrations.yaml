@@ -193,7 +193,7 @@ databaseChangeLog:
             remarks: Table to track transform executions and their status in the app database
             columns:
               - column:
-                  name: run_id
+                  name: id
                   type: char(21)
                   remarks: 'NanoID identifier for the transform run'
                   constraints:
@@ -320,7 +320,7 @@ databaseChangeLog:
                     primaryKey: true
                     nullable: false
                     referencedTableName: transform_run
-                    referencedColumnNames: run_id
+                    referencedColumnNames: id
                     foreignKeyName: fk_transform_run_cancelation_transform_run_run_id
                     deleteCascade: true
               - column:

@@ -1,4 +1,4 @@
-(ns metabase-enterprise.transform.models.transform-run-cancelation
+(ns metabase-enterprise.transforms.models.transform-run-cancelation
   (:require
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -18,7 +18,7 @@
                {:where [:exists {:select [1]
                                  :from   [:transform_run]
                                  :where  [:and
-                                          [:= :transform_run.run_id run-id]
+                                          [:= :transform_run.id run-id]
                                           :transform_run.is_active]}]})))
 
 (defn reducible-canceled-local-runs
@@ -36,6 +36,6 @@
   "Delete cancelations for runs that are no longer running."
   []
   (t2/delete! :model/TransformRunCancelation
-              :run_id [:not-in {:select :wr.run_id
+              :run_id [:not-in {:select :wr.id
                                 :from   [[:transform_run :wr]]
                                 :where  :wr.is_active}]))

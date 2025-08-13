@@ -1,7 +1,7 @@
 (ns metabase-enterprise.transforms.models.transform
   (:require
    [medley.core :as m]
-   [metabase-enterprise.worker.core :as worker]
+   [metabase-enterprise.transforms.models.transform-run :as transform-run]
    [metabase.models.interface :as mi]
    [metabase.util.json :as json]
    [methodical.core :as methodical]
@@ -19,14 +19,14 @@
 
 (mi/define-batched-hydration-method with-transform
   :transform
-  "Add transform to a WorkRun"
+  "Add transform to a TransformRun"
   [runs]
   (if-not (seq runs)
     runs
-    (let [work-ids (into #{} (map :work_id) runs)
-          id->transform (t2/select-pk->fn identity [:model/Transform :id :name] :id [:in work-ids])]
+    (let [transform-ids (into #{} (map :transform_id) runs)
+          id->transform (t2/select-pk->fn identity [:model/Transform :id :name] :id [:in transform-ids])]
       (for [run runs]
-        (assoc run :transform (get id->transform (:work_id run)))))))
+        (assoc run :transform (get id->transform (:transform_id run)))))))
 
 (mi/define-batched-hydration-method with-last-run
   :last_run
@@ -35,7 +35,7 @@
   (if-not (seq transforms)
     transforms
     (let [transform-ids (into #{} (map :id) transforms)
-          last-runs (m/index-by :work_id (worker/latest-runs :transform transform-ids))]
+          last-runs (m/index-by :transform_id (transform-run/latest-runs transform-ids))]
       (for [transform transforms]
         (assoc transform :last_run (get last-runs (:id transform)))))))
 
@@ -78,7 +78,3 @@
                         (for [tag-id ordered-valid-tag-ids]
                           {:transform_id transform-id
                            :tag_id tag-id}))))))))
-
-(defmethod worker/model->work-type :model/Transform
-  [_]
-  :transform)

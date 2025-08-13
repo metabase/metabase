@@ -1,13 +1,13 @@
 (ns metabase-enterprise.transforms.api
   (:require
-   [clojure.set :as set]
    [metabase-enterprise.transforms.api.transform-job]
    [metabase-enterprise.transforms.api.transform-tag]
    [metabase-enterprise.transforms.execute :as transforms.execute]
    [metabase-enterprise.transforms.models.transform :as transform.model]
+   [metabase-enterprise.transforms.models.transform-run :as transform-run]
+   [metabase-enterprise.transforms.models.transform-run-cancelation :as transform-run-cancelation]
    [metabase-enterprise.transforms.ordering :as transforms.ordering]
    [metabase-enterprise.transforms.util :as transforms.util]
-   [metabase-enterprise.worker.core :as worker]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
@@ -124,19 +124,13 @@
     [:transform_tag_ids {:optional true} [:maybe (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]]]]
   (log/info "get runs")
   (api/check-superuser)
-  (letfn [(work-run->api-run [run]
-            (set/rename-keys run
-                             {:run_id     :id
-                              :work_id    :transform_id}))]
-    (update (worker/paged-runs {:work_type      "transform"
-                                :work_ids       transform_ids
-                                :work_tag_ids   transform_tag_ids
-                                :statuses       statuses
-                                :sort_column    sort_column
-                                :sort_direction sort_direction
-                                :offset         (request/offset)
-                                :limit          (request/limit)})
-            :data #(mapv work-run->api-run %))))
+  (transform-run/paged-runs {:transform_ids       transform_ids
+                             :transform_tag_ids   transform_tag_ids
+                             :statuses            statuses
+                             :sort_column         sort_column
+                             :sort_direction      sort_direction
+                             :offset              (request/offset)
+                             :limit               (request/limit)}))
 
 (api.macros/defendpoint :put "/:id"
   [{:keys [id]} :- [:map
@@ -189,10 +183,8 @@
                     [:id :string]]]
   (log/info "canceling transform " id)
   (api/check-superuser)
-  (let [run (api/check-404 (worker/running-run-for-work-id id "transform"))]
-    (if (:is_local run)
-      (worker/mark-cancel-started-run! (:run_id run))
-      (worker/cancel! (:run_id run))))
+  (let [run (api/check-404 (transform-run/running-run-for-run-id id))]
+    (transform-run-cancelation/mark-cancel-started-run! (:id run)))
   nil)
 
 (api.macros/defendpoint :post "/:id/run"
