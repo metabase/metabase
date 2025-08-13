@@ -48,8 +48,8 @@
                             ;; to avoid shadowing the "real" properties.
                             (not= (:type result) "collection")
                             (dissoc :collection.description :collection.name)
-                 ;; If not a document then remove document properties
-                 ;; to avoid shadowing the "real" properties.
+                            ;; If not a document then remove document properties
+                            ;; to avoid shadowing the "real" properties.
                             (not= (:type result) "document")
                             (dissoc :document.name))
         normalized-result (zipmap (map unqualify-key (keys result)) (vals result))
@@ -60,6 +60,11 @@
         (select-keys [:item_id :type :name :card_type :description :display
                       :authority_level])
         (assoc :id id-str))))
+
+(defn- has-documents?
+  []
+  (and (premium-features/has-feature? :documents)
+       config/ee-available?))
 
 (defn- bookmarks-union-query
   [user-id]
@@ -91,7 +96,7 @@
                                 :created_at]
                        :from   [:collection_bookmark]
                        :where [:= :user_id user-id]}]]
-    {:union-all (if (premium-features/has-feature? :documents)
+    {:union-all (if (has-documents?)
                   (conj base-queries
                         {:select [[as-null :card_id]
                                   [as-null :dashboard_id]
@@ -108,9 +113,7 @@
   "Get all bookmarks for a user. Each bookmark will have a string id made of the model and model-id, a type, and
   item_id, name, and description from the underlying bookmarked item."
   [user-id]
-  (let [has-documents? (and (premium-features/has-feature? :documents)
-                            config/ee-available?)
-        select-fields (cond-> [[:bookmark.created_at :created_at]
+  (let [select-fields (cond-> [[:bookmark.created_at :created_at]
                                [:bookmark.type              :type]
                                [:bookmark.item_id           :item_id]
                                [:card.name                  (mdb/qualify :model/Card :name)]
@@ -125,7 +128,7 @@
                                [:collection.authority_level (mdb/qualify :model/Collection :authority_level)]
                                [:collection.description     (mdb/qualify :model/Collection :description)]
                                [:collection.archived        (mdb/qualify :model/Collection :archived)]]
-                        has-documents?
+                        (has-documents?)
                         (conj [:document.name (mdb/qualify :model/Document :name)]
                               [:document.archived (mdb/qualify :model/Document :archived)]))
         left-joins (cond-> [[:report_card :card] [:= :bookmark.card_id :card.id]
@@ -137,10 +140,10 @@
                                                                      [:= :bookmark_ordering.user_id user-id]
                                                                      [:= :bookmark_ordering.type :bookmark.type]
                                                                      [:= :bookmark_ordering.item_id :bookmark.item_id]]]
-                     has-documents?
+                     (has-documents?)
                      (conj [:document :document] [:= :bookmark.document_id :document.id]))
         where-conditions (into [:and]
-                               (for [table (if has-documents?
+                               (for [table (if (has-documents?)
                                              [:card :dashboard :collection :document]
                                              [:card :dashboard :collection])
                                      :let  [field (keyword (str (name table) "." "archived"))]]
