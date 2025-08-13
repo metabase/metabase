@@ -131,7 +131,7 @@ function CssVariables() {
  */
 
 initialize({
-  onUnhandledRequest: "bypass",
+  onUnhandledRequest: "warn",
 });
 const preview = { parameters, decorators, loaders: [mswLoader] };
 
