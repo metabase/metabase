@@ -549,6 +549,35 @@
                          [:document :string]]]]
    [:map [:output :string]]])
 
+(mr/def ::get-tables-arguments
+  [:and
+   [:map
+    [:database_id                                         :int]]
+   [:map {:encode/tool-api-request
+          #(set/rename-keys % {:database_id         :database-id})}]])
+
+(mr/def ::get-tables-result
+  [:or
+   [:map
+    {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
+    [:structured_output [:map
+                         {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
+                         [:database [:map
+                                     [:id :int]
+                                     [:engine :string]
+                                     [:name :string]
+                                     [:description :string]]]
+                         [:tables [:sequential [:map
+                                                [:id :int]
+                                                [:name :string]
+                                                [:description :string]
+                                                [:columns [:sequential [:map
+                                                                        [:id :int]
+                                                                        [:name :string]
+                                                                        [:description :string]
+                                                                        [:type :string]]]]]]]]]]
+   [:map [:output :string]]])
+
 (mr/def ::get-table-details-arguments
   [:and
    [:map
@@ -812,6 +841,21 @@
   (let [arguments (mc/encode ::get-table-details-arguments arguments (mtx/transformer {:name :tool-api-request}))]
     (doto (-> (mc/decode ::get-table-details-result
                          (metabot-v3.dummy-tools/get-table-details arguments)
+                         (mtx/transformer {:name :tool-api-response}))
+              (assoc :conversation_id conversation_id))
+      (metabot-v3.context/log :llm.log/be->llm))))
+
+(api.macros/defendpoint :post "/get-tables" :- [:merge ::get-tables-result ::tool-request]
+  "Get information about the tables in a given database."
+  [_route-params
+   _query-params
+   {:keys [arguments conversation_id] :as body} :- [:merge
+                                                    [:map [:arguments ::get-tables-arguments]]
+                                                    ::tool-request]]
+  (metabot-v3.context/log (assoc body :api :get-tables) :llm.log/llm->be)
+  (let [arguments (mc/encode ::get-tables-arguments arguments (mtx/transformer {:name :tool-api-request}))]
+    (doto (-> (mc/decode ::get-tables-result
+                         (metabot-v3.dummy-tools/get-tables arguments)
                          (mtx/transformer {:name :tool-api-response}))
               (assoc :conversation_id conversation_id))
       (metabot-v3.context/log :llm.log/be->llm))))

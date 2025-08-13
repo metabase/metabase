@@ -13,8 +13,10 @@
    _query-params
 
    body :- [:map
-            [:instructions ms/NonBlankString]]]
+            [:instructions ms/NonBlankString]
+            [:references {:optional true} ms/Map]]]
   (metabot-v3.client/document-generate-content {:instructions (:instructions body)
+                                                :references   (:references body)
                                                 :user_id         api/*current-user-id*
                                                 :conversation_id (str (random-uuid))}))
 
