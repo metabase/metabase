@@ -1,5 +1,4 @@
-(ns ^{:clj-kondo/ignore [:discouraged-var :unused-private-var]}
- metabase-enterprise.semantic-search.db.locking
+(ns metabase-enterprise.semantic-search.db.locking
   (:require
    [honey.sql :as sql]
    [honey.sql.helpers :as sql.helpers]
