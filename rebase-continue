@@ -1,3 +1,11 @@
 {
-  "continuations": null
+  "continuations": [
+    {
+      "command": [
+        "branch",
+        "restack"
+      ],
+      "branch": "experiment-add-sdk-breadcrumbs"
+    }
+  ]
 }
