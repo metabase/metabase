@@ -343,7 +343,7 @@
           (recur)))))
 
 (deftest execute-transform-test
-  (doseq [target-type ["table" #_"view"]
+  (doseq [target-type ["table"] ;; views some day maybe
           :let        [feature (keyword "transforms" target-type)]]
     (testing (str "transform execution with " target-type " target")
       (mt/test-drivers (mt/normal-drivers-with-feature feature)

@@ -19,7 +19,7 @@
 
 (mr/def ::transform-details
   [:map
-   [:transform-type [:enum {:decode/normalize schema.common/normalize-keyword} :view :table]]
+   [:transform-type [:enum {:decode/normalize schema.common/normalize-keyword} :table]]
    [:connection-details :any]
    [:query :string]
    [:output-table [:keyword {:decode/normalize schema.common/normalize-keyword}]]])

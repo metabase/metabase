@@ -34,7 +34,7 @@
 
 (mr/def ::transform-target
   [:map
-   [:type [:enum "table" "view"]]
+   [:type [:enum "table"]]
    [:schema {:optional true} [:or :string :nil]]
    [:name :string]])
 
