@@ -10,6 +10,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
+   [metabase.models.interface :as mi]
    [metabase.util :as u]
    [metabase.util.humanization :as u.humanization]
    [metabase.warehouse-schema.models.field-values :as field-values]
@@ -324,8 +325,15 @@
   (if (int? database-id)
     (let [db (t2/select-one [:model/Database :id :name :description :engine] database-id)
           tables (t2/select [:model/Table :id :name :description]
-                            :db_id database-id
-                            :active true)
+                            {:where [:and
+                                     [:= :db_id database-id]
+                                     [:= :active true]
+                                     (mi/visible-filter-clause :model/Table
+                                                               :id
+                                                               {:user-id       api/*current-user-id*
+                                                                :is-superuser? api/*is-superuser?*}
+                                                               {:perms/view-data      :unrestricted
+                                                                :perms/create-queries :query-builder-and-native})]})
           columns (group-by :table_id (map #(-> %
                                                 (assoc :type (base-type->type (:base_type %)))
                                                 (dissoc :base_type))
