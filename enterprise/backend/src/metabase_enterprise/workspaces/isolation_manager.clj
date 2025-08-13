@@ -69,50 +69,6 @@
 (mr/def ::steps
   [:cat :keyword ::options [:* [:alt [:schema [:ref ::steps]] ::rule]]])
 
-(defmulti ^:private create-isolation*
-  "Create database isolation for a workspace."
-  (fn [driver workspace] driver))
-
-;; todo: use (jdbc/metadata-result (.getSchemas metadata))
-
-(mu/defn- postgres-steps :- ::steps
-  "Return postgres steps. Needs the populator and read users (maps with user and password) and the schema name to be
-  populated. Will create the schema, uses, and setup privileges. Currently hardcoded to give the populator access to
-  the `public` schema. This will need to be updated to include the schemas from the source database."
-  [{:keys [populator schema-name]}]
-  [:schema
-   {}
-   (format "CREATE SCHEMA %s" schema-name)
-   [:users
-    {}
-    ;; Create populator user with random password
-    [:populator
-     {}
-     (format "CREATE USER %s WITH PASSWORD '%s'" (:user populator) (:password populator))
-     [:populator-privileges
-      {}
-      ;; Grant privileges to populator user
-
-      ;; source data hardcorded to public: FIX
-      (format "GRANT USAGE ON SCHEMA %s TO %s" "public" (:user populator))
-      ;; todo: don't hardcode this to public
-      (format "GRANT USAGE ON SCHEMA public TO %s" (:user populator))
-
-      (format "GRANT USAGE ON SCHEMA %s TO %s" schema-name (:user populator))
-      (format "GRANT SELECT ON ALL TABLES IN SCHEMA %s TO %s" "public" (:user populator))
-      (format "GRANT CREATE ON SCHEMA %s TO %s" schema-name (:user populator))
-      (format "GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA %s TO %s"
-              schema-name (:user populator))]]]])
-
-
-(comment
-  (postgres-steps {:populator {:user "populator" :password "populator-pw"}
-                   :schema-name "scratchpad"})
-  (malli.core/validate ::steps
-                       (postgres-steps {:populator {:user "populator" :password "populator-pw"}
-                                        :schema-name "scratchpad"}))
-  )
-
 (mu/defn- evaluate-steps
   "Evaluate steps. Steps is a tree of steps matching the ::steps schema. F should be a function that takes in the
   opaque value of a step. `f` must return a tuple `[:success _]` or `[:error ]`.
@@ -187,7 +143,128 @@
                            (if switch-to-error? :error state)
                            (dec gas))))))))))
 
+(defmulti ^:private create-isolation*
+  "Create database isolation for a workspace."
+  (fn [driver workspace] driver))
+
+;; todo: use (jdbc/metadata-result (.getSchemas metadata))
+
+(mu/defn- postgres-steps :- ::steps
+  "Return postgres steps. Needs the populator and read users (maps with user and password) and the schema name to be
+  populated. Will create the schema, uses, and setup privileges. Currently hardcoded to give the populator access to
+  the `public` schema. This will need to be updated to include the schemas from the source database."
+  [{:keys [populator schema-name]}]
+  [:schema
+   {}
+   (format "CREATE SCHEMA %s" schema-name)
+   [:users
+    {}
+    ;; Create populator user with random password
+    [:populator
+     {}
+     (format "CREATE USER %s WITH PASSWORD '%s'" (:user populator) (:password populator))
+     [:populator-privileges
+      {}
+      ;; Grant privileges to populator user
+
+      ;; source data hardcorded to public: FIX
+      (format "GRANT USAGE ON SCHEMA %s TO %s" "public" (:user populator))
+      ;; todo: don't hardcode this to public
+      (format "GRANT USAGE ON SCHEMA public TO %s" (:user populator))
+
+      (format "GRANT USAGE ON SCHEMA %s TO %s" schema-name (:user populator))
+      (format "GRANT SELECT ON ALL TABLES IN SCHEMA %s TO %s" "public" (:user populator))
+      (format "GRANT CREATE ON SCHEMA %s TO %s" schema-name (:user populator))
+      (format "GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA %s TO %s"
+              schema-name (:user populator))]]]])
+
+(mu/defn snowflake-steps :- ::steps
+  [{:keys [populator schema-name source-database-name]}]
+  (letfn [(q [d]
+            (try
+              (sql.u/quote-name :clickhouse :database (ddl.i/format-name :clickhouse d))
+              (catch Exception e
+                (log/errorf e "Error quoting %s" (pr-str d))
+                (throw e))))]
+    [:use-database
+     {}
+     (format "USE DATABASE \"%s\" " source-database-name)
+     [:schema
+      {}
+      (format "CREATE SCHEMA IF NOT EXISTS %s" schema-name)
+      ;; todo: snowflake extra users. They are difficult to get right with roles and quoting
+      #_[:usage-on-new-schema
+         {}
+         ;; hardcoded developer. ownership of new schema to developer conflicts with next bit
+         #_(format "GRANT OWNERSHIP ON SCHEMA %s to ROLE DEVELOPER" schema-name)
+         #_(format "GRANT USAGE ON SCHEMA %s to ROLE DEVELOPER" schema-name)]
+      #_[:users
+       {}
+       ;; Create populator user with random password
+       [:populator-role
+        {}
+        (format "CREATE ROLE \"%s\" " (:role populator))
+        [:populator
+         {}
+         (format "CREATE OR REPLACE USER %s PASSWORD = '%s' DEFAULT_ROLE='%s'"
+                 (:user populator)
+                 (:password populator)
+                 (:role populator))
+         [:populator-privileges
+          {}
+          ;; Grant privileges to populator user
+
+          ;; source data hardcorded to public: FIX
+          (format "GRANT OWNERSHIP ON SCHEMA %s TO \"%s\" " schema-name #_(:user populator) (:role populator))
+          ;; todo: don't hardcode this to public
+          (format "GRANT USAGE ON DATABASE \"%s\" TO \"%s\" " source-database-name #_(:user populator)  (:role populator))]
+         [:assign-role
+          {}
+          (format "GRANT ROLE \"%s\" to USER %s" (:role populator) (:user populator))]]]]]]))
+
 (comment
+  (let [spec (metabase.driver.sql-jdbc.connection/db->pooled-connection-spec (toucan2.core/select-one-fn :id :model/Database :engine :snowflake))]
+    (jdbc/query spec ["select current_role()"]))
+  )
+
+(defmethod create-isolation* :snowflake
+  [_driver {:keys [id connection-details]}]
+  ;; schema name is automatically uppercased by snowflake, but then if you quote it it doesn't find the uppercased
+  ;; version.
+  (let [schema-name (str/upper-case (isolation-schema-name id))
+        jdbc-spec (sql-jdbc.conn/connection-details->spec :snowflake connection-details)
+        populator {:user (isolation-user-name id :populator)
+                   :password (str (random-uuid))
+                   :role (str (random-uuid))}
+        steps (snowflake-steps {:populator populator
+                                :schema-name schema-name
+                                :source-database-name ((some-fn :db :dbname) connection-details)})]
+    (jdbc/with-db-transaction [tx jdbc-spec]
+      (let [results (evaluate-steps steps (fn [sql]
+                                            (try [:success sql (jdbc/execute! tx
+                                                                              (if (string? sql)
+                                                                                [sql]
+                                                                                sql))]
+                                                 (catch Exception e
+                                                   (log/error e)
+                                                   [:error sql (ex-message e)]))))]
+        {:isolation-type :schema
+         :schema-name schema-name
+         ;;:populator populator
+         :results results}))))
+
+
+(comment
+  (malli.core/validate ::steps
+                       (snowflake-steps {:populator            {:user "populator_user123" :password (str (random-uuid))}
+                                         :schema-name          (isolation-schema-name "workspace_1234")
+                                         :source-database-name "sales"}))
+  (postgres-steps {:populator {:user "populator" :password "populator-pw"}
+                   :schema-name "scratchpad"})
+  (malli.core/validate ::steps
+                       (postgres-steps {:populator {:user "populator" :password "populator-pw"}
+                                        :schema-name "scratchpad"}))
+
   (evaluate-steps (postgres-steps {:populator {:user "populator" :password "populator-pw"}
                                    :schema-name "scratchpad"})
                   (fn [step] (if (= 0 (rand-int 10))
@@ -271,6 +348,7 @@
         (format "GRANT SHOW DATABASES ON *.* TO %s" (:user populator))]]]]))
 
 (comment
+
   (malli.core/validate ::steps
                        (clickhouse-steps {:populator {:user "populator" :password "populator-pw"}
                                           :database-name "scratchpad"
@@ -366,7 +444,7 @@
 (defmethod delete-isolation* :postgres
   [_driver {:keys [id connection-details isolation-info]}]
   (let [schema-name    (or (:schema-name isolation-info)
-                           (isolation-schema-name id))
+                           (str/upper-case (isolation-schema-name id)))
         populator-user (or (-> isolation-info :populator :user)
                            (isolation-user-name id :populator))
         jdbc-spec      (sql-jdbc.conn/connection-details->spec :postgres connection-details)
@@ -414,6 +492,24 @@
         {:deleted-database database-name
          :deleted-users [populator-user]
          :results results}))))
+
+(defmethod delete-isolation* :snowflake
+  [_driver {:keys [id connection-details isolation-info] :as x}]
+  (let [schema-name    (or (:schema-name isolation-info)
+                           (isolation-schema-name id))
+        populator-user (or (-> isolation-info :populator :user)
+                           (isolation-user-name id :populator))
+        jdbc-spec      (sql-jdbc.conn/connection-details->spec :snowflake connection-details)
+        steps          [:cleanup {:error-strategy ::continue-on-error}
+                        [:drop-schema {} (format "DROP SCHEMA %s" schema-name)]
+                        [:drop-user {} (format "DROP USER %s" populator-user)]
+                        [:drop-role {} (format "DROP ROLE %s" (-> isolation-info :populator :role))]]]
+    (jdbc/with-db-transaction [tx jdbc-spec]
+      (let [results (evaluate-steps steps (fn [sql]
+                                            (try [:success sql (jdbc/execute! tx [sql])]
+                                                 (catch Exception e
+                                                   [:error sql (ex-message e)]))))]
+        {:deleted-schema schema-name :deleted-users [populator-user] :results results}))))
 
 (defn delete-isolation
   "Delete database isolation for a single database.

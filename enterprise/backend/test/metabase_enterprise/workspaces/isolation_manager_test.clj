@@ -8,7 +8,8 @@
    [metabase-enterprise.workspaces.isolation-manager :as isolation-manager]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.query-processor.compile :as qp.compile]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [metabase.driver :as driver]))
 
 (deftest create-isolation-test
   (mt/test-drivers #{:postgres :clickhouse}
@@ -30,22 +31,33 @@
 
 (def driver-creates
   {:postgres "create table %s.%s (id int, stuff text)"
-   :clickhouse "CREATE TABLE %s.%s (id Int32, stuff String) ENGINE = MergeTree() ORDER BY id"})
+   :clickhouse "CREATE TABLE %s.%s (id Int32, stuff String) ENGINE = MergeTree() ORDER BY id"
+   :snowflake "CREATE TABLE \"%s\".\"%s\" (id INT, stuff TEXT)"})
+
+(def driver-drops
+  {:postgres   "DROP table %s.%s"
+   :clickhouse "DROP table %s.%s"
+   :snowflake  "DROP table \"%s\".\"%s\" "})
 
 (deftest e2e
-  (mt/test-drivers #{:postgres :clickhouse}
+  (mt/test-drivers #{:postgres :clickhouse :snowflake}
     (let [db (mt/db)
-          details (:details db)
+          driver (:engine db)
+          details (merge (:details db))
           workspace-id (str (gensym "testing-workspace"))
-          isolation-info (isolation-manager/create-isolation (:engine db) details workspace-id)]
+          isolation-info (isolation-manager/create-isolation (:engine db)
+                                                             details
+                                                             workspace-id)]
       (letfn [(run-query! [user-info read|write sql]
-                (assert (every? user-info [:user :password]))
+                ;; user-info from snowflake is nil intentionally. that does not create a new user
                 (let [spec (sql-jdbc.conn/connection-details->spec (:engine db)
                                                                    (merge details user-info))]
                   (try {:success true
-                        :results (if (= read|write :read)
-                                   (jdbc/query spec sql)
-                                   (jdbc/execute! spec sql))}
+                        :results (with-open [conn (jdbc/get-connection spec)]
+                                   (driver/set-database-used! driver conn db)
+                                   (if (= read|write :read)
+                                     (jdbc/query {:connection conn} sql)
+                                     (jdbc/execute! {:connection conn} sql)))}
                        (catch Exception e
                          {:error true
                           :message  (ex-message e)
@@ -59,13 +71,14 @@
             (testing "populator can query original data"
               (is (=? {:success true} (run-query! populator :read query))))
             (testing "populator can populate new schema"
-              (is (=? {:success true} (run-query! populator :write (format (driver-creates (:engine db)) isolation temp-table)))))
+              (is (=? {:success true} (run-query! populator :write
+                                                  (format (driver-creates driver) isolation temp-table)))))
             (testing "populator can delete table in new schema"
-              (is (=? {:success true} (run-query! populator :write (format "DROP table %s.%s" isolation temp-table)))))
+              (is (=? {:success true} (run-query! populator :write (format (driver-drops driver) isolation temp-table)))))
             (testing "populator can recreate dropped table"
               (is (=? {:success true} (run-query! populator :write (format (driver-creates (:engine db)) isolation temp-table))))))
           (finally
-            (isolation-manager/delete-isolation (:engine db) (:details db) workspace-id
+            (isolation-manager/delete-isolation (:engine db) details workspace-id
                                                 isolation-info)))))))
 
 (deftest evaluator-test
@@ -191,7 +204,8 @@
 
 (comment
   (run-tests)
-  (mt/set-test-drivers! #{:postgres :clickhouse})
+  (mt/set-test-drivers! #{:postgres :clickhouse :snowflake})
+  (mt/set-test-drivers! #{:snowflake})
   (mt/set-test-drivers! #{:postgres})
   (mt/set-test-drivers! #{:clickhouse})
   (do (run-test e2e)
