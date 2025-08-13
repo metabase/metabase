@@ -351,7 +351,11 @@ class Visualization extends PureComponent<
     const { rawSeries = [] } = props;
 
     let warnings = state.warnings || [];
-    if (state.series && state.series[0].card.display !== "table") {
+    if (
+      state.series &&
+      state.series[0].card.display !== "table" &&
+      state.series[0].card.display !== "list"
+    ) {
       warnings = warnings.concat(
         rawSeries
           .filter(
