@@ -91,7 +91,7 @@
 
 (comment
 
-;; delete all but 1 Workspace Collection:
+  ;; delete all but 1 Workspace Collection:
   (doseq [ids (rest (map :id (t2/select [:model/Collection :id] :name "Workspace Collection")))]
     (t2/delete! :model/Collection :id ids))
 

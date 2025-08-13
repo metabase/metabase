@@ -116,7 +116,7 @@
    [:transforms [:sequential ::transform]]
    [:documents [:sequential ::document]]
    [:users [:sequential ::user]]
-   [:data_warehouses [:sequential ::data-warehouse]]
+   [:data_warehouses [:map-of {:description "data warehouse id -> isolation info"} :int :map]]
    [:permissions [:sequential ::permission]]
    [:created_at [:any {:description "The date and time the workspace was created"}]]
    [:updated_at [:any {:description "The date and time the workspace was last updated"}]]])
@@ -140,13 +140,13 @@
   (assoc workspace :slug (generate-slug workspace)))
 
 (t2/deftransforms :model/Workspace
-  {:plans mi/transform-json
-   :activity_logs mi/transform-json
-   :transforms mi/transform-json
-   :documents mi/transform-json
-   :users mi/transform-json
+  {:plans           mi/transform-json
+   :activity_logs   mi/transform-json
+   :transforms      mi/transform-json
+   :documents       mi/transform-json
+   :users           mi/transform-json
    :data_warehouses mi/transform-json
-   :permissions mi/transform-json})
+   :permissions     mi/transform-json})
 
 (doto :model/Workspace
   (derive :metabase/model)
