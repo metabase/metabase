@@ -4,7 +4,7 @@
    [honey.sql :as sql]
    [honey.sql.helpers :as sql.helpers]
    [metabase-enterprise.semantic-search.core]
-   [metabase-enterprise.semantic-search.db :as semantic.db]
+   [metabase-enterprise.semantic-search.db.datasource :as semantic.db.datasource]
    [metabase-enterprise.semantic-search.embedding :as semantic.embedding]
    [metabase-enterprise.semantic-search.index :as semantic.index]
    [metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]
@@ -23,19 +23,19 @@
 
 (def ^:private init-delay
   (delay
-    (when-not @semantic.db/data-source
-      (semantic.db/init-db!))))
+    (when-not @semantic.db.datasource/data-source
+      (semantic.db.datasource/init-db!))))
 
 (defn once-fixture [f]
-  (when semantic.db/db-url
+  (when semantic.db.datasource/db-url
     @init-delay
     (f)))
 
 (def db
-  "Proxies the semantic.db/data-source, avoids the deref and prettifies a little"
-  ;; proxy because semantic.db/data-source is not initialised until the fixture runs
+  "Proxies the semantic.db.datasource/data-source, avoids the deref and prettifies a little"
+  ;; proxy because semantic.db.datasource/data-source is not initialised until the fixture runs
   (reify jdbc.protocols/Sourceable
-    (get-datasource [_] (jdbc.protocols/get-datasource @semantic.db/data-source))))
+    (get-datasource [_] (jdbc.protocols/get-datasource @semantic.db.datasource/data-source))))
 
 (comment
   (jdbc/execute! db ["select 1"]))

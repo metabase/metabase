@@ -1,7 +1,7 @@
 (ns metabase-enterprise.semantic-search.query-test
   (:require
    [clojure.test :refer :all]
-   [metabase-enterprise.semantic-search.db :as semantic.db]
+   [metabase-enterprise.semantic-search.db.datasource :as semantic.db.datasource]
    [metabase-enterprise.semantic-search.index :as semantic.index]
    [metabase-enterprise.semantic-search.test-util :as semantic.tu]
    [metabase.permissions.models.data-permissions :as data-perms]
@@ -13,8 +13,8 @@
 (use-fixtures :once #'semantic.tu/once-fixture)
 
 (deftest database-initialised-test
-  (is (some? @semantic.db/data-source))
-  (is (= {:test 1} (semantic.db/test-connection!))))
+  (is (some? @semantic.db.datasource/data-source))
+  (is (= {:test 1} (semantic.db.datasource/test-connection!))))
 
 (deftest basic-query-test
   (testing "Simple queries with no filters"
