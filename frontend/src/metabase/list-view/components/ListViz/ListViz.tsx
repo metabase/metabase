@@ -3,8 +3,7 @@ import { t } from "ttag";
 
 import { displayNameForColumn } from "metabase/lib/formatting";
 import type { OptionsType } from "metabase/lib/formatting/types";
-import { useDispatch, useSelector } from "metabase/lib/redux";
-import { updateQuestion } from "metabase/query_builder/actions";
+import { useSelector } from "metabase/lib/redux";
 import { getQuestion } from "metabase/query_builder/selectors";
 import { Box } from "metabase/ui";
 import ChartSettingLinkUrlInput from "metabase/visualizations/components/settings/ChartSettingLinkUrlInput";
@@ -192,9 +191,12 @@ const vizDefinition = {
   },
 };
 
-export function ListViz({ data, settings }: VisualizationProps) {
+export function ListViz({
+  data,
+  settings,
+  onVisualizationClick,
+}: VisualizationProps) {
   const question = useSelector(getQuestion);
-  const dispatch = useDispatch();
 
   const { sortedColumnName, sortingDirection } = useMemo(() => {
     if (!question) {
@@ -212,33 +214,8 @@ export function ListViz({ data, settings }: VisualizationProps) {
     return {};
   }, [question]);
 
-  // TODO Rework (with drill-thru?)
-  const handleSort = (datasetColumn: DatasetColumn) => {
-    if (!question) {
-      return;
-    }
-    const query = question.query();
-    const [orderBy] = Lib.orderBys(query, -1);
-    const column = Lib.fromLegacyColumn(query, -1, datasetColumn);
-
-    let nextQuery = query;
-    if (orderBy) {
-      if (sortedColumnName === datasetColumn.name) {
-        nextQuery = Lib.changeDirection(query, orderBy);
-      } else {
-        nextQuery = Lib.replaceClause(
-          nextQuery,
-          -1,
-          orderBy,
-          Lib.orderByClause(column),
-        );
-      }
-    } else {
-      nextQuery = Lib.orderBy(nextQuery, -1, column, "asc");
-    }
-
-    const nextQuestion = question.setQuery(nextQuery);
-    dispatch(updateQuestion(nextQuestion));
+  const handleSort = (column: DatasetColumn) => {
+    onVisualizationClick({ column });
   };
 
   return (
