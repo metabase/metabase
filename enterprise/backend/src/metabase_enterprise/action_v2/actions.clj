@@ -2,6 +2,7 @@
   (:require
    [metabase-enterprise.action-v2.data-editing :as data-editing]
    [metabase-enterprise.action-v2.models.undo :as undo]
+   [metabase-enterprise.action-v2.validation :as validation]
    [metabase.actions.args :as actions.args]
    [metabase.actions.core :as actions]
    [metabase.driver.util :as driver.u]
@@ -69,8 +70,22 @@
         [op pretty-row] (map vector (map :op diffs) pretty-rows)]
     {:op op, :table-id table-id, :row pretty-row}))
 
+(defn- validate-inputs!
+  [inputs]
+  (let [table-id->inputs (group-by :table-id inputs)
+        errors (not-empty
+                (u/for-map [[table-id inputs] table-id->inputs
+                            :let [errors (seq (validation/validate-inputs table-id (map :row inputs)))]
+                            :when errors]
+                  [table-id errors]))]
+    (when (seq errors)
+      (throw (ex-info "Failed validation" {:errors      errors
+                                           :status-code 400
+                                           :error-code  ::invalid-input})))))
+
 (defn- coerce-inputs [inputs]
-  (let [input->coerced (u/for-map [[table-id inputs] (group-by :table-id inputs)
+  (let [table-id->inputs (group-by :table-id inputs)
+        input->coerced (u/for-map [[table-id inputs] table-id->inputs
                                    :let [coerced (data-editing/apply-coercions table-id (map :row inputs))]
                                    input+row (map vector inputs coerced)]
                          input+row)]
@@ -80,6 +95,7 @@
 
 (defn- perform-data-grid-action! [action-kw context inputs]
   (let [next-inputs (coerce-inputs inputs)]
+    (validate-inputs! next-inputs)
     (perform-table-row-action! action-kw context next-inputs
                                (if (= :table.row/delete action-kw)
                                  identity
