@@ -688,6 +688,45 @@ describe("scenarios > admin > transforms > jobs", () => {
     });
   });
 
+  describe("schedule", () => {
+    it("should be able to change the schedule after creation", () => {
+      H.createTransformJob({ name: "New job" }, { visitTransformJob: true });
+      getJobPage().within(() => {
+        getCronInput().clear().type("0 * * * ?").blur();
+        cy.findByText("This job will run every hour").should("be.visible");
+      });
+      H.undoToast().findByText("Job schedule updated").should("be.visible");
+      getJobPage().within(() => {
+        getCronInput().should("have.value", "0 * * * ?");
+      });
+    });
+  });
+
+  describe("tags", () => {
+    it("should be able to add and remove tags", () => {
+      createTransformTags(["main", "replica"]);
+      H.createTransformJob({ name: "New job" }, { visitTransformJob: true });
+      getTagsInput().click();
+
+      H.popover().within(() => {
+        cy.findByRole("option", { name: "main" }).click();
+        cy.wait("@updateJob");
+        assertOptionSelected("main");
+        assertOptionNotSelected("replica");
+
+        cy.findByRole("option", { name: "replica" }).click();
+        cy.wait("@updateJob");
+        assertOptionSelected("main");
+        assertOptionSelected("replica");
+
+        cy.findByRole("option", { name: "main" }).click();
+        cy.wait("@updateJob");
+        assertOptionNotSelected("main");
+        assertOptionSelected("replica");
+      });
+    });
+  });
+
   describe("runs", () => {
     it("should be able to manually run a job", () => {
       H.createTransformTag({ name: "New tag" }).then(({ body: tag }) => {
