@@ -1,5 +1,8 @@
 import { createRoot } from "react-dom/client";
 
+// Setup CSP nonce for CodeMirror dynamic styles
+import "metabase/lib/csp";
+
 import {
   EMBEDDING_SDK_CONFIG,
   EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG,
