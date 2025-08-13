@@ -34,7 +34,8 @@
               (with-redefs [semantic.pgvector-api/query
                             (fn [& _]
                               (reset! semantic-called? true)
-                              [{:id 1 :name "semantic-result" :model "card" :collection_id 1  :score 0}])
+                              {:results [{:id 1 :name "semantic-result" :model "card" :collection_id 1  :score 0}]
+                               :raw-count 0})
                             appdb/results
                             (fn [_]
                               (reset! appdb-called? true)
@@ -51,7 +52,8 @@
               (with-redefs [semantic.pgvector-api/query
                             (fn [& _]
                               (reset! semantic-called? true)
-                              [{:id 1 :name "semantic-result" :model "card" :collection_id 1  :score 0.8}])
+                              {:results [{:id 1 :name "semantic-result" :model "card" :collection_id 1  :score 0.8}]
+                               :raw-count 0})
                             appdb/results
                             (fn [_]
                               (reset! appdb-called? true)
@@ -68,14 +70,17 @@
 (defn- with-search-engine-mocks!
   "Sets up search engine mocks for the semantic & appdb backends for testing fallback behavior.
    appdb-fn can be a collection of results or a function that takes a context."
-  [semantic-results appdb-fn thunk]
-  (with-redefs [semantic.pgvector-api/query (fn [_pgvector _index-metadata _search-ctx] semantic-results)
-                search.engine/supported-engine? (constantly true)
+  [semantic-results appdb-results thunk]
+  (with-redefs [semantic.pgvector-api/query (fn [_pgvector _index-metadata _search-ctx]
+                                              {:results semantic-results
+                                               ;; Set raw-count to a non-zero value to ensure fallback logic is
+                                               ;; triggered
+                                               :raw-count 1})
                 search.engine/results (fn [ctx]
                                         (case (:search-engine ctx)
-                                          :search.engine/appdb (if (fn? appdb-fn)
-                                                                 (appdb-fn ctx)
-                                                                 appdb-fn)
+                                          :search.engine/appdb (if (fn? appdb-results)
+                                                                 (appdb-results ctx)
+                                                                 appdb-results)
                                           :search.engine/semantic (semantic.core/results ctx)))]
     (thunk)))
 

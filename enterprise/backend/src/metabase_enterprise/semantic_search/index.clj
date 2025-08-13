@@ -144,16 +144,21 @@
    :legacy_input        [:cast (json/encode legacy_input) :jsonb]
    :metadata            [:cast (json/encode doc) :jsonb]})
 
+(defn index-size
+  "Fetches the number of documents in the index table."
+  [connectable table-name]
+  (->> (jdbc/execute-one! connectable
+                          (-> (sql.helpers/select [:%count.* :count])
+                              (sql.helpers/from (keyword table-name))
+                              (sql.helpers/limit 1)
+                              sql-format-quoted))
+       :count))
+
 (defn- analytics-set-index-size!
   "Set the semantic-index-size metric to the number of rows in the index table."
   [connectable table-name]
   (try
-    (->> (jdbc/execute-one! connectable
-                            (-> (sql.helpers/select [:%count.* :count])
-                                (sql.helpers/from (keyword table-name))
-                                (sql.helpers/limit 1)
-                                sql-format-quoted))
-         :count
+    (->> (index-size connectable table-name)
          (analytics/set! :metabase-search/semantic-index-size))
     (catch Exception e
       (log/warn e "Failed to set :metabase-search/semantic-index-size metric"))))
@@ -723,11 +728,13 @@
         filtered-docs))))
 
 (defn query-index
-  "Query the index for documents similar to the search string."
+  "Query the index for documents similar to the search string.
+  Returns a map with :results and :raw-count."
   [db index search-context]
   (let [{:keys [embedding-model]} index
         search-string (:search-string search-context)]
-    (when-not (str/blank? search-string)
+    (if (str/blank? search-string)
+      {:results [] :raw-count 0}
       (let [timer (u/start-timer)
 
             embedding (embedding/get-embedding embedding-model search-string)
@@ -772,7 +779,8 @@
         (comment
           (jdbc/execute! db (sql-format-quoted query)))
 
-        filtered-results))))
+        {:results filtered-results
+         :raw-count (count raw-results)}))))
 
 (comment
   (def embedding-model (embedding/get-configured-model))

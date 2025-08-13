@@ -8,6 +8,7 @@
    [metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]
    [metabase-enterprise.semantic-search.pgvector-api :as semantic.pgvector-api]
    [metabase-enterprise.semantic-search.settings :as semantic.settings]
+   [metabase.analytics.core :as analytics]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.search.engine :as search.engine]
    [metabase.util.log :as log]))
@@ -31,27 +32,34 @@
    (semantic.settings/semantic-search-enabled)))
 
 (defenterprise results
-  "Enterprise implementation of semantic search results with fallback logic."
+  "Enterprise implementation of semantic search results with improved fallback logic. Falls back to appdb search only
+  when semantic search returns too few results and some results were filtered out (e.g. due to permission checks)."
   :feature :semantic-search
   [search-ctx]
   (try
-    (let [semantic-results (semantic.pgvector-api/query
-                            (semantic.env/get-pgvector-datasource!)
-                            (semantic.env/get-index-metadata)
-                            search-ctx)
-          result-count (count semantic-results)]
-      (if (>= result-count (semantic.settings/semantic-search-min-results-threshold))
-        semantic-results
+    (let [{:keys [results raw-count]}
+          (semantic.pgvector-api/query (semantic.env/get-pgvector-datasource!)
+                                       (semantic.env/get-index-metadata)
+                                       search-ctx)
+          final-count (count results)
+          threshold (semantic.settings/semantic-search-min-results-threshold)]
+      (if (or (>= final-count threshold)
+              (zero? raw-count))
+        results
+        ;; Fallback: semantic search found results but some were filtered out (e.g. due to permission checks), so try to
+        ;; supplement with appdb search.
         (let [fallback (fallback-engine)]
-          (log/debugf "Semantic search returned %d results (< %d), supplementing with %s search"
-                      result-count (semantic.settings/semantic-search-min-results-threshold) fallback)
+          (log/debugf "Semantic search returned %d final results (< %d) from %d raw results, supplementing with %s search"
+                      final-count threshold raw-count fallback)
+          (analytics/inc! :metabase-search/semantic-fallback-triggered {:fallback-engine fallback})
+          (analytics/observe! :metabase-search/semantic-results-before-fallback final-count)
           (let [fallback-results (search.engine/results (assoc search-ctx :search-engine fallback))
-                combined-results (concat semantic-results fallback-results)
+                combined-results (concat results fallback-results)
                 deduped-results  (m/distinct-by (juxt :model :id) combined-results)]
             (take (semantic.settings/semantic-search-results-limit) deduped-results)))))
     (catch Exception e
       (log/error e "Error executing semantic search")
-      [])))
+      (throw (ex-info "Error executing semantic search" {:type :semantic-search-error} e)))))
 
 ;; TODO: tx-write
 (defenterprise update-index!

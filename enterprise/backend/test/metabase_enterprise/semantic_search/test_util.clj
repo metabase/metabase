@@ -112,7 +112,7 @@
 (defmethod semantic.embedding/pull-model           "mock" [_])
 
 (defn query-index [search-context]
-  (semantic.index/query-index db mock-index search-context))
+  (:results (semantic.index/query-index db mock-index search-context)))
 
 (defn upsert-index! [documents & opts]
   (apply semantic.index/upsert-index! db mock-index documents opts))
