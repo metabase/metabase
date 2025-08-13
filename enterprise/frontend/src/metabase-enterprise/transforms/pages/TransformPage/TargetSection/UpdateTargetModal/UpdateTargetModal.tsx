@@ -13,7 +13,15 @@ import {
   FormTextInput,
 } from "metabase/forms";
 import * as Errors from "metabase/lib/errors";
-import { Button, FocusTrap, Group, Modal, Radio, Stack } from "metabase/ui";
+import {
+  Box,
+  Button,
+  FocusTrap,
+  Group,
+  Modal,
+  Radio,
+  Stack,
+} from "metabase/ui";
 import {
   useDeleteTransformTargetMutation,
   useUpdateTransformMutation,
@@ -132,8 +140,10 @@ function UpdateTargetForm({
                 </Stack>
               </Radio.Group>
             )}
-            <FormErrorMessage />
-            <Group justify="end">
+            <Group>
+              <Box flex={1}>
+                <FormErrorMessage />
+              </Box>
               <Button onClick={onClose}>{t`Cancel`}</Button>
               <FormSubmitButton
                 label={getSubmitButtonLabel(shouldDeleteTarget)}

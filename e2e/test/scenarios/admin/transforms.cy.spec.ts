@@ -76,12 +76,35 @@ describe("scenarios > admin > transforms", () => {
       H.assertQueryBuilderRowCount(3);
     });
 
-    it("should be able to create and run a transform from an mbql question", () => {
+    it("should be able to create and run a transform from a question", () => {
       cy.log("TBD");
     });
 
-    it("should be able to create and run a transform from a native model", () => {
+    it("should be able to create and run a transform from a model", () => {
       cy.log("TBD");
+    });
+
+    it("should not allow to overwrite an existing table when creating a transform", () => {
+      cy.log("open the new transform page");
+      visitTransformListPage();
+      getTransformListPage().button("Create a transform").click();
+      H.popover().findByText("Query builder").click();
+
+      cy.log("set the query");
+      H.entityPickerModal().within(() => {
+        cy.findByText(DB_NAME).click();
+        cy.findByText(SOURCE_TABLE).click();
+      });
+      getQueryEditor().button("Save").click();
+      H.modal().within(() => {
+        cy.findByLabelText("Name").type("MBQL transform");
+        cy.findByLabelText("Table name").type(SOURCE_TABLE);
+        cy.button("Save").click();
+        cy.wait("@createTransform");
+        cy.findByText("A table with that name already exists.").should(
+          "be.visible",
+        );
+      });
     });
   });
 
@@ -232,6 +255,21 @@ describe("scenarios > admin > transforms", () => {
       getTableLink().click();
       H.queryBuilderHeader().findByText("Transform Table").should("be.visible");
       H.assertQueryBuilderRowCount(3);
+    });
+
+    it("should not allow to overwrite an existing table when changing the target", () => {
+      createMbqlTransform({ visitTransform: true });
+
+      cy.log("change the target to an existing table");
+      getTransformPage().button("Change target").click();
+      H.modal().within(() => {
+        cy.findByLabelText("Table name").clear().type(SOURCE_TABLE);
+        cy.button("Change target").click();
+        cy.wait("@updateTransform");
+        cy.findByText("A table with that name already exists.").should(
+          "be.visible",
+        );
+      });
     });
   });
 
