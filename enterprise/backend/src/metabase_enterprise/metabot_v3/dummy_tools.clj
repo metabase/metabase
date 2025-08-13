@@ -302,9 +302,9 @@
         {:structured-output {:id (:id doc)
                              :name (:name doc)
                              :document (:document doc)}}
-        {:output "report not found"})
+        {:output "document not found"})
       (catch Exception e
-        {:output (str "error fetching report: " (.getMessage e))}))
+        {:output (str "error fetching document: " (.getMessage e))}))
     {:output "invalid document_id"}))
 
 (defn- base-type->type [field]

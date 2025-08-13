@@ -211,6 +211,7 @@
    :api #{metabase.bookmarks.api}
    :uses #{api
            app-db
+           config
            premium-features
            queries
            util}}
