@@ -124,18 +124,20 @@
        (->> (get-tables-from-metadata (.getMetaData conn) "%")
             jdbc/metadata-result
             vec
-            (filter #(and
-                      (not (contains? (sql-jdbc.sync/excluded-schemas driver) (:table_schem %)))
-                      (not-inner-mv-table? %)))
             (filter (fn [table]
                       (cond
                         (= db-filters-type "inclusion")
                         (contains? db-filters-patterns (:table_schem table))
 
                         (= db-filters-type "exclusion")
-                        (not (contains? db-filters-patterns (:table_schem table)))
+                        (and (not (contains? db-filters-patterns (:table_schem table)))
+                             (not (contains? (sql-jdbc.sync/excluded-schemas driver) (:table_schem table)))
+                             (not-inner-mv-table? table))
 
-                        :else true)))
+                        :else
+                        (and
+                         (not (contains? (sql-jdbc.sync/excluded-schemas driver) (:table_schem table)))
+                         (not-inner-mv-table? table)))))
             tables-set)))))
 
 ;; Strangely enough, the tests only work with :db keyword,
