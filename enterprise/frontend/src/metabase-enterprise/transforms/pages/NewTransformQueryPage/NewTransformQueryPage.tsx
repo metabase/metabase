@@ -69,7 +69,7 @@ function NewTransformPageBody({ initialQuery }: NewTransformPageBodyProps) {
   return (
     <>
       <QueryEditor
-        query={query}
+        initialQuery={initialQuery}
         isNew
         onSave={handleSaveClick}
         onCancel={handleCancelClick}

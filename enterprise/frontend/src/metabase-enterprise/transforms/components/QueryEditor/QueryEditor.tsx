@@ -15,7 +15,7 @@ import { EditorVisualization } from "./EditorVisualization";
 import S from "./QueryEditor.module.css";
 
 type QueryEditorProps = {
-  query: DatasetQuery;
+  initialQuery: DatasetQuery;
   isNew?: boolean;
   isSaving?: boolean;
   onSave: (newQuery: DatasetQuery) => void;
@@ -23,13 +23,13 @@ type QueryEditorProps = {
 };
 
 export function QueryEditor({
-  query: initialQuery,
+  initialQuery,
   isNew = true,
   isSaving = false,
   onSave,
   onCancel,
 }: QueryEditorProps) {
-  const { question, setQuestion } = useQueryState(initialQuery);
+  const { question, isQueryDirty, setQuestion } = useQueryState(initialQuery);
   const { isInitiallyLoaded } = useQueryMetadata(question);
   const {
     result,
@@ -81,7 +81,7 @@ export function QueryEditor({
       <EditorHeader
         isNew={isNew}
         isSaving={isSaving}
-        canSave={canSave}
+        canSave={canSave && (isNew || isQueryDirty)}
         onSave={handleSave}
         onCancel={onCancel}
       />
