@@ -170,8 +170,9 @@
 
   Logs the creation of isolation schemas in the activity_logs of the workspace"
   [{:keys [transforms] :as workspace}]
-  (let [_ (when-not (seq transforms)
-            (throw (ex-info "Workspace must have at least one transform to create isolation" {:error :no-transforms})))
+  (when-not (seq transforms)
+    (throw (ex-info "Workspace must have at least one transform to create isolation" {:error :no-transforms})))
+  (let [isolation-schema-name (isolation-manager/isolation-schema-name (:slug workspace))
         db-ids (distinct (map source-database transforms))
         databases (t2/select :model/Database :id [:in db-ids])
         isolation-info (into {}
