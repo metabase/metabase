@@ -1,3 +1,7 @@
+// To apply cypress-level mantine styles
+import "@mantine/core/styles.css";
+import "@mantine/dates/styles.css";
+
 import { Button, MantineProvider, Title } from "@mantine/core";
 import {
   CreateDashboardModal,
@@ -668,12 +672,12 @@ describe("scenarios > embedding-sdk > styles", () => {
           const style = document.createElement("style");
 
           style.innerHTML = `
-          .some-title {
-            font-size: 40px;
-          }
-        `;
+            .some-title {
+              font-size: 40px;
+            }
+          `;
 
-          document.head.prepend(style);
+          document.head.append(style);
 
           return () => {
             style.remove();
@@ -700,6 +704,48 @@ describe("scenarios > embedding-sdk > styles", () => {
       getSdkRoot().findByText("Product ID").should("exist");
 
       cy.findByTestId("title").should("have.css", "font-size", "40px");
+    });
+
+    it("App styles should not affect SDK styles", () => {
+      const Wrapper = () => {
+        useEffect(() => {
+          const style = document.createElement("style");
+
+          style.innerHTML = `
+          button {
+            background: red;
+          }
+        `;
+
+          document.head.prepend(style);
+
+          return () => {
+            style.remove();
+          };
+        }, []);
+
+        return null;
+      };
+
+      cy.mount(
+        <MantineProvider>
+          <Wrapper />
+
+          <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}>
+            <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />
+          </MetabaseProvider>
+        </MantineProvider>,
+      );
+
+      getSdkRoot().findByText("Product ID").should("exist");
+
+      cy.findByTestId("interactive-question-result-toolbar").within(() => {
+        cy.findByText("Filter").should(
+          "have.css",
+          "background-color",
+          "rgba(0, 0, 0, 0)",
+        );
+      });
     });
   });
 });
