@@ -41,11 +41,11 @@ export function Relationships({
 
   return (
     <Stack gap="md" p={rem(40)}>
-      <Text
-        c="text-secondary"
-        fw="bold"
-        fz={17}
-      >{t`${rowName} is connected to:`}</Text>
+      <Text c="text-secondary" fw="bold" fz={17}>
+        {rowName
+          ? t`${rowName} is connected to:`
+          : t`This record is connected to:`}
+      </Text>
 
       <Stack gap="md">
         {sortedForeignTables.map((fk) => {
