@@ -15,7 +15,6 @@
 }
 
 .listHeader {
-  margin-bottom: var(--mantine-spacing-sm);
   padding-inline: calc(50% - var(--max-width) / 2 + var(--item-padding));
 }
 
@@ -60,7 +59,7 @@
 .listHeader,
 .listItem {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) repeat(var(--grid-columns), 10%);
-  gap: var(--mantine-spacing-sm);
+  grid-template-columns: minmax(0, 1fr) repeat(var(--grid-columns), 12%);
+  gap: var(--mantine-spacing-md);
   align-items: center;
 }

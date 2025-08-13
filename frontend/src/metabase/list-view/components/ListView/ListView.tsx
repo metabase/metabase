@@ -126,7 +126,7 @@ export function ListView({
                           </Text>
                         )}
                         {subtitleColumn && (
-                          <Text size="xs" c="text-secondary" truncate fw="bold">
+                          <Text size="sm" c="text-secondary" truncate fw="bold">
                             {formatValue(row[cols.indexOf(subtitleColumn)], {
                               ...(settings.column?.(subtitleColumn) || {}),
                               jsx: true,
@@ -150,7 +150,7 @@ export function ListView({
                             flexShrink: 0,
                           }}
                         >
-                          <Text size="sm" c="text-secondary" truncate>
+                          <Text fw="bold" size="sm" c="text-secondary" truncate>
                             {value}
                           </Text>
                         </div>
