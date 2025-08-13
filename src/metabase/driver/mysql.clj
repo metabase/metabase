@@ -1054,3 +1054,16 @@
 (defmethod sql-jdbc/impl-table-known-to-not-exist? :mysql
   [_ e]
   (= (sql-jdbc/get-sql-state e) "42S02"))
+
+(defmethod driver.sql/normalize-name :mysql
+  [_driver name-str]
+  (if (and (= (first name-str) \`)
+           (= (last name-str) \`))
+    (-> name-str
+        (subs 1 (dec (count name-str)))
+        (str/replace #"\"\"" "\""))
+    (u/lower-case-en name-str)))
+
+(defmethod driver.sql/default-schema :mysql
+  [_]
+  nil)
