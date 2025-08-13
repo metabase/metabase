@@ -67,18 +67,27 @@
                  db-version semantic.db.migration.impl/code-version)))
   nil)
 
+(defn- index-metadata-table-exists?
+  [tx]
+  (jdbc/execute-one! tx
+                     (sql/format {:select [[[:raw 1] :exists]]
+                                  :from [:information_schema.tables]
+                                  :where [[:= :information_schema.tables.table_name [:inline "index_metadata"]]]
+                                  :limit 1})))
+
 (defn- lowest-dynamic-db-version
   [tx]
-  (or (:index_metadata/index_version
-       (jdbc/execute-one! tx (sql/format {:select [:index_version]
-                                          :from [:index_metadata]
-                                          :order-by [[:index_version :asc]]
-                                          :limit 1})))
+  (or (when (index-metadata-table-exists? tx)
+        (:index_metadata/index_version
+         (jdbc/execute-one! tx
+                            (sql/format {:select [:index_version]
+                                         :from [:index_metadata]
+                                         :order-by [[:index_version :asc]]
+                                         :limit 1}))))
       0))
 
 (defn maybe-migrate-dynamic-schema!
   [tx opts]
-  ;; currently noop
   (let [db-version (lowest-dynamic-db-version tx)]
     (cond
       (= db-version semantic.db.migration.impl/dynamic-code-version)
