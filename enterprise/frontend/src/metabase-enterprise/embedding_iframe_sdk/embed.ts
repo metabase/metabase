@@ -20,7 +20,7 @@ import { attributeToSettingKey, parseAttributeValue } from "./webcomponents";
 const EMBEDDING_ROUTE = "embed/sdk/v1";
 
 /** list of active embeds, used to know which embeds to update when the global config changes */
-const _activeEmbeds: Set<InstanceType<typeof MetabaseEmbedElement>> = new Set();
+const _activeEmbeds: Set<MetabaseEmbedElement> = new Set();
 
 // Setup a proxy to watch for changes to window.metabaseConfig and update all
 // active embeds when the config changes. It also setups a setter for
@@ -69,11 +69,11 @@ export const updateAllEmbeds = (config: Partial<SdkIframeEmbedSettings>) => {
   });
 };
 
-const registerEmbed = (embed: InstanceType<typeof MetabaseEmbedElement>) => {
+const registerEmbed = (embed: MetabaseEmbedElement) => {
   _activeEmbeds.add(embed);
 };
 
-const unregisterEmbed = (embed: InstanceType<typeof MetabaseEmbedElement>) => {
+const unregisterEmbed = (embed: MetabaseEmbedElement) => {
   _activeEmbeds.delete(embed);
 };
 
@@ -105,9 +105,6 @@ export abstract class MetabaseEmbedElement extends HTMLElement {
 
   static readonly VERSION = "1.1.0";
 
-  // what are settings??
-  // private _settings: SdkIframeEmbedTagSettings =
-  // {} as SdkIframeEmbedTagSettings;
   private _isEmbedReady: boolean = false;
   private _eventHandlers: Map<
     SdkIframeEmbedEvent["type"],
@@ -240,13 +237,9 @@ export abstract class MetabaseEmbedElement extends HTMLElement {
       this.id = `metabase-embed-${Math.random().toString(36).slice(2)}`;
     }
 
-    try {
-      this._setup();
+    this._setup();
 
-      registerEmbed(this);
-    } catch (error) {
-      console.error("[metabase.embed.error]", error);
-    }
+    registerEmbed(this);
   }
 
   disconnectedCallback() {

@@ -136,7 +136,6 @@ export type SdkIframeEmbedTemplateSettings =
 export type SdkIframeEmbedSettings = SdkIframeEmbedBaseSettings &
   SdkIframeEmbedTemplateSettings;
 
-// TODO: remove?
 /** Settings used by the embed.js constructor */
 export type SdkIframeEmbedTagSettings = SdkIframeEmbedSettings;
 
