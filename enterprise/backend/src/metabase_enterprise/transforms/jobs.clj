@@ -8,6 +8,7 @@
    [metabase-enterprise.transforms.models.job-run :as transforms.job-run]
    [metabase-enterprise.transforms.ordering :as transforms.ordering]
    [metabase-enterprise.transforms.settings :as transforms.settings]
+   [metabase-enterprise.worker.core :as worker]
    [metabase.task.core :as task]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -49,32 +50,47 @@
   (let [plan (get-plan transform-ids-to-run)]
     (when start-promise
       (deliver start-promise :started))
-    (loop [complete #{}]
-      (when-let [current-transform (next-transform plan complete)]
-        (log/info "Executing job transform" (pr-str (:id current-transform)))
-        (transforms.execute/run-mbql-transform! current-transform {:run-method run-method})
-        (transforms.job-run/add-run-activity! run-id)
-        (recur (conj complete (:id current-transform)))))))
+    (loop [complete #{}
+           in-progress nil]
+      (when-let [{transform-id :id :as current-transform} (next-transform plan complete)]
+        (cond
+          (worker/running-run-for-work-id transform-id :transform)
+          (do
+            (log/info "Transform" (pr-str transform-id) "already running, sleeping")
+            (Thread/sleep 2000)
+            (recur complete transform-id))
+
+          in-progress
+          (recur (conj complete in-progress) nil)
+
+          :else
+          (do
+            (log/info "Executing job transform" (pr-str transform-id))
+            (transforms.execute/run-mbql-transform! current-transform {:run-method run-method})
+            (transforms.job-run/add-run-activity! run-id)
+            (recur (conj complete (:id current-transform)) nil)))))))
 
 (defn run-job!
   [job-id {:keys [run-method] :as opts}]
-  (let [transforms (t2/select-fn-set :transform_id
-                                     :transform_job_tags
-                                     {:select :transform_tags.transform_id
-                                      :from :transform_job_tags
-                                      :left-join [:transform_tags [:=
-                                                                   :transform_tags.tag_id
-                                                                   :transform_job_tags.tag_id]]
-                                      :where [:= :transform_job_tags.job_id job-id]})
-        run-id (str (u/generate-nano-id))]
-    (log/info "Executing transform job" (pr-str job-id) "with transforms" (pr-str transforms))
-    (transforms.job-run/start-run! run-id job-id run-method)
-    (try
-      (run-transforms! run-id transforms opts)
-      (transforms.job-run/succeed-started-run! run-id)
-      (catch Throwable t
-        (transforms.job-run/fail-started-run! run-id {:message (.getMessage t)})
-        (throw t)))))
+  (if (transforms.job-run/running-run-for-job-id job-id)
+    (log/info "Not executing transform job" (pr-str job-id) "because it is already running")
+    (let [transforms (t2/select-fn-set :transform_id
+                                       :transform_job_tags
+                                       {:select :transform_tags.transform_id
+                                        :from :transform_job_tags
+                                        :left-join [:transform_tags [:=
+                                                                     :transform_tags.tag_id
+                                                                     :transform_job_tags.tag_id]]
+                                        :where [:= :transform_job_tags.job_id job-id]})
+          run-id (str (u/generate-nano-id))]
+      (log/info "Executing transform job" (pr-str job-id) "with transforms" (pr-str transforms))
+      (transforms.job-run/start-run! run-id job-id run-method)
+      (try
+        (run-transforms! run-id transforms opts)
+        (transforms.job-run/succeed-started-run! run-id)
+        (catch Throwable t
+          (transforms.job-run/fail-started-run! run-id {:message (.getMessage t)})
+          (throw t))))))
 
 (def ^:private job-key "metabase-enterprise.transforms.jobs.timeout-job")
 
