@@ -1,9 +1,11 @@
 (ns metabase-enterprise.workspaces.common
   (:require
+   [medley.core :as m]
    [metabase-enterprise.workspaces.isolation-manager :as isolation-manager]
    [metabase-enterprise.workspaces.models.workspace :as m.workspace]
    [metabase.api.common :as api]
    [metabase.collections.common :as c.common]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
@@ -52,6 +54,27 @@
         current-entities (vec (or (get workspace entity-key) []))
         entity-with-created-at (assoc new-entity :created_at (str (java.time.Instant/now)))
         updated-entities (conj current-entities entity-with-created-at)]
+    (t2/update! :model/Workspace workspace-id {entity-key updated-entities})))
+
+(mu/defn add-workspace-entites
+  "Adds a workspace entity, such as a plan or transform, to the workspace.
+
+   Args:
+   - workspace-id: The workspace ID
+   - entity-key: The key in the workspace map (:plans, :transforms, etc.)
+   - new-entity: The new entity to add, which should be a map with the necessary fields"
+  [workspace-id-or-workspace :- [:or :map :int]
+   entity-key :- ::m.workspace/entity-column
+   new-entities :- [:sequential :any]]
+  (let [{workspace-id :id
+         :as workspace} (if (map? workspace-id-or-workspace)
+                          workspace-id-or-workspace
+                          (t2/select-one :model/Workspace :id workspace-id-or-workspace))
+        _ (when-not workspace (throw (ex-info "Workspace not found" {:error :no-workspace})))
+        current-entities (vec (or (get workspace entity-key) []))
+        entities-with-created-at (map #(assoc % :created_at (str (java.time.Instant/now)))
+                                      new-entities)
+        updated-entities (into current-entities entities-with-created-at)]
     (t2/update! :model/Workspace workspace-id {entity-key updated-entities})))
 
 (defn divert-transform-target
@@ -126,6 +149,40 @@
     (t2/update! :model/Workspace workspace-id {entity-key updated-items})
     (m.workspace/sort-workspace (t2/select-one :model/Workspace :id workspace-id))))
 
+(defn source-database
+  "Return the `source` table of a transform."
+  [transform]
+  (-> transform :source :query :database))
+
+(defn create-isolation!
+  "Creates an isolation for each of the workspace's transforms.
+
+   This function will create an isolation schema for each transform's source database.
+   It will throw an error if the workspace has no transforms or if the source database is not found.
+
+  Logs the creation of isolation schemas in the activity_logs of the workspace"
+  [workspace-id]
+  (let [{:keys [transforms] :as workspace} (t2/select-one :model/Workspace :id workspace-id)
+        _ (when-not workspace (throw (ex-info "Workspace not found" {:error :no-workspace})))
+        _ (when-not (seq transforms)
+            (throw (ex-info "Workspace must have at least one transform to create isolation" {:error :no-transforms})))
+        isolation-schema-name (isolation-manager/isolation-schema-name (:slug workspace))
+        db-ids (distinct (map source-database transforms))
+        db->info (m/index-by :id (t2/select :model/Database :id [:in db-ids]))
+        isolation-info (for [transform transforms]
+                         (let [source-db-id (source-database transform)
+                               {:keys [engine details] :as info} (db->info source-db-id)]
+                           (when-not engine
+                             (throw (ex-info "Database engine not found for transform" {:transform-id (:id transform)
+                                                                                        :source-db-id source-db-id})))
+                           ;; Create isolation for each transform's source database
+                           (log/info "Creating isolation for workspace" (:id workspace) "and transform" (:id transform))
+                           ;; Create the isolation manager for the transform
+                           (isolation-manager/create-isolation engine details isolation-schema-name)))]
+    (add-workspace-entites workspace :activity_logs (map
+                                                     #(assoc % :activity_log/type :isolation)
+                                                     isolation-info))))
+
 (comment
 
   (do (require '[metabase.test :as mt])
@@ -138,16 +195,17 @@
           (def w w)
           w)))
 
-  (add-workspace-entity (:id w)
-                        :plans
+  (def rw (t2/select-one :model/Workspace :slug "repl_workspace_230326"))
+
+  (add-workspace-entity (:id w) :plans
                         {:name "Test Plan 1"
                          :description "This is a test plan"
                          :content {}})
-  (add-workspace-entity (:id w)
-                        :plans
+  (add-workspace-entity (:id w) :plans
                         {:name "Test Plan 2"
                          :description "This is another test plan"
                          :content {}})
+
   (:plans (t2/select-one :model/Workspace :id (:id w)))
   ;; => ({:name "Test Plan 1", :description "This is a test plan", :content {}, :created_at "2025-08-13T15:50:20.203613Z"}
   ;;     {:name "Test Plan 2",

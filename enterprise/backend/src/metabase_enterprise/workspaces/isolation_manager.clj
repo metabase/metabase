@@ -52,6 +52,7 @@
 (defn isolation-schema-name
   "Generate schema/database name for workspace isolation following mb__isolation_<slug>_<workspace-id> pattern."
   [workspace-slug]
+  (when-not workspace-slug (throw (ex-info "workspace-slug is required" {:error :no-workspace-slug})))
   (let [instance-slug (instance-uuid-slug (str (system/site-uuid)))
         clean-workspace-id (str/replace (str workspace-slug) #"[^a-zA-Z0-9]" "_")]
     (format "mb__isolation_%s_%s" instance-slug clean-workspace-id)))
