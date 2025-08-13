@@ -322,7 +322,8 @@
           (when (table-exists-in-db? (:metadata-table-name index-metadata))
             (get-metadata-rows pgvector index-metadata))]
     (semantic.index/drop-index-table! pgvector {:table-name table_name}))
-  (semantic.index-metadata/drop-tables-if-exists! pgvector index-metadata))
+  (semantic.index-metadata/drop-tables-if-exists! pgvector index-metadata)
+  (semantic.db.migration/drop-migration-table! pgvector))
 
 (defn get-table-names [pgvector]
   (->> ["select table_name from information_schema.tables"]

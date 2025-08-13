@@ -110,3 +110,7 @@
   (maybe-migrate-schema! tx opts)
   (maybe-migrate-dynamic-schema! tx opts)
   nil)
+
+(defn drop-migration-table!
+  [connectable]
+  (jdbc/execute! connectable (sql/format (sql.helpers/drop-table :if-exists :migration))))
