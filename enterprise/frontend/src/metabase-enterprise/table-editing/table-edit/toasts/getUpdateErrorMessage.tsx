@@ -15,11 +15,11 @@ export const getUpdateApiErrorMessage = (
     Array.isArray(maybeError.data?.errors) &&
     "error" in maybeError.data?.errors[0]
   ) {
-    return maybeError.data.errors[0].error;
+    return maybeError.data.errors[0].message ?? maybeError.data.errors[0].error;
   }
 
   if (Array.isArray(maybeError.errors) && "error" in maybeError.errors[0]) {
-    return maybeError.errors[0].error;
+    return maybeError.errors[0].message ?? maybeError.errors[0].error;
   }
 
   return t`Unknown error`;
