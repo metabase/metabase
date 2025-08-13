@@ -114,9 +114,6 @@
   ;; => (toucan2.instance/instance :model/Workspace {:id 1, :name "New Plan", :description "This is a new plan"})
   )
 
-(defn- update-workspace [workspace-id name description]
-  (t2/update! :model/Workspace workspace-id {:name name :description description}))
-
 ;; PUT /api/ee/workspace/:workspace-id
 (api.macros/defendpoint :put "/:workspace-id"
   "Update an existing workspace's name or description.
@@ -132,7 +129,7 @@
                                   [:name ms/NonBlankString]
                                   [:description {:optional true} [:maybe :string]]]]
   (api/check-404 (t2/select-one :model/Workspace :id workspace-id))
-  (update-workspace workspace-id name description)
+  (t2/update! :model/Workspace workspace-id {:name name :description description})
   (t2/select-one :model/Workspace :id workspace-id))
 
 ;; DELETE /api/ee/workspace/:workspace-id
@@ -508,6 +505,14 @@
    _query-params]
   (delete-workspace-entity-at-index workspace-id :permissions index)
   api/generic-204-no-content)
+
+;; POST /api/ee/workspace/:workspace-id/create-isolations
+(api.macros/defendpoint :post "/:workspace-id/create-isolations"
+  "Creates one isolation for each source db in all transforms in the workspace."
+  [{:keys [workspace-id]} :- [:map [:workspace-id ms/PositiveInt]]]
+  (let [workspace (api/check-404 (t2/select-one :model/Workspace :id workspace-id))]
+    (w.common/create-isolations! workspace)
+    (m.workspace/sort-workspace (t2/select-one :model/Workspace :id workspace-id))))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/workspace/` routes for workspace management"

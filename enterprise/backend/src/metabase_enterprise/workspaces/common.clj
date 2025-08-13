@@ -149,12 +149,12 @@
     (t2/update! :model/Workspace workspace-id {entity-key updated-items})
     (m.workspace/sort-workspace (t2/select-one :model/Workspace :id workspace-id))))
 
-(defn source-database
+(defn- source-database
   "Return the `source` table of a transform."
   [transform]
   (-> transform :source :query :database))
 
-(defn create-isolation!
+(defn create-isolations!
   "Creates an isolation for each of the workspace's transforms.
 
    This function will create an isolation schema for each transform's source database.
@@ -180,13 +180,13 @@
                            ;; Create the isolation manager for the transform
                            (isolation-manager/create-isolation engine details isolation-schema-name)))]
     (add-workspace-entites workspace :activity_logs (map
+                                                     ;; just to mark them as isolation activity logs
                                                      #(assoc % :activity_log/type :isolation)
                                                      isolation-info))))
 
 (comment
 
   (do (require '[metabase.test :as mt])
-
       ;; will id alone work here? ^
       ;; current user is used to generate the api key
       (binding [api/*current-user-id* (mt/user->id :rasta)
