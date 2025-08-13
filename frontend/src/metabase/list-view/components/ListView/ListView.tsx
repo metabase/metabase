@@ -52,14 +52,14 @@ export function ListView({
       case "entity/CompanyTable":
         return "globe";
       case "entity/TransactionTable":
-        return "document";
+        return "index";
       case "entity/SubscriptionTable":
         return "sync";
       case "entity/ProductTable":
       case "entity/EventTable":
       case "entity/GenericTable":
       default:
-        return "index";
+        return "document";
     }
   };
 
