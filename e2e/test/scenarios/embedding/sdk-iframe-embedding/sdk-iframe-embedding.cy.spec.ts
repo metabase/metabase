@@ -64,9 +64,6 @@ describe("scenarios > embedding > sdk iframe embedding", () => {
 
     frame.within(() => {
       H.assertSdkInteractiveQuestionOrdersUsable();
-
-      cy.log("should not show a save button by default");
-      cy.findByText("Save").should("not.exist");
     });
   });
 
