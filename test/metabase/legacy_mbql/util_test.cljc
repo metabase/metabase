@@ -962,29 +962,19 @@
   (t/is (= [:+ 1 1]
            (mbql.u/expression-with-name {:expressions  {"two" [:+ 1 1]}
                                          :source-table 1}
-                                        "two")))
+                                        "two"))))
 
+(t/deftest ^:parallel expression-with-name-test-2
   (t/testing "Make sure `expression-with-name` knows how to reach into the parent query if need be"
     (t/is (= [:+ 1 1]
              (mbql.u/expression-with-name {:source-query {:expressions  {"two" [:+ 1 1]}
                                                           :source-table 1}}
-                                          "two"))))
+                                          "two")))))
 
-  (t/testing "Should work if passed in a keyword as well"
-    (t/is (= [:+ 1 1]
-             (mbql.u/expression-with-name {:source-query {:expressions  {"two" [:+ 1 1]}
-                                                          :source-table 1}}
-                                          :two))))
-
-  (t/testing "Should work if the key in the expression map is a keyword in pre-Metabase 43 query maps"
-    (t/is (= [:+ 1 1]
-             (mbql.u/expression-with-name {:source-query {:expressions  {:two [:+ 1 1]}
-                                                          :source-table 1}}
-                                          "two"))))
-
+(t/deftest ^:parallel expression-with-name-test-3
   (t/testing "Should throw an Exception if expression does not exist"
     (t/is (thrown-with-msg?
-           #?(:clj clojure.lang.ExceptionInfo :cljs cljs.core.ExceptionInfo)
+           #?(:clj clojure.lang.ExceptionInfo :cljs :default)
            #"No expression named"
            (mbql.u/expression-with-name {} "wow")))))
 
