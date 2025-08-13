@@ -10,28 +10,34 @@ interface Props {
   database: Database;
 }
 
-export const HeaderLinkGroup = ({ database }: Props) => (
-  <Flex gap="2.5rem">
-    <Button
-      component={Link}
-      fw="bold"
-      p={0}
-      to={`/admin/permissions/data/database/${database.id}`}
-      variant="subtle"
-    >
-      {t`Manage permissions`}
-    </Button>
-    <Button
-      component={Link}
-      disabled={isSyncInProgress(database)}
-      fw="bold"
-      p={0}
-      rightSection={<Icon name="external" />}
-      target="_blank"
-      to={browseDatabase(database)}
-      variant="subtle"
-    >
-      {t`Browse data`}
-    </Button>
-  </Flex>
-);
+export const HeaderLinkGroup = ({ database }: Props) => {
+  const isSyncing = isSyncInProgress(database);
+
+  return (
+    <Flex gap="2.5rem">
+      <Button
+        component={Link}
+        fw="bold"
+        p={0}
+        to={`/admin/permissions/data/database/${database.id}`}
+        variant="subtle"
+      >
+        {t`Manage permissions`}
+      </Button>
+      <Button
+        component={Link}
+        disabled={isSyncing}
+        fw="bold"
+        onClick={isSyncing ? (e) => e.preventDefault() : undefined}
+        p={0}
+        rightSection={<Icon name="external" />}
+        target="_blank"
+        title={isSyncing ? t`Sync in progress` : undefined}
+        to={isSyncing ? "" : browseDatabase(database)}
+        variant="subtle"
+      >
+        {t`Browse data`}
+      </Button>
+    </Flex>
+  );
+};
