@@ -939,7 +939,9 @@ export const getIsVisualized = createSelector(
   (question, settings) =>
     question &&
     // table is the default
-    ((question.display() !== "table" && question.display() !== "pivot") ||
+    ((question.display() !== "table" &&
+      question.display() !== "pivot" &&
+      question.display() !== "list") ||
       (settings != null && settings["table.pivot"])),
 );
 
