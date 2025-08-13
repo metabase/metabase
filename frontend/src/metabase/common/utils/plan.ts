@@ -16,6 +16,7 @@ export const getPlan = (features?: TokenFeatures | null): Plan => {
         feature !== "attached_dwh" &&
         features[feature],
     );
+
     if (hasAnyProFeatures) {
       if (features.hosting) {
         return features.attached_dwh ? "pro-cloud-with-dwh" : "pro-cloud";

@@ -7,14 +7,13 @@ import {
 import { UpsellDevInstances } from "metabase/admin/upsells";
 import ExternalLink from "metabase/common/components/ExternalLink";
 import { useDocsUrl } from "metabase/common/hooks";
-import { PLUGIN_LANDING_PAGE } from "metabase/plugins";
+import { PLUGIN_LANDING_PAGE, PLUGIN_SEMANTIC_SEARCH } from "metabase/plugins";
 
 import { DevInstanceBanner } from "../GeneralSettings/DevInstanceBanner";
 import { AdminSettingInput } from "../widgets/AdminSettingInput";
 import { AnonymousTrackingInput } from "../widgets/AnonymousTrackingInput";
 import { CustomHomepageDashboardSetting } from "../widgets/CustomHomepageDashboardSetting";
 import { HttpsOnlyWidget } from "../widgets/HttpsOnlyWidget";
-import { SearchSettingsWidget } from "../widgets/SearchSettingsWidget";
 import { SiteUrlWidget } from "../widgets/SiteUrlWidget";
 
 export function GeneralSettingsPage() {
@@ -37,7 +36,7 @@ export function GeneralSettingsPage() {
 
         <HttpsOnlyWidget />
 
-        <SearchSettingsWidget />
+        <PLUGIN_SEMANTIC_SEARCH.SearchSettingsWidget />
 
         <CustomHomepageDashboardSetting />
 
