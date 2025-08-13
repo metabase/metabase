@@ -11,6 +11,37 @@ import type { DatasetColumn, DatasetData } from "metabase-types/api";
 
 import styles from "./ListView.module.css";
 
+// Light background colors for category values
+const CATEGORY_COLORS = [
+  "color-mix(in srgb, var(--mb-color-brand) 8%, white)",
+  "color-mix(in srgb, var(--mb-color-success) 8%, white)",
+  "color-mix(in srgb, var(--mb-color-warning) 8%, white)",
+  "color-mix(in srgb, var(--mb-color-error) 8%, white)",
+  "color-mix(in srgb, var(--mb-color-filter) 8%, white)",
+  "color-mix(in srgb, var(--mb-color-summarize) 8%, white)",
+  "color-mix(in srgb, var(--mb-color-focus) 8%, white)",
+  "color-mix(in srgb, var(--mb-color-text-medium) 8%, white)",
+];
+
+// Get a consistent color for a category value based on its hash
+const getCategoryColor = (value: any, columnName: string) => {
+  if (value == null || value === "") {
+    return "var(--mb-color-background-light)";
+  }
+
+  const stringValue = String(value);
+
+  // Use a combination of column name and value for more consistent colors
+  const combinedString = `${columnName}:${stringValue}`;
+  const hash = combinedString.split("").reduce((a, b) => {
+    a = (a << 5) - a + b.charCodeAt(0);
+    return a & a;
+  }, 0);
+
+  const colorIndex = Math.abs(hash) % CATEGORY_COLORS.length;
+  return CATEGORY_COLORS[colorIndex];
+};
+
 export interface ListViewProps {
   data: DatasetData;
   settings: ComputedVisualizationSettings;
@@ -207,6 +238,13 @@ export function ListView({
                       const isCategoryColumn =
                         col.semantic_type === "type/Category";
 
+                      // Check if this is a score column
+                      const isScoreColumn = col.semantic_type === "type/Score";
+
+                      // Check if this should get category-like styling
+                      const shouldGetCategoryStyling =
+                        isCategoryColumn || isScoreColumn;
+
                       return (
                         <div key={colIndex}>
                           {isBooleanColumn ? (
@@ -227,7 +265,7 @@ export function ListView({
                                 {value}
                               </Text>
                             </Flex>
-                          ) : isCategoryColumn &&
+                          ) : shouldGetCategoryStyling &&
                             rawValue != null &&
                             rawValue !== "" ? (
                             <Box
@@ -235,8 +273,10 @@ export function ListView({
                                 padding: "4px 8px",
                                 borderRadius: "100px",
                                 border: "1px solid var(--mb-color-border)",
-                                backgroundColor:
-                                  "var(--mb-color-background-light)",
+                                backgroundColor: getCategoryColor(
+                                  rawValue,
+                                  col.name,
+                                ),
                                 display: "inline-block",
                               }}
                             >
