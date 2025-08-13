@@ -36,65 +36,68 @@ export type InteractiveQuestionProps = Omit<
   "getClickActionMode" | "navigateToNewCard" | "backToDashboard"
 >;
 
+/**
+ * @interface
+ */
+export type InteractiveQuestionComponents = {
+  BackButton: typeof BackButton;
+  Filter: typeof Filter;
+  FilterDropdown: typeof FilterDropdown;
+  ResetButton: typeof QuestionResetButton;
+  Title: typeof Title;
+  Summarize: typeof Summarize;
+  SummarizeDropdown: typeof SummarizeDropdown;
+  /** @deprecated Use `InteractiveQuestion.Editor` instead */
+  Notebook: typeof Editor;
+  Editor: typeof Editor;
+  /** @deprecated Use `InteractiveQuestion.EditorButton` instead */
+  NotebookButton: typeof EditorButton;
+  EditorButton: typeof EditorButton;
+  QuestionVisualization: typeof QuestionVisualization;
+  VisualizationButton: typeof VisualizationButton;
+  SaveQuestionForm: typeof SdkSaveQuestionForm;
+  SaveButton: typeof SaveButton;
+  ChartTypeSelector: typeof ChartTypeSelector;
+  ChartTypeDropdown: typeof ChartTypeDropdown;
+  QuestionSettings: typeof QuestionSettings;
+  QuestionSettingsDropdown: typeof QuestionSettingsDropdown;
+  Breakout: typeof Breakout;
+  BreakoutDropdown: typeof BreakoutDropdown;
+  DownloadWidget: typeof DownloadWidget;
+  DownloadWidgetDropdown: typeof DownloadWidgetDropdown;
+};
+
 export const _InteractiveQuestion = (props: InteractiveQuestionProps) => (
   <SdkQuestion {...props} />
 );
 
-/**
- * A question component with drill-downs enabled.
- *
- * @function
- * @category InteractiveQuestion
- */
-export const InteractiveQuestion =
-  _InteractiveQuestion as typeof _InteractiveQuestion & {
-    BackButton: typeof BackButton;
-    Filter: typeof Filter;
-    FilterDropdown: typeof FilterDropdown;
-    ResetButton: typeof QuestionResetButton;
-    Title: typeof Title;
-    Summarize: typeof Summarize;
-    SummarizeDropdown: typeof SummarizeDropdown;
-    /** @deprecated Use `InteractiveQuestion.Editor` instead */
-    Notebook: typeof Editor;
-    Editor: typeof Editor;
-    /** @deprecated Use `InteractiveQuestion.EditorButton` instead */
-    NotebookButton: typeof EditorButton;
-    EditorButton: typeof EditorButton;
-    QuestionVisualization: typeof QuestionVisualization;
-    VisualizationButton: typeof VisualizationButton;
-    SaveQuestionForm: typeof SdkSaveQuestionForm;
-    SaveButton: typeof SaveButton;
-    ChartTypeSelector: typeof ChartTypeSelector;
-    ChartTypeDropdown: typeof ChartTypeDropdown;
-    QuestionSettings: typeof QuestionSettings;
-    QuestionSettingsDropdown: typeof QuestionSettingsDropdown;
-    Breakout: typeof Breakout;
-    BreakoutDropdown: typeof BreakoutDropdown;
-    DownloadWidget: typeof DownloadWidget;
-    DownloadWidgetDropdown: typeof DownloadWidgetDropdown;
-  };
+const subComponents: InteractiveQuestionComponents = {
+  BackButton: BackButton,
+  Filter: Filter,
+  FilterDropdown: FilterDropdown,
+  ResetButton: QuestionResetButton,
+  Title: Title,
+  Summarize: Summarize,
+  SummarizeDropdown: SummarizeDropdown,
+  Notebook: Editor,
+  Editor: Editor,
+  NotebookButton: EditorButton,
+  EditorButton: EditorButton,
+  QuestionVisualization: QuestionVisualization,
+  SaveQuestionForm: SdkSaveQuestionForm,
+  SaveButton: SaveButton,
+  ChartTypeSelector: ChartTypeSelector,
+  QuestionSettings: QuestionSettings,
+  QuestionSettingsDropdown: QuestionSettingsDropdown,
+  BreakoutDropdown: BreakoutDropdown,
+  Breakout: Breakout,
+  ChartTypeDropdown: ChartTypeDropdown,
+  DownloadWidget: DownloadWidget,
+  DownloadWidgetDropdown: DownloadWidgetDropdown,
+  VisualizationButton: VisualizationButton,
+};
 
-InteractiveQuestion.BackButton = BackButton;
-InteractiveQuestion.Filter = Filter;
-InteractiveQuestion.FilterDropdown = FilterDropdown;
-InteractiveQuestion.ResetButton = QuestionResetButton;
-InteractiveQuestion.Title = Title;
-InteractiveQuestion.Summarize = Summarize;
-InteractiveQuestion.SummarizeDropdown = SummarizeDropdown;
-InteractiveQuestion.Notebook = Editor;
-InteractiveQuestion.Editor = Editor;
-InteractiveQuestion.NotebookButton = EditorButton;
-InteractiveQuestion.EditorButton = EditorButton;
-InteractiveQuestion.QuestionVisualization = QuestionVisualization;
-InteractiveQuestion.SaveQuestionForm = SdkSaveQuestionForm;
-InteractiveQuestion.SaveButton = SaveButton;
-InteractiveQuestion.ChartTypeSelector = ChartTypeSelector;
-InteractiveQuestion.QuestionSettings = QuestionSettings;
-InteractiveQuestion.QuestionSettingsDropdown = QuestionSettingsDropdown;
-InteractiveQuestion.BreakoutDropdown = BreakoutDropdown;
-InteractiveQuestion.Breakout = Breakout;
-InteractiveQuestion.ChartTypeDropdown = ChartTypeDropdown;
-InteractiveQuestion.DownloadWidget = DownloadWidget;
-InteractiveQuestion.DownloadWidgetDropdown = DownloadWidgetDropdown;
-InteractiveQuestion.VisualizationButton = VisualizationButton;
+export const InteractiveQuestion = Object.assign(
+  _InteractiveQuestion,
+  subComponents,
+);

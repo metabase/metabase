@@ -636,32 +636,33 @@
                       (swap! requests conj req)
                       {:status 200
                        :body   "ok"}))]
-      (notification.tu/with-notification-testing-setup!
-        (channel.http-test/with-server [url [endpoint]]
-          (mt/with-temp
-            [:model/Card         card           {:dataset_query (mt/mbql-query orders {:aggregation [[:count]]})}
-             :model/Channel      channel        {:type    :channel/http
-                                                 :details {:url         (str url "/test")
-                                                           :auth-method :none}}
-             :model/Pulse        {pulse-id :id} {:name "Test Pulse"
-                                                 :alert_condition "rows"}
-             :model/PulseCard    _              {:pulse_id pulse-id
-                                                 :card_id  (:id card)}
-             :model/PulseChannel _              {:pulse_id pulse-id
-                                                 :channel_type "http"
-                                                 :channel_id   (:id channel)}]
-            (pulse.send/send-pulse! (t2/select-one :model/Pulse pulse-id))
-            (is (=? {:body {:alert_creator_id   (mt/user->id :rasta)
-                            :alert_creator_name "Rasta Toucan"
-                            :alert_id           pulse-id
-                            :data               {:question_id   (:id card)
-                                                 :question_name (mt/malli=? string?)
-                                                 :question_url  (mt/malli=? string?)
-                                                 :raw_data      {:cols ["count"], :rows [[18760]]},
-                                                 :type          "question"
-                                                 :visualization (mt/malli=? [:fn #(str/starts-with? % "data:image/png;base64,")])}
-                            :type               "alert"}}
-                    (first @requests)))))))))
+      (mt/with-temporary-setting-values [http-channel-host-strategy :allow-all]
+        (notification.tu/with-notification-testing-setup!
+          (channel.http-test/with-server [url [endpoint]]
+            (mt/with-temp
+              [:model/Card         card           {:dataset_query (mt/mbql-query orders {:aggregation [[:count]]})}
+               :model/Channel      channel        {:type    :channel/http
+                                                   :details {:url         (str url "/test")
+                                                             :auth-method :none}}
+               :model/Pulse        {pulse-id :id} {:name "Test Pulse"
+                                                   :alert_condition "rows"}
+               :model/PulseCard    _              {:pulse_id pulse-id
+                                                   :card_id  (:id card)}
+               :model/PulseChannel _              {:pulse_id pulse-id
+                                                   :channel_type "http"
+                                                   :channel_id   (:id channel)}]
+              (pulse.send/send-pulse! (t2/select-one :model/Pulse pulse-id))
+              (is (=? {:body {:alert_creator_id   (mt/user->id :rasta)
+                              :alert_creator_name "Rasta Toucan"
+                              :alert_id           pulse-id
+                              :data               {:question_id   (:id card)
+                                                   :question_name (mt/malli=? string?)
+                                                   :question_url  (mt/malli=? string?)
+                                                   :raw_data      {:cols ["count"], :rows [[18760]]},
+                                                   :type          "question"
+                                                   :visualization (mt/malli=? [:fn #(str/starts-with? % "data:image/png;base64,")])}
+                              :type               "alert"}}
+                      (first @requests))))))))))
 
 (deftest do-not-send-alert-with-archived-card-test
   (mt/with-temp
