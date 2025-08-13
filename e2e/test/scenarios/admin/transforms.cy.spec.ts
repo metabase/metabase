@@ -182,7 +182,7 @@ describe("scenarios > admin > transforms", () => {
   describe("tags", () => {
     it("should be able to add and remove tags", () => {
       createMbqlTransform({ visitTransform: true });
-      getTagMultiSelectField().click();
+      getTagsInput().click();
 
       H.popover().within(() => {
         cy.findByRole("option", { name: "daily" }).click();
@@ -204,7 +204,7 @@ describe("scenarios > admin > transforms", () => {
 
     it("should be able to create tags inline", () => {
       createMbqlTransform({ visitTransform: true });
-      getTagMultiSelectField().type("New tag");
+      getTagsInput().type("New tag");
       H.popover().findByText("New tag").click();
       cy.wait("@createTag");
       H.popover().findByText("New tag").should("be.visible");
@@ -214,7 +214,7 @@ describe("scenarios > admin > transforms", () => {
     it("should be able to update tags inline", () => {
       createMbqlTransform({ visitTransform: true });
 
-      getTagMultiSelectField().click();
+      getTagsInput().click();
       H.popover()
         .findByRole("option", { name: "daily" })
         .findByLabelText("Rename tag")
@@ -225,14 +225,14 @@ describe("scenarios > admin > transforms", () => {
         cy.wait("@updateTag");
       });
 
-      getTagMultiSelectField().click();
+      getTagsInput().click();
       H.popover().findByText("daily2").should("be.visible");
     });
 
     it("should be able to delete tags inline", () => {
       createMbqlTransform({ visitTransform: true });
 
-      getTagMultiSelectField().click();
+      getTagsInput().click();
       H.popover()
         .findByRole("option", { name: "daily" })
         .findByLabelText("Delete tag")
@@ -243,7 +243,7 @@ describe("scenarios > admin > transforms", () => {
       });
       H.undoToast().should("contain.text", "Transform tags updated");
 
-      getTagMultiSelectField().click();
+      getTagsInput().click();
       H.popover().within(() => {
         cy.findByText("hourly").should("be.visible");
         cy.findByText("daily").should("not.exist");
@@ -593,12 +593,84 @@ describe("scenarios > admin > transforms", () => {
   });
 });
 
+describe("scenarios > admin > transforms > jobs", () => {
+  beforeEach(() => {
+    H.restore("postgres-writable");
+    H.resetTestTable({ type: "postgres", table: "many_schemas" });
+    cy.signInAsAdmin();
+    H.activateToken("bleeding-edge");
+    H.resyncDatabase({ dbId: WRITABLE_DB_ID });
+
+    cy.intercept("POST", "/api/ee/transform-job").as("createJob");
+  });
+
+  describe("creation", () => {
+    it("should be able to create a job with default properties", () => {
+      visitTransformJobListPage();
+      getTransformJobListPage()
+        .findByRole("link", { name: "Create a job" })
+        .click();
+
+      getTransformJobPage().button("Save").click();
+      cy.wait("@createJob");
+      H.undoToast().findByText("New job created").should("be.visible");
+
+      getTransformJobPage().within(() => {
+        cy.findByPlaceholderText("Name").should("have.value", "New job");
+        cy.findByPlaceholderText("No description yet").should("have.value", "");
+        getCronInput().should("have.value", "0 0 * * ?");
+        cy.findByText("This job will run at 12:00 AM").should("be.visible");
+        cy.findByText("daily").should("not.exist");
+      });
+    });
+
+    it("should be able to create a job with custom property values", () => {
+      visitTransformJobListPage();
+      getTransformJobListPage()
+        .findByRole("link", { name: "Create a job" })
+        .click();
+
+      getTransformJobPage().within(() => {
+        cy.findByPlaceholderText("Name").clear().type("Job");
+        cy.findByPlaceholderText("No description yet")
+          .clear()
+          .type("Description");
+        getCronInput().clear().type("0 * * * ?");
+        getTagsInput().click();
+      });
+      H.popover().findByText("daily").click();
+      getTransformJobPage().button("Save").click();
+      cy.wait("@createJob");
+      H.undoToast().findByText("New job created").should("be.visible");
+
+      getTransformJobPage().within(() => {
+        cy.findByPlaceholderText("Name").should("have.value", "Job");
+        cy.findByPlaceholderText("No description yet").should(
+          "have.value",
+          "Description",
+        );
+        getCronInput().should("have.value", "0 * * * ?");
+        cy.findByText("This job will run every hour").should("be.visible");
+        cy.findByText("daily").should("be.visible");
+      });
+    });
+  });
+});
+
 function getTransformListPage() {
   return cy.findByTestId("transform-list-page");
 }
 
 function getTransformPage() {
   return cy.findByTestId("transform-page");
+}
+
+function getTransformJobListPage() {
+  return cy.findByTestId("transform-job-list-page");
+}
+
+function getTransformJobPage() {
+  return cy.findByTestId("transform-job-view");
 }
 
 function getQueryEditor() {
@@ -633,7 +705,11 @@ function getQueryVisualization() {
   return cy.findByTestId("query-visualization-root");
 }
 
-function getTagMultiSelectField() {
+function getCronInput() {
+  return cy.findByPlaceholderText("For example 5 0 * Aug ?");
+}
+
+function getTagsInput() {
   return cy.findByPlaceholderText("Add tags");
 }
 
@@ -643,6 +719,10 @@ function getContentTable() {
 
 function visitTransformListPage() {
   return cy.visit("/admin/transforms");
+}
+
+function visitTransformJobListPage() {
+  return cy.visit("/admin/transforms/jobs");
 }
 
 function runAndWaitForSuccess() {
