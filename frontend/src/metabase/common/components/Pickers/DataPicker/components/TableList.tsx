@@ -12,6 +12,7 @@ interface Props {
   selectedItem: DataPickerValueItem | null;
   tables: Table[] | undefined;
   onClick: (item: DataPickerValueItem) => void;
+  shouldDisableItem?: (item: DataPickerValueItem) => boolean;
 }
 
 const isFolder = () => false;
@@ -23,6 +24,7 @@ export const TableList = ({
   selectedItem,
   tables,
   onClick,
+  shouldDisableItem,
 }: Props) => {
   const items: DataPickerValueItem[] | undefined = useMemo(() => {
     return tables?.map((table) => ({
@@ -42,6 +44,7 @@ export const TableList = ({
         items={items}
         selectedItem={selectedItem}
         onClick={onClick}
+        shouldDisableItem={shouldDisableItem}
       />
     </ListBox>
   );
