@@ -4,6 +4,7 @@
   (:require
    [metabase.premium-features.core :as premium-features]
    [metabase.task.core :as task]
+   [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
@@ -17,23 +18,23 @@
 (def ^:private default-jobs
   "Default transform jobs that should be created on first startup.
   These correspond to the default tags and provide basic scheduling options."
-  [{:name "Hourly job"
-    :description "Executes transforms tagged with 'hourly' every hour"
+  [{:name (deferred-tru "Hourly job")
+    :description (deferred-tru "Executes transforms tagged with ''hourly'' every hour")
     :schedule "0 0 * * * ? *"
     :entity_id "hourly000000000000000"
     :tag_name "hourly"}
-   {:name "Daily job"
-    :description "Executes transforms tagged with 'daily' once per day"
+   {:name (deferred-tru "Daily job")
+    :description (deferred-tru "Executes transforms tagged with ''daily'' once per day")
     :schedule "0 0 0 * * ? *"
     :entity_id "daily0000000000000000"
     :tag_name "daily"}
-   {:name "Weekly job"
-    :description "Executes transforms tagged with 'weekly' once per week"
+   {:name (deferred-tru "Weekly job")
+    :description (deferred-tru "Executes transforms tagged with ''weekly'' once per week")
     :schedule "0 0 0 ? * 1 *"
     :entity_id "weekly000000000000000"
     :tag_name "weekly"}
-   {:name "Monthly job"
-    :description "Executes transforms tagged with 'monthly' once per month"
+   {:name (deferred-tru "Monthly job")
+    :description (deferred-tru "Executes transforms tagged with ''monthly'' once per month")
     :schedule "0 0 0 1 * ? *"
     :entity_id "monthly00000000000000"
     :tag_name "monthly"}])
