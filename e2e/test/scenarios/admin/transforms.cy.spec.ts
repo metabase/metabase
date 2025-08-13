@@ -658,6 +658,36 @@ describe("scenarios > admin > transforms > jobs", () => {
     });
   });
 
+  describe("name and description", () => {
+    it("should be able to edit the name and description after creation", () => {
+      H.createTransformJob({ name: "New job" }, { visitTransformJob: true });
+
+      getJobPage()
+        .findByPlaceholderText("Name")
+        .clear()
+        .type("New name")
+        .blur();
+      H.undoToast().findByText("Job name updated").should("be.visible");
+      getJobPage()
+        .findByPlaceholderText("Name")
+        .should("have.value", "New name");
+
+      getJobPage()
+        .findByPlaceholderText("No description yet")
+        .clear()
+        .type("New description")
+        .blur();
+      H.undoToastList()
+        .should("have.length", 2)
+        .last()
+        .findByText("Job description updated")
+        .should("be.visible");
+      getJobPage()
+        .findByPlaceholderText("No description yet")
+        .should("have.value", "New description");
+    });
+  });
+
   describe("runs", () => {
     it("should be able to manually run a job", () => {
       H.createTransformTag({ name: "New tag" }).then(({ body: tag }) => {
