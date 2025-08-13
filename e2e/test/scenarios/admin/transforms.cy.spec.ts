@@ -423,11 +423,11 @@ describe("scenarios > admin > transforms", () => {
   });
 
   describe("queries", () => {
-    it("should be able to update and MBQL query", () => {
+    it("should be able to update a MBQL query", () => {
       cy.log("TBD");
     });
 
-    it("should be able to update and SQL query", () => {
+    it("should be able to update a SQL query", () => {
       cy.log("TBD");
     });
   });
