@@ -184,7 +184,6 @@
       (update :plans (fnil created-at-sort []))
       (update :transforms (fnil created-at-sort []))
       (update :users (fnil created-at-sort []))
-      (update :data_warehouses (fnil created-at-sort []))
       (update :permissions (fnil created-at-sort []))))
 
 (defn transform-table-dependencies

@@ -1,6 +1,7 @@
 (ns metabase-enterprise.workspaces.common
   (:require
    [metabase-enterprise.workspaces.isolation-manager :as isolation-manager]
+   [metabase-enterprise.transforms.execute :as transforms.execute]
    [metabase-enterprise.workspaces.models.workspace :as m.workspace]
    [metabase.api.common :as api]
    [metabase.collections.common :as c.common]
@@ -15,8 +16,7 @@
   [name description]
   (let [containing-coll (c.common/create-collection!
                          {:name name
-                          :description description
-                          :namespace "workspaces"})
+                          :description description})
         ;; TODO: merge + use: create-single-collection-api-key!
         workspace-data {:name name
                         :description description
@@ -27,7 +27,7 @@
                         :activity_logs []
                         :permissions []
                         :documents []
-                        :data_warehouses []}]
+                        :data_warehouses {}}]
     (m.workspace/sort-workspace
      (t2/insert-returning-instance! :model/Workspace workspace-data))))
 
@@ -187,8 +187,134 @@
     (add-workspace-entity workspace :activity_logs isolation-info)
     (t2/update! :model/Workspace (:id workspace)
                 {:data_warehouses (merge (:data_warehouses workspace) isolation-info-no-results)})
-    (add-workspace-entity workspace :data_warehouses isolation-info-no-results)
-    isolation-info-no-results))
+    (t2/select-one :model/Workspace (:id workspace))))
+
+;; decision: this is so bespoke to us maybe it goes here now. But perhaps the querying team can help us adjust these
+;; things with a proper api in the future
+(defn- patch-transform
+  "Patch transforms so they point at the new isolation mechanism. Right now, only impelemnted for schema based
+  isolations. So clickhouse doesn't yet work. But clickhouse might just work the same because schema and database are
+  perhaps the same in the way we compile queries for clickhouse."
+  [transform schema-name]
+  (assoc-in transform [:target :schema] schema-name))
+
+(defn- run-transforms*
+  "Execute transforms. If the isolation manager hasn't run, then the data_warhouses key will be empty and this will
+  fail."
+  [{:keys [transforms data_warehouses] :as workspace}]
+
+  ;; we should keep engine around, its necessary for setup and teardown anyways. why aren't we keeping it
+  (let [hack (into {} (map (juxt :id :engine)) (t2/select :model/Database :id
+                                                          [:in (map (comp parse-long name) (keys data_warehouses))]))
+        ;; this is not needed. But it's a pointer that datawarehouses is perhaps a misleading name? bad
+        ;; terminology. POC doesn't need an answer, but shipping does
+        transform-info (:data_warehouses workspace)
+        patched (for [t transforms
+                      :let [db-id (source-database t)
+                            ;; todo: in clickhouse need to get database name
+                            schema-name (or (get-in transform-info [(keyword (str db-id)) :schema-name])
+                                            (throw (ex-info "Missing schema for database" {:db-id db-id
+                                                                                           :transform t})))]]
+                  (patch-transform t schema-name))]
+    (reduce (fn [acc t]
+              (let [f (fn [t]
+                        (try {:status :success
+                              :response (transforms.execute/run-mbql-transform! (assoc t :id (- (rand-int 50000)))
+                                                                                {:run-method :workspace})}
+                             (catch Exception e
+                               (log/error "Error running transform" {:transform t
+                                                                     :workspace (select-keys workspace [:id :slug])})
+                               {:status :error
+                                :message (ex-message e)
+                                :exdata (ex-data e)
+                                :transform t})))]
+                (conj acc (f t))))
+            []
+            patched)))
+
+(comment
+  (t2/select-one :model/Workspace :id 6)
+  )
+
+(defn run-transforms
+  "Executes transforms in workspace. Will throw an error if there are no transforms or if the data_warehouses is empty,
+  which likely means that you ahve not created the isolation things."
+  [{:keys [data_warehouses transforms] :as workspace}]
+  (when (empty? data_warehouses)
+    (throw (ex-info "Data warehouses are not prepared. Please run the isolation manager." {:workspace-id (:id workspace)})))
+  (when (empty? transforms)
+    (throw (ex-info "Can't run transforms if there aren't any" {})))
+  ;; don't loev this api, but it's 4:58 on demo day and it's good for now
+  (let [transform-activity (run-transforms* workspace)]
+    ;; todo: assoc some type here?
+    (add-workspace-entites workspace :activity_logs transform-activity)))
+
+(defn- create-models*
+  [{:keys [transforms data_warehouses collection_id] :as workspace}]
+  (let [hack (into {} (map (juxt :id :engine)) (t2/select :model/Database :id
+                                                          [:in (map (comp parse-long name) (keys data_warehouses))]))
+        ;; this is not needed. But it's a pointer that datawarehouses is perhaps a misleading name? bad
+        ;; terminology. POC doesn't need an answer, but shipping does
+        transform-info (:data_warehouses workspace)
+        patched (for [t transforms
+                      :let [db-id (source-database t)
+                            ;; todo: in clickhouse need to get database name
+                            schema-name (or (get-in transform-info [(keyword (str db-id)) :schema-name])
+                                            (throw (ex-info "Missing schema for database" {:db-id db-id
+                                                                                           :transform t})))]]
+                  (patch-transform t schema-name))]
+    (reduce (fn [acc t]
+              (let [f (fn [t]
+                        (let [card {:name (format "Model for %s" (:name t))
+                                    :description (format "model: %s" (:description t))
+                                    :collection_id collection_id
+                                    :card_schema 22 ;;??
+                                    :database_id (source-database t)
+                                    :creator_id api/*current-user-id*
+                                    :query_type :native
+                                    :type :model
+                                    :dataset_query {:database (source-database t)
+                                                    :type :native,
+                                                    :native {:template-tags {},
+                                                             ;; this needs to be formatted correctly for different dbs
+                                                             :query (format "select * from %s.%s"
+                                                                            (-> t :target :schema)
+                                                                            (-> t :target :name))}}
+                                    :display :table
+                                    :visualization_settings {}}]
+
+                          (try {:status :success
+                                :step :create-model
+                                :transform t
+                                :response (t2/insert! :model/Card card)}
+                               (catch Exception e
+                                 (log/error "Error saving model" {:transform t
+                                                                  :workspace (select-keys workspace [:id :slug])
+                                                                  :card card})
+                                 {:status :error
+                                  :message (ex-message e)
+                                  :exdata (ex-data e)
+                                  :transform t
+                                  :card card}))))]
+                (conj acc (f t))))
+            []
+            patched)))
+
+(defn create-models
+  "Creates models from the transforms in a  workspace. Will throw an error if there are no transforms or if the data_warehouses is empty,
+  which likely means that you ahve not created the isolation things."
+  [{:keys [data_warehouses transforms] :as workspace}]
+  (when (empty? data_warehouses)
+    (throw (ex-info "Data warehouses are not prepared. Please run the isolation manager." {:workspace-id (:id workspace)})))
+  (when (empty? transforms)
+    (throw (ex-info "Can't run transforms if there aren't any" {})))
+  ;; don't loev this api, but it's 4:58 on demo day and it's good for now
+  (let [model-activity (create-models* workspace)]
+    ;; todo: assoc some type here?
+    (add-workspace-entites workspace :activity_logs model-activity))
+  )
+
+
 
 (comment
 
