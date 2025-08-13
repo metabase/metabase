@@ -2,12 +2,15 @@
 import "@mantine/core/styles.css";
 import "@mantine/dates/styles.css";
 
+// Mics behavior when an app adds its own styles
+// We need to do it before importing the SDK
+import "e2e/support/helpers/embedding-sdk-helpers/host-app-styles.css";
+
 import { Button, MantineProvider, Title } from "@mantine/core";
 import {
   InteractiveQuestion,
   MetabaseProvider,
 } from "@metabase/embedding-sdk-react";
-import { useEffect } from "react";
 
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
@@ -81,30 +84,12 @@ describe("scenarios > embedding-sdk > mantine styles leakage", () => {
     });
   });
 
-  it("Mantine styles should have proper specificity and not override custom styles", () => {
-    const TitleWrapper = () => {
-      useEffect(() => {
-        const style = document.createElement("style");
-
-        style.innerHTML = `
-            .some-title {
-              font-size: 40px;
-            }
-          `;
-
-        document.head.append(style);
-
-        return () => {
-          style.remove();
-        };
-      }, []);
-
-      return (
-        <Title data-testid="title" className="some-title">
-          Some title
-        </Title>
-      );
-    };
+  it("Mantine styles added by SDK should not override custom styles of an app", () => {
+    const TitleWrapper = () => (
+      <Title data-testid="title" className="some-title">
+        Some title
+      </Title>
+    );
 
     cy.mount(
       <MantineProvider>
@@ -122,30 +107,8 @@ describe("scenarios > embedding-sdk > mantine styles leakage", () => {
   });
 
   it("App styles should not affect SDK styles", () => {
-    const Wrapper = () => {
-      useEffect(() => {
-        const style = document.createElement("style");
-
-        style.innerHTML = `
-          button {
-            background: red;
-          }
-        `;
-
-        document.head.prepend(style);
-
-        return () => {
-          style.remove();
-        };
-      }, []);
-
-      return null;
-    };
-
     cy.mount(
       <MantineProvider>
-        <Wrapper />
-
         <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}>
           <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />
         </MetabaseProvider>

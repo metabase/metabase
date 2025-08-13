@@ -122,7 +122,11 @@ const config = {
                   postcssOptions: {
                     plugins: [
                       ...postcssConfig.plugins,
-                      prefixwrap(":where(.mb-wrapper)"),
+                      prefixwrap(":where(.mb-wrapper)", {
+                        // We apply scope to selectors that start with `.m_`
+                        // It skips some selectors like `[dir="ltr"] .m_*` but there's no ability to insert the `:where(.mb-wrapper)` between `[dir="ltr"]` and `.m_*`
+                        ignoredSelectors: [/^(?!\.m_).*/],
+                      }),
                     ],
                   },
                 },
