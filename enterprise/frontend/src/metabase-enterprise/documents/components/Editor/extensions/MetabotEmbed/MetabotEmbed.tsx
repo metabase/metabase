@@ -25,6 +25,12 @@ import type { Card, MetabotGenerateContentRequest } from "metabase-types/api";
 
 import Styles from "./MetabotEmbed.module.css";
 
+declare module "@tiptap/core" {
+  interface EditorEvents {
+    runMetabot: ProseMirrorNode; // the metabot node in the AST
+  }
+}
+
 const createTextNode = (text: string, marks?: JSONContent["marks"]) => {
   return { type: "text", text, marks };
 };
