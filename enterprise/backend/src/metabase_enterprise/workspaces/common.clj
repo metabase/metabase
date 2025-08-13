@@ -16,8 +16,7 @@
   [name description]
   (let [containing-coll (c.common/create-collection!
                          {:name name
-                          :description description
-                          :namespace "workspaces"})
+                          :description description})
         ;; TODO: merge + use: create-single-collection-api-key!
         workspace-data {:name name
                         :description description
@@ -249,6 +248,71 @@
   (let [transform-activity (run-transforms* workspace)]
     ;; todo: assoc some type here?
     (add-workspace-entites workspace :activity_logs transform-activity)))
+
+(defn- create-models*
+  [{:keys [transforms data_warehouses collection_id] :as workspace}]
+  (let [hack (into {} (map (juxt :id :engine)) (t2/select :model/Database :id
+                                                          [:in (map (comp parse-long name) (keys data_warehouses))]))
+        ;; this is not needed. But it's a pointer that datawarehouses is perhaps a misleading name? bad
+        ;; terminology. POC doesn't need an answer, but shipping does
+        transform-info (:data_warehouses workspace)
+        patched (for [t transforms
+                      :let [db-id (source-database t)
+                            ;; todo: in clickhouse need to get database name
+                            schema-name (or (get-in transform-info [(keyword (str db-id)) :schema-name])
+                                            (throw (ex-info "Missing schema for database" {:db-id db-id
+                                                                                           :transform t})))]]
+                  (patch-transform t schema-name))]
+    (reduce (fn [acc t]
+              (let [f (fn [t]
+                        (let [card {:name (format "Model for %s" (:name t))
+                                    :description (format "model: %s" (:description t))
+                                    :collection_id collection_id
+                                    :card_schema 22 ;;??
+                                    :database_id (source-database t)
+                                    :creator_id api/*current-user-id*
+                                    :query_type :native
+                                    :type :model
+                                    :dataset_query {:database (source-database t)
+                                                    :type :native,
+                                                    :native {:template-tags {},
+                                                             ;; this needs to be formatted correctly for different dbs
+                                                             :query (format "select * from %s.%s"
+                                                                            (-> t :target :schema)
+                                                                            (-> t :target :name))}}
+                                    :display :table
+                                    :visualization_settings {}}]
+
+                          (try {:status :success
+                                :step :create-model
+                                :transform t
+                                :response (t2/insert! :model/Card card)}
+                               (catch Exception e
+                                 (log/error "Error saving model" {:transform t
+                                                                  :workspace (select-keys workspace [:id :slug])
+                                                                  :card card})
+                                 {:status :error
+                                  :message (ex-message e)
+                                  :exdata (ex-data e)
+                                  :transform t
+                                  :card card}))))]
+                (conj acc (f t))))
+            []
+            patched)))
+
+(defn create-models
+  "Creates models from the transforms in a  workspace. Will throw an error if there are no transforms or if the data_warehouses is empty,
+  which likely means that you ahve not created the isolation things."
+  [{:keys [data_warehouses transforms] :as workspace}]
+  (when (empty? data_warehouses)
+    (throw (ex-info "Data warehouses are not prepared. Please run the isolation manager." {:workspace-id (:id workspace)})))
+  (when (empty? transforms)
+    (throw (ex-info "Can't run transforms if there aren't any" {})))
+  ;; don't loev this api, but it's 4:58 on demo day and it's good for now
+  (let [model-activity (create-models* workspace)]
+    ;; todo: assoc some type here?
+    (add-workspace-entites workspace :activity_logs model-activity))
+  )
 
 
 

@@ -228,6 +228,12 @@
     (w.common/run-transforms workspace)
     (m.workspace/sort-workspace (t2/select-one :model/Workspace :id (:id workspace)))))
 
+(api.macros/defendpoint :post "/:workspace-id/create-models"
+  [{:keys [workspace-id]} :- [:map [:workspace-id ms/PositiveInt]]]
+  (api/let-404 [workspace (t2/select-one :model/Workspace :id workspace-id)]
+    (w.common/create-models workspace)
+    (m.workspace/sort-workspace (t2/select-one :model/Workspace :id (:id workspace)))))
+
 (api.macros/defendpoint :put "/:workspace-id/transform/:index"
   "Replace a transform in the workspace, by index.
 
