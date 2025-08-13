@@ -1,5 +1,3 @@
-// eslint-disable-next-line no-restricted-imports
-import { MantineProvider } from "@mantine/core";
 import type { StoryFn } from "@storybook/react";
 import { SignJWT } from "jose";
 import { useMemo } from "react";
@@ -58,15 +56,13 @@ export const CommonSdkStoryWrapper = (Story: StoryFn, context: any) => {
   }, [user]);
 
   return (
-    <MantineProvider>
-      <ComponentProvider
-        authConfig={authConfig}
-        theme={theme}
-        key={key}
-        locale={locale}
-      >
-        <Story />
-      </ComponentProvider>
-    </MantineProvider>
+    <ComponentProvider
+      authConfig={authConfig}
+      theme={theme}
+      key={key}
+      locale={locale}
+    >
+      <Story />
+    </ComponentProvider>
   );
 };
