@@ -498,10 +498,10 @@
   (when (string? id-or-name)
     (when-some [expr (lib.expression/maybe-resolve-expression query stage-number id-or-name)]
       (log/warn (u/format-color :red
-                 (str "Resolved field %s to an expression. Please remember to use :expression references"
-                      " for expressions in the current stage -- using a :field ref is unsupported and may"
-                      " not be allowed in the future.")
-                 (pr-str id-or-name)))
+                                (str "Resolved field %s to an expression. Please remember to use :expression references"
+                                     " for expressions in the current stage -- using a :field ref is unsupported and may"
+                                     " not be allowed in the future.")
+                                (pr-str id-or-name)))
       (-> (lib.expression/expression-metadata query stage-number expr)
           (assoc :lib/source-column-alias id-or-name)))))
 
