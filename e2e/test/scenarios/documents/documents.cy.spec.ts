@@ -165,9 +165,9 @@ describe("documents", () => {
         },
         collection_id: null,
         alias: "documentId",
-      }).then((data) => {
-        cy.visit(`/document/${data.body.id}`);
       });
+
+      cy.get("@documentId").then((id) => cy.visit(`/document/${id}`));
     });
 
     it("should support typing with a markdown syntax", () => {
@@ -346,7 +346,7 @@ describe("documents", () => {
 
         cy.log("via recents");
         H.addToDocument("/", false);
-        H.commandSuggestionItem("Question").click();
+        H.commandSuggestionItem("Chart").click();
         H.commandSuggestionItem(
           new RegExp(RegExp.escape(PRODUCTS_COUNT_BY_CATEGORY_PIE.name)),
         ).click();
@@ -357,7 +357,7 @@ describe("documents", () => {
         cy.log("via entity picker");
         H.addToDocument("/", false);
 
-        H.commandSuggestionItem("Question").click();
+        H.commandSuggestionItem("Chart").click();
         H.commandSuggestionItem(/Browse all/).click();
 
         H.entityPickerModalTab("Questions").click();
@@ -369,7 +369,7 @@ describe("documents", () => {
         cy.log("dashboard question via entity picker");
         H.addToDocument("/", false);
 
-        H.commandSuggestionItem("Question").click();
+        H.commandSuggestionItem("Chart").click();
         H.commandSuggestionItem(/Browse all/).click();
 
         H.entityPickerModalTab("Questions").click();
@@ -442,7 +442,6 @@ describe("documents", () => {
         }).as("documentGet");
 
         //initial load
-        cy.wait("@documentGet");
         H.documentContent().click();
 
         H.addToDocument("/ord", false);
@@ -459,7 +458,7 @@ describe("documents", () => {
         //Adding a new line
         H.addToDocument("");
         H.addToDocument("Adding a static link: /", false);
-        H.commandSuggestionItem(/Link to\.\.\./).click();
+        H.commandSuggestionItem("Link").click();
         H.addToDocument("Ord", false);
         H.commandSuggestionItem(/Orders, Count$/).click();
         H.addToDocument(" And continue typing", false);
@@ -485,7 +484,7 @@ describe("documents", () => {
           .click();
 
         cy.location("pathname").should(
-          "not.include",
+          "include",
           ORDERS_BY_YEAR_QUESTION_ID.toString(),
         );
       });
