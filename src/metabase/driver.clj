@@ -268,14 +268,22 @@
 
 (defmulti describe-database*
   "Impl multimethod for [[describe-database]]"
+  {:added "0.56.3" :arglists '([driver database])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmulti describe-database
+  "Return a map containing information that describes all of the tables in a `database`, an instance of the `Database`
+  model. It is expected that this function will be peformant and avoid draining meaningful resources of the database.
+  Results should match the [[metabase.sync.interface/DatabaseMetadata]] schema.
+  Multimethod for backwards compatibility, but implementors should extend [[describe-database*]] instead.
+  Default impl invokes [[describe-database*]] wrapped in `[[do-with-resilient-connection]]"
   {:added "0.32.0" :arglists '([driver database])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
-(defn describe-database
-  "Return a map containing information that describes all of the tables in a `database`, an instance of the `Database`
-  model. It is expected that this function will be peformant and avoid draining meaningful resources of the database.
-  Results should match the [[metabase.sync.interface/DatabaseMetadata]] schema."
+(defmethod describe-database
+  ::driver
   [driver database]
   (do-with-resilient-connection driver database describe-database*))
 
