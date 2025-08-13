@@ -33,7 +33,7 @@ runs:
           });
 
           if (!artifacts.data?.artifacts?.[0]?.id) {
-            throw new Error(`No artifacts found for ${{ inputs.commit }}`);
+            throw new Error(`No artifacts found for ${{ inputs.name }}`);
           }
 
           const artifact_id = artifacts.data.artifacts[0].id;
@@ -52,11 +52,11 @@ runs:
       run: | # bash
         OUTPUT_NAME="${{ inputs.output-name }}"
         EXTRACT_PATH="${{ inputs.extract-path }}"
-        
+
         # Create target directory and extract
         mkdir -p "$EXTRACT_PATH"
         unzip mb.zip -d "$EXTRACT_PATH"
-        
+
         # Find and rename the jar
         if [ "$EXTRACT_PATH" == "." ]; then
           # Default case - extract to current directory
@@ -79,7 +79,7 @@ runs:
             exit 1
           fi
         fi
-        
+
         # Set the JAR_PATH environment variable
         if [ "$EXTRACT_PATH" == "." ]; then
           echo "JAR_PATH=$OUTPUT_NAME" >> $GITHUB_ENV
