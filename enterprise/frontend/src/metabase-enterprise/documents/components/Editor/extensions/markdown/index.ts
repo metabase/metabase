@@ -1,5 +1,4 @@
 import { Extension } from "@tiptap/core";
-import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
 import MarkdownIt from "markdown-it";
 import {
   MarkdownParser,
@@ -26,10 +25,6 @@ declare module "@tiptap/core" {
 
   interface Storage {
     markdown: MarkdownStorage;
-  }
-
-  interface EditorEvents {
-    runMetabot: ProseMirrorNode; // the metabot node in the AST
   }
 }
 
