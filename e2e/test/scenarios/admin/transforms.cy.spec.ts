@@ -1,6 +1,6 @@
-import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
-
 const { H } = cy;
+
+import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
 
 const DB_NAME = "Writable Postgres12";
 const SOURCE_TABLE = "Animals";
@@ -23,6 +23,7 @@ describe("scenarios > admin > transforms", () => {
     cy.intercept("DELETE", "/api/ee/transform/*/table").as(
       "deleteTransformTable",
     );
+    cy.intercept("PUT", "/api/field/*").as("updateField");
   });
 
   describe("creation", () => {
@@ -275,15 +276,64 @@ describe("scenarios > admin > transforms", () => {
 
   describe("metadata", () => {
     it("should be able to edit table metadata after table creation", () => {
-      cy.log("TBD");
+      cy.log("before table creation");
+      createMbqlTransform({ visitTransform: true });
+      getTransformPage()
+        .findByText("Edit this table’s metadata")
+        .should("not.exist");
+
+      cy.log("after table creation");
+      runAndWaitForSuccess();
+      getTransformPage().findByText("Edit this table’s metadata").click();
+      H.DataModel.TableSection.clickField("Name");
+      H.DataModel.FieldSection.getNameInput().clear().type("New name").blur();
+      cy.wait("@updateField");
+
+      cy.log("verify query metadata");
+      cy.go("back");
+      cy.go("back");
+      getTableLink().click();
+      H.assertTableData({ columns: ["New name", "Score"] });
     });
 
-    it("should be able to see all tables within the schema", () => {
-      cy.log("TBD");
+    it("should be able to see the target schema", () => {
+      cy.log("before table creation");
+      createMbqlTransform({ visitTransform: true });
+      getSchemaLink().should("have.text", TARGET_SCHEMA);
+      getSchemaLink().click();
+      H.main().within(() => {
+        cy.findByText("Animals").should("be.visible");
+        cy.findByText("Transform Table").should("not.exist");
+      });
+
+      cy.log("after table creation");
+      cy.go("back");
+      runAndWaitForSuccess();
+      getSchemaLink().click();
+      H.main().within(() => {
+        cy.findByText("Animals").should("be.visible");
+        cy.findByText("Transform Table").should("be.visible");
+      });
     });
 
-    it("should be able to see all schemas within the database", () => {
-      cy.log("TBD");
+    it("should be able to see the target database", () => {
+      cy.log("before table creation");
+      createMbqlTransform({ visitTransform: true });
+      getDatabaseLink().should("have.text", DB_NAME);
+      getDatabaseLink().click();
+      H.main().within(() => {
+        cy.findByText(TARGET_SCHEMA).should("be.visible");
+        cy.findByText(TARGET_SCHEMA_2).should("be.visible");
+      });
+
+      cy.log("after table creation");
+      cy.go("back");
+      runAndWaitForSuccess();
+      getDatabaseLink().click();
+      H.main().within(() => {
+        cy.findByText(TARGET_SCHEMA).should("be.visible");
+        cy.findByText(TARGET_SCHEMA_2).should("be.visible");
+      });
     });
   });
 
@@ -364,6 +414,10 @@ function getRunButton() {
 
 function getTableLink() {
   return cy.findByTestId("table-link");
+}
+
+function getDatabaseLink() {
+  return cy.findByTestId("database-link");
 }
 
 function getSchemaLink() {

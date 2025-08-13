@@ -83,7 +83,7 @@ function getRunButtonInfo({
   if (run == null || !isRecent || isDisabled) {
     return {
       label: t`Run now`,
-      leftSection: <Icon name="play_outlined" />,
+      leftSection: <Icon name="play_outlined" aria-hidden />,
       isDisabled,
     };
   }
@@ -92,13 +92,13 @@ function getRunButtonInfo({
     return {
       label: t`Ran successfully`,
       color: "success",
-      leftSection: <Icon name="check" />,
+      leftSection: <Icon name="check" aria-hidden />,
     };
   }
 
   return {
     label: t`Run failed`,
     color: "error",
-    leftSection: <Icon name="warning" />,
+    leftSection: <Icon name="warning" aria-hidden />,
   };
 }
