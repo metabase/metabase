@@ -53,7 +53,7 @@
    [:parameters [:sequential [:map {:closed false}
                               [:id :string]
                               [:display_name :string]
-                              [:input_type :string]
+                              [:input_type ::data-editing.execute-form/input-type]
                               [:optional :boolean]
                               [:readonly :boolean]
                               [:value {:optional true} :any]]]]])

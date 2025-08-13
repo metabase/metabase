@@ -9,17 +9,18 @@
 
 (mr/def ::input-type
   [:enum
-   {:encode/string name
-    :decode/string #(keyword "input" %)}
-   :boolean
-   :date
-   :datetime
-   :dropdown
-   :float
-   :integer
-   :text
-   :textarea
-   :time])
+   {:encode/api name
+    :decode/api #(keyword "input" %)}
+
+   :input/boolean
+   :input/date
+   :input/datetime
+   :input/dropdown
+   :input/float
+   :input/integer
+   :input/text
+   :input/textarea
+   :input/time])
 
 (mr/def ::describe-param
   [:map #_{:closed true}
@@ -50,25 +51,25 @@
 (defn- field-input-type
   [field field-values]
   (condp #(isa? %2 %1) (:semantic_type field)
-    :type/Name        :text
-    :type/Title       :text
-    :type/Source      :text
-    :type/Description :textarea
-    :type/Category    :dropdown
-    :type/FK          :dropdown
-    :type/PK          :dropdown
+    :type/Name        :input/text
+    :type/Title       :input/text
+    :type/Source      :input/text
+    :type/Description :input/textarea
+    :type/Category    :input/dropdown
+    :type/FK          :input/dropdown
+    :type/PK          :input/dropdown
     (if (#{:list :auto-list :search} (:type field-values))
-      :dropdown
+      :input/dropdown
       (condp #(isa? %2 %1) (:base_type field)
-        :type/Boolean    :boolean
-        :type/Integer    :integer
-        :type/BigInteger :integer
-        :type/Float      :float
-        :type/Decimal    :float
-        :type/Date       :date
-        :type/DateTime   :datetime
-        :type/Time       :time
-        :text))))
+        :type/Boolean    :input/boolean
+        :type/Integer    :input/integer
+        :type/BigInteger :input/integer
+        :type/Float      :input/float
+        :type/Decimal    :input/float
+        :type/Date       :input/date
+        :type/DateTime   :input/datetime
+        :type/Time       :input/time
+        :input/text))))
 
 (defn- describe-table-action
   [{:keys [action-kw
