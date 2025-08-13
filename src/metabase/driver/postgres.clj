@@ -239,6 +239,8 @@
                            [:inline "m"] [:inline "MATERIALIZED VIEW"]
                            :else nil]
                           :type]
+                         ;; https://www.postgresql.org/docs/17/ddl-priv.html
+                         [[:cast :c.relowner :regrole] :owner]
                          [:d.description :description]
                          [:stat.n_live_tup :estimated_row_count]]
              :from      [[:pg_catalog.pg_class :c]]

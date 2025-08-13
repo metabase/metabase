@@ -24,6 +24,7 @@ export interface PreviewDatabaseReplicationResponse {
   canSetReplication: boolean;
   freeQuota: number;
   tablesWithoutPk: { name: string; schema: string }[];
+  tablesWithoutOwnerMatch: { name: string; schema: string }[];
   totalEstimatedRowCount: number;
 }
 

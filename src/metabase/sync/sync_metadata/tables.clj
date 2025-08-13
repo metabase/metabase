@@ -182,7 +182,7 @@
                 {:active false})))
 
 (def ^:private keys-to-update
-  [:description :database_require_filter :estimated_row_count :visibility_type :initial_sync_status])
+  [:description :database_require_filter :estimated_row_count :visibility_type :initial_sync_status :owner])
 
 (mu/defn- update-table-metadata-if-needed!
   "Update the table metadata if it has changed."
@@ -241,7 +241,7 @@
   "Return information about what Tables we have for this DB in the Metabase application DB."
   [database :- i/DatabaseInstance]
   (set (t2/select [:model/Table :id :name :schema :description :database_require_filter :estimated_row_count
-                   :visibility_type :initial_sync_status]
+                   :visibility_type :initial_sync_status :owner]
                   :db_id  (u/the-id database)
                   :active true)))
 

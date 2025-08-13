@@ -1,5 +1,6 @@
 (ns metabase-enterprise.database-replication.api
   (:require
+   [clojure.set :as set]
    [clojure.string :as str]
    [medley.core :as m]
    [metabase-enterprise.database-replication.settings :as database-replication.settings]
@@ -61,39 +62,44 @@
       exclude-pattern
       exclude-fn)))
 
+(def ^:private database->user
+  (comp :user :details))
+
 (defn- token-check-quotas-info
   "Predicate that signals if replication looks right from the quota perspective.
 
    This predicate checks that the quotas we got from the latest tokencheck have enough space for the database to be
   replicated."
   [database schema-filters]
-  (let [all-quotas                (quotas)
-        free-quota                (or
-                                   (some->> (m/find-first (comp #{"clickhouse-dwh"} :hosting-feature) all-quotas)
-                                            ((juxt :soft-limit :usage))
-                                            (apply -))
-                                   -1)
-        filter-schema             (schema-filters->fn schema-filters)
-        db-tables                 (some->> (t2/hydrate database [:tables :fields]) :tables) ; sanitized name
-        sanitized-tables          (some->> db-tables
-                                           (filter (comp (fn [x] (re-matches #"^[A-Za-z0-9_]+$" x)) :name))
-                                           (filter (comp filter-schema :schema)))
-        {tables-without-pk false
-         tables-with-pk    true}  (group-by (fn [t] (boolean (some (comp #{:type/PK} :semantic_type) (:fields t))))
-                                            sanitized-tables)
-        total-estimated-row-count (or
-                                   (some->>
-                                    tables-with-pk
-                                    (map :estimated_row_count)
-                                    (remove nil?)
-                                    (reduce +))
-                                   0)]
+  (let [connected-user             (database->user database)
+        all-quotas                 (quotas)
+        free-quota                 (or
+                                    (some->> (m/find-first (comp #{"clickhouse-dwh"} :hosting-feature) all-quotas)
+                                             ((juxt :soft-limit :usage))
+                                             (apply -))
+                                    -1)
+        filter-schema              (schema-filters->fn schema-filters)
+        db-tables                  (some->> (t2/hydrate database [:tables :fields]) :tables) ; sanitized name
+        sanitized-tables           (some->> db-tables
+                                            (filter (comp (fn [x] (re-matches #"^[A-Za-z0-9_]+$" x)) :name))
+                                            (filter (comp filter-schema :schema)))
+        tables-without-pk          (set (remove (fn [t] (boolean (some (comp #{:type/PK} :semantic_type) (:fields t)))) sanitized-tables))
+        ;; https://www.postgresql.org/docs/17/ddl-priv.html
+        tables-without-owner-match (set (remove (comp #{connected-user} :owner) sanitized-tables))
+        total-estimated-row-count  (or
+                                    (some->>
+                                     (set/difference (set sanitized-tables) tables-without-pk tables-without-owner-match)
+                                     (map :estimated_row_count)
+                                     (remove nil?)
+                                     (reduce +))
+                                    0)]
     (log/infof "Quota left: %s. Estimate db row count: %s" free-quota total-estimated-row-count)
-    {:free-quota                free-quota
-     :total-estimated-row-count total-estimated-row-count
-     :can-set-replication       (< total-estimated-row-count free-quota)
-     :all-quotas                all-quotas
-     :tables-without-pk         (map #(select-keys % [:schema :name]) tables-without-pk)}))
+    {:free-quota                 free-quota
+     :total-estimated-row-count  total-estimated-row-count
+     :can-set-replication        (< total-estimated-row-count free-quota)
+     :all-quotas                 all-quotas
+     :tables-without-pk          (map #(select-keys % [:schema :name]) tables-without-pk)
+     :tables-without-owner-match (map #(select-keys % [:schema :name]) tables-without-owner-match)}))
 
 (api.macros/defendpoint :post "/connection/:database-id/preview"
   "Return info about pg-replication connection that is about to be created."

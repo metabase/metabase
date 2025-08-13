@@ -83,6 +83,16 @@ const compactEnglishNumberFormat = new Intl.NumberFormat("en", {
   maximumFractionDigits: 1,
 });
 
+// JavaScript 2024 `Set.union` does not appear to be available?
+// https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Set/union
+const unionInPlace = <T,>(set: T[], values?: T[]) => {
+  values?.forEach((v) => {
+    if (!set.includes(v)) {
+      set.push(v);
+    }
+  });
+};
+
 export const DatabaseReplicationForm = ({
   database,
   onSubmit,
@@ -103,7 +113,7 @@ export const DatabaseReplicationForm = ({
   // FIXME: Can we get all values of the form at once?
   const [schemaSelect, setSchemaSelect] = useState(initialValues.schemaSelect);
   const [schemaFilters, setSchemaFilters] = useState("");
-  const [showTablesWithoutPk, setShowTablesWithoutPk] = useState(false);
+  const [showNoSyncTables, setShowNoSyncTables] = useState(false);
 
   const [previewResponseLoading, setPreviewResponseLoading] = useState(false);
   const [previewResponse, setPreviewResponse] =
@@ -119,6 +129,21 @@ export const DatabaseReplicationForm = ({
       () => setPreviewResponseLoading(false),
     );
   }, [preview, database.id, schemaFilters, schemaSelect]);
+
+  const noSyncTables: { name: string; schema: string }[] = [];
+  unionInPlace(noSyncTables, previewResponse?.tablesWithoutPk);
+  unionInPlace(noSyncTables, previewResponse?.tablesWithoutOwnerMatch);
+
+  const hasNoPk = (table: { schema: string; name: string }) =>
+    previewResponse?.tablesWithoutPk?.includes(table) ?? false;
+  const hasOwnerMismatch = (table: { schema: string; name: string }) =>
+    previewResponse?.tablesWithoutOwnerMatch?.includes(table) ?? false;
+  const noSyncReason = (table: { schema: string; name: string }) =>
+    hasNoPk(table)
+      ? "(no primary key)"
+      : hasOwnerMismatch(table)
+        ? "(owner mismatch)"
+        : undefined;
 
   return (
     <>
@@ -199,45 +224,46 @@ export const DatabaseReplicationForm = ({
                 />
               </>
             ) : undefined}
-            {(previewResponse?.tablesWithoutPk?.length ?? 0) > 0 ? (
+            {noSyncTables.length > 0 ? (
               <Card radius="md" bg="bg-light" p="md">
                 <Stack>
                   <Text c="text-light">
-                    {t`Tables without primary keys`}{" "}
+                    {t`Tables without primary key or with owner mismatch`}{" "}
                     <b>{t`will not be replicated`}</b>.
                   </Text>
                   <Button
                     variant="subtle"
                     size="xs"
-                    onClick={() => setShowTablesWithoutPk(!showTablesWithoutPk)}
+                    onClick={() => setShowNoSyncTables(!showNoSyncTables)}
                     h="auto"
                     p={0}
                     td="underline"
                     style={{ alignSelf: "flex-start" }}
                   >
-                    {showTablesWithoutPk
-                      ? t`Hide tables (${previewResponse?.tablesWithoutPk?.length})`
-                      : t`Show tables (${previewResponse?.tablesWithoutPk?.length})`}
+                    {showNoSyncTables
+                      ? t`Hide tables (${noSyncTables.length})`
+                      : t`Show tables (${noSyncTables.length})`}
                   </Button>
-                  {showTablesWithoutPk && (
+                  {showNoSyncTables && (
                     <List spacing="xs" size="sm">
-                      {previewResponse?.tablesWithoutPk?.map(
-                        ({ schema, name }) => (
-                          <List.Item
-                            key={`${schema}.${name}`}
-                            c="text-medium"
-                            ff="Monaco, 'Lucida Console', monospace"
-                            fz="md"
-                          >
-                            <Box component="span" c="text-dark" fw="500">
-                              {schema}
-                            </Box>
-                            <Box component="span" c="text-medium">
-                              .{name}
-                            </Box>
-                          </List.Item>
-                        ),
-                      )}
+                      {noSyncTables.map((table) => (
+                        <List.Item
+                          key={`${table.schema}.${table.name}`}
+                          c="text-medium"
+                          ff="Monaco, 'Lucida Console', monospace"
+                          fz="md"
+                        >
+                          <Box component="span" c="text-dark" fw="500">
+                            {table.schema}
+                          </Box>
+                          <Box component="span" c="text-medium">
+                            .{table.name}
+                          </Box>{" "}
+                          <Box component="span" c="text-light">
+                            {noSyncReason(table)}
+                          </Box>
+                        </List.Item>
+                      ))}
                     </List>
                   )}
                 </Stack>
