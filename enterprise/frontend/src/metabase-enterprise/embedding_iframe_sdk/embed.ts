@@ -137,7 +137,7 @@ export abstract class MetabaseEmbedElement extends HTMLElement {
       ...attributesConverted,
       componentName: this._componentName,
       _isLocalhost: this._getIsLocalhost(),
-    };
+    } as SdkIframeEmbedTagSettings;
   }
 
   addEventListener(
@@ -201,7 +201,10 @@ export abstract class MetabaseEmbedElement extends HTMLElement {
    * Send a message with the new settings
    */
   _updateSettings(settings: Partial<SdkIframeEmbedSettings>) {
-    const newValues = { ...this.properties, ...settings };
+    const newValues = {
+      ...this.properties,
+      ...settings,
+    } as SdkIframeEmbedSettings;
 
     // If the iframe isn't ready yet, don't send the message now.
     if (!this._isEmbedReady) {
@@ -268,7 +271,9 @@ export abstract class MetabaseEmbedElement extends HTMLElement {
       return;
     }
 
-    this._updateSettings({ [key]: parseAttributeValue(newVal) });
+    this._updateSettings({
+      [key]: parseAttributeValue(newVal),
+    } as Partial<SdkIframeEmbedSettings>);
   }
 
   private _emitEvent(event: SdkIframeEmbedEvent) {

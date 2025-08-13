@@ -37,6 +37,7 @@ export type SdkIframeEmbedMessage =
 // --- Embed Option Interfaces ---
 
 export interface DashboardEmbedOptions {
+  componentName: "metabase-dashboard";
   dashboardId: number | string;
 
   drills?: boolean;
@@ -53,6 +54,7 @@ export interface DashboardEmbedOptions {
 }
 
 export interface QuestionEmbedOptions {
+  componentName: "metabase-question";
   questionId: number | string;
 
   drills?: boolean;
@@ -71,6 +73,7 @@ export interface QuestionEmbedOptions {
 }
 
 export interface ExplorationEmbedOptions {
+  componentName: "metabase-question";
   template: "exploration";
 
   isSaveEnabled?: boolean;
@@ -125,13 +128,13 @@ export type SdkIframeEmbedBaseSettings = {
 export type SdkIframeEmbedTemplateSettings =
   | DashboardEmbedOptions
   | QuestionEmbedOptions
-  | ExplorationEmbedOptions
-  | CurateContentEmbedOptions
-  | ViewContentEmbedOptions;
+  | ExplorationEmbedOptions;
+// | CurateContentEmbedOptions
+// | ViewContentEmbedOptions;
 
 /** Settings used by the sdk embed route */
 export type SdkIframeEmbedSettings = SdkIframeEmbedBaseSettings &
-  Record<string, unknown>;
+  SdkIframeEmbedTemplateSettings;
 
 // TODO: remove?
 /** Settings used by the embed.js constructor */

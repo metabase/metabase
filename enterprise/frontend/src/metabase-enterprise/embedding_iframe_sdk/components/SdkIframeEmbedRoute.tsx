@@ -61,8 +61,6 @@ export const SdkIframeEmbedRoute = () => {
 
   const { theme, locale } = embedSettings;
 
-  console.log("embedSettings", embedSettings);
-
   const authConfig = defineMetabaseAuthConfig({
     metabaseInstanceUrl: embedSettings.instanceUrl,
     apiKey: embedSettings.apiKey,
@@ -84,87 +82,89 @@ const SdkIframeEmbedView = ({
 }): ReactNode => {
   const rerenderKey = useParamRerenderKey(settings);
 
-  return match(settings)
-    .with(
-      { componentName: "metabase-question", questionId: "new" },
-      (settings) => (
-        <InteractiveQuestion
-          questionId="new"
-          height="100%"
-          isSaveEnabled={settings.isSaveEnabled ?? false}
-          targetCollection={settings.targetCollection}
-          entityTypes={settings.entityTypes}
-          key={rerenderKey}
-        />
-      ),
-    )
-    .with({ template: "curate-content" }, (_settings) => null)
-    .with({ template: "view-content" }, (_settings) => null)
-    .with(
-      {
-        componentName: "metabase-dashboard",
-        dashboardId: P.nonNullable,
-        drills: false,
-      },
-      (settings) => (
-        <StaticDashboard
-          dashboardId={settings.dashboardId}
-          withTitle={settings.withTitle}
-          withDownloads={settings.withDownloads}
-          initialParameters={settings.initialParameters}
-          hiddenParameters={settings.hiddenParameters}
-          key={rerenderKey}
-        />
-      ),
-    )
-    .with(
-      {
-        componentName: "metabase-dashboard",
-        dashboardId: P.nonNullable,
-        drills: P.optional(true),
-      },
-      (settings) => (
-        <InteractiveDashboard
-          dashboardId={settings.dashboardId}
-          withTitle={settings.withTitle}
-          withDownloads={settings.withDownloads}
-          initialParameters={settings.initialParameters}
-          hiddenParameters={settings.hiddenParameters}
-          drillThroughQuestionHeight="100%"
-          drillThroughQuestionProps={{ isSaveEnabled: false }}
-          key={rerenderKey}
-        />
-      ),
-    )
-    .with(
-      {
-        componentName: "metabase-question",
-        questionId: P.nonNullable,
-      },
-      (settings) => {
-        const commonProps = {
-          questionId: settings.questionId,
-          withDownloads: settings.withDownloads,
-          height: "100%",
-          initialSqlParameters: settings.initialSqlParameters,
-          title: settings.withTitle ?? true, // defaulting title to true even if in the sdk it defaults to false for static
-        };
-
-        if (settings.drills === false) {
-          // note: this disable drills but also removes the top toolbar
-          return <StaticQuestion {...commonProps} key={rerenderKey} />;
-        }
-
-        return (
-          <SdkQuestion
-            {...commonProps}
-            isSaveEnabled={settings.isSaveEnabled}
-            key={rerenderKey}
+  return (
+    match(settings)
+      .with(
+        { componentName: "metabase-question", questionId: "new" },
+        (settings) => (
+          <InteractiveQuestion
+            questionId="new"
+            height="100%"
+            isSaveEnabled={settings.isSaveEnabled ?? false}
             targetCollection={settings.targetCollection}
             entityTypes={settings.entityTypes}
+            key={rerenderKey}
           />
-        );
-      },
-    )
-    .otherwise(() => null);
+        ),
+      )
+      // .with({ template: "curate-content" }, (_settings) => null)
+      // .with({ template: "view-content" }, (_settings) => null)
+      .with(
+        {
+          componentName: "metabase-dashboard",
+          dashboardId: P.nonNullable,
+          drills: false,
+        },
+        (settings) => (
+          <StaticDashboard
+            dashboardId={settings.dashboardId}
+            withTitle={settings.withTitle}
+            withDownloads={settings.withDownloads}
+            initialParameters={settings.initialParameters}
+            hiddenParameters={settings.hiddenParameters}
+            key={rerenderKey}
+          />
+        ),
+      )
+      .with(
+        {
+          componentName: "metabase-dashboard",
+          dashboardId: P.nonNullable,
+          drills: P.optional(true),
+        },
+        (settings) => (
+          <InteractiveDashboard
+            dashboardId={settings.dashboardId}
+            withTitle={settings.withTitle}
+            withDownloads={settings.withDownloads}
+            initialParameters={settings.initialParameters}
+            hiddenParameters={settings.hiddenParameters}
+            drillThroughQuestionHeight="100%"
+            drillThroughQuestionProps={{ isSaveEnabled: false }}
+            key={rerenderKey}
+          />
+        ),
+      )
+      .with(
+        {
+          componentName: "metabase-question",
+          questionId: P.nonNullable,
+        },
+        (settings) => {
+          const commonProps = {
+            questionId: settings.questionId,
+            withDownloads: settings.withDownloads,
+            height: "100%",
+            initialSqlParameters: settings.initialSqlParameters,
+            title: settings.withTitle ?? true, // defaulting title to true even if in the sdk it defaults to false for static
+          };
+
+          if (settings.drills === false) {
+            // note: this disable drills but also removes the top toolbar
+            return <StaticQuestion {...commonProps} key={rerenderKey} />;
+          }
+
+          return (
+            <SdkQuestion
+              {...commonProps}
+              isSaveEnabled={settings.isSaveEnabled}
+              key={rerenderKey}
+              targetCollection={settings.targetCollection}
+              entityTypes={settings.entityTypes}
+            />
+          );
+        },
+      )
+      .otherwise(() => null)
+  );
 };
