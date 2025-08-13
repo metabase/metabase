@@ -128,6 +128,16 @@
 
 (methodical/defmethod t2/table-name :model/Workspace [_model] :workspace)
 
+(defn- generate-slug
+  "Generates a unique slug for the workspace based on its name.
+   Uses `gensym` to ensure uniqueness, especially useful for testing or when names might collide."
+  [{:keys [name]}]
+  (str (str/replace name " " "_") "_" (gensym "")))
+
+(t2/define-before-insert :model/Workspace
+  [workspace]
+  (assoc workspace :slug (generate-slug workspace)))
+
 (t2/deftransforms :model/Workspace
   {:plans mi/transform-json
    :activity_logs mi/transform-json

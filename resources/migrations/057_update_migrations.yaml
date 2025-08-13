@@ -1181,6 +1181,11 @@ databaseChangeLog:
                   constraints:
                     nullable: false
               - column:
+                  name: slug
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+              - column:
                   name: description
                   type: ${text.type}
                   constraints:

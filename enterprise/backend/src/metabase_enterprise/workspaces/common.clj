@@ -1,5 +1,6 @@
 (ns metabase-enterprise.workspaces.common
   (:require
+   [metabase-enterprise.workspaces.isolation-manager :as isolation-manager]
    [metabase-enterprise.workspaces.models.workspace :as m.workspace]
    [metabase.api.common :as api]
    [metabase.collections.common :as c.common]
@@ -9,8 +10,7 @@
 (set! *warn-on-reflection* true)
 
 (defn create-workspace!
-  "Creates a workspace"
-  ;; TODO: workspaces create their own collections
+  "Creates a workspace, and returns it"
   [name description]
   (let [containing-coll (c.common/create-collection!
                          {:name name
@@ -54,10 +54,16 @@
         updated-entities (conj current-entities entity-with-created-at)]
     (t2/update! :model/Workspace workspace-id {entity-key updated-entities})))
 
-(defn- link-transform! [workspace-id transform_id]
+(defn divert-transform-target
+  "Returns the target schema that a transform should run in when exectued from the workspace."
+  [workspace]
+  ;; TODO
+  (isolation-manager/isolation-schema-name (:slug workspace "demo")))
+
+(defn link-transform! [workspace-id transform-id]
   (let [workspace (t2/select-one :model/Workspace :id workspace-id)
         _ (when-not workspace (throw (ex-info "Workspace not found" {:error :no-workspace})))
-        transform (t2/select-one :model/Transform :id transform_id)
+        transform (t2/select-one :model/Transform :id transform-id)
         _ (when-not transform (throw (ex-info "Transform not found" {:error :no-transform})))
         copied-transform {:id (:id transform)
                           :name (:name transform)
@@ -122,15 +128,15 @@
 
 (comment
 
-  (require '[metabase.test :as mt])
+  (do (require '[metabase.test :as mt])
 
-  ;; will id alone work here? ^
-  ;; current user is used to generate the api key
-  (binding [api/*current-user-id* (mt/user->id :rasta)
-            api/*current-user-permissions-set* (atom #{"/"})]
-    (let [w (create-workspace! "repl workspace" nil)]
-      (def w w)
-      w))
+      ;; will id alone work here? ^
+      ;; current user is used to generate the api key
+      (binding [api/*current-user-id* (mt/user->id :rasta)
+                api/*current-user-permissions-set* (atom #{"/"})]
+        (let [w (create-workspace! "repl workspace" nil)]
+          (def w w)
+          w)))
 
   (add-workspace-entity (:id w)
                         :plans

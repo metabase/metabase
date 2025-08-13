@@ -2,6 +2,7 @@
   "`/api/ee/workspace/` routes"
   (:require
    [metabase-enterprise.workspaces.common :as w.common]
+   [metabase-enterprise.workspaces.isolation-manager :as isolation-manager]
    [metabase-enterprise.workspaces.models.workspace :as m.workspace]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -11,6 +12,7 @@
    [toucan2.core :as t2]))
 
 (comment
+  isolation-manager/keep-me ;;temp
   m.workspace/keep-me)
 
 (set! *warn-on-reflection* true)
@@ -80,12 +82,11 @@
    - description (optional): Workspace description"
   [_route-params
    _query-params
-   {:keys [name description collection_id]}
+   {:keys [name description]}
    :- [:map
        [:name ms/NonBlankString]
-       [:collection_id ms/PositiveInt]
        [:description {:optional true} [:maybe :string]]]]
-  (w.common/create-workspace! name description collection_id))
+  {:status 200 :body (w.common/create-workspace! name description)})
 
 (comment
 
@@ -271,8 +272,8 @@
   (delete-workspace-entity-at-index workspace-id :transforms index)
   api/generic-204-no-content)
 
-(defn- link-transform! [workspace-id transform_id]
-  (try (w.common/link-transform! workspace-id transform_id)
+(defn- link-transform! [workspace-id transform-id]
+  (try (w.common/link-transform! workspace-id transform-id)
        (catch Exception e
          (case (:error (ex-data e))
            :no-workspace (throw (ex-info "Workspace not found" {:status-code 404 :error :no-workspace}))
@@ -288,7 +289,7 @@
   [{:keys [workspace-id]} :- [:map [:workspace-id ms/PositiveInt]]
    _query-params
    {:keys [transform_id]} :- [:map [:transform_id ms/PositiveInt]]]
-  (api/check-superuser)
+  ;; TODO what are the perimssions for linking a transform?
   (link-transform! workspace-id transform_id)
   (m.workspace/sort-workspace (t2/select-one :model/Workspace :id workspace-id)))
 

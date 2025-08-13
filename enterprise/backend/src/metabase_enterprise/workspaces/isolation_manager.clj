@@ -49,15 +49,14 @@
   [site-uuid-string]
   (apply str (map first (str/split site-uuid-string #"-"))))
 
-(defn- isolation-schema-name
+(defn isolation-schema-name
   "Generate schema/database name for workspace isolation following mb__isolation_<slug>_<workspace-id> pattern."
-  [workspace-id]
+  [workspace-slug]
   (let [instance-slug (instance-uuid-slug (str (system/site-uuid)))
-        clean-workspace-id (str/replace (str workspace-id) #"[^a-zA-Z0-9]" "_")]
+        clean-workspace-id (str/replace (str workspace-slug) #"[^a-zA-Z0-9]" "_")]
     (format "mb__isolation_%s_%s" instance-slug clean-workspace-id)))
 
-
-(defn- isolation-user-name
+(defn isolation-user-name
   "Generate username for workspace isolation."
   [workspace-id user-type]
   (let [instance-slug (instance-uuid-slug (str (system/site-uuid)))
@@ -199,33 +198,32 @@
          #_(format "GRANT OWNERSHIP ON SCHEMA %s to ROLE DEVELOPER" schema-name)
          #_(format "GRANT USAGE ON SCHEMA %s to ROLE DEVELOPER" schema-name)]
       #_[:users
-       {}
-       ;; Create populator user with random password
-       [:populator-role
-        {}
-        (format "CREATE ROLE \"%s\" " (:role populator))
-        [:populator
          {}
-         (format "CREATE OR REPLACE USER %s PASSWORD = '%s' DEFAULT_ROLE='%s'"
-                 (:user populator)
-                 (:password populator)
-                 (:role populator))
-         [:populator-privileges
+       ;; Create populator user with random password
+         [:populator-role
           {}
+          (format "CREATE ROLE \"%s\" " (:role populator))
+          [:populator
+           {}
+           (format "CREATE OR REPLACE USER %s PASSWORD = '%s' DEFAULT_ROLE='%s'"
+                   (:user populator)
+                   (:password populator)
+                   (:role populator))
+           [:populator-privileges
+            {}
           ;; Grant privileges to populator user
 
           ;; source data hardcorded to public: FIX
-          (format "GRANT OWNERSHIP ON SCHEMA %s TO \"%s\" " schema-name #_(:user populator) (:role populator))
+            (format "GRANT OWNERSHIP ON SCHEMA %s TO \"%s\" " schema-name #_(:user populator) (:role populator))
           ;; todo: don't hardcode this to public
-          (format "GRANT USAGE ON DATABASE \"%s\" TO \"%s\" " source-database-name #_(:user populator)  (:role populator))]
-         [:assign-role
-          {}
-          (format "GRANT ROLE \"%s\" to USER %s" (:role populator) (:user populator))]]]]]]))
+            (format "GRANT USAGE ON DATABASE \"%s\" TO \"%s\" " source-database-name #_(:user populator)  (:role populator))]
+           [:assign-role
+            {}
+            (format "GRANT ROLE \"%s\" to USER %s" (:role populator) (:user populator))]]]]]]))
 
 (comment
-  (let [spec (metabase.driver.sql-jdbc.connection/db->pooled-connection-spec (toucan2.core/select-one-fn :id :model/Database :engine :snowflake))]
-    (jdbc/query spec ["select current_role()"]))
-  )
+  (let [spec (metabase.driver.sql-jdbc.connection/db->pooled-connection-spec (toucan2.core/select-one-fn :id :model/Database :id 2))]
+    (jdbc/query spec ["select current_role()"])))
 
 (defmethod create-isolation* :snowflake
   [_driver {:keys [id connection-details]}]
@@ -252,7 +250,6 @@
          :schema-name schema-name
          ;;:populator populator
          :results results}))))
-
 
 (comment
   (malli.core/validate ::steps
@@ -291,8 +288,6 @@
                                [:error (format "error during: %s" step)]
                                [:success (format "performed: %s" step)]))))
 
-
-
 (defmethod create-isolation* :postgres
   [_driver {:keys [id connection-details]}]
   (let [schema-name (isolation-schema-name id)
@@ -305,11 +300,11 @@
       ;; Create schema
 
       (let [results (evaluate-steps steps (fn [sql]
-                                              (try [:success
-                                                    sql
-                                                    (jdbc/execute! tx [sql])]
-                                                   (catch Exception e
-                                                     [:error sql (ex-message e)]))))]
+                                            (try [:success
+                                                  sql
+                                                  (jdbc/execute! tx [sql])]
+                                                 (catch Exception e
+                                                   [:error sql (ex-message e)]))))]
         ;; Return isolation info
         {:isolation-type :schema
          :schema-name schema-name
@@ -352,8 +347,7 @@
   (malli.core/validate ::steps
                        (clickhouse-steps {:populator {:user "populator" :password "populator-pw"}
                                           :database-name "scratchpad"
-                                          :source-database-name "foo"}))
-  )
+                                          :source-database-name "foo"})))
 
 (defmethod create-isolation* :clickhouse
   [_driver {:keys [id connection-details]}]
@@ -374,6 +368,7 @@
          :results results}))))
 
 (comment
+  (require '[toucan2.core :as t2])
 
   ;; future work to check for existing schemas
   (let [metadata (.getMetaData (:connection tx))]
@@ -389,18 +384,22 @@
         connection-details {:scan-all-databases false, :ssl false, :password "password", :destination-database false,
                             :port 8123, :advanced-options false, :dbname "sales_data", :host "localhost",
                             :tunnel-enabled false, :user "default"}]
-    (create-isolation :clickhouse (:connection-details workspace) workspace-id))
+
+    (create-isolation
+     :postgres
+     (:connection-details (t2/select-one-fn :details :model/Database 2))
+     workspace-id))
+
+  (delete-isolation :postgres (:connection-details (t2/select-one-fn :details :model/Database 2)) "workspace_manual_01")
 
   {:isolation-type :database,
    :database-name "mb__isolation_7748c_workspace_manual_01",
    :populator {:user "mb_iso_7748c_workspace_manual_01_populator",
-               :password "9d8285d5-94c3-4e87-a98a-1c47c9fb727b"},}
-
+               :password "9d8285d5-94c3-4e87-a98a-1c47c9fb727b"}}
 
   (delete-isolation :clickhouse (:connection-details workspace) (:id workspace))
   {:deleted-database "mb__isolation_7748c_workspace_manual_01",
-   :deleted-users ["mb_iso_7748c_workspace_manual_01_populator"]}
-  )
+   :deleted-users ["mb_iso_7748c_workspace_manual_01_populator"]})
 
 (defn create-isolation
   "Create database isolation for a single database.
@@ -413,7 +412,7 @@
   Args:
     engine             - Database engine keyword (:postgres, :clickhouse, etc.)
     connection-details - Database connection details (compatible with Metabase format)
-    workspace-id       - Unique workspace identifier for naming isolation resources
+    workspace-slug     - Unique workspace identifier for naming isolation resources
 
   Returns:
     Map containing isolation details:
