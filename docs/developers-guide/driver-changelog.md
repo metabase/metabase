@@ -4,6 +4,14 @@ title: Driver interface changelog
 
 # Driver Interface Changelog
 
+## Metabase 0.57.0
+
+- `driver/field-reference-mlv2` is now deprecated, and is no longer used. Please remove your implementations.
+
+- The key `metabase.driver-api.core/qp.add.nfc-path` is now more consistently populated; other `qp.add.*` keys no
+  longer include parent column names for drivers like MongoDB -- use `qp.add.nfc-path` instead to qualify the
+  `qp.add.source-column-alias` with parent column names as needed.
+
 ## Metabase 0.56.0
 
 - Add the testing multi-method `tx/track-dataset` for shared cloud dbs to track loaded datasets for more efficient sharing.
@@ -28,12 +36,6 @@ title: Driver interface changelog
 - Added a feature `:expressions/today` for drivers that support generating a date for the current day.
 
 - Added the driver multi-method `driver/set-database-used!` for drivers to set a database on the connection with statements like `USE DATABASE`.
-
-- `driver/field-reference-mlv2` is now deprecated, and is no longer used. Please remove your implementations.
-
-- The key `metabase.driver-api.core/qp.add.nfc-path` is now more consistently populated; other `qp.add.*` keys no
-  longer include parent column names for drivers like MongoDB -- use `qp.add.nfc-path` instead to qualify the
-  `qp.add.source-column-alias` with parent column names as needed.
 
 ## Metabase 0.55.9
 
