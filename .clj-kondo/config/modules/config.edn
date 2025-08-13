@@ -1910,6 +1910,13 @@
            upload
            util}}
 
+  enterprise/workspaces
+  {:team "DevEx"
+   :api #{metabase-enterprise.workspaces.api
+          metabase-enterprise.workspaces.common}
+   :uses #{api
+           util}}
+
   enterprise/worker
   {:team "Querying"
    :api  #{metabase-enterprise.worker.api

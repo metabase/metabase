@@ -108,7 +108,7 @@
    [:collection_id {:optional true} [:maybe [:int {:min 1}]]]
    [:name [:string {:min 1}]]
    [:description {:optional true} [:maybe :string]]
-   ;; each plan, transofrm, and document(<-unsure) is basically a file abstraction
+   ;; each plan, transform, and document(<-unsure) is basically a file abstraction
    [:plans [:sequential ::plan]]
    ;; This should maybe be another table:
    [:activity_logs [:sequential ::activity-log]]
