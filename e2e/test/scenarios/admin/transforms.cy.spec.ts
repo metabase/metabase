@@ -181,7 +181,7 @@ describe("scenarios > admin > transforms", () => {
 
   describe("tags", () => {
     it("should be able to add and remove tags", () => {
-      createTransformTags(["main", "replica"]);
+      createTags(["main", "replica"]);
       createMbqlTransform({ visitTransform: true });
       getTagsInput().click();
 
@@ -213,7 +213,7 @@ describe("scenarios > admin > transforms", () => {
     });
 
     it("should be able to update tags inline", () => {
-      createTransformTags(["main"]);
+      createTags(["main"]);
       createMbqlTransform({ visitTransform: true });
 
       getTagsInput().click();
@@ -232,7 +232,7 @@ describe("scenarios > admin > transforms", () => {
     });
 
     it("should be able to delete tags inline", () => {
-      createTransformTags(["main", "replica"]);
+      createTags(["main", "replica"]);
       createMbqlTransform({ visitTransform: true });
 
       getTagsInput().click();
@@ -628,7 +628,7 @@ describe("scenarios > admin > transforms > jobs", () => {
     });
 
     it("should be able to create a job with custom property values", () => {
-      createTransformTags(["main", "replica"]);
+      createTags(["main", "replica"]);
       visitJobListPage();
       getJobListPage().findByRole("link", { name: "Create a job" }).click();
 
@@ -704,7 +704,7 @@ describe("scenarios > admin > transforms > jobs", () => {
 
   describe("tags", () => {
     it("should be able to add and remove tags", () => {
-      createTransformTags(["main", "replica"]);
+      createTags(["main", "replica"]);
       H.createTransformJob({ name: "New job" }, { visitTransformJob: true });
       getTagsInput().click();
 
@@ -739,7 +739,7 @@ describe("scenarios > admin > transforms > jobs", () => {
         );
       });
       runAndWaitForSuccess();
-      getSidebar().findByText("Runs").click();
+      getNavSidebar().findByText("Runs").click();
       getContentTable().within(() => {
         cy.findByText("MBQL transform").should("be.visible");
         cy.findByText("Success").should("be.visible");
@@ -767,6 +767,95 @@ describe("scenarios > admin > transforms > jobs", () => {
       getJobListPage().should("be.visible");
       getJobListPage().findByText("New job").should("not.exist");
     });
+  });
+});
+
+describe("scenarios > admin > transforms > runs", () => {
+  beforeEach(() => {
+    H.restore("postgres-writable");
+    H.resetTestTable({ type: "postgres", table: "many_schemas" });
+    cy.signInAsAdmin();
+    H.activateToken("bleeding-edge");
+    H.resyncDatabase({ dbId: WRITABLE_DB_ID });
+  });
+
+  it("should show run history with the ability to filter", () => {
+    function createAndRunTransforms() {
+      createMbqlTransform({
+        targetTable: TARGET_TABLE,
+        visitTransform: true,
+      });
+      runAndWaitForSuccess();
+      createSqlTransform({
+        sourceQuery: "SELECT * FROM abc",
+        targetTable: TARGET_TABLE_2,
+        visitTransform: true,
+      });
+      runAndWaitForFailure();
+    }
+
+    function testTransformFilter() {
+      cy.log("no filters");
+      getContentTable().within(() => {
+        cy.findByText("MBQL transform").should("be.visible");
+        cy.findByText("SQL transform").should("be.visible");
+      });
+
+      cy.log("transform filter - add a filter");
+      getTransformFilterWidget().click();
+      H.popover().within(() => {
+        cy.findByText("MBQL transform").click();
+        cy.button("Add filter").click();
+      });
+      getTransformFilterWidget()
+        .findByText("MBQL transform")
+        .should("be.visible");
+      getContentTable().within(() => {
+        cy.findByText("MBQL transform").should("be.visible");
+        cy.findByText("SQL transform").should("not.exist");
+      });
+
+      cy.log("transform filter - update a filter");
+      getTransformFilterWidget().click();
+      H.popover().within(() => {
+        cy.findByText("MBQL transform").click();
+        cy.findByText("SQL transform").click();
+        cy.button("Update filter").click();
+      });
+      getTransformFilterWidget()
+        .findByText("SQL transform")
+        .should("be.visible");
+      getContentTable().within(() => {
+        cy.findByText("MBQL transform").should("not.exist");
+        cy.findByText("SQL transform").should("be.visible");
+      });
+
+      cy.log("transform filter - multiple options");
+      getTransformFilterWidget().click();
+      H.popover().within(() => {
+        cy.findByText("MBQL transform").click();
+        cy.button("Update filter").click();
+      });
+      getTransformFilterWidget()
+        .findByText("2 transforms")
+        .should("be.visible");
+      getContentTable().within(() => {
+        cy.findByText("MBQL transform").should("be.visible");
+        cy.findByText("SQL transform").should("be.visible");
+      });
+
+      cy.log("transform filter - remove filter");
+      getTransformFilterWidget().button("Remove filter").click();
+      getTransformFilterWidget().findByText("2 transforms").should("not.exist");
+      getContentTable().within(() => {
+        cy.findByText("MBQL transform").should("be.visible");
+        cy.findByText("SQL transform").should("be.visible");
+      });
+    }
+
+    createAndRunTransforms();
+    getNavSidebar().findByText("Runs").click();
+    testTransformFilter();
   });
 });
 
@@ -830,8 +919,20 @@ function getContentTable() {
   return cy.findByTestId("admin-content-table");
 }
 
-function getSidebar() {
+function getNavSidebar() {
   return cy.findByTestId("transform-sidebar");
+}
+
+function getTransformFilterWidget() {
+  return cy.findByRole("group", { name: "Transform" });
+}
+
+function _getStatusFilterWidget() {
+  return cy.findByRole("group", { name: "Status" });
+}
+
+function _getTagFilterWidget() {
+  return cy.findByRole("group", { name: "Tags" });
 }
 
 function visitTransformListPage() {
@@ -925,7 +1026,7 @@ function createSqlTransform({
   );
 }
 
-function createTransformTags(names: string[]) {
+function createTags(names: string[]) {
   names.forEach((name) => H.createTransformTag({ name }));
 }
 

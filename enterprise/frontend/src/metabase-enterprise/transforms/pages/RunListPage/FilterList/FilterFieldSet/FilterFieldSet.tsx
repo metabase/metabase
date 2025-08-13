@@ -48,6 +48,7 @@ export const FilterFieldSet = forwardRef(function FilterWidget(
       py="xs"
       bd="2px solid border"
       bg="bg-white"
+      aria-label={label}
     >
       {hasValue && (
         <Box component="legend" h="2px" ml="-4px" px="xs" fz="sm" lh={0}>
@@ -61,7 +62,7 @@ export const FilterFieldSet = forwardRef(function FilterWidget(
               {displayValue}
             </Text>
             <Tooltip label={t`Remove filter`}>
-              <ActionIcon onClick={handleRemove}>
+              <ActionIcon aria-label={t`Remove filter`} onClick={handleRemove}>
                 <Icon name="close" />
               </ActionIcon>
             </Tooltip>
@@ -70,7 +71,7 @@ export const FilterFieldSet = forwardRef(function FilterWidget(
           <>
             <Icon name={icon} />
             <Text flex={1}>{label}</Text>
-            <ActionIcon>
+            <ActionIcon aria-label={t`Open filter widget`}>
               <Icon name="chevrondown" />
             </ActionIcon>
           </>
