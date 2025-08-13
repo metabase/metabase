@@ -134,11 +134,21 @@ databaseChangeLog:
                   type: int
                   constraints:
                     nullable: true
-                    referencedTableName: collection
-                    referencedColumnNames: id
-                    foreignKeyName: fk_api_key_collection_id
-                    deleteCascade: true
 
+  # Need to create the FK separately because deleteCascade doesn't work in addColumn: see https://liquibase.jira.com/browse/CORE-3058
+  - changeSet:
+      id: v57.2025-08-12T13:00:01
+      author: camsaul
+      comment: Add single_collection_id FK to api_key to support API keys tied to one specific Collection
+      preConditions:
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: api_key
+            baseColumnNames: single_collection_id
+            referencedTableName: collection
+            referencedColumnNames: id
+            constraintName: fk_api_key_single_collection_id
+            onDelete: CASCADE
 
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
