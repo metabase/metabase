@@ -72,7 +72,7 @@ export function DatabaseReplicationSection({
         {showDWHReplicationModal ? (
           <DatabaseReplicationModal
             database={database}
-            isOpen={showDWHReplicationModal}
+            opened={showDWHReplicationModal}
             onClose={() => setShowDWHReplicationModal(false)}
           />
         ) : undefined}

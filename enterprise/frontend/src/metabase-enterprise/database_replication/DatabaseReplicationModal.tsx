@@ -1,7 +1,7 @@
 import { useCallback, useState } from "react";
 import { t } from "ttag";
 
-import { Modal } from "metabase/ui";
+import { Modal, type ModalProps } from "metabase/ui";
 import {
   type PreviewDatabaseReplicationResponse,
   useCreateDatabaseReplicationMutation,
@@ -38,12 +38,10 @@ const transformSchemaFilters = (
         .map((pattern) => ({ type: schemaSelect, pattern }));
 
 export const DatabaseReplicationModal = ({
-  isOpen,
+  opened,
   onClose,
   database,
-}: {
-  isOpen: boolean;
-  onClose: () => void;
+}: Pick<ModalProps, "opened" | "onClose"> & {
   database: Database;
 }) => {
   const [setupStep, setSetupStep] = useState<"form" | "setting-up" | "success">(
@@ -88,22 +86,18 @@ export const DatabaseReplicationModal = ({
     [createDatabaseReplication, database.id, setSetupStep],
   );
 
+  const isProgressStep = setupStep === "setting-up" || setupStep === "success";
+
   return (
     <Modal
-      opened={isOpen}
+      opened={isProgressStep || opened}
       onClose={onClose}
+      closeOnClickOutside={!isProgressStep}
+      closeOnEscape={!isProgressStep}
+      withCloseButton={!isProgressStep}
       size="36rem"
       padding="2.5rem"
-      py={
-        setupStep === "setting-up" || setupStep === "success"
-          ? undefined
-          : "7rem"
-      }
-      title={
-        setupStep === "setting-up" || setupStep === "success"
-          ? undefined
-          : t`Set up database replication`
-      }
+      title={isProgressStep ? undefined : t`Set up database replication`}
     >
       {setupStep === "form" ? (
         <DatabaseReplicationForm
