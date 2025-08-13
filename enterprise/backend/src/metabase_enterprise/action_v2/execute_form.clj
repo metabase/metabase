@@ -7,12 +7,24 @@
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
+(mr/def ::input-type
+  [:enum
+   :input/boolean
+   :input/date
+   :input/datetime
+   :input/dropdown
+   :input/float
+   :input/integer
+   :input/text
+   :input/textarea
+   :input/time])
+
 (mr/def ::describe-param
   [:map #_{:closed true}
    [:id                                :string]
    [:display_name                      :string]
    [:field_id         {:optional true} pos-int?]
-   [:input_type                        [:enum "dropdown" "textarea" "date" "datetime" "text"]]
+   [:input_type                        ::input-type]
    [:semantic_type    {:optional true} :keyword]
    [:optional                          :boolean]
    ;; TODO in practice this should never be null (and we strip nils current)
@@ -35,16 +47,26 @@
 
 (defn- field-input-type
   [field field-values]
-  (case (:type field-values)
-    (:list :auto-list :search) "dropdown"
-    (condp #(isa? %2 %1) (:semantic_type field)
-      :type/Description "textarea"
-      :type/Category    "dropdown"
-      :type/FK          "dropdown"
+  (condp #(isa? %2 %1) (:semantic_type field)
+    :type/Name        :input/text
+    :type/Title       :input/text
+    :type/Source      :input/text
+    :type/Description :input/textarea
+    :type/Category    :input/dropdown
+    :type/FK          :input/dropdown
+    :type/PK          :input/dropdown
+    (if (#{:list :auto-list :search} (:type field-values))
+      :input/dropdown
       (condp #(isa? %2 %1) (:base_type field)
-        :type/Date     "date"
-        :type/DateTime "datetime"
-        "text"))))
+        :type/Boolean    :input/boolean
+        :type/Integer    :input/integer
+        :type/BigInteger :input/integer
+        :type/Float      :input/float
+        :type/Decimal    :input/float
+        :type/Date       :input/date
+        :type/DateTime   :input/datetime
+        :type/Time       :input/time
+        :input/text))))
 
 (defn- describe-table-action
   [{:keys [action-kw
@@ -96,7 +118,7 @@
                          {:id                      (:name field)
                           :display_name            (:display_name field)
                           :semantic_type           (:semantic_type field)
-                          :input_type              (field-input-type field field-values)
+                          :input_type              (name (field-input-type field field-values))
                           :field_id                (:id field)
                           :human_readable_field_id (-> field :dimensions first :human_readable_field_id)
                           :optional                (not required)
