@@ -67,7 +67,7 @@ describe(
         });
 
         it("should add and cleanup the MetabaseProviderPropsStore in a global object", () => {
-          const metabaseProvideElement = (
+          const metabaseProviderElement = (
             <MetabaseProvider
               authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}
               locale="en"
@@ -78,15 +78,13 @@ describe(
 
           mountSdk(
             <>
-              {metabaseProvideElement}
-              {metabaseProvideElement}
+              {metabaseProviderElement}
+              {metabaseProviderElement}
             </>,
             { strictMode },
           );
 
-          cy.mount(metabaseProvideElement);
-
-          cy.window().its("METABASE_PROVIDER_PROPS_STORE").should("exist");
+          cy.mount(metabaseProviderElement);
 
           cy.window().its("METABASE_PROVIDER_PROPS_STORE").should("exist");
 
@@ -95,7 +93,7 @@ describe(
 
           cy.window().its("METABASE_PROVIDER_PROPS_STORE").should("not.exist");
 
-          cy.mount(metabaseProvideElement);
+          cy.mount(metabaseProviderElement);
 
           cy.window().its("METABASE_PROVIDER_PROPS_STORE").should("exist");
 
@@ -311,7 +309,7 @@ describe(
         });
       });
 
-      it("it should show an error on a component level if SDK bundle is not loaded", () => {
+      it("it should show an error on a component level if SDK components are not wrapped within the MetabaseProvider", () => {
         sdkBundleCleanup();
 
         cy.window().then((win) => {
