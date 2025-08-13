@@ -1,10 +1,13 @@
 (ns metabase-enterprise.semantic-search.migration-test
   (:require
    #_[honey.sql :as sql]
+   #_[metabase-enterprise.semantic-search.env :as semantic.env]
+   #_[metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]
    #_[metabase-enterprise.semantic-search.test-util :as semantic.tu]
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
    [environ.core :refer [env]]
+   [honey.sql :as sql]
    [java-time.api :as t]
    [medley.core :as m]
    [metabase-enterprise.semantic-search.core :as semantic.core]
@@ -20,7 +23,7 @@
    [next.jdbc :as jdbc])
   (:import (com.mchange.v2.c3p0 PooledDataSource)))
 
-;; TODO: fixture?
+;; TODO: fixtures?
 
 (set! *warn-on-reflection* true)
 
@@ -151,3 +154,92 @@
                              [tid-first :ended any?]
                              [tid-second :ended any?]]
                             (:log @results)))))))))))))
+
+(defn- map-contains-keys?
+  [m kseq]
+  (reduce #(and %1 (contains? m %2)) true kseq))
+
+(defn- qualify
+  [q xs]
+  (into []
+        (map (fn [x] (keyword (name q) (name x))))
+        xs))
+
+;; TODO: Ensure CI -- dynamic model
+(deftest expected-db-schema-after-migration-test
+  (when (and (= "openai" (semantic.settings/ee-embedding-provider))
+             (str/starts-with? (semantic.settings/ee-embedding-model) "text-embedding-3")
+             (string? (not-empty (semantic.settings/openai-api-key))))
+    (testing "pgvector database has expected schema"
+      (with-test-db "my_migration_testing_db"
+        (semantic.core/init! (eduction (take 3) (search.ingestion/searchable-documents)) nil)
+        (testing "migration table"
+          (is (map-contains-keys?
+               (jdbc/execute-one! (semantic.db.datasource/ensure-initialized-data-source!)
+                                  (sql/format {:select [:*]
+                                               :from [:migration]}))
+               (qualify :migration [:finished_at
+                                    :status
+                                    :version]))))
+        (testing "control table has expected columns"
+          (is (map-contains-keys?
+               (jdbc/execute-one! (semantic.db.datasource/ensure-initialized-data-source!)
+                                  (sql/format {:select [:*]
+                                               :from [:index_control]}))
+               (qualify :index_control [:active_id
+                                        :active_updated_at
+                                        :id
+                                        :version]))))
+        (testing "metadata table has expected columns"
+          (is  (map-contains-keys?
+                (jdbc/execute-one! (semantic.db.datasource/ensure-initialized-data-source!)
+                                   (sql/format {:select [:*]
+                                                :from [:index_metadata]}))
+                (qualify :index_metadata [:id
+                                          :index_created_at
+                                          :index_version
+                                          :indexer_last_poll
+                                          :indexer_last_seen
+                                          :indexer_last_seen_hash
+                                          :indexer_last_seen_id
+                                          :model_name
+                                          :provider
+                                          :table_name
+                                          :vector_dimensions]))))
+        (testing "index table has expected columns"
+          (let [index-table-kw (->
+                                (jdbc/execute-one! (semantic.db.datasource/ensure-initialized-data-source!)
+                                                   (sql/format {:select [[:im.table_name]]
+                                                                :from [[:index_control :ic]]
+                                                                :join [[:index_metadata :im]
+                                                                       [:= :ic.active_id :im.id]]}))
+                                :index_metadata/table_name keyword)]
+            (is (map-contains-keys?
+                 (jdbc/execute-one! (semantic.db.datasource/ensure-initialized-data-source!)
+                                    (sql/format {:select [:*]
+                                                 :from [index-table-kw]}))
+                 (qualify index-table-kw [:archived
+                                          :collection_id
+                                          :content
+                                          :created_at
+                                          :creator_id
+                                          :dashboardcard_count
+                                          :database_id
+                                          :display_type
+                                          :embedding
+                                          :id
+                                          :last_editor_id
+                                          :last_viewed_at
+                                          :legacy_input
+                                          :metadata
+                                          :model
+                                          :model_created_at
+                                          :model_id
+                                          :model_updated_at
+                                          :name
+                                          :official_collection
+                                          :pinned
+                                          :text_search_vector
+                                          :text_search_with_native_query_vector
+                                          :verified
+                                          :view_count])))))))))
