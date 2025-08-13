@@ -403,7 +403,8 @@
                               {:base-type base-type, :effective-type base-type}
                               (cond-> literal (u.number/bigint? literal) str)])))
 
-(mu/defn- expression-metadata :- ::lib.schema.metadata/column
+(mu/defn expression-metadata :- ::lib.schema.metadata/column
+  "Return column metadata for an `expression-definition` MBQL clause."
   [query                 :- ::lib.schema/query
    stage-number          :- :int
    expression-definition :- ::lib.schema.expression/expression]

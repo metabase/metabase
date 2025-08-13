@@ -8,6 +8,7 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [medley.core :as m]
+   [metabase.lib.expression :as lib.expression]
    [metabase.lib.field.util :as lib.field.util]
    [metabase.lib.join :as lib.join]
    [metabase.lib.metadata :as lib.metadata]
@@ -423,7 +424,10 @@
     (resolve-in-card-returned-columns query source-card-id id-or-name)))
 
 (defn- fallback-metadata [id-or-name]
-  (log/info (u/format-color :red "Returning fallback metadata for %s" (pr-str id-or-name)))
+  (log/warn (u/format-color :red
+                            (str "We tried every trick we could think of and still failed to resolve field a"
+                                 " ref. If the query doesn't work, this is why. Returning fallback metadata for %s")
+                            (pr-str id-or-name)))
   (merge
    {:lib/type            :metadata/column
     ;; guess that the column came from the previous stage
@@ -481,6 +485,26 @@
         (log/debugf "Failed to find a match in one of the query's joins in stage %s" (pr-str stage-number))
         nil)))
 
+(defn- fallback-metadata-for-field-id [query stage-number id-or-name]
+  (when (pos-int? id-or-name)
+    (when-some [col (field-metadata query id-or-name)]
+      (assoc col
+             ::fallback-metadata? true
+             :lib/source          (if (zero? (lib.util/canonical-stage-index query stage-number))
+                                    :source/table-defaults
+                                    :source/previous-stage)))))
+
+(defn- maybe-resolve-expression-in-current-stage [query stage-number id-or-name]
+  (when (string? id-or-name)
+    (when-some [expr (lib.expression/maybe-resolve-expression query stage-number id-or-name)]
+      (log/warn (u/format-color :red
+                 (str "Resolved field %s to an expression. Please remember to use :expression references"
+                      " for expressions in the current stage -- using a :field ref is unsupported and may"
+                      " not be allowed in the future.")
+                 (pr-str id-or-name)))
+      (-> (lib.expression/expression-metadata query stage-number expr)
+          (assoc :lib/source-column-alias id-or-name)))))
+
 (mu/defn- resolve-from-previous-stage-or-source :- ::lib.metadata.calculation/visible-column
   [query        :- ::lib.schema/query
    stage-number :- :int
@@ -493,13 +517,10 @@
                 ;; if we haven't found a match yet try getting metadata from the metadata provider if this is a
                 ;; Field ID ref. It's likely a ref that makes little or no sense (e.g. wrong table) but we can
                 ;; let QP code worry about that.
-                (when (pos-int? id-or-name)
-                  (when-some [col (field-metadata query id-or-name)]
-                    (assoc col
-                           ::fallback-metadata? true
-                           :lib/source          (if (zero? (lib.util/canonical-stage-index query stage-number))
-                                                  :source/table-defaults
-                                                  :source/previous-stage))))
+                (fallback-metadata-for-field-id query stage-number id-or-name)
+                ;; try looking in the expressions in this stage to see if someone incorrectly used a field ref for an
+                ;; expression.
+                (maybe-resolve-expression-in-current-stage query stage-number id-or-name)
                 ;; if we STILL can't find a match, return made-up fallback metadata.
                 (fallback-metadata id-or-name))]
     (merge-metadata

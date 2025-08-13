@@ -1267,3 +1267,27 @@
             (-> (add-alias-info query)
                 :stages
                 first)))))
+
+(deftest ^:parallel resolve-incorrect-field-ref-for-expression-test
+  (testing "resolve the incorrect use of a :field ref for an expression correctly"
+    (let [query (lib/query
+                 meta/metadata-provider
+                 (lib.tu.macros/mbql-query venues
+                   {:fields      [[:expression "my_numberLiteral"]]
+                    :expressions {"my_numberLiteral" [:value 1 {:base_type :type/Integer}]}
+                    :filter      [:=
+                                  [:field "my_numberLiteral" {:base-type :type/Integer}]
+                                  [:value 1 {:base_type :type/Integer}]]}))]
+      (is (=? [:=
+               {}
+               [:field
+                {::add/desired-alias "my_numberLiteral"
+                 ::add/source-alias  "my_numberLiteral"
+                 ::add/source-table  ::add/none}
+                "my_numberLiteral"]
+               [:value {} 1]]
+              (-> (add-alias-info query)
+                  :stages
+                  first
+                  :filters
+                  first))))))

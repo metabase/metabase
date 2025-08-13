@@ -1266,3 +1266,22 @@
               (lib.field.resolution/resolve-field-ref query -1 [:field
                                                                 {:lib/uuid "00000000-0000-0000-0000-000000000000", :base-type :type/Boolean}
                                                                 "T"]))))))
+
+(deftest ^:parallel resolve-incorrect-field-ref-for-expression-test
+  (testing "resolve the incorrect use of a field ref correctly"
+    (let [query (lib/query
+                 meta/metadata-provider
+                 (lib.tu.macros/mbql-query venues
+                   {:fields      [[:expression "my_numberLiteral"]]
+                    :expressions {"my_numberLiteral" [:value 1 {:base_type :type/Integer}]}}))]
+      (is (=? {:base-type               :type/Integer
+               :display-name            "my_numberLiteral"
+               :name                    "my_numberLiteral"
+               :lib/expression-name     "my_numberLiteral"
+               :lib/source              :source/expressions
+               :lib/source-column-alias "my_numberLiteral"
+               :lib/source-uuid         "00000000-0000-0000-0000-000000000000"
+               :lib/type                :metadata/column}
+              (lib.field.resolution/resolve-field-ref
+               query -1
+               [:field {:base-type :type/Integer, :lib/uuid "00000000-0000-0000-0000-000000000000"} "my_numberLiteral"]))))))
