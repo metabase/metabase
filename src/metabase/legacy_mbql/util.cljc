@@ -24,7 +24,7 @@
   is-clause?
   check-clause])
 
-(mu/defn normalize-token :- :keyword
+(mu/defn normalize-token :- [:or :keyword :string]
   "Convert a string or keyword in various cases (`lisp-case`, `snake_case`, or `SCREAMING_SNAKE_CASE`) to a lisp-cased
   keyword."
   [token :- schema.helpers/KeywordOrString]
@@ -40,7 +40,7 @@
         (keyword s))
 
       ;; NOCOMMIT -- this is just for debugging failing tests
-      (re-matches #"^my_[a-z]+Literal$" "my_stringLiteral")
+      (re-matches #"^my_[a-z]+Literal$" s)
       (do
         (log/error "normalize-token should not be getting called on an expression name!!!")
         s)
