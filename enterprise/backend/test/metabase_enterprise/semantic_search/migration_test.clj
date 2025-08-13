@@ -285,10 +285,12 @@
                                      (sql/format
                                       {:select [:*]
                                        :from [:index_metadata]}))]
-              (is (= index_version semantic.db.migration.impl/dynamic-code-version))
-              (is  (contains? (jdbc/execute-one! (semantic.db.datasource/ensure-initialized-data-source!)
-                                                 (sql/format
-                                                  {:select [:*]
-                                                   :from [(keyword table_name)]
-                                                   :limit 1}))
-                              (keyword table_name "new_col"))))))))))
+              (testing "Index metadata table ids were updated"
+                (is (= index_version semantic.db.migration.impl/dynamic-code-version)))
+              (testing "Index table contains new column"
+                (is  (contains? (jdbc/execute-one! (semantic.db.datasource/ensure-initialized-data-source!)
+                                                   (sql/format
+                                                    {:select [:*]
+                                                     :from [(keyword table_name)]
+                                                     :limit 1}))
+                                (keyword table_name "new_col")))))))))))
