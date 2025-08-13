@@ -128,15 +128,14 @@
         {:headers {}}))))
 
 (deftest ^:parallel current-user-info-for-api-key-test-2
-  (let [k (api-key/generate-key)]
-    (mt/with-temp [:model/ApiKey _ {:name                  "An API Key without an internal user"
-                                    :user_id               nil
-                                    :creator_id            (mt/user->id :lucky)
-                                    :updated_by_id         (mt/user->id :lucky)
-                                    ::api-key/unhashed-key k}]
-      (testing "An API key without an internal user (e.g. a SCIM key) should not modify the request"
-        (let [req {:headers {"x-api-key" (u.secret/expose k)}}]
-          (is (= req (#'mw.session/merge-current-user-info req))))))))
+  (mt/with-temp [:model/ApiKey _ {:name                  "An API Key without an internal user"
+                                  :user_id               nil
+                                  :creator_id            (mt/user->id :lucky)
+                                  :updated_by_id         (mt/user->id :lucky)
+                                  ::api-key/unhashed-key (u.secret/secret "mb_foobar")}]
+    (testing "An API key without an internal user (e.g. a SCIM key) should not modify the request"
+      (let [req {:headers {"x-api-key" "mb_foobar"}}]
+        (is (= req (#'mw.session/merge-current-user-info req)))))))
 
 (defn- simple-auth-handler
   "A handler that just does authentication and returns a map from the dynamic variables that are bound as a result."
@@ -154,33 +153,31 @@
      identity
      (fn [e] (throw e)))))
 
-(deftest ^:parallel user-data-is-correctly-bound-for-api-keys
-  (let [k1 (api-key/generate-key)
-        k2 (api-key/generate-key)]
-    (mt/with-temp [:model/ApiKey _ {:name                  "An API Key"
-                                    :user_id               (mt/user->id :lucky)
-                                    :creator_id            (mt/user->id :lucky)
-                                    :updated_by_id         (mt/user->id :lucky)
-                                    ::api-key/unhashed-key k1}
-                   :model/ApiKey _ {:name                  "A superuser API Key"
-                                    :user_id               (mt/user->id :crowberto)
-                                    :creator_id            (mt/user->id :lucky)
-                                    :updated_by_id         (mt/user->id :lucky)
-                                    ::api-key/unhashed-key k2}]
-      (testing "A valid API key works, and user info is added to the request"
-        (is (= {:is-superuser?     false
-                :is-group-manager? false
-                :user-id           (mt/user->id :lucky)
-                :user              {:id    (mt/user->id :lucky)
-                                    :email (:email (mt/fetch-user :lucky))}}
-               (simple-auth-handler {:headers {"x-api-key" (u.secret/expose k1)}}))))
-      (testing "A superuser API key has `*is-superuser?*` bound correctly"
-        (is (= {:is-superuser?     true
-                :is-group-manager? false
-                :user-id           (mt/user->id :crowberto)
-                :user              {:id    (mt/user->id :crowberto)
-                                    :email (:email (mt/fetch-user :crowberto))}}
-               (simple-auth-handler {:headers {"x-api-key" (u.secret/expose k2)}})))))))
+(deftest user-data-is-correctly-bound-for-api-keys
+  (mt/with-temp [:model/ApiKey _ {:name                  "An API Key"
+                                  :user_id               (mt/user->id :lucky)
+                                  :creator_id            (mt/user->id :lucky)
+                                  :updated_by_id         (mt/user->id :lucky)
+                                  ::api-key/unhashed-key (u.secret/secret "mb_foobar")}
+                 :model/ApiKey _ {:name                  "A superuser API Key"
+                                  :user_id               (mt/user->id :crowberto)
+                                  :creator_id            (mt/user->id :lucky)
+                                  :updated_by_id         (mt/user->id :lucky)
+                                  ::api-key/unhashed-key (u.secret/secret "mb_superuser")}]
+    (testing "A valid API key works, and user info is added to the request"
+      (is (= {:is-superuser?     false
+              :is-group-manager? false
+              :user-id           (mt/user->id :lucky)
+              :user              {:id    (mt/user->id :lucky)
+                                  :email (:email (mt/fetch-user :lucky))}}
+             (simple-auth-handler {:headers {"x-api-key" "mb_foobar"}}))))
+    (testing "A superuser API key has `*is-superuser?*` bound correctly"
+      (is (= {:is-superuser?     true
+              :is-group-manager? false
+              :user-id           (mt/user->id :crowberto)
+              :user              {:id    (mt/user->id :crowberto)
+                                  :email (:email (mt/fetch-user :crowberto))}}
+             (simple-auth-handler {:headers {"x-api-key" "mb_superuser"}}))))))
 
 (deftest cannot-use-session-id-for-auth
   (testing "The session id is checked on requests, but only for uuid-formatted keys. Allowing users to auth with core_session.id values would be a security risk."
@@ -331,14 +328,13 @@
             :user    {:id    (mt/user->id :rasta)
                       :email (:email (mt/fetch-user :rasta))}}
            (user-bound-handler
-            (request-with-user-id (mt/user->id :rasta)))))))
+            (request-with-user-id (mt/user->id :rasta))))))
 
-(deftest ^:parallel add-user-id-key-test-2
   (testing "with invalid user-id (not sure how this could ever happen, but lets test it anyways)"
-    (is (= {:user-id Integer/MAX_VALUE
+    (is (= {:user-id 0
             :user    {}}
            (user-bound-handler
-            (request-with-user-id Integer/MAX_VALUE))))))
+            (request-with-user-id 0))))))
 
 ;;; ----------------------------------------------   with-current-user -------------------------------------------------
 

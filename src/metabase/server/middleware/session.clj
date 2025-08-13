@@ -203,6 +203,7 @@
   "Return User ID and superuser status for an API Key with `api-key-id"
   [api-key :- [:maybe :string]]
   (when (and api-key
+             (mr/validate ::api-keys.schema/key.raw api-key)
              (init-status/complete?))
     (let [user-info (-> (t2/query-one (cons (user-data-for-api-key-prefix-query
                                              (premium-features/enable-advanced-permissions?))
