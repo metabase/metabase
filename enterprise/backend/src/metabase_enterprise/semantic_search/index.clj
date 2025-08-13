@@ -410,12 +410,20 @@
        (-> (sql.helpers/create-table (keyword table-name) :if-not-exists)
            (sql.helpers/with-columns (index-table-schema vector-dimensions))
            sql-format-quoted))
-      (jdbc/execute!
-       connectable
-       (-> (sql.helpers/create-index
-            [(keyword (hnsw-index-name index)) :if-not-exists]
-            [(keyword table-name) :using-hnsw [:raw "embedding vector_cosine_ops"]])
-           sql-format-quoted))
+      (try
+        (jdbc/execute!
+         connectable
+         (-> (sql.helpers/create-index
+              [(keyword (hnsw-index-name index)) :if-not-exists]
+              [(keyword table-name) :using-hnsw [:raw "embedding vector_cosine_ops"]])
+             sql-format-quoted))
+        (catch Exception e
+          (let [honey-sql (sql.helpers/create-index
+                           [(keyword (hnsw-index-name index)) :if-not-exists]
+                           [(keyword table-name) :using-hnsw [:raw "embedding vector_cosine_ops"]])]
+            (throw (ex-info "Failed to create HNSW index" {:honey-sql (u/pprint-to-str honey-sql)
+                                                           :query (sql-format-quoted honey-sql)}
+                            e)))))
       (jdbc/execute!
        connectable
        (-> (sql.helpers/create-index
