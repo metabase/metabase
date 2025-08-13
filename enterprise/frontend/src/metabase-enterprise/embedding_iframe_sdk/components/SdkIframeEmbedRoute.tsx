@@ -153,7 +153,7 @@ const SdkIframeEmbedView = ({
         return (
           <SdkQuestion
             {...commonProps}
-            isSaveEnabled={settings.isSaveEnabled}
+            isSaveEnabled={settings.isSaveEnabled ?? false}
             key={rerenderKey}
             targetCollection={settings.targetCollection}
             entityTypes={settings.entityTypes}
