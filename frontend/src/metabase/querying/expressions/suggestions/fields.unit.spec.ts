@@ -319,6 +319,7 @@ describe("suggestFields", () => {
   it("should suggest joined fields", async () => {
     const JOIN_CLAUSE: Join = {
       alias: "Foo",
+      ident: "pbHOWTxjodLToOUnFJe_k",
       "source-table": REVIEWS_ID,
       condition: [
         "=",
