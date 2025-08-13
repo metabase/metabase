@@ -9,15 +9,15 @@
 
 (mr/def ::input-type
   [:enum
-   :input/boolean
-   :input/date
-   :input/datetime
-   :input/dropdown
-   :input/float
-   :input/integer
-   :input/text
-   :input/textarea
-   :input/time])
+   :boolean
+   :date
+   :datetime
+   :dropdown
+   :float
+   :integer
+   :text
+   :textarea
+   :time])
 
 (mr/def ::describe-param
   [:map #_{:closed true}
@@ -48,25 +48,25 @@
 (defn- field-input-type
   [field field-values]
   (condp #(isa? %2 %1) (:semantic_type field)
-    :type/Name        :input/text
-    :type/Title       :input/text
-    :type/Source      :input/text
-    :type/Description :input/textarea
-    :type/Category    :input/dropdown
-    :type/FK          :input/dropdown
-    :type/PK          :input/dropdown
+    :type/Name        :text
+    :type/Title       :text
+    :type/Source      :text
+    :type/Description :textarea
+    :type/Category    :dropdown
+    :type/FK          :dropdown
+    :type/PK          :dropdown
     (if (#{:list :auto-list :search} (:type field-values))
-      :input/dropdown
+      :dropdown
       (condp #(isa? %2 %1) (:base_type field)
-        :type/Boolean    :input/boolean
-        :type/Integer    :input/integer
-        :type/BigInteger :input/integer
-        :type/Float      :input/float
-        :type/Decimal    :input/float
-        :type/Date       :input/date
-        :type/DateTime   :input/datetime
-        :type/Time       :input/time
-        :input/text))))
+        :type/Boolean    :boolean
+        :type/Integer    :integer
+        :type/BigInteger :integer
+        :type/Float      :float
+        :type/Decimal    :float
+        :type/Date       :date
+        :type/DateTime   :datetime
+        :type/Time       :time
+        :text))))
 
 (defn- describe-table-action
   [{:keys [action-kw
@@ -118,7 +118,7 @@
                          {:id                      (:name field)
                           :display_name            (:display_name field)
                           :semantic_type           (:semantic_type field)
-                          :input_type              (name (field-input-type field field-values))
+                          :input_type              (field-input-type field field-values)
                           :field_id                (:id field)
                           :human_readable_field_id (-> field :dimensions first :human_readable_field_id)
                           :optional                (not required)
@@ -145,8 +145,8 @@
     ;; TODO remove assumption that all primitives are table actions
     (:action-kw action-def)
     (describe-table-action
-     {:action-kw    (:action-kw action-def)
-      :table-id     (:table-id partial-input)
-      :param-map    (:param-map action-def)})
+     {:action-kw (:action-kw action-def)
+      :table-id  (:table-id partial-input)
+      :param-map (:param-map action-def)})
     :else
     (throw (ex-info "Not able to execute given action yet" {:status-code 500 :scope scope :action-def action-def}))))
