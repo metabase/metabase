@@ -38,6 +38,7 @@ export const getValidationSchema = (
     is_full_sync: Yup.boolean().default(true),
     is_on_demand: Yup.boolean().default(false),
     "connection-string": Yup.string().default(""),
+    provider_name: Yup.string().nullable().default(null),
   });
 };
 
