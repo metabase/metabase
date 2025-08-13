@@ -116,7 +116,11 @@ export const CollectionBrowserInner = ({
     });
 
   const latestBreadcrumbCollectionId = useMemo(() => {
-    return breadcrumbs[breadcrumbs.length - 1].id as CollectionId;
+    if (breadcrumbs.length === 0) {
+      return null;
+    }
+
+    return breadcrumbs[breadcrumbs.length - 1]?.id as CollectionId;
   }, [breadcrumbs]);
 
   // Use breadcrumb state when enabled, otherwise use internal state

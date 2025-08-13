@@ -1,4 +1,10 @@
-import { type ReactNode, createContext, useCallback, useState } from "react";
+import {
+  type ReactNode,
+  createContext,
+  useCallback,
+  useContext,
+  useState,
+} from "react";
 import _ from "underscore";
 
 export type BreadcrumbItemType =
@@ -27,6 +33,10 @@ export interface SdkBreadcrumbContextType {
 
 export const SdkBreadcrumbContext =
   createContext<SdkBreadcrumbContextType | null>(null);
+
+export function useBreadcrumbContext() {
+  return useContext(SdkBreadcrumbContext) ?? EmptyBreadcrumbContext;
+}
 
 export interface SdkBreadcrumbProviderProps {
   children: ReactNode;

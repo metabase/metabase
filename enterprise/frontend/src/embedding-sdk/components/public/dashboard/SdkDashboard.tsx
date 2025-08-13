@@ -43,7 +43,7 @@ import {
   type DashboardContextProviderHandle,
   useDashboardContext,
 } from "metabase/dashboard/context";
-import { getDashboardComplete, getIsDirty } from "metabase/dashboard/selectors";
+import { getIsDirty } from "metabase/dashboard/selectors";
 import { useSelector } from "metabase/lib/redux";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 import { useDashboardLoadHandlers } from "metabase/public/containers/PublicOrEmbeddedDashboard/use-dashboard-load-handlers";
@@ -205,7 +205,6 @@ const SdkDashboardInner = ({
   const [newDashboardQuestionId, setNewDashboardQuestionId] =
     useState<number>();
 
-  const dashboard = useSelector(getDashboardComplete);
   const autoScrollToDashcardId = useMemo(
     () =>
       dashboard?.dashcards.find(
