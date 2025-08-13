@@ -12,7 +12,11 @@ import { commonReducers } from "metabase/reducers-common";
 import { registerVisualization } from "metabase/visualizations";
 import { LineChart } from "metabase/visualizations/visualizations/LineChart";
 import type { DatasetData } from "metabase-types/api";
-import { createMockCard, createMockDataset } from "metabase-types/api/mocks";
+import {
+  createMockCard,
+  createMockCardQueryMetadata,
+  createMockDataset,
+} from "metabase-types/api/mocks";
 import type { State } from "metabase-types/store";
 import { createMockState } from "metabase-types/store/mocks";
 
@@ -62,8 +66,12 @@ export default {
             createMockCard({
               name: "Test Question",
               display: "line",
+              id: 114,
             }),
           ),
+        ),
+        http.get("/api/card/114/query_metadata", () =>
+          HttpResponse.json(createMockCardQueryMetadata()),
         ),
         http.post("/api/card/114/query", () =>
           HttpResponse.json(
