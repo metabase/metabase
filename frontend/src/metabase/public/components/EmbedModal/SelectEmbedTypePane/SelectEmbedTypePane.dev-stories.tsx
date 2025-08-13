@@ -54,7 +54,8 @@ function EnterprisePluginsInfo() {
     <Alert icon="warning" variant="warning">
       <Text>
         {" "}
-        This <strong>{isEnterprise ? "IS" : "IS NOT"}</strong> enterprise build.
+        This <strong>{isEnterprise ? "IS" : "IS NOT"}</strong> enterprise build
+        (from the FE perspective).
       </Text>
     </Alert>
   );
@@ -62,7 +63,7 @@ function EnterprisePluginsInfo() {
 
 function EnterpriseToggleDecorator(
   Story: StoryFn,
-  { parameters }: { parameters: { isEnterprise: boolean } },
+  { parameters }: { parameters: { isEnterprise?: boolean } },
 ) {
   const { isEnterprise } = parameters;
   if (isEnterprise) {
@@ -87,6 +88,7 @@ export default {
   component: SelectEmbedTypePane,
   parameters: {
     layout: "centered",
+    isEnterprise: false,
   },
   decorators: [EnterpriseToggleDecorator],
 };

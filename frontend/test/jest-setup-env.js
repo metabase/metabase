@@ -1,5 +1,12 @@
 import "@testing-library/jest-dom";
+import { setProjectAnnotations } from "@storybook/react";
 import fetchMock from "fetch-mock";
+
+const preview = require("../../.storybook-dev/preview");
+
+const annotations = setProjectAnnotations([preview.decorators]);
+
+beforeAll(annotations.beforeAll);
 
 beforeEach(() => {
   fetchMock.restore();
