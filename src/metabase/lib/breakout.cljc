@@ -75,9 +75,8 @@
 
   ([query        :- ::lib.schema/query
     stage-number :- :int]
-   (let [columns (let [stage   (lib.util/query-stage query stage-number)
-                       options {:include-implicitly-joinable-for-source-card? false}]
-                   (lib.metadata.calculation/visible-columns query stage-number stage options))]
+   (let [columns (let [options {:include-implicitly-joinable-for-source-card? false}]
+                   (lib.metadata.calculation/visible-columns query stage-number options))]
      (when (seq columns)
        (let [existing-breakouts         (breakouts query stage-number)
              column->breakout-positions (group-by
