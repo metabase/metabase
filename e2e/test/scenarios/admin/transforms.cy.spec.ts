@@ -181,25 +181,25 @@ describe("scenarios > admin > transforms", () => {
 
   describe("tags", () => {
     it("should be able to add and remove tags", () => {
-      createTags(["main", "replica"]);
+      createTags(["tag1", "tag2"]);
       createMbqlTransform({ visitTransform: true });
       getTagsInput().click();
 
       H.popover().within(() => {
-        cy.findByRole("option", { name: "main" }).click();
+        cy.findByRole("option", { name: "tag1" }).click();
         cy.wait("@updateTransform");
-        assertOptionSelected("main");
-        assertOptionNotSelected("replica");
+        assertOptionSelected("tag1");
+        assertOptionNotSelected("tag2");
 
-        cy.findByRole("option", { name: "replica" }).click();
+        cy.findByRole("option", { name: "tag2" }).click();
         cy.wait("@updateTransform");
-        assertOptionSelected("main");
-        assertOptionSelected("replica");
+        assertOptionSelected("tag1");
+        assertOptionSelected("tag2");
 
-        cy.findByRole("option", { name: "main" }).click();
+        cy.findByRole("option", { name: "tag1" }).click();
         cy.wait("@updateTransform");
-        assertOptionNotSelected("main");
-        assertOptionSelected("replica");
+        assertOptionNotSelected("tag1");
+        assertOptionSelected("tag2");
       });
     });
 
@@ -213,31 +213,31 @@ describe("scenarios > admin > transforms", () => {
     });
 
     it("should be able to update tags inline", () => {
-      createTags(["main"]);
+      createTags(["tag1"]);
       createMbqlTransform({ visitTransform: true });
 
       getTagsInput().click();
       H.popover()
-        .findByRole("option", { name: "main" })
+        .findByRole("option", { name: "tag1" })
         .findByLabelText("Rename tag")
         .click({ force: true });
       H.modal().within(() => {
-        cy.findByLabelText("Name").clear().type("main2");
+        cy.findByLabelText("Name").clear().type("tag1changed");
         cy.button("Save").click();
         cy.wait("@updateTag");
       });
 
       getTagsInput().click();
-      H.popover().findByText("main2").should("be.visible");
+      H.popover().findByText("tag1changed").should("be.visible");
     });
 
     it("should be able to delete tags inline", () => {
-      createTags(["main", "replica"]);
+      createTags(["tag1", "tag2"]);
       createMbqlTransform({ visitTransform: true });
 
       getTagsInput().click();
       H.popover()
-        .findByRole("option", { name: "main" })
+        .findByRole("option", { name: "tag1" })
         .findByLabelText("Delete tag")
         .click({ force: true });
       H.modal().within(() => {
@@ -248,8 +248,8 @@ describe("scenarios > admin > transforms", () => {
 
       getTagsInput().click();
       H.popover().within(() => {
-        cy.findByText("replica").should("be.visible");
-        cy.findByText("main").should("not.exist");
+        cy.findByText("tag2").should("be.visible");
+        cy.findByText("tag1").should("not.exist");
       });
     });
   });
@@ -628,7 +628,7 @@ describe("scenarios > admin > transforms > jobs", () => {
     });
 
     it("should be able to create a job with custom property values", () => {
-      createTags(["main", "replica"]);
+      createTags(["tag1", "tag2"]);
       visitJobListPage();
       getJobListPage().findByRole("link", { name: "Create a job" }).click();
 
@@ -640,7 +640,7 @@ describe("scenarios > admin > transforms > jobs", () => {
         getCronInput().clear().type("0 * * * ?");
         getTagsInput().click();
       });
-      H.popover().findByText("replica").click();
+      H.popover().findByText("tag2").click();
       getJobPage().button("Save").click();
       cy.wait("@createJob");
       H.undoToast().findByText("New job created").should("be.visible");
@@ -653,7 +653,7 @@ describe("scenarios > admin > transforms > jobs", () => {
         );
         getCronInput().should("have.value", "0 * * * ?");
         cy.findByText("This job will run every hour").should("be.visible");
-        cy.findByText("replica").should("be.visible");
+        cy.findByText("tag2").should("be.visible");
       });
     });
   });
@@ -704,25 +704,25 @@ describe("scenarios > admin > transforms > jobs", () => {
 
   describe("tags", () => {
     it("should be able to add and remove tags", () => {
-      createTags(["main", "replica"]);
+      createTags(["tag1", "tag2"]);
       H.createTransformJob({ name: "New job" }, { visitTransformJob: true });
       getTagsInput().click();
 
       H.popover().within(() => {
-        cy.findByRole("option", { name: "main" }).click();
+        cy.findByRole("option", { name: "tag1" }).click();
         cy.wait("@updateJob");
-        assertOptionSelected("main");
-        assertOptionNotSelected("replica");
+        assertOptionSelected("tag1");
+        assertOptionNotSelected("tag2");
 
-        cy.findByRole("option", { name: "replica" }).click();
+        cy.findByRole("option", { name: "tag2" }).click();
         cy.wait("@updateJob");
-        assertOptionSelected("main");
-        assertOptionSelected("replica");
+        assertOptionSelected("tag1");
+        assertOptionSelected("tag2");
 
-        cy.findByRole("option", { name: "main" }).click();
+        cy.findByRole("option", { name: "tag1" }).click();
         cy.wait("@updateJob");
-        assertOptionNotSelected("main");
-        assertOptionSelected("replica");
+        assertOptionNotSelected("tag1");
+        assertOptionSelected("tag2");
       });
     });
   });
@@ -780,18 +780,24 @@ describe("scenarios > admin > transforms > runs", () => {
   });
 
   it("should show run history with the ability to filter", () => {
-    function createAndRunTransforms() {
-      createMbqlTransform({
-        targetTable: TARGET_TABLE,
-        visitTransform: true,
+    function createInitialData() {
+      H.createTransformTag({ name: "tag1" }).then(({ body: tag1 }) => {
+        H.createTransformTag({ name: "tag2" }).then(({ body: tag2 }) => {
+          createMbqlTransform({
+            targetTable: TARGET_TABLE,
+            tagIds: [tag1.id],
+            visitTransform: true,
+          });
+          runAndWaitForSuccess();
+          createSqlTransform({
+            sourceQuery: "SELECT * FROM abc",
+            targetTable: TARGET_TABLE_2,
+            tagIds: [tag2.id],
+            visitTransform: true,
+          });
+          runAndWaitForFailure();
+        });
       });
-      runAndWaitForSuccess();
-      createSqlTransform({
-        sourceQuery: "SELECT * FROM abc",
-        targetTable: TARGET_TABLE_2,
-        visitTransform: true,
-      });
-      runAndWaitForFailure();
     }
 
     function testTransformFilter() {
@@ -853,9 +859,63 @@ describe("scenarios > admin > transforms > runs", () => {
       });
     }
 
-    createAndRunTransforms();
+    function testStatusFilter() {
+      cy.log("no filters");
+      getContentTable().within(() => {
+        cy.findByText("MBQL transform").should("be.visible");
+        cy.findByText("SQL transform").should("be.visible");
+      });
+
+      cy.log("status filter - add a filter");
+      getStatusFilterWidget().click();
+      H.popover().within(() => {
+        cy.findByText("Success").click();
+        cy.button("Add filter").click();
+      });
+      getStatusFilterWidget().findByText("Success").should("be.visible");
+      getContentTable().within(() => {
+        cy.findByText("MBQL transform").should("be.visible");
+        cy.findByText("SQL transform").should("not.exist");
+      });
+
+      cy.log("status filter - update a filter");
+      getStatusFilterWidget().click();
+      H.popover().within(() => {
+        cy.findByText("Success").click();
+        cy.findByText("Failed").click();
+        cy.button("Update filter").click();
+      });
+      getStatusFilterWidget().findByText("Failed").should("be.visible");
+      getContentTable().within(() => {
+        cy.findByText("MBQL transform").should("not.exist");
+        cy.findByText("SQL transform").should("be.visible");
+      });
+
+      cy.log("status filter - multiple options");
+      getStatusFilterWidget().click();
+      H.popover().within(() => {
+        cy.findByText("Success").click();
+        cy.button("Update filter").click();
+      });
+      getStatusFilterWidget().findByText("2 statuses").should("be.visible");
+      getContentTable().within(() => {
+        cy.findByText("MBQL transform").should("be.visible");
+        cy.findByText("SQL transform").should("be.visible");
+      });
+
+      cy.log("transform filter - remove filter");
+      getStatusFilterWidget().button("Remove filter").click();
+      getStatusFilterWidget().findByText("2 statuses").should("not.exist");
+      getContentTable().within(() => {
+        cy.findByText("MBQL transform").should("be.visible");
+        cy.findByText("SQL transform").should("be.visible");
+      });
+    }
+
+    createInitialData();
     getNavSidebar().findByText("Runs").click();
     testTransformFilter();
+    testStatusFilter();
   });
 });
 
@@ -927,7 +987,7 @@ function getTransformFilterWidget() {
   return cy.findByRole("group", { name: "Transform" });
 }
 
-function _getStatusFilterWidget() {
+function getStatusFilterWidget() {
   return cy.findByRole("group", { name: "Status" });
 }
 
@@ -996,11 +1056,13 @@ function createSqlTransform({
   sourceQuery,
   targetTable = TARGET_TABLE,
   targetSchema = TARGET_SCHEMA,
+  tagIds,
   visitTransform,
 }: {
   sourceQuery: string;
   targetTable?: string;
   targetSchema?: string;
+  tagIds?: TransformTagId[];
   visitTransform?: boolean;
 }) {
   H.createTransform(
@@ -1021,6 +1083,7 @@ function createSqlTransform({
         name: targetTable,
         schema: targetSchema,
       },
+      tag_ids: tagIds,
     },
     { wrapId: true, visitTransform },
   );
