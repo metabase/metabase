@@ -85,7 +85,7 @@
                 (log.capture/with-log-messages-for-level [messages [metabase-enterprise.semantic-search.db.migration :info]]
                   (semantic.db.connection/with-migrate-tx [tx]
                     (semantic.db.migration/maybe-migrate! tx nil)
-                    {:messages @(def ahoj (messages))
+                    {:messages (messages)
                      :db-version (@#'semantic.db.migration/db-version tx)}))))]
       (testing "Migration up works"
         (u/prog1 (migrate-and-get-db-version 130)
