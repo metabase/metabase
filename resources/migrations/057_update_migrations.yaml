@@ -201,7 +201,7 @@ databaseChangeLog:
                     nullable: false
               - column:
                   name: transform_id
-                  type: bigint
+                  type: int
                   remarks: 'Identifier for the transform'
                   constraints:
                     nullable: false
