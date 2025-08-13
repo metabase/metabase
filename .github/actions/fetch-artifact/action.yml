@@ -53,32 +53,27 @@ runs:
         OUTPUT_NAME="${{ inputs.output-name }}"
         EXTRACT_PATH="${{ inputs.extract-path }}"
 
-        # Create target directory and extract
-        mkdir -p "$EXTRACT_PATH"
-        unzip mb.zip -d "$EXTRACT_PATH"
+        # Create a temporary directory for extraction to avoid conflicts
+        TEMP_DIR=$(mktemp -d)
+        
+        # Extract to temporary directory
+        unzip mb.zip -d "$TEMP_DIR"
 
-        # Find and rename the jar
-        if [ "$EXTRACT_PATH" == "." ]; then
-          # Default case - extract to current directory
-          if [ -e "metabase.jar" ]; then
-            mv "metabase.jar" "$OUTPUT_NAME"
-          elif [ -e "target/uberjar/metabase.jar" ]; then
-            mv "target/uberjar/metabase.jar" "$OUTPUT_NAME"
-          else
-            echo "Could not find metabase.jar"
-            exit 1
-          fi
+        # Create target directory
+        mkdir -p "$EXTRACT_PATH"
+
+        # Find and move the jar to final location
+        if [ -e "$TEMP_DIR/metabase.jar" ]; then
+          mv "$TEMP_DIR/metabase.jar" "$EXTRACT_PATH/$OUTPUT_NAME"
+        elif [ -e "$TEMP_DIR/target/uberjar/metabase.jar" ]; then
+          mv "$TEMP_DIR/target/uberjar/metabase.jar" "$EXTRACT_PATH/$OUTPUT_NAME"
         else
-          # Custom extract path
-          if [ -e "$EXTRACT_PATH/metabase.jar" ]; then
-            mv "$EXTRACT_PATH/metabase.jar" "$EXTRACT_PATH/$OUTPUT_NAME"
-          elif [ -e "$EXTRACT_PATH/target/uberjar/metabase.jar" ]; then
-            mv "$EXTRACT_PATH/target/uberjar/metabase.jar" "$EXTRACT_PATH/$OUTPUT_NAME"
-          else
-            echo "Could not find metabase.jar in $EXTRACT_PATH"
-            exit 1
-          fi
+          echo "Could not find metabase.jar in extracted files"
+          exit 1
         fi
+
+        # Clean up temporary directory
+        rm -rf "$TEMP_DIR"
 
         # Set the JAR_PATH environment variable
         if [ "$EXTRACT_PATH" == "." ]; then
