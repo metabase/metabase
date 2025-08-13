@@ -97,7 +97,7 @@
         embedding-model (semantic.env/get-configured-embedding-model)]
     (jdbc/with-transaction [tx pgvector]
       (semantic.pgvector-api/init-semantic-search! tx index-metadata embedding-model))
-    (semantic.pgvector-api/index-documents! pgvector index-metadata searchable-documents)))
+    (semantic.pgvector-api/gate-updates! pgvector index-metadata searchable-documents)))
 
 (defenterprise reindex!
   "Reindex the semantic search index."
@@ -109,7 +109,7 @@
     ;; todo force a new index
     (jdbc/with-transaction [tx pgvector]
       (semantic.pgvector-api/init-semantic-search! tx index-metadata embedding-model))
-    (semantic.pgvector-api/index-documents! pgvector index-metadata searchable-documents)))
+    (semantic.pgvector-api/gate-updates! pgvector index-metadata searchable-documents)))
 
 ;; TODO: implement
 (defenterprise reset-tracking!
