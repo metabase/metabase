@@ -82,7 +82,7 @@
   "Generates a new API key - a random base64 string prefixed with `mb_`"
   []
   (u.secret/secret
-   (str "mb_" (crypto-random/base64 api-keys.schema/bytes-key-length))))
+   (str "mb_" (crypto-random/base64 api-keys.schema/generated-bytes-key-length))))
 
 (mu/defn mask :- ::api-keys.schema/key.masked
   "Given an API key, returns a string of the same length with all but the prefix masked with `*`s"
@@ -91,7 +91,7 @@
                  ::api-keys.schema/prefix]]
   (let [sb (StringBuilder.)]
     (.append sb (prefix k))
-    (dotimes [_ (- api-keys.schema/string-key-length api-keys.schema/prefix-length)]
+    (dotimes [_ (- api-keys.schema/generated-string-key-length api-keys.schema/prefix-length)]
       (.append sb \*))
     (str sb)))
 

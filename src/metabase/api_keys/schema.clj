@@ -11,22 +11,30 @@
   "The prefix length, the length of `mb_1234`"
   7)
 
-(def bytes-key-length
+(def generated-bytes-key-length
   "The total number of bytes of randomness we generate for API keys."
   32)
 
-(def string-key-length
+(def generated-string-key-length
   "Total length of an unhashed API key `key` string, including the `mb_` prefix."
-  (let [num-bits   (* bytes-key-length 8)
+  (let [num-bits   (* generated-bytes-key-length 8)
         num-unpadded-chars  (/ num-bits 6)              ; base-64 uses one character for every 6 bits
         num-blocks (math/ceil (/ num-unpadded-chars 4)) ; base-64 adds padding so the number of chars is divisible by 4
         num-chars  (* num-blocks 4)]
     (long (+ num-chars 3))))                            ; add 3 characters for the `mb_` prefix
 
+;;; these numbers are taken from the documentation. If you let us make you a key it will
+;;; be [[generated-string-key-length]] long, but if you're supplying your own e.g. with EE config files then it has to
+;;; fall in this range.
+(def ^:private minimum-string-key-length 12)
+(def ^:private maximum-string-key-length 254)
+
 (mr/def ::key.raw
   "Unhashed string of the form 'mb_<base-64-bytes>'."
   [:and
-   [:string {:min string-key-length, :max string-key-length}]
+   [:string {:min minimum-string-key-length, :max maximum-string-key-length}]
+   ;; TODO (cam 8/13/25) -- we could also enforce that this string only uses valid base-64 characters since that is
+   ;; technically the rule
    [:fn
     {:error/message "An API token key must start with 'mb_'"}
     (fn [s]
@@ -36,12 +44,10 @@
 (mr/def ::key.masked
   "Masked string like 'mb_1234**********'."
   [:and
-   [:string {:min string-key-length, :max string-key-length}]
+   [:ref ::key.raw]
    [:re
     {:error/message "Masked key like 'mb_1234**********'"}
-    (re-pattern (format "^mb_.*{%d}\\*{%d}$"
-                        (- prefix-length 3)
-                        (- string-key-length prefix-length)))]])
+    (re-pattern (format "^mb_.*{%d}\\*+$" (- prefix-length 3)))]])
 
 (mr/def ::key.secret
   [:ref :metabase.util.secret/secret])
