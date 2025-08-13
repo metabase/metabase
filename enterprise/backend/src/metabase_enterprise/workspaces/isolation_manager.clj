@@ -435,7 +435,8 @@
        :populator      {:user     \"mb_iso_7748c_testing_workspace216479_populator\"
                         :password \"a9445a75-621f-4211-82e1-9f96ee797dd6\"}}"
   [engine connection-details workspace-id]
-  (create-isolation* engine {:id workspace-id :connection-details connection-details}))
+  (-> (create-isolation* engine {:id workspace-id :connection-details connection-details})
+      (assoc :engine engine)))
 
 (defmulti ^:private delete-isolation*
   "Delete database isolation for a workspace. This is deliberately not public. Use `delete-isolation` as an entrypoint."
