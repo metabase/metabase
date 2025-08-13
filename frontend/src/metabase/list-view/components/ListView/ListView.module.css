@@ -1,16 +1,16 @@
 .listViewContainer {
   --max-width: 75rem;
+
   background: var(--mb-color-background-light);
   width: 100%;
   height: 100%;
   gap: var(--mantine-spacing-xs);
   padding-top: var(--mantine-spacing-xl);
-  overflow: auto;
-  padding-inline: 0;
 }
 
 .listContainer {
   --item-padding: 1.4rem;
+
   height: 100%;
 }
 
@@ -20,9 +20,13 @@
 }
 
 .listBody {
+  width: 100%;
+  height: 100%;
   gap: var(--mantine-spacing-sm);
   padding-inline: calc(50% - var(--max-width) / 2);
+  overflow: auto;
 }
+
 @media (max-width: 80rem) {
   .listHeader {
     padding-inline: calc(var(--mantine-spacing-lg) + var(--item-padding));

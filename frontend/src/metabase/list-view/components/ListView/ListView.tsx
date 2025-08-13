@@ -1,7 +1,7 @@
-import { type CSSProperties, useMemo } from "react";
+import { useVirtualizer } from "@tanstack/react-virtual";
+import { type CSSProperties, useMemo, useRef } from "react";
 import { t } from "ttag";
 
-import { VirtualizedList } from "metabase/common/components/VirtualizedList";
 import { formatValue } from "metabase/lib/formatting";
 import { Box, Flex, Icon, Image, Stack, Text } from "metabase/ui";
 import { useObjectDetail } from "metabase/visualizations/components/TableInteractive/hooks/use-object-detail";
@@ -10,12 +10,6 @@ import * as Lib from "metabase-lib";
 import type { DatasetColumn, DatasetData } from "metabase-types/api";
 
 import styles from "./ListView.module.css";
-
-const ListWrapper = ({ children, ...props }: { children: React.ReactNode }) => (
-  <Stack className={styles.listBody} {...props}>
-    {children}
-  </Stack>
-);
 
 export interface ListViewProps {
   data: DatasetData;
@@ -33,6 +27,15 @@ export function ListView({
   onSortClick,
 }: ListViewProps) {
   const { cols, rows } = data;
+
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const virtualizer = useVirtualizer({
+    count: rows.length,
+    getScrollElement: () => scrollRef.current,
+    estimateSize: () => 78,
+    overscan: 10,
+  });
+  const virtualRows = virtualizer.getVirtualItems();
 
   const { titleColumn, subtitleColumn, imageColumn, rightColumns } =
     useListColumns(cols);
@@ -72,13 +75,14 @@ export function ListView({
           ))}
         </Flex>
 
-        <VirtualizedList Wrapper={ListWrapper} estimatedItemSize={74}>
-          {rows.map((row, rowIndex) => {
+        <Stack className={styles.listBody} ref={scrollRef}>
+          {virtualRows.map(({ key, index }) => {
+            const row = rows[index];
             return (
               <Box
-                key={rowIndex}
+                key={key}
                 className={styles.listItem}
-                onClick={() => openObjectDetail(rowIndex)}
+                onClick={() => openObjectDetail(index)}
               >
                 <Flex align="center" gap="md" style={{ flexShrink: 0 }}>
                   {imageColumn && (
@@ -139,7 +143,7 @@ export function ListView({
               </Box>
             );
           })}
-        </VirtualizedList>
+        </Stack>
       </Stack>
     </Stack>
   );
