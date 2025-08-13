@@ -75,15 +75,10 @@
     ;;
     ;; TODO -- parameters??
     ]
-   [:fn
-    {:error/message ":source-table is not allowed in a native query stage."}
-    #(not (contains? % :source-table))]
-   [:fn
-    {:error/message ":source-card is not allowed in a native query stage."}
-    #(not (contains? % :source-card))]
-   [:fn
-    {:error/message ":query is not allowed in a native query stage, you probably meant to use :native instead."}
-    (complement :query)]])
+   (common/disallowed-keys
+    {:source-table ":source-table is not allowed in a native query stage."
+     :source-card  ":source-card is not allowed in a native query stage."
+     :query        ":query is not allowed in a native query stage, you probably meant to use :native instead."})])
 
 (mr/def ::breakout
   [:ref ::ref/ref])
@@ -199,24 +194,15 @@
     [:source-card        {:optional true} [:ref ::id/card]]
     [:page               {:optional true} [:ref ::page]]]
    [:fn
-    {:error/message ":source-query is not allowed in pMBQL queries."}
-    #(not (contains? % :source-query))]
-   [:fn
-    {:error/message ":native is not allowed in an MBQL stage."}
-    #(not (contains? % :native))]
-   [:fn
     {:error/message "A query must have exactly one of :source-table or :source-card"}
     (complement (comp #(= (count %) 1) #{:source-table :source-card}))]
    [:ref ::stage.valid-refs]
-   (into [:and]
-         (map (fn [k]
-                [:fn
-                 {:error/message (str k " is deprecated and should not be used")}
-                 (complement k)]))
-         [:aggregation-idents :breakout-idents :expression-idents])
-   [:fn
-    {:error/message ":filter is not allowed in an MBQL 5 stage, use :filters instead"}
-    (complement :filter)]])
+   (common/disallowed-keys
+    {:native             ":native is not allowed in an MBQL stage."
+     :aggregation-idents ":aggregation-idents is deprecated and should not be used"
+     :breakout-idents    ":breakout-idents is deprecated and should not be used"
+     :expression-idents  ":expression-idents is deprecated and should not be used"
+     :filter             ":filter is not allowed in an MBQL 5 stage, use :filters instead"})])
 
 ;;; the schemas are constructed this way instead of using `:or` because they give better error messages
 (mr/def ::stage.type
@@ -266,9 +252,10 @@
             :error/message "Invalid stage :lib/type: expected :mbql.stage/native or :mbql.stage/mbql"}
     [:mbql.stage/native [:ref ::stage.native]]
     [:mbql.stage/mbql   [:ref ::stage.mbql]]]
-   [:fn
-    {:error/message "A query stage should not have :source-metadata, the prior stage should have :lib/stage-metadata instead"}
-    (complement :source-metadata)]])
+   (common/disallowed-keys
+    {:source-metadata "A query stage should not have :source-metadata, the prior stage should have :lib/stage-metadata instead"
+     :source-query    ":source-query is not allowed in MBQL 5 queries."
+     :type            ":type is not allowed in a query stage in any version of MBQL"})])
 
 (mr/def ::stage.initial
   [:multi {:dispatch      lib-type

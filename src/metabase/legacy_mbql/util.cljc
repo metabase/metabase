@@ -29,8 +29,7 @@
   keyword."
   [token :- schema.helpers/KeywordOrString]
   (let [s (u/qualified-name token)]
-    (cond
-      (str/starts-with? s "type/")
+    (if (str/starts-with? s "type/")
       ;; TODO (Cam 8/12/25) -- there's tons of code using incorrect parameter types or normalizing base types
       ;; incorrectly, for example [[metabase.actions.models/implicit-action-parameters]]. We need to actually start
       ;; validating parameters against the `:metabase.lib.schema.parameter/parameter` schema. We should probably throw
@@ -38,14 +37,6 @@
       (do
         (log/error "normalize-token should not be getting called on a base type! This probably means we're using a base type in the wrong place, like as a parameter type")
         (keyword s))
-
-      ;; NOCOMMIT -- this is just for debugging failing tests
-      (re-matches #"^my_[a-z]+Literal$" s)
-      (do
-        (log/error "normalize-token should not be getting called on an expression name!!!")
-        s)
-
-      :else
       #_{:clj-kondo/ignore [:discouraged-var]}
       (-> s
           #?(:clj u/lower-case-en :cljs str/lower-case)

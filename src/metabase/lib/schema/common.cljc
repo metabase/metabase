@@ -170,6 +170,42 @@
         ;; remove deprecated `:ident` key
         (dissoc :ident))))
 
+(mu/defn disallowed-keys
+  "Helper for generating a schema to disallow certain keys in a map.
+
+    [:and
+     [:map
+      [:lib/type [:= :mbql.stage/mbql]]]
+     (disallowed-keys {:native \":native is not allowed in an MBQL stage\"})]
+
+    ;; =>
+
+    [:and
+     [:map [:lib/type [:= :mbql.stage/mbql]]]
+     [:fn
+      {:error/message \":native is not allowed in an MBQL stage\"
+       :decode/normalize #(cond-> % (map? %) (dissoc :native))}
+      #(not (when (map? %) (contains? :native)))]]"
+  [k->message :- [:map-of :keyword :string]]
+  (let [fn-schemas (map (fn [[k message]]
+                          [:fn
+                           {:error/message    message
+                            ;; don't try to normalize something that's not a map, e.g. no `(dissoc 1 :k)` -- this is a
+                            ;; bad value anyway but not our problem to try and fix it
+                            :decode/normalize (fn -normalize [m]
+                                                (cond-> m
+                                                  (map? m) (dissoc k)))}
+                           ;; we only want an error to trigger when input is a map, not if it's `nil` or
+                           ;; something (the `:map` schema can be the one that errors there)
+                           (fn -pred [m]
+                             (if (map? m)
+                               (not (contains? m k))
+                               true))])
+                        k->message)]
+    (if (= (count fn-schemas) 1)
+      (first fn-schemas)
+      (into [:and] fn-schemas))))
+
 (mr/def ::options
   [:and
    {:default {}}
@@ -184,9 +220,8 @@
     [:database-type  {:optional true} [:maybe ::non-blank-string]]
     [:name           {:optional true} [:maybe ::non-blank-string]]
     [:display-name   {:optional true} [:maybe ::non-blank-string]]]
-   [:fn
-    {:error/message ":ident is deprecated and should not be included in options maps"}
-    (complement :ident)]])
+   (disallowed-keys
+    {:ident ":ident is deprecated and should not be included in options maps"})])
 
 (mr/def ::external-op
   [:map

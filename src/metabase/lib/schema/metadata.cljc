@@ -196,12 +196,12 @@
   "Schemas to use to validate columns with a given `:lib/source`. Since a lot of these schemas are applicable to
   everything BUT one specific source it made more sense to write them out like this and use a bit of glue to build the
   schemas in [[column-validate-for-source-schema]]."
-  [;; Only allow `:lib/expression-name` when `:lib/source` is `:source/expressions`. If it's anything else, it
+  [ ;; Only allow `:lib/expression-name` when `:lib/source` is `:source/expressions`. If it's anything else, it
    ;; probably means it's getting incorrectly propagated from a previous stage (QUE-1342).
    {:exclude :source/expressions
-    :schema  [:fn
-              {:error/message ":lib/expression-name should only be set for expressions in the current stage (i.e., columns with :source/expressions)"}
-              (complement :lib/expression-name)]}
+    :schema  (lib.schema.common/disallowed-keys
+              {:lib/expression-name
+               ":lib/expression-name should only be set for expressions in the current stage (i.e., columns with :source/expressions)"})}
    {:include :source/expressions
     :schema  [:fn
               {:error/message ":lib/expression-name is required for columns with :source/expressions"}
@@ -209,10 +209,10 @@
    ;; Current stage join alias (`:metabase.lib.join/join-alias`) should only be set for columns whose `:lib/source` is
    ;; `:source/joins`
    {:exclude :source/joins
-    :schema  [:fn
-              {:error/message (str "Current stage join alias (:metabase.lib.join/join-alias) should only be set for"
-                                   " columns joined in the current stage (i.e., columns with :source/joins).")}
-              (complement :metabase.lib.join/join-alias)]}
+    :schema  (lib.schema.common/disallowed-keys
+              {:metabase.lib.join/join-alias
+               (str "Current stage join alias (:metabase.lib.join/join-alias) should only be set for"
+                    " columns joined in the current stage (i.e., columns with :source/joins).")})}
    ;; If source is `:source/joins` column must specify a current stage join alias.
    {:include :source/joins
     :schema  [:fn
@@ -225,9 +225,9 @@
    ;; `:source/implicitly-joinable` and `:source/joins`. For columns from `:source/previous-stage` or whatever... in
    ;; that case we should be using `:lib/original-fk-field-id` instead.
    {:exclude #{:source/implicitly-joinable :source/joins}
-    :schema  [:fn
-              {:error/message ":fk-field-id is only allowed for columns with :source/implicitly-joinable or :source/joins"}
-              (complement :fk-field-id)]}
+    :schema  (lib.schema.common/disallowed-keys
+              {:fk-field-id
+               ":fk-field-id is only allowed for columns with :source/implicitly-joinable or :source/joins"})}
    {:include :source/implicitly-joinable
     :schema  [:fn
               {:error/message ":fk-field-id is required for columns with :source/implicitly-joinable"}
