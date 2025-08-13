@@ -4,6 +4,7 @@
    [clojurewerkz.quartzite.schedule.calendar-interval :as calendar-interval]
    [clojurewerkz.quartzite.triggers :as triggers]
    [java-time.api :as t]
+   [metabase-enterprise.transforms.core :as transforms]
    [metabase-enterprise.worker.api :as api]
    [metabase-enterprise.worker.models.worker-run :as worker-run]
    [metabase.task.core :as task]
@@ -51,7 +52,7 @@
 
   (log/trace "Timing out old runs.")
   (try
-    (worker-run/timeout-old-runs! 4 :hour)
+    (worker-run/timeout-old-runs! (transforms/transform-timeout) :minute)
     (catch Throwable t
       (log/error t "Error timing out old runs.")))
 

@@ -7,6 +7,7 @@
    [metabase-enterprise.transforms.execute :as transforms.execute]
    [metabase-enterprise.transforms.models.job-run :as transforms.job-run]
    [metabase-enterprise.transforms.ordering :as transforms.ordering]
+   [metabase-enterprise.transforms.settings :as transforms.settings]
    [metabase.task.core :as task]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -80,7 +81,7 @@
 (task/defjob  ^{:doc "Times out transform jobs when necesssary."
                 org.quartz.DisallowConcurrentExecution true}
   SyncWorkerStatus [ctx]
-  (transforms.job-run/timeout-old-runs! 4 :hour))
+  (transforms.job-run/timeout-old-runs! (transforms.settings/transform-timeout) :minute))
 
 (defn- start-job! []
   (when (not (task/job-exists? job-key))

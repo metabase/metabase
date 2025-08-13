@@ -31,16 +31,16 @@
     (a/put! cancel-chan :cancel!)
     true))
 
-(defn chan-start-timeout-vthread! [run-id]
+(defn chan-start-timeout-vthread! [run-id timeout-minutes]
   (u.jvm/in-virtual-thread*
-   (Thread/sleep (* 4 60 60 1000)) ;; 4 hours
+   (Thread/sleep (long (* timeout-minutes 60 1000))) ;; 4 hours
    (chan-signal-cancel! run-id)
    (worker-run/timeout-run! run-id)))
 
 ;; please do not export from module
-(defn chan-start-timeout-vthread-worker-instance! [run-id]
+(defn chan-start-timeout-vthread-worker-instance! [run-id timeout-minutes]
   (u.jvm/in-virtual-thread*
-   (Thread/sleep (* 4 60 60 1000)) ;; 4 hours
+   (Thread/sleep (long (* timeout-minutes 60 1000))) ;; 4 hours
    (chan-signal-cancel! run-id)
    ;; we don't store timeouts in worker db
    ))

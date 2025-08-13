@@ -1,6 +1,7 @@
 (ns metabase-enterprise.worker.tracking
   (:require
    [java-time.api :as t]
+   [metabase-enterprise.transforms.core :as transforms]
    [metabase.config.core :as config]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute])
   (:import
@@ -87,7 +88,7 @@ WHERE EXISTS (
                    [run-id run-id mb-source run-id])
       (= 1)))
 
-(def ^:private timeout-sec (* 4 60 60) #_sec)
+(def ^:private timeout-sec (* (transforms/transform-timeout) 60) #_sec)
 
 (defn- handle-timeout
   [run]
@@ -95,7 +96,7 @@ WHERE EXISTS (
            (> (:run-time run) timeout-sec))
     (-> run
         (assoc :status "timeout")
-        (assoc :end-time (t/plus (:start-time run) (t/duration 4 :hours)))
+        (assoc :end-time (t/plus (:start-time run) (t/duration (transforms/transform-timeout) :minutes)))
         (assoc :note "Timed out.")
         (dissoc :run-time))
     (dissoc run :run-time)))
@@ -117,8 +118,8 @@ WHERE EXISTS (
   (run-update! :postgres (worker-db)
                "UPDATE worker_runs
                   SET status = ?, end_time = NOW(), note = ?
-                  WHERE status = 'running' AND start_time < NOW() - INTERVAL '4 hours'"
-               ["timeout" "Timed out by worker"]))
+                  WHERE status = 'running' AND start_time < NOW() - (? * INTERVAL '1 minute')"
+               ["timeout" "Timed out by worker" (transforms/transform-timeout)]))
 
 (defn cancel-old-cancelations!
   []

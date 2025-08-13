@@ -59,7 +59,7 @@
       (when (tracking/track-start! run-id mb-source)
         (u.jvm/in-virtual-thread*
          (try
-           (canceling/chan-start-timeout-vthread-worker-instance! run-id)
+           (canceling/chan-start-timeout-vthread-worker-instance! run-id (transforms/transform-timeout))
            (binding [qp.pipeline/*canceled-chan* (a/promise-chan)]
              (canceling/chan-start-run! run-id qp.pipeline/*canceled-chan*)
              (driver/run-transform! driver
