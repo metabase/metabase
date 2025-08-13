@@ -22,6 +22,7 @@ const {
 
 const ASSETS_PATH = __dirname + "/resources/frontend_client/app/assets";
 const FONTS_PATH = __dirname + "/resources/frontend_client/app/fonts";
+const FRONTEND_BUILD_CONFIGS_PATH = __dirname + "/frontend/build";
 const SRC_PATH = __dirname + "/frontend/src/metabase";
 const LIB_SRC_PATH = __dirname + "/frontend/src/metabase-lib";
 const ENTERPRISE_SRC_PATH =
@@ -203,6 +204,7 @@ const config = {
       ".svg",
     ],
     alias: {
+      "build-configs": FRONTEND_BUILD_CONFIGS_PATH,
       assets: ASSETS_PATH,
       fonts: FONTS_PATH,
       metabase: SRC_PATH,
