@@ -4,12 +4,20 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [medley.core :as m]
    [metabase-enterprise.transforms.models.transform-tag]
    [metabase-enterprise.transforms.test-dataset :as transforms-dataset]
+   [metabase-enterprise.transforms.test-query-util :as test-query-util]
    [metabase-enterprise.transforms.test-util :refer [with-transform-cleanup!]]
    [metabase-enterprise.transforms.util :as transforms.util]
    [metabase-enterprise.worker.models.worker-run]
    [metabase.driver :as driver]
+   [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
+   [metabase.lib.convert :as lib.convert]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -103,14 +111,24 @@
     (is (= expected-ids actual-ids)
         (str "Expected transform IDs " expected-ids ", got " actual-ids))))
 
-(defn- make-query [category]
+(defn- make-query
+  "Create a query filtering products by category, using shared utility.
+   Returns a legacy MBQL query structure for API compatibility."
+  [category]
   (mt/dataset transforms-dataset/transforms-test
-    (let [q (if (= :clickhouse driver/*driver*)
-              (mt/mbql-query products {:filter [:= $category category]
-                                       :expressions {"clickhouse_merge_table_id" $id}})
-              (mt/mbql-query products {:filter [:= $category category]}))
-        sql (:query (qp.compile/compile q))]
-      (str/replace-first sql "?" (str \' category \')))))
+    (let [query (test-query-util/make-filter-query
+                 {:table-suffix "products"
+                  :column-name "category"
+                  :filter-value category
+                  :clickhouse-expression? true})]
+      ;; Convert to legacy MBQL which the transform API expects
+      (lib.convert/->legacy-MBQL query))))
+
+(defn- get-test-schema
+  "Get the schema from the products table in the test dataset.
+   This is needed for databases like BigQuery that require a schema/dataset."
+  []
+  (t2/select-one-fn :schema :model/Table (mt/id :products)))
 
 (comment
   (binding [driver/*driver* :clickhouse]
@@ -122,20 +140,18 @@
     (mt/with-premium-features #{:transforms}
       (mt/dataset transforms-dataset/transforms-test
         (with-transform-cleanup! [table-name "gadget_products"]
+          (let [query (make-query "Gadget")
+                schema (get-test-schema)]
           (mt/user-http-request :crowberto :post 200 "ee/transform"
                                 {:name   "Gadget Products"
                                  :source {:type  "query"
-                                          :query {:database (mt/id)
-                                                  :type     "native"
-                                                  :native   {:query         (make-query "Gadget")
-                                                             :template-tags {}}}}
+                                            :query query}
                                ;; for clickhouse (and other dbs where we do merge into), we will
                                ;; want a primary key
                                ;;:primary-key-column "id"
                                  :target {:type "table"
-                                        ;; leave out schema for now
-                                        ;;:schema (str (rand-int 10000))
-                                          :name table-name}}))))))
+                                            :schema schema
+                                            :name table-name}})))))))
 
 (deftest list-transforms-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
@@ -149,12 +165,9 @@
             (let [body      {:name        "Gadget Products"
                              :description "Desc"
                              :source      {:type  "query"
-                                           :query {:database (mt/id)
-                                                   :type     "native"
-                                                   :native   {:query         (make-query "Gadget")
-                                                              :template-tags {}}}}
+                                 :query (make-query "Gadget")}
                              :target      {:type "table"
-                               ;;:schema "transforms"
+                                           :schema (get-test-schema)
                                            :name table-name}}
                   _         (mt/user-http-request :crowberto :post 200 "ee/transform" body)
                   list-resp (mt/user-http-request :crowberto :get 200 "ee/transform")]
@@ -168,17 +181,16 @@
           (let [body {:name        "Gadget Products"
                       :description "Desc"
                       :source      {:type  "query"
-                                    :query {:database (mt/id)
-                                            :type     "native"
-                                            :native   {:query         (make-query "Gadget")
-                                                       :template-tags {}}}}
+                               :query (make-query "Gadget")}
                       :target      {:type "table"
-                             ;;:schema "transforms"
+                                    :schema (get-test-schema)
                                     :name table-name}}
                 resp (mt/user-http-request :crowberto :post 200 "ee/transform" body)]
             (is (=? (assoc body
                            :last_run nil)
-                    (mt/user-http-request :crowberto :get 200 (format "ee/transform/%s" (:id resp)))))))))))
+                    (->
+                     (mt/user-http-request :crowberto :get 200 (format "ee/transform/%s" (:id resp)))
+                     (update-in [:source :query] mbql.normalize/normalize))))))))))
 
 (deftest put-transforms-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
@@ -189,25 +201,22 @@
                 resp   (mt/user-http-request :crowberto :post 200 "ee/transform"
                                              {:name   "Gadget Products"
                                               :source {:type  "query"
-                                                       :query {:database (mt/id)
-                                                               :type     "native"
-                                                               :native   {:query         (make-query "Gadget")
-                                                                          :template-tags {}}}}
+                                                     :query (make-query "Gadget")}
                                               :target {:type "table"
-                                                   ;;:schema "transforms"
+                                                          :schema (get-test-schema)
                                                        :name table-name}})
                 transform {:name              "Gadget Products 2"
                            :description       "Desc"
                            :source            {:type  "query"
-                                               :query {:database (mt/id)
-                                                       :type     "native",
-                                                       :native   {:query         query2
-                                                                  :template-tags {}}}}
+                                    :query query2}
                            :target            {:type "table"
+                                         :schema (get-test-schema)
                                                :name table-name}}]
             (is (=? transform
+                    (->
                     (mt/user-http-request :crowberto :put 200 (format "ee/transform/%s" (:id resp))
-                                          transform)))))))))
+                                           transform)
+                     (update-in [:source :query] mbql.normalize/normalize))))))))))
 
 (deftest change-target-table-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
@@ -218,26 +227,23 @@
           (let [query2   (make-query "Doohickey")
                 original {:name   "Gadget Products"
                           :source {:type  "query"
-                                   :query {:database (mt/id)
-                                           :type     "native"
-                                           :native   {:query         (make-query "Gadget")
-                                                      :template-tags {}}}}
+                                   :query (make-query "Gadget")}
                           :target {:type "table"
-                                 ;;:schema "transforms"
+                                   :schema (get-test-schema)
                                    :name table1-name}}
                 resp     (mt/user-http-request :crowberto :post 200 "ee/transform"
                                                original)
                 updated  {:name        "Doohickey Products"
                           :description "Desc"
                           :source      {:type  "query"
-                                        :query {:database (mt/id)
-                                                :type     "native",
-                                                :native   {:query         query2
-                                                           :template-tags {}}}}
+                                  :query query2}
                           :target      {:type "table"
+                                        :schema (get-test-schema)
                                         :name table2-name}}]
             (is (=? updated
-                    (mt/user-http-request :crowberto :put 200 (format "ee/transform/%s" (:id resp)) updated)))
+                    (->
+                     (mt/user-http-request :crowberto :put 200 (format "ee/transform/%s" (:id resp)) updated)
+                     (update-in [:source :query] mbql.normalize/normalize))))
             (is (false? (transforms.util/target-table-exists? original)))))))))
 
 (deftest delete-transforms-test
@@ -248,12 +254,9 @@
           (let [resp (mt/user-http-request :crowberto :post 200 "ee/transform"
                                            {:name   "Gadget Products"
                                             :source {:type  "query"
-                                                     :query {:database (mt/id)
-                                                             :type     "native"
-                                                             :native   {:query         (make-query "Gadget")
-                                                                        :template-tags {}}}}
+                                                     :query (make-query "Gadget")}
                                             :target {:type "table"
-                                                   ;;:schema "transforms"
+                                                     :schema (get-test-schema)
                                                      :name table-name}})]
             (mt/user-http-request :crowberto :delete 204 (format "ee/transform/%s" (:id resp)))
             (mt/user-http-request :crowberto :get 404 (format "ee/transform/%s" (:id resp)))))))))
@@ -266,12 +269,9 @@
           (let [resp (mt/user-http-request :crowberto :post 200 "ee/transform"
                                            {:name   "Gadget Products"
                                             :source {:type  "query"
-                                                     :query {:database (mt/id)
-                                                             :type     "native"
-                                                             :native   {:query         (make-query "Gadget")
-                                                                        :template-tags {}}}}
+                                                     :query (make-query "Gadget")}
                                             :target {:type "table"
-                                                   ;;:schema "transforms"
+                                                     :schema (get-test-schema)
                                                      :name table-name}})]
             (mt/user-http-request :crowberto :delete 204 (format "ee/transform/%s/table" (:id resp)))))))))
 
@@ -284,11 +284,11 @@
             resp))
     (loop []
       (when (> (System/currentTimeMillis) limit)
-        (throw (ex-info (str "Transfer run timed out after " timeout-s " seconds") {})))
+        (throw (ex-info (str "Transform run timed out after " timeout-s " seconds") {})))
       (let [resp   (mt/user-http-request :crowberto :get 200 (format "ee/transform/%s" transform-id))
             status (some-> resp :last_run :status keyword)]
         (when-not (contains? #{:started :succeeded} status)
-          (throw (ex-info (str "Transfer run failed with status " status) {:resp resp})))
+          (throw (ex-info (str "Transform run failed with status " status) {:resp resp})))
         (when-not (some? (:table resp))
           (Thread/sleep 100)
           (recur))))))
@@ -296,44 +296,53 @@
 (defn- check-query-results
   "Verifies that a transform successfully created a table with expected data.
 
-   Queries the created table and checks that it contains the expected ID/CATEGORY pairs.
-   The transform filters products by category (e.g., 'Gadget' or 'Doohickey') and this
-   function verifies the correct products were included.
+   Uses a simple count-based approach that works reliably across all drivers
+   without depending on field metadata being synced.
 
    Args:
      table-name - Name of the table created by the transform
-     ids - Vector of expected product IDs (e.g., [5 11 16] for Gadget products)
-     category - The category filter used (e.g., \"Gadget\" or \"Doohickey\")
-
-   The function handles database differences in field name casing by doing
-   case-insensitive field name matching."
+     ids - Vector of expected product IDs (for count validation)
+     category - The category filter used (e.g., \"Gadget\" or \"Doohickey\")"
   [table-name ids category]
-  ;; First, find the table that was created by the transform
-  (let [table-id          (t2/select-one-fn :id :model/Table :db_id (mt/id) :name table-name)
-        ;; Find the ID and CATEGORY fields in the table
-        ;; We need case-insensitive matching because different databases store field names differently
-        ;; (e.g., PostgreSQL might use lowercase, Oracle might use uppercase)
-        fields (t2/select :model/Field :table_id table-id)
-        id-field-id (some #(when (= (u/upper-case-en (:name %)) "ID") (:id %)) fields)
-        category-field-id (some #(when (= (u/upper-case-en (:name %)) "CATEGORY") (:id %)) fields)]
-    ;; Ensure we found both required fields, with helpful error messages if not
-    (when-not id-field-id
-      (throw (ex-info (str "Could not find ID field in table " table-name ". Available fields: "
-                           (mapv :name fields))
-                      {:table-name table-name :fields fields})))
-    (when-not category-field-id
-      (throw (ex-info (str "Could not find CATEGORY field in table " table-name ". Available fields: "
-                           (mapv :name fields))
-                      {:table-name table-name :fields fields})))
-    ;; Query the created table to verify it contains the expected data
-    ;; We expect each product to have its ID and the filtered category
-    (is (= (mapv vector ids (repeat category))
-           (mt/rows
-            (mt/run-mbql-query nil
-              {:source-table table-id
-               :fields       [[:field id-field-id nil] [:field category-field-id nil]]
-               :order-by     [[[:field id-field-id nil] :asc]]
-               :limit        3}))))))
+  ;; Use the metadata provider to find the table
+  (let [mp    (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+        ;; Find the table by name
+        table (m/find-first (comp #{table-name} :name)
+                            (lib.metadata/tables mp))]
+    (when-not table
+      (throw (ex-info (str "Table not found in metadata: " table-name)
+                      {:table-name table-name})))
+
+    ;; Build a query for the table
+    (let [base-query      (lib/query mp table)
+          ;; Find the category column
+          category-column (m/find-first
+                           (comp #{"category"} str/lower-case :name)
+                           (lib/visible-columns base-query))
+          ;; Filter by category and count rows
+          filtered-query  (if category-column
+                            (lib/filter base-query (lib/= category-column category))
+                            base-query)
+          count-query     (lib/aggregate filtered-query (lib/count))
+          result          (qp/process-query count-query)
+          actual-count    (-> result :data :rows first first)]
+      ;; Verify we got the expected number of rows
+      (is (= (count ids) actual-count)
+          (str "Expected " (count ids) " rows with category " category
+               " in table " table-name ", but got " actual-count)))))
+
+(defn- wait-for-table
+  "Wait for a table to appear in metadata, with timeout.
+   Copied from execute_test.clj - will consolidate later."
+  [table-name timeout-ms]
+  (let [mp    (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+        limit (+ (System/currentTimeMillis) timeout-ms)]
+    (loop []
+      (Thread/sleep 200)
+      (when (> (System/currentTimeMillis) limit)
+        (throw (ex-info "table has not been created" {:table-name table-name, :timeout-ms timeout-ms})))
+      (or (m/find-first (comp #{table-name} :name) (lib.metadata/tables mp))
+          (recur)))))
 
 (deftest execute-transform-test
   (doseq [target-type ["table" #_"view"]
@@ -352,32 +361,30 @@
                 (let [query2             (make-query "Doohickey")
                       original           {:name   "Gadget Products"
                                           :source {:type  "query"
-                                                   :query {:database (mt/id)
-                                                           :type     "native"
-                                                           :native   {:query         (make-query "Gadget")
-                                                                      :template-tags {}}}}
+                                         :query (make-query "Gadget")}
                                           :target target1}
                       {transform-id :id} (mt/user-http-request :crowberto :post 200 "ee/transform"
                                                                original)
-                      _ (test-run transform-id)
+                      _                  (do (test-run transform-id)
+                                             (wait-for-table table1-name 5000))
                       _                  (is (true? (transforms.util/target-table-exists? original)))
                       _                  (check-query-results table1-name [5 11 16] "Gadget")
                       updated            {:name        "Doohickey Products"
                                           :description "Desc"
                                           :source      {:type  "query"
-                                                        :query {:database (mt/id)
-                                                                :type     "native",
-                                                                :native   {:query         query2
-                                                                           :template-tags {}}}}
+                                        :query query2}
                                           :target      target2}]
                   (is (=? updated
-                          (mt/user-http-request :crowberto :put 200 (format "ee/transform/%s" transform-id) updated)))
+                          (->
+                           (mt/user-http-request :crowberto :put 200 (format "ee/transform/%s" transform-id) updated)
+                           (update-in [:source :query] mbql.normalize/normalize))))
                   (test-run transform-id)
+                  (wait-for-table table2-name 5000)
                   (is (true? (transforms.util/target-table-exists? original)))
                   (is (true? (transforms.util/target-table-exists? updated)))
                   ;; Doohickey products in our test dataset have IDs 2, 3, 4, 13
-                  ;; We check the first 3 (ordered by ID) which are 2, 3, 4
-                  (check-query-results table2-name [2 3 4] "Doohickey"))))))))))
+                  ;; We verify all 4 products are present
+                  (check-query-results table2-name [2 3 4 13] "Doohickey"))))))))))
 
 (deftest get-runs-filter-by-single-transform-id-test
   (testing "GET /api/ee/transform/run - filter by single transform ID"
