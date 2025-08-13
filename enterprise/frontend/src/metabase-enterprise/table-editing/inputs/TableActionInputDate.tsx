@@ -4,7 +4,10 @@ import { DEFAULT_DATE_STYLE } from "metabase/lib/formatting/datetime-utils";
 import { DateInput } from "metabase/ui";
 
 import type { TableActionInputSharedProps } from "./types";
-import { useDateValueWithoutTimezone } from "./use-date-value-without-timezone";
+import {
+  DateValueTimezoneFormat,
+  useDateValueWithoutTimezone,
+} from "./use-date-value-without-timezone";
 
 export type TableActionInputDateProps = TableActionInputSharedProps & {
   dateStyle?: string;
@@ -26,7 +29,10 @@ export const TableActionInputDate = ({
   onEnter,
 }: TableActionInputDateProps) => {
   const { localDate: initialValueWithoutTimezone, restoreTimezone } =
-    useDateValueWithoutTimezone(initialValue ?? null);
+    useDateValueWithoutTimezone(initialValue ?? null, {
+      valueFormat: "YYYY-MM-DD",
+      timezoneFormat: DateValueTimezoneFormat.Never,
+    });
 
   const [value, setValue] = useState(initialValueWithoutTimezone);
   const [isFocused, setFocused] = useState(false);

@@ -5,7 +5,7 @@ import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { H } = cy;
 
-const { ORDERS_ID, PRODUCTS_ID } = SAMPLE_DATABASE;
+const { ORDERS_ID, PRODUCTS_ID, PEOPLE_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > table-editing", () => {
   beforeEach(() => {
@@ -189,7 +189,7 @@ describe("scenarios > table-editing", () => {
       // we use randomized values here to allow multiple runs in one session (since non-changed values are not updated)
       const cases = [
         {
-          table: "Products",
+          tableId: PRODUCTS_ID,
           dataType: "string",
           column: "EAN",
           value: Math.floor(Math.random() * 100000)
@@ -197,42 +197,56 @@ describe("scenarios > table-editing", () => {
             .padStart(13, "0"),
         },
         {
-          table: "Orders",
+          tableId: ORDERS_ID,
           dataType: "number",
           column: "TAX",
           value: Math.floor(Math.random() * 1000),
         },
+        {
+          tableId: PEOPLE_ID,
+          dataType: "date",
+          column: "BIRTH_DATE",
+          value: dayjs(
+            new Date(
+              Date.now() -
+                Math.floor(Math.random() * 1000 * 60 * 60 * 24 * 365),
+            ),
+          ).format("YYYY-MM-DD"),
+        },
       ];
 
-      cases.forEach(({ dataType, column, value, table }) => {
+      cases.forEach(({ dataType, column, value, tableId }) => {
         it(`should allow to edit a cell with type ${dataType}`, () => {
-          if (table === "Products") {
-            cy.visit(
-              `/browse/databases/${SAMPLE_DB_ID}/tables/${PRODUCTS_ID}/edit`,
-            );
-          }
+          cy.visit(`/browse/databases/${SAMPLE_DB_ID}/tables/${tableId}/edit`);
 
           // Locate the table and the specific cell to edit
           cy.findByTestId("table-root")
             .findAllByRole("row")
             .eq(1) // Select the second row (index 1)
             .within(() => {
-              cy.get(`[data-column-id='${column}']`).as("targetCell").click({
-                scrollBehavior: false,
-              }); // Activate inline editing
+              cy.get(`[data-column-id='${column}']`)
+                .as("targetCell")
+                .click({ scrollBehavior: "center" }); // Activate inline editing
             });
 
           // Edit the cell value
           cy.get("@targetCell")
-            .find("input") // Assuming the cell becomes an input field
-            .type(`{selectAll}{backspace}${value}`, {
-              scrollBehavior: false,
-            }) // Enter the new value
+            .find("input")
+            .first() // Assuming the cell becomes an input field
+            .type(`{selectAll}{backspace}${value}`) // Enter the new value
             .blur(); // Trigger the save action by blurring the input
 
           cy.wait("@updateTableData").then(({ response }) => {
             expect(response?.body.outputs[0].op).to.equal("updated");
-            expect(response?.body.outputs[0].row[column]).to.equal(value);
+            if (dataType === "date") {
+              expect(
+                dayjs(response?.body.outputs[0].row[column]).format(
+                  "YYYY-MM-DD",
+                ),
+              ).to.equal(value);
+            } else {
+              expect(response?.body.outputs[0].row[column]).to.equal(value);
+            }
           });
 
           H.undoToast().findByText("Successfully updated").should("be.visible");
