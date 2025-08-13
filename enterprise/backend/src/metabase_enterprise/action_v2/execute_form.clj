@@ -64,17 +64,17 @@
     :type/Category    :input/dropdown
     :type/FK          :input/dropdown
     :type/PK          :input/dropdown
-    (if (#{:list :auto-list :search} (:type field-values))
-      :input/dropdown
-      (condp #(isa? %2 %1) (:base_type field)
-        :type/Boolean    :input/boolean
-        :type/Integer    :input/integer
-        :type/BigInteger :input/integer
-        :type/Float      :input/float
-        :type/Decimal    :input/float
-        :type/Date       :input/date
-        :type/DateTime   :input/datetime
-        :type/Time       :input/time
+    (condp #(isa? %2 %1) (:base_type field)
+      :type/Boolean    :input/boolean
+      :type/Integer    :input/integer
+      :type/BigInteger :input/integer
+      :type/Float      :input/float
+      :type/Decimal    :input/float
+      :type/Date       :input/date
+      :type/DateTime   :input/datetime
+      :type/Time       :input/time
+      (if (#{:list :auto-list :search} (:type field-values))
+        :input/dropdown
         :input/text))))
 
 (defn- describe-table-action
