@@ -704,7 +704,7 @@
         (mt/with-report-timezone-id! "UTC"
           (is (= "2022-10-03T14:10:20+07:00"
                  (->> (mt/run-mbql-query times
-                        {:expressions {"expr" [:convert-timezone "2022-10-03T07:10:20" "Asia/Bangkok" "UTC"]}
+                        {:expressions {"expr" [:convert-timezone "2022-10-03T07:10:20" "Asia/Ho_Chi_Minh" "UTC"]}
                          :fields      [[:expression "expr"]]})
                       mt/rows
                       ffirst))))))))
@@ -780,9 +780,9 @@
                   "2004-03-19T18:19:09+09:00"] ;; at +09
                  (->> (mt/run-mbql-query
                         times
-                        {:expressions {"to-07"       [:convert-timezone $times.dt "Asia/Bangkok" "UTC"]
+                        {:expressions {"to-07"       [:convert-timezone $times.dt "Asia/Ho_Chi_Minh" "UTC"]
                                        "to-07-to-09" [:convert-timezone [:expression "to-07"] "Asia/Seoul"
-                                                      "Asia/Bangkok"]}
+                                                      "Asia/Ho_Chi_Minh"]}
                          :filter      [:= $times.index 1]
                          :fields      [$times.dt
                                        [:expression "to-07"]
@@ -842,8 +842,8 @@
                                             (mt/application-database-metadata-provider (mt/id))
                                             [(mt/mbql-query
                                                times
-                                               {:expressions {"to-07"       [:convert-timezone $times.dt "Asia/Bangkok" "UTC"]
-                                                              "to-07-to-09" [:convert-timezone [:expression "to-07"] "Asia/Seoul" "Asia/Bangkok"]}
+                                               {:expressions {"to-07"       [:convert-timezone $times.dt "Asia/Ho_Chi_Minh" "UTC"]
+                                                              "to-07-to-09" [:convert-timezone [:expression "to-07"] "Asia/Seoul" "Asia/Ho_Chi_Minh"]}
                                                 :filter      [:= $times.index 1]
                                                 :fields      [$times.dt
                                                               [:expression "to-07"]
@@ -854,19 +854,19 @@
                            (lib.metadata/card (qp.store/metadata-provider) 1))]
                 (testing `lib.metadata.result-metadata/returned-columns
                   (is (=? [{:name "dt"}
-                           {:name "to-07", :converted-timezone "Asia/Bangkok"}
+                           {:name "to-07", :converted-timezone "Asia/Ho_Chi_Minh"}
                            {:name "to-07-to-09", :converted-timezone "Asia/Seoul"}]
                           (map #(select-keys % [:name :converted-timezone])
                                (lib.metadata.result-metadata/returned-columns query)))))
                 (testing `annotate/expected-cols
                   (is (=? [{:name "dt"}
-                           {:name "to-07", :converted_timezone "Asia/Bangkok"}
+                           {:name "to-07", :converted_timezone "Asia/Ho_Chi_Minh"}
                            {:name "to-07-to-09", :converted_timezone "Asia/Seoul"}]
                           (map #(select-keys % [:name :converted_timezone])
                                (annotate/expected-cols query)))))
                 (testing `qp.preprocess/query->expected-cols
                   (is (=? [{:name "dt"}
-                           {:name "to-07", :converted_timezone "Asia/Bangkok"}
+                           {:name "to-07", :converted_timezone "Asia/Ho_Chi_Minh"}
                            {:name "to-07-to-09", :converted_timezone "Asia/Seoul"}]
                           (map #(select-keys % [:name :converted_timezone])
                                (qp.preprocess/query->expected-cols query)))))))
