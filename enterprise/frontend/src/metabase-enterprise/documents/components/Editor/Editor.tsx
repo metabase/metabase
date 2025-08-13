@@ -65,7 +65,7 @@ const getMetabotPromptSerializer =
 const isMetabotBlock = (state: EditorState): boolean =>
   state.selection.$head.parent.type.name === "metabot";
 
-interface EditorProps {
+export interface EditorProps {
   onEditorReady?: (editor: TiptapEditor) => void;
   onCardEmbedsChange?: (refs: CardEmbedRef[]) => void;
   initialContent?: JSONContent | null;

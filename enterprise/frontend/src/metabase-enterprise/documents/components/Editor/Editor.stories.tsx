@@ -1,31 +1,34 @@
 import type { Store } from "@reduxjs/toolkit";
 import type { StoryFn } from "@storybook/react/*";
+import { HttpResponse, http } from "msw";
 import _ from "underscore";
 
 import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
 import { Api } from "metabase/api";
 import { MetabaseReduxProvider } from "metabase/lib/redux";
-import { publicReducers } from "metabase/reducers-public";
+import { commonReducers } from "metabase/reducers-common";
 import { getStore } from "metabase/store";
+import { createMockCard, createMockDataset } from "metabase-types/api/mocks";
 import type { State } from "metabase-types/store";
 import { createMockState } from "metabase-types/store/mocks";
 
-import { Editor } from "./Editor";
+import { Editor, type EditorProps } from "./Editor";
 import Data from "./data/data.json";
 
+const settings = mockSettings();
+
 const storeInitialState = createMockState({
-  settings: mockSettings(),
+  settings,
   entities: createMockEntitiesState({}),
 });
-const publicReducerNames = Object.keys(publicReducers);
+const publicReducerNames = Object.keys(commonReducers);
 const initialState = _.pick(storeInitialState, ...publicReducerNames) as State;
-const reducers = publicReducers;
 
 const storeMiddleware = [Api.middleware];
 
 const store = getStore(
-  reducers,
+  commonReducers,
   initialState,
   storeMiddleware,
 ) as unknown as Store<State>;
@@ -38,15 +41,44 @@ const ReduxDecorator = (Story: StoryFn) => {
   );
 };
 
-const DefaultTemplate = () => <Editor initialContent={Data.markdownTest} />;
+const DefaultTemplate = (args: EditorProps) => <Editor {...args} />;
 
 export default {
   title: "Components/Documents",
   component: Editor,
   decorators: [ReduxDecorator],
   layout: "fullscreen",
+  parameters: {
+    msw: {
+      handlers: [
+        http.get("/api/card/114", () =>
+          HttpResponse.json(
+            createMockCard({
+              name: "Test Question",
+              display: "line",
+            }),
+          ),
+        ),
+        http.post("/api/card/114/query", () =>
+          HttpResponse.json(
+            createMockDataset({ data: Data.card114Query.data }),
+          ),
+        ),
+      ],
+    },
+  },
 };
 
-export const Default = {
+export const Markdown = {
   render: DefaultTemplate,
+  args: {
+    initialContent: Data.markdownTest,
+  },
+};
+
+export const CardEmbed = {
+  render: DefaultTemplate,
+  args: {
+    initialContent: Data.cardEmbed,
+  },
 };
