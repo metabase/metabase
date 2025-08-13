@@ -9,6 +9,8 @@
 
 (mr/def ::input-type
   [:enum
+   {:encode/string name
+    :decode/string #(keyword "input" %)}
    :boolean
    :date
    :datetime
