@@ -220,12 +220,12 @@ export type MetabotApiEntity = Omit<MetabotEntity, "id"> & {
 
 /* Metabot v3 - Document Types */
 
-export interface MetabotDocumentNodeRequest {
+export interface MetabotGenerateContentRequest {
   instructions: string;
   references?: Record<string, string>;
 }
 
-export interface MetabotDocumentNodeResponse {
+export interface MetabotGenerateContentResponse {
   draft_card: (UnsavedCard & { name?: string }) | null;
   description: string;
   error: string | null;

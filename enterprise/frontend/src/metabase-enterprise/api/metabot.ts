@@ -1,9 +1,9 @@
 import type {
   DeleteSuggestedMetabotPromptRequest,
   MetabotApiEntity,
-  MetabotDocumentNodeRequest,
-  MetabotDocumentNodeResponse,
   MetabotEntity,
+  MetabotGenerateContentRequest,
+  MetabotGenerateContentResponse,
   MetabotId,
   MetabotInfo,
   PaginationRequest,
@@ -113,9 +113,9 @@ export const metabotApi = EnterpriseApi.injectEndpoints({
       invalidatesTags: (_, error, metabot_id) =>
         !error ? [idTag("metabot-prompt-suggestions", metabot_id)] : [],
     }),
-    metabotDocumentNode: builder.query<
-      MetabotDocumentNodeResponse,
-      MetabotDocumentNodeRequest
+    metabotGenerateContent: builder.query<
+      MetabotGenerateContentResponse,
+      MetabotGenerateContentRequest
     >({
       query: (params) => ({
         method: "POST",
@@ -134,5 +134,5 @@ export const {
   useGetSuggestedMetabotPromptsQuery,
   useDeleteSuggestedMetabotPromptMutation,
   useRegenerateSuggestedMetabotPromptsMutation,
-  useLazyMetabotDocumentNodeQuery,
+  useLazyMetabotGenerateContentQuery,
 } = metabotApi;

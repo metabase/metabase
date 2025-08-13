@@ -13,7 +13,7 @@ import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
 import { Box, Button, Flex, Icon, Text, Tooltip } from "metabase/ui";
-import { useLazyMetabotDocumentNodeQuery } from "metabase-enterprise/api/metabot";
+import { useLazyMetabotGenerateContentQuery } from "metabase-enterprise/api/metabot";
 import {
   createDraftCard,
   generateDraftCardId,
@@ -21,7 +21,7 @@ import {
 } from "metabase-enterprise/documents/documents.slice";
 import { useDocumentsDispatch } from "metabase-enterprise/documents/redux-utils";
 import MetabotThinkingStyles from "metabase-enterprise/metabot/components/MetabotChat/MetabotThinking.module.css";
-import type { Card, MetabotDocumentNodeRequest } from "metabase-types/api";
+import type { Card, MetabotGenerateContentRequest } from "metabase-types/api";
 
 import Styles from "./MetabotEmbed.module.css";
 
@@ -38,7 +38,7 @@ const padWithUnstyledText = (content: JSONContent): JSONContent[] => [
 
 export type PromptSerializer = (
   node: ProseMirrorNode,
-) => MetabotDocumentNodeRequest;
+) => MetabotGenerateContentRequest;
 
 const serializePromptDefault: PromptSerializer = (node) => ({
   instructions: node.textContent,
@@ -141,7 +141,7 @@ export const MetabotComponent = memo(
     const controllerRef = useRef<AbortController | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [errorText, setErrorText] = useState("");
-    const [queryMetabot] = useLazyMetabotDocumentNodeQuery();
+    const [queryMetabot] = useLazyMetabotGenerateContentQuery();
 
     const handleRunMetabot = async () => {
       const serializePrompt =
