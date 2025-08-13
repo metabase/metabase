@@ -33,16 +33,9 @@ export type MetabaseProviderPropsStore = {
   cleanup(): void;
 };
 
-const INTERNAL_PROP_NAMES: (keyof MetabaseProviderPropsStoreInternalProps)[] = [
-  "loadingPromise",
-  "loadingState",
-  "loadingError",
-  "reduxStore",
-  "singleInstanceIdsMap",
-];
-
 const KEY = "METABASE_PROVIDER_PROPS_STORE";
-const getEmptyProps = (): MetabaseProviderPropsStoreInternalProps =>
+
+const getInitialProps = (): MetabaseProviderPropsStoreInternalProps =>
   ({
     loadingPromise: null,
     loadingState: SdkLoadingState.Initial,
@@ -50,6 +43,16 @@ const getEmptyProps = (): MetabaseProviderPropsStoreInternalProps =>
     reduxStore: null,
     singleInstanceIdsMap: {},
   }) satisfies MetabaseProviderPropsStoreInternalProps;
+
+const getInternalProps = (
+  props: MetabaseProviderPropsToStore,
+): MetabaseProviderPropsStoreInternalProps => ({
+  loadingPromise: props.loadingPromise,
+  loadingState: props.loadingState,
+  loadingError: props.loadingError,
+  reduxStore: props.reduxStore,
+  singleInstanceIdsMap: props.singleInstanceIdsMap,
+});
 
 export function ensureMetabaseProviderPropsStore(): MetabaseProviderPropsStore {
   const win = getWindow();
@@ -62,7 +65,7 @@ export function ensureMetabaseProviderPropsStore(): MetabaseProviderPropsStore {
     return win[KEY];
   }
 
-  let props = getEmptyProps() as MetabaseProviderPropsToStore;
+  let props = getInitialProps() as MetabaseProviderPropsToStore;
   const listeners = new Set<() => void>();
 
   const store: MetabaseProviderPropsStore = {
@@ -73,12 +76,8 @@ export function ensureMetabaseProviderPropsStore(): MetabaseProviderPropsStore {
       return () => listeners.delete(listener);
     },
     initialize(initialProps) {
-      const internalProps = Object.fromEntries(
-        INTERNAL_PROP_NAMES.map((key) => [key, props[key]]),
-      ) as MetabaseProviderPropsStoreInternalProps;
-
       props = {
-        ...internalProps,
+        ...getInternalProps(props),
         ...initialProps,
       } as MetabaseProviderPropsToStore;
     },
@@ -91,12 +90,8 @@ export function ensureMetabaseProviderPropsStore(): MetabaseProviderPropsStore {
       listeners.forEach((callback) => callback());
     },
     setProps(propsToSet) {
-      const internalProps = Object.fromEntries(
-        INTERNAL_PROP_NAMES.map((key) => [key, props[key]]),
-      ) as MetabaseProviderPropsStoreInternalProps;
-
       props = {
-        ...internalProps,
+        ...getInternalProps(props),
         ...propsToSet,
       } as MetabaseProviderPropsToStore;
 
