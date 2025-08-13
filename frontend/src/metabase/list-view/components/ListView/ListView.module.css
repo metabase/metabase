@@ -43,7 +43,7 @@
 .listHeader,
 .listItem {
   display: grid;
-  grid-template-columns: 1fr repeat(var(--grid-columns), 10%);
+  grid-template-columns: minmax(0, 1fr) repeat(var(--grid-columns), 10%);
   gap: var(--mantine-spacing-sm);
   align-items: center;
 }

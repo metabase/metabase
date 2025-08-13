@@ -66,23 +66,16 @@ export function ListView({
     });
   }, [rows, titleColumn, subtitleColumn, imageColumn, cols, settings]);
 
-  const firstColumnWidth = imageColumn ? "320px" : "280px";
-  const rightColumnCount = rightColumns.length;
-
   const openObjectDetail = useObjectDetail(data);
 
   return (
     <Stack
       className={styles.listViewContainer}
-      style={{ "--grid-columns": rightColumnCount }}
+      style={{ "--grid-columns": rightColumns.length }}
     >
       <Stack className={styles.listContainer}>
         <Flex className={styles.listHeader}>
-          <Flex
-            align="center"
-            gap="md"
-            style={{ width: firstColumnWidth, flexShrink: 0 }}
-          >
+          <Flex align="center" gap="md" style={{ flexShrink: 0 }}>
             {!!titleColumn && (
               <ColumnHeader
                 column={titleColumn}
@@ -117,11 +110,7 @@ export function ListView({
                   className={styles.listItem}
                   onClick={() => openObjectDetail(rowIndex)}
                 >
-                  <Flex
-                    align="center"
-                    gap="md"
-                    style={{ width: firstColumnWidth, flexShrink: 0 }}
-                  >
+                  <Flex align="center" gap="md" style={{ flexShrink: 0 }}>
                     {imageValue && (
                       <Image
                         src={imageValue}
@@ -197,7 +186,7 @@ function ColumnHeader({
   return (
     <button
       onClick={() => onSortClick(column)}
-      style={{ ...style, cursor: "pointer" }}
+      style={{ ...style, cursor: "pointer", textAlign: "left" }}
     >
       <Text fw="bold" size="sm" c="text-medium" style={{ display: "inline" }}>
         {column.display_name}
