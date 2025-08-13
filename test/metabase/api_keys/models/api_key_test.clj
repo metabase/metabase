@@ -5,7 +5,7 @@
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
-(deftest ^:parallel do-not-mark-user-inactive-when-deleting-api-key-for-normal-user-test
+(deftest do-not-mark-user-inactive-when-deleting-api-key-for-normal-user-test
   (mt/with-temp [:model/ApiKey {api-key-id :id} {::api-key/unhashed-key "mb_1234567890"
                                                  :name                  (mt/random-name)
                                                  :user_id               (mt/user->id :crowberto)
