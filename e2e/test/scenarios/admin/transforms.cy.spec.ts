@@ -1,6 +1,7 @@
 const { H } = cy;
 
 import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
+import type { CardType } from "metabase-types/api";
 
 const DB_NAME = "Writable Postgres12";
 const SOURCE_TABLE = "Animals";
@@ -76,41 +77,52 @@ describe("scenarios > admin > transforms", () => {
       H.assertQueryBuilderRowCount(3);
     });
 
-    it("should be able to create and run a transform from a question", () => {
-      cy.log("create a query in the target database");
-      H.getTableId({ name: SOURCE_TABLE, databaseId: WRITABLE_DB_ID }).then(
-        (tableId) =>
-          H.createQuestion({
-            name: "Test question",
-            database: WRITABLE_DB_ID,
-            query: {
-              "source-table": tableId,
-            },
-          }),
-      );
+    it("should be able to create and run a transform from a question or a model", () => {
+      function testCardSource({
+        type,
+        label,
+      }: {
+        type: CardType;
+        label: string;
+      }) {
+        cy.log("create a query in the target database");
+        H.getTableId({ name: SOURCE_TABLE, databaseId: WRITABLE_DB_ID }).then(
+          (tableId) =>
+            H.createQuestion({
+              name: "Test",
+              type,
+              database: WRITABLE_DB_ID,
+              query: {
+                "source-table": tableId,
+              },
+            }),
+        );
 
-      cy.log("create a new transform");
-      visitTransformListPage();
-      getTransformListPage().button("Create a transform").click();
-      H.popover().findByText("A saved question").click();
-      H.entityPickerModal().findByText("Test question").click();
-      getQueryEditor().button("Save").click();
-      H.modal().within(() => {
-        cy.findByLabelText("Name").type("SQL transform");
-        cy.findByLabelText("Table name").type(TARGET_TABLE);
-        cy.button("Save").click();
-        cy.wait("@createTransform");
-      });
+        cy.log("create a new transform");
+        visitTransformListPage();
+        getTransformListPage().button("Create a transform").click();
+        H.popover().findByText("A saved question").click();
+        H.entityPickerModal().within(() => {
+          H.entityPickerModalTab(label);
+          cy.findByText("Test").click();
+        });
+        getQueryEditor().button("Save").click();
+        H.modal().within(() => {
+          cy.findByLabelText("Name").type(`${type} transform`);
+          cy.findByLabelText("Table name").type(`${type}_transform`);
+          cy.button("Save").click();
+          cy.wait("@createTransform");
+        });
 
-      cy.log("run the transform and make sure its table can be queried");
-      runAndWaitForSuccess();
-      getTableLink().click();
-      H.queryBuilderHeader().findByText(DB_NAME).should("be.visible");
-      H.assertQueryBuilderRowCount(3);
-    });
+        cy.log("run the transform and make sure its table can be queried");
+        runAndWaitForSuccess();
+        getTableLink().click();
+        H.queryBuilderHeader().findByText(DB_NAME).should("be.visible");
+        H.assertQueryBuilderRowCount(3);
+      }
 
-    it("should be able to create and run a transform from a model", () => {
-      cy.log("TBD");
+      testCardSource({ type: "question", label: "Questions" });
+      testCardSource({ type: "model", label: "Models" });
     });
 
     it("should not allow to overwrite an existing table when creating a transform", () => {
@@ -137,41 +149,33 @@ describe("scenarios > admin > transforms", () => {
     });
   });
 
-  describe("runs", () => {
-    it("should be able to navigate to a list of runs", () => {
-      cy.log("create and run a transform");
-      createMbqlTransform({
-        targetTable: TARGET_TABLE,
-        visitTransform: true,
-      });
-      runAndWaitForSuccess();
+  describe("name and description", () => {
+    it("should be able to edit the name and description after creation", () => {
+      createMbqlTransform({ visitTransform: true });
 
-      cy.log("create and run another transform");
-      createSqlTransform({
-        sourceQuery: `SELECT * FROM "${TARGET_SCHEMA}"."${SOURCE_TABLE}"`,
-        targetTable: TARGET_TABLE_2,
-        visitTransform: true,
-      });
-      runAndWaitForSuccess();
+      getTransformPage()
+        .findByPlaceholderText("Name")
+        .clear()
+        .type("New name")
+        .blur();
+      H.undoToast().findByText("Transform name updated").should("be.visible");
+      getTransformPage()
+        .findByPlaceholderText("Name")
+        .should("have.value", "New name");
 
-      cy.log("assert that the list is filtered by the current transform");
-      getRunListLink().click();
-      getContentTable().within(() => {
-        cy.findByText("SQL transform").should("be.visible");
-        cy.findByText("MBQL transform").should("not.exist");
-        cy.findByText("Success").should("be.visible");
-        cy.findByText("Manual").should("be.visible");
-      });
-    });
-
-    it("should display the error message from a failed run", () => {
-      createSqlTransform({
-        sourceQuery: "SELECT * FROM abc",
-        visitTransform: true,
-      });
-      runAndWaitForFailure();
-      getRunErrorInfoButton().click();
-      H.modal().should("contain.text", 'relation "abc" does not exist');
+      getTransformPage()
+        .findByPlaceholderText("No description yet")
+        .clear()
+        .type("New description")
+        .blur();
+      H.undoToastList()
+        .should("have.length", 2)
+        .last()
+        .findByText("Transform description updated")
+        .should("be.visible");
+      getTransformPage()
+        .findByPlaceholderText("No description yet")
+        .should("have.value", "New description");
     });
   });
 
@@ -449,11 +453,84 @@ describe("scenarios > admin > transforms", () => {
 
   describe("queries", () => {
     it("should be able to update a MBQL query", () => {
-      cy.log("TBD");
+      cy.log("create a new transform");
+      createMbqlTransform({ visitTransform: true });
+
+      cy.log("update the query");
+      getTransformPage().findByRole("link", { name: "Edit query" }).click();
+      H.getNotebookStep("data").button("Filter").click();
+      H.popover().within(() => {
+        cy.findByText("Name").click();
+        cy.findByText("Duck").click();
+        cy.button("Add filter").click();
+      });
+
+      getQueryEditor().button("Save changes").click();
+      cy.wait("@updateTransform");
+
+      cy.log("run the transform and make sure the query has changed");
+      runAndWaitForSuccess();
+      getTableLink().click();
+      H.queryBuilderHeader().findByText(DB_NAME).should("be.visible");
+      H.assertQueryBuilderRowCount(1);
     });
 
     it("should be able to update a SQL query", () => {
-      cy.log("TBD");
+      cy.log("create a new transform");
+      createSqlTransform({
+        sourceQuery: `SELECT * FROM "${TARGET_SCHEMA}"."${SOURCE_TABLE}"`,
+        visitTransform: true,
+      });
+
+      cy.log("update the query");
+      getTransformPage().findByRole("link", { name: "Edit query" }).click();
+      H.NativeEditor.type(" WHERE name = 'Duck'");
+      getQueryEditor().button("Save changes").click();
+      cy.wait("@updateTransform");
+
+      cy.log("run the transform and make sure the query has changed");
+      runAndWaitForSuccess();
+      getTableLink().click();
+      H.queryBuilderHeader().findByText(DB_NAME).should("be.visible");
+      H.assertQueryBuilderRowCount(1);
+    });
+  });
+
+  describe("runs", () => {
+    it("should be able to navigate to a list of runs", () => {
+      cy.log("create and run a transform");
+      createMbqlTransform({
+        targetTable: TARGET_TABLE,
+        visitTransform: true,
+      });
+      runAndWaitForSuccess();
+
+      cy.log("create and run another transform");
+      createSqlTransform({
+        sourceQuery: `SELECT * FROM "${TARGET_SCHEMA}"."${SOURCE_TABLE}"`,
+        targetTable: TARGET_TABLE_2,
+        visitTransform: true,
+      });
+      runAndWaitForSuccess();
+
+      cy.log("assert that the list is filtered by the current transform");
+      getRunListLink().click();
+      getContentTable().within(() => {
+        cy.findByText("SQL transform").should("be.visible");
+        cy.findByText("MBQL transform").should("not.exist");
+        cy.findByText("Success").should("be.visible");
+        cy.findByText("Manual").should("be.visible");
+      });
+    });
+
+    it("should display the error message from a failed run", () => {
+      createSqlTransform({
+        sourceQuery: "SELECT * FROM abc",
+        visitTransform: true,
+      });
+      runAndWaitForFailure();
+      getRunErrorInfoButton().click();
+      H.modal().should("contain.text", 'relation "abc" does not exist');
     });
   });
 
