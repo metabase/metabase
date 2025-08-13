@@ -181,24 +181,25 @@ describe("scenarios > admin > transforms", () => {
 
   describe("tags", () => {
     it("should be able to add and remove tags", () => {
+      createTransformTags(["main", "replica"]);
       createMbqlTransform({ visitTransform: true });
       getTagsInput().click();
 
       H.popover().within(() => {
-        cy.findByRole("option", { name: "daily" }).click();
+        cy.findByRole("option", { name: "main" }).click();
         cy.wait("@updateTransform");
-        assertOptionSelected("daily");
-        assertOptionNotSelected("weekly");
+        assertOptionSelected("main");
+        assertOptionNotSelected("replica");
 
-        cy.findByRole("option", { name: "weekly" }).click();
+        cy.findByRole("option", { name: "replica" }).click();
         cy.wait("@updateTransform");
-        assertOptionSelected("daily");
-        assertOptionSelected("weekly");
+        assertOptionSelected("main");
+        assertOptionSelected("replica");
 
-        cy.findByRole("option", { name: "daily" }).click();
+        cy.findByRole("option", { name: "main" }).click();
         cy.wait("@updateTransform");
-        assertOptionNotSelected("daily");
-        assertOptionSelected("weekly");
+        assertOptionNotSelected("main");
+        assertOptionSelected("replica");
       });
     });
 
@@ -212,29 +213,31 @@ describe("scenarios > admin > transforms", () => {
     });
 
     it("should be able to update tags inline", () => {
+      createTransformTags(["main"]);
       createMbqlTransform({ visitTransform: true });
 
       getTagsInput().click();
       H.popover()
-        .findByRole("option", { name: "daily" })
+        .findByRole("option", { name: "main" })
         .findByLabelText("Rename tag")
         .click({ force: true });
       H.modal().within(() => {
-        cy.findByLabelText("Name").clear().type("daily2");
+        cy.findByLabelText("Name").clear().type("main2");
         cy.button("Save").click();
         cy.wait("@updateTag");
       });
 
       getTagsInput().click();
-      H.popover().findByText("daily2").should("be.visible");
+      H.popover().findByText("main2").should("be.visible");
     });
 
     it("should be able to delete tags inline", () => {
+      createTransformTags(["main", "replica"]);
       createMbqlTransform({ visitTransform: true });
 
       getTagsInput().click();
       H.popover()
-        .findByRole("option", { name: "daily" })
+        .findByRole("option", { name: "main" })
         .findByLabelText("Delete tag")
         .click({ force: true });
       H.modal().within(() => {
@@ -245,8 +248,8 @@ describe("scenarios > admin > transforms", () => {
 
       getTagsInput().click();
       H.popover().within(() => {
-        cy.findByText("hourly").should("be.visible");
-        cy.findByText("daily").should("not.exist");
+        cy.findByText("replica").should("be.visible");
+        cy.findByText("main").should("not.exist");
       });
     });
   });
@@ -620,11 +623,11 @@ describe("scenarios > admin > transforms > jobs", () => {
         cy.findByPlaceholderText("No description yet").should("have.value", "");
         getCronInput().should("have.value", "0 0 * * ?");
         cy.findByText("This job will run at 12:00 AM").should("be.visible");
-        cy.findByText("daily").should("not.exist");
       });
     });
 
     it("should be able to create a job with custom property values", () => {
+      createTransformTags(["main", "replica"]);
       visitTransformJobListPage();
       getTransformJobListPage()
         .findByRole("link", { name: "Create a job" })
@@ -638,7 +641,7 @@ describe("scenarios > admin > transforms > jobs", () => {
         getCronInput().clear().type("0 * * * ?");
         getTagsInput().click();
       });
-      H.popover().findByText("daily").click();
+      H.popover().findByText("replica").click();
       getTransformJobPage().button("Save").click();
       cy.wait("@createJob");
       H.undoToast().findByText("New job created").should("be.visible");
@@ -651,7 +654,7 @@ describe("scenarios > admin > transforms > jobs", () => {
         );
         getCronInput().should("have.value", "0 * * * ?");
         cy.findByText("This job will run every hour").should("be.visible");
-        cy.findByText("daily").should("be.visible");
+        cy.findByText("replica").should("be.visible");
       });
     });
   });
@@ -803,6 +806,10 @@ function createSqlTransform({
     },
     { wrapId: true, visitTransform },
   );
+}
+
+function createTransformTags(names: string[]) {
+  names.forEach((name) => H.createTransformTag({ name }));
 }
 
 function visitTableQuestion({

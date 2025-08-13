@@ -28,6 +28,7 @@ export { createTimelineEvent } from "./createTimelineEvent";
 export { createTimelineWithEvents } from "./createTimelineWithEvents";
 export { createTransform } from "./createTransform";
 export { createTransformJob } from "./createTransformJob";
+export { createTransformTag } from "./createTransformTag";
 export { editDashboardCard } from "./editDashboardCard";
 export { getCurrentUser } from "./getCurrentUser";
 export { remapDisplayValueToFK } from "./remapDisplayValueToFK";
