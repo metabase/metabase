@@ -17,13 +17,16 @@ describe("scenarios > admin > transforms", () => {
     H.activateToken("bleeding-edge");
     H.resyncDatabase({ dbId: WRITABLE_DB_ID });
 
+    cy.intercept("PUT", "/api/field/*").as("updateField");
     cy.intercept("POST", "/api/ee/transform").as("createTransform");
     cy.intercept("PUT", "/api/ee/transform/*").as("updateTransform");
     cy.intercept("DELETE", "/api/ee/transform/*").as("deleteTransform");
     cy.intercept("DELETE", "/api/ee/transform/*/table").as(
       "deleteTransformTable",
     );
-    cy.intercept("PUT", "/api/field/*").as("updateField");
+    cy.intercept("POST", "/api/ee/transform-tag").as("createTag");
+    cy.intercept("PUT", "/api/ee/transform-tag/*").as("updateTag");
+    cy.intercept("DELETE", "/api/ee/transform-tag/*").as("deleteTag");
   });
 
   describe("creation", () => {
@@ -120,20 +123,74 @@ describe("scenarios > admin > transforms", () => {
   });
 
   describe("tags", () => {
-    it("should be able to set tags", () => {
-      cy.log("TBD");
+    it("should be able to add and remove tags", () => {
+      createMbqlTransform({ visitTransform: true });
+      getTagMultiSelectField().click();
+
+      H.popover().within(() => {
+        cy.findByRole("option", { name: "daily" }).click();
+        cy.wait("@updateTransform");
+        assertOptionSelected("daily");
+        assertOptionNotSelected("weekly");
+
+        cy.findByRole("option", { name: "weekly" }).click();
+        cy.wait("@updateTransform");
+        assertOptionSelected("daily");
+        assertOptionSelected("weekly");
+
+        cy.findByRole("option", { name: "daily" }).click();
+        cy.wait("@updateTransform");
+        assertOptionNotSelected("daily");
+        assertOptionSelected("weekly");
+      });
     });
 
     it("should be able to create tags inline", () => {
-      cy.log("TBD");
+      createMbqlTransform({ visitTransform: true });
+      getTagMultiSelectField().type("New tag");
+      H.popover().findByText("New tag").click();
+      cy.wait("@createTag");
+      H.popover().findByText("New tag").should("be.visible");
+      H.undoToast().should("contain.text", "Transform tags updated");
     });
 
     it("should be able to update tags inline", () => {
-      cy.log("TBD");
+      createMbqlTransform({ visitTransform: true });
+
+      getTagMultiSelectField().click();
+      H.popover()
+        .findByRole("option", { name: "daily" })
+        .findByLabelText("Rename tag")
+        .click({ force: true });
+      H.modal().within(() => {
+        cy.findByLabelText("Name").clear().type("daily2");
+        cy.button("Save").click();
+        cy.wait("@updateTag");
+      });
+
+      getTagMultiSelectField().click();
+      H.popover().findByText("daily2").should("be.visible");
     });
 
     it("should be able to delete tags inline", () => {
-      cy.log("TBD");
+      createMbqlTransform({ visitTransform: true });
+
+      getTagMultiSelectField().click();
+      H.popover()
+        .findByRole("option", { name: "daily" })
+        .findByLabelText("Delete tag")
+        .click({ force: true });
+      H.modal().within(() => {
+        cy.button("Delete tag").click();
+        cy.wait("@deleteTag");
+      });
+      H.undoToast().should("contain.text", "Transform tags updated");
+
+      getTagMultiSelectField().click();
+      H.popover().within(() => {
+        cy.findByText("hourly").should("be.visible");
+        cy.findByText("daily").should("not.exist");
+      });
     });
   });
 
@@ -428,6 +485,10 @@ function getQueryVisualization() {
   return cy.findByTestId("query-visualization-root");
 }
 
+function getTagMultiSelectField() {
+  return cy.findByPlaceholderText("Add tags");
+}
+
 function visitTransformListPage() {
   return cy.visit("/admin/transforms");
 }
@@ -498,4 +559,20 @@ function assertTableDoesNotExistError({
   getQueryVisualization()
     .contains(`"${targetSchema}.${targetTable}" does not exist`)
     .should("be.visible");
+}
+
+function assertOptionSelected(name: string) {
+  cy.findByRole("option", { name }).should(
+    "have.attr",
+    "aria-selected",
+    "true",
+  );
+}
+
+function assertOptionNotSelected(name: string) {
+  cy.findByRole("option", { name }).should(
+    "not.have.attr",
+    "aria-selected",
+    "true",
+  );
 }

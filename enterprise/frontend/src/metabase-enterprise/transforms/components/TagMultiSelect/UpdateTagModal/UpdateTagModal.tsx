@@ -66,18 +66,28 @@ function UpdateTagForm({ tag, onUpdate, onClose }: UpdateTagFormProps) {
       validationSchema={UPDATE_TAG_SCHEMA}
       onSubmit={handleSubmit}
     >
-      <Form>
-        <Stack gap="lg">
-          <FormTextInput name="name" label={t`Name`} placeholder={t`My tag`} />
-          <Group>
-            <Box flex={1}>
-              <FormErrorMessage />
-            </Box>
-            <Button onClick={onClose}>{t`Cancel`}</Button>
-            <FormSubmitButton label={t`Save`} variant="filled" />
-          </Group>
-        </Stack>
-      </Form>
+      {({ dirty }) => (
+        <Form>
+          <Stack gap="lg">
+            <FormTextInput
+              name="name"
+              label={t`Name`}
+              placeholder={t`My tag`}
+            />
+            <Group>
+              <Box flex={1}>
+                <FormErrorMessage />
+              </Box>
+              <Button onClick={onClose}>{t`Cancel`}</Button>
+              <FormSubmitButton
+                label={t`Save`}
+                variant="filled"
+                disabled={!dirty}
+              />
+            </Group>
+          </Stack>
+        </Form>
+      )}
     </FormProvider>
   );
 }

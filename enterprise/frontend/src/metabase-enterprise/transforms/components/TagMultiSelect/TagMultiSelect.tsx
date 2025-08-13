@@ -114,6 +114,7 @@ export function TagMultiSelect({ tagIds, onChange }: TagMultiSelectProps) {
             />
           )
         }
+        aria-label={t`Tags`}
         onChange={handleChange}
         onSearchChange={setSearchValue}
       />
