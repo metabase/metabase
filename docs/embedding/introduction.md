@@ -18,6 +18,12 @@ With the [Embedded analytics SDK](./sdk/introduction.md), you can embed individu
 
 **When to use the Embedded analytics SDK**: you want the most control over how you embed Metabase in your React app.
 
+## Embedded analytics JS
+
+With [Embedded analytics JS](./embedded-analytics-js.md), you can embed individual Metabase components in your web app with JavaScript — no React required. Choose from dashboards, questions, or the query builder, and configure per‑component options like drill‑through, parameters, downloads, and theming.
+
+**When to use Embedded analytics JS**: you’re not using React (or want a drop‑in script) and want to embed Metabase components with per‑component controls and theming.
+
 ## Interactive embedding
 
 Interactive embedding is the only kind of embedding that [integrates with SSO and data permissions](./interactive-embedding.md) to enable true self-service access to the underlying data.
