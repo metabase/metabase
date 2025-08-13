@@ -294,6 +294,7 @@ export const MetabotComponent = memo(
             <Box
               className={Styles.placeholder}
               hidden={!!node.content.content.length}
+              contentEditable={false}
             >
               {t`Ask Metabot to generate a chart for you, and use @ to select a specific Database to use`}
             </Box>
@@ -302,7 +303,7 @@ export const MetabotComponent = memo(
               className={Styles.codeBlockTextArea}
             />
           </Flex>
-          <Flex px="md" pb="md" pt="sm" gap="sm">
+          <Flex px="md" pb="md" pt="sm" gap="sm" contentEditable={false}>
             <Flex flex={1} my="auto">
               {isLoading ? (
                 <Text
