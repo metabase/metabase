@@ -47,7 +47,7 @@ const setupConfigWatcher = () => {
       return proxyConfig;
     },
     set(newVal: Record<string, unknown>) {
-      assertFieldCanbeUpdated(newVal);
+      assertFieldCanBeUpdated(newVal);
 
       currentConfig = { ...currentConfig, ...newVal };
       proxyConfig = createProxy(currentConfig);
@@ -62,7 +62,7 @@ const setupConfigWatcher = () => {
 };
 
 export const updateAllEmbeds = (config: Partial<SdkIframeEmbedSettings>) => {
-  assertFieldCanbeUpdated(config);
+  assertFieldCanBeUpdated(config);
 
   _activeEmbeds.forEach((embedElement) => {
     embedElement._updateSettings(config);
@@ -85,7 +85,7 @@ const raiseError = (message: string) => {
   throw new MetabaseError("EMBED_ERROR", message);
 };
 
-function assertFieldCanbeUpdated(newValues: Partial<SdkIframeEmbedSettings>) {
+function assertFieldCanBeUpdated(newValues: Partial<SdkIframeEmbedSettings>) {
   const currentConfig = (window as any).metabaseConfig || {};
   for (const field of DISABLE_UPDATE_FOR_KEYS) {
     if (
@@ -237,9 +237,13 @@ export abstract class MetabaseEmbedElement extends HTMLElement {
       this.id = `metabase-embed-${Math.random().toString(36).slice(2)}`;
     }
 
-    this._setup();
+    try {
+      this._setup();
 
-    registerEmbed(this);
+      registerEmbed(this);
+    } catch (error) {
+      console.error("[metabase.embed.error]", error);
+    }
   }
 
   disconnectedCallback() {
