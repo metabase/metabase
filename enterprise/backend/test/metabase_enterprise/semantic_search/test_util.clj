@@ -1,8 +1,9 @@
 (ns metabase-enterprise.semantic-search.test-util
   (:require
    #_[clojure.string :as str]
-   #_[clojure.test :refer :all]   #_[metabase.util :as u]
-   [environ.core :refer [env]]
+   #_[environ.core :refer [env]]
+   #_[metabase.util :as u]
+   [clojure.test :refer :all]
    [honey.sql :as sql]
    [honey.sql.helpers :as sql.helpers]
    [metabase-enterprise.semantic-search.core]
