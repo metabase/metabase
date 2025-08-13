@@ -3,14 +3,13 @@
   (:require
    [clojure.test :refer :all]
    [medley.core :as m]
+   [metabase.driver :as driver]
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
-   [metabase.lib.card :as lib.card]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.add-remaps :as qp.add-remaps]
-   [metabase.query-processor.middleware.add-source-metadata :as qp.add-source-metadata]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
@@ -296,22 +295,20 @@
                     :breakout     [[:field %latitude {:binning {:strategy :default}}]]}
                    :order-by [[:asc $latitude]]}))))))))
 
-(deftest bin-nested-queries-no-fingerprint-test
+(deftest ^:parallel bin-nested-queries-no-fingerprint-test
   (mt/test-drivers (mt/normal-drivers-with-feature :binning :nested-queries)
     (testing "Binning is not supported when there is no fingerprint to determine boundaries"
-      ;; Unfortunately our new `add-source-metadata` middleware is just too good at what it does and will pull in
-      ;; metadata from the source query, so disable that for now so we can make sure the `update-binning-strategy`
-      ;; middleware is doing the right thing
-      (with-redefs [lib.card/card-metadata-columns                     (constantly nil)
-                    qp.add-source-metadata/mbql-source-query->metadata (constantly nil)]
-        (qp.store/with-metadata-provider (qp.test-util/metadata-provider-with-cards-for-queries
-                                          [(mt/mbql-query venues)])
-          (is (thrown-with-msg?
-               Exception
-               #"Cannot update binned field: query is missing source-metadata"
-               (qp.test-util/rows
-                (qp/process-query
-                 (nested-venues-query 1))))))))))
+      (qp.store/with-metadata-provider (-> (qp.test-util/metadata-provider-with-cards-for-queries
+                                            [(mt/mbql-query venues)])
+                                           (lib.tu/merged-mock-metadata-provider
+                                            {:fields [{:id          (mt/id :venues :latitude)
+                                                       :fingerprint nil}]}))
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"\QUnable to bin Field without a min/max value (missing or incomplete fingerprint)\E"
+             (qp.test-util/rows
+              (qp/process-query
+               (nested-venues-query 1)))))))))
 
 (deftest ^:parallel field-in-breakout-and-fields-test
   (mt/test-drivers (mt/normal-drivers)
@@ -323,6 +320,7 @@
                 {:breakout [$price]
                  :fields   [$price]})))))))
 
+;;; TODO (Cam 8/6/25) -- move this and other binning-related tests to `binning-test`
 (deftest ^:parallel binning-with-source-card-with-explicit-joins-test
   (testing "Make sure binning works with a source card that contains explicit joins"
     (mt/test-drivers (mt/normal-drivers-with-feature :binning :nested-queries :left-join)
@@ -350,4 +348,18 @@
                   _                (is (some? binning-strategy))
                   query            (-> query
                                        (lib/breakout (lib/with-binning people-longitude binning-strategy)))]
-              (mt/rows (qp/process-query query)))))))))
+              ;; only check the query for H2; other databases might name `LONGITUDE` differently
+              (when (= driver/*driver* :h2)
+                (is (=? {:stages [{:source-card 1
+                                   :aggregation [[:count {}]]
+                                   :breakout    [[:field
+                                                  {:binning {:strategy :bin-width, :bin-width 20.0}}
+                                                  "People__LONGITUDE"]]}]}
+                        query)))
+              (is (= [[-180.0 75]
+                      [-160.0 383]
+                      [-140.0 879]
+                      [-120.0 3803]
+                      [-100.0 11345]
+                      [-80.0  2275]]
+                     (mt/formatted-rows [1.0 int] (qp/process-query query)))))))))))

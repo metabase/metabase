@@ -63,7 +63,6 @@ interface CommandOption {
   icon?: IconName;
   text?: string;
   label: string;
-  description?: string;
   command: string;
 }
 
@@ -111,11 +110,6 @@ const CommandMenuItem = forwardRef<
           <Text size="md" lh="lg" c="inherit">
             {option.label}
           </Text>
-          {option.description && (
-            <Text size="sm" c="text-light" lh="md">
-              {option.description}
-            </Text>
-          )}
         </Stack>
       </Group>
     </UnstyledButton>
@@ -153,19 +147,16 @@ const CommandSuggestionComponent = forwardRef<
           {
             icon: "metabot",
             label: t`Ask Metabot`,
-            description: t`It wants to help!`,
             command: "metabot",
           },
           {
-            icon: "table",
-            label: t`Question`,
-            description: t`Add a visualization to your document`,
+            icon: "lineandbar",
+            label: t`Chart`,
             command: "embedQuestion",
           },
           {
             icon: "link",
-            label: t`Link to...`,
-            description: t`Link to questions, dashboards, and more`,
+            label: t`Link`,
             command: "linkTo",
           },
         ],

@@ -72,13 +72,16 @@
 
   activity-feed
   {:team "UX West"
-   :api #{metabase.activity-feed.api metabase.activity-feed.init}
+   :api #{metabase.activity-feed.api
+          metabase.activity-feed.core
+          metabase.activity-feed.init}
    :uses #{api
            app-db
            collections
            config
            events
            models
+           premium-features
            util}}
 
   analytics
@@ -1012,6 +1015,7 @@
            dashboards
            events
            models
+           queries
            query-permissions
            util}}
 
@@ -1642,13 +1646,15 @@
    :api #{metabase-enterprise.documents.api
           metabase-enterprise.documents.core
           metabase-enterprise.documents.init}
-   :uses #{api
+   :uses #{activity-feed
+           api
            app-db
            batch-processing
            collections
            events
            models
            permissions
+           premium-features
            queries
            query-permissions
            revisions

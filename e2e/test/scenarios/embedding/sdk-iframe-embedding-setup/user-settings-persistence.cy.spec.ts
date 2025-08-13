@@ -61,7 +61,7 @@ describe("scenarios > embedding > sdk iframe embed setup > user settings persist
     });
   });
 
-  it("persists chart embed options", () => {
+  it("persists chart embed options", { tags: "@flaky" }, () => {
     navigateToEmbedOptionsStep({
       experience: "chart",
       resourceName: QUESTION_NAME,

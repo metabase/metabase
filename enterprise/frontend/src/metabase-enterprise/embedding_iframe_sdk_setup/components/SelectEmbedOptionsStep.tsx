@@ -77,7 +77,9 @@ export const SelectEmbedOptionsStep = () => {
           </Text>
 
           <Text size="sm" c="text-medium" mb="lg">
-            {t`Set default values and control visibility`}
+            {experience === "dashboard"
+              ? t`Set default values and control visibility`
+              : t`Set default values for parameters`}
           </Text>
 
           <ParameterSettings />

@@ -19,3 +19,5 @@ serdes/meta:
 - id: linked_table
   model: Table
 database_require_filter: null
+archived_at: null
+deactivated_at: null

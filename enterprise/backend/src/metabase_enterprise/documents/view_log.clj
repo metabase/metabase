@@ -2,6 +2,7 @@
   "Integrates view logging events for documents"
   (:require
    [java-time.api :as t]
+   [metabase.activity-feed.core :as activity-feed]
    [metabase.app-db.cluster-lock :as cluster-lock]
    [metabase.batch-processing.core :as grouper]
    [metabase.events.core :as events]
@@ -58,5 +59,7 @@
       (view-log/increment-view-counts! :model/Document object-id)
       (update-document-last-viewed-at! object-id)
       (view-log/record-views! (view-log/generate-view :model :model/Document event))
+      ;; Update recent views alongside existing view log functionality
+      (activity-feed/update-users-recent-views! user-id :model/Document object-id :view)
       (catch Throwable e
         (log/warnf e "Failed to process document view event. %s" topic)))))

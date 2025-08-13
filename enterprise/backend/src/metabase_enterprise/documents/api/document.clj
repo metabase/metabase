@@ -31,6 +31,23 @@
    [:result_metadata {:optional true} [:maybe [:sequential ms/Map]]]
    [:cache_ttl {:optional true} [:maybe ms/PositiveInt]]])
 
+(def ^:private DocumentCreateOptions
+  [:map
+   [:name m.document/DocumentName]
+   [:document :any]
+   [:collection_id {:optional true} [:maybe ms/PositiveInt]]
+   [:collection_position {:optional true} [:maybe ms/PositiveInt]]
+   [:cards {:optional true} [:maybe [:map-of [:int {:max -1}] CardCreateSchema]]]])
+
+(def ^:private DocumentUpdateOptions
+  [:map
+   [:name {:optional true} m.document/DocumentName]
+   [:document {:optional true} :any]
+   [:collection_id {:optional true} [:maybe ms/PositiveInt]]
+   [:collection_position {:optional true} [:maybe ms/PositiveInt]]
+   [:cards {:optional true} [:maybe [:map-of :int CardCreateSchema]]]
+   [:archived {:optional true} [:maybe :boolean]]])
+
 (defn- create-card!
   "Checks that the query is runnable by the current user then saves"
   [{query :dataset_query :as card} creator]
@@ -113,7 +130,7 @@
   [id]
   (u/prog1 (api/check-404
             (api/read-check
-             (t2/hydrate (t2/select-one :model/Document :id id) :creator :can_write)))
+             (t2/hydrate (t2/select-one :model/Document :id id) :creator :can_write :can_delete :can_restore)))
     (events/publish-event! :event/document-read
                            {:object-id id
                             :user-id api/*current-user-id*})))
@@ -131,13 +148,7 @@
   "Create a new `Document`."
   [_route-params
    _query-params
-   {:keys [name document collection_id collection_position cards]}
-   :- [:map
-       [:name ms/NonBlankString]
-       [:document :any]
-       [:collection_id {:optional true} [:maybe ms/PositiveInt]]
-       [:collection_position {:optional true} [:maybe ms/PositiveInt]]
-       [:cards {:optional true} [:maybe [:map-of [:int {:max -1}] CardCreateSchema]]]]]
+   {:keys [name document collection_id collection_position cards]} :- DocumentCreateOptions]
   (collection/check-write-perms-for-collection collection_id)
   (let [document-id (t2/with-transaction [_conn]
                       (when collection_position
@@ -179,13 +190,7 @@
   [{:keys [document-id]} :- [:map
                              [:document-id ms/PositiveInt]]
    _query-params
-   {:keys [name document collection_id collection_position cards] :as body} :- [:map
-                                                                                [:name {:optional true} ms/NonBlankString]
-                                                                                [:document {:optional true} :any]
-                                                                                [:collection_id {:optional true} [:maybe ms/PositiveInt]]
-                                                                                [:collection_position {:optional true} [:maybe ms/PositiveInt]]
-                                                                                [:cards {:optional true} [:maybe [:map-of :int CardCreateSchema]]]
-                                                                                [:archived {:optional true} [:maybe :boolean]]]]
+   {:keys [name document collection_id collection_position cards] :as body} :- DocumentUpdateOptions]
   (let [existing-document (api/check-404 (get-document document-id))]
     (api/check-403 (mi/can-write? existing-document))
     (when (api/column-will-change? :collection_id existing-document body)

@@ -8,18 +8,29 @@ import { collectionApi } from "metabase/api/collection";
 import { dashboardApi } from "metabase/api/dashboard";
 import { databaseApi } from "metabase/api/database";
 import { tableApi } from "metabase/api/table";
-import { getIcon } from "metabase/lib/icon";
-import { modelToUrl } from "metabase/lib/urls/modelToUrl";
+import {
+  type IconModel,
+  type ObjectWithModel,
+  getIcon,
+} from "metabase/lib/icon";
+import { type UrlableModel, modelToUrl } from "metabase/lib/urls/modelToUrl";
 import { extractEntityId } from "metabase/lib/urls/utils";
 import { Icon } from "metabase/ui";
-import type { SearchModel } from "metabase-types/api";
+import { updateMentionsCache } from "metabase-enterprise/documents/documents.slice";
+import { useDocumentsDispatch } from "metabase-enterprise/documents/redux-utils";
+import type {
+  Card,
+  CardDisplayType,
+  Collection,
+  Dashboard,
+  Database,
+  SearchModel,
+  Table,
+} from "metabase-types/api";
 
 import styles from "./SmartLinkNode.module.css";
 
-export interface SmartLinkAttributes {
-  entityId: number;
-  model: string;
-}
+type SmartLinkEntity = Card | Dashboard | Collection | Table | Database;
 
 // Utility function to parse entity URLs and extract entityId and model
 export function parseEntityUrl(
@@ -115,7 +126,6 @@ export const SmartLinkNode = Node.create<{
         default: null,
         parseHTML: (element) => element.getAttribute("data-model"),
       },
-      name: {},
     };
   },
 
@@ -245,15 +255,18 @@ const useEntityData = (entityId: number | null, model: SearchModel | null) => {
 };
 
 export const SmartLinkComponent = memo(
-  ({ node, updateAttributes }: NodeViewProps) => {
+  ({ node }: NodeViewProps) => {
     const { entityId, model } = node.attrs;
     const { entity, isLoading, error } = useEntityData(entityId, model);
 
+    const documentsDispatch = useDocumentsDispatch();
     useEffect(() => {
-      setTimeout(() => {
-        updateAttributes({ name: entity?.name });
-      }, 10); // setTimeout prevents `flushSync was called from inside a lifecycle method` error
-    }, [updateAttributes, entity?.name]);
+      if (entity?.name) {
+        documentsDispatch(
+          updateMentionsCache({ entityId, model, name: entity.name }),
+        );
+      }
+    }, [documentsDispatch, entity?.name, entityId, model]);
 
     if (isLoading) {
       return (
@@ -281,22 +294,10 @@ export const SmartLinkComponent = memo(
       );
     }
 
-    const entityUrl = modelToUrl({
-      id: entity.id,
-      model: entity.model || model,
-      name: entity.name,
-      database: entity.db_id
-        ? { id: entity.db_id }
-        : entity.database_id
-          ? { id: entity.database_id }
-          : undefined,
-    });
+    const entityUrlableModel = entityToUrlableModel(entity, model);
+    const entityUrl = modelToUrl(entityUrlableModel);
 
-    const iconData = getIcon({
-      model: entity.model || model,
-      display: entity.display,
-      is_personal: entity.is_personal,
-    });
+    const iconData = getIcon(entityToObjectWithModel(entity, model));
 
     return (
       <NodeViewWrapper as="span">
@@ -330,3 +331,37 @@ export const SmartLinkComponent = memo(
 );
 
 SmartLinkComponent.displayName = "SmartLinkComponent";
+
+function entityToUrlableModel(
+  entity: SmartLinkEntity,
+  model: SearchModel | null,
+): UrlableModel {
+  const result: UrlableModel = {
+    id: entity.id as number, // it is string | number in reality, but then gets casted to a string in "modelToUrl"
+    model: (entity as Dashboard).model || model || "",
+    name: entity.name,
+  };
+
+  if ("db_id" in entity && entity.db_id) {
+    result.database = {
+      id: entity.db_id,
+    };
+  }
+
+  if ("database_id" in entity && entity.database_id) {
+    result.database = { id: entity.database_id };
+  }
+
+  return result;
+}
+
+function entityToObjectWithModel(
+  entity: SmartLinkEntity,
+  model: SearchModel | null,
+): ObjectWithModel {
+  return {
+    model: ((entity as Dashboard).model || model || "") as IconModel,
+    display: (entity as Card).display as CardDisplayType,
+    is_personal: (entity as Collection).is_personal,
+  };
+}

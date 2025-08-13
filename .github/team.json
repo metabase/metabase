@@ -79,7 +79,11 @@
     {
       "name": "Product Growth",
       "label": ".Team/ProductGrowth",
-      "members": ["nemanjaglumac", "chodorowicz"]
+      "members": [
+        "nemanjaglumac",
+        "chodorowicz",
+        "andsalves"
+      ]
     },
     {
       "name": "Cloud",

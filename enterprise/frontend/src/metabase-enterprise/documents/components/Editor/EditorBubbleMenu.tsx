@@ -1,6 +1,7 @@
+/* eslint-disable import/no-unresolved */ // -- this is a valid import for Tiptap's BubbleMenu
 import type { EditorState } from "@tiptap/pm/state";
 import type { Editor as TiptapEditor } from "@tiptap/react";
-// eslint-disable-next-line import/no-unresolved
+// @ts-expect-error - BubbleMenu is a Tiptap extension that is registered through @tiptap/extension-bubble-menu
 import { BubbleMenu } from "@tiptap/react/menus";
 import type React from "react";
 import { t } from "ttag";
@@ -75,6 +76,7 @@ export const EditorBubbleMenu: React.FC<EditorBubbleMenuProps> = ({
           borderRadius: "6px",
           boxShadow: "0 2px 12px var(--mb-color-shadow)",
         }}
+        data-testid="document-formatting-menu"
       >
         <FormatButton
           isActive={editor.isActive("bold")}

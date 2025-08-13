@@ -75,3 +75,8 @@ export const getCardWithDraft = createSelector(
     return card;
   },
 );
+
+export const getMentionsCache = createSelector(
+  getDocumentsState,
+  (documents) => documents.mentionsCache,
+);

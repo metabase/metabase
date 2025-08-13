@@ -1,4 +1,4 @@
-import { Node, mergeAttributes } from "@tiptap/core";
+import { type JSONContent, Node, mergeAttributes } from "@tiptap/core";
 import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
 import { Selection } from "@tiptap/pm/state";
 import {
@@ -11,7 +11,6 @@ import { memo, useEffect, useRef, useState } from "react";
 import { useLatest } from "react-use";
 import { t } from "ttag";
 
-import { useUniqueId } from "metabase/common/hooks/use-unique-id";
 import CS from "metabase/css/core/index.css";
 import { Box, Button, Flex, Icon, Text, Tooltip } from "metabase/ui";
 import { useLazyMetabotDocumentNodeQuery } from "metabase-enterprise/api/metabot";
@@ -26,10 +25,16 @@ import type { Card, MetabotDocumentNodeRequest } from "metabase-types/api";
 
 import Styles from "./MetabotEmbed.module.css";
 
-const createTextNode = (str: string) => ({
-  type: "paragraph",
-  content: [{ type: "text", text: str }],
-});
+const createTextNode = (text: string, marks?: JSONContent["marks"]) => {
+  return { type: "text", text, marks };
+};
+
+// unsets bold/italic/etc when user edits around `content`
+const padWithUnstyledText = (content: JSONContent): JSONContent[] => [
+  createTextNode(" "),
+  content,
+  createTextNode(" "),
+];
 
 export type PromptSerializer = (
   node: ProseMirrorNode,
@@ -56,14 +61,6 @@ export const MetabotNode = Node.create<{
     };
   },
 
-  addAttributes() {
-    return {
-      id: {
-        default: null,
-      },
-    };
-  },
-
   addKeyboardShortcuts() {
     return {
       // run metabot on mod-Enter
@@ -75,10 +72,7 @@ export const MetabotNode = Node.create<{
         if (!empty || $from.parent.type !== this.type) {
           return false;
         }
-        const targetId = $from.parent.attrs.id;
-        if (targetId) {
-          editor.emit("runMetabot", targetId);
-        }
+        editor.emit("runMetabot", $from.parent);
         return true;
       },
 
@@ -130,12 +124,11 @@ export const MetabotNode = Node.create<{
     return ReactNodeViewRenderer(MetabotComponent);
   },
 
-  renderHTML({ node, HTMLAttributes }) {
+  renderHTML({ HTMLAttributes }) {
     return [
       "div",
       mergeAttributes(HTMLAttributes, {
         "data-type": "metabot",
-        "data-text": node.attrs.text,
       }),
       0,
     ];
@@ -143,26 +136,12 @@ export const MetabotNode = Node.create<{
 });
 
 export const MetabotComponent = memo(
-  ({
-    editor,
-    getPos,
-    deleteNode,
-    node,
-    updateAttributes,
-    extension,
-  }: NodeViewProps) => {
+  ({ editor, getPos, deleteNode, node, extension }: NodeViewProps) => {
     const documentsDispatch = useDocumentsDispatch();
     const controllerRef = useRef<AbortController | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [errorText, setErrorText] = useState("");
     const [queryMetabot] = useLazyMetabotDocumentNodeQuery();
-
-    const id = useUniqueId();
-    useEffect(() => {
-      setTimeout(() => {
-        updateAttributes({ id });
-      }, 10); // setTimeout prevents `flushSync was called from inside a lifecycle method` error
-    }, [updateAttributes, id]);
 
     const handleRunMetabot = async () => {
       const serializePrompt =
@@ -248,8 +227,19 @@ export const MetabotComponent = memo(
             id: newCardId,
           },
         },
-        createTextNode(data.description),
-        createTextNode(`🤖 ${t`Created with Metabot`} 💙`),
+        {
+          type: "paragraph",
+          content: [createTextNode(data.description)],
+        },
+        {
+          type: "paragraph",
+          content: padWithUnstyledText(
+            createTextNode(t`Created with Metabot`, [
+              { type: "bold" },
+              { type: "italic" },
+            ]),
+          ),
+        },
       ]);
 
       deleteNode();
@@ -261,14 +251,14 @@ export const MetabotComponent = memo(
       setErrorText("");
     };
 
-    const onRunMetabotRef = useLatest((targetId: string) => {
-      if (targetId === id) {
+    const onRunMetabotRef = useLatest((target: ProseMirrorNode) => {
+      if (target === node) {
         handleRunMetabot();
       }
     });
     useEffect(() => {
-      const onRunMetabot = (targetId: string) => {
-        onRunMetabotRef.current(targetId);
+      const onRunMetabot = (target: ProseMirrorNode) => {
+        onRunMetabotRef.current(target);
       };
       editor.on("runMetabot", onRunMetabot);
       return () => {
