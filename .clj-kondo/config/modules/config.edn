@@ -1864,6 +1864,7 @@
            lib
            models
            permissions
+           premium-features
            query-processor
            settings
            sync
