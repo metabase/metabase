@@ -57,8 +57,6 @@
                               :now                                    true
                               :regex                                  false
                               :test/jvm-timezone-setting              false
-                              :transforms/table true
-                              :transforms/view true
                               :metadata/table-existence-check true}]
   (defmethod driver/database-supports? [:sqlserver feature] [_driver _feature _db] supported?))
 
@@ -950,17 +948,17 @@
     [(str/replace query #"\bFROM\b(?!.*\bFROM\b)" (str " INTO " table-name " FROM "))]))
 
 (defmethod driver/table-exists? :sqlserver
-    [driver database {:keys [schema name] :as _table}]
-    (sql-jdbc.execute/do-with-connection-with-options
-     driver
-     database
-     nil
-     (fn [^Connection conn]
-       (let [^DatabaseMetaData metadata (.getMetaData conn)
+  [driver database {:keys [schema name] :as _table}]
+  (sql-jdbc.execute/do-with-connection-with-options
+   driver
+   database
+   nil
+   (fn [^Connection conn]
+     (let [^DatabaseMetaData metadata (.getMetaData conn)
              ;; SQL Server doesn't have a special escape method, but we should still handle nil
-             schema-name (some->> schema (driver/escape-entity-name-for-metadata driver))
-             table-name (some->> name (driver/escape-entity-name-for-metadata driver))
+           schema-name (some->> schema (driver/escape-entity-name-for-metadata driver))
+           table-name (some->> name (driver/escape-entity-name-for-metadata driver))
              ;; SQL Server uses the database name from the connection, not as a parameter
-             db-name nil]
-         (with-open [rs (.getTables metadata db-name schema-name table-name (into-array String ["TABLE"]))]
-           (.next rs))))))
+           db-name nil]
+       (with-open [rs (.getTables metadata db-name schema-name table-name (into-array String ["TABLE"]))]
+         (.next rs))))))

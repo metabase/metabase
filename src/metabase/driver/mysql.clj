@@ -88,8 +88,6 @@
                               :window-functions/offset                false
                               :expression-literals                    true
                               :database-routing                       true
-                              :transforms/table                       true
-                              :transforms/view true
                               :metadata/table-existence-check true}]
   (defmethod driver/database-supports? [:mysql feature] [_driver _feature _db] supported?))
 

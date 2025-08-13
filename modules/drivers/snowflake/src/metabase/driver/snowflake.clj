@@ -65,8 +65,6 @@
                               :split-part                             true
                               :now                                    true
                               :database-routing                       true
-                              :transforms/table true
-                              :transforms/view true
                               :metadata/table-existence-check true}]
   (defmethod driver/database-supports? [:snowflake feature] [_driver _feature _db] supported?))
 

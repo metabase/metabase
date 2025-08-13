@@ -25,8 +25,7 @@
 
 (doseq [[feature supported?] {:set-timezone            true
                               :expression-aggregations true
-                              :expression-literals     true
-                              :transforms/table        true}]
+                              :expression-literals     true}]
   (defmethod driver/database-supports? [:druid-jdbc feature] [_driver _feature _db] supported?))
 
 (defmethod sql-jdbc.conn/connection-details->spec :druid-jdbc
