@@ -8,19 +8,23 @@
    [toucan2.core :as t2]))
 
 (mr/def ::input-type
-  [:enum
-   {:encode/api name
-    :decode/api #(keyword "input" %)}
+  ;; TODO this is a clumsy workaround due to the api encoders not being run for some reason
+  (mapv
+   #(if (keyword? %) (keyword (name %)) %)
 
-   :input/boolean
-   :input/date
-   :input/datetime
-   :input/dropdown
-   :input/float
-   :input/integer
-   :input/text
-   :input/textarea
-   :input/time])
+   [:enum
+    {:encode/api name
+     :decode/api #(keyword "input" %)}
+
+    :input/boolean
+    :input/date
+    :input/datetime
+    :input/dropdown
+    :input/float
+    :input/integer
+    :input/text
+    :input/textarea
+    :input/time]))
 
 (mr/def ::describe-param
   [:map #_{:closed true}
@@ -121,7 +125,8 @@
                          {:id                      (:name field)
                           :display_name            (:display_name field)
                           :semantic_type           (:semantic_type field)
-                          :input_type              (field-input-type field field-values)
+                          ;; TODO we are manually removing the namespace due to an issue with encoder/api not running
+                          :input_type              (keyword (name (field-input-type field field-values)))
                           :field_id                (:id field)
                           :human_readable_field_id (-> field :dimensions first :human_readable_field_id)
                           :optional                (not required)
