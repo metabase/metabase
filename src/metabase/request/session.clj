@@ -46,7 +46,7 @@
 
 (mu/defn do-with-current-user
   "Impl for [[with-current-user]]."
-  [{:keys [metabase-user-id is-superuser? user-locale settings is-group-manager?], :as current-user-info} :- ::request.schema/current-user-info
+  [{:keys [metabase-user-id is-superuser? user-locale settings is-group-manager?], :as current-user-info} :- [:maybe ::request.schema/current-user-info]
    thunk]
   (binding [*current-user-id*              metabase-user-id
             i18n/*user-locale*             user-locale
