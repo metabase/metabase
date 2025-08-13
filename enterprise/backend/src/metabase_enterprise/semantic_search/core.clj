@@ -97,8 +97,7 @@
   (let [pgvector        (semantic.env/get-pgvector-datasource!)
         index-metadata  (semantic.env/get-index-metadata)
         embedding-model (semantic.env/get-configured-embedding-model)]
-    (semantic.db.connection/with-migrate-tx [tx]
-      (semantic.pgvector-api/init-semantic-search! tx index-metadata embedding-model))
+    (semantic.pgvector-api/init-semantic-search! pgvector index-metadata embedding-model)
     (semantic.pgvector-api/index-documents! pgvector index-metadata searchable-documents)))
 
 (defenterprise reindex!
@@ -109,8 +108,7 @@
         index-metadata (semantic.env/get-index-metadata)
         embedding-model (semantic.env/get-configured-embedding-model)]
     ;; todo force a new index
-    (semantic.db.connection/with-migrate-tx [tx]
-      (semantic.pgvector-api/init-semantic-search! tx index-metadata embedding-model))
+    (semantic.pgvector-api/init-semantic-search! pgvector index-metadata embedding-model)
     (semantic.pgvector-api/index-documents! pgvector index-metadata searchable-documents)))
 
 ;; TODO: implement

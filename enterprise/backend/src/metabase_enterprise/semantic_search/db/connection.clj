@@ -11,15 +11,11 @@
     (jdbc/get-connection (semantic.db.datasource/ensure-initialized-data-source!)))
 
 (defn do-with-migrate-tx
-  [conn thunk]
-  (if (nil? conn)
-    (jdbc/with-transaction [tx (semantic.db.datasource/ensure-initialized-data-source!)]
-      (semantic.db.locking/acquire-migration-lock! tx)
-      (thunk tx))
-    (do
-      (semantic.db.util/tx-or-throw! conn)
-      (semantic.db.locking/acquire-migration-lock! conn)
-      (thunk conn))))
+  [conn-or-ds thunk]
+  (jdbc/with-transaction [tx (or conn-or-ds
+                                 (semantic.db.datasource/ensure-initialized-data-source!))]
+    (semantic.db.locking/acquire-migration-lock! tx)
+    (thunk tx)))
 
 (defmacro with-migrate-tx
   [[conn-sym & [conn-expr]] & body]

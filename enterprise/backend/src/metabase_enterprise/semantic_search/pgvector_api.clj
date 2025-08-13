@@ -58,10 +58,11 @@
   Returns the index that you can use with semantic.search.index functions to operate on the index.
 
   Designed to be called once at application startup (or in tests)."
-  [tx index-metadata embedding-model]
-  (semantic.db.migration/maybe-migrate! tx {:index-metadata index-metadata
-                                            :embedding-model embedding-model})
-  (initialize-index! tx index-metadata embedding-model))
+  [pgvector index-metadata embedding-model]
+  (semantic.db.connection/with-migrate-tx [tx pgvector]
+    (semantic.db.migration/maybe-migrate! tx {:index-metadata index-metadata
+                                              :embedding-model embedding-model})
+    (initialize-index! tx index-metadata embedding-model)))
 
 ;; query/index-mgmt require an active index to be established first.
 ;; init-semantic-search! must be called on startup
