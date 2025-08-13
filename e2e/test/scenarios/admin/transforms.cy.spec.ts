@@ -779,7 +779,7 @@ describe("scenarios > admin > transforms > runs", () => {
     H.resyncDatabase({ dbId: WRITABLE_DB_ID });
   });
 
-  it("should show run history with the ability to filter", () => {
+  it("should be able to filter runs", () => {
     function createInitialData() {
       H.createTransformTag({ name: "tag1" }).then(({ body: tag1 }) => {
         H.createTransformTag({ name: "tag2" }).then(({ body: tag2 }) => {
@@ -912,10 +912,64 @@ describe("scenarios > admin > transforms > runs", () => {
       });
     }
 
+    function testTagFilter() {
+      cy.log("no filters");
+      getContentTable().within(() => {
+        cy.findByText("MBQL transform").should("be.visible");
+        cy.findByText("SQL transform").should("be.visible");
+      });
+
+      cy.log("tag filter - add a filter");
+      getTagFilterWidget().click();
+      H.popover().within(() => {
+        cy.findByText("tag1").click();
+        cy.button("Add filter").click();
+      });
+      getTagFilterWidget().findByText("tag1").should("be.visible");
+      getContentTable().within(() => {
+        cy.findByText("MBQL transform").should("be.visible");
+        cy.findByText("SQL transform").should("not.exist");
+      });
+
+      cy.log("tag filter - update a filter");
+      getTagFilterWidget().click();
+      H.popover().within(() => {
+        cy.findByText("tag1").click();
+        cy.findByText("tag2").click();
+        cy.button("Update filter").click();
+      });
+      getTagFilterWidget().findByText("tag2").should("be.visible");
+      getContentTable().within(() => {
+        cy.findByText("MBQL transform").should("not.exist");
+        cy.findByText("SQL transform").should("be.visible");
+      });
+
+      cy.log("tag filter - multiple options");
+      getTagFilterWidget().click();
+      H.popover().within(() => {
+        cy.findByText("tag1").click();
+        cy.button("Update filter").click();
+      });
+      getTagFilterWidget().findByText("2 tags").should("be.visible");
+      getContentTable().within(() => {
+        cy.findByText("MBQL transform").should("be.visible");
+        cy.findByText("SQL transform").should("be.visible");
+      });
+
+      cy.log("tag filter - remove filter");
+      getTagFilterWidget().button("Remove filter").click();
+      getTagFilterWidget().findByText("2 tags").should("not.exist");
+      getContentTable().within(() => {
+        cy.findByText("MBQL transform").should("be.visible");
+        cy.findByText("SQL transform").should("be.visible");
+      });
+    }
+
     createInitialData();
     getNavSidebar().findByText("Runs").click();
     testTransformFilter();
     testStatusFilter();
+    testTagFilter();
   });
 });
 
@@ -991,7 +1045,7 @@ function getStatusFilterWidget() {
   return cy.findByRole("group", { name: "Status" });
 }
 
-function _getTagFilterWidget() {
+function getTagFilterWidget() {
   return cy.findByRole("group", { name: "Tags" });
 }
 
