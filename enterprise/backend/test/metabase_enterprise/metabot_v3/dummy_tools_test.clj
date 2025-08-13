@@ -2,11 +2,9 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.metabot-v3.dummy-tools :as dummy-tools]
-   [metabase.api.common :as api]
    [metabase.permissions.core :as perms]
    [metabase.test :as mt]
-   [metabase.test.fixtures :as fixtures]
-   [toucan2.core :as t2]))
+   [metabase.test.fixtures :as fixtures]))
 
 (use-fixtures :once (fixtures/initialize :db :test-users))
 
