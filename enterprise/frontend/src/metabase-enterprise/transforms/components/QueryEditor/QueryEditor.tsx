@@ -29,7 +29,7 @@ export function QueryEditor({
   onSave,
   onCancel,
 }: QueryEditorProps) {
-  const { question, isQueryDirty, setQuestion } = useQueryState(initialQuery);
+  const { question, setQuestion } = useQueryState(initialQuery);
   const { isInitiallyLoaded } = useQueryMetadata(question);
   const {
     result,
@@ -81,7 +81,7 @@ export function QueryEditor({
       <EditorHeader
         isNew={isNew}
         isSaving={isSaving}
-        canSave={canSave && (isNew || isQueryDirty)}
+        canSave={canSave}
         onSave={handleSave}
         onCancel={onCancel}
       />
