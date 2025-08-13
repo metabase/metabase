@@ -1,7 +1,7 @@
 const { H } = cy;
 
 import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
-import type { CardType } from "metabase-types/api";
+import type { CardType, TransformTagId } from "metabase-types/api";
 
 const DB_NAME = "Writable Postgres12";
 const SOURCE_TABLE = "Animals";
@@ -609,7 +609,7 @@ describe("scenarios > admin > transforms > jobs", () => {
 
   describe("creation", () => {
     it("should be able to create a job with default properties", () => {
-      visitTransformJobListPage();
+      visitJobListPage();
       getTransformJobListPage()
         .findByRole("link", { name: "Create a job" })
         .click();
@@ -628,7 +628,7 @@ describe("scenarios > admin > transforms > jobs", () => {
 
     it("should be able to create a job with custom property values", () => {
       createTransformTags(["main", "replica"]);
-      visitTransformJobListPage();
+      visitJobListPage();
       getTransformJobListPage()
         .findByRole("link", { name: "Create a job" })
         .click();
@@ -655,6 +655,27 @@ describe("scenarios > admin > transforms > jobs", () => {
         getCronInput().should("have.value", "0 * * * ?");
         cy.findByText("This job will run every hour").should("be.visible");
         cy.findByText("replica").should("be.visible");
+      });
+    });
+  });
+
+  describe("runs", () => {
+    it("should be able to manually run a job", () => {
+      H.createTransformTag({ name: "New tag" }).then(({ body: tag }) => {
+        createMbqlTransform({
+          tagIds: [tag.id],
+        });
+        H.createTransformJob(
+          { name: "New job", tag_ids: [tag.id] },
+          { visitTransformJob: true },
+        );
+      });
+      runAndWaitForSuccess();
+      getSidebar().findByText("Runs").click();
+      getContentTable().within(() => {
+        cy.findByText("MBQL transform").should("be.visible");
+        cy.findByText("Success").should("be.visible");
+        cy.findByText("Manual").should("be.visible");
       });
     });
   });
@@ -720,11 +741,15 @@ function getContentTable() {
   return cy.findByTestId("admin-content-table");
 }
 
+function getSidebar() {
+  return cy.findByTestId("transform-sidebar");
+}
+
 function visitTransformListPage() {
   return cy.visit("/admin/transforms");
 }
 
-function visitTransformJobListPage() {
+function visitJobListPage() {
   return cy.visit("/admin/transforms/jobs");
 }
 
@@ -742,11 +767,13 @@ function createMbqlTransform({
   sourceTable = SOURCE_TABLE,
   targetTable = TARGET_TABLE,
   targetSchema = TARGET_SCHEMA,
+  tagIds,
   visitTransform,
 }: {
   sourceTable?: string;
   targetTable?: string;
   targetSchema?: string;
+  tagIds?: TransformTagId[];
   visitTransform?: boolean;
 } = {}) {
   H.getTableId({ name: sourceTable }).then((tableId) => {
@@ -768,6 +795,7 @@ function createMbqlTransform({
           name: targetTable,
           schema: targetSchema,
         },
+        tag_ids: tagIds,
       },
       { wrapId: true, visitTransform },
     );

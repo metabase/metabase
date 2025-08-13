@@ -1,4 +1,4 @@
-import type { Transform } from "metabase-types/api";
+import type { TransformTag } from "metabase-types/api";
 
 export type TransformTagDetails = {
   name?: string;
@@ -10,14 +10,14 @@ export type CreateTransformTagOptions = {
 };
 
 export function createTransformTag(
-  { name = "New tag" }: TransformTagDetails,
+  { name = "New tag" }: TransformTagDetails = {},
   {
     wrapId = false,
     idAlias = "transformTagId",
   }: CreateTransformTagOptions = {},
-): Cypress.Chainable<Cypress.Response<Transform>> {
+): Cypress.Chainable<Cypress.Response<TransformTag>> {
   return cy
-    .request<Transform>("POST", "/api/ee/transform-tag", {
+    .request<TransformTag>("POST", "/api/ee/transform-tag", {
       name,
     })
     .then(({ body }) => {

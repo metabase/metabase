@@ -16,9 +16,9 @@ export function createTransformJob(
   {
     name = "New transform",
     description = null,
-    schedule,
+    schedule = "0 0 0 * * ? *",
     tag_ids,
-  }: TransformJobDetails,
+  }: TransformJobDetails = {},
   {
     wrapId = false,
     idAlias = "transformJobId",
