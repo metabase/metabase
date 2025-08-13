@@ -79,9 +79,7 @@
     (letfn [(migrate-and-get-db-version
               [attempted-version]
               (with-redefs [semantic.db.migration.impl/code-version attempted-version
-                            semantic.db.migration.impl/migrate-schema! (constantly nil)
-                                 ;; TODO:
-                            semantic.db.migration/maybe-migrate-dynamic-schema! (constantly 303)]
+                            semantic.db.migration.impl/migrate-schema! (constantly nil)]
                 (log.capture/with-log-messages-for-level [messages [metabase-enterprise.semantic-search.db.migration :info]]
                   (semantic.db.connection/with-migrate-tx [tx]
                     (semantic.db.migration/maybe-migrate! tx nil)
@@ -255,3 +253,42 @@
                     (map :columns/column_name)
                     sort
                     vec)))))))
+
+(deftest dynamic-schema-migraion-test
+  (when (and (= "openai" (semantic.settings/ee-embedding-provider))
+             (str/starts-with? (semantic.settings/ee-embedding-model) "text-embedding-3")
+             (string? (not-empty (semantic.settings/openai-api-key))))
+    (with-test-db "my_migration_testing_db"
+      (semantic.core/init! (eduction (take 3) (search.ingestion/searchable-documents)) nil)
+      ;; add column to index table
+      (let [original-code-version semantic.db.migration.impl/dynamic-code-version]
+        (with-redefs-fn {#'semantic.db.migration.impl/migrate-dynamic-schema!
+                         (fn [tx _opts]
+                           (let [table_names (->> (jdbc/execute! tx
+                                                                 (sql/format {:select [:table_name]
+                                                                              :from [:index_metadata]
+                                                                              :where [[:< :index_version semantic.db.migration.impl/dynamic-code-version]]
+                                                                              :group-by [:table_name]}))
+                                                  (map :index_metadata/table_name)
+                                                  set)]
+                             (doseq [table_name table_names]
+                               (jdbc/execute! tx (sql/format {:alter-table [table_name] :add-column [[:new_col :int]]})))
+                             (jdbc/execute! tx (sql/format {:update :index_metadata
+                                                            :set {:index_version semantic.db.migration.impl/dynamic-code-version}
+                                                            :where [[:in :table_name table_names]]}))))
+                         #'semantic.db.migration.impl/dynamic-code-version (inc original-code-version)}
+          (fn []
+            ;; Trigger migration by next initialization attempt
+            (semantic.core/init! (eduction (take 3) (search.ingestion/searchable-documents)) nil)
+            (let [#:index_metadata{:keys [index_version table_name]}
+                  (jdbc/execute-one! (semantic.db.datasource/ensure-initialized-data-source!)
+                                     (sql/format
+                                      {:select [:*]
+                                       :from [:index_metadata]}))]
+              (is (= index_version semantic.db.migration.impl/dynamic-code-version))
+              (is  (contains? (jdbc/execute-one! (semantic.db.datasource/ensure-initialized-data-source!)
+                                                 (sql/format
+                                                  {:select [:*]
+                                                   :from [(keyword table_name)]
+                                                   :limit 1}))
+                              (keyword table_name "new_col"))))))))))
