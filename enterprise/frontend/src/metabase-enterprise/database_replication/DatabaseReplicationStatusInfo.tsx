@@ -16,10 +16,8 @@ export const DatabaseReplicationStatusInfo = memo(
   }: DatabaseReplicationStatusInfoProps) {
     const connections = useSetting("database-replication-connections");
     const hasConnection = connections?.[databaseId] != null;
-
-    const { message, color } = hasConnection
-      ? { message: t`Replicating`, color: "success" }
-      : ({ message: t`Not replicating`, color: "text-light" } as const);
+    const message = hasConnection ? t`Replicating` : t`Not replicating`;
+    const color = hasConnection ? "success" : "text-light";
 
     return (
       <Flex align="center" gap="sm" {...flexProps}>
