@@ -4,6 +4,7 @@
    [clojure.test :refer :all]
    [environ.core :as env]
    [java-time.api :as t]
+   [metabase.api-keys.core :as api-key]
    [metabase.api.common :refer [*current-user* *current-user-id* *is-group-manager?* *is-superuser?*]]
    [metabase.app-db.core :as mdb]
    [metabase.core.initialization-status :as init-status]
@@ -102,12 +103,12 @@
               :uri                 "/anyurl"}
              (select-keys (wrapped-handler request) [:anti-csrf-token :cookies :metabase-session-key :uri]))))))
 
-(deftest current-user-info-for-api-key-test
-  (mt/with-temp [:model/ApiKey _ {:name          "An API Key"
-                                  :user_id       (mt/user->id :lucky)
-                                  :creator_id    (mt/user->id :lucky)
-                                  :updated_by_id (mt/user->id :lucky)
-                                  :unhashed_key  (u.secret/secret "mb_foobar")}]
+(deftest ^:parallel current-user-info-for-api-key-test
+  (mt/with-temp [:model/ApiKey _ {:name                  "An API Key"
+                                  :user_id               (mt/user->id :lucky)
+                                  :creator_id            (mt/user->id :lucky)
+                                  :updated_by_id         (mt/user->id :lucky)
+                                  ::api-key/unhashed-key (u.secret/secret "mb_foobar")}]
     (testing "A valid API key works, and user info is added to the request"
       (let [req {:headers {"x-api-key" "mb_foobar"}}]
         (is (= (merge req {:metabase-user-id  (mt/user->id :lucky)
@@ -124,13 +125,14 @@
         {:headers {"x-api-key" "abcde"}}
 
         ;; no key at all
-        {:headers {}})))
+        {:headers {}}))))
 
-  (mt/with-temp [:model/ApiKey _ {:name          "An API Key without an internal user"
-                                  :user_id       nil
-                                  :creator_id    (mt/user->id :lucky)
-                                  :updated_by_id (mt/user->id :lucky)
-                                  :unhashed_key  (u.secret/secret "mb_foobar")}]
+(deftest ^:parallel current-user-info-for-api-key-test-2
+  (mt/with-temp [:model/ApiKey _ {:name                  "An API Key without an internal user"
+                                  :user_id               nil
+                                  :creator_id            (mt/user->id :lucky)
+                                  :updated_by_id         (mt/user->id :lucky)
+                                  ::api-key/unhashed-key (u.secret/secret "mb_foobar")}]
     (testing "An API key without an internal user (e.g. a SCIM key) should not modify the request"
       (let [req {:headers {"x-api-key" "mb_foobar"}}]
         (is (= req (#'mw.session/merge-current-user-info req)))))))
@@ -152,16 +154,16 @@
      (fn [e] (throw e)))))
 
 (deftest user-data-is-correctly-bound-for-api-keys
-  (mt/with-temp [:model/ApiKey _ {:name          "An API Key"
-                                  :user_id       (mt/user->id :lucky)
-                                  :creator_id    (mt/user->id :lucky)
-                                  :updated_by_id (mt/user->id :lucky)
-                                  :unhashed_key  (u.secret/secret "mb_foobar")}
-                 :model/ApiKey _ {:name          "A superuser API Key"
-                                  :user_id       (mt/user->id :crowberto)
-                                  :creator_id    (mt/user->id :lucky)
-                                  :updated_by_id (mt/user->id :lucky)
-                                  :unhashed_key  (u.secret/secret "mb_superuser")}]
+  (mt/with-temp [:model/ApiKey _ {:name                  "An API Key"
+                                  :user_id               (mt/user->id :lucky)
+                                  :creator_id            (mt/user->id :lucky)
+                                  :updated_by_id         (mt/user->id :lucky)
+                                  ::api-key/unhashed-key (u.secret/secret "mb_foobar")}
+                 :model/ApiKey _ {:name                  "A superuser API Key"
+                                  :user_id               (mt/user->id :crowberto)
+                                  :creator_id            (mt/user->id :lucky)
+                                  :updated_by_id         (mt/user->id :lucky)
+                                  ::api-key/unhashed-key (u.secret/secret "mb_superuser")}]
     (testing "A valid API key works, and user info is added to the request"
       (is (= {:is-superuser?     false
               :is-group-manager? false

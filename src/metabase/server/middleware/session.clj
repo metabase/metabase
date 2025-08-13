@@ -31,6 +31,7 @@
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.password :as u.password]
    [metabase.util.string :as string]
    [toucan2.core :as t2]
@@ -200,8 +201,10 @@
 
 (mu/defn- current-user-info-for-api-key :- [:maybe ::request.schema/current-user-info]
   "Return User ID and superuser status for an API Key with `api-key-id"
-  [api-key :- ::api-keys.schema/key.unhashed]
-  (when (and api-key (init-status/complete?))
+  [api-key :- [:maybe :string]]
+  (when (and api-key
+             (mr/validate ::api-keys.schema/key.raw api-key)
+             (init-status/complete?))
     (let [user-info (-> (t2/query-one (cons (user-data-for-api-key-prefix-query
                                              (premium-features/enable-advanced-permissions?))
                                             [(api-key/prefix api-key)]))

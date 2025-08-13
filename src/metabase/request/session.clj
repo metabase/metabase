@@ -1,6 +1,5 @@
 (ns metabase.request.session
   (:require
-   [clojure.string :as str]
    [flatland.ordered.set :as ordered-set]
    [metabase.api.common
     :as api

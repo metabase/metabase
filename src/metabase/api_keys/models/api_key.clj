@@ -1,12 +1,19 @@
 (ns metabase.api-keys.models.api-key
+  "`:metabase.api-keys.core/group-id` and `:metabase.api-keys.core/unhashed-key` have special meanings when passed to
+  various Toucan CRUD methods for `:model/ApiKey`... see below."
   (:require
    [clojure.core.memoize :as memoize]
    [crypto.random :as crypto-random]
+   [java-time.api :as t]
    [malli.error :as me]
+   [metabase.api-keys.core :as-alias api-keys]
    [metabase.api-keys.schema :as api-keys.schema]
+   [metabase.api.common :as api]
    [metabase.app-db.core :as mdb]
+   [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
+   [metabase.users.models.user :as user]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
@@ -14,13 +21,14 @@
    [metabase.util.password :as u.password]
    [metabase.util.secret :as u.secret]
    [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.tools.hydrate :as t2.hydrate]))
 
 (set! *warn-on-reflection* true)
 
 (methodical/defmethod t2/table-name :model/ApiKey [_model] :api_key)
 
-(methodical/defmethod toucan2.tools.hydrate/batched-hydrate [:model/ApiKey :group]
+(methodical/defmethod t2.hydrate/batched-hydrate [:model/ApiKey :group]
   "Add to each ApiKey a single group. Assume that each ApiKey is a member of either zero or one groups other than the
   'All Users' group."
   [_model _k api-keys]
@@ -64,12 +72,11 @@
   (subs (expose k) 0 api-keys.schema/prefix-length))
 
 (mu/defn- add-prefix :- [:map
-                         [:key_prefix ::api-keys.schema/prefix]]
-  [{:keys [unhashed_key] :as api-key} :- [:map
-                                          [:unhashed_key {:optional true} ::api-keys.schema/key.unhashed]]]
+                         [:key_prefix {:optional true} ::api-keys.schema/prefix]]
+  [{unhashed-key ::api-keys/unhashed-key, :as api-key} :- [:map
+                                                           [::api-keys/unhashed-key {:optional true} ::api-keys.schema/key.unhashed-or-secret]]]
   (cond-> api-key
-    (contains? api-key :unhashed_key)
-    (assoc :key_prefix (some-> unhashed_key u.secret/expose prefix))))
+    (contains? api-key ::api-keys/unhashed-key) (assoc :key_prefix (some-> unhashed-key prefix))))
 
 (mu/defn generate-key :- ::api-keys.schema/key.secret
   "Generates a new API key - a random base64 string prefixed with `mb_`"
@@ -77,7 +84,7 @@
   (u.secret/secret
    (str "mb_" (crypto-random/base64 api-keys.schema/bytes-key-length))))
 
-(mu/defn mask :- ::api-keys.schema/key.unhashed
+(mu/defn mask :- ::api-keys.schema/key.masked
   "Given an API key, returns a string of the same length with all but the prefix masked with `*`s"
   ^String [k :- [:or
                  ::api-keys.schema/key.unhashed-or-secret
@@ -93,12 +100,12 @@
   (-> k u.secret/expose u.password/hash-bcrypt))
 
 (mu/defn- add-key
-  "Adds the `key` based on the `unhashed_key` passed in."
-  [{unhashed-key :unhashed_key, :as api-key} :- [:map
-                                                 [:unhashed-key {:optional true} ::api-keys.schema/key.unhashed]]]
+  "Adds the `key` based on the `:metabase.api-keys/unhashed-qkey passed in."
+  [{unhashed-key ::api-keys/unhashed-key, :as api-key} :- [:map
+                                                           [::api-keys/unhashed-key {:optional true} ::api-keys.schema/key.unhashed-or-secret]]]
   (-> api-key
-      (cond-> (contains? api-key :unhashed_key) (assoc :key (some-> unhashed-key hash-bcrypt)))
-      (dissoc :unhashed_key)))
+      (cond-> (contains? api-key ::api-keys/unhashed-key) (assoc :key (some-> unhashed-key hash-bcrypt)))
+      (dissoc ::api-keys/unhashed-key)))
 
 (defn- validate-with-schema [api-key schema]
   (when-let [error (mr/explain schema api-key)]
@@ -115,12 +122,50 @@
       add-key
       (validate-with-schema ::api-keys.schema/api-key.insert)))
 
-(t2/define-before-update :model/ApiKey
+(t2/define-after-insert :model/ApiKey
   [api-key]
-  (-> api-key
-      add-prefix
-      add-key
-      (validate-with-schema ::api-keys.schema/api-key.update)))
+  (u/prog1 api-key
+    (events/publish-event!
+     :event/api-key-create
+     {:object  (t2/hydrate api-key :group :updated_by)
+      :user-id api/*current-user-id*})))
+
+(t2/define-before-update :model/ApiKey
+  [{user-id :user_id, :as api-key}]
+  (t2/with-transaction [_conn]
+    ;; need to hydrate user info BEFORE making changes so we record the correct stuff for audit logging
+    (let [key-before (t2/hydrate (t2/instance :model/ApiKey (t2/original api-key)) :user :group :updated_by)]
+      ;; update the user name associated with this API key if it was created just for this API key.
+      (when-let [new-name (:name (t2/changes api-key))]
+        (t2/update! :model/User :id user-id, :type :api-key, {:first_name new-name, :last_name ""}))
+      ;; update user group as well.
+      (when-let [new-group-id (::api-keys/group-id (t2/changes api-key))]
+        (assert (= (t2/select-one-fn :type :model/User :id user-id) :api-key)
+                "Cannot change the Permissions Group for the user associated with an API key that was not created alongside it")
+        (user/set-permissions-groups! user-id [(perms/all-users-group) {:id new-group-id}]))
+      (u/prog1 (-> api-key
+                   add-prefix
+                   add-key
+                   ;; force a no-op update so the T2 code doesn't optimize this whole update out
+                   (cond-> (::api-keys/group-id (t2/changes api-key)) (-> (dissoc ::api-keys/group-id)
+                                                                          (assoc :updated_at (t/offset-date-time))))
+                   (validate-with-schema ::api-keys.schema/api-key.update))
+        (events/publish-event!
+         :event/api-key-update
+         {:object          (t2/hydrate (t2/instance :model/ApiKey (t2/current <>)) :user :group :updated_by)
+          :previous-object key-before
+          :user-id         api/*current-user-id*})))))
+
+(t2/define-before-delete :model/ApiKey
+  [{user-id :user_id, :as api-key}]
+  (u/prog1 api-key
+    (events/publish-event!
+     :event/api-key-delete
+     {:object  (-> api-key
+                   (t2/hydrate :group))
+      :user-id api/*current-user-id*})
+    ;; if we created a user along with the key (type = :api-key), mark it inactive.
+    (t2/update! :model/User user-id, :type :api-key, {:is_active false})))
 
 (defn- add-masked-key [api-key]
   (if-let [prefix (:key_prefix api-key)]
@@ -140,7 +185,6 @@
    (fn is-api-key-user?*
      [user-id]
      (= :api-key (t2/select-one-fn :type :model/User user-id)))
-
    ;; cache the results for 60 minutes; TTL is here only to eventually clear out old entries/keep it from growing too
    ;; large
    :ttl/threshold (* 60 60 1000)))
@@ -157,7 +201,35 @@
         api-key
         (throw (ex-info (tru "could not generate key with unique prefix") {}))))))
 
-(mu/defn create-single-collection-api-key! :- ::api-keys.schema/key.secret
+(mu/defn create-api-key-with-new-user!
+  "Create a new API key and a new user for that key at the same time."
+  [{:keys [key-name group-id]} :- [:map
+                                   {:closed true}
+                                   [:key-name ::api-keys.schema/name]
+                                   [:group-id {:optional true} pos-int?]]]
+  (api/checkp (not (t2/exists? :model/ApiKey :name key-name))
+              "name" "An API key with this name already exists.")
+  (let [unhashed-key (key-with-unique-prefix)
+        email        (format "api-key-user-%s@api-key.invalid" (random-uuid))]
+    (t2/with-transaction [_conn]
+      (let [user-id (t2/insert-returning-pk! :model/User
+                                             {:email      email
+                                              :first_name key-name
+                                              :last_name  ""
+                                              :type       :api-key
+                                              :password   (str (random-uuid))})]
+        (user/set-permissions-groups! user-id [(perms/all-users-group) group-id])
+        (-> (t2/insert-returning-instance! :model/ApiKey
+                                           {:user_id                user-id
+                                            :name                   key-name
+                                            ::api-keys/unhashed-key unhashed-key
+                                            :updated_by_id          api/*current-user-id*
+                                            :creator_id             api/*current-user-id*})
+            (assoc :unmasked_key unhashed-key))))))
+
+(mu/defn create-single-collection-api-key! :- [:map
+                                               [:id  pos-int?]
+                                               [:key ::api-keys.schema/key.secret]]
   "Create a new API key to give `user-id` permissions to read/write a single collection with `collection-id`. Make sure
   the user has perms to do this before creating the token!"
   [user-id       :- pos-int?
@@ -165,13 +237,37 @@
   (let [api-key  (generate-key)
         prefix   (prefix api-key)
         key-name (format "Single Collection API Key for User %d and Collection %d starting with %s"
-                         user-id collection-id prefix)]
-    (t2/insert! :model/ApiKey {:user_id              user-id
-                               :creator_id           user-id
-                               :updated_by_id        user-id
-                               :name                 key-name
-                               :key                  (hash-bcrypt api-key)
-                               :key_prefix           prefix
-                               :scope                :api-key.scope/single-collection
-                               :single_collection_id collection-id})
-    api-key))
+                         user-id collection-id prefix)
+        id       (t2/insert-returning-pk! :model/ApiKey {:user_id              user-id
+                                                         :creator_id           user-id
+                                                         :updated_by_id        user-id
+                                                         :name                 key-name
+                                                         :key                  (hash-bcrypt api-key)
+                                                         :key_prefix           prefix
+                                                         :scope                :api-key.scope/single-collection
+                                                         :single_collection_id collection-id})]
+    {:id id, :key api-key}))
+
+(mu/defn regenerate! :- [:map
+                         [:unmasked-key ::api-keys.schema/key.secret]
+                         [:masked-key   ::api-keys.schema/key.masked]
+                         [:prefix       ::api-keys.schema/prefix]]
+  "Generate a new API key for an existing key with `id`."
+  [id :- ::api-keys.schema/id]
+  (let [api-key-before (t2/select-one :model/ApiKey id)
+        new-key        (key-with-unique-prefix)
+        new-prefix     (prefix new-key)]
+    (t2/with-transaction [_conn]
+      (t2/update! :model/ApiKey :id id {:key           (hash-bcrypt new-key)
+                                        :key_prefix    new-prefix
+                                        :updated_by_id api/*current-user-id*})
+      (events/publish-event! :event/api-key-regenerate
+                             (let [key-before (-> api-key-before
+                                                  (t2/hydrate :group))]
+                               {:object          (-> key-before
+                                                     (assoc :key_prefix new-prefix))
+                                :previous-object key-before
+                                :user-id         api/*current-user-id*})))
+    {:unmasked-key new-key
+     :masked-key   (mask new-key)
+     :prefix       new-prefix}))

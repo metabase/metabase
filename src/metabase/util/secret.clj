@@ -7,8 +7,12 @@
 
 (set! *warn-on-reflection* true)
 
-;; Define a protocol for secrets to make things harder to accidentally expose.
-(p/defprotocol+ ISecret
+;; Define an interface for secrets to make things harder to accidentally expose.
+;;
+;; This uses `definterface` rather than `defprotocol` because [[secret?]] below only works correctly for classes that
+;; implement it at definition time; making it an interface discourages people from thinking an object that you
+;; `extend-protocol`-ed would work
+(p/definterface+ ISecret
   (expose [this] "Expose the secret"))
 
 (p/deftype+ Secret [value-fn]
@@ -33,6 +37,7 @@
   (instance? metabase.util.secret.ISecret x))
 
 (mr/def ::secret
+  "An instance of a metabase.util.secret.ISecret."
   [:fn
-   {:error/message "An instance of a Secret"}
+   {:error/message "An instance of a metabase.util.secret.ISecret."}
    #'secret?])

@@ -23,7 +23,8 @@
         num-chars  (* num-blocks 4)]
     (long (+ num-chars 3))))                            ; add 3 characters for the `mb_` prefix
 
-(mr/def ::key.unhashed
+(mr/def ::key.raw
+  "Unhashed string of the form 'mb_<base-64-bytes>'."
   [:and
    [:string {:min string-key-length, :max string-key-length}]
    [:fn
@@ -32,15 +33,26 @@
       (and (string? s)
            (str/starts-with? s "mb_")))]])
 
+(mr/def ::key.masked
+  "Masked string like 'mb_1234**********'."
+  [:and
+   [:string {:min string-key-length, :max string-key-length}]
+   [:re
+    {:error/message "Masked key like 'mb_1234**********'"}
+    (re-pattern (format "^mb_.*{%d}\\*{%d}$"
+                        (- prefix-length 3)
+                        (- string-key-length prefix-length)))]])
+
 (mr/def ::key.secret
   [:ref :metabase.util.secret/secret])
 
 (mr/def ::key.unhashed-or-secret
   [:or
-   [:ref ::key.unhashed]
+   [:ref ::key.raw]
    [:ref ::key.secret]])
 
 (mr/def ::key.hashed
+  "BCrypt-hashed API key string."
   [:and
    [:string {:min 60, :max 60}] ; bcrypt hashes are 60 characters, at least ours always are.
    [:fn
@@ -50,9 +62,11 @@
            (not (str/starts-with? s "mb_"))))]])
 
 (mr/def ::id
-  pos-int?)
+  "An ID of a `:model/ApiKey`."
+  ms/PositiveInt)
 
 (mr/def ::prefix
+  "Prefix string of an API Key, suitable for passing around unmasked. This must be unique."
   [:string {:min prefix-length, :max prefix-length}])
 
 (mr/def ::name

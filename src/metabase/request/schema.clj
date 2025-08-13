@@ -4,7 +4,7 @@
 
 (mr/def ::current-user-info
   [:map
-   [:metabase-user-id  pos-int?]
+   [:metabase-user-id  {:optional true} pos-int?]
    [:is-superuser?     {:optional true} :boolean]
    [:user-locale       {:optional true} [:maybe string?]]
    [:is-group-manager? {:optional true} :boolean]
