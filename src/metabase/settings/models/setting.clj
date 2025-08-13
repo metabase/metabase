@@ -982,7 +982,7 @@
                  :feature            nil
                  :database-local     :never
                  :user-local         :never
-                 :driver-feature   nil
+                 :driver-feature     nil
                  :enabled-for-db?    nil
                  :deprecated         nil
                  :enabled?           nil
