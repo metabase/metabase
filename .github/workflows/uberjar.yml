@@ -52,6 +52,7 @@ jobs:
         with:
           name: metabase-ee-${{ github.event.inputs.commit || github.event.pull_request.head.sha || github.sha }}-uberjar
           output-name: metabase-ee.jar
+          extract-path: "ee-artifact"
 
       - name: Try to fetch existing OSS artifact
         id: check-oss
@@ -60,6 +61,7 @@ jobs:
         with:
           name: metabase-oss-${{ github.event.inputs.commit || github.event.pull_request.head.sha || github.sha }}-uberjar
           output-name: metabase-oss.jar
+          extract-path: "oss-artifact"
 
       - name: Decide if build is needed
         id: decide
