@@ -1,9 +1,5 @@
 (ns metabase-enterprise.semantic-search.db.migration
   (:require
-   #_[metabase-enterprise.semantic-search.db.connection :as semantic.db.connection]
-   #_[metabase-enterprise.semantic-search.db.datasource :as semantic.db.datasource]
-   #_[metabase-enterprise.semantic-search.db.locking :as semantic.db.locking]
-   #_[metabase-enterprise.semantic-search.db.util :as semantic.db.util]
    [honey.sql :as sql]
    [honey.sql.helpers :as sql.helpers]
    [metabase-enterprise.semantic-search.db.migration.impl :as semantic.db.migration.impl]
@@ -15,19 +11,16 @@
 (def ^:private columns
   "Migration id is picked by use, hence no serial"
   [[:version :bigint [:primary-key]]
-   ;; TODO: does timezone play role here?
    [:finished_at :timestamp [:default [:NOW]]]
    [:status [:varchar 32]]])
 
-(defn- migration-table-hsql
-  []
+(def migration-table-hsql
   (-> (sql.helpers/create-table :migration :if-not-exists)
       (sql.helpers/with-columns columns)))
 
 (defn- migration-table-sql
   []
-  (-> (migration-table-hsql)
-      (sql/format)))
+  (sql/format migration-table-hsql))
 
 (defn- ensure-migration-table!
   [tx]

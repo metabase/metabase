@@ -5,9 +5,10 @@
    [metabase-enterprise.semantic-search.db.util :as semantic.db.util]
    [next.jdbc :as jdbc]))
 
-(defn- connection
-  []
-  (jdbc/get-connection (semantic.db.datasource/ensure-initialized-data-source!)))
+;; not needed as attempting approach with yolo writes during migration
+#_(defn- connection
+    []
+    (jdbc/get-connection (semantic.db.datasource/ensure-initialized-data-source!)))
 
 (defn do-with-migrate-tx
   [conn thunk]
@@ -24,28 +25,28 @@
   [[conn-sym & [conn-expr]] & body]
   `(do-with-migrate-tx ~conn-expr (fn [~conn-sym] ~@body)))
 
-(defn do-with-write-tx
-  [conn thunk]
-  (if (nil? conn)
-    (jdbc/with-transaction [tx (semantic.db.datasource/ensure-initialized-data-source!)]
-      (semantic.db.locking/acquire-write-lock! tx)
-      (thunk tx))
-    (do
-      (semantic.db.util/not-tx-or-throw! conn)
-      (jdbc/with-transaction [tx conn]
+#_(defn do-with-write-tx
+    [conn thunk]
+    (if (nil? conn)
+      (jdbc/with-transaction [tx (semantic.db.datasource/ensure-initialized-data-source!)]
         (semantic.db.locking/acquire-write-lock! tx)
-        (thunk tx)))))
+        (thunk tx))
+      (do
+        (semantic.db.util/not-tx-or-throw! conn)
+        (jdbc/with-transaction [tx conn]
+          (semantic.db.locking/acquire-write-lock! tx)
+          (thunk tx)))))
 
-(defmacro with-write-tx
-  [[conn-sym & [conn-expr]] & body]
-  `(do-with-write-tx ~conn-expr (fn [~conn-sym] ~@body)))
+#_(defmacro with-write-tx
+    [[conn-sym & [conn-expr]] & body]
+    `(do-with-write-tx ~conn-expr (fn [~conn-sym] ~@body)))
 
 ;; This is just for the completeness, ie unified interface
-(defn do-with-read-connection
-  [thunk]
-  (with-open [conn (connection)]
-    (thunk conn)))
+#_(defn do-with-read-connection
+    [thunk]
+    (with-open [conn (connection)]
+      (thunk conn)))
 
-(defmacro with-read-connection
-  [[conn-sym] & body]
-  `(do-with-read-connection (fn [~conn-sym] ~@body)))
+#_(defmacro with-read-connection
+    [[conn-sym] & body]
+    `(do-with-read-connection (fn [~conn-sym] ~@body)))

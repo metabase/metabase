@@ -12,8 +12,11 @@
 (set! *warn-on-reflection* true)
 
 (def ^:private supported-lock-types
-  #{:pg_advisory_xact_lock
+  #{;; blocking exclusive transaction lock
+    :pg_advisory_xact_lock
+    ;; non-blocking exclusive transaction lock
     :pg_try_advisory_xact_lock
+    ;; non-blocking shared transaction lock
     :pg_try_advisory_xact_lock_shared})
 
 (defn- lock-not-avail-ex?
@@ -34,18 +37,18 @@
                                     (if (lock-not-avail-ex? e)
                                       (throw (Exception. "Lock could not be acquired" e))
                                       (throw e)))))]
+    ;; For non-blocking write locks. Now not in use as we attempt migrating without shared write locks.
     (when-not acquired?
       (throw (Exception. "Migration lock could not be acquired")))
     (log/debugf "Lock %s %d acquired." lock-type lock-id)
     nil))
 
-;; TODO: Locks should be defined in consumer namespaces, using tools from this ns.
-
 (def ^:private migration-lock 19991)
 
-(defn acquire-write-lock!
-  [conn]
-  (lock-or-throw! conn :pg_try_advisory_xact_lock_shared migration-lock))
+;; Unused as attempting yolo-write during migration approach
+#_(defn acquire-write-lock!
+    [conn]
+    (lock-or-throw! conn :pg_try_advisory_xact_lock_shared migration-lock))
 
 (defn acquire-migraiton-lock!
   [conn]
