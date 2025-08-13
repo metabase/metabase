@@ -9,6 +9,8 @@
    [metabase-enterprise.semantic-search.db.datasource :as semantic.db.datasource]
    [metabase-enterprise.semantic-search.db.migration :as semantic.db.migration]
    [metabase-enterprise.semantic-search.db.migration.impl :as semantic.db.migration.impl]
+   [metabase-enterprise.semantic-search.index :as semantic.index]
+   [metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]
    [metabase-enterprise.semantic-search.test-util :as semantic.tu]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.test :as mt]
@@ -230,3 +232,11 @@
                                                    :from [(keyword table_name)]
                                                    :limit 1}))
                               (keyword table_name "new_col"))))))))))
+
+(deftest code-schema-versions-match-default-versions-test
+  (is (= semantic.db.migration.impl/dynamic-schema-version
+         (-> (semantic.index/default-index semantic.tu/mock-embedding-model)
+             :version)))
+  (is (= semantic.db.migration.impl/schema-version
+         (-> semantic.index-metadata/default-index-metadata
+             :version Long/parseLong))))
