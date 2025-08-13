@@ -441,6 +441,8 @@ describe("documents", () => {
           path: "/api/ee/document/*",
         }).as("documentGet");
 
+        cy.intercept("POST", "/api/card/*/query").as("cardQuery");
+
         //initial load
         H.documentContent().click();
 
@@ -477,14 +479,23 @@ describe("documents", () => {
         cy.findByRole("button", { name: "Save" }).click();
 
         cy.wait("@documentUpdate");
+
         cy.wait("@documentGet");
+
+        cy.findByTestId("toast-undo")
+          .findByText("Document saved")
+          .should("be.visible");
+
+        cy.wait("@cardQuery");
+
+        cy.wait(100);
 
         cy.findByTestId("document-card-embed")
           .findByText("Orders, Count, Grouped by Created At (year)")
           .click();
 
         cy.location("pathname").should(
-          "include",
+          "not.include",
           ORDERS_BY_YEAR_QUESTION_ID.toString(),
         );
       });
