@@ -34,7 +34,7 @@ export function ListView({
   const virtualizer = useVirtualizer({
     count: rows.length,
     getScrollElement: () => scrollRef.current,
-    estimateSize: () => 78,
+    estimateSize: () => 80,
     overscan: 10,
   });
   const virtualRows = virtualizer.getVirtualItems();
@@ -283,7 +283,7 @@ function useListColumns(cols: DatasetColumn[]) {
       [titleColumn, subtitleColumn, imageColumn].filter(Boolean),
     );
 
-    return cols.filter((col) => !usedColumns.has(col)).slice(0, 5);
+    return cols.filter((col) => !usedColumns.has(col)).slice(0, 4);
   }, [cols, titleColumn, subtitleColumn, imageColumn]);
 
   return {

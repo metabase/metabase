@@ -28,7 +28,7 @@
   width: 100%;
   height: 100%;
   margin: auto;
-  gap: var(--mantine-spacing-sm);
+  gap: var(--mantine-spacing-lg);
   padding-inline: calc(50% - var(--max-width) / 2);
   overflow: auto;
 }
@@ -63,7 +63,7 @@
 .listHeader,
 .listItem {
   display: grid;
-  grid-template-columns: 32px minmax(0, 1fr) repeat(var(--grid-columns), 12%);
+  grid-template-columns: 32px minmax(0, 1fr) repeat(var(--grid-columns), 14%);
   gap: var(--mantine-spacing-md);
   align-items: center;
 }
