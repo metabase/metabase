@@ -32,7 +32,6 @@ import { MetabotNode, type PromptSerializer } from "./extensions/MetabotEmbed";
 import { MetabotMentionExtension } from "./extensions/MetabotMention/MetabotMentionExtension";
 import { MetabotMentionSuggestion } from "./extensions/MetabotMention/MetabotSuggestion";
 import { SmartLinkEmbed } from "./extensions/SmartLink";
-import { Markdown } from "./extensions/markdown/index";
 import { createSuggestionRenderer } from "./extensions/suggestionRenderer";
 import { useCardEmbedsTracking, useQuestionSelection } from "./hooks";
 import type { CardEmbedRef } from "./types";
@@ -112,7 +111,6 @@ export const Editor: React.FC<EditorProps> = ({
       Placeholder.configure({
         placeholder: t`Start writing, press "/" to open command palette, or "@" to insert a link...`,
       }),
-      Markdown,
       CardEmbed,
       MetabotNode.configure({
         serializePrompt: getMetabotPromptSerializer(getState),

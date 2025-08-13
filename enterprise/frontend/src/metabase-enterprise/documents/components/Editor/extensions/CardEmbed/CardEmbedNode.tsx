@@ -26,11 +26,18 @@ import {
   useDocumentsSelector,
 } from "../../../../redux-utils";
 import { EDITOR_STYLE_BOUNDARY_CLASS } from "../../constants";
-import { formatCardEmbed } from "../markdown/card-embed-format";
 
 import styles from "./CardEmbedNode.module.css";
 import { ModifyQuestionModal } from "./ModifyQuestionModal";
 import { NativeQueryModal } from "./NativeQueryModal";
+
+function formatCardEmbed(attrs: CardEmbedAttributes): string {
+  if (attrs.name) {
+    return `{% card id=${attrs.id} name="${attrs.name}" %}`;
+  } else {
+    return `{% card id=${attrs.id} %}`;
+  }
+}
 
 const getDatasetError = (dataset: Dataset) => {
   if (dataset.error) {
