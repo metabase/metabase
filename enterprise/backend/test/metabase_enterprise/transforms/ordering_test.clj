@@ -43,13 +43,17 @@
               child #{parent}}
              (ordering/transform-ordering (t2/select :model/Transform :id [:in [parent child]])))))))
 
+(defn- transform-deps-for-db [transform]
+  (mt/with-metadata-provider (mt/id)
+    (#'ordering/transform-deps transform)))
+
 (deftest basic-dependencies-test
   (mt/with-temp [:model/Transform {t1 :id} (make-transform
                                             {:query {:database (mt/id),
                                                      :type "query",
                                                      :query {:source-table (mt/id :orders)}}})]
-    (is (= {t1 #{(mt/id :orders)}}
-           (#'ordering/transform-deps-for-db (mt/id) (t2/select :model/Transform :id t1))))))
+    (is (= #{(mt/id :orders)}
+           (transform-deps-for-db (t2/select-one :model/Transform :id t1))))))
 
 (deftest joined-dependencies-test
   (mt/with-temp [:model/Transform {t1 :id} (make-transform
@@ -71,9 +75,9 @@
                                                                   :join-alias "Products"}]],
                                                                :source-table (mt/id :products)}]},
                                                      :parameters []}})]
-    (is (= {t1 #{(mt/id :orders)
-                 (mt/id :products)}}
-           (#'ordering/transform-deps-for-db (mt/id) (t2/select :model/Transform :id t1))))))
+    (is (= #{(mt/id :orders)
+             (mt/id :products)}
+           (transform-deps-for-db (t2/select-one :model/Transform :id t1))))))
 
 (deftest card-dependencies-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
@@ -103,9 +107,9 @@
                                                         :breakout [["field" "Products__category" {:base-type "type/Text"}]],
                                                         :source-table (str "card__" card)},
                                                        :parameters []}})]
-      (is (= {t1 #{(mt/id :orders)
-                   (mt/id :products)}}
-             (#'ordering/transform-deps-for-db (mt/id) (t2/select :model/Transform :id t1)))))))
+      (is (= #{(mt/id :orders)
+               (mt/id :products)}
+             (transform-deps-for-db (t2/select-one :model/Transform :id t1)))))))
 
 (deftest native-dependencies-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
@@ -116,8 +120,8 @@
                                                                 {:database (mt/id),
                                                                  :type "query",
                                                                  :query {:source-table (mt/id :orders)}})}})]
-      (is (= {t1 #{(mt/id :orders)}}
-             (#'ordering/transform-deps-for-db (mt/id) (t2/select :model/Transform :id t1)))))))
+      (is (= #{(mt/id :orders)}
+             (transform-deps-for-db (t2/select-one :model/Transform :id t1)))))))
 
 (deftest native-card-dependencies-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table :native-parameter-card-reference)
@@ -153,9 +157,9 @@
                                                                   :name "card"
                                                                   :display-name "card"
                                                                   :card-id card}}}}})]
-      (is (= {t1 #{(mt/id :orders)
-                   (mt/id :products)}}
-             (#'ordering/transform-deps-for-db (mt/id) (t2/select :model/Transform :id t1)))))))
+      (is (= #{(mt/id :orders)
+               (mt/id :products)}
+             (transform-deps-for-db (t2/select-one :model/Transform :id t1)))))))
 
 (defn- rotations
   [v]
