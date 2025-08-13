@@ -198,11 +198,41 @@ export function ListView({
                         jsx: true,
                         rich: true,
                       });
+
+                      // Check if this is a boolean column
+                      const isBooleanColumn = col.base_type === "type/Boolean";
+                      const rawValue = row[cols.indexOf(col)];
+
                       return (
                         <div key={colIndex}>
-                          <Text fw="bold" size="sm" c="text-secondary" truncate>
-                            {value}
-                          </Text>
+                          {isBooleanColumn ? (
+                            <Flex align="center" gap="xs">
+                              <Box
+                                w={8}
+                                h={8}
+                                style={{
+                                  borderRadius: "50%",
+                                  backgroundColor:
+                                    rawValue === true
+                                      ? "var(--mb-color-success)"
+                                      : "var(--mb-color-error)",
+                                  flexShrink: 0,
+                                }}
+                              />
+                              <Text fw="bold" size="sm" c="text-secondary">
+                                {value}
+                              </Text>
+                            </Flex>
+                          ) : (
+                            <Text
+                              fw="bold"
+                              size="sm"
+                              c="text-secondary"
+                              truncate
+                            >
+                              {value}
+                            </Text>
+                          )}
                         </div>
                       );
                     })}
