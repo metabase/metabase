@@ -50,6 +50,6 @@
     [conn]
     (lock-or-throw! conn :pg_try_advisory_xact_lock_shared migration-lock))
 
-(defn acquire-migraiton-lock!
+(defn acquire-migration-lock!
   [conn]
   (lock-or-throw! conn :pg_advisory_xact_lock migration-lock))

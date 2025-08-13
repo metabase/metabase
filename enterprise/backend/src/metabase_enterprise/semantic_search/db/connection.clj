@@ -14,11 +14,11 @@
   [conn thunk]
   (if (nil? conn)
     (jdbc/with-transaction [tx (semantic.db.datasource/ensure-initialized-data-source!)]
-      (semantic.db.locking/acquire-migraiton-lock! tx)
+      (semantic.db.locking/acquire-migration-lock! tx)
       (thunk tx))
     (do
       (semantic.db.util/tx-or-throw! conn)
-      (semantic.db.locking/acquire-migraiton-lock! conn)
+      (semantic.db.locking/acquire-migration-lock! conn)
       (thunk conn))))
 
 (defmacro with-migrate-tx

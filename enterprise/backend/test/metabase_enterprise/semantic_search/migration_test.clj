@@ -74,7 +74,7 @@
 
 ;; TODO: mechanism to completely avoid any migration (init, reindex) calls during this test!
 ;; TODO: scheduler.pauseJob(JobKey.jobKey("myJob", "myGroup"));
-(deftest migraion-table-versions-test
+(deftest migration-table-versions-test
   (with-test-db "my_test_db"
     (letfn [(migrate-and-get-db-version
               [attempted-version]
@@ -254,7 +254,7 @@
                     sort
                     vec)))))))
 
-(deftest dynamic-schema-migraion-test
+(deftest dynamic-schema-migration-test
   (when (and (= "openai" (semantic.settings/ee-embedding-provider))
              (str/starts-with? (semantic.settings/ee-embedding-model) "text-embedding-3")
              (string? (not-empty (semantic.settings/openai-api-key))))
