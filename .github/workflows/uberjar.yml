@@ -4,7 +4,7 @@ name: Build Uberjar
 # or automatically for the listed branches
 
 concurrency:
-  group: uberjar-${{ github.ref }}
+  group: uberjar-${{ github.event.inputs.commit || github.event.pull_request.head.sha || github.sha }}
   cancel-in-progress: false
 
 on:
