@@ -6,7 +6,7 @@
 
 (use-fixtures :once (fixtures/initialize :db))
 
-(deftest properties-token-features-test
+(deftest ^:parallel properties-token-features-test
   (mt/with-premium-features #{:advanced-permissions
                               :attached-dwh
                               :audit-app
