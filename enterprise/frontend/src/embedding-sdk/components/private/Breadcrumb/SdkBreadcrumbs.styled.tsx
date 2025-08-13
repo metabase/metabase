@@ -1,6 +1,8 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
+// TODO: refactor these into CSS module `SdkBreadcrumbs.module.css`. Do not use Emotion.
+
 export const PathContainer = styled.div`
   display: flex;
   align-items: center;

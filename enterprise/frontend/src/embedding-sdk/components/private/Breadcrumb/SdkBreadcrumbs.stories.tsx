@@ -10,16 +10,16 @@ import { Stack } from "metabase/ui";
 import { CollectionBrowser } from "../../public/CollectionBrowser";
 import { InteractiveQuestion } from "../../public/InteractiveQuestion";
 
-import { SdkBreadcrumb } from "./SdkBreadcrumb";
+import { SdkBreadcrumbs } from "./SdkBreadcrumbs";
 import {
   type BreadcrumbItem,
   type BreadcrumbItemType,
-  SdkBreadcrumbProvider,
-} from "./SdkBreadcrumbProvider";
+  SdkBreadcrumbsProvider,
+} from "./SdkBreadcrumbsProvider";
 
 export default {
   title: "EmbeddingSDK/SdkBreadcrumb",
-  component: SdkBreadcrumb,
+  component: SdkBreadcrumbs,
   parameters: {
     layout: "fullscreen",
   },
@@ -41,10 +41,9 @@ export const Default = {
       setView({ id, type });
 
     return (
-      <SdkBreadcrumbProvider>
+      <SdkBreadcrumbsProvider>
         <Stack p="md" gap="sm">
-          <SdkBreadcrumb onBreadcrumbClick={onBreadcrumbClick} />
-          <code>view: {JSON.stringify(view)}</code>
+          <SdkBreadcrumbs onBreadcrumbClick={onBreadcrumbClick} />
 
           {view.type === "collection" && (
             <CollectionBrowser
@@ -70,7 +69,7 @@ export const Default = {
             <InteractiveDashboard dashboardId={view.id} />
           )}
         </Stack>
-      </SdkBreadcrumbProvider>
+      </SdkBreadcrumbsProvider>
     );
   },
 

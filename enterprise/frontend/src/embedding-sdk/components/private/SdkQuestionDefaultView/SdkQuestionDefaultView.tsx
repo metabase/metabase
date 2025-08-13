@@ -24,7 +24,6 @@ import {
   Stack,
 } from "metabase/ui";
 
-import { useBreadcrumbContext } from "../Breadcrumb/SdkBreadcrumbProvider";
 import {
   FlexibleSizeComponent,
   type FlexibleSizeProps,
@@ -84,21 +83,10 @@ export const SdkQuestionDefaultView = ({
     withDownloads,
   } = useSdkQuestionContext();
 
-  const { updateCurrentLocation } = useBreadcrumbContext();
-
-  // Update breadcrumb when question changes
-  useEffect(() => {
-    if (question) {
-      updateCurrentLocation({
-        id: `question-${question.id()}`,
-        name: question.displayName() || "Question",
-        type: "question",
-      });
-    }
-  }, [question, updateCurrentLocation]);
-
   const isNewQuestion = originalId === "new";
   const isQuestionSaved = question?.isSaved();
+
+  // TODO: update breadcrumb location here.
 
   const [
     isEditorOpen,

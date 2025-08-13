@@ -18,7 +18,6 @@ import {
 } from "embedding-sdk/components/private/PublicComponentWrapper";
 import { SdkAdHocQuestion } from "embedding-sdk/components/private/SdkAdHocQuestion";
 import { SdkQuestion } from "embedding-sdk/components/public/SdkQuestion/SdkQuestion";
-import { useSdkBreadcrumb } from "embedding-sdk/hooks/private/use-sdk-breadcrumb";
 import {
   type SdkDashboardDisplayProps,
   useSdkDashboardParams,
@@ -156,20 +155,7 @@ const SdkDashboardInner = ({
   const { isLocaleLoading } = useLocale();
   const { data: dashboard } = useGetDashboardQuery({ id: dashboardId });
 
-  const { updateCurrentLocation } = useSdkBreadcrumb({
-    consumer: "dashboard",
-  });
-
-  // Update breadcrumb when dashboard changes
-  useEffect(() => {
-    if (dashboard) {
-      updateCurrentLocation({
-        type: "dashboard",
-        id: dashboard.id,
-        name: dashboard.name,
-      });
-    }
-  }, [dashboard, updateCurrentLocation]);
+  // TODO: send breadcrumb location here.
 
   const { displayOptions } = useSdkDashboardParams({
     dashboardId,

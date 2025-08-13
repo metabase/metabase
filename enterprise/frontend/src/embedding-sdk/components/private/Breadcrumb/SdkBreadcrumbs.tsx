@@ -10,11 +10,11 @@ import { PublicComponentStylesWrapper } from "../PublicComponentStylesWrapper";
 import {
   BreadcrumbsPathSeparator,
   PathContainer,
-} from "./SdkBreadcrumb.styled";
+} from "./SdkBreadcrumbs.styled";
 import type {
   BreadcrumbItem,
   BreadcrumbItemType,
-} from "./SdkBreadcrumbProvider";
+} from "./SdkBreadcrumbsProvider";
 
 export interface SdkBreadcrumbProps {
   className?: string;
@@ -22,7 +22,7 @@ export interface SdkBreadcrumbProps {
   onBreadcrumbClick?: (breadcrumb: BreadcrumbItem) => void;
 }
 
-export const SdkBreadcrumb = ({
+export const SdkBreadcrumbs = ({
   className,
   style,
   onBreadcrumbClick,

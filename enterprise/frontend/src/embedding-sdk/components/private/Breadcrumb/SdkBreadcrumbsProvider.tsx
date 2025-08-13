@@ -11,11 +11,9 @@ export interface BreadcrumbItem {
   id: number | string;
   name: string;
   type: BreadcrumbItemType;
-  navigateTo?: () => void;
-  isCurrent?: boolean;
 }
 
-export interface SdkBreadcrumbContextType {
+export interface SdkBreadcrumbsContextType {
   /**
    * Whether breadcrumbs should be used.
    * This is only true when the SDK components are wrapped with BreadcrumbProvider.
@@ -28,33 +26,33 @@ export interface SdkBreadcrumbContextType {
   breadcrumbs: BreadcrumbItem[];
 }
 
-export const SdkBreadcrumbContext =
-  createContext<SdkBreadcrumbContextType | null>(null);
+export const SdkBreadcrumbsContext =
+  createContext<SdkBreadcrumbsContextType | null>(null);
 
-export function useBreadcrumbContext() {
-  return useContext(SdkBreadcrumbContext) ?? EmptyBreadcrumbContext;
+export function useBreadcrumbsContext() {
+  return useContext(SdkBreadcrumbsContext) ?? EmptyBreadcrumbContext;
 }
 
-export interface SdkBreadcrumbProviderProps {
+export interface SdkBreadcrumbsProviderProps {
   children: ReactNode;
 }
 
-export const SdkBreadcrumbProvider = ({
+export const SdkBreadcrumbsProvider = ({
   children,
-}: SdkBreadcrumbProviderProps) => {
-  const value: SdkBreadcrumbContextType = {
+}: SdkBreadcrumbsProviderProps) => {
+  const value: SdkBreadcrumbsContextType = {
     isBreadcrumbEnabled: true,
     breadcrumbs: [],
   };
 
   return (
-    <SdkBreadcrumbContext.Provider value={value}>
+    <SdkBreadcrumbsContext.Provider value={value}>
       {children}
-    </SdkBreadcrumbContext.Provider>
+    </SdkBreadcrumbsContext.Provider>
   );
 };
 
-export const EmptyBreadcrumbContext: SdkBreadcrumbContextType = {
+export const EmptyBreadcrumbContext: SdkBreadcrumbsContextType = {
   isBreadcrumbEnabled: false,
   breadcrumbs: [],
 };
