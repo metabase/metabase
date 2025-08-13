@@ -56,7 +56,7 @@ describe("scenarios > admin > transforms", () => {
       H.assertQueryBuilderRowCount(3);
     });
 
-    it("should be able to create and run a native transform", () => {
+    it("should be able to create and run a SQL transform", () => {
       cy.log("open the new transform page");
       visitTransformListPage();
       getTransformListPage().button("Create a transform").click();
@@ -67,7 +67,7 @@ describe("scenarios > admin > transforms", () => {
       H.NativeEditor.type(`SELECT * FROM "${TARGET_SCHEMA}"."${SOURCE_TABLE}"`);
       getQueryEditor().button("Save").click();
       H.modal().within(() => {
-        cy.findByLabelText("Name").type("Native transform");
+        cy.findByLabelText("Name").type("SQL transform");
         cy.findByLabelText("Table name").type(TARGET_TABLE);
         cy.button("Save").click();
         cy.wait("@createTransform");
@@ -122,7 +122,7 @@ describe("scenarios > admin > transforms", () => {
       runAndWaitForSuccess();
 
       cy.log("create and run another transform");
-      createNativeTransform({
+      createSqlTransform({
         sourceQuery: `SELECT * FROM "${TARGET_SCHEMA}"."${SOURCE_TABLE}"`,
         targetTable: TARGET_TABLE_2,
         visitTransform: true,
@@ -132,7 +132,7 @@ describe("scenarios > admin > transforms", () => {
       cy.log("assert that the list is filtered by the current transform");
       getRunListLink().click();
       getContentTable().within(() => {
-        cy.findByText("Native transform").should("be.visible");
+        cy.findByText("SQL transform").should("be.visible");
         cy.findByText("MBQL transform").should("not.exist");
         cy.findByText("Success").should("be.visible");
         cy.findByText("Manual").should("be.visible");
@@ -140,7 +140,7 @@ describe("scenarios > admin > transforms", () => {
     });
 
     it("should display the error message from a failed run", () => {
-      createNativeTransform({
+      createSqlTransform({
         sourceQuery: "SELECT * FROM abc",
         visitTransform: true,
       });
@@ -422,6 +422,16 @@ describe("scenarios > admin > transforms", () => {
     });
   });
 
+  describe("queries", () => {
+    it("should be able to update and MBQL query", () => {
+      cy.log("TBD");
+    });
+
+    it("should be able to update and SQL query", () => {
+      cy.log("TBD");
+    });
+  });
+
   describe("deletion", () => {
     it("should be able to delete a transform before creating the table", () => {
       cy.log("create a transform without running");
@@ -579,7 +589,7 @@ function createMbqlTransform({
   });
 }
 
-function createNativeTransform({
+function createSqlTransform({
   sourceQuery,
   targetTable = TARGET_TABLE,
   targetSchema = TARGET_SCHEMA,
@@ -592,7 +602,7 @@ function createNativeTransform({
 }) {
   H.createTransform(
     {
-      name: "Native transform",
+      name: "SQL transform",
       source: {
         type: "query",
         query: {
