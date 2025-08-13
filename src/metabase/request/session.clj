@@ -1,6 +1,5 @@
 (ns metabase.request.session
   (:require
-   [flatland.ordered.set :as ordered-set]
    [metabase.api.common
     :as api
     :refer [*current-user* *current-user-id* *current-user-permissions-set* *is-group-manager?* *is-superuser?*]]
@@ -37,7 +36,7 @@
   (when-let [perms-set (or permissions-set
                            (some-> metabase-user-id perms/user-permissions-set))]
     (if allowed-collection-id
-      (into (ordered-set/ordered-set)   ; for REPL-friendliness
+      (into (sorted-set) ; for REPL-friendliness
             (remove (fn [path]
                       (and (perms/collection-path? path)
                            (not (perms/collection-path? path allowed-collection-id)))))
