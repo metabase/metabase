@@ -65,11 +65,17 @@
         updated-items (assoc current-items index new-item)]
     (t2/update! :model/Workspace workspace-id {entity-key updated-items})))
 
-(mu/defn- drop-index [current-items :- :vector index]
-  (vec (concat (subvec current-items 0 index)
-               (subvec current-items (inc index)))))
+(mu/defn- drop-index
+  "Note, the insertion order only works when current-items is a vector.
+   Drops the item at the specified index from the vector of current items."
+  [current-items :- [:vector :any] index]
+  (into (subvec current-items 0 index)
+        (subvec current-items (inc index))))
 
 (comment
+
+  (into [:a] [:b])
+
   (mapv #(drop-index [:a :b :c] %)
         [0 1 2])
   ;; => [[:b :c] [:a :c] [:a :b]]
