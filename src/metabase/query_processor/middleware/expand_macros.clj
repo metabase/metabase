@@ -60,7 +60,7 @@
                                  definition)
                 :database (u/the-id (lib.metadata/database metadata-providerable))}
                (lib/->query metadata-providerable)
-               (lib.util/query-stage -1))
+               (lib/query-stage -1))
     (log/tracef "to pMBQL\n%s" (u/pprint-to-str <>))))
 
 (mu/defn- legacy-macro-filters :- [:maybe [:sequential ::lib.schema.expression/boolean]]

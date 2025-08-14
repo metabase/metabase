@@ -33,6 +33,7 @@ export const ALLOWED_EMBED_SETTING_KEYS_MAP = {
   ] satisfies (keyof DashboardEmbedOptions)[],
   chart: [
     "questionId",
+    "isSaveEnabled",
     "withTitle",
     "withDownloads",
     "initialSqlParameters",
