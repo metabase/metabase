@@ -421,8 +421,11 @@
           (let [honey-sql (sql.helpers/create-index
                            [(keyword (hnsw-index-name index)) :if-not-exists]
                            [(keyword table-name) :using-hnsw [:raw "embedding vector_cosine_ops"]])]
-            (throw (ex-info "Failed to create HNSW index" {:honey-sql (u/pprint-to-str honey-sql)
-                                                           :query (sql-format-quoted honey-sql)}
+            (throw (ex-info "Failed to create HNSW index" {:honey-sql honey-sql
+                                                           :query (sql-format-quoted honey-sql)
+                                                           :honey-sql-classpath (-> (System/getProperty "java.class.path")
+                                                                                    (str/split #":")
+                                                                                    (->> (filter #(str/includes? % "honeysql"))))}
                             e)))))
       (jdbc/execute!
        connectable
