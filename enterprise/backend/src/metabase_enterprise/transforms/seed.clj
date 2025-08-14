@@ -14,13 +14,13 @@
 (def ^:private default-tags
   "Default transform tags that should be created on first startup."
   [{:name      (deferred-tru "hourly")
-    :entity_id "hourly-transform-tag"}
+    :entity_id "transform_tag_1_00000"}
    {:name      (deferred-tru "daily")
-    :entity_id "daily-transform-tag"}
+    :entity_id "transform_tag_2_00000"}
    {:name      (deferred-tru "weekly")
-    :entity_id "weekly-transform-tag"}
+    :entity_id "transform_tag_3_00000"}
    {:name      (deferred-tru "monthly")
-    :entity_id "monthly-transform-tag"}])
+    :entity_id "transform_tag_4_00000"}])
 
 (def ^:private default-jobs
   "Default transform jobs that should be created on first startup.
@@ -28,22 +28,22 @@
   [{:name        (deferred-tru "Hourly job")
     :description (deferred-tru "Executes transforms tagged with ''hourly'' every hour")
     :schedule    "0 0 * * * ? *"
-    :entity_id   "hourly000000000000000"
+    :entity_id   "transform_job_1_00000"
     :tag_name    (deferred-tru "hourly")}
    {:name        (deferred-tru "Daily job")
     :description (deferred-tru "Executes transforms tagged with ''daily'' once per day")
     :schedule    "0 0 0 * * ? *"
-    :entity_id   "daily0000000000000000"
+    :entity_id   "transform_job_2_00000"
     :tag_name    (deferred-tru "daily")}
    {:name        (deferred-tru "Weekly job")
     :description (deferred-tru "Executes transforms tagged with ''weekly'' once per week")
     :schedule    "0 0 0 ? * 1 *"
-    :entity_id   "weekly000000000000000"
+    :entity_id   "transform_job_3_00000"
     :tag_name    (deferred-tru "weekly")}
    {:name        (deferred-tru "Monthly job")
     :description (deferred-tru "Executes transforms tagged with ''monthly'' once per month")
     :schedule    "0 0 0 1 * ? *"
-    :entity_id   "monthly00000000000000"
+    :entity_id   "transform_job_4_00000"
     :tag_name    (deferred-tru "monthly")}])
 
 (defn seed-default-tags-and-jobs!
