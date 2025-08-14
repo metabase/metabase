@@ -57,6 +57,6 @@
     (lock-or-throw! conn :pg_try_advisory_xact_lock_shared migration-lock))
 
 (defn acquire-migration-lock!
-  "Acquire migration advisory lock."
+  "Acquire migration advisory lock. Blocks until acquired or timeout (if conn lock_timeout is 0 then conn timeout)."
   [conn]
   (lock-or-throw! conn :pg_advisory_xact_lock migration-lock))
