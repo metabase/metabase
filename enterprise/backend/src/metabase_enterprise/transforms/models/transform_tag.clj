@@ -21,6 +21,6 @@
   [tag-name tag-id]
   (t2/exists? :model/TransformTag :name tag-name :id [:not= tag-id]))
 
-(methodical/defmethod t2/table-name :model/TagTransform [_model] :transform_tags)
+(methodical/defmethod t2/table-name :model/TransformTag [_model] :transform_tags)
 
-(derive :model/TagTransform :metabase/model)
+(derive :model/TransformTag :metabase/model)
