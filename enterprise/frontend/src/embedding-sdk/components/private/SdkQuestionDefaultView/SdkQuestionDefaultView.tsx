@@ -10,6 +10,7 @@ import {
   SdkLoader,
 } from "embedding-sdk/components/private/PublicComponentWrapper";
 import { QuestionVisualization } from "embedding-sdk/components/private/SdkQuestion/components/Visualization";
+import { useSdkBreadcrumb } from "embedding-sdk/hooks/private/use-sdk-breadcrumb";
 import { useTranslatedCollectionId } from "embedding-sdk/hooks/private/use-translated-collection-id";
 import { shouldRunCardQuery } from "embedding-sdk/lib/sdk-question";
 import type { SdkQuestionTitleProps } from "embedding-sdk/types/question";
@@ -81,12 +82,39 @@ export const SdkQuestionDefaultView = ({
     originalQuestion,
     isSaveEnabled,
     withDownloads,
+    onReset,
+    onNavigateBack,
   } = useSdkQuestionContext();
+
+  const { isBreadcrumbEnabled, reportLocation } = useSdkBreadcrumb();
 
   const isNewQuestion = originalId === "new";
   const isQuestionSaved = question?.isSaved();
 
-  // TODO: update breadcrumb location here.
+  // Report current question to breadcrumbs
+  useEffect(() => {
+    if (question && isBreadcrumbEnabled && !isNewQuestion) {
+      reportLocation({
+        type: "question",
+        id: question.id() || originalId || 0,
+        name: question.displayName() || "Question",
+        onNavigate: onNavigateBack
+          ? onNavigateBack
+          : originalQuestion
+            ? onReset
+            : undefined,
+      });
+    }
+  }, [
+    question,
+    isBreadcrumbEnabled,
+    isNewQuestion,
+    originalId,
+    reportLocation,
+    onNavigateBack,
+    originalQuestion,
+    onReset,
+  ]);
 
   const [
     isEditorOpen,

@@ -13,6 +13,11 @@ export interface BreadcrumbItem {
   id: number | string | SdkCollectionId;
   name: string;
   type: BreadcrumbItemType;
+  /**
+   * Optional callback to execute when navigating to this breadcrumb item.
+   * Used for implementing "Return to" and "Back" behaviors.
+   */
+  onNavigate?: () => void;
 }
 
 export interface SdkBreadcrumbsContextType {
@@ -97,6 +102,13 @@ export const SdkBreadcrumbsProvider = ({
       );
 
       if (itemIndex !== -1) {
+        const foundItem = breadcrumbs[itemIndex];
+
+        // Execute the navigation callback if it exists
+        if (foundItem.onNavigate) {
+          foundItem.onNavigate();
+        }
+
         // Pop the breadcrumb stack to the clicked item
         setBreadcrumbs(breadcrumbs.slice(0, itemIndex + 1));
       }

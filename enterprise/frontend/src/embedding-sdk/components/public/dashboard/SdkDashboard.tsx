@@ -18,6 +18,7 @@ import {
 } from "embedding-sdk/components/private/PublicComponentWrapper";
 import { SdkAdHocQuestion } from "embedding-sdk/components/private/SdkAdHocQuestion";
 import { SdkQuestion } from "embedding-sdk/components/public/SdkQuestion/SdkQuestion";
+import { useSdkBreadcrumb } from "embedding-sdk/hooks/private/use-sdk-breadcrumb";
 import {
   type SdkDashboardDisplayProps,
   useSdkDashboardParams,
@@ -155,7 +156,19 @@ const SdkDashboardInner = ({
   const { isLocaleLoading } = useLocale();
   const { data: dashboard } = useGetDashboardQuery({ id: dashboardId });
 
-  // TODO: send breadcrumb location here.
+  const { isBreadcrumbEnabled, reportLocation } = useSdkBreadcrumb();
+
+  // Report dashboard location to breadcrumbs
+  useEffect(() => {
+    if (dashboard && isBreadcrumbEnabled) {
+      reportLocation({
+        type: "dashboard",
+        id: dashboard.id,
+        name: dashboard.name,
+        // No onNavigate callback for dashboards as they are typically top-level
+      });
+    }
+  }, [dashboard, isBreadcrumbEnabled, reportLocation]);
 
   const { displayOptions } = useSdkDashboardParams({
     dashboardId,

@@ -241,4 +241,55 @@ describe("SdkBreadcrumbsProvider", () => {
       name: "Collection 1",
     });
   });
+
+  it("should execute navigation callbacks when navigating", () => {
+    const { result } = renderHook(() => useSdkBreadcrumb(), { wrapper });
+
+    const mockCallback1 = jest.fn();
+    const mockCallback2 = jest.fn();
+
+    // Add items with navigation callbacks
+    act(() => {
+      result.current.reportLocation({
+        type: "collection",
+        id: "1",
+        name: "Collection 1",
+        onNavigate: mockCallback1,
+      });
+    });
+
+    act(() => {
+      result.current.reportLocation({
+        type: "question",
+        id: 123,
+        name: "My Question",
+        onNavigate: mockCallback2,
+      });
+    });
+
+    expect(result.current.breadcrumbs).toHaveLength(2);
+
+    // Navigate back to Collection 1
+    act(() => {
+      result.current.navigateTo({
+        type: "collection",
+        id: "1",
+        name: "Collection 1",
+        onNavigate: mockCallback1,
+      });
+    });
+
+    // Should have executed the callback
+    expect(mockCallback1).toHaveBeenCalledTimes(1);
+    expect(mockCallback2).not.toHaveBeenCalled();
+
+    // Should have popped the breadcrumb stack
+    expect(result.current.breadcrumbs).toHaveLength(1);
+    expect(result.current.currentLocation).toEqual({
+      type: "collection",
+      id: "1",
+      name: "Collection 1",
+      onNavigate: mockCallback1,
+    });
+  });
 });
