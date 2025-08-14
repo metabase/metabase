@@ -9,7 +9,7 @@ import type { SdkIframeEmbedBaseSettings } from "metabase-enterprise/embedding_i
 
 import { useSdkIframeEmbedSetupContext } from "../context";
 
-import styles from "./SdkIframeEmbedPreview.module.css";
+import S from "./SdkIframeEmbedPreview.module.css";
 
 declare global {
   interface Window {
@@ -62,7 +62,7 @@ export const SdkIframeEmbedPreview = () => {
 
   return (
     <Card
-      className={styles.EmbedPreviewIframe}
+      className={S.EmbedPreviewIframe}
       id="iframe-embed-container"
       bg={settings.theme?.colors?.background}
       h="100%"
