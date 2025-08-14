@@ -40,7 +40,7 @@ export const ViewFooter = ({ className }: ViewFooterProps) => {
     >
       <Group justify="space-between" pos="relative" wrap="nowrap" w="100%">
         {!hideChartSettings && <LeftViewFooterButtonGroup />}
-        {!isVisualized && <ViewStyleToggle />}
+        {!isVisualized && !question.isSaved() && <ViewStyleToggle />}
         {isVisualized && <CenterViewFooterButtonGroup />}
         <RightViewFooterButtonGroup />
       </Group>
