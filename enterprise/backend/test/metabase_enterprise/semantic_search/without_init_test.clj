@@ -3,7 +3,6 @@
    [clojure.test :refer :all]
    [metabase-enterprise.semantic-search.core :as semantic]
    [metabase-enterprise.semantic-search.db.datasource :as semantic.db.datasource]
-   [metabase-enterprise.semantic-search.db.migration :as semantic.db.migration]
    [metabase-enterprise.semantic-search.env :as semantic.env]
    [metabase-enterprise.semantic-search.test-util :as semantic.tu]
    [metabase.test :as mt]))

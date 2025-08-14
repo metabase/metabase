@@ -86,6 +86,7 @@
 
 (declare db)
 
+#_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defn ensure-no-migration-table-fixture [f]
   (semantic.db.migration/drop-migration-table! db)
   (f)
