@@ -23,7 +23,6 @@
    [metabase.premium-features.core :as premium-features]
    [metabase.request.core :as request]
    [metabase.session.core :as session]
-   [metabase.test :as mt]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
@@ -210,15 +209,25 @@
   (merge
    request
    (or
-    (when-let [api-key-collection (and x-api-key
-                                       (->> x-api-key (re-matches #"^x-metabase-workspace-(\d+)$") second))]
-      (prn "coll key for " api-key-collection)
-      {:permissions-set (str "/collection/" api-key-collection "/")})
     (current-user-info-for-api-key x-api-key)
-    (current-user-info-for-session metabase-session-key anti-csrf-token))
+    (current-user-info-for-session metabase-session-key anti-csrf-token)
+    (when-let [workspace-id (and (string? x-api-key)
+                                 (->> x-api-key (re-matches #"^mb-workspace-(\d+)$") second))]
+      (let [workspace-collection (t2/select-one-fn :collection_id :model/Workspace :id (parse-long workspace-id))]
+        (when workspace-collection
+          {:permissions-set #{(str "/collection/" workspace-collection "/")}
+           :metabase-user-id 13371338}))))
    (when x-metabase-locale
      (log/tracef "Found X-Metabase-Locale header: using %s as user locale" (pr-str x-metabase-locale))
      {:user-locale (i18n/normalized-locale-string x-metabase-locale)})))
+
+(comment
+  (binding [metabase.api.common/*current-user-id* 13371338
+            #_#_ metabase.api.common/*current-user-permissions-set* (delay #{"/collection/12/"})]
+    (metabase.models.interface/can-read? (t2/select-one :model/Card :id 115)))
+
+  (metabase.permissions.core/user-permissions-set 13371338)
+  )
 
 (defn wrap-current-user-info
   "Add `:metabase-user-id`, `:is-superuser?`, `:is-group-manager?` and `:user-locale` to the request if a valid session
