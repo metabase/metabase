@@ -78,6 +78,7 @@
   (t2/hydrate (t2/select :model/Transform) :last_run :transform_tag_ids))
 
 (api.macros/defendpoint :post "/"
+  "Create a new transform."
   [_route-params
    _query-params
    body :- [:map
@@ -102,6 +103,7 @@
     (t2/hydrate transform :transform_tag_ids)))
 
 (api.macros/defendpoint :get "/:id"
+  "Get a specific transform."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
   (log/info "get transform" id)
@@ -114,6 +116,7 @@
         (assoc :table target-table))))
 
 (api.macros/defendpoint :get "/run"
+  "Get transform runs based on a set of filter params."
   [_route-params
    {:keys [sort_column sort_direction transform_ids statuses transform_tag_ids]} :-
    [:map
@@ -133,6 +136,7 @@
                              :limit               (request/limit)}))
 
 (api.macros/defendpoint :put "/:id"
+  "Update a transform."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]
    _query-params
@@ -163,6 +167,7 @@
   (t2/hydrate (t2/select-one :model/Transform id) :transform_tag_ids))
 
 (api.macros/defendpoint :delete "/:id"
+  "Delete a transform."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
   (log/info "delete transform" id)
@@ -171,6 +176,7 @@
   nil)
 
 (api.macros/defendpoint :delete "/:id/table"
+  "Delete a transform's output table."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
   (log/info "delete transform target table" id)
@@ -179,6 +185,7 @@
   nil)
 
 (api.macros/defendpoint :post "/:id/cancel"
+  "Cancel the current run for a given transform."
   [{:keys [id]} :- [:map
                     [:id :string]]]
   (log/info "canceling transform " id)
@@ -188,6 +195,7 @@
   nil)
 
 (api.macros/defendpoint :post "/:id/run"
+  "Run a transform."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
   (log/info "run transform" id)
