@@ -414,7 +414,7 @@
        connectable
        (-> (sql.helpers/create-index
             [(keyword (hnsw-index-name index)) :if-not-exists]
-            [(keyword table-name) :using-hnsw [:raw "embedding vector_cosine_ops"]])
+            [(keyword table-name) :using-hnsw [[:raw "embedding vector_cosine_ops"]]])
            sql-format-quoted))
       (jdbc/execute!
        connectable
