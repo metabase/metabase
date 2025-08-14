@@ -347,9 +347,9 @@ describe("documents", () => {
         cy.log("via recents");
         H.addToDocument("/", false);
         H.commandSuggestionItem("Chart").click();
-        H.commandSuggestionItem(
-          new RegExp(RegExp.escape(PRODUCTS_COUNT_BY_CATEGORY_PIE.name)),
-        ).click();
+        H.commandSuggestionDialog()
+          .findByText(PRODUCTS_COUNT_BY_CATEGORY_PIE.name)
+          .click();
         H.getDocumentCard(PRODUCTS_COUNT_BY_CATEGORY_PIE.name).should("exist");
 
         cy.realPress("{downarrow}");
