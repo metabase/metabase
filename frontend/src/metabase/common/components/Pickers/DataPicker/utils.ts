@@ -55,6 +55,7 @@ export const getDataPickerValue = (
         : displayInfo.isMetric
           ? "metric"
           : "card",
+      db_id: pickerInfo.databaseId,
     };
   }
 
@@ -78,7 +79,7 @@ export const getDbItem = (
   const database = databases?.find((db) => db.id === dbId);
   const name = database?.name ?? "";
 
-  return { model: "database", id: dbId, name, database };
+  return { model: "database", id: dbId, name };
 };
 
 export const getSchemaItem = (

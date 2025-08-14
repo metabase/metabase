@@ -72,14 +72,14 @@ export function EditorBody({
     return {
       shouldDisableItem: (item: DataPickerItem) => {
         // Disable unsuppported databases
-        if (item.model === "database" && item.database) {
+        if (item.model === "database") {
           const database = metadata.database(item.id);
           return !isDatabaseSupported(database);
         }
 
         // Disable questions based on unsuppported databases
         if (item.model === "card" || item.model === "dataset") {
-          const database = metadata.database(item.database_id);
+          const database = metadata.database(item.db_id);
           return !isDatabaseSupported(database);
         }
 
