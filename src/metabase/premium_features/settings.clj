@@ -275,8 +275,8 @@
   "Should we allow users to edit the data within tables?"
   :table-data-editing)
 
-(define-premium-feature ^{:added "0.57.0"} documents?
-  "Should we enable Documents editor?"
+(define-premium-feature ^{:added "0.57.0"} enable-documents?
+  "Does this instance support the new document entity."
   :documents)
 
 (defn- -token-features []
@@ -297,8 +297,8 @@
    :database_auth_providers        (enable-database-auth-providers?)
    :database_routing               (enable-database-routing?)
    :development_mode               (development-mode?)
-   :documents                      (documents?)
    :disable_password_login         (can-disable-password-login?)
+   :documents                      (enable-documents?)
    :email_allow_list               (enable-email-allow-list?)
    :email_restrict_recipients      (enable-email-restrict-recipients?)
    :embedding                      (hide-embed-branding?)

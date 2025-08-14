@@ -63,7 +63,7 @@
 
 (defn- has-documents?
   []
-  (and (premium-features/has-feature? :documents)
+  (and (premium-features/enable-documents?)
        config/ee-available?))
 
 (defn- bookmarks-union-query

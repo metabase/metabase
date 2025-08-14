@@ -48,7 +48,7 @@
 (defn- archived-directly-models
   []
   (cond-> #{:model/Card :model/Dashboard}
-    (premium-features/has-feature? :documents) (conj :model/Document)))
+    (premium-features/enable-documents?) (conj :model/Document)))
 
 (defn- collectable-models
   []

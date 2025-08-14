@@ -56,7 +56,7 @@
 
 (defmethod check-permissions-for-model :document
   [search-ctx instance]
-  (and (premium-features/has-feature? :documents)
+  (and (premium-features/enable-documents?)
        (if (:archived? search-ctx)
          (can-write? search-ctx instance)
          true)))
