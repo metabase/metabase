@@ -1,5 +1,9 @@
 import { Node, mergeAttributes } from "@tiptap/core";
-import { type NodeViewProps, NodeViewWrapper } from "@tiptap/react";
+import {
+  type NodeViewProps,
+  NodeViewWrapper,
+  ReactNodeViewRenderer,
+} from "@tiptap/react";
 import cx from "classnames";
 import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { push } from "react-router-redux";
@@ -55,7 +59,7 @@ export interface CardEmbedAttributes {
   name?: string;
   class?: string;
 }
-export const CardEmbedNode: Node<{
+export const CardEmbed: Node<{
   HTMLAttributes: CardEmbedAttributes;
 }> = Node.create({
   name: "cardEmbed",
@@ -86,7 +90,7 @@ export const CardEmbedNode: Node<{
   parseHTML() {
     return [
       {
-        tag: `div[data-type="${CardEmbedNode.name}"]`,
+        tag: `div[data-type="${CardEmbed.name}"]`,
       },
     ];
   },
@@ -97,7 +101,7 @@ export const CardEmbedNode: Node<{
       mergeAttributes(
         HTMLAttributes,
         {
-          "data-type": CardEmbedNode.name,
+          "data-type": CardEmbed.name,
           "data-id": node.attrs.id,
           "data-name": node.attrs.name,
         },
@@ -112,19 +116,7 @@ export const CardEmbedNode: Node<{
   },
 
   addNodeView() {
-    return () => {
-      const dom = document.createElement("div");
-      dom.setAttribute("data-type", CardEmbedNode.name);
-      dom.className = styles.embedContainer;
-
-      const content = document.createElement("div");
-      dom.appendChild(content);
-
-      return {
-        dom,
-        contentDOM: content,
-      };
-    };
+    return ReactNodeViewRenderer(CardEmbedComponent);
   },
 });
 

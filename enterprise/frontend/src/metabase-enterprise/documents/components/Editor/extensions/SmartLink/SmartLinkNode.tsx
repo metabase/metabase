@@ -1,5 +1,9 @@
 import { Node, mergeAttributes, nodePasteRule } from "@tiptap/core";
-import { type NodeViewProps, NodeViewWrapper } from "@tiptap/react";
+import {
+  type NodeViewProps,
+  NodeViewWrapper,
+  ReactNodeViewRenderer,
+} from "@tiptap/react";
 import { memo, useEffect } from "react";
 import { t } from "ttag";
 
@@ -103,7 +107,7 @@ export function parseEntityUrl(
   }
 }
 
-export const SmartLinkNode = Node.create<{
+export const SmartLink = Node.create<{
   HTMLAttributes: Record<string, unknown>;
   siteUrl?: string;
 }>({
@@ -127,6 +131,10 @@ export const SmartLinkNode = Node.create<{
         parseHTML: (element) => element.getAttribute("data-model"),
       },
     };
+  },
+
+  addNodeView() {
+    return ReactNodeViewRenderer(SmartLinkComponent);
   },
 
   parseHTML() {

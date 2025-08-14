@@ -22,7 +22,7 @@ import { getMentionsCacheKey } from "metabase-enterprise/documents/utils/mention
 
 import styles from "./Editor.module.css";
 import { EditorBubbleMenu } from "./EditorBubbleMenu";
-import { CardEmbed } from "./extensions/CardEmbed";
+import { CardEmbed } from "./extensions/CardEmbed/CardEmbedNode";
 import { CommandExtension } from "./extensions/Command/CommandExtension";
 import { CommandSuggestion } from "./extensions/Command/CommandSuggestion";
 import { DisableMetabotSidebar } from "./extensions/DisableMetabotSidebar";
@@ -31,7 +31,7 @@ import { MentionSuggestion } from "./extensions/Mention/MentionSuggestion";
 import { MetabotNode, type PromptSerializer } from "./extensions/MetabotEmbed";
 import { MetabotMentionExtension } from "./extensions/MetabotMention/MetabotMentionExtension";
 import { MetabotMentionSuggestion } from "./extensions/MetabotMention/MetabotSuggestion";
-import { SmartLinkEmbed } from "./extensions/SmartLink";
+import { SmartLink } from "./extensions/SmartLink/SmartLinkNode";
 import { createSuggestionRenderer } from "./extensions/suggestionRenderer";
 import { useCardEmbedsTracking, useQuestionSelection } from "./hooks";
 import type { CardEmbedRef } from "./types";
@@ -42,7 +42,7 @@ const getMetabotPromptSerializer =
     const payload: ReturnType<PromptSerializer> = { instructions: "" };
     return node.content.content.reduce((acc, child) => {
       // Serialize @ mentions in the metabot prompt
-      if (child.type.name === SmartLinkEmbed.name) {
+      if (child.type.name === SmartLink.name) {
         const { model, entityId } = child.attrs;
         const key = getMentionsCacheKey({ model, entityId });
         const value = getMentionsCache(getState())[key];
@@ -97,7 +97,7 @@ export const Editor: React.FC<EditorProps> = ({
           class: styles.img,
         },
       }),
-      SmartLinkEmbed.configure({
+      SmartLink.configure({
         HTMLAttributes: {
           class: "smart-link",
         },
