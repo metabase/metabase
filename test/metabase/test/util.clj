@@ -300,6 +300,13 @@
        :time_matters true
        :creator_id   (rasta-id)}))
 
+   :model/TransformRun
+   (fn [_]
+     {:status     "succeeded"
+      :run_method "manual"
+      :start_time (t/instant)
+      :end_time   (t/instant)})
+
    :model/User
    (fn [_] {:first_name  (u.random/random-name)
             :last_name   (u.random/random-name)

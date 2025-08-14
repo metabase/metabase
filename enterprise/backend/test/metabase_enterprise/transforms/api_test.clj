@@ -49,19 +49,6 @@
      :target {:type "table"
               :name table-name}}))
 
-(defn create-transform-run
-  "Create a transform run with default values.
-   Can override any field by passing opts map."
-  ([transform-id]
-   (create-transform-run transform-id {}))
-  ([transform-id opts]
-   (merge {:transform_id transform-id
-           :status       "succeeded"
-           :run_method   "manual"
-           :start_time   (t/instant)
-           :end_time     (t/instant)}
-          opts)))
-
 (defmacro with-transform-tags
   "Create transform-tag associations and ensure cleanup.
    Associations should be a seq of {:transform_id X :tag_id Y} maps."
@@ -374,8 +361,8 @@
     (mt/with-premium-features #{:transforms}
       (mt/with-temp [:model/Transform transform1 (test-transform "Transform 1")
                      :model/Transform transform2 (test-transform "Transform 2")
-                     :model/TransformRun run1 (create-transform-run (:id transform1))
-                     :model/TransformRun run2 (create-transform-run (:id transform2))]
+                     :model/TransformRun run1 {:transform_id (:id transform1)}
+                     :model/TransformRun run2 {:transform_id (:id transform2)}]
         (testing "Filter by transform1 ID only returns transform1 runs"
           (let [response (mt/user-http-request :crowberto :get 200 "ee/transform/run"
                                                :transform_ids [(:id transform1)])]
@@ -396,9 +383,9 @@
       (mt/with-temp [:model/Transform transform1 (test-transform "Transform 1")
                      :model/Transform transform2 (test-transform "Transform 2")
                      :model/Transform transform3 (test-transform "Transform 3")
-                     :model/TransformRun _run1 (create-transform-run (:id transform1))
-                     :model/TransformRun _run2 (create-transform-run (:id transform2))
-                     :model/TransformRun _run3 (create-transform-run (:id transform3))]
+                     :model/TransformRun _run1 {:transform_id (:id transform1)}
+                     :model/TransformRun _run2 {:transform_id (:id transform2)}
+                     :model/TransformRun _run3 {:transform_id (:id transform3)}]
         (testing "Filter by transform1 and transform2 IDs returns only those runs"
           (let [response (mt/user-http-request :crowberto :get 200 "ee/transform/run"
                                                :transform_ids [(:id transform1) (:id transform2)])]
@@ -409,9 +396,9 @@
   (testing "GET /api/ee/transform/run - filter by single status"
     (mt/with-premium-features #{:transforms}
       (mt/with-temp [:model/Transform transform (test-transform "Transform with multiple runs")
-                     :model/TransformRun _run1 (create-transform-run (:id transform) {:status "succeeded"})
-                     :model/TransformRun _run2 (create-transform-run (:id transform) {:status "failed"})
-                     :model/TransformRun _run3 (create-transform-run (:id transform) {:status "failed"})]
+                     :model/TransformRun _run1 {:transform_id (:id transform) :status "succeeded"}
+                     :model/TransformRun _run2 {:transform_id (:id transform) :status "failed"}
+                     :model/TransformRun _run3 {:transform_id (:id transform) :status "failed"}]
         (testing "Filter by 'failed' status returns only failed runs"
           (let [response (mt/user-http-request :crowberto :get 200 "ee/transform/run"
                                                :statuses ["failed"])]
@@ -438,10 +425,10 @@
                                                                              :template-tags {}}}}
                                                  :target {:type "table"
                                                           :name (str "test_table_" (u/generate-nano-id))}}
-                     :model/TransformRun _run1 (create-transform-run (:id transform) {:status "succeeded"})
-                     :model/TransformRun _run2 (create-transform-run (:id transform) {:status "succeeded"})
-                     :model/TransformRun _run3 (create-transform-run (:id transform) {:status "failed"})
-                     :model/TransformRun _run4 (create-transform-run (:id transform) {:status "timeout"})]
+                     :model/TransformRun _run1 {:transform_id (:id transform) :status "succeeded"}
+                     :model/TransformRun _run2 {:transform_id (:id transform) :status "succeeded"}
+                     :model/TransformRun _run3 {:transform_id (:id transform) :status "failed"}
+                     :model/TransformRun _run4 {:transform_id (:id transform) :status "timeout"}]
         (testing "Filter by 'succeeded' and 'failed' returns both types"
           (let [response (mt/user-http-request :crowberto :get 200 "ee/transform/run"
                                                :statuses ["succeeded" "failed"])
@@ -457,12 +444,9 @@
                      :model/Transform transform3 (test-transform "Untagged Transform")
                      :model/TransformTag tag1 {:name (str "test-tag-" (u/generate-nano-id))}
 
-                     :model/TransformTag {:transform_id (:id transform1) :tag_id (:id tag1)}
-                     {:transform_id (:id transform2) :tag_id (:id tag1)}
-
-                     :model/TransformRun _run1 (create-transform-run (:id transform1))
-                     :model/TransformRun _run1 (create-transform-run (:id transform2))
-                     :model/TransformRun _run1 (create-transform-run (:id transform3))]
+                     :model/TransformRun _run1 {:transform_id (:id transform1)}
+                     :model/TransformRun _run2 {:transform_id (:id transform2)}
+                     :model/TransformRun _run3 {:transform_id (:id transform3)}]
         (with-transform-tags [{:transform_id (:id transform1) :tag_id (:id tag1)}
                               {:transform_id (:id transform2) :tag_id (:id tag1)}]
           (testing "Filter by tag1 returns only tagged transforms' runs"
@@ -511,10 +495,10 @@
                      :model/TransformTag tag1 {:name (str "test-tag-1-" (u/generate-nano-id))}
                      :model/TransformTag tag2 {:name (str "test-tag-2-" (u/generate-nano-id))}
 
-                     :model/TransformRun _run1 (create-transform-run (:id transform1))
-                     :model/TransformRun _run1 (create-transform-run (:id transform2))
-                     :model/TransformRun _run1 (create-transform-run (:id transform3))
-                     :model/TransformRun _run1 (create-transform-run (:id transform4))]
+                     :model/TransformRun _run1 {:transform_id (:id transform1)}
+                     :model/TransformRun _run1 {:transform_id (:id transform2)}
+                     :model/TransformRun _run1 {:transform_id (:id transform3)}
+                     :model/TransformRun _run1 {:transform_id (:id transform4)}]
         ;; Associate tags with transforms
         (with-transform-tags [{:transform_id (:id transform1) :tag_id (:id tag1)}
                               {:transform_id (:id transform2) :tag_id (:id tag1)}
@@ -547,10 +531,10 @@
                                                                               :template-tags {}}}}
                                                   :target {:type "table"
                                                            :name (str "test_table_2_" (u/generate-nano-id))}}
-                     :model/TransformRun _run1 (create-transform-run (:id transform1) {:status "succeeded"})
-                     :model/TransformRun _run1 (create-transform-run (:id transform1) {:status "failed"})
-                     :model/TransformRun _run1 (create-transform-run (:id transform1) {:status "failed"})
-                     :model/TransformRun _run1 (create-transform-run (:id transform2) {:status "failed"})]
+                     :model/TransformRun _run1 {:transform_id (:id transform1) :status "succeeded"}
+                     :model/TransformRun _run1 {:transform_id (:id transform1) :status "failed"}
+                     :model/TransformRun _run1 {:transform_id (:id transform1) :status "failed"}
+                     :model/TransformRun _run1 {:transform_id (:id transform2) :status "failed"}]
         ;; Create multiple runs with different statuses for transform1
         (testing "Filter by transform1 ID and failed status"
           (let [response (mt/user-http-request :crowberto :get 200 "ee/transform/run"
@@ -589,10 +573,10 @@
                                                   :target {:type "table"
                                                            :name (str "test_table_3_" (u/generate-nano-id))}}
                      :model/TransformTag tag1 {:name (str "test-tag-" (u/generate-nano-id))}
-                     :model/TransformRun _run1 (create-transform-run (:id transform1) {:status "succeeded"})
-                     :model/TransformRun _run1 (create-transform-run (:id transform2) {:status "failed"})
-                     :model/TransformRun _run1 (create-transform-run (:id transform3) {:status "failed"})
-                     :model/TransformRun _run1 (create-transform-run (:id transform2) {:status "succeeded"})]
+                     :model/TransformRun _run1 {:transform_id (:id transform1) :status "succeeded"}
+                     :model/TransformRun _run1 {:transform_id (:id transform2) :status "failed"}
+                     :model/TransformRun _run1 {:transform_id (:id transform3) :status "failed"}
+                     :model/TransformRun _run1 {:transform_id (:id transform2) :status "succeeded"}]
         ;; Associate tag1 with transform1 and transform2
         (with-transform-tags [{:transform_id (:id transform1) :tag_id (:id tag1)}
                               {:transform_id (:id transform2) :tag_id (:id tag1)}]
@@ -611,8 +595,8 @@
                      :model/Transform transform2 (test-transform "Transform with tag2")
                      :model/TransformTag tag1 {:name (str "test-tag-1-" (u/generate-nano-id))}
                      :model/TransformTag tag2 {:name (str "test-tag-2-" (u/generate-nano-id))}
-                     :model/TransformRun _run1 (create-transform-run (:id transform1))
-                     :model/TransformRun _run1 (create-transform-run (:id transform2))]
+                     :model/TransformRun _run1 {:transform_id (:id transform1)}
+                     :model/TransformRun _run1 {:transform_id (:id transform2)}]
         (with-transform-tags [{:transform_id (:id transform1) :tag_id (:id tag1)}
                               {:transform_id (:id transform2) :tag_id (:id tag2)}]
           (testing "Filter by transform1 ID and tag1 returns transform1 (has both)"
