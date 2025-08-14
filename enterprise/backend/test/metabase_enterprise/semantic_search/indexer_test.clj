@@ -11,19 +11,20 @@
    [metabase.util.log :as log]
    [next.jdbc :as jdbc]
    [next.jdbc.result-set :as jdbc.rs])
-  (:import (java.sql Timestamp)
+  (:import (java.io Closeable)
+           (java.sql Timestamp)
            (java.time Duration Instant)))
 
 (set! *warn-on-reflection* true)
 
 (use-fixtures :once #'semantic.tu/once-fixture)
 
-(defn- open-metadata! [pgvector index-metadata]
+(defn- open-metadata! ^Closeable [pgvector index-metadata]
   (semantic.tu/closeable
    (semantic.index-metadata/create-tables-if-not-exists! pgvector index-metadata)
    (fn [_] (semantic.tu/cleanup-index-metadata! pgvector index-metadata))))
 
-(defn- open-index! [pgvector index]
+(defn- open-index! ^Closeable [pgvector index]
   (semantic.tu/closeable
    (semantic.index/create-index-table-if-not-exists! pgvector index)
    (fn [_] (semantic.index/drop-index-table! pgvector index))))
@@ -184,18 +185,19 @@
             (semantic.indexer/on-indexing-idle indexing-state)
             (is (= 3000 @sleep-called))))))))
 
-(defn- open-loop-thread! [& loop-args]
+(defn- open-loop-thread! ^Closeable [& loop-args]
   (let [caught-ex (volatile! nil)]
     (semantic.tu/closeable
      {:caught-ex caught-ex
       :thread
       (doto (Thread.
              ^Runnable
-             (bound-fn []
-               (try
-                 (apply semantic.indexer/indexing-loop loop-args)
-                 (catch Throwable t
-                   (vreset! caught-ex t)))))
+             (identity
+              (bound-fn []
+                (try
+                  (apply semantic.indexer/indexing-loop loop-args)
+                  (catch Throwable t
+                    (vreset! caught-ex t))))))
         (.setDaemon true)
         (.start))}
      (fn [{:keys [^Thread thread]}]
@@ -241,7 +243,7 @@
                                      index-metadata
                                      index
                                      indexing-state)]
-        (let [{:keys [caught-ex thread]} @loop-thread]
+        (let [{:keys [caught-ex ^Thread thread]} @loop-thread]
           (is (not= :timeout (deref idle-called 100 :timeout)))
           (is (not= :timeout (deref step-called 100 :timeout)))
 
@@ -269,7 +271,7 @@
                                        index-metadata
                                        index
                                        indexing-state)]
-          (let [{:keys [thread]} @loop-thread]
+          (let [{:keys [^Thread thread]} @loop-thread]
             (.interrupt thread)
             (is (.join thread (Duration/ofSeconds 1)))))))))
 
@@ -368,11 +370,12 @@
                               :thread
                               (doto (Thread.
                                      ^Runnable
-                                     (bound-fn []
-                                       (try
-                                         (apply semantic.indexer/quartz-job-run! args)
-                                         (catch Throwable t
-                                           (vreset! caught-ex t)))))
+                                     (identity
+                                      (bound-fn []
+                                        (try
+                                          (apply semantic.indexer/quartz-job-run! args)
+                                          (catch Throwable t
+                                            (vreset! caught-ex t))))))
                                 (.setDaemon true)
                                 (.start))}
                              (fn [{:keys [^Thread thread]}]
@@ -382,7 +385,7 @@
                                    (log/fatal "Indexing loop thread not exiting during test!")))))))]
 
     (testing "exit immediately: no active index / index tables"
-      (with-open [job-thread (open-job-thread pgvector index-metadata)]
+      (with-open [job-thread ^Closeable (open-job-thread pgvector index-metadata)]
         (let [{:keys [caught-ex ^Thread thread]} @job-thread]
           (testing "thread exited"
             (is (.join thread (Duration/ofSeconds 5))))
@@ -396,7 +399,7 @@
             index        {:table-name "foo"}]
         (with-redefs [semantic.index-metadata/get-active-index-state (fn [& _] {:index index :metadata-row metadata-row})
                       semantic.indexer/indexing-loop                 (fn [& args] (swap! loop-args conj args) nil)]
-          (with-open [job-thread (open-job-thread pgvector index-metadata)]
+          (with-open [job-thread ^Closeable (open-job-thread pgvector index-metadata)]
             (let [{:keys [caught-ex ^Thread thread]} @job-thread]
               (testing "thread exited (loop returned)"
                 (is (.join thread (Duration/ofSeconds 5))))
@@ -414,7 +417,7 @@
       (testing "exit on exception/error during loop"
         (with-redefs [semantic.index-metadata/get-active-index-state (fn [& _] {:index {} :metadata-row {}})
                       semantic.indexer/indexing-loop                 (fn [& _] (throw ex))]
-          (with-open [job-thread (open-job-thread pgvector index-metadata)]
+          (with-open [job-thread ^Closeable  (open-job-thread pgvector index-metadata)]
             (let [{:keys [caught-ex ^Thread thread]} @job-thread]
               (testing "thread exited"
                 (is (.join thread (Duration/ofSeconds 5))))

@@ -12,7 +12,8 @@
    [metabase.util.json :as json]
    [next.jdbc :as jdbc]
    [next.jdbc.result-set :as jdbc.rs])
-  (:import (java.sql Timestamp)
+  (:import (java.io Closeable)
+           (java.sql Timestamp)
            (java.time Duration Instant)
            (org.postgresql.util PGobject)))
 
@@ -20,7 +21,7 @@
 
 (use-fixtures :once #'semantic.tu/once-fixture)
 
-(defn- open-tables! [pgvector index-metadata]
+(defn- open-tables! ^Closeable [pgvector index-metadata]
   (semantic.tu/closeable
    (semantic.index-metadata/create-tables-if-not-exists! pgvector index-metadata)
    (fn [_] (semantic.tu/cleanup-index-metadata! pgvector index-metadata))))
@@ -227,7 +228,7 @@
           (let [[g1 g2 g3] (sort (map :gated_at (get-gate-rows! pgvector index-metadata)))
                 lag-tolerance  (Duration/ofSeconds 3)
                 poll-times     #(sort (map :gated_at (:update-candidates (sut pgvector index-metadata % :lag-tolerance lag-tolerance))))
-                timestamp-plus #(.plus (.toInstant ^Timestamp %1) %2)]
+                timestamp-plus #(.plus (.toInstant ^Timestamp %1) ^Duration %2)]
             (is (= [g1 g2 g3] (poll-times epoch-watermark)))
             (testing "seen everything, but still in lag tolerance window"
               (is (= [g1 g2 g3] (poll-times {:last-poll g1 :last-seen {:gated_at g3}})))
