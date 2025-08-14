@@ -70,6 +70,12 @@ export const SdkBreadcrumbsProvider = ({
 
       const lastItem = prevBreadcrumbs[prevBreadcrumbs.length - 1];
 
+      // When navigating to a dashboard card, do not show in breadcrumbs
+      // for consistency with ad-hoc questions.
+      if (lastItem.type === "dashboard" && item.type === "question") {
+        return prevBreadcrumbs;
+      }
+
       // Collections should always append to build hierarchy ("Root > Analytics > Sales")
       // Only questions/dashboards/models/metrics should replace when same type
       if (item.type === "collection") {
