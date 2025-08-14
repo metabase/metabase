@@ -169,7 +169,7 @@ export function DetailView({ params }: Props) {
               // intentionally misalign the header to create an "optical alignment effect" (due to rounded avatar)
               ml={rem(-8)}
             >
-              <Header columns={columns} row={row} />
+              <Header columns={columns} row={row} table={table} />
             </Box>
           </Box>
         )}
