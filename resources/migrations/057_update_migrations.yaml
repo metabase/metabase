@@ -471,6 +471,7 @@ databaseChangeLog:
                     referencedColumnNames: id
                     foreignKeyName: fk_transform_tags_tag_id
                     deleteCascade: true
+
   - changeSet:
       id: v57.2025-08-07T10:02:01
       author: galdre
@@ -490,6 +491,7 @@ databaseChangeLog:
         - dropUniqueConstraint:
             tableName: transform_tags
             constraintName: unique_transform_tag
+
   - changeSet:
       id: v57.2025-08-07T10:03:00
       author: galdre
