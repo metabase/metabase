@@ -1,7 +1,6 @@
 (ns metabase-enterprise.transforms.api.transform-job
   (:require
    [metabase-enterprise.transforms.jobs :as transforms.jobs]
-   [metabase-enterprise.transforms.models.job-run :as transforms.job-run]
    [metabase-enterprise.transforms.models.transform-job :as transform-job]
    [metabase-enterprise.transforms.schedule :as transforms.schedule]
    [metabase.api.common :as api]
