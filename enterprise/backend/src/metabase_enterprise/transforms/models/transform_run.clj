@@ -163,8 +163,7 @@
            sort_direction
            transform_ids
            transform_tag_ids
-           statuses] :as junk}]
-  (prn junk)
+           statuses]}]
   (let [offset (or offset 0)
         limit  (or limit 20)
         sort-direction (or (keyword sort_direction) :desc)
