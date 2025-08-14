@@ -401,9 +401,9 @@
       (mt/with-temp [:model/Transform transform1 {}
                      :model/Transform transform2 {}
                      :model/Transform transform3 {}
-                     :model/TransformTag tag1 {:name (str "test-tag-" (u/generate-nano-id))}
-                     :model/TransformTag tag1 {:name (str "test-tag-" (u/generate-nano-id))}
-                     :model/TransformTag tag1 {:name (str "test-tag-" (u/generate-nano-id))}
+                     :model/TransformTag tag1 {}
+                     :model/TransformTag _tag2 {}
+                     :model/TransformTag _tag3 {}
                      :model/TagTransform _ {:transform_id (:id transform1) :tag_id (:id tag1)}
                      :model/TagTransform _ {:transform_id (:id transform2) :tag_id (:id tag1)}
                      :model/TransformRun _run1 {:transform_id (:id transform1)}
@@ -452,8 +452,8 @@
                                                                               :template-tags {}}}}
                                                   :target {:type "table"
                                                            :name (str "test_table_4_" (u/generate-nano-id))}}
-                     :model/TransformTag tag1 {:name (str "test-tag-1-" (u/generate-nano-id))}
-                     :model/TransformTag tag2 {:name (str "test-tag-2-" (u/generate-nano-id))}
+                     :model/TransformTag tag1 {}
+                     :model/TransformTag tag2 {}
                      :model/TagTransform _ {:transform_id (:id transform1) :tag_id (:id tag1)}
                      :model/TagTransform _ {:transform_id (:id transform2) :tag_id (:id tag1)}
                      :model/TagTransform _ {:transform_id (:id transform2) :tag_id (:id tag2)}
@@ -508,31 +508,10 @@
 (deftest get-runs-combine-tag-and-status-test
   (testing "GET /api/ee/transform/run - combine tag and status filters"
     (mt/with-premium-features #{:transforms}
-      (mt/with-temp [:model/Transform transform1 {:name   "Tagged Transform 1"
-                                                  :source {:type  "query"
-                                                           :query {:database (mt/id)
-                                                                   :type     "native"
-                                                                   :native   {:query         "SELECT 1"
-                                                                              :template-tags {}}}}
-                                                  :target {:type "table"
-                                                           :name (str "test_table_1_" (u/generate-nano-id))}}
-                     :model/Transform transform2 {:name   "Tagged Transform 2"
-                                                  :source {:type  "query"
-                                                           :query {:database (mt/id)
-                                                                   :type     "native"
-                                                                   :native   {:query         "SELECT 2"
-                                                                              :template-tags {}}}}
-                                                  :target {:type "table"
-                                                           :name (str "test_table_2_" (u/generate-nano-id))}}
-                     :model/Transform transform3 {:name   "Untagged Transform"
-                                                  :source {:type  "query"
-                                                           :query {:database (mt/id)
-                                                                   :type     "native"
-                                                                   :native   {:query         "SELECT 3"
-                                                                              :template-tags {}}}}
-                                                  :target {:type "table"
-                                                           :name (str "test_table_3_" (u/generate-nano-id))}}
-                     :model/TransformTag tag1 {:name (str "test-tag-" (u/generate-nano-id))}
+      (mt/with-temp [:model/Transform transform1 {}
+                     :model/Transform transform2 {}
+                     :model/Transform transform3 {}
+                     :model/TransformTag tag1 {}
                      :model/TagTransform _ {:transform_id (:id transform1) :tag_id (:id tag1)}
                      :model/TagTransform _ {:transform_id (:id transform2) :tag_id (:id tag1)}
                      :model/TransformRun _run1 {:transform_id (:id transform1) :status "succeeded"}
@@ -553,8 +532,8 @@
     (mt/with-premium-features #{:transforms}
       (mt/with-temp [:model/Transform transform1 {}
                      :model/Transform transform2 {}
-                     :model/TransformTag tag1 {:name (str "test-tag-1-" (u/generate-nano-id))}
-                     :model/TransformTag tag2 {:name (str "test-tag-2-" (u/generate-nano-id))}
+                     :model/TransformTag tag1 {}
+                     :model/TransformTag tag2 {}
                      :model/TagTransform _ {:transform_id (:id transform1) :tag_id (:id tag1)}
                      :model/TagTransform _ {:transform_id (:id transform2) :tag_id (:id tag2)}
                      :model/TransformRun _run1 {:transform_id (:id transform1)}

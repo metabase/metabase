@@ -302,7 +302,7 @@
 
    :model/Transform
    (fn [_]
-     {:name "Test Transform"
+     {:name (str "Test Transform " (u/generate-nano-id))
       :source {:type  "query"
                :query {:database (data/id)
                        :type     "native"
@@ -317,6 +317,11 @@
       :run_method "manual"
       :start_time (t/instant)
       :end_time   (t/instant)})
+
+   :model/TransformTag
+   (fn [_]
+     (default-timestamped
+      {:name (str "test-tag-" (u/generate-nano-id))}))
 
    :model/User
    (fn [_] {:first_name  (u.random/random-name)
