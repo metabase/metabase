@@ -16,7 +16,7 @@
 (set! *warn-on-reflection* true)
 
 (defn- get-deps [ordering transform-ids]
-  (loop [found #{}
+  (loop [found                                 #{}
          [current-transform & more-transforms] transform-ids]
     (if current-transform
       (recur (conj found current-transform)
@@ -26,10 +26,10 @@
       found)))
 
 (defn- get-plan [transform-ids]
-  (let [all-transforms (t2/select :model/Transform)
+  (let [all-transforms  (t2/select :model/Transform)
         global-ordering (transforms.ordering/transform-ordering all-transforms)
-        relevant-ids (get-deps global-ordering transform-ids)
-        ordering (select-keys global-ordering relevant-ids)]
+        relevant-ids    (get-deps global-ordering transform-ids)
+        ordering        (select-keys global-ordering relevant-ids)]
     (when-let [cycle (transforms.ordering/find-cycle ordering)]
       (let [id->name (into {} (map (juxt :id :name)) all-transforms)]
         (throw (ex-info (str "Cyclic transform definitions detected: "
@@ -40,7 +40,7 @@
                                      (when (relevant-ids id)
                                        [id transform])))
                              all-transforms)
-     :ordering ordering}))
+     :ordering         ordering}))
 
 (defn- next-transform [{:keys [ordering transforms-by-id]} complete]
   (-> (transforms.ordering/available-transforms ordering #{} complete)
@@ -55,7 +55,7 @@
   (let [plan (get-plan transform-ids-to-run)]
     (when start-promise
       (deliver start-promise :started))
-    (loop [complete #{}
+    (loop [complete    #{}
            in-progress nil]
       (when-let [{transform-id :id :as current-transform} (next-transform plan complete)]
         (cond
@@ -81,13 +81,13 @@
   (if (transforms.job-run/running-run-for-job-id job-id)
     (log/info "Not executing transform job" (pr-str job-id) "because it is already running")
     (let [transforms (t2/select-fn-set :transform_id
-                                       :transform_job_tags
-                                       {:select :transform_tags.transform_id
-                                        :from :transform_job_tags
-                                        :left-join [:transform_tags [:=
-                                                                     :transform_tags.tag_id
-                                                                     :transform_job_tags.tag_id]]
-                                        :where [:= :transform_job_tags.job_id job-id]})]
+                                       :transform_job_transform_tag
+                                       {:select    :transform_transform_tag.transform_id
+                                        :from      :transform_job_transform_tag
+                                        :left-join [:transform_transform_tag [:=
+                                                                              :transform_transform_tag.tag_id
+                                                                              :transform_job_transform_tag.tag_id]]
+                                        :where     [:= :transform_job_transform_tag.job_id job-id]})]
       (log/info "Executing transform job" (pr-str job-id) "with transforms" (pr-str transforms))
       (let [{run-id :id} (transforms.job-run/start-run! job-id run-method)]
         (try
@@ -106,16 +106,16 @@
 
 (defn- start-job! []
   (when (not (task/job-exists? job-key))
-    (let [job (jobs/build
-               (jobs/of-type TimeoutOldRuns)
-               (jobs/with-identity (jobs/key job-key)))
+    (let [job     (jobs/build
+                (jobs/of-type TimeoutOldRuns)
+                (jobs/with-identity (jobs/key job-key)))
           trigger (triggers/build
-                   (triggers/with-identity (triggers/key job-key))
-                   (triggers/start-now)
-                   (triggers/with-schedule
-                    (calendar-interval/schedule
-                     (calendar-interval/with-interval-in-minutes 10)
-                     (calendar-interval/with-misfire-handling-instruction-do-nothing))))]
+                    (triggers/with-identity (triggers/key job-key))
+                    (triggers/start-now)
+                    (triggers/with-schedule
+                      (calendar-interval/schedule
+                       (calendar-interval/with-interval-in-minutes 10)
+                       (calendar-interval/with-misfire-handling-instruction-do-nothing))))]
       (task/schedule-task! job trigger))))
 
 (defmethod task/init! ::TimeoutJob [_]

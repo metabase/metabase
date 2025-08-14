@@ -16,7 +16,7 @@
 (derive :model/TransformRun :metabase/model)
 
 (t2/deftransforms :model/TransformRun
-  {:status mi/transform-keyword
+  {:status     mi/transform-keyword
    :run_method mi/transform-keyword})
 
 (mi/define-simple-hydration-method add-transform-runs
@@ -28,14 +28,14 @@
              {:order-by [[:start_time :desc] [:end_time :desc]]}))
 
 (defn- latest-runs-query [transform-ids]
-  {:with [[:ranked_runs
-           {:select [:*
-                     [[:over [[:row_number] {:partition-by :transform_id, :order-by [[:start_time :desc]]}]] :rn]]
-            :from [:transform_run]
-            :where [:in :transform_id transform-ids]}]]
+  {:with   [[:ranked_runs
+             {:select [:*
+                       [[:over [[:row_number] {:partition-by :transform_id, :order-by [[:start_time :desc]]}]] :rn]]
+              :from   [:transform_run]
+              :where  [:in :transform_id transform-ids]}]]
    :select [:*]
-   :from [:ranked_runs]
-   :where [:= :rn [:inline 1]]})
+   :from   [:ranked_runs]
+   :where  [:= :rn [:inline 1]]})
 
 (defn latest-runs
   "Return the latest runs for `transform-ids`."
@@ -124,10 +124,10 @@
   (u/prog1 (t2/update! :model/TransformRun
                        :is_active true
                        :start_time [:< (sql.qp/add-interval-honeysql-form (mdb/db-type) :%now (- age) unit)]
-                       {:status :timeout
-                        :end_time :%now
+                       {:status    :timeout
+                        :end_time  :%now
                         :is_active nil
-                        :message "Timed out by metabase"})
+                        :message   "Timed out by metabase"})
     (cancel/delete-old-canceling-runs!)))
 
 (defn cancel-old-canceling-runs!
@@ -140,10 +140,10 @@
                                  :where  [:<
                                           :transform_run_cancelation.time
                                           (sql.qp/add-interval-honeysql-form (mdb/db-type) :%now (- age) unit)]}]
-                       {:status :canceled
-                        :end_time :%now
+                       {:status    :canceled
+                        :end_time  :%now
                         :is_active nil
-                        :message "Canceled by user but could not guarantee run stopped."})
+                        :message   "Canceled by user but could not guarantee run stopped."})
     (cancel/delete-old-canceling-runs!)))
 
 (defn running-run-for-run-id
@@ -164,18 +164,18 @@
            transform_ids
            transform_tag_ids
            statuses]}]
-  (let [offset (or offset 0)
-        limit  (or limit 20)
-        sort-direction (or (keyword sort_direction) :desc)
-        nulls-sort (if (= sort-direction :asc)
-                     :nulls-last
-                     :nulls-first)
-        sort-column (keyword sort_column)
-        order-by (case sort_column
-                   :started_at [[sort-column sort-direction]]
-                   :ended_at   [[sort-column sort-direction nulls-sort]]
-                   [[:start_time sort-direction]
-                    [:end_time   sort-direction nulls-sort]])
+  (let [offset           (or offset 0)
+        limit            (or limit 20)
+        sort-direction   (or (keyword sort_direction) :desc)
+        nulls-sort       (if (= sort-direction :asc)
+                           :nulls-last
+                           :nulls-first)
+        sort-column      (keyword sort_column)
+        order-by         (case sort_column
+                           :started_at [[sort-column sort-direction]]
+                           :ended_at   [[sort-column sort-direction nulls-sort]]
+                           [[:start_time sort-direction]
+                            [:end_time   sort-direction nulls-sort]])
         ;; Build WHERE clause conditions
         where-conditions (cond-> []
                            ;; transform_ids and transform_tag_ids (intersection)
@@ -183,8 +183,8 @@
                            (conj [:and
                                   [:in :transform_id transform_ids]
                                   [:in :transform_id {:select [:transform_id]
-                                                      :from [:transform_tags]
-                                                      :where [:in :tag_id transform_tag_ids]}]])
+                                                      :from   [:transform_transform_tag]
+                                                      :where  [:in :tag_id transform_tag_ids]}]])
 
                            ;; Only transform_ids
                            (and (seq transform_ids) (not (seq transform_tag_ids)))
@@ -193,8 +193,8 @@
                            ;; Only transform_tag_ids
                            (and (seq transform_tag_ids) (not (seq transform_ids)))
                            (conj [:in :transform_id {:select [:transform_id]
-                                                     :from [:transform_tags]
-                                                     :where [:in :tag_id transform_tag_ids]}])
+                                                     :from   [:transform_transform_tag]
+                                                     :where  [:in :tag_id transform_tag_ids]}])
 
                            ;; statuses condition
                            (seq statuses)
@@ -205,22 +205,22 @@
                                 (some #(= % "started") statuses))
                            (conj [:= :is_active true]))
 
-        where-clause     (when (seq where-conditions)
-                           (if (= 1 (count where-conditions))
-                             (first where-conditions)
-                             (into [:and] where-conditions)))
-        query-options    (cond-> {:order-by order-by
-                                  :offset offset
-                                  :limit    limit}
-                           where-clause (assoc :where where-clause))
-        runs             (t2/select :model/TransformRun query-options)
-        count-options    (cond-> {}
-                           where-clause (assoc :where where-clause))]
+        where-clause  (when (seq where-conditions)
+                        (if (= 1 (count where-conditions))
+                          (first where-conditions)
+                          (into [:and] where-conditions)))
+        query-options (cond-> {:order-by order-by
+                               :offset offset
+                               :limit    limit}
+                        where-clause (assoc :where where-clause))
+        runs          (t2/select :model/TransformRun query-options)
+        count-options (cond-> {}
+                        where-clause (assoc :where where-clause))]
 
-    {:data (t2/hydrate runs :transform)
-     :limit limit
+    {:data   (t2/hydrate runs :transform)
+     :limit  limit
      :offset offset
-     :total (t2/count :model/TransformRun count-options)}))
+     :total  (t2/count :model/TransformRun count-options)}))
 
 (comment
   (t2/select :model/TransformRun)

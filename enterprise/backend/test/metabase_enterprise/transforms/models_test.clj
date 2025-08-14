@@ -18,29 +18,29 @@
     (mt/with-temp [:model/TransformJob job {}
                    :model/TransformTag tag1 {}
                    :model/TransformTag tag2 {}
-                   :model/TransformJobTags _ {:job_id (:id job) :tag_id (:id tag1) :position 0}
-                   :model/TransformJobTags _ {:job_id (:id job) :tag_id (:id tag2) :position 1}]
+                   :model/TransformJobTransformTag _ {:job_id (:id job) :tag_id (:id tag1) :position 0}
+                   :model/TransformJobTransformTag _ {:job_id (:id job) :tag_id (:id tag2) :position 1}]
       (testing "Can retrieve tags for job"
-        (let [tag-ids (t2/select-fn-set :tag_id :model/TransformJobTags :job_id (:id job))]
+        (let [tag-ids (t2/select-fn-set :tag_id :model/TransformJobTransformTag :job_id (:id job))]
           (is (contains? tag-ids (:id tag1)) "Should include first tag")
           (is (contains? tag-ids (:id tag2)) "Should include second tag")
           (is (= 2 (count tag-ids)) "Should have exactly 2 tags")))
 
       (testing "Can retrieve jobs for tag"
-        (let [job-ids (t2/select-fn-set :job_id :model/TransformJobTags :tag_id (:id tag1))]
+        (let [job-ids (t2/select-fn-set :job_id :model/TransformJobTransformTag :tag_id (:id tag1))]
           (is (contains? job-ids (:id job)) "Should include the job"))))))
 
 (deftest cascade-delete-tag-test
   (testing "Deleting a tag cascades to associations"
     (mt/with-temp [:model/TransformTag tag {}
                    :model/TransformJob job {}
-                   :model/TransformJobTags _ {:job_id (:id job) :tag_id (:id tag) :position 0}]
+                   :model/TransformJobTransformTag _ {:job_id (:id job) :tag_id (:id tag) :position 0}]
       ;; Delete the tag
       (t2/delete! :model/TransformTag :id (:id tag))
 
       ;; Verify cascade deletion
       (testing "Tag associations are deleted"
-        (is (not (t2/exists? :model/TransformJobTags :tag_id (:id tag)))
+        (is (not (t2/exists? :model/TransformJobTransformTag :tag_id (:id tag)))
             "Job-tag association should be deleted"))
 
       ;; Verify job still exists
@@ -51,13 +51,13 @@
   (testing "Deleting a job cascades to associations"
     (mt/with-temp [:model/TransformTag tag {}
                    :model/TransformJob job {}
-                   :model/TransformJobTags _ {:job_id (:id job) :tag_id (:id tag) :position 0}]
+                   :model/TransformJobTransformTag _ {:job_id (:id job) :tag_id (:id tag) :position 0}]
       ;; Delete the job (not the tag)
       (t2/delete! :model/TransformJob :id (:id job))
 
       ;; Verify cascade deletion
       (testing "Tag associations are deleted"
-        (is (not (t2/exists? :model/TransformJobTags :job_id (:id job)))
+        (is (not (t2/exists? :model/TransformJobTransformTag :job_id (:id job)))
             "Job-tag association should be deleted"))
 
       ;; Verify tag still exists
@@ -85,9 +85,9 @@
                    :model/TransformJob job2 {:name "job2" :schedule "0 0 * * * ?"}
                    :model/TransformTag tag1 {:name "tag1"}
                    :model/TransformTag tag2 {:name "tag2"}
-                   :model/TransformJobTags _ {:job_id (:id job1) :tag_id (:id tag1) :position 0}
-                   :model/TransformJobTags _ {:job_id (:id job1) :tag_id (:id tag2) :position 1}
-                   :model/TransformJobTags _ {:job_id (:id job2) :tag_id (:id tag2) :position 0}]
+                   :model/TransformJobTransformTag _ {:job_id (:id job1) :tag_id (:id tag1) :position 0}
+                   :model/TransformJobTransformTag _ {:job_id (:id job1) :tag_id (:id tag2) :position 1}
+                   :model/TransformJobTransformTag _ {:job_id (:id job2) :tag_id (:id tag2) :position 0}]
 
       (testing "Hydration adds tag_ids to jobs in position order"
         (let [[hjob1 hjob2] (t2/hydrate [job1 job2] :tag_ids)]

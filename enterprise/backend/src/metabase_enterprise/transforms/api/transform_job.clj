@@ -48,7 +48,7 @@
     (transforms.schedule/initialize-job! job)
     ;; Add tag associations if provided
     (when (seq tag_ids)
-      (t2/insert! :model/TransformJobTags
+      (t2/insert! :model/TransformJobTransformTag
                   (map-indexed (fn [idx tag-id]
                                  {:job_id (:id job)
                                   :tag_id tag-id

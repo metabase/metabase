@@ -448,10 +448,10 @@ databaseChangeLog:
   - changeSet:
       id: v57.2025-08-07T10:02:00
       author: galdre
-      comment: Add transform_tags join table for transform-tag associations
+      comment: Add transform_transform_tag join table for transform-tag associations
       changes:
         - createTable:
-            tableName: transform_tags
+            tableName: transform_transform_tag
             remarks: Join table for transforms and tags
             columns:
               - column:
@@ -470,7 +470,7 @@ databaseChangeLog:
                     nullable: false
                     referencedTableName: transform
                     referencedColumnNames: id
-                    foreignKeyName: fk_transform_tags_transform_id
+                    foreignKeyName: fk_transform_transform_tag_transform_id
                     deleteCascade: true
               - column:
                   name: tag_id
@@ -480,7 +480,7 @@ databaseChangeLog:
                     nullable: false
                     referencedTableName: transform_tag
                     referencedColumnNames: id
-                    foreignKeyName: fk_transform_tags_tag_id
+                    foreignKeyName: fk_transform_transform_tag_tag_id
                     deleteCascade: true
               - column:
                   name: entity_id
@@ -499,30 +499,30 @@ databaseChangeLog:
   - changeSet:
       id: v57.2025-08-07T10:02:01
       author: galdre
-      comment: Add unique constraints on transform_tags(transform_id, tag_id). Deleting foreign keys needed for mysql.
+      comment: Add unique constraints on transform_transform_tag(transform_id, tag_id). Deleting foreign keys needed for mysql.
       changes:
         - addUniqueConstraint:
-            tableName: transform_tags
+            tableName: transform_transform_tag
             columnNames: transform_id, tag_id
             constraintName: unique_transform_tag
       rollback:
         - dropForeignKeyConstraint:
-            baseTableName: transform_tags
-            constraintName: fk_transform_tags_transform_id
+            baseTableName: transform_transform_tag
+            constraintName: fk_transform_transform_tag_transform_id
         - dropForeignKeyConstraint:
-            baseTableName: transform_tags
-            constraintName: fk_transform_tags_tag_id
+            baseTableName: transform_transform_tag
+            constraintName: fk_transform_transform_tag_tag_id
         - dropUniqueConstraint:
-            tableName: transform_tags
+            tableName: transform_transform_tag
             constraintName: unique_transform_tag
 
   - changeSet:
       id: v57.2025-08-07T10:03:00
       author: galdre
-      comment: Add transform_job_tags join table for job-tag associations
+      comment: Add transform_job_transform_tag join table for job-tag associations
       changes:
         - createTable:
-            tableName: transform_job_tags
+            tableName: transform_job_transform_tag
             remarks: Join table for jobs and tags
             columns:
               - column:
@@ -541,7 +541,7 @@ databaseChangeLog:
                     nullable: false
                     referencedTableName: transform_job
                     referencedColumnNames: id
-                    foreignKeyName: fk_transform_job_tags_job_id
+                    foreignKeyName: fk_transform_job_transform_tag_job_id
                     deleteCascade: true
               - column:
                   name: tag_id
@@ -551,7 +551,7 @@ databaseChangeLog:
                     nullable: false
                     referencedTableName: transform_tag
                     referencedColumnNames: id
-                    foreignKeyName: fk_transform_job_tags_tag_id
+                    foreignKeyName: fk_transform_job_transform_tag_tag_id
                     deleteCascade: true
               - column:
                   name: entity_id
@@ -570,32 +570,32 @@ databaseChangeLog:
   - changeSet:
       id: v57.2025-08-07T10:03:01
       author: galdre
-      comment: Add unique constraint on transform_job_tags(job_id, tag_id). Mysql needs the foreign keys dropped on rollback.
+      comment: Add unique constraint on transform_job_transform_tag(job_id, tag_id). Mysql needs the foreign keys dropped on rollback.
       changes:
         - addUniqueConstraint:
-            tableName: transform_job_tags
+            tableName: transform_job_transform_tag
             columnNames: job_id, tag_id
             constraintName: unique_job_tag
       rollback:
         - dropForeignKeyConstraint:
-            baseTableName: transform_job_tags
-            constraintName: fk_transform_job_tags_job_id
+            baseTableName: transform_job_transform_tag
+            constraintName: fk_transform_job_transform_tag_job_id
         - dropForeignKeyConstraint:
-            baseTableName: transform_job_tags
-            constraintName: fk_transform_job_tags_tag_id
+            baseTableName: transform_job_transform_tag
+            constraintName: fk_transform_job_transform_tag_tag_id
         - dropUniqueConstraint:
-            tableName: transform_job_tags
+            tableName: transform_job_transform_tag
             constraintName: unique_job_tag
         - addForeignKeyConstraint:
-            constraintName: fk_transform_job_tags_tag_id
-            baseTableName: transform_job_tags
+            constraintName: fk_transform_job_transform_tag_tag_id
+            baseTableName: transform_job_transform_tag
             baseColumnNames: tag_id
             referencedTableName: transform_tag
             referencedColumnNames: id
             onDelete: CASCADE
         - addForeignKeyConstraint:
-            constraintName: fk_transform_job_tags_job_id
-            baseTableName: transform_job_tags
+            constraintName: fk_transform_job_transform_tag_job_id
+            baseTableName: transform_job_transform_tag
             baseColumnNames: job_id
             referencedTableName: transform_job
             referencedColumnNames: id

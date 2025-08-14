@@ -21,11 +21,11 @@
   "Hydrate tag IDs for jobs, preserving order defined by position"
   [jobs]
   (when (seq jobs)
-    (let [job-ids (map :id jobs)
-          tag-mappings (group-by :job_id
-                                 (t2/select [:model/TransformJobTags :job_id :tag_id :position]
-                                            :job_id [:in job-ids]
-                                            {:order-by [[:position :asc]]}))
+    (let [job-ids         (map :id jobs)
+          tag-mappings    (group-by :job_id
+                                    (t2/select [:model/TransformJobTransformTag :job_id :tag_id :position]
+                                               :job_id [:in job-ids]
+                                               {:order-by [[:position :asc]]}))
           ;; Sort each job's tags by position
           sorted-mappings (update-vals tag-mappings #(sort-by :position %))]
       (for [job jobs]
@@ -35,7 +35,7 @@
 (methodical/defmethod t2/batched-hydrate [:model/TransformJob :last_run]
   [_model _k jobs]
   (when (seq jobs)
-    (let [job-ids (into #{} (map :id) jobs)
+    (let [job-ids         (into #{} (map :id) jobs)
           last-executions (m/index-by :job_id (transforms.job-run/latest-runs job-ids))]
       (for [job jobs]
         (assoc job :last_run (get last-executions (:id job)))))))
@@ -48,45 +48,45 @@
   (when job-id
     (t2/with-transaction [_conn]
       (let [;; Deduplicate, just in case
-            deduped-tag-ids (vec (distinct tag-ids))
+            deduped-tag-ids      (vec (distinct tag-ids))
             ;; Get current associations
-            current-associations (t2/select [:model/TransformJobTags :tag_id :position]
+            current-associations (t2/select [:model/TransformJobTransformTag :tag_id :position]
                                             :job_id job-id
                                             {:order-by [[:position :asc]]})
-            current-tag-ids (mapv :tag_id current-associations)
+            current-tag-ids      (mapv :tag_id current-associations)
             ;; Validate that new tag IDs exist
-            valid-tag-ids (when (seq deduped-tag-ids)
-                            (into #{} (t2/select-fn-set :id :model/TransformTag
-                                                        :id [:in deduped-tag-ids])))
+            valid-tag-ids        (when (seq deduped-tag-ids)
+                                   (into #{} (t2/select-fn-set :id :model/TransformTag
+                                                               :id [:in deduped-tag-ids])))
             ;; Filter to only valid tags, preserving order
-            new-tag-ids (if valid-tag-ids
-                          (filterv valid-tag-ids deduped-tag-ids)
-                          [])
+            new-tag-ids          (if valid-tag-ids
+                                   (filterv valid-tag-ids deduped-tag-ids)
+                                   [])
             ;; Calculate what needs to change
-            current-set (set current-tag-ids)
-            new-set (set new-tag-ids)
-            to-delete (set/difference current-set new-set)
-            to-insert (set/difference new-set current-set)
+            current-set          (set current-tag-ids)
+            new-set              (set new-tag-ids)
+            to-delete            (set/difference current-set new-set)
+            to-insert            (set/difference new-set current-set)
             ;; Build position map for new ordering
-            new-positions (zipmap new-tag-ids (range))]
+            new-positions        (zipmap new-tag-ids (range))]
 
         ;; Delete removed associations
         (when (seq to-delete)
-          (t2/delete! :model/TransformJobTags
+          (t2/delete! :model/TransformJobTransformTag
                       :job_id job-id
                       :tag_id [:in to-delete]))
 
         ;; Update positions for existing tags that moved
         (doseq [tag-id (filter current-set new-tag-ids)]
           (let [new-pos (get new-positions tag-id)]
-            (t2/update! :model/TransformJobTags
+            (t2/update! :model/TransformJobTransformTag
                         {:job_id job-id :tag_id tag-id}
                         {:position new-pos})))
 
         ;; Insert new associations with correct positions
         (when (seq to-insert)
-          (t2/insert! :model/TransformJobTags
+          (t2/insert! :model/TransformJobTransformTag
                       (for [tag-id to-insert]
-                        {:job_id job-id
-                         :tag_id tag-id
+                        {:job_id   job-id
+                         :tag_id   tag-id
                          :position (get new-positions tag-id)})))))))

@@ -5,7 +5,7 @@
    [medley.core :as m]
    [metabase-enterprise.transforms.models.transform-run]
    [metabase-enterprise.transforms.models.transform-tag]
-   [metabase-enterprise.transforms.models.transform-tags]
+   [metabase-enterprise.transforms.models.transform-transform-tag]
    [metabase-enterprise.transforms.query-test-util :as query-test-util]
    [metabase-enterprise.transforms.test-dataset :as transforms-dataset]
    [metabase-enterprise.transforms.test-util :refer [with-transform-cleanup!]]
@@ -46,9 +46,9 @@
   [category]
   (mt/dataset transforms-dataset/transforms-test
     (let [query (query-test-util/make-filter-query
-                 {:table-suffix "products"
-                  :column-name "category"
-                  :filter-value category
+                 {:table-suffix           "products"
+                  :column-name            "category"
+                  :filter-value           category
                   :clickhouse-expression? true})]
       ;; Convert to legacy MBQL which the transform API expects
       (lib.convert/->legacy-MBQL query))))
@@ -371,7 +371,7 @@
 (deftest get-runs-filter-by-multiple-statuses-test
   (testing "GET /api/ee/transform/run - filter by multiple statuses"
     (mt/with-premium-features #{:transforms}
-      (mt/with-temp [:model/Transform transform {:name "Transform with multiple runs"
+      (mt/with-temp [:model/Transform transform {:name   "Transform with multiple runs"
                                                  :source {:type  "query"
                                                           :query {:database (mt/id)
                                                                   :type     "native"
@@ -399,8 +399,8 @@
                      :model/TransformTag tag1 {}
                      :model/TransformTag _tag2 {}
                      :model/TransformTag _tag3 {}
-                     :model/TransformTags _ {:transform_id (:id transform1) :tag_id (:id tag1) :position 0}
-                     :model/TransformTags _ {:transform_id (:id transform2) :tag_id (:id tag1) :position 0}
+                     :model/TransformTransformTag _ {:transform_id (:id transform1) :tag_id (:id tag1) :position 0}
+                     :model/TransformTransformTag _ {:transform_id (:id transform2) :tag_id (:id tag1) :position 0}
                      :model/TransformRun _run1 {:transform_id (:id transform1)}
                      :model/TransformRun _run2 {:transform_id (:id transform2)}
                      :model/TransformRun _run3 {:transform_id (:id transform3)}]
@@ -449,10 +449,10 @@
                                                            :name (str "test_table_4_" (u/generate-nano-id))}}
                      :model/TransformTag tag1 {}
                      :model/TransformTag tag2 {}
-                     :model/TransformTags _ {:transform_id (:id transform1) :tag_id (:id tag1) :position 0}
-                     :model/TransformTags _ {:transform_id (:id transform2) :tag_id (:id tag1) :position 0}
-                     :model/TransformTags _ {:transform_id (:id transform2) :tag_id (:id tag2) :position 1}
-                     :model/TransformTags _ {:transform_id (:id transform3) :tag_id (:id tag2) :position 0}
+                     :model/TransformTransformTag _ {:transform_id (:id transform1) :tag_id (:id tag1) :position 0}
+                     :model/TransformTransformTag _ {:transform_id (:id transform2) :tag_id (:id tag1) :position 0}
+                     :model/TransformTransformTag _ {:transform_id (:id transform2) :tag_id (:id tag2) :position 1}
+                     :model/TransformTransformTag _ {:transform_id (:id transform3) :tag_id (:id tag2) :position 0}
 
                      :model/TransformRun _run1 {:transform_id (:id transform1)}
                      :model/TransformRun _run2 {:transform_id (:id transform2)}
@@ -460,7 +460,7 @@
                      :model/TransformRun _run4 {:transform_id (:id transform4)}]
         ;; Associate tags with transforms
         (testing "Filter by tag1 and tag2 returns union (transforms with either tag)"
-          (let [response (mt/user-http-request :crowberto :get 200 "ee/transform/run"
+          (let [response               (mt/user-http-request :crowberto :get 200 "ee/transform/run"
                                                :transform_tag_ids [(:id tag1) (:id tag2)])
                 returned-transform-ids (set (map :transform_id (:data response)))]
             (assert-run-count response 3)
@@ -507,8 +507,8 @@
                      :model/Transform transform2 {}
                      :model/Transform transform3 {}
                      :model/TransformTag tag1 {}
-                     :model/TransformTags _ {:transform_id (:id transform1) :tag_id (:id tag1) :position 0}
-                     :model/TransformTags _ {:transform_id (:id transform2) :tag_id (:id tag1) :position 0}
+                     :model/TransformTransformTag _ {:transform_id (:id transform1) :tag_id (:id tag1) :position 0}
+                     :model/TransformTransformTag _ {:transform_id (:id transform2) :tag_id (:id tag1) :position 0}
                      :model/TransformRun _run1 {:transform_id (:id transform1) :status "succeeded"}
                      :model/TransformRun _run1 {:transform_id (:id transform2) :status "failed"}
                      :model/TransformRun _run1 {:transform_id (:id transform3) :status "failed"}
@@ -529,8 +529,8 @@
                      :model/Transform transform2 {}
                      :model/TransformTag tag1 {}
                      :model/TransformTag tag2 {}
-                     :model/TransformTags _ {:transform_id (:id transform1) :tag_id (:id tag1) :position 0}
-                     :model/TransformTags _ {:transform_id (:id transform2) :tag_id (:id tag2) :position 0}
+                     :model/TransformTransformTag _ {:transform_id (:id transform1) :tag_id (:id tag1) :position 0}
+                     :model/TransformTransformTag _ {:transform_id (:id transform2) :tag_id (:id tag2) :position 0}
                      :model/TransformRun _run1 {:transform_id (:id transform1)}
                      :model/TransformRun _run1 {:transform_id (:id transform2)}]
         (testing "Filter by transform1 ID and tag1 returns transform1 (has both)"

@@ -14,7 +14,7 @@
     (mt/with-premium-features #{:transforms}
       ;; Reset the seeded flag and clear tables
       (transforms.settings/transforms-seeded! false)
-      (t2/delete! :model/TransformJobTags)
+      (t2/delete! :model/TransformJobTransformTag)
       (t2/delete! :model/TransformJob)
       (t2/delete! :model/TransformTag)
 
@@ -39,11 +39,11 @@
                 (str "Default job '" job-name "' should exist"))))
 
         (testing "Links jobs to their corresponding tags"
-          (is (= 4 (t2/count :model/TransformJobTags)))
+          (is (= 4 (t2/count :model/TransformJobTransformTag)))
           (doseq [{tag-name :tag_name name :name} expected-jobs]
             (let [job (t2/select-one :model/TransformJob :name name)
                   tag (t2/select-one :model/TransformTag :name tag-name)]
-              (is (t2/exists? :model/TransformJobTags :job_id (:id job) :tag_id (:id tag))
+              (is (t2/exists? :model/TransformJobTransformTag :job_id (:id job) :tag_id (:id tag))
                   (str "Job '" name "' should be associated with tag '" tag-name "'")))))
 
         (testing "Setting is marked as true after seeding"
@@ -53,14 +53,14 @@
           (transforms.seed/seed-default-tags-and-jobs!)
           (is (= 4 (t2/count :model/TransformTag)))
           (is (= 4 (t2/count :model/TransformJob)))
-          (is (= 4 (t2/count :model/TransformJobTags))))))))
+          (is (= 4 (t2/count :model/TransformJobTransformTag))))))))
 
 (deftest user-deletion-test
   (testing "Doesn't recreate tags/jobs after user deletes them"
     (mt/with-premium-features #{:transforms}
       ;; First seed the defaults
       (transforms.settings/transforms-seeded! false)
-      (t2/delete! :model/TransformJobTags)
+      (t2/delete! :model/TransformJobTransformTag)
       (t2/delete! :model/TransformJob)
       (t2/delete! :model/TransformTag)
 
@@ -70,7 +70,7 @@
       (is (= 4 (t2/count :model/TransformJob)))
 
       ;; User deletes all tags and jobs
-      (t2/delete! :model/TransformJobTags)
+      (t2/delete! :model/TransformJobTransformTag)
       (t2/delete! :model/TransformJob)
       (t2/delete! :model/TransformTag)
 
@@ -90,7 +90,7 @@
     (mt/with-premium-features #{:transforms}
       ;; Start with setting already true (simulating existing installation)
       (transforms.settings/transforms-seeded! true)
-      (t2/delete! :model/TransformJobTags)
+      (t2/delete! :model/TransformJobTransformTag)
       (t2/delete! :model/TransformJob)
       (t2/delete! :model/TransformTag)
 
@@ -99,4 +99,4 @@
       (testing "Doesn't create anything when setting is already true"
         (is (= 0 (t2/count :model/TransformTag)))
         (is (= 0 (t2/count :model/TransformJob)))
-        (is (= 0 (t2/count :model/TransformJobTags)))))))
+        (is (= 0 (t2/count :model/TransformJobTransformTag)))))))

@@ -4,11 +4,11 @@
    [metabase-enterprise.transforms.models.job-run]
    [metabase-enterprise.transforms.models.transform]
    [metabase-enterprise.transforms.models.transform-job]
-   [metabase-enterprise.transforms.models.transform-job-tags]
+   [metabase-enterprise.transforms.models.transform-job-transform-tag]
    [metabase-enterprise.transforms.models.transform-run]
    [metabase-enterprise.transforms.models.transform-run-cancelation]
    [metabase-enterprise.transforms.models.transform-tag]
-   [metabase-enterprise.transforms.models.transform-tags]
+   [metabase-enterprise.transforms.models.transform-transform-tag]
    [metabase-enterprise.transforms.schedule]
    [metabase-enterprise.transforms.seed]
    [metabase-enterprise.transforms.settings]))

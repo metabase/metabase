@@ -86,11 +86,11 @@
     :model/Transform                         metabase-enterprise.transforms.models.transform
     :model/TransformJob                      metabase-enterprise.transforms.models.transform-job
     :model/TransformJobRun                   metabase-enterprise.transforms.models.job-run
-    :model/TransformJobTags                  metabase-enterprise.transforms.models.transform-job-tags
+    :model/TransformJobTransformTag metabase-enterprise.transforms.models.transform-job-transform-tag
     :model/TransformRun                      metabase-enterprise.transforms.models.transform-run
     :model/TransformRunCancelation           metabase-enterprise.transforms.models.transform-run-cancelation
     :model/TransformTag                      metabase-enterprise.transforms.models.transform-tag
-    :model/TransformTags                     metabase-enterprise.transforms.models.transform-tags
+    :model/TransformTransformTag metabase-enterprise.transforms.models.transform-transform-tag
     :model/Undo                              metabase-enterprise.action-v2.models.undo
     :model/User                              metabase.users.models.user
     :model/UserKeyValue                      metabase.user-key-value.models.user-key-value

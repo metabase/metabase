@@ -85,9 +85,9 @@
     :model/TransformRunCancelation
     :model/TransformJob
     :model/TransformJobRun
-    :model/TransformJobTags
+    :model/TransformJobTransformTag
     :model/TransformTag
-    :model/TransformTags
+    :model/TransformTransformTag
     :model/Undo
     :model/User
     :model/UserParameterValue

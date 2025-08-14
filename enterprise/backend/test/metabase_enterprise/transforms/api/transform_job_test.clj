@@ -13,10 +13,10 @@
                      :model/TransformTag tag2 {:name "test-tag-2"}]
         (testing "Creates job with valid data"
           (let [response (mt/user-http-request :crowberto :post 200 "ee/transform-job"
-                                               {:name "Test Job"
+                                               {:name        "Test Job"
                                                 :description "Test Description"
-                                                :schedule "0 0 0 * * ?"
-                                                :tag_ids [(:id tag1) (:id tag2)]})]
+                                                :schedule    "0 0 0 * * ?"
+                                                :tag_ids     [(:id tag1) (:id tag2)]})]
             (is (some? (:id response)))
             (is (= "Test Job" (:name response)))
             (is (= "Test Description" (:description response)))
@@ -25,16 +25,16 @@
 
         (testing "Validates cron expression"
           (let [response (mt/user-http-request :crowberto :post 400 "ee/transform-job"
-                                               {:name "Bad Cron Job"
+                                               {:name     "Bad Cron Job"
                                                 :schedule "invalid cron"})]
             (is (string? response))
             (is (re-find #"Invalid cron expression" response))))
 
         (testing "Validates tag IDs exist"
           (let [response (mt/user-http-request :crowberto :post 400 "ee/transform-job"
-                                               {:name "Job with bad tags"
+                                               {:name     "Job with bad tags"
                                                 :schedule "0 0 0 * * ?"
-                                                :tag_ids [999999]})]
+                                                :tag_ids  [999999]})]
             (is (string? response))
             (is (re-find #"tag IDs do not exist" response))))))))
 
@@ -42,9 +42,9 @@
   (testing "GET /api/ee/transform-job/:id"
     (mt/with-premium-features #{:transforms}
       (mt/with-temp [:model/TransformTag tag {:name "test-tag"}
-                     :model/TransformJob job {:name "Test Job"
+                     :model/TransformJob job {:name     "Test Job"
                                               :schedule "0 0 0 * * ?"}
-                     :model/TransformJobTags _ {:job_id (:id job) :tag_id (:id tag) :position 0}]
+                     :model/TransformJobTransformTag _ {:job_id (:id job) :tag_id (:id tag) :position 0}]
         (testing "Returns job with hydrated fields"
           (let [response (mt/user-http-request :crowberto :get 200 (str "ee/transform-job/" (:id job)))]
             (is (= (:id job) (:id response)))
@@ -61,7 +61,7 @@
       (mt/with-temp [:model/TransformJob job1 {:name "Job 1" :schedule "0 0 0 * * ?"}
                      :model/TransformJob job2 {:name "Job 2" :schedule "0 0 */4 * * ?"}]
         (let [response (mt/user-http-request :crowberto :get 200 "ee/transform-job")
-              job-ids (set (map :id response))]
+              job-ids  (set (map :id response))]
           (is (contains? job-ids (:id job1)))
           (is (contains? job-ids (:id job2)))
           (is (every? #(or
@@ -78,10 +78,10 @@
                                         {:name "Original" :schedule "0 0 0 * * ?"})]
           (testing "Updates job fields"
             (let [response (mt/user-http-request :crowberto :put 200 (str "ee/transform-job/" (:id job))
-                                                 {:name "Updated"
+                                                 {:name        "Updated"
                                                   :description "New Description"
-                                                  :schedule "0 0 */2 * * ?"
-                                                  :tag_ids [(:id tag1) (:id tag2)]})]
+                                                  :schedule    "0 0 */2 * * ?"
+                                                  :tag_ids     [(:id tag1) (:id tag2)]})]
               (is (= "Updated" (:name response)))
               (is (= "New Description" (:description response)))
               (is (= "0 0 */2 * * ?" (:schedule response)))
