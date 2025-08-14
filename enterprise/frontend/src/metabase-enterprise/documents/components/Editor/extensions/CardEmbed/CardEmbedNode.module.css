@@ -1,7 +1,3 @@
-.embedContainer {
-  margin: 1rem 0;
-}
-
 .embedWrapper {
   display: block;
   width: 100%;
@@ -54,15 +50,6 @@
 .errorContainer {
   padding: 1rem;
   color: var(--mb-color-error);
-}
-
-.questionTimestamp {
-  padding: 0 1rem;
-  margin: 0 0 1rem;
-  font-size: 0.75rem;
-  display: flex;
-  justify-content: flex-end;
-  gap: 0.25rem;
 }
 
 .titleContainer {
