@@ -54,6 +54,7 @@
     :auto_run_queries            true
     :settings                    {}
     :cache_ttl                   nil
+    :provider_name               nil
     :is_audit                    false}))
 
 (defn- table-defaults []
