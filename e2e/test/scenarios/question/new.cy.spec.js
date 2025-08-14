@@ -34,14 +34,9 @@ describe("scenarios > question > new", () => {
     });
 
     it("new question data picker search should work for both saved questions and database tables", () => {
-      cy.intercept(
-        {
-          method: "GET",
-          pathname: "/api/search",
-          query: { q: "*" },
-        },
-        cy.spy().as("searchQuery"),
-      ).as("search");
+      cy.intercept("GET", "/api/search?q=*", cy.spy().as("searchQuery")).as(
+        "search",
+      );
 
       H.startNewQuestion();
 
