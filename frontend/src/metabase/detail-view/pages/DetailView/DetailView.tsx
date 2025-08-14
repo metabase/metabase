@@ -1,5 +1,6 @@
 import { useEffect, useMemo } from "react";
 import { useUnmount } from "react-use";
+import { t } from "ttag";
 
 import { skipToken } from "metabase/api/api";
 import { useGetAdhocQueryQuery } from "metabase/api/dataset";
@@ -36,16 +37,27 @@ export function DetailView({ params }: Props) {
   const rowId = params.rowId;
   const dispatch = useDispatch();
 
-  const { data: table } = useGetTableQueryMetadataQuery({ id: tableId });
+  const {
+    data: table,
+    error: tableError,
+    isLoading: isTableLoading,
+  } = useGetTableQueryMetadataQuery({
+    id: tableId,
+  });
   const { data: tableForeignKeys } = useListTableForeignKeysQuery(tableId);
 
   const objectQuery = useMemo<StructuredDatasetQuery | undefined>(() => {
     return table ? getObjectQuery(table, rowId) : undefined;
   }, [table, rowId]);
 
-  const { data: dataset } = useGetAdhocQueryQuery(
-    objectQuery ? objectQuery : skipToken,
-  );
+  const {
+    data: dataset,
+    error: queryError,
+    isLoading: isQueryLoading,
+  } = useGetAdhocQueryQuery(objectQuery ? objectQuery : skipToken);
+
+  const error = tableError ?? queryError;
+  const isLoading = isTableLoading || isQueryLoading;
 
   const data = useMemo(() => {
     return dataset ? extractRemappedColumns(dataset.data) : undefined;
@@ -70,8 +82,12 @@ export function DetailView({ params }: Props) {
     dispatch(setDetailView(null));
   });
 
-  if (!table || !dataset || !row) {
-    return <LoadingAndErrorWrapper loading />;
+  if (!table || !dataset || !row || error || isLoading) {
+    const rowError = !row && !isLoading ? t`Row not found` : undefined;
+
+    return (
+      <LoadingAndErrorWrapper error={error ?? rowError} loading={isLoading} />
+    );
   }
 
   return (
