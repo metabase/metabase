@@ -79,9 +79,22 @@ export function EditorBody({
         }
 
         // Disable questions based on unsuppported databases
-        if (item.model === "card" || item.model === "dataset") {
+        if (
+          item.model === "card" ||
+          item.model === "dataset" ||
+          item.model === "metric"
+        ) {
           const database = metadata.database(item.database_id);
           return !isDatabaseSupported(database);
+        }
+
+        if (item.model === "table") {
+          const database = metadata.database(item.database?.id);
+          return !isDatabaseSupported(database);
+        }
+
+        if (item.model === "dashboard") {
+          return true;
         }
 
         return false;
