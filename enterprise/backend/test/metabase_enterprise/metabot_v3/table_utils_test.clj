@@ -262,3 +262,10 @@
         (let [tables (table-utils/database-tables db-id)]
           (is (every? #(not= "hidden_table" (:name %)) tables))
           (is (some #(= "visible_table" (:name %)) tables)))))))
+
+(deftest ^:parallel format-escaped-test
+  (are [in out] (= out
+                   (with-out-str (#'table-utils/format-escaped in *out*)))
+    "almallama"      "almallama"
+    "alma llama"     "\"alma llama\""
+    "\"alma\" llama" "\"\"\"alma\"\" llama\""))

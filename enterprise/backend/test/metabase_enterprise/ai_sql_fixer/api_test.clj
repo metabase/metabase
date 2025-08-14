@@ -5,13 +5,6 @@
    [metabase-enterprise.metabot-v3.table-utils :as table-utils]
    [metabase.test :as mt]))
 
-(deftest ^:parallel format-escpaed-test
-  (are [in out] (= out
-                   (with-out-str (table-utils/format-escaped in *out*)))
-    "almallama"      "almallama"
-    "alma llama"     "\"alma llama\""
-    "\"alma\" llama" "\"\"\"alma\"\" llama\""))
-
 (deftest ^:parallel schema-sample-test
   (mt/test-driver :h2
     (let [query {:database (mt/id)
