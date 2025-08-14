@@ -5,7 +5,7 @@ import type { Table } from "./table";
 export type TransformId = number;
 export type TransformTagId = number;
 export type TransformJobId = number;
-export type TransformRunId = string;
+export type TransformRunId = number;
 
 export type Transform = {
   id: TransformId;
