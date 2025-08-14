@@ -21,10 +21,10 @@ import { setOptions } from "metabase/redux/embed";
 import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
 import { MetabotProvider } from "metabase-enterprise/metabot/context";
 
-import { SCOPED_CSS_RESET } from "../private/PublicComponentStylesWrapper";
-import { SdkFontsGlobalStyles } from "../private/SdkGlobalFontsStyles";
-import { PortalContainer } from "../private/SdkPortalContainer";
-import { SdkUsageProblemDisplay } from "../private/SdkUsageProblem";
+import { SCOPED_CSS_RESET } from "../../private/PublicComponentStylesWrapper";
+import { SdkFontsGlobalStyles } from "../../private/SdkGlobalFontsStyles";
+import { PortalContainer } from "../../private/SdkPortalContainer";
+import { SdkUsageProblemDisplay } from "../../private/SdkUsageProblem";
 
 type ComponentProviderInternalProps = ComponentProviderProps & {
   reduxStore: SdkStore;
