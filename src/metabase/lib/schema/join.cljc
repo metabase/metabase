@@ -102,21 +102,16 @@
     [:alias       ::alias]
     [:fields   {:optional true} ::fields]
     [:strategy {:optional true} ::strategy]]
-   [:fn
-    {:error/message "join should not have metadata attached directly to them; attach metadata to their last stage instead"}
-    (complement (some-fn :lib/stage-metadata :source-metadata))]
-   [:fn
-    {:error/message ":condition is not allowed for MBQL 5 joins, use :conditions instead"}
-    (complement :condition)]
-   [:fn
-    {:error/message "join should not have :source-table or :source-query; use :stages instead"}
-    (complement (some-fn :source-table :source-query))]
-   [:fn
-    {:error/message "join should not have top-level :filters; these should belong to one of the join :stages"}
-    (complement (some-fn :filters :filter))]
-   [:fn
-    {:error/message "join should not have top-level :parameters; these should belong to one of the join :stages"}
-    (complement :parameters)]])
+   (common/disallowed-keys
+    {:lib/stage-metadata "joins should not have metadata attached directly to them; attach metadata to their last stage instead"
+     :source-metadata    "joins should not have metadata attached directly to them; attach metadata to their last stage instead"
+     :condition          ":condition is not allowed for MBQL 5 joins, use :conditions instead"
+     :source-card        "join should not have :source-card; use :stages instead"
+     :source-table       "join should not have :source-table; use :stages instead"
+     :source-query       "join should not have :source-query; use :stages instead"
+     :filter             "join should not have top-level :filters; these should belong to one of the join :stages"
+     :filters            "join should not have top-level :filters; these should belong to one of the join :stages"
+     :parameters         "join should not have top-level :parameters; these should belong to one of the join :stages"})])
 
 (mr/def ::joins
   [:and

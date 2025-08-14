@@ -48,59 +48,43 @@
 (mr/def ::stage.native
   [:and
    [:merge
-    ::stage.common
-    [:map
-     {:decode/normalize #(->> %
-                              common/normalize-map
-                              ;; filter out null :collection keys -- see #59675
-                              (m/filter-kv (fn [k v]
-                                             (not (and (= k :collection)
-                                                       (nil? v))))))}
-     [:lib/type [:= {:decode/normalize common/normalize-keyword} :mbql.stage/native]]
-     [:lib/stage-metadata {:optional true} [:maybe [:ref ::lib.schema.metadata/stage]]]
-     ;; the actual native query, depends on the underlying database. Could be a raw SQL string or something like that.
-     ;; Only restriction is that, if present, it is non-nil.
-     ;; It is valid to have a blank query like `{:type :native}` in legacy.
-     [:native {:optional true} some?]
-     ;; any parameters that should be passed in along with the query to the underlying query engine, e.g. for JDBC these
-     ;; are the parameters we pass in for a `PreparedStatement` for `?` placeholders. These can be anything, including
-     ;; nil.
-     ;;
-     ;; TODO -- pretty sure this is supposed to be `:params`, not `:args`, and this is allowed to be anything rather
-     ;; than just `literal`... I think we're using the `literal` schema tho for either normalization or serialization
-     [:args {:optional true} [:sequential ::literal/literal]]
-     ;; the Table/Collection/etc. that this query should be executed against; currently only used for MongoDB, where it
-     ;; is required.
-     [:collection {:optional true} ::common/non-blank-string]
-     ;; optional template tag declarations. Template tags are things like `{{x}}` in the query (the value of the
-     ;; `:native` key), but their definition lives under this key.
-     [:template-tags {:optional true} [:ref ::template-tag/template-tag-map]]
-     ;; optional, set of Card IDs referenced by this query in `:card` template tags like `{{card}}`. This is added
-     ;; automatically during parameter expansion. To run a native query you must have native query permissions as well
-     ;; as permissions for any Cards' parent Collections used in `:card` template tag parameters.
-     [:query-permissions/referenced-card-ids {:optional true} [:maybe [:set ::id/card]]]]]
-   (let [disallowed-keys #{:source-table
-                           :source-card
-                           :joins
-                           :expressions
-                           :filter
-                           :filters
-                           :breakout
-                           :aggregation
-                           :fields
-                           :order-by
-                           :limit
-                           :offset
-                           :page}]
-     [:fn
-      {:error/message "MBQL stage keys like :source-table or :filter are not allowed in a native query stage."
-       :error/fn      (fn [{stage :value} _]
-                        (when (map? stage)
-                          (str "native stage should not have MBQL stage keys, found " (set/intersection (set (keys stage)) disallowed-keys))))}
-      (complement (apply some-fn disallowed-keys))])
-   [:fn
-    {:error/message ":query is not allowed in a native query stage, you probably meant to use :native instead."}
-    (complement :query)]])
+    [::stage.common
+     [:map
+      {:decode/normalize #(->> %
+                               common/normalize-map
+                               ;; filter out null :collection keys -- see #59675
+                               (m/filter-kv (fn [k v]
+                                              (not (and (= k :collection)
+                                                        (nil? v))))))}
+      [:lib/type [:= {:decode/normalize common/normalize-keyword} :mbql.stage/native]]
+      [:lib/stage-metadata {:optional true} [:maybe [:ref ::lib.schema.metadata/stage]]]
+      ;; the actual native query, depends on the underlying database. Could be a raw SQL string or something like that.
+      ;; Only restriction is that, if present, it is non-nil.
+      ;; It is valid to have a blank query like `{:type :native}` in legacy.
+      [:native {:optional true} some?]
+      ;; any parameters that should be passed in along with the query to the underlying query engine, e.g. for JDBC these
+      ;; are the parameters we pass in for a `PreparedStatement` for `?` placeholders. These can be anything, including
+      ;; nil.
+      ;;
+      ;; TODO -- pretty sure this is supposed to be `:params`, not `:args`, and this is allowed to be anything rather
+      ;; than just `literal`... I think we're using the `literal` schema tho for either normalization or serialization
+      [:args {:optional true} [:sequential ::literal/literal]]
+      ;; the Table/Collection/etc. that this query should be executed against; currently only used for MongoDB, where it
+      ;; is required.
+      [:collection {:optional true} ::common/non-blank-string]
+      ;; optional template tag declarations. Template tags are things like `{{x}}` in the query (the value of the
+      ;; `:native` key), but their definition lives under this key.
+      [:template-tags {:optional true} [:ref ::template-tag/template-tag-map]]
+      ;; optional, set of Card IDs referenced by this query in `:card` template tags like `{{card}}`. This is added
+      ;; automatically during parameter expansion. To run a native query you must have native query permissions as well
+      ;; as permissions for any Cards' parent Collections used in `:card` template tag parameters.
+      [:query-permissions/referenced-card-ids {:optional true} [:maybe [:set ::id/card]]]]]]
+   (common/disallowed-keys
+    {:source-table ":source-table is not allowed in a native query stage."
+     :source-card  ":source-card is not allowed in a native query stage."
+     :query        ":query is not allowed in a native query stage, you probably meant to use :native instead."
+     :filter       "MBQL stage keys like :filter are not allowed in native query stages."
+     :filters      "MBQL stage keys like :filters are not allowed in native query stages."})])
 
 (mr/def ::breakout
   [:ref ::ref/ref])
@@ -141,7 +125,9 @@
   (let [stage (dissoc stage :parameters) ; don't validate [:dimension [:expression ...]] refs since they might not be moved to the correct place yet.
         expression-names (into #{} (map (comp :lib/expression-name second)) (:expressions stage))
         pred #(bad-ref-clause? :expression expression-names %)
-        form (stage-with-joins-and-namespaced-keys-removed stage)]
+        form (-> (stage-with-joins-and-namespaced-keys-removed stage)
+                 ;; also ignore expression refs inside `:parameters` since they still use legacy syntax these days.
+                 (dissoc :parameters))]
     (when (mbql.u/pred-matches-form? form pred)
       (mbql.u/matching-locations form pred))))
 
@@ -217,21 +203,15 @@
      [:source-card        {:optional true} [:ref ::id/card]]
      [:page               {:optional true} [:ref ::page]]]]
    [:fn
-    {:error/message ":source-query is not allowed in pMBQL queries."}
-    #(not (contains? % :source-query))]
-   [:fn
-    {:error/message ":native is not allowed in an MBQL stage."}
-    #(not (contains? % :native))]
-   [:fn
     {:error/message "A query must have exactly one of :source-table or :source-card"}
     (complement (comp #(= (count %) 1) #{:source-table :source-card}))]
    [:ref ::stage.valid-refs]
-   (into [:and]
-         (map (fn [k]
-                [:fn
-                 {:error/message (str k " is deprecated and should not be used")}
-                 (complement k)]))
-         [:aggregation-idents :breakout-idents :expression-idents])])
+   (common/disallowed-keys
+    {:native             ":native is not allowed in an MBQL stage."
+     :aggregation-idents ":aggregation-idents is deprecated and should not be used"
+     :breakout-idents    ":breakout-idents is deprecated and should not be used"
+     :expression-idents  ":expression-idents is deprecated and should not be used"
+     :filter             ":filter is not allowed in an MBQL 5 stage, use :filters instead"})])
 
 ;;; the schemas are constructed this way instead of using `:or` because they give better error messages
 (mr/def ::stage.type
@@ -281,9 +261,10 @@
             :error/message "Invalid stage :lib/type: expected :mbql.stage/native or :mbql.stage/mbql"}
     [:mbql.stage/native [:ref ::stage.native]]
     [:mbql.stage/mbql   [:ref ::stage.mbql]]]
-   [:fn
-    {:error/message "A query stage should not have :source-metadata, the prior stage should have :lib/stage-metadata instead"}
-    (complement :source-metadata)]])
+   (common/disallowed-keys
+    {:source-metadata "A query stage should not have :source-metadata, the prior stage should have :lib/stage-metadata instead"
+     :source-query    ":source-query is not allowed in MBQL 5 queries."
+     :type            ":type is not allowed in a query stage in any version of MBQL"})])
 
 (mr/def ::stage.initial
   [:multi {:dispatch      lib-type
