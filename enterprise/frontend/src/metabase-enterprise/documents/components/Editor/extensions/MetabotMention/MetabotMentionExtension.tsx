@@ -43,18 +43,20 @@ export const MetabotMentionExtension = Extension.create<MentionOptions>({
           range: Range;
           props: MentionProps;
         }) => {
-          editor
-            .chain()
-            .focus()
-            .deleteRange(range)
-            .insertContent({
-              type: "smartLink",
-              attrs: {
-                entityId: props.id,
-                model: props.model,
-              },
-            })
-            .run();
+          if (props.id && props.model) {
+            editor
+              .chain()
+              .focus()
+              .deleteRange(range)
+              .insertContent({
+                type: "smartLink",
+                attrs: {
+                  entityId: props.id,
+                  model: props.model,
+                },
+              })
+              .run();
+          }
         },
       },
     };

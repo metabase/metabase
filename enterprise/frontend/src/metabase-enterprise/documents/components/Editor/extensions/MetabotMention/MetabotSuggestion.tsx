@@ -102,7 +102,7 @@ const MetabotMentionSuggestionComponent = forwardRef<
   const totalItems = menuItems.length;
 
   const selectItem = (index: number) => {
-    menuItems[index].action();
+    menuItems[index]?.action?.();
   };
 
   const upHandler = () => {
