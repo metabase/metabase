@@ -84,9 +84,9 @@
   (testing "GET /api/ee/transform-tag"
     (mt/with-premium-features #{:transforms}
       (testing "Returns all tags ordered by name"
-        (mt/with-temp [:model/TransformTag tag1 {}
-                       :model/TransformTag tag2 {}
-                       :model/TransformTag tag3 {}]
+        (mt/with-temp [:model/TransformTag tag1 {:name "tag 1"}
+                       :model/TransformTag tag2 {:name "tag 3"}
+                       :model/TransformTag tag3 {:name "tag 2"}]
           (let [response (mt/user-http-request :crowberto :get 200 "ee/transform-tag")
                 tag-names (map :name response)]
             ;; Should include our test tags
