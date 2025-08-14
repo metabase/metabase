@@ -11,12 +11,44 @@ import type { DatasetColumn, DatasetData } from "metabase-types/api";
 
 import styles from "./ListView.module.css";
 
+// Light background colors for category values
+const CATEGORY_COLORS = [
+  "color-mix(in srgb, var(--mb-color-brand) 8%, white)",
+  "color-mix(in srgb, var(--mb-color-success) 8%, white)",
+  "color-mix(in srgb, var(--mb-color-warning) 8%, white)",
+  "color-mix(in srgb, var(--mb-color-error) 8%, white)",
+  "color-mix(in srgb, var(--mb-color-filter) 8%, white)",
+  "color-mix(in srgb, var(--mb-color-summarize) 8%, white)",
+  "color-mix(in srgb, var(--mb-color-focus) 8%, white)",
+  "color-mix(in srgb, var(--mb-color-text-medium) 8%, white)",
+];
+
+// Get a consistent color for a category value based on its hash
+const getCategoryColor = (value: any, columnName: string) => {
+  if (value == null || value === "") {
+    return "var(--mb-color-background-light)";
+  }
+
+  const stringValue = String(value);
+
+  // Use a combination of column name and value for more consistent colors
+  const combinedString = `${columnName}:${stringValue}`;
+  const hash = combinedString.split("").reduce((a, b) => {
+    a = (a << 5) - a + b.charCodeAt(0);
+    return a & a;
+  }, 0);
+
+  const colorIndex = Math.abs(hash) % CATEGORY_COLORS.length;
+  return CATEGORY_COLORS[colorIndex];
+};
+
 export interface ListViewProps {
   data: DatasetData;
   settings: ComputedVisualizationSettings;
   sortedColumnName?: string;
   sortingDirection?: "asc" | "desc";
   onSortClick: (column: DatasetColumn) => void;
+  entityType?: string;
 }
 
 export function ListView({
@@ -25,6 +57,7 @@ export function ListView({
   sortedColumnName,
   sortingDirection,
   onSortClick,
+  entityType,
 }: ListViewProps) {
   const { cols, rows } = data;
 
@@ -32,7 +65,7 @@ export function ListView({
   const virtualizer = useVirtualizer({
     count: rows.length,
     getScrollElement: () => scrollRef.current,
-    estimateSize: () => 78,
+    estimateSize: () => 80,
     overscan: 10,
   });
   const virtualRows = virtualizer.getVirtualItems();
@@ -42,14 +75,39 @@ export function ListView({
 
   const openObjectDetail = useObjectDetail(data);
 
+  // Get the appropriate icon based on entity type
+  const getEntityIcon = (entityType?: string) => {
+    switch (entityType) {
+      case "entity/UserTable":
+        return "person";
+      case "entity/CompanyTable":
+        return "globe";
+      case "entity/TransactionTable":
+        return "index";
+      case "entity/SubscriptionTable":
+        return "sync";
+      case "entity/ProductTable":
+      case "entity/EventTable":
+      case "entity/GenericTable":
+      default:
+        return "document";
+    }
+  };
+
+  const entityIcon = getEntityIcon(entityType);
+
   return (
     <Stack
       className={styles.listViewContainer}
       style={{ "--grid-columns": rightColumns.length }}
     >
       <Stack className={styles.listContainer}>
-        <Flex className={styles.listHeader}>
-          <Flex align="center" gap="md" style={{ flexShrink: 0 }}>
+        <div className={styles.listHeader}>
+          {/* Entity Type Icon Column Header */}
+          <div style={{ width: 32, flexShrink: 0 }} />
+
+          {/* Title and Subtitle Column */}
+          <div>
             {!!titleColumn && (
               <ColumnHeader
                 column={titleColumn}
@@ -59,21 +117,23 @@ export function ListView({
                 onSortClick={onSortClick}
               />
             )}
-          </Flex>
+          </div>
 
+          {/* Right Columns */}
           {rightColumns.map((col, colIndex) => (
-            <ColumnHeader
-              key={colIndex}
-              column={col}
-              sortedColumnName={sortedColumnName}
-              sortingDirection={sortingDirection}
-              onSortClick={onSortClick}
-              style={{
-                flexShrink: 0,
-              }}
-            />
+            <div key={colIndex}>
+              <ColumnHeader
+                column={col}
+                sortedColumnName={sortedColumnName}
+                sortingDirection={sortingDirection}
+                onSortClick={onSortClick}
+                style={{
+                  flexShrink: 0,
+                }}
+              />
+            </div>
           ))}
-        </Flex>
+        </div>
 
         <div
           style={{
@@ -100,59 +160,140 @@ export function ListView({
                       transform: `translateY(${start}px)`,
                     }}
                   >
-                    <Flex align="center" gap="md" style={{ flexShrink: 0 }}>
-                      {imageColumn && (
-                        <Image
-                          src={row[cols.indexOf(imageColumn)]}
-                          alt=""
-                          w={32}
-                          h={32}
-                          radius="xl"
-                          style={{ flexShrink: 0 }}
-                        />
-                      )}
-                      <div style={{ minWidth: 0, flex: 1 }}>
-                        {titleColumn && (
-                          <Text
-                            fw="bold"
-                            truncate
-                            style={{ color: "var(--mb-color-brand)" }}
-                          >
-                            {formatValue(row[cols.indexOf(titleColumn)], {
-                              ...(settings.column?.(titleColumn) || {}),
-                              jsx: true,
-                              rich: true,
-                            })}
-                          </Text>
-                        )}
-                        {subtitleColumn && (
-                          <Text size="xs" c="text-secondary" truncate fw="bold">
-                            {formatValue(row[cols.indexOf(subtitleColumn)], {
-                              ...(settings.column?.(subtitleColumn) || {}),
-                              jsx: true,
-                              rich: true,
-                            })}
-                          </Text>
-                        )}
-                      </div>
-                    </Flex>
+                    {/* Entity Type Icon */}
+                    <Box
+                      w={32}
+                      h={32}
+                      style={{
+                        border: "1px solid var(--mb-color-border)",
+                        borderRadius: "50%",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        flexShrink: 0,
+                        backgroundColor: "var(--mb-color-background-light)",
+                      }}
+                    >
+                      <Icon name={entityIcon} size={16} c="text-light" />
+                    </Box>
 
+                    {/* Title and Subtitle Content */}
+                    <div>
+                      <Flex align="center" gap="md" style={{ flexShrink: 0 }}>
+                        {imageColumn && (
+                          <Image
+                            src={row[cols.indexOf(imageColumn)]}
+                            alt=""
+                            w={32}
+                            h={32}
+                            radius="xl"
+                            style={{ flexShrink: 0 }}
+                          />
+                        )}
+                        <div style={{ minWidth: 0, flex: 1 }}>
+                          {titleColumn && (
+                            <Text
+                              fw="bold"
+                              truncate
+                              style={{ color: "var(--mb-color-brand)" }}
+                            >
+                              {formatValue(row[cols.indexOf(titleColumn)], {
+                                ...(settings.column?.(titleColumn) || {}),
+                                jsx: true,
+                                rich: true,
+                              })}
+                            </Text>
+                          )}
+                          {subtitleColumn && (
+                            <Text
+                              size="sm"
+                              c="text-secondary"
+                              truncate
+                              fw="bold"
+                            >
+                              {formatValue(row[cols.indexOf(subtitleColumn)], {
+                                ...(settings.column?.(subtitleColumn) || {}),
+                                jsx: true,
+                                rich: true,
+                              })}
+                            </Text>
+                          )}
+                        </div>
+                      </Flex>
+                    </div>
+
+                    {/* Right Columns */}
                     {rightColumns.map((col, colIndex) => {
                       const value = formatValue(row[cols.indexOf(col)], {
                         ...(settings.column?.(col) || {}),
                         jsx: true,
                         rich: true,
                       });
+
+                      // Check if this is a boolean column
+                      const isBooleanColumn = col.base_type === "type/Boolean";
+                      const rawValue = row[cols.indexOf(col)];
+
+                      // Check if this is a category column
+                      const isCategoryColumn =
+                        col.semantic_type === "type/Category";
+
+                      // Check if this is a score column
+                      const isScoreColumn = col.semantic_type === "type/Score";
+
+                      // Check if this should get category-like styling
+                      const shouldGetCategoryStyling =
+                        isCategoryColumn || isScoreColumn;
+
                       return (
-                        <div
-                          key={colIndex}
-                          style={{
-                            flexShrink: 0,
-                          }}
-                        >
-                          <Text size="sm" c="text-secondary" truncate>
-                            {value}
-                          </Text>
+                        <div key={colIndex}>
+                          {isBooleanColumn ? (
+                            <Flex align="center" gap="xs">
+                              <Box
+                                w={8}
+                                h={8}
+                                style={{
+                                  borderRadius: "50%",
+                                  backgroundColor:
+                                    rawValue === true
+                                      ? "var(--mb-color-success)"
+                                      : "var(--mb-color-error)",
+                                  flexShrink: 0,
+                                }}
+                              />
+                              <Text fw="bold" size="sm" c="text-secondary">
+                                {value}
+                              </Text>
+                            </Flex>
+                          ) : shouldGetCategoryStyling &&
+                            rawValue != null &&
+                            rawValue !== "" ? (
+                            <Box
+                              style={{
+                                padding: "4px 8px",
+                                borderRadius: "100px",
+                                border: "1px solid var(--mb-color-border)",
+                                backgroundColor: getCategoryColor(
+                                  rawValue,
+                                  col.name,
+                                ),
+                                display: "inline-block",
+                              }}
+                            >
+                              <Text fw="bold" size="sm" c="text-secondary">
+                                {value}
+                              </Text>
+                            </Box>
+                          ) : (
+                            <Text
+                              fw="bold"
+                              size="sm"
+                              c="text-secondary"
+                              truncate
+                            >
+                              {value}
+                            </Text>
+                          )}
                         </div>
                       );
                     })}
@@ -233,7 +374,7 @@ function useListColumns(cols: DatasetColumn[]) {
       [titleColumn, subtitleColumn, imageColumn].filter(Boolean),
     );
 
-    return cols.filter((col) => !usedColumns.has(col)).slice(0, 5);
+    return cols.filter((col) => !usedColumns.has(col)).slice(0, 4);
   }, [cols, titleColumn, subtitleColumn, imageColumn]);
 
   return {
