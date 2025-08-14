@@ -20,7 +20,10 @@ export interface RenderWithSDKProvidersOptions {
   storeInitialState?: Partial<State>;
   componentProviderProps?: Partial<MetabaseProviderProps> | null;
   theme?: MantineThemeOverride;
-  sdkBundleExports?: Partial<typeof window.MetabaseEmbeddingSDK>;
+  // Needed for Components/Hooks that retrieve Component/Hooks from the window.MetabaseEmbeddingSDK
+  windowMetabaseEmbeddingSDKExports?: Partial<
+    typeof window.MetabaseEmbeddingSDK
+  >;
 }
 
 export function renderWithSDKProviders(
@@ -29,7 +32,7 @@ export function renderWithSDKProviders(
     storeInitialState = {},
     componentProviderProps = null,
     theme,
-    sdkBundleExports,
+    windowMetabaseEmbeddingSDKExports,
     ...options
   }: RenderWithSDKProvidersOptions = {},
 ) {
@@ -62,9 +65,9 @@ export function renderWithSDKProviders(
     componentProviderProps.allowConsoleLog = false;
   }
 
-  if (sdkBundleExports) {
+  if (windowMetabaseEmbeddingSDKExports) {
     window.MetabaseEmbeddingSDK =
-      sdkBundleExports as typeof window.MetabaseEmbeddingSDK;
+      windowMetabaseEmbeddingSDKExports as typeof window.MetabaseEmbeddingSDK;
 
     ensureMetabaseProviderPropsStore().updateInternalProps({
       reduxStore: store,
