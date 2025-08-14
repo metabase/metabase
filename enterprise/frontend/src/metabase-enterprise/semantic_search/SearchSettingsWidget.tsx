@@ -43,7 +43,8 @@ export function SearchSettingsWidget({
   });
   const { indexed_count = 0, total_est = 1 } = response.data || {};
 
-  // total records is an estimate, assert
+  // total records is an estimate, assume we're done a bit early
+  // to avoid showing status when we shouldn't
   const estimatedPercentComplete = Math.round(
     (indexed_count / total_est) * 100,
   );
