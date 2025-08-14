@@ -364,7 +364,7 @@
                                                         :updated_at yesterday
                                                         ;; :archived = true
                                                         :archived true}
-                     :model/QueryAction _               {:dataset_query (mt/native-query "select * from metabase")
+                     :model/QueryAction _               {:dataset_query (mt/native-query {:query "select * from metabase"})
                                                          ;; :database_id = db-id
                                                          :database_id   db-id
                                                          :action_id     action-id}]

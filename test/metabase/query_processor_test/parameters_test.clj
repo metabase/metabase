@@ -8,6 +8,7 @@
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.driver :as driver]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.native :as lib-native]
    [metabase.lib.test-util :as lib.tu]
    [metabase.permissions.models.permissions :as perms]
@@ -251,10 +252,11 @@
                                       (mt/application-database-metadata-provider (mt/id))
                                       {:cards [{:id            1
                                                 :dataset-query (mt/native-query (qp.compile/compile (mt/mbql-query checkins)))}]})
-      (let [query (assoc (mt/mbql-query nil
+      (let [date  (lib.metadata/field (qp.store/metadata-provider) (mt/id :checkins :date))
+            query (assoc (mt/mbql-query nil
                            {:source-table "card__1", :limit 5})
                          :parameters [{:type   :date/all-options
-                                       :target [:dimension [:field "DATE" {:base-type :type/Date}]]
+                                       :target [:dimension [:field (:name date) {:base-type :type/Date}]]
                                        :value  "2014-01-06"}])]
         (testing "We should be able to apply filters to queries that use native queries with parameters as their source (#9802)"
           (is (= [[182 "2014-01-06T00:00:00Z" 5 31]]
@@ -263,7 +265,7 @@
                   (qp/process-query query)))))
         (testing "We should be able to apply filters explicitly targeting nested native stages (#48258)"
           (let [query' (assoc-in query [:parameters 0 :target 2 :stage-number] 0)]
-            (is (=? {:parameters [{:target [:dimension [:field "DATE" {:base-type :type/Date}] {:stage-number 0}]
+            (is (=? {:parameters [{:target [:dimension [:field (:name date) {:base-type :type/Date}] {:stage-number 0}]
                                    :value "2014-01-06"}]}
                     query'))
             (is (= [[182 "2014-01-06T00:00:00Z" 5 31]]

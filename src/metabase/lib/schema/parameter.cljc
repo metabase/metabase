@@ -262,24 +262,27 @@
         param))))
 
 (mr/def ::parameter
-  [:map
-   {:decode/normalize normalize-parameter}
-   [:type [:ref ::type]]
-   ;; TODO -- these definitely SHOULD NOT be optional but a ton of tests aren't passing them in like they should be.
-   ;; At some point we need to go fix those tests and then make these keys required
-   [:id       {:optional true} ::lib.schema.common/non-blank-string]
-   [:target   {:optional true} [:ref ::target]]
-   ;; not specified if the param has no value. TODO - make this stricter; type of `:value` should be validated based
-   ;; on the [[ParameterType]]
-   [:value    {:optional true} :any]
-   ;; the name of the parameter we're trying to set -- this is actually required now I think, or at least needs to get
-   ;; merged in appropriately
-   [:name     {:optional true} ::lib.schema.common/non-blank-string]
-   ;; The following are not used by the code in this namespace but may or may not be specified depending on what the
-   ;; code that constructs the query params is doing. We can go ahead and ignore these when present.
-   [:slug     {:optional true} ::lib.schema.common/non-blank-string]
-   [:default  {:optional true} :any]
-   [:required {:optional true} :any]])
+  [:and
+   [:map
+    {:decode/normalize normalize-parameter}
+    [:type [:ref ::type]]
+    ;; TODO -- these definitely SHOULD NOT be optional but a ton of tests aren't passing them in like they should be.
+    ;; At some point we need to go fix those tests and then make these keys required
+    [:id       {:optional true} ::lib.schema.common/non-blank-string]
+    [:target   {:optional true} [:ref ::target]]
+    ;; not specified if the param has no value. TODO - make this stricter; type of `:value` should be validated based
+    ;; on the [[ParameterType]]
+    [:value    {:optional true} :any]
+    ;; the name of the parameter we're trying to set -- this is actually required now I think, or at least needs to get
+    ;; merged in appropriately
+    [:name     {:optional true} ::lib.schema.common/non-blank-string]
+    ;; The following are not used by the code in this namespace but may or may not be specified depending on what the
+    ;; code that constructs the query params is doing. We can go ahead and ignore these when present.
+    [:slug     {:optional true} ::lib.schema.common/non-blank-string]
+    [:default  {:optional true} :any]
+    [:required {:optional true} :any]]
+   (lib.schema.common/disallowed-keys
+    {:dimension ":dimension is not allowed in a parameter, you probably meant to use :target [:dimension ...] instead."})])
 
 (mr/def ::parameters
   [:sequential [:ref ::parameter]])

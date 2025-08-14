@@ -1327,13 +1327,13 @@
   [:merge
    NativeQuery:Common
    [:map
-    [:query :any]]])
+    [:query :some]]])
 
 (mr/def ::NativeSourceQuery
   [:merge
    NativeQuery:Common
    [:map
-    [:native :any]]])
+    [:native :some]]])
 
 ;;; ----------------------------------------------- MBQL [Inner] Query -----------------------------------------------
 
