@@ -483,11 +483,13 @@
                                           {:name "some dimension name", :type "external"}
                                           :expected-status-code 400)))))))
 
+(def message-403 "You don't have permissions to see that or it doesn't exist")
+
 (deftest ^:parallel create-dimension-validation-test-2
   (testing "POST /api/field/:id/dimension"
     (testing "Non-admin users can't update dimension"
       (mt/with-temp [:model/Field {field-id :id} {:name "Field Test 1"}]
-        (is (= "You don't have permissions to do that."
+        (is (= message-403
                (mt/user-http-request :rasta :post 403 (format "field/%d/dimension" field-id)
                                      {:name "some dimension name", :type "external"})))))))
 
@@ -515,7 +517,7 @@
   (testing "DELETE /api/field/:id/dimension"
     (testing "Non-admin users can't delete a dimension"
       (mt/with-temp [:model/Field {field-id :id} {:name "Field Test 1"}]
-        (is (= "You don't have permissions to do that."
+        (is (= message-403
                (mt/user-http-request :rasta :delete 403 (format "field/%d/dimension" field-id))))))))
 
 (deftest clear-external-dimension-when-fk-semantic-type-is-removed-test
