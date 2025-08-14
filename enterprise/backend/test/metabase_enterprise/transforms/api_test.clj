@@ -3,7 +3,6 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [java-time.api :as t]
    [medley.core :as m]
    [metabase-enterprise.transforms.models.transform-run]
    [metabase-enterprise.transforms.models.transform-tag]
@@ -18,7 +17,6 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor :as qp]
-   [metabase.query-processor.compile :as qp.compile]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]))
