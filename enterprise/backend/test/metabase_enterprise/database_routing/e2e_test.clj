@@ -213,7 +213,7 @@
 
 (defmethod router-dataset-name :default [_driver] "db-router-data")
 
-(doseq [driver [:redshift :databricks :athena :presto-jdbc]]
+(doseq [driver [:redshift :databricks :presto-jdbc]]
   (defmethod router-dataset-name driver [_driver] "db-routing-data"))
 
 (defmulti routed-dataset-name
@@ -224,7 +224,7 @@
 
 (defmethod routed-dataset-name :default [_driver] "db-routed-data")
 
-(doseq [driver [:redshift :databricks :athena :presto-jdbc]]
+(doseq [driver [:redshift :databricks :presto-jdbc]]
   (defmethod routed-dataset-name driver [_driver] "db-routing-data"))
 
 (deftest db-routing-e2e-test
