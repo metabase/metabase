@@ -82,12 +82,12 @@
             (let [;; thread 1 attempts migration on clean db
                   f1 (future
                        (swap! results assoc :tid-first (.getId (Thread/currentThread)))
-                       (semantic.core/init! (eduction (take 3) (search.ingestion/searchable-documents)) nil))
+                       (semantic.core/init! (semantic.tu/mock-documents) nil))
                     ;; thread 2 attempts migration 
                   f2 (future
                        (swap! results assoc :tid-second (.getId (Thread/currentThread)))
                        (Thread/sleep 100)
-                       (semantic.core/init! (eduction (take 3) (search.ingestion/searchable-documents)) nil))]
+                       (semantic.core/init! (semantic.tu/mock-documents) nil))]
               ;; wait for completion
               @f1
               @f2
