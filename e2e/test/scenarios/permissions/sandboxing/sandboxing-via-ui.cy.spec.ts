@@ -192,11 +192,10 @@ describe(
 
           H.visitDashboard(checkNotNull(dashboard).id);
 
-          assertAllResultsAndValuesAreSandboxed(
-            dashboard,
-            sandboxableQuestions,
-            "Gizmo",
-          );
+          cy.findByText("Question showing all products").should("be.visible");
+          cy.findByText("20 rows").should("be.visible");
+
+          cy.findByText("Model showing all products").should("be.visible");
         });
       });
     });

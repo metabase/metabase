@@ -117,7 +117,6 @@
     (when (seq table-ids-to-update)
       (t2/update! :model/Table :id [:in (map :id table-ids-to-update)]
                   {:schema "public" :name [:lower :name]})))
-
   (let [field-ids-to-update (t2/query {:select [:field.id]
                                        :from [[(t2/table-name :model/Field) :field]]
                                        :inner-join [[(t2/table-name :model/Table) :table]
@@ -142,20 +141,23 @@
 
 (defn- fix-h2-card-metadata! [audit-db-id]
   (t2/with-connection [^java.sql.Connection conn]
-    (with-open [stmt (.createStatement conn java.sql.ResultSet/TYPE_FORWARD_ONLY java.sql.ResultSet/CONCUR_UPDATABLE)
-                rset (.executeQuery stmt (format "SELECT \"ID\", \"RESULT_METADATA\" FROM \"REPORT_CARD\" WHERE \"DATABASE_ID\" = %d;" audit-db-id))]
-      (while (.next rset)
-        (let [result-metadata (some-> (.getString rset "RESULT_METADATA")
-                                      (json/decode true))]
-          (when (seq result-metadata)
-            (let [fixed-metadata      (for [col result-metadata]
-                                        (update col :name u/upper-case-en))
-                  json-fixed-metadata (json/encode fixed-metadata)]
-              (.updateString rset "RESULT_METADATA" json-fixed-metadata))))))))
+    (with-open [stmt (.prepareStatement conn "UPDATE \"REPORT_CARD\" SET \"RESULT_METADATA\" = ? WHERE \"ID\" = ?;")]
+      (reduce
+       (fn [_ card]
+         (when-let [result-metadata (not-empty (some-> (:result_metadata card) (json/decode true)))]
+           (let [fixed-metadata (for [col result-metadata]
+                                  (update col :name u/lower-case-en))
+                 json-metadata  (json/encode fixed-metadata)]
+             (.setString stmt 1 json-metadata)
+             (.setInt stmt 2 (:id card))
+             (.addBatch stmt))))
+       nil
+       (t2/reducible-select [(t2/table-name :model/Card) :id :result_metadata] :database_id audit-db-id))
+      (.executeBatch stmt))))
 
 (defn- adjust-audit-db-to-host!
   [{audit-db-id :id :keys [engine] :as audit-db}]
-  (when (not= engine (mdb/db-type))
+  (when-not (= engine (mdb/db-type))
     ;; We need to move the loaded data back to the host db
     (t2/update! :model/Database audit-db-id {:engine (name (mdb/db-type))})
     (when (= :mysql (mdb/db-type))
