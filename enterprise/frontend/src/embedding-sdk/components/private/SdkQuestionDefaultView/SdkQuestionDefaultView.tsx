@@ -91,35 +91,6 @@ export const SdkQuestionDefaultView = ({
   const isNewQuestion = originalId === "new";
   const isQuestionSaved = question?.isSaved();
 
-  useEffect(() => {
-    if (
-      isBreadcrumbEnabled &&
-      question?.isSaved() &&
-      originalId &&
-      !isNewQuestion &&
-      !isQuestionLoading &&
-      queryResults
-    ) {
-      reportLocation({
-        type: "question",
-        id: question.id() || originalId || 0,
-        name: question.displayName() || "Question",
-        onNavigate: onNavigateBack ?? (originalQuestion ? onReset : undefined),
-      });
-    }
-  }, [
-    question,
-    isBreadcrumbEnabled,
-    isNewQuestion,
-    isQuestionLoading,
-    queryResults,
-    originalId,
-    reportLocation,
-    onNavigateBack,
-    originalQuestion,
-    onReset,
-  ]);
-
   const [
     isEditorOpen,
     { close: closeEditor, toggle: toggleEditor, open: openEditor },
@@ -142,6 +113,30 @@ export const SdkQuestionDefaultView = ({
   // When visualizing a question for the first time, there is no query result yet.
   const isQueryResultLoading =
     question && shouldRunCardQuery(question) && !queryResults;
+
+  useEffect(() => {
+    if (
+      !isQuestionLoading &&
+      question?.isSaved() &&
+      originalId !== "new" &&
+      queryResults
+    ) {
+      reportLocation({
+        type: "question",
+        id: question.id(),
+        name: question.displayName() || "Question",
+        onNavigate: onNavigateBack ?? onReset ?? undefined,
+      });
+    }
+  }, [
+    isQuestionLoading,
+    question,
+    originalId,
+    queryResults,
+    reportLocation,
+    onNavigateBack,
+    onReset,
+  ]);
 
   if (
     !isEditorOpen &&
