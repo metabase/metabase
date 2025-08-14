@@ -50,6 +50,10 @@
                               :database-routing              true}]
   (defmethod driver/database-supports? [:athena feature] [_driver _feature _db] supported?))
 
+(defmethod driver/database-supports? [:athena :schemas]
+  [_driver _feature db]
+  (not (boolean (:dbname (:details db)))))
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                     metabase.driver.sql-jdbc method impls                                      |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -64,7 +68,7 @@
     :else ".amazonaws.com"))
 
 (defmethod sql-jdbc.conn/connection-details->spec :athena
-  [_driver {:keys [region access_key secret_key s3_staging_dir workgroup catalog], :as details}]
+  [_driver {:keys [region access_key secret_key s3_staging_dir workgroup catalog dbname], :as details}]
   (-> (merge
        {:classname      "com.amazon.athena.jdbc.AthenaDriver"
         :subprotocol    "athena"
@@ -74,6 +78,8 @@
         :OutputLocation s3_staging_dir
         :WorkGroup      workgroup
         :Region      region}
+       (when dbname
+         {:database dbname})
        (when (and (not (driver-api/is-hosted?)) (str/blank? access_key))
          {:CredentialsProvider "DefaultChain"})
        (when-not (str/blank? catalog)
@@ -415,25 +421,26 @@
 
 (defn describe-table-fields
   "Returns a set of column metadata for `schema` and `table-name` using `metadata`. "
-  [^DatabaseMetaData metadata database driver {^String schema :schema, ^String table-name :name} catalog]
-  (try
-    (let [columns (get-columns metadata catalog schema table-name)]
-      (when (empty? columns)
-        (log/trace "Falling back to DESCRIBE due to #43980"))
-      (if (or (table-has-nested-fields? columns)
-                ; If `.getColumns` returns an empty result, try to use DESCRIBE, which is slower
-                ; but doesn't suffer from the bug in the JDBC driver as metabase#43980
-              (empty? columns))
-        (describe-table-fields-with-nested-fields database schema table-name)
-        (describe-table-fields-without-nested-fields driver schema table-name columns)))
-    (catch Throwable e
-      (log/errorf e "Error retreiving fields for DB %s.%s" schema table-name)
-      (throw e))))
+  [^DatabaseMetaData metadata database driver {^String schema :schema, ^String table-name :name} catalog dbname]
+  (let [schema (or schema dbname)]
+    (try
+      (let [columns (get-columns metadata catalog schema table-name)]
+        (when (empty? columns)
+          (log/trace "Falling back to DESCRIBE due to #43980"))
+        (if (or (table-has-nested-fields? columns)
+                  ; If `.getColumns` returns an empty result, try to use DESCRIBE, which is slower
+                  ; but doesn't suffer from the bug in the JDBC driver as metabase#43980
+                (empty? columns))
+          (describe-table-fields-with-nested-fields database schema table-name)
+          (describe-table-fields-without-nested-fields driver schema table-name columns)))
+      (catch Throwable e
+        (log/errorf e "Error retreiving fields for DB %s.%s" schema table-name)
+        (throw e)))))
 
 ;; Becuse describe-table-fields might fail, we catch the error here and return an empty set of columns
 
 (defmethod driver/describe-table :athena
-  [driver {{:keys [catalog]} :details, :as database} table]
+  [driver {{:keys [catalog dbname]} :details, :as database} table]
   (sql-jdbc.execute/do-with-connection-with-options
    driver
    database
@@ -442,7 +449,7 @@
      (let [metadata (.getMetaData conn)]
        (assoc (select-keys table [:name :schema])
               :fields (try
-                        (describe-table-fields metadata database driver table catalog)
+                        (describe-table-fields metadata database driver table catalog dbname)
                         (catch Throwable _
                           (set nil))))))))
 (defn- get-tables
@@ -485,7 +492,7 @@
   used by the tests when loading test data. We're not expecting users to specify it at this point in time. I'm not
   really sure how this is really different than `catalog`, which they can specify -- in the future when we understand
   Athena better maybe we can have a better way to do this -- Cam."
-  [driver ^DatabaseMetaData metadata {:keys [catalog], ::keys [schema]}]
+  [driver ^DatabaseMetaData metadata {:keys [catalog dbname], ::keys [schema]}]
   ;; TODO: Catch errors here so a single exception doesn't fail the entire schema
   ;;
   ;; Also we're creating a set here, so even if we set "ProxyAPI", we'll miss dupe database names
@@ -494,13 +501,14 @@
     ;; at least for stuff we create with the test data extensions?? :thinking_face:
     (let [all-schemas (set (cond->> (jdbc/metadata-result rs)
                              catalog (filter #(= (:table_catalog %) catalog))
-                             schema  (filter #(= (:table_schem %) schema))))
+                             schema  (filter #(= (:table_schem %) schema))
+                             dbname  (filter #(= (:table_schem %) dbname))))
           schemas     (set/difference all-schemas (sql-jdbc.sync/excluded-schemas driver))]
       (set (for [schema schemas
                  table  (get-tables metadata (:table_schem schema) (:table_catalog schema))]
              (let [remarks (:remarks table)]
                {:name        (:table_name table)
-                :schema      (:table_schem schema)
+                :schema      (if dbname nil (:table_schem schema))
                 :description (when-not (str/blank? remarks)
                                remarks)}))))))
 
