@@ -1,41 +1,40 @@
 import type { Card, UnsavedCard } from "metabase-types/api";
+import { createMockCard } from "metabase-types/api/mocks";
+import { createMockEntityId } from "metabase-types/api/mocks/entity-id";
 
 import { isSavedCard } from "./card";
 
 describe("isSavedCard", () => {
   describe("returns true for saved cards", () => {
     it("should return true for card with positive numeric id", () => {
-      const card: Card = {
+      const card: Card = createMockCard({
         id: 1,
-        entity_id: "entity-123",
         created_at: "2023-01-01T00:00:00Z",
         updated_at: "2023-01-01T00:00:00Z",
         name: "Test Card",
         description: null,
         type: "question",
         public_uuid: null,
-        dataset_query: { type: "query" },
         display: "table",
         visualization_settings: {},
-      } as Card;
+      });
 
       expect(isSavedCard(card)).toBe(true);
     });
 
     it("should return true for card with string id (entity id)", () => {
-      const card: Card = {
-        id: "entity-abc-123",
-        entity_id: "entity-123",
+      const card = createMockCard({
+        // @ts-expect-error -- typing for Card does not include string ids
+        id: createMockEntityId(),
         created_at: "2023-01-01T00:00:00Z",
         updated_at: "2023-01-01T00:00:00Z",
         name: "Test Card",
         description: null,
         type: "question",
         public_uuid: null,
-        dataset_query: { type: "query" },
         display: "table",
         visualization_settings: {},
-      } as Card;
+      });
 
       expect(isSavedCard(card)).toBe(true);
     });
