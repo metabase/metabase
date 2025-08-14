@@ -64,19 +64,29 @@ export function EditorBody({
     onChange(newNativeQuery.question());
   };
 
+  const isDatabaseSupported = (database: Database | null) =>
+    database && !database.is_sample && hasFeature(database, "transforms/table");
+
   const dataPickerOptions = useMemo(() => {
+    const metadata = question.metadata();
     return {
       shouldDisableItem: (item: DataPickerItem) => {
+        // Disable unsuppported databases
         if (item.model === "database" && item.database) {
-          return (
-            item.database.is_sample ||
-            !hasFeature(item.database, "transforms/table")
-          );
+          const database = metadata.database(item.id);
+          return !isDatabaseSupported(database);
         }
+
+        // Disable questions based on unsuppported databases
+        if (item.model === "card" || item.model === "dataset") {
+          const database = metadata.database(item.database_id);
+          return !isDatabaseSupported(database);
+        }
+
         return false;
       },
     };
-  }, []);
+  }, [question]);
 
   return isNative ? (
     <NativeQueryEditor
