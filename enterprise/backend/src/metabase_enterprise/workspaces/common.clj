@@ -1,7 +1,7 @@
 (ns metabase-enterprise.workspaces.common
   (:require
-   [metabase-enterprise.workspaces.isolation-manager :as isolation-manager]
    [metabase-enterprise.transforms.execute :as transforms.execute]
+   [metabase-enterprise.workspaces.isolation-manager :as isolation-manager]
    [metabase-enterprise.workspaces.models.workspace :as m.workspace]
    [metabase.api.common :as api]
    [metabase.collections.common :as c.common]
@@ -94,7 +94,9 @@
                           :target (:target transform)
                           :config (:config transform)
                           :created_at (str (java.time.Instant/now))}]
-    (add-workspace-entity workspace :transforms copied-transform)))
+    (add-workspace-entity workspace :transforms copied-transform)
+    (add-workspace-entity workspace :activity_logs {::type ::linked-transform
+                                                    :transform copied-transform})))
 
 (defn update-workspace-entity-at-index
   "Updates an entity at a specific index in the workspace's entity collection.
@@ -147,10 +149,24 @@
   [transform]
   (-> transform :source :query :database))
 
-#_(defn delete-isolations! [{activity-logs :activity_logs :as workspace}]
-    (doseq [isolation-info activity_log]
-      (isolation-manager/delete-isolation engine details workspace-id isolation-info))
-    output)
+(defn delete-isolations! [{data-warehouses :data_warehouses :as workspace}]
+  (if-let [db-ids (seq (map (comp parse-long name) (keys data-warehouses)))]
+    (let [dbs (t2/select [:model/Database :id :engine :details] :id [:in db-ids])]
+      (doseq [{:keys [engine details id]} dbs
+              :let [isolation-info (get data-warehouses (keyword (str id)))]]
+        (log/info "Deleting isolations for workspace" (:id workspace) "for db id:" id engine)
+        (let [deletion-info (isolation-manager/delete-isolation engine details (:slug workspace) isolation-info)]
+          ;; remove it from the workspace's "data_warehouses":
+          (t2/update! :model/Workspace (:id workspace)
+                      {:data_warehouses (dissoc data-warehouses (keyword (str id)))})
+          (add-workspace-entity workspace :activity_logs {::type ::deleted-isolation
+                                                          :isolation deletion-info}))))
+    (log/warn "No data warehouses found to delete isolations for workspace" (:id workspace))))
+
+(comment
+  (delete-isolations! (t2/select-one :model/Workspace :slug (:slug w)))
+
+  #_(isolation-manager/delete-isolation engine connection-details workspace-id isolation-info))
 
 ;; decision: this is so bespoke to us maybe it goes here now. But perhaps the querying team can help us adjust these
 ;; things with a proper api in the future
@@ -169,25 +185,27 @@
    It will throw an error if the workspace has no transforms or if the source database is not found.
 
   Logs the creation of isolation schemas in the activity_logs of the workspace"
-  [{:keys [transforms] :as workspace}]
+  [{:keys [data_warehouses transforms] :as workspace}]
   (when-not (seq transforms)
     (throw (ex-info "Workspace must have at least one transform to create isolation" {:error :no-transforms})))
-  (let [isolation-schema-name (isolation-manager/isolation-schema-name (:slug workspace))
-        db-ids (distinct (map source-database transforms))
-        databases (t2/select :model/Database :id [:in db-ids])
-        isolation-info (into {}
-                             (for [{db-id :id :keys [engine details]} databases]
-                               (do
-                                 ;; Create isolation for each transform's source database
-                                 (log/info "Creating isolation for workspace" (:id workspace) " db id: " db-id)
-                                 ;; Create the isolation manager for the transform
-                                 [db-id (isolation-manager/create-isolation engine details (:slug workspace))])))
-        isolation-info-no-results (update-vals isolation-info #(dissoc % :results))]
-    ;; TODO make this smarter at inserting stuff in 1 round trip:
-    (add-workspace-entity workspace :activity_logs isolation-info)
-    (t2/update! :model/Workspace (:id workspace)
-                {:data_warehouses (merge (:data_warehouses workspace) isolation-info-no-results)})
-    (t2/select-one :model/Workspace (:id workspace))))
+  (if-not (empty? data_warehouses)
+    (let [db-ids (distinct (map source-database transforms))
+          databases (t2/select :model/Database :id [:in db-ids])
+          isolation-info (into {}
+                               (for [{db-id :id :keys [engine details] :as db} databases]
+                                 (do
+                                   ;; Create isolation for each transform's source database
+                                   (log/info "Creating isolation for workspace" (:id workspace) " db id: " db-id)
+                                   ;; Create the isolation manager for the transform
+                                   [db-id (assoc (isolation-manager/create-isolation engine details (:slug workspace))
+                                                 ::db-engine engine)])))
+          isolation-info-no-results (update-vals isolation-info #(-> %
+                                                                     (dissoc :results)
+                                                                     (assoc :type :isolation-info)))]
+      ;; TODO make this smarter at inserting stuff in 1 round trip:
+      (add-workspace-entity workspace :activity_logs isolation-info)
+      (t2/update! :model/Workspace (:id workspace)
+                  {:data_warehouses (merge (:data_warehouses workspace) isolation-info-no-results)}))))
 
 ;; decision: this is so bespoke to us maybe it goes here now. But perhaps the querying team can help us adjust these
 ;; things with a proper api in the future
@@ -208,11 +226,10 @@
                                                           [:in (map (comp parse-long name) (keys data_warehouses))]))
         ;; this is not needed. But it's a pointer that datawarehouses is perhaps a misleading name? bad
         ;; terminology. POC doesn't need an answer, but shipping does
-        transform-info (:data_warehouses workspace)
         patched (for [t transforms
                       :let [db-id (source-database t)
                             ;; todo: in clickhouse need to get database name
-                            schema-name (or (get-in transform-info [(keyword (str db-id)) :schema-name])
+                            schema-name (or (get-in data_warehouses [(keyword (str db-id)) :schema-name])
                                             (throw (ex-info "Missing schema for database" {:db-id db-id
                                                                                            :transform t})))]]
                   (patch-transform t schema-name))]
@@ -233,8 +250,7 @@
             patched)))
 
 (comment
-  (t2/select-one :model/Workspace :id 6)
-  )
+  (t2/select-one :model/Workspace :id 6))
 
 (defn run-transforms
   "Executes transforms in workspace. Will throw an error if there are no transforms or if the data_warehouses is empty,
@@ -255,6 +271,7 @@
                                                           [:in (map (comp parse-long name) (keys data_warehouses))]))
         ;; this is not needed. But it's a pointer that datawarehouses is perhaps a misleading name? bad
         ;; terminology. POC doesn't need an answer, but shipping does
+        ;; maybe: db->isolation-info
         transform-info (:data_warehouses workspace)
         patched (for [t transforms
                       :let [db-id (source-database t)
@@ -282,7 +299,6 @@
                                                                             (-> t :target :name))}}
                                     :display :table
                                     :visualization_settings {}}]
-
                           (try {:status :success
                                 :step :create-model
                                 :transform t
@@ -311,171 +327,46 @@
   ;; don't loev this api, but it's 4:58 on demo day and it's good for now
   (let [model-activity (create-models* workspace)]
     ;; todo: assoc some type here?
-    (add-workspace-entites workspace :activity_logs model-activity))
-  )
-
-
+    (add-workspace-entites workspace :activity_logs {::type ::create-models
+                                                     :model-activity model-activity})))
 
 (comment
 
   (do (require '[metabase.test :as mt])
       ;; will id alone work here? ^
       ;; current user is used to generate the api key
-      (binding [api/*current-user-id* (mt/user->id :rasta)
-                api/*current-user-permissions-set* (atom #{"/"})]
-        (let [w (create-workspace! "repl workspace" nil)]
-          (def w w)
-          w)))
+      (def w
+        (binding [api/*current-user-id* (mt/user->id :crowberto)
+                  api/*current-user-permissions-set* (atom #{"/"})]
+          (create-workspace! "repl workspacex" nil))))
 
-  (create-isolations! rw)
+  (-> [:blank-workspace (t2/select-one :model/Workspace :slug (:slug w))]
+      (doto tap>))
 
   (link-transform! (:id w) 1)
   (link-transform! (:id w) 2)
-  (t2/select-one :model/Workspace :slug (:slug w))
-  ;; => (toucan2.instance/instance
-  ;;     :model/Workspace
-  ;;     {:description nil,
-  ;;      :slug "repl_workspace_262333",
-  ;;      :permissions (),
-  ;;      :activity_logs (),
-  ;;      :collection_id 16,
-  ;;      :name "repl workspace",
-  ;;      :transforms
-  ;;      ({:id 1,
-  ;;        :name "core_user_transform",
-  ;;        :description nil,
-  ;;        :source {:type "query", :query {:database 2, :type "query", :query {:source-table 123}}},
-  ;;        :target {:type "table", :name "core_user_transform_table", :schema "public"},
-  ;;        :config nil,
-  ;;        :created_at "2025-08-13T21:16:15.925838Z"}
-  ;;       {:id 2,
-  ;;        :name "core_session_transform",
-  ;;        :description nil,
-  ;;        :source {:type "query", :query {:database 2, :type "query", :query {:source-table 88}}},
-  ;;        :target {:type "table", :name "core_session_transform_table", :schema "public"},
-  ;;        :config nil,
-  ;;        :created_at "2025-08-13T21:16:19.072003Z"}),
-  ;;      :plans (),
-  ;;      :updated_at #t "2025-08-13T21:16:19.072423Z",
-  ;;      :documents (),
-  ;;      :id 10,
-  ;;      :data_warehouses (),
-  ;;      :created_at #t "2025-08-13T21:15:59.920962Z",
-  ;;      :users ()})
+
+  (-> [:two-linked-transforms (t2/select-one :model/Workspace :slug (:slug w))]
+      (doto tap>))
 
   (create-isolations! (t2/select-one :model/Workspace :slug (:slug w)))
-  ;; => {2
-  ;;     {:isolation-type :schema,
-  ;;      :schema-name "mb__isolation_0f496_repl_workspace_262333",
-  ;;      :populator
-  ;;      {:user "mb_iso_0f496_repl_workspace_262333_populator", :password "bfd45256-e178-4239-8c51-37909d2a38e1"}}}
+  (-> [:isolation-created
+       (t2/select-one :model/Workspace :slug (:slug w))]
+      (doto tap>))
 
-  (t2/select-one :model/Workspace :slug (:slug w))
-  ;; => (toucan2.instance/instance
-  ;;     :model/Workspace
-  ;;     {:description nil,
-  ;;      :slug "repl_workspace_262333",
-  ;;      :permissions (),
-  ;;      :activity_logs
-  ;;      ({:2
-  ;;        {:isolation-type "schema",
-  ;;         :schema-name "mb__isolation_0f496_repl_workspace_262333",
-  ;;         :populator
-  ;;         {:user "mb_iso_0f496_repl_workspace_262333_populator", :password "bfd45256-e178-4239-8c51-37909d2a38e1"},
-  ;;         :results
-  ;;         [[["tree" "schema"]
-  ;;           ["success" "CREATE SCHEMA mb__isolation_0f496_repl_workspace_262333" [0]]
-  ;;           ["tree" "users"]
-  ;;           ["tree" "populator"]
-  ;;           ["success"
-  ;;            "CREATE USER mb_iso_0f496_repl_workspace_262333_populator WITH PASSWORD 'bfd45256-e178-4239-8c51-37909d2a38e1'"
-  ;;            [0]]
-  ;;           ["tree" "populator-privileges"]
-  ;;           ["success" "GRANT USAGE ON SCHEMA public TO mb_iso_0f496_repl_workspace_262333_populator" [0]]
-  ;;           ["success" "GRANT USAGE ON SCHEMA public TO mb_iso_0f496_repl_workspace_262333_populator" [0]]
-  ;;           ["success"
-  ;;            "GRANT USAGE ON SCHEMA mb__isolation_0f496_repl_workspace_262333 TO mb_iso_0f496_repl_workspace_262333_populator"
-  ;;            [0]]
-  ;;           ["success" "GRANT SELECT ON ALL TABLES IN SCHEMA public TO mb_iso_0f496_repl_workspace_262333_populator" [0]]
-  ;;           ["success"
-  ;;            "GRANT CREATE ON SCHEMA mb__isolation_0f496_repl_workspace_262333 TO mb_iso_0f496_repl_workspace_262333_populator"
-  ;;            [0]]
-  ;;           ["success"
-  ;;            "GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA mb__isolation_0f496_repl_workspace_262333 TO mb_iso_0f496_repl_workspace_262333_populator"
-  ;;            [0]]]
-  ;;          "running"]},
-  ;;        :created_at "2025-08-13T21:17:41.900643Z"}),
-  ;;      :collection_id 16,
-  ;;      :name "repl workspace",
-  ;;      :transforms
-  ;;      ({:id 1,
-  ;;        :name "core_user_transform",
-  ;;        :description nil,
-  ;;        :source {:type "query", :query {:database 2, :type "query", :query {:source-table 123}}},
-  ;;        :target {:type "table", :name "core_user_transform_table", :schema "public"},
-  ;;        :config nil,
-  ;;        :created_at "2025-08-13T21:16:15.925838Z"}
-  ;;       {:id 2,
-  ;;        :name "core_session_transform",
-  ;;        :description nil,
-  ;;        :source {:type "query", :query {:database 2, :type "query", :query {:source-table 88}}},
-  ;;        :target {:type "table", :name "core_session_transform_table", :schema "public"},
-  ;;        :config nil,
-  ;;        :created_at "2025-08-13T21:16:19.072003Z"}),
-  ;;      :plans (),
-  ;;      :updated_at #t "2025-08-13T21:17:41.904684Z",
-  ;;      :documents (),
-  ;;      :id 10,
-  ;;      :data_warehouses
-  ;;      ({:2
-  ;;        {:isolation-type "schema",
-  ;;         :schema-name "mb__isolation_0f496_repl_workspace_262333",
-  ;;         :populator
-  ;;         {:user "mb_iso_0f496_repl_workspace_262333_populator", :password "bfd45256-e178-4239-8c51-37909d2a38e1"}},
-  ;;        :created_at "2025-08-13T21:17:41.904595Z"}),
-  ;;      :created_at #t "2025-08-13T21:15:59.920962Z",
-  ;;      :users ()})
+  (delete-isolations! (t2/select-one :model/Workspace :slug (:slug w)))
+  (-> [:isolation-deleted
+       (t2/select-one :model/Workspace :slug (:slug w))]
+      (doto tap>))
 
-  @(def rw (t2/select-one :model/Workspace :slug "repl_workspace_230326"))
+  (create-isolations! (t2/select-one :model/Workspace :slug (:slug w)))
+  (-> [:isolation-recreated
+       (t2/select-one :model/Workspace :slug (:slug w))]
+      (doto tap>))
 
-  (add-workspace-entity (:id w) :plans
-                        {:name "Test Plan 1"
-                         :description "This is a test plan"
-                         :content {}})
-  (add-workspace-entity (:id w) :plans
-                        {:name "Test Plan 2"
-                         :description "This is another test plan"
-                         :content {}})
+  (delete-isolations! (t2/select-one :model/Workspace :slug (:slug w)))
+  (-> [:isolation-redeleted
+       (t2/select-one :model/Workspace :slug (:slug w))]
+      (doto tap>))
 
-  (:plans (t2/select-one :model/Workspace :id (:id w)))
-  ;; => ({:name "Test Plan 1", :description "This is a test plan", :content {}, :created_at "2025-08-13T15:50:20.203613Z"}
-  ;;     {:name "Test Plan 2",
-  ;;      :description "This is another test plan",
-  ;;      :content {},
-  ;;      :created_at "2025-08-13T15:50:21.296516Z"})
-
-  (update-workspace-entity-at-index
-   (:id w)
-   :plans
-   0
-   (fn [plan]
-     (assoc plan :name "Super Test Plan 1")))
-  ;; => 1
-
-  (:plans (t2/select-one :model/Workspace :id (:id w)))
-  ;; => ({:name "Super Test Plan 1",
-  ;;      :description "This is a test plan",
-  ;;      :content {},
-  ;;      :created_at "2025-08-13T15:50:20.203613Z"}
-  ;;     {:name "Test Plan 2",
-  ;;      :description "This is another test plan",
-  ;;      :content {},
-  ;;      :created_at "2025-08-13T15:50:21.296516Z"})
-
-  (delete-workspace-entity-at-index (:id w) :plans 1)
-  (:plans (t2/select-one :model/Workspace :id (:id w)))
-  ;; => ({:name "Super Test Plan 1",
-  ;;      :description "This is a test plan",
-  ;;      :content {},
-  ;;      :created_at "2025-08-13T15:50:20.203613Z"})
-  )
+  (create-isolations! (t2/select-one :model/Workspace :slug (:slug w))))
