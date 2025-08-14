@@ -17,33 +17,27 @@
                 tag2 (mt/user-http-request :crowberto :post 200 "ee/transform-tag"
                                            {:name (str "test-tag-2-" (random-uuid))})]
             (try
-              (let [transform (mt/user-http-request :crowberto :post 200 "ee/transform"
-                                                    {:name "Test Transform"
-                                                     :description "Test with tags"
-                                                     :source {:type "query"
-                                                              :query {:database (mt/id)
-                                                                      :type "native"
-                                                                      :native {:query "SELECT 1"}}}
-                                                     :target {:type "table"
-                                                              :name "test_table"}
-                                                     :tag_ids [(:id tag1) (:id tag2)]})]
-                (is (= "Test Transform" (:name transform)))
-                (is (= [(:id tag1) (:id tag2)] (sort (:tag_ids transform)))))
+              (let [transform-request (merge (mt/with-temp-defaults :model/Transform)
+                                             {:tag_ids [(:id tag1) (:id tag2)]})
+                    transform-response (mt/user-http-request :crowberto :post 200 "ee/transform"
+                                                             transform-request)]
+                (try
+                  (is (= (:name transform-request) (:name transform-response)))
+                  (is (= (:tag_ids transform-request) (sort (:tag_ids transform-response))))
+                  (finally
+                    (t2/delete! :model/Transform :id (:id transform-response)))))
               (finally
-                ;; Clean up the tags we created
                 (t2/delete! :model/TransformTag :id [:in [(:id tag1) (:id tag2)]])))))
 
         (testing "Can create transform without tags"
-          (let [transform (mt/user-http-request :crowberto :post 200 "ee/transform"
-                                                {:name "Transform Without Tags"
-                                                 :source {:type "query"
-                                                          :query {:database (mt/id)
-                                                                  :type "native"
-                                                                  :native {:query "SELECT 1"}}}
-                                                 :target {:type "table"
-                                                          :name "another_table"}})]
-            (is (= "Transform Without Tags" (:name transform)))
-            (is (= [] (:tag_ids transform)))))))))
+          (let [transform-request (mt/with-temp-defaults :model/Transform)
+                transform-response (mt/user-http-request :crowberto :post 200 "ee/transform"
+                                                         transform-request)]
+            (try
+              (is (= (:name transform-request) (:name transform-response)))
+              (is (= [] (:tag_ids transform-response)))
+              (finally
+                (t2/delete! :model/Transform :id (:id transform-response))))))))))
 
 (deftest update-transform-tags-test
   (testing "PUT /api/ee/transform/:id with tag_ids"
@@ -152,19 +146,22 @@
           ;; Create tag1 via API since we're testing its deletion
           (let [tag1 (mt/user-http-request :crowberto :post 200 "ee/transform-tag"
                                            {:name "tag-to-delete"})]
+            (try
             ;; Add both tags to transform
-            (transform.model/update-transform-tags! (:id transform) [(:id tag1) (:id tag2)])
+              (transform.model/update-transform-tags! (:id transform) [(:id tag1) (:id tag2)])
 
             ;; Verify tags are associated
-            (let [fetched (mt/user-http-request :crowberto :get 200 (str "ee/transform/" (:id transform)))]
-              (is (= (set [(:id tag1) (:id tag2)]) (set (:tag_ids fetched)))))
+              (let [fetched (mt/user-http-request :crowberto :get 200 (str "ee/transform/" (:id transform)))]
+                (is (= (set [(:id tag1) (:id tag2)]) (set (:tag_ids fetched)))))
 
             ;; Delete tag1
-            (mt/user-http-request :crowberto :delete 204 (str "ee/transform-tag/" (:id tag1)))
+              (mt/user-http-request :crowberto :delete 204 (str "ee/transform-tag/" (:id tag1)))
 
             ;; Verify tag1 is removed but tag2 remains
-            (let [fetched (mt/user-http-request :crowberto :get 200 (str "ee/transform/" (:id transform)))]
-              (is (= [(:id tag2)] (vec (:tag_ids fetched)))))))))))
+              (let [fetched (mt/user-http-request :crowberto :get 200 (str "ee/transform/" (:id transform)))]
+                (is (= [(:id tag2)] (vec (:tag_ids fetched)))))
+              (finally
+                (t2/delete! :model/TransformTag :id (:id tag1))))))))))
 
 (deftest preserve-tag-order-test
   (testing "Tag order is preserved when adding/updating transform tags"
@@ -175,42 +172,37 @@
                        :model/TransformTag tag3 {:name "order-tag-3"}]
 
           (testing "Creating transform with specific tag order preserves that order"
-            (let [transform (mt/user-http-request :crowberto :post 200 "ee/transform"
-                                                  {:name "Order Test Transform"
-                                                   :source {:type "query"
-                                                            :query {:database (mt/id)
-                                                                    :type "native"
-                                                                    :native {:query "SELECT 1"}}}
-                                                   :target {:type "table"
-                                                            :name "order_test_table"}
-                                                   :tag_ids [(:id tag3) (:id tag1) (:id tag2)]})]
-              ;; Should preserve the exact order: tag3, tag1, tag2
-              (is (= [(:id tag3) (:id tag1) (:id tag2)] (:tag_ids transform)))
+            (let [transform-request (merge (mt/with-temp-defaults :model/Transform)
+                                           {:tag_ids [(:id tag3) (:id tag1) (:id tag2)]})
+                  transform (mt/user-http-request :crowberto :post 200 "ee/transform"
+                                                  transform-request)]
+              (try
+                ;; Should preserve the exact order: tag3, tag1, tag2
+                (is (= [(:id tag3) (:id tag1) (:id tag2)] (:tag_ids transform)))
 
-              ;; Verify order is preserved when fetching
-              (let [fetched (mt/user-http-request :crowberto :get 200 (str "ee/transform/" (:id transform)))]
-                (is (= [(:id tag3) (:id tag1) (:id tag2)] (:tag_ids fetched))))
+                ;; Verify order is preserved when fetching
+                (let [fetched (mt/user-http-request :crowberto :get 200 (str "ee/transform/" (:id transform)))]
+                  (is (= [(:id tag3) (:id tag1) (:id tag2)] (:tag_ids fetched))))
 
-              ;; Update with different order
-              (let [updated (mt/user-http-request :crowberto :put 200 (str "ee/transform/" (:id transform))
-                                                  {:tag_ids [(:id tag2) (:id tag3) (:id tag1)]})]
-                ;; Should now have the new order: tag2, tag3, tag1
-                (is (= [(:id tag2) (:id tag3) (:id tag1)] (:tag_ids updated))))
+                ;; Update with different order
+                (let [updated (mt/user-http-request :crowberto :put 200 (str "ee/transform/" (:id transform))
+                                                    {:tag_ids [(:id tag2) (:id tag3) (:id tag1)]})]
+                  ;; Should now have the new order: tag2, tag3, tag1
+                  (is (= [(:id tag2) (:id tag3) (:id tag1)] (:tag_ids updated))))
 
-              ;; Verify new order persists
-              (let [fetched-again (mt/user-http-request :crowberto :get 200 (str "ee/transform/" (:id transform)))]
-                (is (= [(:id tag2) (:id tag3) (:id tag1)] (:tag_ids fetched-again))))))
+                ;; Verify new order persists
+                (let [fetched-again (mt/user-http-request :crowberto :get 200 (str "ee/transform/" (:id transform)))]
+                  (is (= [(:id tag2) (:id tag3) (:id tag1)] (:tag_ids fetched-again))))
+                (finally
+                  (t2/delete! :model/Transform :id (:id transform))))))
 
           (testing "Duplicate tag IDs are handled correctly"
-            (let [transform (mt/user-http-request :crowberto :post 200 "ee/transform"
-                                                  {:name "Duplicate Test Transform"
-                                                   :source {:type "query"
-                                                            :query {:database (mt/id)
-                                                                    :type "native"
-                                                                    :native {:query "SELECT 1"}}}
-                                                   :target {:type "table"
-                                                            :name "dup_test_table"}
-                                                   ;; Try to add tag1 twice
-                                                   :tag_ids [(:id tag1) (:id tag2) (:id tag1)]})]
-              ;; Should only have each tag once, but preserve relative order
-              (is (= [(:id tag1) (:id tag2)] (:tag_ids transform))))))))))
+            (let [transform-request (merge (mt/with-temp-defaults :model/Transform)
+                                           {:tag_ids [(:id tag1) (:id tag2) (:id tag1)]})
+                  transform (mt/user-http-request :crowberto :post 200 "ee/transform"
+                                                  transform-request)]
+              (try
+                ;; Should only have each tag once, but preserve relative order
+                (is (= [(:id tag1) (:id tag2)] (:tag_ids transform)))
+                (finally
+                  (t2/delete! :model/Transform :id (:id transform)))))))))))

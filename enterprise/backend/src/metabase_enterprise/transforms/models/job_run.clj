@@ -3,7 +3,6 @@
    [metabase.app-db.core :as mdb]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.models.interface :as mi]
-   [metabase.util :as u]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
    [toucan2.realize :as t2.realize]))
@@ -35,13 +34,6 @@
   (when (seq job-ids)
     (into [] (map (comp t2.realize/realize #(dissoc % :rn)))
           (t2/reducible-select :model/TransformJobRun (latest-runs-query job-ids)))))
-
-(defn add-last-run [job]
-  (assoc job
-         :last_run
-         (t2/select-one :model/TransformJobRun
-                        :job_id (:id job)
-                        {:order-by [[:start_time :desc]]})))
 
 (defn start-run!
   "Start a run"

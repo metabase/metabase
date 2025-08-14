@@ -3,7 +3,6 @@
    [medley.core :as m]
    [metabase-enterprise.transforms.models.transform-run :as transform-run]
    [metabase.models.interface :as mi]
-   [metabase.util.json :as json]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
