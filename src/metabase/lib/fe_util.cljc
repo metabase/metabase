@@ -722,16 +722,29 @@
     _
     nil))
 
+(defn- simple-cast-of-field?
+  "Whether this expression is a simple cast (datetime) of a field reference."
+  [expression]
+  (when (vector? expression)
+    (let [[op _opts & args] expression]
+      (and (= :datetime op)
+           (= 1 (count args))
+           (or (lib.util/clause-of-type? (first args) :field)
+               (lib.util/clause-of-type? (first args) :expression))))))
+
 (mu/defn join-condition-lhs-or-rhs-literal? :- :boolean
   "Whether this LHS or RHS expression is a `:value` clause."
   [lhs-or-rhs :- [:maybe ::lib.schema.expression/expression]]
   (lib.util/clause-of-type? lhs-or-rhs :value))
 
 (mu/defn join-condition-lhs-or-rhs-column? :- :boolean
-  "Whether this LHS or RHS expression is a `:field` or `:expression` reference."
+  "Whether this LHS or RHS expression is a `:field` or `:expression` reference,
+  or a simple cast expression (like datetime, integer, float, text) of a field."
   [lhs-or-rhs :- [:maybe ::lib.schema.expression/expression]]
   (or (lib.util/clause-of-type? lhs-or-rhs :field)
-      (lib.util/clause-of-type? lhs-or-rhs :expression)))
+      (lib.util/clause-of-type? lhs-or-rhs :expression)
+      ;; Also consider simple cast expressions as columns if they only cast a single field
+      (simple-cast-of-field? lhs-or-rhs)))
 
 (mu/defn filter-args-display-name :- :string
   "Provides a reasonable display name for the `filter-clause` excluding the column-name.
