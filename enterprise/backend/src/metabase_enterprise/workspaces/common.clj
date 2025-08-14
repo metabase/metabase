@@ -5,8 +5,10 @@
    [metabase-enterprise.workspaces.models.workspace :as m.workspace]
    [metabase.api.common :as api]
    [metabase.collections.common :as c.common]
+   [metabase.dashboards.models.dashboard :as dashboard]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.xrays.api.automagic-dashboards :as api.automagic-dashboards]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -163,10 +165,11 @@
                                                           :isolation deletion-info}))))
     (log/warn "No data warehouses found to delete isolations for workspace" (:id workspace))))
 
-(comment
-  (delete-isolations! (t2/select-one :model/Workspace :slug (:slug w)))
-
-  #_(isolation-manager/delete-isolation engine connection-details workspace-id isolation-info))
+(defn create-xray
+  "Create an xray of a model"
+  [model-id destination-collection-id]
+  (let [db (api.automagic-dashboards/get-automagic-dashboard :model model-id nil)]
+   (dashboard/save-transient-dashboard! db destination-collection-id)))
 
 ;; decision: this is so bespoke to us maybe it goes here now. But perhaps the querying team can help us adjust these
 ;; things with a proper api in the future
