@@ -171,7 +171,7 @@ jobs:
               name: jobName,
               result: jobValues.result
             }));
-            
+
             if (jobs.every(job => (job.result === 'skipped' || job.result === 'success'))) {
               console.log("✅ Tier 3 (Slow/Complex) drivers passed!");
               process.exit(0);

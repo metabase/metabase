@@ -193,7 +193,7 @@ jobs:
               name: jobName,
               result: jobValues.result
             }));
-            
+
             if (jobs.every(job => (job.result === 'skipped' || job.result === 'success'))) {
               console.log("✅ Tier 2 (Medium) drivers passed!");
               process.exit(0);

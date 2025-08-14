@@ -77,13 +77,13 @@ jobs:
               name: jobName,
               result: jobValues.result
             }));
-            
+
             console.log("📊 Legacy Driver Test Results:");
             jobs.forEach((job) => {
               const status = job.result === 'success' ? '✅' : '❌';
               console.log(`${status} ${job.name} - ${job.result}`);
             });
-            
+
             const failedCount = jobs.filter(job => job.result !== 'success').length;
             if (failedCount > 0) {
               console.log(`\n⚠️  ${failedCount} legacy driver tests failed`);
