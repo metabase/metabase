@@ -46,11 +46,11 @@
    :ai-entity-analysis         (deferred-tru "AI Entity Analysis")
    :collection-cleanup         (deferred-tru "Collection Cleanup")
    :content-translation        (deferred-tru "Content translation")
+   :documents                  (deferred-tru "Documents")
    :etl-connections            (deferred-tru "ETL Connections")
    :etl-connections-pg         (deferred-tru "ETL Connections PG replication")
    :llm-autodescription        (deferred-tru "LLM Auto-description")
    :metabot-v3                 (deferred-tru "MetaBot")
-   :documents                  (deferred-tru "Documents")
    :scim                       (deferred-tru "SCIM configuration")
    :serialization              (deferred-tru "Serialization")
    :table-data-editing         (deferred-tru "Table Data Editing")
@@ -92,6 +92,7 @@
                                        (premium-handler :etl-connections)
                                        (premium-handler :etl-connections-pg))
    "/database-routing"             (premium-handler metabase-enterprise.database-routing.api/routes :database-routing)
+   "/document"                     (premium-handler metabase-enterprise.documents.api/routes :documents)
    "/email"                        (premium-handler metabase-enterprise.email.api/routes :cloud-custom-smtp)
    "/gsheets"                      (-> gsheets.api/routes ;; gsheets requires both features.
                                        (premium-handler :attached-dwh)
@@ -100,7 +101,6 @@
    "/metabot-tools"                metabase-enterprise.metabot-v3.tools.api/routes
    "/metabot-v3"                   (premium-handler metabase-enterprise.metabot-v3.api/routes :metabot-v3)
    "/permission_debug"             (premium-handler metabase-enterprise.permission-debug.api/routes :advanced-permissions)
-   "/document"                     (premium-handler metabase-enterprise.documents.api/routes :documents)
    "/scim"                         (premium-handler metabase-enterprise.scim.routes/routes :scim)
    "/serialization"                (premium-handler metabase-enterprise.serialization.api/routes :serialization)
    "/stale"                        (premium-handler metabase-enterprise.stale.api/routes :collection-cleanup)

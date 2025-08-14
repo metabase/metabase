@@ -49,7 +49,7 @@
   [{:keys [collection_id entity-coll-id]}]
   (not (and entity-coll-id (nil? collection_id))))
 
-(defn- ellide-archived
+(defn- elide-archived
   "Returns the model when it's not archived.
   We use this to ensure that archived models are not returned in the recent views."
   [model]
@@ -60,7 +60,7 @@
   (when-let [document (and
                        (mi/can-read? model_object)
                        (parent-collection-valid? model_object)
-                       (ellide-archived model_object))]
+                       (elide-archived model_object))]
     {:id model_id
      :name (:name document)
      :description ""

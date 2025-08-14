@@ -60,5 +60,5 @@
   "Get all card-ids"
   [document]
   (collect-ast document #(when (and (= card-embed-type (:type %))
-                                    (pos? (-> % :attrs :id)))
+                                    (pos-int? (-> % :attrs :id)))
                            (-> % :attrs :id))))
