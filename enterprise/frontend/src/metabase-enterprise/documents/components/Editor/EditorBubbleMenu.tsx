@@ -4,8 +4,10 @@ import type { Editor as TiptapEditor } from "@tiptap/react";
 // @ts-expect-error - BubbleMenu is a Tiptap extension that is registered through @tiptap/extension-bubble-menu
 import { BubbleMenu } from "@tiptap/react/menus";
 import type React from "react";
+import { useEffect } from "react";
 import { t } from "ttag";
 
+import { useForceUpdate } from "metabase/common/hooks/use-force-update";
 import { Flex } from "metabase/ui";
 
 import { FormatButton } from "./FormatButton";
@@ -17,6 +19,17 @@ interface EditorBubbleMenuProps {
 export const EditorBubbleMenu: React.FC<EditorBubbleMenuProps> = ({
   editor,
 }) => {
+  const forceUpdate = useForceUpdate();
+
+  useEffect(() => {
+    editor.on("selectionUpdate", forceUpdate);
+    editor.on("update", forceUpdate);
+
+    return () => {
+      editor.off("selectionUpdate", forceUpdate);
+      editor.off("update", forceUpdate);
+    };
+  }, [editor, forceUpdate]);
   return (
     <BubbleMenu
       editor={editor}
