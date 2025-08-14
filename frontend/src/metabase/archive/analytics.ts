@@ -8,7 +8,7 @@ export const archiveAndTrack = async ({
   triggeredFrom,
 }: {
   archive: () => Promise<void>;
-  model: MoveToTrashEvent["event_detail"] | "card" | "document"; // TODO: add support for "document" event_detail
+  model: MoveToTrashEvent["event_detail"] | "card";
   modelId: number;
   triggeredFrom: MoveToTrashEvent["triggered_from"];
 }): Promise<void> => {
@@ -17,8 +17,6 @@ export const archiveAndTrack = async ({
     let eventDetail: MoveToTrashEvent["event_detail"];
     if (model === "card") {
       eventDetail = "question";
-    } else if (model === "document") {
-      eventDetail = "model";
     } else {
       eventDetail = model;
     }

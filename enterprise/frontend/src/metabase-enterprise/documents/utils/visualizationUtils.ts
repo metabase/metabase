@@ -33,8 +33,6 @@ export function getVisualizationItem(
 /**
  * Hook that provides visualization items and selected element
  * based on the dataset and current display type.
- *
- * Preserves exact behavior from EmbedQuestionSettingsSidebar.
  */
 export function useVisualizationOptions(
   dataset: Dataset | null | undefined,

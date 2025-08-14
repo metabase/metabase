@@ -1,9 +1,11 @@
+import type { JSONContent } from "@tiptap/core";
+
 import type { Card } from "./card";
 import type { CollectionId } from "./collection";
 import type { BaseUser, UserId } from "./user";
 
 export type DocumentId = number;
-export type DocumentContent = Record<string, unknown>; // ProseMirror AST
+export type DocumentContent = JSONContent;
 
 export type Document = {
   id: DocumentId;

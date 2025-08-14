@@ -3,8 +3,6 @@ import type { Editor } from "@tiptap/react";
 
 /**
  * Updates a card embed node's ID in the ProseMirror editor
- *
- * Preserves exact behavior from EmbedQuestionSettingsSidebar.
  */
 export function updateCardEmbedNodeId(
   editorInstance: Editor | null | undefined,
