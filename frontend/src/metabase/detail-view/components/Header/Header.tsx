@@ -8,7 +8,7 @@ import {
   renderValue,
 } from "metabase/detail-view/utils";
 import { useTranslateContent } from "metabase/i18n/hooks";
-import { Box, Group, Icon, Image, Stack, Text, rem } from "metabase/ui";
+import { Box, Group, Image, Stack, Text, rem } from "metabase/ui";
 import type { DatasetColumn, RowValues } from "metabase-types/api";
 
 import S from "./Header.module.css";
@@ -60,19 +60,15 @@ export const Header = ({ columns, row }: Props) => {
         )}
 
         {subtitleColumn && subtitle && (
-          <Group gap="sm">
-            <Icon name="label" />
-
-            <Text
-              c="text-secondary"
-              className={S.text}
-              fw="bold"
-              fz={rem(14)}
-              lh={1}
-            >
-              {renderValue(tc, subtitle, subtitleColumn)}
-            </Text>
-          </Group>
+          <Text
+            c="text-secondary"
+            className={S.text}
+            fw="bold"
+            fz={rem(14)}
+            lh={1}
+          >
+            {renderValue(tc, subtitle, subtitleColumn)}
+          </Text>
         )}
       </Stack>
     </Group>

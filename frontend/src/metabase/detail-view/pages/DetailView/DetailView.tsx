@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { push } from "react-router-redux";
+import { useUnmount } from "react-use";
 
 import { skipToken } from "metabase/api/api";
 import { useGetAdhocQueryQuery } from "metabase/api/dataset";
@@ -16,7 +17,7 @@ import {
 } from "metabase/detail-view/components";
 import { getHeaderColumns, getRowName } from "metabase/detail-view/utils";
 import { useDispatch } from "metabase/lib/redux";
-import { closeNavbar } from "metabase/redux/app";
+import { closeNavbar, setDetailView } from "metabase/redux/app";
 import { Box, Group, Stack, rem } from "metabase/ui";
 import { extractRemappedColumns } from "metabase/visualizations";
 import type { StructuredDatasetQuery } from "metabase-types/api";
@@ -139,6 +140,16 @@ export function DetailView({ params }: Props) {
     dispatch(closeNavbar());
   }, [dispatch]);
 
+  useEffect(() => {
+    if (table) {
+      dispatch(setDetailView({ rowName, table }));
+    }
+  }, [dispatch, rowName, table]);
+
+  useUnmount(() => {
+    dispatch(setDetailView(null));
+  });
+
   if (!table || !dataset || !row) {
     return <LoadingAndErrorWrapper loading />;
   }
@@ -146,10 +157,6 @@ export function DetailView({ params }: Props) {
   return (
     <Stack bg="var(--mb-color-background-light)" gap={0} h="100%">
       <Stack className={S.scrollable} gap={0} mih={0}>
-        {/* <Box className={S.nav} flex="0 0 auto" p="md">
-          <Nav rowName={rowName} table={table} />
-        </Box> */}
-
         {headerColumns.length > 0 && (
           <Box
             bg="bg-white"
@@ -179,7 +186,7 @@ export function DetailView({ params }: Props) {
             align="flex-start"
             flex="1"
             bg="bg-white"
-            p="lg"
+            p="xl"
             pl={rem(PADDING_LEFT)}
           >
             <Stack gap={rem(64)} maw={rem(900)} w="100%">
@@ -190,7 +197,7 @@ export function DetailView({ params }: Props) {
           </Group>
 
           {tableForeignKeys && tableForeignKeys.length > 0 && (
-            <Box flex="0 0 auto" p={rem(40)} w={rem(440)}>
+            <Box flex="0 0 auto" px={rem(40)} py="xl" w={rem(440)}>
               <Relationships
                 columns={columns}
                 row={row}

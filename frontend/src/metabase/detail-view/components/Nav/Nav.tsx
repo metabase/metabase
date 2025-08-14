@@ -5,7 +5,6 @@ import { Box, Group, Icon, Text, rem } from "metabase/ui";
 import type { Table } from "metabase-types/api";
 
 import { Breadcrumb } from "./Breadcrumb";
-import S from "./Nav.module.css";
 import { getExploreTableUrl } from "./utils";
 
 interface Props {
@@ -25,10 +24,10 @@ export const Nav = ({ rowName, table }: Props) => {
   }
 
   return (
-    <Group align="center" gap={0}>
+    <Group align="center" gap="sm" miw={0} wrap="nowrap">
       <Breadcrumb href={`/browse/databases/${table.db_id}`}>
         <Group align="center" gap={rem(10)} wrap="nowrap">
-          <Icon flex="0 0 auto" name="database" size={20} />
+          <Icon flex="0 0 auto" name="database" />
 
           <Box>{table.db.name}</Box>
         </Group>
@@ -64,7 +63,7 @@ export const Nav = ({ rowName, table }: Props) => {
 };
 
 const Separator = () => (
-  <Text c="text-light" className={S.separator} flex="0 0 auto" fw="bold">
+  <Text c="text-secondary" flex="0 0 auto" fw="bold">
     /
   </Text>
 );

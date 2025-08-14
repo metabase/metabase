@@ -1,5 +1,5 @@
 import { type ReactNode, useMemo } from "react";
-import { t } from "ttag";
+import { jt, t } from "ttag";
 
 import { type BoxProps, Stack, Text } from "metabase/ui";
 import type {
@@ -41,10 +41,12 @@ export function Relationships({
 
   return (
     <Stack gap="md">
-      <Text c="text-secondary" fw="bold" fz={17}>
-        {rowName
-          ? t`${rowName} is connected to:`
-          : t`This record is connected to:`}
+      <Text c="text-secondary" fz={17}>
+        {jt`${(
+          <Text c="text-secondary" component="span" fw="bold" fz={17}>
+            {rowName ? rowName : t`This record`}
+          </Text>
+        )} is connected to:`}
       </Text>
 
       <Stack gap="md">

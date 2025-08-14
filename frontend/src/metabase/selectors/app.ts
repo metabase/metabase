@@ -196,6 +196,10 @@ export const getErrorPage = (state: State) => {
   return state.app.errorPage;
 };
 
+export const getDetailViewState = (state: State) => {
+  return state.app.detailView;
+};
+
 export const getErrorMessage = (state: State) => {
   const errorPage = getErrorPage(state);
   return errorPage?.data?.message || errorPage?.data;
