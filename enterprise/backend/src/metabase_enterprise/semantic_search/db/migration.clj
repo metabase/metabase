@@ -36,9 +36,9 @@
 (defn- db-version
   "Get database version of schema from migration table."
   [tx]
-  (or (:min_version
+  (or (:max_version
        (jdbc/execute-one! tx
-                          (sql/format {:select [[[:min :version] :min_version]]
+                          (sql/format {:select [[[:max :version] :max_version]]
                                        :from [:migration]})))
       -1))
 
