@@ -39,25 +39,27 @@
                                 (str "$1" alt-name "$3"))
       (when (nil? <>) (throw (Exception. "Empty pgvector url."))))))
 
-(defn do-with-temp-datasource
+(defn do-with-temp-datasource!
+  "Impl [[with-temp-datasource]]."
   [db-name thunk]
   (with-redefs [semantic.db.datasource/db-url (alt-db-name-url (:mb-pgvector-db-url env) db-name)
                 semantic.db.datasource/data-source (atom nil)]
     (try
       ;; ensure datasource was initialized so we can close it in finally.
       (semantic.db.datasource/ensure-initialized-data-source!)
-      ()
       (thunk)
       (finally
         (.close ^PooledDataSource @semantic.db.datasource/data-source)))))
 
-(defmacro with-temp-datasource
+(defmacro with-temp-datasource!
+  "Redefine datasource for testing, not thread-safe"
   [db-name & body]
-  `(do-with-temp-datasource ~db-name (fn [] ~@body)))
+  `(do-with-temp-datasource! ~db-name (fn [] ~@body)))
 
-(defn do-with-test-db
+(defn do-with-test-db!
+  "Impl [[with-test-db]]"
   [db-name thunk]
-  (with-temp-datasource "postgres"
+  (with-temp-datasource! "postgres"
     (try
       (jdbc/execute! (semantic.db.datasource/ensure-initialized-data-source!)
                      [(str "DROP DATABASE IF EXISTS " db-name " (FORCE)")])
@@ -68,12 +70,13 @@
       (catch java.sql.SQLException e
         (log/fatal "creation failed")
         (throw e))))
-  (with-temp-datasource db-name
+  (with-temp-datasource! db-name
     (thunk)))
 
-(defmacro with-test-db
+(defmacro with-test-db!
+  "Drop, create database dbname on pgvector and redefine datasource accordingly. Not thread safe."
   [db-name & body]
-  `(do-with-test-db ~db-name (fn [] ~@body)))
+  `(do-with-test-db! ~db-name (fn [] ~@body)))
 
 (def ^:private init-delay
   (delay

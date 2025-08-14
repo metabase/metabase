@@ -25,7 +25,7 @@
 
 (deftest migration-table-versions-test
   (mt/with-premium-features #{:semantic-search}
-    (semantic.tu/with-test-db semantic.tu/default-test-db
+    (semantic.tu/with-test-db! semantic.tu/default-test-db
       (letfn [(migrate-and-get-db-version
                 [attempted-version]
                 (with-redefs [semantic.db.migration.impl/schema-version attempted-version
@@ -56,7 +56,7 @@
 
 (deftest migration-lock-coordination-test
   (mt/with-premium-features #{:semantic-search}
-    (semantic.tu/with-test-db semantic.tu/default-test-db
+    (semantic.tu/with-test-db! semantic.tu/default-test-db
       (testing "Migration of simultaneous init attempt is blocked"
         (let [original-write-fn @#'semantic.db.migration/write-successful-migration!
               original-migrate-fn @#'semantic.db.connection/do-with-migrate-tx
@@ -114,7 +114,7 @@
 (deftest expected-db-schema-after-migration-test
   (try
     (mt/with-premium-features #{:semantic-search}
-      (semantic.tu/with-test-db semantic.tu/default-test-db
+      (semantic.tu/with-test-db! semantic.tu/default-test-db
         (with-redefs [semantic.pgvector-api/index-documents! (constantly nil)]
           (semantic.core/init! (semantic.tu/mock-documents) nil)
           (testing "migration table has expected columns"
@@ -212,7 +212,7 @@
 
 (deftest dynamic-schema-migration-test
   (mt/with-premium-features #{:semantic-search}
-    (semantic.tu/with-test-db semantic.tu/default-test-db
+    (semantic.tu/with-test-db! semantic.tu/default-test-db
       (with-redefs [semantic.pgvector-api/index-documents! (constantly nil)]
         (semantic.core/init! (semantic.tu/mock-documents) nil)
              ;; add column to index table
