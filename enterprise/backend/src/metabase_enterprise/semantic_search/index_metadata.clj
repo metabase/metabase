@@ -146,7 +146,7 @@
      (sql/format
       (sql.helpers/create-index
        [(keyword (str (:gate-table-name index-metadata) "_gated_at")) :if-not-exists]
-       [(keyword (:gate-table-name index-metadata)) [:raw "gated_at"] [:raw "id"]])
+       [(keyword (:gate-table-name index-metadata)) :gated_at :id])
       :quoted true))
     nil))
 
