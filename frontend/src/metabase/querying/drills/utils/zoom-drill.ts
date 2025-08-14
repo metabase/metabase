@@ -3,8 +3,7 @@ import { t } from "ttag";
 
 import { zoomInRow } from "metabase/query_builder/actions";
 import type { Drill } from "metabase/visualizations/types/click-actions";
-import type * as Lib from "metabase-lib";
-import { isPK } from "metabase-lib/v1/types/utils/isa";
+import * as Lib from "metabase-lib";
 import type { Dispatch } from "metabase-types/store";
 
 export const zoomDrill: Drill<Lib.ZoomDrillThruInfo> = ({
@@ -12,11 +11,12 @@ export const zoomDrill: Drill<Lib.ZoomDrillThruInfo> = ({
   drillInfo,
   clicked,
   applyDrill,
+  query,
 }) => {
   const { objectId, isManyPks } = drillInfo;
   const isDashboard = clicked.extraData?.dashboard != null;
-  const tableId = clicked.column?.table_id;
-  const isPk = isPK(clicked.column);
+  const tableId = Lib.sourceTableOrCardId(query);
+  const isRawTable = typeof tableId === "number";
 
   return [
     {
@@ -30,10 +30,10 @@ export const zoomDrill: Drill<Lib.ZoomDrillThruInfo> = ({
         ? { question: () => applyDrill(drill, objectId) }
         : {
             action: () => (dispatch: Dispatch) => {
-              if (tableId == null || !isPk) {
-                dispatch(zoomInRow({ objectId }));
-              } else {
+              if (isRawTable) {
                 dispatch(push(`/table/${tableId}/detail/${objectId}`));
+              } else {
+                dispatch(zoomInRow({ objectId }));
               }
             },
           }),

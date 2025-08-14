@@ -37,10 +37,12 @@ export const useObjectDetail = (
   const rowIndexToPkMap: Record<number, ObjectId> = useSelector((state) =>
     state.qb != null ? getRowIndexToPKMap(state) : {},
   );
-  const tableId = Lib.sourceTableOrCardId(query);
+  const tableId = useMemo(() => Lib.sourceTableOrCardId(query), [query]);
 
   const primaryKeyColumn: ColumnDescriptor | null = useMemo(() => {
-    const primaryKeyColumns = cols.filter(isPK);
+    const primaryKeyColumns = cols.filter(
+      (column) => column.table_id === tableId && isPK(column),
+    );
 
     if (primaryKeyColumns.length !== 1) {
       return null;
@@ -51,10 +53,12 @@ export const useObjectDetail = (
       column: primaryKeyColumn,
       index: cols.indexOf(primaryKeyColumn),
     };
-  }, [cols]);
+  }, [cols, tableId]);
 
   const onOpenObjectDetail = useCallback(
     (rowIndex: number) => {
+      const isRawTable = typeof tableId === "number";
+
       let objectId: number | string;
 
       if (primaryKeyColumn) {
@@ -67,7 +71,7 @@ export const useObjectDetail = (
         objectId = rowIndexToPkMap?.[rowIndex] ?? rowIndex;
       }
 
-      if (tableId == null || !primaryKeyColumn) {
+      if (!isRawTable || !primaryKeyColumn) {
         dispatch(zoomInRow({ objectId }));
       } else {
         dispatch(closeNavbar());
