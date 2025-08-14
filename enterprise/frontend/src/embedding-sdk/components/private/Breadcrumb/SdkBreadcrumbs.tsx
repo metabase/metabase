@@ -7,7 +7,7 @@ import type {
   SdkBreadcrumbItemType,
 } from "embedding-sdk/types/breadcrumb";
 import { Badge } from "metabase/common/components/Badge";
-import type { IconName } from "metabase/ui";
+import { Flex, type IconName } from "metabase/ui";
 
 import { PublicComponentStylesWrapper } from "../PublicComponentStylesWrapper";
 
@@ -32,7 +32,7 @@ export const SdkBreadcrumbs = ({
 
   return (
     <PublicComponentStylesWrapper className={className} style={style}>
-      <div className={S.PathContainer}>
+      <Flex align="center">
         {breadcrumbs.map((breadcrumb, index) => (
           <Fragment key={breadcrumb.id}>
             <Badge
@@ -52,7 +52,7 @@ export const SdkBreadcrumbs = ({
             )}
           </Fragment>
         ))}
-      </div>
+      </Flex>
     </PublicComponentStylesWrapper>
   );
 };

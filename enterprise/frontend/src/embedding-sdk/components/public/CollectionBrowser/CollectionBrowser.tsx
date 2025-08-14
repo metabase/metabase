@@ -125,7 +125,7 @@ export const CollectionBrowserInner = ({
     return internalCollectionId;
   }, [isGlobalBreadcrumbEnabled, currentLocation, internalCollectionId]);
 
-  const { data: currentCollection, isFetching: isFetchingCollection } =
+  const { data: collection, isFetching: isFetchingCollection } =
     useGetCollectionQuery({ id: effectiveCollectionId });
 
   useEffect(() => {
@@ -133,21 +133,17 @@ export const CollectionBrowserInner = ({
   }, [baseCollectionId]);
 
   useEffect(() => {
-    if (
-      currentCollection &&
-      !isFetchingCollection &&
-      isGlobalBreadcrumbEnabled
-    ) {
+    if (isGlobalBreadcrumbEnabled && !isFetchingCollection && collection) {
       reportLocation({
         type: "collection",
-        id: currentCollection.id,
-        name: currentCollection.name || "Collection",
+        id: collection.id,
+        name: collection.name || "Collection",
       });
     }
   }, [
-    currentCollection,
-    isFetchingCollection,
     isGlobalBreadcrumbEnabled,
+    isFetchingCollection,
+    collection,
     reportLocation,
   ]);
 
