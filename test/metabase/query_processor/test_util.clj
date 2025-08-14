@@ -511,6 +511,7 @@
     (lib.metadata.jvm/application-database-metadata-provider (data/id))
     queries
     transforms))
+
   ([parent-metadata-provider :- ::lib.schema.metadata/metadata-provider
     queries :- [:sequential {:min 1} :map]
     transforms :- [:maybe :map]]

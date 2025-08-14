@@ -820,7 +820,7 @@
                    :field-ref       [:field 134551 {:source-field 134534}]
                    :fk-field-id     134534
                    :fingerprint     {:global {:distinct-count 4, :nil% 0.0}
-                                     :type   {:type/text {:percent-json   0.0
+                                     :type   {:type/Text {:percent-json   0.0
                                                           :percent-url    0.0
                                                           :percent-email  0.0
                                                           :percent-state  0.0

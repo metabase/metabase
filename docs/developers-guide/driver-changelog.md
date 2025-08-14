@@ -6,6 +6,12 @@ title: Driver interface changelog
 
 ## Metabase 0.57.0
 
+- `driver/field-reference-mlv2` is now deprecated, and is no longer used. Please remove your implementations.
+
+- The key `metabase.driver-api.core/qp.add.nfc-path` is now more consistently populated; other `qp.add.*` keys no
+  longer include parent column names for drivers like MongoDB -- use `qp.add.nfc-path` instead to qualify the
+  `qp.add.source-column-alias` with parent column names as needed.
+
 - Added metabase.driver/compile-transform, metabase.driver/compile-drop-table, metabase.driver/execute-raw-queries!,
   metabase.driver/run-transform!, metabase.driver/drop-transform-target!, metabase.driver/native-query-deps,
   metabase.driver/connection-details, metabase.driver/table-exists?, metabase.driver.sql/normalize-name,
