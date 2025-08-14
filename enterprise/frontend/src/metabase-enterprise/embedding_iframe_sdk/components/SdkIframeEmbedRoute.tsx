@@ -3,7 +3,6 @@ import { P, match } from "ts-pattern";
 
 import {
   InteractiveDashboard,
-  InteractiveQuestion,
   MetabaseProvider,
   StaticDashboard,
   StaticQuestion,
@@ -84,19 +83,6 @@ const SdkIframeEmbedView = ({
 
   return (
     match(settings)
-      .with(
-        { componentName: "metabase-question", questionId: "new" },
-        (settings) => (
-          <InteractiveQuestion
-            questionId="new"
-            height="100%"
-            isSaveEnabled={settings.isSaveEnabled ?? false}
-            targetCollection={settings.targetCollection}
-            entityTypes={settings.entityTypes}
-            key={rerenderKey}
-          />
-        ),
-      )
       // .with({ template: "curate-content" }, (_settings) => null)
       // .with({ template: "view-content" }, (_settings) => null)
       .with(
@@ -149,7 +135,8 @@ const SdkIframeEmbedView = ({
             title: settings.withTitle ?? true, // defaulting title to true even if in the sdk it defaults to false for static
           };
 
-          if (settings.drills === false) {
+          // note: to create a new question we need to render InteractiveQuestion
+          if (settings.drills === false && settings.questionId !== "new") {
             // note: this disable drills but also removes the top toolbar
             return <StaticQuestion {...commonProps} key={rerenderKey} />;
           }
