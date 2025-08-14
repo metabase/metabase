@@ -146,10 +146,6 @@ export function DetailView({ params }: Props) {
   return (
     <Stack bg="var(--mb-color-background-light)" gap={0} h="100%">
       <Stack className={S.scrollable} gap={0} mih={0}>
-        {/* <Box className={S.nav} flex="0 0 auto" p="md">
-          <Nav rowName={rowName} table={table} />
-        </Box> */}
-
         {headerColumns.length > 0 && (
           <Box
             bg="bg-white"
