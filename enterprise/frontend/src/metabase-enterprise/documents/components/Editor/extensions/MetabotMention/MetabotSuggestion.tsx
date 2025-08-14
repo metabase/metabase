@@ -15,7 +15,7 @@ import type {
   Section,
 } from "metabase/common/components/AccordionList/types";
 import { searchFilter } from "metabase/common/components/AccordionList/utils";
-import { Box, Group, type IconName, Loader, Text } from "metabase/ui";
+import { Box, Group, Loader, Text } from "metabase/ui";
 import type { Database, SearchResult } from "metabase-types/api";
 
 import type { MenuItem } from "../../shared/MenuComponents";
@@ -41,16 +41,6 @@ interface SuggestionRef {
   onKeyDown: (props: { event: KeyboardEvent }) => boolean;
 }
 
-interface MentionItem {
-  icon: IconName;
-  iconColor?: string;
-  label: string;
-  description?: string;
-  action: () => void;
-  id: number | string;
-  type?: string;
-}
-
 const MetabotMentionSuggestionComponent = forwardRef<
   SuggestionRef,
   MentionSuggestionProps
@@ -72,7 +62,7 @@ const MetabotMentionSuggestionComponent = forwardRef<
   );
 
   const menuItems = useMemo(() => {
-    const items: Array<MentionItem | MenuItem> = [];
+    const items: MenuItem[] = [];
 
     if (dbsResponse?.data) {
       const sections: Section<Item & { database: Database }>[] = [];
@@ -96,7 +86,7 @@ const MetabotMentionSuggestionComponent = forwardRef<
       items.push(...buildDbMenuItems(dbs, handleDbSelect));
     }
 
-    return items as MentionItem[];
+    return items;
   }, [dbsResponse?.data, handleDbSelect, query]);
 
   const totalItems = menuItems.length;
