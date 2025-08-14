@@ -179,7 +179,7 @@ export function DetailView({ params }: Props) {
             align="flex-start"
             flex="1"
             bg="bg-white"
-            p="lg"
+            p="xl"
             pl={rem(PADDING_LEFT)}
           >
             <Stack gap={rem(64)} maw={rem(900)} w="100%">
@@ -190,7 +190,7 @@ export function DetailView({ params }: Props) {
           </Group>
 
           {tableForeignKeys && tableForeignKeys.length > 0 && (
-            <Box flex="0 0 auto" p={rem(40)} w={rem(440)}>
+            <Box flex="0 0 auto" px={rem(40)} py="xl" w={rem(440)}>
               <Relationships
                 columns={columns}
                 row={row}
