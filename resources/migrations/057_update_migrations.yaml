@@ -17,6 +17,7 @@ databaseChangeLog:
               - column:
                   name: id
                   type: int
+                  remarks: Unique ID
                   autoIncrement: true
                   constraints:
                     primaryKey: true
@@ -131,8 +132,8 @@ databaseChangeLog:
             columns:
               - column:
                   name: id
-                  remarks: Unique ID
                   type: int
+                  remarks: Unique ID
                   autoIncrement: true
                   constraints:
                     primaryKey: true
@@ -195,6 +196,7 @@ databaseChangeLog:
               - column:
                   name: id
                   type: int
+                  remarks: Unique ID
                   autoIncrement: true
                   constraints:
                     primaryKey: true
@@ -354,6 +356,7 @@ databaseChangeLog:
               - column:
                   name: id
                   type: int
+                  remarks: Unique ID
                   autoIncrement: true
                   constraints:
                     primaryKey: true
@@ -392,6 +395,7 @@ databaseChangeLog:
               - column:
                   name: id
                   type: int
+                  remarks: Unique ID
                   autoIncrement: true
                   constraints:
                     primaryKey: true
@@ -446,6 +450,7 @@ databaseChangeLog:
               - column:
                   name: id
                   type: int
+                  remarks: Unique ID
                   autoIncrement: true
                   constraints:
                     primaryKey: true
@@ -503,6 +508,7 @@ databaseChangeLog:
               - column:
                   name: id
                   type: int
+                  remarks: Unique ID
                   autoIncrement: true
                   constraints:
                     primaryKey: true
@@ -574,6 +580,7 @@ databaseChangeLog:
               - column:
                   name: id
                   type: int
+                  remarks: Unique ID
                   autoIncrement: true
                   constraints:
                     primaryKey: true
