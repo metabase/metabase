@@ -322,7 +322,7 @@ export const FieldValuesWidgetInner = forwardRef<
 
   if (!valueRenderer) {
     valueRenderer = (value: string | number) => {
-      const option = options.find((option) => getValue(option) === value);
+      const option = enhancedOptions.find((option) => getValue(option) === value);
       return renderValue({
         fields,
         formatOptions,
@@ -370,7 +370,7 @@ export const FieldValuesWidgetInner = forwardRef<
               disableSearch,
               disablePKRemappingForSearch,
               loadingState,
-              options,
+              options: enhancedOptions,
               valuesMode,
               optionsList,
               isFocused,
@@ -381,28 +381,50 @@ export const FieldValuesWidgetInner = forwardRef<
         );
   }
 
+  const isListMode =
+    !disableList &&
+    shouldList({ parameter, fields, disableSearch }) &&
+    valuesMode === "list";
+  const isLoading = loadingState === "LOADING";
+  const isNumericParameter = isNumeric(parameter, fields);
+
+  // Ensure default value is available for required parameters
+  const enhancedOptions = useMemo(() => {
+    if (!parameter?.required || !parameter?.default || !options.length) {
+      return options;
+    }
+
+    // Check if default value is already in options
+    const hasDefaultInOptions = options.some(option => {
+      const optionValue = Array.isArray(option) ? option[0] : option;
+      return optionValue === parameter.default;
+    });
+
+    if (hasDefaultInOptions) {
+      return options;
+    }
+
+    // Add default value as an option if it's missing
+    const defaultOption = [parameter.default];
+    return [defaultOption, ...options];
+  }, [options, parameter?.required, parameter?.default]);
+
+  const hasListValues = hasList({
+    parameter,
+    fields,
+    disableSearch,
+    options: enhancedOptions,
+  });
+
   const tokenFieldPlaceholder = getTokenFieldPlaceholder({
     fields,
     parameter,
     disableSearch,
     placeholder,
     disablePKRemappingForSearch,
-    options,
+    options: enhancedOptions,
     valuesMode,
   });
-
-  const isListMode =
-    !disableList &&
-    shouldList({ parameter, fields, disableSearch }) &&
-    valuesMode === "list";
-  const isLoading = loadingState === "LOADING";
-  const hasListValues = hasList({
-    parameter,
-    fields,
-    disableSearch,
-    options,
-  });
-  const isNumericParameter = isNumeric(parameter, fields);
 
   const parseNumericValue = (value: string) => {
     const number = parseNumber(value);
@@ -438,7 +460,7 @@ export const FieldValuesWidgetInner = forwardRef<
             placeholder={tokenFieldPlaceholder}
             value={value?.filter((v: RowValue) => v != null)}
             onChange={onChange}
-            options={options}
+            options={enhancedOptions}
             optionRenderer={optionRenderer}
             checkedColor={checkedColor}
           />
@@ -448,14 +470,14 @@ export const FieldValuesWidgetInner = forwardRef<
             placeholder={tokenFieldPlaceholder}
             value={value.filter((v) => v != null)}
             onChange={onChange}
-            options={options}
+            options={enhancedOptions}
             optionRenderer={optionRenderer}
             checkedColor={checkedColor}
           />
         ) : multi ? (
           <MultiAutocomplete
             value={value.filter(isNotNull).map((value) => String(value))}
-            data={options
+            data={enhancedOptions
               .filter((option) => getValue(option) != null)
               .map((option) => getOption(option))
               .filter(isNotNull)}
