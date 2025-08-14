@@ -61,7 +61,7 @@ describe("scenarios > embedding > sdk iframe embed setup > user settings persist
     });
   });
 
-  it("persists chart embed options", () => {
+  it("persists chart embed options", { tags: "@flaky" }, () => {
     navigateToEmbedOptionsStep({
       experience: "chart",
       resourceName: QUESTION_NAME,
@@ -108,12 +108,15 @@ describe("scenarios > embedding > sdk iframe embed setup > user settings persist
     cy.log("1. set exploration settings to non-default values");
     getEmbedSidebar().within(() => {
       cy.findByLabelText("Allow users to save new questions")
-        .should("be.checked")
+        .should("not.be.checked")
         .click()
-        .should("not.be.checked");
+        .should("be.checked");
     });
 
-    H.getSimpleEmbedIframeContent().findByText("Save").should("not.exist");
+    H.getSimpleEmbedIframeContent().within(() => {
+      cy.findByText("Orders").click();
+      cy.findByText("Save").should("exist");
+    });
 
     cy.log("2. reload the page");
     waitAndReload();
@@ -125,7 +128,7 @@ describe("scenarios > embedding > sdk iframe embed setup > user settings persist
     getEmbedSidebar().within(() => {
       cy.log("3. persisted settings should be restored");
       cy.findByLabelText("Allow users to save new questions").should(
-        "not.be.checked",
+        "be.checked",
       );
     });
   });

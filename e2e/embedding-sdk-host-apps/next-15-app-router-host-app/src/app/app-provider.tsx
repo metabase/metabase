@@ -3,7 +3,7 @@
 import {
   MetabaseProvider,
   defineMetabaseAuthConfig,
-} from "@metabase/embedding-sdk-react/nextjs";
+} from "@metabase/embedding-sdk-react";
 import { useSearchParams } from "next/navigation";
 import type { PropsWithChildren } from "react";
 import { useMemo } from "react";

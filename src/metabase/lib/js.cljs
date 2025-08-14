@@ -1429,9 +1429,8 @@
 (defn- visible-columns*
   "Inner implementation for [[visible-columns]], which wraps this with caching."
   [a-query stage-number]
-  (let [stage       (lib.util/query-stage a-query stage-number)
-        vis-columns (lib.metadata.calculation/visible-columns a-query stage-number stage)
-        ret-columns (lib.metadata.calculation/returned-columns a-query stage-number stage)]
+  (let [vis-columns (lib.metadata.calculation/visible-columns a-query stage-number)
+        ret-columns (lib.metadata.calculation/returned-columns a-query stage-number)]
     (to-array (lib.equality/mark-selected-columns a-query stage-number vis-columns ret-columns))))
 
 (defn ^:export visible-columns

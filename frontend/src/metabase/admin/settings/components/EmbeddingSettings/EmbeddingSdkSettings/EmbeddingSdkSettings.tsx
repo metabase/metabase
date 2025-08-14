@@ -1,6 +1,6 @@
 import cx from "classnames";
 import { match } from "ts-pattern";
-import { jt, t } from "ttag";
+import { c, jt, t } from "ttag";
 
 import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
 import { UpsellDevInstances } from "metabase/admin/upsells";
@@ -16,7 +16,6 @@ import {
 } from "metabase/plugins";
 import {
   Alert,
-  Badge,
   Box,
   Button,
   Flex,
@@ -28,6 +27,7 @@ import {
 
 import { SettingHeader } from "../../SettingHeader";
 import { AdminSettingInput } from "../../widgets/AdminSettingInput";
+import { LinkButton } from "../EmbeddingOption/LinkButton";
 import { EmbeddingToggle } from "../EmbeddingToggle";
 
 import S from "./EmbeddingSdkSettings.module.css";
@@ -102,17 +102,24 @@ export function EmbeddingSdkSettings() {
     .with(
       { needsToSwitchBinaries: true },
       () =>
-        jt`You can test Embedded analytics SDK on localhost quickly by using API keys. To use the SDK on other sites, ${SwitchBinariesLink}, ${(<UpsellSdkLink key="upsell-sdk-link" />)} and ${ImplementJwtLink}.`,
+        c(
+          "{0} is the link to switch binaries. {1} is the link to upsell the SDK. {2} is the link to implement JWT or SAML authentication.",
+        )
+          .jt`You can test Embedded analytics SDK on localhost quickly by using API keys. To use the SDK on other sites, ${SwitchBinariesLink}, ${(<UpsellSdkLink key="upsell-sdk-link" />)} and ${ImplementJwtLink}.`,
     )
     .with(
       { needsToUpgrade: true },
       () =>
-        jt`You can test Embedded analytics SDK on localhost quickly by using API keys. To use the SDK on other sites, ${(<UpsellSdkLink key="upsell-sdk-link" />)} and ${ImplementJwtLink}.`,
+        c(
+          "{0} is the link to upsell the SDK. {1} is the link to implement JWT or SAML authentication.",
+        )
+          .jt`You can test Embedded analytics SDK on localhost quickly by using API keys. To use the SDK on other sites, ${(<UpsellSdkLink key="upsell-sdk-link" />)} and ${ImplementJwtLink}.`,
     )
     .with(
       { needsToImplementJwt: true },
       () =>
-        jt`You can test Embedded analytics SDK on localhost quickly by using API keys. To use the SDK on other sites, ${ImplementJwtLink}.`,
+        c("{0} is the link to implement JWT or SAML authentication.")
+          .jt`You can test Embedded analytics SDK on localhost quickly by using API keys. To use the SDK on other sites, ${ImplementJwtLink}.`,
     )
     .otherwise(() => null);
 
@@ -132,6 +139,7 @@ export function EmbeddingSdkSettings() {
             label={t`Enabled`}
             settingKey="enable-embedding-sdk"
             labelPosition="right"
+            aria-label={t`SDK for React toggle`}
           />
 
           <Group gap="md">
@@ -166,8 +174,6 @@ export function EmbeddingSdkSettings() {
             <Text fz="h3" fw={600} c="text-dark">
               {t`Embedded Analytics JS`}
             </Text>
-
-            <Badge size="sm">{t`Beta`}</Badge>
           </Group>
 
           <Group gap="sm" align="center" justify="space-between" w="100%">
@@ -176,31 +182,19 @@ export function EmbeddingSdkSettings() {
               labelPosition="right"
               settingKey="enable-embedding-simple"
               disabled={!isSimpleEmbedFeatureEnabled}
+              aria-label={t`Embedded Analytics JS toggle`}
             />
 
             {isSimpleEmbedFeatureEnabled ? (
               <Group gap="md">
-                <Button
+                <LinkButton
                   size="compact-xs"
                   variant="outline"
-                  component={ExternalLink}
-                  href={quickStartUrl}
-                  rightSection={<Icon size={12} name="external" />}
+                  to="/embed-js"
                   fz="sm"
                 >
-                  {t`Quick start`}
-                </Button>
-
-                <Button
-                  size="compact-xs"
-                  variant="outline"
-                  component={ExternalLink}
-                  href={documentationUrl}
-                  rightSection={<Icon size={12} name="external" />}
-                  fz="sm"
-                >
-                  {t`Documentation`}
-                </Button>
+                  {t`Try it out`}
+                </LinkButton>
               </Group>
             ) : (
               <UpsellEmbeddingButton

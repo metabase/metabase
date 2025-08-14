@@ -5,10 +5,10 @@ import { waitForLoaderToBeRemoved } from "__support__/ui";
 import { waitForRequest } from "__support__/utils";
 import {
   MetabaseProvider,
-  type MetabaseProviderProps,
   StaticQuestion,
-  defineMetabaseAuthConfig,
 } from "embedding-sdk/components/public";
+import { defineMetabaseAuthConfig } from "embedding-sdk/sdk-package/lib/public/define-metabase-auth-config";
+import type { MetabaseProviderProps } from "embedding-sdk/types/metabase-provider";
 
 import {
   MOCK_INSTANCE_URL,
@@ -40,9 +40,9 @@ describe("Auth Flow - SAML", () => {
     const { rerender, popup } = setup({ authConfig });
 
     await waitForLoaderToBeRemoved();
-    expect(fetchMock.calls(`begin:${MOCK_INSTANCE_URL}/auth/sso`)).toHaveLength(
-      1,
-    );
+    expect(
+      fetchMock.callHistory.calls(`begin:${MOCK_INSTANCE_URL}/auth/sso`),
+    ).toHaveLength(1);
     expect(popup.close).toHaveBeenCalled();
 
     rerender(
@@ -53,9 +53,9 @@ describe("Auth Flow - SAML", () => {
 
     await waitForLoaderToBeRemoved();
 
-    expect(fetchMock.calls(`begin:${MOCK_INSTANCE_URL}/auth/sso`)).toHaveLength(
-      1,
-    );
+    expect(
+      fetchMock.callHistory.calls(`begin:${MOCK_INSTANCE_URL}/auth/sso`),
+    ).toHaveLength(1);
 
     const loader = screen.queryByTestId("loading-indicator");
     expect(loader).not.toBeInTheDocument();
@@ -76,13 +76,15 @@ describe("Auth Flow - SAML", () => {
     });
 
     await waitForRequest(() => getLastUserApiCall());
-    expect(getLastUserApiCall()![1]).toMatchObject({
-      headers: { "X-Metabase-Session": [MOCK_SESSION_TOKEN_ID] },
-    });
+    expect(getLastUserApiCall()?.options.headers).toHaveProperty(
+      "x-metabase-session",
+      MOCK_SESSION_TOKEN_ID,
+    );
 
     await waitForRequest(() => getLastCardQueryApiCall());
-    expect(getLastCardQueryApiCall()![1]).toMatchObject({
-      headers: { "X-Metabase-Session": [MOCK_SESSION_TOKEN_ID] },
-    });
+    expect(getLastCardQueryApiCall()?.options.headers).toHaveProperty(
+      "x-metabase-session",
+      MOCK_SESSION_TOKEN_ID,
+    );
   });
 });
