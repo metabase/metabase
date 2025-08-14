@@ -1,0 +1,84 @@
+name: Auto-update documentation
+
+on:
+  schedule:
+    - cron: '0 9 * * 1' # Every Monday at 9 AM UTC
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  update-docs:
+    name: Update documentation
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+
+      - name: Prepare backend environment
+        uses: ./.github/actions/prepare-backend
+        with:
+          m2-cache-key: 'auto-update-docs'
+
+      - name: Generate documentation
+        run: |
+          clojure -M:ee:doc environment-variables-documentation
+          clojure -M:ee:doc config-template
+          clojure -M:ee:doc api-documentation
+
+      - name: Check for changes
+        id: check_changes
+        run: |
+          if git diff --quiet docs/; then
+            echo "changes=false" >> $GITHUB_OUTPUT
+            echo "No changes detected in docs directory"
+          else
+            echo "changes=true" >> $GITHUB_OUTPUT
+            echo "Changes detected in docs directory"
+          fi
+
+      - name: Create branch and commit changes
+        if: steps.check_changes.outputs.changes == 'true'
+        run: |
+          BRANCH_NAME="docs/auto-update-$(date +%Y-%m-%d)"
+          
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git checkout -b $BRANCH_NAME
+          
+          git add docs/
+          git commit -m "Auto-update documentation from Monday build" --no-verify
+          git push -u origin $BRANCH_NAME
+          
+          echo "branch_name=$BRANCH_NAME" >> $GITHUB_OUTPUT
+
+      - name: Create pull request
+        if: steps.check_changes.outputs.changes == 'true'
+        env:
+          GITHUB_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+        run: |
+          gh pr create \
+            --base master \
+            --head ${{ steps.check_changes.outputs.branch_name }} \
+            --title "Auto-update documentation from Monday build" \
+            --body "This PR contains automatically generated documentation updates from the Monday build process.
+
+          Changes were detected in the \`docs\` directory after running:
+          - \`clojure -M:ee:doc environment-variables-documentation\`
+          - \`clojure -M:ee:doc config-template\`
+          - \`clojure -M:ee:doc api-documentation\`
+
+          Please review the changes and merge if they look correct." \
+            --label "documentation" \
+            --label "no-backport"
+
+      - name: Skip PR creation
+        if: steps.check_changes.outputs.changes == 'false'
+        run: |
+          echo "No documentation changes detected, skipping PR creation"
