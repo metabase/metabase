@@ -275,46 +275,44 @@
           (recur)))))
 
 (deftest execute-transform-test
-  (doseq [target-type ["table"] ;; views some day maybe
-          :let        [feature (keyword "transforms" target-type)]]
-    (testing (str "transform execution with " target-type " target")
-      (mt/test-drivers (mt/normal-drivers-with-feature feature)
-        (mt/with-premium-features #{:transforms}
-          (mt/dataset transforms-dataset/transforms-test
-            (let [schema (t2/select-one-fn :schema :model/Table (mt/id :products))]
-              (with-transform-cleanup! [{table1-name :name :as target1} {:type   target-type
-                                                                         :schema schema
-                                                                         :name   "gadget_products"}
-                                        {table2-name :name :as target2} {:type   target-type
-                                                                         :schema schema
-                                                                         :name   "doohickey_products"}]
-                (let [query2             (make-query "Doohickey")
-                      original           {:name   "Gadget Products"
-                                          :source {:type  "query"
-                                                   :query (make-query "Gadget")}
-                                          :target target1}
-                      {transform-id :id} (mt/user-http-request :crowberto :post 200 "ee/transform"
-                                                               original)
-                      _                  (do (test-run transform-id)
-                                             (wait-for-table table1-name 5000))
-                      _                  (is (true? (transforms.util/target-table-exists? original)))
-                      _                  (check-query-results table1-name [5 11 16] "Gadget")
-                      updated            {:name        "Doohickey Products"
-                                          :description "Desc"
-                                          :source      {:type  "query"
-                                                        :query query2}
-                                          :target      target2}]
-                  (is (=? updated
-                          (->
-                           (mt/user-http-request :crowberto :put 200 (format "ee/transform/%s" transform-id) updated)
-                           (update-in [:source :query] mbql.normalize/normalize))))
-                  (test-run transform-id)
-                  (wait-for-table table2-name 5000)
-                  (is (true? (transforms.util/target-table-exists? original)))
-                  (is (true? (transforms.util/target-table-exists? updated)))
+  (testing "transform execution with :transforms/table target"
+    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+      (mt/with-premium-features #{:transforms}
+        (mt/dataset transforms-dataset/transforms-test
+          (let [schema (t2/select-one-fn :schema :model/Table (mt/id :products))]
+            (with-transform-cleanup! [{table1-name :name :as target1} {:type   :transforms/table
+                                                                       :schema schema
+                                                                       :name   "gadget_products"}
+                                      {table2-name :name :as target2} {:type   :transforms/table
+                                                                       :schema schema
+                                                                       :name   "doohickey_products"}]
+              (let [query2             (make-query "Doohickey")
+                    original           {:name   "Gadget Products"
+                                        :source {:type  "query"
+                                                 :query (make-query "Gadget")}
+                                        :target target1}
+                    {transform-id :id} (mt/user-http-request :crowberto :post 200 "ee/transform"
+                                                             original)
+                    _                  (do (test-run transform-id)
+                                           (wait-for-table table1-name 5000))
+                    _                  (is (true? (transforms.util/target-table-exists? original)))
+                    _                  (check-query-results table1-name [5 11 16] "Gadget")
+                    updated            {:name        "Doohickey Products"
+                                        :description "Desc"
+                                        :source      {:type  "query"
+                                                      :query query2}
+                                        :target      target2}]
+                (is (=? updated
+                        (->
+                         (mt/user-http-request :crowberto :put 200 (format "ee/transform/%s" transform-id) updated)
+                         (update-in [:source :query] mbql.normalize/normalize))))
+                (test-run transform-id)
+                (wait-for-table table2-name 5000)
+                (is (true? (transforms.util/target-table-exists? original)))
+                (is (true? (transforms.util/target-table-exists? updated)))
                   ;; Doohickey products in our test dataset have IDs 2, 3, 4, 13
                   ;; We verify all 4 products are present
-                  (check-query-results table2-name [2 3 4 13] "Doohickey"))))))))))
+                (check-query-results table2-name [2 3 4 13] "Doohickey")))))))))
 
 (deftest get-runs-filter-by-single-transform-id-test
   (testing "GET /api/ee/transform/run - filter by single transform ID"
