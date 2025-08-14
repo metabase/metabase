@@ -37,7 +37,7 @@ export const useInitializeMetabaseProviderPropsStore = (
       if (
         reduxStore &&
         !!loadingState &&
-        loadingState < SdkLoadingState.Initialized
+        loadingState !== SdkLoadingState.Initialized
       ) {
         ensureMetabaseProviderPropsStore().updateInternalProps({
           reduxStore,
@@ -49,6 +49,6 @@ export const useInitializeMetabaseProviderPropsStore = (
   );
 
   return {
-    initialized: !!loadingState && loadingState >= SdkLoadingState.Initialized,
+    initialized: loadingState === SdkLoadingState.Initialized,
   };
 };
