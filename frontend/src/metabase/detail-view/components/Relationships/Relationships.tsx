@@ -43,7 +43,7 @@ export function Relationships({
     <Stack gap="md">
       <Text c="text-secondary" fz={17}>
         {jt`${(
-          <Text component="span" fw="bold" fz={17}>
+          <Text c="text-secondary" component="span" fw="bold" fz={17}>
             {rowName ? rowName : t`This record`}
           </Text>
         )} is connected to:`}
