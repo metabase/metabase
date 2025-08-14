@@ -13,10 +13,14 @@
 
 (def ^:private default-tags
   "Default transform tags that should be created on first startup."
-  [{:name (deferred-tru "hourly")}
-   {:name (deferred-tru "daily")}
-   {:name (deferred-tru "weekly")}
-   {:name (deferred-tru "monthly")}])
+  [{:name (deferred-tru "hourly")
+    :entity_id "hourly-transform-tag"}
+   {:name (deferred-tru "daily")
+    :entity_id "daily-transform-tag"}
+   {:name (deferred-tru "weekly")
+    :entity_id "weekly-transform-tag"}
+   {:name (deferred-tru "monthly")
+    :entity_id "monthly-transform-tag"}])
 
 (def ^:private default-jobs
   "Default transform jobs that should be created on first startup.
@@ -63,7 +67,8 @@
               job (t2/insert-returning-instance! :transform_job job-data)]
           ;; Link job to its corresponding tag
           (when (and tag job)
-            (t2/insert! :transform_job_tags {:job_id (:id job) :tag_id (:id tag)}))))
+            (t2/insert! :transform_job_tags {:job_id (:id job) :tag_id (:id tag)
+                                             :entity_id (str (subs (:entity_id job) 0 16) "-join")}))))
       (log/infof "Created %d default transform jobs" (count default-jobs))
 
       ;; Mark that we've seeded the defaults

@@ -3,6 +3,7 @@
    [medley.core :as m]
    [metabase-enterprise.transforms.models.transform-run :as transform-run]
    [metabase.models.interface :as mi]
+   [metabase.util :as u]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -78,4 +79,5 @@
             (t2/insert! :transform_tags
                         (for [tag-id ordered-valid-tag-ids]
                           {:transform_id transform-id
-                           :tag_id tag-id}))))))))
+                           :tag_id tag-id
+                           :entity_id (u/generate-nano-id)}))))))))

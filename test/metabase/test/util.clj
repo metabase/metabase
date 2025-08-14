@@ -303,6 +303,7 @@
    :model/Transform
    (fn [_]
      {:name (str "Test Transform " (u/generate-nano-id))
+      :entity_id (u/generate-nano-id)
       :source {:type  "query"
                :query {:database (data/id)
                        :type     "native"
@@ -310,6 +311,17 @@
                                   :template-tags {}}}}
       :target {:type "table"
                :name (str "test_table_" (u/generate-nano-id))}})
+
+   :model/TransformJob
+   (fn [_]
+     (default-timestamped
+      {:name (str "Test Transform Job " (u/generate-nano-id))
+       :entity_id (u/generate-nano-id)
+       :schedule "0 0 * * * ?"}))
+
+   :model/TransformJobTags
+   (fn [_]
+     {:entity_id (u/generate-nano-id)})
 
    :model/TransformRun
    (fn [_]
@@ -321,7 +333,12 @@
    :model/TransformTag
    (fn [_]
      (default-timestamped
-      {:name (str "test-tag-" (u/generate-nano-id))}))
+      {:name (str "test-tag-" (u/generate-nano-id))
+       :entity_id (u/generate-nano-id)}))
+
+   :model/TransformTags
+   (fn [_]
+     {:entity_id (u/generate-nano-id)})
 
    :model/User
    (fn [_] {:first_name  (u.random/random-name)

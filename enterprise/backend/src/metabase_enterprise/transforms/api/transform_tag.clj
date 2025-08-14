@@ -4,6 +4,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
+   [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]
@@ -21,7 +22,7 @@
   (api/check-superuser)
   (api/check-400 (not (transform-tag/tag-name-exists? name))
                  (deferred-tru "A tag with the name ''{0}'' already exists." name))
-  (t2/insert-returning-instance! :model/TransformTag {:name name}))
+  (t2/insert-returning-instance! :model/TransformTag {:name name :entity_id (u/generate-nano-id)}))
 
 (api.macros/defendpoint :put "/:tag-id"
   "Update a transform tag."

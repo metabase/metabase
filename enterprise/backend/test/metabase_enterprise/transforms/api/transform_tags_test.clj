@@ -6,6 +6,18 @@
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
+(comment
+
+  (mt/with-premium-features #{:transforms}
+    (mt/user-http-request :crowberto :post 200 "ee/transform-tag"
+                          {:name (str "test-tag-1-" (random-uuid))})
+
+    (let [transform-request (merge (mt/with-temp-defaults :model/Transform)
+                                   {:tag_ids []})
+          transform-response (mt/user-http-request :crowberto :post 200 "ee/transform"
+                                                   transform-request)]
+      transform-response)))
+
 (deftest create-transform-with-tags-test
   (testing "POST /api/ee/transform with tag_ids"
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)

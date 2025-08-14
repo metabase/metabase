@@ -75,9 +75,9 @@
                                   {:name   "Gadget Products"
                                    :source {:type  "query"
                                             :query query}
-                               ;; for clickhouse (and other dbs where we do merge into), we will
-                               ;; want a primary key
-                               ;;:primary-key-column "id"
+                                   ;; for clickhouse (and other dbs where we do merge into), we will
+                                   ;; want a primary key
+                                   ;;:primary-key-column "id"
                                    :target {:type "table"
                                             :schema schema
                                             :name table-name}})))))))
@@ -279,10 +279,10 @@
       (mt/with-premium-features #{:transforms}
         (mt/dataset transforms-dataset/transforms-test
           (let [schema (t2/select-one-fn :schema :model/Table (mt/id :products))]
-            (with-transform-cleanup! [{table1-name :name :as target1} {:type   :transforms/table
+            (with-transform-cleanup! [{table1-name :name :as target1} {:type   "table"
                                                                        :schema schema
                                                                        :name   "gadget_products"}
-                                      {table2-name :name :as target2} {:type   :transforms/table
+                                      {table2-name :name :as target2} {:type   "table"
                                                                        :schema schema
                                                                        :name   "doohickey_products"}]
               (let [query2             (make-query "Doohickey")

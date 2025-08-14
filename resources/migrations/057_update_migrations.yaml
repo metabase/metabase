@@ -369,6 +369,13 @@ databaseChangeLog:
                     nullable: false
                     unique: true
               - column:
+                  name: entity_id
+                  type: char(21)
+                  remarks: Random NanoID tag for unique identity.
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
                   name: created_at
                   type: ${timestamp_type}
                   remarks: The time the transform tag was created.
@@ -475,6 +482,13 @@ databaseChangeLog:
                     referencedColumnNames: id
                     foreignKeyName: fk_transform_tags_tag_id
                     deleteCascade: true
+              - column:
+                  name: entity_id
+                  type: char(21)
+                  remarks: Random NanoID tag for unique identity.
+                  constraints:
+                    nullable: false
+                    unique: true
 
   - changeSet:
       id: v57.2025-08-07T10:02:01
@@ -533,6 +547,13 @@ databaseChangeLog:
                     referencedColumnNames: id
                     foreignKeyName: fk_transform_job_tags_tag_id
                     deleteCascade: true
+              - column:
+                  name: entity_id
+                  type: char(21)
+                  remarks: Random NanoID tag for unique identity.
+                  constraints:
+                    nullable: false
+                    unique: true
 
   - changeSet:
       id: v57.2025-08-07T10:03:01

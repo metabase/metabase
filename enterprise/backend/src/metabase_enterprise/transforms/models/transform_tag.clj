@@ -9,6 +9,7 @@
 
 (doto :model/TransformTag
   (derive :metabase/model)
+  (derive :hook/entity-id)
   (derive :hook/timestamped?))
 
 (defn tag-name-exists?

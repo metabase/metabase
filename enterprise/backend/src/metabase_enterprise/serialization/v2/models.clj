@@ -89,6 +89,7 @@
    "SearchIndexMetadata"
    "Secret"
    "Session"
+   "TagTransform"
    "TaskHistory"
    "Transform"
    "TransformJob"

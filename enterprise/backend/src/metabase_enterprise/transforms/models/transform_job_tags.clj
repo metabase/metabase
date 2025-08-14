@@ -8,4 +8,5 @@
 (methodical/defmethod t2/table-name :model/TransformJobTags [_model] :transform_job_tags)
 
 (doto :model/TransformJobTags
-  (derive :metabase/model))
+  (derive :metabase/model)
+  (derive :hook/entity-id))

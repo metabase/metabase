@@ -6,6 +6,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
+   [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.jvm :as u.jvm]
    [metabase.util.log :as log]
@@ -51,7 +52,8 @@
       (t2/insert! :transform_job_tags
                   (for [tag-id tag_ids]
                     {:job_id (:id job)
-                     :tag_id tag-id})))
+                     :tag_id tag-id
+                     :entity_id (u/generate-nano-id)})))
     ;; Return with hydrated tag_ids
     (t2/hydrate job :tag_ids)))
 
@@ -100,7 +102,8 @@
       (t2/insert! :transform_job_tags
                   (for [tag-id tag_ids]
                     {:job_id job-id
-                     :tag_id tag-id}))))
+                     :tag_id tag-id
+                     :entity_id (u/generate-nano-id)}))))
   ;; Return updated job with hydration
   (-> (t2/select-one :model/TransformJob :id job-id)
       (t2/hydrate :tag_ids :last_run)))
