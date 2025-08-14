@@ -1,11 +1,3 @@
 {
-  "continuations": [
-    {
-      "command": [
-        "branch",
-        "restack"
-      ],
-      "branch": "emb-710-sdk-derive-theme-aware-default-colors-from-3-base-colors"
-    }
-  ]
+  "continuations": null
 }
