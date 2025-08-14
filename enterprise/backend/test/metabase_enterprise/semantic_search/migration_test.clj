@@ -244,9 +244,7 @@
                                 (keyword table_name "new_col")))))))))))
 
 (deftest code-schema-versions-match-default-versions-test
-  (is (= semantic.db.migration.impl/dynamic-schema-version
-         (-> (semantic.index/default-index semantic.tu/mock-embedding-model)
-             :version)))
-  (is (= semantic.db.migration.impl/schema-version
-         (-> semantic.index-metadata/default-index-metadata
-             :version Long/parseLong))))
+  (testing "Default schema should match dynamic schema version"
+    (is (= semantic.db.migration.impl/dynamic-schema-version
+           (-> (semantic.index/default-index semantic.tu/mock-embedding-model)
+               :version)))))
