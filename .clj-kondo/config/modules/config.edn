@@ -1866,6 +1866,7 @@
            permissions
            premium-features
            query-processor
+           request
            settings
            sync
            task

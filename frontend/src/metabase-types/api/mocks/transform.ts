@@ -47,7 +47,7 @@ export function createMockTransformRun(
   opts?: Partial<TransformRun>,
 ): TransformRun {
   return {
-    id: "1",
+    id: 1,
     status: "succeeded",
     start_time: "2000-01-01T00:00:00Z",
     end_time: "2000-01-01T00:00:00Z",
