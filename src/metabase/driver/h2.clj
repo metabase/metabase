@@ -266,6 +266,12 @@
   (check-read-only-statements query)
   ((get-method driver/execute-reducible-query :sql-jdbc) driver query chans respond))
 
+(defmethod driver/execute-write-query! :h2
+  [driver query]
+  (check-native-query-not-using-default-user query)
+  (check-action-commands-allowed query)
+  ((get-method driver/execute-write-query! :sql-jdbc) driver query))
+
 (defmethod driver/execute-raw-queries! :h2
   [driver connection-details queries]
   ;; FIXME: need to check the equivalent of check-native-query-not-using-default-user and check-action-commands-allowed
