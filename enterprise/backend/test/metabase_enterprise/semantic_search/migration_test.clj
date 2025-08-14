@@ -77,7 +77,7 @@
                   f1 (future
                        (swap! results assoc :tid-first (.getId (Thread/currentThread)))
                        (semantic.core/init! (semantic.tu/mock-documents) nil))
-                    ;; thread 2 attempts migration 
+                    ;; thread 2 attempts migration
                   f2 (future
                        (swap! results assoc :tid-second (.getId (Thread/currentThread)))
                        (Thread/sleep 100)
@@ -189,7 +189,7 @@
                   sort
                   vec))))))
 
-(defn- has-column?
+(defn- has-column?!
   [tx table-name column-name]
   (seq (jdbc/execute-one! tx (sql/format {:select [[[:raw 1] :contains]]
                                           :from [:information_schema.columns]
@@ -212,7 +212,7 @@
                                                 (map :index_metadata/table_name)
                                                 set)]
                            (doseq [table_name table_names]
-                             (when-not (has-column? tx table_name "new_col")
+                             (when-not (has-column?! tx table_name "new_col")
                                (jdbc/execute! tx (sql/format {:alter-table [table_name] :add-column [[:new_col :int]]}))))
                            (jdbc/execute! tx (sql/format {:update :index_metadata
                                                           :set {:index_version semantic.db.migration.impl/dynamic-schema-version}
