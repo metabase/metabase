@@ -151,11 +151,12 @@ export const CollectionBrowserInner = ({
     onClick?.(item);
 
     if (item.model === "collection") {
-      setInternalCollectionId(item.id as CollectionId);
-
       if (isGlobalBreadcrumbEnabled) {
         reportLocation({ type: "collection", id: item.id, name: item.name });
+        return;
       }
+
+      setInternalCollectionId(item.id as CollectionId);
     }
   };
 

@@ -27,7 +27,6 @@ export const BackButton = ({ ...actionIconProps }: BackButtonProps) => {
   const { onNavigateBack, backToDashboard } = useSdkQuestionContext();
   const { isBreadcrumbEnabled } = useSdkBreadcrumbs();
 
-  // Hide the back button when breadcrumbs are enabled to avoid redundant navigation
   if (!onNavigateBack || isBreadcrumbEnabled) {
     return null;
   }
