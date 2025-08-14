@@ -280,7 +280,7 @@ export const MetabotComponent = memo(
           style={{ borderRadius: "4px" }}
           pos="relative"
           direction="column"
-          mb="1rem"
+          mb="md"
         >
           <Button
             variant="subtle"

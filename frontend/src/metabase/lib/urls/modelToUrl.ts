@@ -1,6 +1,7 @@
 import { browseDatabase } from "./browse";
 import { collection } from "./collections";
 import { dashboard } from "./dashboards";
+import { document } from "./documents";
 import { metric, model } from "./models";
 import { question, tableRowsQuery } from "./questions";
 
@@ -36,7 +37,7 @@ export function modelToUrl(item: UrlableModel) {
     case "collection":
       return collection(item);
     case "document":
-      return `/document/${item.id}`;
+      return document(item);
     default:
       return null;
   }
