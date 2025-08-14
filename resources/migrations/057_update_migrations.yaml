@@ -573,7 +573,7 @@ databaseChangeLog:
             remarks: Table to track transform job executions and their status in the app database
             columns:
               - column:
-                  name: run_id
+                  name: id
                   type: char(21)
                   remarks: 'NanoID identifier for the transform job run'
                   constraints:

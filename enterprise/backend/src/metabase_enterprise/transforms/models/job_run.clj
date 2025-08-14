@@ -9,7 +9,6 @@
    [toucan2.realize :as t2.realize]))
 
 (methodical/defmethod t2/table-name :model/TransformJobRun [_model] :transform_job_run)
-(methodical/defmethod t2/primary-keys :model/TransformJobRun [_model] [:run_id])
 
 (derive :model/TransformJobRun :metabase/model)
 (derive :model/TransformJobRun :hook/timestamped?)
@@ -46,7 +45,7 @@
   "Start a run"
   ([run-id job-id run-method]
    (t2/insert! :model/TransformJobRun
-               {:run_id run-id
+               {:id     run-id
                 :job_id job-id
                 :run_method run-method
                 :status :started
@@ -56,7 +55,7 @@
   "Notes that a run has had activity"
   [run-id]
   (t2/update! :model/TransformJobRun
-              :run_id run-id
+              :id        run-id
               :is_active true
               {:updated_at :%now}))
 
@@ -66,7 +65,7 @@
    (succeed-started-run! run-id {}))
   ([run-id properties]
    (t2/update! :model/TransformJobRun
-               :run_id    run-id
+               :id        run-id
                :is_active true
                (merge {:end_time :%now}
                       properties
@@ -77,7 +76,7 @@
   "Mark the started active run as failed and inactive."
   [run-id properties]
   (t2/update! :model/TransformJobRun
-              :run_id    run-id
+              :id        run-id
               :is_active true
               (merge {:end_time :%now}
                      properties
