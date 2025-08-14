@@ -140,7 +140,6 @@ export const EditTableDataGrid = ({
         bodyContainer: S.tableBodyContainer,
         bodyCell: S.tableBodyCell,
         row: S.tableRow,
-        root: S.tableRoot,
       },
 
       // Overrides theme constants and default bg

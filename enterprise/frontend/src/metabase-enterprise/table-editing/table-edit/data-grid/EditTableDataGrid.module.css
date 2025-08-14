@@ -1,12 +1,8 @@
 /** DataGrid overrides */
 
-.tableRoot {
-  border-top: 1px solid var(--mb-color-border);
-}
-
 .tableRow {
   &:hover .tableBodyCell {
-    background-color: var(--mb-base-color-blue-10);
+    background-color: var(--mb-base-color-blue-5);
   }
 
   &:hover .tableHeaderCell {
@@ -15,7 +11,7 @@
   }
 
   &[data-row-selected="true"] .tableBodyCell {
-    background-color: var(--mb-base-color-blue-10);
+    background-color: var(--mb-base-color-blue-5);
   }
 }
 
@@ -32,6 +28,11 @@
 
 .tableHeaderCell {
   border-right: 1px solid var(--mb-color-border);
+  font-weight: 700;
+
+  &:hover {
+    color: var(--mb-color-brand);
+  }
 
   &[data-column-id="__MB_ROW_SELECT"] {
     border-right: none;

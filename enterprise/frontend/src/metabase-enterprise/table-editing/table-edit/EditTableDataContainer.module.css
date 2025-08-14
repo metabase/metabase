@@ -7,6 +7,7 @@
 .gridWrapper {
   overflow: hidden;
   flex-grow: 1;
+  background-color: var(--mb-color-background);
 }
 
 .gridFooter {
@@ -18,4 +19,9 @@
   height: 2.5rem;
   justify-content: space-between;
   align-items: center;
+}
+
+.filtersSection {
+  background-color: var(--mb-color-background);
+  border-top: 1px solid var(--mb-color-border);
 }

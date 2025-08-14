@@ -2,7 +2,7 @@ import type { Row, Table } from "@tanstack/react-table";
 import { useMemo } from "react";
 
 import type { ColumnOptions } from "metabase/data-grid";
-import { Checkbox, Flex } from "metabase/ui";
+import { Checkbox, Flex, rem } from "metabase/ui";
 import type { RowValue, RowValues } from "metabase-types/api";
 
 export const ROW_SELECT_COLUMN_ID = "__MB_ROW_SELECT";
@@ -20,24 +20,41 @@ export function getRowSelectColumn() {
     name: "",
     accessorFn: () => null,
     header: ({ table }: { table: Table<RowValues> }) => (
-      <Flex px=".5rem" h="100%" align="center" bg="var(--cell-bg-color)">
+      <Flex
+        p=".5rem"
+        h="100%"
+        align="center"
+        justify="center"
+        bg="var(--cell-bg-color)"
+      >
         <Checkbox
+          size={rem(16)}
           checked={table.getIsAllRowsSelected()}
           indeterminate={table.getIsSomeRowsSelected()}
           onChange={table.getToggleAllRowsSelectedHandler()}
-          variant="stacked"
           data-testid="row-select-all-checkbox"
+          styles={{
+            input: {
+              borderColor: "var(--mb-color-border)",
+            },
+          }}
         />
       </Flex>
     ),
     cell: ({ row }: { row: Row<RowValues> }) => (
-      <Flex p=".5rem" h="100%" align="start">
+      <Flex p=".5rem" h="100%" align="center" justify="center">
         <Checkbox
+          size={rem(16)}
           checked={row.getIsSelected()}
           disabled={!row.getCanSelect()}
           indeterminate={row.getIsSomeSelected()}
           onChange={row.getToggleSelectedHandler()}
           data-testid="row-select-checkbox"
+          styles={{
+            input: {
+              borderColor: "var(--mb-color-border)",
+            },
+          }}
         />
       </Flex>
     ),
