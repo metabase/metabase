@@ -221,7 +221,7 @@ describe("admin > database > add", () => {
         cy.findByRole("link", { name: "Manage permissions" }).should(
           "be.visible",
         );
-        cy.findByRole("link", { name: "Browse data" }).should("be.visible");
+        cy.findByRole("link", { name: /Browse data/ }).should("be.visible");
 
         cy.findByTestId("database-header-section").should(
           "contain.text",
@@ -288,7 +288,7 @@ describe("admin > database > add", () => {
         cy.findByRole("link", { name: "Manage permissions" }).should(
           "be.visible",
         );
-        cy.findByRole("link", { name: "Browse data" }).should("be.visible");
+        cy.findByRole("link", { name: /Browse data/ }).should("be.visible");
       },
     );
 
@@ -350,7 +350,7 @@ describe("admin > database > add", () => {
         cy.findByRole("link", { name: "Manage permissions" }).should(
           "be.visible",
         );
-        cy.findByRole("link", { name: "Browse data" }).should("be.visible");
+        cy.findByRole("link", { name: /Browse data/ }).should("be.visible");
       },
     );
 
@@ -394,7 +394,7 @@ describe("admin > database > add", () => {
       cy.findByRole("link", { name: "Manage permissions" }).should(
         "be.visible",
       );
-      cy.findByRole("link", { name: "Browse data" }).should("be.visible");
+      cy.findByRole("link", { name: /Browse data/ }).should("be.visible");
     });
   });
 

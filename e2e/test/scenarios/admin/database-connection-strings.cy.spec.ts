@@ -292,7 +292,7 @@ describe("Database connection strings", () => {
       cy.findByRole("link", { name: "Manage permissions" }).should(
         "be.visible",
       );
-      cy.findByRole("link", { name: "Browse data" }).should("be.visible");
+      cy.findByRole("link", { name: /Browse data/ }).should("be.visible");
     });
 
     it("should successfully connect to PostgreSQL using connection string", () => {
@@ -332,7 +332,7 @@ describe("Database connection strings", () => {
       cy.findByRole("link", { name: "Manage permissions" }).should(
         "be.visible",
       );
-      cy.findByRole("link", { name: "Browse data" }).should("be.visible");
+      cy.findByRole("link", { name: /Browse data/ }).should("be.visible");
     });
 
     it("should handle connection failures gracefully", () => {
