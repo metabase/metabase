@@ -13,7 +13,6 @@ import type {
   SdkIframeEmbedMessage,
   SdkIframeEmbedSettings,
   SdkIframeEmbedTagMessage,
-  SdkIframeEmbedTagSettings,
 } from "./types/embed";
 import { attributeToSettingKey, parseAttributeValue } from "./webcomponents";
 
@@ -116,7 +115,7 @@ export abstract class MetabaseEmbedElement extends HTMLElement {
   }
 
   // returns the attributes converted to camelCase + global settings
-  get properties(): SdkIframeEmbedTagSettings {
+  get properties(): SdkIframeEmbedSettings {
     const attributesConverted = this._attributeNames.reduce(
       (acc, attr) => {
         const attrValue = this.getAttribute(attr as string);
@@ -134,7 +133,7 @@ export abstract class MetabaseEmbedElement extends HTMLElement {
       ...attributesConverted,
       componentName: this._componentName,
       _isLocalhost: this._getIsLocalhost(),
-    } as SdkIframeEmbedTagSettings;
+    } as SdkIframeEmbedSettings;
   }
 
   addEventListener(
@@ -318,7 +317,7 @@ export abstract class MetabaseEmbedElement extends HTMLElement {
     return hostname === "localhost" || hostname === "127.0.0.1";
   }
 
-  private _validateEmbedSettings(settings: SdkIframeEmbedTagSettings) {
+  private _validateEmbedSettings(settings: SdkIframeEmbedSettings) {
     if (!settings.instanceUrl) {
       raiseError("instanceUrl must be provided");
     }

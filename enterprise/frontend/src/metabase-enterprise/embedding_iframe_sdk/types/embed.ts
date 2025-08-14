@@ -136,9 +136,6 @@ export type SdkIframeEmbedTemplateSettings =
 export type SdkIframeEmbedSettings = SdkIframeEmbedBaseSettings &
   SdkIframeEmbedTemplateSettings;
 
-/** Settings used by the embed.js constructor */
-export type SdkIframeEmbedTagSettings = SdkIframeEmbedSettings;
-
 export type SdkIframeEmbedEvent = { type: "ready" };
 
 export type SdkIframeEmbedEventHandler = () => void;
