@@ -7,6 +7,7 @@
    [metabase.api-keys.core :as api-key]
    [metabase.api.common :refer [*current-user* *current-user-id* *is-group-manager?* *is-superuser?*]]
    [metabase.app-db.core :as mdb]
+   [metabase.config.core :as config]
    [metabase.core.initialization-status :as init-status]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.premium-features.core :as premium-features]
@@ -120,13 +121,14 @@
                                :is-superuser?     false
                                :user-locale       nil})
                    (#'mw.session/merge-current-user-info req)))))
-        (testing "Include :is-group-manager? if we have :advanced-permissions"
-          (mt/with-premium-features #{:advanced-permissions}
-            (is (= (merge req {:metabase-user-id  (mt/user->id :lucky)
-                               :is-superuser?     false
-                               :is-group-manager? false
-                               :user-locale       nil})
-                   (#'mw.session/merge-current-user-info req)))))))))
+        (testing "Include :is-group-manager? if we have EE + :advanced-permissions "
+          (when config/ee-available?
+            (mt/with-premium-features #{:advanced-permissions}
+              (is (= (merge req {:metabase-user-id  (mt/user->id :lucky)
+                                 :is-superuser?     false
+                                 :is-group-manager? false
+                                 :user-locale       nil})
+                     (#'mw.session/merge-current-user-info req))))))))))
 
 (deftest ^:parallel current-user-info-for-api-key-test-1b
   (testing "Various invalid API keys do not modify the request"
