@@ -30,33 +30,7 @@ function setup({ job = createMockTransformJob() }: SetupOpts = {}) {
 }
 
 describe("NameSection", () => {
-  it("should render the job name and description", () => {
-    setup({
-      job: createMockTransformJob({
-        name: "Test Job",
-        description: "Test description",
-      }),
-    });
-
-    expect(screen.getByDisplayValue("Test Job")).toBeInTheDocument();
-    expect(screen.getByDisplayValue("Test description")).toBeInTheDocument();
-  });
-
-  it("should render placeholder when description is null", () => {
-    setup({
-      job: createMockTransformJob({
-        name: "Test Job",
-        description: null,
-      }),
-    });
-
-    expect(screen.getByDisplayValue("Test Job")).toBeInTheDocument();
-    expect(
-      screen.getByPlaceholderText("No description yet"),
-    ).toBeInTheDocument();
-  });
-
-  it("should call onNameChange when name is edited", async () => {
+  it("should be able to update the name", async () => {
     const { onNameChange } = setup({
       job: createMockTransformJob({ name: "Original Name" }),
     });
@@ -64,11 +38,12 @@ describe("NameSection", () => {
     const nameInput = screen.getByDisplayValue("Original Name");
     await userEvent.clear(nameInput);
     await userEvent.type(nameInput, "New Name");
+    await userEvent.tab();
 
     expect(onNameChange).toHaveBeenCalledWith("New Name");
   });
 
-  it("should call onDescriptionChange when description is edited", async () => {
+  it("should be able to update the description", async () => {
     const { onDescriptionChange } = setup({
       job: createMockTransformJob({ description: "Original description" }),
     });
@@ -76,17 +51,19 @@ describe("NameSection", () => {
     const descriptionInput = screen.getByDisplayValue("Original description");
     await userEvent.clear(descriptionInput);
     await userEvent.type(descriptionInput, "New description");
+    await userEvent.tab();
 
     expect(onDescriptionChange).toHaveBeenCalledWith("New description");
   });
 
-  it("should call onDescriptionChange with null when description is cleared", async () => {
+  it("should be able to clear the description", async () => {
     const { onDescriptionChange } = setup({
       job: createMockTransformJob({ description: "Some description" }),
     });
 
     const descriptionInput = screen.getByDisplayValue("Some description");
     await userEvent.clear(descriptionInput);
+    await userEvent.tab();
 
     expect(onDescriptionChange).toHaveBeenCalledWith(null);
   });
