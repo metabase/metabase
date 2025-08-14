@@ -128,10 +128,14 @@ export const DataPickerModal = ({
         if (databaseId && getRecentItemDatabaseId(item) !== databaseId) {
           return false;
         }
-        return item;
+        if (shouldDisableItem) {
+          // Do not show items that are disabled in recents
+          return !shouldDisableItem(item);
+        }
+        return true;
       });
     },
-    [databaseId],
+    [databaseId, shouldDisableItem],
   );
 
   const searchParams = useMemo(() => {
