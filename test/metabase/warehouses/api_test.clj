@@ -353,6 +353,15 @@
       (is (= {:is_full_sync false}
              (select-keys (create-db-via-api! {:is_full_sync false}) [:is_full_sync]))))))
 
+(deftest create-db-provider-name-test
+  (testing "POST /api/database"
+    (testing "can we set `provider_name` when creating a Database?"
+      (is (= {:provider_name "AWS RDS"}
+             (select-keys (create-db-via-api! {:provider_name "AWS RDS"}) [:provider_name]))))
+    (testing "provider_name is optional and can be nil"
+      (is (= {:provider_name nil}
+             (select-keys (create-db-via-api! {}) [:provider_name]))))))
+
 (deftest create-db-ignore-schedules-if-no-manual-sync-test
   (testing "POST /api/database"
     (testing "if `:let-user-control-scheduling` is false it will ignore any schedules provided"
