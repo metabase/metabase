@@ -42,7 +42,13 @@ export const Relationship = ({ fk, href, rowId, table }: Props) => {
       : skipToken,
   );
 
-  const count = useMemo(() => dataset?.data.rows[0][0], [dataset]);
+  const count = useMemo(() => {
+    if (!dataset) {
+      return undefined;
+    }
+
+    return dataset.data.rows[0]?.[0] ?? 0; // rows array can be empty (metabase#62156)
+  }, [dataset]);
   const clickable = typeof count === "number" && count > 0;
   const originTableName = fk.origin?.table?.display_name ?? "";
   const relationName =

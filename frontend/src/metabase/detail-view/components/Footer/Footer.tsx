@@ -24,7 +24,7 @@ export const Footer = ({
   const formatNumber = useNumberFormatter();
 
   return (
-    <Group gap="xl" justify="space-between" px="xl" py="sm">
+    <Group gap="xl" justify="space-between" pl="md" pr="xl" py="sm">
       <Text c="text-secondary" fw="bold">
         {formatRowCount(index, rowsCount, formatNumber)}
       </Text>

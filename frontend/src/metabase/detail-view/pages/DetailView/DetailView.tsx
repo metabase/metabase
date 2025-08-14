@@ -12,7 +12,6 @@ import {
   DetailsGroup,
   Footer,
   Header,
-  Nav,
   Relationships,
 } from "metabase/detail-view/components";
 import { getHeaderColumns, getRowName } from "metabase/detail-view/utils";
@@ -25,14 +24,16 @@ import type { StructuredDatasetQuery } from "metabase-types/api";
 import S from "./DetailView.module.css";
 import { getObjectQuery, getTableQuery } from "./utils";
 
-interface TableDetailViewLoaderProps {
+interface Props {
   params: {
     tableId: string;
     rowId: string;
   };
 }
 
-export function DetailView({ params }: TableDetailViewLoaderProps) {
+const PADDING_LEFT = 112;
+
+export function DetailView({ params }: Props) {
   const tableId = parseInt(params.tableId, 10);
   const rowId = params.rowId;
   const dispatch = useDispatch();
@@ -143,52 +144,69 @@ export function DetailView({ params }: TableDetailViewLoaderProps) {
   }
 
   return (
-    <Stack bg="bg-white" gap={0} h="100%">
-      <Box className={S.nav} flex="0 0 auto" p="md">
-        <Nav rowName={rowName} table={table} />
-      </Box>
+    <Stack bg="var(--mb-color-background-light)" gap={0} h="100%">
+      <Stack className={S.scrollable} gap={0} mih={0}>
+        {/* <Box className={S.nav} flex="0 0 auto" p="md">
+          <Nav rowName={rowName} table={table} />
+        </Box> */}
 
-      <Group align="flex-start" flex="1" gap={0} key={rowId} mih={0}>
-        <Group
-          align="flex-start"
-          className={S.scrollable}
-          justify="center"
-          flex="1"
-          h="100%"
-          p={rem(64)}
-        >
-          <Stack gap={rem(64)} maw={rem(900)} w="100%">
-            {headerColumns.length > 0 && <Header columns={columns} row={row} />}
-
-            {columns.length - headerColumns.length > 0 && (
-              <DetailsGroup columns={columns} row={row} table={table} />
-            )}
-          </Stack>
-        </Group>
-
-        {tableForeignKeys && tableForeignKeys.length > 0 && (
+        {headerColumns.length > 0 && (
           <Box
-            bg="var(--mb-color-background-light)"
-            className={S.scrollable}
-            flex="0 0 auto"
-            h="100%"
-            w={rem(440)}
+            bg="bg-white"
+            className={S.header}
+            pl={rem(PADDING_LEFT)}
+            pr="xl"
+            py={rem(64)}
           >
-            <Relationships
-              columns={columns}
-              row={row}
-              rowId={rowId}
-              rowName={rowName}
-              table={table}
-              tableForeignKeys={tableForeignKeys}
-            />
+            <Box
+              // intentionally misalign the header to create an "optical alignment effect" (due to rounded avatar)
+              ml={rem(-8)}
+            >
+              <Header columns={columns} row={row} />
+            </Box>
           </Box>
         )}
-      </Group>
+
+        <Group
+          align="flex-start"
+          flex="1"
+          gap={0}
+          key={rowId}
+          mih={0}
+          wrap="nowrap"
+        >
+          <Group
+            align="flex-start"
+            flex="1"
+            bg="bg-white"
+            p="lg"
+            pl={rem(PADDING_LEFT)}
+          >
+            <Stack gap={rem(64)} maw={rem(900)} w="100%">
+              {columns.length - headerColumns.length > 0 && (
+                <DetailsGroup columns={columns} row={row} table={table} />
+              )}
+            </Stack>
+          </Group>
+
+          {tableForeignKeys && tableForeignKeys.length > 0 && (
+            <Box flex="0 0 auto" p={rem(40)} w={rem(440)}>
+              <Relationships
+                columns={columns}
+                row={row}
+                rowId={rowId}
+                rowName={rowName}
+                table={table}
+                tableForeignKeys={tableForeignKeys}
+              />
+            </Box>
+          )}
+        </Group>
+      </Stack>
 
       {typeof currentRowIndex === "number" &&
         typeof dataset?.row_count === "number" && (
-          <Box className={S.footer} flex="0 0 auto">
+          <Box bg="bg-white" className={S.footer} flex="0 0 auto">
             <Footer
               index={currentRowIndex}
               rowsCount={dataset.row_count}

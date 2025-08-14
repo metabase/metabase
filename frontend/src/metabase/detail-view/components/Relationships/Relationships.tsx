@@ -1,7 +1,7 @@
 import { type ReactNode, useMemo } from "react";
 import { t } from "ttag";
 
-import { type BoxProps, Stack, Text, rem } from "metabase/ui";
+import { type BoxProps, Stack, Text } from "metabase/ui";
 import type {
   DatasetColumn,
   ForeignKey,
@@ -40,7 +40,7 @@ export function Relationships({
   );
 
   return (
-    <Stack gap="md" p={rem(40)}>
+    <Stack gap="md">
       <Text c="text-secondary" fw="bold" fz={17}>
         {rowName
           ? t`${rowName} is connected to:`
