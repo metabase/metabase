@@ -314,6 +314,7 @@
     "postcss-import": "15.1.0",
     "postcss-loader": "7.0.2",
     "postcss-nested": "^7.0.2",
+    "postcss-prefixwrap": "^1.56.2",
     "postcss-preset-env": "^6.7.0",
     "postcss-preset-mantine": "^1.17.0",
     "postcss-styled-syntax": "^0.6.4",
