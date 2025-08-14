@@ -9,17 +9,18 @@
    [metabase.api.routes.common :refer [+auth]]
    [metabase.query-processor :as qp]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.retry :as retry]
    [metabase.warehouses.api :as warehouses]))
 
 (set! *warn-on-reflection* true)
 
 (defn- fix-sql [fix-request]
-  (let [response  (metabot-v3.client/fix-sql fix-request)
+  (let [response (metabot-v3.client/fix-sql fix-request)
         return-sql (:sql fix-request)]
     (when-let [fixes (:fixes response)]
       (str/join "\n" (reduce
                       (fn [sql-lines fix]
-                        (assoc  sql-lines (dec (:line_number fix)) (:fixed_sql fix)))
+                        (assoc sql-lines (dec (:line_number fix)) (:fixed_sql fix)))
                       (vec (str/split-lines return-sql))
                       fixes)))))
 
@@ -56,20 +57,19 @@
                         Integer/parseInt)
               db (warehouses/get-database db-id)
               schema-ddl (table-utils/schema-sample query)
-              max-attempts 5
-              final-sql (loop [attempt 1
-                               sql (get-in query [:native :query])
-                               error error]
-                          (let [fixed-sql (fix-sql {:sql            sql
+              error (atom error)
+              final-sql (atom (get-in query [:native :query]))
+              retrier (retry/make (assoc (retry/retry-configuration)
+                                         :max-attempts 5
+                                         :retry-on-result-pred some?))]
+          (retrier (fn []
+                     (when-let [fixed-sql (fix-sql {:sql           @final-sql
                                                     :dialect       (:engine db)
-                                                    :error_message  error
+                                                    :error_message @error
                                                     :schema_ddl    schema-ddl})]
-                            (if (or (nil? fixed-sql) (>= attempt max-attempts))
-                              fixed-sql
-                              (if-let [fixed-error (check-query (assoc-in query [:native :query] fixed-sql))]
-                                (recur (inc attempt) fixed-sql fixed-error)
-                                fixed-sql))))]
-          (assoc-in response [:draft_card :dataset_query :native :query] final-sql))
+                       (reset! final-sql fixed-sql))
+                     (reset! error (check-query (assoc-in query [:native :query] @final-sql)))))
+          (assoc-in response [:draft_card :dataset_query :native :query] @final-sql))
         response)
       response)))
 
