@@ -86,6 +86,7 @@
          {:MetadataRetrievalMethod "ProxyAPI"
           :Catalog                 catalog})
        (dissoc details
+               ;; TODO(rileythomp): Remove `:metabase.driver.athena/schema` now that we have `dbname`
                ;; `:metabase.driver.athena/schema` is just a gross hack for testing so we can treat multiple tests datasets as
                ;; different DBs -- see [[metabase.driver.athena/fast-active-tables]]. Not used outside of tests. -- Cam
                :db :catalog :metabase.driver.athena/schema
@@ -488,6 +489,7 @@
 (defn- fast-active-tables
   "Required because we're calling our own custom private get-tables method to support Athena.
 
+   TODO(rileythomp): Remove `:metabase.driver.athena/schema` (::keys [schema]) now that we have `dbname`
   `:metabase.driver.athena/schema` is an icky hack that's in here to force it to only try to sync a single schema,
   used by the tests when loading test data. We're not expecting users to specify it at this point in time. I'm not
   really sure how this is really different than `catalog`, which they can specify -- in the future when we understand
@@ -512,11 +514,6 @@
                 :description (when-not (str/blank? remarks)
                                remarks)}))))))
 
-;; You may want to exclude a specific database - this can be done here
-; (defmethod sql-jdbc.sync/excluded-schemas :athena [_]
-;   #{"database_name"})
-
-; If we want to limit the initial connection to a specific database/schema, I think we'd have to do that here...
 (defmethod driver/describe-database :athena
   [driver {details :details, :as database}]
   (sql-jdbc.execute/do-with-connection-with-options

@@ -47,13 +47,13 @@
    :access_key                    (tx/db-test-env-var-or-throw :athena :access-key)
    :secret_key                    (tx/db-test-env-var-or-throw :athena :secret-key)
    :s3_staging_dir                (tx/db-test-env-var-or-throw :athena :s3-staging-dir)
-   :use-specific-db                tx/*use-routing-dataset*
-   :dbname                         (when tx/*use-routing-dataset* (ddl.i/format-name driver database-name))
+   :dbname                         (some->> database-name (ddl.i/format-name driver))
    :catalog                       "AwsDataCatalog"
    :workgroup                     "primary"
+   ;; TODO(rileythomp): Remove the schema hack in favour of dbname
    ;; HACK -- this is here so the Athena driver sync code only syncs the database in question -- see documentation
    ;; for [[metabase.driver.athena/fast-active-tables]] for more information.
-   :metabase.driver.athena/schema (some->> database-name (ddl.i/format-name driver))})
+   #_:metabase.driver.athena/schema #_(some->> database-name (ddl.i/format-name driver))})
 
 ;; TODO: We need a better way to have an isolated test environment for Athena
 ;; If other tables exist, the tests start to query them for some reason,
