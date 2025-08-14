@@ -5,6 +5,11 @@ import type { SdkStoreState } from "embedding-sdk/store/types";
 
 const noop = () => {};
 
+/**
+ * This hook works with lazy-loaded Redux store for of the Embedding SDK Bundle
+ * While the bundle is not loaded, it returns `null`.
+ * After the bundle is loaded, it returns the selected state from the Redux store.
+ */
 export function useLazySelector<TSelected>(
   selector: ((state: SdkStoreState) => TSelected) | null | undefined,
 ): TSelected | null {
