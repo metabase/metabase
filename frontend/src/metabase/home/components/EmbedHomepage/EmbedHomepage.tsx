@@ -1,10 +1,12 @@
 import { useState } from "react";
+import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import { useSendProductFeedbackMutation } from "metabase/api/product-feedback";
-import { useSetting } from "metabase/common/hooks";
+import { useHasTokenFeature, useSetting } from "metabase/common/hooks";
 import { getPlan } from "metabase/common/utils/plan";
 import { useDispatch, useSelector } from "metabase/lib/redux";
+import { isEEBuild } from "metabase/lib/utils";
 import { addUndo } from "metabase/redux/undo";
 import { getDocsUrl, getSetting } from "metabase/selectors/settings";
 import type { EmbeddingHomepageDismissReason } from "metabase-types/api";
@@ -16,16 +18,10 @@ import { dismissEmbeddingHomepage } from "./actions";
 export const EmbedHomepage = () => {
   const [feedbackModalOpened, setFeedbackModalOpened] = useState(false);
   const dispatch = useDispatch();
-  const licenseActiveAtSetup = useSetting("setup-license-active-at-setup");
   const exampleDashboardId = useSetting("example-dashboard-id");
   const [sendProductFeedback] = useSendProductFeedbackMutation();
+  const hasEmbeddingFeature = useHasTokenFeature("embedding");
 
-  const interactiveEmbeddingQuickStartUrl = useSelector((state) =>
-    // eslint-disable-next-line no-unconditional-metabase-links-render -- only visible to admins
-    getDocsUrl(state, {
-      page: "embedding/interactive-embedding-quick-start-guide",
-    }),
-  );
   const embeddingDocsUrl = useSelector((state) =>
     // eslint-disable-next-line no-unconditional-metabase-links-render -- only visible to admins
     getDocsUrl(state, { page: "embedding/start" }),
@@ -39,6 +35,12 @@ export const EmbedHomepage = () => {
   const learnMoreStaticEmbedding = useSelector((state) =>
     // eslint-disable-next-line no-unconditional-metabase-links-render -- this is only visible to admins
     getDocsUrl(state, { page: "embedding/static-embedding" }),
+  );
+
+  const embedJsDocsUrl = useSelector((state) =>
+    // TODO: use real docs url
+    // eslint-disable-next-line no-unconditional-metabase-links-render -- this is only visible to admins
+    getDocsUrl(state, { page: "embedding/embed-js" }),
   );
 
   const plan = useSelector((state) =>
@@ -77,15 +79,19 @@ export const EmbedHomepage = () => {
     }
   };
 
+  const variant = match({ build: isEEBuild() })
+    .with({ build: true }, () => "ee" as const)
+    .with({ build: false }, () => "oss/starter" as const)
+    .exhaustive();
+
   return (
     <>
       <EmbedHomepageView
         onDismiss={onDismiss}
         exampleDashboardId={exampleDashboardId}
-        licenseActiveAtSetup={licenseActiveAtSetup}
-        interactiveEmbeddingQuickstartUrl={
-          interactiveEmbeddingQuickStartUrl + utmTags
-        }
+        embedJsDocsUrl={embedJsDocsUrl}
+        variant={variant}
+        hasEmbeddingFeature={hasEmbeddingFeature}
         embeddingDocsUrl={embeddingDocsUrl + utmTags}
         analyticsDocsUrl={
           // eslint-disable-next-line no-unconditional-metabase-links-render -- only visible to admins

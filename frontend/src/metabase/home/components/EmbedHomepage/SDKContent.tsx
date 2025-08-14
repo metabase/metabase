@@ -15,7 +15,7 @@ export const SDKContent = ({
   <Box>
     <Group gap="sm" align="center" mb="sm">
       <Text fw="bold" size="lg" color="text-medium">
-        {t`Embedded analytics SDK`}
+        {t`Embedded analytics SDK for React`}
       </Text>
     </Group>
     <Text mb="md">
