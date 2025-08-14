@@ -1,0 +1,57 @@
+name: Oracle Driver Test
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        type: string
+        required: true
+        description: 'Oracle version (21.3 or 18.4)'
+
+jobs:
+  test:
+    runs-on: ubuntu-22.04
+    timeout-minutes: ${{ inputs.version == '21.3' && 65 || 60 }}
+    env:
+      CI: 'true'
+      DRIVERS: oracle
+      MB_ORACLE_TEST_HOST: localhost
+      MB_ORACLE_TEST_USER: ${{ inputs.version == '21.3' && '' || 'system' }}
+      MB_ORACLE_TEST_SERVICE_NAME: XEPDB1
+      MB_ORACLE_TEST_PASSWORD: ${{ inputs.version == '21.3' && '' || 'password' }}
+      MB_ORACLE_TEST_SSL: ${{ inputs.version == '21.3' && 'true' || 'false' }}
+      MB_ORACLE_SSL_TEST_SSL: ${{ inputs.version == '21.3' && 'true' || 'false' }}
+      MB_ORACLE_TEST_SSL_USE_TRUSTSTORE: ${{ inputs.version == '21.3' && 'true' || '' }}
+      MB_ORACLE_TEST_SSL_TRUSTSTORE_PATH: ${{ inputs.version == '21.3' && './test_resources/ssl/oracle/truststore.p12' || '' }}
+      MB_ORACLE_TEST_SSL_TRUSTSTORE_OPTIONS: ${{ inputs.version == '21.3' && 'local' || '' }}
+      MB_ORACLE_TEST_SSL_TRUSTSTORE_PASSWORD_VALUE: ${{ inputs.version == '21.3' && 'PassworD_#1234' || '' }}
+      MB_ORACLE_TEST_SSL_USE_KEYSTORE: ${{ inputs.version == '21.3' && 'true' || '' }}
+      MB_ORACLE_TEST_SSL_KEYSTORE_PATH: ${{ inputs.version == '21.3' && './test_resources/ssl/oracle/keystore.p12' || '' }}
+      MB_ORACLE_TEST_SSL_KEYSTORE_OPTIONS: ${{ inputs.version == '21.3' && 'local' || '' }}
+      MB_ORACLE_TEST_SSL_KEYSTORE_PASSWORD_VALUE: ${{ inputs.version == '21.3' && 'PassworD_#1234' || '' }}
+    services:
+      oracle:
+        image: ${{ inputs.version == '21.3' && 'metabase/qa-databases:oracle-xe-21.3' || 'gvenzl/oracle-xe:18.4.0-slim' }}
+        env:
+          ORACLE_PASSWORD: password
+        ports:
+          - ${{ inputs.version == '21.3' && '1521:2484' || '1521:1521' }}
+    name: Oracle ${{ inputs.version }}
+    steps:
+    - uses: actions/checkout@v4
+    - name: Test Oracle ${{ inputs.version }}
+      uses: ./.github/actions/test-driver
+      with:
+        junit-name: ${{ inputs.version == '21.3' && 'be-tests-oracle-21-3-ee' || 'be-tests-oracle-18-4-ee' }}
+        test-args: ':only-tags [:mb/driver-tests]'
+    - name: Upload Test Results
+      uses: ./.github/actions/upload-test-results
+      if: always()
+      with:
+        input-path: ./target/junit/
+        output-name: oracle-${{ inputs.version }}
+        bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
+        aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ vars.AWS_REGION }}
+        trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
