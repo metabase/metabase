@@ -3,6 +3,7 @@ import { useLatest } from "react-use";
 import { t } from "ttag";
 
 import {
+  type DataPickerItem,
   DataPickerModal,
   getDataPickerValue,
 } from "metabase/common/components/Pickers/DataPicker";
@@ -26,7 +27,7 @@ import { DataPickerTarget } from "./DataPickerTarget";
 import { EmbeddingDataPicker } from "./EmbeddingDataPicker";
 import { getUrl } from "./utils";
 
-interface NotebookDataPickerProps {
+export interface NotebookDataPickerProps {
   title: string;
   query: Lib.Query;
   stageIndex: number;
@@ -39,6 +40,7 @@ interface NotebookDataPickerProps {
     table: Lib.TableMetadata | Lib.CardMetadata,
     metadataProvider: Lib.MetadataProvider,
   ) => void;
+  shouldDisableItem?: (item: DataPickerItem) => boolean;
 }
 
 export function NotebookDataPicker({
@@ -51,6 +53,7 @@ export function NotebookDataPicker({
   hasMetrics,
   isDisabled,
   onChange,
+  shouldDisableItem,
 }: NotebookDataPickerProps) {
   const store = useStore();
   const dispatch = useDispatch();
@@ -92,6 +95,7 @@ export function NotebookDataPicker({
         hasMetrics={hasMetrics}
         isDisabled={isDisabled}
         onChange={handleChange}
+        shouldDisableItem={shouldDisableItem}
       />
     );
   }
@@ -107,6 +111,7 @@ type ModernDataPickerProps = {
   hasMetrics: boolean;
   isDisabled: boolean;
   onChange: (tableId: TableId) => void;
+  shouldDisableItem?: (item: DataPickerItem) => boolean;
 };
 
 function ModernDataPicker({
@@ -119,6 +124,7 @@ function ModernDataPicker({
   hasMetrics,
   isDisabled,
   onChange,
+  shouldDisableItem,
 }: ModernDataPickerProps) {
   const [isOpened, setIsOpened] = useState(!table);
   const context = useNotebookContext();
@@ -180,6 +186,7 @@ function ModernDataPicker({
           models={modelList}
           onChange={onChange}
           onClose={() => setIsOpened(false)}
+          shouldDisableItem={shouldDisableItem}
         />
       )}
     </>

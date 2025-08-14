@@ -19,6 +19,7 @@ export const DataStep = ({
   readOnly = false,
   color,
   updateQuery,
+  dataPickerOptions,
 }: NotebookStepProps) => {
   const { question, stageIndex } = step;
   const tableId = Lib.sourceTableOrCardId(query);
@@ -76,6 +77,7 @@ export const DataStep = ({
           hasMetrics
           isDisabled={readOnly}
           onChange={handleTableChange}
+          {...dataPickerOptions}
         />
       </NotebookCellItem>
     </NotebookCell>
