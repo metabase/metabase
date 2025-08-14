@@ -1268,6 +1268,8 @@
                 :stages
                 first)))))
 
+;;; see also [[metabase.driver.sql.query-processor-test/evil-field-ref-for-an-expression-test]]
+;;; and [[metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions-test/evil-field-ref-for-an-expression-test]]
 (deftest ^:parallel resolve-incorrect-field-ref-for-expression-test
   (testing "resolve the incorrect use of a :field ref for an expression correctly"
     (let [query (lib/query
@@ -1280,7 +1282,8 @@
                                   [:value 1 {:base_type :type/Integer}]]}))]
       (is (=? [:=
                {}
-               [:field
+               ;; convert the ref to an `:expression` ref so it can get compiled correctly.
+               [:expression
                 {::add/desired-alias "my_numberLiteral"
                  ::add/source-alias  "my_numberLiteral"
                  ::add/source-table  ::add/none}

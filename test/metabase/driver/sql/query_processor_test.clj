@@ -1400,3 +1400,44 @@
                  :params nil}
                 (-> (qp.compile/compile query)
                     (update :query #(str/split-lines (driver/prettify-native-form :h2 %))))))))))
+
+;;; see also [[metabase.query-processor.util.add-alias-info-test/resolve-incorrect-field-ref-for-expression-test]]
+;;; and [[metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions-test/evil-field-ref-for-an-expression-test]]
+(deftest ^:parallel evil-field-ref-for-an-expression-test
+  (testing "If we accidentally use a :field ref for an :expression, the query should still compile correctly"
+    ;; (this is actually mostly checking that `add-alias-info` or someone else rewrites the `:field` ref as an
+    ;; `:expression` ref, by the time the SQL QP sees the query it should be in a shape that will generate correct
+    ;; output.
+    (let [query {:database (meta/id)
+                 :type     :query
+                 :query    {:source-query {:source-table (meta/id :products)
+                                           :expressions  {"my_numberLiteral" [:value 2 {:base_type :type/Integer}]}
+                                           :fields       [[:field (meta/id :products :id) nil]
+                                                          [:expression "my_numberLiteral"]]
+                                           :filter       [:=
+                                                          ;; EVIL REF
+                                                          [:field "my_numberLiteral" {:base-type :type/Integer}]
+                                                          [:value 1 {:base_type :type/Integer}]]
+                                           :limit        20}
+                            :fields       [[:field (meta/id :products :id) nil]]
+                            :limit        20}}]
+      (qp.store/with-metadata-provider meta/metadata-provider
+        (is (= {:params nil
+                :query  ["SELECT"
+                        "  \"source\".\"ID\" AS \"ID\""
+                        "FROM"
+                        "  ("
+                        "    SELECT"
+                        "      \"PUBLIC\".\"PRODUCTS\".\"ID\" AS \"ID\","
+                        "      2 AS \"my_numberLiteral\""
+                        "    FROM"
+                        "      \"PUBLIC\".\"PRODUCTS\""
+                        "    WHERE"
+                        "      2 = 1"
+                        "    LIMIT"
+                        "      20"
+                        "  ) AS \"source\""
+                        "LIMIT"
+                        "  20"]}
+               (-> (qp.compile/compile query)
+                   (update :query #(str/split-lines (driver/prettify-native-form :h2 %))))))))))

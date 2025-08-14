@@ -206,6 +206,15 @@
                          ::source-alias (escaped-source-alias query path (:metabase.lib.join/join-alias col) (:lib/source-column-alias col)))
                   (m/assoc-some ::nfc-path (not-empty (:nfc-path col))))))
 
+(defn- fix-field-ref-if-it-should-actually-be-an-expression-ref
+  "I feel evil about doing this, since generally this namespace otherwise just ADDs info and does not in any other way
+  modify the query, but I can't think of any other way to get queries that accidentally use a `:field` ref for an
+  `:expression` to work correctly."
+  [field-ref col]
+  (if (= (:lib/source col) :source/expressions)
+    (into [:expression] (rest field-ref))
+    field-ref))
+
 (mu/defn- add-source-aliases :- ::lib.schema/stage.mbql
   [query :- ::lib.schema/query
    path  :- ::lib.walk/path
@@ -218,6 +227,7 @@
     :field
     (let [col (resolve-field-ref query path &match)]
       (-> (add-source-to-field-ref query path &match col)
+          (fix-field-ref-if-it-should-actually-be-an-expression-ref col)
           ;; record the column we resolved it to, so we can use this when we add desired aliases in the next pass.
           (lib/update-options assoc ::resolved col)))
 
@@ -373,9 +383,6 @@
         update-conditions (fn [conditions]
                             ;; the only kind of ref join conditions can have is a `:field` ref
                             (lib.util.match/replace conditions
-                              ;; already resolved
-                              [:field (_opts :guard ::source-alias) _id-or-name]
-                              &match
                               ;; a field ref that comes from THIS join needs to get the desired alias returned
                               ;; by the last stage of the join to use as its source alias
                               [:field (_opts :guard #(= (:join-alias %) (:alias join))) _id-or-name]
