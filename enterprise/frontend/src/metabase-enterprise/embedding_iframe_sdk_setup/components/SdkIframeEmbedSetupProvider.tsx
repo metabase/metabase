@@ -152,6 +152,11 @@ const usePersistedSettings = () => {
     { debounceTimeout: USER_SETTINGS_DEBOUNCE_MS },
   );
 
+  const persistedSettings = useMemo(
+    () => getSettingsToPersist(rawPersisted || {}),
+    [rawPersisted],
+  );
+
   const persistSettings = useCallback(
     (settings: Partial<SdkIframeEmbedSetupSettings>) => {
       rawPersistSettings(getSettingsToPersist(settings));
@@ -159,5 +164,5 @@ const usePersistedSettings = () => {
     [rawPersistSettings],
   );
 
-  return [rawPersisted || {}, persistSettings] as const;
+  return [persistedSettings, persistSettings] as const;
 };
