@@ -6,12 +6,10 @@
    [clojurewerkz.quartzite.triggers :as triggers]
    [metabase-enterprise.transforms.jobs :as transforms.jobs]
    [metabase.driver :as driver]
-   [metabase.events.core :as events]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.task-history.core :as task-history]
    [metabase.task.core :as task]
    [metabase.util.log :as log]
-   [methodical.core :as methodical]
    [toucan2.core :as t2])
   (:import
    (java.util TimeZone)
@@ -76,7 +74,9 @@
     (task-history/with-task-history {:task "run-transforms"}
       (transforms.jobs/run-job! job-id {:run-method :cron}))))
 
-(defn initialize-job! [{job-id :id :keys [schedule]}]
+(defn initialize-job!
+  "Initialize a schedule for a transform job."
+  [{job-id :id :keys [schedule]}]
   (log/info "Initializing schedule for transform job" job-id)
   (let [job (jobs/build
              (jobs/with-identity (job-key job-id))
@@ -100,7 +100,9 @@
           (create-trigger! job-id schedule)))
       (log/info "No changes to the trigger for transform job" job-id))))
 
-(defn delete-job! [job-id]
+(defn delete-job!
+  "Delete a job."
+  [job-id]
   (log/info "Deleting schedule for transform job" job-id)
   (task/delete-task! (job-key job-id) (trigger-key job-id)))
 
