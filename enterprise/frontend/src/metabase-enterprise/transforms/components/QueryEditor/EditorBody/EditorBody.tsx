@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { ResizableBox, type ResizableBoxProps } from "react-resizable";
 
 import { hasFeature } from "metabase/admin/databases/utils";
+import type { DataPickerItem } from "metabase/common/components/Pickers/DataPicker";
 import { useSetting } from "metabase/common/hooks";
 import NativeQueryEditor from "metabase/query_builder/components/NativeQueryEditor";
 import { Notebook } from "metabase/querying/notebook/components/Notebook";
@@ -63,6 +64,20 @@ export function EditorBody({
     onChange(newNativeQuery.question());
   };
 
+  const dataPickerOptions = useMemo(() => {
+    return {
+      shouldDisableItem: (item: DataPickerItem) => {
+        if (item.model === "database") {
+          return (
+            item.database.is_sample ||
+            !hasFeature(item.database, "transforms/table")
+          );
+        }
+        return false;
+      },
+    };
+  }, []);
+
   return isNative ? (
     <NativeQueryEditor
       question={question}
@@ -107,6 +122,7 @@ export function EditorBody({
           hasVisualizeButton={false}
           updateQuestion={handleQuestionChange}
           runQuestionQuery={onRunQuery}
+          dataPickerOptions={dataPickerOptions}
         />
       </Box>
     </ResizableBox>
