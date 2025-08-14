@@ -22,6 +22,7 @@ H.describeWithSnowplow(suiteTitle, () => {
     H.activateToken("bleeding-edge");
     H.enableTracking();
     H.updateSetting("enable-embedding-simple", true);
+    H.mockEmbedJsToDevServer();
   });
 
   afterEach(() => {
