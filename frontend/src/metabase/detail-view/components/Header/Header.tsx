@@ -8,19 +8,21 @@ import {
   renderValue,
 } from "metabase/detail-view/utils";
 import { useTranslateContent } from "metabase/i18n/hooks";
-import { Box, Group, Image, Stack, Text, rem } from "metabase/ui";
-import type { DatasetColumn, RowValues } from "metabase-types/api";
+import { Box, Group, Icon, Image, Stack, Text, rem } from "metabase/ui";
+import type { DatasetColumn, RowValues, Table } from "metabase-types/api";
 
 import S from "./Header.module.css";
+import { getEntityIcon } from "./utils";
 
 interface Props {
   columns: DatasetColumn[];
   row: RowValues;
+  table: Table;
 }
 
 const IMAGE_SIZE = 80;
 
-export const Header = ({ columns, row }: Props) => {
+export const Header = ({ columns, row, table }: Props) => {
   const tc = useTranslateContent();
   const titleColumn = useMemo(() => getTitleColumn(columns), [columns]);
   const subtitleColumn = useMemo(() => getSubtitleColumn(columns), [columns]);
@@ -37,14 +39,22 @@ export const Header = ({ columns, row }: Props) => {
     () => getRowValue(columns, avatarColumn, row),
     [columns, avatarColumn, row],
   );
+  const icon = useMemo(
+    () => getEntityIcon(table.entity_type),
+    [table.entity_type],
+  );
 
   return (
     <Group gap="xl">
-      {avatarColumn && avatar && (
-        <Box className={S.avatarFrame} flex="0 0 auto">
-          <Image h={IMAGE_SIZE} src={String(avatar)} w={IMAGE_SIZE} />
-        </Box>
-      )}
+      <Box className={S.avatarFrame} flex="0 0 auto">
+        {avatar && <Image h={IMAGE_SIZE} src={String(avatar)} w={IMAGE_SIZE} />}
+
+        {!avatar && (
+          <Group h={IMAGE_SIZE} justify="center" w={IMAGE_SIZE}>
+            <Icon c="brand" name={icon} size={24} />
+          </Group>
+        )}
+      </Box>
 
       <Stack gap="md">
         {titleColumn && title && (

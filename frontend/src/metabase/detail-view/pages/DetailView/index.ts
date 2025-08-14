@@ -1,1 +1,2 @@
-export * from './DetailView';
+export * from "./constants";
+export * from "./DetailView";

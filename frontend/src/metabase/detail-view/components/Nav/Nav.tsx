@@ -1,18 +1,18 @@
 import type { ReactNode } from "react";
 
 import { skipToken, useListDatabaseSchemasQuery } from "metabase/api";
-import { Box, Group, Icon, Text, rem } from "metabase/ui";
+import { Box, Group, type GroupProps, Icon, Text, rem } from "metabase/ui";
 import type { Table } from "metabase-types/api";
 
 import { Breadcrumb } from "./Breadcrumb";
 import { getExploreTableUrl } from "./utils";
 
-interface Props {
+interface Props extends GroupProps {
   rowName: ReactNode;
   table: Table;
 }
 
-export const Nav = ({ rowName, table }: Props) => {
+export const Nav = ({ rowName, table, ...props }: Props) => {
   const { data: schemas, isLoading: isLoadingSchemas } =
     useListDatabaseSchemasQuery(
       table && table.db_id && table.schema ? { id: table.db_id } : skipToken,
@@ -24,7 +24,7 @@ export const Nav = ({ rowName, table }: Props) => {
   }
 
   return (
-    <Group align="center" gap="sm" miw={0} wrap="nowrap">
+    <Group align="center" gap="sm" miw={0} wrap="nowrap" {...props}>
       <Breadcrumb href={`/browse/databases/${table.db_id}`}>
         <Group align="center" gap={rem(10)} wrap="nowrap">
           <Icon flex="0 0 auto" name="database" />
