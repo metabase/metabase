@@ -192,10 +192,15 @@ describe(
 
           H.visitDashboard(checkNotNull(dashboard).id);
 
-          cy.findByText("Question showing all products").should("be.visible");
-          cy.findByText("20 rows").should("be.visible");
+          H.getDashboardCard(0).within(() => {
+            cy.findByText("Question showing all products").should("be.visible");
+            cy.findByText("20 rows").should("be.visible");
+          });
 
-          cy.findByText("Model showing all products").should("be.visible");
+          H.getDashboardCard(1).scrollIntoView().within(() => {
+            cy.findByText("Model showing all products").should("be.visible");
+            cy.findByText("20 rows").should("be.visible");
+          });
         });
       });
     });
