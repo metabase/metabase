@@ -1,6 +1,7 @@
 (ns metabase-enterprise.workspaces.api
   "`/api/ee/workspace/` routes"
   (:require
+   [clj-yaml.core :as yaml]
    [metabase-enterprise.workspaces.common :as w.common]
    [metabase-enterprise.workspaces.isolation-manager :as isolation-manager]
    [metabase-enterprise.workspaces.models.workspace :as m.workspace]
@@ -9,6 +10,7 @@
    [metabase.api.routes.common :refer [+auth]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -59,13 +61,6 @@
            :no-index (#'api/generic-404 (str "No " entity-key " found at index " index " there are only " (:item-count (ex-data e))))
            (throw e)))))
 
-;; GET /api/ee/workspace
-(api.macros/defendpoint :get "/"
-  "List all workspaces for the current user"
-  []
-  (mapv m.workspace/sort-workspace
-        (t2/select :model/Workspace {:order-by [[:created_at :desc]]})))
-
 ;; GET /api/ee/workspace/:workspace-id
 (api.macros/defendpoint :get "/:workspace-id"
   "Get a workspace by ID"
@@ -87,33 +82,63 @@
    :- [:map
        [:name ms/NonBlankString]
        [:description {:optional true} [:maybe :string]]]]
-  {:status 200 :body (w.common/create-workspace! name description)})
+  {:status 200
+   :body (w.common/create-workspace! name description api/*current-user-id*)})
+
+(defn- init-and-run-workspace! [plan]
+  (let [workspace (w.common/create-workspace! "name" "description" api/*current-user-id*)
+        plan-data (into {} (yaml/parse-string plan))]
+    (when-not (mr/validate ::m.workspace/plan plan-data)
+      (log/info "Invalid plan data!"))
+    (w.common/init-workspace workspace plan-data)
+    (w.common/run-steps workspace plan-data)
+    {:collection-id (:collection_id workspace)}))
 
 (comment
+  (require '[metabase.test :as mt])
 
-  ;; delete all but 1 Workspace Collection:
-  (doseq [ids (rest (map :id (t2/select [:model/Collection :id] :name "Workspace Collection")))]
-    (t2/delete! :model/Collection :id ids))
+  (def pd {:transforms [{:name "transform_api_key",
+                         :description nil
+                         :source {:type "query", :query {:database 2, :type "query", :query {:source-table 33}}}
+                         :target {:type "table", :name "transform_api_key_table", :schema "public"}}
+                        {:name "transform_user",
+                         :description nil,
+                         :source {:type "query", :query {:database 2, :type "query", :query {:source-table 144}}},
+                         :target {:type "table", :name "transform_user_table", :schema "public"}}]
+           :steps [{:type :run-transform :name "transform_api_key"}
+                   {:type :run-transform :name "transform_user"}
+                   {:type :create-model :transform-name "transform_api_key"}
+                   {:type :create-model :transform-name "transform_user"}]})
 
-  #_:clj-kondo/ignore
-  (require '[metabase.test :as mt]
-           '[toucan2.core :as t2])
+  (do   (binding [api/*current-user-id* (mt/user->id :crowberto)
+                  api/*current-user-permissions-set* (atom #{"/"})]
+          (def w (:workspace (w.common/create-workspace! "name" "description" api/*current-user-id*))))
 
-  (mt/user-http-request :crowberto :post 200 "collection/" {:name "Workspace Collection"
-                                                            :slug "workspace_collection"})
+        (w.common/init-workspace w pd)
 
-  (t2/select [:model/Collection :id :name] :name "Workspace Collection")
+        (t2/select-one :model/Workspace :id (:id w))
+        (binding [api/*current-user-id* (mt/user->id :crowberto)]
+          (w.common/run-steps
+           (t2/select-one :model/Workspace :id (:id w))
+           pd))
 
-  (mt/user-http-request
-   :crowberto :post 200 (format "ee/workspace/%s/plan" (:id (t2/select [:model/Collection :id :name] :name "Workspace Collection")))
-   {:name "New Plan"
-    :collection_id (:id (t2/select-one [:model/Collection :id] :name "Workspace Collection"))
-    :description "This is a new plan"
-    :content {:steps ["Step 1" "Step 2"]}})
+        (:data_warehouses (t2/select-one :model/Workspace :id (:id w)))
 
-  (t2/select-one [:model/Workspace :id :name :description] :name "New Plan")
-  ;; => (toucan2.instance/instance :model/Workspace {:id 1, :name "New Plan", :description "This is a new plan"})
-  )
+        (:collection_id (t2/select-one :model/Workspace :id (:id w))))
+
+  (t2/select :model/Card 124))
+
+;; POST /api/ee/workspace/create
+(api.macros/defendpoint :post "/create"
+  "Create a new workspace.
+
+   Request body:
+   - name (required): Workspace name
+   - description (optional): Workspace description"
+  [_route-params
+   _query-params
+   {:keys [plan]}]
+  (init-and-run-workspace! plan))
 
 (api.macros/defendpoint :delete "/:workspace-id"
   "Delete a workspace."

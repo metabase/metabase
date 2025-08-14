@@ -1,5 +1,6 @@
 (ns metabase-enterprise.workspaces.common
   (:require
+   [clj-yaml.core :as yaml]
    [metabase-enterprise.transforms.execute :as transforms.execute]
    [metabase-enterprise.workspaces.isolation-manager :as isolation-manager]
    [metabase-enterprise.workspaces.models.workspace :as m.workspace]
@@ -73,7 +74,7 @@
         updated-entities (conj current-entities entity-with-created-at)]
     (t2/update! :model/Workspace workspace-id {entity-key updated-entities})))
 
-(mu/defn add-workspace-entites
+(mu/defn add-workspace-entites!
   "Adds a workspace entity, such as a plan or transform, to the workspace.
 
    Args:
@@ -114,7 +115,16 @@
                           :created_at (str (java.time.Instant/now))}]
     (add-workspace-entity! workspace :transforms copied-transform)
     (add-workspace-entity! workspace :activity_logs {::type ::linked-transform
-                                                    :transform copied-transform})))
+                                                     :transform copied-transform})))
+(defn insert-transform! [workspace-id transform]
+  (let [workspace (t2/select-one :model/Workspace :id workspace-id)
+        _ (when-not workspace (throw (ex-info "Workspace not found" {:error :no-workspace})))
+        transform (assoc transform :created_at (str (java.time.Instant/now)))]
+    (add-workspace-entity! workspace :transforms transform)
+    (add-workspace-entity! workspace :activity_logs {::type ::added-transform
+                                                    :transform transform})))
+
+(comment)
 
 (defn update-workspace-entity-at-index!
   "Updates an entity at a specific index in the workspace's entity collection.
@@ -162,7 +172,7 @@
     (t2/update! :model/Workspace workspace-id {entity-key updated-items})
     (m.workspace/sort-workspace (t2/select-one :model/Workspace :id workspace-id))))
 
-(defn- source-database
+(defn source-database
   "Return the `source` table of a transform."
   [transform]
   (-> transform :source :query :database))
@@ -178,14 +188,14 @@
           (t2/update! :model/Workspace (:id workspace)
                       {:data_warehouses (dissoc data-warehouses (keyword (str id)))})
           (add-workspace-entity! workspace :activity_logs {::type ::deleted-isolation
-                                                          :isolation deletion-info}))))
+                                                           :isolation deletion-info}))))
     (log/warn "No data warehouses found to delete isolations for workspace" (:id workspace))))
 
 (defn create-xray
   "Create an xray of a model"
   [model-id destination-collection-id]
   (let [db (api.automagic-dashboards/get-automagic-dashboard :model model-id nil)]
-   (dashboard/save-transient-dashboard! db destination-collection-id)))
+    (dashboard/save-transient-dashboard! db destination-collection-id)))
 
 ;; decision: this is so bespoke to us maybe it goes here now. But perhaps the querying team can help us adjust these
 ;; things with a proper api in the future
@@ -204,12 +214,12 @@
    It will throw an error if the workspace has no transforms or if the source database is not found.
 
   Logs the creation of isolation schemas in the activity_logs of the workspace"
-  [{:keys [data_warehouses transforms] :as workspace}]
-  (when-not (seq transforms)
-    (throw (ex-info "Workspace must have at least one transform to create isolation" {:error :no-transforms})))
-  (if-not (empty? data_warehouses)
-    (let [db-ids (distinct (map source-database transforms))
-          databases (t2/select :model/Database :id [:in db-ids])
+  [{:keys [data_warehouses] :as workspace} db-ids]
+  (when (seq data_warehouses)
+    (throw (ex-info "Data warehouses already exist. Please delete them before creating new isolations."
+                    {:workspace-id (:id workspace)})))
+  (when (seq db-ids)
+    (let [databases (t2/select :model/Database :id [:in db-ids])
           isolation-info (into {}
                                (for [{db-id :id :keys [engine details] :as db} databases]
                                  (do
@@ -241,8 +251,9 @@
   [{:keys [transforms data_warehouses] :as workspace}]
 
   ;; we should keep engine around, its necessary for setup and teardown anyways. why aren't we keeping it
-  (let [hack (into {} (map (juxt :id :engine)) (t2/select :model/Database :id
-                                                          [:in (map (comp parse-long name) (keys data_warehouses))]))
+  (let [hack (into {} (map (juxt :id :engine))
+                   (t2/select :model/Database :id
+                              [:in (map (comp parse-long name) (keys data_warehouses))]))
         ;; this is not needed. But it's a pointer that datawarehouses is perhaps a misleading name? bad
         ;; terminology. POC doesn't need an answer, but shipping does
         patched (for [t transforms
@@ -268,6 +279,34 @@
             []
             patched)))
 
+(defn run-transform
+  "Execute transforms. If the isolation manager hasn't run, then the data_warhouses key will be empty and this will
+  fail."
+  [{:keys [transforms data_warehouses] :as workspace} transform-name]
+  (let [transform (first (filter #(= (:name %) transform-name) transforms))
+        _ (when-not transform
+            (throw (ex-info "Transform not found" {:error :no-transform
+                                                   :transform-name transform-name})))
+        source-db-id (source-database transform)
+        schema-name (or (get-in data_warehouses [(keyword (str source-db-id)) :schema-name])
+                        (throw (ex-info "Missing schema for database" {:db-id     source-db-id
+                                                                       :transform transform})))
+        ;; todo: in clickhouse need to get database name
+        patched     (patch-transform transform schema-name)]
+    (try {:status :success
+          :response (transforms.execute/run-mbql-transform!
+                     (assoc patched :id (- (rand-int 50000)))
+                     {:run-method :workspace})}
+         (catch Exception e
+           (log/error "Error running transform" {:transform transform
+                                                 :patched patched
+                                                 :workspace (select-keys workspace [:id :slug])})
+           {:status    :error
+            :message   (ex-message e)
+            :exdata    (ex-data e)
+            :transform transform
+            :patched patched}))))
+
 (comment
   (t2/select-one :model/Workspace :id 6))
 
@@ -282,7 +321,7 @@
   ;; don't loev this api, but it's 4:58 on demo day and it's good for now
   (let [transform-activity (run-transforms* workspace)]
     ;; todo: assoc some type here?
-    (add-workspace-entites workspace :activity_logs transform-activity)))
+    (add-workspace-entites! workspace :activity_logs transform-activity)))
 
 (defn- create-models*
   [{:keys [transforms data_warehouses collection_id] :as workspace}]
@@ -346,10 +385,97 @@
   ;; don't loev this api, but it's 4:58 on demo day and it's good for now
   (let [model-activity (create-models* workspace)]
     ;; todo: assoc some type here?
-    (add-workspace-entites workspace :activity_logs {::type ::create-models
+    (add-workspace-entites! workspace :activity_logs {::type ::create-models
                                                      :model-activity model-activity})))
 
+(defn- create-model* [{:keys [collection_id] :as workspace} transform]
+  (let [card {:name (format "Model for %s" (:name transform))
+              :description (format "model: %s" (:description transform))
+              :collection_id collection_id
+              :card_schema 22 ;;??
+              :database_id (source-database transform)
+              :creator_id api/*current-user-id*
+              :query_type :native
+              :type :model
+              :dataset_query {:database (source-database transform)
+                              :type :native,
+                              :native {:template-tags {},
+                                       ;; this needs to be formatted correctly for different dbs
+                                       :query (format "select * from %s.%s"
+                                                      (-> transform :target :schema)
+                                                      (-> transform :target :name))}}
+              :display :table
+              :visualization_settings {}}]
+    (try {:status :success
+          :step :create-model
+          :transform transform
+          :response (t2/insert! :model/Card card)}
+         (catch Exception e
+           (log/error "Error saving model" {:transform transform
+                                            :workspace (select-keys workspace [:id :slug])
+                                            :card card})
+           {:status :error
+            :message (ex-message e)
+            :exdata (ex-data e)
+            :transform transform
+            :card card}))))
+
+(defn create-model
+  "Creates models from the transforms in a  workspace. Will throw an error if there are no transforms or if the data_warehouses is empty,
+  which likely means that you ahve not created the isolation things."
+  [{:keys [data_warehouses transforms] :as workspace} transform-name]
+  (when (empty? data_warehouses)
+    (throw (ex-info "Data warehouses are not prepared. Please run the isolation manager." {:workspace-id (:id workspace)})))
+  (when (empty? transforms)
+    (throw (ex-info "Can't run transforms if there aren't any" {})))
+  ;; don't loev this api, but it's 4:58 on demo day and it's good for now
+  (let [transform (first (filter #(= (:name %) transform-name) transforms))
+        schema-name (or (get-in data_warehouses [(keyword (str (source-database transform))) :schema-name])
+                        (throw (ex-info "Missing schema for database" {:db-id     (source-database transform)
+                                                                       :transform transform})))
+        _ (when-not transform
+            (throw (ex-info "Transform not found" {:error :no-transform
+                                                   :transform-name transform-name})))
+        model-activity (create-model* workspace (patch-transform transform schema-name))]
+    (add-workspace-entity! workspace :activity_logs {::type ::create-models
+                                                    :model-activity model-activity})))
+
+(defn init-workspace [workspace {:keys [transforms] :as plan-data}]
+  (log/info "Initializing workspace" (:id workspace) "with plan data:" plan-data)
+
+  (add-workspace-entity! (:id workspace) :plans plan-data)
+  ;; Insert transforms into the workspace so we can run them in the steps
+  (doseq [t transforms]
+    (log/info "Inserting transform" (:name t) "into workspace" (:id workspace))
+    (insert-transform! (:id workspace) t))
+  (let [source-db-ids (distinct (map source-database transforms))]
+    (create-isolations!
+     (t2/select-one :model/Workspace :id (:id workspace))
+     source-db-ids)))
+
+(defn run-step [workspace {:keys [type] :as step}]
+  (case type
+    :run-transform (run-transform workspace (:name step))
+    :create-model (create-model workspace (:transform-name step))))
+
+(defn run-steps [workspace {:keys [steps] :as _plan-data}]
+  (log/info "Running steps for workspace" (:id workspace) "with steps:" steps)
+  (reduce (fn [acc step]
+            (log/info "Running step:" step)
+            (let [o (try
+                      {:step step
+                       :success (run-step workspace step)}
+                      (catch Exception e
+                        (log/error e "Error running step" step)
+                        {:step step
+                         :message (.getMessage e)
+                         :ex-data (ex-data e)}))]
+              (conj acc o)))
+          []
+          steps))
+
 (comment
+  (require '[metabase.util.malli.registry :as mr])
 
   (do (require '[metabase.test :as mt])
       ;; will id alone work here? ^
@@ -357,35 +483,64 @@
       (def w
         (binding [api/*current-user-id* (mt/user->id :crowberto)
                   api/*current-user-permissions-set* (atom #{"/"})]
-          (create-workspace! "repl workspacex" nil))))
+          (:workspace (create-workspace! "repl workspacex" nil api/*current-user-id*)))))
 
-  (-> [:blank-workspace (t2/select-one :model/Workspace :slug (:slug w))]
-      (doto tap>))
+  (def t (t2/select-one :model/Transform :name "transform_api"))
 
-  (link-transform! (:id w) 1)
-  (link-transform! (:id w) 2)
+  (insert-transform! (:id w) (dissoc t :id))
 
-  (-> [:two-linked-transforms (t2/select-one :model/Workspace :slug (:slug w))]
-      (doto tap>))
+  (t2/select-one :model/Workspace :slug (:slug w))
 
-  (create-isolations! (t2/select-one :model/Workspace :slug (:slug w)))
-  (-> [:isolation-created
-       (t2/select-one :model/Workspace :slug (:slug w))]
-      (doto tap>))
+  (run-transform
+   (t2/select-one :model/Workspace :slug (:slug w))
+   (:name t))
 
-  (delete-isolations! (t2/select-one :model/Workspace :slug (:slug w)))
-  (-> [:isolation-deleted
-       (t2/select-one :model/Workspace :slug (:slug w))]
-      (doto tap>))
+;; (create-isolations! (t2/select-one :model/Workspace :slug (:slug w)))
 
-  (create-isolations! (t2/select-one :model/Workspace :slug (:slug w)))
-  (-> [:isolation-recreated
-       (t2/select-one :model/Workspace :slug (:slug w))]
-      (doto tap>))
+  ;; (run-transforms (t2/select-one :model/Workspace :slug (:slug w)))
 
-  (delete-isolations! (t2/select-one :model/Workspace :slug (:slug w)))
-  (-> [:isolation-redeleted
-       (t2/select-one :model/Workspace :slug (:slug w))]
-      (doto tap>))
+  ;; (make-models (t2/select-one :model/Workspace :slug (:slug w)))
 
-  (create-isolations! (t2/select-one :model/Workspace :slug (:slug w))))
+  ;; (require '[clj-yaml.core :as yaml])
+  ;; (println (yaml/generate-string
+  ;;           ))
+
+  #_:clj-kondo/ignore ;;nocommit
+  (require '[malli.core :as mc] '[malli.error :as me] '[malli.util :as mut] '[metabase.util.malli :as mu]
+           '[metabase.util.malli.describe :as umd] '[malli.provider :as mp] '[malli.generator :as mg]
+           '[malli.transform :as mtx] '[metabase.util.malli.registry :as mr] '[malli.json-schema :as mjs])
+
+  (mp/provide [{:name "transform_api",
+                :description nil,
+                :source {:type "query", :query {:database 4, :type "query", :query {:source-table 287}}},
+                :target {:type "table", :name "transform_api_table", :schema "public"},
+                :config nil}
+               {:name "transform_user",
+                :description nil,
+                :source {:type "query", :query {:database 4, :type "query", :query {:source-table 372}}},
+                :target {:type "table", :name "transform_user_table", :schema "public"},
+                :config nil}])
+
+  (def sample-plan {:transforms [{:name "transform_api",
+                                  :description nil,
+                                  :source {:type "query", :query {:database 4, :type "query", :query {:source-table 287}}},
+                                  :target {:type "table", :name "transform_api_table", :schema "public"},
+                                  :config nil}
+                                 {:name "transform_user",
+                                  :description nil,
+                                  :source {:type "query", :query {:database 4, :type "query", :query {:source-table 372}}},
+                                  :target {:type "table", :name "transform_user_table", :schema "public"},
+                                  :config nil}]
+                    :steps [{:type :run-transform :name "transform_api"}
+                            {:type :run-transform :name "transform_user"}
+                            {:type :create-model :transform-name "transform_api"}
+                            {:type :create-model :transform-name "transform_api"}]})
+
+  (mr/explain ::m.workspace/plan sample-plan)
+
+  (println (str "\n" (yaml/generate-string sample-plan {:dumper-options
+                                                        {:flow-style :block
+                                                         :default-style nil
+                                                         :line-width 80
+                                                         :indent 2
+                                                         :allow-non-plain-numbers? true}}))))

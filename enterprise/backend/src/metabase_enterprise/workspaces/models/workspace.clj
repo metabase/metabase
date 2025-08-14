@@ -31,14 +31,31 @@
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
+(mr/def ::plan.step
+  [:multi {:dispatch :type}
+   [:run-transform
+    [:map [:name :string]]]
+   [:create-model
+    [:map [:transform-name
+           {:description "The name of the transform to create a model from"} :string]]]])
+
+(mr/def ::transform
+  [:map
+   [:name :string]
+   [:description :nil]
+   [:source :map]
+   [:target :map]
+   [:config {:optional true} :any]])
+
+(mr/def ::plan
+  [:map
+   [:transforms [:sequential ::transform]]
+   [:steps [:sequential ::plan.step]]])
+
+;;;;;;;;;;; column checking:
+
 (mr/def ::created_at
   [:string {:gen/fmap #(str (t/instant (hash %)))}])
-
-(mr/def ::plan [:map
-                [:title :string]
-                [:description :string]
-                [:content :map]
-                [:created_at {:optional true} ::created_at]])
 
 ;; maybe another table?
 (mr/def ::activity-log [:map
@@ -57,49 +74,11 @@
                                   [:updated-at [:string {:description "When the step was last updated"}]]]]]])
 
 ;; look at transforms, make it match
-(mr/def ::transform
-  [:map
-   [:name :string]
-   [:description :string]
-   [:source [:map
-             [:type [:or :string]] #_[:enum "query" "table"]
-             [:query {:optional true} [:map
-                                       [:database {:description "ID of the source database"} :int]
-                                       [:type :string] ;; native or query
-                                       [:native {:optional true} [:map
-                                                                  [:query :string]
-                                                                  [:template-tags {:optional true} [:map]]]]]]]]
-   [:target [:map [:name :string] [:type :string]]]
-   [:created_at ::created_at]
-   [:config {:optional true} [:map]]])
 
-;; wip
-(mr/def ::document [:int {:description "ID of a document in app-db" :min 1}])
-
-(mr/def ::user
-  [:map
-   [:id :int]
-   [:type :string] ;; workspace-user
-   [:name :string]
-   [:email :string]
-   [:created_at ::created_at]
-   ;; api-key?
-   ;; db creds?
-   ])
-
-(mr/def ::data-warehouse
-  [:map
-   [:id [:int {:min 1}]]
-   [:created_at ::created_at]
-   [:type [:enum "read-only" "read-write"]]
-   [:credentials :map]
-   [:name :string]])
-
-(mr/def ::permission
-  [:map
-   [:table :string]
-   [:created_at ::created_at]
-   [:permission [:enum "read" "write"]]])
+;; delete me:
+(mr/def ::document :any)
+(mr/def ::user :any)
+(mr/def ::permission :any)
 
 (mr/def ::workspace.name
   [:string {:min 1}])
@@ -109,22 +88,22 @@
 
 (mr/def ::workspace
   [:map
-   [:id              pos-int?]
+   [:id              {:optional true} [:maybe [:int {:min 1}]]]
    [:name            [:ref ::workspace.name]]
    [:slug            {:optional true} [:maybe [:string {:min 1}]]]
+   [:collection_id   {:optional true} [:maybe [:int {:min 1}]]]
+   [:name            [:string {:min 1}]]
    [:description     {:optional true} [:ref ::workspace.description]]
    [:created_at      [:schema
-                     {:description "The date and time the workspace was created"}
-                     (ms/InstanceOfClass java.time.OffsetDateTime)]]
+                      {:description "The date and time the workspace was created"}
+                      (ms/InstanceOfClass java.time.OffsetDateTime)]]
    [:updated_at      [:schema
-                     {:description "The date and time the workspace was last updated"}
-                     (ms/InstanceOfClass java.time.OffsetDateTime)]]
-   [:plans           [:sequential
-                      {:description "each plan, transform, and document(<-unsure) is basically a file abstraction"}
-                      ::plan]]
+                      {:description "The date and time the workspace was last updated"}
+                      (ms/InstanceOfClass java.time.OffsetDateTime)]]
+   [:plan            ::plan]
+   [:activity_logs   [:sequential ::activity-log]] ;; This should maybe be another table:
    [:transforms      [:sequential ::transform]]
-   [:activity_logs   [:sequential ::activity-log]] ; ; This should maybe be another table:
-   [:permissions     [:sequential ::permission]]
+   [:documents       [:sequential ::document]]
    [:users           [:sequential ::user]]
    [:data_warehouses [:map-of {:description "data warehouse id -> isolation info"} :int :map]]
    [:documents       [:sequential ::document]]
@@ -297,21 +276,6 @@
 ;;     "2025-08-08T21:07:45.052178Z"
 ;;     "2025-08-08T21:03:43.194484Z")
   )
+
 (mu/defn- ->yaml [workspace :- ::workspace]
   (yaml/generate-string (sort-workspace workspace) :dumper-options {:flow-style :block}))
-
-;; temp for testing
-(mu/defn- write-yaml
-  ([workspace] (write-yaml workspace {}))
-  ([workspace :- ::workspace
-    options :- [:map [:prefix :string]]]
-   (let [file-name (str (:prefix options "")
-                        (str/replace (:name workspace) " " "_") ".yaml")]
-     (fs/create-dirs (fs/parent file-name))
-     (println "Writing workspace to" file-name)
-     (spit file-name (->yaml workspace)))))
-
-(comment
-
-  (let [w (mg/generate ::workspace {:size 1})]
-    (write-yaml w {:prefix "yaml_samples/"})))
