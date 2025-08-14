@@ -61,6 +61,7 @@ export const CommandExtension = Extension.create<CommandOptions>({
                   id: props.entityId,
                 },
               })
+              .setTextSelection(range.from + 1)
               .run();
             return;
           }

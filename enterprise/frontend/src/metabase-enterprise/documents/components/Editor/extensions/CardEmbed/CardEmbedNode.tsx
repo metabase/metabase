@@ -5,6 +5,8 @@ import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
+import { QuestionPickerModal } from "metabase/common/components/Pickers/QuestionPicker/components/QuestionPickerModal";
+import type { QuestionPickerValueItem } from "metabase/common/components/Pickers/QuestionPicker/types";
 import { useDispatch } from "metabase/lib/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Box, Flex, Icon, Loader, Menu, Text, TextInput } from "metabase/ui";
@@ -166,6 +168,7 @@ export const CardEmbedComponent = memo(
     const [editedTitle, setEditedTitle] = useState(name || "");
     const titleInputRef = useRef<HTMLInputElement>(null);
     const [isModifyModalOpen, setIsModifyModalOpen] = useState(false);
+    const [isReplaceModalOpen, setIsReplaceModalOpen] = useState(false);
 
     const displayName = name || cardToUse?.name;
     const isNativeQuestion = cardToUse?.dataset_query?.type === "native";
@@ -231,16 +234,19 @@ export const CardEmbedComponent = memo(
     };
 
     const handleReplaceQuestion = () => {
-      const pos = getPos();
-
-      if (typeof pos === "number") {
-        editor.commands.insertContentAt(
-          { from: pos, to: pos + node.nodeSize },
-          "/",
-        );
-        editor.commands.focus();
-      }
+      setIsReplaceModalOpen(true);
     };
+
+    const handleReplaceModalSelect = useCallback(
+      (item: QuestionPickerValueItem) => {
+        updateAttributes({
+          id: item.id,
+          name: null,
+        });
+        setIsReplaceModalOpen(false);
+      },
+      [updateAttributes],
+    );
 
     // Handle drill-through navigation
     const handleChangeCardAndRun = useCallback(
@@ -497,6 +503,12 @@ export const CardEmbedComponent = memo(
               }}
             />
           ))}
+        {isReplaceModalOpen && (
+          <QuestionPickerModal
+            onChange={handleReplaceModalSelect}
+            onClose={() => setIsReplaceModalOpen(false)}
+          />
+        )}
       </NodeViewWrapper>
     );
   },
