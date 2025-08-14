@@ -30,7 +30,7 @@
     (qp/process-query query)
     nil
     (catch Exception e
-      (.getMessage e))))
+      (ex-message e))))
 
 (api.macros/defendpoint :post "/generate-content"
   "Create a new piece of content to insert into the document."
