@@ -272,7 +272,7 @@ describe("issue 20436", () => {
   });
 });
 
-describe("UI elements that make no sense for users without data permissions (metabase#22447, metabase##22449, metabase#22450)", () => {
+describe("UI elements that make no sense for users without data permissions (metabase#22447, metabase#22449, metabase#22450)", () => {
   beforeEach(() => {
     H.restore();
   });

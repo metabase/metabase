@@ -206,7 +206,7 @@
                                      :when table-id]
                                  [table-id card]))
         tables (when-let [table-ids (seq (keys card-by-table-id))]
-                 (t2/hydrate (t2/select 'Table :id [:in table-ids]) :fields))]
+                 (t2/hydrate (t2/select :model/Table :id [:in table-ids]) :fields))]
     (into {}
           (for [table tables
                 :let [fields (:fields table)]
@@ -231,6 +231,8 @@
                                              {:id (u/slugify (:name field))
                                               :display-name (:display_name field)
                                               :target [:variable [:template-tag (u/slugify (:name field))]]
+                                              ;; TODO (Cam 8/12/25) -- Field base type is NOT a valid parameter types!
+                                              ;; See [[metabase.lib.schema.parameter/types]].
                                               :type (:base_type field)
                                               :required (:database_required field)
                                               :is-auto-increment (:database_is_auto_increment field)
