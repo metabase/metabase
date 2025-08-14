@@ -10,6 +10,7 @@
    [metabase-enterprise.semantic-search.db.migration :as semantic.db.migration]
    [metabase-enterprise.semantic-search.db.migration.impl :as semantic.db.migration.impl]
    [metabase-enterprise.semantic-search.index :as semantic.index]
+   [metabase-enterprise.semantic-search.pgvector-api :as semantic.pgvector-api]
    [metabase-enterprise.semantic-search.test-util :as semantic.tu]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -58,7 +59,9 @@
             original-migrate-fn @#'semantic.db.connection/do-with-migrate-tx
             results (atom {:executed-migrations 0
                            :log []})]
-        (with-redefs-fn {#'semantic.db.connection/do-with-migrate-tx
+        (with-redefs-fn {;; TODO: why in ci init index won't succeed -- http on embedding
+                         #'semantic.pgvector-api/initialize-index! (constantly nil)
+                         #'semantic.db.connection/do-with-migrate-tx
                          (fn [& args]
                            (let [tid (.getId (Thread/currentThread))]
                                ;; leaving in the timestamp for repl purposes
@@ -107,87 +110,89 @@
 
 (deftest expected-db-schema-after-migration-test
   (mt/with-premium-features #{:semantic-search}
-    (semantic.core/init! (semantic.tu/mock-documents) nil)
-    (testing "migration table has expected columns"
-      (is (map-contains-keys?
-           (jdbc/execute-one! (semantic.db.datasource/ensure-initialized-data-source!)
-                              (sql/format {:select [:*]
-                                           :from [:migration]}))
-           (qualify :migration [:finished_at
-                                :status
-                                :version]))))
-    (testing "control table has expected columns"
-      (is (map-contains-keys?
-           (jdbc/execute-one! (semantic.db.datasource/ensure-initialized-data-source!)
-                              (sql/format {:select [:*]
-                                           :from [:index_control]}))
-           (qualify :index_control [:active_id
-                                    :active_updated_at
-                                    :id
+    (with-redefs-fn {;; TODO: why in ci init won't succeed -- http on embedding
+                     #'semantic.pgvector-api/initialize-index! (constantly nil)}
+      (fn [] (semantic.core/init! (semantic.tu/mock-documents) nil)
+        (testing "migration table has expected columns"
+          (is (map-contains-keys?
+               (jdbc/execute-one! (semantic.db.datasource/ensure-initialized-data-source!)
+                                  (sql/format {:select [:*]
+                                               :from [:migration]}))
+               (qualify :migration [:finished_at
+                                    :status
                                     :version]))))
-    (testing "metadata table has expected columns"
-      (is  (map-contains-keys?
-            (jdbc/execute-one! (semantic.db.datasource/ensure-initialized-data-source!)
-                               (sql/format {:select [:*]
-                                            :from [:index_metadata]}))
-            (qualify :index_metadata [:id
-                                      :index_created_at
-                                      :index_version
-                                      :indexer_last_poll
-                                      :indexer_last_seen
-                                      :indexer_last_seen_hash
-                                      :indexer_last_seen_id
-                                      :model_name
-                                      :provider
-                                      :table_name
-                                      :vector_dimensions]))))
-    (testing "index table has expected columns"
-      (let [index-table-kw (->
-                            (jdbc/execute-one! (semantic.db.datasource/ensure-initialized-data-source!)
-                                               (sql/format {:select [[:im.table_name]]
-                                                            :from [[:index_control :ic]]
-                                                            :join [[:index_metadata :im]
-                                                                   [:= :ic.active_id :im.id]]}))
-                            :index_metadata/table_name keyword)]
-        (is (map-contains-keys?
-             (jdbc/execute-one! (semantic.db.datasource/ensure-initialized-data-source!)
-                                (sql/format {:select [:*]
-                                             :from [index-table-kw]}))
-             (qualify index-table-kw [:archived
-                                      :collection_id
-                                      :content
-                                      :created_at
-                                      :creator_id
-                                      :dashboardcard_count
-                                      :database_id
-                                      :display_type
-                                      :embedding
-                                      :id
-                                      :last_editor_id
-                                      :last_viewed_at
-                                      :legacy_input
-                                      :metadata
-                                      :model
-                                      :model_created_at
-                                      :model_id
-                                      :model_updated_at
-                                      :name
-                                      :official_collection
-                                      :pinned
-                                      :text_search_vector
-                                      :text_search_with_native_query_vector
-                                      :verified
-                                      :view_count])))))
+        (testing "control table has expected columns"
+          (is (map-contains-keys?
+               (jdbc/execute-one! (semantic.db.datasource/ensure-initialized-data-source!)
+                                  (sql/format {:select [:*]
+                                               :from [:index_control]}))
+               (qualify :index_control [:active_id
+                                        :active_updated_at
+                                        :id
+                                        :version]))))
+        (testing "metadata table has expected columns"
+          (is  (map-contains-keys?
+                (jdbc/execute-one! (semantic.db.datasource/ensure-initialized-data-source!)
+                                   (sql/format {:select [:*]
+                                                :from [:index_metadata]}))
+                (qualify :index_metadata [:id
+                                          :index_created_at
+                                          :index_version
+                                          :indexer_last_poll
+                                          :indexer_last_seen
+                                          :indexer_last_seen_hash
+                                          :indexer_last_seen_id
+                                          :model_name
+                                          :provider
+                                          :table_name
+                                          :vector_dimensions]))))
+        (testing "index table has expected columns"
+          (let [index-table-kw (->
+                                (jdbc/execute-one! (semantic.db.datasource/ensure-initialized-data-source!)
+                                                   (sql/format {:select [[:im.table_name]]
+                                                                :from [[:index_control :ic]]
+                                                                :join [[:index_metadata :im]
+                                                                       [:= :ic.active_id :im.id]]}))
+                                :index_metadata/table_name keyword)]
+            (is (map-contains-keys?
+                 (jdbc/execute-one! (semantic.db.datasource/ensure-initialized-data-source!)
+                                    (sql/format {:select [:*]
+                                                 :from [index-table-kw]}))
+                 (qualify index-table-kw [:archived
+                                          :collection_id
+                                          :content
+                                          :created_at
+                                          :creator_id
+                                          :dashboardcard_count
+                                          :database_id
+                                          :display_type
+                                          :embedding
+                                          :id
+                                          :last_editor_id
+                                          :last_viewed_at
+                                          :legacy_input
+                                          :metadata
+                                          :model
+                                          :model_created_at
+                                          :model_id
+                                          :model_updated_at
+                                          :name
+                                          :official_collection
+                                          :pinned
+                                          :text_search_vector
+                                          :text_search_with_native_query_vector
+                                          :verified
+                                          :view_count])))))
       ;; Init does not add any row into this table, hence have to check information_schema
-    (testing "index table has expected columns"
-      (is (= ["document" "document_hash" "gated_at" "id" "model" "model_id" "updated_at"]
-             (->> (jdbc/execute! (semantic.db.datasource/ensure-initialized-data-source!)
-                                 (sql/format {:select [:column_name]
-                                              :from [:information_schema.columns]
-                                              :where [[:= :table_name [:inline "index_gate"]]]}))
-                  (map :columns/column_name)
-                  sort
-                  vec))))))
+        (testing "index table has expected columns"
+          (is (= ["document" "document_hash" "gated_at" "id" "model" "model_id" "updated_at"]
+                 (->> (jdbc/execute! (semantic.db.datasource/ensure-initialized-data-source!)
+                                     (sql/format {:select [:column_name]
+                                                  :from [:information_schema.columns]
+                                                  :where [[:= :table_name [:inline "index_gate"]]]}))
+                      (map :columns/column_name)
+                      sort
+                      vec))))))))
 
 (defn- has-column?!
   [tx table-name column-name]
@@ -202,7 +207,9 @@
     (semantic.core/init! (semantic.tu/mock-documents) nil)
       ;; add column to index table
     (let [original-dynamic-schema semantic.db.migration.impl/dynamic-schema-version]
-      (with-redefs-fn {#'semantic.db.migration.impl/migrate-dynamic-schema!
+      (with-redefs-fn {;; TODO: why in ci the folling won't succeed -- http on embedding
+                       #'semantic.pgvector-api/initialize-index! (constantly nil)
+                       #'semantic.db.migration.impl/migrate-dynamic-schema!
                        (fn [tx _opts]
                          (let [table_names (->> (jdbc/execute! tx
                                                                (sql/format {:select [:table_name]
