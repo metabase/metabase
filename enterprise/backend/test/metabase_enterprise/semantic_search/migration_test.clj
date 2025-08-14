@@ -24,8 +24,8 @@
 (use-fixtures :each #'semantic.tu/ensure-no-migration-table-fixture)
 
 (deftest migration-table-versions-test
-  (semantic.tu/with-test-db semantic.tu/default-test-db
-    (mt/with-premium-features #{:semantic-search}
+  (mt/with-premium-features #{:semantic-search}
+    (semantic.tu/with-test-db semantic.tu/default-test-db
       (letfn [(migrate-and-get-db-version
                 [attempted-version]
                 (with-redefs [semantic.db.migration.impl/schema-version attempted-version
@@ -54,57 +54,52 @@
             (is (m/find-first (comp #{"Migration already performed, skipping."} :message)
                               (:messages <>)))))))))
 
-(deftest kok-migration-lock-coordination-test
-  (try
-    (mt/with-premium-features #{:semantic-search}
-      (semantic.tu/with-test-db semantic.tu/default-test-db
-        (testing "Migration of simultaneous init attempt is blocked"
-          (let [original-write-fn @#'semantic.db.migration/write-successful-migration!
-                original-migrate-fn @#'semantic.db.connection/do-with-migrate-tx
-                results (atom {:executed-migrations 0
-                               :log []})]
-            (with-redefs-fn {;; TODO: why in ci init index won't succeed -- http on embedding
-                             #'semantic.pgvector-api/index-documents! (constantly nil)
-                             #'semantic.db.connection/do-with-migrate-tx
-                             (fn [& args]
-                               (let [tid (.getId (Thread/currentThread))]
+(deftest migration-lock-coordination-test
+  (mt/with-premium-features #{:semantic-search}
+    (semantic.tu/with-test-db semantic.tu/default-test-db
+      (testing "Migration of simultaneous init attempt is blocked"
+        (let [original-write-fn @#'semantic.db.migration/write-successful-migration!
+              original-migrate-fn @#'semantic.db.connection/do-with-migrate-tx
+              results (atom {:executed-migrations 0
+                             :log []})]
+          (with-redefs-fn {;; TODO: why in ci init index won't succeed -- http on embedding
+                           #'semantic.pgvector-api/index-documents! (constantly nil)
+                           #'semantic.db.connection/do-with-migrate-tx
+                           (fn [& args]
+                             (let [tid (.getId (Thread/currentThread))]
                                ;; leaving in the timestamp for repl purposes
-                                 (swap! results update :log conj [tid :started (t/local-date-time)])
-                                 (apply original-migrate-fn args)
-                                 (swap! results update :log conj [tid :ended (t/local-date-time)]))
-                               nil)
-                             #'semantic.db.migration/write-successful-migration!
-                             (fn [& args]
-                               (Thread/sleep 2000)
-                               (apply original-write-fn args)
-                               (swap! results update :executed-migrations inc)
-                               nil)}
-              (fn []
-                (let [;; thread 1 attempts migration on clean db
-                      f1 (future
-                           (swap! results assoc :tid-first (.getId (Thread/currentThread)))
-                           (semantic.core/init! (semantic.tu/mock-documents) nil))
+                               (swap! results update :log conj [tid :started (t/local-date-time)])
+                               (apply original-migrate-fn args)
+                               (swap! results update :log conj [tid :ended (t/local-date-time)]))
+                             nil)
+                           #'semantic.db.migration/write-successful-migration!
+                           (fn [& args]
+                             (Thread/sleep 2000)
+                             (apply original-write-fn args)
+                             (swap! results update :executed-migrations inc)
+                             nil)}
+            (fn []
+              (let [;; thread 1 attempts migration on clean db
+                    f1 (future
+                         (swap! results assoc :tid-first (.getId (Thread/currentThread)))
+                         (semantic.core/init! (semantic.tu/mock-documents) nil))
                     ;; thread 2 attempts migration
-                      f2 (future
-                           (swap! results assoc :tid-second (.getId (Thread/currentThread)))
-                           (Thread/sleep 100)
-                           (semantic.core/init! (semantic.tu/mock-documents) nil))]
+                    f2 (future
+                         (swap! results assoc :tid-second (.getId (Thread/currentThread)))
+                         (Thread/sleep 100)
+                         (semantic.core/init! (semantic.tu/mock-documents) nil))]
               ;; wait for completion
-                  @f1
-                  @f2
-                  (testing "Single migration performed"
-                    (= 1 (:executed-migrations @results)))
-                  (testing "Database locks acquired in expected order"
-                    (let [{:keys [tid-first tid-second]} @results]
-                      (is (=? [[tid-first :started any?]
-                               [tid-second :started any?]
-                               [tid-first :ended any?]
-                               [tid-second :ended any?]]
-                              (:log @results))))))))))))
-    (catch Throwable e
-      (def eee e)
-      (log/fatal e)
-      (throw e))))
+                @f1
+                @f2
+                (testing "Single migration performed"
+                  (= 1 (:executed-migrations @results)))
+                (testing "Database locks acquired in expected order"
+                  (let [{:keys [tid-first tid-second]} @results]
+                    (is (=? [[tid-first :started any?]
+                             [tid-second :started any?]
+                             [tid-first :ended any?]
+                             [tid-second :ended any?]]
+                            (:log @results)))))))))))))
 
 (defn- map-contains-keys?
   [m kseq]
@@ -124,9 +119,9 @@
           (semantic.core/init! (semantic.tu/mock-documents) nil)
           (testing "migration table has expected columns"
             (is (map-contains-keys?
-                 @(def xix (jdbc/execute-one! (semantic.db.datasource/ensure-initialized-data-source!)
-                                              (sql/format {:select [:*]
-                                                           :from [:migration]})))
+                 (jdbc/execute-one! (semantic.db.datasource/ensure-initialized-data-source!)
+                                    (sql/format {:select [:*]
+                                                 :from [:migration]}))
                  (qualify :migration [:migrated_at
                                       :status
                                       :version]))))
@@ -155,7 +150,6 @@
                                             :provider
                                             :table_name
                                             :vector_dimensions]))))
-           ;; TODO: In CI
           (testing "index table has expected columns"
             (let [index-table (->
                                (jdbc/execute-one! (semantic.db.datasource/ensure-initialized-data-source!)
@@ -195,7 +189,6 @@
                                                         :where [[:= :table_name [:inline index-table]]]}))
                             (map :columns/column_name)
                             set)))))
-      ;; Init does not add any row into this table, hence have to check information_schema
           (testing "index table has expected columns"
             (is (= ["document" "document_hash" "gated_at" "id" "model" "model_id" "updated_at"]
                    (->> (jdbc/execute! semantic.tu/db
@@ -218,44 +211,41 @@
                                                   [:= :column_name [:inline column-name]]]}))))
 
 (deftest dynamic-schema-migration-test
-  (try (mt/with-premium-features #{:semantic-search}
-         (semantic.tu/with-test-db semantic.tu/default-test-db
-           (with-redefs [semantic.pgvector-api/index-documents! (constantly nil)]
-             (semantic.core/init! (semantic.tu/mock-documents) nil)
-      ;; add column to index table
-             (let [original-dynamic-schema semantic.db.migration.impl/dynamic-schema-version]
-               (with-redefs-fn {#'semantic.db.migration.impl/migrate-dynamic-schema!
-                                (fn [tx _opts]
-                                  (let [table_names (->> (jdbc/execute! tx
-                                                                        (sql/format {:select [:table_name]
-                                                                                     :from [:index_metadata]
-                                                                                     :where [[:< :index_version semantic.db.migration.impl/dynamic-schema-version]]
-                                                                                     :group-by [:table_name]}))
-                                                         (map :index_metadata/table_name)
-                                                         set)]
-                                    (doseq [table_name table_names]
-                                      (when-not (has-column?! tx table_name "new_col")
-                                        (jdbc/execute! tx (sql/format {:alter-table [table_name] :add-column [[:new_col :int]]}))))
-                                    (jdbc/execute! tx (sql/format {:update :index_metadata
-                                                                   :set {:index_version semantic.db.migration.impl/dynamic-schema-version}
-                                                                   :where [[:in :table_name table_names]]}))))
-                                #'semantic.db.migration.impl/dynamic-schema-version (inc original-dynamic-schema)}
-                 (fn []
-            ;; Trigger migration by next initialization attempt
-                   (semantic.core/init! (semantic.tu/mock-documents) nil)
-                   (let [#:index_metadata{:keys [index_version table_name]}
-                         (jdbc/execute-one! (semantic.db.datasource/ensure-initialized-data-source!)
-                                            (sql/format
-                                             {:select [:*]
-                                              :from [:index_metadata]}))]
-                     (testing "Index metadata table ids were updated"
-                       (is (= index_version semantic.db.migration.impl/dynamic-schema-version)))
-                     (testing "Index table contains new column"
-                       (is (has-column?! (semantic.db.datasource/ensure-initialized-data-source!)
-                                         table_name "new_col"))))))))))
-       (catch Throwable e
-         (log/fatal e)
-         (throw e))))
+  (mt/with-premium-features #{:semantic-search}
+    (semantic.tu/with-test-db semantic.tu/default-test-db
+      (with-redefs [semantic.pgvector-api/index-documents! (constantly nil)]
+        (semantic.core/init! (semantic.tu/mock-documents) nil)
+             ;; add column to index table
+        (let [original-dynamic-schema semantic.db.migration.impl/dynamic-schema-version]
+          (with-redefs-fn {#'semantic.db.migration.impl/migrate-dynamic-schema!
+                           (fn [tx _opts]
+                             (let [table_names (->> (jdbc/execute! tx
+                                                                   (sql/format {:select [:table_name]
+                                                                                :from [:index_metadata]
+                                                                                :where [[:< :index_version semantic.db.migration.impl/dynamic-schema-version]]
+                                                                                :group-by [:table_name]}))
+                                                    (map :index_metadata/table_name)
+                                                    set)]
+                               (doseq [table_name table_names]
+                                 (when-not (has-column?! tx table_name "new_col")
+                                   (jdbc/execute! tx (sql/format {:alter-table [table_name] :add-column [[:new_col :int]]}))))
+                               (jdbc/execute! tx (sql/format {:update :index_metadata
+                                                              :set {:index_version semantic.db.migration.impl/dynamic-schema-version}
+                                                              :where [[:in :table_name table_names]]}))))
+                           #'semantic.db.migration.impl/dynamic-schema-version (inc original-dynamic-schema)}
+            (fn []
+              ;; Trigger migration by next initialization attempt
+              (semantic.core/init! (semantic.tu/mock-documents) nil)
+              (let [#:index_metadata{:keys [index_version table_name]}
+                    (jdbc/execute-one! (semantic.db.datasource/ensure-initialized-data-source!)
+                                       (sql/format
+                                        {:select [:*]
+                                         :from [:index_metadata]}))]
+                (testing "Index metadata table ids were updated"
+                  (is (= index_version semantic.db.migration.impl/dynamic-schema-version)))
+                (testing "Index table contains new column"
+                  (is (has-column?! (semantic.db.datasource/ensure-initialized-data-source!)
+                                    table_name "new_col")))))))))))
 
 (deftest schema-version-match-default-version-test
   (testing "Default schema should match dynamic schema version"
