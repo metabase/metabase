@@ -61,21 +61,21 @@
   (boolean (:enable-multiple-db (:details db))))
 
 (def ^:private default-connection-details
-  {:user "default" :password "" :dbname "default" :host "localhost" :port 8123 :enable-multiple-db true})
+  {:user "default" :password "" :dbname "default" :host "localhost" :port 8123})
 
 (defn- connection-details->spec* [details]
   (let [;; ensure defaults merge on top of nils
-        details (reduce-kv (fn [m k v] (assoc m k (if (nil? v) (k default-connection-details) v)))
+        details (reduce-kv (fn [m k v] (assoc m k (or v (k default-connection-details))))
                            default-connection-details
                            details)
-        {:keys [user password dbname db enable-multiple-db host port ssl clickhouse-settings max-open-connections]} details
+        {:keys [user password dbname host port ssl clickhouse-settings max-open-connections]} details
         host   (cond ; JDBCv1 used to accept schema in the `host` configuration option
                  (str/starts-with? host "http://")  (subs host 7)
                  (str/starts-with? host "https://") (subs host 8)
                  :else host)]
     (-> {:classname                      "com.clickhouse.jdbc.ClickHouseDriver"
          :subprotocol                    "clickhouse"
-         :subname                        (str "//" host ":" port "/" (if enable-multiple-db dbname db))
+         :subname                        (str "//" host ":" port "/" dbname)
          :password                       (or password "")
          :user                           user
          :ssl                            (boolean ssl)
