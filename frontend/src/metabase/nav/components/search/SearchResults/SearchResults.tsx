@@ -35,7 +35,6 @@ export type SearchResultsFooter =
     }: {
       metadata: Omit<SearchResultsType, "data">;
       isSelected?: boolean;
-      onFooterSelect?: () => void;
     }) => JSX.Element | null)
   | null;
 
@@ -44,7 +43,6 @@ export type SearchResultsProps = {
   forceEntitySelect?: boolean;
   searchText?: string;
   searchFilters?: SearchFilters;
-  limit?: number;
   models?: SearchModel[];
   footerComponent?: SearchResultsFooter;
   onFooterSelect?: () => void;
@@ -65,7 +63,6 @@ export const SearchResults = ({
   forceEntitySelect = false,
   searchText,
   searchFilters = {},
-  limit,
   models,
   footerComponent,
   onFooterSelect,
@@ -92,7 +89,7 @@ export const SearchResults = ({
     context?: "search-bar" | "search-app";
   } & SearchFilters = {
     q: debouncedSearchText,
-    limit: limit ?? DEFAULT_SEARCH_LIMIT,
+    limit: DEFAULT_SEARCH_LIMIT,
     ...searchFilters,
     models: models ?? searchFilters.type,
   };
@@ -181,7 +178,6 @@ export const SearchResults = ({
           {footerComponent({
             metadata,
             isSelected: cursorIndex === dropdownItemList.length - 1,
-            onFooterSelect,
           })}
         </ResultsFooter>
       )}

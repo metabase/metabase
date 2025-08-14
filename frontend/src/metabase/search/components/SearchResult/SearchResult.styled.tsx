@@ -48,13 +48,12 @@ export const SearchResultContainer = styled(Box, {
       isSelected?: boolean;
       component?: string;
       ref?: RefObject<HTMLButtonElement> | null;
-      align?: React.CSSProperties["alignItems"];
     }
 >`
   display: grid;
   grid-template-columns: auto 1fr auto auto;
   justify-content: center;
-  align-items: ${({ align }) => align || "start"};
+  align-items: start;
   gap: 0.5rem 0.75rem;
   padding: ${({ theme }) => theme.spacing.sm};
 
