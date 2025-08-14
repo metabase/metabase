@@ -185,7 +185,7 @@
 
 (defn remove-env-vars-we-should-not-document
   "Some settings we should not document. They're either local settings, derived
-  from other settings, or are footguns to avoid"
+  from other settings, or are footguns to avoid."
   [settings]
   (->> settings
        (remove avoid?)
