@@ -1101,9 +1101,17 @@
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
-(defmulti compile-transform dispatch-on-initialized-driver :hierarchy #'hierarchy)
+(defmulti compile-transform
+  "Compiles the sql for a transform statement, given an inner sql query and a destination."
+  {:added "0.57.0", :arglists '([driver {:keys [query output-table]}])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
 
-(defmulti compile-drop-table dispatch-on-initialized-driver :hierarchy #'hierarchy)
+(defmulti compile-drop-table
+  "Compiles the sql for a drop table statement for a given table."
+  {:added "0.57.0", :arglists '([driver table])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
 
 (defmulti execute-raw-queries!
   "Executes a series of 'raw' queries.  A raw query is a vector of a sql string and arguments, in the case of sql
@@ -1148,7 +1156,7 @@
 
 (defmulti connection-details
   "Get connection details for a given driver and db object"
-  {:added "0.56.0", :arglists '([driver db])}
+  {:added "0.57.0", :arglists '([driver db])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
@@ -1419,7 +1427,7 @@
    If you need proactively to check for table existence, this is the preferred method.
    The default implementation uses describe-table and catches exceptions, but drivers can override
    this with more efficient implementations for databases that support them.."
-  {:added "" :arglists '([driver database table])}
+  {:added "0.57.0" :arglists '([driver database table])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 

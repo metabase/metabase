@@ -55,7 +55,9 @@
       ;; Create jobs and link them to tags
       (doseq [{:keys [tag_name] :as job-def} default-jobs]
         (let [tag (t2/select-one :transform_tag :name tag_name)
-              job-data (dissoc job-def :tag_name)
+              job-data (-> (dissoc job-def :tag_name)
+                           (update :name str)
+                           (update :description str))
               job (t2/insert-returning-instance! :transform_job job-data)]
           ;; Link job to its corresponding tag
           (when (and tag job)
