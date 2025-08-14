@@ -77,10 +77,11 @@ type NavigateToStepOptions =
       dismissEmbedTerms?: boolean;
       resourceName?: never;
     }
-  | ({ experience: "dashboard" | "chart"; dismissEmbedTerms?: boolean } & (
-      | { resourceName: string; skipResourceSelection?: never }
-      | { skipResourceSelection: true }
-    ));
+  | {
+      experience: "dashboard" | "chart";
+      dismissEmbedTerms?: boolean;
+      resourceName: string;
+    };
 
 export const navigateToEntitySelectionStep = (
   options: NavigateToStepOptions,
@@ -105,7 +106,7 @@ export const navigateToEntitySelectionStep = (
     });
   }
 
-  if (experience !== "exploration" && !options.skipResourceSelection) {
+  if (experience !== "exploration") {
     const { resourceName } = options;
 
     const resourceType = match(experience)
