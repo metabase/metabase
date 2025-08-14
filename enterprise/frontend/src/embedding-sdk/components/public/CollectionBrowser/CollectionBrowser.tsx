@@ -114,12 +114,10 @@ export const CollectionBrowserInner = ({
     useSdkBreadcrumb();
 
   const effectiveCollectionId = useMemo(() => {
-    // Use breadcrumb state when available and the current location is a collection
     if (isBreadcrumbEnabled && currentLocation?.type === "collection") {
       return currentLocation.id as CollectionId;
     }
 
-    // Otherwise fall back to internal state
     return internalCollectionId;
   }, [isBreadcrumbEnabled, currentLocation, internalCollectionId]);
 
@@ -149,17 +147,10 @@ export const CollectionBrowserInner = ({
     onClick?.(item);
 
     if (item.model === "collection") {
-      // Update internal state for navigation (used when breadcrumbs are not available)
       setInternalCollectionId(item.id as CollectionId);
 
-      // If breadcrumbs are enabled, report the new location which will build the breadcrumb stack
-      // and trigger the useEffect that updates currentLocation
       if (isBreadcrumbEnabled) {
-        reportLocation({
-          type: "collection",
-          id: item.id,
-          name: item.name,
-        });
+        reportLocation({ type: "collection", id: item.id, name: item.name });
       }
     }
   };

@@ -13,6 +13,7 @@ export interface BreadcrumbItem {
   id: number | string | SdkCollectionId;
   name: string;
   type: BreadcrumbItemType;
+
   /**
    * Optional callback to execute when navigating to this breadcrumb item.
    * Used for implementing "Return to" and "Back" behaviors.
@@ -33,7 +34,8 @@ export interface SdkBreadcrumbsContextType {
   breadcrumbs: BreadcrumbItem[];
 
   /**
-   * The item user clicked to navigate to. Components should watch this to handle navigation.
+   * The item user clicked to navigate to.
+   * Components should watch this to handle navigation.
    */
   currentLocation: BreadcrumbItem | null;
 
@@ -62,7 +64,6 @@ export const SdkBreadcrumbsProvider = ({
 
   const reportLocation = useCallback((item: BreadcrumbItem) => {
     setBreadcrumbs((prevBreadcrumbs) => {
-      // If stack is empty, just add the item
       if (prevBreadcrumbs.length === 0) {
         return [item];
       }
@@ -72,44 +73,38 @@ export const SdkBreadcrumbsProvider = ({
       // Collections should always append to build hierarchy ("Root > Analytics > Sales")
       // Only questions/dashboards/models/metrics should replace when same type
       if (item.type === "collection") {
-        const existingIndex = prevBreadcrumbs.findIndex(
+        const breadcrumbIndex = prevBreadcrumbs.findIndex(
           (b) => b.id === item.id && b.type === item.type,
         );
 
-        if (existingIndex !== -1) {
-          return prevBreadcrumbs.slice(0, existingIndex + 1);
+        if (breadcrumbIndex !== -1) {
+          return prevBreadcrumbs.slice(0, breadcrumbIndex + 1);
         }
 
         // Append new collection to build hierarchy
         return [...prevBreadcrumbs, item];
       }
 
-      // For non-collection items: if same type as last item, replace it
+      // Replace last questions and dashboards.
       if (lastItem.type === item.type) {
         return [...prevBreadcrumbs.slice(0, -1), item];
       }
 
-      // Otherwise append to stack
+      // Append to the navigation stack.
       return [...prevBreadcrumbs, item];
     });
   }, []);
 
   const navigateTo = useCallback(
     (item: BreadcrumbItem) => {
-      // Find the item in the breadcrumbs
       const itemIndex = breadcrumbs.findIndex(
         (b) => b.id === item.id && b.type === item.type,
       );
 
       if (itemIndex !== -1) {
-        const foundItem = breadcrumbs[itemIndex];
+        const breadcrumb = breadcrumbs[itemIndex];
+        breadcrumb?.onNavigate?.();
 
-        // Execute the navigation callback if it exists
-        if (foundItem.onNavigate) {
-          foundItem.onNavigate();
-        }
-
-        // Pop the breadcrumb stack to the clicked item
         setBreadcrumbs(breadcrumbs.slice(0, itemIndex + 1));
       }
     },

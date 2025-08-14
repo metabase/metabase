@@ -91,17 +91,13 @@ export const SdkQuestionDefaultView = ({
   const isNewQuestion = originalId === "new";
   const isQuestionSaved = question?.isSaved();
 
-  // Report current question to breadcrumbs
   useEffect(() => {
-    // Only report saved questions to breadcrumbs, not ad-hoc questions from dashboard cards
-    // Ad-hoc questions are temporary drill-through views and shouldn't be in breadcrumb navigation
     const isSavedQuestion =
       question && question.isSaved() && originalId && originalId !== "new";
 
-    // Also make sure the question has results before reporting (to avoid interfering with loading)
     if (
-      isSavedQuestion &&
       isBreadcrumbEnabled &&
+      isSavedQuestion &&
       !isNewQuestion &&
       !isQuestionLoading &&
       queryResults
@@ -110,11 +106,7 @@ export const SdkQuestionDefaultView = ({
         type: "question",
         id: question.id() || originalId || 0,
         name: question.displayName() || "Question",
-        onNavigate: onNavigateBack
-          ? onNavigateBack
-          : originalQuestion
-            ? onReset
-            : undefined,
+        onNavigate: onNavigateBack ?? (originalQuestion ? onReset : undefined),
       });
     }
   }, [
@@ -184,7 +176,10 @@ export const SdkQuestionDefaultView = ({
             <Box mr="sm">
               <BackButton />
             </Box>
-            <DefaultViewTitle title={title} withResetButton={withResetButton} />
+            <DefaultViewTitle
+              title={title}
+              withResetButton={withResetButton && !isBreadcrumbEnabled}
+            />
           </Group>
           {showSaveButton && <SaveButton onClick={openSaveModal} />}
         </Group>

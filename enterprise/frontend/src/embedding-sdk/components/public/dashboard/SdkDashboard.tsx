@@ -286,7 +286,8 @@ const SdkDashboardInner = ({
               dispatch(dismissAllUndo());
               await dispatch(updateDashboardAndCards());
               // After saving the dashboard, it will exit the editing mode.
-              dispatch(setEditingDashboard(dashboard));
+              // TODO: delete this.
+              dispatch(setEditingDashboard(dashboard ?? null));
             },
             confirmButtonProps: {
               color: "brand",
