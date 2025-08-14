@@ -42,6 +42,7 @@
                               :sso-jwt
                               :sso-ldap
                               :sso-saml
+                              :transforms
                               :upload-management
                               :whitelabel
                               :collection-cleanup
@@ -82,6 +83,7 @@
             :sso_ldap                       true
             :sso_saml                       true
             :table_data_editing             false
+            :transforms                     true
             :upload_management              true
             :whitelabel                     true
             :collection_cleanup             true
