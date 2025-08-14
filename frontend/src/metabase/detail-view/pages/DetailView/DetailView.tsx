@@ -156,7 +156,7 @@ export function DetailView({ params }: Props) {
 
   return (
     <Stack bg="var(--mb-color-background-light)" gap={0} h="100%">
-      <Stack className={S.scrollable} gap={0} mih={0}>
+      <Stack className={S.scrollable} gap={0} mih={0} h="100%">
         {headerColumns.length > 0 && (
           <Box
             bg="bg-white"
@@ -184,6 +184,7 @@ export function DetailView({ params }: Props) {
         >
           <Group
             align="flex-start"
+            mih="100%"
             flex="1"
             bg="bg-white"
             p="xl"
