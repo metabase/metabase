@@ -8,7 +8,8 @@
   0)
 
 (defn migrate-schema!
-  "Migrate schema (control, metadata, gate, ...)."
+  "Migrate schema (control, metadata, gate, ...). Migration author is responsible for removing leftovers if necessary
+  and in general leaving schema in desired state."
   [tx {:keys [index-metadata] :as _opts}]
   (semantic.index-metadata/create-tables-if-not-exists! tx index-metadata)
   (semantic.index-metadata/ensure-control-row-exists! tx index-metadata))
@@ -19,7 +20,8 @@
   0)
 
 (defn migrate-dynamic-schema!
-  "Migrate runtime-managed schema, ie. schema of `index_table_...` tables."
+  "Migrate runtime-managed schema, ie. schema of `index_table_...` tables. Migration author is responsible for removing
+  leftovers if necessary."
   [_tx {_index-metadata :index-metadata _embedding-model :embedding-model :as _opts}]
   ;; noop!!! atm
   )
