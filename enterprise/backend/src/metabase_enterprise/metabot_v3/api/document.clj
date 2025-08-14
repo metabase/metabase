@@ -1,11 +1,36 @@
 (ns metabase-enterprise.metabot-v3.api.document
   "`/api/ee/metabot-v3/document` routes"
   (:require
+   [clojure.string :as str]
    [metabase-enterprise.metabot-v3.client :as metabot-v3.client]
+   [metabase-enterprise.metabot-v3.table-utils :as table-utils]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.query-processor :as qp]
+   [metabase.util.malli.schema :as ms]
+   [metabase.warehouses.api :as warehouses]))
+
+(set! *warn-on-reflection* true)
+
+(defn- fix-sql [fix-request]
+  (let [response  (metabot-v3.client/fix-sql fix-request)
+        return-sql (:sql fix-request)]
+    (when-let [fixes (:fixes response)]
+      (str/join "\n" (reduce
+                      (fn [sql-lines fix]
+                        (assoc  sql-lines (dec (:line_number fix)) (:fixed_sql fix)))
+                      (vec (str/split-lines return-sql))
+                      fixes)))))
+
+(defn- check-query
+  "If the query is valid, return nil. If not, return the error message."
+  [query]
+  (try
+    (qp/process-query query)
+    nil
+    (catch Exception e
+      (.getMessage e))))
 
 (api.macros/defendpoint :post "/generate-content"
   "Create a new piece of content to insert into the document."
@@ -15,10 +40,38 @@
    body :- [:map
             [:instructions ms/NonBlankString]
             [:references {:optional true} ms/Map]]]
-  (metabot-v3.client/document-generate-content {:instructions (:instructions body)
-                                                :references   (:references body)
-                                                :user_id         api/*current-user-id*
-                                                :conversation_id (str (random-uuid))}))
+  (let [response (metabot-v3.client/document-generate-content {:instructions    (:instructions body)
+                                                               :references      (:references body)
+                                                               :user_id         api/*current-user-id*
+                                                               :conversation_id (str (random-uuid))})
+        query (get-in response [:draft_card :dataset_query])]
+    (if (and query (= "native" (:type query)))
+      (if-let [error (check-query query)]
+        (let [db-id (-> (:references body)
+                        keys
+                        first
+                        name
+                        (#(str/split % #":"))
+                        last
+                        Integer/parseInt)
+              db (warehouses/get-database db-id)
+              schema-ddl (table-utils/schema-sample query)
+              max-attempts 5
+              final-sql (loop [attempt 1
+                               sql (get-in query [:native :query])
+                               error error]
+                          (let [fixed-sql (fix-sql {:sql            sql
+                                                    :dialect       (:engine db)
+                                                    :error_message  error
+                                                    :schema_ddl    schema-ddl})]
+                            (if (or (nil? fixed-sql) (>= attempt max-attempts))
+                              fixed-sql
+                              (if-let [fixed-error (check-query (assoc-in query [:native :query] fixed-sql))]
+                                (recur (inc attempt) fixed-sql fixed-error)
+                                fixed-sql))))]
+          (assoc-in response [:draft_card :dataset_query :native :query] final-sql))
+        response)
+      response)))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/metabot-v3/document` routes."

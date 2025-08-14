@@ -1748,8 +1748,8 @@
            system
            users
            util
+           warehouses
            warehouse-schema
-
            enterprise/documents}}
 
   enterprise/permission-debug
