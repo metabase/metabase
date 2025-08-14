@@ -47,21 +47,6 @@
      :target {:type "table"
               :name table-name}}))
 
-(defmacro with-transform-tags
-  "Create transform-tag associations and ensure cleanup.
-   Associations should be a seq of {:transform_id X :tag_id Y} maps."
-  [associations & body]
-  `(let [assocs# ~associations]
-     (when (seq assocs#)
-       (t2/insert! :transform_tags assocs#))
-     (try
-       ~@body
-       (finally
-         (doseq [assoc# assocs#]
-           (t2/delete! :transform_tags
-                       :transform_id (:transform_id assoc#)
-                       :tag_id (:tag_id assoc#)))))))
-
 ;;; ------------------------------------------------------------
 ;;; Assertion Helpers
 ;;; ------------------------------------------------------------
@@ -441,19 +426,20 @@
                      :model/Transform transform2 (test-transform "Tagged Transform 2")
                      :model/Transform transform3 (test-transform "Untagged Transform")
                      :model/TransformTag tag1 {:name (str "test-tag-" (u/generate-nano-id))}
-
+                     :model/TransformTag tag1 {:name (str "test-tag-" (u/generate-nano-id))}
+                     :model/TransformTag tag1 {:name (str "test-tag-" (u/generate-nano-id))}
+                     :model/TagTransform _ {:transform_id (:id transform1) :tag_id (:id tag1)}
+                     :model/TagTransform _ {:transform_id (:id transform2) :tag_id (:id tag1)}
                      :model/TransformRun _run1 {:transform_id (:id transform1)}
                      :model/TransformRun _run2 {:transform_id (:id transform2)}
                      :model/TransformRun _run3 {:transform_id (:id transform3)}]
-        (with-transform-tags [{:transform_id (:id transform1) :tag_id (:id tag1)}
-                              {:transform_id (:id transform2) :tag_id (:id tag1)}]
-          (testing "Filter by tag1 returns only tagged transforms' runs"
-            (let [response (mt/user-http-request :crowberto :get 200 "ee/transform/run"
-                                                 :transform_tag_ids [(:id tag1)])]
-              (assert-run-count response 2)
-              (assert-transform-ids response #{(:id transform1) (:id transform2)})
-              (is (not (contains? (set (map :transform_id (:data response)))
-                                  (:id transform3)))))))))))
+        (testing "Filter by tag1 returns only tagged transforms' runs"
+          (let [response (mt/user-http-request :crowberto :get 200 "ee/transform/run"
+                                               :transform_tag_ids [(:id tag1)])]
+            (assert-run-count response 2)
+            (assert-transform-ids response #{(:id transform1) (:id transform2)})
+            (is (not (contains? (set (map :transform_id (:data response)))
+                                (:id transform3))))))))))
 
 (deftest get-runs-filter-by-multiple-tags-test
   (testing "GET /api/ee/transform/run - filter by multiple tags (union)"
@@ -492,23 +478,23 @@
                                                            :name (str "test_table_4_" (u/generate-nano-id))}}
                      :model/TransformTag tag1 {:name (str "test-tag-1-" (u/generate-nano-id))}
                      :model/TransformTag tag2 {:name (str "test-tag-2-" (u/generate-nano-id))}
+                     :model/TagTransform _ {:transform_id (:id transform1) :tag_id (:id tag1)}
+                     :model/TagTransform _ {:transform_id (:id transform2) :tag_id (:id tag1)}
+                     :model/TagTransform _ {:transform_id (:id transform2) :tag_id (:id tag2)}
+                     :model/TagTransform _ {:transform_id (:id transform3) :tag_id (:id tag2)}
 
                      :model/TransformRun _run1 {:transform_id (:id transform1)}
-                     :model/TransformRun _run1 {:transform_id (:id transform2)}
-                     :model/TransformRun _run1 {:transform_id (:id transform3)}
-                     :model/TransformRun _run1 {:transform_id (:id transform4)}]
+                     :model/TransformRun _run2 {:transform_id (:id transform2)}
+                     :model/TransformRun _run3 {:transform_id (:id transform3)}
+                     :model/TransformRun _run4 {:transform_id (:id transform4)}]
         ;; Associate tags with transforms
-        (with-transform-tags [{:transform_id (:id transform1) :tag_id (:id tag1)}
-                              {:transform_id (:id transform2) :tag_id (:id tag1)}
-                              {:transform_id (:id transform2) :tag_id (:id tag2)}
-                              {:transform_id (:id transform3) :tag_id (:id tag2)}]
-          (testing "Filter by tag1 and tag2 returns union (transforms with either tag)"
-            (let [response (mt/user-http-request :crowberto :get 200 "ee/transform/run"
-                                                 :transform_tag_ids [(:id tag1) (:id tag2)])
-                  returned-transform-ids (set (map :transform_id (:data response)))]
-              (assert-run-count response 3)
-              (assert-transform-ids response #{(:id transform1) (:id transform2) (:id transform3)})
-              (is (not (contains? returned-transform-ids (:id transform4)))))))))))
+        (testing "Filter by tag1 and tag2 returns union (transforms with either tag)"
+          (let [response (mt/user-http-request :crowberto :get 200 "ee/transform/run"
+                                               :transform_tag_ids [(:id tag1) (:id tag2)])
+                returned-transform-ids (set (map :transform_id (:data response)))]
+            (assert-run-count response 3)
+            (assert-transform-ids response #{(:id transform1) (:id transform2) (:id transform3)})
+            (is (not (contains? returned-transform-ids (:id transform4))))))))))
 
 (deftest get-runs-combine-transform-id-and-status-test
   (testing "GET /api/ee/transform/run - combine transform ID and status filters"
@@ -571,20 +557,20 @@
                                                   :target {:type "table"
                                                            :name (str "test_table_3_" (u/generate-nano-id))}}
                      :model/TransformTag tag1 {:name (str "test-tag-" (u/generate-nano-id))}
+                     :model/TagTransform _ {:transform_id (:id transform1) :tag_id (:id tag1)}
+                     :model/TagTransform _ {:transform_id (:id transform2) :tag_id (:id tag1)}
                      :model/TransformRun _run1 {:transform_id (:id transform1) :status "succeeded"}
                      :model/TransformRun _run1 {:transform_id (:id transform2) :status "failed"}
                      :model/TransformRun _run1 {:transform_id (:id transform3) :status "failed"}
                      :model/TransformRun _run1 {:transform_id (:id transform2) :status "succeeded"}]
         ;; Associate tag1 with transform1 and transform2
-        (with-transform-tags [{:transform_id (:id transform1) :tag_id (:id tag1)}
-                              {:transform_id (:id transform2) :tag_id (:id tag1)}]
-          (testing "Filter by tag1 and failed status returns only failed runs of tagged transforms"
-            (let [response (mt/user-http-request :crowberto :get 200 "ee/transform/run"
-                                                 :transform_tag_ids [(:id tag1)]
-                                                 :statuses ["failed"])]
-              (assert-run-count response 1)
-              (is (= (:id transform2) (-> response :data first :transform_id)))
-              (is (= "failed" (-> response :data first :status))))))))))
+        (testing "Filter by tag1 and failed status returns only failed runs of tagged transforms"
+          (let [response (mt/user-http-request :crowberto :get 200 "ee/transform/run"
+                                               :transform_tag_ids [(:id tag1)]
+                                               :statuses ["failed"])]
+            (assert-run-count response 1)
+            (is (= (:id transform2) (-> response :data first :transform_id)))
+            (is (= "failed" (-> response :data first :status)))))))))
 
 (deftest get-runs-intersect-transform-id-and-tag-test
   (testing "GET /api/ee/transform/run - intersection of transform IDs and tags"
@@ -593,26 +579,26 @@
                      :model/Transform transform2 (test-transform "Transform with tag2")
                      :model/TransformTag tag1 {:name (str "test-tag-1-" (u/generate-nano-id))}
                      :model/TransformTag tag2 {:name (str "test-tag-2-" (u/generate-nano-id))}
+                     :model/TagTransform _ {:transform_id (:id transform1) :tag_id (:id tag1)}
+                     :model/TagTransform _ {:transform_id (:id transform2) :tag_id (:id tag2)}
                      :model/TransformRun _run1 {:transform_id (:id transform1)}
                      :model/TransformRun _run1 {:transform_id (:id transform2)}]
-        (with-transform-tags [{:transform_id (:id transform1) :tag_id (:id tag1)}
-                              {:transform_id (:id transform2) :tag_id (:id tag2)}]
-          (testing "Filter by transform1 ID and tag1 returns transform1 (has both)"
-            (let [response (mt/user-http-request :crowberto :get 200 "ee/transform/run"
-                                                 :transform_ids [(:id transform1)]
-                                                 :transform_tag_ids [(:id tag1)])]
-              (assert-run-count response 1)
-              (assert-transform-ids response #{(:id transform1)})))
+        (testing "Filter by transform1 ID and tag1 returns transform1 (has both)"
+          (let [response (mt/user-http-request :crowberto :get 200 "ee/transform/run"
+                                               :transform_ids [(:id transform1)]
+                                               :transform_tag_ids [(:id tag1)])]
+            (assert-run-count response 1)
+            (assert-transform-ids response #{(:id transform1)})))
 
-          (testing "Filter by transform1 ID and tag2 returns empty (transform1 doesn't have tag2)"
-            (let [response (mt/user-http-request :crowberto :get 200 "ee/transform/run"
-                                                 :transform_ids [(:id transform1)]
-                                                 :transform_tag_ids [(:id tag2)])]
-              (assert-run-count response 0)))
+        (testing "Filter by transform1 ID and tag2 returns empty (transform1 doesn't have tag2)"
+          (let [response (mt/user-http-request :crowberto :get 200 "ee/transform/run"
+                                               :transform_ids [(:id transform1)]
+                                               :transform_tag_ids [(:id tag2)])]
+            (assert-run-count response 0)))
 
-          (testing "Filter by both transform IDs and tag1 returns only transform1"
-            (let [response (mt/user-http-request :crowberto :get 200 "ee/transform/run"
-                                                 :transform_ids [(:id transform1) (:id transform2)]
-                                                 :transform_tag_ids [(:id tag1)])]
-              (assert-run-count response 1)
-              (assert-transform-ids response #{(:id transform1)}))))))))
+        (testing "Filter by both transform IDs and tag1 returns only transform1"
+          (let [response (mt/user-http-request :crowberto :get 200 "ee/transform/run"
+                                               :transform_ids [(:id transform1) (:id transform2)]
+                                               :transform_tag_ids [(:id tag1)])]
+            (assert-run-count response 1)
+            (assert-transform-ids response #{(:id transform1)})))))))
