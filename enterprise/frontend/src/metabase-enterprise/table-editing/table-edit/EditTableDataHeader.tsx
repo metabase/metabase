@@ -17,8 +17,6 @@ interface EditTableDataHeaderProps {
   question?: Question;
   onQuestionChange: (newQuestion: Question) => void;
   onCreate: () => void;
-  onRequestDeleteBulk: () => void;
-  canDeleteBulk: boolean;
 }
 
 export const EditTableDataHeader = ({
@@ -27,8 +25,6 @@ export const EditTableDataHeader = ({
   question,
   onQuestionChange,
   onCreate,
-  onRequestDeleteBulk,
-  canDeleteBulk,
 }: EditTableDataHeaderProps) => {
   const hasFilters = useMemo(
     () =>
@@ -60,15 +56,6 @@ export const EditTableDataHeader = ({
           onClick={onCreate}
           data-testid="new-record-button"
         >{t`New record`}</Button>
-
-        <Button
-          leftSection={<Icon name="trash" />}
-          variant="filled"
-          color="error"
-          onClick={onRequestDeleteBulk}
-          disabled={!canDeleteBulk}
-          data-testid="delete-records-bulk-button"
-        >{t`Delete`}</Button>
       </TableHeader>
       {question && (
         <QuestionFiltersHeader
