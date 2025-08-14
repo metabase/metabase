@@ -1,31 +1,58 @@
 import { t } from "ttag";
 
+import { getMaxDimensionsSupported } from "metabase/visualizations";
 import { getOptionFromColumn } from "metabase/visualizations/lib/settings/utils";
 import { isNumber, isString } from "metabase-lib/v1/types/utils/isa";
 import type { DatasetColumn, Series } from "metabase-types/api";
 
-import { getDefaultRowColumn, getDefaultValueColumns, getDefaultColumnDimension } from "./utils";
+import {
+  getDefaultColumnDimension,
+  getDefaultRowColumns,
+  getDefaultValueColumns,
+} from "./utils";
+
+const isColumnDimensionHidden = (series: any, settings: any) => {
+  return !settings["sqlpivot.column_dimension"];
+};
 
 export const SQL_PIVOT_SETTINGS = {
-  "sqlpivot.row_column": {
+  "sqlpivot.row_columns": {
     get section() {
       return t`Data`;
     },
     get title() {
-      return t`Row dimension`;
+      return t`Row dimensions`;
     },
     get description() {
-      return t`Choose the column to use as row headers`;
+      return t`Choose the columns to use as row headers`;
     },
-    widget: "select",
+    widget: "fields",
     getDefault: ([{ data }]: Series) => {
-      return getDefaultRowColumn(data.cols);
+      return getDefaultRowColumns(data.cols);
     },
-    getProps: ([{ data }]: Series) => ({
-      options: data.cols
+    getProps: ([{ data }]: Series, vizSettings: any) => {
+      const addedRowColumns = vizSettings["sqlpivot.row_columns"] || [];
+      const options = data.cols
         .filter((col: DatasetColumn) => isString(col))
-        .map((col: DatasetColumn) => getOptionFromColumn(col)),
-    }),
+        .map((col: DatasetColumn) => getOptionFromColumn(col));
+
+      const maxRowDimensions = getMaxDimensionsSupported("sql_pivot");
+      return {
+        options,
+        addAnother:
+          options.length > addedRowColumns.length &&
+          addedRowColumns.length < maxRowDimensions &&
+          addedRowColumns.every(
+            (column: any) => column !== undefined && column !== null,
+          )
+            ? t`Add another dimension`
+            : null,
+        columns: data.cols,
+        fieldSettingWidgets: [],
+        showColumnSettingForIndices: [0],
+      };
+    },
+    persistDefault: true,
     useRawSeries: true,
   },
 
@@ -107,9 +134,7 @@ export const SQL_PIVOT_SETTINGS = {
     widget: "toggle",
     inline: true,
     default: false,
-    getHidden: (series: any, settings: any) => {
-      return !settings["sqlpivot.column_dimension"];
-    },
+    getHidden: isColumnDimensionHidden,
   },
 
   "sqlpivot.show_column_aggregation": {
@@ -125,8 +150,6 @@ export const SQL_PIVOT_SETTINGS = {
     widget: "toggle",
     inline: true,
     default: false,
-    getHidden: (series: any, settings: any) => {
-      return !settings["sqlpivot.column_dimension"];
-    },
+    getHidden: isColumnDimensionHidden,
   },
-}; 
+};
