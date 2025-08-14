@@ -191,8 +191,6 @@
     (u.password/verify-password passed-api-key "" api-key)
     (do-useless-hash)))
 
-;; workspace api key for collection N is `x-metabase-workspace-N`
-
 (defn- current-user-info-for-api-key
   "Return User ID and superuser status for an API Key with `api-key-id"
   [api-key]
@@ -208,26 +206,11 @@
   [{:keys [metabase-session-key anti-csrf-token], {:strs [x-metabase-locale x-api-key]} :headers, :as request}]
   (merge
    request
-   (or
-    (current-user-info-for-api-key x-api-key)
-    (current-user-info-for-session metabase-session-key anti-csrf-token)
-    (when-let [workspace-id (and (string? x-api-key)
-                                 (->> x-api-key (re-matches #"^mb-workspace-(\d+)$") second))]
-      (let [workspace-collection (t2/select-one-fn :collection_id :model/Workspace :id (parse-long workspace-id))]
-        (when workspace-collection
-          {:permissions-set #{(str "/collection/" workspace-collection "/")}
-           :metabase-user-id 13371338}))))
+   (or (current-user-info-for-session metabase-session-key anti-csrf-token)
+       (current-user-info-for-api-key x-api-key))
    (when x-metabase-locale
      (log/tracef "Found X-Metabase-Locale header: using %s as user locale" (pr-str x-metabase-locale))
      {:user-locale (i18n/normalized-locale-string x-metabase-locale)})))
-
-(comment
-  (binding [metabase.api.common/*current-user-id* 13371338
-            #_#_ metabase.api.common/*current-user-permissions-set* (delay #{"/collection/12/"})]
-    (metabase.models.interface/can-read? (t2/select-one :model/Card :id 115)))
-
-  (metabase.permissions.core/user-permissions-set 13371338)
-  )
 
 (defn wrap-current-user-info
   "Add `:metabase-user-id`, `:is-superuser?`, `:is-group-manager?` and `:user-locale` to the request if a valid session
