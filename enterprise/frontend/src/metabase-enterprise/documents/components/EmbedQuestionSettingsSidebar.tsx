@@ -2,7 +2,7 @@ import type { Editor } from "@tiptap/react";
 import { useCallback } from "react";
 import { t } from "ttag";
 
-import { useDispatch } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import {
   ActionIcon,
   Box,
@@ -27,7 +27,6 @@ import {
 } from "../documents.slice";
 import { useCardWithDataset } from "../hooks/useCardWithDataset";
 import { useDraftCardOperations } from "../hooks/useDraftCardOperations";
-import { useDocumentsSelector } from "../redux-utils";
 import { getSelectedEmbedIndex } from "../selectors";
 import { useVisualizationOptions } from "../utils/visualizationUtils";
 
@@ -42,7 +41,7 @@ export const EmbedQuestionSettingsSidebar = ({
   editorInstance,
 }: EmbedQuestionSettingsSidebarProps) => {
   const dispatch = useDispatch();
-  const selectedEmbedIndex = useDocumentsSelector(getSelectedEmbedIndex);
+  const selectedEmbedIndex = useSelector(getSelectedEmbedIndex);
 
   // Use extracted hook for card and dataset fetching
   const {

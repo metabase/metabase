@@ -17,11 +17,11 @@ import {
   type ObjectWithModel,
   getIcon,
 } from "metabase/lib/icon";
+import { useDispatch } from "metabase/lib/redux";
 import { type UrlableModel, modelToUrl } from "metabase/lib/urls/modelToUrl";
 import { extractEntityId } from "metabase/lib/urls/utils";
 import { Icon } from "metabase/ui";
 import { updateMentionsCache } from "metabase-enterprise/documents/documents.slice";
-import { useDocumentsDispatch } from "metabase-enterprise/documents/redux-utils";
 import type {
   Card,
   CardDisplayType,
@@ -267,14 +267,12 @@ export const SmartLinkComponent = memo(
     const { entityId, model } = node.attrs;
     const { entity, isLoading, error } = useEntityData(entityId, model);
 
-    const documentsDispatch = useDocumentsDispatch();
+    const dispatch = useDispatch();
     useEffect(() => {
       if (entity?.name) {
-        documentsDispatch(
-          updateMentionsCache({ entityId, model, name: entity.name }),
-        );
+        dispatch(updateMentionsCache({ entityId, model, name: entity.name }));
       }
-    }, [documentsDispatch, entity?.name, entityId, model]);
+    }, [dispatch, entity?.name, entityId, model]);
 
     if (isLoading) {
       return (

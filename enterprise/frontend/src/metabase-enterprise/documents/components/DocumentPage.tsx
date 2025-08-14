@@ -23,7 +23,7 @@ import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmM
 import { CollectionPickerModal } from "metabase/common/components/Pickers/CollectionPicker";
 import { useToast } from "metabase/common/hooks";
 import { useCallbackEffect } from "metabase/common/hooks/use-callback-effect";
-import { useDispatch } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import { extractEntityId } from "metabase/lib/urls";
 import { setErrorPage } from "metabase/redux/app";
 import {
@@ -56,7 +56,6 @@ import {
   setCurrentDocument,
 } from "../documents.slice";
 import { useDocumentState, useRegisterDocumentMetabotContext } from "../hooks";
-import { useDocumentsSelector } from "../redux-utils";
 import {
   getDraftCards,
   getSelectedEmbedIndex,
@@ -77,9 +76,9 @@ export const DocumentPage = ({
   route: Route;
 }) => {
   const dispatch = useDispatch();
-  const selectedQuestionId = useDocumentsSelector(getSelectedQuestionId);
-  const selectedEmbedIndex = useDocumentsSelector(getSelectedEmbedIndex);
-  const draftCards = useDocumentsSelector(getDraftCards);
+  const selectedQuestionId = useSelector(getSelectedQuestionId);
+  const selectedEmbedIndex = useSelector(getSelectedEmbedIndex);
+  const draftCards = useSelector(getDraftCards);
   const [editorInstance, setEditorInstance] = useState<TiptapEditor | null>(
     null,
   );

@@ -2,10 +2,9 @@ import { type HTMLAttributes, useCallback } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
 
-import { useDispatch } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import { ActionIcon, type ActionIconProps, Icon, Tooltip } from "metabase/ui";
 import { navigateBackToDocument } from "metabase-enterprise/documents/actions";
-import { useDocumentsSelector } from "metabase-enterprise/documents/redux-utils";
 import {
   getDocument,
   getShowNavigateBackToDocumentButton,
@@ -27,8 +26,8 @@ export function DocumentBackButton({
   documentOverride,
   ...actionIconProps
 }: DocumentBackButtonProps) {
-  const documentState = useDocumentsSelector(getDocument);
-  const showButton = useDocumentsSelector(getShowNavigateBackToDocumentButton);
+  const documentState = useSelector(getDocument);
+  const showButton = useSelector(getShowNavigateBackToDocumentButton);
   const document = documentOverride ?? documentState;
   const dispatch = useDispatch();
 

@@ -2,10 +2,10 @@ import { useMemo } from "react";
 
 import { cardApi, skipToken } from "metabase/api";
 import { useGetAdhocQueryQuery } from "metabase/api/dataset";
+import { useSelector } from "metabase/lib/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import Question from "metabase-lib/v1/Question";
 
-import { useDocumentsSelector } from "../redux-utils";
 import { getDraftCardById } from "../selectors";
 
 /**
@@ -15,15 +15,13 @@ import { getDraftCardById } from "../selectors";
  * Preserves the exact behavior from EmbedQuestionSettingsSidebar.
  */
 export function useCardWithDataset(cardId: number) {
-  const metadata = useDocumentsSelector(getMetadata);
+  const metadata = useSelector(getMetadata);
 
   // Determine whether we're dealing with a draft card
   const isDraftCard = cardId < 0;
 
   // Check for draft card using the cardId (might be negative)
-  const draftCard = useDocumentsSelector((state) =>
-    getDraftCardById(state, cardId),
-  );
+  const draftCard = useSelector((state) => getDraftCardById(state, cardId));
 
   // Only fetch card data if this is NOT a draft card
   const { data: card, isLoading: isCardLoading } = cardApi.useGetCardQuery(

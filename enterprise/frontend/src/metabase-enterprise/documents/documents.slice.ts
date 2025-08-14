@@ -42,7 +42,7 @@ export interface DocumentsState {
   mentionsCache: Record<string, MentionCacheItem>;
 }
 
-const initialState: DocumentsState = {
+export const initialState: DocumentsState = {
   selectedEmbedIndex: null,
   cardEmbeds: [],
   currentDocument: null,

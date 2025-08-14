@@ -11,7 +11,7 @@ import { t } from "ttag";
 
 import { QuestionPickerModal } from "metabase/common/components/Pickers/QuestionPicker/components/QuestionPickerModal";
 import type { QuestionPickerValueItem } from "metabase/common/components/Pickers/QuestionPicker/types";
-import { useDispatch } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Box, Flex, Icon, Loader, Menu, Text, TextInput } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
@@ -27,10 +27,6 @@ import {
   setShowNavigateBackToDocumentButton,
 } from "../../../../documents.slice";
 import { useCardEmbedData } from "../../../../hooks/useCardEmbedData";
-import {
-  useDocumentsDispatch,
-  useDocumentsSelector,
-} from "../../../../redux-utils";
 import { EDITOR_STYLE_BOUNDARY_CLASS } from "../../constants";
 
 import styles from "./CardEmbedNode.module.css";
@@ -154,7 +150,7 @@ export const CardEmbedComponent = memo(
       error,
     } = useCardEmbedData({ id });
 
-    const metadata = useDocumentsSelector(getMetadata);
+    const metadata = useSelector(getMetadata);
     const datasetError = dataset && getDatasetError(dataset);
     const [isEditingTitle, setIsEditingTitle] = useState(false);
     const [editedTitle, setEditedTitle] = useState(name || "");
@@ -193,14 +189,12 @@ export const CardEmbedComponent = memo(
       }
     };
 
-    const documentsDispatch = useDocumentsDispatch();
-
     // Load metadata for the card
     useEffect(() => {
       if (cardToUse) {
-        documentsDispatch(loadMetadataForDocumentCard(cardToUse));
+        dispatch(loadMetadataForDocumentCard(cardToUse));
       }
-    }, [cardToUse, documentsDispatch]);
+    }, [cardToUse, dispatch]);
 
     const handleEditVisualizationSettings = () => {
       if (embedIndex !== -1) {

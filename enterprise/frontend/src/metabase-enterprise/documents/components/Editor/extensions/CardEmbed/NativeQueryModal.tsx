@@ -7,6 +7,7 @@ import { skipToken } from "metabase/api";
 import { datasetApi } from "metabase/api/dataset";
 import { ErrorMessage } from "metabase/common/components/ErrorMessage";
 import { isMac } from "metabase/lib/browser";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import NativeQueryEditor from "metabase/query_builder/components/NativeQueryEditor";
 import DataReference from "metabase/query_builder/components/dataref/DataReference";
 import { getMetadata } from "metabase/selectors/metadata";
@@ -27,10 +28,6 @@ import {
   generateDraftCardId,
   loadMetadataForDocumentCard,
 } from "../../../../documents.slice";
-import {
-  useDocumentsDispatch,
-  useDocumentsSelector,
-} from "../../../../redux-utils";
 
 type DataReferenceStackItem = {
   type: string;
@@ -121,8 +118,8 @@ export const NativeQueryModal = ({
   editor,
   initialDataset,
 }: NativeQueryModalProps) => {
-  const documentsDispatch = useDocumentsDispatch();
-  const metadata = useDocumentsSelector(getMetadata);
+  const dispatch = useDispatch();
+  const metadata = useSelector(getMetadata);
 
   const [modifiedQuestion, setModifiedQuestion] = useState<Question | null>(
     null,
@@ -152,9 +149,9 @@ export const NativeQueryModal = ({
   // Load metadata for card
   useEffect(() => {
     if (isOpen && card) {
-      documentsDispatch(loadMetadataForDocumentCard(card));
+      dispatch(loadMetadataForDocumentCard(card));
     }
-  }, [isOpen, card, documentsDispatch]);
+  }, [isOpen, card, dispatch]);
 
   // Question initialization
   const question = useMemo(() => {
@@ -255,7 +252,7 @@ export const NativeQueryModal = ({
 
       const newCardId = generateDraftCardId();
 
-      documentsDispatch(
+      dispatch(
         createDraftCard({
           originalCard: card,
           modifiedData,

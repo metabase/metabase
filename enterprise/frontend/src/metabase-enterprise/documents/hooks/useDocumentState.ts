@@ -1,12 +1,11 @@
 import type { JSONContent } from "@tiptap/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { useDispatch } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import type { CollectionId, DocumentContent } from "metabase-types/api";
 
 import type { CardEmbedRef } from "../components/Editor/types";
 import { setCardEmbeds } from "../documents.slice";
-import { useDocumentsSelector } from "../redux-utils";
 import { getCardEmbeds } from "../selectors";
 
 export function useDocumentState(documentData?: {
@@ -14,7 +13,7 @@ export function useDocumentState(documentData?: {
   document: DocumentContent;
 }) {
   const dispatch = useDispatch();
-  const cardEmbeds = useDocumentsSelector(getCardEmbeds);
+  const cardEmbeds = useSelector(getCardEmbeds);
   const [documentTitle, setDocumentTitle] = useState("");
   const [documentContent, setDocumentContent] = useState<JSONContent | null>(
     null,

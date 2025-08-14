@@ -5,12 +5,12 @@ import {
   useGetAdhocPivotQueryQuery,
   useGetAdhocQueryQuery,
 } from "metabase/api/dataset";
+import { useSelector } from "metabase/lib/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import Question from "metabase-lib/v1/Question";
 import { getPivotOptions } from "metabase-lib/v1/queries/utils/pivot";
 import type { Card, Dataset, RawSeries } from "metabase-types/api";
 
-import { useDocumentsSelector } from "../redux-utils";
 import { getCardWithDraft } from "../selectors";
 
 interface UseCardEmbedDataProps {
@@ -93,14 +93,14 @@ export function useCardEmbedData({
   );
 
   // Get card with draft if available
-  const cardWithDraft = useDocumentsSelector((state) =>
+  const cardWithDraft = useSelector((state) =>
     getCardWithDraft(state, id, card),
   );
 
   // Use the draft card if available, otherwise use the fetched card
   const cardToUse = cardWithDraft ?? card;
 
-  const metadata = useDocumentsSelector(getMetadata);
+  const metadata = useSelector(getMetadata);
 
   // Check if this is a pivot table
   const isPivotTable = cardToUse?.display === "pivot";

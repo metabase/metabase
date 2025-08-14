@@ -12,10 +12,9 @@ import { t } from "ttag";
 
 import { DND_IGNORE_CLASS_NAME } from "metabase/common/components/dnd";
 import CS from "metabase/css/core/index.css";
-import { useSelector } from "metabase/lib/redux";
+import { useSelector, useStore } from "metabase/lib/redux";
 import { getSetting } from "metabase/selectors/settings";
 import { Box, Loader } from "metabase/ui";
-import { useDocumentsStore } from "metabase-enterprise/documents/redux-utils";
 import { getMentionsCache } from "metabase-enterprise/documents/selectors";
 import type { DocumentsStoreState } from "metabase-enterprise/documents/types";
 import { getMentionsCacheKey } from "metabase-enterprise/documents/utils/mentionsUtils";
@@ -86,7 +85,7 @@ export const Editor: React.FC<EditorProps> = ({
   isLoading = false,
 }) => {
   const siteUrl = useSelector((state) => getSetting(state, "site-url"));
-  const { getState } = useDocumentsStore();
+  const { getState } = useStore();
 
   const extensions = useMemo(
     () => [

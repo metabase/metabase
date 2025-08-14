@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { useDispatch, useStore } from "metabase/lib/redux";
+import { useDispatch, useSelector, useStore } from "metabase/lib/redux";
 import { Notebook } from "metabase/querying/notebook/components/Notebook";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { getMetadata } from "metabase/selectors/metadata";
@@ -17,10 +17,6 @@ import {
   generateDraftCardId,
   loadMetadataForDocumentCard,
 } from "../../../../documents.slice";
-import {
-  useDocumentsDispatch,
-  useDocumentsSelector,
-} from "../../../../redux-utils";
 
 interface ModifyQuestionModalProps {
   card: Card;
@@ -39,8 +35,7 @@ export const ModifyQuestionModal = ({
 }: ModifyQuestionModalProps) => {
   const store = useStore();
   const dispatch = useDispatch();
-  const documentsDispatch = useDocumentsDispatch();
-  const metadata = useDocumentsSelector(getMetadata);
+  const metadata = useSelector(getMetadata);
   const [modifiedQuestion, setModifiedQuestion] = useState<Question | null>(
     null,
   );
@@ -48,9 +43,9 @@ export const ModifyQuestionModal = ({
   // Load metadata for card
   useEffect(() => {
     if (isOpen && card) {
-      documentsDispatch(loadMetadataForDocumentCard(card));
+      dispatch(loadMetadataForDocumentCard(card));
     }
-  }, [isOpen, card, documentsDispatch]);
+  }, [isOpen, card, dispatch]);
 
   const question = useMemo(() => {
     if (!card || !metadata || !isOpen) {
@@ -107,7 +102,7 @@ export const ModifyQuestionModal = ({
 
       const newCardId = generateDraftCardId();
 
-      documentsDispatch(
+      dispatch(
         createDraftCard({
           originalCard: card,
           modifiedData,

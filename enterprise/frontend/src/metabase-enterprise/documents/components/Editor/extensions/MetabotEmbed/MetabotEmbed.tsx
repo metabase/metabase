@@ -12,6 +12,7 @@ import { useLatest } from "react-use";
 import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
+import { useDispatch } from "metabase/lib/redux";
 import { Box, Button, Flex, Icon, Text, Tooltip } from "metabase/ui";
 import { useLazyMetabotGenerateContentQuery } from "metabase-enterprise/api/metabot";
 import {
@@ -19,7 +20,6 @@ import {
   generateDraftCardId,
   loadMetadataForDocumentCard,
 } from "metabase-enterprise/documents/documents.slice";
-import { useDocumentsDispatch } from "metabase-enterprise/documents/redux-utils";
 import MetabotThinkingStyles from "metabase-enterprise/metabot/components/MetabotChat/MetabotThinking.module.css";
 import type { Card, MetabotGenerateContentRequest } from "metabase-types/api";
 
@@ -143,7 +143,7 @@ export const MetabotNode = Node.create<{
 
 export const MetabotComponent = memo(
   ({ editor, getPos, deleteNode, node, extension }: NodeViewProps) => {
-    const documentsDispatch = useDocumentsDispatch();
+    const dispatch = useDispatch();
     const controllerRef = useRef<AbortController | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [errorText, setErrorText] = useState("");
@@ -216,9 +216,9 @@ export const MetabotComponent = memo(
         archived: false,
       };
 
-      await documentsDispatch(loadMetadataForDocumentCard(card));
+      await dispatch(loadMetadataForDocumentCard(card));
 
-      documentsDispatch(
+      dispatch(
         createDraftCard({
           originalCard: card,
           modifiedData: {},

@@ -3,15 +3,14 @@ import { t } from "ttag";
 import { deletePermanently } from "metabase/archive/actions";
 import { ArchivedEntityBanner } from "metabase/archive/components/ArchivedEntityBanner/ArchivedEntityBanner";
 import Bookmarks from "metabase/entities/bookmarks";
-import { useDispatch } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import Documents from "metabase-enterprise/entities/document";
 
-import { useDocumentsSelector } from "../redux-utils";
 import { getCurrentDocument } from "../selectors";
 
 export const DocumentArchivedEntityBanner = () => {
   const dispatch = useDispatch();
-  const document = useDocumentsSelector(getCurrentDocument);
+  const document = useSelector(getCurrentDocument);
 
   if (!document) {
     return null;
