@@ -5,7 +5,7 @@ import {
   useCreateDashboardApi,
   useMetabaseAuthStatus,
 } from "@metabase/embedding-sdk-react";
-import { type ReactNode, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
