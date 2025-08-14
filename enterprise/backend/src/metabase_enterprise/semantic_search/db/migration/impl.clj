@@ -8,6 +8,7 @@
   0)
 
 (defn migrate-schema!
+  "Migrate schema (control, metadata, gate, ...)."
   [tx {:keys [index-metadata] :as _opts}]
   (semantic.index-metadata/create-tables-if-not-exists! tx index-metadata)
   (semantic.index-metadata/ensure-control-row-exists! tx index-metadata))
