@@ -2,6 +2,7 @@
   "Seed default transform tags and jobs on startup.
   Creates default tags and jobs if none exist, ensuring transform functionality is ready to use."
   (:require
+   [metabase-enterprise.transforms.settings :as transforms.settings]
    [metabase.premium-features.core :as premium-features]
    [metabase.task.core :as task]
    [metabase.util.i18n :refer [deferred-tru]]
@@ -40,14 +41,13 @@
     :tag_name (deferred-tru "monthly")}])
 
 (defn seed-default-tags-and-jobs!
-  "Create default transform tags and jobs if they don't exist.
-  This function is idempotent and safe to call multiple times."
+  "Create default transform tags and jobs if they haven't been seeded before.
+  Uses a setting to track whether seeding has occurred, so user-deleted tags/jobs won't be recreated."
   []
-  (log/info "Checking for default transform tags and jobs")
-  (when (and (zero? (t2/count :transform_tag))
-             (zero? (t2/count :transform_job)))
-    (log/info "Creating default transform tags and jobs")
-    (t2/with-transaction []
+  (log/info "Checking if default transform tags and jobs have been seeded")
+  (when-not (transforms.settings/transforms-seeded)
+    (log/info "First time setup - creating default transform tags and jobs")
+    (t2/with-transaction [_conn]
       ;; Create tags first
       (t2/insert! :transform_tag (map #(update % :name str) default-tags))
       (log/infof "Created %d default transform tags" (count default-tags))
@@ -62,7 +62,10 @@
           ;; Link job to its corresponding tag
           (when (and tag job)
             (t2/insert! :transform_job_tags {:job_id (:id job) :tag_id (:id tag)}))))
-      (log/infof "Created %d default transform jobs" (count default-jobs))))
+      (log/infof "Created %d default transform jobs" (count default-jobs))
+
+      ;; Mark that we've seeded the defaults
+      (transforms.settings/transforms-seeded! true)))
   (log/info "Default transform setup complete"))
 
 (defmethod task/init! ::SeedTransformDefaults [_]

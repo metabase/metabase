@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.transforms.seed :as transforms.seed]
+   [metabase-enterprise.transforms.settings :as transforms.settings]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
@@ -9,9 +10,10 @@
 (use-fixtures :once (fixtures/initialize :db :test-users))
 
 (deftest seed-default-tags-and-jobs-test
-  (testing "Seeds default tags and jobs when none exist"
+  (testing "Seeds default tags and jobs on first run"
     (mt/with-premium-features #{:transforms}
-      ;; Ensure we start with empty tables
+      ;; Reset the seeded flag and clear tables
+      (transforms.settings/transforms-seeded! false)
       (t2/delete! :transform_job_tags)
       (t2/delete! :transform_job)
       (t2/delete! :transform_tag)
@@ -44,51 +46,57 @@
               (is (t2/exists? :transform_job_tags :job_id (:id job) :tag_id (:id tag))
                   (str "Job '" entity-id "' should be associated with tag '" tag-name "'")))))
 
-        (testing "Is idempotent - doesn't create duplicates when run again"
+        (testing "Setting is marked as true after seeding"
+          (is (transforms.settings/transforms-seeded)))
+
+        (testing "Doesn't recreate when run again (respects the setting)"
           (transforms.seed/seed-default-tags-and-jobs!)
           (is (= 4 (t2/count :transform_tag)))
           (is (= 4 (t2/count :transform_job)))
           (is (= 4 (t2/count :transform_job_tags))))))))
 
-(deftest seed-partial-data-test
-  (testing "Doesn't create anything when data already exists"
+(deftest user-deletion-test
+  (testing "Doesn't recreate tags/jobs after user deletes them"
     (mt/with-premium-features #{:transforms}
-      ;; Ensure we start with empty tables
+      ;; First seed the defaults
+      (transforms.settings/transforms-seeded! false)
       (t2/delete! :transform_job_tags)
       (t2/delete! :transform_job)
       (t2/delete! :transform_tag)
 
-      ;; Create only some tags first
-      (t2/insert! :transform_tag [{:name "hourly"} {:name "daily"}])
-
       (transforms.seed/seed-default-tags-and-jobs!)
+      (is (transforms.settings/transforms-seeded))
+      (is (= 4 (t2/count :transform_tag)))
+      (is (= 4 (t2/count :transform_job)))
 
-      (testing "Doesn't create anything when tags already exist"
-        (is (= 2 (t2/count :transform_tag)))
-        (is (t2/exists? :transform_tag :name "hourly"))
-        (is (t2/exists? :transform_tag :name "daily"))
-        (is (not (t2/exists? :transform_tag :name "weekly")))
-        (is (not (t2/exists? :transform_tag :name "monthly"))))
-
-      (testing "Doesn't create jobs when tags already exist"
-        (is (= 0 (t2/count :transform_job)))
-        (is (= 0 (t2/count :transform_job_tags))))))
-
-  (testing "Doesn't create anything when jobs already exist"
-    (mt/with-premium-features #{:transforms}
-      ;; Ensure we start with empty tables
+      ;; User deletes all tags and jobs
       (t2/delete! :transform_job_tags)
       (t2/delete! :transform_job)
       (t2/delete! :transform_tag)
 
-      ;; Create a job
-      (t2/insert! :transform_job [{:name "Test Job"
-                                   :schedule "0 0 * * * ? *"
-                                   :entity_id "test-job-000000000000"}])
-
-      (transforms.seed/seed-default-tags-and-jobs!)
-
-      (testing "Doesn't create anything when jobs already exist"
+      (testing "After deletion, tables are empty"
         (is (= 0 (t2/count :transform_tag)))
-        (is (= 1 (t2/count :transform_job)))
+        (is (= 0 (t2/count :transform_job))))
+
+      ;; Try to seed again - should not recreate since we've already seeded once
+      (transforms.seed/seed-default-tags-and-jobs!)
+
+      (testing "Doesn't recreate deleted tags and jobs"
+        (is (= 0 (t2/count :transform_tag)))
+        (is (= 0 (t2/count :transform_job)))
+        (is (transforms.settings/transforms-seeded) "Setting should remain true"))))
+
+  (testing "Only seeds on first run, not when setting is already true"
+    (mt/with-premium-features #{:transforms}
+      ;; Start with setting already true (simulating existing installation)
+      (transforms.settings/transforms-seeded! true)
+      (t2/delete! :transform_job_tags)
+      (t2/delete! :transform_job)
+      (t2/delete! :transform_tag)
+
+      (transforms.seed/seed-default-tags-and-jobs!)
+
+      (testing "Doesn't create anything when setting is already true"
+        (is (= 0 (t2/count :transform_tag)))
+        (is (= 0 (t2/count :transform_job)))
         (is (= 0 (t2/count :transform_job_tags)))))))
