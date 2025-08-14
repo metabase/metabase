@@ -34,7 +34,7 @@
   (api/check-400 (try
                    (CronExpression/validateExpression schedule)
                    true
-                   (catch Exception e
+                   (catch Exception _
                      false))
                  (deferred-tru "Invalid cron expression: {0}" schedule))
   ;; Validate tag IDs exist if provided
@@ -75,7 +75,7 @@
     (api/check-400 (try
                      (CronExpression/validateExpression schedule)
                      true
-                     (catch Exception e
+                     (catch Exception _
                        false))
                    (deferred-tru "Invalid cron expression: {0}" schedule)))
   ;; Validate tag IDs if provided
@@ -122,15 +122,15 @@
   [{:keys [job-id]} :- [:map [:job-id ms/PositiveInt]]]
   (log/info "Manual run of transform job" job-id)
   (api/check-superuser)
-  (let [job (api/check-404 (t2/select-one :model/TransformJob :id job-id))]
-    (u.jvm/in-virtual-thread*
-     (try
-       (transforms.jobs/run-job! job-id {:run-method :manual})
-       (catch Throwable t
-         (log/error "Error executing transform job" job-id)
-         (log/error t)))))
-  {:message    "Job run started"
-   :job_run_id (str "stub-" job-id "-" (System/currentTimeMillis))})
+  (api/check-404 (t2/select-one :model/TransformJob :id job-id))
+  (u.jvm/in-virtual-thread*
+   (try
+     (transforms.jobs/run-job! job-id {:run-method :manual})
+     (catch Throwable t
+       (log/error "Error executing transform job" job-id)
+       (log/error t)))))
+{:message    "Job run started"
+ :job_run_id (str "stub-" job-id "-" (System/currentTimeMillis))}
 
 (api.macros/defendpoint :get "/:job-id"
   "Get a transform job by ID."

@@ -13,6 +13,8 @@
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
+(set! *warn-on-reflection* true)
+
 (defn- get-deps [ordering transform-ids]
   (loop [found #{}
          [current-transform & more-transforms] transform-ids]

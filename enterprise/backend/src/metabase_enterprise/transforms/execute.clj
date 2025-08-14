@@ -3,13 +3,11 @@
    [clojure.core.async :as a]
    [metabase-enterprise.transforms.canceling :as canceling]
    [metabase-enterprise.transforms.models.transform-run :as transform-run]
-   [metabase-enterprise.transforms.settings :as transforms.settings]
    [metabase-enterprise.transforms.util :as transforms.util]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.lib.schema.common :as schema.common]
    [metabase.query-processor.pipeline :as qp.pipeline]
-   [metabase.util.jvm :as u.jvm]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))

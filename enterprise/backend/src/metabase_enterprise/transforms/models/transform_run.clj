@@ -9,6 +9,8 @@
    [toucan2.core :as t2]
    [toucan2.realize :as t2.realize]))
 
+(set! *warn-on-reflection* true)
+
 (methodical/defmethod t2/table-name :model/TransformRun [_model] :transform_run)
 
 (derive :model/TransformRun :metabase/model)

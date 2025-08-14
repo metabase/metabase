@@ -13,6 +13,8 @@
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
+(set! *warn-on-reflection* true)
+
 (defn- transform-deps [transform]
   (let [query (-> (get-in transform [:source :query])
                   transforms.util/massage-sql-query

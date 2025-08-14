@@ -9,6 +9,8 @@
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
+(set! *warn-on-reflection* true)
+
 (def ^:private default-tags
   "Default transform tags that should be created on first startup."
   [{:name (deferred-tru "hourly")}

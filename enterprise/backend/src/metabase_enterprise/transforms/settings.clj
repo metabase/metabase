@@ -3,6 +3,8 @@
    [metabase.settings.core :as setting]
    [metabase.util.i18n :refer [deferred-tru]]))
 
+(set! *warn-on-reflection* true)
+
 (setting/defsetting transform-timeout
   (deferred-tru "The timeout for a transform job, in minutes.")
   :type       :integer

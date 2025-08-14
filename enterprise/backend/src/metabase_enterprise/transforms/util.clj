@@ -6,6 +6,8 @@
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
+(set! *warn-on-reflection* true)
+
 (defn qualified-table-name
   "Return the name of the target table of a transform as a possibly qualified symbol."
   [_driver {:keys [schema name]}]

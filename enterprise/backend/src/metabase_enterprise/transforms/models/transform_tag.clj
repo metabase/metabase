@@ -3,6 +3,8 @@
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
+(set! *warn-on-reflection* true)
+
 (methodical/defmethod t2/table-name :model/TransformTag [_model] :transform_tag)
 
 (doto :model/TransformTag

@@ -7,6 +7,8 @@
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
+(set! *warn-on-reflection* true)
+
 (methodical/defmethod t2/table-name :model/Transform [_model] :transform)
 
 (doseq [trait [:metabase/model :hook/entity-id :hook/timestamped?]]
