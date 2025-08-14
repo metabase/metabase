@@ -128,9 +128,9 @@
      (transforms.jobs/run-job! job-id {:run-method :manual})
      (catch Throwable t
        (log/error "Error executing transform job" job-id)
-       (log/error t)))))
-{:message    "Job run started"
- :job_run_id (str "stub-" job-id "-" (System/currentTimeMillis))}
+       (log/error t))))
+  {:message    "Job run started"
+   :job_run_id (str "stub-" job-id "-" (System/currentTimeMillis))})
 
 (api.macros/defendpoint :get "/:job-id"
   "Get a transform job by ID."
