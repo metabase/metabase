@@ -73,5 +73,8 @@ export function getParsedParams({
 }
 
 export function isPollingNeeded(transform?: Transform) {
-  return transform?.last_run?.status === "started";
+  return (
+    transform?.last_run?.status === "started" ||
+    (transform?.last_run?.status === "succeeded" && transform.table == null)
+  );
 }

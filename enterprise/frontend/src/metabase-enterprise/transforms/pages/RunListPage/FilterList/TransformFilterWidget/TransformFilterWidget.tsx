@@ -136,11 +136,9 @@ function TransformFilterForm({
           </Checkbox.Group>
         </Box>
       ) : (
-        <Box
-          p="md"
-          c="text-secondary"
-          ta="center"
-        >{t`No transforms found.`}</Box>
+        <Box p="md" c="text-secondary" ta="center">
+          {t`No transforms found.`}
+        </Box>
       )}
       <Divider />
       <Group p="md" justify="end">
