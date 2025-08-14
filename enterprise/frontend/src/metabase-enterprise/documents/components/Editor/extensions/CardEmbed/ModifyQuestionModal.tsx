@@ -5,7 +5,6 @@ import _ from "underscore";
 
 import { useDispatch, useSelector, useStore } from "metabase/lib/redux";
 import { Notebook } from "metabase/querying/notebook/components/Notebook";
-import { loadMetadataForCard } from "metabase/questions/actions";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Box, Button, Flex, Modal, Text } from "metabase/ui";
 import * as Lib from "metabase-lib";
@@ -75,7 +74,7 @@ export const ModifyQuestionModal = ({
     );
 
     if (!_.isEqual(currentDependencies, nextDependencies)) {
-      await dispatch(loadMetadataForCard(newQuestion.card()));
+      await dispatch(loadMetadataForDocumentCard(newQuestion.card()));
       const freshMetadata = getMetadata(store.getState());
       const questionWithFreshMetadata = new Question(
         newQuestion.card(),
