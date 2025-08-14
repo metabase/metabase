@@ -537,10 +537,9 @@ export const DocumentPage = ({
                 handleSave(canonicalCollectionId(collection.id));
                 setCollectionPickerMode(null);
               } else if (collectionPickerMode === "move") {
-                (await collection) &&
-                  handleUpdate({
-                    collection_id: canonicalCollectionId(collection.id),
-                  });
+                handleUpdate({
+                  collection_id: canonicalCollectionId(collection.id),
+                });
               }
             }}
           />

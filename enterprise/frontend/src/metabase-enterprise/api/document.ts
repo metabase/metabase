@@ -25,7 +25,7 @@ export const documentApi = EnterpriseApi.injectEndpoints({
         url: "/api/ee/document",
         body,
       }),
-      invalidatesTags: (_, error) => (error ? [] : [listTag("document")]), // TODO: invalidate parent collection?
+      invalidatesTags: (_, error) => (error ? [] : [listTag("document")]),
     }),
     updateDocument: builder.mutation<Document, UpdateDocumentRequest>({
       query: (document) => ({

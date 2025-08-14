@@ -1,7 +1,6 @@
 import { createSelector } from "@reduxjs/toolkit";
 
-import { canonicalCollectionId } from "metabase/collections/utils";
-import type { Card, CardId, RegularCollectionId } from "metabase-types/api";
+import type { Card, CardId } from "metabase-types/api";
 
 import type { DocumentsStoreState } from "./types";
 
@@ -32,12 +31,6 @@ export const getSelectedEmbedIndex = createSelector(
 export const getCurrentDocument = createSelector(
   getDocumentsState,
   (documents) => documents?.currentDocument,
-);
-
-export const getDocumentCollectionId = createSelector(
-  getCurrentDocument,
-  (document): RegularCollectionId | null =>
-    canonicalCollectionId(document?.collection_id),
 );
 
 export const getShowNavigateBackToDocumentButton = createSelector(

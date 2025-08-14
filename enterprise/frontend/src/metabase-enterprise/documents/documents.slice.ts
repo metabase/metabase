@@ -118,18 +118,6 @@ const documentsSlice = createSlice({
         id: draftId,
       };
     },
-    updateDraftCard: (
-      state,
-      action: PayloadAction<{ id: number; modifiedData: Partial<Card> }>,
-    ) => {
-      const { id, modifiedData } = action.payload;
-      if (state.draftCards[id]) {
-        state.draftCards[id] = {
-          ...state.draftCards[id],
-          ...modifiedData,
-        };
-      }
-    },
     clearDraftCards: (state) => {
       state.draftCards = {};
     },
@@ -157,7 +145,6 @@ export const {
   setShowNavigateBackToDocumentButton,
   resetDocuments,
   createDraftCard,
-  updateDraftCard,
   clearDraftCards,
   updateMentionsCache,
 } = documentsSlice.actions;
