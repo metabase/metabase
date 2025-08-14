@@ -704,8 +704,9 @@
   "Get the `:lib/type` or `:type` from `query`, even if it is not-yet normalized."
   [query :- [:maybe :map]]
   (when (map? query)
-    (when-let [query-type (keyword (some #(get query %)
-                                         [:lib/type :type "lib/type" "type"]))]
+    (when-let [query-type (some-> (some #(get query %)
+                                        [:lib/type :type "lib/type" "type"])
+                                  keyword)]
       (when (#{:mbql/query :query :native :internal} query-type)
         query-type))))
 

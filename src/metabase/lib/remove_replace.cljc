@@ -205,8 +205,7 @@
 (defn- remove-stage-references
   [query previous-stage-number unmodified-query-for-stage target-uuid]
   (if-let [stage-number (lib.util/next-stage-number unmodified-query-for-stage previous-stage-number)]
-    (let [stage (lib.util/query-stage unmodified-query-for-stage stage-number)
-          target-ref-id (->> (lib.metadata.calculation/visible-columns unmodified-query-for-stage stage-number stage)
+    (let [target-ref-id (->> (lib.metadata.calculation/visible-columns unmodified-query-for-stage stage-number)
                              (some (fn [{:keys [lib/source lib/source-uuid] :as column}]
                                      (when (and (= :source/previous-stage source) (= target-uuid source-uuid))
                                        (:lib/source-column-alias column)))))]
@@ -564,8 +563,8 @@
 (defn- remove-matching-missing-columns
   [query-after query-before stage-number match-spec]
   (let [removed-cols (set/difference
-                      (set (lib.metadata.calculation/visible-columns query-before stage-number (lib.util/query-stage query-before stage-number)))
-                      (set (lib.metadata.calculation/visible-columns query-after stage-number (lib.util/query-stage query-after stage-number))))]
+                      (set (lib.metadata.calculation/visible-columns query-before stage-number))
+                      (set (lib.metadata.calculation/visible-columns query-after stage-number)))]
     (reduce
      #(apply remove-local-references %1 stage-number query-after (match-spec %2))
      query-after

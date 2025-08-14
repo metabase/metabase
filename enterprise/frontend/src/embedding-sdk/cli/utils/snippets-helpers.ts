@@ -1,13 +1,4 @@
-import {
-  GENERATED_COMPONENTS_DEFAULT_PATH,
-  SDK_PACKAGE_NAME,
-} from "../constants/config";
-
-/**
- * Applies the compatibility layer for Next.js.
- */
-export const getSdkPackageName = ({ isNextJs }: { isNextJs: boolean }) =>
-  isNextJs ? `${SDK_PACKAGE_NAME}/nextjs` : SDK_PACKAGE_NAME;
+import { GENERATED_COMPONENTS_DEFAULT_PATH } from "../constants/config";
 
 /**
  * Where should we save the generated components by default?

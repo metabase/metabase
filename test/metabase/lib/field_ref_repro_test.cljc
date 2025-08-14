@@ -9,8 +9,7 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
-   [metabase.lib.test-util.metadata-providers.mock :as providers.mock]
-   [metabase.lib.util :as lib.util]))
+   [metabase.lib.test-util.metadata-providers.mock :as providers.mock]))
 
 (deftest ^:parallel mark-selected-columns-with-duplicate-names-test
   (testing "Should be able to distinguish columns with the same name and differen join alias (#39033)"
@@ -29,9 +28,8 @@
                                                        (m/find-first (comp #{"ID"} :name)
                                                                      (:result-metadata card2)))])))
           stage-number   -1
-          stage          (lib.util/query-stage query stage-number)
-          vis-columns    (lib.metadata.calculation/visible-columns query stage-number stage)
-          ret-columns    (lib.metadata.calculation/returned-columns query stage-number stage)
+          vis-columns    (lib.metadata.calculation/visible-columns query stage-number)
+          ret-columns    (lib.metadata.calculation/returned-columns query stage-number)
           marked-columns (lib.equality/mark-selected-columns query stage-number vis-columns ret-columns)]
       (is (= ["ID"
               "Total"

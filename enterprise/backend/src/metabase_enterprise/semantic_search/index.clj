@@ -143,16 +143,21 @@
    :legacy_input        [:cast (json/encode legacy_input) :jsonb]
    :metadata            [:cast (json/encode doc) :jsonb]})
 
+(defn index-size
+  "Fetches the number of documents in the index table."
+  [connectable table-name]
+  (->> (jdbc/execute-one! connectable
+                          (-> (sql.helpers/select [:%count.* :count])
+                              (sql.helpers/from (keyword table-name))
+                              (sql.helpers/limit 1)
+                              sql-format-quoted))
+       :count))
+
 (defn- analytics-set-index-size!
   "Set the semantic-index-size metric to the number of rows in the index table."
   [connectable table-name]
   (try
-    (->> (jdbc/execute-one! connectable
-                            (-> (sql.helpers/select [:%count.* :count])
-                                (sql.helpers/from (keyword table-name))
-                                (sql.helpers/limit 1)
-                                sql-format-quoted))
-         :count
+    (->> (index-size connectable table-name)
          (analytics/set! :metabase-search/semantic-index-size))
     (catch Exception e
       (log/warn e "Failed to set :metabase-search/semantic-index-size metric"))))
@@ -409,7 +414,7 @@
        connectable
        (-> (sql.helpers/create-index
             [(keyword (hnsw-index-name index)) :if-not-exists]
-            [(keyword table-name) :using-hnsw [:raw "embedding vector_cosine_ops"]])
+            [(keyword table-name) :using-hnsw [[:raw "embedding vector_cosine_ops"]]])
            sql-format-quoted))
       (jdbc/execute!
        connectable
