@@ -1,50 +1,35 @@
 (ns metabase.server.middleware.etag-cache-test
   (:require
-   [clojure.test                     :refer :all]
-   [metabase.config.core             :as config]
+   [clojure.test :refer :all]
+   [metabase.config.core :as config]
    [metabase.server.middleware.etag-cache :as mw.etag-cache]))
 
 (set! *warn-on-reflection* true)
 
-(deftest matches-metabase-version-hash?-test
-  (let [hash           config/mb-version-hash
-        quoted      (str "\"" hash "\"")
-        weak-quoted (str "W/" quoted)
-        wrong       "\"not-the-version\""]
-    (testing "returns true for exact quoted ETag"
-      (is (true? (mw.etag-cache/matches-metabase-version-hash? quoted))))
-    (testing "returns true for weak ETag"
-      (is (true? (mw.etag-cache/matches-metabase-version-hash? weak-quoted))))
-    (testing "returns false for non-matching value"
-      (is (false? (mw.etag-cache/matches-metabase-version-hash? wrong))))
-    (testing "returns nil for nil input"
-      (is (nil? (mw.etag-cache/matches-metabase-version-hash? nil))))))
+(deftest js-etag-handler-test
+  (let [handler (mw.etag-cache/js-etag-handler "frontend_client/app/embedding-sdk.js")
+        etag    (format "\"%s\"" config/mb-version-hash)]
 
-(deftest not-modified-response-test
-  (let [resp mw.etag-cache/not-modified-response
-        hdrs (:headers resp)]
-    (testing "status is 304"
-      (is (= 304 (:status resp))))
-    (testing "body is empty string"
-      (is (= "" (:body resp))))
-    (testing "contains exactly the configured cache headers"
-      (is (= mw.etag-cache/etag-headers-for-metabase-version-hash hdrs)))))
+    (testing "returns 304 when ETag matches and not in dev mode"
+      (with-redefs [config/is-dev? false]
+        (let [response (handler {:headers {"if-none-match" etag}})]
+          (is (= 304 (:status response)))
+          (is (= "" (:body response)))
+          (is (= mw.etag-cache/etag-header (:headers response))))))
 
-(deftest js-response-with-etag-test
-  (let [dummy-body  "console.log('hello');"
-        base-resp   {:status  200
-                     :headers {}
-                     :body    dummy-body}
-        resp        (mw.etag-cache/js-response-with-etag base-resp)
-        hdrs        (:headers resp)]
-    (testing "status is unchanged"
-      (is (= 200 (:status resp))))
-    (testing "body is preserved"
-      (is (= dummy-body (:body resp))))
-    (testing "Content-Type is set to JavaScript"
-      (is (= "application/javascript; charset=UTF-8"
-             (get hdrs "Content-Type"))))
-    (testing "ETag and Cache-Control headers are merged"
-      (let [expected mw.etag-cache/etag-headers-for-metabase-version-hash]
-        (doseq [[k v] expected]
-          (is (= v (get hdrs k))))))))
+    (testing "returns 200 with correct headers when ETag does not match"
+      (with-redefs [config/is-dev? false]
+        (let [response (handler {:headers {"if-none-match" "\"different\""}})
+              headers  (:headers response)]
+          (is (= 200 (:status response)))
+          (is (= "application/javascript; charset=UTF-8"
+                 (get headers "Content-Type")))
+          (is (= mw.etag-cache/etag-header
+                 (select-keys headers (keys mw.etag-cache/etag-header)))))))
+
+    (testing "returns 200 when in dev mode, ignoring ETag match"
+      (with-redefs [config/is-dev? true]
+        (let [response (handler {:headers {"if-none-match" etag}})]
+          (is (= 200 (:status response)))
+          (is (= mw.etag-cache/etag-header
+                 (select-keys (:headers response) (keys mw.etag-cache/etag-header)))))))))

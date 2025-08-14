@@ -7,7 +7,6 @@
    [metabase.api.macros :as api.macros]
    [metabase.app-db.core :as mdb]
    [metabase.appearance.core :as appearance]
-   [metabase.config.core :as config]
    [metabase.core.initialization-status :as init-status]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.server.auth-wrapper :as auth-wrapper]
@@ -63,16 +62,8 @@
 
 #_{:clj-kondo/ignore [:discouraged-var]}
 (defroutes ^:private static-files-handler
-  (GET "/embedding-sdk.js"
-    {{:strs [if-none-match]} :headers}
-    (if (and (not config/is-dev?)
-             (mw.etag-cache/matches-metabase-version-hash? if-none-match))
-      ;; send the pre-built 304 response
-      mw.etag-cache/not-modified-response
-
-      ;; else, serve the file
-      (mw.etag-cache/js-response-with-etag
-       (response/resource-response "frontend_client/app/embedding-sdk.js"))))
+  (GET "/embedding-sdk.js" request
+    ((mw.etag-cache/js-etag-handler "frontend_client/app/embedding-sdk.js") request))
 
   ;; fall back to serving _all_ other files under /app
   (route/resources "/" {:root "frontend_client/app"})
