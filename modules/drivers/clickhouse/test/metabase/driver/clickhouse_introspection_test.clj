@@ -524,9 +524,7 @@
       (mt/db)
       (t2.with-temp/with-temp
         [:model/Database db {:engine :clickhouse
-                             :details (merge (mt/dbdef->connection-details
-                                              :clickhouse :db
-                                              nil)
+                             :details (merge (mt/dbdef->connection-details :clickhouse :db nil)
                                              {:db-filters-type "inclusion"
                                               :db-filters-patterns "metabase_db_scan_test, information_schema"})}]
         (let [{:keys [tables] :as _describe-result}
