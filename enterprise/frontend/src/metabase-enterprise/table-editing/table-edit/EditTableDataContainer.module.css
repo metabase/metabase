@@ -17,7 +17,7 @@
   padding: 0.5rem 1.5rem;
   padding-left: 0.5rem;
   height: 2.5rem;
-  justify-content: space-between;
+  justify-content: flex-end;
   align-items: center;
 }
 

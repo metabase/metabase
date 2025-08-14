@@ -4,6 +4,10 @@ import { useCallback, useMemo } from "react";
 import { msgid, ngettext, t } from "ttag";
 
 import { useGetDatabaseQuery } from "metabase/api";
+import {
+  BulkActionBar,
+  BulkActionButton,
+} from "metabase/common/components/BulkActionBar";
 import { GenericError } from "metabase/common/components/ErrorPages";
 import { useCloseNavbarOnMount } from "metabase/common/hooks/use-close-navbar-on-mount";
 import { useSelector } from "metabase/lib/redux";
@@ -180,8 +184,6 @@ export const EditTableDataContainer = ({
         question={tableQuestion}
         onQuestionChange={handleTableQuestionChange}
         onCreate={openCreateRowModal}
-        onRequestDeleteBulk={deleteBulkModalController.open}
-        canDeleteBulk={selectedRowIndices.length > 0}
       />
       <Box pos="relative" className={S.gridWrapper}>
         <EditTableDataOverlay {...loadingOverlayProps} />
@@ -202,18 +204,23 @@ export const EditTableDataContainer = ({
       {rawDataset && (
         <Flex className={S.gridFooter}>
           <Text fw="bold" size="md" c="inherit" component="span">
-            {selectedRowIndices.length > 0 &&
-              ngettext(
-                msgid`Selected ${selectedRowIndices.length} row`,
-                `Selected ${selectedRowIndices.length} rows`,
-                selectedRowIndices.length,
-              )}
-          </Text>
-          <Text fw="bold" size="md" c="inherit" component="span">
             {getRowCountMessage(rawDataset)}
           </Text>
         </Flex>
       )}
+
+      <BulkActionBar
+        opened={selectedRowIndices.length > 0 && !deleteBulkRequested}
+        message={ngettext(
+          msgid`Selected ${selectedRowIndices.length} row`,
+          `Selected ${selectedRowIndices.length} rows`,
+          selectedRowIndices.length,
+        )}
+      >
+        <BulkActionButton onClick={deleteBulkModalController.open}>
+          {t`Delete`}
+        </BulkActionButton>
+      </BulkActionBar>
 
       <CreateRowActionFormModal
         opened={isCreateRowModalOpen}
