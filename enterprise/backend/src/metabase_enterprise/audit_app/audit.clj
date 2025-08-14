@@ -146,7 +146,7 @@
        (fn [_ card]
          (when-let [result-metadata (not-empty (some-> (:result_metadata card) (json/decode true)))]
            (let [fixed-metadata (for [col result-metadata]
-                                  (update col :name u/lower-case-en))
+                                  (update col :name u/upper-case-en))
                  json-metadata  (json/encode fixed-metadata)]
              (.setString stmt 1 json-metadata)
              (.setInt stmt 2 (:id card))
@@ -160,19 +160,23 @@
   (when-not (= engine (mdb/db-type))
     ;; We need to move the loaded data back to the host db
     (t2/update! :model/Database audit-db-id {:engine (name (mdb/db-type))})
-    (when (= :mysql (mdb/db-type))
-      (t2/update! :model/Table {:db_id audit-db-id} {:schema nil}))
-    (when (= :h2 (mdb/db-type))
-      (t2/update! :model/Table {:db_id audit-db-id} {:schema [:upper :schema] :name [:upper :name]})
-      (t2/update! :model/Field
-                  {:table_id
-                   [:in
-                    {:select [:id]
-                     :from   [(t2/table-name :model/Table)]
-                     :where  [:= :db_id audit-db-id]}]}
-                  {:name [:upper :name]})
-      (fix-h2-card-metadata! audit-db-id))
-    (when (= :postgres (mdb/db-type))
+    (case (mdb/db-type)
+      :mysql
+      (t2/update! :model/Table {:db_id audit-db-id} {:schema nil})
+
+      :h2
+      (do
+        (t2/update! :model/Table {:db_id audit-db-id} {:schema [:upper :schema] :name [:upper :name]})
+        (t2/update! :model/Field
+                    {:table_id
+                     [:in
+                      {:select [:id]
+                       :from   [(t2/table-name :model/Table)]
+                       :where  [:= :db_id audit-db-id]}]}
+                    {:name [:upper :name]})
+        (fix-h2-card-metadata! audit-db-id))
+
+      :postgres
       ;; in postgresql the data should look just like the source
       (adjust-audit-db-to-source! audit-db))
     (log/infof "Adjusted Audit DB to match host engine: %s" (name (mdb/db-type)))))
