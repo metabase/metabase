@@ -4,6 +4,13 @@ title: Driver interface changelog
 
 # Driver Interface Changelog
 
+## Metabase 0.57.0
+
+- Added metabase.driver/compile-transform, metabase.driver/compile-drop-table, metabase.driver/execute-raw-queries!,
+  metabase.driver/run-transform!, metabase.driver/drop-transform-target!, metabase.driver/native-query-deps,
+  metabase.driver/connection-details, metabase.driver/table-exists?, metabase.driver.sql/normalize-name,
+  metabase.driver.sql/default-schema, and metabase.driver.sql/find-table to implement sql transforms.
+
 ## Metabase 0.56.0
 
 - Add the testing multi-method `tx/track-dataset` for shared cloud dbs to track loaded datasets for more efficient sharing.
