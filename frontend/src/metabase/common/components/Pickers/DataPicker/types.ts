@@ -21,7 +21,7 @@ export type DatabaseItem = {
   id: DatabaseId;
   name: string;
   model: "database";
-  database: Database;
+  database?: Database;
 };
 
 export type SchemaItem = {

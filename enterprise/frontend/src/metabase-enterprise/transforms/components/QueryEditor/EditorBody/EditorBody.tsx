@@ -67,7 +67,7 @@ export function EditorBody({
   const dataPickerOptions = useMemo(() => {
     return {
       shouldDisableItem: (item: DataPickerItem) => {
-        if (item.model === "database") {
+        if (item.model === "database" && item.database) {
           return (
             item.database.is_sample ||
             !hasFeature(item.database, "transforms/table")
