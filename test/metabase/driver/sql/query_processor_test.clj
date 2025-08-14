@@ -1424,20 +1424,20 @@
       (qp.store/with-metadata-provider meta/metadata-provider
         (is (= {:params nil
                 :query  ["SELECT"
-                        "  \"source\".\"ID\" AS \"ID\""
-                        "FROM"
-                        "  ("
-                        "    SELECT"
-                        "      \"PUBLIC\".\"PRODUCTS\".\"ID\" AS \"ID\","
-                        "      2 AS \"my_numberLiteral\""
-                        "    FROM"
-                        "      \"PUBLIC\".\"PRODUCTS\""
-                        "    WHERE"
-                        "      2 = 1"
-                        "    LIMIT"
-                        "      20"
-                        "  ) AS \"source\""
-                        "LIMIT"
-                        "  20"]}
+                         "  \"source\".\"ID\" AS \"ID\""
+                         "FROM"
+                         "  ("
+                         "    SELECT"
+                         "      \"PUBLIC\".\"PRODUCTS\".\"ID\" AS \"ID\","
+                         "      2 AS \"my_numberLiteral\""
+                         "    FROM"
+                         "      \"PUBLIC\".\"PRODUCTS\""
+                         "    WHERE"
+                         "      2 = 1"
+                         "    LIMIT"
+                         "      20"
+                         "  ) AS \"source\""
+                         "LIMIT"
+                         "  20"]}
                (-> (qp.compile/compile query)
                    (update :query #(str/split-lines (driver/prettify-native-form :h2 %))))))))))
