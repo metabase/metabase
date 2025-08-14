@@ -684,12 +684,7 @@
   :cljfmt
   {:deps       {io.github.weavejester/cljfmt {:git/sha "7de286008766127128a156275b9add3bf443d7e5"}}
    :ns-default cljfmt.tool
-   :exec-fn    cljfmt.tool/fix
-   :paths      ["src"
-                "test"
-                "enterprise/backend"
-                "modules"
-                "mage"]}
+   :exec-fn    cljfmt.tool/fix}
 
 ;;; building Uberjar, build and release scripts
 
