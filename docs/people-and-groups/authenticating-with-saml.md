@@ -160,6 +160,16 @@ So if your Metabase is served at `metabase.example.com` the logout service POST 
 https://metabase.example.com/auth/sso/handle_slo
 ```
 
+**Enabling SAML SLO**
+
+SLO isn’t configurable from the Metabase interface. To enable it, you’ll need to set the following options using environment variables or your Metabase configuration file:
+
+- `saml-slo-enable` = `true`
+- `saml-identity-provider-slo-uri` = your IdP’s **SLO endpoint**
+- `session-cookie-samesite` = `none`
+
+For the `session-cookie-samesite` setting to work with `none`, Metabase must be served over HTTPS. Browsers like Chrome will block cookies in cross-site requests if SSL is not enabled. Without HTTPS, logout requests from your IdP (such as Okta) won’t include the session cookie, which means Metabase won’t be able to end the session properly.
+
 ## Synchronizing group membership with your IdP
 
 This setting allows you to assign users to Metabase groups based on an attribute of your users in your IdP. This setting may not correlate to group functionality provided by your IdP; you may need to create a separate user attribute to set people's Metabase groups, like `metabaseGroups`.
