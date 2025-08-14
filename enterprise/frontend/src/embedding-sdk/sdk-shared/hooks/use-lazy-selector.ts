@@ -9,7 +9,9 @@ export function useLazySelector<TSelected>(
   selector: ((state: SdkStoreState) => TSelected) | null | undefined,
 ): TSelected | null {
   const {
-    props: { reduxStore },
+    state: {
+      internalProps: { reduxStore },
+    },
   } = useMetabaseProviderPropsStore();
 
   const subscribe = useCallback(

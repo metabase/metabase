@@ -5,7 +5,9 @@ import { useMetabaseProviderPropsStore } from "embedding-sdk/sdk-shared/hooks/us
 export const useSingleInstanceIdsData = () => {
   const {
     store,
-    props: { singleInstanceIdsMap },
+    state: {
+      internalProps: { singleInstanceIdsMap },
+    },
   } = useMetabaseProviderPropsStore();
 
   const setSingleInstanceIdsMap = useCallback(
@@ -14,8 +16,7 @@ export const useSingleInstanceIdsData = () => {
         singleInstanceIdsMap: Record<string, string[]>,
       ) => Record<string, string[]>,
     ) => {
-      const singleInstanceIdsMap =
-        store.getSnapshot().singleInstanceIdsMap || {};
+      const { singleInstanceIdsMap = {} } = store.getState().internalProps;
 
       store.updateInternalProps({
         singleInstanceIdsMap: updateFn(singleInstanceIdsMap),

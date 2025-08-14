@@ -6,8 +6,10 @@ import {
 
 import { getWindow } from "./get-window";
 
-type MetabaseProviderPropsToStore = MetabaseProviderPropsStoreExternalProps &
-  MetabaseProviderPropsStoreInternalProps;
+type MetabaseProviderPropsStoreState = {
+  props: MetabaseProviderPropsStoreExternalProps | null;
+  internalProps: MetabaseProviderPropsStoreInternalProps;
+};
 
 export type MetabaseProviderPropsStoreExternalProps = Omit<
   ComponentProviderProps,
@@ -28,35 +30,27 @@ export type MetabaseProviderPropsStoreInternalProps = {
  * and should be done via the deprecation of the field first.
  */
 export type MetabaseProviderPropsStore = {
-  getSnapshot(): MetabaseProviderPropsToStore;
-  subscribe(fn: () => void): () => void;
+  getState(): MetabaseProviderPropsStoreState;
+  subscribe(listener: () => void): () => void;
   initialize(initialProps: MetabaseProviderPropsStoreExternalProps): void;
   updateInternalProps(
-    p: Partial<MetabaseProviderPropsStoreInternalProps>,
+    internalProps: Partial<MetabaseProviderPropsStoreInternalProps>,
   ): void;
-  setProps(p: Partial<MetabaseProviderPropsStoreExternalProps>): void;
+  setProps(props: Partial<MetabaseProviderPropsStoreExternalProps>): void;
   cleanup(): void;
 };
 
 const KEY = "METABASE_PROVIDER_PROPS_STORE";
 
-const getInitialProps = (): MetabaseProviderPropsStoreInternalProps =>
-  ({
+const getInitialState = (): MetabaseProviderPropsStoreState => ({
+  internalProps: {
     loadingPromise: null,
     loadingState: SdkLoadingState.Initial,
     loadingError: null,
     reduxStore: null,
     singleInstanceIdsMap: {},
-  }) satisfies MetabaseProviderPropsStoreInternalProps;
-
-const getInternalProps = (
-  props: MetabaseProviderPropsToStore,
-): MetabaseProviderPropsStoreInternalProps => ({
-  loadingPromise: props.loadingPromise,
-  loadingState: props.loadingState,
-  loadingError: props.loadingError,
-  reduxStore: props.reduxStore,
-  singleInstanceIdsMap: props.singleInstanceIdsMap,
+  },
+  props: null,
 });
 
 export function ensureMetabaseProviderPropsStore(): MetabaseProviderPropsStore {
@@ -70,35 +64,38 @@ export function ensureMetabaseProviderPropsStore(): MetabaseProviderPropsStore {
     return win[KEY];
   }
 
-  let props = getInitialProps() as MetabaseProviderPropsToStore;
+  let state = getInitialState();
   const listeners = new Set<() => void>();
 
   const store: MetabaseProviderPropsStore = {
-    getSnapshot: () => props,
+    getState: () => state,
     subscribe(listener) {
       listeners.add(listener);
 
       return () => listeners.delete(listener);
     },
     initialize(initialProps) {
-      props = {
-        ...getInternalProps(props),
-        ...initialProps,
-      } as MetabaseProviderPropsToStore;
+      state = {
+        ...state,
+        props: initialProps,
+      } as MetabaseProviderPropsStoreState;
     },
-    updateInternalProps(propsToSet) {
-      props = {
-        ...props,
-        ...propsToSet,
-      } as MetabaseProviderPropsToStore;
+    updateInternalProps(internalProps) {
+      state = {
+        ...state,
+        internalProps: {
+          ...state.internalProps,
+          ...internalProps,
+        },
+      } as MetabaseProviderPropsStoreState;
 
       listeners.forEach((callback) => callback());
     },
-    setProps(propsToSet) {
-      props = {
-        ...getInternalProps(props),
-        ...propsToSet,
-      } as MetabaseProviderPropsToStore;
+    setProps(props) {
+      state = {
+        ...state,
+        props,
+      } as MetabaseProviderPropsStoreState;
 
       listeners.forEach((callback) => callback());
     },

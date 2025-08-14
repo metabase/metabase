@@ -34,7 +34,7 @@ const NotStartedLoadingTrigger = () => {
   useEffect(function handleSdkBundleNotStartedLoadingState() {
     timeoutRef.current = window.setTimeout(() => {
       const store = ensureMetabaseProviderPropsStore();
-      const loadingState = store.getSnapshot().loadingState;
+      const loadingState = store.getState().internalProps.loadingState;
 
       if (
         loadingState === undefined ||
@@ -58,7 +58,12 @@ const ComponentWrapperInner = <TComponentProps,>({
   getComponent,
   componentProps,
 }: Props<TComponentProps>) => {
-  const { props: metabaseProviderProps } = useMetabaseProviderPropsStore();
+  const {
+    state: {
+      internalProps: metabaseProviderInternalProps,
+      props: metabaseProviderProps,
+    },
+  } = useMetabaseProviderPropsStore();
   const { isLoading, isError, isNotStartedLoading } = useSdkLoadingState();
 
   if (isError) {
@@ -69,7 +74,7 @@ const ComponentWrapperInner = <TComponentProps,>({
     return <Error message={SDK_NOT_STARTED_LOADING_MESSAGE} />;
   }
 
-  if (isLoading || !metabaseProviderProps.loadingState) {
+  if (isLoading || !metabaseProviderInternalProps.loadingState) {
     return <Loader />;
   }
 
@@ -78,14 +83,19 @@ const ComponentWrapperInner = <TComponentProps,>({
     : getWindow()?.MetabaseEmbeddingSDK?.ComponentProvider;
   const Component = getComponent();
 
-  if (!ComponentProvider || !Component || !metabaseProviderProps.reduxStore) {
+  if (
+    !ComponentProvider ||
+    !Component ||
+    !metabaseProviderInternalProps.reduxStore ||
+    !metabaseProviderProps
+  ) {
     return <Error message={SDK_NOT_LOADED_YET_MESSAGE} />;
   }
 
   return (
     <ComponentProvider
       {...metabaseProviderProps}
-      reduxStore={metabaseProviderProps.reduxStore}
+      reduxStore={metabaseProviderInternalProps.reduxStore}
     >
       <Component
         {...(componentProps as JSX.IntrinsicAttributes & TComponentProps)}

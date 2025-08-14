@@ -7,14 +7,16 @@ export function useMetabaseProviderPropsStore() {
     ensureMetabaseProviderPropsStore(),
   );
 
-  const props = useSyncExternalStore(
+  const state = useSyncExternalStore(
     storeRef.current.subscribe,
-    storeRef.current.getSnapshot,
-    storeRef.current.getSnapshot,
+    storeRef.current.getState,
+    storeRef.current.getState,
   );
 
+  const store = storeRef.current;
+
   return {
-    props,
-    store: storeRef.current,
+    state,
+    store,
   };
 }
