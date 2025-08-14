@@ -248,7 +248,6 @@ databaseChangeLog:
                   constraints:
                     nullable: true
 
-
   - changeSet:
       id: v57.2025-08-04T10:53:00
       author: metamben
@@ -287,6 +286,13 @@ databaseChangeLog:
               - column:
                   name: transform_id
             where: "is_active = true"
+      rollback:
+        - dropForeignKeyConstraint:
+            baseTableName: transform_run
+            constraintName: fk_transform_run_transform_id
+        - dropIndex:
+            tableName: transform_run
+            indexName: idx_transform_run_active_runs
 
   - changeSet:
       id: v57.2025-08-04T10:55:01
@@ -302,6 +308,13 @@ databaseChangeLog:
                   name: is_active
               - column:
                   name: transform_id
+      rollback:
+        - dropForeignKeyConstraint:
+            baseTableName: transform_run
+            constraintName: fk_transform_run_transform_id
+        - dropIndex:
+            tableName: transform_run
+            indexName: idx_transform_run_active_runs
 
   - changeSet:
       id: v57.2025-08-06T00:00:00
