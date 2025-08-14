@@ -4,6 +4,7 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]
    [clojure.test :refer :all]
+   [flatland.ordered.map :refer [ordered-map]]
    [metabase-enterprise.action-v2.api]
    [metabase-enterprise.action-v2.coerce :as coerce]
    [metabase-enterprise.action-v2.data-editing :as data-editing]
@@ -576,12 +577,16 @@
                       [:message])))))))
 
       (testing "Non auto-incrementing pk"
-        (action-v2.tu/with-test-tables! [table-id [{:id        [:int]
+        (action-v2.tu/with-test-tables! [table-id [(ordered-map
+                                                    :id        [:int]
                                                     :text      [:text]
                                                     :int       [:int]
+                                                    :bool      [:boolean]
+                                                    :float_val [:float]
                                                     :timestamp [:timestamp]
                                                     :date      [:date]
-                                                    :inactive  [:text]}
+                                                    :time_val  [:time]
+                                                    :inactive  [:text])
                                                    {:primary-key [:id]}]]
           ;; This inactive field should not show up
           (t2/update! :model/Field {:table_id table-id, :name "inactive"} {:active false})
@@ -592,38 +597,48 @@
                   scope               {:table-id table-id}]
 
               (testing "create"
-                (is (=? {:parameters [{:id "id"        :display_name "ID"        :input_type "text"     :optional false :readonly false}
-                                      {:id "text"      :display_name "Text"      :input_type "text"     :optional true  :readonly false}
-                                      {:id "int"       :display_name "Int"       :input_type "text"     :optional true  :readonly false}
-                                      {:id "timestamp" :display_name "Timestamp" :input_type "datetime" :optional true  :readonly false}
-                                      {:id "date"      :display_name "Date"      :input_type "date"     :optional true  :readonly false}]}
+                (is (=? {:parameters [{:id "id"        :display_name "ID"         :input_type "dropdown" :optional false :readonly false}
+                                      {:id "text"      :display_name "Text"       :input_type "text"     :optional true  :readonly false}
+                                      {:id "int"       :display_name "Int"        :input_type "integer"  :optional true  :readonly false}
+                                      {:id "bool"      :display_name "Bool"       :input_type "boolean"  :optional true  :readonly false}
+                                      {:id "float_val" :display_name "Float Val"  :input_type "float"    :optional true  :readonly false}
+                                      {:id "timestamp" :display_name "Timestamp"  :input_type "datetime" :optional true  :readonly false}
+                                      {:id "date"      :display_name "Date"       :input_type "date"     :optional true  :readonly false}
+                                      {:id "time_val"  :display_name "Time Val"   :input_type "time"     :optional true  :readonly false}]}
                         (mt/user-http-request :crowberto :post 200 execute-form-url
                                               {:scope     scope
                                                :action create-id}))))
 
               (testing "update"
-                (is (=? {:parameters [{:id "id"        :display_name "ID"        :input_type "text"     :optional false :readonly true}
-                                      {:id "text"      :display_name "Text"      :input_type "text"     :optional true  :readonly false}
-                                      {:id "int"       :display_name "Int"       :input_type "text"     :optional true  :readonly false}
-                                      {:id "timestamp" :display_name "Timestamp" :input_type "datetime" :optional true  :readonly false}
-                                      {:id "date"      :display_name "Date"      :input_type "date"     :optional true  :readonly false}]}
+                (is (=? {:parameters [{:id "id"        :display_name "ID"         :input_type "dropdown" :optional false :readonly true}
+                                      {:id "text"      :display_name "Text"       :input_type "text"     :optional true  :readonly false}
+                                      {:id "int"       :display_name "Int"        :input_type "integer"  :optional true  :readonly false}
+                                      {:id "bool"      :display_name "Bool"       :input_type "boolean"  :optional true  :readonly false}
+                                      {:id "float_val" :display_name "Float Val"  :input_type "float"    :optional true  :readonly false}
+                                      {:id "timestamp" :display_name "Timestamp"  :input_type "datetime" :optional true  :readonly false}
+                                      {:id "date"      :display_name "Date"       :input_type "date"     :optional true  :readonly false}
+                                      {:id "time_val"  :display_name "Time Val"   :input_type "time"     :optional true  :readonly false}]}
                         (mt/user-http-request :crowberto :post 200 execute-form-url
                                               {:scope     scope
                                                :action update-id}))))
 
               (testing "delete"
-                (is (=? {:parameters [{:id "id" :display_name "ID" :input_type "text" :optional false :readonly true}]}
+                (is (=? {:parameters [{:id "id" :display_name "ID" :input_type "dropdown" :optional false :readonly true}]}
                         (mt/user-http-request :crowberto :post 200 execute-form-url
                                               {:scope     scope
                                                :action delete-id}))))))))
 
       (testing "Auto incrementing pk"
-        (action-v2.tu/with-test-tables! [table-id [{:id 'auto-inc-type
+        (action-v2.tu/with-test-tables! [table-id [(ordered-map
+                                                    :id        'auto-inc-type
                                                     :text      [:text]
                                                     :int       [:int]
+                                                    :bool      [:boolean]
+                                                    :float_val [:float]
                                                     :timestamp [:timestamp]
-                                                    :date [:date]
-                                                    :inactive [:text]}
+                                                    :date      [:date]
+                                                    :time_val  [:time]
+                                                    :inactive  [:text])
                                                    {:primary-key [:id]}]]
           ;; This inactive field should not show up
           (t2/update! :model/Field {:table_id table-id, :name "inactive"} {:active false})
@@ -634,26 +649,32 @@
                   scope               {:table-id table-id}]
 
               (testing "create"
-                (is (=? {:parameters [{:id "text"      :display_name "Text"      :input_type "text",     :optional true, :readonly false}
-                                      {:id "int"       :display_name "Int"       :input_type "text",     :optional true, :readonly false}
-                                      {:id "timestamp" :display_name "Timestamp" :input_type "datetime", :optional true, :readonly false}
-                                      {:id "date"      :display_name "Date"      :input_type "date",     :optional true, :readonly false}]}
+                (is (=? {:parameters [{:id "text"      :display_name "Text"       :input_type "text",     :optional true, :readonly false}
+                                      {:id "int"       :display_name "Int"        :input_type "integer",  :optional true, :readonly false}
+                                      {:id "bool"      :display_name "Bool"       :input_type "boolean",  :optional true, :readonly false}
+                                      {:id "float_val" :display_name "Float Val"  :input_type "float",    :optional true, :readonly false}
+                                      {:id "timestamp" :display_name "Timestamp"  :input_type "datetime", :optional true, :readonly false}
+                                      {:id "date"      :display_name "Date"       :input_type "date",     :optional true, :readonly false}
+                                      {:id "time_val"  :display_name "Time Val"   :input_type "time",     :optional true, :readonly false}]}
                         (mt/user-http-request :crowberto :post 200 execute-form-url
                                               {:scope     scope
                                                :action create-id}))))
 
               (testing "update"
-                (is (=? {:parameters [{:id "id"        :display_name "ID"        :input_type "text",     :optional false, :readonly true}
-                                      {:id "text"      :display_name "Text"      :input_type "text",     :optional true, :readonly false}
-                                      {:id "int"       :display_name "Int"       :input_type "text",     :optional true, :readonly false}
-                                      {:id "timestamp" :display_name "Timestamp" :input_type "datetime", :optional true, :readonly false}
-                                      {:id "date"      :display_name "Date"      :input_type "date",     :optional true, :readonly false}]}
+                (is (=? {:parameters [{:id "id"        :display_name "ID"         :input_type "dropdown", :optional false, :readonly true}
+                                      {:id "text"      :display_name "Text"       :input_type "text",     :optional true, :readonly false}
+                                      {:id "int"       :display_name "Int"        :input_type "integer",  :optional true, :readonly false}
+                                      {:id "bool"      :display_name "Bool"       :input_type "boolean",  :optional true, :readonly false}
+                                      {:id "float_val" :display_name "Float Val"  :input_type "float",    :optional true, :readonly false}
+                                      {:id "timestamp" :display_name "Timestamp"  :input_type "datetime", :optional true, :readonly false}
+                                      {:id "date"      :display_name "Date"       :input_type "date",     :optional true, :readonly false}
+                                      {:id "time_val"  :display_name "Time Val"   :input_type "time",     :optional true, :readonly false}]}
                         (mt/user-http-request :crowberto :post 200 execute-form-url
                                               {:scope     scope
                                                :action update-id}))))
 
               (testing "delete"
-                (is (=? {:parameters [{:id "id" :display_name "ID" :input_type "text", :optional false, :readonly true}]}
+                (is (=? {:parameters [{:id "id" :display_name "ID" :input_type "dropdown", :optional false, :readonly true}]}
                         (mt/user-http-request :crowberto :post 200 execute-form-url
                                               {:scope     scope
                                                :action delete-id})))))))))))

@@ -3,17 +3,16 @@ import type * as React from "react";
 import _ from "underscore";
 
 import { getStore } from "__support__/entities-store";
-import {
-  MetabaseProviderInternal,
-  type MetabaseProviderProps,
-} from "embedding-sdk/components/public/MetabaseProvider";
+import { MetabaseProviderInternal } from "embedding-sdk/components/public/MetabaseProvider";
+import { ensureMetabaseProviderPropsStore } from "embedding-sdk/sdk-shared/lib/ensure-metabase-provider-props-store";
 import { sdkReducers } from "embedding-sdk/store";
 import type { SdkStore, SdkStoreState } from "embedding-sdk/store/types";
 import { createMockSdkState } from "embedding-sdk/test/mocks/state";
+import type { MetabaseProviderProps } from "embedding-sdk/types/metabase-provider";
 import { Api } from "metabase/api";
 import { MetabaseReduxProvider } from "metabase/lib/redux";
 import type { MantineThemeOverride } from "metabase/ui";
-import { themeProviderContext } from "metabase/ui/components/theme/ThemeProvider/context";
+import { ThemeProviderContext } from "metabase/ui/components/theme/ThemeProvider/context";
 import type { State } from "metabase-types/store";
 import { createMockState } from "metabase-types/store/mocks";
 
@@ -21,6 +20,7 @@ export interface RenderWithSDKProvidersOptions {
   storeInitialState?: Partial<State>;
   sdkProviderProps?: Partial<MetabaseProviderProps> | null;
   theme?: MantineThemeOverride;
+  sdkBundleExports?: Partial<typeof window.MetabaseEmbeddingSDK>;
 }
 
 export function renderWithSDKProviders(
@@ -29,6 +29,7 @@ export function renderWithSDKProviders(
     storeInitialState = {},
     sdkProviderProps = null,
     theme,
+    sdkBundleExports,
     ...options
   }: RenderWithSDKProvidersOptions = {},
 ) {
@@ -61,17 +62,26 @@ export function renderWithSDKProviders(
     sdkProviderProps.allowConsoleLog = false;
   }
 
+  if (sdkBundleExports) {
+    window.MetabaseEmbeddingSDK =
+      sdkBundleExports as typeof window.MetabaseEmbeddingSDK;
+
+    ensureMetabaseProviderPropsStore().updateInternalProps({
+      reduxStore: store,
+    });
+  }
+
   const wrapper = (props: any) => {
     return (
       <MetabaseReduxProvider store={store}>
         {/* If we try to inject CSS variables to `.mb-wrapper`, it will slow the Jest tests down like crazy. */}
-        <themeProviderContext.Provider value={{ withCssVariables: false }}>
+        <ThemeProviderContext.Provider value={{ withCssVariables: false }}>
           <MetabaseProviderInternal
             {...props}
             {...sdkProviderProps}
-            store={store}
+            reduxStore={store}
           />
-        </themeProviderContext.Provider>
+        </ThemeProviderContext.Provider>
       </MetabaseReduxProvider>
     );
   };
