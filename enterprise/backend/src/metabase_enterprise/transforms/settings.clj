@@ -13,3 +13,14 @@
   :export?    false
   :encryption :no
   :audit      :getter)
+
+(setting/defsetting transforms-seeded
+  (deferred-tru "Indicates whether default transform tags and jobs have been seeded.")
+  :type       :boolean
+  :default    false
+  :visibility :internal
+  :feature    :transforms
+  :doc        false
+  :export?    false
+  :encryption :no
+  :audit      :getter)

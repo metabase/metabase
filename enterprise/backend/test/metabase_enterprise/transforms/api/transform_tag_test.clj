@@ -17,22 +17,20 @@
         (let [tag-name (str "test-tag-" (u/generate-nano-id))
               response (mt/user-http-request :crowberto :post 200 "ee/transform-tag"
                                              {:name tag-name})]
-          (is (some? (:id response)))
-          (is (= tag-name (:name response)))
-          (is (some? (:created_at response)))
-          (is (some? (:updated_at response)))
-          ;; Clean up
-          (t2/delete! :model/TransformTag :id (:id response))))
+          (try
+            (is (some? (:id response)))
+            (is (= tag-name (:name response)))
+            (is (some? (:created_at response)))
+            (is (some? (:updated_at response)))
+            ;; Clean up
+            (finally
+              (t2/delete! :model/TransformTag :id (:id response))))))
 
       (testing "Returns 400 for duplicate tag name"
-        (let [tag-name (str "duplicate-" (u/generate-nano-id))
-              tag (t2/insert-returning-instance! :model/TransformTag {:name tag-name})]
-          (try
-            (is (string? (mt/user-http-request :crowberto :post 400 "ee/transform-tag"
-                                               {:name tag-name}))
-                "Should return 400 with error message for duplicate name")
-            (finally
-              (t2/delete! :model/TransformTag :id (:id tag))))))
+        (mt/with-temp [:model/TransformTag tag {}]
+          (is (string? (mt/user-http-request :crowberto :post 400 "ee/transform-tag"
+                                             {:name (:name tag)}))
+              "Should return 400 with error message for duplicate name")))
 
       (testing "Returns validation error for empty name"
         (let [response (mt/user-http-request :crowberto :post "ee/transform-tag"
@@ -46,17 +44,13 @@
   (testing "PUT /api/ee/transform-tag/:tag-id"
     (mt/with-premium-features #{:transforms}
       (testing "Updates tag name successfully"
-        (let [original-name (str "original-" (u/generate-nano-id))
-              updated-name (str "updated-" (u/generate-nano-id))
-              tag (t2/insert-returning-instance! :model/TransformTag {:name original-name})
-              response (mt/user-http-request :crowberto :put 200
-                                             (str "ee/transform-tag/" (:id tag))
-                                             {:name updated-name})]
-          (try
+        (mt/with-temp [:model/TransformTag tag {}]
+          (let [updated-name (str "updated-" (u/generate-nano-id))
+                response (mt/user-http-request :crowberto :put 200
+                                               (str "ee/transform-tag/" (:id tag))
+                                               {:name updated-name})]
             (is (= (:id tag) (:id response)))
-            (is (= updated-name (:name response)))
-            (finally
-              (t2/delete! :model/TransformTag :id (:id tag))))))
+            (is (= updated-name (:name response))))))
 
       (testing "Returns 404 for non-existent tag"
         (is (= "Not found."
@@ -65,18 +59,12 @@
                                      {:name "new-name"}))))
 
       (testing "Returns 400 when updating to duplicate name"
-        (let [existing-name (str "existing-" (u/generate-nano-id))
-              existing-tag (t2/insert-returning-instance! :model/TransformTag {:name existing-name})
-              tag-to-update (t2/insert-returning-instance! :model/TransformTag
-                                                           {:name (str "update-me-" (u/generate-nano-id))})]
-          (try
-            (is (string? (mt/user-http-request :crowberto :put 400
-                                               (str "ee/transform-tag/" (:id tag-to-update))
-                                               {:name existing-name}))
-                "Should return 400 with error message for duplicate name")
-            (finally
-              (t2/delete! :model/TransformTag :id (:id existing-tag))
-              (t2/delete! :model/TransformTag :id (:id tag-to-update)))))))))
+        (mt/with-temp [:model/TransformTag existing-tag {}
+                       :model/TransformTag tag-to-update {}]
+          (is (string? (mt/user-http-request :crowberto :put 400
+                                             (str "ee/transform-tag/" (:id tag-to-update))
+                                             {:name (:name existing-tag)}))
+              "Should return 400 with error message for duplicate name"))))))
 
 (deftest delete-tag-test
   (testing "DELETE /api/ee/transform-tag/:tag-id"
@@ -97,23 +85,17 @@
   (testing "GET /api/ee/transform-tag"
     (mt/with-premium-features #{:transforms}
       (testing "Returns all tags ordered by name"
-        ;; Create test tags
-        (let [tag1 (t2/insert-returning-instance! :model/TransformTag {:name (str "aaa-" (u/generate-nano-id))})
-              tag2 (t2/insert-returning-instance! :model/TransformTag {:name (str "zzz-" (u/generate-nano-id))})
-              tag3 (t2/insert-returning-instance! :model/TransformTag {:name (str "mmm-" (u/generate-nano-id))})
-              response (mt/user-http-request :crowberto :get 200 "ee/transform-tag")
-              tag-names (map :name response)]
-          (try
+        (mt/with-temp [:model/TransformTag tag1 {}
+                       :model/TransformTag tag2 {}
+                       :model/TransformTag tag3 {}]
+          (let [response (mt/user-http-request :crowberto :get 200 "ee/transform-tag")
+                tag-names (map :name response)]
             ;; Should include our test tags
             (is (some #(= (:name tag1) %) tag-names))
             (is (some #(= (:name tag2) %) tag-names))
             (is (some #(= (:name tag3) %) tag-names))
             ;; Should be ordered alphabetically
-            (is (= (sort tag-names) tag-names))
-            (finally
-              (t2/delete! :model/TransformTag :id (:id tag1))
-              (t2/delete! :model/TransformTag :id (:id tag2))
-              (t2/delete! :model/TransformTag :id (:id tag3)))))))))
+            (is (= (sort tag-names) tag-names))))))))
 
 (deftest permissions-test
   (testing "Transform tag endpoints require superuser permissions"
