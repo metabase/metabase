@@ -1,17 +1,7 @@
 import { render, screen, waitFor } from "@testing-library/react";
-import { type ReactNode, useId, useState } from "react";
+import { type ReactNode, useId } from "react";
 
-import {
-  EnsureSingleInstance,
-  useSingleInstanceIdsData,
-} from "./EnsureSingleInstance";
-
-jest.mock("./EnsureSingleInstance", () => ({
-  ...jest.requireActual("./EnsureSingleInstance"),
-  useSingleInstanceIdsData: jest.fn(),
-}));
-
-const useSingleInstanceIdsDataMock = useSingleInstanceIdsData as jest.Mock;
+import { EnsureSingleInstance } from "./EnsureSingleInstance";
 
 const setup = () => {
   const warningMessage = "Only one instance allowed!";
@@ -36,13 +26,6 @@ describe("EnsureSingleInstance", () => {
       multipleWarning: string;
       children: ReactNode;
     }) {
-      const [map, setMap] = useState<Record<string, string[]>>({});
-
-      useSingleInstanceIdsDataMock.mockReturnValue({
-        singleInstanceIdsMap: map,
-        setSingleInstanceIdsMap: setMap,
-      });
-
       const instanceId = useId();
 
       return (
@@ -71,13 +54,6 @@ describe("EnsureSingleInstance", () => {
     const groupId = "foo";
 
     function Wrapper() {
-      const [map, setMap] = useState<Record<string, string[]>>({});
-
-      useSingleInstanceIdsDataMock.mockReturnValue({
-        singleInstanceIdsMap: map,
-        setSingleInstanceIdsMap: setMap,
-      });
-
       const instanceId1 = useId();
       const instanceId2 = useId();
       const instanceId3 = useId();
@@ -124,13 +100,6 @@ describe("EnsureSingleInstance", () => {
     const { warningMessage, warnSpy } = setup();
 
     function Wrapper() {
-      const [map, setMap] = useState<Record<string, string[]>>({});
-
-      useSingleInstanceIdsDataMock.mockReturnValue({
-        singleInstanceIdsMap: map,
-        setSingleInstanceIdsMap: setMap,
-      });
-
       const groupOneInstanceId = useId();
       const groupTwoInstanceId = useId();
 
