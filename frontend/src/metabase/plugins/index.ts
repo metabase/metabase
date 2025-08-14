@@ -67,6 +67,8 @@ import type {
   DashCardId,
   Dashboard,
   DashboardId,
+  DatabaseData,
+  DatabaseId,
   Database as DatabaseType,
   Dataset,
   Group,
@@ -803,4 +805,17 @@ export const PLUGIN_SMTP_OVERRIDE: {
 } = {
   CloudSMTPConnectionCard: PluginPlaceholder,
   SMTPOverrideConnectionForm: PluginPlaceholder,
+};
+
+export const PLUGIN_TABLE_EDITING = {
+  isEnabled: () => false,
+  isDatabaseTableEditingEnabled: (_database: DatabaseType): boolean => false,
+  getRoutes: () => null as React.ReactElement | null,
+  getTableEditUrl: (_tableId: TableId, _databaseId: DatabaseId): string => "/",
+  AdminDatabaseTableEditingSection: PluginPlaceholder as ComponentType<{
+    database: DatabaseType;
+    updateDatabase: (
+      database: { id: DatabaseId } & Partial<DatabaseData>,
+    ) => Promise<void>;
+  }>,
 };
