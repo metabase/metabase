@@ -1086,44 +1086,45 @@
 (deftest send-test-alert-with-http-channel-test
   (testing "POST /api/pulse/test send test alert to a http channel"
     (notification.tu/with-send-notification-sync
-      (let [requests (atom [])
-            endpoint (channel.http-test/make-route
-                      :post "/test"
-                      (fn [req]
-                        (swap! requests conj req)
-                        {:status 200
-                         :body   "ok"}))]
-        (channel.http-test/with-server [url [endpoint]]
-          (mt/with-temp
-            [:model/Card    card    {:dataset_query (mt/mbql-query orders {:aggregation [[:count]]})}
-             :model/Channel channel {:type    :channel/http
-                                     :details {:url         (str url "/test")
-                                               :auth-method :none}}]
-            (mt/user-http-request :rasta :post 200 "pulse/test"
-                                  {:name            (mt/random-name)
-                                   :cards           [{:id                (:id card)
-                                                      :include_csv       false
-                                                      :include_xls       false
-                                                      :dashboard_card_id nil}]
-                                   :channels        [{:enabled       true
-                                                      :channel_type  "http"
-                                                      :channel_id    (:id channel)
-                                                      :schedule_type "daily"
-                                                      :schedule_hour 12
-                                                      :schedule_day  nil
-                                                      :recipients    []}]
-                                   :alert_condition "rows"})
-            (is (=? {:body {:alert_creator_id   (mt/user->id :rasta)
-                            :alert_creator_name "Rasta Toucan"
-                            :alert_id           nil
-                            :data               {:question_id   (:id card)
-                                                 :question_name (mt/malli=? string?)
-                                                 :question_url  (mt/malli=? string?)
-                                                 :raw_data      {:cols ["count"], :rows [[18760]]},
-                                                 :type          "question"
-                                                 :visualization (mt/malli=? [:fn #(str/starts-with? % "data:image/png;base64,")])}
-                            :type               "alert"}}
-                    (first @requests)))))))))
+      (mt/with-temporary-setting-values [http-channel-host-strategy :allow-all]
+        (let [requests (atom [])
+              endpoint (channel.http-test/make-route
+                        :post "/test"
+                        (fn [req]
+                          (swap! requests conj req)
+                          {:status 200
+                           :body   "ok"}))]
+          (channel.http-test/with-server [url [endpoint]]
+            (mt/with-temp
+              [:model/Card    card    {:dataset_query (mt/mbql-query orders {:aggregation [[:count]]})}
+               :model/Channel channel {:type    :channel/http
+                                       :details {:url         (str url "/test")
+                                                 :auth-method :none}}]
+              (mt/user-http-request :rasta :post 200 "pulse/test"
+                                    {:name            (mt/random-name)
+                                     :cards           [{:id                (:id card)
+                                                        :include_csv       false
+                                                        :include_xls       false
+                                                        :dashboard_card_id nil}]
+                                     :channels        [{:enabled       true
+                                                        :channel_type  "http"
+                                                        :channel_id    (:id channel)
+                                                        :schedule_type "daily"
+                                                        :schedule_hour 12
+                                                        :schedule_day  nil
+                                                        :recipients    []}]
+                                     :alert_condition "rows"})
+              (is (=? {:body {:alert_creator_id   (mt/user->id :rasta)
+                              :alert_creator_name "Rasta Toucan"
+                              :alert_id           nil
+                              :data               {:question_id   (:id card)
+                                                   :question_name (mt/malli=? string?)
+                                                   :question_url  (mt/malli=? string?)
+                                                   :raw_data      {:cols ["count"], :rows [[18760]]},
+                                                   :type          "question"
+                                                   :visualization (mt/malli=? [:fn #(str/starts-with? % "data:image/png;base64,")])}
+                              :type               "alert"}}
+                      (first @requests))))))))))
 
 (deftest send-test-pulse-validate-emails-test
   (testing (str "POST /api/pulse/test should call " `pulse-channel/validate-email-domains)
