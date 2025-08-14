@@ -1,11 +1,15 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import { type ReactNode, useId, useState } from "react";
 
-import { useSingleInstanceIdsData } from "embedding-sdk/sdk-shared/hooks/use-single-instance-ids-data";
+import {
+  EnsureSingleInstance,
+  useSingleInstanceIdsData,
+} from "./EnsureSingleInstance";
 
-import { EnsureSingleInstance } from "./EnsureSingleInstance";
-
-jest.mock("embedding-sdk/sdk-shared/hooks/use-single-instance-ids-data");
+jest.mock("./EnsureSingleInstance", () => ({
+  ...jest.requireActual("./EnsureSingleInstance"),
+  useSingleInstanceIdsData: jest.fn(),
+}));
 
 const useSingleInstanceIdsDataMock = useSingleInstanceIdsData as jest.Mock;
 
