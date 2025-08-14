@@ -20,7 +20,7 @@
           (testing "has at least 1 element (sql required)"
             (is (>= (count result) 1)))
           (testing "generates appropriate create table statement"
-          ;; Different drivers may use different syntax
+            ;; Different drivers may use different syntax
             (is (or (re-find #"(?i)INTO\s+.*my_table.*FROM" (first result))
                     (re-find #"(?i)CREATE\s+TABLE.*AS" (first result))
                     (re-find #"(?i)CREATE\s+.*TABLE.*my_table" (first result)))))))
