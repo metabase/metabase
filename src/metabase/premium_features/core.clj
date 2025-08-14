@@ -68,6 +68,7 @@
   enable-sso-jwt?
   enable-sso-ldap?
   enable-sso-saml?
+  enable-transforms?
   enable-upload-management?
   enable-whitelabeling?
   has-attached-dwh?
