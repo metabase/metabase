@@ -5,7 +5,6 @@ import type { OnToggleSelectedWithItem } from "metabase/collections/types";
 import type { BaseItemsTableProps } from "metabase/common/components/ItemsTable/BaseItemsTable";
 import { Columns } from "metabase/common/components/ItemsTable/Columns";
 import { color } from "metabase/lib/colors";
-import { type ObjectWithModel, getIcon } from "metabase/lib/icon";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { Bookmark, Collection, CollectionItem } from "metabase-types/api";
 
@@ -41,7 +40,7 @@ export const DefaultItemRenderer = ({
   const canSelect =
     collection?.can_write && typeof onToggleSelected === "function";
 
-  const icon = getIcon(item as ObjectWithModel);
+  const icon = item.getIcon();
   if (item.model === "card" || item.archived) {
     icon.color = color("text-light");
   }
