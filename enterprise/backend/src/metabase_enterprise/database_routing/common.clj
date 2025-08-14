@@ -66,13 +66,11 @@
 (mu/defn- validate-routing-info
   [{:keys [user-attribute] :as routing-info} :- [:map [:user-attribute string?]]]
   (when (str/blank? user-attribute)
-    (throw (ex-info "Must set user attribute or workspace id exclusively, not both" routing-info))))
+    (throw (ex-info "Must set user attribute" routing-info))))
 
 ;; make a database a router
 (mu/defn- create-or-update-router!
-  [db-id :- ms/PositiveInt {:keys [user-attribute workspace-id] :as routing-info} :- [:or
-                                                                                      [:map [:user-attribute string?]]
-                                                                                      [:map [:workspace-id int?]]]]
+  [db-id :- ms/PositiveInt {:keys [user-attribute] :as routing-info} :- [:map [:user-attribute string?]]]
   (validate-routing-info routing-info)
   (let [db (t2/select-one :model/Database db-id)]
     (when-not (driver.u/supports? (:engine db) :database-routing db)
@@ -83,18 +81,13 @@
                                                    :user-id api/*current-user-id*
                                                    :details {:db_routing :enabled
                                                              :routing_attribute routing-info}})
-    (if user-attribute ;; upsert on the one row with a user_attribute value
-      (cluster-lock/with-cluster-lock ::database-router-lock
-        (if (t2/select-one :model/DatabaseRouter {:where [:and [:not= :user_attribute nil] [:= :database_id 1]]})
-          (t2/update! :model/DatabaseRouter :database_id db-id {:user_attribute user-attribute})
-          (t2/insert! :model/DatabaseRouter {:database_id db-id :user_attribute user-attribute})))
-
-      (cluster-lock/with-cluster-lock ::database-router-lock
-        (when-not (t2/exists? :model/DatabaseRouter {:where [:and [:= :workspace_id workspace-id] [:= :database_id 1]]})
-          (t2/insert! :model/DatabaseRouter {:database_id db-id :workspace_id workspace-id}))))))
+    (cluster-lock/with-cluster-lock ::database-router-lock
+      (if (t2/select-one :model/DatabaseRouter {:where [:and [:not= :user_attribute nil] [:= :database_id 1]]})
+        (t2/update! :model/DatabaseRouter :database_id db-id {:user_attribute user-attribute})
+        (t2/insert! :model/DatabaseRouter {:database_id db-id :user_attribute user-attribute})))))
 
 (mu/defn- router-enabled?*
-  "Is there already a db_router entry for this database and this routing info (user attribute or workspace id)."
+  "Is there already a db_router entry for this database and this routing info (user attribute)."
   [db-id route-info]
   (validate-routing-info route-info)
   (t2/exists? :model/DatabaseRouter {:where [:and [:= :database_id db-id]
@@ -102,9 +95,8 @@
                                              #_[:= :user_attribute (:user-attribute route-info)]]}))
 
 (defenterprise router-enabled?
-  "Is routing already enabled for this database and this route-info? (user attribute or workspace id?). There's a
-  create or update which works fine for the single routing in the regular app. But in workspaces it's not a single
-  instance so we want a predicate."
+  "Is routing already enabled for this database and this route-info? (user attribute). There's a create or update
+  which works fine for the single routing in the regular app."
   :feature :database-routing
   [db-id route-info]
   (router-enabled?* db-id route-info))
@@ -116,16 +108,14 @@
   (create-or-update-router! db-id route-info))
 
 (mu/defn- delete-router!
-  [db-id {:keys [workspace-id user-attribute] :as routing-info}]
+  [db-id {:keys [user-attribute] :as routing-info}]
   (validate-routing-info routing-info)
   (let [db (t2/select-one :model/Database db-id)]
     (events/publish-event! :event/database-update {:object db
                                                    :previous-object db
                                                    :user-id api/*current-user-id*
                                                    :details {:db_routing :disabled}})
-    (if workspace-id
-      (t2/delete! :model/DatabaseRouter {:where [:and [:= :database_id db-id] [:== :workspace_id workspace-id]]})
-      (t2/delete! :model/DatabaseRouter {:where [:and [:= :database_id db-id] [:== :user_attribute user-attribute]]}))))
+    (t2/delete! :model/DatabaseRouter {:where [:and [:= :database_id db-id]]})))
 
 (defenterprise delete-associated-database-router!
   "Deletes the Database Router associated with this router database."
