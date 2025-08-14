@@ -5,11 +5,14 @@ const NodePolyfillPlugin = require("node-polyfill-webpack-plugin");
 const rspack = require("@rspack/core");
 const BundleAnalyzerPlugin =
   require("webpack-bundle-analyzer").BundleAnalyzerPlugin;
+const prefixwrap = require("postcss-prefixwrap");
 
 const mainConfig = require("./rspack.main.config");
 const { resolve } = require("path");
 const fs = require("fs");
 const path = require("path");
+
+const postcssConfig = require("./postcss.config.js");
 
 const {
   TypescriptConvertErrorsToWarnings,
@@ -106,10 +109,37 @@ const config = {
       },
       {
         test: /\.css$/,
-        use: [
-          { loader: "style-loader" },
-          { loader: "css-loader", options: CSS_CONFIG },
-          { loader: "postcss-loader" },
+        oneOf: [
+          // Scope SDK Mantine styles to the SDK to prevent leakage outside of the SDK
+          {
+            include: [/[\\/]@mantine[\\/].*\.css$/],
+            use: [
+              { loader: "style-loader" },
+              { loader: "css-loader", options: CSS_CONFIG },
+              {
+                loader: "postcss-loader",
+                options: {
+                  postcssOptions: {
+                    plugins: [
+                      ...postcssConfig.plugins,
+                      prefixwrap(":where(.mb-wrapper)", {
+                        // We apply scope to selectors that start with `.m_`
+                        // It skips some selectors like `[dir="ltr"] .m_*` but there's no ability to insert the `:where(.mb-wrapper)` between `[dir="ltr"]` and `.m_*`
+                        ignoredSelectors: [/^(?!\.m_).*/],
+                      }),
+                    ],
+                  },
+                },
+              },
+            ],
+          },
+          {
+            use: [
+              { loader: "style-loader" },
+              { loader: "css-loader", options: CSS_CONFIG },
+              { loader: "postcss-loader" },
+            ],
+          },
         ],
       },
 

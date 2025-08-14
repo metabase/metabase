@@ -8,6 +8,7 @@ import type {
   PaginationResponse,
   RowValue,
   SearchModel,
+  Version,
 } from ".";
 
 export type MetabotFeedbackType =
@@ -188,6 +189,20 @@ export type DeleteSuggestedMetabotPromptRequest = {
   metabot_id: MetabotId;
   prompt_id: SuggestedMetabotPrompt["id"];
 };
+
+export interface MetabotFeedback {
+  metabot_id: MetabotId;
+  feedback: {
+    positive: boolean;
+    message_id: string;
+    issue_type?: string | undefined;
+    freeform_feedback: string;
+  };
+  conversation_data: any;
+  version: Version;
+  submission_time: string;
+  is_admin: boolean;
+}
 
 /* Metabot v3 - Entity Types */
 

@@ -378,8 +378,7 @@
                                                 :joins    [{:source-table $$products
                                                             :alias        "Products"
                                                             :condition    [:= $product_id &Products.products.id]
-                                                            :fields       [$id
-                                                                           &Products.products.title]}]
+                                                            :fields       [&Products.products.title]}]
                                                 :order-by [[:asc $id]]
                                                 :limit    3})
                                              (mt/mbql-query nil {:source-table "card__1"})

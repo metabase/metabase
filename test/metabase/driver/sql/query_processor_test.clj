@@ -16,6 +16,7 @@
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
    [metabase.query-processor :as qp]
+   [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.limit :as limit]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.store :as qp.store]
@@ -23,7 +24,6 @@
    [metabase.settings.core :as setting]
    [metabase.test :as mt]
    [metabase.test.data.env :as tx.env]
-   [metabase.test.data.interface :as tx]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli.registry :as mr]))
@@ -470,10 +470,10 @@
                                      ;; order. Changing the map keys on the inner query can perturb this order; if you
                                      ;; cause this test to fail based on shuffling the order of these joined fields
                                      ;; just edit the expectation to match the new order. Tech debt issue: #39396
-                                     PRODUCTS__via__PRODUCT_ID.CATEGORY AS PRODUCTS__via__PRODUCT_ID__CATEGORY
-                                     PEOPLE__via__USER_ID.SOURCE        AS PEOPLE__via__USER_ID__SOURCE
                                      PRODUCTS__via__PRODUCT_ID.ID       AS PRODUCTS__via__PRODUCT_ID__ID
-                                     PEOPLE__via__USER_ID.ID            AS PEOPLE__via__USER_ID__ID]
+                                     PEOPLE__via__USER_ID.ID            AS PEOPLE__via__USER_ID__ID
+                                     PRODUCTS__via__PRODUCT_ID.CATEGORY AS PRODUCTS__via__PRODUCT_ID__CATEGORY
+                                     PEOPLE__via__USER_ID.SOURCE        AS PEOPLE__via__USER_ID__SOURCE]
                          :from      [ORDERS]
                          :left-join [{:select [PRODUCTS.ID         AS ID
                                                PRODUCTS.EAN        AS EAN
@@ -819,7 +819,7 @@
 
 (deftest ^:parallel expression-with-duplicate-column-name-test
   (testing "Can we use expression with same column name as table (#14267)"
-    (is (= '{:select   [source.CATEGORY_2 AS CATEGORY
+    (is (= '{:select   [source.CATEGORY_2 AS CATEGORY_2
                         COUNT (*)         AS count]
              :from     [{:select [PRODUCTS.CATEGORY            AS CATEGORY
                                   CONCAT (PRODUCTS.CATEGORY ?) AS CATEGORY_2]
@@ -1365,61 +1365,79 @@
               (sql.qp/coerce-integer :sql
                                      (h2x/with-database-type-info value type))))))))
 
-(defmulti native-nested-array-query
-  {:arglists '([driver])}
-  tx/dispatch-on-driver-with-test-extensions
-  :hierarchy #'driver/hierarchy)
+(deftest ^:parallel multiple-counts-test
+  (testing "Count of count grouping works (#15074)"
+    (let [query (lib.tu.macros/mbql-query checkins
+                  {:aggregation  [[:count]]
+                   :breakout     [[:field "count" {:base-type :type/Integer}]]
+                   :source-query {:source-table (meta/id :checkins)
+                                  :aggregation  [[:count]]
+                                  :breakout     [!month.date]}
+                   :limit        2})]
+      (qp.store/with-metadata-provider
+        meta/metadata-provider
+        (is (=? {:query  ["SELECT"
+                          "  \"source\".\"count\" AS \"count\","
+                          "  COUNT(*) AS \"count_2\""
+                          "FROM"
+                          "  ("
+                          "    SELECT"
+                          "      DATE_TRUNC('month', \"PUBLIC\".\"CHECKINS\".\"DATE\") AS \"DATE\","
+                          "      COUNT(*) AS \"count\""
+                          "    FROM"
+                          "      \"PUBLIC\".\"CHECKINS\""
+                          "    GROUP BY"
+                          "      DATE_TRUNC('month', \"PUBLIC\".\"CHECKINS\".\"DATE\")"
+                          "    ORDER BY"
+                          "      DATE_TRUNC('month', \"PUBLIC\".\"CHECKINS\".\"DATE\") ASC"
+                          "  ) AS \"source\""
+                          "GROUP BY"
+                          "  \"source\".\"count\""
+                          "ORDER BY"
+                          "  \"source\".\"count\" ASC"
+                          "LIMIT"
+                          "  2"]
+                 :params nil}
+                (-> (qp.compile/compile query)
+                    (update :query #(str/split-lines (driver/prettify-native-form :h2 %))))))))))
 
-(defmethod native-nested-array-query :default
-  [_driver]
-  "select array[array[array['a', 'b'], array['c', 'd'] ], array[array['w', 'x'], array['y', 'z'] ]];")
-
-(doseq [driver [:mysql :sqlite]]
-  (defmethod native-nested-array-query driver
-    [_driver]
-    "select json_array(json_array(json_array('a', 'b'), json_array('c', 'd')), json_array(json_array('w', 'x'), json_array('y', 'z')));"))
-
-(doseq [driver [:redshift :databricks]]
-  (defmethod native-nested-array-query driver
-    [_driver]
-    "select array(array(array('a', 'b'), array('c', 'd')), array(array('w', 'x'), array('y', 'z')));"))
-
-(defmethod native-nested-array-query :snowflake
-  [_driver]
-  "select array_construct(array_construct(array_construct('a', 'b'), array_construct('c', 'd')), array_construct(array_construct('w', 'x'), array_construct('y', 'z')));")
-
-(defmulti native-nested-array-results
-  {:arglists '([driver])}
-  tx/dispatch-on-driver-with-test-extensions
-  :hierarchy #'driver/hierarchy)
-
-(defmethod native-nested-array-results :default
-  [_driver]
-  [[["a" "b"] ["c" "d"]] [["w" "x"] ["y" "z"]]])
-
-(doseq [driver [:sqlite :databricks :redshift]]
-  (defmethod native-nested-array-results driver
-    [_driver]
-    "[[[\"a\",\"b\"],[\"c\",\"d\"]],[[\"w\",\"x\"],[\"y\",\"z\"]]]"))
-
-(defmethod native-nested-array-results :mysql
-  [_driver]
-  "[[[\"a\", \"b\"], [\"c\", \"d\"]], [[\"w\", \"x\"], [\"y\", \"z\"]]]")
-
-(defmethod native-nested-array-results :snowflake
-  [_driver]
-  "[\n  [\n    [\n      \"a\",\n      \"b\"\n    ],\n    [\n      \"c\",\n      \"d\"\n    ]\n  ],\n  [\n    [\n      \"w\",\n      \"x\"\n    ],\n    [\n      \"y\",\n      \"z\"\n    ]\n  ]\n]")
-
-(doseq [driver [:postgres :vertica :mysql :sqlite :redshift :databricks :snowflake]]
-  (defmethod driver/database-supports? [driver :test/nested-arrays]
-    [_driver _feature _database]
-    true))
-
-(deftest ^:parallel nested-array-query-test
-  (testing "A nested array query should be returned in a readable format"
-    (mt/test-drivers (mt/normal-driver-select {:+features [:test/nested-arrays]})
-      (mt/dataset test-data
-        (is (= [[(native-nested-array-results driver/*driver*)]]
-               (->> (mt/native-query {:query (native-nested-array-query driver/*driver*)})
-                    mt/process-query
-                    mt/rows)))))))
+;;; see also [[metabase.query-processor.util.add-alias-info-test/resolve-incorrect-field-ref-for-expression-test]]
+;;; and [[metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions-test/evil-field-ref-for-an-expression-test]]
+(deftest ^:parallel evil-field-ref-for-an-expression-test
+  (testing "If we accidentally use a :field ref for an :expression, the query should still compile correctly"
+    ;; (this is actually mostly checking that `add-alias-info` or someone else rewrites the `:field` ref as an
+    ;; `:expression` ref, by the time the SQL QP sees the query it should be in a shape that will generate correct
+    ;; output.
+    (let [query {:database (meta/id)
+                 :type     :query
+                 :query    {:source-query {:source-table (meta/id :products)
+                                           :expressions  {"my_numberLiteral" [:value 2 {:base_type :type/Integer}]}
+                                           :fields       [[:field (meta/id :products :id) nil]
+                                                          [:expression "my_numberLiteral"]]
+                                           :filter       [:=
+                                                          ;; EVIL REF
+                                                          [:field "my_numberLiteral" {:base-type :type/Integer}]
+                                                          [:value 1 {:base_type :type/Integer}]]
+                                           :limit        20}
+                            :fields       [[:field (meta/id :products :id) nil]]
+                            :limit        20}}]
+      (qp.store/with-metadata-provider meta/metadata-provider
+        (is (= {:params nil
+                :query  ["SELECT"
+                         "  \"source\".\"ID\" AS \"ID\""
+                         "FROM"
+                         "  ("
+                         "    SELECT"
+                         "      \"PUBLIC\".\"PRODUCTS\".\"ID\" AS \"ID\","
+                         "      2 AS \"my_numberLiteral\""
+                         "    FROM"
+                         "      \"PUBLIC\".\"PRODUCTS\""
+                         "    WHERE"
+                         "      2 = 1"
+                         "    LIMIT"
+                         "      20"
+                         "  ) AS \"source\""
+                         "LIMIT"
+                         "  20"]}
+               (-> (qp.compile/compile query)
+                   (update :query #(str/split-lines (driver/prettify-native-form :h2 %))))))))))

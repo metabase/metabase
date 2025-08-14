@@ -1,3 +1,5 @@
+import { mockEmbedJsToDevServer } from "e2e/support/helpers";
+
 import {
   codeBlock,
   getEmbedSidebar,
@@ -23,6 +25,8 @@ H.describeWithSnowplow(suiteTitle, () => {
 
     cy.intercept("GET", "/api/dashboard/**").as("dashboard");
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
+
+    mockEmbedJsToDevServer();
   });
 
   afterEach(() => {
@@ -310,7 +314,6 @@ H.describeWithSnowplow(suiteTitle, () => {
     });
 
     H.getSimpleEmbedIframeContent().within(() => {
-      cy.findByText("Orders").click();
       cy.findByText("Save").should("be.visible");
     });
 

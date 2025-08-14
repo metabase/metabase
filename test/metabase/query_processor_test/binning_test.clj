@@ -39,7 +39,6 @@
                               :data
                               :results_metadata
                               :columns)
-          _ (def %card-cols card-cols)
           _               (is (= 2
                                  (count card-cols)))
           mp              (lib.tu/mock-metadata-provider
@@ -74,3 +73,27 @@
               [125.0 13]
               [137.5 6]]
              (mt/formatted-rows [2.0 int] (qp/process-query query')))))))
+
+(deftest ^:parallel multiple-bins-on-same-column-test
+  (let [query (lib/query
+               (mt/metadata-provider)
+               {:database (mt/id)
+                :type     :query
+                :query    {:source-query {:source-table (mt/id :orders)
+                                          :aggregation  [[:count]]
+                                          :breakout     [[:field
+                                                          (mt/id :orders :total)
+                                                          {:base-type :type/Float, :binning {:strategy :num-bins, :num-bins 10}}]
+                                                         [:field
+                                                          (mt/id :orders :total)
+                                                          {:base-type :type/Float, :binning {:strategy :num-bins, :num-bins 50}}]]}
+                           :expressions  {"Expression1" [:+ [:field "TOTAL" {:base-type :type/Float}] 100]
+                                          "Expression2" [:+ [:field "TOTAL" {:base-type :type/Float}] 200]}
+                           :order-by     [[:asc [:field "TOTAL" {:base-type :type/Float}]]
+                                          [:asc [:field "TOTAL_2" {:base-type :type/Float}]]
+                                          [:asc [:field "count" {:base-type :type/Integer}]]]
+                           :limit        3}})]
+    (is (= [[-60.0 -50.0 1  40 140]
+            [0.0   5.0   1 100 200]
+            [0.0   10.0  5 100 200]]
+           (mt/formatted-rows [1.0 1.0 int int int] (qp/process-query query))))))
