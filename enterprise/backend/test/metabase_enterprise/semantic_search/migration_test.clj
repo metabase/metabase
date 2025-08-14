@@ -118,92 +118,93 @@
 
 (deftest expected-db-schema-after-migration-test
   (try
-    (semantic.tu/with-test-db semantic.tu/default-test-db
-      (with-redefs [semantic.pgvector-api/index-documents! (constantly nil)]
-        (semantic.core/init! (semantic.tu/mock-documents) nil)
-        (testing "migration table has expected columns"
-          (is (map-contains-keys?
-               @(def xix (jdbc/execute-one! (semantic.db.datasource/ensure-initialized-data-source!)
-                                            (sql/format {:select [:*]
-                                                         :from [:migration]})))
-               (qualify :migration [:migrated_at
-                                    :status
-                                    :version]))))
-        (testing "control table has expected columns"
-          (is (map-contains-keys?
-               (jdbc/execute-one! (semantic.db.datasource/ensure-initialized-data-source!)
-                                  (sql/format {:select [:*]
-                                               :from [:index_control]}))
-               (qualify :index_control [:active_id
-                                        :active_updated_at
-                                        :id
-                                        :version]))))
-        (testing "metadata table has expected columns"
-          (is  (map-contains-keys?
-                (jdbc/execute-one! semantic.tu/db
-                                   (sql/format {:select [:*]
-                                                :from [:index_metadata]}))
-                (qualify :index_metadata [:id
-                                          :index_created_at
-                                          :index_version
-                                          :indexer_last_poll
-                                          :indexer_last_seen
-                                          :indexer_last_seen_hash
-                                          :indexer_last_seen_id
-                                          :model_name
-                                          :provider
-                                          :table_name
-                                          :vector_dimensions]))))
+    (mt/with-premium-features #{:semantic-search}
+      (semantic.tu/with-test-db semantic.tu/default-test-db
+        (with-redefs [semantic.pgvector-api/index-documents! (constantly nil)]
+          (semantic.core/init! (semantic.tu/mock-documents) nil)
+          (testing "migration table has expected columns"
+            (is (map-contains-keys?
+                 @(def xix (jdbc/execute-one! (semantic.db.datasource/ensure-initialized-data-source!)
+                                              (sql/format {:select [:*]
+                                                           :from [:migration]})))
+                 (qualify :migration [:migrated_at
+                                      :status
+                                      :version]))))
+          (testing "control table has expected columns"
+            (is (map-contains-keys?
+                 (jdbc/execute-one! (semantic.db.datasource/ensure-initialized-data-source!)
+                                    (sql/format {:select [:*]
+                                                 :from [:index_control]}))
+                 (qualify :index_control [:active_id
+                                          :active_updated_at
+                                          :id
+                                          :version]))))
+          (testing "metadata table has expected columns"
+            (is  (map-contains-keys?
+                  (jdbc/execute-one! semantic.tu/db
+                                     (sql/format {:select [:*]
+                                                  :from [:index_metadata]}))
+                  (qualify :index_metadata [:id
+                                            :index_created_at
+                                            :index_version
+                                            :indexer_last_poll
+                                            :indexer_last_seen
+                                            :indexer_last_seen_hash
+                                            :indexer_last_seen_id
+                                            :model_name
+                                            :provider
+                                            :table_name
+                                            :vector_dimensions]))))
            ;; TODO: In CI
-        (testing "index table has expected columns"
-          (let [index-table (->
-                             (jdbc/execute-one! (semantic.db.datasource/ensure-initialized-data-source!)
-                                                (sql/format {:select [[:im.table_name]]
-                                                             :from [[:index_control :ic]]
-                                                             :join [[:index_metadata :im]
-                                                                    [:= :ic.active_id :im.id]]}))
-                             :index_metadata/table_name)]
-            (is (=? #{"archived"
-                      "collection_id"
-                      "content"
-                      "created_at"
-                      "creator_id"
-                      "dashboardcard_count"
-                      "database_id"
-                      "display_type"
-                      "embedding"
-                      "id"
-                      "last_editor_id"
-                      "last_viewed_at"
-                      "legacy_input"
-                      "metadata"
-                      "model"
-                      "model_created_at"
-                      "model_id"
-                      "model_updated_at"
-                      "name"
-                      "official_collection"
-                      "pinned"
-                      "text_search_vector"
-                      "text_search_with_native_query_vector"
-                      "verified"
-                      "view_count"}
-                    (->>  (jdbc/execute! semantic.tu/db
-                                         (sql/format {:select [:column_name]
-                                                      :from [:information_schema.columns]
-                                                      :where [[:= :table_name [:inline index-table]]]}))
-                          (map :columns/column_name)
-                          set)))))
+          (testing "index table has expected columns"
+            (let [index-table (->
+                               (jdbc/execute-one! (semantic.db.datasource/ensure-initialized-data-source!)
+                                                  (sql/format {:select [[:im.table_name]]
+                                                               :from [[:index_control :ic]]
+                                                               :join [[:index_metadata :im]
+                                                                      [:= :ic.active_id :im.id]]}))
+                               :index_metadata/table_name)]
+              (is (=? #{"archived"
+                        "collection_id"
+                        "content"
+                        "created_at"
+                        "creator_id"
+                        "dashboardcard_count"
+                        "database_id"
+                        "display_type"
+                        "embedding"
+                        "id"
+                        "last_editor_id"
+                        "last_viewed_at"
+                        "legacy_input"
+                        "metadata"
+                        "model"
+                        "model_created_at"
+                        "model_id"
+                        "model_updated_at"
+                        "name"
+                        "official_collection"
+                        "pinned"
+                        "text_search_vector"
+                        "text_search_with_native_query_vector"
+                        "verified"
+                        "view_count"}
+                      (->>  (jdbc/execute! semantic.tu/db
+                                           (sql/format {:select [:column_name]
+                                                        :from [:information_schema.columns]
+                                                        :where [[:= :table_name [:inline index-table]]]}))
+                            (map :columns/column_name)
+                            set)))))
       ;; Init does not add any row into this table, hence have to check information_schema
-        (testing "index table has expected columns"
-          (is (= ["document" "document_hash" "gated_at" "id" "model" "model_id" "updated_at"]
-                 (->> (jdbc/execute! semantic.tu/db
-                                     (sql/format {:select [:column_name]
-                                                  :from [:information_schema.columns]
-                                                  :where [[:= :table_name [:inline "index_gate"]]]}))
-                      (map :columns/column_name)
-                      sort
-                      vec))))))
+          (testing "index table has expected columns"
+            (is (= ["document" "document_hash" "gated_at" "id" "model" "model_id" "updated_at"]
+                   (->> (jdbc/execute! semantic.tu/db
+                                       (sql/format {:select [:column_name]
+                                                    :from [:information_schema.columns]
+                                                    :where [[:= :table_name [:inline "index_gate"]]]}))
+                        (map :columns/column_name)
+                        sort
+                        vec)))))))
     (catch Throwable e
       (log/fatal e)
       (throw e))))
