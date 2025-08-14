@@ -15,6 +15,7 @@ import type {
 import type { EntityPickerTab } from "../../../EntityPicker";
 import { EntityPickerModal, defaultOptions } from "../../../EntityPicker";
 import { useLogRecentItem } from "../../../EntityPicker/hooks/use-log-recent-item";
+import type { CollectionPickerItem } from "../../CollectionPicker";
 import {
   QuestionPicker,
   type QuestionPickerStatePath,
@@ -47,7 +48,7 @@ interface Props {
   models?: DataPickerValue["model"][];
   onChange: (value: TableId) => void;
   onClose: () => void;
-  shouldDisableItem?: (item: DataPickerItem) => boolean;
+  shouldDisableItem?: (item: DataPickerItem | CollectionPickerItem) => boolean;
 }
 
 type FilterOption = { label: string; value: CollectionItemModel };
@@ -219,6 +220,7 @@ export const DataPickerModal = ({
             onInit={createQuestionPickerItemSelectHandler(onItemSelect)}
             onItemSelect={createQuestionPickerItemSelectHandler(onItemSelect)}
             onPathChange={setQuestionsPath}
+            shouldDisableItem={shouldDisableItem}
           />
         ),
       });
