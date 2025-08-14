@@ -1,9 +1,8 @@
 (ns metabase-enterprise.semantic-search.test-util
   (:require
-   #_[clojure.string :as str]
-   #_[environ.core :refer [env]]
-   #_[metabase.util :as u]
+   [clojure.string :as str]
    [clojure.test :refer :all]
+   [environ.core :refer [env]]
    [honey.sql :as sql]
    [honey.sql.helpers :as sql.helpers]
    [metabase-enterprise.semantic-search.core]
@@ -15,64 +14,66 @@
    [metabase.search.core :as search.core]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.test :as mt]
+   [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [next.jdbc :as jdbc]
    [next.jdbc.protocols :as jdbc.protocols]
    [next.jdbc.result-set :as jdbc.rs])
-  (:import #_(com.mchange.v2.c3p0 PooledDataSource)
+  (:import
    (clojure.lang IDeref)
-           (java.io Closeable)))
+   (com.mchange.v2.c3p0 PooledDataSource)
+   (java.io Closeable)))
 
 (set! *warn-on-reflection* true)
 
 ;; If I won't find any use for following muted code in follow-up tasks I'll delete it -- lbrdnk
 
-#_(def default-test-db "my_test_db")
+(def default-test-db "my_test_db")
 
-#_(defn- alt-db-name-url
-    [url alt-name]
-    (when (string? url)
-      (u/prog1 (str/replace-first url
-                                  #"(^\S+//\S+/)([A-Za-z0-9_-]+)($|\?.*)"
-                                  (str "$1" alt-name "$3"))
-        (when (nil? <>) (throw (Exception. "Empty pgvector url."))))))
+(defn- alt-db-name-url
+  [url alt-name]
+  (when (string? url)
+    (u/prog1 (str/replace-first url
+                                #"(^\S+//\S+/)([A-Za-z0-9_-]+)($|\?.*)"
+                                (str "$1" alt-name "$3"))
+      (when (nil? <>) (throw (Exception. "Empty pgvector url."))))))
 
-#_(defn do-with-temp-datasource
-    [db-name thunk]
-    (with-redefs [semantic.db.datasource/db-url (alt-db-name-url (:mb-pgvector-db-url env) db-name)
-                  semantic.db.datasource/data-source (atom nil)]
-      (try
+(defn do-with-temp-datasource
+  [db-name thunk]
+  (with-redefs [semantic.db.datasource/db-url (alt-db-name-url (:mb-pgvector-db-url env) db-name)
+                semantic.db.datasource/data-source (atom nil)]
+    (try
       ;; ensure datasource was initialized so we can close it in finally.
-        (semantic.db.datasource/ensure-initialized-data-source!)
-        ()
-        (thunk)
-        (finally
-          (.close ^PooledDataSource @semantic.db.datasource/data-source)))))
+      (semantic.db.datasource/ensure-initialized-data-source!)
+      ()
+      (thunk)
+      (finally
+        (.close ^PooledDataSource @semantic.db.datasource/data-source)))))
 
-#_(defmacro with-temp-datasource
-    [db-name & body]
-    `(do-with-temp-datasource ~db-name (fn [] ~@body)))
+(defmacro with-temp-datasource
+  [db-name & body]
+  `(do-with-temp-datasource ~db-name (fn [] ~@body)))
 
-#_(defn do-with-test-db
-    [db-name thunk]
-    (with-temp-datasource "postgres"
-      (try
-        (jdbc/execute! (semantic.db.datasource/ensure-initialized-data-source!)
-                       [(str "DROP DATABASE IF EXISTS " db-name " (FORCE)")])
-        (log/fatal "creating database")
-        (jdbc/execute! (semantic.db.datasource/ensure-initialized-data-source!)
-                       [(str "CREATE DATABASE " db-name)])
-        (log/fatal "created database")
-        (catch java.sql.SQLException e
-          (log/fatal "creation failed")
-          (throw e))))
-    (with-temp-datasource db-name
-      (thunk)))
+(defn do-with-test-db
+  [db-name thunk]
+  (with-temp-datasource "postgres"
+    (try
+      (jdbc/execute! (semantic.db.datasource/ensure-initialized-data-source!)
+                     [(str "DROP DATABASE IF EXISTS " db-name " (FORCE)")])
+      (log/fatal "creating database")
+      (jdbc/execute! (semantic.db.datasource/ensure-initialized-data-source!)
+                     [(str "CREATE DATABASE " db-name)])
+      (log/fatal "created database")
+      (catch java.sql.SQLException e
+        (log/fatal "creation failed")
+        (throw e))))
+  (with-temp-datasource db-name
+    (thunk)))
 
-#_(defmacro with-test-db
-    [db-name & body]
-    `(do-with-test-db ~db-name (fn [] ~@body)))
+(defmacro with-test-db
+  [db-name & body]
+  `(do-with-test-db ~db-name (fn [] ~@body)))
 
 (def ^:private init-delay
   (delay
