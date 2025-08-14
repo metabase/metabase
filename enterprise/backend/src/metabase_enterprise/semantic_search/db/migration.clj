@@ -9,12 +9,12 @@
    [java.sql SQLException]))
 
 (def ^:private columns
-  "Migration id is picked by use, hence no serial"
+  ;; No serial -- ids are chosen by migration authors
   [[:version :bigint [:primary-key]]
    [:finished_at :timestamp [:default [:NOW]]]
    [:status [:varchar 32]]])
 
-(def migration-table-hsql
+(def ^:private migration-table-hsql
   (-> (sql.helpers/create-table :migration :if-not-exists)
       (sql.helpers/with-columns columns)))
 
@@ -34,6 +34,7 @@
     nil))
 
 (defn- db-version
+  "Get database version of schema from migration table."
   [tx]
   (or (:migration/version
        (jdbc/execute-one! tx (sql/format {:select [:version]
@@ -49,6 +50,7 @@
                                                               :status "success"}])))))
 
 (defn maybe-migrate-schema!
+  "Execute schema migration (control, meta, gate, ...) if appropriate."
   [tx opts]
   (let [db-version (db-version tx)]
     (cond
@@ -76,6 +78,7 @@
                                   :limit 1})))
 
 (defn- lowest-dynamic-db-version
+  "Lowest index version. If there is lower than defined in code dynamic schema migration will be attempted."
   [tx]
   (or (when (index-metadata-table-exists? tx)
         (:index_metadata/index_version
@@ -87,6 +90,7 @@
       0))
 
 (defn maybe-migrate-dynamic-schema!
+  "Migration for dynamic tables (index_table_xyzs) if appropriate."
   [tx opts]
   (let [db-version (lowest-dynamic-db-version tx)]
     (cond
@@ -105,6 +109,7 @@
   nil)
 
 (defn maybe-migrate!
+  "Execute schema and dynamic schema migrations."
   [tx opts]
   (ensure-migration-table! tx)
   (maybe-migrate-schema! tx opts)
@@ -112,5 +117,6 @@
   nil)
 
 (defn drop-migration-table!
+  "Drop migration table."
   [connectable]
   (jdbc/execute! connectable (sql/format (sql.helpers/drop-table :if-exists :migration))))
