@@ -17,38 +17,38 @@
       (t2/delete! :transform_tag)
 
       (transforms.seed/seed-default-tags-and-jobs!)
+      (let [expected-tags (map #(update % :name str) @#'transforms.seed/default-tags)
+            expected-jobs (map
+                           #(-> %
+                                (update :name str)
+                                (update :description str)
+                                (update :tag_name str))
+                           @#'transforms.seed/default-jobs)]
+        (testing "Creates default tags"
+          (is (= 4 (t2/count :transform_tag)))
+          (doseq [{tag-name :name} expected-tags]
+            (is (t2/exists? :transform_tag :name tag-name)
+                (str "Default tag '" tag-name "' should exist"))))
 
-      (testing "Creates default tags"
-        (is (= 4 (t2/count :transform_tag)))
-        (doseq [tag-name ["hourly" "daily" "weekly" "monthly"]]
-          (is (t2/exists? :transform_tag :name tag-name)
-              (str "Default tag '" tag-name "' should exist"))))
+        (testing "Creates default jobs"
+          (is (= 4 (t2/count :transform_job)))
+          (doseq [{job-name :name entity-id :entity_id} expected-jobs]
+            (is (t2/exists? :transform_job :entity_id entity-id)
+                (str "Default job '" job-name "' with entity_id '" entity-id "' should exist"))))
 
-      (testing "Creates default jobs"
-        (is (= 4 (t2/count :transform_job)))
-        (doseq [[job-name entity-id] [["Hourly job" "hourly000000000000000"]
-                                      ["Daily job" "daily0000000000000000"]
-                                      ["Weekly job" "weekly000000000000000"]
-                                      ["Monthly job" "monthly00000000000000"]]]
-          (is (t2/exists? :transform_job :entity_id entity-id)
-              (str "Default job '" job-name "' with entity_id '" entity-id "' should exist"))))
+        (testing "Links jobs to their corresponding tags"
+          (is (= 4 (t2/count :transform_job_tags)))
+          (doseq [{tag-name :tag_name entity-id :entity_id} expected-jobs]
+            (let [job (t2/select-one :transform_job :entity_id entity-id)
+                  tag (t2/select-one :transform_tag :name tag-name)]
+              (is (t2/exists? :transform_job_tags :job_id (:id job) :tag_id (:id tag))
+                  (str "Job '" entity-id "' should be associated with tag '" tag-name "'")))))
 
-      (testing "Links jobs to their corresponding tags"
-        (is (= 4 (t2/count :transform_job_tags)))
-        (doseq [[tag-name entity-id] [["hourly" "hourly000000000000000"]
-                                      ["daily" "daily0000000000000000"]
-                                      ["weekly" "weekly000000000000000"]
-                                      ["monthly" "monthly00000000000000"]]]
-          (let [job (t2/select-one :transform_job :entity_id entity-id)
-                tag (t2/select-one :transform_tag :name tag-name)]
-            (is (t2/exists? :transform_job_tags :job_id (:id job) :tag_id (:id tag))
-                (str "Job '" entity-id "' should be associated with tag '" tag-name "'")))))
-
-      (testing "Is idempotent - doesn't create duplicates when run again"
-        (transforms.seed/seed-default-tags-and-jobs!)
-        (is (= 4 (t2/count :transform_tag)))
-        (is (= 4 (t2/count :transform_job)))
-        (is (= 4 (t2/count :transform_job_tags)))))))
+        (testing "Is idempotent - doesn't create duplicates when run again"
+          (transforms.seed/seed-default-tags-and-jobs!)
+          (is (= 4 (t2/count :transform_tag)))
+          (is (= 4 (t2/count :transform_job)))
+          (is (= 4 (t2/count :transform_job_tags))))))))
 
 (deftest seed-partial-data-test
   (testing "Doesn't create anything when data already exists"

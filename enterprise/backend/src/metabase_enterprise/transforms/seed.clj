@@ -10,10 +10,10 @@
 
 (def ^:private default-tags
   "Default transform tags that should be created on first startup."
-  [{:name "hourly"}
-   {:name "daily"}
-   {:name "weekly"}
-   {:name "monthly"}])
+  [{:name (deferred-tru "hourly")}
+   {:name (deferred-tru "daily")}
+   {:name (deferred-tru "weekly")}
+   {:name (deferred-tru "monthly")}])
 
 (def ^:private default-jobs
   "Default transform jobs that should be created on first startup.
@@ -22,22 +22,22 @@
     :description (deferred-tru "Executes transforms tagged with ''hourly'' every hour")
     :schedule "0 0 * * * ? *"
     :entity_id "hourly000000000000000"
-    :tag_name "hourly"}
+    :tag_name (deferred-tru "hourly")}
    {:name (deferred-tru "Daily job")
     :description (deferred-tru "Executes transforms tagged with ''daily'' once per day")
     :schedule "0 0 0 * * ? *"
     :entity_id "daily0000000000000000"
-    :tag_name "daily"}
+    :tag_name (deferred-tru "daily")}
    {:name (deferred-tru "Weekly job")
     :description (deferred-tru "Executes transforms tagged with ''weekly'' once per week")
     :schedule "0 0 0 ? * 1 *"
     :entity_id "weekly000000000000000"
-    :tag_name "weekly"}
+    :tag_name (deferred-tru "weekly")}
    {:name (deferred-tru "Monthly job")
     :description (deferred-tru "Executes transforms tagged with ''monthly'' once per month")
     :schedule "0 0 0 1 * ? *"
     :entity_id "monthly00000000000000"
-    :tag_name "monthly"}])
+    :tag_name (deferred-tru "monthly")}])
 
 (defn seed-default-tags-and-jobs!
   "Create default transform tags and jobs if they don't exist.
@@ -49,12 +49,12 @@
     (log/info "Creating default transform tags and jobs")
     (t2/with-transaction []
       ;; Create tags first
-      (t2/insert! :transform_tag default-tags)
+      (t2/insert! :transform_tag (map #(update % :name str) default-tags))
       (log/infof "Created %d default transform tags" (count default-tags))
 
       ;; Create jobs and link them to tags
       (doseq [{:keys [tag_name] :as job-def} default-jobs]
-        (let [tag (t2/select-one :transform_tag :name tag_name)
+        (let [tag (t2/select-one :transform_tag :name (str tag_name))
               job-data (-> (dissoc job-def :tag_name)
                            (update :name str)
                            (update :description str))
