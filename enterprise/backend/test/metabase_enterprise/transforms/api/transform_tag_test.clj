@@ -70,8 +70,7 @@
   (testing "DELETE /api/ee/transform-tag/:tag-id"
     (mt/with-premium-features #{:transforms}
       (testing "Deletes tag successfully"
-        (let [tag-name (str "delete-me-" (u/generate-nano-id))
-              tag (t2/insert-returning-instance! :model/TransformTag {:name tag-name})]
+        (mt/with-temp [:model/TransformTag tag {}]
           (is (t2/exists? :model/TransformTag :id (:id tag)))
           (mt/user-http-request :crowberto :delete 204 (str "ee/transform-tag/" (:id tag)))
           (is (not (t2/exists? :model/TransformTag :id (:id tag))))))
