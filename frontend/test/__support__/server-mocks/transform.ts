@@ -1,6 +1,14 @@
 import fetchMock from "fetch-mock";
 
-import type { TransformJob, TransformJobId } from "metabase-types/api";
+import type {
+  TransformJob,
+  TransformJobId,
+  TransformTag,
+} from "metabase-types/api";
+
+export function setupListTransformTagsEndpoint(tags: TransformTag[]) {
+  fetchMock.get(`path:/api/ee/transform-tag`, tags);
+}
 
 export function setupGetTransformJobEndpoint(job: TransformJob) {
   fetchMock.get(`path:/api/ee/transform-job/${job.id}`, job);
