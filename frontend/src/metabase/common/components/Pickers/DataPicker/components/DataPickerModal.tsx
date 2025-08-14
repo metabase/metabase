@@ -127,13 +127,10 @@ export const DataPickerModal = ({
         if (databaseId && getRecentItemDatabaseId(item) !== databaseId) {
           return false;
         }
-        if (shouldDisableItem && !shouldDisableItem(item)) {
-          return false;
-        }
         return item;
       });
     },
-    [databaseId, shouldDisableItem],
+    [databaseId],
   );
 
   const searchParams = useMemo(() => {
