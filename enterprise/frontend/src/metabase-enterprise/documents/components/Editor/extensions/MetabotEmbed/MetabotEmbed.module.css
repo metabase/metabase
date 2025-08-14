@@ -16,3 +16,19 @@
   padding: var(--mantine-spacing-md);
   color: var(--mb-color-text-light);
 }
+
+.borderRadius {
+  border-radius: var(--mantine-radius-xs);
+}
+
+.closeButton {
+  z-index: 1;
+}
+
+.contentWrapper {
+  overflow: auto;
+}
+
+.iconShrink {
+  flex-shrink: 0;
+}

@@ -38,3 +38,7 @@
   color: var(--mb-color-brand);
   background-color: var(--mb-color-background-hover);
 }
+
+.menuItemStack {
+  flex: 1;
+}

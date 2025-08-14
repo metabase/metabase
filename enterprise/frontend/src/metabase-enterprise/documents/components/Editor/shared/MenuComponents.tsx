@@ -44,7 +44,7 @@ export const MenuItemComponent = ({
   >
     <Group gap="sm" wrap="nowrap" align="center">
       <Icon name={item.icon} size={16} color={item.iconColor || "inherit"} />
-      <Stack gap={2} style={{ flex: 1 }}>
+      <Stack gap={2} className={S.menuItemStack}>
         <Text size="md" lh="lg" c="inherit">
           {item.label}
         </Text>

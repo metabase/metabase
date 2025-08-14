@@ -30,6 +30,8 @@ import {
   loadMetadataForDocumentCard,
 } from "../../../../documents.slice";
 
+import S from "./NativeQueryModal.module.css";
+
 type DataReferenceStackItem = {
   type: string;
   item: unknown;
@@ -348,23 +350,16 @@ export const NativeQueryModal = ({
     >
       <Flex h="100%" direction="column">
         {/* Main content area with horizontal layout */}
-        <Flex flex={1} direction="row" mih={0} style={{ overflow: "hidden" }}>
+        <Flex flex={1} direction="row" mih={0} className={S.mainContent}>
           {/* Left side - Editor and Results */}
           <Flex
             flex={1}
             direction="column"
             mih={0}
             miw={0}
-            style={{ overflow: "hidden" }}
+            className={S.mainContent}
           >
-            <Box
-              pos="relative"
-              style={{
-                flexShrink: 0,
-                borderBottom: "1px solid var(--mb-color-border)",
-                overflow: "hidden",
-              }}
-            >
+            <Box pos="relative" className={S.editorContainer}>
               {/* NativeQueryEditor with minimal configuration for modal context */}
               {(modifiedQuestion?.legacyNativeQuery() ||
                 question?.legacyNativeQuery()) && (
@@ -456,7 +451,7 @@ export const NativeQueryModal = ({
               mih={0}
               pt="0.25rem"
               pos="relative"
-              style={{ overflow: "hidden" }}
+              className={S.resultsContainer}
             >
               {!isQueryRunning && (sqlError || queryError) ? (
                 <ErrorMessage
@@ -498,7 +493,7 @@ export const NativeQueryModal = ({
                   bg="var(--mb-color-bg-white)"
                   align="center"
                   justify="center"
-                  style={{ zIndex: 10 }}
+                  className={S.loadingOverlay}
                 >
                   <Loader size="lg" />
                 </Flex>
@@ -512,11 +507,7 @@ export const NativeQueryModal = ({
               w="350px"
               miw="350px"
               bg="var(--mb-color-bg-white)"
-              style={{
-                flexShrink: 0,
-                borderLeft: "1px solid var(--mb-color-border)",
-                overflow: "auto",
-              }}
+              className={S.dataReferenceSidebar}
             >
               <DataReference
                 dataReferenceStack={dataReferenceStack}
@@ -544,11 +535,7 @@ export const NativeQueryModal = ({
           gap="0.5rem"
           p="1rem"
           bg="var(--mb-color-bg-white)"
-          style={{
-            borderTop: "1px solid var(--mb-color-border)",
-            flexShrink: 0,
-            zIndex: 10,
-          }}
+          className={S.footer}
         >
           <Button variant="subtle" onClick={onClose}>
             {t`Cancel`}

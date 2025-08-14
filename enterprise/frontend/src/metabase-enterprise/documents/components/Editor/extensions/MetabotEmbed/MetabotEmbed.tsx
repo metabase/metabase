@@ -23,7 +23,7 @@ import {
 import MetabotThinkingStyles from "metabase-enterprise/metabot/components/MetabotChat/MetabotThinking.module.css";
 import type { Card, MetabotGenerateContentRequest } from "metabase-types/api";
 
-import Styles from "./MetabotEmbed.module.css";
+import S from "./MetabotEmbed.module.css";
 
 declare module "@tiptap/core" {
   interface EditorEvents {
@@ -277,7 +277,7 @@ export const MetabotComponent = memo(
         <Flex
           bg="bg-light"
           bd="1px solid var(--border-color)"
-          style={{ borderRadius: "4px" }}
+          className={S.borderRadius}
           pos="relative"
           direction="column"
           mb="md"
@@ -291,14 +291,14 @@ export const MetabotComponent = memo(
             m="sm"
             size="sm"
             opacity="0.5"
-            style={{ zIndex: 1 }}
+            className={S.closeButton}
             onClick={() => deleteNode()}
           >
             <Icon name="close" />
           </Button>
-          <Flex flex={1} direction="column" style={{ overflow: "auto" }}>
+          <Flex flex={1} direction="column" className={S.contentWrapper}>
             <Box
-              className={Styles.placeholder}
+              className={S.placeholder}
               hidden={!!node.content.content.length}
               contentEditable={false}
             >
@@ -306,7 +306,7 @@ export const MetabotComponent = memo(
             </Box>
             <NodeViewContent
               contentEditable={!isLoading}
-              className={Styles.codeBlockTextArea}
+              className={S.codeBlockTextArea}
             />
           </Flex>
           <Flex px="md" pb="md" pt="sm" gap="sm" contentEditable={false}>
@@ -320,7 +320,7 @@ export const MetabotComponent = memo(
                 </Text>
               ) : errorText ? (
                 <Flex gap="sm" c="text-secondary">
-                  <Icon name="warning" h="1.2rem" style={{ flexShrink: 0 }} />
+                  <Icon name="warning" h="1.2rem" className={S.iconShrink} />
                   <Text c="text-secondary" lh={1.4}>
                     {errorText}
                   </Text>

@@ -36,6 +36,8 @@ import { EMBED_SEARCH_MODELS } from "../shared/constants";
 import { useEntitySearch } from "../shared/useEntitySearch";
 import { useEntitySuggestions } from "../shared/useEntitySuggestions";
 
+import CommandS from "./CommandSuggestion.module.css";
+
 interface CommandSuggestionProps {
   items: SearchResult[];
   command: (item: CommandItem) => void;
@@ -92,21 +94,13 @@ const CommandMenuItem = forwardRef<
         {option.icon ? (
           <Icon name={option.icon} size={16} color="inherit" />
         ) : option.text ? (
-          <Box
-            w={16}
-            h={16}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
+          <Box w={16} h={16} className={CommandS.iconContainer}>
             <Text size="xs" fw={700} c="inherit">
               {option.text}
             </Text>
           </Box>
         ) : null}
-        <Stack gap={2} style={{ flex: 1 }}>
+        <Stack gap={2} className={CommandS.commandItemStack}>
           <Text size="md" lh="lg" c="inherit">
             {option.label}
           </Text>

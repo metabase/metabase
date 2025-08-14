@@ -30,6 +30,8 @@ import { useDraftCardOperations } from "../hooks/useDraftCardOperations";
 import { getSelectedEmbedIndex } from "../selectors";
 import { useVisualizationOptions } from "../utils/visualizationUtils";
 
+import S from "./EmbedQuestionSettingsSidebar.module.css";
+
 interface EmbedQuestionSettingsSidebarProps {
   cardId: number;
   onClose: () => void;
@@ -113,17 +115,8 @@ export const EmbedQuestionSettingsSidebar = ({
 
   if (isCardLoading || isResultsLoading || !series) {
     return (
-      <Stack gap="lg" p="lg" style={{ height: "100%" }}>
-        <Box
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            flex: 1,
-            flexDirection: "column",
-            gap: "1rem",
-          }}
-        >
+      <Stack gap="lg" p="lg" className={S.loadingContainer}>
+        <Box className={S.loadingContent}>
           <Loader size="lg" />
           <Text>{t`Loading question settings...`}</Text>
         </Box>
@@ -133,15 +126,8 @@ export const EmbedQuestionSettingsSidebar = ({
 
   if (!cardWithDraft || !series) {
     return (
-      <Stack gap="lg" p="lg" style={{ height: "100%" }}>
-        <Box
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            flex: 1,
-          }}
-        >
+      <Stack gap="lg" p="lg" className={S.errorContainer}>
+        <Box className={S.errorContent}>
           <Text color="error">{t`Failed to load question`}</Text>
         </Box>
       </Stack>
@@ -149,21 +135,8 @@ export const EmbedQuestionSettingsSidebar = ({
   }
 
   return (
-    <Box
-      style={{
-        height: "100%",
-        display: "flex",
-        alignItems: "stretch",
-        flexDirection: "column",
-        backgroundColor: "var(--mb-color-bg-white)",
-      }}
-    >
-      <Box
-        style={{
-          borderBottom: "1px solid var(--mb-color-border)",
-          backgroundColor: "var(--mb-color-bg-white)",
-        }}
-      >
+    <Box className={S.container}>
+      <Box className={S.header}>
         <Group w="100%" justify="space-between" align="flex-start">
           <Group align="center" p="md">
             <Text size="md" fw="bold">{t`Visualize as`}</Text>
@@ -226,7 +199,7 @@ export const EmbedQuestionSettingsSidebar = ({
           </ActionIcon>
         </Group>
       </Box>
-      <Box style={{ flex: 1, overflow: "auto" }}>
+      <Box className={S.settingsContent}>
         <QuestionChartSettings
           question={question}
           series={series}
@@ -234,13 +207,7 @@ export const EmbedQuestionSettingsSidebar = ({
           computedSettings={cardWithDraft.visualization_settings || {}}
         />
       </Box>
-      <Box
-        style={{
-          borderTop: "1px solid var(--mb-color-border)",
-          padding: "1rem",
-          backgroundColor: "var(--mb-color-bg-white)",
-        }}
-      >
+      <Box className={S.footer}>
         <Button fullWidth variant="filled" onClick={handleDone}>
           {t`Done`}
         </Button>

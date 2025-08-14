@@ -10,6 +10,7 @@ import { t } from "ttag";
 import { useForceUpdate } from "metabase/common/hooks/use-force-update";
 import { Flex } from "metabase/ui";
 
+import S from "./EditorBubbleMenu.module.css";
 import { FormatButton } from "./FormatButton";
 
 interface EditorBubbleMenuProps {
@@ -84,11 +85,7 @@ export const EditorBubbleMenu: React.FC<EditorBubbleMenuProps> = ({
         gap={4}
         bg="white"
         p="2px"
-        style={{
-          border: "1px solid var(--mb-color-border)",
-          borderRadius: "6px",
-          boxShadow: "0 2px 12px var(--mb-color-shadow)",
-        }}
+        className={S.bubbleMenu}
         data-testid="document-formatting-menu"
       >
         <FormatButton

@@ -386,10 +386,7 @@ export const CardEmbedComponent = memo(
                         p="0.25rem"
                         align="center"
                         justify="center"
-                        style={{
-                          border: "none",
-                          borderRadius: "4px",
-                        }}
+                        className={styles.menuButton}
                         onClick={(e: React.MouseEvent) => e.stopPropagation()}
                       >
                         <Icon

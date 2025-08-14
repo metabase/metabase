@@ -17,6 +17,8 @@ import {
   loadMetadataForDocumentCard,
 } from "../../../../documents.slice";
 
+import S from "./ModifyQuestionModal.module.css";
+
 interface ModifyQuestionModalProps {
   card: Card;
   isOpen: boolean;
@@ -126,7 +128,7 @@ export const ModifyQuestionModal = ({
     >
       {question && modifiedQuestion ? (
         <>
-          <Box h="70vh" style={{ overflow: "auto" }}>
+          <Box h="70vh" className={S.notebookContainer}>
             <Notebook
               question={modifiedQuestion}
               isDirty={true}

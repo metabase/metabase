@@ -2,6 +2,8 @@ import type { ReactNode } from "react";
 
 import { Box, Loader } from "metabase/ui";
 
+import S from "./SuggestionPaper.module.css";
+
 interface SuggestionPaperProps {
   children: ReactNode;
   "aria-label": string;
@@ -15,13 +17,7 @@ export const SuggestionPaper = ({
   children,
   "aria-label": ariaLabel,
 }: SuggestionPaperProps) => (
-  <Box
-    aria-label={ariaLabel}
-    role="dialog"
-    style={{
-      minHeight: "fit-content",
-    }}
-  >
+  <Box aria-label={ariaLabel} role="dialog" className={S.suggestionPaper}>
     {children}
   </Box>
 );
@@ -29,14 +25,7 @@ export const SuggestionPaper = ({
 export const LoadingSuggestionPaper = ({
   "aria-label": ariaLabel,
 }: LoadingSuggestionPaperProps) => (
-  <Box
-    aria-label={ariaLabel}
-    ta="center"
-    py="lg"
-    style={{
-      minHeight: "fit-content",
-    }}
-  >
+  <Box aria-label={ariaLabel} ta="center" py="lg" className={S.suggestionPaper}>
     <Loader size="sm" />
   </Box>
 );

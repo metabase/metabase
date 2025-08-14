@@ -66,3 +66,8 @@
 .titleContainer:hover .titleEditIcon {
   opacity: 1;
 }
+
+.menuButton {
+  border: none;
+  border-radius: var(--mantine-radius-xs);
+}
