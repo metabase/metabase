@@ -80,11 +80,7 @@ const TEST_CREATED_AT_FILTERS = [
 describe("scenarios > search", () => {
   beforeEach(() => {
     H.restore();
-    cy.intercept({
-      method: "GET",
-      pathname: "/api/search",
-      query: { q: "*" },
-    }).as("search");
+    cy.intercept("GET", "/api/search?q=*").as("search");
     cy.signInAsAdmin();
   });
 
