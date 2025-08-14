@@ -218,71 +218,69 @@ describe(
           );
         });
 
-        [
-          {
-            removeScriptTag: false,
+        [{ removeScriptTag: false }, { removeScriptTag: true }].forEach(
+          ({ removeScriptTag }) => {
+            describe(`${removeScriptTag ? "With" : "Without"} the script tag removal between tests`, () => {
+              beforeEach(() => {
+                if (removeScriptTag) {
+                  sdkBundleCleanup();
+                }
+              });
+
+              it("should log a warning message if multiple MetabaseProvider components are used", () => {
+                cy.window().then((win) => {
+                  cy.spy(win.console, "warn").as("consoleWarn");
+                });
+
+                mountSdk(
+                  <>
+                    <MetabaseProvider
+                      authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}
+                    >
+                      <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />
+                    </MetabaseProvider>
+                    <MetabaseProvider
+                      authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}
+                    >
+                      <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />
+                    </MetabaseProvider>
+                  </>,
+                  { strictMode },
+                );
+
+                cy.get("@consoleWarn").should(
+                  "be.calledWithMatch",
+                  "Multiple instances of MetabaseProvider detected",
+                );
+
+                cy.findAllByTestId("loading-indicator").should(
+                  "have.length",
+                  2,
+                );
+              });
+
+              it("should display an SDK question", () => {
+                cy.window().then((win) => {
+                  cy.spy(win.console, "warn").as("consoleWarn");
+                });
+
+                mountSdkContent(
+                  <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />,
+                  { strictMode },
+                );
+
+                getSdkRoot().within(() => {
+                  cy.findByText("Orders").should("exist");
+                });
+
+                cy.get("@consoleWarn").should(
+                  "not.be.calledWithMatch",
+                  "Multiple instances of MetabaseProvider detected",
+                );
+              });
+            });
           },
-          {
-            removeScriptTag: true,
-          },
-        ].forEach(({ removeScriptTag }) => {
-          describe(`${removeScriptTag ? "With" : "Without"} the script tag removal between tests`, () => {
-            beforeEach(() => {
-              if (removeScriptTag) {
-                sdkBundleCleanup();
-              }
-            });
-
-            it("should log a warning message if multiple MetabaseProvider components are used", () => {
-              cy.window().then((win) => {
-                cy.spy(win.console, "warn").as("consoleWarn");
-              });
-
-              mountSdk(
-                <>
-                  <MetabaseProvider
-                    authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}
-                  >
-                    <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />
-                  </MetabaseProvider>
-                  <MetabaseProvider
-                    authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}
-                  >
-                    <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />
-                  </MetabaseProvider>
-                </>,
-                { strictMode },
-              );
-
-              cy.get("@consoleWarn").should(
-                "be.calledWithMatch",
-                "Multiple instances of MetabaseProvider detected",
-              );
-
-              cy.findAllByTestId("loading-indicator").should("have.length", 2);
-            });
-
-            it("should display an SDK question", () => {
-              cy.window().then((win) => {
-                cy.spy(win.console, "warn").as("consoleWarn");
-              });
-
-              mountSdkContent(
-                <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />,
-                { strictMode },
-              );
-
-              getSdkRoot().within(() => {
-                cy.findByText("Orders").should("exist");
-              });
-
-              cy.get("@consoleWarn").should(
-                "not.be.calledWithMatch",
-                "Multiple instances of MetabaseProvider detected",
-              );
-            });
-          });
-        });
+        );
       });
     });
 
@@ -327,75 +325,61 @@ describe(
     });
 
     describe("Hooks", () => {
-      type HookScenario = {
-        name: string;
-        waitForComponent: boolean;
-        mount: (Wrapper: () => ReactNode, questionId?: number) => JSX.Element;
-      };
-
-      const scenarios: HookScenario[] = [
-        {
-          name: "inside MetabaseProvider",
-          waitForComponent: true,
-          mount: (Wrapper, questionId) => (
-            <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}>
-              <Wrapper />
-              {questionId && (
-                <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />
-              )}
-            </MetabaseProvider>
-          ),
-        },
-        {
-          name: "outside of MetabaseProvider",
-          waitForComponent: true,
-          mount: (Wrapper, questionId) => (
-            <>
-              <Wrapper />
-              <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}>
-                {questionId && <InteractiveQuestion questionId={questionId} />}
-              </MetabaseProvider>
-            </>
-          ),
-        },
-        {
-          name: "without rendered SDK components",
-          waitForComponent: false,
-          mount: (Wrapper) => (
-            <>
-              <Wrapper />
-              <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG} />
-            </>
-          ),
-        },
-      ];
-
       describe("useMetabaseAuthStatus", () => {
-        const Wrapper = () => {
+        const ComponentWithHook = () => {
           return useMetabaseAuthStatus()?.status ?? "SDK Bundle Loading...";
         };
 
-        Cypress._.each(
-          scenarios,
-          ({ name, waitForComponent, mount }: HookScenario) => {
-            it(`should call hook properly when called ${name}`, () => {
-              if (waitForComponent) {
-                cy.mount(mount(Wrapper, ORDERS_QUESTION_ID));
-              } else {
-                cy.mount(mount(Wrapper));
-              }
+        it("should return the auth status when the hook is called inside MetabaseProvider", () => {
+          mountSdk(
+            <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}>
+              <ComponentWithHook />
 
-              cy.get("body").within(() => {
-                cy.findByText("loading").should("exist");
-                cy.findByText("success").should("exist");
-              });
-            });
-          },
-        );
+              <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />
+            </MetabaseProvider>,
+          );
+
+          cy.get("body").within(() => {
+            cy.findByText("loading").should("exist");
+            cy.findByText("success").should("exist");
+          });
+        });
+
+        it("should return the auth status when the hook is called outside of MetabaseProvider", () => {
+          mountSdk(
+            <>
+              <ComponentWithHook />
+
+              <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}>
+                <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />
+              </MetabaseProvider>
+            </>,
+          );
+
+          cy.get("body").within(() => {
+            cy.findByText("loading").should("exist");
+            cy.findByText("success").should("exist");
+          });
+        });
+
+        it("should return the auth status when the hook is called without rendered SDK components", () => {
+          mountSdk(
+            <>
+              <ComponentWithHook />
+
+              <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG} />
+            </>,
+          );
+
+          cy.get("body").within(() => {
+            cy.findByText("loading").should("exist");
+            cy.findByText("success").should("exist");
+          });
+        });
       });
 
       describe("useCreateDashboardApi", () => {
-        const Wrapper = () => {
+        const ComponentWithHook = () => {
           const result = useCreateDashboardApi();
           const [createdDashboard, setCreatedDashboard] = useState<{
             name: string;
@@ -417,22 +401,49 @@ describe(
           return createdDashboard?.name;
         };
 
-        Cypress._.each(
-          scenarios,
-          ({ name, waitForComponent, mount }: HookScenario) => {
-            it(`should call hook properly when called ${name}`, () => {
-              if (waitForComponent) {
-                cy.mount(mount(Wrapper, ORDERS_QUESTION_ID));
-              } else {
-                cy.mount(mount(Wrapper));
-              }
+        it("should call hook properly when called inside MetabaseProvider", () => {
+          mountSdk(
+            <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}>
+              <ComponentWithHook />
 
-              cy.get("body").within(() => {
-                cy.findByText("Test Dashboard").should("exist");
-              });
-            });
-          },
-        );
+              <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />
+            </MetabaseProvider>,
+          );
+
+          cy.get("body").within(() => {
+            cy.findByText("Test Dashboard").should("exist");
+          });
+        });
+
+        it("should call hook properly when called outside of MetabaseProvider", () => {
+          mountSdk(
+            <>
+              <ComponentWithHook />
+
+              <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}>
+                <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />
+              </MetabaseProvider>
+            </>,
+          );
+
+          cy.get("body").within(() => {
+            cy.findByText("Test Dashboard").should("exist");
+          });
+        });
+
+        it("should call hook properly when called without rendered SDK components", () => {
+          mountSdk(
+            <>
+              <ComponentWithHook />
+
+              <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG} />
+            </>,
+          );
+
+          cy.get("body").within(() => {
+            cy.findByText("Test Dashboard").should("exist");
+          });
+        });
       });
     });
 
