@@ -36,11 +36,10 @@
 (defn- db-version
   "Get database version of schema from migration table."
   [tx]
-  (or (:migration/version
-       (jdbc/execute-one! tx (sql/format {:select [:version]
-                                          :from [:migration]
-                                          :order-by [[:version :desc]]
-                                          :limit 1})))
+  (or (:min_version
+       (jdbc/execute-one! tx
+                          (sql/format {:select [[[:min :version] :min_version]]
+                                       :from [:migration]})))
       -1))
 
 (defn- write-successful-migration!
@@ -81,12 +80,10 @@
   "Lowest index version. If there is lower than defined in code dynamic schema migration will be attempted."
   [tx]
   (or (when (index-metadata-table-exists? tx)
-        (:index_metadata/index_version
+        (:min_index
          (jdbc/execute-one! tx
-                            (sql/format {:select [:index_version]
-                                         :from [:index_metadata]
-                                         :order-by [[:index_version :asc]]
-                                         :limit 1}))))
+                            (sql/format {:select [[[:min :index_version] :min_index]]
+                                         :from [:index_metadata]}))))
       0))
 
 (defn maybe-migrate-dynamic-schema!
