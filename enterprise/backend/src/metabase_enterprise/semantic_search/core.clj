@@ -87,6 +87,10 @@
        model
        ids))))
 
+;; NOTE:
+;; we're currently not returning stats from `init!` and `reindex!` as the async nature means
+;; we'd report skewed values for the `metabase-search` metrics.
+
 ;; TODO: add reindexing/table-swapping logic when index is detected as stale
 (defenterprise init!
   "Initialize the semantic search table and populate it with initial data."
@@ -97,7 +101,8 @@
         embedding-model (semantic.env/get-configured-embedding-model)]
     (jdbc/with-transaction [tx pgvector]
       (semantic.pgvector-api/init-semantic-search! tx index-metadata embedding-model))
-    (semantic.pgvector-api/index-documents! pgvector index-metadata searchable-documents)))
+    (semantic.pgvector-api/gate-updates! pgvector index-metadata searchable-documents)
+    nil))
 
 (defenterprise reindex!
   "Reindex the semantic search index."
@@ -109,7 +114,8 @@
     ;; todo force a new index
     (jdbc/with-transaction [tx pgvector]
       (semantic.pgvector-api/init-semantic-search! tx index-metadata embedding-model))
-    (semantic.pgvector-api/index-documents! pgvector index-metadata searchable-documents)))
+    (semantic.pgvector-api/gate-updates! pgvector index-metadata searchable-documents)
+    nil))
 
 ;; TODO: implement
 (defenterprise reset-tracking!
