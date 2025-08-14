@@ -79,7 +79,7 @@ export function EditorBody({
 
         // Disable questions based on unsuppported databases
         if (item.model === "card" || item.model === "dataset") {
-          const database = metadata.database(item.db_id);
+          const database = metadata.database(item.database_id);
           return !isDatabaseSupported(database);
         }
 

@@ -55,7 +55,7 @@ export const getDataPickerValue = (
         : displayInfo.isMetric
           ? "metric"
           : "card",
-      db_id: pickerInfo.databaseId,
+      database_id: pickerInfo.databaseId,
     };
   }
 

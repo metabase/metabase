@@ -41,7 +41,7 @@ export type QuestionItem = {
   id: CardId;
   name: string;
   model: "card";
-  db_id: DatabaseId;
+  database_id: DatabaseId;
 };
 
 export type DashboardItem = {
@@ -54,14 +54,14 @@ export type ModelItem = {
   id: CardId;
   name: string;
   model: "dataset";
-  db_id: DatabaseId;
+  database_id: DatabaseId;
 };
 
 export type MetricItem = {
   id: CardId;
   name: string;
   model: "metric";
-  db_id: DatabaseId;
+  database_id: DatabaseId;
 };
 
 export type TablePickerValue = {
