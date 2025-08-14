@@ -71,6 +71,8 @@ SELECT TO vermont_sales_team USING (state = 'VT');
 ALTER TABLE people ENABLE ROW LEVEL SECURITY;
 ```
 
+> For **Snowflake** databases, the user account Metabase uses to [connect to your Snowflake database](../databases/connections/snowflake.md) must have [secondary roles](https://docs.snowflake.com/en/user-guide/security-access-control-overview#authorization-through-primary-role-and-secondary-roles) disabled with `ALTER USER metabase_user SET DEFAULT_SECONDARY_ROLES = ();` for impersonation to work correctly. Otherwise, each impersonated role will have the permissions of all of the user's granted roles combined.
+
 ### Set up a Metabase group
 
 Permissions in Metabase, including impersonation, are managed by groups, so you'll need to:
