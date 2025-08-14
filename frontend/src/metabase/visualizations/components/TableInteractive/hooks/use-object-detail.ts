@@ -75,10 +75,15 @@ export const useObjectDetail = (
         dispatch(zoomInRow({ objectId }));
       } else {
         dispatch(closeNavbar());
-        dispatch(push(`/table/${tableId}/detail/${objectId}`));
+        dispatch(
+          push({
+            pathname: `/table/${tableId}/detail/${objectId}`,
+            state: { card },
+          }),
+        );
       }
     },
-    [dispatch, primaryKeyColumn, rowIndexToPkMap, rows, tableId],
+    [dispatch, primaryKeyColumn, rowIndexToPkMap, rows, tableId, card],
   );
 
   return onOpenObjectDetail;
