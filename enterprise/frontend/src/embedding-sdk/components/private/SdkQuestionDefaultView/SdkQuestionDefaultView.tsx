@@ -10,7 +10,7 @@ import {
   SdkLoader,
 } from "embedding-sdk/components/private/PublicComponentWrapper";
 import { QuestionVisualization } from "embedding-sdk/components/private/SdkQuestion/components/Visualization";
-import { useSdkBreadcrumb } from "embedding-sdk/hooks/private/use-sdk-breadcrumb";
+import { useSdkBreadcrumbs } from "embedding-sdk/hooks/private/use-sdk-breadcrumb";
 import { useTranslatedCollectionId } from "embedding-sdk/hooks/private/use-translated-collection-id";
 import { shouldRunCardQuery } from "embedding-sdk/lib/sdk-question";
 import type { SdkQuestionTitleProps } from "embedding-sdk/types/question";
@@ -86,7 +86,7 @@ export const SdkQuestionDefaultView = ({
     onNavigateBack,
   } = useSdkQuestionContext();
 
-  const { isBreadcrumbEnabled, reportLocation } = useSdkBreadcrumb();
+  const { isBreadcrumbEnabled, reportLocation } = useSdkBreadcrumbs();
 
   const isNewQuestion = originalId === "new";
   const isQuestionSaved = question?.isSaved();

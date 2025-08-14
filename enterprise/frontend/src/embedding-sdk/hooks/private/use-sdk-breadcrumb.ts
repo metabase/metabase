@@ -1,13 +1,10 @@
 import { useContext } from "react";
 
-import {
-  SdkBreadcrumbContext,
-  type SdkBreadcrumbContextType,
-} from "embedding-sdk/components/private/Breadcrumb";
-import type { SdkBreadcrumbsContextType } from "embedding-sdk/components/private/Breadcrumb/SdkBreadcrumbsProvider";
+import { SdkBreadcrumbsContext } from "embedding-sdk/components/private/Breadcrumb";
+import type { SdkBreadcrumbsContextType } from "embedding-sdk/types/breadcrumb";
 
-export const useSdkBreadcrumb = (): SdkBreadcrumbContextType =>
-  useContext(SdkBreadcrumbContext) ?? EmptyBreadcrumbContext;
+export const useSdkBreadcrumbs = (): SdkBreadcrumbsContextType =>
+  useContext(SdkBreadcrumbsContext) ?? EmptyBreadcrumbContext;
 
 export const EmptyBreadcrumbContext: SdkBreadcrumbsContextType = {
   isBreadcrumbEnabled: false,

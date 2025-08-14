@@ -1,6 +1,6 @@
-export { SdkBreadcrumbs as SdkBreadcrumb } from "./SdkBreadcrumbs";
+export { SdkBreadcrumbs } from "./SdkBreadcrumbs";
 export {
-  SdkBreadcrumbsProvider as SdkBreadcrumbProvider,
-  SdkBreadcrumbsContext as SdkBreadcrumbContext,
-  type SdkBreadcrumbsContextType as SdkBreadcrumbContextType,
+  SdkBreadcrumbsProvider,
+  SdkBreadcrumbsContext,
+  type SdkBreadcrumbsProviderProps,
 } from "./SdkBreadcrumbsProvider";

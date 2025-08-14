@@ -5,7 +5,7 @@ import {
   SdkLoader,
   withPublicComponentWrapper,
 } from "embedding-sdk/components/private/PublicComponentWrapper";
-import { useSdkBreadcrumb } from "embedding-sdk/hooks/private/use-sdk-breadcrumb";
+import { useSdkBreadcrumbs } from "embedding-sdk/hooks/private/use-sdk-breadcrumb";
 import { useTranslatedCollectionId } from "embedding-sdk/hooks/private/use-translated-collection-id";
 import { getCollectionIdSlugFromReference } from "embedding-sdk/store/collections";
 import { useSdkSelector } from "embedding-sdk/store/use-sdk-selector";
@@ -115,7 +115,7 @@ export const CollectionBrowserInner = ({
     isBreadcrumbEnabled: isGlobalBreadcrumbEnabled,
     currentLocation,
     reportLocation,
-  } = useSdkBreadcrumb();
+  } = useSdkBreadcrumbs();
 
   const effectiveCollectionId = useMemo(() => {
     if (isGlobalBreadcrumbEnabled && currentLocation?.type === "collection") {

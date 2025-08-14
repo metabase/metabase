@@ -1,25 +1,22 @@
 import { Fragment } from "react";
 import { match } from "ts-pattern";
 
-import { useSdkBreadcrumb } from "embedding-sdk/hooks/private/use-sdk-breadcrumb";
+import { useSdkBreadcrumbs } from "embedding-sdk/hooks/private/use-sdk-breadcrumb";
+import type {
+  SdkBreadcrumbItem,
+  SdkBreadcrumbItemType,
+} from "embedding-sdk/types/breadcrumb";
 import { Badge } from "metabase/common/components/Badge";
 import type { IconName } from "metabase/ui";
 
 import { PublicComponentStylesWrapper } from "../PublicComponentStylesWrapper";
 
-import {
-  BreadcrumbsPathSeparator,
-  PathContainer,
-} from "./SdkBreadcrumbs.styled";
-import type {
-  BreadcrumbItem,
-  BreadcrumbItemType,
-} from "./SdkBreadcrumbsProvider";
+import S from "./SdkBreadcrumbs.module.css";
 
 export interface SdkBreadcrumbProps {
   className?: string;
   style?: React.CSSProperties;
-  onBreadcrumbClick?: (breadcrumb: BreadcrumbItem) => void;
+  onBreadcrumbClick?: (breadcrumb: SdkBreadcrumbItem) => void;
 }
 
 export const SdkBreadcrumbs = ({
@@ -27,7 +24,7 @@ export const SdkBreadcrumbs = ({
   style,
   onBreadcrumbClick,
 }: SdkBreadcrumbProps) => {
-  const { breadcrumbs, navigateTo } = useSdkBreadcrumb();
+  const { breadcrumbs, navigateTo } = useSdkBreadcrumbs();
 
   if (breadcrumbs.length === 0) {
     return null;
@@ -35,7 +32,7 @@ export const SdkBreadcrumbs = ({
 
   return (
     <PublicComponentStylesWrapper className={className} style={style}>
-      <PathContainer>
+      <div className={S.PathContainer}>
         {breadcrumbs.map((breadcrumb, index) => (
           <Fragment key={breadcrumb.id}>
             <Badge
@@ -51,17 +48,17 @@ export const SdkBreadcrumbs = ({
             </Badge>
 
             {index < breadcrumbs.length - 1 && (
-              <BreadcrumbsPathSeparator>/</BreadcrumbsPathSeparator>
+              <div className={S.BreadcrumbsPathSeparator}>/</div>
             )}
           </Fragment>
         ))}
-      </PathContainer>
+      </div>
     </PublicComponentStylesWrapper>
   );
 };
 
-const getBreadcrumbIcon = (type: BreadcrumbItemType): IconName =>
-  match<BreadcrumbItemType, IconName>(type)
+const getBreadcrumbIcon = (type: SdkBreadcrumbItemType): IconName =>
+  match<SdkBreadcrumbItemType, IconName>(type)
     .with("collection", () => "folder")
     .with("dashboard", () => "dashboard")
     .with("question", () => "table2")
