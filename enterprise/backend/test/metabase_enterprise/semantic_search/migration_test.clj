@@ -16,15 +16,11 @@
    [metabase.util.log.capture :as log.capture]
    [next.jdbc :as jdbc]))
 
-;; TODO: fixtures?
-
 (set! *warn-on-reflection* true)
 
 (use-fixtures :once #'semantic.tu/once-fixture)
 (use-fixtures :each #'semantic.tu/ensure-no-migration-table-fixture)
 
-;; TODO: mechanism to completely avoid any migration (init, reindex) calls during this test!
-;; TODO: scheduler.pauseJob(JobKey.jobKey("myJob", "myGroup"));
 (deftest migration-table-versions-test
   (mt/with-premium-features #{:semantic-search}
     (letfn [(migrate-and-get-db-version
@@ -202,46 +198,45 @@
                                                   [:= :column_name [:inline column-name]]]}))))
 
 (deftest dynamic-schema-migration-test
-  (try
-    (mt/with-premium-features #{:semantic-search}
-      (semantic.core/init! (semantic.tu/mock-documents) nil)
+  (mt/with-premium-features #{:semantic-search}
+    (semantic.core/init! (semantic.tu/mock-documents) nil)
       ;; add column to index table
-      (let [original-dynamic-schema semantic.db.migration.impl/dynamic-schema-version]
-        (with-redefs-fn {#'semantic.db.migration.impl/migrate-dynamic-schema!
-                         (fn [tx _opts]
-                           (let [table_names (->> (jdbc/execute! tx
-                                                                 (sql/format {:select [:table_name]
-                                                                              :from [:index_metadata]
-                                                                              :where [[:< :index_version semantic.db.migration.impl/dynamic-schema-version]]
-                                                                              :group-by [:table_name]}))
-                                                  (map :index_metadata/table_name)
-                                                  set)]
-                             (doseq [table_name table_names]
-                               (when-not (has-column? tx table_name "new_col")
-                                 (jdbc/execute! tx (sql/format {:alter-table [table_name] :add-column [[:new_col :int]]}))))
-                             (jdbc/execute! tx (sql/format {:update :index_metadata
-                                                            :set {:index_version semantic.db.migration.impl/dynamic-schema-version}
-                                                            :where [[:in :table_name table_names]]}))))
-                         #'semantic.db.migration.impl/dynamic-schema-version (inc original-dynamic-schema)}
-          (fn []
+    (let [original-dynamic-schema semantic.db.migration.impl/dynamic-schema-version]
+      (with-redefs-fn {#'semantic.db.migration.impl/migrate-dynamic-schema!
+                       (fn [tx _opts]
+                         (let [table_names (->> (jdbc/execute! tx
+                                                               (sql/format {:select [:table_name]
+                                                                            :from [:index_metadata]
+                                                                            :where [[:< :index_version semantic.db.migration.impl/dynamic-schema-version]]
+                                                                            :group-by [:table_name]}))
+                                                (map :index_metadata/table_name)
+                                                set)]
+                           (doseq [table_name table_names]
+                             (when-not (has-column? tx table_name "new_col")
+                               (jdbc/execute! tx (sql/format {:alter-table [table_name] :add-column [[:new_col :int]]}))))
+                           (jdbc/execute! tx (sql/format {:update :index_metadata
+                                                          :set {:index_version semantic.db.migration.impl/dynamic-schema-version}
+                                                          :where [[:in :table_name table_names]]}))))
+                       #'semantic.db.migration.impl/dynamic-schema-version (inc original-dynamic-schema)}
+        (fn []
             ;; Trigger migration by next initialization attempt
-            (semantic.core/init! (semantic.tu/mock-documents) nil)
-            (let [#:index_metadata{:keys [index_version table_name]}
-                  (jdbc/execute-one! semantic.tu/db
-                                     (sql/format
-                                      {:select [:*]
-                                       :from [:index_metadata]}))]
-              (testing "Index metadata table ids were updated"
-                (is (= index_version semantic.db.migration.impl/dynamic-schema-version)))
-              (testing "Index table contains new column"
-                (is  (contains? (jdbc/execute-one! semantic.tu/db
-                                                   (sql/format
-                                                    {:select [:*]
-                                                     :from [(keyword table_name)]
-                                                     :limit 1}))
-                                (keyword table_name "new_col")))))))))))
+          (semantic.core/init! (semantic.tu/mock-documents) nil)
+          (let [#:index_metadata{:keys [index_version table_name]}
+                (jdbc/execute-one! semantic.tu/db
+                                   (sql/format
+                                    {:select [:*]
+                                     :from [:index_metadata]}))]
+            (testing "Index metadata table ids were updated"
+              (is (= index_version semantic.db.migration.impl/dynamic-schema-version)))
+            (testing "Index table contains new column"
+              (is  (contains? (jdbc/execute-one! semantic.tu/db
+                                                 (sql/format
+                                                  {:select [:*]
+                                                   :from [(keyword table_name)]
+                                                   :limit 1}))
+                              (keyword table_name "new_col"))))))))))
 
-(deftest code-schema-versions-match-default-versions-test
+(deftest schema-version-match-default-version-test
   (testing "Default schema should match dynamic schema version"
     (is (= semantic.db.migration.impl/dynamic-schema-version
            (-> (semantic.index/default-index semantic.tu/mock-embedding-model)
