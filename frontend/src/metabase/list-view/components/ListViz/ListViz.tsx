@@ -195,6 +195,8 @@ export function ListViz({
   data,
   settings,
   onVisualizationClick,
+  card,
+  metadata,
 }: VisualizationProps) {
   const question = useSelector(getQuestion);
 
@@ -249,6 +251,8 @@ export function ListViz({
         sortingDirection={sortingDirection}
         onSortClick={handleSort}
         entityType={entityType}
+        card={card}
+        metadata={metadata}
       />
     </Box>
   );
