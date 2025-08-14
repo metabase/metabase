@@ -1,4 +1,3 @@
-/* eslint-disable import/no-duplicates */
 import ten_thousand_component from "./10k.svg?component";
 import ten_thousand_source from "./10k.svg?source";
 import one_million_component from "./1m.svg?component";
@@ -409,6 +408,10 @@ import text_italic_component from "./text_italic.svg?component";
 import text_italic_source from "./text_italic.svg?source";
 import text_strike_component from "./text_strike.svg?component";
 import text_strike_source from "./text_strike.svg?source";
+import thumbs_down_component from "./thumbs_down.svg?component";
+import thumbs_down_source from "./thumbs_down.svg?source";
+import thumbs_up_component from "./thumbs_up.svg?component";
+import thumbs_up_source from "./thumbs_up.svg?source";
 import time_history_component from "./time_history.svg?component";
 import time_history_source from "./time_history.svg?source";
 import trash_component from "./trash.svg?component";
@@ -1250,6 +1253,7 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
       component: table2_component,
       source: table2_source,
     },
+<<<<<<< HEAD
     text_bold: {
       component: text_bold_component,
       source: text_bold_source,
@@ -1261,6 +1265,15 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
     text_strike: {
       component: text_strike_component,
       source: text_strike_source,
+=======
+    thumbs_down: {
+      component: thumbs_down_component,
+      source: thumbs_down_source,
+    },
+    thumbs_up: {
+      component: thumbs_up_component,
+      source: thumbs_up_source,
+>>>>>>> master
     },
     time_history: {
       component: time_history_component,
@@ -1583,9 +1596,14 @@ export type IconName =
   | "tab"
   | "table"
   | "table2"
+<<<<<<< HEAD
   | "text_bold"
   | "text_italic"
   | "text_strike"
+=======
+  | "thumbs_down"
+  | "thumbs_up"
+>>>>>>> master
   | "time_history"
   | "trash"
   | "trash_filled"

@@ -298,8 +298,8 @@ jobs:
         run: |
           yarn embedding-sdk:generate-changelog -o changelog-diff
 
-      - name: Build SDK bundle
-        run: yarn run build-embedding-sdk
+      - name: Build SDK package
+        run: yarn run build-embedding-sdk-package
 
       - name: Generate SDK package.json in the build directory
         run: yarn run embedding-sdk:generate-package

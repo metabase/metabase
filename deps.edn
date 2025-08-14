@@ -831,16 +831,18 @@
 
   ;; run tests against MLv2. Very fast since this is almost all ^:parallel
   :test/lib
-  {:exec-args {:only ["test/metabase/lib" "test/metabase/lib_be"]}}
+  {:exec-args {:only ["test/metabase/lib"
+                      "test/metabase/lib_be"]}}
 
   ;; test the Query Processor
   ;;
   ;;    clj -X:dev:ee:ee-dev:test:test/qp
   :test/qp
-  {:exec-args {:only ["test/metabase/driver"
-                      "test/metabase/query_processor"
+  {:exec-args {:only ["test/metabase/query_processor"
                       "test/metabase/query_processor_test"
+                      metabase.driver.sql.query-processor-test
                       metabase-enterprise.advanced-permissions.models.permissions.block-permissions-test
+                      metabase-enterprise.advanced-permissions.query-processor.middleware.permissions-test
                       metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions-test]}}
 
   ;; test the notification system
@@ -853,14 +855,14 @@
   ;;
   ;;    clj -X:dev:ee:ee-dev:test:test/mbql
   :test/mbql
-  {:exec-args {:only ["test/mbql"
-                      "test/metabase/lib"
+  {:exec-args {:only ["test/metabase/lib"
                       "test/metabase/lib_be"
                       "test/metabase/legacy_mbql"
-                      "test/metabase/driver"
                       "test/metabase/query_processor"
                       "test/metabase/query_processor_test"
+                      metabase.driver.sql.query-processor-test
                       metabase-enterprise.advanced-permissions.models.permissions.block-permissions-test
+                      metabase-enterprise.advanced-permissions.query-processor.middleware.permissions-test
                       metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions-test]}}
 
   ;; test search-related stuff.
