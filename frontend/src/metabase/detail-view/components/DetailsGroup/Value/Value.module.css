@@ -2,7 +2,8 @@
   overflow-wrap: break-word;
   word-break: break-word;
 
-  a {
+  a,
+  a:hover {
     color: var(--mb-color-text-primary);
     text-decoration: underline solid #92999e 1px;
   }
