@@ -86,6 +86,7 @@
     :model/TransformJob
     :model/TransformJobRun
     :model/TransformTag
+    :model/TransformTags
     :model/Undo
     :model/User
     :model/UserParameterValue

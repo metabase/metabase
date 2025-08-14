@@ -6,6 +6,7 @@
    [medley.core :as m]
    [metabase-enterprise.transforms.models.transform-run]
    [metabase-enterprise.transforms.models.transform-tag]
+   [metabase-enterprise.transforms.models.transform-tags]
    [metabase-enterprise.transforms.test-dataset :as transforms-dataset]
    [metabase-enterprise.transforms.test-query-util :as test-query-util]
    [metabase-enterprise.transforms.test-util :refer [with-transform-cleanup!]]
@@ -404,8 +405,8 @@
                      :model/TransformTag tag1 {}
                      :model/TransformTag _tag2 {}
                      :model/TransformTag _tag3 {}
-                     :model/TransformTag _ {:transform_id (:id transform1) :tag_id (:id tag1)}
-                     :model/TransformTag _ {:transform_id (:id transform2) :tag_id (:id tag1)}
+                     :model/TransformTags _ {:transform_id (:id transform1) :tag_id (:id tag1)}
+                     :model/TransformTags _ {:transform_id (:id transform2) :tag_id (:id tag1)}
                      :model/TransformRun _run1 {:transform_id (:id transform1)}
                      :model/TransformRun _run2 {:transform_id (:id transform2)}
                      :model/TransformRun _run3 {:transform_id (:id transform3)}]
@@ -454,10 +455,10 @@
                                                            :name (str "test_table_4_" (u/generate-nano-id))}}
                      :model/TransformTag tag1 {}
                      :model/TransformTag tag2 {}
-                     :model/TransformTag _ {:transform_id (:id transform1) :tag_id (:id tag1)}
-                     :model/TransformTag _ {:transform_id (:id transform2) :tag_id (:id tag1)}
-                     :model/TransformTag _ {:transform_id (:id transform2) :tag_id (:id tag2)}
-                     :model/TransformTag _ {:transform_id (:id transform3) :tag_id (:id tag2)}
+                     :model/TransformTags _ {:transform_id (:id transform1) :tag_id (:id tag1)}
+                     :model/TransformTags _ {:transform_id (:id transform2) :tag_id (:id tag1)}
+                     :model/TransformTags _ {:transform_id (:id transform2) :tag_id (:id tag2)}
+                     :model/TransformTags _ {:transform_id (:id transform3) :tag_id (:id tag2)}
 
                      :model/TransformRun _run1 {:transform_id (:id transform1)}
                      :model/TransformRun _run2 {:transform_id (:id transform2)}
@@ -512,8 +513,8 @@
                      :model/Transform transform2 {}
                      :model/Transform transform3 {}
                      :model/TransformTag tag1 {}
-                     :model/TransformTag _ {:transform_id (:id transform1) :tag_id (:id tag1)}
-                     :model/TransformTag _ {:transform_id (:id transform2) :tag_id (:id tag1)}
+                     :model/TransformTags _ {:transform_id (:id transform1) :tag_id (:id tag1)}
+                     :model/TransformTags _ {:transform_id (:id transform2) :tag_id (:id tag1)}
                      :model/TransformRun _run1 {:transform_id (:id transform1) :status "succeeded"}
                      :model/TransformRun _run1 {:transform_id (:id transform2) :status "failed"}
                      :model/TransformRun _run1 {:transform_id (:id transform3) :status "failed"}
@@ -534,8 +535,8 @@
                      :model/Transform transform2 {}
                      :model/TransformTag tag1 {}
                      :model/TransformTag tag2 {}
-                     :model/TransformTag _ {:transform_id (:id transform1) :tag_id (:id tag1)}
-                     :model/TransformTag _ {:transform_id (:id transform2) :tag_id (:id tag2)}
+                     :model/TransformTags _ {:transform_id (:id transform1) :tag_id (:id tag1)}
+                     :model/TransformTags _ {:transform_id (:id transform2) :tag_id (:id tag2)}
                      :model/TransformRun _run1 {:transform_id (:id transform1)}
                      :model/TransformRun _run1 {:transform_id (:id transform2)}]
         (testing "Filter by transform1 ID and tag1 returns transform1 (has both)"

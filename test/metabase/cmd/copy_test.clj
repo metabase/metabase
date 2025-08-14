@@ -45,7 +45,9 @@
     :model/TransformRunCancelation
     :model/TransformJob
     :model/TransformJobRun
+    :model/TransformJobTags
     :model/TransformTag
+    :model/TransformTags
     :model/Undo
     :model/UserKeyValue})
 
