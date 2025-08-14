@@ -19,7 +19,6 @@
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.malli.registry :as mr]
-   [metabase.warehouse-schema.models.field-values :as field-values]
    [toucan2.core :as t2]))
 
 (def missing-value (symbol "nil #_\"key is not present.\""))
@@ -376,14 +375,8 @@
   [coll]
   (boolean (and (seqable? coll) (seq coll) (every? string? coll))))
 
-(defn- ensure-field-values!
-  [table-name-or-id]
-  (run! field-values/create-or-update-full-field-values!
-        (t2/reducible-select :model/Field :table_id (cond-> table-name-or-id (keyword? table-name-or-id) mt/id))))
-
 (deftest answer-sources-test
   (mt/with-premium-features #{:metabot-v3}
-    (ensure-field-values! :products)
     (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
           model-source-query (lib/query mp (lib.metadata/table mp (mt/id :products)))
           metric-source-query (-> model-source-query
@@ -536,8 +529,6 @@
 
 (deftest get-metric-details-test
   (mt/with-premium-features #{:metabot-v3}
-    (ensure-field-values! :orders)
-    (ensure-field-values! :products)
     (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
           source-query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
                            (lib/aggregate (lib/avg (lib.metadata/field mp (mt/id :orders :subtotal))))
@@ -670,7 +661,6 @@
 
 (deftest get-report-details-test
   (mt/with-premium-features #{:metabot-v3}
-    (ensure-field-values! :products)
     (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
           source-query (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
                            (lib/aggregate (lib/avg (lib.metadata/field mp (mt/id :products :rating))))
@@ -727,8 +717,6 @@
 
 (deftest get-model-details-test
   (mt/with-premium-features #{:metabot-v3}
-    (ensure-field-values! :orders)
-    (ensure-field-values! :products)
     (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
           source-query (lib/query mp (lib.metadata/table mp (mt/id :orders)))
           model-data {:name "Model model"
@@ -870,10 +858,28 @@
                                       :with_fields false
                                       :with_metrics false)))))))))))
 
+(deftest field-values-auto-populate-test
+  (mt/with-premium-features #{:metabot-v3}
+    (t2/delete! :model/FieldValues :field_id [:in (t2/select-fn-vec :id :model/Field :table_id (mt/id :orders))])
+    (let [table-id (mt/id :orders)
+          conversation-id (str (random-uuid))
+          ai-token (ai-session-token)
+          response (mt/user-http-request :rasta :post 200 "ee/metabot-tools/field-values"
+                                         {:request-options {:headers {"x-metabase-session" ai-token}}}
+                                         {:arguments
+                                          {:entity_type "table"
+                                           :entity_id   table-id
+                                           :field_id    (-> table-id
+                                                            metabot-v3.tools.u/table-field-id-prefix
+                                                            (str 8)) ; quantity
+                                           :limt        15}
+                                          :conversation_id conversation-id})]
+      (is (=? {:structured_output {:values int-sequence?}
+               :conversation_id conversation-id}
+              response)))))
+
 (deftest get-table-details-test
   (mt/with-premium-features #{:metabot-v3}
-    (ensure-field-values! :orders)
-    (ensure-field-values! :products)
     (let [table-id (mt/id :orders)
           metric-data {:name "Metric"
                        :description "Model based metric"
