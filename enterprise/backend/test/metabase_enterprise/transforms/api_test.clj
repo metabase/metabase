@@ -24,30 +24,6 @@
 (set! *warn-on-reflection* true)
 
 ;;; ------------------------------------------------------------
-;;; Test Helper Functions
-;;; ------------------------------------------------------------
-
-(defn test-transform
-  "Create a test transform with sensible defaults.
-   Can be called with just a name string or an options map."
-  [name-or-opts]
-  (let [opts       (if (string? name-or-opts)
-                     {:name name-or-opts}
-                     name-or-opts)
-        query      (or (:query opts)
-                       (str "SELECT " (or (:select opts) "1") " as num"))
-        table-name (or (:table-name opts)
-                       (str "test_table_" (u/generate-nano-id)))]
-    {:name   (or (:name opts) "Test Transform")
-     :source {:type  "query"
-              :query {:database (mt/id)
-                      :type     "native"
-                      :native   {:query         query
-                                 :template-tags {}}}}
-     :target {:type "table"
-              :name table-name}}))
-
-;;; ------------------------------------------------------------
 ;;; Assertion Helpers
 ;;; ------------------------------------------------------------
 
@@ -342,8 +318,8 @@
 (deftest get-runs-filter-by-single-transform-id-test
   (testing "GET /api/ee/transform/run - filter by single transform ID"
     (mt/with-premium-features #{:transforms}
-      (mt/with-temp [:model/Transform transform1 (test-transform "Transform 1")
-                     :model/Transform transform2 (test-transform "Transform 2")
+      (mt/with-temp [:model/Transform transform1 {}
+                     :model/Transform transform2 {}
                      :model/TransformRun run1 {:transform_id (:id transform1)}
                      :model/TransformRun run2 {:transform_id (:id transform2)}]
         (testing "Filter by transform1 ID only returns transform1 runs"
@@ -363,9 +339,9 @@
 (deftest get-runs-filter-by-multiple-transform-ids-test
   (testing "GET /api/ee/transform/run - filter by multiple transform IDs"
     (mt/with-premium-features #{:transforms}
-      (mt/with-temp [:model/Transform transform1 (test-transform "Transform 1")
-                     :model/Transform transform2 (test-transform "Transform 2")
-                     :model/Transform transform3 (test-transform "Transform 3")
+      (mt/with-temp [:model/Transform transform1 {}
+                     :model/Transform transform2 {}
+                     :model/Transform transform3 {}
                      :model/TransformRun _run1 {:transform_id (:id transform1)}
                      :model/TransformRun _run2 {:transform_id (:id transform2)}
                      :model/TransformRun _run3 {:transform_id (:id transform3)}]
@@ -378,7 +354,7 @@
 (deftest get-runs-filter-by-single-status-test
   (testing "GET /api/ee/transform/run - filter by single status"
     (mt/with-premium-features #{:transforms}
-      (mt/with-temp [:model/Transform transform (test-transform "Transform with multiple runs")
+      (mt/with-temp [:model/Transform transform {}
                      :model/TransformRun _run1 {:transform_id (:id transform) :status "succeeded"}
                      :model/TransformRun _run2 {:transform_id (:id transform) :status "failed"}
                      :model/TransformRun _run3 {:transform_id (:id transform) :status "failed"}]
@@ -422,9 +398,9 @@
 (deftest get-runs-filter-by-single-tag-test
   (testing "GET /api/ee/transform/run - filter by single tag"
     (mt/with-premium-features #{:transforms}
-      (mt/with-temp [:model/Transform transform1 (test-transform "Tagged Transform 1")
-                     :model/Transform transform2 (test-transform "Tagged Transform 2")
-                     :model/Transform transform3 (test-transform "Untagged Transform")
+      (mt/with-temp [:model/Transform transform1 {}
+                     :model/Transform transform2 {}
+                     :model/Transform transform3 {}
                      :model/TransformTag tag1 {:name (str "test-tag-" (u/generate-nano-id))}
                      :model/TransformTag tag1 {:name (str "test-tag-" (u/generate-nano-id))}
                      :model/TransformTag tag1 {:name (str "test-tag-" (u/generate-nano-id))}
@@ -575,8 +551,8 @@
 (deftest get-runs-intersect-transform-id-and-tag-test
   (testing "GET /api/ee/transform/run - intersection of transform IDs and tags"
     (mt/with-premium-features #{:transforms}
-      (mt/with-temp [:model/Transform transform1 (test-transform "Transform with tag1")
-                     :model/Transform transform2 (test-transform "Transform with tag2")
+      (mt/with-temp [:model/Transform transform1 {}
+                     :model/Transform transform2 {}
                      :model/TransformTag tag1 {:name (str "test-tag-1-" (u/generate-nano-id))}
                      :model/TransformTag tag2 {:name (str "test-tag-2-" (u/generate-nano-id))}
                      :model/TagTransform _ {:transform_id (:id transform1) :tag_id (:id tag1)}

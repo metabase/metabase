@@ -300,6 +300,17 @@
        :time_matters true
        :creator_id   (rasta-id)}))
 
+   :model/Transform
+   (fn [_]
+     {:name "Test Transform"
+      :source {:type  "query"
+               :query {:database (data/id)
+                       :type     "native"
+                       :native   {:query         "SELECT 1 as num"
+                                  :template-tags {}}}}
+      :target {:type "table"
+               :name (str "test_table_" (u/generate-nano-id))}})
+
    :model/TransformRun
    (fn [_]
      {:status     "succeeded"
