@@ -1,13 +1,16 @@
 //
-import { createElement, useCallback, useEffect, useRef } from "react";
+import { createElement, useCallback, useEffect, useMemo, useRef } from "react";
 import { useSearchParam } from "react-use";
 import { match } from "ts-pattern";
 
 import { useSetting } from "metabase/common/hooks";
+import type { MetabaseTheme } from "metabase/embedding-sdk/theme";
+import { colors as defaultMetabaseColors } from "metabase/lib/colors";
 import { Card } from "metabase/ui";
 import type { SdkIframeEmbedBaseSettings } from "metabase-enterprise/embedding_iframe_sdk/types/embed";
 
 import { useSdkIframeEmbedSetupContext } from "../context";
+import { getConfigurableThemeColors } from "../utils/theme-colors";
 
 import S from "./SdkIframeEmbedPreview.module.css";
 
@@ -25,6 +28,7 @@ export const SdkIframeEmbedPreview = () => {
   const scriptRef = useRef<HTMLScriptElement | null>(null);
 
   const instanceUrl = useSetting("site-url");
+  const applicationColors = useSetting("application-colors");
 
   const defineMetabaseConfig = useCallback(
     (metabaseConfig: SdkIframeEmbedBaseSettings) => {
@@ -51,14 +55,34 @@ export const SdkIframeEmbedPreview = () => {
     [isEmbedSettingsLoaded, experience],
   );
 
+  // TODO(EMB-696): There is a bug in the SDK where if we set the theme back to undefined,
+  // some color will not be reset to the default (e.g. text color, CSS variables).
+  // We can remove this block once EMB-696 is fixed.
+  const defaultTheme: MetabaseTheme = useMemo(() => {
+    const colors = Object.fromEntries(
+      getConfigurableThemeColors().map((color) => [
+        color.key,
+        applicationColors?.[color.originalColorKey] ??
+          defaultMetabaseColors[color.originalColorKey],
+      ]),
+    );
+    return { colors };
+  }, [applicationColors]);
+
   useEffect(() => {
     defineMetabaseConfig({
       instanceUrl,
       useExistingUserSession: true,
-      theme: settings.theme ?? undefined,
+      theme: settings.theme ?? defaultTheme,
       ...(localeOverride ? { locale: localeOverride } : {}),
     });
-  }, [instanceUrl, localeOverride, settings.theme, defineMetabaseConfig]);
+  }, [
+    instanceUrl,
+    localeOverride,
+    settings.theme,
+    defineMetabaseConfig,
+    defaultTheme,
+  ]);
 
   return (
     <Card
