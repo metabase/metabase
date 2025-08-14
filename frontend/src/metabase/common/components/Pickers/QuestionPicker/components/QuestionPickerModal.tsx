@@ -31,6 +31,7 @@ interface QuestionPickerModalProps {
   value?: QuestionPickerValue;
   models?: QuestionPickerModel[];
   recentFilter?: (items: RecentItem[]) => RecentItem[];
+  shouldDisableItem?: (item: QuestionPickerItem) => boolean;
 }
 
 const canSelectItem = (
@@ -57,6 +58,7 @@ export const QuestionPickerModal = ({
   options = defaultOptions,
   models = ["card", "dataset"],
   recentFilter,
+  shouldDisableItem,
 }: QuestionPickerModalProps) => {
   options = { ...defaultOptions, ...options };
   const [selectedItem, setSelectedItem] = useState<QuestionPickerItem | null>(
@@ -113,6 +115,7 @@ export const QuestionPickerModal = ({
           onInit={onItemSelect}
           onItemSelect={onItemSelect}
           onPathChange={setQuestionsPath}
+          shouldDisableItem={shouldDisableItem}
         />
       ),
     },
@@ -131,6 +134,7 @@ export const QuestionPickerModal = ({
           onInit={onItemSelect}
           onItemSelect={onItemSelect}
           onPathChange={setModelsPath}
+          shouldDisableItem={shouldDisableItem}
         />
       ),
     },
@@ -149,6 +153,7 @@ export const QuestionPickerModal = ({
           onInit={onItemSelect}
           onItemSelect={onItemSelect}
           onPathChange={setMetricsPath}
+          shouldDisableItem={shouldDisableItem}
         />
       ),
     },
