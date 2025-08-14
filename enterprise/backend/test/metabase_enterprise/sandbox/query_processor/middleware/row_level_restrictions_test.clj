@@ -1485,3 +1485,31 @@
             (mt/with-test-user :rasta
               (is (= [[10]]
                      (run-venues-count-query))))))))))
+
+;;; see also [[metabase.driver.sql.query-processor-test/evil-field-ref-for-an-expression-test]]
+;;; and [[metabase.query-processor.util.add-alias-info-test/resolve-incorrect-field-ref-for-expression-test]]
+(deftest evil-field-ref-for-an-expression-test
+  (letfn [(query []
+            (mt/mbql-query products
+              {:fields [$id]
+               :limit  3}))
+          (sandbox-query []
+            (mt/mbql-query products
+              {:expressions {"my_numberLiteral" [:value 1 {:base_type :type/Integer}]}
+               :fields      [$id
+                             [:expression "my_numberLiteral"]]
+               :order-by    [[:asc $id]]
+               :limit       3}))]
+    (met/with-gtaps! {:gtaps      {:products {:query      (sandbox-query)
+                                              :remappings {"filter-attribute" [:dimension
+                                                                               ;; PROBABLY wrong, since this should
+                                                                               ;; PROBABLY be an expression ref but who
+                                                                               ;; knows right
+                                                                               [:field "my_numberLiteral" {:base-type :type/Integer}]
+                                                                               {:stage-number 0}]}}}
+                      :attributes {"filter-attribute" "1"}}
+      (is (= [[1]
+              [2]
+              [3]]
+             (mt/rows
+              (qp/process-query (query))))))))

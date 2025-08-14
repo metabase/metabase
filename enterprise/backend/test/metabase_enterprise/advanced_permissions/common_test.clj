@@ -800,9 +800,9 @@
                            (mt/user-http-request :rasta :post 200 execute-path
                                                  {:parameters {"id" 1}})))))
                 (testing "Fails with access to the DB blocked"
-                  (mt/with-all-users-data-perms-graph! {(u/the-id (mt/db)) {:view-data      :blocked
-                                                                            :create-queries :no
-                                                                            :details        :yes}}
+                  (mt/with-all-users-data-perms-graph! {(mt/id) {:view-data      :blocked
+                                                                 :create-queries :no
+                                                                 :details        :yes}}
                     (mt/with-actions-enabled
                       (is (partial= {:message "You don't have permissions to do that."}
                                     (mt/user-http-request :rasta :post 403 execute-path
@@ -884,7 +884,7 @@
             [table-a (upload-test/create-upload-table! :schema-name schema-name)]
             (upload-test/with-upload-table!
               [table-b (upload-test/create-upload-table! :schema-name schema-name)]
-              (let [db-id       (u/the-id (mt/db))
+              (let [db-id       (mt/id)
                     append-csv! #(upload-test/update-csv-with-defaults!
                                   action
                                   :table-id (:id table-a)
@@ -911,7 +911,7 @@
                        action)
         (upload-test/with-upload-table!
           [table-a (upload-test/create-upload-table!)]
-          (let [db-id       (u/the-id (mt/db))
+          (let [db-id       (mt/id)
                 append-csv! #(upload-test/update-csv-with-defaults!
                               action
                               :table-id (:id table-a)
@@ -929,7 +929,7 @@
     (testing "GET /api/database and GET /api/database/:id responses should include can_upload depending on unrestricted data access to the upload schema"
       (mt/with-model-cleanup [:model/Table]
         (let [schema-name (sql.tx/session-schema driver/*driver*)
-              db-id       (u/the-id (mt/db))]
+              db-id       (mt/id)]
           (upload-test/with-upload-table! [table (upload-test/create-upload-table! :schema-name schema-name)]
             (mt/with-temp [:model/Table {} {:db_id db-id :schema "some_schema"}]
               (doseq [[schema-perms can-upload?] {:query-builder               true

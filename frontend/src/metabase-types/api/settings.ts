@@ -528,7 +528,10 @@ export type UserSettings = {
   "show-updated-permission-modal": boolean;
   "show-updated-permission-banner": boolean;
   "trial-banner-dismissal-timestamp"?: string | null;
-  "sdk-iframe-embed-setup-settings"?: SdkIframeEmbedSetupSettings | null;
+  "sdk-iframe-embed-setup-settings"?: Pick<
+    SdkIframeEmbedSetupSettings,
+    "theme" | "useExistingUserSession"
+  > | null;
 };
 
 /**
