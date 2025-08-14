@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { ResizableBox, type ResizableBoxProps } from "react-resizable";
 
 import { hasFeature } from "metabase/admin/databases/utils";
+import type { CollectionPickerItem } from "metabase/common/components/Pickers/CollectionPicker";
 import type { DataPickerItem } from "metabase/common/components/Pickers/DataPicker";
 import { useSetting } from "metabase/common/hooks";
 import NativeQueryEditor from "metabase/query_builder/components/NativeQueryEditor";
@@ -70,7 +71,7 @@ export function EditorBody({
   const dataPickerOptions = useMemo(() => {
     const metadata = question.metadata();
     return {
-      shouldDisableItem: (item: DataPickerItem) => {
+      shouldDisableItem: (item: DataPickerItem | CollectionPickerItem) => {
         // Disable unsuppported databases
         if (item.model === "database") {
           const database = metadata.database(item.id);
