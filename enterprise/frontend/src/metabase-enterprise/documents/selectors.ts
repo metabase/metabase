@@ -39,9 +39,6 @@ export const getShowNavigateBackToDocumentButton = createSelector(
   (documents) => documents?.showNavigateBackToDocumentButton ?? false,
 );
 
-// For backwards compatibility with DocumentBackButton
-export const getDocument = getCurrentDocument;
-
 // Get all draft cards
 export const getDraftCards = createSelector(
   getDocumentsState,
@@ -50,16 +47,15 @@ export const getDraftCards = createSelector(
 
 // Get a specific draft card by ID
 export const getDraftCardById = createSelector(
-  [getDraftCards, (_state: any, cardId: number) => cardId],
+  [getDraftCards, (_state: DocumentsStoreState, cardId: number) => cardId],
   (draftCards, cardId) => draftCards[cardId],
 );
 
-// Get card with draft settings merged
 export const getCardWithDraft = createSelector(
   [
     getDraftCards,
-    (_state: any, cardId: CardId) => cardId,
-    (_state: any, _cardId: CardId, card?: Card) => card,
+    (_state: DocumentsStoreState, cardId: CardId) => cardId,
+    (_state: DocumentsStoreState, _cardId: CardId, card?: Card) => card,
   ],
   (draftCards, cardId, card) => {
     const draftCard = draftCards[cardId];

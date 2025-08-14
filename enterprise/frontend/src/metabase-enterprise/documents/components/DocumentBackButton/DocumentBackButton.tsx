@@ -6,7 +6,7 @@ import { useDispatch, useSelector } from "metabase/lib/redux";
 import { ActionIcon, type ActionIconProps, Icon, Tooltip } from "metabase/ui";
 import { navigateBackToDocument } from "metabase-enterprise/documents/actions";
 import {
-  getDocument,
+  getCurrentDocument,
   getShowNavigateBackToDocumentButton,
 } from "metabase-enterprise/documents/selectors";
 
@@ -26,7 +26,7 @@ export function DocumentBackButton({
   documentOverride,
   ...actionIconProps
 }: DocumentBackButtonProps) {
-  const documentState = useSelector(getDocument);
+  const documentState = useSelector(getCurrentDocument);
   const showButton = useSelector(getShowNavigateBackToDocumentButton);
   const document = documentOverride ?? documentState;
   const dispatch = useDispatch();
