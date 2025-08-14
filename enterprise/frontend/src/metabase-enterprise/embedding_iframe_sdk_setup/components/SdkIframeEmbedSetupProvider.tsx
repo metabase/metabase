@@ -6,6 +6,7 @@ import {
   useState,
 } from "react";
 import { P, match } from "ts-pattern";
+import _ from "underscore";
 
 import { useUserSetting } from "metabase/common/hooks";
 
