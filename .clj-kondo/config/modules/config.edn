@@ -1751,7 +1751,7 @@
            users
            util
            warehouse-schema
-
+           warehouses
            enterprise/documents}}
 
   enterprise/permission-debug
