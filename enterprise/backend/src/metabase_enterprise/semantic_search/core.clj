@@ -2,7 +2,6 @@
   "Enterprise implementations of semantic search core functions using defenterprise."
   (:require
    [medley.core :as m]
-   [metabase-enterprise.semantic-search.db.connection :as semantic.db.connection]
    [metabase-enterprise.semantic-search.db.datasource :as semantic.db.datasource]
    [metabase-enterprise.semantic-search.env :as semantic.env]
    [metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]
