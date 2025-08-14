@@ -10,19 +10,19 @@
   (testing "compile-transform should return [sql params] format"
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
       (testing "simple table name"
-      (let [result (driver/compile-transform driver/*driver*
-                                             {:query "SELECT * FROM products"
-                                              :output-table :my_table})]
-        (testing "returns a vector"
-          (is (vector? result)))
-        (testing "first element is SQL string"
-          (is (string? (first result))))
-        (testing "has at least 1 element (sql required)"
-          (is (>= (count result) 1)))
-        (testing "generates appropriate create table statement"
+        (let [result (driver/compile-transform driver/*driver*
+                                               {:query "SELECT * FROM products"
+                                                :output-table :my_table})]
+          (testing "returns a vector"
+            (is (vector? result)))
+          (testing "first element is SQL string"
+            (is (string? (first result))))
+          (testing "has at least 1 element (sql required)"
+            (is (>= (count result) 1)))
+          (testing "generates appropriate create table statement"
           ;; Different drivers may use different syntax
-          (is (or (re-find #"(?i)INTO\s+.*my_table.*FROM" (first result))
-                  (re-find #"(?i)CREATE\s+TABLE.*AS" (first result))
+            (is (or (re-find #"(?i)INTO\s+.*my_table.*FROM" (first result))
+                    (re-find #"(?i)CREATE\s+TABLE.*AS" (first result))
                     (re-find #"(?i)CREATE\s+.*TABLE.*my_table" (first result)))))))
 
       (testing "schema-qualified table name"
@@ -49,14 +49,14 @@
   (testing "compile-drop-table should return [sql params] format"
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
       (testing "simple table name"
-      (let [result (driver/compile-drop-table driver/*driver* :my_table)]
-        (testing "returns a vector"
-          (is (vector? result)))
-        (testing "first element is SQL string"
-          (is (string? (first result))))
-        (testing "has at least 1 element (sql required)"
-          (is (>= (count result) 1)))
-        (testing "generates DROP TABLE IF EXISTS statement"
+        (let [result (driver/compile-drop-table driver/*driver* :my_table)]
+          (testing "returns a vector"
+            (is (vector? result)))
+          (testing "first element is SQL string"
+            (is (string? (first result))))
+          (testing "has at least 1 element (sql required)"
+            (is (>= (count result) 1)))
+          (testing "generates DROP TABLE IF EXISTS statement"
             (is (re-find #"(?i)DROP\s+TABLE\s+IF\s+EXISTS" (first result))))
           (testing "includes table name"
             (is (re-find #"my_table" (first result))))))
