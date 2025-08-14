@@ -129,7 +129,7 @@ function setup(overrides: SetupProps = {}) {
         getCollectionNumericIdFromReference,
       },
       storeInitialState: state,
-      sdkProviderProps: {
+      componentProviderProps: {
         authConfig: createMockSdkConfig(),
       },
     },

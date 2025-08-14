@@ -2,8 +2,8 @@ import type { ReactNode } from "react";
 import { P, match } from "ts-pattern";
 
 import {
+  ComponentProvider,
   InteractiveDashboard,
-  MetabaseProvider,
   StaticDashboard,
   StaticQuestion,
 } from "embedding-sdk/bundle";
@@ -66,11 +66,11 @@ export const SdkIframeEmbedRoute = () => {
   });
 
   return (
-    <MetabaseProvider authConfig={authConfig} theme={theme} locale={locale}>
+    <ComponentProvider authConfig={authConfig} theme={theme} locale={locale}>
       <Box h="100vh" bg={theme?.colors?.background}>
         <SdkIframeEmbedView settings={embedSettings} />
       </Box>
-    </MetabaseProvider>
+    </ComponentProvider>
   );
 };
 
