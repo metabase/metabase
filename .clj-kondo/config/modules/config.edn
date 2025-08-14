@@ -1873,8 +1873,7 @@
            task
            task-history
            test
-           util
-           enterprise/worker}}
+           util}}
 
   enterprise/upload-management
   {:team "Admin Webapp"
@@ -1883,16 +1882,6 @@
            models
            premium-features
            upload
-           util}}
-
-  enterprise/worker
-  {:team "Querying"
-   :api  #{metabase-enterprise.worker.api
-           metabase-enterprise.worker.core
-           metabase-enterprise.worker.init}
-   :uses #{config
-           system
-           task
            util}}}
 
  ;; namespaces matching these patterns (with `re-find`) are excluded from the module linter. Since regex literals
