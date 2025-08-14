@@ -5,14 +5,17 @@
   (:require
    [metabase.test.data.interface :as tx]))
 
+;; We define our own dataset so that we don't interfere with other tests
+;; that could be run in parallel on the same db instance
+;; e.g., metabase.driver.snowflake-test/describe-database-test
+
 (tx/defdataset transforms-test
   "A small dataset specifically for transform tests. Contains enough data to test:
    - Basic transformations (filtering, aggregation)
    - Multiple tables for joins
    - Different data types
    - Enough rows to verify correctness without being slow"
-  ;; IMPORTANT: Table order matters! Tables with foreign keys must come AFTER
-  ;; the tables they reference to avoid FK constraint violations during data loading.
+  ;; Table order matters!
   [["customers"
     [{:field-name "id" :base-type :type/Integer :pk? true}
      {:field-name "name" :base-type :type/Text}
@@ -29,7 +32,6 @@
      {:field-name "category" :base-type :type/Text}
      {:field-name "price" :base-type :type/Float}
      {:field-name "created_at" :base-type :type/DateTime}]
-    ;; Using singular category names to match existing test expectations
     [[1 "Widget A" "Widget" 19.99 #t "2024-01-01T10:00:00"]
      [2 "Doohickey X" "Doohickey" 29.99 #t "2024-01-02T10:00:00"]
      [3 "Doohickey Y" "Doohickey" 49.99 #t "2024-01-03T10:00:00"]

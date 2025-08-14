@@ -1,6 +1,5 @@
 (ns ^:mb/driver-tests metabase-enterprise.transforms.execute-test
   (:require
-   [clojure.string :as str]
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase-enterprise.transforms.execute :as transforms.execute]
@@ -13,8 +12,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
-   [toucan2.core :as t2]
-   [toucan2.util :as u]))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -39,7 +37,6 @@
 
 (deftest execute-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
-    ;; Use an isolated database to prevent interference with parallel tests
     (mt/dataset transforms-dataset/transforms-test
       (let [target-type "table"
             schema (t2/select-one-fn :schema :model/Table (mt/id :products))]
