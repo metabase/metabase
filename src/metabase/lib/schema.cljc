@@ -8,7 +8,6 @@
   future we can deprecate that namespace and eventually do away with it entirely."
   (:refer-clojure :exclude [ref])
   (:require
-   [clojure.set :as set]
    [medley.core :as m]
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.schema.actions :as actions]
