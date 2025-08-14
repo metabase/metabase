@@ -202,8 +202,8 @@
                               :thread
                               (doto (Thread.
                                      ^Runnable
-                                     (identity
-                                      (bound-fn []
+                                     (bound-fn*
+                                      (fn []
                                         (try
                                           (apply semantic.indexer/quartz-job-run! args)
                                           (catch InterruptedException _)

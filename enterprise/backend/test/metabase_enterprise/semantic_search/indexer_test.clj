@@ -192,8 +192,8 @@
       :thread
       (doto (Thread.
              ^Runnable
-             (identity
-              (bound-fn []
+             (bound-fn*
+              (fn []
                 (try
                   (apply semantic.indexer/indexing-loop loop-args)
                   (catch Throwable t
@@ -370,8 +370,8 @@
                               :thread
                               (doto (Thread.
                                      ^Runnable
-                                     (identity
-                                      (bound-fn []
+                                     (bound-fn*
+                                      (fn []
                                         (try
                                           (apply semantic.indexer/quartz-job-run! args)
                                           (catch Throwable t
