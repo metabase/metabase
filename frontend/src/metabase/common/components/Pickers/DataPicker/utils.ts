@@ -78,7 +78,7 @@ export const getDbItem = (
   const database = databases?.find((db) => db.id === dbId);
   const name = database?.name ?? "";
 
-  return { model: "database", id: dbId, name };
+  return { model: "database", id: dbId, name, database };
 };
 
 export const getSchemaItem = (
