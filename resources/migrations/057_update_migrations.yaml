@@ -329,6 +329,7 @@ databaseChangeLog:
               - column:
                   name: run_id
                   type: int
+                  remarks: The transform_run ID
                   constraints:
                     primaryKey: true
                     nullable: false
