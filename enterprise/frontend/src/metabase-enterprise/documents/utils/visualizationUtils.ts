@@ -54,7 +54,7 @@ export function useVisualizationOptions(
 
   const selectedElem = useMemo(
     () =>
-      getVisualizationItem((currentDisplay as CardDisplayType) ?? "table") ??
+      getVisualizationItem(currentDisplay ?? "table") ??
       sensibleItems[0] ??
       nonsensibleItems[0],
     [currentDisplay, sensibleItems, nonsensibleItems],
