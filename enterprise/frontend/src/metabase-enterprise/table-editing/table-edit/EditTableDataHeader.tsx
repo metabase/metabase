@@ -4,11 +4,12 @@ import { t } from "ttag";
 
 import { QuestionFiltersHeader } from "metabase/query_builder/components/view/ViewHeader/components";
 import { getFilterItems } from "metabase/querying/filters/components/FilterPanel/utils";
-import { Button, Icon, Stack } from "metabase/ui";
+import { Box, Button, Icon, Stack } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 
 import { TableHeader } from "../common/TableHeader";
 
+import S from "./EditTableDataContainer.module.css";
 import { EditTableDataFilterButton } from "./EditTableDataFilterButton";
 
 interface EditTableDataHeaderProps {
@@ -71,11 +72,13 @@ export const EditTableDataHeader = ({
         >{t`Delete`}</Button>
       </TableHeader>
       {question && (
-        <QuestionFiltersHeader
-          expanded={areFiltersExpanded}
-          question={question}
-          updateQuestion={onQuestionChange}
-        />
+        <Box className={S.filtersSection}>
+          <QuestionFiltersHeader
+            expanded={areFiltersExpanded}
+            question={question}
+            updateQuestion={onQuestionChange}
+          />
+        </Box>
       )}
     </Stack>
   );
