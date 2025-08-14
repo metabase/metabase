@@ -49,21 +49,26 @@ export function getRunListUrl({
   statuses,
   transformTagIds,
 }: RunListParams = {}) {
-  const params = new URLSearchParams();
+  const searchParams = new URLSearchParams();
   if (page != null) {
-    params.set("page", String(page));
+    searchParams.set("page", String(page));
   }
   transformIds?.forEach((transformId) => {
-    params.append("transformIds", String(transformId));
+    searchParams.append("transformIds", String(transformId));
   });
   statuses?.forEach((status) => {
-    params.append("statuses", String(status));
+    searchParams.append("statuses", String(status));
   });
   transformTagIds?.forEach((tagId) => {
-    params.append("transformTagIds", String(tagId));
+    searchParams.append("transformTagIds", String(tagId));
   });
 
-  return `${ROOT_URL}/runs?${params}`;
+  const queryString = searchParams.toString();
+  if (queryString.length > 0) {
+    return `${ROOT_URL}/runs?${queryString}`;
+  } else {
+    return `${ROOT_URL}/runs`;
+  }
 }
 
 export function getBrowseDatabaseUrl(databaseId: DatabaseId) {
