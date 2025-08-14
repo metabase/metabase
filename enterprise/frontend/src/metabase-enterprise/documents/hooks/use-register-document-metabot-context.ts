@@ -5,7 +5,7 @@ export const useRegisterDocumentMetabotContext = () => {
   useRegisterMetabotContextProvider(async (state) => {
     const location = getLocation(state);
 
-    // Extract document ID from URL path like "/document/123" or "/document/123?version=2"
+    // Extract document ID from URL path like "/document/123"
     const documentMatch = location.pathname.match(/^\/document\/(\d+)/);
     if (!documentMatch) {
       return {};
