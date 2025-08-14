@@ -39,6 +39,12 @@
     :model/QueryTable
     :model/SearchIndexMetadata
     :model/TaskHistory
+    :model/Transform
+    :model/TransformRun
+    :model/TransformRunCancelation
+    :model/TransformJob
+    :model/TransformJobRun
+    :model/TransformTag
     :model/Undo
     :model/UserKeyValue})
 
