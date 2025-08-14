@@ -93,7 +93,19 @@ export const SdkQuestionDefaultView = ({
 
   // Report current question to breadcrumbs
   useEffect(() => {
-    if (question && isBreadcrumbEnabled && !isNewQuestion) {
+    // Only report saved questions to breadcrumbs, not ad-hoc questions from dashboard cards
+    // Ad-hoc questions are temporary drill-through views and shouldn't be in breadcrumb navigation
+    const isSavedQuestion =
+      question && question.isSaved() && originalId && originalId !== "new";
+
+    // Also make sure the question has results before reporting (to avoid interfering with loading)
+    if (
+      isSavedQuestion &&
+      isBreadcrumbEnabled &&
+      !isNewQuestion &&
+      !isQuestionLoading &&
+      queryResults
+    ) {
       reportLocation({
         type: "question",
         id: question.id() || originalId || 0,
@@ -109,6 +121,8 @@ export const SdkQuestionDefaultView = ({
     question,
     isBreadcrumbEnabled,
     isNewQuestion,
+    isQuestionLoading,
+    queryResults,
     originalId,
     reportLocation,
     onNavigateBack,

@@ -158,18 +158,6 @@ const SdkDashboardInner = ({
 
   const { isBreadcrumbEnabled, reportLocation } = useSdkBreadcrumb();
 
-  // Report dashboard location to breadcrumbs
-  useEffect(() => {
-    if (dashboard && isBreadcrumbEnabled) {
-      reportLocation({
-        type: "dashboard",
-        id: dashboard.id,
-        name: dashboard.name,
-        // No onNavigate callback for dashboards as they are typically top-level
-      });
-    }
-  }, [dashboard, isBreadcrumbEnabled, reportLocation]);
-
   const { displayOptions } = useSdkDashboardParams({
     dashboardId,
     withDownloads,
@@ -197,6 +185,25 @@ const SdkDashboardInner = ({
   const finalRenderMode: RenderMode = adhocQuestionUrl
     ? "question"
     : renderModeState;
+
+  // Report dashboard location to breadcrumbs
+  useEffect(() => {
+    if (dashboard && isBreadcrumbEnabled && finalRenderMode === "dashboard") {
+      reportLocation({
+        type: "dashboard",
+        id: dashboard.id,
+        name: dashboard.name,
+        // Provide navigation callback to return to dashboard from drill-through questions
+        onNavigate: onNavigateBackToDashboard,
+      });
+    }
+  }, [
+    dashboard,
+    isBreadcrumbEnabled,
+    reportLocation,
+    finalRenderMode,
+    onNavigateBackToDashboard,
+  ]);
 
   // Now only used when rerendering the dashboard after creating a new question from the dashboard.
   const dashboardContextProviderRef = useRef<DashboardContextProviderHandle>();
