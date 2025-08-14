@@ -681,14 +681,18 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
         });
 
         // Skipped to avoid flake
-        it.skip("should display pivot table in an embed preview", () => {
-          // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-          cy.findByText(/Embed in your application/).click();
-          // we use preview endpoints when MB is iframed in itself
-          // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-          cy.findByText(test.subject);
-          H.getIframeBody().within(assertOnPivotFields);
-        });
+        it(
+          "should display pivot table in an embed preview",
+          { tags: "@skip" },
+          () => {
+            // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+            cy.findByText(/Embed in your application/).click();
+            // we use preview endpoints when MB is iframed in itself
+            // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+            cy.findByText(test.subject);
+            H.getIframeBody().within(assertOnPivotFields);
+          },
+        );
 
         it("should display pivot table in an embed URL", () => {
           cy.findByTestId("pivot-table").should("be.visible");
@@ -742,35 +746,39 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
     H.popover().findByText(HINT_TEXT).should("not.exist");
   });
 
-  it.skip("should work for user without data permissions (metabase#14989)", () => {
-    cy.request("POST", "/api/card", {
-      name: "14989",
-      dataset_query: {
-        database: SAMPLE_DB_ID,
-        query: {
-          "source-table": PRODUCTS_ID,
-          aggregation: [["count"]],
-          breakout: [
-            ["datetime-field", ["field-id", PRODUCTS.CREATED_AT], "year"],
-            ["field-id", PRODUCTS.CATEGORY],
-          ],
+  it(
+    "should work for user without data permissions (metabase#14989)",
+    { tags: "@skip" },
+    () => {
+      cy.request("POST", "/api/card", {
+        name: "14989",
+        dataset_query: {
+          database: SAMPLE_DB_ID,
+          query: {
+            "source-table": PRODUCTS_ID,
+            aggregation: [["count"]],
+            breakout: [
+              ["datetime-field", ["field-id", PRODUCTS.CREATED_AT], "year"],
+              ["field-id", PRODUCTS.CATEGORY],
+            ],
+          },
+          type: "query",
         },
-        type: "query",
-      },
-      display: "pivot",
-      visualization_settings: {},
-    }).then(({ body: { id: QUESTION_ID } }) => {
-      cy.signIn("nodata");
-      H.visitQuestion(QUESTION_ID);
-    });
+        display: "pivot",
+        visualization_settings: {},
+      }).then(({ body: { id: QUESTION_ID } }) => {
+        cy.signIn("nodata");
+        H.visitQuestion(QUESTION_ID);
+      });
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Grand totals");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Row totals");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("200");
-  });
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Grand totals");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Row totals");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("200");
+    },
+  );
 
   it("should work with custom mapping of display values (metabase#14985)", () => {
     cy.intercept("POST", "/api/dataset/pivot").as("datasetPivot");

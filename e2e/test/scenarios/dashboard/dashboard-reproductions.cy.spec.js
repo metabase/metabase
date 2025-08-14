@@ -2013,7 +2013,7 @@ describe("Issue 46337", () => {
 
   // TODO: unskip when metabase#46337 is fixed
   // See: https://github.com/metabase/metabase/issues/46337
-  it.skip("should (metabase#46337)", () => {
+  it("should (metabase#46337)", { tags: "@skip" }, () => {
     cy.log("ensure the dashcards render data not errors");
 
     cy.findByTestId("dashboard-grid").within(() => {

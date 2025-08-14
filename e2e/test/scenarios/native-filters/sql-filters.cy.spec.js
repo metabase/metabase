@@ -262,20 +262,24 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
   });
 
   // flaky test (#19454)
-  it.skip("should show an info popover when hovering over fields in the field filter field picker", () => {
-    SQLFilter.enterParameterizedQuery("SELECT * FROM products WHERE {{cat}}");
+  it(
+    "should show an info popover when hovering over fields in the field filter field picker",
+    { tags: "@skip" },
+    () => {
+      SQLFilter.enterParameterizedQuery("SELECT * FROM products WHERE {{cat}}");
 
-    SQLFilter.openTypePickerFromDefaultFilterType();
-    SQLFilter.chooseType("Field Filter");
+      SQLFilter.openTypePickerFromDefaultFilterType();
+      SQLFilter.chooseType("Field Filter");
 
-    H.popover().within(() => {
-      cy.findByText("People").click();
-      cy.findByText("City").trigger("mouseenter");
-    });
+      H.popover().within(() => {
+        cy.findByText("People").click();
+        cy.findByText("City").trigger("mouseenter");
+      });
 
-    H.popover().contains("City");
-    H.popover().contains("1,966 distinct values");
-  });
+      H.popover().contains("City");
+      H.popover().contains("1,966 distinct values");
+    },
+  );
 });
 
 describe("scenarios > filters > sql filters > multiple values", () => {

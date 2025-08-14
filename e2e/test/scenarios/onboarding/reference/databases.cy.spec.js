@@ -69,13 +69,17 @@ describe("scenarios > reference > databases", () => {
       });
     });
 
-    it.skip("should sort data reference database list (metabase#15598)", () => {
-      cy.visit("/browse");
-      checkReferenceDatabasesOrder();
+    it(
+      "should sort data reference database list (metabase#15598)",
+      { tags: "@skip" },
+      () => {
+        cy.visit("/browse");
+        checkReferenceDatabasesOrder();
 
-      cy.visit("/reference/databases/");
-      checkReferenceDatabasesOrder();
-    });
+        cy.visit("/reference/databases/");
+        checkReferenceDatabasesOrder();
+      },
+    );
 
     it("should sort databases in new UI based question data selection popover", () => {
       H.startNewQuestion();
@@ -91,9 +95,13 @@ describe("scenarios > reference > databases", () => {
       });
     });
 
-    it.skip("should sort databases in new native question data selection popover", () => {
-      checkQuestionSourceDatabasesOrder("Native query");
-    });
+    it(
+      "should sort databases in new native question data selection popover",
+      { tags: "@skip" },
+      () => {
+        checkQuestionSourceDatabasesOrder("Native query");
+      },
+    );
   });
 });
 

@@ -274,91 +274,101 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     cy.contains("Dominique Leffler");
   });
 
-  it.skip("should drill through a with date filter (metabase#12496)", () => {
-    H.createQuestion({
-      name: "Orders by Created At: Week",
-      query: {
-        "source-table": ORDERS_ID,
-        aggregation: [["count"]],
-        breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "week" }]],
-      },
-      display: "line",
-    });
+  it(
+    "should drill through a with date filter (metabase#12496)",
+    { tags: "@skip" },
+    () => {
+      H.createQuestion({
+        name: "Orders by Created At: Week",
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"]],
+          breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "week" }]],
+        },
+        display: "line",
+      });
 
-    // Load the question up
-    cy.visit("/collection/root");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Orders by Created At: Week").click({ force: true });
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("January 2025");
+      // Load the question up
+      cy.visit("/collection/root");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.contains("Orders by Created At: Week").click({ force: true });
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.contains("January 2025");
 
-    // drill into a recent week
-    // eslint-disable-next-line no-unsafe-element-filtering
-    cy.get(".dot").eq(-4).click({ force: true });
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("See these Orders").click();
+      // drill into a recent week
+      // eslint-disable-next-line no-unsafe-element-filtering
+      cy.get(".dot").eq(-4).click({ force: true });
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.contains("See these Orders").click();
 
-    // check that filter is applied and rows displayed
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Showing 127 rows");
+      // check that filter is applied and rows displayed
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.contains("Showing 127 rows");
 
-    cy.log("Filter should show the range between two dates");
-    // Now click on the filter widget to see if the proper parameters got passed in
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains(/^Created At is .*–/).click(); // en-dash to detect date range
-  });
+      cy.log("Filter should show the range between two dates");
+      // Now click on the filter widget to see if the proper parameters got passed in
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.contains(/^Created At is .*–/).click(); // en-dash to detect date range
+    },
+  );
 
-  it.skip("should drill-through on filtered aggregated results (metabase#13504)", () => {
-    H.openOrdersTable({ mode: "notebook" });
-    H.summarize({ mode: "notebook" });
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Count of rows").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Pick a column to group by").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Created At").click();
+  it(
+    "should drill-through on filtered aggregated results (metabase#13504)",
+    { tags: "@skip" },
+    () => {
+      H.openOrdersTable({ mode: "notebook" });
+      H.summarize({ mode: "notebook" });
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Count of rows").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Pick a column to group by").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Created At").click();
 
-    // add filter: Count > 1
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Filter").click();
-    H.popover().within(() => {
-      cy.findByText("Count").click();
-      cy.findByText("Equal to").click();
-    });
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Greater than").click();
-    cy.findByPlaceholderText("Enter a number").click().type("1");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Add filter").click();
+      // add filter: Count > 1
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Filter").click();
+      H.popover().within(() => {
+        cy.findByText("Count").click();
+        cy.findByText("Equal to").click();
+      });
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Greater than").click();
+      cy.findByPlaceholderText("Enter a number").click().type("1");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Add filter").click();
 
-    H.visualize();
+      H.visualize();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Visualization").click();
-    cy.icon("line").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Done").click();
-    cy.log("Mid-point assertion");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Count by Created At: Month");
-    // at this point, filter is displaying correctly with the name
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Count is greater than 1");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Visualization").click();
+      cy.icon("line").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Done").click();
+      cy.log("Mid-point assertion");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.contains("Count by Created At: Month");
+      // at this point, filter is displaying correctly with the name
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.contains("Count is greater than 1");
 
-    // drill-through
-    cy.get(".dot")
-      .eq(10) // random dot
-      .click({ force: true });
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("See these Orders").click();
+      // drill-through
+      cy.get(".dot")
+        .eq(10) // random dot
+        .click({ force: true });
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("See these Orders").click();
 
-    cy.log("Reproduced on 0.34.3, 0.35.4, 0.36.7 and 0.37.0-rc2");
-    // when the bug is present, filter is missing a name (showing only "is 256")
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Count is equal to 256");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("There was a problem with your question").should("not.exist");
-  });
+      cy.log("Reproduced on 0.34.3, 0.35.4, 0.36.7 and 0.37.0-rc2");
+      // when the bug is present, filter is missing a name (showing only "is 256")
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.contains("Count is equal to 256");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("There was a problem with your question").should(
+        "not.exist",
+      );
+    },
+  );
 
   it("should display correct value in a tooltip for unaggregated data (metabase#11907)", () => {
     H.createNativeQuestion(
@@ -491,80 +501,84 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     });
   });
 
-  it.skip("should drill-through a custom question that joins a native SQL question (metabase#14495)", () => {
-    // Restrict "normal user" (belongs to the DATA_GROUP) from writing native queries
-    cy.log("Fetch permissions graph");
-    cy.request("GET", "/api/permissions/graph", {}).then(
-      ({ body: { groups, revision } }) => {
-        // This mutates the original `groups` object => we'll pass it next to the `PUT` request
-        groups[DATA_GROUP] = {
-          // database_id = 1 (SAMPLE_DATABASE)
-          1: { schemas: "all", native: "none" },
-        };
+  it(
+    "should drill-through a custom question that joins a native SQL question (metabase#14495)",
+    { tags: "@skip" },
+    () => {
+      // Restrict "normal user" (belongs to the DATA_GROUP) from writing native queries
+      cy.log("Fetch permissions graph");
+      cy.request("GET", "/api/permissions/graph", {}).then(
+        ({ body: { groups, revision } }) => {
+          // This mutates the original `groups` object => we'll pass it next to the `PUT` request
+          groups[DATA_GROUP] = {
+            // database_id = 1 (SAMPLE_DATABASE)
+            1: { schemas: "all", native: "none" },
+          };
 
-        cy.log("Update/save permissions");
-        cy.request("PUT", "/api/permissions/graph", {
-          groups,
-          revision,
-        });
-      },
-    );
-
-    H.createNativeQuestion({
-      name: "14495_SQL",
-      native: { query: "SELECT * FROM ORDERS", "template-tags": {} },
-    }).then(({ body: { id: SQL_ID } }) => {
-      const ALIAS = `Question ${SQL_ID}`;
-
-      // Create a QB question and join it with the previously created native question
-      H.createQuestion({
-        name: "14495",
-        query: {
-          "source-table": PEOPLE_ID,
-          joins: [
-            {
-              fields: "all",
-              "source-table": `card__${SQL_ID}`,
-              condition: [
-                "=",
-                ["field", PEOPLE.ID, null],
-                [
-                  "field",
-                  "ID",
-                  { "base-type": "type/BigInteger", "join-alias": ALIAS },
-                ],
-              ],
-              alias: ALIAS,
-            },
-          ],
-          aggregation: [["count"]],
-          breakout: [
-            ["field", PEOPLE.CREATED_AT, { "temporal-unit": "month" }],
-          ],
+          cy.log("Update/save permissions");
+          cy.request("PUT", "/api/permissions/graph", {
+            groups,
+            revision,
+          });
         },
-        display: "bar",
-      }).then(({ body: { id: QUESTION_ID } }) => {
-        cy.intercept("POST", "/api/dataset").as("dataset");
+      );
 
-        // Switch to the normal user who has restricted SQL access
-        cy.signInAsNormalUser();
-        H.visitQuestion(QUESTION_ID);
+      H.createNativeQuestion({
+        name: "14495_SQL",
+        native: { query: "SELECT * FROM ORDERS", "template-tags": {} },
+      }).then(({ body: { id: SQL_ID } }) => {
+        const ALIAS = `Question ${SQL_ID}`;
 
-        // Initial visualization has rendered and we can now drill-through
-        cy.findByTestId("query-visualization-root")
-          .get(".bar")
-          .eq(4)
-          .click({ force: true });
-        cy.findByText("See these People").click();
+        // Create a QB question and join it with the previously created native question
+        H.createQuestion({
+          name: "14495",
+          query: {
+            "source-table": PEOPLE_ID,
+            joins: [
+              {
+                fields: "all",
+                "source-table": `card__${SQL_ID}`,
+                condition: [
+                  "=",
+                  ["field", PEOPLE.ID, null],
+                  [
+                    "field",
+                    "ID",
+                    { "base-type": "type/BigInteger", "join-alias": ALIAS },
+                  ],
+                ],
+                alias: ALIAS,
+              },
+            ],
+            aggregation: [["count"]],
+            breakout: [
+              ["field", PEOPLE.CREATED_AT, { "temporal-unit": "month" }],
+            ],
+          },
+          display: "bar",
+        }).then(({ body: { id: QUESTION_ID } }) => {
+          cy.intercept("POST", "/api/dataset").as("dataset");
 
-        // We should see the resulting dataset of that drill-through
-        cy.wait("@dataset").then((xhr) => {
-          expect(xhr.response.body.error).not.to.exist;
+          // Switch to the normal user who has restricted SQL access
+          cy.signInAsNormalUser();
+          H.visitQuestion(QUESTION_ID);
+
+          // Initial visualization has rendered and we can now drill-through
+          cy.findByTestId("query-visualization-root")
+            .get(".bar")
+            .eq(4)
+            .click({ force: true });
+          cy.findByText("See these People").click();
+
+          // We should see the resulting dataset of that drill-through
+          cy.wait("@dataset").then((xhr) => {
+            expect(xhr.response.body.error).not.to.exist;
+          });
+          cy.findByText("Macy Olson");
         });
-        cy.findByText("Macy Olson");
       });
-    });
-  });
+    },
+  );
 
   it("count of rows from drill-down on binned results should match the number of records (metabase#15324)", () => {
     H.visitQuestionAdhoc({

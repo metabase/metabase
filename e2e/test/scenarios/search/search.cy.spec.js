@@ -249,7 +249,7 @@ describe("scenarios > search", () => {
   });
 });
 
-describe.skip("issue 16785", () => {
+describe("issue 16785", { tags: "@skip" }, () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();

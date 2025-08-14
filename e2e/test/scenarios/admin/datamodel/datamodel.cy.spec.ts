@@ -753,7 +753,7 @@ describe("scenarios > admin > datamodel", () => {
           H.queryBuilderHeader().findByText("View-only").should("be.visible");
         });
 
-        it.skip("question with joins (metabase#15947-2)", () => {
+        it("question with joins (metabase#15947-2)", { tags: "@skip" }, () => {
           H.createQuestion({
             name: "15947",
             query: {
