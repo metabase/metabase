@@ -42,7 +42,8 @@ export const SdkIframeEmbedSetupProvider = ({
 
   // We don't want to re-fetch the recent items every time we switch between
   // steps, therefore we load recent items once in the provider.
-  const { recentDashboards, recentQuestions, addRecentItem } = useRecentItems();
+  const { recentDashboards, recentQuestions, addRecentItem, isRecentsLoading } =
+    useRecentItems();
 
   const defaultSettings = useMemo(() => {
     return getDefaultSdkIframeEmbedSettings(
@@ -127,12 +128,12 @@ export const SdkIframeEmbedSetupProvider = ({
   // Once the persisted settings are loaded, check if they are valid.
   // If they are, set them as the current settings.
   useEffect(() => {
-    if (!isEmbedSettingsLoaded) {
+    if (!isEmbedSettingsLoaded && !isRecentsLoading) {
       setRawSettings({ ...settings, ...persistedSettings });
 
       setEmbedSettingsLoaded(true);
     }
-  }, [persistedSettings, isEmbedSettingsLoaded, settings]);
+  }, [persistedSettings, isEmbedSettingsLoaded, settings, isRecentsLoading]);
 
   return (
     <SdkIframeEmbedSetupContext.Provider value={value}>
