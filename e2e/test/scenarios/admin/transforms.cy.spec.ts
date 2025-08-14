@@ -1088,6 +1088,7 @@ function visitRunListPage() {
 function runAndWaitForSuccess() {
   getRunButton().click();
   getRunButton().should("have.text", "Ran successfully");
+  getTableLink().should("have.attr", "href");
 }
 
 function runAndWaitForFailure() {
