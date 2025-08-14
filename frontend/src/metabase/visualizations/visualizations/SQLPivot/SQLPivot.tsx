@@ -1,6 +1,7 @@
 import { Component } from "react";
 import { t } from "ttag";
 
+import { color } from "metabase/lib/colors";
 import { displayNameForColumn } from "metabase/lib/formatting";
 import { TableInteractive } from "metabase/visualizations/components/TableInteractive";
 import {
@@ -13,16 +14,10 @@ import {
 } from "metabase/visualizations/shared/utils/sizes";
 import Question from "metabase-lib/v1/Question";
 import { findColumnIndexesForColumnSettings } from "metabase-lib/v1/queries/utils/dataset";
-import type {
-  DatasetData,
-  Series,
-  VisualizationSettings,
-} from "metabase-types/api";
+import type { DatasetData, VisualizationSettings } from "metabase-types/api";
 
-import type {
-  ColumnSettingDefinition,
-  VisualizationProps,
-} from "../../types";
+import type { ColumnSettingDefinition, VisualizationProps } from "../../types";
+
 import { SQL_PIVOT_SETTINGS } from "./settings";
 import type { SQLPivotSettings } from "./utils";
 import {
@@ -40,11 +35,12 @@ interface SQLPivotState {
   question: Question | null;
 }
 
-class SQLPivot extends Component<SQLPivotProps, SQLPivotState> {
+export class SQLPivot extends Component<SQLPivotProps, SQLPivotState> {
   static getUiName = () => t`SQL Pivot`;
   static identifier = "sql_pivot";
   static iconName = "pivot_table";
   static canSavePng = false;
+  static maxDimensionsSupported = 2;
 
   static minSize = getMinSize("table");
   static defaultSize = getDefaultSize("table");
@@ -67,7 +63,7 @@ class SQLPivot extends Component<SQLPivotProps, SQLPivotState> {
     ...SQL_PIVOT_SETTINGS,
   };
 
-  static columnSettings = (column: any) => {
+  static columnSettings = () => {
     const settings: Record<
       string,
       ColumnSettingDefinition<unknown, unknown>
@@ -106,53 +102,30 @@ class SQLPivot extends Component<SQLPivotProps, SQLPivotState> {
   getColumnTitle = (columnIndex: number) => {
     const { settings, series } = this.props;
     const { data } = this.state;
-    
-    // Debug logging
-    console.log("SQLPivot getColumnTitle called with:", {
-      columnIndex,
-      dataAvailable: !!data,
-      seriesAvailable: !!series,
-      settingsAvailable: !!settings
-    });
-    
+
     if (!data) {
-      console.warn("SQLPivot: No data available for getColumnTitle");
       return "";
     }
 
     const column = data.cols[columnIndex];
     if (!column) {
-      console.warn("SQLPivot: No column found at index", columnIndex);
       return "";
     }
 
     try {
       // Use displayNameForColumn as fallback, similar to Table component
       // Note: getTitleForColumn expects (column, series, settings) order
-      return getTitleForColumn(column, series, settings) || displayNameForColumn(column);
+      return (
+        getTitleForColumn(column, series, settings) ||
+        displayNameForColumn(column)
+      );
     } catch (error) {
-      console.error("SQLPivot: Error getting column title:", error);
       return displayNameForColumn(column);
     }
   };
 
   _updateData({ series, settings, metadata }: VisualizationProps) {
-    console.log("SQLPivot _updateData called with:", {
-      seriesLength: series.length,
-      settingsKeys: Object.keys(settings),
-      pivotSettings: {
-        rowColumn: settings["sqlpivot.row_column"],
-        valueColumns: settings["sqlpivot.value_columns"],
-        transpose: settings["sqlpivot.transpose"]
-      }
-    });
-
     const [{ card, data }] = series;
-    console.log("Original data:", {
-      colCount: data.cols.length,
-      rowCount: data.rows.length,
-      colNames: data.cols.map(col => col.name)
-    });
 
     // construct a Question that is in-sync with query results
     const question = new Question(card, metadata);
@@ -162,12 +135,6 @@ class SQLPivot extends Component<SQLPivotProps, SQLPivotState> {
       data,
       settings as SQLPivotSettings,
     );
-
-    console.log("Transformed data:", {
-      colCount: transformedData.cols.length,
-      rowCount: transformedData.rows.length,
-      colNames: transformedData.cols.map(col => col.name)
-    });
 
     // Apply column filtering if needed
     const { cols, rows, results_timezone } = transformedData;
@@ -187,19 +154,11 @@ class SQLPivot extends Component<SQLPivotProps, SQLPivotState> {
     const finalColumnIndexes =
       columnIndexes.length > 0 ? columnIndexes : cols.map((_, i) => i);
 
-    console.log("Final column indexes:", finalColumnIndexes);
-
     const finalData = {
       cols: finalColumnIndexes.map((i) => cols[i]),
       rows: rows.map((row) => finalColumnIndexes.map((i) => row[i])),
       results_timezone,
     };
-
-    console.log("Final data for setState:", {
-      colCount: finalData.cols.length,
-      rowCount: finalData.rows.length,
-      colNames: finalData.cols.map(col => col.name)
-    });
 
     this.setState({
       data: finalData,
@@ -208,7 +167,6 @@ class SQLPivot extends Component<SQLPivotProps, SQLPivotState> {
   }
 
   render() {
-    const { series, isDashboard, settings } = this.props;
     const { data } = this.state;
 
     if (!data) {
@@ -219,11 +177,13 @@ class SQLPivot extends Component<SQLPivotProps, SQLPivotState> {
 
     if (areAllColumnsHidden) {
       return (
-        <div style={{ 
-          padding: "2rem", 
-          textAlign: "center", 
-          color: "#666" 
-        }}>
+        <div
+          style={{
+            padding: "2rem",
+            textAlign: "center",
+            color: color("text-medium"),
+          }}
+        >
           <p>{t`No columns to display. Please configure the pivot settings.`}</p>
         </div>
       );
@@ -241,5 +201,3 @@ class SQLPivot extends Component<SQLPivotProps, SQLPivotState> {
     );
   }
 }
-
-export default SQLPivot; 
