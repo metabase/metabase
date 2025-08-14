@@ -1865,6 +1865,7 @@
            driver
            events
            lib
+           lib-be
            models
            permissions
            premium-features
@@ -1874,7 +1875,6 @@
            sync
            task
            task-history
-           test
            util}}
 
   enterprise/upload-management
@@ -1896,6 +1896,7 @@
   {:ignored-namespace-patterns
    #{"-test$"                               ; anything ending in `-test`
      "test[-.]util"                         ; anything that contains `test.util` or `test-util`
+     "test[-.]dataset"                      ; anything that contains `test.dataset` or `test-dataset`
      "test\\.impl"                          ; anything that contains `test.impl`
      "test-setup"                           ; anything that contains `test-setup`
      "^metabase(?:-enterprise)?\\.test"}}}} ; anything starting with `metabase.test` or `metabase-enterprise.test`

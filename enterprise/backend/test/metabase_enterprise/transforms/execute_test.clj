@@ -3,8 +3,8 @@
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase-enterprise.transforms.execute :as transforms.execute]
+   [metabase-enterprise.transforms.query-test-util :as query-test-util]
    [metabase-enterprise.transforms.test-dataset :as transforms-dataset]
-   [metabase-enterprise.transforms.test-query-util :as test-query-util]
    [metabase-enterprise.transforms.test-util :refer [with-transform-cleanup!]]
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.convert :as lib.convert]
@@ -20,9 +20,9 @@
   "Create a query using the shared test utility.
    Maintains the same signature for compatibility with existing tests."
   ([source-table]
-   (test-query-util/make-query source-table))
+   (query-test-util/make-query source-table))
   ([source-table source-column constraint-fn & constraint-params]
-   (apply test-query-util/make-query source-table source-column constraint-fn constraint-params)))
+   (apply query-test-util/make-query source-table source-column constraint-fn constraint-params)))
 
 (defn- wait-for-table
   [table-name timeout-ms]

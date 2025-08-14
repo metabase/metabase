@@ -72,7 +72,9 @@
   [transform-id]
   (delete-target-table! (t2/select-one :model/Transform transform-id)))
 
-(defn massage-sql-query [query]
+(defn massage-sql-query
+  "Adjusts mbql query for use in a transform."
+  [query]
   (assoc-in query [:middleware :disable-remaps?] true))
 
 (defn compile-source

@@ -2,7 +2,6 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.transforms.ordering :as ordering]
-   [metabase.driver :as driver]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.test :as mt]
    [toucan2.core :as t2]))

@@ -1,4 +1,4 @@
-(ns metabase-enterprise.transforms.test-query-util
+(ns metabase-enterprise.transforms.query-test-util
   "Shared utilities for building test queries in transform tests."
   (:require
    [clojure.string :as str]

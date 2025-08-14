@@ -12,6 +12,7 @@
    [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util :as sql.u]
+   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [potemkin :as p]))
 
@@ -148,13 +149,13 @@
   :hierarchy #'driver/hierarchy)
 
 (defmethod normalize-name :sql
-  [driver name-str]
+  [_driver name-str]
   (if (and (= (first name-str) \")
            (= (last name-str) \"))
     (-> name-str
         (subs 1 (dec (count name-str)))
         (str/replace #"\"\"" "\""))
-    (str/lower-case name-str)))
+    (u/lower-case-en name-str)))
 
 (defmulti default-schema
   "Returns the default schema for a given database driver.

@@ -1,9 +1,7 @@
 (ns metabase-enterprise.transforms.jobs-test
   (:require
    [clojure.test :refer :all]
-   [metabase-enterprise.transforms.jobs :as jobs]
-   [metabase.test :as mt]
-   [toucan2.core :as t2]))
+   [metabase-enterprise.transforms.jobs :as jobs]))
 
 (deftest basic-deps-test
   (let [ordering {1 #{2 3}

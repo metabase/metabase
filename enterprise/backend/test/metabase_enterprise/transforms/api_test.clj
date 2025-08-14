@@ -1,14 +1,13 @@
 (ns ^:mb/driver-tests metabase-enterprise.transforms.api-test
   "Tests for /api/transform endpoints."
   (:require
-   [clojure.string :as str]
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase-enterprise.transforms.models.transform-run]
    [metabase-enterprise.transforms.models.transform-tag]
    [metabase-enterprise.transforms.models.transform-tags]
+   [metabase-enterprise.transforms.query-test-util :as query-test-util]
    [metabase-enterprise.transforms.test-dataset :as transforms-dataset]
-   [metabase-enterprise.transforms.test-query-util :as test-query-util]
    [metabase-enterprise.transforms.test-util :refer [with-transform-cleanup!]]
    [metabase-enterprise.transforms.util :as transforms.util]
    [metabase.driver :as driver]
@@ -46,7 +45,7 @@
    Returns a legacy MBQL query structure for API compatibility."
   [category]
   (mt/dataset transforms-dataset/transforms-test
-    (let [query (test-query-util/make-filter-query
+    (let [query (query-test-util/make-filter-query
                  {:table-suffix "products"
                   :column-name "category"
                   :filter-value category
@@ -247,7 +246,7 @@
     (let [base-query      (lib/query mp table)
           ;; Find the category column
           category-column (m/find-first
-                           (comp #{"category"} str/lower-case :name)
+                           (comp #{"category"} u/lower-case-en :name)
                            (lib/visible-columns base-query))
           ;; Filter by category and count rows
           filtered-query  (if category-column

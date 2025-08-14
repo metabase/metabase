@@ -3,13 +3,13 @@
    This dataset is intentionally small to speed up test execution, especially
    on cloud databases like Snowflake where database creation is expensive."
   (:require
-   [metabase.test.data.interface :as tx]))
+   [metabase.test :as mt]))
 
 ;; We define our own dataset so that we don't interfere with other tests
 ;; that could be run in parallel on the same db instance
 ;; e.g., metabase.driver.snowflake-test/describe-database-test
 
-(tx/defdataset transforms-test
+(mt/defdataset transforms-test
   "A small dataset specifically for transform tests. Contains enough data to test:
    - Basic transformations (filtering, aggregation)
    - Multiple tables for joins
