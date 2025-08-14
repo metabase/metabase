@@ -23,6 +23,7 @@ import { extractRemappedColumns } from "metabase/visualizations";
 import type { StructuredDatasetQuery } from "metabase-types/api";
 
 import S from "./DetailView.module.css";
+import { DETAIL_VIEW_PADDING_LEFT } from "./constants";
 import { getObjectQuery, getTableQuery } from "./utils";
 
 interface Props {
@@ -31,8 +32,6 @@ interface Props {
     rowId: string;
   };
 }
-
-const PADDING_LEFT = 112;
 
 export function DetailView({ params }: Props) {
   const tableId = parseInt(params.tableId, 10);
@@ -161,7 +160,7 @@ export function DetailView({ params }: Props) {
           <Box
             bg="bg-white"
             className={S.header}
-            pl={rem(PADDING_LEFT)}
+            pl={rem(DETAIL_VIEW_PADDING_LEFT)}
             pr="xl"
             py={rem(64)}
           >
@@ -188,7 +187,7 @@ export function DetailView({ params }: Props) {
             flex="1"
             bg="bg-white"
             p="xl"
-            pl={rem(PADDING_LEFT)}
+            pl={rem(DETAIL_VIEW_PADDING_LEFT)}
           >
             <Stack gap={rem(64)} maw={rem(900)} w="100%">
               {columns.length - headerColumns.length > 0 && (

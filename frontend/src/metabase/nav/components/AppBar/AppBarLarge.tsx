@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import { DETAIL_VIEW_PADDING_LEFT } from "metabase/detail-view";
 import { Nav as DetailViewNav } from "metabase/detail-view/components";
 import { PLUGIN_METABOT } from "metabase/plugins";
 import type { CollectionId } from "metabase-types/api";
@@ -77,6 +78,7 @@ const AppBarLarge = ({
             <CollectionBreadcrumbs />
           ) : detailView ? (
             <DetailViewNav
+              ml={DETAIL_VIEW_PADDING_LEFT - 125}
               rowName={detailView.rowName}
               table={detailView.table}
             />
