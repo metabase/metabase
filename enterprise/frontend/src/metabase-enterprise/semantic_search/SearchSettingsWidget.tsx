@@ -35,11 +35,12 @@ export function SearchSettingsWidget({
   const shouldUpsell = !isProPlan(plan);
 
   const { value } = useAdminSetting("search-engine");
+  const semanticSearchEnabled = value === "semantic";
 
-  const [skipPolling, setSkipPolling] = useState(false);
+  const [hasFinishedIndexing, setHasFinishedIndexing] = useState(false);
   const response = useGetSemanticSearchStatusQuery(undefined, {
     pollingInterval: statusPollingInterval,
-    skip: skipPolling,
+    skip: !semanticSearchEnabled || hasFinishedIndexing,
   });
   const { indexed_count = 0, total_est = 1 } = response.data || {};
 
@@ -53,7 +54,7 @@ export function SearchSettingsWidget({
 
   useEffect(() => {
     if (progress === 100) {
-      setSkipPolling(false);
+      setHasFinishedIndexing(true);
     }
   }, [progress]);
 
@@ -83,7 +84,7 @@ export function SearchSettingsWidget({
                 <BasicAdminSettingInput
                   name="search-engine"
                   inputType="boolean"
-                  value={value === "semantic"}
+                  value={semanticSearchEnabled}
                   disabled
                   onChange={_.noop}
                 />
