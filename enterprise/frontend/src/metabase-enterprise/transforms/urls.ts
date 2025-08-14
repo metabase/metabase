@@ -63,11 +63,7 @@ export function getRunListUrl({
     params.append("transformTagIds", String(tagId));
   });
 
-  if (params.size > 0) {
-    return `${ROOT_URL}/runs?${params}`;
-  } else {
-    return `${ROOT_URL}/runs`;
-  }
+  return `${ROOT_URL}/runs?${params}`;
 }
 
 export function getBrowseDatabaseUrl(databaseId: DatabaseId) {
