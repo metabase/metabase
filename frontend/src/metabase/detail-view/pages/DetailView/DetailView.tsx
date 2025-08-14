@@ -10,6 +10,7 @@ import {
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/LoadingAndErrorWrapper";
 import {
   DetailsGroup,
+  Footer,
   Header,
   Nav,
   Relationships,
@@ -106,6 +107,20 @@ export function DetailView({ params }: TableDetailViewLoaderProps) {
     });
   }, [rows, dispatch, tableId]);
 
+  const handlePreviousClick =
+    rows.length > 1 &&
+    typeof currentRowIndex === "number" &&
+    currentRowIndex > 0
+      ? handleViewPreviousObjectDetail
+      : undefined;
+
+  const handleNextClick =
+    rows.length > 1 &&
+    typeof currentRowIndex === "number" &&
+    currentRowIndex < rows.length - 1
+      ? handleViewNextObjectDetail
+      : undefined;
+
   useEffect(() => {
     if (!row) {
       return;
@@ -130,24 +145,7 @@ export function DetailView({ params }: TableDetailViewLoaderProps) {
   return (
     <Stack bg="bg-white" gap={0} h="100%">
       <Box className={S.nav} flex="0 0 auto" p="md">
-        <Nav
-          rowName={rowName}
-          table={table}
-          onPreviousClick={
-            rows.length > 1 &&
-            typeof currentRowIndex === "number" &&
-            currentRowIndex > 0
-              ? handleViewPreviousObjectDetail
-              : undefined
-          }
-          onNextClick={
-            rows.length > 1 &&
-            typeof currentRowIndex === "number" &&
-            currentRowIndex < rows.length - 1
-              ? handleViewNextObjectDetail
-              : undefined
-          }
-        />
+        <Nav rowName={rowName} table={table} />
       </Box>
 
       <Group align="flex-start" flex="1" gap={0} key={rowId} mih={0}>
@@ -187,6 +185,18 @@ export function DetailView({ params }: TableDetailViewLoaderProps) {
           </Box>
         )}
       </Group>
+
+      {typeof currentRowIndex === "number" &&
+        typeof dataset?.row_count === "number" && (
+          <Box className={S.footer} flex="0 0 auto">
+            <Footer
+              index={currentRowIndex}
+              rowsCount={dataset.row_count}
+              onNextClick={handleNextClick}
+              onPreviousClick={handlePreviousClick}
+            />
+          </Box>
+        )}
     </Stack>
   );
 }

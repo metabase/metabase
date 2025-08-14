@@ -32,7 +32,6 @@ export const NavButton = ({
       disabled={!onClick}
       h={32}
       leftSection={<Icon name={icon} />}
-      variant="subtle"
       w={32}
       onClick={onClick}
       {...props}
