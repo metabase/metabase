@@ -1,7 +1,7 @@
 import { action } from "@storybook/addon-actions";
 
 import { ReduxProvider } from "__support__/storybook";
-import { Flex, Text } from "metabase/ui";
+import { Flex } from "metabase/ui";
 
 import { type UpsellCardProps, _UpsellCard } from "./UpsellCard";
 
@@ -85,11 +85,6 @@ export const WithoutImage = {
   args: { ...args, illustrationSrc: null },
 };
 
-export const LargeVariant = {
-  render: DefaultTemplate,
-  args: { ...args, large: true },
-};
-
 export const MaxWidth500Variant = {
   render: DefaultTemplate,
   args: { ...args, maxWidth: 500 },
@@ -100,17 +95,12 @@ export const FullWidthVariant = {
   args: { ...args, fullWidth: true },
 };
 
+export const LargeVariant = {
+  render: DefaultTemplate,
+  args: { ...args, large: true },
+};
+
 export const LargeFullWidthVariant = {
-  render: (args: UpsellCardProps) => {
-    return (
-      <Wrapper style={{ width: 600 }}>
-        <_UpsellCard {...args}>
-          <Text lh="1.5rem" style={{ paddingInlineStart: "2rem" }}>
-            learn more
-          </Text>
-        </_UpsellCard>
-      </Wrapper>
-    );
-  },
+  render: DefaultTemplate,
   args: { ...args, large: true, fullWidth: true, maxWidth: 800 },
 };

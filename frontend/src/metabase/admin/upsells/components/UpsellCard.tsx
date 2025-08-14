@@ -42,6 +42,7 @@ export type UpsellCardProps = {
   large?: boolean;
   style?: React.CSSProperties;
   onClick?: () => void;
+  buttonStyle?: React.CSSProperties;
 } & CardWidthProps &
   CardLinkProps;
 
@@ -58,6 +59,7 @@ export const _UpsellCard: React.FC<UpsellCardProps> = ({
   maxWidth,
   large = false,
   onClick,
+  buttonStyle,
   ...props
 }: UpsellCardProps) => {
   const urlWithParams = useUpsellLink({
@@ -99,7 +101,7 @@ export const _UpsellCard: React.FC<UpsellCardProps> = ({
           </Text>
           <Box mx="md" mb="lg">
             <UpsellCta
-              className={large ? S.LargeUpsellCTALink : undefined}
+              style={buttonStyle}
               onClick={onClick}
               url={buttonLink ? urlWithParams : undefined}
               internalLink={internalLink}
