@@ -6,12 +6,9 @@ import type { CollectionItem, Dashboard } from "metabase-types/api";
 import {
   assertAllResultsAndValuesAreSandboxed,
   assertNoResultsOrValuesAreSandboxed,
-  assertResponseFailsClosed,
   assignAttributeToUser,
   configureSandboxPolicy,
   createSandboxingDashboardAndQuestions,
-  getFieldValuesForProductCategories,
-  getParameterValuesForProductCategories,
   gizmoViewer,
   modelCustomView,
   questionCustomView,
