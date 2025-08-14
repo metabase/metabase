@@ -421,13 +421,17 @@ describe("documents", () => {
         H.openDocumentCardMenu(ORDERS_COUNT_BY_PRODUCT_CATEGORY.name);
         H.popover().findByText("Replace").click();
 
+        H.modal().within(() => {
+          cy.findByText("Choose a question or model").should("exist");
+
+          cy.findAllByPlaceholderText("Search…").click().type("Orders");
+
+          cy.findAllByTestId("result-item").findByText("Orders").click();
+        });
+
         H.getDocumentCard(ORDERS_COUNT_BY_PRODUCT_CATEGORY.name).should(
           "not.exist",
         );
-        H.commandSuggestionDialog().should("exist");
-        H.addToDocument("Orders", false);
-        cy.realPress("{enter}");
-
         H.getDocumentCard("Orders").should("exist");
       });
 
