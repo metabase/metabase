@@ -166,7 +166,7 @@ databaseChangeLog:
                   type: char(21)
                   remarks: Random NanoID tag for unique identity.
                   constraints:
-                    nullable: false
+                    nullable: true
                     unique: true
               - column:
                   remarks: The timestamp of when the transform was created
@@ -421,7 +421,7 @@ databaseChangeLog:
                   type: char(21)
                   remarks: NanoID identifier for the job
                   constraints:
-                    nullable: false
+                    nullable: true
                     unique: true
               - column:
                   name: created_at
