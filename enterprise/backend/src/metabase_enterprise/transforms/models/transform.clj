@@ -79,5 +79,4 @@
             (t2/insert! :transform_tags
                         (for [tag-id ordered-valid-tag-ids]
                           {:transform_id transform-id
-                           :tag_id tag-id
-                           :entity_id (u/generate-nano-id)}))))))))
+                           :tag_id tag-id}))))))))

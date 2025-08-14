@@ -22,7 +22,7 @@
   (api/check-superuser)
   (api/check-400 (not (transform-tag/tag-name-exists? name))
                  (deferred-tru "A tag with the name ''{0}'' already exists." name))
-  (t2/insert-returning-instance! :model/TransformTag {:name name :entity_id (u/generate-nano-id)}))
+  (t2/insert-returning-instance! :model/TransformTag {:name name}))
 
 (api.macros/defendpoint :put "/:tag-id"
   "Update a transform tag."

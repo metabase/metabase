@@ -14,9 +14,9 @@
     (mt/with-premium-features #{:transforms}
       ;; Reset the seeded flag and clear tables
       (transforms.settings/transforms-seeded! false)
-      (t2/delete! :transform_job_tags)
-      (t2/delete! :transform_job)
-      (t2/delete! :transform_tag)
+      (t2/delete! :model/TransformJobTags)
+      (t2/delete! :model/TransformJob)
+      (t2/delete! :model/TransformTag)
 
       (transforms.seed/seed-default-tags-and-jobs!)
       (let [expected-tags (map #(update % :name str) @#'transforms.seed/default-tags)
@@ -27,24 +27,24 @@
                                 (update :tag_name str))
                            @#'transforms.seed/default-jobs)]
         (testing "Creates default tags"
-          (is (= 4 (t2/count :transform_tag)))
+          (is (= 4 (t2/count :model/TransformTag)))
           (doseq [{tag-name :name} expected-tags]
-            (is (t2/exists? :transform_tag :name tag-name)
+            (is (t2/exists? :model/TransformTag :name tag-name)
                 (str "Default tag '" tag-name "' should exist"))))
 
         (testing "Creates default jobs"
-          (is (= 4 (t2/count :transform_job)))
-          (doseq [{job-name :name entity-id :entity_id} expected-jobs]
-            (is (t2/exists? :transform_job :entity_id entity-id)
-                (str "Default job '" job-name "' with entity_id '" entity-id "' should exist"))))
+          (is (= 4 (t2/count :model/TransformJob)))
+          (doseq [{job-name :name} expected-jobs]
+            (is (t2/exists? :model/TransformJob :name job-name)
+                (str "Default job '" job-name "' should exist"))))
 
         (testing "Links jobs to their corresponding tags"
-          (is (= 4 (t2/count :transform_job_tags)))
-          (doseq [{tag-name :tag_name entity-id :entity_id} expected-jobs]
-            (let [job (t2/select-one :transform_job :entity_id entity-id)
-                  tag (t2/select-one :transform_tag :name tag-name)]
-              (is (t2/exists? :transform_job_tags :job_id (:id job) :tag_id (:id tag))
-                  (str "Job '" entity-id "' should be associated with tag '" tag-name "'")))))
+          (is (= 4 (t2/count :model/TransformJobTags)))
+          (doseq [{tag-name :tag_name name :name} expected-jobs]
+            (let [job (t2/select-one :model/TransformJob :name name)
+                  tag (t2/select-one :model/TransformTag :name tag-name)]
+              (is (t2/exists? :model/TransformJobTags :job_id (:id job) :tag_id (:id tag))
+                  (str "Job '" name "' should be associated with tag '" tag-name "'")))))
 
         (testing "Setting is marked as true after seeding"
           (is (transforms.settings/transforms-seeded)))

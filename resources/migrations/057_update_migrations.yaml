@@ -373,7 +373,7 @@ databaseChangeLog:
                   type: char(21)
                   remarks: Random NanoID tag for unique identity.
                   constraints:
-                    nullable: false
+                    nullable: true
                     unique: true
               - column:
                   name: created_at
@@ -487,7 +487,7 @@ databaseChangeLog:
                   type: char(21)
                   remarks: Random NanoID tag for unique identity.
                   constraints:
-                    nullable: false
+                    nullable: true
                     unique: true
 
   - changeSet:
@@ -552,7 +552,7 @@ databaseChangeLog:
                   type: char(21)
                   remarks: Random NanoID tag for unique identity.
                   constraints:
-                    nullable: false
+                    nullable: true
                     unique: true
 
   - changeSet:

@@ -52,8 +52,7 @@
       (t2/insert! :transform_job_tags
                   (for [tag-id tag_ids]
                     {:job_id (:id job)
-                     :tag_id tag-id
-                     :entity_id (u/generate-nano-id)})))
+                     :tag_id tag-id})))
     ;; Return with hydrated tag_ids
     (t2/hydrate job :tag_ids)))
 
@@ -102,8 +101,7 @@
       (t2/insert! :transform_job_tags
                   (for [tag-id tag_ids]
                     {:job_id job-id
-                     :tag_id tag-id
-                     :entity_id (u/generate-nano-id)}))))
+                     :tag_id tag-id}))))
   ;; Return updated job with hydration
   (-> (t2/select-one :model/TransformJob :id job-id)
       (t2/hydrate :tag_ids :last_run)))
