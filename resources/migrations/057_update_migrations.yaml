@@ -17,7 +17,6 @@ databaseChangeLog:
               - column:
                   name: id
                   type: int
-                  remarks: Unique ID
                   autoIncrement: true
                   constraints:
                     primaryKey: true
