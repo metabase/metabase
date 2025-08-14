@@ -61,7 +61,7 @@
   (boolean (:enable-multiple-db (:details db))))
 
 (def ^:private default-connection-details
-  {:user "default" :password "" :dbname "default" :host "localhost" :port 8123})
+  {:user "default" :password "" :dbname "default" :host "localhost" :port 8123 :enable-multiple-db true})
 
 (defn- connection-details->spec* [details]
   (let [;; ensure defaults merge on top of nils
