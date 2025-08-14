@@ -11,7 +11,7 @@
 (def ^:private columns
   ;; No serial -- ids are chosen by migration authors
   [[:version :bigint [:primary-key]]
-   [:finished_at :timestamp [:default [:NOW]]]
+   [:migrated_at :timestamp [:default [:NOW]]]
    [:status [:varchar 32]]])
 
 (def ^:private migration-table-hsql
