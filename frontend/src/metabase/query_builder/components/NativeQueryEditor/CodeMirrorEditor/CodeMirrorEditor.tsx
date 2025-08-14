@@ -22,6 +22,7 @@ import type { SelectionRange } from "../types";
 export type CodeMirrorEditorProps = {
   query: Lib.Query;
   highlightedLineNumbers?: number[];
+  placeholder?: string;
   readOnly?: boolean;
   onChange?: (queryText: string) => void;
   onFormatQuery?: () => void;
@@ -51,6 +52,7 @@ export const CodeMirrorEditor = forwardRef<
   {
     query,
     highlightedLineNumbers,
+    placeholder = getPlaceholderText(Lib.engine(query)),
     readOnly,
     onChange,
     onRunQuery,
@@ -63,9 +65,6 @@ export const CodeMirrorEditor = forwardRef<
 ) {
   const editorRef = useRef<CodeMirrorRef>(null);
   const extensions = useExtensions({ query, onRunQuery });
-
-  const engine = Lib.engine(query);
-  const placeholder = getPlaceholderText(engine);
 
   useImperativeHandle(ref, () => {
     return {

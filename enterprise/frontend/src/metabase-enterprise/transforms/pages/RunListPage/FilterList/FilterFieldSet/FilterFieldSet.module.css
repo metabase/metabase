@@ -1,0 +1,4 @@
+.fieldset {
+  cursor: pointer;
+  border-radius: var(--default-border-radius);
+}
