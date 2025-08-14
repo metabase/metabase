@@ -128,11 +128,3 @@ export const SdkBreadcrumbsProvider = ({
     </SdkBreadcrumbsContext.Provider>
   );
 };
-
-export const EmptyBreadcrumbContext: SdkBreadcrumbsContextType = {
-  isBreadcrumbEnabled: false,
-  breadcrumbs: [],
-  currentLocation: null,
-  navigateTo: () => {},
-  reportLocation: () => {},
-};

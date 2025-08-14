@@ -33,29 +33,14 @@ type View =
   | { type: Exclude<BreadcrumbItemType, "collection">; id: string | number };
 
 const StoryContent = () => {
+  const { currentLocation } = useSdkBreadcrumb();
   const [view, setView] = useState<View>({ type: "collection", id: "root" });
-  const { currentLocation, reportLocation } = useSdkBreadcrumb();
 
-  // Watch for breadcrumb navigation
   useEffect(() => {
     if (currentLocation) {
-      setView({
-        type: currentLocation.type as any,
-        id: currentLocation.id as any,
-      });
+      setView({ type: currentLocation.type, id: currentLocation.id });
     }
   }, [currentLocation]);
-
-  // Report current location to breadcrumbs
-  useEffect(() => {
-    if (view.type === "collection") {
-      reportLocation({
-        type: "collection",
-        id: view.id,
-        name: view.id === "root" ? "Our Analytics" : `Collection ${view.id}`,
-      });
-    }
-  }, [view, reportLocation]);
 
   return (
     <Stack p="md" gap="sm">
@@ -72,13 +57,6 @@ const StoryContent = () => {
 
             const newView = { type, id: item.id };
             setView(newView);
-
-            // Report the new location to breadcrumbs
-            reportLocation({
-              type,
-              id: item.id,
-              name: item.name,
-            });
           }}
         />
       )}

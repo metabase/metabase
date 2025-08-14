@@ -19,6 +19,7 @@ import { COLLECTION_PAGE_SIZE } from "metabase/collections/components/Collection
 import { CollectionItemsTable } from "metabase/collections/components/CollectionContent/CollectionItemsTable";
 import { useLocale } from "metabase/common/hooks/use-locale";
 import { isNotNull } from "metabase/lib/types";
+import CollectionBreadcrumbs from "metabase/nav/containers/CollectionBreadcrumbs";
 import { Stack } from "metabase/ui";
 import type { CollectionId, CollectionItemModel } from "metabase-types/api";
 
@@ -110,16 +111,19 @@ export const CollectionBrowserInner = ({
   const [internalCollectionId, setInternalCollectionId] =
     useState<CollectionId>(baseCollectionId);
 
-  const { isBreadcrumbEnabled, currentLocation, reportLocation } =
-    useSdkBreadcrumb();
+  const {
+    isBreadcrumbEnabled: isGlobalBreadcrumbEnabled,
+    currentLocation,
+    reportLocation,
+  } = useSdkBreadcrumb();
 
   const effectiveCollectionId = useMemo(() => {
-    if (isBreadcrumbEnabled && currentLocation?.type === "collection") {
+    if (isGlobalBreadcrumbEnabled && currentLocation?.type === "collection") {
       return currentLocation.id as CollectionId;
     }
 
     return internalCollectionId;
-  }, [isBreadcrumbEnabled, currentLocation, internalCollectionId]);
+  }, [isGlobalBreadcrumbEnabled, currentLocation, internalCollectionId]);
 
   const { data: currentCollection, isFetching: isFetchingCollection } =
     useGetCollectionQuery({ id: effectiveCollectionId });
@@ -129,7 +133,11 @@ export const CollectionBrowserInner = ({
   }, [baseCollectionId]);
 
   useEffect(() => {
-    if (currentCollection && !isFetchingCollection && isBreadcrumbEnabled) {
+    if (
+      currentCollection &&
+      !isFetchingCollection &&
+      isGlobalBreadcrumbEnabled
+    ) {
       reportLocation({
         type: "collection",
         id: currentCollection.id,
@@ -139,7 +147,7 @@ export const CollectionBrowserInner = ({
   }, [
     currentCollection,
     isFetchingCollection,
-    isBreadcrumbEnabled,
+    isGlobalBreadcrumbEnabled,
     reportLocation,
   ]);
 
@@ -149,7 +157,7 @@ export const CollectionBrowserInner = ({
     if (item.model === "collection") {
       setInternalCollectionId(item.id as CollectionId);
 
-      if (isBreadcrumbEnabled) {
+      if (isGlobalBreadcrumbEnabled) {
         reportLocation({ type: "collection", id: item.id, name: item.name });
       }
     }
@@ -161,6 +169,14 @@ export const CollectionBrowserInner = ({
 
   return (
     <Stack w="100%" h="100%" gap="sm" className={className} style={style}>
+      {!isGlobalBreadcrumbEnabled && (
+        <CollectionBreadcrumbs
+          collectionId={internalCollectionId}
+          onClick={(item) => setInternalCollectionId(item.id)}
+          baseCollectionId={baseCollectionId}
+        />
+      )}
+
       <CollectionItemsTable
         collectionId={effectiveCollectionId}
         onClick={onClickItem}

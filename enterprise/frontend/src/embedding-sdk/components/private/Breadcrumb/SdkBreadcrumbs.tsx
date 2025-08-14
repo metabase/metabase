@@ -43,10 +43,7 @@ export const SdkBreadcrumbs = ({
               inactiveColor="text-light"
               isSingleLine
               onClick={() => {
-                // Navigate using the breadcrumb context
                 navigateTo(breadcrumb);
-
-                // Also call the optional callback for backwards compatibility
                 onBreadcrumbClick?.(breadcrumb);
               }}
             >
