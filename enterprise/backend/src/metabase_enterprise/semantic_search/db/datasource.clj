@@ -70,5 +70,6 @@
   (test-connection!))
 
 (defn ensure-initialized-data-source!
+  "Return datasource. Initialize if necessary."
   []
   (or @data-source (init-db!)))

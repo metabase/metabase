@@ -19,12 +19,14 @@
     :pg_try_advisory_xact_lock_shared})
 
 (defn- lock-not-avail-ex?
+  "SQL locking exceptino?"
   [e]
   (boolean
    (when (instance? SQLException e)
      (= "55P03" (.getSQLState ^SQLException e)))))
 
 (defn lock-or-throw!
+  "Acquire advisory lock. Throw if not possible. Blocks with blocking locks."
   [conn lock-type lock-id]
   (log/debugf "Attempting to acquire %s %d lock." lock-type lock-id)
   (assert (supported-lock-types lock-type))
@@ -44,11 +46,12 @@
 
 (def ^:private migration-lock 19991)
 
-;; Unused as attempting yolo-write during migration approach
+;; Unused atm as yolo-write by other nodes during migration should be safe
 #_(defn acquire-write-lock!
     [conn]
     (lock-or-throw! conn :pg_try_advisory_xact_lock_shared migration-lock))
 
 (defn acquire-migration-lock!
+  "Acquire migration advisory lock."
   [conn]
   (lock-or-throw! conn :pg_advisory_xact_lock migration-lock))

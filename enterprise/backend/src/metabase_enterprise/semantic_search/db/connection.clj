@@ -13,6 +13,6 @@
     (thunk tx)))
 
 (defmacro with-migrate-tx
-  "Acquite migration advisory lock. Blocking."
+  "Provide connection with migration advisory lock. Blocking."
   [[conn-sym & [conn-expr]] & body]
   `(do-with-migrate-tx ~conn-expr (fn [~conn-sym] ~@body)))
