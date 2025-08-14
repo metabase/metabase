@@ -50,7 +50,7 @@ export function useLoadSdkBundle(metabaseInstanceUrl: string) {
   useEffect(() => {
     const metabaseProviderPropsStore = ensureMetabaseProviderPropsStore();
     const { loadingPromise: existingLoadingPromise, loadingState } =
-      metabaseProviderPropsStore.getSnapshot();
+      metabaseProviderPropsStore.getState().internalProps;
 
     // The SDK bundle script was loaded before
     if (window.MetabaseEmbeddingSDK) {

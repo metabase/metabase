@@ -16,8 +16,11 @@ import type {
  * @category useCreateDashboardApi
  */
 export const useCreateDashboardApi = () => {
-  const { props } = useMetabaseProviderPropsStore();
-  const { reduxStore } = props;
+  const {
+    state: {
+      internalProps: { reduxStore },
+    },
+  } = useMetabaseProviderPropsStore();
 
   const loginStatus = useLazySelector((state) => state.sdk.loginStatus);
 
