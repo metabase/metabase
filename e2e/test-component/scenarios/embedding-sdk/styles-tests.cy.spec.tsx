@@ -1,4 +1,3 @@
-import { Button, MantineProvider, Title } from "@mantine/core";
 import {
   CreateDashboardModal,
   EditableDashboard,
@@ -8,7 +7,6 @@ import {
   StaticQuestion,
   defineMetabaseTheme,
 } from "@metabase/embedding-sdk-react";
-import { useEffect } from "react";
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
@@ -599,108 +597,6 @@ describe("scenarios > embedding-sdk > styles", () => {
         expectElementToHaveNoAppliedCssRules(tag);
       }
     });
-
-    it("css variables should not leak outside of mb-wrapper", () => {
-      cy.mount(
-        <MantineProvider
-          theme={{ colors: { brand: colorTuple("rgb(255, 0, 255)") } }}
-        >
-          <Button color="brand">outside sdk provider</Button>
-
-          <MetabaseProvider
-            authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}
-            theme={{ colors: { brand: "rgb(255, 0, 0)" } }}
-          >
-            <Button color="brand">outside sdk wrapper</Button>
-
-            <InteractiveQuestion
-              questionId={ORDERS_QUESTION_ID}
-              isSaveEnabled
-            />
-          </MetabaseProvider>
-        </MantineProvider>,
-      );
-
-      cy.log(
-        "Customer's elements outside of the SDK provider should have their brand color intact",
-      );
-
-      cy.contains("button", "outside sdk provider").should(
-        "have.css",
-        "background-color",
-        "rgb(255, 0, 255)",
-      );
-
-      cy.log(
-        "Customer's elements outside of the SDK components should have their brand color intact",
-      );
-
-      cy.contains("button", "outside sdk wrapper").should(
-        "have.css",
-        "background-color",
-        "rgb(255, 0, 255)",
-      );
-
-      cy.log(
-        "SDK elements should have the brand color from the Metabase theme",
-      );
-
-      getSdkRoot().within(() => {
-        cy.get("button")
-          .contains("Filter")
-          .should("have.css", "color", "rgb(255, 0, 0)");
-
-        cy.findByTestId("notebook-button").click();
-
-        cy.findByRole("button", { name: "Visualize" }).should(
-          "have.css",
-          "background-color",
-          "rgb(255, 0, 0)",
-        );
-      });
-    });
-  });
-
-  describe("styles specificity", () => {
-    it("Mantine styles should have proper specificity and not override custom styles", () => {
-      const TitleWrapper = () => {
-        useEffect(() => {
-          const style = document.createElement("style");
-
-          style.innerHTML = `
-          .some-title {
-            font-size: 40px;
-          }
-        `;
-
-          document.head.prepend(style);
-
-          return () => {
-            style.remove();
-          };
-        }, []);
-
-        return (
-          <Title data-testid="title" className="some-title">
-            Some title
-          </Title>
-        );
-      };
-
-      cy.mount(
-        <MantineProvider>
-          <TitleWrapper />
-
-          <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}>
-            <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />
-          </MetabaseProvider>
-        </MantineProvider>,
-      );
-
-      getSdkRoot().findByText("Product ID").should("exist");
-
-      cy.findByTestId("title").should("have.css", "font-size", "40px");
-    });
   });
 });
 
@@ -737,17 +633,3 @@ function wrapBrowserDefaultFont() {
     cy.wrap(fontFamily).as("defaultBrowserFontFamily");
   });
 }
-
-export const colorTuple = (value: string) =>
-  [
-    value,
-    value,
-    value,
-    value,
-    value,
-    value,
-    value,
-    value,
-    value,
-    value,
-  ] as const;

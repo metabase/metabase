@@ -10096,6 +10096,13 @@ eslint-import-resolver-webpack@^0.13.10:
     resolve "^2.0.0-next.5"
     semver "^5.7.2"
 
+eslint-module-utils@^2.12.1:
+  version "2.12.1"
+  resolved "https://registry.yarnpkg.com/eslint-module-utils/-/eslint-module-utils-2.12.1.tgz#f76d3220bfb83c057651359295ab5854eaad75ff"
+  integrity sha512-L8jSWTze7K2mTg0vos/RuLRS5soomksDPoJLXIslC7c8Wmut3bx7CPpJijDcBZtxQ5lrbUdM+s0OlNbz0DCDNw==
+  dependencies:
+    debug "^3.2.7"
+
 eslint-module-utils@^2.8.0:
   version "2.8.0"
   resolved "https://registry.yarnpkg.com/eslint-module-utils/-/eslint-module-utils-2.8.0.tgz#e439fee65fc33f6bba630ff621efc38ec0375c49"
@@ -16920,6 +16927,11 @@ postcss-place@^4.0.1:
   dependencies:
     postcss "^7.0.2"
     postcss-values-parser "^2.0.0"
+
+postcss-prefixwrap@^1.56.2:
+  version "1.56.2"
+  resolved "https://registry.yarnpkg.com/postcss-prefixwrap/-/postcss-prefixwrap-1.56.2.tgz#fb94cc829afbbf39cceecb228644ad9b291add89"
+  integrity sha512-PnIsMX/VTtLYUrZe8Cex4vqXVvl5PUKbDbD52Wcp94ObZkt05oehCuOVvsUeig0eQoGOhTDBHfR8nnIkjf1/uA==
 
 postcss-preset-env@^6.7.0:
   version "6.7.0"
