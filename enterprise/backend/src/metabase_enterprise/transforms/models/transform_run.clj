@@ -52,15 +52,14 @@
 
 (defn start-run!
   "Start a run"
-  ([run-id transform-id]
-   (start-run! run-id transform-id {}))
-  ([run-id transform-id properties]
-   (t2/insert! :model/TransformRun
-               (assoc properties
-                      :id run-id
-                      :transform_id transform-id
-                      :status :started
-                      :is_active true))))
+  ([transform-id]
+   (start-run! transform-id {}))
+  ([transform-id properties]
+   (t2/insert-returning-instance! :model/TransformRun
+                                  (assoc properties
+                                         :transform_id transform-id
+                                         :status :started
+                                         :is_active true))))
 
 (defn succeed-started-run!
   "Mark a started run as successfully completed."

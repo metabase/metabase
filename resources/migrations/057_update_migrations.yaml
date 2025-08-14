@@ -194,8 +194,8 @@ databaseChangeLog:
             columns:
               - column:
                   name: id
-                  type: char(21)
-                  remarks: 'NanoID identifier for the transform run'
+                  type: int
+                  autoIncrement: true
                   constraints:
                     primaryKey: true
                     nullable: false
@@ -326,8 +326,7 @@ databaseChangeLog:
             columns:
               - column:
                   name: run_id
-                  type: char(21)
-                  remarks: 'NanoID identifier for the transform run'
+                  type: int
                   constraints:
                     primaryKey: true
                     nullable: false
@@ -574,8 +573,8 @@ databaseChangeLog:
             columns:
               - column:
                   name: id
-                  type: char(21)
-                  remarks: 'NanoID identifier for the transform job run'
+                  type: int
+                  autoIncrement: true
                   constraints:
                     primaryKey: true
                     nullable: false

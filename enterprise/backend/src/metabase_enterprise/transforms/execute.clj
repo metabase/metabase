@@ -9,7 +9,6 @@
    [metabase.driver.util :as driver.u]
    [metabase.lib.schema.common :as schema.common]
    [metabase.query-processor.pipeline :as qp.pipeline]
-   [metabase.util :as u]
    [metabase.util.jvm :as u.jvm]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
@@ -66,7 +65,6 @@
      (let [db (get-in source [:query :database])
            {driver :engine :as database} (t2/select-one :model/Database db)
            feature (transforms.util/required-database-feature transform)
-           run-id (str (u/generate-nano-id))
            transform-details {:transform-type (keyword (:type target))
                               :connection-details (driver/connection-details driver database)
                               :query (transforms.util/compile-source source)
@@ -76,20 +74,20 @@
          (throw (ex-info "The database does not support the requested transform target type."
                          {:driver driver, :database database, :feature feature})))
        ;; mark the execution as started and notify any observers
-       (try
-         (transform-run/start-run! run-id id {:run_method run-method})
-         (catch java.sql.SQLException e
-           (if (= (.getSQLState e) "23505")
-             (throw (ex-info "Transform is already running"
-                             {:error :already-running
-                              :transform-id id}
-                             e))
-             (throw e))))
-       (when start-promise
-         (deliver start-promise [:started run-id]))
-       (log/info "Executing transform" id "with target" (pr-str target))
-       (run-transform! run-id driver transform-details opts)
-       (sync-target! target database run-id))
+       (let [{run-id :id} (try
+                            (transform-run/start-run! id {:run_method run-method})
+                            (catch java.sql.SQLException e
+                              (if (= (.getSQLState e) "23505")
+                                (throw (ex-info "Transform is already running"
+                                                {:error :already-running
+                                                 :transform-id id}
+                                                e))
+                                (throw e))))]
+         (when start-promise
+           (deliver start-promise [:started run-id]))
+         (log/info "Executing transform" id "with target" (pr-str target))
+         (run-transform! run-id driver transform-details opts)
+         (sync-target! target database run-id)))
      (catch Throwable t
        (log/error t "Error executing transform")
        (when start-promise

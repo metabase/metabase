@@ -10,7 +10,6 @@
    [metabase-enterprise.transforms.ordering :as transforms.ordering]
    [metabase-enterprise.transforms.settings :as transforms.settings]
    [metabase.task.core :as task]
-   [metabase.util :as u]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
@@ -81,16 +80,15 @@
                                         :left-join [:transform_tags [:=
                                                                      :transform_tags.tag_id
                                                                      :transform_job_tags.tag_id]]
-                                        :where [:= :transform_job_tags.job_id job-id]})
-          run-id (str (u/generate-nano-id))]
+                                        :where [:= :transform_job_tags.job_id job-id]})]
       (log/info "Executing transform job" (pr-str job-id) "with transforms" (pr-str transforms))
-      (transforms.job-run/start-run! run-id job-id run-method)
-      (try
-        (run-transforms! run-id transforms opts)
-        (transforms.job-run/succeed-started-run! run-id)
-        (catch Throwable t
-          (transforms.job-run/fail-started-run! run-id {:message (.getMessage t)})
-          (throw t))))))
+      (let [{run-id :id} (transforms.job-run/start-run! job-id run-method)]
+        (try
+          (run-transforms! run-id transforms opts)
+          (transforms.job-run/succeed-started-run! run-id)
+          (catch Throwable t
+            (transforms.job-run/fail-started-run! run-id {:message (.getMessage t)})
+            (throw t)))))))
 
 (def ^:private job-key "metabase-enterprise.transforms.jobs.timeout-job")
 

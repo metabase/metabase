@@ -43,13 +43,12 @@
 
 (defn start-run!
   "Start a run"
-  ([run-id job-id run-method]
-   (t2/insert! :model/TransformJobRun
-               {:id     run-id
-                :job_id job-id
-                :run_method run-method
-                :status :started
-                :is_active true})))
+  ([job-id run-method]
+   (t2/insert-returning-instance! :model/TransformJobRun
+                                  {:job_id job-id
+                                   :run_method run-method
+                                   :status :started
+                                   :is_active true})))
 
 (defn add-run-activity!
   "Notes that a run has had activity"
