@@ -1,6 +1,6 @@
 import type { StoryFn } from "@storybook/react";
 
-import { ComponentProvider } from "embedding-sdk/components/public";
+import { ComponentProvider } from "embedding-sdk/components/public/ComponentProvider";
 import type { MetabaseAuthConfig } from "embedding-sdk/types";
 
 const METABASE_INSTANCE_URL =

@@ -5,7 +5,7 @@ import {
   setupPropertiesEndpoints,
 } from "__support__/server-mocks";
 import { waitForLoaderToBeRemoved } from "__support__/ui";
-import { ComponentProvider } from "embedding-sdk/components/public";
+import { ComponentProvider } from "embedding-sdk/components/public/ComponentProvider";
 import {
   createMockSettings,
   createMockTokenFeatures,

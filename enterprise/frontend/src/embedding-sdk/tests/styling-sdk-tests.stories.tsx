@@ -1,7 +1,5 @@
-import {
-  ComponentProvider,
-  StaticQuestion,
-} from "embedding-sdk/components/public";
+import { ComponentProvider } from "embedding-sdk/components/public/ComponentProvider";
+import { StaticQuestion } from "embedding-sdk/components/public/StaticQuestion";
 import { storybookSdkAuthDefaultConfig } from "embedding-sdk/test/CommonSdkStoryWrapper";
 import type { MetabaseAuthConfig } from "embedding-sdk/types";
 
