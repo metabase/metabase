@@ -11,6 +11,7 @@
    [metabase-enterprise.semantic-search.embedding :as semantic.embedding]
    [metabase-enterprise.semantic-search.index :as semantic.index]
    [metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]
+   [metabase-enterprise.semantic-search.indexer :as semantic.indexer]
    [metabase.search.core :as search.core]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.test :as mt]
@@ -23,7 +24,8 @@
   (:import
    (clojure.lang IDeref)
    (com.mchange.v2.c3p0 PooledDataSource)
-   (java.io Closeable)))
+   (java.io Closeable)
+   (java.time Instant)))
 
 (set! *warn-on-reflection* true)
 
@@ -284,6 +286,22 @@
                     :model/Table            {}           {:name "Monsters Table", :db_id db-id#, :active true}]
        ~@body)))
 
+(defn index-all!
+  "Run indexer synchonously until we've exhausted polling all documents"
+  []
+  (let [metadata-row   {:indexer_last_poll Instant/EPOCH
+                        :indexer_last_seen Instant/EPOCH}
+        indexing-state (semantic.indexer/init-indexing-state metadata-row)
+        step (fn [] (semantic.indexer/indexing-step db mock-index-metadata mock-index indexing-state))]
+    (while (do (step) (pos? (:last-indexed-count @indexing-state))))))
+
+(defmacro blocking-index!
+  "Execute body ensuring [[index-all!]] is invoked at the end"
+  [& body]
+  `(let [ret# (do ~@body)]
+     (index-all!)
+     ret#))
+
 (defmacro with-index!
   "Ensure a clean, small index for testing populated with a few collections, cards, and dashboards."
   [& body]
@@ -292,7 +310,8 @@
                    semantic.index-metadata/default-index-metadata mock-index-metadata]
        (with-open [_# (open-temp-index!)]
          (binding [search.ingestion/*force-sync* true]
-           (search.core/reindex! :search.engine/semantic {:force-reset true})
+           (blocking-index!
+            (search.core/reindex! :search.engine/semantic {:force-reset true}))
            ~@body)))))
 
 (defn table-exists-in-db?

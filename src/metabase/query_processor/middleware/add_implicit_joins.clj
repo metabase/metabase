@@ -244,7 +244,6 @@
                                                              (lib/visible-columns
                                                               query
                                                               stage-number
-                                                              (lib/query-stage query stage-number)
                                                               {:include-joined?                              true
                                                                :include-expressions?                         false
                                                                :include-implicitly-joinable?                 false

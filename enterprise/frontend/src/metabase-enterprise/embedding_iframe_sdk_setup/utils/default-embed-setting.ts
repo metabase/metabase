@@ -32,13 +32,14 @@ export const getDefaultSdkIframeEmbedSettings = (
         drills: true,
         withDownloads: false,
         withTitle: true,
+        isSaveEnabled: false,
       }),
     )
     .with(
       "exploration",
       (): ExplorationEmbedOptions => ({
         template: "exploration",
-        isSaveEnabled: true,
+        isSaveEnabled: false,
       }),
     )
     .exhaustive();

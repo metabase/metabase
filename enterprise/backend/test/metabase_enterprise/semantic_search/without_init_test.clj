@@ -27,8 +27,8 @@
 (deftest reindex!-without-init!-test
   (without-init!
    #(testing "reindex! works without init!"
-      (is (= {"card" 1, "dashboard" 1}
-             (semantic/reindex! (semantic.tu/mock-documents) {})))
+      (semantic.tu/blocking-index!
+       (semantic/reindex! (semantic.tu/mock-documents) {}))
       (semantic.tu/check-index-has-mock-docs))))
 
 (deftest update-index!-without-init!-test
