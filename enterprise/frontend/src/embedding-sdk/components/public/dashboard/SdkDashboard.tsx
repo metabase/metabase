@@ -27,7 +27,6 @@ import { useSdkDispatch, useSdkSelector } from "embedding-sdk/store";
 import type { MetabaseQuestion } from "embedding-sdk/types";
 import type { DashboardEventHandlersProps } from "embedding-sdk/types/dashboard";
 import type { MetabasePluginsConfig } from "embedding-sdk/types/plugins";
-import { useGetDashboardQuery } from "metabase/api";
 import { useConfirmation } from "metabase/common/hooks";
 import { useLocale } from "metabase/common/hooks/use-locale";
 import {
@@ -43,7 +42,7 @@ import {
   type DashboardContextProviderHandle,
   useDashboardContext,
 } from "metabase/dashboard/context";
-import { getIsDirty } from "metabase/dashboard/selectors";
+import { getDashboardComplete, getIsDirty } from "metabase/dashboard/selectors";
 import { useSelector } from "metabase/lib/redux";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 import { useDashboardLoadHandlers } from "metabase/public/containers/PublicOrEmbeddedDashboard/use-dashboard-load-handlers";
@@ -154,8 +153,6 @@ const SdkDashboardInner = ({
   });
 
   const { isLocaleLoading } = useLocale();
-  const { data: dashboard } = useGetDashboardQuery({ id: dashboardId });
-
   const { isBreadcrumbEnabled, reportLocation } = useSdkBreadcrumb();
 
   const { displayOptions } = useSdkDashboardParams({
@@ -186,14 +183,27 @@ const SdkDashboardInner = ({
     ? "question"
     : renderModeState;
 
-  // Report dashboard location to breadcrumbs
+  // Now only used when rerendering the dashboard after creating a new question from the dashboard.
+  const dashboardContextProviderRef = useRef<DashboardContextProviderHandle>();
+
+  const [newDashboardQuestionId, setNewDashboardQuestionId] =
+    useState<number>();
+
+  const dashboard = useSelector(getDashboardComplete);
+  const autoScrollToDashcardId = useMemo(
+    () =>
+      dashboard?.dashcards.find(
+        (dashcard) => dashcard.card_id === newDashboardQuestionId,
+      )?.id,
+    [dashboard?.dashcards, newDashboardQuestionId],
+  );
+
   useEffect(() => {
     if (dashboard && isBreadcrumbEnabled && finalRenderMode === "dashboard") {
       reportLocation({
         type: "dashboard",
         id: dashboard.id,
         name: dashboard.name,
-        // Provide navigation callback to return to dashboard from drill-through questions
         onNavigate: onNavigateBackToDashboard,
       });
     }
@@ -204,20 +214,6 @@ const SdkDashboardInner = ({
     finalRenderMode,
     onNavigateBackToDashboard,
   ]);
-
-  // Now only used when rerendering the dashboard after creating a new question from the dashboard.
-  const dashboardContextProviderRef = useRef<DashboardContextProviderHandle>();
-
-  const [newDashboardQuestionId, setNewDashboardQuestionId] =
-    useState<number>();
-
-  const autoScrollToDashcardId = useMemo(
-    () =>
-      dashboard?.dashcards.find(
-        (dashcard) => dashcard.card_id === newDashboardQuestionId,
-      )?.id,
-    [dashboard?.dashcards, newDashboardQuestionId],
-  );
 
   const errorPage = useSdkSelector(getErrorPage);
   const dispatch = useSdkDispatch();
@@ -286,8 +282,7 @@ const SdkDashboardInner = ({
               dispatch(dismissAllUndo());
               await dispatch(updateDashboardAndCards());
               // After saving the dashboard, it will exit the editing mode.
-              // TODO: delete this.
-              dispatch(setEditingDashboard(dashboard ?? null));
+              dispatch(setEditingDashboard(dashboard));
             },
             confirmButtonProps: {
               color: "brand",
