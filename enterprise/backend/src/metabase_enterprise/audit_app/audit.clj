@@ -12,6 +12,7 @@
    [metabase.sync.util :as sync-util]
    [metabase.util :as u]
    [metabase.util.files :as u.files]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
@@ -139,6 +140,19 @@
                   {:name [:lower :name]})))
   (log/info "Adjusted Audit DB for loading Analytics Content"))
 
+(defn- fix-h2-card-metadata! [audit-db-id]
+  (t2/with-connection [^java.sql.Connection conn]
+    (with-open [stmt (.createStatement conn java.sql.ResultSet/TYPE_FORWARD_ONLY java.sql.ResultSet/CONCUR_UPDATABLE)
+                rset (.executeQuery stmt (format "SELECT \"ID\", \"RESULT_METADATA\" FROM \"REPORT_CARD\" WHERE \"DATABASE_ID\" = %d;" audit-db-id))]
+      (while (.next rset)
+        (let [result-metadata (some-> (.getString rset "RESULT_METADATA")
+                                      (json/decode true))]
+          (when (seq result-metadata)
+            (let [fixed-metadata      (for [col result-metadata]
+                                        (update col :name u/upper-case-en))
+                  json-fixed-metadata (json/encode fixed-metadata)]
+              (.updateString rset "RESULT_METADATA" json-fixed-metadata))))))))
+
 (defn- adjust-audit-db-to-host!
   [{audit-db-id :id :keys [engine] :as audit-db}]
   (when (not= engine (mdb/db-type))
@@ -152,9 +166,10 @@
                   {:table_id
                    [:in
                     {:select [:id]
-                     :from [(t2/table-name :model/Table)]
-                     :where [:= :db_id audit-db-id]}]}
-                  {:name [:upper :name]}))
+                     :from   [(t2/table-name :model/Table)]
+                     :where  [:= :db_id audit-db-id]}]}
+                  {:name [:upper :name]})
+      (fix-h2-card-metadata! audit-db-id))
     (when (= :postgres (mdb/db-type))
       ;; in postgresql the data should look just like the source
       (adjust-audit-db-to-source! audit-db))
