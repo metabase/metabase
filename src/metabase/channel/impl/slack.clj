@@ -130,7 +130,7 @@
 ;; ------------------------------------------------------------------------------------------------;;
 
 (mu/defmethod channel/render-notification [:channel/slack :notification/card] :- [:sequential SlackMessage]
-  [_channel-type {:keys [payload]} _template recipients]
+  [_channel-type {:keys [payload]} {:keys [recipients]}]
   (let [attachments [{:blocks [{:type "header"
                                 :text {:type "plain_text"
                                        :text (truncate (str "🔔 " (-> payload :card :name)) header-text-limit)
@@ -191,7 +191,7 @@
     attachment))
 
 (mu/defmethod channel/render-notification [:channel/slack :notification/dashboard] :- [:sequential SlackMessage]
-  [_channel-type {:keys [payload creator]} _template recipients]
+  [_channel-type {:keys [payload creator]} {:keys [recipients]}]
   (let [parameters (:parameters payload)
         dashboard  (:dashboard payload)]
     (for [channel-id (map notification-recipient->channel-id recipients)]

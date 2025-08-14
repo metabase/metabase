@@ -184,7 +184,7 @@
 ;; ------------------------------------------------------------------------------------------------;;
 
 (mu/defmethod channel/render-notification [:channel/email :notification/card] :- [:sequential EmailMessage]
-  [_channel-type {:keys [payload payload_type] :as notification-payload} template recipients]
+  [_channel-type {:keys [payload payload_type] :as notification-payload} {:keys [template recipients]}]
   (let [{:keys [card_part
                 notification_card
                 subscriptions
@@ -268,7 +268,7 @@
         [:tr {} row])])))
 
 (mu/defmethod channel/render-notification [:channel/email :notification/dashboard] :- [:sequential EmailMessage]
-  [_channel-type {:keys [payload payload_type] :as notification-payload} template recipients]
+  [_channel-type {:keys [payload payload_type] :as notification-payload} {:keys [template recipients attachment_only]}]
   (let [{:keys [dashboard_parts
                 dashboard_subscription
                 parameters
@@ -281,20 +281,26 @@
         ;; 1. Accumulate the attachments in an imperative way.
         ;; 2. Convert Hiccup structure into HTML immediately.
         ;; 3. Later, we combine all HTMLs using ordinary string mashing.
-        merged-attachments  (volatile! {})
-        result-attachments  (volatile! [])
-        html-contents       (->> dashboard_parts
-                                 (assoc-attachment-booleans (:dashboard_subscription_dashcards dashboard_subscription))
-                                 (mapv #(let [{:keys [attachments content]}
-                                              (render-part timezone % {:channel.render/include-title? true})
-                                              result-attachment (email.result-attachment/result-attachment %)]
-                                          (vswap! merged-attachments merge attachments)
-                                          (vswap! result-attachments into result-attachment)
-                                          (html content))))
+        [merged-attachments
+         result-attachments
+         html-contents]     (reduce
+                             (fn [[merged-attachments result-attachments html-contents] part]
+                               (let [{:keys [attachments content]} (render-part timezone part {:channel.render/include-title? true})
+                                     result-attachment             (email.result-attachment/result-attachment part)]
+                                 [(merge merged-attachments attachments)
+                                  (into result-attachments result-attachment)
+                                  (when-not attachment_only
+                                    (conj html-contents (html content)))]))
+                             [{} [] []]
+                             (assoc-attachment-booleans (:dashboard_subscription_dashcards dashboard_subscription) dashboard_parts))
         icon-attachment     (make-message-attachment (first (icon-bundle :dashboard)))
-        card-attachments    (map make-message-attachment @merged-attachments)
-        attachments         (concat [icon-attachment] card-attachments @result-attachments)
-        dashboard-content   (str "<div>" (str/join html-contents) "</div>")
+        card-attachments    (map make-message-attachment merged-attachments)
+        attachments         (cond-> (into [icon-attachment] result-attachments)
+                              (not attachment_only)
+                              (concat card-attachments))
+        dashboard-content   (if-not attachment_only
+                              (str "<div>" (str/join html-contents) "</div>")
+                              "<p>Dashboard content available in attached files</p>")
         message-context-fn  (fn [non-user-email]
                               (-> notification-payload
                                   (assoc :computed {:dashboard_content  dashboard-content
@@ -306,8 +312,8 @@
                                                     :management_url     (if (nil? non-user-email)
                                                                           (urls/notification-management-url)
                                                                           (pulse-unsubscribe-url-for-non-user (:id dashboard_subscription) non-user-email))
-                                                    :filters           (when (seq parameters)
-                                                                         (render-filters parameters))})
+                                                    :filters            (when-not attachment_only
+                                                                          (render-filters parameters))})
                                   (m/update-existing-in [:payload :dashboard :description] #(markdown/process-markdown % :html))))]
     (construct-emails template message-context-fn attachments recipients)))
 
@@ -337,8 +343,9 @@
   [:channel/email :notification/system-event]
   [_channel-type
    notification-payload #_:- #_notification/NotificationPayload
-   template             :- ::models.channel/ChannelTemplate
-   recipients           :- [:sequential ::models.notification/NotificationRecipient]]
+   {:keys [template recipients]} :- [:map
+                                     [:template ::models.channel/ChannelTemplate]
+                                     [:recipients [:sequential ::models.notification/NotificationRecipient]]]]
   (assert (some? template) "Template is required for system event notifications")
   [(construct-email (channel.params/substitute-params (-> template :details :subject) notification-payload)
                     (notification-recipients->emails recipients notification-payload)
