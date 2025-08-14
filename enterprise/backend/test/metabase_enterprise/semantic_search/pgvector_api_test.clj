@@ -13,7 +13,8 @@
    [metabase.util.log :as log]
    [next.jdbc :as jdbc]
    [next.jdbc.result-set :as jdbc.rs])
-  (:import (java.time Duration)))
+  (:import (java.io Closeable)
+           (java.time Duration)))
 
 (set! *warn-on-reflection* true)
 
@@ -30,7 +31,7 @@
         sut*           semantic.pgvector-api/init-semantic-search!
         cleanup        (fn [_] (semantic.tu/cleanup-index-metadata! pgvector index-metadata))
         sut            #(semantic.tu/closeable (apply sut* %&) cleanup)]
-    (with-open [index-ref (sut pgvector index-metadata model1)]
+    (with-open [index-ref ^Closeable (sut pgvector index-metadata model1)]
       (testing "sets up active index for model1"
         (let [active-state (semantic.index-metadata/get-active-index-state pgvector index-metadata)]
           (is (= @index-ref (:index active-state)))
@@ -61,7 +62,7 @@
                        :index-table-exists true}
                       (semantic.index-metadata/find-best-index! pgvector index-metadata model2))))))))))
 
-(defn- open-semantic-search! [pgvector index-metadata embedding-model]
+(defn- open-semantic-search! ^Closeable [pgvector index-metadata embedding-model]
   (semantic.tu/closeable
    (semantic.pgvector-api/init-semantic-search! pgvector index-metadata embedding-model)
    (fn [_]
@@ -202,12 +203,13 @@
                               :thread
                               (doto (Thread.
                                      ^Runnable
-                                     (bound-fn []
-                                       (try
-                                         (apply semantic.indexer/quartz-job-run! args)
-                                         (catch InterruptedException _)
-                                         (catch Throwable t
-                                           (vreset! caught-ex t)))))
+                                     (bound-fn*
+                                      (fn []
+                                        (try
+                                          (apply semantic.indexer/quartz-job-run! args)
+                                          (catch InterruptedException _)
+                                          (catch Throwable t
+                                            (vreset! caught-ex t))))))
                                 (.setDaemon true)
                                 (.start))}
                              (fn [{:keys [^Thread thread]}]
@@ -220,7 +222,7 @@
                   semantic.indexer/lag-tolerance Duration/ZERO] ; if too high will slow the test down significantly
 
       (with-open [index-ref  (open-semantic-search! pgvector index-metadata embedding-model)
-                  job-thread (open-job-thread pgvector index-metadata)]
+                  job-thread ^Closeable (open-job-thread pgvector index-metadata)]
         (let [index @index-ref
               {:keys [caught-ex ^Thread thread]} @job-thread]
 
