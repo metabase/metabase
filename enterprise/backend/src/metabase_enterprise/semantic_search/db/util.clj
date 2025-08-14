@@ -1,4 +1,4 @@
-(ns ^{:clj-kondo/ignore :discouraged-var}
+(ns ^{:clj-kondo/ignore :discouraged-var} ; jdbc/active-tx?
  metabase-enterprise.semantic-search.db.util
   (:require
    [next.jdbc :as jdbc]))
