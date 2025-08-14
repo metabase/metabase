@@ -198,32 +198,3 @@
     border-radius: var(--mantine-radius-xs);
   }
 }
-
-.suggestionPopup {
-  width: 320px;
-  min-height: 50px;
-  max-height: 400px;
-  overflow: hidden;
-  background: var(--mb-color-bg-white);
-  border: 1px solid var(--mb-color-border);
-  border-radius: var(--mantine-radius-md);
-  box-shadow: 0 2px 8px var(--mb-color-shadow);
-}
-
-.suggestionScroll {
-  max-height: 400px;
-  overflow-y: auto;
-}
-
-.suggestionMenuItem {
-  cursor: pointer;
-  background-color: transparent;
-}
-
-.suggestionMenuItem[data-selected] {
-  background-color: var(--mb-color-bg-light);
-}
-
-.suggestionMenuFooter {
-  border-top: 1px solid var(--mb-color-border);
-}
