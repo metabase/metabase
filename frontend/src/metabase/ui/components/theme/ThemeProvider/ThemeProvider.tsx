@@ -10,7 +10,7 @@ import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { getThemeOverrides } from "../../../theme";
 import { DatesProvider } from "../DatesProvider";
 
-import { themeProviderContext } from "./context";
+import { ThemeProviderContext } from "./context";
 
 interface ThemeProviderProps {
   children: ReactNode;
@@ -67,16 +67,18 @@ export const ThemeProvider = (props: ThemeProviderProps) => {
     } as MantineTheme;
   }, [props.theme]);
 
-  const { withCssVariables } = useContext(themeProviderContext);
+  const { withCssVariables, withGlobalClasses } =
+    useContext(ThemeProviderContext);
 
   return (
     <MantineProvider
       theme={theme}
       getStyleNonce={() => window.MetabaseNonce ?? "metabase"}
       classNamesPrefix="mb-mantine"
-      // This slows down unit tests like crazy
       cssVariablesSelector={isEmbeddingSdk() ? ".mb-wrapper" : undefined}
+      // This slows down unit tests like crazy
       withCssVariables={withCssVariables}
+      withGlobalClasses={withGlobalClasses}
     >
       <_CompatibilityEmotionThemeProvider theme={theme}>
         <DatesProvider>{props.children}</DatesProvider>
