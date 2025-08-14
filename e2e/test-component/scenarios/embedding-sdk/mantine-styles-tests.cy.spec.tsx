@@ -2,7 +2,7 @@
 import "@mantine/core/styles.css";
 import "@mantine/dates/styles.css";
 
-// Mics behavior when an app adds its own styles
+// Mimics behavior when an app adds its own styles
 // We need to do it before importing the SDK
 import "e2e/support/helpers/embedding-sdk-helpers/host-app-styles.css";
 
@@ -25,8 +25,6 @@ describe("scenarios > embedding-sdk > mantine styles leakage", () => {
     cy.signOut();
 
     mockAuthProviderAndJwtSignIn();
-
-    cy.intercept("GET", "/api/user/current").as("getUser");
   });
 
   it("css variables should not leak outside of mb-wrapper", () => {
