@@ -34,7 +34,7 @@
 
 (defmethod actions/validate-inputs! :data-grid.row/common
   [_action inputs]
-  (let [target-dbs      (distinct (map :database inputs))
+  (let [target-dbs (distinct (map :database inputs))
         unsupported-dbs (->> target-dbs
                              (map actions/cached-database)
                              (remove #(driver.u/supports? (:engine %) :actions/data-editing %)))]
@@ -78,10 +78,10 @@
                             :let [errors (seq (validation/validate-inputs table-id (map :row inputs)))]
                             :when errors]
                   [table-id errors]))]
-    (when (seq errors)
-      (throw (ex-info "Failed validation" {:errors      errors
+    (when errors
+      (throw (ex-info "Failed validation" {:errors errors
                                            :status-code 400
-                                           :error-code  ::invalid-input})))))
+                                           :error-code ::invalid-input})))))
 
 (defn- coerce-inputs [inputs]
   (let [table-id->inputs (group-by :table-id inputs)
@@ -119,10 +119,10 @@
 
 (defn- translate-undo-error [e]
   (case (:error (ex-data e))
-    :undo/none            (ex-info (tru "Nothing to do")                                         {:status-code 204} e)
-    :undo/cannot-undelete (ex-info (tru "You cannot undo your previous change.")                 {:status-code 405} e)
-    :undo/cannot-undo     (ex-info (tru "Your previous change cannot be undone")                 {:status-code 405} e)
-    :undo/conflict        (ex-info (tru "Your previous change has a conflict with another edit") {:status-code 409} e)
+    :undo/none (ex-info (tru "Nothing to do") {:status-code 204} e)
+    :undo/cannot-undelete (ex-info (tru "You cannot undo your previous change.") {:status-code 405} e)
+    :undo/cannot-undo (ex-info (tru "Your previous change cannot be undone") {:status-code 405} e)
+    :undo/conflict (ex-info (tru "Your previous change has a conflict with another edit") {:status-code 409} e)
     e))
 
 (methodical/defmethod actions/perform-action!* [:sql-jdbc :data-editing/undo]

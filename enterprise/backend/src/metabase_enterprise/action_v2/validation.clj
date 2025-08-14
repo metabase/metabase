@@ -1,7 +1,7 @@
 (ns metabase-enterprise.action-v2.validation
   "A light validation for action inputs.
 
-  Actions intput are all strings regardless of the field types. This is by design though we did consider changing it.
+  Actions inputs are all strings regardless of the field types. We may want to revisit this.
   See {[metabase.driver.sql-jdbc.actions/cast-values]}
 
   Though we do want to have a light validation to gives users nice error messages."
@@ -52,6 +52,22 @@
   (cond
     (number? value) nil
     (string? value) (when-not (can-parse? Double/parseDouble value)
+                      "Must be a number")
+    :else "Must be a number"))
+
+(defmethod validate-type :type/BigInteger
+  [_ttype value]
+  (cond
+    (integer? value) nil
+    (string? value) (when-not (can-parse? #(BigInteger. %) value)
+                      "Must be an integer")
+    :else "Must be an integer"))
+
+(defmethod validate-type :type/Decimal
+  [_ttype value]
+  (cond
+    (number? value) nil
+    (string? value) (when-not (can-parse? #(BigDecimal. %) value)
                       "Must be a number")
     :else "Must be a number"))
 

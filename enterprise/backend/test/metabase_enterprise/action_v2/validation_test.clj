@@ -55,6 +55,18 @@
 (def datetime-field-required
   {:name "created_at" :base_type :type/DateTime :database_required true})
 
+(def biginteger-field
+  {:name "big_count" :base_type :type/BigInteger :database_required false})
+
+(def biginteger-field-required
+  {:name "big_count" :base_type :type/BigInteger :database_required true})
+
+(def decimal-field
+  {:name "precise_value" :base_type :type/Decimal :database_required false})
+
+(def decimal-field-required
+  {:name "precise_value" :base_type :type/Decimal :database_required true})
+
 (deftest validate-inputs-float-test
   (testing "Float type validation"
     (doseq [[expected inputs fields]
@@ -238,6 +250,61 @@
               [{"created_at" nil}] [datetime-field-required]]]]
 
       (testing (str "DateTime validation - inputs: " inputs)
+        (is (= expected (validation/validate-inputs fields inputs)))))))
+
+(deftest validate-inputs-biginteger-test
+  (testing "BigInteger type validation"
+    (doseq [[expected inputs fields]
+            [;; Valid cases - regular integers
+             [nil [{"big_count" "123"}] [biginteger-field]]
+             [nil [{"big_count" 123}] [biginteger-field]]
+             [nil [{"big_count" "0"}] [biginteger-field]]
+             [nil [{"big_count" "-456"}] [biginteger-field]]
+             [nil [{"big_count" nil}] [biginteger-field]]
+
+             ;; Valid cases - large integers that exceed Long.MAX_VALUE
+             [nil [{"big_count" "9223372036854775808"}] [biginteger-field]] ; Long.MAX_VALUE + 1
+             [nil [{"big_count" "92233720368547758070"}] [biginteger-field]] ; Much larger
+             [nil [{"big_count" "-9223372036854775809"}] [biginteger-field]] ; Long.MIN_VALUE - 1
+
+             ;; Invalid cases
+                          ;; Invalid cases
+             [[{"big_count" "Must be an integer"}] [{"big_count" "123.45"}] [biginteger-field]]
+             [[{"big_count" "Must be an integer"}] [{"big_count" "abc"}] [biginteger-field]]
+             [[{"big_count" "Must be an integer"}] [{"big_count" 123.45}] [biginteger-field]]
+             [[{"big_count" "Must be an integer"}] [{"big_count" ""}] [biginteger-field]]
+             [[{"big_count" "Must be an integer"}] [{"big_count" "1.0"}] [biginteger-field]]
+             [[{"big_count" "Must be an integer"}] [{"big_count" true}] [biginteger-field]]
+             [[{"big_count" "This field is required"}] [{"big_count" nil}] [biginteger-field-required]]]]
+
+      (testing (str "BigInteger validation - inputs: " inputs)
+        (is (= expected (validation/validate-inputs fields inputs)))))))
+
+(deftest validate-inputs-decimal-test
+  (testing "Decimal type validation"
+    (doseq [[expected inputs fields]
+            [;; Valid cases - regular numbers
+             [nil [{"precise_value" "123.45"}] [decimal-field]]
+             [nil [{"precise_value" 123.45}] [decimal-field]]
+             [nil [{"precise_value" 123}] [decimal-field]]
+             [nil [{"precise_value" "0"}] [decimal-field]]
+             [nil [{"precise_value" "-123.45"}] [decimal-field]]
+             [nil [{"precise_value" nil}] [decimal-field]]
+
+             ;; Valid cases - high precision decimals that exceed Double precision
+             [nil [{"precise_value" "123.456789012345678901234567890"}] [decimal-field]]
+             [nil [{"precise_value" "99999999999999999999.99999999999999999999"}] [decimal-field]]
+             [nil [{"precise_value" "-0.000000000000000000000000000001"}] [decimal-field]]
+
+             ;; Invalid cases
+             [[{"precise_value" "Must be a number"}] [{"precise_value" "not-a-number"}] [decimal-field]]
+             [[{"precise_value" "Must be a number"}] [{"precise_value" "12.34.56"}] [decimal-field]]
+             [[{"precise_value" "Must be a number"}] [{"precise_value" ""}] [decimal-field]]
+             [[{"precise_value" "Must be a number"}] [{"precise_value" "  "}] [decimal-field]]
+             [[{"precise_value" "Must be a number"}] [{"precise_value" true}] [decimal-field]]
+             [[{"precise_value" "This field is required"}] [{"precise_value" nil}] [decimal-field-required]]]]
+
+      (testing (str "Decimal validation - inputs: " inputs)
         (is (= expected (validation/validate-inputs fields inputs)))))))
 
 (deftest validate-inputs-multiple-fields-test
