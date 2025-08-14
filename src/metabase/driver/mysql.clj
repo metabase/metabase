@@ -87,10 +87,7 @@
                               ;; and make this work.
                               :window-functions/offset                false
                               :expression-literals                    true
-                              :database-routing                       true
-                              :transforms/table                       true
-                              :transforms/view true
-                              :metadata/table-existence-check true}]
+                              :database-routing                       true}]
   (defmethod driver/database-supports? [:mysql feature] [_driver _feature _db] supported?))
 
 ;; This is a bit of a lie since the JSON type was introduced for MySQL since 5.7.8.
@@ -1054,16 +1051,3 @@
 (defmethod sql-jdbc/impl-table-known-to-not-exist? :mysql
   [_ e]
   (= (sql-jdbc/get-sql-state e) "42S02"))
-
-(defmethod driver.sql/normalize-name :mysql
-  [_driver name-str]
-  (if (and (= (first name-str) \`)
-           (= (last name-str) \`))
-    (-> name-str
-        (subs 1 (dec (count name-str)))
-        (str/replace #"\"\"" "\""))
-    (u/lower-case-en name-str)))
-
-(defmethod driver.sql/default-schema :mysql
-  [_]
-  nil)

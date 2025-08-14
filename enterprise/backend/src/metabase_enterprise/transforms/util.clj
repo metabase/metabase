@@ -83,6 +83,4 @@
   "Returns the database feature necessary to execute `transform`."
   [transform]
   (case (-> transform :target :type)
-    "table"             :transforms/table
-    "view"              :transforms/view
-    "materialized-view" :transforms/materialized-view))
+    "table"             :transforms/table))

@@ -124,11 +124,6 @@ databaseChangeLog:
       id: v57.2025-08-02T15:55:38
       author: metamben
       comment: Create transform table
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - tableExists:
-                tableName: transform
       changes:
         - createTable:
             tableName: transform
@@ -191,52 +186,39 @@ databaseChangeLog:
   - changeSet:
       id: v57.2025-08-03T00:00:00
       author: eric
-      comment: Create worker_run table in app database to track worker execution
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - tableExists:
-                tableName: worker_run
+      comment: Create transform_run table in app database to track transform execution
       changes:
         - createTable:
-            tableName: worker_run
-            remarks: Table to track worker job executions and their status in the app database
+            tableName: transform_run
+            remarks: Table to track transform executions and their status in the app database
             columns:
               - column:
-                  name: run_id
+                  name: id
                   type: char(21)
-                  remarks: 'NanoID identifier for the worker run'
+                  remarks: 'NanoID identifier for the transform run'
                   constraints:
                     primaryKey: true
                     nullable: false
               - column:
-                  name: work_id
-                  type: bigint
-                  remarks: 'Identifier for the unit of work (transform, sync, etc.)'
+                  name: transform_id
+                  type: int
+                  remarks: 'Identifier for the transform'
                   constraints:
                     nullable: false
-              - column:
-                  name: work_type
-                  type: varchar(255)
-                  remarks: 'Type/category of the worker job'
-                  constraints:
-                    nullable: false
+                    referencedTableName: transform
+                    referencedColumnNames: id
+                    foreignKeyName: fk_transform_run_transform_id
+                    deleteCascade: true
               - column:
                   name: run_method
                   type: varchar(255)
-                  remarks: 'Method used to execute the worker job'
-                  constraints:
-                    nullable: false
-              - column:
-                  name: is_local
-                  type: ${boolean.type}
-                  remarks: 'Is this run local?'
+                  remarks: 'Method used to execute the transform job'
                   constraints:
                     nullable: false
               - column:
                   name: status
                   type: varchar(50)
-                  remarks: 'Current status of the worker job (running, completed, failed, etc.)'
+                  remarks: 'Current status of the transform job (running, completed, failed, etc.)'
                   constraints:
                     nullable: false
               - column:
@@ -249,14 +231,14 @@ databaseChangeLog:
               - column:
                   name: start_time
                   type: ${timestamp_type}
-                  remarks: 'When the worker job started'
+                  remarks: 'When the transform job started'
                   defaultValueComputed: current_timestamp
                   constraints:
                     nullable: false
               - column:
                   name: end_time
                   type: ${timestamp_type}
-                  remarks: 'When the worker job completed (null if still running)'
+                  remarks: 'When the transform job completed (null if still running)'
                   constraints:
                     nullable: true
               - column:
@@ -270,22 +252,14 @@ databaseChangeLog:
   - changeSet:
       id: v57.2025-08-04T10:53:00
       author: metamben
-      comment: Add last run index on worker_run
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - indexExists:
-                tableName: worker_run
-                indexName: idx_worker_run_last_run_idx
+      comment: Add last run index on transform_run
       changes:
         - createIndex:
-            tableName: worker_run
-            indexName: idx_worker_run_last_run_idx
+            tableName: transform_run
+            indexName: idx_transform_run_last_run_idx
             columns:
               - column:
-                  name: work_type
-              - column:
-                  name: work_id
+                  name: transform_id
               - column:
                   name: start_time
                   descending: true
@@ -294,38 +268,24 @@ databaseChangeLog:
       id: v57.2025-08-04T10:54:00
       author: metamben
       comment: Add unique index to make sure at most one run can be active
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - indexExists:
-                tableName: worker_run
-                indexName: idx_unique_active_worker_run
       changes:
         - addUniqueConstraint:
-            tableName: worker_run
-            constraintName: idx_unique_active_worker_run
-            columnNames: work_type, work_id, is_active
+            tableName: transform_run
+            constraintName: idx_unique_active_transform_run
+            columnNames: transform_id, is_active
 
   - changeSet:
       id: v57.2025-08-04T10:55:00
       author: metamben
       comment: Add partial index for querying active runs
       dbms: postgresql
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - indexExists:
-                tableName: worker_run
-                indexName: idx_worker_run_active_runs
       changes:
         - createIndex:
-            tableName: worker_run
-            indexName: idx_worker_run_active_runs
+            tableName: transform_run
+            indexName: idx_transform_run_active_runs
             columns:
               - column:
-                  name: work_type
-              - column:
-                  name: work_id
+                  name: transform_id
             where: "is_active = true"
 
   - changeSet:
@@ -333,48 +293,35 @@ databaseChangeLog:
       author: metamben
       comment: Add index for querying active runs
       dbms: mysql, h2
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - indexExists:
-                tableName: worker_run
-                indexName: idx_worker_run_active_runs
       changes:
         - createIndex:
-            tableName: worker_run
-            indexName: idx_worker_run_active_runs
+            tableName: transform_run
+            indexName: idx_transform_run_active_runs
             columns:
               - column:
                   name: is_active
               - column:
-                  name: work_type
-              - column:
-                  name: work_id
+                  name: transform_id
 
   - changeSet:
       id: v57.2025-08-06T00:00:00
       author: eric
-      comment: Create worker_run_cancelation table to track cancelation.
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - tableExists:
-                tableName: worker_run_cancelation
+      comment: Create transform_run_cancelation table to track cancelation.
       changes:
         - createTable:
-            tableName: worker_run_cancelation
-            remarks: Table to track the cancelation of worker job executions
+            tableName: transform_run_cancelation
+            remarks: Table to track the cancelation of transform job executions
             columns:
               - column:
                   name: run_id
                   type: char(21)
-                  remarks: 'NanoID identifier for the worker run'
+                  remarks: 'NanoID identifier for the transform run'
                   constraints:
                     primaryKey: true
                     nullable: false
-                    referencedTableName: worker_run
-                    referencedColumnNames: run_id
-                    foreignKeyName: fk_worker_run_cancelation_worker_run_run_id
+                    referencedTableName: transform_run
+                    referencedColumnNames: id
+                    foreignKeyName: fk_transform_run_cancelation_transform_run_run_id
                     deleteCascade: true
               - column:
                   name: time
@@ -388,11 +335,6 @@ databaseChangeLog:
       id: v57.2025-08-07T10:00:00
       author: galdre
       comment: Add transform_tag table for grouping transforms
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - tableExists:
-                tableName: transform_tag
       changes:
         - createTable:
             tableName: transform_tag
@@ -431,11 +373,6 @@ databaseChangeLog:
       id: v57.2025-08-07T10:01:00
       author: galdre
       comment: Add transform_job table for scheduled execution of tagged transforms
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - tableExists:
-                tableName: transform_job
       changes:
         - createTable:
             tableName: transform_job
@@ -490,11 +427,6 @@ databaseChangeLog:
       id: v57.2025-08-07T10:02:00
       author: galdre
       comment: Add transform_tags join table for transform-tag associations
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - tableExists:
-                tableName: transform_tags
       changes:
         - createTable:
             tableName: transform_tags
@@ -531,10 +463,6 @@ databaseChangeLog:
       id: v57.2025-08-07T10:02:01
       author: galdre
       comment: Add unique constraints on transform_tags(transform_id, tag_id). Deleting foreign keys needed for mysql.
-      preConditions:
-        - onFail: MARK_RAN
-        - tableExists:
-            tableName: transform_tags
       changes:
         - addUniqueConstraint:
             tableName: transform_tags
@@ -554,11 +482,6 @@ databaseChangeLog:
       id: v57.2025-08-07T10:03:00
       author: galdre
       comment: Add transform_job_tags join table for job-tag associations
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - tableExists:
-                tableName: transform_job_tags
       changes:
         - createTable:
             tableName: transform_job_tags
@@ -595,10 +518,6 @@ databaseChangeLog:
       id: v57.2025-08-07T10:03:01
       author: galdre
       comment: Add unique constraint on transform_job_tags(job_id, tag_id). Mysql needs the foreign keys dropped on rollback.
-      preConditions:
-        - onFail: MARK_RAN
-        - tableExists:
-            tableName: transform_job_tags
       changes:
         - addUniqueConstraint:
             tableName: transform_job_tags
@@ -615,281 +534,9 @@ databaseChangeLog:
             tableName: transform_job_tags
             constraintName: unique_job_tag
   - changeSet:
-      id: v57.2025-08-07T10:06:00
-      author: galdre
-      comment: Add default transform tags and jobs for common scheduling patterns
-      preConditions:
-        - onFail: MARK_RAN
-        - tableExists:
-            tableName: transform_tag
-      changes:
-        - insert:
-            tableName: transform_tag
-            columns:
-              - column:
-                  name: name
-                  value: hourly
-      rollback:
-        - sql:
-            sql: "delete from transform_tag where \"name\" = 'hourly'"
-            dbms: postgresql
-        - sql:
-            sql: "delete from transform_tag where `name` = 'hourly'"
-            dbms: mysql,mariadb
-        - sql:
-            sql: "delete from transform_tag where \"NAME\" = 'hourly'"
-            dbms: h2
-  - changeSet:
-      id: v57.2025-08-07T10:06:01
-      author: galdre
-      comment: Add default transform tags and jobs for common scheduling patterns
-      preConditions:
-        - onFail: MARK_RAN
-        - tableExists:
-            tableName: transform_tag
-      changes:
-        - insert:
-            tableName: transform_tag
-            columns:
-              - column:
-                  name: name
-                  value: daily
-      rollback:
-        - sql:
-            sql: "delete from transform_tag where \"name\" = 'daily'"
-            dbms: postgresql
-        - sql:
-            sql: "delete from transform_tag where `name` = 'daily'"
-            dbms: mysql,mariadb
-        - sql:
-            sql: "delete from transform_tag where \"NAME\" = 'daily'"
-            dbms: h2
-  - changeSet:
-      id: v57.2025-08-07T10:06:02
-      author: galdre
-      comment: Add default transform tags and jobs for common scheduling patterns
-      preConditions:
-        - onFail: MARK_RAN
-        - tableExists:
-            tableName: transform_tag
-      changes:
-        - insert:
-            tableName: transform_tag
-            columns:
-              - column:
-                  name: name
-                  value: weekly
-      rollback:
-        - sql:
-            sql: "delete from transform_tag where \"name\" = 'weekly'"
-            dbms: postgresql
-        - sql:
-            sql: "delete from transform_tag where `name` = 'weekly'"
-            dbms: mysql,mariadb
-        - sql:
-            sql: "delete from transform_tag where \"NAME\" = 'weekly'"
-            dbms: h2
-  - changeSet:
-      id: v57.2025-08-07T10:06:03
-      author: galdre
-      comment: Add default transform tags and jobs for common scheduling patterns
-      preConditions:
-        - onFail: MARK_RAN
-        - tableExists:
-            tableName: transform_tag
-      changes:
-        - insert:
-            tableName: transform_tag
-            columns:
-              - column:
-                  name: name
-                  value: monthly
-      rollback:
-        - sql:
-            sql: "delete from transform_tag where \"name\" = 'monthly'"
-            dbms: postgresql
-        - sql:
-            sql: "delete from transform_tag where `name` = 'monthly'"
-            dbms: mysql,mariadb
-        - sql:
-            sql: "delete from transform_tag where \"NAME\" = 'monthly'"
-            dbms: h2
-  - changeSet:
-      id: v57.2025-08-07T10:06:04
-      author: galdre
-      comment: Add default transform tags and jobs for common scheduling patterns
-      preConditions:
-        - onFail: MARK_RAN
-        - tableExists:
-            tableName: transform_job
-      changes:
-        - insert:
-            tableName: transform_job
-            columns:
-              - column:
-                  name: name
-                  value: hourly
-              - column:
-                  name: schedule
-                  value: 0 0 * * * ? *
-              - column:
-                  name: entity_id
-                  value: hourly000000000000000
-      rollback:
-        - sql:
-            sql: "delete from transform_job where \"entity_id\" = 'hourly000000000000000'"
-            dbms: postgresql
-        - sql:
-            sql: "delete from transform_job where `entity_id` = 'hourly000000000000000'"
-            dbms: mysql,mariadb
-        - sql:
-            sql: "delete from transform_job where \"ENTITY_ID\" = 'hourly000000000000000'"
-            dbms: h2
-  - changeSet:
-      id: v57.2025-08-07T10:06:05
-      author: galdre
-      comment: Add default transform tags and jobs for common scheduling patterns
-      preConditions:
-        - onFail: MARK_RAN
-        - tableExists:
-            tableName: transform_job
-      changes:
-        - insert:
-            tableName: transform_job
-            columns:
-              - column:
-                  name: name
-                  value: daily
-              - column:
-                  name: schedule
-                  value: 0 0 0 * * ? *
-              - column:
-                  name: entity_id
-                  value: daily0000000000000000
-      rollback:
-        - sql:
-            sql: "delete from transform_job where \"entity_id\" = 'daily0000000000000000'"
-            dbms: postgresql
-        - sql:
-            sql: "delete from transform_job where `entity_id` = 'daily0000000000000000'"
-            dbms: mysql,mariadb
-        - sql:
-            sql: "delete from transform_job where \"ENTITY_ID\" = 'daily0000000000000000'"
-            dbms: h2
-  - changeSet:
-      id: v57.2025-08-07T10:06:06
-      author: galdre
-      comment: Add default transform tags and jobs for common scheduling patterns
-      preConditions:
-        - onFail: MARK_RAN
-        - tableExists:
-            tableName: transform_job
-      changes:
-        - insert:
-            tableName: transform_job
-            columns:
-              - column:
-                  name: name
-                  value: weekly
-              - column:
-                  name: schedule
-                  value: 0 0 0 ? * 1 *
-              - column:
-                  name: entity_id
-                  value: weekly000000000000000
-      rollback:
-        - sql:
-            sql: "delete from transform_job where \"entity_id\" = 'weekly000000000000000'"
-            dbms: postgresql
-        - sql:
-            sql: "delete from transform_job where `entity_id` = 'weekly000000000000000'"
-            dbms: mysql,mariadb
-        - sql:
-            sql: "delete from transform_job where \"ENTITY_ID\" = 'weekly000000000000000'"
-            dbms: h2
-  - changeSet:
-      id: v57.2025-08-07T10:06:07
-      author: galdre
-      comment: Add default transform tags and jobs for common scheduling patterns
-      preConditions:
-        - onFail: MARK_RAN
-        - tableExists:
-            tableName: transform_job
-      changes:
-        - insert:
-            tableName: transform_job
-            columns:
-              - column:
-                  name: name
-                  value: monthly
-              - column:
-                  name: schedule
-                  value: 0 0 0 1 * ? *
-              - column:
-                  name: entity_id
-                  value: monthly00000000000000
-      rollback:
-        - sql:
-            sql: "delete from transform_job where \"entity_id\" = 'monthly00000000000000'"
-            dbms: postgresql
-        - sql:
-            sql: "delete from transform_job where `entity_id` = 'monthly00000000000000'"
-            dbms: mysql,mariadb
-        - sql:
-            sql: "delete from transform_job where \"ENTITY_ID\" = 'monthly00000000000000'"
-            dbms: h2
-  - changeSet:
-      id: v57.2025-08-07T11:00:00
-      author: galdre
-      comment: Populate transform_job_tags join table to link default jobs with their corresponding tags
-      preConditions:
-        - onFail: MARK_RAN
-        - tableExists:
-            tableName: transform_job_tags
-        - tableExists:
-            tableName: transform_job
-        - tableExists:
-            tableName: transform_tag
-      changes:
-        - sql:
-            sql: |
-              INSERT INTO transform_job_tags (job_id, tag_id)
-              SELECT j.id, t.id
-              FROM transform_job j, transform_tag t
-              WHERE j.entity_id = 'hourly000000000000000' AND t.name = 'hourly';
-
-              INSERT INTO transform_job_tags (job_id, tag_id)
-              SELECT j.id, t.id
-              FROM transform_job j, transform_tag t
-              WHERE j.entity_id = 'daily0000000000000000' AND t.name = 'daily';
-
-              INSERT INTO transform_job_tags (job_id, tag_id)
-              SELECT j.id, t.id
-              FROM transform_job j, transform_tag t
-              WHERE j.entity_id = 'weekly000000000000000' AND t.name = 'weekly';
-
-              INSERT INTO transform_job_tags (job_id, tag_id)
-              SELECT j.id, t.id
-              FROM transform_job j, transform_tag t
-              WHERE j.entity_id = 'monthly00000000000000' AND t.name = 'monthly';
-      rollback:
-        - sql:
-            sql: |
-              DELETE FROM transform_job_tags
-              WHERE job_id IN (
-                SELECT id FROM transform_job
-                WHERE entity_id IN ('hourly000000000000000', 'daily0000000000000000', 'weekly000000000000000', 'monthly00000000000000')
-              );
-
-  - changeSet:
       id: v57.2025-08-08T00:00:00
       author: william
       comment: Create transform_job_run table in app database to track transform job execution
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - tableExists:
-                tableName: transform_job_run
       changes:
         - createTable:
             tableName: transform_job_run
@@ -898,7 +545,7 @@ databaseChangeLog:
               - column:
                   name: run_id
                   type: char(21)
-                  remarks: 'NanoID identifier for the worker run'
+                  remarks: 'NanoID identifier for the transform job run'
                   constraints:
                     primaryKey: true
                     nullable: false

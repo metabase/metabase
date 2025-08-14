@@ -5,6 +5,7 @@
    [medley.core :as m]
    [metabase-enterprise.transforms.execute :as transforms.execute]
    [metabase-enterprise.transforms.test-dataset :as transforms-dataset]
+   [metabase-enterprise.transforms.test-query-util :as test-query-util]
    [metabase-enterprise.transforms.test-util :refer [with-transform-cleanup!]]
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.convert :as lib.convert]
@@ -18,20 +19,12 @@
 (set! *warn-on-reflection* true)
 
 (defn- make-query
+  "Create a query using the shared test utility.
+   Maintains the same signature for compatibility with existing tests."
   ([source-table]
-   (make-query source-table nil nil))
+   (test-query-util/make-query source-table))
   ([source-table source-column constraint-fn & constraint-params]
-   (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
-         table (if (string? source-table)
-                 (m/find-first (comp #(str/ends-with? % source-table) u/lower-case-en :name) (lib.metadata/tables mp))
-                 source-table)
-         query (lib/query mp table)
-         column (when source-column
-                  (m/find-first (comp #{source-column} u/lower-case-en :name)
-                                (lib/visible-columns query)))]
-     (cond-> query
-       (and source-column constraint-fn)
-       (lib/filter (apply constraint-fn column constraint-params))))))
+   (apply test-query-util/make-query source-table source-column constraint-fn constraint-params)))
 
 (defn- wait-for-table
   [table-name timeout-ms]
@@ -71,6 +64,9 @@
                   (transforms.execute/run-mbql-transform! t2 {:run-method :cron})
                   (let [table2 (wait-for-table table2-name 10000)
                         check-query (lib/aggregate (make-query table2) (lib/count))]
+                    ;; The transforms-test dataset has exactly 4 Gizmo products (IDs 6, 8, 12, 14)
+                    ;; First transform filters for categories starting with "G" (Gadget and Gizmo)
+                    ;; Second transform filters for category = "Gizmo", resulting in 4 products
                     (is (=? {:data {:cols [{:name "count"}]
                                     :rows [[4]]}}
                             (qp/process-query check-query)))))))))))))

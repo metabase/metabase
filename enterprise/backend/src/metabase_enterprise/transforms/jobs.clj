@@ -6,9 +6,9 @@
    [clojurewerkz.quartzite.triggers :as triggers]
    [metabase-enterprise.transforms.execute :as transforms.execute]
    [metabase-enterprise.transforms.models.job-run :as transforms.job-run]
+   [metabase-enterprise.transforms.models.transform-run :as transform-run]
    [metabase-enterprise.transforms.ordering :as transforms.ordering]
    [metabase-enterprise.transforms.settings :as transforms.settings]
-   [metabase-enterprise.worker.core :as worker]
    [metabase.task.core :as task]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -54,7 +54,7 @@
            in-progress nil]
       (when-let [{transform-id :id :as current-transform} (next-transform plan complete)]
         (cond
-          (worker/running-run-for-work-id transform-id :transform)
+          (transform-run/running-run-for-run-id transform-id)
           (do
             (log/info "Transform" (pr-str transform-id) "already running, sleeping")
             (Thread/sleep 2000)
@@ -96,13 +96,13 @@
 
 (task/defjob  ^{:doc "Times out transform jobs when necesssary."
                 org.quartz.DisallowConcurrentExecution true}
-  SyncWorkerStatus [ctx]
+  TimeoutOldRuns [_ctx]
   (transforms.job-run/timeout-old-runs! (transforms.settings/transform-timeout) :minute))
 
 (defn- start-job! []
   (when (not (task/job-exists? job-key))
     (let [job (jobs/build
-               (jobs/of-type SyncWorkerStatus)
+               (jobs/of-type TimeoutOldRuns)
                (jobs/with-identity (jobs/key job-key)))
           trigger (triggers/build
                    (triggers/with-identity (triggers/key job-key))
@@ -114,5 +114,5 @@
       (task/schedule-task! job trigger))))
 
 (defmethod task/init! ::TimeoutJob [_]
-  (log/info "Scheduling transform job  timeout.")
+  (log/info "Scheduling transform job timeout.")
   (start-job!))

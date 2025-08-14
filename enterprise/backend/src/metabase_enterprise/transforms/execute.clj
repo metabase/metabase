@@ -1,17 +1,14 @@
 (ns metabase-enterprise.transforms.execute
   (:require
    [clojure.core.async :as a]
-   [clojure.string :as str]
-   [medley.core :as m]
-   [metabase-enterprise.transforms.ordering :as transforms.ordering]
+   [metabase-enterprise.transforms.canceling :as canceling]
+   [metabase-enterprise.transforms.models.transform-run :as transform-run]
    [metabase-enterprise.transforms.settings :as transforms.settings]
    [metabase-enterprise.transforms.util :as transforms.util]
-   [metabase-enterprise.worker.core :as worker]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.lib.schema.common :as schema.common]
    [metabase.query-processor.pipeline :as qp.pipeline]
-   [metabase.sync.core :as sync]
    [metabase.util :as u]
    [metabase.util.jvm :as u.jvm]
    [metabase.util.log :as log]
@@ -22,7 +19,7 @@
 
 (mr/def ::transform-details
   [:map
-   [:transform-type [:enum {:decode/normalize schema.common/normalize-keyword} :view :table]]
+   [:transform-type [:enum {:decode/normalize schema.common/normalize-keyword} :table]]
    [:connection-details :any]
    [:query :string]
    [:output-table [:keyword {:decode/normalize schema.common/normalize-keyword}]]])
@@ -30,19 +27,6 @@
 (mr/def ::transform-opts
   [:map
    [:overwrite? :boolean]])
-
-;; should be run in virtual thread (please :)
-(defn- run-transform-remote! [run-id driver transform-details opts]
-  (try
-    (log/trace "starting remote transform run" (pr-str run-id))
-    (worker/run-transform! run-id driver transform-details opts)
-    (catch Throwable t
-      (log/error t "Remote execution request failed; still syncing")))
-  ;; poll the server until it's not running
-  (u.jvm/poll {:timeout-ms (* (transforms.settings/transform-timeout) 60 1000)
-               :interval-ms (+ 2000 (- 500 (* 1000 (rand))))
-               :done? #(not= "running" (:status %))
-               :thunk #(worker/sync-single-run! run-id)}))
 
 (defn- sync-target!
   ([transform-id run-id]
@@ -55,27 +39,20 @@
    (log/info "Syncing target" (pr-str target) "for transform")
    (transforms.util/activate-table! database target)))
 
-(defn- run-transform-local!
-  [run-id driver transform-details opts]
-  (worker/chan-start-timeout-vthread! run-id (transforms.settings/transform-timeout))
-  ;; local run is responsible for status
-  (try
-    (binding [qp.pipeline/*canceled-chan* (a/promise-chan)]
-      (worker/chan-start-run! run-id qp.pipeline/*canceled-chan*)
-      (driver/run-transform! driver transform-details opts))
-    (worker/succeed-started-run! run-id)
-    (catch Throwable t
-      (worker/fail-started-run! run-id {:message (.getMessage t)})
-      (throw t))
-    (finally
-      (worker/chan-end-run! run-id))))
-
 (defn run-transform!
   "Run a compiled transform either locally or remotely."
   [run-id driver transform-details opts]
-  (if (worker/run-remote?)
-    (run-transform-remote! run-id driver transform-details opts)
-    (run-transform-local!  run-id driver transform-details opts)))
+  ;; local run is responsible for status
+  (try
+    (binding [qp.pipeline/*canceled-chan* (a/promise-chan)]
+      (canceling/chan-start-run! run-id qp.pipeline/*canceled-chan*)
+      (driver/run-transform! driver transform-details opts))
+    (transform-run/succeed-started-run! run-id)
+    (catch Throwable t
+      (transform-run/fail-started-run! run-id {:message (.getMessage t)})
+      (throw t))
+    (finally
+      (canceling/chan-end-run! run-id))))
 
 (defn run-mbql-transform!
   "Run `transform` and sync its target table.
@@ -100,9 +77,7 @@
                          {:driver driver, :database database, :feature feature})))
        ;; mark the execution as started and notify any observers
        (try
-         (worker/start-run! run-id :transform id
-                            {:run_method run-method
-                             :is_local (not (worker/run-remote?))})
+         (transform-run/start-run! run-id id {:run_method run-method})
          (catch java.sql.SQLException e
            (if (= (.getSQLState e) "23505")
              (throw (ex-info "Transform is already running"

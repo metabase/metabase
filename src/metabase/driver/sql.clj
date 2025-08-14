@@ -125,16 +125,6 @@
                   overwrite? (cons (driver/compile-drop-table driver output-table)))]
     {:rows-affected (last (driver/execute-raw-queries! driver connection-details queries))}))
 
-(defmethod driver/run-transform! [:sql :view]
-  [driver {:keys [connection-details query output-table]} {:keys [overwrite?]}]
-  (let [driver (keyword driver)
-        statement (if overwrite?
-                    :create-or-replace-view
-                    :create-view)
-        sql (sql.qp/format-honeysql driver {statement [(keyword output-table)]
-                                            :raw query})]
-    {:rows-affected (last (driver/execute-raw-queries! driver connection-details [sql]))}))
-
 (defn qualified-name
   "Return the name of the target table of a transform as a possibly qualified symbol."
   [{schema :schema, table-name :name}]
@@ -147,14 +137,6 @@
   ;; driver/drop-table! takes table-name as a string, but the :sql-jdbc implementation uses
   ;; honeysql, and accepts a keyword too. This way we delegate proper escaping and qualification to honeysql.
   (driver/drop-table! driver (:id database) (qualified-name target)))
-
-(defmethod driver/drop-transform-target! [:sql :view]
-  [driver database target]
-  ;; driver/drop-table! takes table-name as a string, but the :sql-jdbc implementation uses
-  ;; honeysql, and accepts a keyword too. This way we delegate proper escaping and qualification to honeysql.
-  (let [driver (keyword driver)
-        sql (sql.qp/format-honeysql driver {:drop-view [(qualified-name target)]})]
-    (driver/execute-raw-queries! driver (driver/connection-details driver database) [sql])))
 
 (defmulti normalize-name
   "Normalizes the (primarily table/column) name passed in.

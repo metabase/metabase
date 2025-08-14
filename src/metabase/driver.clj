@@ -708,12 +708,6 @@
     ;; Does this driver support transforms with a table as the target?
     :transforms/table
 
-    ;; Does this driver support transforms with a view as the target?
-    :transforms/view
-
-    ;; Does this driver support transforms with a materialized view as the target?
-    :transforms/materialized-view
-
     ;; Does this driver properly support the table-exists? method for checking table existence?
     :metadata/table-existence-check
 

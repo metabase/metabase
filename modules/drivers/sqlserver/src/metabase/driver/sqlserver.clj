@@ -27,7 +27,6 @@
   (:import
    (java.sql
     Connection
-    DatabaseMetaData
     PreparedStatement
     ResultSet
     Time)
@@ -56,10 +55,7 @@
                               :index-info                             false
                               :now                                    true
                               :regex                                  false
-                              :test/jvm-timezone-setting              false
-                              :transforms/table true
-                              :transforms/view true
-                              :metadata/table-existence-check true}]
+                              :test/jvm-timezone-setting              false}]
   (defmethod driver/database-supports? [:sqlserver feature] [_driver _feature _db] supported?))
 
 (defmethod driver/database-supports? [:sqlserver :percentile-aggregations]
@@ -934,33 +930,3 @@
   [_driver role]
   ;; REVERT to handle the case where the users role attribute has changed
   (format "REVERT; EXECUTE AS USER = '%s';" role))
-
-(defmethod sql-jdbc/impl-table-known-to-not-exist? :sqlserver
-  [_ e]
-  (= (sql-jdbc/get-sql-state e) "S0002"))
-
-(defmethod driver/compile-transform :sqlserver
-  [driver {:keys [query output-table]}]
-  ;; SQL Server doesn't support CREATE TABLE AS SELECT
-  ;; Instead it uses SELECT ... INTO syntax
-  (let [table-name (first (sql.qp/format-honeysql driver (keyword output-table)))]
-    ;; SQL Server doesn't support CREATE TABLE AS SELECT
-    ;; Instead it uses SELECT ... INTO syntax
-    ;; The regex finds the last FROM and inserts INTO before it
-    [(str/replace query #"\bFROM\b(?!.*\bFROM\b)" (str " INTO " table-name " FROM "))]))
-
-(defmethod driver/table-exists? :sqlserver
-    [driver database {:keys [schema name] :as _table}]
-    (sql-jdbc.execute/do-with-connection-with-options
-     driver
-     database
-     nil
-     (fn [^Connection conn]
-       (let [^DatabaseMetaData metadata (.getMetaData conn)
-             ;; SQL Server doesn't have a special escape method, but we should still handle nil
-             schema-name (some->> schema (driver/escape-entity-name-for-metadata driver))
-             table-name (some->> name (driver/escape-entity-name-for-metadata driver))
-             ;; SQL Server uses the database name from the connection, not as a parameter
-             db-name nil]
-         (with-open [rs (.getTables metadata db-name schema-name table-name (into-array String ["TABLE"]))]
-           (.next rs))))))

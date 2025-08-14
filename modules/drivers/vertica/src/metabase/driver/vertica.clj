@@ -36,8 +36,7 @@
                               :identifiers-with-spaces   true
                               :percentile-aggregations   false
                               :test/jvm-timezone-setting false
-                              :database-routing          false
-                              :transforms/table          true}]
+                              :database-routing          false}]
   (defmethod driver/database-supports? [:vertica feature] [_driver _feature _db] supported?))
 
 (defmethod driver/db-start-of-week :vertica
