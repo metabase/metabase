@@ -104,8 +104,7 @@
                      :tag_id tag-id}))))
   ;; Return updated job with hydration
   (-> (t2/select-one :model/TransformJob :id job-id)
-      (t2/hydrate :tag_ids)
-      (assoc :last_run nil)))
+      (t2/hydrate :tag_ids :last_run)))
 
 (api.macros/defendpoint :delete "/:job-id"
   "Delete a transform job."
@@ -139,10 +138,7 @@
   (log/info "Getting transform job" job-id)
   (api/check-superuser)
   (let [job (api/check-404 (t2/select-one :model/TransformJob :id job-id))]
-    ;; Hydrate tag_ids and add last_run (null for now)
-    (-> job
-        (t2/hydrate :tag_ids)
-        transforms.job-run/add-last-run)))
+    (t2/hydrate job :tag_ids :last_run)))
 
 (api.macros/defendpoint :get "/"
   "Get all transform jobs."
@@ -151,10 +147,7 @@
   (log/info "Getting all transform jobs")
   (api/check-superuser)
   (let [jobs (t2/select :model/TransformJob {:order-by [[:created_at :desc]]})]
-    ;; Hydrate tag_ids for all jobs
-    ;; Note: last_run will be null until run tracking is implemented
-    (map #(assoc % :last_run nil)
-         (t2/hydrate jobs :tag_ids))))
+    (t2/hydrate jobs :tag_ids :last_run)))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/transform-job` routes."

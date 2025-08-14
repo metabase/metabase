@@ -52,7 +52,7 @@
             (is (= (:id job) (:id response)))
             (is (= "Test Job" (:name response)))
             (is (= [(:id tag)] (:tag_ids response)))
-            (is (nil? (:last_execution response)))))
+            (is (nil? (:last_run response)))))
 
         (testing "Returns 404 for non-existent job"
           (mt/user-http-request :crowberto :get 404 "ee/transform-job/999999"))))))
@@ -66,30 +66,34 @@
               job-ids (set (map :id response))]
           (is (contains? job-ids (:id job1)))
           (is (contains? job-ids (:id job2)))
-          (is (every? #(nil? (:last_execution %)) response)))))))
+          (is (every? #(or
+                        (and (not= (:id %) (:id job1))
+                             (not= (:id %) (:id job2)))
+                        (nil? (:last_run %))) response)))))))
 
 (deftest update-job-test
   (testing "PUT /api/ee/transform-job/:id"
     (mt/with-premium-features #{:transforms}
       (mt/with-temp [:model/TransformTag tag1 {:name "tag-1"}
-                     :model/TransformTag tag2 {:name "tag-2"}
-                     :model/TransformJob job {:name "Original" :schedule "0 0 0 * * ?"}]
-        (testing "Updates job fields"
-          (let [response (mt/user-http-request :crowberto :put 200 (str "ee/transform-job/" (:id job))
-                                               {:name "Updated"
-                                                :description "New Description"
-                                                :schedule "0 0 */2 * * ?"
-                                                :tag_ids [(:id tag1) (:id tag2)]})]
-            (is (= "Updated" (:name response)))
-            (is (= "New Description" (:description response)))
-            (is (= "0 0 */2 * * ?" (:schedule response)))
-            (is (= (set [(:id tag1) (:id tag2)]) (set (:tag_ids response))))))
+                     :model/TransformTag tag2 {:name "tag-2"}]
+        (let [job (mt/user-http-request :crowberto :post 200 "ee/transform-job"
+                                        {:name "Original" :schedule "0 0 0 * * ?"})]
+          (testing "Updates job fields"
+            (let [response (mt/user-http-request :crowberto :put 200 (str "ee/transform-job/" (:id job))
+                                                 {:name "Updated"
+                                                  :description "New Description"
+                                                  :schedule "0 0 */2 * * ?"
+                                                  :tag_ids [(:id tag1) (:id tag2)]})]
+              (is (= "Updated" (:name response)))
+              (is (= "New Description" (:description response)))
+              (is (= "0 0 */2 * * ?" (:schedule response)))
+              (is (= (set [(:id tag1) (:id tag2)]) (set (:tag_ids response))))))
 
-        (testing "Validates cron expression"
-          (let [response (mt/user-http-request :crowberto :put 400 (str "ee/transform-job/" (:id job))
-                                               {:schedule "invalid"})]
-            (is (string? response))
-            (is (re-find #"Invalid cron expression" response))))))))
+          (testing "Validates cron expression"
+            (let [response (mt/user-http-request :crowberto :put 400 (str "ee/transform-job/" (:id job))
+                                                 {:schedule "invalid"})]
+              (is (string? response))
+              (is (re-find #"Invalid cron expression" response)))))))))
 
 (deftest delete-job-test
   (testing "DELETE /api/ee/transform-job/:id"
@@ -106,7 +110,7 @@
   (testing "POST /api/ee/transform-job/:id/execute"
     (mt/with-premium-features #{:transforms}
       (mt/with-temp [:model/TransformJob job {:name "To Execute" :schedule "0 0 0 * * ?"}]
-        (testing "Returns stub execution response"
+        (testing "Returns stub run response"
           (let [response (mt/user-http-request :crowberto :post 200 (str "ee/transform-job/" (:id job) "/run"))]
             (is (= "Job run started" (:message response)))
             (is (string? (:job_run_id response)))

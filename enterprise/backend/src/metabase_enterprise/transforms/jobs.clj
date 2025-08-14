@@ -47,7 +47,11 @@
       first
       transforms-by-id))
 
-(defn run-transforms! [run-id transform-ids-to-run {:keys [run-method start-promise]}]
+(defn run-transforms!
+  "Run a series of transforms and their dependencies.
+
+  Updates the transform-job-run specified by run-id after every completion."
+  [run-id transform-ids-to-run {:keys [run-method start-promise]}]
   (let [plan (get-plan transform-ids-to-run)]
     (when start-promise
       (deliver start-promise :started))
@@ -72,6 +76,7 @@
             (recur (conj complete (:id current-transform)) nil)))))))
 
 (defn run-job!
+  "Runs all transforms for a given job and their dependencies."
   [job-id {:keys [run-method] :as opts}]
   (if (transforms.job-run/running-run-for-job-id job-id)
     (log/info "Not executing transform job" (pr-str job-id) "because it is already running")

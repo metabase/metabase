@@ -28,13 +28,12 @@
         (assoc job :tag_ids
                (mapv :tag_id (get tag-mappings (:id job) [])))))))
 
-#_(mi/define-batched-hydration-method with-last-execution
-    :last_execution
-    "Add last_execution to a transform"
-    [jobs]
-    (if-not (seq jobs)
-      jobs
-      (let [job-ids (into #{} (map :id) jobs)
-            last-executions (m/index-by :work_id (transforms.job-run/latest-runs job-ids))]
-        (for [job jobs]
-          (assoc job :last_execution (get last-executions (:id job)))))))
+(methodical/defmethod t2/batched-hydrate [:model/TransformJob :last_run]
+  [_model _k jobs]
+  (prn "jobs" jobs)
+  (when (seq jobs)
+    (let [job-ids (into #{} (map :id) jobs)
+          last-executions (m/index-by :job_id (transforms.job-run/latest-runs job-ids))]
+      (prn "more" job-ids last-executions)
+      (for [job jobs]
+        (assoc job :last_run (get last-executions (:id job)))))))
