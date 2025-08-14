@@ -15,16 +15,15 @@
 }
 
 .listHeader {
-  padding-inline: calc(50% - var(--max-width) / 2 + var(--item-padding));
-  display: grid;
-  grid-template-columns: 32px minmax(0, 1fr) repeat(var(--grid-columns), 12%);
-  gap: var(--mantine-spacing-md);
-  align-items: center;
+  width: 100%;
+  max-width: var(--max-width);
+  margin: 0 auto;
+  padding-inline: var(--item-padding);
 }
 
 .listBody {
   position: relative;
-  max-width: 75rem;
+  max-width: var(--max-width);
   width: 100%;
   height: 100%;
   margin: auto;
@@ -34,10 +33,7 @@
 }
 
 @media (max-width: 80rem) {
-  .listHeader {
-    padding-inline: calc(var(--mantine-spacing-lg) + var(--item-padding));
-  }
-
+  .listHeader,
   .listBody {
     padding-inline: var(--mantine-spacing-lg);
   }
