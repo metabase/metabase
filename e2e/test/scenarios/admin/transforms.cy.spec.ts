@@ -53,7 +53,7 @@ describe("scenarios > admin > transforms", () => {
       });
 
       cy.log("run the transform and make sure its table can be queried");
-      runAndWaitForSuccess();
+      runTransformAndWaitForSuccess();
       getTableLink().click();
       H.queryBuilderHeader().findByText("Transform Table").should("be.visible");
       H.assertQueryBuilderRowCount(3);
@@ -75,7 +75,7 @@ describe("scenarios > admin > transforms", () => {
       });
 
       cy.log("run the transform and make sure its table can be queried");
-      runAndWaitForSuccess();
+      runTransformAndWaitForSuccess();
       getTableLink().click();
       H.queryBuilderHeader().findByText(DB_NAME).should("be.visible");
       H.assertQueryBuilderRowCount(3);
@@ -119,7 +119,7 @@ describe("scenarios > admin > transforms", () => {
         });
 
         cy.log("run the transform and make sure its table can be queried");
-        runAndWaitForSuccess();
+        runTransformAndWaitForSuccess();
         getTableLink().click();
         H.queryBuilderHeader().findByText(DB_NAME).should("be.visible");
         H.assertQueryBuilderRowCount(3);
@@ -280,7 +280,7 @@ describe("scenarios > admin > transforms", () => {
       getSchemaLink().should("have.text", TARGET_SCHEMA_2);
 
       cy.log("run the transform and verify the table");
-      runAndWaitForSuccess();
+      runTransformAndWaitForSuccess();
       getTableLink().click();
       H.queryBuilderHeader().findByText(TARGET_SCHEMA_2).should("be.visible");
       H.assertQueryBuilderRowCount(3);
@@ -289,7 +289,7 @@ describe("scenarios > admin > transforms", () => {
     it("should be able to change the target after running a transform and keep the old target", () => {
       cy.log("create and run a transform");
       createMbqlTransform({ visitTransform: true });
-      runAndWaitForSuccess();
+      runTransformAndWaitForSuccess();
 
       cy.log("modify the transform after running");
       getTransformPage().button("Change target").click();
@@ -304,7 +304,7 @@ describe("scenarios > admin > transforms", () => {
       getTableLink().should("have.text", TARGET_TABLE_2);
 
       cy.log("run the transform and verify the new table");
-      runAndWaitForSuccess();
+      runTransformAndWaitForSuccess();
       getTableLink().click();
       H.queryBuilderHeader()
         .findByText("Transform Table 2")
@@ -319,7 +319,7 @@ describe("scenarios > admin > transforms", () => {
     it("should be able to change the target after running a transform and delete the old target", () => {
       cy.log("create and run a transform");
       createMbqlTransform({ visitTransform: true });
-      runAndWaitForSuccess();
+      runTransformAndWaitForSuccess();
 
       cy.log("modify the transform after running");
       getTransformPage().button("Change target").click();
@@ -335,7 +335,7 @@ describe("scenarios > admin > transforms", () => {
       getTableLink().should("have.text", TARGET_TABLE_2);
 
       cy.log("run the transform and verify the new table");
-      runAndWaitForSuccess();
+      runTransformAndWaitForSuccess();
       getTableLink().click();
       H.queryBuilderHeader()
         .findByText("Transform Table 2")
@@ -350,7 +350,7 @@ describe("scenarios > admin > transforms", () => {
     it("should be able to delete the target and restore the same target back", () => {
       cy.log("create and run a transform");
       createMbqlTransform({ visitTransform: true });
-      runAndWaitForSuccess();
+      runTransformAndWaitForSuccess();
 
       cy.log("delete the old target without creating the new one");
       getTransformPage().button("Change target").click();
@@ -371,7 +371,7 @@ describe("scenarios > admin > transforms", () => {
       });
 
       cy.log("run the transform to re-create the original target");
-      runAndWaitForSuccess();
+      runTransformAndWaitForSuccess();
 
       cy.log("verify the target is available");
       getTableLink().click();
@@ -404,7 +404,7 @@ describe("scenarios > admin > transforms", () => {
         .should("not.exist");
 
       cy.log("after table creation");
-      runAndWaitForSuccess();
+      runTransformAndWaitForSuccess();
       getTransformPage().findByText("Edit this table’s metadata").click();
       H.DataModel.TableSection.clickField("Name");
       H.DataModel.FieldSection.getNameInput().clear().type("New name").blur();
@@ -429,7 +429,7 @@ describe("scenarios > admin > transforms", () => {
 
       cy.log("after table creation");
       cy.go("back");
-      runAndWaitForSuccess();
+      runTransformAndWaitForSuccess();
       getSchemaLink().click();
       H.main().within(() => {
         cy.findByText("Animals").should("be.visible");
@@ -449,7 +449,7 @@ describe("scenarios > admin > transforms", () => {
 
       cy.log("after table creation");
       cy.go("back");
-      runAndWaitForSuccess();
+      runTransformAndWaitForSuccess();
       getDatabaseLink().click();
       H.main().within(() => {
         cy.findByText(TARGET_SCHEMA).should("be.visible");
@@ -476,7 +476,7 @@ describe("scenarios > admin > transforms", () => {
       cy.wait("@updateTransform");
 
       cy.log("run the transform and make sure the query has changed");
-      runAndWaitForSuccess();
+      runTransformAndWaitForSuccess();
       getTableLink().click();
       H.queryBuilderHeader().findByText(DB_NAME).should("be.visible");
       H.assertQueryBuilderRowCount(1);
@@ -496,7 +496,7 @@ describe("scenarios > admin > transforms", () => {
       cy.wait("@updateTransform");
 
       cy.log("run the transform and make sure the query has changed");
-      runAndWaitForSuccess();
+      runTransformAndWaitForSuccess();
       getTableLink().click();
       H.queryBuilderHeader().findByText(DB_NAME).should("be.visible");
       H.assertQueryBuilderRowCount(1);
@@ -510,7 +510,7 @@ describe("scenarios > admin > transforms", () => {
         targetTable: TARGET_TABLE,
         visitTransform: true,
       });
-      runAndWaitForSuccess();
+      runTransformAndWaitForSuccess();
 
       cy.log("create and run another transform");
       createSqlTransform({
@@ -518,7 +518,7 @@ describe("scenarios > admin > transforms", () => {
         targetTable: TARGET_TABLE_2,
         visitTransform: true,
       });
-      runAndWaitForSuccess();
+      runTransformAndWaitForSuccess();
 
       cy.log("assert that the list is filtered by the current transform");
       getRunListLink().click();
@@ -535,7 +535,7 @@ describe("scenarios > admin > transforms", () => {
         sourceQuery: "SELECT * FROM abc",
         visitTransform: true,
       });
-      runAndWaitForFailure();
+      runTransformAndWaitForFailure();
       getRunErrorInfoButton().click();
       H.modal().should("contain.text", 'relation "abc" does not exist');
     });
@@ -563,7 +563,7 @@ describe("scenarios > admin > transforms", () => {
     it("should be able to delete a transform and keep the table", () => {
       cy.log("create a transform and the table");
       createMbqlTransform({ visitTransform: true });
-      runAndWaitForSuccess();
+      runTransformAndWaitForSuccess();
 
       cy.log("delete the transform but keep the table");
       getTransformPage().button("Delete").click();
@@ -582,7 +582,7 @@ describe("scenarios > admin > transforms", () => {
     it("should be able to delete a transform and delete the table", () => {
       cy.log("create a transform and the table");
       createMbqlTransform({ visitTransform: true });
-      runAndWaitForSuccess();
+      runTransformAndWaitForSuccess();
 
       cy.log("delete the transform and the table");
       getTransformPage().button("Delete").click();
@@ -762,7 +762,7 @@ describe("scenarios > admin > transforms > jobs", () => {
           { visitTransformJob: true },
         );
       });
-      runAndWaitForSuccess();
+      runJobAndWaitForSuccess();
       getNavSidebar().findByText("Runs").click();
       getContentTable().within(() => {
         cy.findByText("MBQL transform").should("be.visible");
@@ -812,14 +812,14 @@ describe("scenarios > admin > transforms > runs", () => {
             tagIds: [tag1.id],
             visitTransform: true,
           });
-          runAndWaitForSuccess();
+          runTransformAndWaitForSuccess();
           createSqlTransform({
             sourceQuery: "SELECT * FROM abc",
             targetTable: TARGET_TABLE_2,
             tagIds: [tag2.id],
             visitTransform: true,
           });
-          runAndWaitForFailure();
+          runTransformAndWaitForFailure();
         });
       });
     }
@@ -1085,15 +1085,20 @@ function visitRunListPage() {
   return cy.visit("/admin/transforms/runs");
 }
 
-function runAndWaitForSuccess() {
+function runTransformAndWaitForSuccess() {
   getRunButton().click();
   getRunButton().should("have.text", "Ran successfully");
   getTableLink().should("have.attr", "href");
 }
 
-function runAndWaitForFailure() {
+function runTransformAndWaitForFailure() {
   getRunButton().click();
   getRunButton().should("have.text", "Run failed");
+}
+
+function runJobAndWaitForSuccess() {
+  getRunButton().click();
+  getRunButton().should("have.text", "Ran successfully");
 }
 
 function createMbqlTransform({
