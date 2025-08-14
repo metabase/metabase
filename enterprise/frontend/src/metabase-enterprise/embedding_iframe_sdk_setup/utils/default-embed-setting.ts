@@ -34,6 +34,7 @@ export const getDefaultSdkIframeEmbedSettings = (
         drills: true,
         withDownloads: false,
         withTitle: true,
+        isSaveEnabled: false,
       }),
     )
     .with(
@@ -41,7 +42,7 @@ export const getDefaultSdkIframeEmbedSettings = (
       (): ExplorationEmbedOptions => ({
         componentName: "metabase-question",
         template: "exploration",
-        isSaveEnabled: true,
+        isSaveEnabled: false,
       }),
     )
     .exhaustive();

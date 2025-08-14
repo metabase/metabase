@@ -3,16 +3,15 @@ import { useMount } from "react-use";
 import _ from "underscore";
 
 import { getEmbeddingSdkVersion } from "embedding-sdk/config";
-import { useSdkDispatch, useSdkSelector } from "embedding-sdk/store";
+import { useLazySelector } from "embedding-sdk/sdk-package/hooks/private/use-lazy-selector";
 import { initAuth } from "embedding-sdk/store/auth";
 import {
   setFetchRefreshTokenFn,
+  setMetabaseClientUrl,
   setMetabaseInstanceVersion,
 } from "embedding-sdk/store/reducer";
-import {
-  getFetchRefreshTokenFn,
-  getLoginStatus,
-} from "embedding-sdk/store/selectors";
+import { getFetchRefreshTokenFn } from "embedding-sdk/store/selectors";
+import type { SdkStore } from "embedding-sdk/store/types";
 import type { MetabaseAuthConfig } from "embedding-sdk/types";
 import { EMBEDDING_SDK_CONFIG } from "metabase/embedding-sdk/config";
 import api from "metabase/lib/api";
@@ -21,11 +20,13 @@ import registerVisualizations from "metabase/visualizations/register";
 const registerVisualizationsOnce = _.once(registerVisualizations);
 
 interface InitDataLoaderParameters {
+  reduxStore: SdkStore;
   authConfig: MetabaseAuthConfig;
   allowConsoleLog?: boolean;
 }
 
 export const useInitData = ({
+  reduxStore,
   authConfig,
   allowConsoleLog = true,
 }: InitDataLoaderParameters) => {
@@ -33,16 +34,19 @@ export const useInitData = ({
   // it fires them twice as well, making debugging harder as they show up twice in the network tab and in the logs
   const hasBeenInitialized = useRef(false);
 
-  const dispatch = useSdkDispatch();
+  const dispatch = reduxStore.dispatch;
 
-  const loginStatus = useSdkSelector(getLoginStatus);
-  const fetchRefreshTokenFnFromStore = useSdkSelector(getFetchRefreshTokenFn);
+  const fetchRefreshTokenFnFromStore = useLazySelector(getFetchRefreshTokenFn);
 
   // This is outside of a useEffect otherwise calls done on the first render could use the wrong value
   // This is the case for example for the locale json files
   if (api.basename !== authConfig.metabaseInstanceUrl) {
     api.basename = authConfig.metabaseInstanceUrl;
   }
+
+  useEffect(() => {
+    dispatch(setMetabaseClientUrl(authConfig.metabaseInstanceUrl));
+  }, [dispatch, authConfig.metabaseInstanceUrl]);
 
   useEffect(() => {
     if (authConfig.fetchRequestToken !== fetchRefreshTokenFnFromStore) {
@@ -55,15 +59,19 @@ export const useInitData = ({
     if (hasBeenInitialized.current) {
       return;
     }
-    hasBeenInitialized.current = true;
 
     registerVisualizationsOnce();
 
-    // Note: this check is not actually needed in prod, but some of our tests start with a loginStatus already initialized
-    // and they don't mock the network requests so the tests fail
-    if (loginStatus.status === "uninitialized") {
-      dispatch(initAuth(authConfig));
+    const isAuthUninitialized =
+      reduxStore.getState().sdk.loginStatus.status === "uninitialized";
+
+    if (!isAuthUninitialized) {
+      return;
     }
+
+    hasBeenInitialized.current = true;
+
+    dispatch(initAuth(authConfig));
 
     const EMBEDDING_SDK_VERSION = getEmbeddingSdkVersion();
     api.requestClient = {
