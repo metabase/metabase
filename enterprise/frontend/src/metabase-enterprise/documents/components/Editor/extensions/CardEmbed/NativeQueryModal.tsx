@@ -1,6 +1,7 @@
 import type { Editor } from "@tiptap/react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { c, t } from "ttag";
+import _ from "underscore";
 
 import EmptyCodeResult from "assets/img/empty-states/code.svg";
 import { skipToken } from "metabase/api";
@@ -221,9 +222,7 @@ export const NativeQueryModal = ({
     const datasetQuery = modifiedQuestion.datasetQuery();
 
     // Check if query has changed from what we currently have
-    const queryChanged =
-      !currentQuery ||
-      JSON.stringify(currentQuery) !== JSON.stringify(datasetQuery);
+    const queryChanged = !currentQuery || _.isEqual(currentQuery, datasetQuery);
 
     if (queryChanged) {
       // Query changed, set new query which will trigger RTK Query
