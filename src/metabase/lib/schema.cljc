@@ -78,6 +78,7 @@
    (common/disallowed-keys
     {:source-table ":source-table is not allowed in a native query stage."
      :source-card  ":source-card is not allowed in a native query stage."
+     :fields       ":fields is not allowed in a native query stage."
      :query        ":query is not allowed in a native query stage, you probably meant to use :native instead."})])
 
 (mr/def ::breakout

@@ -29,8 +29,6 @@
    (fn [_query stage-path stage]
      (letfn [(resolve-field-ref [field-ref]
                (when (= (first field-ref) :field)
-                 ;; resolve metadata in the ORIGINAL query so removing fields upstream doesn't mess up our metadata
-                 ;; resolution
                  (lib.walk/apply-f-for-stage-at-path lib.field.resolution/resolve-field-ref query stage-path field-ref)))
              (inactive-field-ref? [field-ref]
                ;; optimization: if this is an ID ref we can just look up the field directly from the metadata provider
