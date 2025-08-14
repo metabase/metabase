@@ -37,10 +37,7 @@ export const SdkIframeEmbedSetupProvider = ({
 
   const [rawSettings, setRawSettings] = useState<SdkIframeEmbedSetupSettings>();
 
-  const [persistedSettings, persistSettings] = useUserSetting(
-    "sdk-iframe-embed-setup-settings",
-    { debounceTimeout: USER_SETTINGS_DEBOUNCE_MS },
-  );
+  const [persistedSettings, persistSettings] = usePersistedSettings();
 
   // We don't want to re-fetch the recent items every time we switch between
   // steps, therefore we load recent items once in the provider.
@@ -130,24 +127,37 @@ export const SdkIframeEmbedSetupProvider = ({
   // If they are, set them as the current settings.
   useEffect(() => {
     if (!isEmbedSettingsLoaded) {
-      // We consider the settings to be valid if it has at least one
-      // of the following properties set.
-      const isPersistedSettingValid =
-        persistedSettings?.dashboardId ||
-        persistedSettings?.questionId ||
-        persistedSettings?.template;
-
-      if (isPersistedSettingValid) {
-        setRawSettings(persistedSettings);
-      }
+      setRawSettings({ ...settings, ...persistedSettings });
 
       setEmbedSettingsLoaded(true);
     }
-  }, [persistedSettings, isEmbedSettingsLoaded]);
+  }, [persistedSettings, isEmbedSettingsLoaded, settings]);
 
   return (
     <SdkIframeEmbedSetupContext.Provider value={value}>
       {children}
     </SdkIframeEmbedSetupContext.Provider>
   );
+};
+
+const getSettingsToPersist = (
+  settings: Partial<SdkIframeEmbedSetupSettings>,
+) => {
+  return _.pick(settings, ["theme", "useExistingUserSession"]);
+};
+
+const usePersistedSettings = () => {
+  const [rawPersisted, rawPersistSettings] = useUserSetting(
+    "sdk-iframe-embed-setup-settings",
+    { debounceTimeout: USER_SETTINGS_DEBOUNCE_MS },
+  );
+
+  const persistSettings = useCallback(
+    (settings: Partial<SdkIframeEmbedSetupSettings>) => {
+      rawPersistSettings(getSettingsToPersist(settings));
+    },
+    [rawPersistSettings],
+  );
+
+  return [rawPersisted || {}, persistSettings] as const;
 };
