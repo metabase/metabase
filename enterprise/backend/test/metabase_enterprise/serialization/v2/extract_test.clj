@@ -848,7 +848,7 @@
                            :database_id   db-id
                            :type          :model
                            :query_type    :native
-                           :dataset_query (mt/native-query {:native "select 1"})
+                           :dataset_query (mt/native-query {:query "select 1"})
                            :creator_id    ann-id}
 
                           {:keys [action-id]}
@@ -886,7 +886,7 @@
                            :database_id   db-id
                            :type          :model
                            :query_type    :native
-                           :dataset_query (mt/native-query {:native "select 1"})
+                           :dataset_query (mt/native-query {:query "select 1"})
                            :creator_id    ann-id}
 
                           {:keys [action-id]}
