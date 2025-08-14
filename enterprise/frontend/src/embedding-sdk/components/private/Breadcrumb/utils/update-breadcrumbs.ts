@@ -20,7 +20,7 @@ export function updateBreadcrumbsWithItem(
     return updateBreadcrumbsWithCollection(breadcrumbs, nextItem);
   }
 
-  // If a dashboard or question already exist, replace it.
+  // If a dashboard or question already exist as the last item, replace it.
   if (lastItem.type === nextItem.type) {
     return [...breadcrumbs.slice(0, -1), nextItem];
   }
