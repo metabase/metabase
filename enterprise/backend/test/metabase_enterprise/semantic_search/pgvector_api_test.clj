@@ -18,6 +18,7 @@
 (set! *warn-on-reflection* true)
 
 (use-fixtures :once #'semantic.tu/once-fixture)
+(use-fixtures :each #'semantic.tu/ensure-no-migration-table-fixture)
 
 ;; NOTE: isolation tests are absent, in prod there is only one index-metadata
 

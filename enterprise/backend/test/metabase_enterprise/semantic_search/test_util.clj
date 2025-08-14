@@ -1,10 +1,13 @@
 (ns metabase-enterprise.semantic-search.test-util
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
+   [environ.core :refer [env]]
    [honey.sql :as sql]
    [honey.sql.helpers :as sql.helpers]
    [metabase-enterprise.semantic-search.core]
-   [metabase-enterprise.semantic-search.db :as semantic.db]
+   [metabase-enterprise.semantic-search.db.datasource :as semantic.db.datasource]
+   [metabase-enterprise.semantic-search.db.migration :as semantic.db.migration]
    [metabase-enterprise.semantic-search.embedding :as semantic.embedding]
    [metabase-enterprise.semantic-search.index :as semantic.index]
    [metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]
@@ -12,32 +15,94 @@
    [metabase.search.core :as search.core]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.test :as mt]
+   [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [next.jdbc :as jdbc]
    [next.jdbc.protocols :as jdbc.protocols]
    [next.jdbc.result-set :as jdbc.rs])
-  (:import (clojure.lang IDeref)
-           (java.io Closeable)
-           (java.time Instant)))
+  (:import
+   (clojure.lang IDeref)
+   (com.mchange.v2.c3p0 PooledDataSource)
+   (java.io Closeable)
+   (java.time Instant)))
 
 (set! *warn-on-reflection* true)
 
+;; If I won't find any use for following muted code in follow-up tasks I'll delete it -- lbrdnk
+
+(def default-test-db "my_test_db")
+
+(defn- alt-db-name-url
+  [url alt-name]
+  (when (string? url)
+    (u/prog1 (str/replace-first url
+                                #"(^\S+//\S+/)([A-Za-z0-9_-]+)($|\?.*)"
+                                (str "$1" alt-name "$3"))
+      (when (nil? <>) (throw (Exception. "Empty pgvector url."))))))
+
+(defn do-with-temp-datasource!
+  "Impl [[with-temp-datasource]]."
+  [db-name thunk]
+  (with-redefs [semantic.db.datasource/db-url (alt-db-name-url (:mb-pgvector-db-url env) db-name)
+                semantic.db.datasource/data-source (atom nil)]
+    (try
+      ;; ensure datasource was initialized so we can close it in finally.
+      (semantic.db.datasource/ensure-initialized-data-source!)
+      (thunk)
+      (finally
+        (.close ^PooledDataSource @semantic.db.datasource/data-source)))))
+
+(defmacro with-temp-datasource!
+  "Redefine datasource for testing, not thread-safe"
+  [db-name & body]
+  `(do-with-temp-datasource! ~db-name (fn [] ~@body)))
+
+(defn do-with-test-db!
+  "Impl [[with-test-db]]"
+  [db-name thunk]
+  (with-temp-datasource! "postgres"
+    (try
+      (jdbc/execute! (semantic.db.datasource/ensure-initialized-data-source!)
+                     [(str "DROP DATABASE IF EXISTS " db-name " (FORCE)")])
+      (log/fatal "creating database")
+      (jdbc/execute! (semantic.db.datasource/ensure-initialized-data-source!)
+                     [(str "CREATE DATABASE " db-name)])
+      (log/fatal "created database")
+      (catch java.sql.SQLException e
+        (log/fatal "creation failed")
+        (throw e))))
+  (with-temp-datasource! db-name
+    (thunk)))
+
+(defmacro with-test-db!
+  "Drop, create database dbname on pgvector and redefine datasource accordingly. Not thread safe."
+  [db-name & body]
+  `(do-with-test-db! ~db-name (fn [] ~@body)))
+
 (def ^:private init-delay
   (delay
-    (when-not @semantic.db/data-source
-      (semantic.db/init-db!))))
+    (when-not @semantic.db.datasource/data-source
+      (semantic.db.datasource/init-db!))))
 
 (defn once-fixture [f]
-  (when semantic.db/db-url
+  (when semantic.db.datasource/db-url
     @init-delay
     (f)))
 
+(declare db)
+
+#_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
+(defn ensure-no-migration-table-fixture [f]
+  (semantic.db.migration/drop-migration-table! db)
+  (f)
+  (semantic.db.migration/drop-migration-table! db))
+
 (def db
-  "Proxies the semantic.db/data-source, avoids the deref and prettifies a little"
-  ;; proxy because semantic.db/data-source is not initialised until the fixture runs
+  "Proxies the semantic.db.datasource/data-source, avoids the deref and prettifies a little"
+  ;; proxy because semantic.db.datasource/data-source is not initialised until the fixture runs
   (reify jdbc.protocols/Sourceable
-    (get-datasource [_] (jdbc.protocols/get-datasource @semantic.db/data-source))))
+    (get-datasource [_] (jdbc.protocols/get-datasource @semantic.db.datasource/data-source))))
 
 (comment
   (jdbc/execute! db ["select 1"]))
@@ -292,7 +357,8 @@
           (when (table-exists-in-db? (:metadata-table-name index-metadata))
             (get-metadata-rows pgvector index-metadata))]
     (semantic.index/drop-index-table! pgvector {:table-name table_name}))
-  (semantic.index-metadata/drop-tables-if-exists! pgvector index-metadata))
+  (semantic.index-metadata/drop-tables-if-exists! pgvector index-metadata)
+  (semantic.db.migration/drop-migration-table! pgvector))
 
 (defn get-table-names [pgvector]
   (->> ["select table_name from information_schema.tables"]

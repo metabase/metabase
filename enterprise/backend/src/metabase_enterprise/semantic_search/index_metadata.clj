@@ -7,6 +7,7 @@
   (:require
    [honey.sql :as sql]
    [honey.sql.helpers :as sql.helpers]
+   ;; TODO: extract schema code to go under db.migration
    [metabase-enterprise.semantic-search.index :as semantic.index]
    [metabase.util :as u]
    [metabase.util.log :as log]

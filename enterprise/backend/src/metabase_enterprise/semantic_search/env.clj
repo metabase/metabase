@@ -1,6 +1,6 @@
 (ns metabase-enterprise.semantic-search.env
   (:require
-   [metabase-enterprise.semantic-search.db :as semantic.db]
+   [metabase-enterprise.semantic-search.db.datasource :as semantic.db.datasource]
    [metabase-enterprise.semantic-search.embedding :as semantic.embedding]
    [metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]))
 
@@ -8,10 +8,11 @@
 ;; only core and the task definitions (for which integration with metabase demands globals)
 ;; should need these
 
+;; TODO: Probably remove completely, all occurrences should be using db.connection
 (defn get-pgvector-datasource!
   "Returns the instances pgvector Datasource, initializing lazily if needed."
   []
-  (or @semantic.db/data-source (semantic.db/init-db!)))
+  (semantic.db.datasource/ensure-initialized-data-source!))
 
 (defn get-configured-embedding-model
   "Returns the currently configured embedding model from settings."

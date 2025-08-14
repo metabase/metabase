@@ -2,7 +2,7 @@
   "Enterprise implementations of semantic search core functions using defenterprise."
   (:require
    [medley.core :as m]
-   [metabase-enterprise.semantic-search.db :as semantic.db]
+   [metabase-enterprise.semantic-search.db.datasource :as semantic.db.datasource]
    [metabase-enterprise.semantic-search.env :as semantic.env]
    [metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]
    [metabase-enterprise.semantic-search.pgvector-api :as semantic.pgvector-api]
@@ -10,8 +10,7 @@
    [metabase.analytics.core :as analytics]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.search.engine :as search.engine]
-   [metabase.util.log :as log]
-   [next.jdbc :as jdbc]))
+   [metabase.util.log :as log]))
 
 (defn- fallback-engine
   "Find the highest priority search engine available for fallback."
@@ -22,12 +21,13 @@
 (defn- index-active? [pgvector index-metadata]
   (boolean (semantic.index-metadata/get-active-index-state pgvector index-metadata)))
 
+;; TODO: url should likely reside in settings
 (defenterprise supported?
   "Enterprise implementation of semantic search engine support check."
   :feature :semantic-search
   []
   (and
-   (some? semantic.db/db-url)
+   (some? semantic.db.datasource/db-url)
    (semantic.settings/semantic-search-enabled)))
 
 (defenterprise results
@@ -60,6 +60,7 @@
       (log/error e "Error executing semantic search")
       (throw (ex-info "Error executing semantic search" {:type :semantic-search-error} e)))))
 
+;; TODO: tx-write
 (defenterprise update-index!
   "Enterprise implementation of semantic index updating."
   :feature :semantic-search
@@ -99,8 +100,7 @@
   (let [pgvector        (semantic.env/get-pgvector-datasource!)
         index-metadata  (semantic.env/get-index-metadata)
         embedding-model (semantic.env/get-configured-embedding-model)]
-    (jdbc/with-transaction [tx pgvector]
-      (semantic.pgvector-api/init-semantic-search! tx index-metadata embedding-model))
+    (semantic.pgvector-api/init-semantic-search! pgvector index-metadata embedding-model)
     (semantic.pgvector-api/gate-updates! pgvector index-metadata searchable-documents)
     nil))
 
@@ -109,11 +109,10 @@
   :feature :semantic-search
   [searchable-documents _opts]
   (let [pgvector        (semantic.env/get-pgvector-datasource!)
-        index-metadata  (semantic.env/get-index-metadata)
+        index-metadata (semantic.env/get-index-metadata)
         embedding-model (semantic.env/get-configured-embedding-model)]
     ;; todo force a new index
-    (jdbc/with-transaction [tx pgvector]
-      (semantic.pgvector-api/init-semantic-search! tx index-metadata embedding-model))
+    (semantic.pgvector-api/init-semantic-search! pgvector index-metadata embedding-model)
     (semantic.pgvector-api/gate-updates! pgvector index-metadata searchable-documents)
     nil))
 
