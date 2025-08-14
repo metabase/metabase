@@ -20,4 +20,3 @@
   "Check if a tag with the given name exists, excluding the specified ID"
   [tag-name tag-id]
   (t2/exists? :model/TransformTag :name tag-name :id [:not= tag-id]))
-
