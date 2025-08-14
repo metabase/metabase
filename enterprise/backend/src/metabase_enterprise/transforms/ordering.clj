@@ -7,10 +7,8 @@
    [metabase-enterprise.transforms.util :as transforms.util]
    [metabase.driver :as driver]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.util :as lib.util]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.store :as qp.store]
-   [metabase.util :as u]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -30,12 +28,6 @@
                                                      source)
                             _ nil))
                    (tree-seq coll? seq query)))))
-
-(defn- transform-deps-for-db [db-id transforms]
-  (qp.store/with-metadata-provider db-id
-    (into {}
-          (map (juxt :id transform-deps))
-          transforms)))
 
 (defn- dependency-map [transforms]
   (into {}
@@ -99,7 +91,15 @@
                             (node->children node))]
            (recur stack' (conj visited node))))))))
 
-(defn get-transform-cycle [{transform-id :id :as to-check}]
+(defn get-transform-cycle
+  "Get a cycle if it exists (otherwise `nil`). Cycle consists of:
+
+  ```
+  {:cycle-str \"transform-1 => tranform-2\"
+   :cycle [1 2]}
+  ```
+"
+  [{transform-id :id :as to-check}]
   (let [transforms (map (fn [{:keys [id] :as transform}]
                           (if (= id transform-id)
                             to-check
