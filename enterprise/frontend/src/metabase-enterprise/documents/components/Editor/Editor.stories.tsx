@@ -11,6 +11,7 @@ import { MetabaseReduxProvider } from "metabase/lib/redux";
 import { commonReducers } from "metabase/reducers-common";
 import { registerVisualization } from "metabase/visualizations";
 import { LineChart } from "metabase/visualizations/visualizations/LineChart";
+import type { DatasetData } from "metabase-types/api";
 import { createMockCard, createMockDataset } from "metabase-types/api/mocks";
 import type { State } from "metabase-types/store";
 import { createMockState } from "metabase-types/store/mocks";
@@ -66,7 +67,9 @@ export default {
         ),
         http.post("/api/card/114/query", () =>
           HttpResponse.json(
-            createMockDataset({ data: Data.card114Query.data }),
+            createMockDataset({
+              data: Data.card114Query.data as unknown as DatasetData,
+            }),
           ),
         ),
       ],
