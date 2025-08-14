@@ -17,13 +17,13 @@ import {
 } from "e2e/support/helpers/embedding-sdk-component-testing";
 import { signInAsAdminAndEnableEmbeddingSdk } from "e2e/support/helpers/embedding-sdk-testing";
 import { mockAuthProviderAndJwtSignIn } from "e2e/support/helpers/embedding-sdk-testing/embedding-sdk-helpers";
-import { renameConflictingCljsGlobals } from "metabase/embedding-sdk/test/rename-conflicting-cljs-globals";
+import { deleteConflictingCljsGlobals } from "metabase/embedding-sdk/test/delete-conflicting-cljs-globals";
 
 const sdkBundleCleanup = () => {
   getSdkBundleScriptElement()?.remove();
   delete window.MetabaseEmbeddingSDK;
   delete window.METABASE_PROVIDER_PROPS_STORE;
-  renameConflictingCljsGlobals();
+  deleteConflictingCljsGlobals();
 };
 
 describe(
