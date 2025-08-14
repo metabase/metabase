@@ -146,7 +146,8 @@
   api-keys
   {:team "UX West"
    :api #{metabase.api-keys.api
-          metabase.api-keys.core}
+          metabase.api-keys.core
+           metabase.api-keys.schema}
    :uses #{api
            app-db
            events
@@ -609,6 +610,7 @@
           metabase.lib.schema.info
           metabase.lib.schema.join
           metabase.lib.schema.literal
+          metabase.lib.schema.mbql-clause
           metabase.lib.schema.metadata
           metabase.lib.schema.metadata.fingerprint
           metabase.lib.schema.order-by
@@ -997,7 +999,8 @@
   request
   {:team "UX West"
    :api #{metabase.request.core
-          metabase.request.init}
+          metabase.request.init
+           metabase.request.schema}
    :uses #{api
            config
            permissions ; FIXME

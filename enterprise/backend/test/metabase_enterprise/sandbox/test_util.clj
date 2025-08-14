@@ -89,6 +89,7 @@
   [test-user-name-or-user-id gtaps-and-attributes-map & body]
   `(do-with-gtaps-for-user! (fn [] ~gtaps-and-attributes-map) ~test-user-name-or-user-id (fn [~'&group] ~@body)))
 
+;;; TODO (Cam 8/13/25) -- give this a more obvious name like `with-sandboxes!` or something.
 (defmacro with-gtaps!
   "Execute `body` with `gtaps` and optionally user `attributes` in effect, for the :rasta test user. All underlying
   objects and permissions are created automatically.
@@ -96,12 +97,14 @@
   `gtaps-and-attributes-map` is a map containing `:gtaps` and optionally `:attributes`; see the `WithGTAPsArgs` schema
   in this namespace.
 
-  *  `:gtaps` is a map of test ID table name -> gtap def. Both `:query` and `:remappings` are optional.
+  * `:gtaps` is a map of test ID table name -> gtap def. Both `:query` and `:remappings` are optional.
 
-  *  If `:query` is specified, a corresponding Card is created, and the GTAP is saved with that `:card_id`.
-     Otherwise Card ID is nil and the GTAP uses the source table directly.
+    * If `:query` is specified, a corresponding Card is created, and the GTAP is saved with that `:card_id`.
+      Otherwise Card ID is nil and the GTAP uses the source table directly.
 
-  *  `:remappings`, if specified, is saved as the `:attribute_remappings` property of the GTAP.
+    * `:remappings`, if specified, is saved as the `:attribute_remappings` property of the GTAP.
+
+  * `:attributes`, when specified, sets the user `:login_attributes` to the map in question.
 
     (met/with-gtaps! {:gtaps      {:checkins {:query      {:database (data/id), ...}
                                               :remappings {:user_category [\"variable\" ...]}}}

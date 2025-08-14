@@ -496,8 +496,7 @@
                                    :base-type          :type/Date
                                    ::add/source-table  ::add/source
                                    ::add/source-alias  "date"
-                                   ::add/desired-alias "date"
-                                   ::add/position      0}])))))))))
+                                   ::add/desired-alias "date"}])))))))))
 
 (deftest ^:parallel between-test
   (testing "Make sure :between clauses reconcile the temporal types of their args"

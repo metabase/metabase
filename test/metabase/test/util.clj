@@ -1080,11 +1080,11 @@
   is granted the permission specified by `permission-path`.
 
   For most use cases see the macro [[with-all-users-permission]]."
-  [permission-path f]
+  [permission-path thunk]
   #_{:clj-kondo/ignore [:discouraged-var]}
   (t2.with-temp/with-temp [:model/Permissions _ {:group_id (:id (perms/all-users-group))
                                                  :object permission-path}]
-    (f)))
+    (thunk)))
 
 (defn do-with-all-user-data-perms-graph!
   "Implementation for [[with-all-users-data-perms]]"
