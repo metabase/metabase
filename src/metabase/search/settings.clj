@@ -15,8 +15,9 @@
 
 (defsetting search-engine
   (i18n/deferred-tru "Which engine to use by default when performing search. Supported values are :in-place, :appdb, and :semantic")
-  :visibility :internal
+  :visibility :authenticated
   :export?    false
+  :setter     :none
   :default    :appdb
   :type       :keyword)
 
