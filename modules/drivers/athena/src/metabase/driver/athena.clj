@@ -86,13 +86,9 @@
          {:MetadataRetrievalMethod "ProxyAPI"
           :Catalog                 catalog})
        (dissoc details
-               ;; TODO(rileythomp): Remove `:metabase.driver.athena/schema` now that we have `dbname`
-               ;; `:metabase.driver.athena/schema` is just a gross hack for testing so we can treat multiple tests datasets as
-               ;; different DBs -- see [[metabase.driver.athena/fast-active-tables]]. Not used outside of tests. -- Cam
-               :db :catalog :metabase.driver.athena/schema
-               ;; Remove 2.x jdbc driver version options from details. Those are mapped to appropriate 3.x keys few
-               ;; on preceding lines
-               :region :access_key :secret_key :s3_staging_dir :workgroup))
+               ;; Remove 2.x jdbc driver version options from details.
+               ;; They are mapped to appropriate 3.x keys on preceding lines
+               :db :catalog :region :access_key :secret_key :s3_staging_dir :workgroup))
       (sql-jdbc.common/handle-additional-options details, :seperator-style :semicolon)))
 
 (defmethod sql-jdbc.conn/data-source-name :athena
@@ -487,30 +483,22 @@
           [columns rows])))))
 
 (defn- fast-active-tables
-  "Required because we're calling our own custom private get-tables method to support Athena.
-
-   TODO(rileythomp): Remove `:metabase.driver.athena/schema` (::keys [schema]) now that we have `dbname`
-  `:metabase.driver.athena/schema` is an icky hack that's in here to force it to only try to sync a single schema,
-  used by the tests when loading test data. We're not expecting users to specify it at this point in time. I'm not
-  really sure how this is really different than `catalog`, which they can specify -- in the future when we understand
-  Athena better maybe we can have a better way to do this -- Cam."
-  [driver ^DatabaseMetaData metadata {:keys [catalog dbname], ::keys [schema]}]
+  "Required because we're calling our own custom private get-tables method to support Athena."
+  [driver ^DatabaseMetaData metadata {:keys [catalog dbname]}]
   ;; TODO: Catch errors here so a single exception doesn't fail the entire schema
-  ;;
   ;; Also we're creating a set here, so even if we set "ProxyAPI", we'll miss dupe database names
   (with-open [rs (if catalog (.getSchemas metadata catalog "%") (.getSchemas metadata))]
     ;; it seems like `table_catalog` is ALWAYS `AwsDataCatalog`. `table_schem` seems to correspond to the Database name,
     ;; at least for stuff we create with the test data extensions?? :thinking_face:
     (let [all-schemas (set (cond->> (jdbc/metadata-result rs)
                              catalog (filter #(= (:table_catalog %) catalog))
-                             schema  (filter #(= (:table_schem %) schema))
                              dbname  (filter #(= (:table_schem %) dbname))))
           schemas     (set/difference all-schemas (sql-jdbc.sync/excluded-schemas driver))]
       (set (for [schema schemas
                  table  (get-tables metadata (:table_schem schema) (:table_catalog schema))]
              (let [remarks (:remarks table)]
                {:name        (:table_name table)
-                :schema      (if dbname nil (:table_schem schema))
+                :schema      (when-not dbname (:table_schem schema))
                 :description (when-not (str/blank? remarks)
                                remarks)}))))))
 
