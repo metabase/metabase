@@ -92,12 +92,10 @@ export const SdkQuestionDefaultView = ({
   const isQuestionSaved = question?.isSaved();
 
   useEffect(() => {
-    const isSavedQuestion =
-      question && question.isSaved() && originalId && originalId !== "new";
-
     if (
       isBreadcrumbEnabled &&
-      isSavedQuestion &&
+      question?.isSaved() &&
+      originalId &&
       !isNewQuestion &&
       !isQuestionLoading &&
       queryResults
