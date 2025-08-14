@@ -830,7 +830,7 @@
        [:auto_run_queries  {:optional true}  [:maybe :boolean]]
        [:cache_ttl         {:optional true}  [:maybe ms/PositiveInt]]
        [:connection_source {:default :admin} [:maybe [:enum :admin :setup]]]
-       [:provider_name     {:optional true}  [:maybe ms/NonBlankString]]]]
+       [:provider_name     {:optional true}  [:maybe :string]]]]
   (api/check-superuser)
   (when cache_ttl
     (api/check (premium-features/enable-cache-granular-controls?)
@@ -917,19 +917,19 @@
                     [:id ms/PositiveInt]]
    _query-params
    {:keys [name engine details is_full_sync is_on_demand description caveats points_of_interest schedules
-           auto_run_queries refingerprint cache_ttl settings provider_name]} :- [:map
-                                                                                 [:name               {:optional true} [:maybe ms/NonBlankString]]
-                                                                                 [:engine             {:optional true} [:maybe DBEngineString]]
-                                                                                 [:refingerprint      {:optional true} [:maybe :boolean]]
-                                                                                 [:details            {:optional true} [:maybe ms/Map]]
-                                                                                 [:schedules          {:optional true} [:maybe sync.schedules/ExpandedSchedulesMap]]
-                                                                                 [:description        {:optional true} [:maybe :string]]
-                                                                                 [:caveats            {:optional true} [:maybe :string]]
-                                                                                 [:points_of_interest {:optional true} [:maybe :string]]
-                                                                                 [:auto_run_queries   {:optional true} [:maybe :boolean]]
-                                                                                 [:cache_ttl          {:optional true} [:maybe ms/PositiveInt]]
-                                                                                 [:settings           {:optional true} [:maybe ms/Map]]
-                                                                                 [:provider_name      {:optional true} [:maybe ms/NonBlankString]]]]
+           auto_run_queries refingerprint cache_ttl settings provider_name] :as body} :- [:map
+                                                                                          [:name               {:optional true} [:maybe ms/NonBlankString]]
+                                                                                          [:engine             {:optional true} [:maybe DBEngineString]]
+                                                                                          [:refingerprint      {:optional true} [:maybe :boolean]]
+                                                                                          [:details            {:optional true} [:maybe ms/Map]]
+                                                                                          [:schedules          {:optional true} [:maybe sync.schedules/ExpandedSchedulesMap]]
+                                                                                          [:description        {:optional true} [:maybe :string]]
+                                                                                          [:caveats            {:optional true} [:maybe :string]]
+                                                                                          [:points_of_interest {:optional true} [:maybe :string]]
+                                                                                          [:auto_run_queries   {:optional true} [:maybe :boolean]]
+                                                                                          [:cache_ttl          {:optional true} [:maybe ms/PositiveInt]]
+                                                                                          [:settings           {:optional true} [:maybe ms/Map]]
+                                                                                          [:provider_name      {:optional true} [:maybe :string]]]]
   ;; TODO - ensure that custom schedules and let-user-control-scheduling go in lockstep
   (let [existing-database (api/write-check (t2/select-one :model/Database :id id))
         incoming-details  details
@@ -966,8 +966,7 @@
                         :description        description
                         :caveats            caveats
                         :points_of_interest points_of_interest
-                        :auto_run_queries   auto_run_queries
-                        :provider_name      provider_name}
+                        :auto_run_queries   auto_run_queries}
                       ;; upsert settings with a PATCH-style update. `nil` key means unset the Setting.
                        (when (seq settings)
                          {:settings (into {}
@@ -980,6 +979,9 @@
        ;; with the advanced-config feature enabled.
         (when (premium-features/enable-cache-granular-controls?)
           (t2/update! :model/Database id {:cache_ttl cache_ttl}))
+       ;; provider_name should be updatable to nil when explicitly provided in request body
+        (when (contains? body :provider_name)
+          (t2/update! :model/Database id {:provider_name provider_name}))
 
         (let [db (t2/select-one :model/Database :id id)]
           ;; the details in db and existing-database have been normalized so they are the same here
