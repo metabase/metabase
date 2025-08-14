@@ -2,6 +2,7 @@ import { type MouseEvent, useState } from "react";
 import { useLatest } from "react-use";
 import { t } from "ttag";
 
+import type { CollectionPickerItem } from "metabase/common/components/Pickers/CollectionPicker";
 import {
   type DataPickerItem,
   DataPickerModal,
@@ -40,7 +41,7 @@ export interface NotebookDataPickerProps {
     table: Lib.TableMetadata | Lib.CardMetadata,
     metadataProvider: Lib.MetadataProvider,
   ) => void;
-  shouldDisableItem?: (item: DataPickerItem) => boolean;
+  shouldDisableItem?: (item: DataPickerItem | CollectionPickerItem) => boolean;
 }
 
 export function NotebookDataPicker({
@@ -111,7 +112,7 @@ type ModernDataPickerProps = {
   hasMetrics: boolean;
   isDisabled: boolean;
   onChange: (tableId: TableId) => void;
-  shouldDisableItem?: (item: DataPickerItem) => boolean;
+  shouldDisableItem?: (item: DataPickerItem | CollectionPickerItem) => boolean;
 };
 
 function ModernDataPicker({
