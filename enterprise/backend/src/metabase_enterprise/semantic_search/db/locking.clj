@@ -36,11 +36,16 @@
         acquired? (:acquired (try (jdbc/execute-one! conn sql)
                                   (catch SQLException e
                                     (if (lock-not-avail-ex? e)
-                                      (throw (Exception. "Lock could not be acquired" e))
+                                      (throw (ex-info "Lock could not be acquired"
+                                                      {:lock-type lock-type
+                                                       :lock-id lock-id}
+                                                      e))
                                       (throw e)))))]
     ;; For non-blocking write locks. Now not in use as we attempt migrating without shared write locks.
     (when-not acquired?
-      (throw (Exception. "Migration lock could not be acquired")))
+      (throw (ex-info "Lock could not be acquired"
+                      {:lock-type lock-type
+                       :lock-id lock-id})))
     (log/debugf "Lock %s %d acquired." lock-type lock-id)
     nil))
 
