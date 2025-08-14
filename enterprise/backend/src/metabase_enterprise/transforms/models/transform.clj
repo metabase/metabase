@@ -1,9 +1,9 @@
 (ns metabase-enterprise.transforms.models.transform
   (:require
+   [clojure.set :as set]
    [medley.core :as m]
    [metabase-enterprise.transforms.models.transform-run :as transform-run]
    [metabase.models.interface :as mi]
-   [metabase.util :as u]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -43,15 +43,15 @@
 
 (mi/define-batched-hydration-method transform-tag-ids
   :transform_tag_ids
-  "Add tag_ids to a transform, preserving the order they were originally added"
+  "Add tag_ids to a transform, preserving the order defined by position"
   [transforms]
   (if-not (seq transforms)
     transforms
     (let [transform-ids (into #{} (map :id) transforms)
           tag-associations (when (seq transform-ids)
-                             (t2/select [:transform_tags :transform_id :tag_id :id]
+                             (t2/select [:model/TransformTags :transform_id :tag_id :position]
                                         :transform_id [:in transform-ids]
-                                        {:order-by [[:id :asc]]}))
+                                        {:order-by [[:position :asc]]}))
           transform-id->tag-ids (reduce (fn [acc {:keys [transform_id tag_id]}]
                                           (update acc transform_id (fnil conj []) tag_id))
                                         {}
@@ -60,23 +60,52 @@
         (assoc transform :tag_ids (vec (get transform-id->tag-ids (:id transform) [])))))))
 
 (defn update-transform-tags!
-  "Update the tags associated with a transform. Replaces all existing associations while preserving order.
-   Duplicate tag IDs are automatically deduplicated, keeping the first occurrence."
+  "Update the tags associated with a transform using smart diff logic.
+   Only modifies what has changed: deletes removed tags, updates positions for moved tags,
+   and inserts new tags. Duplicate tag IDs are automatically deduplicated."
   [transform-id tag-ids]
   (when transform-id
     (t2/with-transaction [_conn]
-      ;; Delete existing associations
-      (t2/delete! :transform_tags :transform_id transform-id)
-      ;; Add new associations, preserving the order of tag-ids
-      (when (seq tag-ids)
-        (let [;; Deduplicate while preserving order of first occurrence
-              deduped-tag-ids (distinct tag-ids)
-              ;; Check which tags actually exist
-              valid-tag-ids (into #{} (t2/select-fn-set :id :model/TransformTag :id [:in deduped-tag-ids]))
-              ;; Filter to only include valid ones, preserving order
-              ordered-valid-tag-ids (filter valid-tag-ids deduped-tag-ids)]
-          (when (seq ordered-valid-tag-ids)
-            (t2/insert! :transform_tags
-                        (for [tag-id ordered-valid-tag-ids]
-                          {:transform_id transform-id
-                           :tag_id tag-id}))))))))
+      (let [;; Deduplicate while preserving order of first occurrence
+            deduped-tag-ids (vec (distinct tag-ids))
+            ;; Get current associations
+            current-associations (t2/select [:model/TransformTags :tag_id :position]
+                                            :transform_id transform-id
+                                            {:order-by [[:position :asc]]})
+            current-tag-ids (mapv :tag_id current-associations)
+            ;; Validate that new tag IDs exist
+            valid-tag-ids (when (seq deduped-tag-ids)
+                            (into #{} (t2/select-fn-set :id :model/TransformTag
+                                                        :id [:in deduped-tag-ids])))
+            ;; Filter to only valid tags, preserving order
+            new-tag-ids (if valid-tag-ids
+                          (filterv valid-tag-ids deduped-tag-ids)
+                          [])
+            ;; Calculate what needs to change
+            current-set (set current-tag-ids)
+            new-set (set new-tag-ids)
+            to-delete (set/difference current-set new-set)
+            to-insert (set/difference new-set current-set)
+            ;; Build position map for new ordering
+            new-positions (zipmap new-tag-ids (range))]
+
+        ;; Delete removed associations
+        (when (seq to-delete)
+          (t2/delete! :model/TransformTags
+                      :transform_id transform-id
+                      :tag_id [:in to-delete]))
+
+        ;; Update positions for existing tags that moved
+        (doseq [tag-id (filter current-set new-tag-ids)]
+          (let [new-pos (get new-positions tag-id)]
+            (t2/update! :model/TransformTags
+                        {:transform_id transform-id :tag_id tag-id}
+                        {:position new-pos})))
+
+        ;; Insert new associations with correct positions
+        (when (seq to-insert)
+          (t2/insert! :model/TransformTags
+                      (for [tag-id to-insert]
+                        {:transform_id transform-id
+                         :tag_id tag-id
+                         :position (get new-positions tag-id)})))))))

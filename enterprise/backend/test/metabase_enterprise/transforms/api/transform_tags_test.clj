@@ -147,11 +147,11 @@
   (testing "Deleting a tag removes it from all transforms"
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
       (mt/with-premium-features #{:transforms}
-        (mt/with-temp [:model/Transform transform {:name "Transform for Delete Test"
-                                                   :source {:type "query"
+        (mt/with-temp [:model/Transform transform {:name   "Transform for Delete Test"
+                                                   :source {:type  "query"
                                                             :query {:database (mt/id)
-                                                                    :type "native"
-                                                                    :native {:query "SELECT 1"}}}
+                                                                    :type     "native"
+                                                                    :native   {:query "SELECT 1"}}}
                                                    :target {:type "table"
                                                             :name "delete_test_table"}}
                        :model/TransformTag tag2 {:name "tag-to-keep"}]
@@ -159,17 +159,17 @@
           (let [tag1 (mt/user-http-request :crowberto :post 200 "ee/transform-tag"
                                            {:name "tag-to-delete"})]
             (try
-            ;; Add both tags to transform
+              ;; Add both tags to transform
               (transform.model/update-transform-tags! (:id transform) [(:id tag1) (:id tag2)])
 
-            ;; Verify tags are associated
+              ;; Verify tags are associated
               (let [fetched (mt/user-http-request :crowberto :get 200 (str "ee/transform/" (:id transform)))]
                 (is (= (set [(:id tag1) (:id tag2)]) (set (:tag_ids fetched)))))
 
-            ;; Delete tag1
+              ;; Delete tag1
               (mt/user-http-request :crowberto :delete 204 (str "ee/transform-tag/" (:id tag1)))
 
-            ;; Verify tag1 is removed but tag2 remains
+              ;; Verify tag1 is removed but tag2 remains
               (let [fetched (mt/user-http-request :crowberto :get 200 (str "ee/transform/" (:id transform)))]
                 (is (= [(:id tag2)] (vec (:tag_ids fetched)))))
               (finally

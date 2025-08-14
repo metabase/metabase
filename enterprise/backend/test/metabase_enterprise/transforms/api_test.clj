@@ -69,18 +69,15 @@
     (mt/with-premium-features #{:transforms}
       (mt/dataset transforms-dataset/transforms-test
         (with-transform-cleanup! [table-name "gadget_products"]
-          (let [query (make-query "Gadget")
+          (let [query  (make-query "Gadget")
                 schema (get-test-schema)]
             (mt/user-http-request :crowberto :post 200 "ee/transform"
                                   {:name   "Gadget Products"
                                    :source {:type  "query"
                                             :query query}
-                                   ;; for clickhouse (and other dbs where we do merge into), we will
-                                   ;; want a primary key
-                                   ;;:primary-key-column "id"
-                                   :target {:type "table"
+                                   :target {:type   "table"
                                             :schema schema
-                                            :name table-name}})))))))
+                                            :name   table-name}})))))))
 
 (deftest list-transforms-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
@@ -95,9 +92,9 @@
                              :description "Desc"
                              :source      {:type  "query"
                                            :query (make-query "Gadget")}
-                             :target      {:type "table"
+                             :target      {:type   "table"
                                            :schema (get-test-schema)
-                                           :name table-name}}
+                                           :name   table-name}}
                   _         (mt/user-http-request :crowberto :post 200 "ee/transform" body)
                   list-resp (mt/user-http-request :crowberto :get 200 "ee/transform")]
               (is (seq list-resp)))))))))
@@ -111,9 +108,9 @@
                       :description "Desc"
                       :source      {:type  "query"
                                     :query (make-query "Gadget")}
-                      :target      {:type "table"
+                      :target      {:type   "table"
                                     :schema (get-test-schema)
-                                    :name table-name}}
+                                    :name   table-name}}
                 resp (mt/user-http-request :crowberto :post 200 "ee/transform" body)]
             (is (=? (assoc body
                            :last_run nil)
@@ -126,21 +123,21 @@
     (mt/with-premium-features #{:transforms}
       (mt/dataset transforms-dataset/transforms-test
         (with-transform-cleanup! [table-name "gadget_products"]
-          (let [query2 (make-query "None")
-                resp   (mt/user-http-request :crowberto :post 200 "ee/transform"
-                                             {:name   "Gadget Products"
-                                              :source {:type  "query"
-                                                       :query (make-query "Gadget")}
-                                              :target {:type "table"
-                                                       :schema (get-test-schema)
-                                                       :name table-name}})
-                transform {:name              "Gadget Products 2"
-                           :description       "Desc"
-                           :source            {:type  "query"
-                                               :query query2}
-                           :target            {:type "table"
-                                               :schema (get-test-schema)
-                                               :name table-name}}]
+          (let [query2    (make-query "None")
+                resp      (mt/user-http-request :crowberto :post 200 "ee/transform"
+                                                {:name   "Gadget Products"
+                                                 :source {:type  "query"
+                                                          :query (make-query "Gadget")}
+                                                 :target {:type   "table"
+                                                          :schema (get-test-schema)
+                                                          :name   table-name}})
+                transform {:name        "Gadget Products 2"
+                           :description "Desc"
+                           :source      {:type  "query"
+                                         :query query2}
+                           :target      {:type   "table"
+                                         :schema (get-test-schema)
+                                         :name   table-name}}]
             (is (=? transform
                     (->
                      (mt/user-http-request :crowberto :put 200 (format "ee/transform/%s" (:id resp))
@@ -157,18 +154,18 @@
                 original {:name   "Gadget Products"
                           :source {:type  "query"
                                    :query (make-query "Gadget")}
-                          :target {:type "table"
+                          :target {:type   "table"
                                    :schema (get-test-schema)
-                                   :name table1-name}}
+                                   :name   table1-name}}
                 resp     (mt/user-http-request :crowberto :post 200 "ee/transform"
                                                original)
                 updated  {:name        "Doohickey Products"
                           :description "Desc"
                           :source      {:type  "query"
                                         :query query2}
-                          :target      {:type "table"
+                          :target      {:type   "table"
                                         :schema (get-test-schema)
-                                        :name table2-name}}]
+                                        :name   table2-name}}]
             (is (=? updated
                     (->
                      (mt/user-http-request :crowberto :put 200 (format "ee/transform/%s" (:id resp)) updated)
@@ -184,9 +181,9 @@
                                            {:name   "Gadget Products"
                                             :source {:type  "query"
                                                      :query (make-query "Gadget")}
-                                            :target {:type "table"
+                                            :target {:type   "table"
                                                      :schema (get-test-schema)
-                                                     :name table-name}})]
+                                                     :name   table-name}})]
             (mt/user-http-request :crowberto :delete 204 (format "ee/transform/%s" (:id resp)))
             (mt/user-http-request :crowberto :get 404 (format "ee/transform/%s" (:id resp)))))))))
 
@@ -199,14 +196,14 @@
                                            {:name   "Gadget Products"
                                             :source {:type  "query"
                                                      :query (make-query "Gadget")}
-                                            :target {:type "table"
+                                            :target {:type   "table"
                                                      :schema (get-test-schema)
-                                                     :name table-name}})]
+                                                     :name   table-name}})]
             (mt/user-http-request :crowberto :delete 204 (format "ee/transform/%s/table" (:id resp)))))))))
 
 (defn- test-run
   [transform-id]
-  (let [resp (mt/user-http-request :crowberto :post 202 (format "ee/transform/%s/run" transform-id))
+  (let [resp      (mt/user-http-request :crowberto :post 202 (format "ee/transform/%s/run" transform-id))
         timeout-s 10 ; 10 seconds is our timeout to finish execution and sync
         limit     (+ (System/currentTimeMillis) (* timeout-s 1000))]
     (is (=? {:message "Transform run started"}
@@ -402,8 +399,8 @@
                      :model/TransformTag tag1 {}
                      :model/TransformTag _tag2 {}
                      :model/TransformTag _tag3 {}
-                     :model/TransformTags _ {:transform_id (:id transform1) :tag_id (:id tag1)}
-                     :model/TransformTags _ {:transform_id (:id transform2) :tag_id (:id tag1)}
+                     :model/TransformTags _ {:transform_id (:id transform1) :tag_id (:id tag1) :position 0}
+                     :model/TransformTags _ {:transform_id (:id transform2) :tag_id (:id tag1) :position 0}
                      :model/TransformRun _run1 {:transform_id (:id transform1)}
                      :model/TransformRun _run2 {:transform_id (:id transform2)}
                      :model/TransformRun _run3 {:transform_id (:id transform3)}]
@@ -452,10 +449,10 @@
                                                            :name (str "test_table_4_" (u/generate-nano-id))}}
                      :model/TransformTag tag1 {}
                      :model/TransformTag tag2 {}
-                     :model/TransformTags _ {:transform_id (:id transform1) :tag_id (:id tag1)}
-                     :model/TransformTags _ {:transform_id (:id transform2) :tag_id (:id tag1)}
-                     :model/TransformTags _ {:transform_id (:id transform2) :tag_id (:id tag2)}
-                     :model/TransformTags _ {:transform_id (:id transform3) :tag_id (:id tag2)}
+                     :model/TransformTags _ {:transform_id (:id transform1) :tag_id (:id tag1) :position 0}
+                     :model/TransformTags _ {:transform_id (:id transform2) :tag_id (:id tag1) :position 0}
+                     :model/TransformTags _ {:transform_id (:id transform2) :tag_id (:id tag2) :position 1}
+                     :model/TransformTags _ {:transform_id (:id transform3) :tag_id (:id tag2) :position 0}
 
                      :model/TransformRun _run1 {:transform_id (:id transform1)}
                      :model/TransformRun _run2 {:transform_id (:id transform2)}
@@ -510,8 +507,8 @@
                      :model/Transform transform2 {}
                      :model/Transform transform3 {}
                      :model/TransformTag tag1 {}
-                     :model/TransformTags _ {:transform_id (:id transform1) :tag_id (:id tag1)}
-                     :model/TransformTags _ {:transform_id (:id transform2) :tag_id (:id tag1)}
+                     :model/TransformTags _ {:transform_id (:id transform1) :tag_id (:id tag1) :position 0}
+                     :model/TransformTags _ {:transform_id (:id transform2) :tag_id (:id tag1) :position 0}
                      :model/TransformRun _run1 {:transform_id (:id transform1) :status "succeeded"}
                      :model/TransformRun _run1 {:transform_id (:id transform2) :status "failed"}
                      :model/TransformRun _run1 {:transform_id (:id transform3) :status "failed"}
@@ -532,8 +529,8 @@
                      :model/Transform transform2 {}
                      :model/TransformTag tag1 {}
                      :model/TransformTag tag2 {}
-                     :model/TransformTags _ {:transform_id (:id transform1) :tag_id (:id tag1)}
-                     :model/TransformTags _ {:transform_id (:id transform2) :tag_id (:id tag2)}
+                     :model/TransformTags _ {:transform_id (:id transform1) :tag_id (:id tag1) :position 0}
+                     :model/TransformTags _ {:transform_id (:id transform2) :tag_id (:id tag2) :position 0}
                      :model/TransformRun _run1 {:transform_id (:id transform1)}
                      :model/TransformRun _run1 {:transform_id (:id transform2)}]
         (testing "Filter by transform1 ID and tag1 returns transform1 (has both)"

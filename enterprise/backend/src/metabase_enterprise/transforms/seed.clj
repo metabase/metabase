@@ -68,7 +68,8 @@
           ;; Link job to its corresponding tag
           (when (and tag job)
             (t2/insert! :model/TransformJobTags {:job_id (:id job) :tag_id (:id tag)
-                                                 :entity_id (str (subs (:entity_id job) 0 16) "-join")}))))
+                                                 :entity_id (str (subs (:entity_id job) 0 16) "-join")
+                                                 :position 0}))))
       (log/infof "Created %d default transform jobs" (count default-jobs))
 
       ;; Mark that we've seeded the defaults

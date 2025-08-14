@@ -44,7 +44,7 @@
       (mt/with-temp [:model/TransformTag tag {:name "test-tag"}
                      :model/TransformJob job {:name "Test Job"
                                               :schedule "0 0 0 * * ?"}
-                     :model/TransformJobTags _ {:job_id (:id job) :tag_id (:id tag)}]
+                     :model/TransformJobTags _ {:job_id (:id job) :tag_id (:id tag) :position 0}]
         (testing "Returns job with hydrated fields"
           (let [response (mt/user-http-request :crowberto :get 200 (str "ee/transform-job/" (:id job)))]
             (is (= (:id job) (:id response)))

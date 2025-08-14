@@ -489,6 +489,12 @@ databaseChangeLog:
                   constraints:
                     nullable: true
                     unique: true
+              - column:
+                  name: position
+                  type: int
+                  remarks: The relative UI ordering of this tag on the transform
+                  constraints:
+                    nullable: false
 
   - changeSet:
       id: v57.2025-08-07T10:02:01
@@ -554,6 +560,12 @@ databaseChangeLog:
                   constraints:
                     nullable: true
                     unique: true
+              - column:
+                  name: position
+                  type: int
+                  remarks: The ordering position of this tag for the job.
+                  constraints:
+                    nullable: false
 
   - changeSet:
       id: v57.2025-08-07T10:03:01

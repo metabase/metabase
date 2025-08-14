@@ -6,7 +6,6 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
-   [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.jvm :as u.jvm]
    [metabase.util.log :as log]
@@ -49,10 +48,12 @@
     (transforms.schedule/initialize-job! job)
     ;; Add tag associations if provided
     (when (seq tag_ids)
-      (t2/insert! :transform_job_tags
-                  (for [tag-id tag_ids]
-                    {:job_id (:id job)
-                     :tag_id tag-id})))
+      (t2/insert! :model/TransformJobTags
+                  (map-indexed (fn [idx tag-id]
+                                 {:job_id (:id job)
+                                  :tag_id tag-id
+                                  :position idx})
+                               tag_ids)))
     ;; Return with hydrated tag_ids
     (t2/hydrate job :tag_ids)))
 
@@ -61,11 +62,12 @@
   [{:keys [job-id]} :- [:map
                         [:job-id ms/PositiveInt]]
    _query-params
-   {:keys [name description schedule tag_ids]} :- [:map
-                                                   [:name {:optional true} ms/NonBlankString]
-                                                   [:description {:optional true} [:maybe ms/NonBlankString]]
-                                                   [:schedule {:optional true} ms/NonBlankString]
-                                                   [:tag_ids {:optional true} [:sequential ms/PositiveInt]]]]
+   {tag-ids :tag_ids
+    :keys [name description schedule]} :- [:map
+                                           [:name {:optional true} ms/NonBlankString]
+                                           [:description {:optional true} [:maybe ms/NonBlankString]]
+                                           [:schedule {:optional true} ms/NonBlankString]
+                                           [:tag_ids {:optional true} [:sequential ms/PositiveInt]]]]
   (log/info "Updating transform job" job-id)
   (api/check-superuser)
   ;; Check job exists
@@ -79,32 +81,26 @@
                        false))
                    (deferred-tru "Invalid cron expression: {0}" schedule)))
   ;; Validate tag IDs if provided
-  (when tag_ids
-    (let [existing-tags (set (t2/select-pks-vec :model/TransformTag :id [:in tag_ids]))]
-      (api/check-400 (= (set tag_ids) existing-tags)
+  (when tag-ids
+    (let [existing-tags (set (t2/select-pks-vec :model/TransformTag :id [:in tag-ids]))]
+      (api/check-400 (= (set tag-ids) existing-tags)
                      (deferred-tru "Some tag IDs do not exist"))))
-  ;; Update the job
-  (let [updates (cond-> {}
-                  name (assoc :name name)
-                  (some? description) (assoc :description description)
-                  schedule (assoc :schedule schedule))]
-    (when (seq updates)
-      (t2/update! :model/TransformJob job-id updates)))
-  (when schedule
-    (transforms.schedule/update-job! job-id schedule))
-  ;; Update tag associations if provided
-  (when (some? tag_ids)
-    ;; Delete existing associations
-    (t2/delete! :transform_job_tags :job_id job-id)
-    ;; Add new associations
-    (when (seq tag_ids)
-      (t2/insert! :transform_job_tags
-                  (for [tag-id tag_ids]
-                    {:job_id job-id
-                     :tag_id tag-id}))))
-  ;; Return updated job with hydration
-  (-> (t2/select-one :model/TransformJob :id job-id)
-      (t2/hydrate :tag_ids :last_run)))
+  (t2/with-transaction [_conn]
+    ;; Update the job
+    (let [updates (cond-> {}
+                    name (assoc :name name)
+                    (some? description) (assoc :description description)
+                    schedule (assoc :schedule schedule))]
+      (when (seq updates)
+        (t2/update! :model/TransformJob job-id updates)))
+    (when schedule
+      (transforms.schedule/update-job! job-id schedule))
+    ;; Update tag associations if provided
+    (when (some? tag-ids)
+      (transform-job/update-job-tags! job-id tag-ids))
+    ;; Return updated job with hydration
+    (-> (t2/select-one :model/TransformJob :id job-id)
+        (t2/hydrate :tag_ids :last_run))))
 
 (api.macros/defendpoint :delete "/:job-id"
   "Delete a transform job."
@@ -128,7 +124,7 @@
      (catch Throwable t
        (log/error "Error executing transform job" job-id)
        (log/error t))))
-  {:message    "Job run started"
+  {:message "Job run started"
    :job_run_id (str "stub-" job-id "-" (System/currentTimeMillis))})
 
 (api.macros/defendpoint :get "/:job-id"
