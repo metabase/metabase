@@ -225,7 +225,7 @@
   (let [table-name (model-table-name embedding-model)]
     {:embedding-model embedding-model
      :table-name table-name
-     :version 0}))
+     :version 1}))
 
 (defn- upsert-embedding!-fn [connectable index text->docs]
   (fn [text->embedding]
