@@ -102,7 +102,12 @@ export function SearchSettingsWidget({
 
           {!response.error && isIndexing && (
             <Stack gap="xs">
-              <Progress size="md" value={progress} maw="25rem" animated />
+              <Progress
+                size="md"
+                value={progress}
+                maw="25rem"
+                animated={progress < 100}
+              />
               <Text c="text-light" size="md">
                 {progress === 100
                   ? t`Initialized search index`
