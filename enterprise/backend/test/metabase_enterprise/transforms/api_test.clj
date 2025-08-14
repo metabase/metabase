@@ -57,7 +57,6 @@
   ([transform-id opts]
    (merge {:transform_id transform-id
            :status       "succeeded"
-           :id           (u/generate-nano-id)
            :run_method   "manual"
            :start_time   (t/instant)
            :end_time     (t/instant)}
@@ -140,14 +139,14 @@
         (with-transform-cleanup! [table-name "gadget_products"]
           (let [query (make-query "Gadget")
                 schema (get-test-schema)]
-          (mt/user-http-request :crowberto :post 200 "ee/transform"
-                                {:name   "Gadget Products"
-                                 :source {:type  "query"
+            (mt/user-http-request :crowberto :post 200 "ee/transform"
+                                  {:name   "Gadget Products"
+                                   :source {:type  "query"
                                             :query query}
                                ;; for clickhouse (and other dbs where we do merge into), we will
                                ;; want a primary key
                                ;;:primary-key-column "id"
-                                 :target {:type "table"
+                                   :target {:type "table"
                                             :schema schema
                                             :name table-name}})))))))
 
@@ -163,7 +162,7 @@
             (let [body      {:name        "Gadget Products"
                              :description "Desc"
                              :source      {:type  "query"
-                                 :query (make-query "Gadget")}
+                                           :query (make-query "Gadget")}
                              :target      {:type "table"
                                            :schema (get-test-schema)
                                            :name table-name}}
@@ -179,7 +178,7 @@
           (let [body {:name        "Gadget Products"
                       :description "Desc"
                       :source      {:type  "query"
-                               :query (make-query "Gadget")}
+                                    :query (make-query "Gadget")}
                       :target      {:type "table"
                                     :schema (get-test-schema)
                                     :name table-name}}
@@ -199,20 +198,20 @@
                 resp   (mt/user-http-request :crowberto :post 200 "ee/transform"
                                              {:name   "Gadget Products"
                                               :source {:type  "query"
-                                                     :query (make-query "Gadget")}
+                                                       :query (make-query "Gadget")}
                                               :target {:type "table"
-                                                          :schema (get-test-schema)
+                                                       :schema (get-test-schema)
                                                        :name table-name}})
                 transform {:name              "Gadget Products 2"
                            :description       "Desc"
                            :source            {:type  "query"
-                                    :query query2}
+                                               :query query2}
                            :target            {:type "table"
-                                         :schema (get-test-schema)
+                                               :schema (get-test-schema)
                                                :name table-name}}]
             (is (=? transform
                     (->
-                    (mt/user-http-request :crowberto :put 200 (format "ee/transform/%s" (:id resp))
+                     (mt/user-http-request :crowberto :put 200 (format "ee/transform/%s" (:id resp))
                                            transform)
                      (update-in [:source :query] mbql.normalize/normalize))))))))))
 
@@ -234,7 +233,7 @@
                 updated  {:name        "Doohickey Products"
                           :description "Desc"
                           :source      {:type  "query"
-                                  :query query2}
+                                        :query query2}
                           :target      {:type "table"
                                         :schema (get-test-schema)
                                         :name table2-name}}]
@@ -359,7 +358,7 @@
                 (let [query2             (make-query "Doohickey")
                       original           {:name   "Gadget Products"
                                           :source {:type  "query"
-                                         :query (make-query "Gadget")}
+                                                   :query (make-query "Gadget")}
                                           :target target1}
                       {transform-id :id} (mt/user-http-request :crowberto :post 200 "ee/transform"
                                                                original)
@@ -370,7 +369,7 @@
                       updated            {:name        "Doohickey Products"
                                           :description "Desc"
                                           :source      {:type  "query"
-                                        :query query2}
+                                                        :query query2}
                                           :target      target2}]
                   (is (=? updated
                           (->
