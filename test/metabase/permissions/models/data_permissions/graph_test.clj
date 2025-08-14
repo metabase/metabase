@@ -11,10 +11,10 @@
 
 (deftest update-db-level-view-data-permissions!-test
   (mt/with-premium-features #{:advanced-permissions :sandboxes}
-    (mt/with-temp [:model/PermissionsGroup {group-id-1 :id}      {}
-                   :model/Database         {database-id-1 :id}   {}
-                   :model/Table            {table-id-1 :id}      {:db_id database-id-1
-                                                                  :schema "PUBLIC"}]
+    (mt/with-temp [:model/PermissionsGroup {group-id-1 :id} {}
+                   :model/Database {database-id-1 :id} {}
+                   :model/Table {table-id-1 :id} {:db_id database-id-1
+                                                  :schema "PUBLIC"}]
       ;; Clear default perms for the group
       (t2/delete! :model/DataPermissions :group_id group-id-1)
       (testing "data permissions can be updated via API-style graph"
@@ -55,10 +55,10 @@
 
 (deftest update-db-level-create-queries-permissions!-test
   (mt/with-premium-features #{:advanced-permissions :sandboxes}
-    (mt/with-temp [:model/PermissionsGroup {group-id-1 :id}      {}
-                   :model/Database         {database-id-1 :id}   {}
-                   :model/Table            {table-id-1 :id}      {:db_id database-id-1
-                                                                  :schema "PUBLIC"}]
+    (mt/with-temp [:model/PermissionsGroup {group-id-1 :id} {}
+                   :model/Database {database-id-1 :id} {}
+                   :model/Table {table-id-1 :id} {:db_id database-id-1
+                                                  :schema "PUBLIC"}]
       (testing "data permissions can be updated via API-style graph"
         (are [api-graph db-graph] (= db-graph
                                      (do
@@ -121,14 +121,14 @@
 
 (deftest update-db-level-data-access-permissions!-test
   (mt/with-premium-features #{:advanced-permissions :sandboxes}
-    (mt/with-temp [:model/PermissionsGroup {group-id-1 :id}      {}
-                   :model/Database         {database-id-1 :id}   {}
-                   :model/Table            {table-id-1 :id}      {:db_id database-id-1
-                                                                  :schema "PUBLIC"}
-                   :model/Table            {table-id-2 :id}      {:db_id database-id-1
-                                                                  :schema "PUBLIC"}
-                   :model/Table            {table-id-3 :id}      {:db_id database-id-1
-                                                                  :schema nil}]
+    (mt/with-temp [:model/PermissionsGroup {group-id-1 :id} {}
+                   :model/Database {database-id-1 :id} {}
+                   :model/Table {table-id-1 :id} {:db_id database-id-1
+                                                  :schema "PUBLIC"}
+                   :model/Table {table-id-2 :id} {:db_id database-id-1
+                                                  :schema "PUBLIC"}
+                   :model/Table {table-id-3 :id} {:db_id database-id-1
+                                                  :schema nil}]
       ;; Clear default perms for the group
       (t2/delete! :model/DataPermissions :group_id group-id-1)
       (testing "data-access permissions can be updated via API-style graph"
@@ -190,14 +190,14 @@
              :perms/download-results :no}}})))))
 
 (deftest update-db-level-download-permissions!-test
-  (mt/with-temp [:model/PermissionsGroup {group-id-1 :id}      {}
-                 :model/Database         {database-id-1 :id}   {}
-                 :model/Table            {table-id-1 :id}      {:db_id database-id-1
-                                                                :schema "PUBLIC"}
-                 :model/Table            {table-id-2 :id}      {:db_id database-id-1
-                                                                :schema "PUBLIC"}
-                 :model/Table            {table-id-3 :id}      {:db_id database-id-1
-                                                                :schema nil}]
+  (mt/with-temp [:model/PermissionsGroup {group-id-1 :id} {}
+                 :model/Database {database-id-1 :id} {}
+                 :model/Table {table-id-1 :id} {:db_id database-id-1
+                                                :schema "PUBLIC"}
+                 :model/Table {table-id-2 :id} {:db_id database-id-1
+                                                :schema "PUBLIC"}
+                 :model/Table {table-id-3 :id} {:db_id database-id-1
+                                                :schema nil}]
     ;; Clear default perms for the group
     (t2/delete! :model/DataPermissions :group_id group-id-1)
     (testing "download permissions can be updated via API-style graph"
@@ -236,7 +236,7 @@
          {database-id-1
           {:download
            {:schemas {"PUBLIC" :full
-                      ""       :none}}}}}
+                      "" :none}}}}}
         {group-id-1
          {database-id-1
           {:perms/download-results {"PUBLIC"
@@ -255,14 +255,14 @@
           {:perms/download-results :no}}}))))
 
 (deftest update-db-level-metadata-permissions!-test
-  (mt/with-temp [:model/PermissionsGroup {group-id-1 :id}      {}
-                 :model/Database         {database-id-1 :id}   {}
-                 :model/Table            {table-id-1 :id}      {:db_id database-id-1
-                                                                :schema "PUBLIC"}
-                 :model/Table            {table-id-2 :id}      {:db_id database-id-1
-                                                                :schema "PUBLIC"}
-                 :model/Table            {table-id-3 :id}      {:db_id database-id-1
-                                                                :schema nil}]
+  (mt/with-temp [:model/PermissionsGroup {group-id-1 :id} {}
+                 :model/Database {database-id-1 :id} {}
+                 :model/Table {table-id-1 :id} {:db_id database-id-1
+                                                :schema "PUBLIC"}
+                 :model/Table {table-id-2 :id} {:db_id database-id-1
+                                                :schema "PUBLIC"}
+                 :model/Table {table-id-3 :id} {:db_id database-id-1
+                                                :schema nil}]
     ;; Clear default perms for the group
     (t2/delete! :model/DataPermissions :group_id group-id-1)
     (testing "data model editing permissions can be updated via API-style graph"
@@ -301,7 +301,7 @@
          {database-id-1
           {:data-model
            {:schemas {"PUBLIC" :all
-                      ""       :none}}}}}
+                      "" :none}}}}}
         {group-id-1
          {database-id-1
           {:perms/manage-table-metadata {"PUBLIC"
@@ -320,8 +320,8 @@
           {:perms/manage-table-metadata :no}}}))))
 
 (deftest update-details-perms!-test
-  (mt/with-temp [:model/PermissionsGroup {group-id-1 :id}      {}
-                 :model/Database         {database-id-1 :id}   {}]
+  (mt/with-temp [:model/PermissionsGroup {group-id-1 :id} {}
+                 :model/Database {database-id-1 :id} {}]
     ;; Clear default perms for the group
     (t2/delete! :model/DataPermissions :group_id group-id-1)
     (testing "database details editing permissions can be updated via API-style graph"
@@ -356,59 +356,59 @@
     (are [db-graph api-graph] (= api-graph (-> db-graph
                                                (#'data-perms.graph/rename-perm)
                                                (#'data-perms.graph/remove-empty-vals)))
-      {:perms/view-data :unrestricted}                  {:view-data :unrestricted}
-      {:perms/view-data :legacy-no-self-service}        {:view-data :legacy-no-self-service}
-      {:perms/view-data :blocked}                       {}
+      {:perms/view-data :unrestricted} {:view-data :unrestricted}
+      {:perms/view-data :legacy-no-self-service} {:view-data :legacy-no-self-service}
+      {:perms/view-data :blocked} {}
       {:perms/create-queries :query-builder-and-native} {:create-queries :query-builder-and-native}
-      {:perms/create-queries :query-builder}            {:create-queries :query-builder}
-      {:perms/create-queries :no}                       {}
-      {:perms/download-results :one-million-rows}       {:download {:schemas :full}}
-      {:perms/download-results :ten-thousand-rows}      {:download {:schemas :limited}}
-      {:perms/download-results :no}                     {}
-      {:perms/manage-table-metadata :yes}               {:data-model {:schemas :all}}
-      {:perms/manage-table-metadata :no}                {}
-      {:perms/manage-database :yes}                     {:details :yes}
-      {:perms/manage-database :no}                      {}
+      {:perms/create-queries :query-builder} {:create-queries :query-builder}
+      {:perms/create-queries :no} {}
+      {:perms/download-results :one-million-rows} {:download {:schemas :full}}
+      {:perms/download-results :ten-thousand-rows} {:download {:schemas :limited}}
+      {:perms/download-results :no} {}
+      {:perms/manage-table-metadata :yes} {:data-model {:schemas :all}}
+      {:perms/manage-table-metadata :no} {}
+      {:perms/manage-database :yes} {:details :yes}
+      {:perms/manage-database :no} {}
       ;; with schemas:
       {:perms/view-data
        {"PUBLIC" {1 :unrestricted
-                  2 :legacy-no-self-service}}}          {:view-data {"PUBLIC" {1 :unrestricted
-                                                                               2 :legacy-no-self-service}}}
+                  2 :legacy-no-self-service}}} {:view-data {"PUBLIC" {1 :unrestricted
+                                                                      2 :legacy-no-self-service}}}
       {:perms/view-data
        {"PUBLIC" {1 :unrestricted
-                  2 :unrestricted}}}                    {:view-data {"PUBLIC" :unrestricted}}
+                  2 :unrestricted}}} {:view-data {"PUBLIC" :unrestricted}}
       {:perms/view-data
        {"PUBLIC" {1 :blocked ;; table level blocked is removed:
-                  2 :unrestricted}}}                    {:view-data {"PUBLIC" {2 :unrestricted}}}
+                  2 :unrestricted}}} {:view-data {"PUBLIC" {2 :unrestricted}}}
       {:perms/view-data
        {"PUBLIC" {1 :legacy-no-self-service
-                  2 :legacy-no-self-service}}}          {:view-data {"PUBLIC" :legacy-no-self-service}}
+                  2 :legacy-no-self-service}}} {:view-data {"PUBLIC" :legacy-no-self-service}}
       {:perms/download-results
        {"PUBLIC" {1 :one-million-rows
-                  2 :no}}}                              {:download {:schemas {"PUBLIC" {1 :full}}}}
+                  2 :no}}} {:download {:schemas {"PUBLIC" {1 :full}}}}
       {:perms/download-results
        {"PUBLIC" {1 :one-million-rows
-                  2 :ten-thousand-rows}}}               {:download {:schemas {"PUBLIC" {1 :full
-                                                                                        2 :limited}}}}
+                  2 :ten-thousand-rows}}} {:download {:schemas {"PUBLIC" {1 :full
+                                                                          2 :limited}}}}
       {:perms/manage-table-metadata
-       {"PUBLIC" {1 :yes}}}                             {:data-model {:schemas {"PUBLIC" :all}}}
+       {"PUBLIC" {1 :yes}}} {:data-model {:schemas {"PUBLIC" :all}}}
       {:perms/manage-table-metadata
-       {"PUBLIC" {1 :no}}}                              {}
+       {"PUBLIC" {1 :no}}} {}
       {:perms/manage-table-metadata
        {"PUBLIC" {1 :yes
-                  2 :no}}}                              {:data-model {:schemas {"PUBLIC" {1 :all}}}}
+                  2 :no}}} {:data-model {:schemas {"PUBLIC" {1 :all}}}}
       ;; multiple schemas
       {:perms/view-data
        {"PUBLIC" {1 :unrestricted}
-        "OTHER" {2 :legacy-no-self-service}}}           {:view-data {"PUBLIC" :unrestricted
-                                                                     "OTHER" :legacy-no-self-service}}
+        "OTHER" {2 :legacy-no-self-service}}} {:view-data {"PUBLIC" :unrestricted
+                                                           "OTHER" :legacy-no-self-service}}
       {:perms/view-data
        {"PUBLIC" {1 :unrestricted
                   2 :legacy-no-self-service}
         "OTHER" {3 :legacy-no-self-service
-                 4 :legacy-no-self-service}}}           {:view-data {"PUBLIC" {1 :unrestricted
-                                                                               2 :legacy-no-self-service}
-                                                                     "OTHER" :legacy-no-self-service}})))
+                 4 :legacy-no-self-service}}} {:view-data {"PUBLIC" {1 :unrestricted
+                                                                     2 :legacy-no-self-service}
+                                                           "OTHER" :legacy-no-self-service}})))
 
 (defn- test-query-graph [group]
   (get-in (data-perms.graph/api-graph) [:groups (u/the-id group) (mt/id) :create-queries "PUBLIC"]))
@@ -446,7 +446,7 @@
 
 (deftest audit-db-update-test
   (testing "Throws exception when we attempt to change the audit db permission manually."
-    (mt/with-temp [:model/PermissionsGroup group    {}]
+    (mt/with-temp [:model/PermissionsGroup group {}]
       (is (thrown-with-msg?
            Exception
            #"Audit database permissions can only be changed by updating audit collection permissions."
@@ -510,3 +510,163 @@
           (is (nil? (data-perms.graph/update-data-perms-graph! {:groups {(u/the-id group) {(mt/id) {:view-data :unrestricted
                                                                                                     :create-queries :query-builder}}}
                                                                 :revision (:revision (data-perms.graph/api-graph))}))))))))
+
+(deftest inactive-tables-excluded-from-view-data-schema-level-updates-test
+  (testing "When changing view-data permissions at schema-level, inactive tables should not have permissions updated"
+    (mt/with-premium-features #{:advanced-permissions :sandboxes}
+      (mt/with-temp [:model/PermissionsGroup {group-id :id} {}
+                     :model/Database {database-id :id} {}
+                     :model/Table {active-table-id :id} {:db_id database-id
+                                                         :schema "PUBLIC"
+                                                         :active true}
+                     :model/Table {inactive-table-id :id} {:db_id database-id
+                                                           :schema "PUBLIC"
+                                                           :active false}]
+        ;; Clear default perms for the group
+        (t2/delete! :model/DataPermissions :group_id group-id)
+
+        ;; Set initial permissions for both tables (manually)
+        (data-perms/set-table-permission! group-id active-table-id :perms/view-data :blocked)
+        (data-perms/set-table-permission! group-id inactive-table-id :perms/view-data :blocked)
+
+        ;; Apply schema-level permissions change
+        (data-perms.graph/update-data-perms-graph!
+         {:groups {group-id
+                   {database-id
+                    {:view-data {"PUBLIC" :unrestricted}}}}})
+
+        ;; Check that only active table permissions were updated
+        (let [graph (data-perms/data-permissions-graph :group-id group-id)]
+          (is (= :unrestricted
+                 (get-in graph [group-id database-id :perms/view-data "PUBLIC" active-table-id])))
+          (is (= :blocked
+                 (get-in graph [group-id database-id :perms/view-data "PUBLIC" inactive-table-id]))))))))
+
+(deftest inactive-tables-excluded-from-create-queries-schema-level-updates-test
+  (testing "When changing create-queries permissions at schema-level, inactive tables should not have permissions updated"
+    (mt/with-premium-features #{:advanced-permissions :sandboxes}
+      (mt/with-temp [:model/PermissionsGroup {group-id :id} {}
+                     :model/Database {database-id :id} {}
+                     :model/Table {active-table-id :id} {:db_id database-id
+                                                         :schema "PUBLIC"
+                                                         :active true}
+                     :model/Table {inactive-table-id :id} {:db_id database-id
+                                                           :schema "PUBLIC"
+                                                           :active false}]
+        ;; Clear default perms for the group
+        (t2/delete! :model/DataPermissions :group_id group-id)
+
+        ;; Set initial permissions for both tables
+        (data-perms/set-table-permission! group-id active-table-id :perms/create-queries :no)
+        (data-perms/set-table-permission! group-id inactive-table-id :perms/create-queries :no)
+
+        ;; Apply schema-level permissions change
+        (data-perms.graph/update-data-perms-graph!
+         {:groups {group-id
+                   {database-id
+                    {:create-queries {"PUBLIC" :query-builder}}}}})
+
+        ;; Check that only active table permissions were updated
+        (let [graph (data-perms/data-permissions-graph :group-id group-id)]
+          (is (= :query-builder
+                 (get-in graph [group-id database-id :perms/create-queries "PUBLIC" active-table-id])))
+          (is (= :no
+                 (get-in graph [group-id database-id :perms/create-queries "PUBLIC" inactive-table-id]))))))))
+
+(deftest inactive-tables-excluded-from-download-schema-level-updates-test
+  (testing "When changing download permissions at schema-level, inactive tables should not have permissions updated"
+    (mt/with-premium-features #{:advanced-permissions :sandboxes}
+      (mt/with-temp [:model/PermissionsGroup {group-id :id} {}
+                     :model/Database {database-id :id} {}
+                     :model/Table {active-table-id :id} {:db_id database-id
+                                                         :schema "PUBLIC"
+                                                         :active true}
+                     :model/Table {inactive-table-id :id} {:db_id database-id
+                                                           :schema "PUBLIC"
+                                                           :active false}]
+        ;; Clear default perms for the group
+        (t2/delete! :model/DataPermissions :group_id group-id)
+
+        ;; Set initial permissions for both tables
+        (data-perms/set-table-permission! group-id active-table-id :perms/download-results :no)
+        (data-perms/set-table-permission! group-id inactive-table-id :perms/download-results :no)
+
+        ;; Apply schema-level permissions change
+        (data-perms.graph/update-data-perms-graph!
+         {:groups {group-id
+                   {database-id
+                    {:download
+                     {:schemas {"PUBLIC" :full}}}}}})
+
+        ;; Check that only active table permissions were updated
+        (let [graph (data-perms/data-permissions-graph :group-id group-id)]
+          (is (= :one-million-rows
+                 (get-in graph [group-id database-id :perms/download-results "PUBLIC" active-table-id])))
+          (is (= :no
+                 (get-in graph [group-id database-id :perms/download-results "PUBLIC" inactive-table-id]))))))))
+
+(deftest inactive-tables-excluded-from-metadata-schema-level-updates-test
+  (testing "When changing metadata permissions at schema-level, inactive tables should not have permissions updated"
+    (mt/with-premium-features #{:advanced-permissions :sandboxes}
+      (mt/with-temp [:model/PermissionsGroup {group-id :id} {}
+                     :model/Database {database-id :id} {}
+                     :model/Table {active-table-id :id} {:db_id database-id
+                                                         :schema "PUBLIC"
+                                                         :active true}
+                     :model/Table {inactive-table-id :id} {:db_id database-id
+                                                           :schema "PUBLIC"
+                                                           :active false}]
+        ;; Clear default perms for the group
+        (t2/delete! :model/DataPermissions :group_id group-id)
+
+        ;; Set initial permissions for both tables
+        (data-perms/set-table-permission! group-id active-table-id :perms/manage-table-metadata :no)
+        (data-perms/set-table-permission! group-id inactive-table-id :perms/manage-table-metadata :no)
+
+        ;; Apply schema-level permissions change
+        (data-perms.graph/update-data-perms-graph!
+         {:groups {group-id
+                   {database-id
+                    {:data-model
+                     {:schemas {"PUBLIC" :all}}}}}})
+
+        ;; Check that only active table permissions were updated
+        (let [graph (data-perms/data-permissions-graph :group-id group-id)]
+          (is (= :yes
+                 (get-in graph [group-id database-id :perms/manage-table-metadata "PUBLIC" active-table-id])))
+          (is (= :no
+                 (get-in graph [group-id database-id :perms/manage-table-metadata "PUBLIC" inactive-table-id]))))))))
+
+(deftest inactive-tables-still-appear-in-permissions-graph-test
+  (testing "Inactive tables should still appear in the permissions graph with their existing permissions, but not be updated during schema-level changes"
+    (mt/with-premium-features #{:advanced-permissions :sandboxes}
+      (mt/with-temp [:model/PermissionsGroup {group-id :id} {}
+                     :model/Database {database-id :id} {}
+                     :model/Table {active-table-id :id} {:db_id database-id
+                                                         :schema "PUBLIC"
+                                                         :active true}
+                     :model/Table {inactive-table-id :id} {:db_id database-id
+                                                           :schema "PUBLIC"
+                                                           :active false}]
+          ;; Clear default perms and set specific permissions that will show table-level granularity
+        (t2/delete! :model/DataPermissions :group_id group-id)
+        (data-perms/set-table-permission! group-id active-table-id :perms/view-data :unrestricted)
+        (data-perms/set-table-permission! group-id inactive-table-id :perms/view-data :legacy-no-self-service)
+
+          ;; Check initial graph shows both tables with different permissions
+        (let [initial-graph (data-perms/data-permissions-graph :group-id group-id)]
+          (is (contains? (get-in initial-graph [group-id database-id :perms/view-data "PUBLIC"]) active-table-id))
+          (is (contains? (get-in initial-graph [group-id database-id :perms/view-data "PUBLIC"]) inactive-table-id)))
+
+          ;; Apply schema-level block which should only affect active tables
+        (data-perms.graph/update-data-perms-graph!
+         {:groups {group-id
+                   {database-id
+                    {:view-data {"PUBLIC" :blocked}}}}})
+
+          ;; Check final graph - active table should be blocked, inactive table should remain legacy-no-self-service
+        (let [final-graph (data-perms/data-permissions-graph :group-id group-id)]
+          (is (= :blocked
+                 (get-in final-graph [group-id database-id :perms/view-data "PUBLIC" active-table-id])))
+          (is (= :legacy-no-self-service
+                 (get-in final-graph [group-id database-id :perms/view-data "PUBLIC" inactive-table-id]))))))))
