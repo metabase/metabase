@@ -268,30 +268,38 @@ H.describeWithSnowplow("scenarios > admin > settings", () => {
   });
 
   // Unskip when mocking Cloud in Cypress is fixed (#18289)
-  it.skip("should hide self-hosted settings when running Metabase Cloud", () => {
-    H.setupMetabaseCloud();
-    cy.visit("/admin/settings/general");
+  it(
+    "should hide self-hosted settings when running Metabase Cloud",
+    { tags: "@skip" },
+    () => {
+      H.setupMetabaseCloud();
+      cy.visit("/admin/settings/general");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Site Name");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Site URL").should("not.exist");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Site Name");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Site URL").should("not.exist");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Email").should("not.exist");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Updates").should("not.exist");
-  });
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Email").should("not.exist");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Updates").should("not.exist");
+    },
+  );
 
   // Unskip when mocking Cloud in Cypress is fixed (#18289)
-  it.skip("should hide the store link when running Metabase Cloud", () => {
-    H.setupMetabaseCloud();
-    cy.visit("/admin/settings/general");
+  it(
+    "should hide the store link when running Metabase Cloud",
+    { tags: "@skip" },
+    () => {
+      H.setupMetabaseCloud();
+      cy.visit("/admin/settings/general");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Metabase Admin");
-    cy.findByLabelText("store icon").should("not.exist");
-  });
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Metabase Admin");
+      cy.findByLabelText("store icon").should("not.exist");
+    },
+  );
 
   describe(" > slack settings", () => {
     it("should present the form and display errors", () => {
@@ -331,15 +339,19 @@ describe("scenarios > admin > settings (EE)", () => {
   });
 
   // Unskip when mocking Cloud in Cypress is fixed (#18289)
-  it.skip("should hide Enterprise page when running Metabase Cloud", () => {
-    H.setupMetabaseCloud();
-    cy.visit("/admin/settings/general");
+  it(
+    "should hide Enterprise page when running Metabase Cloud",
+    { tags: "@skip" },
+    () => {
+      H.setupMetabaseCloud();
+      cy.visit("/admin/settings/general");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Site Name");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Enterprise").should("not.exist");
-  });
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Site Name");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Enterprise").should("not.exist");
+    },
+  );
 
   it("should hide the store link when running Metabase EE", () => {
     cy.visit("/admin/settings/license");
@@ -354,9 +366,9 @@ describe("scenarios > admin > settings (EE)", () => {
  * Disabled and quarantined until we fix the caching issues, and especially:
  * https://github.com/metabase/metabase/issues/13262
  */
-describe.skip(
+describe(
   "scenarios > admin > settings > cache",
-  { tags: "@external" },
+  { tags: ["@external", "@skip"] },
   () => {
     function enableCaching() {
       cy.findByText("Disabled")

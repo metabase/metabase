@@ -15,7 +15,7 @@ const { nocollection } = USERS;
 const PG_DB_ID = 2;
 
 // NOTE: This issue wasn't specifically related to PostgreSQL. We simply needed to add another DB to reproduce it.
-describe.skip("issue 13347", { tags: "@external" }, () => {
+describe("issue 13347", { tags: ["@external", "@skip"] }, () => {
   beforeEach(() => {
     cy.intercept("POST", "/api/dataset").as("dataset");
 
@@ -149,7 +149,7 @@ describe("postgres > user > query", { tags: "@external" }, () => {
   });
 });
 
-describe.skip("issue 17777", () => {
+describe("issue 17777", { tags: "@skip" }, () => {
   function hideTables(tables) {
     cy.request("PUT", "/api/table", {
       ids: tables,

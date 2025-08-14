@@ -675,7 +675,7 @@ describe("issue 21665", () => {
   });
 });
 
-describe.skip("issue 22527", () => {
+describe("issue 22527", { tags: "@skip" }, () => {
   const questionDetails = {
     native: {
       query:

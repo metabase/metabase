@@ -790,7 +790,7 @@ describe("issue 40064", () => {
   });
 });
 
-describe.skip("issue 10493", () => {
+describe("issue 10493", { tags: "@skip" }, () => {
   beforeEach(() => {
     H.restore();
     cy.intercept("POST", "/api/dataset").as("dataset");
@@ -2038,7 +2038,7 @@ describe("issue 41464", () => {
   });
 });
 
-describe.skip("issue 45359", () => {
+describe("issue 45359", { tags: "@skip" }, () => {
   beforeEach(() => {
     H.restore();
     cy.intercept("/app/fonts/Lato/lato-v16-latin-regular.woff2").as(
