@@ -107,15 +107,15 @@
 (defn- start-job! []
   (when (not (task/job-exists? job-key))
     (let [job     (jobs/build
-                (jobs/of-type TimeoutOldRuns)
-                (jobs/with-identity (jobs/key job-key)))
+                   (jobs/of-type TimeoutOldRuns)
+                   (jobs/with-identity (jobs/key job-key)))
           trigger (triggers/build
-                    (triggers/with-identity (triggers/key job-key))
-                    (triggers/start-now)
-                    (triggers/with-schedule
-                      (calendar-interval/schedule
-                       (calendar-interval/with-interval-in-minutes 10)
-                       (calendar-interval/with-misfire-handling-instruction-do-nothing))))]
+                   (triggers/with-identity (triggers/key job-key))
+                   (triggers/start-now)
+                   (triggers/with-schedule
+                    (calendar-interval/schedule
+                     (calendar-interval/with-interval-in-minutes 10)
+                     (calendar-interval/with-misfire-handling-instruction-do-nothing))))]
       (task/schedule-task! job trigger))))
 
 (defmethod task/init! ::TimeoutJob [_]

@@ -461,7 +461,7 @@
         ;; Associate tags with transforms
         (testing "Filter by tag1 and tag2 returns union (transforms with either tag)"
           (let [response               (mt/user-http-request :crowberto :get 200 "ee/transform/run"
-                                               :transform_tag_ids [(:id tag1) (:id tag2)])
+                                                             :transform_tag_ids [(:id tag1) (:id tag2)])
                 returned-transform-ids (set (map :transform_id (:data response)))]
             (assert-run-count response 3)
             (assert-transform-ids response #{(:id transform1) (:id transform2) (:id transform3)})
