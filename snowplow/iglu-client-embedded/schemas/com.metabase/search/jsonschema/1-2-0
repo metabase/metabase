@@ -5,7 +5,7 @@
     "vendor": "com.metabase",
     "name": "search",
     "format": "jsonschema",
-    "version": "1-1-0"
+    "version": "1-2-0"
   },
   "type": "object",
   "properties": {
@@ -150,6 +150,39 @@
         "boolean",
         "null"
       ]
+    },
+    "search_engine": {
+      "description": "The search engine used to perform the search",
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 1024
+    },
+    "request_id": {
+      "description": "The unique request ID for the search request",
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 1024
+    },
+    "offset": {
+      "description": "The offset of the search results (for pagination)",
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0,
+      "maximum": 2147483647
+    },
+    "entity_model": {
+      "description": "The model type of the clicked entity",
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 1024
     }
   },
   "required": [
