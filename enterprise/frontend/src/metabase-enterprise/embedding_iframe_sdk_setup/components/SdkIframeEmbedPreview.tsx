@@ -122,7 +122,7 @@ export const SdkIframeEmbedPreview = () => {
               : undefined,
           }),
         )
-        .exhaustive()}
+        .otherwise(() => null)}
     </Card>
   );
 };

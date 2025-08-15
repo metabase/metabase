@@ -2,16 +2,16 @@ import { useEffect, useMemo, useState } from "react";
 import { P, match } from "ts-pattern";
 import { t } from "ttag";
 
+import { SdkBreadcrumbs } from "embedding-sdk/components/private/SdkBreadcrumbs";
 import {
   CollectionBrowser,
   CreateDashboardModal,
   EditableDashboard,
   InteractiveDashboard,
   InteractiveQuestion,
-  type SdkCollectionId,
-} from "embedding-sdk";
-import { SdkBreadcrumbs } from "embedding-sdk/components/private/SdkBreadcrumbs";
+} from "embedding-sdk/components/public";
 import { useSdkBreadcrumbs } from "embedding-sdk/hooks/private/use-sdk-breadcrumb";
+import type { SdkCollectionId } from "embedding-sdk/types";
 import type { SdkBreadcrumbItemType } from "embedding-sdk/types/breadcrumb";
 import { Button, Group, Stack } from "metabase/ui";
 
@@ -58,66 +58,74 @@ export function ContentManager({ settings }: ViewContentProps) {
     }
   }, [currentLocation]);
 
-  return match(currentView)
+  const viewContent = match(currentView)
     .with({ type: "exploration" }, () => (
-      <Stack h="100%">
-        <SdkBreadcrumbs />
-
-        <InteractiveQuestion
-          questionId="new"
-          height="100%"
-          withDownloads
-          isSaveEnabled={!isReadOnly}
-          entityTypes={settings.dataPickerEntityTypes}
-          targetCollection={targetCollection.id}
-        />
-      </Stack>
+      <InteractiveQuestion
+        questionId="new"
+        height="100%"
+        withDownloads
+        isSaveEnabled={!isReadOnly}
+        entityTypes={settings.dataPickerEntityTypes}
+        targetCollection={targetCollection.id}
+      />
     ))
     .with({ type: "create-dashboard" }, () => (
-      <Stack h="100%">
-        <CreateDashboardModal
-          onCreate={(dashboard) =>
-            setCurrentView({ type: "dashboard", id: dashboard.id })
-          }
-          onClose={() =>
-            setCurrentView({ type: "collection", id: targetCollection.id })
-          }
-          initialCollectionId={targetCollection.id}
-        />
-      </Stack>
+      <CreateDashboardModal
+        onCreate={(dashboard) =>
+          setCurrentView({ type: "dashboard", id: dashboard.id })
+        }
+        onClose={() =>
+          setCurrentView({ type: "collection", id: targetCollection.id })
+        }
+        initialCollectionId={targetCollection.id}
+      />
     ))
-    .with({ type: "dashboard", id: P.nonNullable }, ({ id }) => (
-      <Stack h="100%">
-        <SdkBreadcrumbs />
-
-        {isReadOnly ? (
-          <InteractiveDashboard dashboardId={id} withDownloads />
-        ) : (
-          <EditableDashboard withCardTitle dashboardId={id} />
-        )}
-      </Stack>
-    ))
+    .with({ type: "dashboard", id: P.nonNullable }, ({ id }) => {
+      return isReadOnly ? (
+        <InteractiveDashboard dashboardId={id} withDownloads />
+      ) : (
+        <EditableDashboard withCardTitle dashboardId={id} />
+      );
+    })
     .with(
       { type: P.union("question", "metric", "model"), id: P.nonNullable },
       ({ id }) => (
-        <Stack h="100%">
-          <SdkBreadcrumbs />
-
-          <InteractiveQuestion
-            questionId={id}
-            height="100%"
-            withDownloads
-            isSaveEnabled={!isReadOnly}
-            targetCollection={targetCollection.id}
-          />
-        </Stack>
+        <InteractiveQuestion
+          questionId={id}
+          height="100%"
+          withDownloads
+          isSaveEnabled={!isReadOnly}
+          targetCollection={targetCollection.id}
+        />
       ),
     )
     .with({ type: "collection" }, (view) => (
-      <Stack px="lg" py="xl" maw="60rem" mx="auto">
-        <Group justify="space-between" align="center" gap="sm">
-          <SdkBreadcrumbs />
+      <CollectionBrowser
+        collectionId={view.id}
+        visibleColumns={settings.collectionVisibleColumns}
+        visibleEntityTypes={settings.collectionEntityTypes}
+        pageSize={settings.collectionPageSize}
+        onClick={(item) => {
+          const type = match<string, SdkBreadcrumbItemType>(item.model)
+            .with("card", () => "question")
+            .with("dataset", () => "model")
+            .otherwise((model) => model as SdkBreadcrumbItemType);
 
+          setCurrentView({ type, id: item.id });
+        }}
+      />
+    ))
+    .otherwise(() => null);
+
+  return (
+    <Stack px="lg" py="xl" maw="60rem" mx="auto">
+      {/* Fixes the height to avoid layout shift when hiding buttons */}
+      <Group justify="space-between" align="center" gap="sm" h="2.5rem">
+        <Group>
+          <SdkBreadcrumbs />
+        </Group>
+
+        {currentView.type === "collection" && (
           <Group>
             {(settings.withNewQuestion ?? true) && (
               <Button
@@ -137,22 +145,10 @@ export function ContentManager({ settings }: ViewContentProps) {
               </Button>
             )}
           </Group>
-        </Group>
+        )}
+      </Group>
 
-        <CollectionBrowser
-          collectionId={view.id}
-          visibleColumns={settings.collectionVisibleColumns}
-          visibleEntityTypes={settings.collectionEntityTypes}
-          pageSize={settings.collectionPageSize}
-          onClick={(item) => {
-            const type = match<string, SdkBreadcrumbItemType>(item.model)
-              .with("card", () => "question")
-              .with("dataset", () => "model")
-              .otherwise((model) => model as SdkBreadcrumbItemType);
-
-            setCurrentView({ type, id: item.id });
-          }}
-        />
-      </Stack>
-    ));
+      {viewContent}
+    </Stack>
+  );
 }

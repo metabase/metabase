@@ -487,6 +487,31 @@ const MetabaseQuestionElement = createCustomElement("metabase-question", [
   "entity-types",
 ]);
 
+const MetabaseViewContentElement = createCustomElement(
+  "metabase-view-content",
+  [
+    "initial-collection",
+    "collection-visible-columns",
+    "collection-page-size",
+    "collection-entity-types",
+    "data-picker-entity-types",
+    "with-new-question",
+  ],
+);
+
+const MetabaseCurateContentElement = createCustomElement(
+  "metabase-curate-content",
+  [
+    "initial-collection",
+    "collection-visible-columns",
+    "collection-page-size",
+    "collection-entity-types",
+    "data-picker-entity-types",
+    "with-new-question",
+    "with-new-dashboard",
+  ],
+);
+
 // Expose the old API that's still used in the tests, we'll probably remove this api unless customers prefer it
 if (typeof window !== "undefined") {
   (window as any)["metabase.embed"] = {
@@ -494,4 +519,9 @@ if (typeof window !== "undefined") {
   };
 }
 
-export { MetabaseDashboardElement, MetabaseQuestionElement };
+export {
+  MetabaseDashboardElement,
+  MetabaseQuestionElement,
+  MetabaseViewContentElement,
+  MetabaseCurateContentElement,
+};
