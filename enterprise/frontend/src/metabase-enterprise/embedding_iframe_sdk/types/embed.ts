@@ -1,4 +1,6 @@
 import type {
+  CollectionBrowserListColumns,
+  EmbeddingEntityType,
   EntityTypeFilterKeys,
   MetabaseTheme,
   SqlParameterValues,
@@ -85,24 +87,40 @@ export interface ExplorationEmbedOptions {
   questionId?: never;
 }
 
-export interface CurateContentEmbedOptions {
-  template: "curate-content";
+/** Shared properties between the content manager templates. */
+export interface ContentManagerCommonEmbedOptions {
   initialCollection: CollectionId;
 
-  entityTypes?: CollectionBrowserEntityTypes[];
+  /** Which collections to show on the collection browser */
+  collectionVisibleColumns?: CollectionBrowserListColumns[];
+
+  /** How many items to show per page in the collection browser */
+  collectionPageSize?: number;
+
+  /** Which entities to show on the collection browser */
+  collectionEntityTypes?: CollectionBrowserEntityTypes[];
+
+  /** Which entities to show on the question's data picker */
+  dataPickerEntityTypes?: EmbeddingEntityType[];
+
+  /** Whether to show the "New Exploration" button. Defaults to true. */
+  withNewQuestion?: boolean;
 
   questionId?: never;
   dashboardId?: never;
 }
 
-export interface ViewContentEmbedOptions {
-  template: "view-content";
-  initialCollection: CollectionId;
+export interface CurateContentEmbedOptions
+  extends ContentManagerCommonEmbedOptions {
+  componentName: "metabase-curate-content";
 
-  entityTypes?: CollectionBrowserEntityTypes[];
+  /** Whether to show the "New Dashboard" button. Defaults to true. */
+  withNewDashboard?: boolean;
+}
 
-  questionId?: never;
-  dashboardId?: never;
+export interface ViewContentEmbedOptions
+  extends ContentManagerCommonEmbedOptions {
+  componentName: "metabase-view-content";
 }
 
 type CollectionBrowserEntityTypes =
@@ -128,9 +146,9 @@ export type SdkIframeEmbedBaseSettings = {
 export type SdkIframeEmbedTemplateSettings =
   | DashboardEmbedOptions
   | QuestionEmbedOptions
-  | ExplorationEmbedOptions;
-// | CurateContentEmbedOptions
-// | ViewContentEmbedOptions;
+  | ExplorationEmbedOptions
+  | CurateContentEmbedOptions
+  | ViewContentEmbedOptions;
 
 /** Settings used by the sdk embed route */
 export type SdkIframeEmbedSettings = SdkIframeEmbedBaseSettings &
