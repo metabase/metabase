@@ -27,7 +27,8 @@ export const DatabaseReplicationSuccess = ({
           ta="center"
           style={{
             borderRadius: "100%",
-            // boxShadow: `0px 0px 0px 1px rgba(0, 0, 0, 0.05), 0px 1px 6px 0px rgba(0, 0, 0, 0.10)`,
+            // eslint-disable-next-line no-color-literals
+            boxShadow: `0 0 0 1px rgba(0, 0, 0, 0.05), 0 1px 6px 0 rgba(0, 0, 0, 0.10)`,
           }}
         >
           <Loader size="sm" ml={1} mt={1} />
