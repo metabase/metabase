@@ -260,3 +260,48 @@
                                  (->> (mt/query t)
                                       (mt/process-query)
                                       (mt/formatted-rows [int str])))))))))))))))))
+
+(deftest athena-region-bucket-routing-test
+  (mt/test-driver :athena
+    (mt/with-premium-features #{:database-routing}
+      (binding [tx/*use-routing-details* true]
+        (mt/dataset (mt/dataset-definition "db-routing-data"
+                                           [["t"
+                                             [{:field-name "f", :base-type :type/Text}]
+                                             [["routed-foo"]
+                                              ["routed-bar"]]]])
+          (let [routed (mt/db)]
+            (binding [tx/*use-routing-details* false]
+              (mt/dataset (mt/dataset-definition "db-routing-data"
+                                                 [["t"
+                                                   [{:field-name "f", :base-type :type/Text}]
+                                                   [["original-foo"]
+                                                    ["original-bar"]]]])
+                (let [router (mt/db)]
+                  (t2/update! :model/Database (u/the-id routed)
+                              {:details (assoc (:details routed)
+                                               :dbname nil
+                                               :s3_staging_dir (tx/db-test-env-var-or-throw :athena :s3-staging-dir-routing)
+                                               :region (tx/db-test-env-var-or-throw :athena :region-routing))})
+                  (t2/update! :model/Database (u/the-id router)
+                              {:details (assoc (:details router)
+                                               :dbname nil)})
+                  (let [router (t2/select-one :model/Database :id (u/the-id router))
+                        routed (t2/select-one :model/Database :id (u/the-id routed))]
+                    (sync/sync-database! router {:scan :schema})
+                    (sync/sync-database! routed {:scan :schema})
+                    (wire-routing {:parent router :children [routed]})
+                    (mt/with-temp [:model/DatabaseRouter _ {:database_id    (u/the-id router)
+                                                            :user_attribute "db_name"}]
+                      (met/with-user-attributes! :rasta {"db_name" (:name routed)}
+                        (mt/with-current-user (mt/user->id :crowberto)
+                          (is (= [[1 "original-foo"] [2 "original-bar"]]
+                                 (->> (mt/query t)
+                                      (mt/process-query)
+                                      (mt/formatted-rows [int str])))))
+                        (mt/with-current-user (mt/user->id :rasta)
+                          (is (= [[1 "routed-foo"] [2 "routed-bar"]]
+                                 (->> (mt/query t)
+                                      (mt/process-query)
+                                      (mt/formatted-rows [int str])))))))))))))))))
+
