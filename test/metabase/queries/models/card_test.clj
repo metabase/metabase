@@ -275,7 +275,7 @@
                (is (= (mt/derecordize metadata)
                       (mt/derecordize new-metadata)))))))
       (testing "Shouldn't barf if query can't be run (e.g. if query is a SQL query); set metadata to nil"
-        (f {:dataset_query (mt/native-query {:native "SELECT * FROM VENUES"})}
+        (f {:dataset_query (mt/native-query {:query "SELECT * FROM VENUES"})}
            (fn [metadata]
              (is (= nil
                     metadata)))))
