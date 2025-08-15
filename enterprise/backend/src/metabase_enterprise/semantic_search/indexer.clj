@@ -181,7 +181,9 @@
           ;; once no longer failing, clear any stall from index_metadata
           ;; this will cause the 'healthy' branch to be used again.
           (when (empty? failures)
-            (log/info "Indexer recovered")
+            (let [stalled-at (.toInstant ^Timestamp (:stalled-at @indexing-state))
+                  stall-duration (Duration/between stalled-at (.instant clock))]
+              (log/info "Indexer recovered from stall in" stall-duration))
             (clear-stall-if-needed))
 
           ;; we progress the watermark regardless of success when stalled
