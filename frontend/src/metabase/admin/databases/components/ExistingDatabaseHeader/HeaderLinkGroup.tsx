@@ -14,11 +14,10 @@ export const HeaderLinkGroup = ({ database }: Props) => {
   const isSyncing = isSyncInProgress(database);
 
   return (
-    <Flex gap="2.5rem">
+    <Flex gap="0.5rem">
       <Button
         component={Link}
         fw="bold"
-        p={0}
         to={`/admin/permissions/data/database/${database.id}`}
         variant="subtle"
       >
@@ -28,7 +27,6 @@ export const HeaderLinkGroup = ({ database }: Props) => {
         component={isSyncing ? undefined : Link}
         disabled={isSyncing}
         fw="bold"
-        p={0}
         rightSection={<Icon name="external" />}
         target="_blank"
         title={isSyncing ? t`Sync in progress` : undefined}
