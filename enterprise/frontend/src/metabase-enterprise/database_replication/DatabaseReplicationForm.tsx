@@ -146,8 +146,8 @@ export const DatabaseReplicationForm = ({
         : undefined;
 
   return (
-    <>
-      <Card radius="md" bg="bg-light" p="md" mb="md">
+    <Stack>
+      <Card radius="md" bg="bg-light" p="md" mt="xs">
         <Stack>
           <Group justify="space-between">
             <div>
@@ -288,6 +288,6 @@ export const DatabaseReplicationForm = ({
           </Form>
         )}
       </FormProvider>
-    </>
+    </Stack>
   );
 };
