@@ -4,6 +4,7 @@ import * as Yup from "yup";
 
 import ExternalLink from "metabase/common/components/ExternalLink";
 import { useStoreUrl } from "metabase/common/hooks";
+import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import {
   Form,
   FormProvider,
@@ -12,6 +13,7 @@ import {
   FormTextarea,
 } from "metabase/forms";
 import { colors } from "metabase/lib/colors";
+import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 import {
   Box,
   Card,
@@ -114,6 +116,10 @@ export const DatabaseReplicationForm = ({
   // FIXME: Can we get all values of the form at once?
   const [schemaSelect, setSchemaSelect] = useState(initialValues.schemaSelect);
   const [schemaFilters, setSchemaFilters] = useState("");
+  const debouncedSchemaFilters = useDebouncedValue(
+    schemaFilters,
+    SEARCH_DEBOUNCE_DURATION,
+  );
   const [showNoSyncTables, setShowNoSyncTables] = useState(false);
 
   const [previewResponseLoading, setPreviewResponseLoading] = useState(false);
@@ -122,14 +128,18 @@ export const DatabaseReplicationForm = ({
   useEffect(() => {
     setPreviewResponseLoading(true);
     preview(
-      { databaseId: database.id, schemaSelect, schemaFilters },
+      {
+        databaseId: database.id,
+        schemaSelect,
+        schemaFilters: debouncedSchemaFilters,
+      },
       (res) => {
         setPreviewResponse(res);
         setPreviewResponseLoading(false);
       },
       () => setPreviewResponseLoading(false),
     );
-  }, [preview, database.id, schemaFilters, schemaSelect]);
+  }, [preview, database.id, debouncedSchemaFilters, schemaSelect]);
 
   const noSyncTables: { name: string; schema: string }[] = [];
   unionInPlace(noSyncTables, previewResponse?.tablesWithoutPk);
