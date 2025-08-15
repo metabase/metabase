@@ -1,11 +1,10 @@
 import type { ReactNode } from "react";
 import { P, match } from "ts-pattern";
 
-import { MetabaseProvider } from "embedding-sdk/components/public/MetabaseProvider";
+import { ComponentProvider } from "embedding-sdk/components/public/ComponentProvider";
 import { SdkQuestion } from "embedding-sdk/components/public/SdkQuestion";
 import { StaticQuestion } from "embedding-sdk/components/public/StaticQuestion";
 import {
-  ComponentProvider,
   InteractiveDashboard,
   StaticDashboard,
 } from "embedding-sdk/components/public/dashboard";

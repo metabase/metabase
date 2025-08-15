@@ -1,8 +1,8 @@
 import type { CollectionBrowser } from "embedding-sdk/components/public/CollectionBrowser";
+import type { ComponentProvider } from "embedding-sdk/components/public/ComponentProvider";
 import type { CreateDashboardModal } from "embedding-sdk/components/public/CreateDashboardModal";
 import type { CreateQuestion } from "embedding-sdk/components/public/CreateQuestion";
 import type { InteractiveQuestion } from "embedding-sdk/components/public/InteractiveQuestion/InteractiveQuestion";
-import type { MetabaseProvider } from "embedding-sdk/components/public/MetabaseProvider";
 import type { MetabotQuestion } from "embedding-sdk/components/public/MetabotQuestion";
 import type { StaticQuestion } from "embedding-sdk/components/public/StaticQuestion/StaticQuestion";
 import type { EditableDashboard } from "embedding-sdk/components/public/dashboard/EditableDashboard";
@@ -30,7 +30,7 @@ export type MetabaseEmbeddingSdkBundleExports = {
   EditableDashboard: typeof EditableDashboard;
   InteractiveDashboard: typeof InteractiveDashboard;
   InteractiveQuestion: typeof InteractiveQuestion;
-  MetabaseProvider: typeof MetabaseProvider;
+  ComponentProvider: typeof ComponentProvider;
   MetabotQuestion: typeof MetabotQuestion;
   SdkDebugInfo: typeof SdkDebugInfo;
   StaticDashboard: typeof StaticDashboard;

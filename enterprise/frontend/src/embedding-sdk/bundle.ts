@@ -6,8 +6,14 @@ import { EMBEDDING_SDK_CONFIG } from "metabase/embedding-sdk/config";
 // This applies to SDK derivatives such as new iframe embedding.
 EMBEDDING_SDK_CONFIG.isEmbeddingSdk = true;
 
-// Import the embedding SDK side effects
-import "embedding-sdk/side-effect-imports";
+// Import the embedding SDK vendors side-effects
+import "metabase/embedding-sdk/vendors-side-effects";
+
+// Import the EE plugins required by the embedding sdk.
+import "sdk-ee-plugins";
+
+// Imports which are only applicable to the embedding sdk, and not the new iframe embedding.
+import "sdk-specific-imports";
 
 import type { MetabaseEmbeddingSdkBundleExports } from "./types/sdk-bundle";
 
@@ -16,7 +22,7 @@ import { CollectionBrowser } from "./components/public/CollectionBrowser";
 import { CreateDashboardModal } from "./components/public/CreateDashboardModal";
 import { CreateQuestion } from "./components/public/CreateQuestion";
 import { InteractiveQuestion } from "./components/public/InteractiveQuestion";
-import { MetabaseProvider } from "./components/public/MetabaseProvider";
+import { ComponentProvider } from "./components/public/ComponentProvider";
 import { MetabotQuestion } from "./components/public/MetabotQuestion";
 import { StaticQuestion } from "./components/public/StaticQuestion";
 import {
@@ -48,7 +54,7 @@ const sdkBundleExports: MetabaseEmbeddingSdkBundleExports = {
   EditableDashboard: EditableDashboard,
   InteractiveDashboard: InteractiveDashboard,
   InteractiveQuestion: InteractiveQuestion,
-  MetabaseProvider: MetabaseProvider,
+  ComponentProvider: ComponentProvider,
   MetabotQuestion: MetabotQuestion,
   SdkDebugInfo: SdkDebugInfo,
   StaticDashboard: StaticDashboard,
