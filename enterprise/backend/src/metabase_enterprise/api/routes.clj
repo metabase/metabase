@@ -26,6 +26,7 @@
    [metabase-enterprise.permission-debug.api]
    [metabase-enterprise.sandbox.api.routes]
    [metabase-enterprise.scim.routes]
+   [metabase-enterprise.semantic-search.api]
    [metabase-enterprise.serialization.api]
    [metabase-enterprise.stale.api]
    [metabase-enterprise.upload-management.api]
@@ -50,6 +51,7 @@
    :llm-autodescription        (deferred-tru "LLM Auto-description")
    :metabot-v3                 (deferred-tru "MetaBot")
    :scim                       (deferred-tru "SCIM configuration")
+   :semantic-search            (deferred-tru "Semantic Search")
    :serialization              (deferred-tru "Serialization")
    :table-data-editing         (deferred-tru "Table Data Editing")
    :upload-management          (deferred-tru "Upload Management")
@@ -99,6 +101,7 @@
    "/metabot-v3"                   (premium-handler metabase-enterprise.metabot-v3.api/routes :metabot-v3)
    "/permission_debug"             (premium-handler metabase-enterprise.permission-debug.api/routes :advanced-permissions)
    "/scim"                         (premium-handler metabase-enterprise.scim.routes/routes :scim)
+   "/semantic-search"              (premium-handler metabase-enterprise.semantic-search.api/routes :semantic-search)
    "/serialization"                (premium-handler metabase-enterprise.serialization.api/routes :serialization)
    "/stale"                        (premium-handler metabase-enterprise.stale.api/routes :collection-cleanup)
    "/upload-management"            (premium-handler metabase-enterprise.upload-management.api/routes :upload-management)})

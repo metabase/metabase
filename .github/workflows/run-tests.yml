@@ -74,6 +74,13 @@ jobs:
     with:
       skip: ${{ needs.files-changed.outputs.backend_all != 'true' && needs.static-viz-files-changed.outputs.static_viz != 'true' }}
 
+  semantic-search-tests:
+    needs: files-changed
+    uses: ./.github/workflows/semantic-search.yml
+    secrets: inherit
+    with:
+      skip: ${{ needs.files-changed.outputs.backend_all != 'true' }}
+
   app-db-tests:
     needs: files-changed
     uses: ./.github/workflows/app-db.yml
