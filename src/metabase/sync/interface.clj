@@ -10,6 +10,9 @@
   [:map {:closed true}
    [:name                                     ::lib.schema.common/non-blank-string]
    [:schema                                   [:maybe ::lib.schema.common/non-blank-string]]
+   ;; true if the current connection can make insert, update and delete operations. Only works for drivers that support
+   ;; :table-privileges feature
+   [:is_writable             {:optional true} [:maybe :boolean]]
    ;; for databases that store an estimated row count in system tables (e.g: postgres)
    [:estimated_row_count     {:optional true} [:maybe :int]]
    ;; for databases that support forcing query to include a filter (e.g: partitioned table on bigquery)
