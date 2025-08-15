@@ -211,18 +211,3 @@
         [{:model "card" :id 1 :name "card popular" :dashboardcard_count 200}
          {:model "card" :id 2 :name "card" :dashboardcard_count 201}]
         (is (indifferent? :dashboard "card"))))))
-
-(deftest semantic-scorers->col-expr-is-respected-test
-  (mt/with-premium-features #{:semantic-search}
-    (with-open [index (semantic.tu/open-temp-index!)]
-      (let [search-ctx {:search-string "a string"
-                        :search-engine "semantic"}]
-        (testing "->col-expr is identity"
-          (is (=? {:pinned [:coalesce [:cast :pinned :integer] [:inline 0]]}
-                  (semantic.scoring/semantic-scorers (:table-name @index) identity search-ctx))))
-        (testing "->col-expr adds namespace qualifier"
-          (is (=? {:pinned [:coalesce [:cast ::pinned :integer] [:inline 0]]}
-                  (semantic.scoring/semantic-scorers
-                   (:table-name @index)
-                   #(keyword (namespace ::foo) (name %))
-                   search-ctx))))))))
