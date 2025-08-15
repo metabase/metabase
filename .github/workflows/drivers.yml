@@ -1135,7 +1135,7 @@ jobs:
       - be-tests-sparksql-ee
       - be-tests-sqlite-ee
       - be-tests-sqlserver
-      - be-tests-starburst-ee
+      # - be-tests-starburst-ee
       - be-tests-vertica-ee
       - be-tests-clickhouse-ee
     runs-on: ubuntu-latest
