@@ -31,7 +31,7 @@ export const DatabaseReplicationSuccess = ({
             boxShadow: `0 0 0 1px rgba(0, 0, 0, 0.05), 0 1px 6px 0 rgba(0, 0, 0, 0.10)`,
           }}
         >
-          <Loader size="sm" ml={1} mt={1} />
+          <Loader size="xs" ml={1} mt={1} />
         </Flex>
       </Box>
 
