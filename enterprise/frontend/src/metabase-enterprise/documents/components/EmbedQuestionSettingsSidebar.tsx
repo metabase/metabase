@@ -25,8 +25,8 @@ import {
   updateVisualizationType,
   updateVizSettings,
 } from "../documents.slice";
-import { useCardWithDataset } from "../hooks/useCardWithDataset";
-import { useDraftCardOperations } from "../hooks/useDraftCardOperations";
+import { useCardWithDataset } from "../hooks/use-card-with-dataset";
+import { useDraftCardOperations } from "../hooks/use-draft-card-operations";
 import { getSelectedEmbedIndex } from "../selectors";
 import { useVisualizationOptions } from "../utils/visualizationUtils";
 

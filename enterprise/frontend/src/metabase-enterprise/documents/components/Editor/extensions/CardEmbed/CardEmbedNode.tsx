@@ -26,7 +26,7 @@ import {
   openVizSettingsSidebar,
   setShowNavigateBackToDocumentButton,
 } from "../../../../documents.slice";
-import { useCardEmbedData } from "../../../../hooks/useCardEmbedData";
+import { useCardEmbedData } from "../../../../hooks/use-card-embed-data";
 import { EDITOR_STYLE_BOUNDARY_CLASS } from "../../constants";
 
 import styles from "./CardEmbedNode.module.css";

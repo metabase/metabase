@@ -55,7 +55,8 @@ import {
   resetDocuments,
   setCurrentDocument,
 } from "../documents.slice";
-import { useDocumentState, useRegisterDocumentMetabotContext } from "../hooks";
+import { useDocumentState } from "../hooks/use-document-state";
+import { useRegisterDocumentMetabotContext } from "../hooks/use-register-document-metabot-context";
 import {
   getDraftCards,
   getSelectedEmbedIndex,
