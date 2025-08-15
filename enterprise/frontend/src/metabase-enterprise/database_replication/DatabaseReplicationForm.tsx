@@ -9,7 +9,7 @@ import {
   FormProvider,
   FormSelect,
   FormSubmitButton,
-  FormTextInput,
+  FormTextarea,
 } from "metabase/forms";
 import { colors } from "metabase/lib/colors";
 import {
@@ -220,15 +220,15 @@ export const DatabaseReplicationForm = ({
               />
 
               {values.schemaSelect !== "all" && (
-                <>
-                  <Text c="text-light">{t`Comma separated names of schemas that should ${values.schemaSelect === "exclude" ? "NOT " : ""}be replicated`}</Text>
-                  <FormTextInput
-                    name="schemaFilters"
-                    placeholder="e.g. public, auth"
-                    onBlur={({ target: { value } }) => setSchemaFilters(value)}
-                    {...styles}
-                  />
-                </>
+                <FormTextarea
+                  name="schemaFilters"
+                  label={t`Comma separated names of schemas that should ${values.schemaSelect === "exclude" ? "NOT " : ""}be replicated`}
+                  placeholder="e.g. public, auth"
+                  maxRows={5}
+                  minRows={2}
+                  onBlur={({ target: { value } }) => setSchemaFilters(value)}
+                  // {...styles}
+                />
               )}
 
               {noSyncTables.length > 0 && (
