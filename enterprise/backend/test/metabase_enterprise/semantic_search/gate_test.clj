@@ -250,7 +250,7 @@
                                          :document_hash "foo"
                                          :gated_at      (ts "2025-01-01T11:00:00Z")}}
           poll-result       {:poll-time         (ts "2025-01-01T13:00:00Z")
-                             :update-candidates [{:id "card_123" :documen_hash "foo" :gated_at (ts "2025-01-01T12:30:00Z")}
+                             :update-candidates [{:id "card_123" :document_hash "foo" :gated_at (ts "2025-01-01T12:30:00Z")}
                                                  {:id "dashboard_456" :document_hash nil :gated_at (ts "2025-01-01T12:45:00Z")}]}
           next-watermark    (semantic.gate/next-watermark initial-watermark poll-result)]
 
