@@ -1,13 +1,14 @@
 import type { ReactNode } from "react";
 import { P, match } from "ts-pattern";
 
+import { MetabaseProvider } from "embedding-sdk/components/public/MetabaseProvider";
+import { SdkQuestion } from "embedding-sdk/components/public/SdkQuestion";
+import { StaticQuestion } from "embedding-sdk/components/public/StaticQuestion";
 import {
   ComponentProvider,
   InteractiveDashboard,
   StaticDashboard,
-  StaticQuestion,
-} from "embedding-sdk/bundle";
-import { SdkQuestion } from "embedding-sdk/components/public/SdkQuestion";
+} from "embedding-sdk/components/public/dashboard";
 import { defineMetabaseAuthConfig } from "embedding-sdk/sdk-package/lib/public/define-metabase-auth-config";
 import { EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG } from "metabase/embedding-sdk/config";
 import { PLUGIN_EMBEDDING_IFRAME_SDK } from "metabase/plugins";
