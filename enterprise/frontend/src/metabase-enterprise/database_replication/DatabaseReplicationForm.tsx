@@ -243,7 +243,7 @@ export const DatabaseReplicationForm = ({
                   >
                     <Icon name="info_outline" size={16} maw={16} mt={1} />
                     <Box>
-                      <Text fz="md" lh={1.25}>
+                      <Text fz="md" lh={1.35}>
                         {t`Tables without primary key or with owner mismatch`}{" "}
                         <b>{t`will not be replicated`}</b>.
                       </Text>
@@ -289,19 +289,19 @@ export const DatabaseReplicationForm = ({
                           {noSyncTables.map((table) => (
                             <List.Item
                               key={`${table.schema}.${table.name}`}
-                              c="text-medium"
-                              ff="Monaco, 'Lucida Console', monospace"
+                              // c="text-medium"
+                              // ff="Monaco, 'Lucida Console', monospace"
                               fz="md"
                             >
-                              <Box component="span" c="text-dark" fw="500">
+                              <Text span c="text-dark" fw="500">
                                 {table.schema}
-                              </Box>
-                              <Box component="span" c="text-medium">
+                              </Text>
+                              <Text span c="text-medium">
                                 .{table.name}
-                              </Box>{" "}
-                              <Box component="span" c="text-light">
+                              </Text>{" "}
+                              <Text span c="text-light">
                                 {noSyncReason(table)}
-                              </Box>
+                              </Text>
                             </List.Item>
                           ))}
                         </List>

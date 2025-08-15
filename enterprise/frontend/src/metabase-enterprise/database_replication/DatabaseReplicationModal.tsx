@@ -98,6 +98,7 @@ export const DatabaseReplicationModal = ({
       size="36rem"
       padding="2.5rem"
       title={isProgressStep ? undefined : t`Set up database replication`}
+      mah="80%"
     >
       {setupStep === "form" ? (
         <DatabaseReplicationForm
