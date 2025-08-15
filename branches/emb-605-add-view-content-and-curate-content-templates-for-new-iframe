@@ -2,5 +2,16 @@
   "base": {
     "name": "emb-624-add-top-level-breadcrumb-navigation-for-embed-js",
     "hash": "efc4f1c66b1cf187e358aea3f394714e3a6e42aa"
+  },
+  "upstream": {
+    "branch": "emb-605-add-view-content-and-curate-content-templates-for-new-iframe"
+  },
+  "change": {
+    "github": {
+      "pr": {
+        "number": 60828,
+        "gqlID": "PR_kwDOAczgH86edhRn"
+      }
+    }
   }
 }
