@@ -95,8 +95,6 @@
    [:id              {:optional true} [:maybe [:int {:min 1}]]]
    [:name            [:ref ::workspace.name]]
    [:slug            {:optional true} [:maybe [:string {:min 1}]]]
-   [:collection_id   {:optional true} [:maybe [:int {:min 1}]]]
-   [:name            [:string {:min 1}]]
    [:description     {:optional true} [:ref ::workspace.description]]
    [:created_at      [:schema
                       {:description "The date and time the workspace was created"}
@@ -110,7 +108,6 @@
    [:documents       [:sequential ::document]]
    [:users           [:sequential ::user]]
    [:data_warehouses [:map-of {:description "data warehouse id -> isolation info"} :int :map]]
-   [:documents       [:sequential ::document]]
    [:collection_id   pos-int?]
    [:api_key_id      pos-int?]
    [:attributes      {:optional true} [:maybe [:map-of :string :any]]]])

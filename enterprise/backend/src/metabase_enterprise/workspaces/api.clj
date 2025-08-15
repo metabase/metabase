@@ -91,7 +91,7 @@
             (update :steps #(mapv (fn [s] (update s :type keyword)) %)))))
 
 (defn- init-and-run-workspace! [plan]
-  (let [{:keys [workspace]} (w.common/create-workspace! "name" "description")]
+  (let [workspace (w.common/create-workspace! api/*current-user-id* (str (gensym "workspace")) "description")]
     (when-not (mr/validate ::m.workspace/plan plan)
       (log/info "Invalid plan data!"))
     (let [_ (w.common/init-workspace workspace plan)
