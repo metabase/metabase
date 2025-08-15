@@ -792,6 +792,33 @@ describe("scenarios > admin > transforms > jobs", () => {
       getJobListPage().findByText("New job").should("not.exist");
     });
   });
+
+  describe("default jobs and tags", () => {
+    it("should pre-create default jobs and tags", () => {
+      const jobNames = ["Hourly job", "Daily job", "Weekly job", "Monthly job"];
+      const tagNames = ["hourly", "daily", "weekly", "monthly"];
+
+      cy.log("make sure that default jobs are created");
+      visitJobListPage();
+      getContentTable().within(() => {
+        jobNames.forEach((jobName) =>
+          cy.findByText(jobName).should("be.visible"),
+        );
+        tagNames.forEach((tagName) =>
+          cy.findByText(tagName).should("be.visible"),
+        );
+      });
+
+      cy.log("make sure that default tags are available for selection");
+      getJobListPage().findByRole("link", { name: "Create a job" }).click();
+      getTagsInput().click();
+      H.popover().within(() => {
+        tagNames.forEach((tagName) =>
+          cy.findByText(tagName).should("be.visible"),
+        );
+      });
+    });
+  });
 });
 
 describe("scenarios > admin > transforms > runs", () => {
