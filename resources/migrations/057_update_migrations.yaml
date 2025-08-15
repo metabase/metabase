@@ -367,7 +367,6 @@ databaseChangeLog:
                   remarks: The name of the transform tag.
                   constraints:
                     nullable: false
-                    unique: true
               - column:
                   name: entity_id
                   type: char(21)
@@ -507,25 +506,9 @@ databaseChangeLog:
                   remarks: The relative UI ordering of this tag on the transform
                   constraints:
                     nullable: false
-
-  - changeSet:
-      id: v57.2025-08-07T10:02:01
-      author: galdre
-      comment: Add unique constraints on transform_transform_tag(transform_id, tag_id). Deleting foreign keys needed for mysql.
-      changes:
         - addUniqueConstraint:
             tableName: transform_transform_tag
             columnNames: transform_id, tag_id
-            constraintName: unique_transform_tag
-      rollback:
-        - dropForeignKeyConstraint:
-            baseTableName: transform_transform_tag
-            constraintName: fk_transform_transform_tag_transform_id
-        - dropForeignKeyConstraint:
-            baseTableName: transform_transform_tag
-            constraintName: fk_transform_transform_tag_tag_id
-        - dropUniqueConstraint:
-            tableName: transform_transform_tag
             constraintName: unique_transform_tag
 
   - changeSet:
@@ -578,40 +561,10 @@ databaseChangeLog:
                   remarks: The ordering position of this tag for the job.
                   constraints:
                     nullable: false
-
-  - changeSet:
-      id: v57.2025-08-07T10:03:01
-      author: galdre
-      comment: Add unique constraint on transform_job_transform_tag(job_id, tag_id). Mysql needs the foreign keys dropped on rollback.
-      changes:
         - addUniqueConstraint:
             tableName: transform_job_transform_tag
             columnNames: job_id, tag_id
             constraintName: unique_job_tag
-      rollback:
-        - dropForeignKeyConstraint:
-            baseTableName: transform_job_transform_tag
-            constraintName: fk_transform_job_transform_tag_job_id
-        - dropForeignKeyConstraint:
-            baseTableName: transform_job_transform_tag
-            constraintName: fk_transform_job_transform_tag_tag_id
-        - dropUniqueConstraint:
-            tableName: transform_job_transform_tag
-            constraintName: unique_job_tag
-        - addForeignKeyConstraint:
-            constraintName: fk_transform_job_transform_tag_tag_id
-            baseTableName: transform_job_transform_tag
-            baseColumnNames: tag_id
-            referencedTableName: transform_tag
-            referencedColumnNames: id
-            onDelete: CASCADE
-        - addForeignKeyConstraint:
-            constraintName: fk_transform_job_transform_tag_job_id
-            baseTableName: transform_job_transform_tag
-            baseColumnNames: job_id
-            referencedTableName: transform_job
-            referencedColumnNames: id
-            onDelete: CASCADE
 
   - changeSet:
       id: v57.2025-08-08T00:00:00
