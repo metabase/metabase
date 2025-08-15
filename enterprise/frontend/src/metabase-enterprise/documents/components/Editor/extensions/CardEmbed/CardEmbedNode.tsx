@@ -26,7 +26,7 @@ import {
   openVizSettingsSidebar,
   setShowNavigateBackToDocumentButton,
 } from "../../../../documents.slice";
-import { useCardEmbedData } from "../../../../hooks/use-card-embed-data";
+import { useCardData } from "../../../../hooks/use-card-data";
 import { EDITOR_STYLE_BOUNDARY_CLASS } from "../../constants";
 
 import styles from "./CardEmbedNode.module.css";
@@ -141,14 +141,7 @@ export const CardEmbedComponent = memo(
       });
     }
 
-    // Use the custom hook for all data fetching
-    const {
-      card: cardToUse,
-      dataset,
-      isLoading,
-      rawSeries,
-      error,
-    } = useCardEmbedData({ id });
+    const { card, dataset, isLoading, series, error } = useCardData({ id });
 
     const metadata = useSelector(getMetadata);
     const datasetError = dataset && getDatasetError(dataset);
@@ -158,8 +151,8 @@ export const CardEmbedComponent = memo(
     const [isModifyModalOpen, setIsModifyModalOpen] = useState(false);
     const [isReplaceModalOpen, setIsReplaceModalOpen] = useState(false);
 
-    const displayName = name || cardToUse?.name;
-    const isNativeQuestion = cardToUse?.dataset_query?.type === "native";
+    const displayName = name || card?.name;
+    const isNativeQuestion = card?.dataset_query?.type === "native";
 
     useEffect(() => {
       if (isEditingTitle && titleInputRef.current) {
@@ -170,7 +163,7 @@ export const CardEmbedComponent = memo(
 
     const handleTitleSave = () => {
       const trimmedTitle = editedTitle.trim();
-      if (trimmedTitle && trimmedTitle !== cardToUse?.name) {
+      if (trimmedTitle && trimmedTitle !== card?.name) {
         updateAttributes({ name: trimmedTitle });
       } else {
         updateAttributes({ name: null });
@@ -191,10 +184,10 @@ export const CardEmbedComponent = memo(
 
     // Load metadata for the card
     useEffect(() => {
-      if (cardToUse) {
-        dispatch(loadMetadataForDocumentCard(cardToUse));
+      if (card) {
+        dispatch(loadMetadataForDocumentCard(card));
       }
-    }, [cardToUse, dispatch]);
+    }, [card, dispatch]);
 
     const handleEditVisualizationSettings = () => {
       if (embedIndex !== -1) {
@@ -203,12 +196,12 @@ export const CardEmbedComponent = memo(
     };
 
     const handleTitleClick = () => {
-      if (cardToUse && metadata) {
+      if (card && metadata) {
         try {
           dispatch(setShowNavigateBackToDocumentButton(true));
-          const isDraftCard = cardToUse.id < 0;
+          const isDraftCard = card.id < 0;
           const question = new Question(
-            isDraftCard ? { ...cardToUse, id: null } : cardToUse,
+            isDraftCard ? { ...card, id: null } : card,
             metadata,
           );
           const url = getUrl(question, { includeDisplayIsLocked: true });
@@ -270,7 +263,7 @@ export const CardEmbedComponent = memo(
       [dispatch, metadata],
     );
 
-    if (isLoading && !cardToUse) {
+    if (isLoading && !card) {
       return (
         <NodeViewWrapper className={styles.embedWrapper}>
           <Box
@@ -319,7 +312,7 @@ export const CardEmbedComponent = memo(
             [styles.selected]: selected,
           })}
         >
-          {cardToUse && (
+          {card && (
             <Box className={styles.questionHeader}>
               <Flex align="center" justify="space-between" gap="0.5rem">
                 {isEditingTitle ? (
@@ -429,11 +422,11 @@ export const CardEmbedComponent = memo(
               </Flex>
             </Box>
           )}
-          {rawSeries ? (
+          {series ? (
             <>
               <Box className={styles.questionResults}>
                 <Visualization
-                  rawSeries={rawSeries}
+                  rawSeries={series}
                   metadata={metadata}
                   onChangeCardAndRun={handleChangeCardAndRun}
                   getExtraDataForClick={() => ({})}
@@ -449,16 +442,16 @@ export const CardEmbedComponent = memo(
           ) : (
             <Box className={styles.questionResults}>
               <ChartSkeleton
-                display={(cardToUse?.display as CardDisplayType) || "table"}
+                display={(card?.display as CardDisplayType) || "table"}
               />
             </Box>
           )}
         </Box>
         {isModifyModalOpen &&
-          cardToUse &&
+          card &&
           (isNativeQuestion ? (
             <NativeQueryModal
-              card={cardToUse}
+              card={card}
               isOpen={isModifyModalOpen}
               onClose={() => setIsModifyModalOpen(false)}
               initialDataset={dataset}
@@ -472,7 +465,7 @@ export const CardEmbedComponent = memo(
             />
           ) : (
             <ModifyQuestionModal
-              card={cardToUse}
+              card={card}
               isOpen={isModifyModalOpen}
               onClose={() => setIsModifyModalOpen(false)}
               onSave={(result) => {

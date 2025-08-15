@@ -25,7 +25,7 @@ import {
   updateVisualizationType,
   updateVizSettings,
 } from "../documents.slice";
-import { useCardWithDataset } from "../hooks/use-card-with-dataset";
+import { useCardData } from "../hooks/use-card-data";
 import { useDraftCardOperations } from "../hooks/use-draft-card-operations";
 import { getSelectedEmbedIndex } from "../selectors";
 import { useVisualizationOptions } from "../utils/visualizationUtils";
@@ -45,19 +45,17 @@ export const EmbedQuestionSettingsSidebar = ({
   const selectedEmbedIndex = useSelector(getSelectedEmbedIndex);
 
   const {
-    cardWithDraft,
+    card,
     dataset,
-    isResultsLoading,
+    isLoading,
     series,
     question,
-    isCardLoading,
     draftCard,
-    card,
     regularDataset,
-  } = useCardWithDataset(cardId);
+  } = useCardData({ id: cardId });
 
   const { sensibleItems, nonsensibleItems, selectedElem } =
-    useVisualizationOptions(dataset, cardWithDraft?.display as CardDisplayType);
+    useVisualizationOptions(dataset, card?.display as CardDisplayType);
 
   const { ensureDraftCard } = useDraftCardOperations(
     draftCard,
@@ -70,7 +68,6 @@ export const EmbedQuestionSettingsSidebar = ({
 
   const handleSettingsChange = (settings: VisualizationSettings) => {
     if (selectedEmbedIndex !== null) {
-      // When no draft exists, create one with the current settings change
       if (!draftCard) {
         const baseCard = card;
         const newSettings = {
@@ -103,7 +100,7 @@ export const EmbedQuestionSettingsSidebar = ({
     dispatch(closeSidebar());
   }, [dispatch]);
 
-  if (isCardLoading || isResultsLoading || !series) {
+  if (isLoading || !series) {
     return (
       <Stack gap="lg" p="lg" className={S.loadingContainer}>
         <Box className={S.loadingContent}>
@@ -114,7 +111,7 @@ export const EmbedQuestionSettingsSidebar = ({
     );
   }
 
-  if (!cardWithDraft || !series) {
+  if (!card || !series) {
     return (
       <Stack gap="lg" p="lg" className={S.errorContainer}>
         <Box className={S.errorContent}>
@@ -194,7 +191,7 @@ export const EmbedQuestionSettingsSidebar = ({
           question={question}
           series={series}
           onChange={handleSettingsChange}
-          computedSettings={cardWithDraft.visualization_settings ?? {}}
+          computedSettings={card.visualization_settings ?? {}}
         />
       </Box>
       <Box className={S.footer}>
