@@ -1,28 +1,22 @@
 import type { Editor } from "@tiptap/react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { c, t } from "ttag";
-import _ from "underscore";
 
 import EmptyCodeResult from "assets/img/empty-states/code.svg";
-import { skipToken } from "metabase/api";
 import { datasetApi } from "metabase/api/dataset";
 import { ErrorMessage } from "metabase/common/components/ErrorMessage";
 import { isMac } from "metabase/lib/browser";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import NativeQueryEditor from "metabase/query_builder/components/NativeQueryEditor";
 import DataReference from "metabase/query_builder/components/dataref/DataReference";
+import { createRawSeries } from "metabase/query_builder/utils";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Box, Button, Flex, Loader, Modal, Stack, Text } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
 import NoResultsView from "metabase/visualizations/components/Visualization/NoResultsView/NoResultsView";
 import Question from "metabase-lib/v1/Question";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
-import type {
-  Card,
-  DatabaseId,
-  Dataset,
-  DatasetQuery,
-} from "metabase-types/api";
+import type { Card, DatabaseId, Dataset, RawSeries } from "metabase-types/api";
 
 import {
   createDraftCard,
@@ -74,9 +68,14 @@ const hasEmptyResults = (dataset: Dataset | null | undefined): boolean => {
   );
 };
 
-const getErrorMessage = (sqlError: any, queryError: unknown): string => {
-  if (sqlError?.error) {
-    return sqlError.error;
+const getErrorMessage = (
+  failedDataset: Dataset | null | undefined,
+  queryError: unknown,
+): string => {
+  if (failedDataset?.error) {
+    return typeof failedDataset.error === "string"
+      ? failedDataset.error
+      : failedDataset.error?.data || t`Query execution failed`;
   }
   if (typeof queryError === "object" && queryError && "message" in queryError) {
     return String(queryError.message);
@@ -127,7 +126,6 @@ export const NativeQueryModal = ({
   const [modifiedQuestion, setModifiedQuestion] = useState<Question | null>(
     null,
   );
-  const [currentQuery, setCurrentQuery] = useState<DatasetQuery | null>(null);
   const [hasExecutedQuery, setHasExecutedQuery] = useState(false);
   const [isShowingTemplateTagsEditor, setIsShowingTemplateTagsEditor] =
     useState(false);
@@ -136,27 +134,27 @@ export const NativeQueryModal = ({
     DataReferenceStackItem[]
   >([]);
 
-  const {
-    data: queryResult,
-    isLoading: isQueryRunning,
-    error: queryError,
-    refetch: refetchQuery,
-  } = datasetApi.useGetAdhocQueryQuery(currentQuery || skipToken, {
-    skip: !currentQuery,
-  });
+  const [
+    triggerQuery,
+    { data: queryResult, isLoading, isFetching, error: queryError },
+  ] = datasetApi.useLazyGetAdhocQueryQuery();
+
+  const [currentQueryPromise, setCurrentQueryPromise] = useState<ReturnType<
+    typeof triggerQuery
+  > | null>(null);
+
+  const isQueryRunning = isLoading || isFetching;
 
   const datasetToUse =
     queryResult || (!hasExecutedQuery ? initialDataset : null);
-  const sqlError = isFailedDataset(datasetToUse) ? datasetToUse : null;
+  const failedDataset = isFailedDataset(datasetToUse) ? datasetToUse : null;
 
-  // Load metadata for card
   useEffect(() => {
     if (isOpen && card) {
       dispatch(loadMetadataForDocumentCard(card));
     }
   }, [isOpen, card, dispatch]);
 
-  // Question initialization
   const question = useMemo(() => {
     if (!card || !metadata || !isOpen) {
       return null;
@@ -169,143 +167,97 @@ export const NativeQueryModal = ({
     return baseQuestion;
   }, [card, metadata, isOpen, modifiedQuestion]);
 
-  // Reset query execution state when modal opens
   useEffect(() => {
     if (isOpen) {
-      setCurrentQuery(null);
       setHasExecutedQuery(false);
+    } else {
+      // Clean up any running queries when modal closes
+      if (currentQueryPromise) {
+        currentQueryPromise.abort();
+        setCurrentQueryPromise(null);
+      }
     }
-  }, [isOpen]);
+  }, [isOpen, currentQueryPromise]);
 
-  // Dataset query handler following QB patterns
   const setDatasetQuery = useCallback(
-    async (query: NativeQuery | DatasetQuery) => {
+    async (query: NativeQuery) => {
       if (!modifiedQuestion) {
         return modifiedQuestion;
       }
 
-      try {
-        let datasetQuery: DatasetQuery;
-        const isNativeQueryObject =
-          "queryText" in query && typeof query.queryText === "function";
-        if (isNativeQueryObject) {
-          // Handle NativeQuery object
-          const nativeQuery = query as NativeQuery;
-          datasetQuery = {
-            type: "native",
-            native: {
-              query: nativeQuery.queryText() || "",
-              "template-tags": nativeQuery.templateTagsMap() || {},
-            },
-            database: modifiedQuestion.databaseId(),
-          } as DatasetQuery;
-        } else {
-          // Handle dataset_query object (including database changes)
-          datasetQuery = query as DatasetQuery;
-        }
-
-        const newQuestion = modifiedQuestion.setDatasetQuery(datasetQuery);
-        setModifiedQuestion(newQuestion);
-        return newQuestion;
-      } catch (error) {
-        console.error("Failed to update dataset query:", error);
-        return modifiedQuestion;
-      }
+      const datasetQuery = query.datasetQuery();
+      const newQuestion = modifiedQuestion.setDatasetQuery(datasetQuery);
+      setModifiedQuestion(newQuestion);
+      return newQuestion;
     },
     [modifiedQuestion],
   );
 
-  // Query execution handler
   const handleRunQuery = useCallback(() => {
     if (!modifiedQuestion) {
       return;
     }
 
     const datasetQuery = modifiedQuestion.datasetQuery();
-
-    // Check if query has changed from what we currently have
-    const queryChanged = !currentQuery || _.isEqual(currentQuery, datasetQuery);
-
-    if (queryChanged) {
-      // Query changed, set new query which will trigger RTK Query
-      setCurrentQuery(datasetQuery);
-    } else {
-      // Same query, use refetch for proper loading state
-      refetchQuery();
-    }
-
+    const queryPromise = triggerQuery(datasetQuery);
+    setCurrentQueryPromise(queryPromise);
     setHasExecutedQuery(true);
-  }, [modifiedQuestion, currentQuery, refetchQuery]);
+  }, [modifiedQuestion, triggerQuery]);
 
-  // Save handler
-  const handleSave = async () => {
+  const handleCancelQuery = useCallback(() => {
+    if (currentQueryPromise) {
+      currentQueryPromise.abort();
+      setCurrentQueryPromise(null);
+    }
+  }, [currentQueryPromise]);
+
+  const handleSave = useCallback(() => {
     if (!modifiedQuestion || !editor) {
       return;
     }
 
-    try {
-      const modifiedData = {
-        dataset_query: modifiedQuestion.datasetQuery(),
-        display: modifiedQuestion.display(),
-        visualization_settings:
-          modifiedQuestion.card().visualization_settings ?? {},
-      };
+    const modifiedData = {
+      dataset_query: modifiedQuestion.datasetQuery(),
+      display: modifiedQuestion.display(),
+      visualization_settings:
+        modifiedQuestion.card().visualization_settings ?? {},
+    };
 
-      const newCardId = generateDraftCardId();
+    const newCardId = generateDraftCardId();
 
-      dispatch(
-        createDraftCard({
-          originalCard: card,
-          modifiedData,
-          draftId: newCardId,
-        }),
-      );
+    dispatch(
+      createDraftCard({
+        originalCard: card,
+        modifiedData,
+        draftId: newCardId,
+      }),
+    );
 
-      onSave({ card_id: newCardId, name: card.name });
-      onClose();
-    } catch (error) {
-      console.error("Failed to save modified question:", error);
-    }
-  };
+    onSave({ card_id: newCardId, name: card.name });
+    onClose();
+  }, [modifiedQuestion, editor, card, dispatch, onSave, onClose]);
 
-  // Transform query results to visualization series following QB patterns
-  const rawSeries = useMemo(() => {
-    if (!modifiedQuestion || !datasetToUse || sqlError) {
+  const rawSeries = useMemo<RawSeries | null>(() => {
+    if (!modifiedQuestion || !datasetToUse || failedDataset) {
       return null;
     }
 
-    try {
-      const data = datasetToUse.data || datasetToUse;
-      return [
-        {
-          card: {
-            ...modifiedQuestion.card(),
-            display: "table" as const, // Force table display for results
-            visualization_settings: {
-              ...modifiedQuestion.card().visualization_settings,
-              "table.pivot": false,
-              "table.columns": undefined,
-            },
-          },
-          data: {
-            rows: data.rows || [],
-            cols: data.cols || [],
-            results_metadata: data.results_metadata || [],
-            insights: data.insights,
-            rows_truncated: data.rows_truncated || 0,
-          },
-          json_query: datasetToUse.json_query,
-          started_at: datasetToUse.started_at || new Date().toISOString(),
-          running_time: datasetToUse.running_time,
-          row_count: datasetToUse.row_count,
-          status: "completed",
-        },
-      ];
-    } catch (error) {
-      console.error("Error formatting series data:", error);
-      return null;
-    }
-  }, [modifiedQuestion, datasetToUse, sqlError]);
+    const visualizationCard = {
+      ...modifiedQuestion.card(),
+      display: "table" as const,
+      visualization_settings: {
+        ...modifiedQuestion.card().visualization_settings,
+        "table.pivot": false,
+        "table.columns": undefined,
+      },
+    };
+
+    return createRawSeries({
+      card: visualizationCard,
+      queryResult: datasetToUse,
+      datasetQuery: modifiedQuestion.datasetQuery(),
+    });
+  }, [modifiedQuestion, datasetToUse, failedDataset]);
 
   if (!question || !modifiedQuestion) {
     return (
@@ -335,9 +287,7 @@ export const NativeQueryModal = ({
       }}
     >
       <Flex h="100%" direction="column">
-        {/* Main content area with horizontal layout */}
         <Flex flex={1} direction="row" mih={0} className={S.mainContent}>
-          {/* Left side - Editor and Results */}
           <Flex
             flex={1}
             direction="column"
@@ -371,6 +321,7 @@ export const NativeQueryModal = ({
                   setDatasetQuery={setDatasetQuery}
                   runQuestionQuery={handleRunQuery}
                   runQuery={handleRunQuery}
+                  cancelQuery={handleCancelQuery}
                   toggleTemplateTagsEditor={() =>
                     setIsShowingTemplateTagsEditor(!isShowingTemplateTagsEditor)
                   }
@@ -385,28 +336,19 @@ export const NativeQueryModal = ({
                     }
                     setIsShowingDataReference(!isShowingDataReference);
                   }}
-                  toggleSnippetSidebar={_.noop}
-                  setNativeEditorSelectedRange={_.noop}
-                  openDataReferenceAtQuestion={_.noop}
-                  openSnippetModalWithSelectedText={_.noop}
-                  insertSnippet={_.noop}
-                  setParameterValue={_.noop}
-                  onOpenModal={_.noop}
-                  cancelQuery={_.noop}
-                  closeSnippetModal={_.noop}
-                  handleResize={_.noop}
                   canChangeDatabase
-                  toggleEditor={_.noop}
                   onSetDatabaseId={(databaseId: DatabaseId) => {
-                    if (modifiedQuestion) {
-                      const updatedDatasetQuery = {
-                        ...modifiedQuestion.datasetQuery(),
-                        database: databaseId,
-                      };
-                      const newQuestion =
-                        modifiedQuestion.setDatasetQuery(updatedDatasetQuery);
-                      setModifiedQuestion(newQuestion);
+                    if (!modifiedQuestion) {
+                      return;
                     }
+
+                    const updatedDatasetQuery = {
+                      ...modifiedQuestion.datasetQuery(),
+                      database: databaseId,
+                    };
+                    const newQuestion =
+                      modifiedQuestion.setDatasetQuery(updatedDatasetQuery);
+                    setModifiedQuestion(newQuestion);
                   }}
                   resizable
                   resizableBoxProps={{
@@ -428,7 +370,6 @@ export const NativeQueryModal = ({
               )}
             </Box>
 
-            {/* Results area */}
             <Flex
               id="results-container"
               flex={1}
@@ -438,16 +379,20 @@ export const NativeQueryModal = ({
               pos="relative"
               className={S.resultsContainer}
             >
-              {!isQueryRunning && (sqlError || queryError) ? (
+              {isQueryRunning ? (
+                <Flex h="100%" align="center" justify="center">
+                  <Loader size="lg" />
+                </Flex>
+              ) : failedDataset || queryError ? (
                 <ErrorMessage
                   type="serverError"
                   title={t`Query execution failed`}
-                  message={getErrorMessage(sqlError, queryError)}
+                  message={getErrorMessage(failedDataset, queryError)}
                   action={null}
                 />
-              ) : !isQueryRunning && hasEmptyResults(datasetToUse) ? (
+              ) : hasEmptyResults(datasetToUse) ? (
                 <QueryExecutionEmptyState hasInitialData={!!datasetToUse} />
-              ) : !isQueryRunning && rawSeries ? (
+              ) : rawSeries ? (
                 <Box flex={1} mih="300px">
                   <Visualization
                     rawSeries={rawSeries}
@@ -459,34 +404,12 @@ export const NativeQueryModal = ({
                     showTitle={false}
                   />
                 </Box>
-              ) : !isQueryRunning ? (
+              ) : (
                 <QueryExecutionEmptyState hasInitialData={false} />
-              ) : !datasetToUse ? (
-                <Flex h="100%" align="center" justify="center">
-                  <Loader size="lg" />
-                </Flex>
-              ) : null}
-
-              {/* Loading overlay for when rerunning queries with existing results */}
-              {isQueryRunning && datasetToUse && (
-                <Flex
-                  pos="absolute"
-                  top={0}
-                  left={0}
-                  right={0}
-                  bottom={0}
-                  bg="var(--mb-color-bg-white)"
-                  align="center"
-                  justify="center"
-                  className={S.loadingOverlay}
-                >
-                  <Loader size="lg" />
-                </Flex>
               )}
             </Flex>
           </Flex>
 
-          {/* Data reference sidebar */}
           {isShowingDataReference && modifiedQuestion && (
             <Box
               w="350px"
@@ -512,7 +435,6 @@ export const NativeQueryModal = ({
           )}
         </Flex>
 
-        {/* Footer with actions */}
         <Flex
           pos="sticky"
           bottom={0}

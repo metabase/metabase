@@ -32,7 +32,7 @@ interface NativeQueryEditorActionButtonsProps {
   runQuery?: () => void;
   cancelQuery?: () => void;
   toggleDataReference?: () => void;
-  onOpenModal: (modalType: QueryModalType) => void;
+  onOpenModal?: (modalType: QueryModalType) => void;
   onFormatQuery?: () => void;
   onGenerateQuery: (queryText: string) => void;
 }

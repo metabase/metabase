@@ -86,25 +86,25 @@ type OwnProps = {
   editorContext?: "question";
 
   runQuery: () => void;
-  toggleEditor: () => void;
-  handleResize: () => void;
+  toggleEditor?: () => void;
+  handleResize?: () => void;
   setDatasetQuery: (query: NativeQuery) => Promise<Question>;
   runQuestionQuery: (opts?: {
     overrideWithQuestion?: Question;
     shouldUpdateUrl?: boolean;
   }) => void;
-  setNativeEditorSelectedRange: (range: SelectionRange[]) => void;
-  openDataReferenceAtQuestion: (id: CardId) => void;
-  openSnippetModalWithSelectedText: () => void;
-  insertSnippet: (snippet: NativeQuerySnippet) => void;
+  setNativeEditorSelectedRange?: (range: SelectionRange[]) => void;
+  openDataReferenceAtQuestion?: (id: CardId) => void;
+  openSnippetModalWithSelectedText?: () => void;
+  insertSnippet?: (snippet: NativeQuerySnippet) => void;
   setIsNativeEditorOpen?: (isOpen: boolean) => void;
-  setParameterValue: (parameterId: ParameterId, value: string) => void;
-  onOpenModal: (modalType: QueryModalType) => void;
+  setParameterValue?: (parameterId: ParameterId, value: string) => void;
+  onOpenModal?: (modalType: QueryModalType) => void;
   toggleDataReference: () => void;
   toggleTemplateTagsEditor: () => void;
-  toggleSnippetSidebar: () => void;
+  toggleSnippetSidebar?: () => void;
   cancelQuery?: () => void;
-  closeSnippetModal: () => void;
+  closeSnippetModal?: () => void;
   onSetDatabaseId?: (id: DatabaseId) => void;
 };
 
@@ -317,7 +317,7 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
             resizeHandles={["s"]}
             {...resizableBoxProps}
             onResizeStop={(e, data) => {
-              this.props.handleResize();
+              this.props.handleResize?.();
               if (typeof resizableBoxProps?.onResizeStop === "function") {
                 resizableBoxProps.onResizeStop(e, data);
               }

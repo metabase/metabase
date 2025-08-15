@@ -52,7 +52,7 @@ export const Notebook = ({
           reportTimezone={reportTimezone}
           readOnly={readOnly}
         />
-        {hasVisualizeButton && (
+        {hasVisualizeButton && runQuestionQuery && (
           <VisualizeButton
             question={question}
             isDirty={isDirty}

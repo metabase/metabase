@@ -51,7 +51,6 @@ import type {
 
 import {
   clearDraftCards,
-  closeSidebar,
   openVizSettingsSidebar,
   resetDocuments,
   setCurrentDocument,
@@ -517,7 +516,6 @@ export const DocumentPage = ({
             <Box className={styles.sidebar} data-testid="document-card-sidebar">
               <EmbedQuestionSettingsSidebar
                 cardId={selectedQuestionId}
-                onClose={() => dispatch(closeSidebar())}
                 editorInstance={editorInstance}
               />
             </Box>
