@@ -83,9 +83,7 @@ describe("getDerivedDefaultColorsForEmbedFlow", () => {
   });
 
   it("derives default colors for empty themes", () => {
-    const theme: MetabaseTheme = {};
-
-    const { colors } = getDerivedDefaultColorsForEmbedFlow(theme);
+    const { colors } = getDerivedDefaultColorsForEmbedFlow({});
 
     expect(colors).toBeDefined();
     expect(colors?.["background-hover"]).toBeDefined();

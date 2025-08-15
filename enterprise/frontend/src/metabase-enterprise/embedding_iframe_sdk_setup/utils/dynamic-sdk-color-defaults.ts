@@ -19,15 +19,14 @@ export const EMBED_FLOW_DERIVED_COLORS_CONFIG: EmbedFlowDerivedDefaultColorConfi
       dark: { source: "background", lighten: 0.5 },
     },
     "text-secondary": {
-      light: { source: "text-primary", alpha: 0.7 },
-      dark: { source: "text-primary", alpha: 0.7 },
+      light: { source: "text-primary", lighten: 0.3 },
+      dark: { source: "text-primary", darken: 0.3 },
     },
     "text-tertiary": {
-      light: { source: "text-primary", alpha: 0.5 },
-      dark: { source: "text-primary", alpha: 0.5 },
+      light: { source: "text-primary", lighten: 0.6 },
+      dark: { source: "text-primary", darken: 0.6 },
     },
     border: {
-      light: { source: "border", alpha: 0.7 },
       dark: { source: "border", alpha: 0.7 },
     },
     "brand-hover": {
