@@ -23,7 +23,7 @@ export const DatabaseReplicationSuccess = ({
           wrap="nowrap"
           bg="white"
           fz={0}
-          p="xs"
+          p="sm"
           ta="center"
           style={{
             borderRadius: "100%",
