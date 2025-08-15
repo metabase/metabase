@@ -190,6 +190,7 @@ export const DatabaseReplicationForm = ({
           ) : undefined}
         </Stack>
       </Card>
+
       <FormProvider
         initialValues={initialValues}
         onSubmit={onSubmit}
@@ -197,88 +198,93 @@ export const DatabaseReplicationForm = ({
       >
         {({ values, setFieldValue }) => (
           <Form>
-            <FormSelect
-              name="schemaSelect"
-              label={t`Select schemas to replicate`}
-              onChange={(value) => {
-                setSchemaSelect(value as typeof initialValues.schemaSelect);
-                if (value === "all") {
-                  setFieldValue("schemaFields", "");
-                }
-              }}
-              data={[
-                { value: "all", label: t`All` },
-                { value: "include", label: t`Only these…` },
-                { value: "exclude", label: t`All except…` },
-              ]}
-              {...styles}
-            />
-            {values.schemaSelect !== "all" ? (
-              <>
-                <Text c="text-light">{t`Comma separated names of schemas that should ${values.schemaSelect === "exclude" ? "NOT " : ""}be replicated`}</Text>
-                <FormTextInput
-                  name="schemaFilters"
-                  placeholder="e.g. public, auth"
-                  onBlur={({ target: { value } }) => setSchemaFilters(value)}
-                  {...styles}
-                />
-              </>
-            ) : undefined}
-            {noSyncTables.length > 0 ? (
-              <Card radius="md" bg="bg-light" p="md">
-                <Stack>
-                  <Text c="text-light">
-                    {t`Tables without primary key or with owner mismatch`}{" "}
-                    <b>{t`will not be replicated`}</b>.
-                  </Text>
-                  <Button
-                    variant="subtle"
-                    size="xs"
-                    onClick={() => setShowNoSyncTables(!showNoSyncTables)}
-                    h="auto"
-                    p={0}
-                    td="underline"
-                    style={{ alignSelf: "flex-start" }}
-                  >
-                    {showNoSyncTables
-                      ? t`Hide tables (${noSyncTables.length})`
-                      : t`Show tables (${noSyncTables.length})`}
-                  </Button>
-                  {showNoSyncTables && (
-                    <List spacing="xs" size="sm">
-                      {noSyncTables.map((table) => (
-                        <List.Item
-                          key={`${table.schema}.${table.name}`}
-                          c="text-medium"
-                          ff="Monaco, 'Lucida Console', monospace"
-                          fz="md"
-                        >
-                          <Box component="span" c="text-dark" fw="500">
-                            {table.schema}
-                          </Box>
-                          <Box component="span" c="text-medium">
-                            .{table.name}
-                          </Box>{" "}
-                          <Box component="span" c="text-light">
-                            {noSyncReason(table)}
-                          </Box>
-                        </List.Item>
-                      ))}
-                    </List>
-                  )}
-                </Stack>
-              </Card>
-            ) : undefined}
-            <Flex justify="end">
-              <Group>
-                <FormSubmitButton
-                  disabled={!previewResponse?.canSetReplication}
-                  loading={previewResponseLoading}
-                  label={t`Start replication`}
-                  variant="filled"
-                />
-              </Group>
-            </Flex>
+            <Stack>
+              <FormSelect
+                name="schemaSelect"
+                label={t`Select schemas to replicate`}
+                onChange={(value) => {
+                  setSchemaSelect(value as typeof initialValues.schemaSelect);
+                  if (value === "all") {
+                    setFieldValue("schemaFields", "");
+                  }
+                }}
+                data={[
+                  { value: "all", label: t`All` },
+                  { value: "include", label: t`Only these…` },
+                  { value: "exclude", label: t`All except…` },
+                ]}
+                {...styles}
+              />
+
+              {values.schemaSelect !== "all" && (
+                <>
+                  <Text c="text-light">{t`Comma separated names of schemas that should ${values.schemaSelect === "exclude" ? "NOT " : ""}be replicated`}</Text>
+                  <FormTextInput
+                    name="schemaFilters"
+                    placeholder="e.g. public, auth"
+                    onBlur={({ target: { value } }) => setSchemaFilters(value)}
+                    {...styles}
+                  />
+                </>
+              )}
+
+              {noSyncTables.length > 0 && (
+                <Card radius="md" bg="bg-light" p="md">
+                  <Stack>
+                    <Text c="text-light">
+                      {t`Tables without primary key or with owner mismatch`}{" "}
+                      <b>{t`will not be replicated`}</b>.
+                    </Text>
+                    <Button
+                      variant="subtle"
+                      size="xs"
+                      onClick={() => setShowNoSyncTables(!showNoSyncTables)}
+                      h="auto"
+                      p={0}
+                      td="underline"
+                      style={{ alignSelf: "flex-start" }}
+                    >
+                      {showNoSyncTables
+                        ? t`Hide tables (${noSyncTables.length})`
+                        : t`Show tables (${noSyncTables.length})`}
+                    </Button>
+                    {showNoSyncTables && (
+                      <List spacing="xs" size="sm">
+                        {noSyncTables.map((table) => (
+                          <List.Item
+                            key={`${table.schema}.${table.name}`}
+                            c="text-medium"
+                            ff="Monaco, 'Lucida Console', monospace"
+                            fz="md"
+                          >
+                            <Box component="span" c="text-dark" fw="500">
+                              {table.schema}
+                            </Box>
+                            <Box component="span" c="text-medium">
+                              .{table.name}
+                            </Box>{" "}
+                            <Box component="span" c="text-light">
+                              {noSyncReason(table)}
+                            </Box>
+                          </List.Item>
+                        ))}
+                      </List>
+                    )}
+                  </Stack>
+                </Card>
+              )}
+
+              <Flex justify="end">
+                <Group>
+                  <FormSubmitButton
+                    disabled={!previewResponse?.canSetReplication}
+                    loading={previewResponseLoading}
+                    label={t`Start replication`}
+                    variant="filled"
+                  />
+                </Group>
+              </Flex>
+            </Stack>
           </Form>
         )}
       </FormProvider>
