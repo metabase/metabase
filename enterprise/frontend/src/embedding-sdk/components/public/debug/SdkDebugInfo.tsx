@@ -29,45 +29,49 @@ const getFormattedBuildTimeData = (
   };
 };
 
-const useSdkPackageDebugInfo = () => {
+type DebugTableProps = {
+  titlePrefix: string;
+  version: string | null | undefined;
+  gitBranch: string | null | undefined;
+  gitCommit: string | null | undefined;
+  buildTimeData: BuildTimeData;
+};
+
+type DebugInfoData = Omit<DebugTableProps, "titlePrefix">;
+
+const useSdkPackageDebugInfo = (): DebugInfoData => {
   const {
     version,
-    buildInfo: { gitBranch, gitCommit: fullCommit, buildTime },
-  } = getEmbeddingSdkPackageBuildData();
+    gitBranch,
+    gitCommit: fullCommit,
+    buildTime,
+  } = getEmbeddingSdkPackageBuildData() ?? {};
 
   return {
     version,
-    branch: gitBranch,
-    commit: fullCommit?.slice(0, 7),
+    gitBranch,
+    gitCommit: fullCommit?.slice(0, 7),
     buildTimeData: getFormattedBuildTimeData(buildTime),
   };
 };
 
-const useSdkBundleDebugInfo = () => {
+const useSdkBundleDebugInfo = (): DebugInfoData => {
   const version = useLazySelector(getMetabaseInstanceVersion);
 
   return {
     version,
-    branch: process.env.GIT_BRANCH,
-    commit: process.env.GIT_COMMIT?.slice(0, 7),
+    gitBranch: process.env.GIT_BRANCH,
+    gitCommit: process.env.GIT_COMMIT?.slice(0, 7),
     buildTimeData: getFormattedBuildTimeData(process.env.BUILD_TIME),
   };
 };
-
-interface DebugTableProps {
-  titlePrefix: string;
-  version: string | null | undefined;
-  buildTimeData: BuildTimeData;
-  branch?: string | null;
-  commit?: string | null;
-}
 
 const DebugTable = ({
   titlePrefix,
   version,
   buildTimeData,
-  branch,
-  commit,
+  gitBranch,
+  gitCommit,
 }: DebugTableProps) => (
   <table>
     <tbody>
@@ -89,11 +93,11 @@ const DebugTable = ({
         </tr>
       )}
 
-      {(branch || commit) && (
+      {(gitBranch || gitCommit) && (
         <tr>
           <td>{titlePrefix} from branch:</td>
           <td>
-            <b>{branch}</b> {commit && `(${commit})`}
+            <b>{gitBranch}</b> {gitCommit && `(${gitCommit})`}
           </td>
         </tr>
       )}

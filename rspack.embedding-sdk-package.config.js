@@ -26,8 +26,8 @@ const {
   getBannerOptions,
 } = require("./frontend/build/shared/rspack/get-banner-options");
 const {
-  INJECTED_BUILD_INFO_VALUES,
-} = require("./frontend/build/embedding-sdk/constants/injected-build-info-values");
+  getBuildInfoValues,
+} = require("./frontend/build/embedding-sdk/rspack/get-build-info-values");
 
 const sdkPackageTemplateJson = fs.readFileSync(
   path.resolve(
@@ -48,7 +48,7 @@ const skipDTS = process.env.SKIP_DTS === "true";
 const isDevMode = IS_DEV_MODE;
 
 const EMBEDDING_SDK_BUNDLE_HOST = process.env.EMBEDDING_SDK_BUNDLE_HOST || "";
-const EMBEDDING_SDK_PACKAGE_VERSION = sdkPackageTemplateJsonContent.version;
+const VERSION = sdkPackageTemplateJsonContent.version;
 
 const config = {
   context: SDK_SRC_PATH,
@@ -94,8 +94,7 @@ const config = {
     new rspack.EnvironmentPlugin({
       IS_EMBEDDING_SDK: "true",
       EMBEDDING_SDK_BUNDLE_HOST,
-      EMBEDDING_SDK_PACKAGE_VERSION,
-      ...INJECTED_BUILD_INFO_VALUES,
+      ...getBuildInfoValues({ version: sdkPackageTemplateJsonContent.version }),
     }),
     new rspack.optimize.LimitChunkCountPlugin({
       maxChunks: 1,

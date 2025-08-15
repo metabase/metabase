@@ -9,9 +9,8 @@ interface Window {
   // Metabase Embedding SDK from Hosted Bundle
   MetabaseEmbeddingSDK?: import("embedding-sdk/types/sdk-bundle").MetabaseEmbeddingSdkBundleExports;
 
-  METABASE_PROVIDER_PROPS_STORE?: typeof import("embedding-sdk/sdk-shared/lib/ensure-metabase-provider-props-store").MetabaseProviderPropsStore;
+  METABASE_PROVIDER_PROPS_STORE?: import("embedding-sdk/sdk-shared/lib/ensure-metabase-provider-props-store").MetabaseProviderPropsStore;
 
   // Build info
-  METABASE_EMBEDDING_SDK_PACKAGE_VERSION?: string;
-  METABASE_EMBEDDING_SDK_PACKAGE_BUILD_INFO?: typeof import("metabase/embedding-sdk/types/build-info").BuildInfo;
+  METABASE_EMBEDDING_SDK_PACKAGE_BUILD_INFO?: import("metabase/embedding-sdk/types/build-info").BuildInfo;
 }
