@@ -1,42 +1,34 @@
 import type { JSONContent } from "@tiptap/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { useDispatch, useSelector } from "metabase/lib/redux";
-import type { CollectionId, DocumentContent } from "metabase-types/api";
+import { useDispatch } from "metabase/lib/redux";
+import type { DocumentContent } from "metabase-types/api";
 
 import type { CardEmbedRef } from "../components/Editor/types";
 import { setCardEmbeds } from "../documents.slice";
-import { getCardEmbeds } from "../selectors";
 
 export function useDocumentState(documentData?: {
   name: string;
   document: DocumentContent;
 }) {
   const dispatch = useDispatch();
-  const cardEmbeds = useSelector(getCardEmbeds);
   const [documentTitle, setDocumentTitle] = useState("");
   const [documentContent, setDocumentContent] = useState<JSONContent | null>(
     null,
   );
-  const [documentCollectionId, setDocumentCollectionId] =
-    useState<CollectionId | null>(null);
   const previousEmbedsRef = useRef<CardEmbedRef[]>([]);
 
-  // Sync document data when it changes
   useEffect(() => {
     if (documentData) {
       setDocumentTitle(documentData.name);
-      // Document is always a JSON object
-      setDocumentContent((documentData.document as JSONContent) || null);
+      setDocumentContent(documentData.document);
     } else {
-      // When switching to new document, reset content
       setDocumentContent(null);
     }
   }, [documentData]);
 
   const updateCardEmbeds = useCallback(
     (newEmbeds: CardEmbedRef[]) => {
-      // Only dispatch if the embeds have actually changed to prevent infinite loops
       const prevEmbeds = previousEmbedsRef.current;
       const hasChanged =
         newEmbeds.length !== prevEmbeds.length ||
@@ -60,9 +52,6 @@ export function useDocumentState(documentData?: {
     setDocumentTitle,
     documentContent,
     setDocumentContent,
-    documentCollectionId,
-    setDocumentCollectionId,
-    cardEmbeds,
     updateCardEmbeds,
   };
 }
