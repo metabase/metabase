@@ -4,11 +4,12 @@
    [metabase.api.common :as api]
    [metabase.driver :as driver]
    [metabase.test :as mt]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [toucan2.core :as t2]))
 
 (defn drop-target!
-  "Drop transform target `target`. `target` can be a string or a map.  If `target` is a string,
-  type :table is assumed."
+  "Drop transform target `target` and clean up its metadata.
+   `target` can be a string or a map. If `target` is a string, type :table is assumed."
   [target]
   (let [target (if (map? target)
                  target
@@ -17,7 +18,11 @@
         driver driver/*driver*]
     (binding [api/*is-superuser?* true
               api/*current-user-id* (mt/user->id :crowberto)]
+      ;; Drop the actual table/view from the database
       (-> (driver/drop-transform-target! driver (mt/db) target)
+          u/ignore-exceptions)
+      ;; Also clean up the Metabase metadata
+      (-> (t2/delete! :model/Table :name (:name target) :db_id (:id (mt/db)))
           u/ignore-exceptions))))
 
 (defn gen-table-name

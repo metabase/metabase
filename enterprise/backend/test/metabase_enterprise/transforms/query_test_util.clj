@@ -1,66 +1,41 @@
 (ns metabase-enterprise.transforms.query-test-util
   "Shared utilities for building test queries in transform tests."
   (:require
-   [clojure.string :as str]
    [medley.core :as m]
-   [metabase.driver :as driver]
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.test :as mt]
    [toucan2.util :as t2u]))
 
-(defn make-filter-query
-  "Create a filtered query for testing transforms.
+(defn- table-from-metadata
+  [mp table-name]
+  (->> (lib.metadata/tables mp)
+       (m/find-first #(= (t2u/lower-case-en table-name)
+                         (t2u/lower-case-en (:name %))))))
 
-   Options:
-   - :table-suffix - String suffix to match table name (e.g., \"products\")
-   - :column-name - Name of column to filter on (e.g., \"category\")
-   - :filter-value - Value to filter by
-   - :filter-fn - Filter function to use (default: lib/=)
-   - :clickhouse-expression? - If true and driver is ClickHouse, add merge table ID expression
-
-   Returns an MLv2 query object. Callers can convert to legacy MBQL if needed."
-  [{:keys [table-suffix column-name filter-value filter-fn clickhouse-expression?]
-    :or {filter-fn lib/=}}]
-  (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
-        ;; Find the table by suffix match
-        table (m/find-first (comp #(str/ends-with? % table-suffix) t2u/lower-case-en :name)
-                            (lib.metadata/tables mp))
-        ;; Create base query
-        query (lib/query mp table)
-        ;; Find the column to filter on
-        column (m/find-first (comp #{column-name} t2u/lower-case-en :name)
-                             (lib/visible-columns query))
-        ;; Apply the filter
-        filtered (lib/filter query (filter-fn column filter-value))]
-    ;; Add ClickHouse-specific expression if needed
-    (if (and clickhouse-expression? (= :clickhouse driver/*driver*))
-      (let [id-column (m/find-first (comp #{"id"} t2u/lower-case-en :name)
-                                    (lib/visible-columns query))]
-        (lib/expression filtered "clickhouse_merge_table_id" id-column))
-      filtered)))
+(defn- filter-on-column
+  [query column-name]
+  (m/find-first (comp #{column-name} t2u/lower-case-en :name)
+                (lib/visible-columns query)))
 
 (defn make-query
-  "Create a flexible query for testing, with optional filtering.
+  "Create a query for testing, with optional filtering.
 
-   Can be called with:
-   - (make-query source-table) - Just the table, no filtering
-   - (make-query source-table source-column constraint-fn & constraint-params) - With filtering
+   Options:
+   - :source-table - Table name (string) or table object to query
+   - :source-column - Name of column to filter on (optional)
+   - :filter-fn - Filter function to use (optional, e.g., lib/=, lib/starts-with)
+   - :filter-values - Values to pass to filter function (optional)
 
-   This matches the signature from execute_test.clj for compatibility."
-  ([source-table]
-   (make-query source-table nil nil))
-  ([source-table source-column constraint-fn & constraint-params]
+   Returns an MLv2 query object."
+  [& {:keys [source-table source-column filter-fn filter-values]}]
    (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
          table (if (string? source-table)
-                 (m/find-first (comp #(str/ends-with? % source-table) t2u/lower-case-en :name)
-                               (lib.metadata/tables mp))
+                 (table-from-metadata mp source-table)
                  source-table)
          query (lib/query mp table)
-         column (when source-column
-                  (m/find-first (comp #{source-column} t2u/lower-case-en :name)
-                                (lib/visible-columns query)))]
+         column (some->> source-column (filter-on-column query))]
      (cond-> query
-       (and source-column constraint-fn)
-       (lib/filter (apply constraint-fn column constraint-params))))))
+      (and column filter-fn)
+      (lib/filter (apply filter-fn column filter-values)))))

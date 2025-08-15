@@ -20,9 +20,13 @@
   "Create a query using the shared test utility.
    Maintains the same signature for compatibility with existing tests."
   ([source-table]
-   (query-test-util/make-query source-table))
+   (query-test-util/make-query {:source-table source-table}))
   ([source-table source-column constraint-fn & constraint-params]
-   (apply query-test-util/make-query source-table source-column constraint-fn constraint-params)))
+   (query-test-util/make-query
+    {:source-table  source-table
+     :source-column source-column
+     :filter-fn     constraint-fn
+     :filter-values constraint-params})))
 
 (defn- wait-for-table
   [table-name timeout-ms]

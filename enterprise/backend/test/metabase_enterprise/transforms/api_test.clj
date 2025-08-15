@@ -45,12 +45,12 @@
    Returns a legacy MBQL query structure for API compatibility."
   [category]
   (mt/dataset transforms-dataset/transforms-test
-    (let [query (query-test-util/make-filter-query
-                 {:table-suffix           "products"
-                  :column-name            "category"
-                  :filter-value           category
-                  :clickhouse-expression? true})]
-      ;; Convert to legacy MBQL which the transform API expects?
+    (let [query (query-test-util/make-query
+                 {:source-table  "products"
+                  :source-column "category"
+                  :filter-fn     lib/=
+                  :filter-values [category]})]
+      ;; Convert to legacy MBQL which the transform API expects
       (lib.convert/->legacy-MBQL query))))
 
 (defn- get-test-schema
