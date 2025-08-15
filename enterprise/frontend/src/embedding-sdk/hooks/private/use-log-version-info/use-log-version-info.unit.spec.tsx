@@ -9,7 +9,7 @@ jest.mock("embedding-sdk/sdk-shared/hooks/use-lazy-selector", () => ({
   useLazySelector: jest.fn((selector) => selector()),
 }));
 jest.mock("embedding-sdk/lib/get-embedding-sdk-package-build-data", () => ({
-  getEmbeddingSdkPackageVersion: jest.fn(),
+  getEmbeddingSdkPackageBuildData: jest.fn(),
 }));
 jest.mock("embedding-sdk/store/selectors", () => ({
   ...jest.requireActual("embedding-sdk/store/selectors"),
@@ -25,7 +25,9 @@ const setup = async ({
   mbVersion: string;
   allowConsoleLog?: boolean;
 }) => {
-  (getEmbeddingSdkPackageBuildData as jest.Mock).mockReturnValue(sdkVersion);
+  (getEmbeddingSdkPackageBuildData as jest.Mock).mockReturnValue({
+    version: sdkVersion,
+  });
   (getMetabaseInstanceVersion as jest.Mock).mockReturnValue(mbVersion);
 
   renderHook(() => useLogVersionInfo({ allowConsoleLog }));
