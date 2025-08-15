@@ -389,6 +389,12 @@ databaseChangeLog:
                   defaultValueComputed: current_timestamp
                   constraints:
                     nullable: false
+              - column:
+                  name: built_in_type
+                  type: varchar(255)
+                  remarks: 'Type of the built-in transform tag: hourly, daily, weekly, monthly.'
+                  constraints:
+                    nullable: true
 
   - changeSet:
       id: v57.2025-08-07T10:01:00
@@ -444,6 +450,12 @@ databaseChangeLog:
                   defaultValueComputed: current_timestamp
                   constraints:
                     nullable: false
+              - column:
+                  name: built_in_type
+                  type: varchar(255)
+                  remarks: 'Type of the built-in transform job: hourly, daily, weekly, monthly.'
+                  constraints:
+                    nullable: true
 
   - changeSet:
       id: v57.2025-08-07T10:02:00
@@ -676,6 +688,52 @@ databaseChangeLog:
                   defaultValueComputed: current_timestamp
                   constraints:
                     nullable: false
+
+  - changeSet:
+        id: v57.2025-08-14T00:00:00
+        author: ranquild
+        comment: Create built-in transform tags
+        changes:
+          - sql: >-
+              INSERT INTO transform_tag(name, entity_id, built_in_type) VALUES
+              ('hourly', 'wYLcUPbtF7jVPO0duGGHR', 'hourly'),
+              ('daily', 'dUW7nvQHQBdA0Rx0gJckI', 'daily'),
+              ('weekly', 'qPGCJu7t97kn-X07_fgSj', 'weekly'),
+              ('monthly', 'DeeJHc81qKhD9qWINISO8', 'monthly');
+        rollback:
+          - sql: DELETE FROM transform_tag WHERE built_in_type IS NOT NULL;
+
+  - changeSet:
+        id: v57.2025-08-14T01:00:00
+        author: ranquild
+        comment: Create built-in transform jobs
+        changes:
+          - sql: >-
+              INSERT INTO transform_job(name, description, schedule, entity_id, built_in_type) VALUES
+              ('Hourly job', 'Executes transforms tagged with ''hourly'' every hour', '0 0 * * * ? *', 'RognTgBT2fXaxoQh4ws7z', 'hourly'),
+              ('Daily job', 'Executes transforms tagged with ''daily'' once per day', '0 0 0 * * ? *', 'PJahvcoF61oX5T4uCT_FY', 'daily'),
+              ('Weekly job', 'Executes transforms tagged with ''weekly'' once per week', '0 0 0 ? * 1 *', 'lXIFa2SUrXLgaLZJx33oU', 'weekly'),
+              ('Monthly job', 'Executes transforms tagged with ''monthly'' once per month', '0 0 0 1 * ? *', 'CL1TVitmzJrDjdjvO2xmN', 'monthly');
+        rollback:
+          - sql: DELETE FROM transform_job WHERE built_in_type IS NOT NULL;
+
+  - changeSet:
+        id: v57.2025-08-14T02:00:00
+        author: ranquild
+        comment: Set associations between built-in transform jobs and tags
+        changes:
+          - sql: >-
+              INSERT INTO transform_job_transform_tag(job_id, tag_id, position)
+              SELECT job.id, tag.id, 1 AS position
+              FROM transform_job AS job
+              JOIN transform_tag AS tag ON job.built_in_type = tag.built_in_type
+              WHERE job.built_in_type IS NOT NULL AND tag.built_in_type IS NOT NULL;
+        rollback:
+          - sql: >-
+              DELETE FROM transform_job_transform_tag
+              WHERE
+                job_id IN (SELECT id FROM transform_job WHERE built_in_type IS NOT NULL) AND
+                tag_id IN (SELECT id FROM transform_tag WHERE built_in_type IS NOT NULL);
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

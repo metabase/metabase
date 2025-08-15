@@ -10,5 +10,4 @@
    [metabase-enterprise.transforms.models.transform-tag]
    [metabase-enterprise.transforms.models.transform-transform-tag]
    [metabase-enterprise.transforms.schedule]
-   [metabase-enterprise.transforms.seed]
    [metabase-enterprise.transforms.settings]))
