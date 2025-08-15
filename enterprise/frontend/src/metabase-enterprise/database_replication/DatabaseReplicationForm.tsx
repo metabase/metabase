@@ -14,7 +14,6 @@ import {
 import { colors } from "metabase/lib/colors";
 import {
   Box,
-  Button,
   Card,
   Divider,
   Flex,
@@ -24,6 +23,7 @@ import {
   Progress,
   Stack,
   Text,
+  UnstyledButton,
 } from "metabase/ui";
 import type { PreviewDatabaseReplicationResponse } from "metabase-enterprise/api/database-replication";
 import type { Database, DatabaseId } from "metabase-types/api";
@@ -239,20 +239,13 @@ export const DatabaseReplicationForm = ({
                     wrap="nowrap"
                     p="md"
                   >
-                    <Box maw="16" mt={1}>
-                      <Icon
-                        // className={CS.ml1}
-                        c="brand"
-                        name="info_outline"
-                        size={16}
-                      />
-                    </Box>
+                    <Icon name="info_outline" size={16} maw={16} mt={1} />
                     <Box>
-                      <Text c="text-light" fz="md" lh={1.25}>
+                      <Text fz="md" lh={1.25}>
                         {t`Tables without primary key or with owner mismatch`}{" "}
                         <b>{t`will not be replicated`}</b>.
                       </Text>
-                      <Button
+                      <UnstyledButton
                         variant="subtle"
                         size="xs"
                         onClick={() => setShowNoSyncTables(!showNoSyncTables)}
@@ -260,10 +253,12 @@ export const DatabaseReplicationForm = ({
                         fz="md"
                         h="auto"
                         p={0}
+                        w="auto"
                       >
                         <Flex
                           align="center"
                           direction="row"
+                          gap="xs"
                           justify="flex-start"
                           wrap="nowrap"
                         >
@@ -274,14 +269,14 @@ export const DatabaseReplicationForm = ({
                           </Text>
                           <Icon
                             // className={CS.ml1}
-                            c="brand"
+                            // c="brand"
                             name={
                               showNoSyncTables ? "chevronup" : "chevrondown"
                             }
                             size={12}
                           />
                         </Flex>
-                      </Button>
+                      </UnstyledButton>
                     </Box>
                   </Flex>
 
@@ -289,7 +284,7 @@ export const DatabaseReplicationForm = ({
                     <>
                       <Divider />
                       <Box mah={180} p="md">
-                        <List spacing="xs" size="sm">
+                        <List spacing="xs" size="sm" fz="md" ml="sm">
                           {noSyncTables.map((table) => (
                             <List.Item
                               key={`${table.schema}.${table.name}`}
