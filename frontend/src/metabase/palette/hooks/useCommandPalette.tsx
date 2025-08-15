@@ -174,6 +174,16 @@ export const useCommandPalette = ({
             section: "search",
             keywords: debouncedSearchText,
             icon: "link" as IconName,
+            perform: () => {
+              trackSearchClick(
+                "view_more",
+                0,
+                "command-palette",
+                searchResults?.engine || "unknown",
+                searchRequestId,
+                null,
+              );
+            },
             priority: Priority.HIGH,
             extra: {
               href: searchLocation,
