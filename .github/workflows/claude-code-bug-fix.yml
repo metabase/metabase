@@ -14,7 +14,7 @@ on:
 
 jobs:
   check-employee-and-issue:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     timeout-minutes: 2
     permissions:
       contents: read
@@ -70,10 +70,10 @@ jobs:
         with:
           github-token: ${{ steps.app-token.outputs.token }}
           script: |
+            const issueData = JSON.parse(process.env.ISSUE_DATA);
+            const issueAuthor = issueData.user.login;
+            
             try {
-              const issueData = JSON.parse(process.env.ISSUE_DATA);
-              const issueAuthor = issueData.user.login;
-              
               // Check if user is a member of the metabase organization (including private members)
               const { data: membership } = await github.rest.orgs.getMembershipForUser({
                 org: 'metabase',
@@ -97,7 +97,7 @@ jobs:
             }
 
   auto-fix-bug:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
       contents: write
