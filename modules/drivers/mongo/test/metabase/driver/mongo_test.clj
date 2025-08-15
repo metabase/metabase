@@ -14,9 +14,11 @@
    [metabase.driver.util :as driver.u]
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
+   [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
@@ -1066,49 +1068,72 @@
   (testing "Mixed query with both _id.* and regular nested fields"
     (mt/test-driver :mongo
       (mongo.connection/with-mongo-database [^com.mongodb.client.MongoDatabase db (mt/db)]
-        (let [coll-name (u.random/random-name)
-              ^MongoCollection coll (mongo.util/collection db coll-name)]
+        (let [coll-name             (u.random/random-name)
+              ^MongoCollection coll (mongo.util/collection db coll-name)
+              ;; Generate unique IDs for the table and fields
+              table-id              (inc (rand-int 100000))
+              id-field-id           (inc (rand-int 100000))
+              id-type-field-id      (inc (rand-int 100000))
+              metadata-field-id     (inc (rand-int 100000))
+              category-field-id     (inc (rand-int 100000))
+              value-field-id        (inc (rand-int 100000))]
           (try
             (mongo.util/insert-many coll
-                                    [{:_id {:type "A" :seq 1}
+                                    [{:_id      {:type "A" :seq 1}
                                       :metadata {:category "X"}
-                                      :value 100}
-                                     {:_id {:type "B" :seq 1}
+                                      :value    100}
+                                     {:_id      {:type "B" :seq 1}
                                       :metadata {:category "Y"}
-                                      :value 200}
-                                     {:_id {:type "A" :seq 2}
+                                      :value    200}
+                                     {:_id      {:type "A" :seq 2}
                                       :metadata {:category "Y"}
-                                      :value 150}
-                                     {:_id {:type "B" :seq 2}
+                                      :value    150}
+                                     {:_id      {:type "B" :seq 2}
                                       :metadata {:category "X"}
-                                      :value 300}])
+                                      :value    300}])
 
-            (mt/with-temp [:model/Table table {:db_id (mt/id) :name coll-name}
-                           :model/Field id-field {:table_id (:id table)
-                                                  :name "_id"
-                                                  :base_type :type/Dictionary}
-                           :model/Field id-type-field {:table_id (:id table)
-                                                       :name "type"
-                                                       :base_type :type/Text
-                                                       :parent_id (:id id-field)}
-                           :model/Field metadata-field {:table_id (:id table)
-                                                        :name "metadata"
-                                                        :base_type :type/Dictionary}
-                           :model/Field category-field {:table_id (:id table)
-                                                        :name "category"
-                                                        :base_type :type/Text
-                                                        :parent_id (:id metadata-field)}
-                           :model/Field value-field {:table_id (:id table)
-                                                     :name "value"
-                                                     :base_type :type/Integer}]
+            (qp.store/with-metadata-provider
+              (lib.tu/mock-metadata-provider
+               (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+               {:tables [{:id     table-id
+                          :db-id  (mt/id)
+                          :name   coll-name
+                          :schema nil}]
+                :fields [{:id             id-field-id
+                          :table-id       table-id
+                          :name           "_id"
+                          :base-type      :type/Dictionary
+                          :effective-type :type/Dictionary}
+                         {:id             id-type-field-id
+                          :table-id       table-id
+                          :name           "type"
+                          :base-type      :type/Text
+                          :effective-type :type/Text
+                          :parent-id      id-field-id}
+                         {:id             metadata-field-id
+                          :table-id       table-id
+                          :name           "metadata"
+                          :base-type      :type/Dictionary
+                          :effective-type :type/Dictionary}
+                         {:id             category-field-id
+                          :table-id       table-id
+                          :name           "category"
+                          :base-type      :type/Text
+                          :effective-type :type/Text
+                          :parent-id      metadata-field-id}
+                         {:id             value-field-id
+                          :table-id       table-id
+                          :name           "value"
+                          :base-type      :type/Integer
+                          :effective-type :type/Integer}]})
 
               (testing "Query grouping by both _id.type and metadata.category"
-                (let [query {:database (mt/id)
-                             :type :query
-                             :query {:source-table (:id table)
-                                     :breakout [[:field (:id id-type-field) nil]
-                                                [:field (:id category-field) nil]]
-                                     :aggregation [[:sum [:field (:id value-field) nil]]]}}
+                (let [query  {:database (mt/id)
+                              :type     :query
+                              :query    {:source-table table-id
+                                         :breakout     [[:field id-type-field-id nil]
+                                                        [:field category-field-id nil]]
+                                         :aggregation  [[:sum [:field value-field-id nil]]]}}
                       result (qp/process-query query)]
                   (is (= :completed (:status result)))
                   (is (= #{["A" "X" 100] ["A" "Y" 150] ["B" "X" 300] ["B" "Y" 200]}
@@ -1120,57 +1145,83 @@
   (testing "Combined test for basic nested _id field scenarios (#34577)"
     (mt/test-driver :mongo
       (mongo.connection/with-mongo-database [^com.mongodb.client.MongoDatabase db (mt/db)]
-        (let [coll-name (u.random/random-name)
-              ^MongoCollection coll (mongo.util/collection db coll-name)]
+        (let [coll-name             (u.random/random-name)
+              ^MongoCollection coll (mongo.util/collection db coll-name)
+              ;; Generate unique IDs for the table and fields
+              table-id              (inc (rand-int 100000))
+              id-field-id           (inc (rand-int 100000))
+              country-field-id      (inc (rand-int 100000))
+              id-type-field-id      (inc (rand-int 100000))
+              type-field-id         (inc (rand-int 100000))
+              data-field-id         (inc (rand-int 100000))
+              value-field-id        (inc (rand-int 100000))]
           (try
             (mongo.util/insert-many coll
-                                    [{:_id {:Country "USA" :type "A"}
-                                      :type "X" ; top-level type for collision test
-                                      :data "some data"
+                                    [{:_id   {:Country "USA" :type "A"}
+                                      :type  "X" ; top-level type for collision test
+                                      :data  "some data"
                                       :value 100}
-                                     {:_id {:Country "USA" :type "B"}
-                                      :type "Y"
-                                      :data "more data"
+                                     {:_id   {:Country "USA" :type "B"}
+                                      :type  "Y"
+                                      :data  "more data"
                                       :value 200}
-                                     {:_id {:Country "Canada" :type "A"}
-                                      :type "X"
-                                      :data "other data"
+                                     {:_id   {:Country "Canada" :type "A"}
+                                      :type  "X"
+                                      :data  "other data"
                                       :value 150}
-                                     {:_id {:Country "Canada" :type "B"}
-                                      :type "Y"
-                                      :data "northern data"
+                                     {:_id   {:Country "Canada" :type "B"}
+                                      :type  "Y"
+                                      :data  "northern data"
                                       :value 250}])
 
-            (mt/with-temp [:model/Table table {:db_id (mt/id) :name coll-name}
-                           :model/Field id-field {:table_id (:id table)
-                                                  :name "_id"
-                                                  :base_type :type/Dictionary}
-                           :model/Field country-field {:table_id (:id table)
-                                                       :name "Country"
-                                                       :base_type :type/Text
-                                                       :parent_id (:id id-field)}
-                           :model/Field id-type-field {:table_id (:id table)
-                                                       :name "type"
-                                                       :base_type :type/Text
-                                                       :parent_id (:id id-field)}
-                           :model/Field type-field {:table_id (:id table)
-                                                    :name "type"
-                                                    :base_type :type/Text}
-                           :model/Field _data-field {:table_id (:id table)
-                                                     :name "data"
-                                                     :base_type :type/Text}
-                           :model/Field value-field {:table_id (:id table)
-                                                     :name "value"
-                                                     :base_type :type/Integer}]
+            (qp.store/with-metadata-provider
+              (lib.tu/mock-metadata-provider
+               (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+               {:tables [{:id     table-id
+                          :db-id  (mt/id)
+                          :name   coll-name
+                          :schema nil}]
+                :fields [{:id             id-field-id
+                          :table-id       table-id
+                          :name           "_id"
+                          :base-type      :type/Dictionary
+                          :effective-type :type/Dictionary}
+                         {:id             country-field-id
+                          :table-id       table-id
+                          :name           "Country"
+                          :base-type      :type/Text
+                          :effective-type :type/Text
+                          :parent-id      id-field-id}
+                         {:id             id-type-field-id
+                          :table-id       table-id
+                          :name           "type"
+                          :base-type      :type/Text
+                          :effective-type :type/Text
+                          :parent-id      id-field-id}
+                         {:id             type-field-id
+                          :table-id       table-id
+                          :name           "type"
+                          :base-type      :type/Text
+                          :effective-type :type/Text}
+                         {:id             data-field-id
+                          :table-id       table-id
+                          :name           "data"
+                          :base-type      :type/Text
+                          :effective-type :type/Text}
+                         {:id             value-field-id
+                          :table-id       table-id
+                          :name           "value"
+                          :base-type      :type/Integer
+                          :effective-type :type/Integer}]})
 
               (testing "Count aggregation with nested _id.Country field breakout"
-                (let [query {:database (mt/id)
-                             :type :query
-                             :query {:source-table (:id table)
-                                     :breakout [[:field (:id country-field) nil]]
-                                     :aggregation [[:count]]}}
+                (let [query  {:database (mt/id)
+                              :type     :query
+                              :query    {:source-table table-id
+                                         :breakout     [[:field country-field-id nil]]
+                                         :aggregation  [[:count]]}}
                       result (qp/process-query query)
-                      rows (get-in result [:data :rows])]
+                      rows   (get-in result [:data :rows])]
 
                   (is (= :completed (:status result)))
                   (is (= #{["Canada" 2] ["USA" 2]}
@@ -1182,15 +1233,15 @@
                         "Column names are correct"))))
 
               (testing "Collision regression guard: breaking out by both _id.type and type"
-                (let [query {:database (mt/id)
-                             :type :query
-                             :query {:source-table (:id table)
-                                     :breakout [[:field (:id id-type-field) nil]
-                                                [:field (:id type-field) nil]]
-                                     :aggregation [[:sum [:field (:id value-field) nil]]]}}
-                      result (qp/process-query query)
+                (let [query     {:database (mt/id)
+                                 :type     :query
+                                 :query    {:source-table table-id
+                                            :breakout     [[:field id-type-field-id nil]
+                                                           [:field type-field-id nil]]
+                                            :aggregation  [[:sum [:field value-field-id nil]]]}}
+                      result    (qp/process-query query)
                       col-names (mapv :name (get-in result [:data :cols]))
-                      rows (get-in result [:data :rows])]
+                      rows      (get-in result [:data :rows])]
 
                   (is (= ["_id.type" "type" "sum"] col-names)
                       "Column names are correct")
@@ -1204,76 +1255,102 @@
   (testing "Test for deep nested _id fields (#34577)"
     (mt/test-driver :mongo
       (mongo.connection/with-mongo-database [^com.mongodb.client.MongoDatabase db (mt/db)]
-        (let [coll-name (u.random/random-name)
-              ^MongoCollection coll (mongo.util/collection db coll-name)]
+        (let [coll-name              (u.random/random-name)
+              ^MongoCollection coll  (mongo.util/collection db coll-name)
+              ;; Generate unique IDs for the table and fields
+              table-id               (inc (rand-int 100000))
+              id-field-id            (inc (rand-int 100000))
+              inner-id-field-id      (inc (rand-int 100000))
+              id-name-field-id       (inc (rand-int 100000))
+              nested-widget-field-id (inc (rand-int 100000))
+              impressions-field-id   (inc (rand-int 100000))
+              total-field-id         (inc (rand-int 100000))]
           (try
             (mongo.util/insert-many coll
-                                    [{:_id {:widgetType "button"
-                                            :userId 123
-                                            :_id {:_id 1
-                                                  :name "Alice"
-                                                  :nestedWidget "modal"}}
+                                    [{:_id         {:widgetType "button"
+                                                    :userId     123
+                                                    :_id        {:_id          1
+                                                                 :name         "Alice"
+                                                                 :nestedWidget "modal"}}
                                       :impressions 1000
-                                      :total 100}
-                                     {:_id {:widgetType "banner"
-                                            :userId 456
-                                            :_id {:_id 2
-                                                  :name "Bob"
-                                                  :nestedWidget "popup"}}
+                                      :total       100}
+                                     {:_id         {:widgetType "banner"
+                                                    :userId     456
+                                                    :_id        {:_id          2
+                                                                 :name         "Bob"
+                                                                 :nestedWidget "popup"}}
                                       :impressions 2000
-                                      :total 200}
-                                     {:_id {:widgetType "button"
-                                            :userId 789
-                                            :_id {:_id 1
-                                                  :name "Alice"
-                                                  :nestedWidget "modal"}}
+                                      :total       200}
+                                     {:_id         {:widgetType "button"
+                                                    :userId     789
+                                                    :_id        {:_id          1
+                                                                 :name         "Alice"
+                                                                 :nestedWidget "modal"}}
                                       :impressions 1500
-                                      :total 150}])
+                                      :total       150}])
 
-            (mt/with-temp [:model/Table table {:db_id (mt/id) :name coll-name}
-                           :model/Field id-field {:table_id (:id table)
-                                                  :name "_id"
-                                                  :base_type :type/Dictionary}
-                           :model/Field inner-id-field {:table_id (:id table)
-                                                        :name "_id"
-                                                        :parent_id (:id id-field)
-                                                        :base_type :type/Dictionary}
-                           :model/Field id-name-field {:table_id (:id table)
-                                                       :name "name"
-                                                       :base_type :type/Text
-                                                       :parent_id (:id inner-id-field)}
-                           :model/Field nested-widget-field {:table_id (:id table)
-                                                             :name "nestedWidget"
-                                                             :parent_id (:id inner-id-field)
-                                                             :base_type :type/Text}
-                           :model/Field impressions-field {:table_id (:id table)
-                                                           :name "impressions"
-                                                           :base_type :type/Integer}
-                           :model/Field total-field {:table_id (:id table)
-                                                     :name "total"
-                                                     :base_type :type/Integer}]
+            (qp.store/with-metadata-provider
+              (lib.tu/mock-metadata-provider
+               (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+               {:tables [{:id     table-id
+                          :db-id  (mt/id)
+                          :name   coll-name
+                          :schema nil}]
+                :fields [{:id             id-field-id
+                          :table-id       table-id
+                          :name           "_id"
+                          :base-type      :type/Dictionary
+                          :effective-type :type/Dictionary}
+                         {:id             inner-id-field-id
+                          :table-id       table-id
+                          :name           "_id"
+                          :parent-id      id-field-id
+                          :base-type      :type/Dictionary
+                          :effective-type :type/Dictionary}
+                         {:id             id-name-field-id
+                          :table-id       table-id
+                          :name           "name"
+                          :base-type      :type/Text
+                          :effective-type :type/Text
+                          :parent-id      inner-id-field-id}
+                         {:id             nested-widget-field-id
+                          :table-id       table-id
+                          :name           "nestedWidget"
+                          :parent-id      inner-id-field-id
+                          :base-type      :type/Text
+                          :effective-type :type/Text}
+                         {:id             impressions-field-id
+                          :table-id       table-id
+                          :name           "impressions"
+                          :base-type      :type/Integer
+                          :effective-type :type/Integer}
+                         {:id             total-field-id
+                          :table-id       table-id
+                          :name           "total"
+                          :base-type      :type/Integer
+                          :effective-type :type/Integer}]})
               ;; This testing block is about a small puzzle
               (testing "Native query projection syntax - flat vs nested"
                 ;; FLAT PROJECTION SYNTAX
                 (is (= [[{:_id {:nestedWidget "modal"}} "modal" 1000]]
                        (mt/rows (qp/process-query
                                  {:database (mt/id)
-                                  :type :native
-                                  :native {:collection coll-name
-                                           :query [{"$project" {"_id._id.nestedWidget" "$_id._id.nestedWidget"
-                                                                "impressions" true}}
-                                                   {"$limit" 1}]}})))
+                                  :type     :native
+                                  :native   {:collection coll-name
+                                             :query      [{"$project" {"_id._id.nestedWidget" "$_id._id.nestedWidget"
+                                                                       "impressions"          true}}
+                                                          {"$limit" 1}]}})))
                     "Flat projection results in redundancy")
 
                 ;; NESTED PROJECTION SYNTAX
                 (is (= [[{:_id {:nestedWidget "modal"}} 1000]]
                        (mt/rows (qp/process-query
                                  {:database (mt/id)
-                                  :type :native
-                                  :native {:collection coll-name
-                                           :query [{"$project" {"_id" {"_id" {"nestedWidget" "$_id._id.nestedWidget"}}
-                                                                "impressions" true}}
-                                                   {"$limit" 1}]}})))
+                                  :type     :native
+                                  :native   {:collection coll-name
+                                             :query      [{"$project" {"_id"         {"_id" {"nestedWidget" "$_id._id.nestedWidget"}}
+                                                                       "impressions" true}}
+                                                          {"$limit" 1}]}})))
                     "Nested projection does not have redundancy")
 
                 ;; `mongo.qp/build-projections` can use either syntax and everything still works fine (?)
@@ -1281,22 +1358,20 @@
                   (is (= #{["modal" 2500] ["popup" 2000]}
                          (set (mt/rows (qp/process-query
                                         {:database (mt/id)
-                                         :type :query
-                                         :query {:source-table (:id table)
-                                                 :breakout [[:field (:id nested-widget-field) nil]]
-                                                 :aggregation [[:sum [:field (:id impressions-field) nil]]]}}))))
+                                         :type     :query
+                                         :query    {:source-table table-id
+                                                    :breakout     [[:field nested-widget-field-id nil]]
+                                                    :aggregation  [[:sum [:field impressions-field-id nil]]]}}))))
                       "MBQL query with deeply nested _id field breakout")))
 
               (testing "Query grouping by _id._id.name - triple _id nesting"
-                (let [query {:database (mt/id)
-                             :type :query
-                             :query {:source-table (:id table)
-                                     :breakout [[:field (:id id-name-field) nil]]
-                                     :aggregation [[:sum [:field (:id total-field) nil]]]}}
+                (let [query  {:database (mt/id)
+                              :type     :query
+                              :query    {:source-table table-id
+                                         :breakout     [[:field id-name-field-id nil]]
+                                         :aggregation  [[:sum [:field total-field-id nil]]]}}
                       result (qp/process-query query)]
                   (is (= :completed (:status result)))
                   (is (= #{["Alice" 250] ["Bob" 200]}
                          (set (get-in result [:data :rows])))
                       "Results are what we expect"))))
-            (finally
-              (mongo.util/drop coll))))))))
