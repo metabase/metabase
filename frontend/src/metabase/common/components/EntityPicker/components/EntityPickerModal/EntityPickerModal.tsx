@@ -265,6 +265,7 @@ export function EntityPickerModal<
             searchResults={finalSearchResults ?? []}
             searchEngine={data?.engine}
             searchRequestId={requestId}
+            searchTerm={searchQuery}
             selectedItem={selectedItem}
             onItemSelect={onItemSelect}
             onSearchScopeChange={setSearchScope}

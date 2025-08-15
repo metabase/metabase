@@ -108,6 +108,7 @@ function SearchApp({ location }) {
                 results={list}
                 searchEngine={data.engine}
                 searchRequestId={requestId}
+                searchTerm={searchText}
                 page={page}
                 pageSize={PAGE_SIZE}
               />
