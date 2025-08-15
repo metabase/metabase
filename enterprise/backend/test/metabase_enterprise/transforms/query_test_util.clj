@@ -30,12 +30,12 @@
 
    Returns an MLv2 query object."
   [& {:keys [source-table source-column filter-fn filter-values]}]
-   (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
-         table (if (string? source-table)
+  (let [mp     (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+        table  (if (string? source-table)
                  (table-from-metadata mp source-table)
                  source-table)
-         query (lib/query mp table)
-         column (some->> source-column (filter-on-column query))]
-     (cond-> query
+        query  (lib/query mp table)
+        column (some->> source-column (filter-on-column query))]
+    (cond-> query
       (and column filter-fn)
       (lib/filter (apply filter-fn column filter-values)))))

@@ -30,7 +30,7 @@
 
 (defn- wait-for-table
   [table-name timeout-ms]
-  (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+  (let [mp    (lib.metadata.jvm/application-database-metadata-provider (mt/id))
         limit (+ (System/currentTimeMillis) timeout-ms)]
     (loop []
       (Thread/sleep 200)
@@ -43,27 +43,27 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
     (mt/dataset transforms-dataset/transforms-test
       (let [target-type "table"
-            schema (t2/select-one-fn :schema :model/Table (mt/id :products))]
-        (with-transform-cleanup! [{table1-name :name :as target1} {:type target-type
+            schema      (t2/select-one-fn :schema :model/Table (mt/id :products))]
+        (with-transform-cleanup! [{table1-name :name :as target1} {:type   target-type
                                                                    :schema schema
-                                                                   :name "g_products"}
-                                  {table2-name :name :as target2} {:type target-type
+                                                                   :name   "g_products"}
+                                  {table2-name :name :as target2} {:type   target-type
                                                                    :schema schema
-                                                                   :name "gizmo_products"}]
+                                                                   :name   "gizmo_products"}]
           (let [t1-query (make-query "products" "category" lib/starts-with "G")]
-            (mt/with-temp [:model/Transform t1 {:name "transform1"
-                                                :source {:type :query
+            (mt/with-temp [:model/Transform t1 {:name   "transform1"
+                                                :source {:type  :query
                                                          :query (lib.convert/->legacy-MBQL t1-query)}
                                                 :target target1}]
               (transforms.execute/run-mbql-transform! t1 {:run-method :manual})
-              (let [table1 (wait-for-table table1-name 10000)
+              (let [table1   (wait-for-table table1-name 10000)
                     t2-query (make-query table1 "category" lib/= "Gizmo")]
-                (mt/with-temp [:model/Transform t2 {:name "transform2"
-                                                    :source {:type :query
+                (mt/with-temp [:model/Transform t2 {:name   "transform2"
+                                                    :source {:type  :query
                                                              :query (lib.convert/->legacy-MBQL t2-query)}
                                                     :target target2}]
                   (transforms.execute/run-mbql-transform! t2 {:run-method :cron})
-                  (let [table2 (wait-for-table table2-name 10000)
+                  (let [table2      (wait-for-table table2-name 10000)
                         check-query (lib/aggregate (make-query table2) (lib/count))]
                     ;; The transforms-test dataset has exactly 4 Gizmo products (IDs 6, 8, 12, 14)
                     ;; First transform filters for categories starting with "G" (Gadget and Gizmo)
