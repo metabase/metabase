@@ -160,7 +160,7 @@ So if your Metabase is served at `metabase.example.com` the logout service POST 
 https://metabase.example.com/auth/sso/handle_slo
 ```
 
-**Enabling SAML SLO**
+### Enable SAML SLO
 
 SLO isn’t configurable from the Metabase interface. To enable it, you’ll need to set the following options using environment variables or your Metabase configuration file:
 
