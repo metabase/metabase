@@ -24,6 +24,22 @@
    [1000000       "M"]
    [1000          "k"]])
 
+(def ^:private filesize-units-binary
+  [[1125899906842624 "PiB"]  ; 2^50
+   [1099511627776    "TiB"]  ; 2^40
+   [1073741824       "GiB"]  ; 2^30
+   [1048576          "MiB"]  ; 2^20
+   [1024             "KiB"]  ; 2^10
+   [1                "B"]])
+
+(def ^:private filesize-units-decimal
+  [[1000000000000000 "PB"]   ; 10^15
+   [1000000000000    "TB"]   ; 10^12
+   [1000000000       "GB"]   ; 10^9
+   [1000000          "MB"]   ; 10^6
+   [1000             "KB"]   ; 10^3
+   [1                "B"]])
+
 (defn- format-number-compact-basic [number options]
   (let [options   (dissoc options :compact :number-style)
         abs-value (abs number)]
@@ -54,6 +70,31 @@
 
 (defmethod format-number-compact* "scientific" [number options]
   (internal/format-number-scientific number (merge options {:maximum-fraction-digits 1 :minimum-fraction-digits 1})))
+
+(defmethod format-number-compact* "filesize" [number options]
+  (let [binary? (= (:filesize-unit-system options "binary") "binary")
+        units (if binary? filesize-units-binary filesize-units-decimal)
+        abs-value (abs number)
+        [threshold unit] (first (filter #(>= abs-value (first %)) units))
+        scaled-value (if threshold (/ number threshold) number)
+        decimals (if (= unit "B") 0 (:decimals options 2))]
+    (str (if (= unit "B")
+           ; Always round bytes to integers using proper rounding
+           (max 0 (long (+ scaled-value 0.5)))
+           ; For other units, handle decimals properly
+           (if (= decimals 0)
+             ; User wants no decimals - round to integer
+             (long (+ scaled-value 0.5))
+             ; User wants decimals - format with exact precision when specified
+             (let [factor (Math/pow 10 decimals)
+                   rounded (/ (long (* scaled-value factor)) factor)]
+               (if (= rounded (long rounded))
+                 ; Whole number result - just show integer
+                 (long rounded)
+                 ; Otherwise show decimal
+                 rounded))))
+         " "
+         (or unit "B"))))
 
 (defn- format-number-compact [number options]
   (format-number-compact* number (-> options
@@ -98,10 +139,11 @@
   - `:negative-in-parentheses` boolean: True wraps negative values in parentheses; false (the default) uses minus signs.
   - `:number-serpators` string: A two-character string \"ab\" where `a` is the decimal symbol and `b` is the grouping.
     Default is American-style \".,\".
-  - `:number-style` \"currency\" | \"decimal\" | \"scientific\" | \"percent\": The fundamental type to display.
+  - `:number-style` \"currency\" | \"decimal\" | \"scientific\" | \"percent\" | \"filesize\": The fundamental type to display.
       - \"currency\" renders as eg. \"$123.45\" based on the `:currency` value.
       - \"percent\" renders eg. 0.432 as \"43.2%\".
       - \"scientific\" renders in scientific notation with 1 integer digit: eg. 0.00432 as \"4.32e-3\".
+      - \"filesize\" renders bytes with appropriate units: eg. 1024 as \"1 KiB\" or \"1 KB\".
       - \"decimal\" (the default) is basic numeric notation.
   - `:scale` number: Gives a factor by which to multiply the value before rendering it."
   [number options]
@@ -117,4 +159,5 @@
       compact                        (format-number-compact number options)
       (= (keyword number-style)
          :scientific)                (internal/format-number-scientific number options)
+      (= number-style "filesize")    (format-number-compact* number (core/prep-options options))
       :else                          (format-number-standard   number options))))

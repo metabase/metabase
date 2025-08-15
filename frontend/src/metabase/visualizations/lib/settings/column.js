@@ -21,6 +21,8 @@ import {
   getDefaultCurrency,
   getDefaultCurrencyInHeader,
   getDefaultCurrencyStyle,
+  getDefaultFileSizeUnitInHeader,
+  getDefaultFileSizeUnitSystem,
   getDefaultNumberSeparators,
   getDefaultNumberStyle,
 } from "metabase/visualizations/shared/settings/column";
@@ -250,6 +252,12 @@ export const NUMBER_COLUMN_SETTINGS = {
           },
           value: "currency",
         },
+        {
+          get name() {
+            return t`File size`;
+          },
+          value: "filesize",
+        },
       ],
     },
     getDefault: getDefaultNumberStyle,
@@ -313,6 +321,47 @@ export const NUMBER_COLUMN_SETTINGS = {
           series[0].card.display !== "table"
         );
       }
+    },
+    readDependencies: ["number_style"],
+  },
+  filesize_unit_system: {
+    get title() {
+      return t`Unit system`;
+    },
+    widget: "radio",
+    props: {
+      options: [
+        { name: t`Binary (1 KiB = 1024 bytes)`, value: "binary" },
+        { name: t`Decimal (1 KB = 1000 bytes)`, value: "decimal" },
+      ],
+    },
+    getDefault: getDefaultFileSizeUnitSystem,
+    getHidden: (column, settings) => settings["number_style"] !== "filesize",
+    readDependencies: ["number_style"],
+  },
+  filesize_unit_in_header: {
+    get title() {
+      return t`Where to display the unit`;
+    },
+    widget: "radio",
+    getProps: (_series, _vizSettings, onChange) => {
+      return {
+        onChange: (value) => onChange(value === true),
+        options: [
+          { name: t`In the column heading`, value: true },
+          { name: t`In every table cell`, value: false },
+        ],
+      };
+    },
+    getDefault: getDefaultFileSizeUnitInHeader,
+    getHidden: (_column, settings, { series, forAdminSettings }) => {
+      if (forAdminSettings === true) {
+        return false;
+      }
+      return (
+        settings["number_style"] !== "filesize" ||
+        series[0].card.display !== "table"
+      );
     },
     readDependencies: ["number_style"],
   },
@@ -396,6 +445,11 @@ export const NUMBER_COLUMN_SETTINGS = {
           return getCurrencySymbol(settings["currency"]);
         }
         return getCurrency(settings["currency"], settings["currency_style"]);
+      } else if (
+        settings["number_style"] === "filesize" &&
+        settings["filesize_unit_in_header"]
+      ) {
+        return "Bytes";
       }
       return null;
     },
@@ -404,6 +458,7 @@ export const NUMBER_COLUMN_SETTINGS = {
       "currency",
       "currency_style",
       "currency_header_only",
+      "filesize_unit_in_header",
     ],
   },
 };

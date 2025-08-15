@@ -5,6 +5,12 @@ import { COMPACT_CURRENCY_OPTIONS, getCurrencySymbol } from "./currency";
 
 const DISPLAY_COMPACT_DECIMALS_CUTOFF = 1000;
 
+// File size formatting constants
+const FILESIZE_UNITS_BINARY = ["B", "KiB", "MiB", "GiB", "TiB", "PiB"];
+const FILESIZE_UNITS_DECIMAL = ["B", "KB", "MB", "GB", "TB", "PB"];
+const FILESIZE_BASE_BINARY = 1024;
+const FILESIZE_BASE_DECIMAL = 1000;
+
 const FIXED_NUMBER_FORMATTER = new Intl.NumberFormat("en", {
   useGrouping: true,
   minimumFractionDigits: 0,
@@ -16,6 +22,8 @@ const PRECISION_NUMBER_FORMATTER = new Intl.NumberFormat("en", {
   maximumFractionDigits: 2,
 });
 
+export type FileSizeUnitSystem = "binary" | "decimal";
+
 export type FormatNumberOptions = {
   _numberFormatter?: Intl.NumberFormat;
   compact?: boolean;
@@ -23,6 +31,8 @@ export type FormatNumberOptions = {
   currency_in_header?: boolean;
   currency_style?: string;
   decimals?: string | number;
+  filesize_unit_system?: FileSizeUnitSystem;
+  filesize_unit_in_header?: boolean;
   maximumFractionDigits?: number;
   minimumFractionDigits?: number;
   minimumIntegerDigits?: number;
@@ -96,6 +106,8 @@ export function formatNumber(
 
   if (options.compact) {
     return formatNumberCompact(number, options);
+  } else if (options.number_style === "filesize") {
+    return formatNumberFileSize(number, options);
   } else if (options.number_style === "scientific") {
     return formatNumberScientific(number, options);
   } else {
@@ -239,6 +251,49 @@ function formatNumberCompact(
     });
   }
   return _formatNumberCompact(value, options);
+}
+
+function formatNumberFileSize(
+  value: number | bigint,
+  options: FormatNumberJsxOptions,
+): string {
+  const unitSystem = options.filesize_unit_system || "binary";
+  const units = unitSystem === "binary" ? FILESIZE_UNITS_BINARY : FILESIZE_UNITS_DECIMAL;
+  const base = unitSystem === "binary" ? FILESIZE_BASE_BINARY : FILESIZE_BASE_DECIMAL;
+  
+  const absValue = abs(value);
+  let unitIndex = 0;
+  let scaledValue = Number(absValue);
+  
+  // Find appropriate unit
+  while (scaledValue >= base && unitIndex < units.length - 1) {
+    scaledValue /= base;
+    unitIndex++;
+  }
+  
+  // Format the number part using basic formatter without grouping
+  const maxDecimals = unitIndex === 0 ? 0 : (typeof options.decimals === "number" ? options.decimals : 2);
+  let formatted: string;
+  
+  if (maxDecimals === 0) {
+    // No decimals for bytes
+    formatted = Math.round(scaledValue).toString();
+  } else if (typeof options.decimals === "number") {
+    // User explicitly set decimals - honor exactly
+    formatted = scaledValue.toFixed(options.decimals);
+  } else {
+    // Default behavior - show up to 2 decimals but remove trailing zeros
+    formatted = parseFloat(scaledValue.toFixed(2)).toString();
+  }
+  
+  // Handle unit display
+  const unit = units[unitIndex];
+  if (options.type === "cell" && options.filesize_unit_in_header) {
+    // Unit will be shown in header, just return the number
+    return (value < 0 ? "-" : "") + formatted;
+  }
+  
+  return (value < 0 ? "-" : "") + formatted + " " + unit;
 }
 
 function _formatNumberCompact(
