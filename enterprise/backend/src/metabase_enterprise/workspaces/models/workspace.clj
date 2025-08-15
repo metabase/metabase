@@ -33,11 +33,15 @@
 
 (mr/def ::plan.step
   [:multi {:dispatch :type}
-   [:run-transform
-    [:map [:name :string]]]
-   [:create-model
-    [:map [:transform-name
-           {:description "The name of the transform to create a model from"} :string]]]])
+   [:run-transform [:map [:name :string]]]
+   [:create-model [:map
+                   [:transform-name
+                    {:description "The name of the transform to create a model from"} :string]
+                   [:model-name {:description "The name of the model to create"} :string]]]
+   [:create-xray [:map
+                  [:name :string]
+                  [:model-name
+                   {:description "The name of the model to create an xray dashboard from"} :string]]]])
 
 (mr/def ::transform
   [:map

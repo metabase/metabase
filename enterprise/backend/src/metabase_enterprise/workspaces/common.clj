@@ -177,13 +177,13 @@
   [transform]
   (-> transform :source :query :database))
 
-(defn delete-isolations! [{data-warehouses :data_warehouses :as workspace}]
-  (if-let [db-ids (seq (map (comp parse-long name) (keys data-warehouses)))]
-    (let [dbs (t2/select [:model/Database :id :engine :details] :id [:in db-ids])]
-      (doseq [{:keys [engine details id]} dbs
-              :let [isolation-info (get data-warehouses (keyword (str id)))]]
-        (log/info "Deleting isolations for workspace" (:id workspace) "for db id:" id engine)
-        (let [deletion-info (isolation-manager/delete-isolation engine details (:slug workspace) isolation-info)]
+#_(defn delete-isolations! [{data-warehouses :data_warehouses :as workspace}]
+    (if-let [db-ids (seq (map (comp parse-long name) (keys data-warehouses)))]
+      (let [dbs (t2/select [:model/Database :id :engine :details] :id [:in db-ids])]
+        (doseq [{:keys [engine details id]} dbs
+                :let [isolation-info (get data-warehouses (keyword (str id)))]]
+          (log/info "Deleting isolations for workspace" (:id workspace) "for db id:" id engine)
+          (let [deletion-info (isolation-manager/delete-isolation engine details (:slug workspace) isolation-info)]
           ;; remove it from the workspace's "data_warehouses":
           (t2/update! :model/Workspace (:id workspace)
                       {:data_warehouses (dissoc data-warehouses (keyword (str id)))})
@@ -193,9 +193,14 @@
 
 (defn create-xray
   "Create an xray of a model"
-  [model-id destination-collection-id]
-  (let [db (api.automagic-dashboards/get-automagic-dashboard :model model-id nil)]
-    (dashboard/save-transient-dashboard! db destination-collection-id)))
+  [workspace model-name]
+  (let [model-id (:id (t2/select-one :model/Card
+                                     :type :model
+                                     :collection_id (:collection_id workspace)
+                                     :name model-name))
+        destination-collection-id (:collection_id workspace)
+        dashboard (api.automagic-dashboards/get-automagic-dashboard :model model-id nil)]
+    (dashboard/save-transient-dashboard! dashboard destination-collection-id)))
 
 ;; decision: this is so bespoke to us maybe it goes here now. But perhaps the querying team can help us adjust these
 ;; things with a proper api in the future
@@ -388,8 +393,8 @@
     (add-workspace-entites! workspace :activity_logs {::type ::create-models
                                                      :model-activity model-activity})))
 
-(defn- create-model* [{:keys [collection_id] :as workspace} transform]
-  (let [card {:name (format "Model for %s" (:name transform))
+(defn- create-model* [{:keys [collection_id] :as workspace} transform model-name]
+  (let [card {:name model-name
               :description (format "model: %s" (:description transform))
               :collection_id collection_id
               :card_schema 22 ;;??
@@ -423,7 +428,7 @@
 (defn create-model
   "Creates models from the transforms in a  workspace. Will throw an error if there are no transforms or if the data_warehouses is empty,
   which likely means that you ahve not created the isolation things."
-  [{:keys [data_warehouses transforms] :as workspace} transform-name]
+  [{:keys [data_warehouses transforms] :as workspace} transform-name model-name]
   (when (empty? data_warehouses)
     (throw (ex-info "Data warehouses are not prepared. Please run the isolation manager." {:workspace-id (:id workspace)})))
   (when (empty? transforms)
@@ -436,7 +441,7 @@
         _ (when-not transform
             (throw (ex-info "Transform not found" {:error :no-transform
                                                    :transform-name transform-name})))
-        model-activity (create-model* workspace (patch-transform transform schema-name))]
+        model-activity (create-model* workspace (patch-transform transform schema-name) model-name)]
     (add-workspace-entity! workspace :activity_logs {::type ::create-models
                                                     :model-activity model-activity})))
 
@@ -456,20 +461,24 @@
 (defn run-step [workspace {:keys [type] :as step}]
   (case type
     :run-transform (run-transform workspace (:name step))
-    :create-model (create-model workspace (:transform-name step))))
+    :create-model (create-model workspace
+                                (:transform-name step)
+                                (:model-name step))
+    :create-xray (create-xray workspace (:model-name step))))
 
 (defn run-steps [workspace {:keys [steps] :as _plan-data}]
+  (def pd _plan-data)
   (log/info "Running steps for workspace" (:id workspace) "with steps:" steps)
   (reduce (fn [acc step]
             (log/info "Running step:" step)
-            (let [o (try
-                      {:step step
-                       :success (run-step workspace step)}
-                      (catch Exception e
-                        (log/error e "Error running step" step)
-                        {:step step
-                         :message (.getMessage e)
-                         :ex-data (ex-data e)}))]
+            (let [o (try {:step step
+                          :success true
+                          :output (run-step workspace step)}
+                         (catch Exception e
+                           (log/error e "Error running step" step)
+                           {:step step
+                            :message (.getMessage e)
+                            :ex-data (ex-data e)}))]
               (conj acc o)))
           []
           steps))
@@ -487,15 +496,7 @@
 
   (def t (t2/select-one :model/Transform :name "transform_api"))
 
-  (insert-transform! (:id w) (dissoc t :id))
-
-  (t2/select-one :model/Workspace :slug (:slug w))
-
-  (run-transform
-   (t2/select-one :model/Workspace :slug (:slug w))
-   (:name t))
-
-;; (create-isolations! (t2/select-one :model/Workspace :slug (:slug w)))
+  ;; (create-isolations! (t2/select-one :model/Workspace :slug (:slug w)))
 
   ;; (run-transforms (t2/select-one :model/Workspace :slug (:slug w)))
 
@@ -509,32 +510,6 @@
   (require '[malli.core :as mc] '[malli.error :as me] '[malli.util :as mut] '[metabase.util.malli :as mu]
            '[metabase.util.malli.describe :as umd] '[malli.provider :as mp] '[malli.generator :as mg]
            '[malli.transform :as mtx] '[metabase.util.malli.registry :as mr] '[malli.json-schema :as mjs])
-
-  (mp/provide [{:name "transform_api",
-                :description nil,
-                :source {:type "query", :query {:database 4, :type "query", :query {:source-table 287}}},
-                :target {:type "table", :name "transform_api_table", :schema "public"},
-                :config nil}
-               {:name "transform_user",
-                :description nil,
-                :source {:type "query", :query {:database 4, :type "query", :query {:source-table 372}}},
-                :target {:type "table", :name "transform_user_table", :schema "public"},
-                :config nil}])
-
-  (def sample-plan {:transforms [{:name "transform_api",
-                                  :description nil,
-                                  :source {:type "query", :query {:database 4, :type "query", :query {:source-table 287}}},
-                                  :target {:type "table", :name "transform_api_table", :schema "public"},
-                                  :config nil}
-                                 {:name "transform_user",
-                                  :description nil,
-                                  :source {:type "query", :query {:database 4, :type "query", :query {:source-table 372}}},
-                                  :target {:type "table", :name "transform_user_table", :schema "public"},
-                                  :config nil}]
-                    :steps [{:type :run-transform :name "transform_api"}
-                            {:type :run-transform :name "transform_user"}
-                            {:type :create-model :transform-name "transform_api"}
-                            {:type :create-model :transform-name "transform_api"}]})
 
   (mr/explain ::m.workspace/plan sample-plan)
 

@@ -85,17 +85,25 @@
   {:status 200
    :body (w.common/create-workspace! name description api/*current-user-id*)})
 
+(defn- normalize-plan [plan]
+  (into {}
+        (-> plan
+            (update :steps #(mapv (fn [s] (update s :type keyword)) %)))))
+
 (defn- init-and-run-workspace! [plan]
-  (let [workspace (w.common/create-workspace! "name" "description" api/*current-user-id*)
-        plan-data (into {} (yaml/parse-string plan))]
-    (when-not (mr/validate ::m.workspace/plan plan-data)
+  (let [{:keys [workspace]} (w.common/create-workspace! "name" "description")]
+    (when-not (mr/validate ::m.workspace/plan plan)
       (log/info "Invalid plan data!"))
-    (w.common/init-workspace workspace plan-data)
-    (w.common/run-steps workspace plan-data)
-    {:collection-id (:collection_id workspace)}))
+    (let [_ (w.common/init-workspace workspace plan)
+          updated-ws (t2/select-one :model/Workspace :id (:id workspace))
+          steps (w.common/run-steps updated-ws plan)]
+      {:collection-id (:collection_id workspace)
+       :steps steps})))
 
 (comment
   (require '[metabase.test :as mt])
+
+  (normalize-plan (yaml/parse-string plan))
 
   (def pd {:transforms [{:name "transform_api_key",
                          :description nil
@@ -107,8 +115,18 @@
                          :target {:type "table", :name "transform_user_table", :schema "public"}}]
            :steps [{:type :run-transform :name "transform_api_key"}
                    {:type :run-transform :name "transform_user"}
-                   {:type :create-model :transform-name "transform_api_key"}
-                   {:type :create-model :transform-name "transform_user"}]})
+                   {:type :create-model
+                    :transform-name "transform_api_key"
+                    :model-name "Api Key Model"}
+                   {:type :create-model
+                    :transform-name "transform_user"
+                    :model-name "User Model"}
+                   {:type :create-xray
+                    :name "Api Key Xray Creator"
+                    :model-name "Api Key Model"}
+                   {:type :create-xray
+                    :name "User Xray Creator"
+                    :model-name "User Model"}]})
 
   (do   (binding [api/*current-user-id* (mt/user->id :crowberto)
                   api/*current-user-permissions-set* (atom #{"/"})]
@@ -117,16 +135,14 @@
         (w.common/init-workspace w pd)
 
         (t2/select-one :model/Workspace :id (:id w))
-        (binding [api/*current-user-id* (mt/user->id :crowberto)]
+        (metabase.request.session/with-current-user 1
           (w.common/run-steps
            (t2/select-one :model/Workspace :id (:id w))
-           pd))
+           pd)))
 
-        (:data_warehouses (t2/select-one :model/Workspace :id (:id w)))
-
-        (:collection_id (t2/select-one :model/Workspace :id (:id w))))
-
-  (t2/select :model/Card 124))
+  (binding [api/*current-user-id* (mt/user->id :crowberto)
+            api/*current-user-permissions-set* (atom #{"/"})]
+    (init-and-run-workspace! pd)))
 
 ;; POST /api/ee/workspace/create
 (api.macros/defendpoint :post "/create"
@@ -137,8 +153,9 @@
    - description (optional): Workspace description"
   [_route-params
    _query-params
-   {:keys [plan]}]
-  (init-and-run-workspace! plan))
+   {plan-yaml :plan}]
+  (let [plan (normalize-plan (yaml/parse-string plan-yaml))]
+    (init-and-run-workspace! plan)))
 
 (api.macros/defendpoint :delete "/:workspace-id"
   "Delete a workspace."
