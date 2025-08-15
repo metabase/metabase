@@ -396,7 +396,7 @@
 
 (deftest athena-describe-database
   (mt/test-driver :athena
-    (testing "when the dbname specified describe-database only returns tables from that database and does not include the schema"
+    (testing "when the dbname is specified describe-database only returns tables from that database and does not include the schema"
       (is (= {:tables #{{:name "users", :schema nil, :description nil}
                         {:name "venues", :schema nil, :description nil}
                         {:name "categories", :schema nil, :description nil}
