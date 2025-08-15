@@ -1,7 +1,6 @@
 import { useMemo, useState } from "react";
 import { ResizableBox, type ResizableBoxProps } from "react-resizable";
 
-import { hasFeature } from "metabase/admin/databases/utils";
 import type { CollectionPickerItem } from "metabase/common/components/Pickers/CollectionPicker";
 import type { DataPickerItem } from "metabase/common/components/Pickers/DataPicker";
 import { useSetting } from "metabase/common/hooks";
@@ -11,6 +10,8 @@ import { Box } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
+
+import { useDoesDatabaseSupportTransforms } from "../../../hooks/use-does-database-support-transforms";
 
 import S from "./EditorBody.module.css";
 import { ResizableBoxHandle } from "./ResizableBoxHandle";
@@ -65,17 +66,14 @@ export function EditorBody({
     onChange(newNativeQuery.question());
   };
 
-  const databaseSupportsTransforms = (database: Database | null) =>
-    database && !database.is_sample && hasFeature(database, "transforms/table");
+  const databaseSupportsTransforms = useDoesDatabaseSupportTransforms();
 
   const dataPickerOptions = useMemo(() => {
-    const metadata = question.metadata();
     return {
       shouldDisableItem: (item: DataPickerItem | CollectionPickerItem) => {
         // Disable unsuppported databases
         if (item.model === "database") {
-          const database = metadata.database(item.id);
-          return !databaseSupportsTransforms(database);
+          return !databaseSupportsTransforms(item.id);
         }
 
         if (
@@ -86,8 +84,7 @@ export function EditorBody({
           // Disable tables based on unsuppported databases
           item.model === "table"
         ) {
-          const database = metadata.database(item.database_id);
-          return !databaseSupportsTransforms(database);
+          return !databaseSupportsTransforms(item.database_id);
         }
 
         // Disable dashboards altogether
@@ -98,7 +95,7 @@ export function EditorBody({
         return false;
       },
     };
-  }, [question]);
+  }, [databaseSupportsTransforms]);
 
   return isNative ? (
     <NativeQueryEditor
@@ -121,7 +118,7 @@ export function EditorBody({
       cancelQuery={onCancelQuery}
       setDatasetQuery={handleNativeQueryChange}
       databaseIsDisabled={(database: Database) =>
-        !databaseSupportsTransforms(database)
+        !databaseSupportsTransforms(database.id)
       }
     />
   ) : (
