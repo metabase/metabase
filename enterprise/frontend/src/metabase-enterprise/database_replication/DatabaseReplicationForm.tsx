@@ -28,15 +28,15 @@ import {
 import type { PreviewDatabaseReplicationResponse } from "metabase-enterprise/api/database-replication";
 import type { Database, DatabaseId } from "metabase-types/api";
 
-const styles = {
-  wrapperProps: {
-    fw: 400,
-  },
-  labelProps: {
-    fz: "0.875rem",
-    mb: "0.75rem",
-  },
-};
+// const styles = {
+//   wrapperProps: {
+//     fw: 400,
+//   },
+//   labelProps: {
+//     fz: "0.875rem",
+//     mb: "0.75rem",
+//   },
+// };
 
 export interface DatabaseReplicationFormFields {
   databaseId: DatabaseId;
@@ -216,19 +216,22 @@ export const DatabaseReplicationForm = ({
                   { value: "include", label: t`Only these…` },
                   { value: "exclude", label: t`All except…` },
                 ]}
-                {...styles}
               />
 
               {values.schemaSelect !== "all" && (
-                <FormTextarea
-                  name="schemaFilters"
-                  label={t`Comma separated names of schemas that should ${values.schemaSelect === "exclude" ? "NOT " : ""}be replicated`}
-                  placeholder="e.g. public, auth"
-                  maxRows={5}
-                  minRows={2}
-                  onBlur={({ target: { value } }) => setSchemaFilters(value)}
-                  // {...styles}
-                />
+                <>
+                  <Text
+                    c="text-secondary"
+                    fz="sm"
+                  >{t`Comma separated names of schemas that should ${values.schemaSelect === "exclude" ? "NOT " : ""}be replicated`}</Text>
+                  <FormTextarea
+                    name="schemaFilters"
+                    placeholder="e.g. public, auth"
+                    maxRows={5}
+                    minRows={2}
+                    onBlur={({ target: { value } }) => setSchemaFilters(value)}
+                  />
+                </>
               )}
 
               {noSyncTables.length > 0 && (
