@@ -48,7 +48,9 @@ interface Props {
   models?: DataPickerValue["model"][];
   onChange: (value: TableId) => void;
   onClose: () => void;
-  shouldDisableItem?: (item: DataPickerItem | CollectionPickerItem) => boolean;
+  shouldDisableItem?: (
+    item: DataPickerItem | CollectionPickerItem | RecentItem,
+  ) => boolean;
 }
 
 type FilterOption = { label: string; value: CollectionItemModel };
