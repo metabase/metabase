@@ -5,7 +5,10 @@ import type {
   SdkBreadcrumbsContextType,
 } from "embedding-sdk/types/breadcrumb";
 
-import { updateBreadcrumbsWithItem } from "./utils/update-breadcrumbs";
+import {
+  removeBreadcrumbsAfterItem,
+  updateBreadcrumbsWithItem,
+} from "./utils/update-breadcrumbs";
 
 export const SdkBreadcrumbsContext =
   createContext<SdkBreadcrumbsContextType | null>(null);
@@ -26,17 +29,12 @@ export const SdkBreadcrumbsProvider = ({
   }, []);
 
   const navigateTo = useCallback(
-    (breadcrumb: SdkBreadcrumbItem) => {
-      const existingIndex = breadcrumbs.findIndex(
-        (item) => item.id === breadcrumb.id && item.type === breadcrumb.type,
-      );
+    (nextItem: SdkBreadcrumbItem) => {
+      const nextBreadcrumbs = removeBreadcrumbsAfterItem(breadcrumbs, nextItem);
 
-      if (existingIndex !== -1) {
-        const breadcrumb = breadcrumbs[existingIndex];
-        breadcrumb?.onNavigate?.();
-
-        // Remove all breadcrumbs after this item.
-        setBreadcrumbs(breadcrumbs.slice(0, existingIndex + 1));
+      if (nextBreadcrumbs) {
+        nextItem?.onNavigate?.();
+        setBreadcrumbs(nextBreadcrumbs);
       }
     },
     [breadcrumbs],

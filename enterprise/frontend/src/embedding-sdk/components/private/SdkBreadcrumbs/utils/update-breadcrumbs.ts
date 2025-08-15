@@ -17,7 +17,12 @@ export function updateBreadcrumbsWithItem(
   }
 
   if (nextItem.type === "collection") {
-    return updateBreadcrumbsWithCollection(breadcrumbs, nextItem);
+    return (
+      removeBreadcrumbsAfterItem(breadcrumbs, nextItem) ?? [
+        ...breadcrumbs,
+        nextItem,
+      ]
+    );
   }
 
   // If a dashboard or question already exist as the last item, replace it.
@@ -28,19 +33,17 @@ export function updateBreadcrumbsWithItem(
   return [...breadcrumbs, nextItem];
 }
 
-function updateBreadcrumbsWithCollection(
+export function removeBreadcrumbsAfterItem(
   breadcrumbs: SdkBreadcrumbItem[],
   nextItem: SdkBreadcrumbItem,
-): SdkBreadcrumbItem[] {
+): SdkBreadcrumbItem[] | null {
   const existingIndex = breadcrumbs.findIndex(
     (item) => item.id === nextItem.id && item.type === nextItem.type,
   );
 
-  // If the collection already exist on the breadcrumb,
-  // remove all breadcrumbs after it.
-  if (existingIndex !== -1) {
-    return breadcrumbs.slice(0, existingIndex + 1);
+  if (existingIndex === -1) {
+    return null;
   }
 
-  return [...breadcrumbs, nextItem];
+  return breadcrumbs.slice(0, existingIndex + 1);
 }
