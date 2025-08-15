@@ -7,7 +7,7 @@ import {
 } from "__support__/server-mocks";
 import { renderWithProviders } from "__support__/ui";
 import {
-  MetabaseProvider,
+  ComponentProvider,
   StaticQuestion,
 } from "embedding-sdk/components/public";
 import type { MetabaseProviderProps } from "embedding-sdk/types/metabase-provider";
@@ -60,9 +60,9 @@ export const setup = ({
 
   return {
     ...renderWithProviders(
-      <MetabaseProvider authConfig={authConfig} locale={locale}>
+      <ComponentProvider authConfig={authConfig} locale={locale}>
         <StaticQuestion questionId={1} />
-      </MetabaseProvider>,
+      </ComponentProvider>,
       {
         storeInitialState: state,
       },

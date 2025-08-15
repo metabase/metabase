@@ -818,3 +818,7 @@ export const PLUGIN_DOCUMENTS = {
 export const PLUGIN_ENTITIES = {
   entities: {} as Record<string, any>,
 };
+
+export const PLUGIN_SEMANTIC_SEARCH = {
+  SearchSettingsWidget: PluginPlaceholder,
+};

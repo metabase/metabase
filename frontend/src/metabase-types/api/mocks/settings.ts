@@ -135,6 +135,7 @@ export const createMockTokenFeatures = (
   database_routing: false,
   development_mode: false,
   documents: false,
+  semantic_search: false,
   ...opts,
 });
 
@@ -333,6 +334,7 @@ export const createMockSettings = (
   "scim-enabled": false,
   "scim-base-url": "http://localhost:3000/api/ee/scim/v2/",
   "snowplow-url": "",
+  "search-engine": "appdb",
   "search-typeahead-enabled": true,
   "setup-token": null,
   "session-cookies": null,

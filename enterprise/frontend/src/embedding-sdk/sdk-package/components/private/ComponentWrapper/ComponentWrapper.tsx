@@ -73,24 +73,24 @@ const ComponentWrapperInner = <TComponentProps,>({
     return <Loader />;
   }
 
-  const MetabaseProvider = isLoading
+  const ComponentProvider = isLoading
     ? null
-    : getWindow()?.MetabaseEmbeddingSDK?.MetabaseProvider;
+    : getWindow()?.MetabaseEmbeddingSDK?.ComponentProvider;
   const Component = getComponent();
 
-  if (!MetabaseProvider || !Component || !metabaseProviderProps.reduxStore) {
+  if (!ComponentProvider || !Component || !metabaseProviderProps.reduxStore) {
     return <Error message={SDK_NOT_LOADED_YET_MESSAGE} />;
   }
 
   return (
-    <MetabaseProvider
+    <ComponentProvider
       {...metabaseProviderProps}
       reduxStore={metabaseProviderProps.reduxStore}
     >
       <Component
         {...(componentProps as JSX.IntrinsicAttributes & TComponentProps)}
       />
-    </MetabaseProvider>
+    </ComponentProvider>
   );
 };
 
