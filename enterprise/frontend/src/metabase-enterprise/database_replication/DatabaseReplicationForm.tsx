@@ -120,6 +120,7 @@ export const DatabaseReplicationForm = ({
     schemaFilters,
     SEARCH_DEBOUNCE_DURATION,
   );
+  const isValidSchemaFilters = !!debouncedSchemaFilters.length;
   const [showNoSyncTables, setShowNoSyncTables] = useState(false);
 
   const [previewResponseLoading, setPreviewResponseLoading] = useState(false);
@@ -341,7 +342,7 @@ export const DatabaseReplicationForm = ({
                 <Group>
                   <FormSubmitButton
                     disabled={!previewResponse?.canSetReplication}
-                    loading={previewResponseLoading}
+                    loading={isValidSchemaFilters && previewResponseLoading}
                     label={t`Start replication`}
                     variant="filled"
                     mt="xs"
