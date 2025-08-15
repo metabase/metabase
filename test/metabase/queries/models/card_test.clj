@@ -260,7 +260,6 @@
                                                                   :result_metadata (qp.preprocess/query->expected-cols (mt/mbql-query checkins))}]
                           (t2/update! :model/Card card-id changes)
                           (f (t2/select-one-fn :result_metadata :model/Card :id card-id))))}]
-
     (testing (format "When %s a Card\n" creating-or-updating)
       (testing "If result_metadata is empty, we should attempt to populate it"
         (f {:dataset_query (mt/mbql-query venues)}
@@ -284,7 +283,7 @@
               metadata (-> (mt/mbql-query checkins)
                            qp.preprocess/query->expected-cols
                            mt/metadata->native-form)]
-          (f (cond-> {:dataset_query   (mt/native-query {:native "SELECT * FROM CHECKINS"})
+          (f (cond-> {:dataset_query   (mt/native-query {:query "SELECT * FROM CHECKINS"})
                       :result_metadata metadata
                       :entity_id       card-eid}
                (= creating-or-updating "updating")
