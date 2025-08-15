@@ -279,6 +279,10 @@
   "Should we allow users to edit the data within tables?"
   :table-data-editing)
 
+(define-premium-feature ^{:added "0.57.0"} enable-documents?
+  "Does this instance support the new document entity."
+  :documents)
+
 (defn- -token-features []
   {:advanced_permissions           (enable-advanced-permissions?)
    :ai_sql_fixer                   (enable-ai-sql-fixer?)
@@ -298,6 +302,7 @@
    :database_routing               (enable-database-routing?)
    :development_mode               (development-mode?)
    :disable_password_login         (can-disable-password-login?)
+   :documents                      (enable-documents?)
    :email_allow_list               (enable-email-allow-list?)
    :email_restrict_recipients      (enable-email-restrict-recipients?)
    :embedding                      (hide-embed-branding?)

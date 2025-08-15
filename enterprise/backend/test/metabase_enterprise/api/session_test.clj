@@ -19,6 +19,7 @@
                               :disable-password-login
                               :database-auth-providers
                               :development-mode
+                              :documents
                               :email-allow-list
                               :email-restrict-recipients
                               :embedding
@@ -60,6 +61,7 @@
             :disable_password_login         true
             :database_auth_providers        true
             :development_mode               true
+            :documents                      true
             :email_allow_list               true
             :email_restrict_recipients      true
             :embedding                      true
