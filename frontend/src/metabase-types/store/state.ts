@@ -22,7 +22,7 @@ import type { VisualizerState } from "./visualizer";
 
 type ModalName = null | "collection" | "dashboard" | "action" | "help";
 
-type MetabaseApiReducer = ReturnType<typeof Api.reducer>;
+type MetabaseApiState = ReturnType<typeof Api.reducer>;
 
 export interface State {
   admin: AdminState;
@@ -48,7 +48,7 @@ export interface State {
     present: VisualizerState;
     future: VisualizerState[];
   };
-  "metabase-api": MetabaseApiReducer;
+  "metabase-api": MetabaseApiState;
 }
 
 export type Dispatch<T = any> = (action: T) => unknown | Promise<unknown>;
