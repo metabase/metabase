@@ -751,7 +751,7 @@
      clojure.core/eval        {:message "Don't use eval outside of tests"}}
 
     :discouraged-namespace
-    {metabase.query-processor.store {:message "Please do not use the Query Processor store outside of legacy Query Processor code or driver code. Use MBQL 5 + Lib or pass around a metadata provider instead."}}}}
+    {metabase.query-processor.store {:message "Please do not use the QP Store outside of legacy QP or driver code. Use MBQL 5/Lib or lib.metadata.jvm/applicaton-database-metadata-provider instead."}}}}
 
   printable-namespaces
   {:linters

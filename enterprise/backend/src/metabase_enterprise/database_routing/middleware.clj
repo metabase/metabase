@@ -8,7 +8,8 @@
    [metabase.driver.util :as driver.u]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.premium-features.core :refer [defenterprise]]
-   [metabase.query-processor.store :as qp.store]
+   ;; TODO (Cam 8/15/25) -- update this to use MBQL 5 + Lib
+   ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]))
 
 (defenterprise swap-destination-db

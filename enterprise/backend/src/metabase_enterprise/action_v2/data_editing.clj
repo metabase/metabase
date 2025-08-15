@@ -6,10 +6,10 @@
    [metabase-enterprise.action-v2.models.undo :as undo]
    [metabase.actions.core :as actions]
    [metabase.api.common :as api]
+   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor :as qp]
-   [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.queue :as queue]
    [metabase.warehouse-schema.models.field-values :as field-values]
@@ -75,31 +75,30 @@
   (assert (seq pk-fields) "Table must have at least one primary key column")
   ;; TODO pass in the db-id from above rather
   (when (seq rows)
-    (let [{:keys [db_id]} (api/check-404 (t2/select-one :model/Table table-id))
+    (let [db-id   (api/check-404 (t2/select-one-fn :db_id :model/Table table-id))
           row-pks (seq (map (partial get-row-pks pk-fields) rows))]
       (assert (every? valid-pks row-pks) "All rows must have valid primary keys")
-      (qp.store/with-metadata-provider db_id
-        (let [mp    (qp.store/metadata-provider)
-              query (lib/query mp (lib.metadata/table mp table-id))
-              query (lib/filter
-                     query
-                     ;; We can optimize the most common case considerably.
-                     (if (= 1 (count pk-fields))
-                       (apply lib/in
-                              (lib.metadata/field mp (:id (first pk-fields)))
-                              (map (comp val first) row-pks))
-                       ;; Optimizing this could be done in many cases, but it would be complex.
-                       (apply* lib/or
-                               (for [row-pk row-pks]
-                                 (apply* lib/and
-                                         (for [field pk-fields]
-                                           (lib/= (lib.metadata/field mp (:id field))
-                                                  (get row-pk (:name field)))))))))]
-          (->> query
-               qp/userland-query-with-default-constraints
-               qp/process-query
-               :data
-               qp-result->row-map))))))
+      (let [mp    (lib.metadata.jvm/application-database-metadata-provider db-id)
+            query (lib/query mp (lib.metadata/table mp table-id))
+            query (lib/filter
+                   query
+                   ;; We can optimize the most common case considerably.
+                   (if (= 1 (count pk-fields))
+                     (apply lib/in
+                            (lib.metadata/field mp (:id (first pk-fields)))
+                            (map (comp val first) row-pks))
+                     ;; Optimizing this could be done in many cases, but it would be complex.
+                     (apply* lib/or
+                             (for [row-pk row-pks]
+                               (apply* lib/and
+                                       (for [field pk-fields]
+                                         (lib/= (lib.metadata/field mp (:id field))
+                                                (get row-pk (:name field)))))))))]
+        (->> query
+             qp/userland-query-with-default-constraints
+             qp/process-query
+             :data
+             qp-result->row-map)))))
 
 (defn apply-coercions
   "For fields that have a coercion_strategy, apply the coercion function (defined in data-editing.coerce) to the corresponding value in each row.
