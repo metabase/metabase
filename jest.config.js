@@ -30,6 +30,7 @@ const esmPackages = [
 
 const baseConfig = {
   moduleNameMapper: {
+    "^build-configs/(.*)$": "<rootDir>/frontend/build/$1",
     "\\.(css|less)$": "<rootDir>/frontend/test/__mocks__/styleMock.js",
     "\\.(jpg|jpeg|png|gif|eot|otf|webp|svg|ttf|woff|woff2|mp4|webm|wav|mp3|m4a|aac|oga)$":
       "<rootDir>/frontend/test/__mocks__/fileMock.js",
@@ -136,6 +137,7 @@ const config = {
 
       setupFilesAfterEnv: [
         ...baseConfig.setupFilesAfterEnv,
+        "<rootDir>/enterprise/frontend/src/embedding-sdk/jest/setup-after-env.js",
         "<rootDir>/enterprise/frontend/src/embedding-sdk/jest/console-restrictions.js",
       ],
     },

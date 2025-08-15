@@ -235,3 +235,15 @@
   (let [num-stages-or-joins (count (get-in query (butlast path)))]
     (when (< (inc (last path)) num-stages-or-joins)
       (conj (vec (butlast path)) (inc (last path))))))
+
+(mu/defn join-parent-stage-path :- ::path
+  "Given a `join-path`, return the path to its parent stage (the stage that has this join inside its `:joins`)."
+  [join-path :- ::path]
+  (-> (vec join-path) pop pop))
+
+(mu/defn join-last-stage-path :- ::path
+  "Given a `join-path`, return the path to the last stage within the join."
+  [join-path :- ::path
+   join      :- [:map
+                 [:lib/type [:= :mbql/join]]]]
+  (into (vec join-path) [:stages (dec (count (:stages join)))]))

@@ -11,9 +11,9 @@ You can upload a translation dictionary to translate strings both in Metabase co
 
 The dictionary must be a CSV with these columns:
 
-- Locale Code
-- String
-- Translation
+- **Language** with the locale code 
+- **String** with the string to be translated
+- **Translation**
 
 > Don't put any sensitive data in the dictionary, since anyone can see the dictionary—including viewers of public links.
 
@@ -27,11 +27,11 @@ Metabase uses these dictionaries to translate user-generated content, like dashb
 
 | Language | String      | Translation  |
 | -------- | ----------- | ------------ |
-| pt_BR    | Examples    | Exemplos     |
-| pt_BR    | First tab   | Primeira aba |
-| pt_BR    | Another tab | Outra aba    |
-| pt_BR    | Title       | Título       |
-| pt_BR    | Vendor      | Vendedor     |
+| pt-BR    | Examples    | Exemplos     |
+| pt-BR    | First tab   | Primeira aba |
+| pt-BR    | Another tab | Outra aba    |
+| pt-BR    | Title       | Título       |
+| pt-BR    | Vendor      | Vendedor     |
 
 [See a list of supported locales](../configuring-metabase/localization.md#supported-languages)
 

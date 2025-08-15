@@ -164,33 +164,38 @@
   "Used to filter out environment variables with high foot-gun indices."
   [env-var]
   (or (false? (:doc env-var))
-              ;; Ideally, we'd move off of this list completely, but not all environment variables
-              ;; are defsettings.
+              ;; Ideally, we'd move off of this list completely,
+              ;; but not all environment variables are defsettings.
       (contains? env-vars-not-to-mess-with (format-prefix env-var))))
 
-(defn- setter?
-  "Used to filter out environment variables that cannot be set."
+(defn- setter-none?
+  "Used to remove settings that lack a setter (`:setter :none`).
+   For example, settings that are derived from other settings."
   [env-var]
-  (not= :none (:setter env-var)))
+   ;; If the `defsetting` has a `:doc` key with a string, we should document it.
+   ;; Checking that the `:doc` value is truthy because `:doc false` is a valid value.
+  (when-not (boolean (:doc env-var))
+    (= :none (:setter env-var))))
 
 (defn- only-local?
-  "Used to filter out environment variables that are only local."
+  "Used to filter out settings that are only local."
   [env-var]
   (or (= (:user-local env-var) :only)
       (= (:database-local env-var) :only)))
 
-(defn filter-env-vars
-  "Filters for valid environment variables."
+(defn remove-env-vars-we-should-not-document
+  "Some settings we should not document. They're either local settings, derived
+  from other settings, or are footguns to avoid."
   [settings]
   (->> settings
        (remove avoid?)
        (remove only-local?)
-       (filter setter?)))
+       (remove setter-none?)))
 
 (defn format-env-var-docs
   "Preps relevant environment variable docs as a Markdown string."
   [settings]
-  (map format-env-var-entry (filter-env-vars settings)))
+  (map format-env-var-entry (remove-env-vars-we-should-not-document settings)))
 
 (defn- format-intro
   "Exists just so we can write the intro in Markdown."

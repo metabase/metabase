@@ -319,7 +319,18 @@
             :email (u.random/random-email)
             :password (u.random/random-name)
             :date_joined (t/zoned-date-time)
-            :updated_at (t/zoned-date-time)})})
+            :updated_at (t/zoned-date-time)})
+
+   :model/Workspace
+   (fn [_] {:name (u.random/random-name)
+            :description (if (> (rand) 0.5) (u.random/random-name) nil)
+            :plans []
+            :activity_logs []
+            :transforms []
+            :documents []
+            :users []
+            :data_warehouses []
+            :permissions []})})
 
 (defn- set-with-temp-defaults! []
   (doseq [[model defaults-fn] with-temp-defaults-fns]
@@ -1080,11 +1091,11 @@
   is granted the permission specified by `permission-path`.
 
   For most use cases see the macro [[with-all-users-permission]]."
-  [permission-path f]
+  [permission-path thunk]
   #_{:clj-kondo/ignore [:discouraged-var]}
   (t2.with-temp/with-temp [:model/Permissions _ {:group_id (:id (perms/all-users-group))
                                                  :object permission-path}]
-    (f)))
+    (thunk)))
 
 (defn do-with-all-user-data-perms-graph!
   "Implementation for [[with-all-users-data-perms]]"

@@ -13,6 +13,8 @@ Row and column security lets you give granular permissions for different groups 
 
 You can use row and column security to set up [self-service analytics](https://www.metabase.com/learn/metabase-basics/embedding/multi-tenant-self-service-analytics), so that each of your customers can only view the rows that match their customer ID. For example, if you have an Accounts table with information about your customers, you can add permissions to the table so that each customer only sees the data relevant to them.
 
+> Row and column security was formerly called data sandboxing. It's the same feature, it just now has a more descriptive name.
+
 ## Row and column security examples
 
 You can skip the theory and go [straight to examples of row and column security](row-and-column-security-examples.md).

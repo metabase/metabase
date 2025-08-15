@@ -48,6 +48,7 @@ module.exports = {
     ],
     curly: [1, "all"],
     eqeqeq: [1, "smart"],
+    "import/no-duplicates": ["warn", { considerQueryString: true }],
     "import/no-default-export": 2,
     "import/no-named-as-default": 0,
     "import/no-commonjs": 1,
@@ -208,6 +209,7 @@ module.exports = {
         "release/**/*",
         "rspack.config.js",
         "rspack.main.config.js",
+        "rspack.embedding-sdk-package.config.js",
         "rspack.embedding-sdk-bundle.config.js",
       ],
       rules: {

@@ -1,9 +1,12 @@
 (ns metabase.lib.schema.metadata-test
   (:require
    [clojure.test :refer [are deftest is]]
+   [clojure.walk :as walk]
    [metabase.legacy-mbql.schema :as mbql.s]
-   [metabase.lib.normalize :as lib.normalize]
-   [metabase.lib.schema.metadata :as lib.schema.metadata]))
+   [metabase.lib.core :as lib]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.lib.test-metadata :as meta]
+   [metabase.util :as u]))
 
 (deftest ^:parallel normalize-column-metadata-test
   (let [col {"active"                    true
@@ -31,6 +34,7 @@
              "name"                      "CATEGORY"
              "position"                  3
              "semantic-type"             "type/Category"
+             "settings"                  {"is_priceless" true}
              "source"                    "breakout"
              "table-id"                  10808
              "visibility-type"           "normal"}]
@@ -51,6 +55,7 @@
             :name                      "CATEGORY"
             :position                  3
             :semantic-type             :type/Category
+            :settings                  {:is_priceless true}
             :source                    :breakout
             :table-id                  10808
             :visibility-type           :normal
@@ -62,9 +67,20 @@
             :lib/source                :source/table-defaults
             :lib/source-column-alias   "CATEGORY"
             :lib/type                  :metadata/column}
-           (lib.normalize/normalize ::lib.schema.metadata/column col)
+           (lib/normalize ::lib.schema.metadata/column col)
            ;; should be able to detect that this is Lib metadata based on the use of `:base-type`
-           (lib.normalize/normalize ::lib.schema.metadata/lib-or-legacy-column (dissoc col "lib/type"))))))
+           (lib/normalize ::lib.schema.metadata/lib-or-legacy-column (dissoc col "lib/type"))))))
+
+(deftest ^:parallel normalize-column-metadata-from-json-test
+  (let [cols      (for [field (meta/fields :venues)]
+                    (meta/field-metadata :venues field))
+        json-cols (walk/postwalk
+                   (fn [x]
+                     (cond-> x
+                       (keyword? x) u/qualified-name))
+                   cols)]
+    (is (= cols
+           (lib/normalize [:sequential ::lib.schema.metadata/column] json-cols)))))
 
 (deftest ^:parallel normalize-legacy-column-metadata-test
   (are [schema] (= {:base_type          :type/Integer
@@ -84,7 +100,7 @@
                                                                 :percent-state  0.0
                                                                 :percent-url    0.0}
                                                   :type/Number {:q1 1.459}}}}
-                   (lib.normalize/normalize
+                   (lib/normalize
                     schema
                     {"base_type"        "type/Integer"
                      :coercion_strategy  nil

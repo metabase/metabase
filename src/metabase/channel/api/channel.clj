@@ -103,4 +103,5 @@
    {:keys [type details]} :- [:map
                               [:type    ChannelType]
                               [:details :map]]]
+  (perms/check-has-application-permission :setting)
   (test-channel-connection! type details))

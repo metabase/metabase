@@ -49,6 +49,27 @@ export type StaticQuestionProps = PropsWithChildren<
   >
 >;
 
+/**
+ * @interface
+ */
+export type StaticQuestionComponents = {
+  Filter: typeof Filter;
+  FilterDropdown: typeof FilterDropdown;
+  ResetButton: typeof QuestionResetButton;
+  Title: typeof Title;
+  Summarize: typeof Summarize;
+  SummarizeDropdown: typeof SummarizeDropdown;
+  QuestionVisualization: typeof QuestionVisualization;
+  ChartTypeSelector: typeof ChartTypeSelector;
+  ChartTypeDropdown: typeof ChartTypeDropdown;
+  QuestionSettings: typeof QuestionSettings;
+  QuestionSettingsDropdown: typeof QuestionSettingsDropdown;
+  Breakout: typeof Breakout;
+  BreakoutDropdown: typeof BreakoutDropdown;
+  DownloadWidget: typeof DownloadWidget;
+  DownloadWidgetDropdown: typeof DownloadWidgetDropdown;
+};
+
 const _StaticQuestion = ({
   questionId: initialQuestionId,
   withChartTypeSelector,
@@ -113,42 +134,22 @@ const _StaticQuestion = ({
   );
 };
 
-/**
- * A question component without drill-downs.
- *
- * @function
- * @category StaticQuestion
- */
-export const StaticQuestion = _StaticQuestion as typeof _StaticQuestion & {
-  Filter: typeof Filter;
-  FilterDropdown: typeof FilterDropdown;
-  ResetButton: typeof QuestionResetButton;
-  Title: typeof Title;
-  Summarize: typeof Summarize;
-  SummarizeDropdown: typeof SummarizeDropdown;
-  QuestionVisualization: typeof QuestionVisualization;
-  ChartTypeSelector: typeof ChartTypeSelector;
-  ChartTypeDropdown: typeof ChartTypeDropdown;
-  QuestionSettings: typeof QuestionSettings;
-  QuestionSettingsDropdown: typeof QuestionSettingsDropdown;
-  Breakout: typeof Breakout;
-  BreakoutDropdown: typeof BreakoutDropdown;
-  DownloadWidget: typeof DownloadWidget;
-  DownloadWidgetDropdown: typeof DownloadWidgetDropdown;
+const subComponents: StaticQuestionComponents = {
+  Filter: Filter,
+  FilterDropdown: FilterDropdown,
+  ResetButton: QuestionResetButton,
+  Title: Title,
+  Summarize: Summarize,
+  SummarizeDropdown: SummarizeDropdown,
+  QuestionVisualization: QuestionVisualization,
+  ChartTypeSelector: ChartTypeSelector,
+  ChartTypeDropdown: ChartTypeDropdown,
+  QuestionSettings: QuestionSettings,
+  QuestionSettingsDropdown: QuestionSettingsDropdown,
+  Breakout: Breakout,
+  BreakoutDropdown: BreakoutDropdown,
+  DownloadWidget: DownloadWidget,
+  DownloadWidgetDropdown: DownloadWidgetDropdown,
 };
 
-StaticQuestion.Filter = Filter;
-StaticQuestion.FilterDropdown = FilterDropdown;
-StaticQuestion.ResetButton = QuestionResetButton;
-StaticQuestion.Title = Title;
-StaticQuestion.Summarize = Summarize;
-StaticQuestion.SummarizeDropdown = SummarizeDropdown;
-StaticQuestion.QuestionVisualization = QuestionVisualization;
-StaticQuestion.ChartTypeSelector = ChartTypeSelector;
-StaticQuestion.QuestionSettings = QuestionSettings;
-StaticQuestion.QuestionSettingsDropdown = QuestionSettingsDropdown;
-StaticQuestion.BreakoutDropdown = BreakoutDropdown;
-StaticQuestion.Breakout = Breakout;
-StaticQuestion.ChartTypeDropdown = ChartTypeDropdown;
-StaticQuestion.DownloadWidget = DownloadWidget;
-StaticQuestion.DownloadWidgetDropdown = DownloadWidgetDropdown;
+export const StaticQuestion = Object.assign(_StaticQuestion, subComponents);

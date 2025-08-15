@@ -304,7 +304,7 @@
                               (-> metadata
                                   (u/assoc-default :effective-type (or (:base-type metadata) :type/*))
                                   (assoc :lib/source      :source/aggregations
-                                         :lib/source-uuid (lib.options/uuid  aggregation))))))))))
+                                         :lib/source-uuid (lib.options/uuid aggregation))))))))))
 
 (def ^:private OperatorWithColumns
   [:merge

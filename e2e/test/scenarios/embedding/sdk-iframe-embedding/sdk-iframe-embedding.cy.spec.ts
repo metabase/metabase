@@ -230,6 +230,40 @@ describe("scenarios > embedding > sdk iframe embedding", () => {
     cy.log("3. dashboard title should now be visible");
     getIframeWindow().findByText("Orders in a dashboard").should("be.visible");
   });
+
+  it("CSP nonces are set for custom expression styles (EMB-707)", () => {
+    const frame = H.loadSdkIframeEmbedTestPage({
+      element: "metabase-question",
+      attributes: {
+        questionId: "new",
+      },
+    });
+
+    frame.within(() => {
+      cy.findByText("Orders").should("be.visible");
+
+      H.popover().within(() => {
+        cy.findByText("Orders").click();
+      });
+
+      cy.log("csp nonces should be set");
+      cy.get("style[nonce]")
+        .should("have.length.greaterThan", 0)
+        .first()
+        .should("have.attr", "nonce")
+        .and("have.length.greaterThan", 4);
+
+      cy.findByRole("button", { name: "Custom column" }).click();
+
+      cy.log("injected codemirror styles should be set");
+      cy.findByTestId("custom-expression-query-editor")
+        .should("be.visible")
+        .find(".cm-editor .cm-placeholder")
+        .and("have.css", "color", "rgb(136, 136, 136)");
+
+      cy.findByRole("button", { name: "Cancel" }).click();
+    });
+  });
 });
 
 const getIframeWindow = () =>

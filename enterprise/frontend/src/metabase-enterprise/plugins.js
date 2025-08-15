@@ -40,5 +40,6 @@ import "./clean_up";
 import "./metabot";
 import "./database_replication";
 import "./documents";
+import "./workspaces";
 import "./entities";
 import "./transforms";

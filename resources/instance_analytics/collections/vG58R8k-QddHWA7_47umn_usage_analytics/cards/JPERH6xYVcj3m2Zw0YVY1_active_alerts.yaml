@@ -52,7 +52,6 @@ dataset_query:
         - base-type: type/Integer
           join-alias: People - Creator
       fields: none
-      ident: join_JPERH6xYVcj3m2Zw0YVY1@0__People - Creator
       source-table: 0wVIfjBJWclD0lKeABYYl
       strategy: left-join
     source-table: skoPT2xiuEcUV8vFkHE6S

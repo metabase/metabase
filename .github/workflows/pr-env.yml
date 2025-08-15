@@ -27,9 +27,11 @@ jobs:
         with:
           registries: "${{ secrets.PR_ENV_AWS_ACCOUNT_ID }}"
       - name: Retrieve uberjar artifact for ee
-        uses: actions/download-artifact@v4
+        uses: ./.github/actions/fetch-artifact
         with:
           name: metabase-ee-${{ github.event.pull_request.head.sha || github.sha }}-uberjar
+          extract-path: "target/uberjar"
+          output-name: "metabase.jar"
       - name: Move uberjar to bin/docker
         run: |
           jar xf target/uberjar/metabase.jar

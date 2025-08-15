@@ -339,3 +339,7 @@
     [{:source-table 1} {"lib/type" :mbql.stage/native}]
     [{:lib/type :mbql.stage/mbql, :source-table 1}
      {:lib/type :mbql.stage/native}]))
+
+(deftest ^:parallel normalize-remove-disallowed-keys-test
+  (is (= {:source-table 1, :lib/type :mbql.stage/mbql}
+         (lib/normalize ::lib.schema/stage {:source-table 1, :type "query"}))))

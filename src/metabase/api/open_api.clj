@@ -179,14 +179,16 @@
     [:object  ::parameter.schema.object]
     [:array   ::parameter.schema.array]]])
 
+(mr/def ::ref.string
+  [:re
+   {:description "string starting with '#/components/'"}
+   #"^#/components/(?:schemas)|(?:headers)/[^/]+$"])
+
 (mr/def ::parameter.schema.ref
   [:merge
    ::parameter.schema.common
    [:map
-
-    [:$ref [:re
-            {:description "string starting with '#/components/schemas/'"}
-            #"^#/components/schemas/[^/]+$"]]
+    [:$ref ::ref.string]
     [:definitions {:optional true} [:map-of :string [:ref ::parameter.schema]]]]])
 
 (mr/def ::parameter.schema.or
@@ -200,34 +202,29 @@
     [:merge
      ::parameter.schema.common
      [:map
-
       [:anyOf [:sequential [:ref ::parameter.schema]]]]]]
    [:oneOf
     [:merge
      ::parameter.schema.common
      [:map
-
       [:oneOf [:sequential [:ref ::parameter.schema]]]]]]])
 
 (mr/def ::parameter.schema.and
   [:merge
    ::parameter.schema.common
    [:map
-
     [:allOf [:sequential [:ref ::parameter.schema]]]]])
 
 (mr/def ::parameter.schema.const
   [:merge
    ::parameter.schema.common
    [:map
-
     [:const :any]]])
 
 (mr/def ::parameter.schema.untyped-enum
   [:merge
    ::parameter.schema.common
    [:map
-
     [:enum [:sequential :any]]]])
 
 (mr/def ::parameter.schema.empty
@@ -264,8 +261,9 @@
    [:name        string?]
    [:in          ::parameter.in]
    [:description {:optional true} :string]
-   [:required    :boolean]
-   [:schema      ::parameter.schema]])
+   [:required    {:optional true} :boolean]
+   [:schema      {:optional true} ::parameter.schema]
+   [:$ref        {:optional true} ::ref.string]])
 
 (mr/def ::path-item.request-body
   [:map

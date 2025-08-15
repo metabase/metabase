@@ -559,7 +559,7 @@
         {"$expr" {"$eq" ["$price" {"$add" [{"$subtract" ["$price" 5]} 100]}]}}
         [:= $price [:+ [:- $price 5] 100]]))))
 
-(deftest ^:parallel uniqe-alias-index-test
+(deftest ^:parallel unique-alias-index-test
   (mt/test-driver
     :mongo
     (testing "Field aliases have deterministic unique indices"
@@ -586,7 +586,7 @@
             indices (reduce (fn [acc lookup-stage]
                               (let [let-var-name (-> (get-in lookup-stage ["$lookup" :let]) keys first)
                                    ;; Following expression ensures index is an integer.
-                                    index (Integer/parseInt (re-find #"\d+$" let-var-name))]
+                                    index (parse-long (re-find #"\d+$" let-var-name))]
                                ;; Following expression tests that index is unique.
                                 (is (not (contains? acc index)))
                                 (conj acc index)))

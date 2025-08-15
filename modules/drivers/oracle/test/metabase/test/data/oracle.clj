@@ -65,7 +65,7 @@
                   :user                    (tx/db-test-env-var :oracle :user)
                   :password                (tx/db-test-env-var :oracle :password)
                   :sid                     (tx/db-test-env-var :oracle :sid)
-                  :service-name            (tx/db-test-env-var :oracle :service-name (when-not (tx/db-test-env-var :oracle :sid) "XEPDB1"))
+                  :service-name            (tx/db-test-env-var :oracle :service-name (tx/db-test-env-var :oracle :sid "FREEPDB1"))
                   :ssl                     (Boolean/parseBoolean (tx/db-test-env-var :oracle :ssl "false"))
                   :schema-filters-type     "inclusion"
                   :schema-filters-patterns session-schema}

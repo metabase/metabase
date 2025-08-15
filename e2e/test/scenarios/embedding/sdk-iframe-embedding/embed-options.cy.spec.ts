@@ -111,6 +111,9 @@ describe("scenarios > embedding > sdk iframe embed options passthrough", () => {
       cy.log("4. clicking on the filter should drill down");
       cy.get('[type="filter"] button').first().click();
       cy.findAllByText("29.8").first().should("be.visible");
+
+      cy.log("5. should not show a save button");
+      cy.findByText("Save").should("not.exist");
     });
   });
 

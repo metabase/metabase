@@ -1,4 +1,8 @@
-import type { MetabaseCollection } from "embedding-sdk/types/collection";
+import type {
+  MetabaseCollection,
+  SdkCollectionId,
+} from "embedding-sdk/types/collection";
+import type { CreateDashboardProperties } from "metabase/dashboard/containers/CreateDashboardForm";
 
 import type { SdkEntityId } from "./entity-id";
 
@@ -37,4 +41,18 @@ export type DashboardEventHandlersProps = {
    * Callback that is called when the dashboard is loaded without cards.
    */
   onLoadWithoutCards?: (dashboard: MetabaseDashboard | null) => void;
+};
+
+/**
+ * @interface
+ * @category useCreateDashboardApi
+ */
+export type CreateDashboardValues = Omit<
+  CreateDashboardProperties,
+  "collection_id"
+> & {
+  /**
+   * Collection in which to create a new dashboard. You can use predefined system values like `root` or `personal`.
+   */
+  collectionId: SdkCollectionId;
 };

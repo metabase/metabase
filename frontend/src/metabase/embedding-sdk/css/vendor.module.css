@@ -1,7 +1,0 @@
-/**
- * This file is not parsed as a CSS module, so all class names are unaffected
- * Layers are defined in the `layer.module.css`
- */
-@import "@mantine/core/styles.css" layer(embedding-sdk.vendor);
-@import "@mantine/dates/styles.css" layer(embedding-sdk.vendor);
-@import "../../css/vendor.css" layer(embedding-sdk.vendor);

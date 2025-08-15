@@ -60,7 +60,7 @@
             many-indexes (into indexes (repeat 100000 {:table-schema "public",
                                                        :table-name "fake_table",
                                                        :field-name "id"}))
-            field-ids (#'sync.indexes/all-indexes->field-ids (:id (mt/db)) many-indexes)]
+            field-ids (#'sync.indexes/all-indexes->field-ids (mt/id) many-indexes)]
         (is (seq field-ids))))))
 
 (deftest sync-all-indexes!-test

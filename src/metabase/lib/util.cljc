@@ -23,6 +23,7 @@
    [metabase.lib.util.match :as lib.util.match]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
 
@@ -210,16 +211,20 @@
   "Convert legacy `:source-metadata` to [[metabase.lib.metadata/StageMetadata]]."
   [source-metadata]
   (when source-metadata
-    (-> (if (seqable? source-metadata)
-          {:columns source-metadata}
-          source-metadata)
-        (update :columns (fn [columns]
-                           (mapv (fn [column]
-                                   (-> column
-                                       (update-keys u/->kebab-case-en)
-                                       (assoc :lib/type :metadata/column)))
-                                 columns)))
-        (assoc :lib/type :metadata/results))))
+    (when-let [m (cond
+                   (seqable? source-metadata) {:columns source-metadata}
+                   (map? source-metadata)     source-metadata
+                   :else                      (do
+                                                (log/warnf "Ignoring invalid source metadata: expected sequence of columns, got %s" (pr-str (type source-metadata)))
+                                                nil))]
+      (-> m
+          (update :columns (fn [columns]
+                             (mapv (fn [column]
+                                     (-> column
+                                         (update-keys u/->kebab-case-en)
+                                         (assoc :lib/type :metadata/column)))
+                                   columns)))
+          (assoc :lib/type :metadata/results)))))
 
 (defn- join->pipeline [join]
   (let [stages (inner-query->stages (or (:source-query join)
@@ -583,15 +588,6 @@
   "This is the same as [[unique-name-generator]] but doesn't truncate names, matching the 'classic' behavior in QP
   results metadata."
   (unique-name-generator-factory {::truncate? false}))
-
-(mu/defn identity-generator :- ::unique-name-generator
-  "Identity unique name generator that just returns strings as-is."
-  ([]
-   identity-generator)
-  ([s]
-   s)
-  ([_id s]
-   s))
 
 (def ^:private strip-id-regex
   #?(:cljs (js/RegExp. " id$" "i")

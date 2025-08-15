@@ -38,6 +38,8 @@ export function modelToUrl(item: UrlableModel) {
     case "report":
     case "document":
       return `/document/${item.id}`;
+    case "workspace":
+      return `/workspace/${item.id}`;
     default:
       return null;
   }

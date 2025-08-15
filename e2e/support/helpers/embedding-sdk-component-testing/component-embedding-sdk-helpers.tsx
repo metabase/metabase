@@ -12,9 +12,21 @@ export const DEFAULT_SDK_AUTH_PROVIDER_CONFIG = {
   metabaseInstanceUrl: METABASE_INSTANCE_URL,
 };
 
-export interface MountSdkContentOptions {
-  sdkProviderProps?: Partial<MetabaseProviderProps>;
+export interface MountSdkOptions {
   strictMode?: boolean;
+}
+
+export function mountSdk(
+  children: JSX.Element,
+  { strictMode = false }: MountSdkOptions = {},
+) {
+  return strictMode
+    ? cy.mount(<React.StrictMode>{children}</React.StrictMode>)
+    : cy.mount(children);
+}
+
+export interface MountSdkContentOptions extends MountSdkOptions {
+  sdkProviderProps?: Partial<MetabaseProviderProps>;
   waitForUser?: boolean;
 }
 
@@ -53,4 +65,8 @@ export function mountSdkContent(
       expect(response?.statusCode).to.equal(200);
     });
   }
+}
+
+export function getSdkBundleScriptElement(): HTMLScriptElement | null {
+  return document.querySelector('[data-embedding-sdk-bundle="true"]');
 }

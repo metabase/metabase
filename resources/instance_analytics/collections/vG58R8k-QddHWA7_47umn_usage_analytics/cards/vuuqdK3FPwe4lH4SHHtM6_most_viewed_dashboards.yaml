@@ -66,7 +66,6 @@ dataset_query:
           - entity_qualified_id
         - base-type: type/Text
           join-alias: Content - Entity Qualified
-      ident: join_MUXrck2HHcd2TIRuPfK0v@0__Content - Entity Qualified
       source-table: AxSackBiyXVRUzM_TyyQY
       strategy: left-join
     - alias: People - Creator
@@ -82,7 +81,6 @@ dataset_query:
           - user_id
         - base-type: type/Integer
           join-alias: People - Creator
-      ident: join_MUXrck2HHcd2TIRuPfK0v@0__People - Creator
       source-table: 0wVIfjBJWclD0lKeABYYl
       strategy: left-join
     - alias: Group Members - User
@@ -101,7 +99,6 @@ dataset_query:
           - user_id
         - base-type: type/Integer
           join-alias: Group Members - User
-      ident: join_MUXrck2HHcd2TIRuPfK0v@0__Group Members - User
       source-table: lTp-ATFsCUFEr9I0fMEaO
       strategy: left-join
     limit: 100

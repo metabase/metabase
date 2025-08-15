@@ -51,6 +51,7 @@ export const getUserPromptForMessageId = createSelector(
     }
   },
 );
+
 export const getLastAgentMessagesByType = createSelector(
   [getMessages, getAgentErrorMessages],
   (messages, errorMessages) => {

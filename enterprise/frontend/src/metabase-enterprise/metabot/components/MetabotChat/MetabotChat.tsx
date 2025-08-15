@@ -22,7 +22,7 @@ import { useGetSuggestedMetabotPromptsQuery } from "metabase-enterprise/api";
 import { useMetabotAgent } from "../../hooks";
 
 import Styles from "./MetabotChat.module.css";
-import { AgentErrorMessage, Message } from "./MetabotChatMessage";
+import { Messages } from "./MetabotChatMessage";
 import { MetabotThinking } from "./MetabotThinking";
 import { useScrollManager } from "./hooks";
 
@@ -156,34 +156,12 @@ export const MetabotChat = () => {
               data-testid="metabot-chat-inner-messages"
             >
               {/* conversation messages */}
-              {metabot.messages.map((message, index) => {
-                const canRetry =
-                  message.role === "agent" &&
-                  metabot.messages[index + 1]?.role !== "agent";
-
-                return (
-                  <Message
-                    key={"msg-" + index}
-                    data-testid="metabot-chat-message"
-                    message={message}
-                    onRetry={canRetry ? handleRetryMessage : undefined}
-                    hideActions={
-                      metabot.isDoingScience &&
-                      metabot.messages.length === index + 1 &&
-                      message.role === "agent"
-                    }
-                  />
-                );
-              })}
-
-              {/* error messages */}
-              {metabot.errorMessages.map((message, index) => (
-                <AgentErrorMessage
-                  key={"err-" + index}
-                  data-testid="metabot-chat-message"
-                  message={message}
-                />
-              ))}
+              <Messages
+                messages={metabot.messages}
+                errorMessages={metabot.errorMessages}
+                onRetryMessage={handleRetryMessage}
+                isDoingScience={metabot.isDoingScience}
+              />
 
               {/* loading */}
               {metabot.isDoingScience && (

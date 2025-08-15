@@ -3,6 +3,7 @@ import {
   ORDERS_COUNT_QUESTION_ID,
   ORDERS_DASHBOARD_ID,
 } from "e2e/support/cypress_sample_instance_data";
+import { mockEmbedJsToDevServer } from "e2e/support/helpers";
 
 import {
   getEmbedSidebar,
@@ -32,6 +33,8 @@ H.describeWithSnowplow(suiteTitle, () => {
     cy.intercept("GET", "/api/dashboard/**").as("dashboard");
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
     cy.intercept("GET", "/api/activity/recents?*").as("recentActivity");
+
+    mockEmbedJsToDevServer();
   });
 
   afterEach(() => {

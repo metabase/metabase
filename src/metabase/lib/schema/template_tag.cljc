@@ -88,10 +88,7 @@
     [:options {:optional true} [:maybe :map]]]])
 
 (mr/def ::disallow-dimension
-  [:fn
-   {:decode/normalize #(dissoc % :dimension)
-    :error/message    ":dimension is only allowed for :type :dimension template tags"}
-   #(not (contains? % :dimension))])
+  (common/disallowed-keys {:dimension ":dimension is only allowed for :type :dimension template tags"}))
 
 ;; Example:
 ;;
