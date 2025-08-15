@@ -34,7 +34,6 @@ const baseConfig = {
     "\\.(css|less)$": "<rootDir>/frontend/test/__mocks__/styleMock.js",
     "\\.(jpg|jpeg|png|gif|eot|otf|webp|svg|ttf|woff|woff2|mp4|webm|wav|mp3|m4a|aac|oga)$":
       "<rootDir>/frontend/test/__mocks__/fileMock.js",
-    "msw-storybook-addon": "<rootDir>/frontend/test/__mocks__/msw-storybook-addon.js",
     "^cljs/(.*)$": "<rootDir>/target/cljs_dev/$1",
     "^d3-(.*)$": "<rootDir>/node_modules/d3-$1/dist/d3-$1",
     "react-markdown":
@@ -111,6 +110,10 @@ const baseConfig = {
     "/frontend/test/",
   ],
   testEnvironment: "jest-environment-jsdom",
+  testEnvironmentOptions: {
+    // required for msw-storybook-addon https://github.com/mswjs/msw-storybook-addon/issues/145
+    customExportConditions: ["node", "node-addons"],
+  },
 };
 
 /** @type {import('jest').Config} */
