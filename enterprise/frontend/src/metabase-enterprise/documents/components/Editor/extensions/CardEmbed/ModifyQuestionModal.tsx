@@ -6,6 +6,7 @@ import _ from "underscore";
 import { useDispatch, useSelector, useStore } from "metabase/lib/redux";
 import { Notebook } from "metabase/querying/notebook/components/Notebook";
 import { getMetadata } from "metabase/selectors/metadata";
+import { getSetting } from "metabase/selectors/settings";
 import { Box, Button, Flex, Modal, Text } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
@@ -37,11 +38,13 @@ export const ModifyQuestionModal = ({
   const store = useStore();
   const dispatch = useDispatch();
   const metadata = useSelector(getMetadata);
+  const reportTimezone = useSelector((state) =>
+    getSetting(state, "report-timezone-long"),
+  );
   const [modifiedQuestion, setModifiedQuestion] = useState<Question | null>(
     null,
   );
 
-  // Load metadata for card
   useEffect(() => {
     if (isOpen && card) {
       dispatch(loadMetadataForDocumentCard(card));
@@ -134,7 +137,7 @@ export const ModifyQuestionModal = ({
               isDirty={true}
               isRunnable={true}
               isResultDirty={true}
-              reportTimezone="UTC"
+              reportTimezone={reportTimezone}
               hasVisualizeButton={false}
               updateQuestion={handleUpdateQuestion}
               runQuestionQuery={async () => {}}
