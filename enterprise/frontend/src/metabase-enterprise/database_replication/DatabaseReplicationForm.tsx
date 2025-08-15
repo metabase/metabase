@@ -239,7 +239,9 @@ export const DatabaseReplicationForm = ({
                     placeholder="e.g. public, auth"
                     maxRows={5}
                     minRows={2}
-                    onBlur={({ target: { value } }) => setSchemaFilters(value)}
+                    onChange={({ target: { value } }) =>
+                      setSchemaFilters(value)
+                    }
                   />
                 </Box>
               )}
