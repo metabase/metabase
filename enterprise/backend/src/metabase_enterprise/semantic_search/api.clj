@@ -39,7 +39,7 @@
          :total_est     (indexible-items-count)}
         {})
       (catch Exception e
-        (throw (ex-info "Error fetching semantic search index status" {:cause e}))))))
+        (throw (ex-info "Error fetching semantic search index status" {} e))))))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/semantic-search` routes."
