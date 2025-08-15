@@ -1,5 +1,5 @@
-/**
- * Plugins that are only applicable to the new iframe embedding.
- */
+// Import the embedding SDK side effects
+import "embedding-sdk/side-effect-imports";
 
+// Plugins that are only applicable to the new iframe embedding.
 import "./embedding_iframe_sdk";
