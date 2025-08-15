@@ -691,19 +691,19 @@
                                                    {:primary-key [:id]}]]
 
           (testing "Valid inputs return no errors"
-            (let [result (action-v2.tu/create-rows! table-id [{"name" "Test Product"
-                                                               "price" "123"
-                                                               "active" "true"
+            (let [result (action-v2.tu/create-rows! table-id [{"name"       "Test Product"
+                                                               "price"      "123"
+                                                               "active"     (if (= driver/*driver* :postgres) "true" "1")
                                                                "created_at" "2024-03-15T14:30:00"}])]
               (is (nil? (:errors result)))
               (is (seq (:outputs result)))))
 
           (testing "Invalid inputs return validation errors"
-            (let [result (action-v2.tu/create-rows! table-id :crowberto 400 [{"name" "Test Product"
-                                                                              "price" "not-a-number"
-                                                                              "active" "yes"
+            (let [result (action-v2.tu/create-rows! table-id :crowberto 400 [{"name"       "Test Product"
+                                                                              "price"      "not-a-number"
+                                                                              "active"     "yes"
                                                                               "created_at" "2024-03-15T14:30:00"}])]
-              (is (= {table-id [{:price "Must be an integer"
+              (is (= {table-id [{:price  "Must be an integer"
                                  :active "Must be true, false, 0, or 1"}]} (:errors result)))))
 
           (testing "Required field validation"
@@ -712,12 +712,12 @@
               (is (= {table-id [{:name "This field is required"}]} (:errors result)))))
 
           (testing "Multiple rows with mixed validity"
-            (let [result (action-v2.tu/create-rows! table-id :crowberto 400 [{"name" "Valid Product"
+            (let [result (action-v2.tu/create-rows! table-id :crowberto 400 [{"name"  "Valid Product"
                                                                               "price" "100"}
-                                                                             {"name" "Invalid Product"
+                                                                             {"name"  "Invalid Product"
                                                                               "price" "abc"}
-                                                                             {"name" nil
+                                                                             {"name"  nil
                                                                               "price" "200"}])]
               (is (= {table-id [nil
                                 {:price "Must be an integer"}
-                                {:name "This field is required"}]} (:errors result))))))))))
+                                {:name  "This field is required"}]} (:errors result))))))))))
