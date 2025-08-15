@@ -177,14 +177,16 @@
 
 (defn- row->index [{:keys [provider
                            model_name
+                           index_created_at
                            vector_dimensions
                            table_name
                            index_version]}]
-  {:embedding-model {:provider          provider
-                     :model-name        model_name
-                     :vector-dimensions vector_dimensions}
-   :table-name      table_name
-   :version         index_version})
+  {:embedding-model  {:provider          provider
+                      :model-name        model_name
+                      :vector-dimensions vector_dimensions}
+   :index-created-at index_created_at
+   :table-name       table_name
+   :version          index_version})
 
 (defn- table-exists? [pgvector table-name]
   (-> (jdbc/execute-one! pgvector
