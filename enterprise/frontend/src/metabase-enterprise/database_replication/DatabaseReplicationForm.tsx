@@ -233,7 +233,7 @@ export const DatabaseReplicationForm = ({
               {noSyncTables.length > 0 && (
                 <Card radius="md" bg="bg-light" p={0}>
                   <Flex
-                    align="center"
+                    align="flex-start"
                     direction="row"
                     gap="xs"
                     justify="flex-start"
@@ -247,32 +247,36 @@ export const DatabaseReplicationForm = ({
                         {t`Tables without primary key or with owner mismatch`}{" "}
                         <b>{t`will not be replicated`}</b>.
                       </Text>
-                      <Flex
-                        align="center"
-                        direction="row"
-                        gap="xs"
-                        justify="flex-start"
-                        wrap="nowrap"
+                      <Button
+                        variant="subtle"
+                        size="xs"
+                        onClick={() => setShowNoSyncTables(!showNoSyncTables)}
+                        h="auto"
+                        p={0}
+                        td="underline"
+                        style={{ alignSelf: "flex-start" }}
                       >
-                        <Button
-                          variant="subtle"
-                          size="xs"
-                          onClick={() => setShowNoSyncTables(!showNoSyncTables)}
-                          h="auto"
-                          p={0}
-                          td="underline"
-                          style={{ alignSelf: "flex-start" }}
+                        <Flex
+                          align="center"
+                          direction="row"
+                          gap="xs"
+                          justify="flex-start"
+                          wrap="nowrap"
                         >
-                          {showNoSyncTables
-                            ? t`Hide tables (${noSyncTables.length})`
-                            : t`Show tables (${noSyncTables.length})`}
-                        </Button>
-                        <Icon
-                          className={CS.ml1}
-                          name={showNoSyncTables ? "chevronup" : "chevrondown"}
-                          size={12}
-                        />
-                      </Flex>
+                          <Text span>
+                            {showNoSyncTables
+                              ? t`Hide tables (${noSyncTables.length})`
+                              : t`Show tables (${noSyncTables.length})`}
+                          </Text>
+                          <Icon
+                            className={CS.ml1}
+                            name={
+                              showNoSyncTables ? "chevronup" : "chevrondown"
+                            }
+                            size={12}
+                          />
+                        </Flex>
+                      </Button>
                     </Box>
                   </Flex>
 
