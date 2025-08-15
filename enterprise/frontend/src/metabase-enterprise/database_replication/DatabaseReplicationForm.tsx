@@ -252,6 +252,7 @@ export const DatabaseReplicationForm = ({
                         c="brand"
                         fz="md"
                         h="auto"
+                        mt="xs"
                         p={0}
                         w="auto"
                       >
@@ -262,14 +263,12 @@ export const DatabaseReplicationForm = ({
                           justify="flex-start"
                           wrap="nowrap"
                         >
-                          <Text span>
+                          <Text span c="brand">
                             {showNoSyncTables
                               ? t`Hide tables (${noSyncTables.length})`
                               : t`Show tables (${noSyncTables.length})`}
                           </Text>
                           <Icon
-                            // className={CS.ml1}
-                            // c="brand"
                             name={
                               showNoSyncTables ? "chevronup" : "chevrondown"
                             }
