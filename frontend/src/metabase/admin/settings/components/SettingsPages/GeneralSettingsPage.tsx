@@ -7,7 +7,7 @@ import {
 import { UpsellDevInstances } from "metabase/admin/upsells";
 import ExternalLink from "metabase/common/components/ExternalLink";
 import { useDocsUrl } from "metabase/common/hooks";
-import { PLUGIN_LANDING_PAGE } from "metabase/plugins";
+import { PLUGIN_LANDING_PAGE, PLUGIN_SEMANTIC_SEARCH } from "metabase/plugins";
 
 import { DevInstanceBanner } from "../GeneralSettings/DevInstanceBanner";
 import { AdminSettingInput } from "../widgets/AdminSettingInput";
@@ -35,6 +35,8 @@ export function GeneralSettingsPage() {
         <SiteUrlWidget />
 
         <HttpsOnlyWidget />
+
+        <PLUGIN_SEMANTIC_SEARCH.SearchSettingsWidget />
 
         <CustomHomepageDashboardSetting />
 
