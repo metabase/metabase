@@ -83,7 +83,7 @@ const setup = ({
       <SdkQuestion.EditorButton onClick={clickSpy} isOpen={isOpen} />
     </SdkQuestion>,
     {
-      sdkProviderProps: {
+      componentProviderProps: {
         authConfig: createMockSdkConfig(),
       },
       storeInitialState: state,

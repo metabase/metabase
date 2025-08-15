@@ -90,7 +90,6 @@ dataset_query:
         - base-type: type/Text
           join-alias: Content - Dashboard Qualified
       fields: all
-      ident: join_OCkxXZM5KPJ9zOjYVEnqY@0__Content - Dashboard Qualified
       source-table: AxSackBiyXVRUzM_TyyQY
       strategy: left-join
     - alias: Group Members - Entity
@@ -110,7 +109,6 @@ dataset_query:
         - base-type: type/Integer
           join-alias: Group Members - Entity
       fields: all
-      ident: join_OCkxXZM5KPJ9zOjYVEnqY@0__Group Members - Entity
       source-table: lTp-ATFsCUFEr9I0fMEaO
       strategy: left-join
     limit: 200

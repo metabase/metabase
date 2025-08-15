@@ -5,7 +5,7 @@ import {
   setupPropertiesEndpoints,
 } from "__support__/server-mocks";
 import { waitForLoaderToBeRemoved } from "__support__/ui";
-import { MetabaseProvider } from "embedding-sdk/components/public";
+import { ComponentProvider } from "embedding-sdk/components/public";
 import {
   createMockSettings,
   createMockTokenFeatures,
@@ -45,9 +45,9 @@ const setup = async ({
   setupCurrentUserEndpoint(createMockUser({ id: 1 }));
 
   render(
-    <MetabaseProvider authConfig={defaultAuthConfig}>
+    <ComponentProvider authConfig={defaultAuthConfig}>
       <div>Hello</div>
-    </MetabaseProvider>,
+    </ComponentProvider>,
   );
   await waitForLoaderToBeRemoved();
 };

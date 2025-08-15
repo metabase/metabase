@@ -33,7 +33,7 @@ You can define up to one row and column security policy for each table/group com
 Row and column security show specific data to each person based on their [user attributes](../people-and-groups/managing.md#adding-a-user-attribute). You can:
 
 - [Restrict **rows**](#row-level-security-filter-by-a-column-in-the-table)
-- [Restrict **columns** and rows](#custom-row-and-column-security-use-a-saved-question-to-create-a-custom-view-of-a-table) for specific people.
+- [Restrict **columns** and rows](#custom-row-and-column-security-use-a-sql-question-to-create-a-custom-view-of-a-table) for specific people.
 
 | Goal                                           | Row (filter by a column in the table) | Custom (use a saved SQL question) |
 | ---------------------------------------------- | ------------------------------------- | --------------------------------- |
@@ -195,7 +195,7 @@ Learn more about [SQL parameters](../questions/native-editor/sql-parameters.md)
 
 Some Metabase permissions can conflict with row and column security to give more permissive or more restrictive data access than you intended.
 
-Say you've set up [column security](#custom-row-and-column-security-use-a-saved-question-to-create-a-custom-view-of-a-table) that hides the Email column from the Accounts table (for a particular group).
+Say you've set up [column security](#custom-row-and-column-security-use-a-sql-question-to-create-a-custom-view-of-a-table) that hides the Email column from the Accounts table (for a particular group).
 
 The Email column may get exposed to someone if:
 
