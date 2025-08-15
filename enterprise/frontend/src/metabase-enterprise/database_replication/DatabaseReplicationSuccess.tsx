@@ -9,7 +9,7 @@ export const DatabaseReplicationSuccess = ({
 }) => {
   return (
     <Stack align="center" gap="lg" my="6rem">
-      <Box h={96} w={96} pos="relative">
+      <Box h={96} w={96}>
         <img src="app/assets/img/metabot-cloud-96x96.svg" alt="Metabot Cloud" />
       </Box>
 
