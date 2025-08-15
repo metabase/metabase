@@ -350,19 +350,17 @@
        (catch Exception _ nil)))
 
 (deftest card-id-native-source-query-with-long-alias-test
-  (testing "nested card with native query and long column alias (metabase##47584)"
+  (testing "nested card with native query and long column alias (#47584)"
     (mt/test-drivers (set/intersection (mt/normal-drivers-with-feature :nested-queries)
                                        (descendants driver/hierarchy :sql))
       (let [coun-col-name      "coun"
             long-col-full-name "Total_number_of_people_from_each_state_separated_by_state_and_then_we_do_a_count"
-
             ;; Truncate the long column to something the driver can actually execute.
             long-col-name      (subs long-col-full-name
                                      0
                                      (if-let [col-max (col-max-for-driver driver/*driver*)]
                                        (min col-max (count long-col-full-name))
                                        (count long-col-full-name)))
-
             ;; Disable truncate-alias when compiling the native query to ensure we don't further truncate the column.
             ;; We want to simulate a user-defined query where the column name is long, but valid for the driver.
             native-sub-query   (with-redefs [lib.util/truncate-alias
@@ -376,7 +374,6 @@
                                         :limit        5})
                                      qp.compile/compile
                                      :query))
-
             query              (query-with-source-card 1)]
         (qp.store/with-metadata-provider (qp.test-util/metadata-provider-with-cards-with-metadata-for-queries
                                           [(mt/native-query {:query native-sub-query})])
@@ -1565,7 +1562,8 @@
                                        :condition    [:= *products.id &Reviews.reviews.product_id]
                                        :alias        "Reviews"}]
                        :order-by     [[:asc $product_id->products.id]
-                                      [:asc &Reviews.products.id]]
+                                      [:asc &Reviews.reviews.product_id]
+                                      [:asc &Reviews.reviews.id]]
                        :limit        1})]
           (sql.qp-test-util/with-native-query-testing-context query
             (testing "results"

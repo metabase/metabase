@@ -18,7 +18,6 @@
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.test :as mt]
-   [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [toucan2.core :as t2]))
 
@@ -222,7 +221,7 @@
 (deftest ^:parallel check-action-commands-test
   (mt/test-driver :h2
     #_{:clj-kondo/ignore [:equals-true]}
-    (are [query] (= true (#'h2/every-command-allowed-for-actions? (#'h2/classify-query (u/the-id (mt/db)) query)))
+    (are [query] (= true (#'h2/every-command-allowed-for-actions? (#'h2/classify-query (mt/id) query)))
       "select 1"
       "update venues set name = 'bill'"
       "delete venues"
@@ -243,7 +242,7 @@
       "create table venues"
       "alter table venues add column address varchar(255)")
 
-    (are [query] (= false (#'h2/every-command-allowed-for-actions? (#'h2/classify-query (u/the-id (mt/db)) query)))
+    (are [query] (= false (#'h2/every-command-allowed-for-actions? (#'h2/classify-query (mt/id) query)))
       "select * from venues; update venues set name = 'stomp';
        CREATE ALIAS EXEC AS 'String shellexec(String cmd) throws java.io.IOException {Runtime.getRuntime().exec(cmd);return \"y4tacker\";}';
        EXEC ('open -a Calculator.app')"
@@ -251,10 +250,10 @@
        CREATE ALIAS EXEC AS 'String shellexec(String cmd) throws java.io.IOException {Runtime.getRuntime().exec(cmd);return \"y4tacker\";}';"
       "CREATE ALIAS EXEC AS 'String shellexec(String cmd) throws java.io.IOException {Runtime.getRuntime().exec(cmd);return \"y4tacker\";}';")
 
-    (is (= nil (#'h2/check-action-commands-allowed {:database (u/the-id (mt/db)) :native {:query nil}})))
+    (is (= nil (#'h2/check-action-commands-allowed {:database (mt/id) :native {:query nil}})))
 
     (is (= nil (#'h2/check-action-commands-allowed
-                {:database (u/the-id (mt/db))
+                {:database (mt/id)
                  :engine :h2
                  :native {:query (str/join "; "
                                            ["select 1"
@@ -266,7 +265,7 @@
       (is (thrown? clojure.lang.ExceptionInfo
                    #"DDL commands are not allowed to be used with h2."
                    (#'h2/check-action-commands-allowed
-                    {:database (u/the-id (mt/db))
+                    {:database (mt/id)
                      :engine :h2
                      :native {:query trigger-creation-attempt}}))))))
 
