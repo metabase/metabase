@@ -1,5 +1,9 @@
+import { EMBEDDING_SDK_CONFIG } from "metabase/embedding-sdk/config";
 import { defineEmbeddingSdkPackageVersion } from "metabase/embedding-sdk/lib/define-embedding-sdk-package-version";
 import { defineGlobalDependencies } from "metabase/embedding-sdk/lib/define-global-dependencies";
+
+// Enable SDK mode as we are in the SDK package
+EMBEDDING_SDK_CONFIG.isEmbeddingSdk = true;
 
 defineEmbeddingSdkPackageVersion();
 defineGlobalDependencies();
