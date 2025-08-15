@@ -112,7 +112,7 @@ export const getTableItem = (
     model: "table",
     id: tableId,
     name,
-    database: { id: table?.db_id },
+    database_id: table?.db_id,
   };
 };
 
