@@ -17,7 +17,7 @@ export const DatabaseReplicationSettingUp = () => (
       <Text
         c="text-secondary"
         fz="md"
-        lh={1.4}
+        lh={1.43}
         maw={380}
       >{t`This will take just a minute or so`}</Text>
     </Box>
