@@ -232,10 +232,6 @@ databaseChangeLog:
             columns:
               - column:
                   name: creator_id
-      rollback:
-        - dropIndex:
-            tableName: document
-            indexName: idx_document_creator_id
 
   - changeSet:
       id: v57.2025-08-21T12:00:11
@@ -261,10 +257,6 @@ databaseChangeLog:
             columns:
               - column:
                   name: collection_id
-      rollback:
-        - dropIndex:
-            tableName: document
-            indexName: idx_document_collection_id
 
   - changeSet:
       id: v57.2025-08-21T12:00:59
@@ -305,10 +297,6 @@ databaseChangeLog:
             columns:
               - column:
                   name: document_id
-      rollback:
-        - dropIndex:
-            tableName: report_card
-            indexName: idx_repord_card_document_id
 
   - changeSet:
       id: v57.2025-08-21T17:23:33
@@ -359,9 +347,6 @@ databaseChangeLog:
                   defaultValueComputed: current_timestamp
                   constraints:
                     nullable: false
-      rollback:
-        - dropTable:
-            tableName: document_bookmark
 
   - changeSet:
       id: v57.2025-08-21T17:42:33
@@ -374,10 +359,6 @@ databaseChangeLog:
             columns:
               - column:
                   name: user_id
-      rollback:
-        - dropIndex:
-            tableName: document_bookmark
-            indexName: idx_document_bookmark_user_id
 
   - changeSet:
       id: v57.2025-08-21T17:42:34
@@ -390,10 +371,6 @@ databaseChangeLog:
             columns:
               - column:
                   name: document_id
-      rollback:
-        - dropIndex:
-            tableName: document_bookmark
-            indexName: idx_document_bookmark_document_id
 
   - changeSet:
       id: v57.2025-08-21T17:42:35
@@ -407,10 +384,6 @@ databaseChangeLog:
             referencedColumnNames: id
             constraintName: fk_document_bookmark_user_id
             onDelete: CASCADE
-      rollback:
-        - dropForeignKeyConstraint:
-            baseTableName: document_bookmark
-            constraintName: fk_document_bookmark_user_id
 
   - changeSet:
       id: v57.2025-08-21T17:42:36
@@ -424,10 +397,6 @@ databaseChangeLog:
             referencedColumnNames: id
             constraintName: fk_document_bookmark_document_id
             onDelete: CASCADE
-      rollback:
-        - dropForeignKeyConstraint:
-            baseTableName: document_bookmark
-            constraintName: fk_document_bookmark_document_id
 
   - changeSet:
       id: v57.2025-08-21T17:42:37
@@ -437,10 +406,6 @@ databaseChangeLog:
         - addUniqueConstraint:
             tableName: document_bookmark
             columnNames: user_id, document_id
-            constraintName: idx_document_bookmark_user_document_unique
-      rollback:
-        - dropUniqueConstraint:
-            tableName: document_bookmark
             constraintName: idx_document_bookmark_user_document_unique
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<

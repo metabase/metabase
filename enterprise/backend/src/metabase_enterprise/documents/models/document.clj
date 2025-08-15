@@ -82,19 +82,6 @@
   [_table]
   [:name (serdes/hydrated-hash :collection) :created-at])
 
-(defmethod serdes/make-spec "Document"
-  [_model-name _opts]
-  {:copy [:archived :archived_directly :collection_position :description :entity_id :name :view_count]
-   :skip [;; instance-specific stats
-          :last_viewed_at
-               ;; skip until we implement serdes for documents
-          :document_id]
-   :transform {:created_at (serdes/date)
-               :updated_at (serdes/date)
-               :collection_id (serdes/fk :model/Collection)
-               :creator_id (serdes/fk :model/User)
-               :document :skip}})
-
 ;;; ----------------------------------------------- Search ----------------------------------------------------------
 
 (search.spec/define-spec "document"
@@ -111,12 +98,6 @@
    :render-terms {:document-name :name
                   :document-id :id
                   :collection-position true}})
-
-;;; ----------------------------------------------- Serdes Hashing -------------------------------------------------
-
-(defmethod serdes/hash-fields :model/Document
-  [_table]
-  [:name (serdes/hydrated-hash :collection) :created-at])
 
 ;;; ---------------------------------------------- Serialization --------------------------------------------------
 
