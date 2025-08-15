@@ -6,11 +6,11 @@ import {
 } from "__support__/server-mocks";
 import { waitForLoaderToBeRemoved } from "__support__/ui";
 import { ComponentProvider } from "embedding-sdk/components/public";
+import { getMetabaseInstanceVersion } from "embedding-sdk/store/selectors";
 import {
   createMockSettings,
   createMockTokenFeatures,
   createMockUser,
-  createMockVersion,
 } from "metabase-types/api/mocks";
 
 import { getEmbeddingSdkVersion } from "../config";
@@ -20,6 +20,10 @@ import { setupMockJwtEndpoints } from "./mocks/sso";
 
 const defaultAuthConfig = createMockSdkConfig();
 
+jest.mock("embedding-sdk/store/selectors", () => ({
+  ...jest.requireActual("embedding-sdk/store/selectors"),
+  getMetabaseInstanceVersion: jest.fn(),
+}));
 jest.mock("../config", () => ({
   getEmbeddingSdkVersion: jest.fn(),
 }));
@@ -32,6 +36,7 @@ const setup = async ({
   mbVersion: string;
 }) => {
   (getEmbeddingSdkVersion as jest.Mock).mockReturnValue(sdkVersion);
+  (getMetabaseInstanceVersion as jest.Mock).mockReturnValue(mbVersion);
 
   setupMockJwtEndpoints();
   setupPropertiesEndpoints(
@@ -39,7 +44,6 @@ const setup = async ({
       "token-features": createMockTokenFeatures({
         embedding_sdk: true,
       }),
-      version: createMockVersion({ tag: mbVersion }),
     }),
   );
   setupCurrentUserEndpoint(createMockUser({ id: 1 }));
