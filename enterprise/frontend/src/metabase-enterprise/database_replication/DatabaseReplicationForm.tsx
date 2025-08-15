@@ -298,13 +298,18 @@ export const DatabaseReplicationForm = ({
                               fz="md"
                             >
                               <Text fz="md">
-                                <Text span c="text-dark" fw="500">
+                                <Text
+                                  span
+                                  c="text-dark"
+                                  display="inline"
+                                  fw="500"
+                                >
                                   {table.schema}
                                 </Text>
-                                <Text span c="text-medium">
+                                <Text span c="text-medium" display="inline">
                                   .{table.name}
                                 </Text>{" "}
-                                <Text span c="text-light">
+                                <Text span c="text-light" display="inline">
                                   {noSyncReason(table)}
                                 </Text>
                               </Text>
