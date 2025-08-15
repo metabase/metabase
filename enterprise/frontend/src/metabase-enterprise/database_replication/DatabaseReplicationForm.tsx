@@ -151,23 +151,24 @@ export const DatabaseReplicationForm = ({
       <Card radius="md" bg="bg-light" p="md" my="sm">
         <Stack>
           <Group justify="space-between">
-            <div>
+            <Box ta="left">
               <Text c="text-light">{database.name}</Text>
               <Text fw="bold">
                 {typeof previewResponse?.totalEstimatedRowCount === "number"
                   ? t`${compactEnglishNumberFormat.format(previewResponse.totalEstimatedRowCount)} rows`
                   : "…"}
               </Text>
-            </div>
-            <div>
+            </Box>
+            <Box ta="right">
               <Text c="text-light">{t`Available Cloud Storage`}</Text>
-              <Text fw="bold">
+              <Text fw="bold" w="100%">
                 {typeof previewResponse?.freeQuota === "number"
                   ? t`${compactEnglishNumberFormat.format(previewResponse.freeQuota)} rows`
                   : "…"}
               </Text>
-            </div>
+            </Box>
           </Group>
+
           <Progress
             value={
               typeof previewResponse?.totalEstimatedRowCount === "number" &&
@@ -182,13 +183,14 @@ export const DatabaseReplicationForm = ({
               previewResponse?.canSetReplication ? colors.success : colors.error
             }
           />
-          {previewResponse && !previewResponse.canSetReplication ? (
+
+          {previewResponse && !previewResponse.canSetReplication && (
             <>
               <Divider />
               <Text>{t`Not enough storage. Please upgrade your plan or modify the replication scope by excluding schemas.`}</Text>
               <ExternalLink href={storeUrl}>{t`Get more storage`}</ExternalLink>
             </>
-          ) : undefined}
+          )}
         </Stack>
       </Card>
 
