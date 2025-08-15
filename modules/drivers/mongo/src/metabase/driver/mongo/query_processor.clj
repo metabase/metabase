@@ -156,6 +156,7 @@
   driver-api/dispatch-by-clause-name-or-class)
 
 (defn- col->name-components [{:keys [parent-id], field-name :name, :as _col}]
+  ;; TODO (Cam 8/11/25) -- this should be using `:nfc-path` instead of looking this up the hard way
   (concat
    (when parent-id
      (col->name-components (driver-api/field (driver-api/metadata-provider) parent-id)))
@@ -1154,9 +1155,7 @@ function(bin) {
     (recur arg)
     ag))
 
-(defn- field-alias
-  "Return the alias to use for a field in output projections."
-  [[_tag _id-or-name opts, :as field-ref]]
+(defn- field-alias [[_tag _id-or-name opts, :as field-ref]]
   (or (driver-api/qp.add.desired-alias opts)
       (->lvalue field-ref)))
 
