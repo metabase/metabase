@@ -284,6 +284,7 @@ export const TablePicker = ({
             selectedItem={selectedTableItem}
             tables={isLoadingTables ? undefined : tables}
             onClick={handleTableSelect}
+            shouldDisableItem={shouldDisableItem}
           />
         )}
       </Flex>
