@@ -160,8 +160,10 @@
   ^Duration [^long retry-count policy]
   (let [{:keys [^Duration cap]} policy
         cap-ms (.toMillis cap)
-        delay  (min (max-delay-ms retry-count policy) cap-ms)]
-    (Duration/ofMillis (max 0 (long delay)))))
+        delay-ms (max-delay-ms retry-count policy)
+        jitter (+ 0.9 (* (rand) 0.2))
+        jittered-ms (* delay-ms jitter)]
+    (Duration/ofMillis (min cap-ms (max 0 (long jittered-ms))))))
 
 (comment
   (next-delay 0 transient-policy)
