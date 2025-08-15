@@ -117,7 +117,7 @@ export function ContentManager({ settings }: ContentManagerProps) {
           const type = match<string, SdkBreadcrumbItemType>(item.model)
             .with("card", () => "question")
             .with("dataset", () => "model")
-            .otherwise((model) => model);
+            .otherwise((model) => model as SdkBreadcrumbItemType);
 
           setCurrentView({ type, id: item.id });
         }}
