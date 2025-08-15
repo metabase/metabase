@@ -1,4 +1,4 @@
-import type { Editor as TiptapEditor } from "@tiptap/core";
+import type { JSONContent, Editor as TiptapEditor } from "@tiptap/core";
 import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
 import cx from "classnames";
 import dayjs from "dayjs";
@@ -212,25 +212,24 @@ export const DocumentPage = ({
   const isSaving = isCreating || isUpdating;
   const showSaveButton = hasUnsavedChanges() && canWrite && !isSaving;
 
-  const handleContentChanged = useCallback(() => {
-    if (!editorInstance) {
-      return;
-    }
+  const handleChange = useCallback(
+    (content: JSONContent) => {
+      // For new documents, any content means changes
+      if (isNewDocument) {
+        setHasUnsavedEditorChanges(!editorInstance?.isEmpty);
+        return;
+      }
 
-    // Compare current content with original content
-    const currentContent = editorInstance.getJSON();
-    const originalContent = documentContent;
+      // Compare current content with original content
+      const currentContent = content;
+      const originalContent = documentContent;
 
-    // For new documents, any content means changes
-    if (isNewDocument) {
-      setHasUnsavedEditorChanges(!editorInstance.isEmpty);
-      return;
-    }
-
-    // For existing documents, compare with original content
-    const hasChanges = !_.isEqual(currentContent, originalContent);
-    setHasUnsavedEditorChanges(hasChanges);
-  }, [editorInstance, documentContent, isNewDocument]);
+      // For existing documents, compare with original content
+      const hasChanges = !_.isEqual(currentContent, originalContent);
+      setHasUnsavedEditorChanges(hasChanges);
+    },
+    [editorInstance, documentContent, isNewDocument],
+  );
 
   const handleToggleBookmark = useCallback(() => {
     if (!documentId) {
@@ -505,7 +504,7 @@ export const DocumentPage = ({
               onCardEmbedsChange={updateCardEmbeds}
               onQuestionSelect={handleQuestionSelect}
               initialContent={documentContent}
-              onContentChanged={handleContentChanged}
+              onChange={handleChange}
               editable={canWrite}
               isLoading={isDocumentLoading}
             />

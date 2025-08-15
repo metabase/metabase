@@ -68,7 +68,6 @@ export interface EditorProps {
   onCardEmbedsChange?: (refs: CardEmbedRef[]) => void;
   initialContent?: JSONContent | null;
   onChange?: (content: JSONContent) => void;
-  onContentChanged?: () => void; // Simple dirty flag callback
   onQuestionSelect?: (cardId: number | null) => void;
   editable?: boolean;
   isLoading?: boolean;
@@ -79,7 +78,6 @@ export const Editor: React.FC<EditorProps> = ({
   onCardEmbedsChange,
   initialContent,
   onChange,
-  onContentChanged,
   editable = true,
   onQuestionSelect,
   isLoading = false,
@@ -144,12 +142,9 @@ export const Editor: React.FC<EditorProps> = ({
       autofocus: false,
       immediatelyRender: false,
       onUpdate: ({ editor }) => {
-        const currentContent = editor.getJSON();
-        onChange?.(currentContent);
-
-        // Simple content changed notification
-        if (!editor.isEmpty) {
-          onContentChanged?.();
+        if (onChange) {
+          const currentContent = editor.getJSON();
+          onChange(currentContent);
         }
       },
     },
