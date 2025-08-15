@@ -30,7 +30,7 @@ describe("ContentTranslationConfiguration", () => {
       expect(
         screen.getByText("The dictionary must be a CSV with these columns:"),
       ).toBeInTheDocument();
-      expect(screen.getByText("Locale Code")).toBeInTheDocument();
+      expect(screen.getByText("Language")).toBeInTheDocument();
       expect(screen.getByText("String")).toBeInTheDocument();
       expect(screen.getByText("Translation")).toBeInTheDocument();
     });

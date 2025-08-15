@@ -8504,7 +8504,7 @@ msgid "The dictionary must be a CSV with these columns:"
 msgstr "Le dictionnaire doit être un CSV avec ces colonnes :"
 
 #: enterprise/frontend/src/metabase-enterprise/content_translation/components/ContentTranslationConfiguration/ContentTranslationConfiguration.tsx:133
-msgid "Locale Code"
+msgid "Language"
 msgstr "Code local"
 
 #: enterprise/frontend/src/metabase-enterprise/content_translation/components/ContentTranslationConfiguration/ContentTranslationConfiguration.tsx:134

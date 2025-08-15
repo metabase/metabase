@@ -8759,7 +8759,7 @@ msgid "The dictionary must be a CSV with these columns:"
 msgstr ""
 
 #: enterprise/frontend/src/metabase-enterprise/content_translation/components/ContentTranslationConfiguration/ContentTranslationConfiguration.tsx:128
-msgid "Locale Code"
+msgid "Language"
 msgstr ""
 
 #: enterprise/frontend/src/metabase-enterprise/content_translation/components/ContentTranslationConfiguration/ContentTranslationConfiguration.tsx:129
