@@ -4,21 +4,24 @@ import FormNumericInput from "metabase/common/components/FormNumericInput";
 import FormSelect from "metabase/common/components/FormSelect";
 import FormTextArea from "metabase/common/components/FormTextArea";
 import FormToggle from "metabase/common/components/FormToggle";
-import type { EngineField } from "metabase-types/api";
+import type { EngineField, EngineKey } from "metabase-types/api";
 
 import { FIELD_OVERRIDES } from "../../constants";
 import type { EngineFieldOverride } from "../../types";
+import { DatabaseHostnameWithProviderField } from "../DatabaseHostnameWithProviderField/DatabaseHostnameWithProviderField";
 import DatabaseInfoField from "../DatabaseInfoField";
 import DatabaseSectionField from "../DatabaseSectionField";
 
 export interface DatabaseDetailFieldProps {
   field: EngineField;
   autoFocus?: boolean;
+  engineKey: EngineKey | undefined;
 }
 
 const DatabaseDetailField = ({
   field,
   autoFocus,
+  engineKey,
 }: DatabaseDetailFieldProps): JSX.Element | null => {
   const override = FIELD_OVERRIDES[field.name];
   const type = getFieldType(field, override);
@@ -27,6 +30,15 @@ const DatabaseDetailField = ({
     ...getFieldProps(field, override),
   };
 
+  if (field.name === "host" && engineKey === "postgres") {
+    return (
+      <DatabaseHostnameWithProviderField
+        {...props}
+        {...getInputProps(field)}
+        nullable
+      />
+    );
+  }
   if (typeof type === "function") {
     const Component = type;
     return <Component {...props} />;
