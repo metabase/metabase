@@ -198,6 +198,7 @@ export const useCommandPalette = ({
                   "command-palette",
                   searchResults?.engine || "unknown",
                   searchRequestId,
+                  result.model,
                 );
               },
               extra: {

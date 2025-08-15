@@ -94,6 +94,7 @@ export function SearchResult({
       context,
       searchEngine || "unknown",
       searchRequestId,
+      result.model,
     );
     onChangeLocation(result.getUrl());
   };

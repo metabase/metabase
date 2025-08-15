@@ -17,6 +17,7 @@ type SearchEventSchema = {
   search_engine?: string | null;
   request_id?: string | null;
   offset?: number | null;
+  entity_model?: string | null;
 };
 
 type ValidateEvent<
@@ -69,6 +70,7 @@ export type SearchClickEvent = ValidateEvent<{
   context: SearchContext | null;
   search_engine: string | null;
   request_id: string | null;
+  entity_model: string | null;
 }>;
 
 export type SearchEvent = SearchQueryEvent | SearchClickEvent;
