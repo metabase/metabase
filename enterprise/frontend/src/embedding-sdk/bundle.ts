@@ -33,7 +33,7 @@ import {
 import { SdkDebugInfo } from "./components/public/debug/SdkDebugInfo";
 
 // Init data hook
-export { useInitData } from "./hooks/private/use-init-data";
+import { useInitData } from "./hooks/private/use-init-data";
 
 // Exports needed for public Hooks that use sdk redux store
 import { createDashboard } from "metabase/api/dashboard";
