@@ -136,7 +136,7 @@ export const NativeQueryModal = ({
 
   const [
     triggerQuery,
-    { data: queryResult, isLoading, isFetching, error: queryError },
+    { data: queryResult, isLoading, isFetching, error: queryError, reset },
   ] = datasetApi.useLazyGetAdhocQueryQuery();
 
   const [currentQueryPromise, setCurrentQueryPromise] = useState<ReturnType<
@@ -198,11 +198,13 @@ export const NativeQueryModal = ({
       return;
     }
 
+    reset();
+
     const datasetQuery = modifiedQuestion.datasetQuery();
     const queryPromise = triggerQuery(datasetQuery);
     setCurrentQueryPromise(queryPromise);
     setHasExecutedQuery(true);
-  }, [modifiedQuestion, triggerQuery]);
+  }, [modifiedQuestion, triggerQuery, reset]);
 
   const handleCancelQuery = useCallback(() => {
     if (currentQueryPromise) {
