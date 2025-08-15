@@ -22,17 +22,21 @@ describe("HeaderLinkGroup", () => {
     it("renders both permission and browse buttons", () => {
       setup(createMockDatabase());
 
-      expect(screen.getByText("Manage permissions")).toBeInTheDocument();
-      expect(screen.getByText("Browse data")).toBeInTheDocument();
+      expect(
+        screen.getByRole("link", { name: "Manage permissions" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("link", { name: /Browse data/ }),
+      ).toBeInTheDocument();
     });
 
     it("renders manage permissions button with correct link", () => {
       const mockDatabase = createMockDatabase({ id: 37 });
       setup(mockDatabase);
 
-      const managePermissionsLink = screen
-        .getByText("Manage permissions")
-        .closest("a");
+      const managePermissionsLink = screen.getByRole("link", {
+        name: "Manage permissions",
+      });
       expect(managePermissionsLink).toHaveAttribute(
         "href",
         "/admin/permissions/data/database/37",
@@ -43,7 +47,7 @@ describe("HeaderLinkGroup", () => {
       const mockDatabase = createMockDatabase();
       setup(mockDatabase);
 
-      const browseDataLink = screen.getByText("Browse data").closest("a");
+      const browseDataLink = screen.getByRole("link", { name: /Browse data/ });
       const expectedHref = browseDatabase(mockDatabase);
       expect(browseDataLink).toHaveAttribute("href", expectedHref);
       expect(browseDataLink).toHaveAttribute("target", "_blank");
@@ -52,7 +56,7 @@ describe("HeaderLinkGroup", () => {
     it("renders external icon on browse data button", () => {
       setup(createMockDatabase());
 
-      const browseDataLink = screen.getByText("Browse data").closest("a");
+      const browseDataLink = screen.getByRole("link", { name: /Browse data/ });
       expect(browseDataLink).toBeInTheDocument();
 
       // Check that the external icon is present
@@ -67,8 +71,14 @@ describe("HeaderLinkGroup", () => {
       });
       setup(mockDatabase);
 
-      const browseDataLink = screen.getByText("Browse data").closest("a");
-      expect(browseDataLink).toHaveAttribute("data-disabled", "true");
+      const browseDataButton = screen.getByRole("button", {
+        name: /Browse data/,
+      });
+      expect(browseDataButton).toBeDisabled();
+      // when disabled, the element will be a disabled button instead of a link
+      expect(
+        screen.queryByRole("link", { name: /Browse data/ }),
+      ).not.toBeInTheDocument();
     });
 
     it("does not disable the manage permissions button", () => {
@@ -77,7 +87,7 @@ describe("HeaderLinkGroup", () => {
       });
       setup(mockDatabase);
 
-      const browseDataLink = screen.getByText("Browse data").closest("a");
+      const browseDataLink = screen.getByRole("link", { name: /Browse data/ });
       expect(browseDataLink).not.toHaveAttribute("data-disabled", "true");
     });
   });

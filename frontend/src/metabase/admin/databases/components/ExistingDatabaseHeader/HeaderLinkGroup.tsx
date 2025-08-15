@@ -25,15 +25,14 @@ export const HeaderLinkGroup = ({ database }: Props) => {
         {t`Manage permissions`}
       </Button>
       <Button
-        component={Link}
+        component={isSyncing ? undefined : Link}
         disabled={isSyncing}
         fw="bold"
-        onClick={isSyncing ? (e) => e.preventDefault() : undefined}
         p={0}
         rightSection={<Icon name="external" />}
         target="_blank"
         title={isSyncing ? t`Sync in progress` : undefined}
-        to={isSyncing ? "" : browseDatabase(database)}
+        to={browseDatabase(database)}
         variant="subtle"
       >
         {t`Browse data`}
