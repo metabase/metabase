@@ -61,7 +61,7 @@ export function useEntitySearch({
   );
 
   const searchResults = useMemo(
-    () => (searchResponse?.data as SearchResult[]) ?? [],
+    () => searchResponse?.data ?? [],
     [searchResponse],
   );
 
@@ -69,15 +69,12 @@ export function useEntitySearch({
     const items: MenuItem[] = [];
 
     if (query.length > 0) {
-      // When there's a query, always show search results (even if empty)
-      // Don't show recents when searching
       if (!isSearchLoading) {
         items.push(
           ...buildSearchMenuItems(searchResults, onSelectSearchResult),
         );
       }
     } else {
-      // Only show recents when there's no query
       if (!isRecentsLoading && filteredRecents.length > 0) {
         items.push(...buildRecentsMenuItems(filteredRecents, onSelectRecent));
       }
