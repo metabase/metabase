@@ -1,3 +1,5 @@
+import type { BuildInfo } from "metabase/embedding-sdk/types/build-info";
+
 /**
  * Puts Embedding SDK package build into the global object
 
@@ -10,12 +12,10 @@ export function defineEmbeddingSdkPackageBuildInfo() {
     return;
   }
 
-  window.METABASE_EMBEDDING_SDK_PACKAGE_VERSION =
-    process.env.EMBEDDING_SDK_PACKAGE_VERSION;
-
   window.METABASE_EMBEDDING_SDK_PACKAGE_BUILD_INFO = {
+    version: process.env.VERSION,
     gitBranch: process.env.GIT_BRANCH,
     gitCommit: process.env.GIT_COMMIT,
     buildTime: process.env.BUILD_TIME,
-  };
+  } satisfies BuildInfo;
 }

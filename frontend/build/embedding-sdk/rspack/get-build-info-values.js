@@ -1,4 +1,5 @@
-module.exports.INJECTED_BUILD_INFO_VALUES = {
+module.exports.getBuildInfoValues = ({ version }) => ({
+  ...(version && { VERSION: version }),
   GIT_BRANCH: require("child_process")
     .execSync("git rev-parse --abbrev-ref HEAD")
     .toString()
@@ -8,4 +9,4 @@ module.exports.INJECTED_BUILD_INFO_VALUES = {
     .toString()
     .trim(),
   BUILD_TIME: new Date().toISOString(),
-};
+});

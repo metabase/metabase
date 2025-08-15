@@ -4,13 +4,11 @@ const appConfig = require("../rspack.embedding-sdk-bundle.config");
 const fs = require("fs");
 const path = require("path");
 const {
-  INJECTED_BUILD_INFO_VALUES,
-} = require("../frontend/build/embedding-sdk/constants/injected-build-info-values");
+  getBuildInfoValues,
+} = require("../frontend/build/embedding-sdk/rspack/get-build-info-values");
 
-const {
-  isEmbeddingSdkPackageInstalled,
-  embeddingSdkPackageVersion: EMBEDDING_SDK_PACKAGE_VERSION,
-} = resolveEmbeddingSdkPackage();
+const { isEmbeddingSdkPackageInstalled, embeddingSdkPackageVersion } =
+  resolveEmbeddingSdkPackage();
 
 module.exports = {
   stories: ["../enterprise/frontend/src/embedding-sdk/**/*.stories.tsx"],
@@ -40,8 +38,7 @@ module.exports = {
       }),
       new webpack.EnvironmentPlugin({
         IS_EMBEDDING_SDK: "true",
-        EMBEDDING_SDK_PACKAGE_VERSION,
-        ...INJECTED_BUILD_INFO_VALUES,
+        ...getBuildInfoValues({ version: embeddingSdkPackageVersion }),
       }),
     ],
     module: {

@@ -10,7 +10,7 @@ type Options = {
 };
 
 export const useLogVersionInfo = ({ allowConsoleLog = true }: Options) => {
-  const { version: sdkPackageVersion } = getEmbeddingSdkPackageBuildData();
+  const sdkPackageVersion = getEmbeddingSdkPackageBuildData()?.version;
   const sdkBundleVersion = useLazySelector(getMetabaseInstanceVersion);
 
   useEffect(() => {

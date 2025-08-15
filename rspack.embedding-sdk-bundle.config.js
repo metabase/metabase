@@ -39,8 +39,8 @@ const {
   SDK_BUNDLE_FILENAME,
 } = require("./frontend/build/embedding-sdk/constants/sdk-bundle");
 const {
-  INJECTED_BUILD_INFO_VALUES,
-} = require("./frontend/build/embedding-sdk/constants/injected-build-info-values");
+  getBuildInfoValues,
+} = require("./frontend/build/embedding-sdk/rspack/get-build-info-values");
 
 const SDK_SRC_PATH = __dirname + "/enterprise/frontend/src/embedding-sdk";
 
@@ -176,7 +176,10 @@ const config = {
     }),
     new rspack.EnvironmentPlugin({
       IS_EMBEDDING_SDK: "true",
-      ...INJECTED_BUILD_INFO_VALUES,
+      ...getBuildInfoValues({
+        // Version of the SDK bundle is received from the Metabase Instance
+        version: null,
+      }),
     }),
     new TypescriptConvertErrorsToWarnings(),
     shouldAnalyzeBundles &&

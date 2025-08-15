@@ -154,7 +154,7 @@ export function getSdkRequestHeaders(hash?: string): Record<string, string> {
     "X-Metabase-Client": "embedding-sdk-react",
     // eslint-disable-next-line no-literal-metabase-strings -- header name
     "X-Metabase-Client-Version":
-      getEmbeddingSdkPackageBuildData().version ??
+      getEmbeddingSdkPackageBuildData()?.version ??
       EMBEDDING_SDK_PACKAGE_UNKNOWN_VERSION,
     // eslint-disable-next-line no-literal-metabase-strings -- header name
     ...(hash && { "X-Metabase-SDK-JWT-Hash": hash }),
