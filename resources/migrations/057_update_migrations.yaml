@@ -367,7 +367,6 @@ databaseChangeLog:
                   remarks: The name of the transform tag.
                   constraints:
                     nullable: false
-                    unique: true
               - column:
                   name: entity_id
                   type: char(21)

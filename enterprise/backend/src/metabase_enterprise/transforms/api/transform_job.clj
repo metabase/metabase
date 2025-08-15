@@ -1,5 +1,6 @@
 (ns metabase-enterprise.transforms.api.transform-job
   (:require
+   [medley.core :as m]
    [metabase-enterprise.transforms.jobs :as transforms.jobs]
    [metabase-enterprise.transforms.models.transform-job :as transform-job]
    [metabase-enterprise.transforms.schedule :as transforms.schedule]
@@ -10,9 +11,7 @@
    [metabase.util.jvm :as u.jvm]
    [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2])
-  (:import
-   (org.quartz CronExpression)))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -30,11 +29,7 @@
   (log/info "Creating transform job:" name "with schedule:" schedule)
   (api/check-superuser)
   ;; Validate cron expression
-  (api/check-400 (try
-                   (CronExpression/validateExpression schedule)
-                   true
-                   (catch Exception _
-                     false))
+  (api/check-400 (transforms.schedule/validate-cron-expression schedule)
                  (deferred-tru "Invalid cron expression: {0}" schedule))
   ;; Validate tag IDs exist if provided
   (when (seq tag_ids)
@@ -70,15 +65,10 @@
                                            [:tag_ids {:optional true} [:sequential ms/PositiveInt]]]]
   (log/info "Updating transform job" job-id)
   (api/check-superuser)
-  ;; Check job exists
   (api/check-404 (t2/select-one :model/TransformJob :id job-id))
   ;; Validate cron expression if provided
   (when schedule
-    (api/check-400 (try
-                     (CronExpression/validateExpression schedule)
-                     true
-                     (catch Exception _
-                       false))
+    (api/check-400 (transforms.schedule/validate-cron-expression schedule)
                    (deferred-tru "Invalid cron expression: {0}" schedule)))
   ;; Validate tag IDs if provided
   (when tag-ids
@@ -86,13 +76,11 @@
       (api/check-400 (= (set tag-ids) existing-tags)
                      (deferred-tru "Some tag IDs do not exist"))))
   (t2/with-transaction [_conn]
-    ;; Update the job
-    (let [updates (cond-> {}
-                    name (assoc :name name)
-                    (some? description) (assoc :description description)
-                    schedule (assoc :schedule schedule))]
-      (when (seq updates)
-        (t2/update! :model/TransformJob job-id updates)))
+    (when-let [updates (m/assoc-some nil
+                                     :name name
+                                     :description description
+                                     :schedule schedule)]
+      (t2/update! :model/TransformJob job-id updates))
     (when schedule
       (transforms.schedule/update-job! job-id schedule))
     ;; Update tag associations if provided

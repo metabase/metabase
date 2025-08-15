@@ -50,7 +50,7 @@
                   :column-name            "category"
                   :filter-value           category
                   :clickhouse-expression? true})]
-      ;; Convert to legacy MBQL which the transform API expects
+      ;; Convert to legacy MBQL which the transform API expects?
       (lib.convert/->legacy-MBQL query))))
 
 (defn- get-test-schema
@@ -306,8 +306,6 @@
                 (wait-for-table table2-name 5000)
                 (is (true? (transforms.util/target-table-exists? original)))
                 (is (true? (transforms.util/target-table-exists? updated)))
-                  ;; Doohickey products in our test dataset have IDs 2, 3, 4, 13
-                  ;; We verify all 4 products are present
                 (check-query-results table2-name [2 3 4 13] "Doohickey")))))))))
 
 (deftest get-runs-filter-by-single-transform-id-test

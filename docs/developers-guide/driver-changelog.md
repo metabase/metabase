@@ -42,7 +42,7 @@ title: Driver interface changelog
 
 - Added the driver multi-method `driver/set-database-used!` for drivers to set a database on the connection with statements like `USE DATABASE`.
 
-- Added the driver feature `:transforms/table` for drivers that supports transforms with table view as target
+- Added the driver feature `:transforms/table` for drivers that supports transforms with table as target
 
 ## Metabase 0.55.9
 
