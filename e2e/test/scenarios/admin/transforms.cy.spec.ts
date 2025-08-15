@@ -185,25 +185,24 @@ describe("scenarios > admin > transforms", () => {
 
   describe("tags", () => {
     it("should be able to add and remove tags", () => {
-      createTags(["tag1", "tag2"]);
       createMbqlTransform({ visitTransform: true });
       getTagsInput().click();
 
       H.popover().within(() => {
-        cy.findByRole("option", { name: "tag1" }).click();
+        cy.findByRole("option", { name: "hourly" }).click();
         cy.wait("@updateTransform");
-        assertOptionSelected("tag1");
-        assertOptionNotSelected("tag2");
+        assertOptionSelected("hourly");
+        assertOptionNotSelected("daily");
 
-        cy.findByRole("option", { name: "tag2" }).click();
+        cy.findByRole("option", { name: "daily" }).click();
         cy.wait("@updateTransform");
-        assertOptionSelected("tag1");
-        assertOptionSelected("tag2");
+        assertOptionSelected("hourly");
+        assertOptionSelected("daily");
 
-        cy.findByRole("option", { name: "tag1" }).click();
+        cy.findByRole("option", { name: "hourly" }).click();
         cy.wait("@updateTransform");
-        assertOptionNotSelected("tag1");
-        assertOptionSelected("tag2");
+        assertOptionNotSelected("hourly");
+        assertOptionSelected("daily");
       });
     });
 
@@ -217,31 +216,29 @@ describe("scenarios > admin > transforms", () => {
     });
 
     it("should be able to update tags inline", () => {
-      createTags(["tag1"]);
       createMbqlTransform({ visitTransform: true });
 
       getTagsInput().click();
       H.popover()
-        .findByRole("option", { name: "tag1" })
+        .findByRole("option", { name: "hourly" })
         .findByLabelText("Rename tag")
         .click({ force: true });
       H.modal().within(() => {
-        cy.findByLabelText("Name").clear().type("tag1changed");
+        cy.findByLabelText("Name").clear().type("daily_changed");
         cy.button("Save").click();
         cy.wait("@updateTag");
       });
 
       getTagsInput().click();
-      H.popover().findByText("tag1changed").should("be.visible");
+      H.popover().findByText("daily_changed").should("be.visible");
     });
 
     it("should be able to delete tags inline", () => {
-      createTags(["tag1", "tag2"]);
       createMbqlTransform({ visitTransform: true });
 
       getTagsInput().click();
       H.popover()
-        .findByRole("option", { name: "tag1" })
+        .findByRole("option", { name: "hourly" })
         .findByLabelText("Delete tag")
         .click({ force: true });
       H.modal().within(() => {
@@ -252,8 +249,8 @@ describe("scenarios > admin > transforms", () => {
 
       getTagsInput().click();
       H.popover().within(() => {
-        cy.findByText("tag2").should("be.visible");
-        cy.findByText("tag1").should("not.exist");
+        cy.findByText("daily").should("be.visible");
+        cy.findByText("hourly").should("not.exist");
       });
     });
   });
@@ -632,7 +629,6 @@ describe("scenarios > admin > transforms > jobs", () => {
     });
 
     it("should be able to create a job with custom property values", () => {
-      createTags(["tag1", "tag2"]);
       visitJobListPage();
       getJobListPage().findByRole("link", { name: "Create a job" }).click();
 
@@ -644,7 +640,7 @@ describe("scenarios > admin > transforms > jobs", () => {
         getCronInput().clear().type("0 * * * ?");
         getTagsInput().click();
       });
-      H.popover().findByText("tag2").click();
+      H.popover().findByText("daily").click();
       getJobPage().button("Save").click();
       cy.wait("@createJob");
       H.undoToast().findByText("New job created").should("be.visible");
@@ -657,7 +653,7 @@ describe("scenarios > admin > transforms > jobs", () => {
         );
         getCronInput().should("have.value", "0 * * * ?");
         cy.findByText("This job will run every hour").should("be.visible");
-        cy.findByText("tag2").should("be.visible");
+        cy.findByText("daily").should("be.visible");
       });
     });
   });
@@ -728,25 +724,24 @@ describe("scenarios > admin > transforms > jobs", () => {
 
   describe("tags", () => {
     it("should be able to add and remove tags", () => {
-      createTags(["tag1", "tag2"]);
       H.createTransformJob({ name: "New job" }, { visitTransformJob: true });
       getTagsInput().click();
 
       H.popover().within(() => {
-        cy.findByRole("option", { name: "tag1" }).click();
+        cy.findByRole("option", { name: "hourly" }).click();
         cy.wait("@updateJob");
-        assertOptionSelected("tag1");
-        assertOptionNotSelected("tag2");
+        assertOptionSelected("hourly");
+        assertOptionNotSelected("daily");
 
-        cy.findByRole("option", { name: "tag2" }).click();
+        cy.findByRole("option", { name: "daily" }).click();
         cy.wait("@updateJob");
-        assertOptionSelected("tag1");
-        assertOptionSelected("tag2");
+        assertOptionSelected("hourly");
+        assertOptionSelected("daily");
 
-        cy.findByRole("option", { name: "tag1" }).click();
+        cy.findByRole("option", { name: "hourly" }).click();
         cy.wait("@updateJob");
-        assertOptionNotSelected("tag1");
-        assertOptionSelected("tag2");
+        assertOptionNotSelected("hourly");
+        assertOptionSelected("daily");
       });
     });
   });
@@ -1202,10 +1197,6 @@ function createSqlTransform({
     },
     { wrapId: true, visitTransform },
   );
-}
-
-function createTags(names: string[]) {
-  names.forEach((name) => H.createTransformTag({ name }));
 }
 
 function visitTableQuestion({
