@@ -1,9 +1,11 @@
 ---
-title: Embedded Analytics JS
+title: Embedded analytics JS
 summary: Getting started with Embedded Analytics JS for embedding Metabase entities into external applications
 ---
 
-# Embedded Analytics JS
+# Embedded analytics JS
+
+{% include plans-blockquote.html feature="Embedded analytics JS" convert_pro_link_to_embbedding=true %}
 
 Embedded analytics JS allows you to embed Metabase entities like questions, dashboards, or even the query builder into your own application using customizable components.
 

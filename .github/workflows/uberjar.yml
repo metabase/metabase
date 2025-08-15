@@ -11,9 +11,7 @@ on:
   push:
     branches:
       - master
-      - feature-visualizer
       - internal-tools
-      - nm-semantic-search-in-metabase
     paths-ignore:
       # config files
       - ".**"

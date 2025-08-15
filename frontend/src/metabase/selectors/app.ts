@@ -7,6 +7,7 @@ import {
   getDashboardId,
   getIsEditing as getIsEditingDashboard,
 } from "metabase/dashboard/selectors";
+import { PLUGIN_DOCUMENTS } from "metabase/plugins";
 import {
   getIsSavedQuestionChanged,
   getQuestion,
@@ -43,6 +44,7 @@ const PATHS_WITH_COLLECTION_BREADCRUMBS = [
   /\/model\//,
   /\/metric\//,
   /\/dashboard\//,
+  /\/document\//,
 ];
 const PATHS_WITH_QUESTION_LINEAGE = [/\/question/, /\/model/];
 
@@ -66,17 +68,20 @@ export const getIsCollectionPathVisible = createSelector(
   [
     getQuestion,
     getDashboard,
+    (state) => PLUGIN_DOCUMENTS.getCurrentDocument(state),
     getRouterPath,
     getIsEmbeddingIframe,
     getEmbedOptions,
   ],
-  (question, dashboard, path, isEmbedded, embedOptions) => {
+  (question, dashboard, document, path, isEmbedded, embedOptions) => {
     if (isEmbedded && !embedOptions.breadcrumbs) {
       return false;
     }
 
     return (
-      ((question != null && question.isSaved()) || dashboard != null) &&
+      ((question != null && question.isSaved()) ||
+        dashboard != null ||
+        document !== null) &&
       PATHS_WITH_COLLECTION_BREADCRUMBS.some((pattern) => pattern.test(path))
     );
   },
@@ -203,9 +208,18 @@ export const getErrorMessage = (state: State) => {
 };
 
 export const getCollectionId = createSelector(
-  [getQuestion, getDashboard, getDashboardId],
-  (question, dashboard, dashboardId) =>
-    dashboardId ? dashboard?.collection_id : question?.collectionId(),
+  [
+    getQuestion,
+    getDashboard,
+    getDashboardId,
+    (state) => PLUGIN_DOCUMENTS.getCurrentDocument(state),
+  ],
+  (question, dashboard, dashboardId, document) =>
+    document
+      ? document.collection_id
+      : dashboardId
+        ? dashboard?.collection_id
+        : question?.collectionId(),
 );
 
 export const getIsNavbarOpen: Selector<State, boolean> = createSelector(

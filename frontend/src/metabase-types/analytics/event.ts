@@ -86,7 +86,8 @@ export type MoveToTrashEvent = ValidateEvent<{
     | "collection"
     | "dataset"
     | "indexed-entity"
-    | "snippet";
+    | "snippet"
+    | "document";
 }>;
 
 export type ErrorDiagnosticModalOpenedEvent = ValidateEvent<{

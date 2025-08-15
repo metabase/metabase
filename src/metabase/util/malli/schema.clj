@@ -115,6 +115,16 @@
                      (str message))
       :api/regex   #"[1-9]\d*"}]))
 
+(def NegativeInt
+  "Schema representing an integer than must be less than 0"
+  (let [message (deferred-tru "value must be an integer less than zero.")]
+    [:int
+     {:max         -1
+      :description (str message)
+      :error/fn    (fn [_ _]
+                     (str message))
+      :api/regex   #"[1-9]\d*"}]))
+
 (def KeywordOrString
   "Schema for something that can be either a `Keyword` or a `String`."
   (mu/with-api-error-message
