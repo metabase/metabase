@@ -177,7 +177,7 @@ const config = {
     new rspack.EnvironmentPlugin({
       IS_EMBEDDING_SDK: "true",
       ...getBuildInfoValues({
-        // Version of the SDK bundle is received from the Metabase Instance
+        // Version of the SDK bundle is equal to Metabase Instance version and received from it via API call
         version: null,
       }),
     }),
