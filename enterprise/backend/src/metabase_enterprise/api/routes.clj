@@ -30,6 +30,7 @@
    [metabase-enterprise.semantic-search.api]
    [metabase-enterprise.serialization.api]
    [metabase-enterprise.stale.api]
+   [metabase-enterprise.transforms.api]
    [metabase-enterprise.upload-management.api]
    [metabase.api.macros :as api.macros]
    [metabase.api.util.handlers :as handlers]
@@ -56,6 +57,7 @@
    :semantic-search            (deferred-tru "Semantic Search")
    :serialization              (deferred-tru "Serialization")
    :table-data-editing         (deferred-tru "Table Data Editing")
+   :transforms                 (deferred-tru "Transforms")
    :upload-management          (deferred-tru "Upload Management")
    :database-routing           (deferred-tru "Database Routing")
    :cloud-custom-smtp          (deferred-tru "Custom SMTP")})
@@ -107,6 +109,9 @@
    "/semantic-search"              (premium-handler metabase-enterprise.semantic-search.api/routes :semantic-search)
    "/serialization"                (premium-handler metabase-enterprise.serialization.api/routes :serialization)
    "/stale"                        (premium-handler metabase-enterprise.stale.api/routes :collection-cleanup)
+   "/transform"                    (premium-handler metabase-enterprise.transforms.api/routes :transforms)
+   "/transform-job"                (premium-handler metabase-enterprise.transforms.api/transform-job-routes :transforms)
+   "/transform-tag"                (premium-handler metabase-enterprise.transforms.api/transform-tag-routes :transforms)
    "/upload-management"            (premium-handler metabase-enterprise.upload-management.api/routes :upload-management)})
 ;;; ↑↑↑ KEEP THIS SORTED OR ELSE ↑↑↑
 

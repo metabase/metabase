@@ -822,3 +822,13 @@ export const PLUGIN_ENTITIES = {
 export const PLUGIN_SEMANTIC_SEARCH = {
   SearchSettingsWidget: PluginPlaceholder,
 };
+
+export type TransformsPlugin = {
+  getAdminPaths(): AdminPath[];
+  getAdminRoutes(): ReactNode;
+};
+
+export const PLUGIN_TRANSFORMS: TransformsPlugin = {
+  getAdminPaths: () => [],
+  getAdminRoutes: () => null,
+};

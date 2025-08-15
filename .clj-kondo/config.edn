@@ -411,9 +411,12 @@
   com.climate.claypoole/with-shutdown!                                                  clojure.core/let
   instaparse.core/defparser                                                             clojure.core/def
   metabase-enterprise.action-v2.test-util/with-test-tables!                             clojure.core/let
+  metabase-enterprise.content-translation.routes-test/with-new-secret-key!              clojure.core/fn
   metabase-enterprise.serialization.test-util/with-dbs                                  clojure.core/fn
   metabase-enterprise.serialization.test-util/with-random-dump-dir                      clojure.core/let
-  metabase-enterprise.content-translation.routes-test/with-new-secret-key!              clojure.core/fn
+  metabase-enterprise.transforms.api-test/with-transform-tags                           clojure.core/let
+  metabase-enterprise.transforms.api-test/with-worker-runs                              clojure.core/let
+  metabase-enterprise.transforms.test-util/with-transform-cleanup!                      clojure.core/let
   metabase.actions.test-util/with-actions                                               clojure.core/let
   metabase.api.common/let-404                                                           clojure.core/let
   metabase.app-db.custom-migrations.util/with-temp-scheduler!                           clojure.core/fn
@@ -645,6 +648,7 @@
 
   :macroexpand
   {clojurewerkz.quartzite.jobs/build                                                       macros.quartz/build-job
+   clojurewerkz.quartzite.schedule.calendar-interval/build                                 macros.quartz/build-job
    clojurewerkz.quartzite.schedule.cron/schedule                                           macros.quartz/schedule
    clojurewerkz.quartzite.schedule.simple/schedule                                         macros.quartz/simple-schedule
    clojurewerkz.quartzite.triggers/build                                                   macros.quartz/build-trigger
