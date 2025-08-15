@@ -15,7 +15,7 @@ import { SdkBreadcrumbs } from "./SdkBreadcrumbs";
 import { SdkBreadcrumbsProvider } from "./SdkBreadcrumbsProvider";
 
 export default {
-  title: "EmbeddingSDK/SdkBreadcrumb",
+  title: "EmbeddingSDK/SdkBreadcrumbs",
   component: SdkBreadcrumbs,
   parameters: {
     layout: "fullscreen",
@@ -62,10 +62,12 @@ const SdkBreadcrumbStory = () => {
     .exhaustive();
 
   return (
-    <Stack p="md" gap="sm">
-      <SdkBreadcrumbs />
+    <Stack p="md">
+      <Stack mb="xs">
+        <SdkBreadcrumbs />
+      </Stack>
 
-      {viewContent}
+      <Stack>{viewContent}</Stack>
     </Stack>
   );
 };
