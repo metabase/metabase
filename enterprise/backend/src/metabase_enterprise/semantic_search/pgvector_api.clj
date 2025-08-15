@@ -28,8 +28,10 @@
   (require '[metabase-enterprise.semantic-search.embedding :as semantic.embedding])
   (def embedding-model (semantic.embedding/get-configured-model)))
 
-(defn- initialize-index!
-  [tx index-metadata embedding-model]
+(defn initialize-index!
+  "Creates an index for the provided embedding model (if it does not exist or if we're asking to force reset).
+  Returns the index that you can use with semantic.search.index functions to operate on the index."
+  [tx index-metadata embedding-model opts]
   (let [active-index-state (semantic.index-metadata/get-active-index-state tx index-metadata)
         active-index       (:index active-index-state)
         active-model       (:embedding-model active-index)
@@ -41,13 +43,13 @@
         model-switching    (and active-model model-changed)]
     (when model-switching
       (log/infof "Configured model does not match active index, switching. Previous active: %s" (u/pprint-to-str active-index)))
-    (if model-changed
+    (if (or model-changed (:force-reset? opts))
       (let [{:keys [index metadata-row]}
             (semantic.index-metadata/find-best-index! tx index-metadata embedding-model)]
           ;; Metadata might exist without table (deleted manually) or table without metadata
           ;; (created outside this system). Both cases are handled gracefully.
           ;; We might delete some of this fancyness later once schema / setup etc solidifies
-        (semantic.index/create-index-table-if-not-exists! tx index)
+        (semantic.index/create-index-table-if-not-exists! tx index opts)
         (let [index-id (or (:id metadata-row) (semantic.index-metadata/record-new-index-table! tx index-metadata index))]
           (semantic.index-metadata/activate-index! tx index-metadata index-id)
           index))
@@ -60,11 +62,11 @@
   Returns the index that you can use with semantic.search.index functions to operate on the index.
 
   Designed to be called once at application startup (or in tests)."
-  [pgvector index-metadata embedding-model]
+  [pgvector index-metadata embedding-model & opts]
   (semantic.db.connection/with-migrate-tx [tx pgvector]
     (semantic.db.migration/maybe-migrate! tx {:index-metadata index-metadata
                                               :embedding-model embedding-model})
-    (initialize-index! tx index-metadata embedding-model)))
+    (initialize-index! tx index-metadata embedding-model opts)))
 
 ;; query/index-mgmt require an active index to be established first.
 ;; init-semantic-search! must be called on startup
