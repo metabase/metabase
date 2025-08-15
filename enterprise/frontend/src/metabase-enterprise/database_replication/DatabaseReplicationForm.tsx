@@ -147,7 +147,7 @@ export const DatabaseReplicationForm = ({
 
   return (
     <Stack>
-      <Card radius="md" bg="bg-light" p="md" mt="xs">
+      <Card radius="md" bg="bg-light" p="md" my="sm">
         <Stack>
           <Group justify="space-between">
             <div>
