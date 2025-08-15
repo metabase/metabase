@@ -307,23 +307,6 @@ export const NativeQueryModal = ({
     }
   }, [modifiedQuestion, datasetToUse, sqlError]);
 
-  const modalStyles = {
-    content: {
-      height: "90vh",
-      maxHeight: "90vh",
-      display: "flex",
-      flexDirection: "column" as const,
-    },
-    body: {
-      flex: 1,
-      display: "flex",
-      flexDirection: "column" as const,
-      padding: 0,
-      minHeight: 0,
-      overflow: "hidden" as const,
-    },
-  };
-
   if (!question || !modifiedQuestion) {
     return (
       <Modal
@@ -346,7 +329,10 @@ export const NativeQueryModal = ({
       size="95%"
       title={t`Edit SQL Query`}
       padding="lg"
-      styles={modalStyles}
+      classNames={{
+        content: S.modalContent,
+        body: S.modalBody,
+      }}
     >
       <Flex h="100%" direction="column">
         {/* Main content area with horizontal layout */}
@@ -360,15 +346,14 @@ export const NativeQueryModal = ({
             className={S.mainContent}
           >
             <Box pos="relative" className={S.editorContainer}>
-              {/* NativeQueryEditor with minimal configuration for modal context */}
               {(modifiedQuestion?.legacyNativeQuery() ||
                 question?.legacyNativeQuery()) && (
                 <NativeQueryEditor
                   question={modifiedQuestion}
                   query={
-                    modifiedQuestion?.legacyNativeQuery() ||
-                    question?.legacyNativeQuery() ||
-                    ({} as any)
+                    modifiedQuestion?.legacyNativeQuery() ??
+                    question?.legacyNativeQuery() ??
+                    {}
                   }
                   isNativeEditorOpen
                   isInitiallyOpen
@@ -400,18 +385,18 @@ export const NativeQueryModal = ({
                     }
                     setIsShowingDataReference(!isShowingDataReference);
                   }}
-                  toggleSnippetSidebar={() => {}}
-                  setNativeEditorSelectedRange={() => {}}
-                  openDataReferenceAtQuestion={() => {}}
-                  openSnippetModalWithSelectedText={() => {}}
-                  insertSnippet={() => {}}
-                  setParameterValue={() => {}}
-                  onOpenModal={() => {}}
-                  cancelQuery={() => {}}
-                  closeSnippetModal={() => {}}
-                  handleResize={() => {}}
+                  toggleSnippetSidebar={_.noop}
+                  setNativeEditorSelectedRange={_.noop}
+                  openDataReferenceAtQuestion={_.noop}
+                  openSnippetModalWithSelectedText={_.noop}
+                  insertSnippet={_.noop}
+                  setParameterValue={_.noop}
+                  onOpenModal={_.noop}
+                  cancelQuery={_.noop}
+                  closeSnippetModal={_.noop}
+                  handleResize={_.noop}
                   canChangeDatabase
-                  toggleEditor={() => {}}
+                  toggleEditor={_.noop}
                   onSetDatabaseId={(databaseId: DatabaseId) => {
                     if (modifiedQuestion) {
                       const updatedDatasetQuery = {
