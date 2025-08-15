@@ -4,7 +4,6 @@ import * as Yup from "yup";
 
 import ExternalLink from "metabase/common/components/ExternalLink";
 import { useStoreUrl } from "metabase/common/hooks";
-import CS from "metabase/css/core/index.css";
 import {
   Form,
   FormProvider,
@@ -235,14 +234,20 @@ export const DatabaseReplicationForm = ({
                   <Flex
                     align="flex-start"
                     direction="row"
+                    gap="sm"
                     justify="flex-start"
                     wrap="nowrap"
                     p="md"
                   >
-                    <Box maw="16" mr="sm" mt={1}>
-                      <Icon className={CS.ml1} name="info_outline" size={16} />
+                    <Box maw="16" mt={1}>
+                      <Icon
+                        // className={CS.ml1}
+                        c="brand"
+                        name="info_outline"
+                        size={16}
+                      />
                     </Box>
-                    <Box w="100%">
+                    <Box>
                       <Text c="text-light" fz="md" lh={1.25}>
                         {t`Tables without primary key or with owner mismatch`}{" "}
                         <b>{t`will not be replicated`}</b>.
@@ -251,6 +256,7 @@ export const DatabaseReplicationForm = ({
                         variant="subtle"
                         size="xs"
                         onClick={() => setShowNoSyncTables(!showNoSyncTables)}
+                        c="brand"
                         fz="md"
                         h="auto"
                         p={0}
@@ -267,7 +273,8 @@ export const DatabaseReplicationForm = ({
                               : t`Show tables (${noSyncTables.length})`}
                           </Text>
                           <Icon
-                            className={CS.ml1}
+                            // className={CS.ml1}
+                            c="brand"
                             name={
                               showNoSyncTables ? "chevronup" : "chevrondown"
                             }
