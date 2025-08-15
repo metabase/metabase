@@ -22,6 +22,7 @@ import {
   Group,
   Icon,
   List,
+  Loader,
   Progress,
   Stack,
   Text,
@@ -246,6 +247,8 @@ export const DatabaseReplicationForm = ({
                   />
                 </Box>
               )}
+
+              {previewResponseLoading && <Loader size="sm" />}
 
               {noSyncTables.length > 0 && (
                 <Card radius="md" bg="bg-light" p={0}>
