@@ -28,7 +28,7 @@ export const SdkBreadcrumbsProvider = ({
   const navigateTo = useCallback(
     (breadcrumb: SdkBreadcrumbItem) => {
       const existingIndex = breadcrumbs.findIndex(
-        (b) => b.id === breadcrumb.id && b.type === breadcrumb.type,
+        (item) => item.id === breadcrumb.id && item.type === breadcrumb.type,
       );
 
       if (existingIndex !== -1) {
