@@ -367,10 +367,6 @@
         :result_metadata
         [:display :display_type]))
 
-(defmethod columns-for-model "document"
-  [_]
-  [:id :name :archived :created_at :updated_at :collection_id :creator_id])
-
 (defmethod columns-for-model "indexed-entity" [_]
   [[:model-index-value.name     :name]
    [:model-index-value.model_pk :id]
@@ -513,15 +509,6 @@
       (sql.helpers/left-join [:collection_bookmark :bookmark]
                              [:and
                               [:= :bookmark.collection_id :collection.id]
-                              [:= :bookmark.user_id (:current-user-id search-ctx)]])
-      (add-collection-join-and-where-clauses model search-ctx)))
-
-(defmethod search-query-for-model "document"
-  [model search-ctx]
-  (-> (base-query-for-model "document" search-ctx)
-      (sql.helpers/left-join [:document_bookmark :bookmark]
-                             [:and
-                              [:= :bookmark.document_id :document.id]
                               [:= :bookmark.user_id (:current-user-id search-ctx)]])
       (add-collection-join-and-where-clauses model search-ctx)))
 

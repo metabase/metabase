@@ -6,8 +6,6 @@ import { Flex, Stack, Text, Title } from "metabase/ui";
 import type { Database } from "metabase-types/api";
 import { isEngineKey } from "metabase-types/guards";
 
-import { HeaderLinkGroup } from "./HeaderLinkGroup";
-
 export const ExistingDatabaseHeader = ({
   database,
 }: {
@@ -20,13 +18,7 @@ export const ExistingDatabaseHeader = ({
     : undefined;
 
   return (
-    <Flex
-      data-testid="database-header-section"
-      gap="1.25rem"
-      justify="space-between"
-      mb="2.75rem"
-      wrap="wrap"
-    >
+    <Flex mb="2.75rem" gap="1.25rem" data-testid="database-header-section">
       <Stack gap="sm">
         <Title order={2}>{database?.name}</Title>
         <Flex gap="sm">
@@ -46,7 +38,6 @@ export const ExistingDatabaseHeader = ({
           </Text>
         </Flex>
       </Stack>
-      <HeaderLinkGroup database={database} />
     </Flex>
   );
 };

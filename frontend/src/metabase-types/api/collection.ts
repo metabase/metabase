@@ -95,7 +95,6 @@ export const COLLECTION_ITEM_MODELS = [
   "snippet",
   "collection",
   "indexed-entity",
-  "document",
 ] as const;
 export type CollectionItemModel = (typeof COLLECTION_ITEM_MODELS)[number];
 

@@ -116,7 +116,7 @@
     [:= (search.config/column-with-model-alias model :creator_id) (first creator-ids)]
     [:in (search.config/column-with-model-alias model :creator_id) creator-ids]))
 
-(doseq [model ["card" "dataset" "metric" "dashboard" "action" "document"]]
+(doseq [model ["card" "dataset" "metric" "dashboard" "action"]]
   (defmethod build-optional-filter-query [:created-by model]
     [_filter model query creator-ids]
     (sql.helpers/where query (default-created-by-filter-clause model creator-ids))))
@@ -175,7 +175,7 @@
       :else
       [:and [:>= dt-col start] [:< dt-col end]])))
 
-(doseq [model ["collection" "database" "table" "dashboard" "card" "dataset" "metric" "action" "document"]]
+(doseq [model ["collection" "database" "table" "dashboard" "card" "dataset" "metric" "action"]]
   (defmethod build-optional-filter-query [:created-at model]
     [_filter model query created-at]
     (sql.helpers/where query (date-range-filter-clause

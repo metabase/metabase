@@ -14,7 +14,6 @@ export * from "./e2e-dashboard-visualizer-helpers";
 export * from "./e2e-database-metadata-helpers";
 export * from "./e2e-datamodel-helpers";
 export * from "./e2e-dimension-list-helpers";
-export * from "./e2e-document-helpers";
 export * from "./e2e-downloads-helpers";
 export * from "./e2e-dragndrop-helpers";
 export * from "./e2e-element-visibility-helpers";

@@ -25,8 +25,7 @@
   keys to remove from the model so that we'll be able to successfully load it. You can remove keys in vectors using :* to
   indicate that all items in that vector should have a key removed."
   {"Dashboard" #{:dashcards}
-   "Document"  #{:document}
-   "Card"      #{:dashboard_id :document_id}})
+   "Card"      #{:dashboard_id}})
 
 (defn- keys-to-strip [ingested]
   (let [model (-> ingested :serdes/meta last :model)]

@@ -21,7 +21,6 @@ const ENABLED_SEARCH_MODELS = [
   "table",
   "action",
   "indexed-entity",
-  "document",
 ] as const;
 
 export const SEARCH_MODELS = [...ENABLED_SEARCH_MODELS, "segment"] as const;

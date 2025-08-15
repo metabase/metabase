@@ -631,8 +631,7 @@
                                    "src/metabase/util/currency\\.cljc$"
                                    "test/metabase/channel/render/png_test.clj"
                                    "#.+#$"
-                                   "\\.transit\\.json$"
-                                   "enterprise/frontend/src/metabase-enterprise/documents/components/Editor/data/data\\.json$"]}}
+                                   "\\.transit\\.json$"]}}
 
   ;; clojure -X:dev:ee:ee-dev:test:cloverage
   :cloverage

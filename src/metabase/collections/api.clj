@@ -230,13 +230,12 @@
 (def ^:private valid-model-param-values
   "Valid values for the `?model=` param accepted by endpoints in this namespace.
   `no_models` is for nilling out the set because a nil model set is actually the total model set"
-  #{"card"                              ; SavedQuestion
-    "dataset"                           ; Model. TODO : update this
-    "document"
+  #{"card"       ; SavedQuestion
+    "dataset"    ; Model. TODO : update this
     "metric"
     "collection"
     "dashboard"
-    "pulse"                             ; I think the only kinds of Pulses we still have are Alerts?
+    "pulse"      ; I think the only kinds of Pulses we still have are Alerts?
     "snippet"
     "no_models"
     "timeline"})
@@ -327,46 +326,6 @@
 (defmethod ^:private post-process-collection-children :default
   [_ _ _ rows]
   rows)
-
-(defmethod ^:private post-process-collection-children :document
-  [_ _ collection rows]
-  (t2/hydrate (for [document rows]
-                (-> (t2/instance :model/Document document)
-                    (assoc :location (or (when collection
-                                           (collection/children-location collection))
-                                         "/"))
-                    (update :archived api/bit->boolean)
-                    (update :archived_directly api/bit->boolean)))
-              :can_write :can_restore :can_delete))
-
-(defmethod collection-children-query :document
-  [_ collection {:keys [archived? pinned-state]}]
-  (-> {:select [:document.id
-                :document.name
-                :document.collection_id
-                :document.collection_position
-                :document.archived
-                :document.archived_directly
-                [:u.id :last_edit_user]
-                [:u.email :last_edit_email]
-                [:u.first_name :last_edit_first_name]
-                [:u.last_name :last_edit_last_name]
-                [:r.timestamp :last_edit_timestamp]
-                [(h2x/literal "document") :model]]
-       :from [[:document :document]]
-       :left-join [[:revision :r] [:and
-                                   [:= :r.model_id :document.id]
-                                   [:= :r.most_recent true]
-                                   [:= :r.model (h2x/literal "Document")]]
-                   [:core_user :u] [:= :u.id :r.user_id]]
-       :where [:and
-               (if (collection/is-trash? collection)
-                 [:= :document.archived_directly true]
-                 [:and
-                  [:= :collection_id (:id collection)]
-                  [:= :document.archived_directly false]])
-               [:= :document.archived (boolean archived?)]]}
-      (sql.helpers/where (pinned-state->clause pinned-state :document.collection_position))))
 
 (defmethod collection-children-query :pulse
   [_ collection {:keys [archived? pinned-state]}]
@@ -472,7 +431,6 @@
                       [:= :c.archived_directly false]])
                    (when-not show-dashboard-questions?
                      [:= :c.dashboard_id nil])
-                   [:= :c.document_id nil]
                    [:= :archived (boolean archived?)]
                    (case card-type
                      :model
@@ -802,7 +760,6 @@
     :dataset    :model/Card
     :metric     :model/Card
     :dashboard  :model/Dashboard
-    :document   :model/Document
     :pulse      :model/Pulse
     :snippet    :model/NativeQuerySnippet
     :timeline   :model/Timeline))
@@ -991,8 +948,7 @@
   "Fetch a sequence of 'child' objects belonging to a Collection, filtered using `options`."
   [{collection-namespace :namespace, :as collection} :- collection/CollectionWithLocationAndIDOrRoot
    {:keys [models], :as options}                     :- CollectionChildrenOptions]
-  (let [valid-models (for [model-kw (cond-> [:collection :dataset :metric :card :dashboard :pulse :snippet :timeline]
-                                      (premium-features/enable-documents?) (conj :document))
+  (let [valid-models (for [model-kw [:collection :dataset :metric :card :dashboard :pulse :snippet :timeline]
                            ;; only fetch models that are specified by the `model` param; or everything if it's empty
                            :when    (or (empty? models) (contains? models model-kw))
                            :let     [toucan-model       (model-name->toucan-model model-kw)

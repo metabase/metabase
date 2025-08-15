@@ -2,8 +2,15 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase-enterprise.metabot-v3.table-utils :as table-utils]
+   [metabase-enterprise.ai-sql-fixer.api :as ai-sql-fixer.api]
    [metabase.test :as mt]))
+
+(deftest ^:parallel format-escpaed-test
+  (are [in out] (= out
+                   (with-out-str (#'ai-sql-fixer.api/format-escaped in *out*)))
+    "almallama"      "almallama"
+    "alma llama"     "\"alma llama\""
+    "\"alma\" llama" "\"\"\"alma\"\" llama\""))
 
 (deftest ^:parallel schema-sample-test
   (mt/test-driver :h2
@@ -41,7 +48,7 @@
                       ");\n")
                  normalize)
              (-> (mt/with-current-user (mt/user->id :crowberto)
-                   (table-utils/schema-sample query {:all-tables-limit 5}))
+                   (#'ai-sql-fixer.api/schema-sample query {:all-tables-limit 5}))
                  normalize))))))
 
 (deftest ^:parallel no-used-table-test
@@ -68,5 +75,5 @@
                       ");\n")
                  normalize)
              (-> (mt/with-current-user (mt/user->id :crowberto)
-                   (table-utils/schema-sample query {:all-tables-limit 5}))
+                   (#'ai-sql-fixer.api/schema-sample query {:all-tables-limit 5}))
                  normalize))))))

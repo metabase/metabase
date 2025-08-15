@@ -62,7 +62,6 @@
          (cond
            (false? d) "`false`"
            (nil? d) "`null`"
-           (keyword? d) (str "`" (name d) "`")
            :else (str "`" d "`")))))
 
 (defn- format-prefix

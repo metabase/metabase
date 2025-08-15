@@ -109,15 +109,11 @@
   {:doc      "Starts the babashka nrepl: helpful for mage development"
    :requires [[babashka.nrepl.server :as nrepl.server]
               [mage.color :as c]]
-   :examples [["./bin/mage nrepl" "Starts the nrepl server"]
-              ["./bin/mage nrepl --port 50506" "Starts the nrepl server"]
-              ["./bin/mage nrepl -p 50506" "Starts the nrepl server"]]
-   :options  [["-p" "--port PORT" "optionally provide a port to run the nrepl server on" :default 1667 :parse-fn Integer/parseInt]]
+   :examples [["./bin/mage nrepl" "Starts the nrepl server"]]
    :task     (task!
-              (let [{:keys [port]} (:options parsed)]
-                (spit ".nrepl-port" port)
-                (nrepl.server/start-server! {:port port})
-                (deref (promise))))}
+               (spit ".nrepl-port" 1667)
+               (nrepl.server/start-server!)
+               (deref (promise)))}
 
   lint-migrations
   {:doc        "Lint migrations files"

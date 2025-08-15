@@ -1,5 +1,3 @@
-import { PLUGIN_ENTITIES } from "metabase/plugins";
-
 // backend returns model = "card" instead of "question"
 export const entityTypeForModel = (model) => {
   if (model === "card" || model === "dataset" || model === "metric") {
@@ -17,7 +15,5 @@ export const entityTypeForObject = (object) =>
 
 export const entityForObject = (object) => {
   const entities = require("metabase/entities");
-  const enterpriseEntities = PLUGIN_ENTITIES.entities;
-
-  return { ...entities, ...enterpriseEntities }[entityTypeForObject(object)];
+  return entities[entityTypeForObject(object)];
 };

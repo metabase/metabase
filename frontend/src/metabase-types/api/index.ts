@@ -35,7 +35,6 @@ export * from "./permissions";
 export * from "./persist";
 export * from "./pulse";
 export * from "./query";
-export * from "./document";
 export * from "./revision";
 export * from "./schema";
 export * from "./search";

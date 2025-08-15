@@ -289,10 +289,12 @@ describe("Database connection strings", () => {
       cy.url().should("match", /\/admin\/databases\/\d/);
       waitForDbSync();
 
-      cy.findByRole("link", { name: "Manage permissions" }).should(
-        "be.visible",
-      );
-      cy.findByRole("link", { name: /Browse data/ }).should("be.visible");
+      cy.findByRole("dialog").within(() => {
+        cy.findByText(
+          "Your database was added! Want to configure permissions?",
+        ).should("exist");
+        cy.button("Maybe later").click();
+      });
     });
 
     it("should successfully connect to PostgreSQL using connection string", () => {
@@ -329,10 +331,12 @@ describe("Database connection strings", () => {
       cy.url().should("match", /\/admin\/databases\/\d/);
       waitForDbSync();
 
-      cy.findByRole("link", { name: "Manage permissions" }).should(
-        "be.visible",
-      );
-      cy.findByRole("link", { name: /Browse data/ }).should("be.visible");
+      cy.findByRole("dialog").within(() => {
+        cy.findByText(
+          "Your database was added! Want to configure permissions?",
+        ).should("exist");
+        cy.button("Maybe later").click();
+      });
     });
 
     it("should handle connection failures gracefully", () => {

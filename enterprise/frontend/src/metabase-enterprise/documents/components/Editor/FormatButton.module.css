@@ -1,9 +1,0 @@
-.button {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: none;
-  cursor: pointer;
-  transition: all 0.15s ease;
-  border-radius: var(--mantine-radius-sm);
-}

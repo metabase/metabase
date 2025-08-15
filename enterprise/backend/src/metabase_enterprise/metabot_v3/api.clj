@@ -3,7 +3,6 @@
   (:require
    [malli.core :as mc]
    [malli.transform :as mtx]
-   [metabase-enterprise.metabot-v3.api.document]
    [metabase-enterprise.metabot-v3.api.metabot]
    [metabase-enterprise.metabot-v3.client.schema :as metabot-v3.client.schema]
    [metabase-enterprise.metabot-v3.config :as metabot-v3.config]
@@ -94,5 +93,4 @@
   (handlers/routes
    (api.macros/ns-handler *ns* +auth)
    (handlers/route-map-handler
-    {"/metabot" metabase-enterprise.metabot-v3.api.metabot/routes
-     "/document" metabase-enterprise.metabot-v3.api.document/routes})))
+    {"/metabot" metabase-enterprise.metabot-v3.api.metabot/routes})))

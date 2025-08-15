@@ -7,7 +7,6 @@
   #{:cache_invalidated_at
     :created_at
     :creator_id
-    :document_id
     :entity_id
     :id
     :initially_published_at

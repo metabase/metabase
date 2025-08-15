@@ -40,14 +40,13 @@ interface NativeQueryEditorTopBarProps {
   snippetCollections?: Collection[];
   sidebarFeatures: SidebarFeatures;
 
-  toggleEditor?: () => void;
-  toggleDataReference?: () => void;
+  toggleEditor: () => void;
   setIsNativeEditorOpen?: (isOpen: boolean) => void;
   onFormatQuery?: () => void;
   onSetDatabaseId?: (id: DatabaseId) => void;
-  onOpenModal?: (modalType: QueryModalType) => void;
+  onOpenModal: (modalType: QueryModalType) => void;
   onChange: (queryText: string) => void;
-  setParameterValue?: (parameterId: ParameterId, value: string) => void;
+  setParameterValue: (parameterId: ParameterId, value: string) => void;
   focus: () => void;
   setDatasetQuery: (query: NativeQuery) => Promise<Question>;
 }
@@ -78,7 +77,6 @@ const NativeQueryEditorTopBar = (props: NativeQueryEditorTopBarProps) => {
     nativeEditorSelectedText,
     setIsNativeEditorOpen,
     toggleEditor,
-    toggleDataReference,
     onSetDatabaseId,
     hasParametersList = true,
     setDatasetQuery,
@@ -131,7 +129,7 @@ const NativeQueryEditorTopBar = (props: NativeQueryEditorTopBarProps) => {
           editorContext={editorContext}
         />
       )}
-      {hasParametersList && setParameterValue && (
+      {hasParametersList && (
         <ResponsiveParametersList
           question={question}
           parameters={parameters}
@@ -156,14 +154,12 @@ const NativeQueryEditorTopBar = (props: NativeQueryEditorTopBarProps) => {
             isShowingDataReference={isShowingDataReference}
             isShowingTemplateTagsEditor={isShowingTemplateTagsEditor}
             isShowingSnippetSidebar={isShowingSnippetSidebar}
-            toggleDataReference={toggleDataReference}
             onOpenModal={onOpenModal}
           />
         )}
         {query.hasWritePermission() &&
           !question.isArchived() &&
-          setIsNativeEditorOpen &&
-          toggleEditor && (
+          setIsNativeEditorOpen && (
             <VisibilityToggler
               isOpen={isNativeEditorOpen}
               readOnly={!!readOnly}

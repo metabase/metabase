@@ -117,9 +117,7 @@
       :model/ConnectionImpersonation
       :model/Metabot
       :model/MetabotEntity
-      :model/MetabotPrompt
-      :model/Document
-      :model/DocumentBookmark])))
+      :model/MetabotPrompt])))
 
 (defn- objects->colums+values
   "Given a sequence of objects/rows fetched from the H2 DB, return a the `columns` that should be used in the `INSERT`

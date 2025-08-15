@@ -380,12 +380,9 @@
                (:engine resp))))))))
 
 (defn- get-available-models [& args]
-  (disj
-   (set
-    (:available_models
-     (apply mt/user-http-request :crowberto :get 200 "search" :calculate_available_models true args)))
-   ;; due to test contamination sometimes documents appear here, so just remove them.
-   "document"))
+  (set
+   (:available_models
+    (apply mt/user-http-request :crowberto :get 200 "search" :calculate_available_models true args))))
 
 (deftest archived-models-test
   (testing "It returns some stuff when you get results"

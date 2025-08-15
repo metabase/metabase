@@ -15,7 +15,6 @@ export const ENTERPRISE_TAG_TYPES = [
   "metabot-entities-list",
   "metabot-prompt-suggestions",
   "gsheets-status",
-  "document",
   "transform",
   "transform-tag",
   "transform-job",

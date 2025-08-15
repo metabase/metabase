@@ -63,7 +63,6 @@
                                                       :database_id
                                                       :dataset_query
                                                       :display
-                                                      :document_id
                                                       :last_used_at
                                                       :name
                                                       :query_type
