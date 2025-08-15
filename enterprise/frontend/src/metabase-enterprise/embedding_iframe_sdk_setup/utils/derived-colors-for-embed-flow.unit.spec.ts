@@ -42,6 +42,17 @@ describe("getDerivedDefaultColorsForEmbedFlow", () => {
     expect(colors?.["text-tertiary"]).toBe("rgba(255, 255, 255, 0.5)");
   });
 
+  it("uses the default text-primary color if only background is defined", () => {
+    const theme: MetabaseTheme = {
+      colors: {
+        background: "#1a1a1a",
+      },
+    };
+
+    const { colors } = getDerivedDefaultColorsForEmbedFlow(theme);
+    expect(colors?.["text-primary"]).toBe("#4C5773");
+  });
+
   it("should not override existing colors", () => {
     const theme: MetabaseTheme = {
       colors: {
