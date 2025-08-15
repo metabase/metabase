@@ -17,7 +17,7 @@ import { Button, Group, Stack } from "metabase/ui";
 
 import type { SdkIframeEmbedSettings } from "../types/embed";
 
-interface ViewContentProps {
+interface ContentManagerProps {
   settings: SdkIframeEmbedSettings & {
     componentName: "metabase-view-content" | "metabase-curate-content";
   };
@@ -30,7 +30,7 @@ type ContentManagerView =
   | { type: "exploration" }
   | { type: "create-dashboard" };
 
-export function ContentManager({ settings }: ViewContentProps) {
+export function ContentManager({ settings }: ContentManagerProps) {
   const { componentName, initialCollection } = settings;
 
   const isReadOnly = componentName === "metabase-view-content";
@@ -117,7 +117,7 @@ export function ContentManager({ settings }: ViewContentProps) {
           const type = match<string, SdkBreadcrumbItemType>(item.model)
             .with("card", () => "question")
             .with("dataset", () => "model")
-            .otherwise((model) => model as SdkBreadcrumbItemType);
+            .otherwise((model) => model);
 
           setCurrentView({ type, id: item.id });
         }}
@@ -125,6 +125,11 @@ export function ContentManager({ settings }: ViewContentProps) {
       />
     ))
     .otherwise(() => null);
+
+  const handleNewExploration = () => {
+    setCurrentView({ type: "exploration" });
+    reportLocation({ type: "question", id: "new", name: "New Exploration" });
+  };
 
   return (
     <Stack px="xl" py="lg" h="100%" style={{ overflowY: "hidden" }}>
@@ -137,18 +142,7 @@ export function ContentManager({ settings }: ViewContentProps) {
         {currentView.type === "collection" && (
           <Group gap="sm">
             {(settings.withNewQuestion ?? true) && (
-              <Button
-                justify="center"
-                onClick={() => {
-                  setCurrentView({ type: "exploration" });
-
-                  reportLocation({
-                    type: "question",
-                    id: "new",
-                    name: "New Exploration",
-                  });
-                }}
-              >
+              <Button justify="center" onClick={handleNewExploration}>
                 {t`New Exploration`}
               </Button>
             )}
