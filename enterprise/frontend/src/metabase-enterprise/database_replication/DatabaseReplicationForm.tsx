@@ -284,23 +284,29 @@ export const DatabaseReplicationForm = ({
                   {showNoSyncTables && (
                     <>
                       <Divider />
-                      <Box mah={180} p="md">
-                        <List spacing="xs" size="sm" fz="md" ml="sm">
+                      <Box
+                        mah={180}
+                        px="md"
+                        style={{
+                          overflowY: "auto",
+                        }}
+                      >
+                        <List spacing="xs" size="sm" fz="md" ml="sm" my="md">
                           {noSyncTables.map((table) => (
                             <List.Item
                               key={`${table.schema}.${table.name}`}
-                              // c="text-medium"
-                              // ff="Monaco, 'Lucida Console', monospace"
                               fz="md"
                             >
-                              <Text span c="text-dark" fw="500">
-                                {table.schema}
-                              </Text>
-                              <Text span c="text-medium">
-                                .{table.name}
-                              </Text>{" "}
-                              <Text span c="text-light">
-                                {noSyncReason(table)}
+                              <Text fz="md">
+                                <Text span c="text-dark" fw="500">
+                                  {table.schema}
+                                </Text>
+                                <Text span c="text-medium">
+                                  .{table.name}
+                                </Text>{" "}
+                                <Text span c="text-light">
+                                  {noSyncReason(table)}
+                                </Text>
                               </Text>
                             </List.Item>
                           ))}
