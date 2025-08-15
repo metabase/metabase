@@ -446,13 +446,22 @@
   [query stage-number id-or-name]
   (b/cond
     :let [stage (lib.util/query-stage query stage-number)]
-    (and (pos-int? id-or-name)
-         (:source-table stage))
+    (and (:source-table stage)
+         (pos-int? id-or-name))
     (when-some [col (field-metadata query id-or-name)]
       ;; don't return this field if it's not actually from the source table. We want some of the fallback
       ;; resolution pathways to figure out what join this came from.
       (when (= (:table-id col) (:source-table stage))
         col))
+
+    ;; we maybe have incorrectly used a field name ref when we should have used a field ID ref.
+    ;;
+    ;; TODO (Cam 8/15/25) -- what happpens if this field is marked inactive? It won't come back from
+    ;; `returned-columns`... we'd get fallback metadata, right?
+    (and (:source-table stage)
+         (string? id-or-name))
+    (m/find-first #(= (:name %) id-or-name)
+                  (lib.metadata.calculation/returned-columns query (lib.metadata/table query (:source-table stage))))
 
     (= (:lib/type stage) :mbql.stage/native)
     (when-some [col (resolve-in-current-stage-metadata query stage-number id-or-name)]
