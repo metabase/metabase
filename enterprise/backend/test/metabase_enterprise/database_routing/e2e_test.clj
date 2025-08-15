@@ -304,4 +304,3 @@
                                  (->> (mt/query t)
                                       (mt/process-query)
                                       (mt/formatted-rows [int str])))))))))))))))))
-
