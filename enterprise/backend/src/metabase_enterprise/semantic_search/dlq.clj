@@ -29,6 +29,8 @@
    (java.net SocketException)
    (java.time Clock Duration Instant InstantSource)))
 
+(set! *warn-on-reflection* true)
+
 (def ^:private dlq-table-schema
   "The database schema definition for a DLQ table.
   The schema includes:
@@ -297,7 +299,7 @@
   "Returns the initial DLQ entry for a gate document that failed for the first time.
 
   Sets retry_count to 0 and schedules the first retry after initial-backoff."
-  [{:keys [id gated_at]} attempted-at]
+  [{:keys [id gated_at]} ^Instant attempted-at]
   {:gate_id           id
    :error_gated_at    gated_at
    :retry_count       0
@@ -315,7 +317,7 @@
     {:gate_id           id
      :error_gated_at    gated_at
      :retry_count       new-retry-count
-     :attempt_at        (.plus attempted-at (next-delay new-retry-count retry-policy))
+     :attempt_at        (.plus attempted-at ^Duration (next-delay new-retry-count retry-policy))
      :last_attempted_at attempted-at}))
 
 (defn- failure-outcome [ex gate-docs]
