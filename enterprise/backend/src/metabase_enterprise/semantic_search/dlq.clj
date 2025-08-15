@@ -134,8 +134,8 @@
 (defn max-delay-ms
   "Calculates the maximum delay in milliseconds for a given retry count and policy.
 
-  Uses exponential backoff formula: base-delay * (retry-count ^ exponential-factor)
-  The result is capped at the policy's maximum delay and floored at 0.
+  Uses an exponential backoff formula: base-delay * (retry-count ^ exponential-factor)
+  The result is capped at the policy's maximum (:cap) delay and floored at 0.
 
   This is used internally by next-delay (which introduces random jitter). It is sometimes useful
   to predict the maximum delay regardless of any jitter."
@@ -363,7 +363,7 @@
   "Attempts to index a batch of gate documents, separating upserts from deletes
   processing them independently and then returning information on what failed and what succeeded.
 
-  Each operation swallows any error thrown by the indexer and performs, other than interrupts.
+  Each discrete indexing operation swallows any error thrown, other than interrupts.
 
   Upserts / Deletes can fail independently, even if both batched.
   For deletes, currently deletes are processed in model groups, so one operation is issued for each search model

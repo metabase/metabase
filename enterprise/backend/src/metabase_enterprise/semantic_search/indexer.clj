@@ -128,7 +128,7 @@
 
       (cond
         ;; nothing to do, very unlikely to happen in practice
-        ;; (e.g. in principle when we GC gate tombstones the doc query could race with)
+        ;; (e.g. in principle when we GC gate tombstones, we could race with deletes)
         (empty? gate-docs)
         (do
           (clear-stall-if-needed)
@@ -163,7 +163,7 @@
         ;; documents that prevent normal processing.
         ;;
         ;; DLQ Processing Strategy:
-        ;; - Any indexing failures are added to the dead letter queue with to be retried after the dlq/initial-backoff.
+        ;; - Any indexing failures are added to the dead letter queue to be retried after the dlq/initial-backoff.
         ;; - The watermark progresses regardless of success/failure (prevents infinite stalls)
         ;; - DLQ lib implements exponential backoff policies appropriate to error types
         ;; - DLQ lib can isolate poisoned documents from good ones through batch size reduction
@@ -274,8 +274,8 @@
   This limits memory usage and ensures responsive behavior even when the
   DLQ contains many entries ready for retry.
 
-  We do need to balance this for throughput during periods of prolonged (but transient) failure. it is
-  important that DLQ queue processing peak throughput is high when demand is high.
+  We do need to balance this for throughput during periods of prolonged (but transient) failure.
+  It is important that DLQ draining throughput is high when there are lots of pending retries.
 
   NOTE: The DLQ loop does issue multiple poll requests until it runs out of scheduled retries or its max time -
   so this limit does not need to be _that_ high."
