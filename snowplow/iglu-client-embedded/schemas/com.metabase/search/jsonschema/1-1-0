@@ -166,6 +166,15 @@
         "null"
       ],
       "maxLength": 1024
+    },
+    "offset": {
+      "description": "The offset of the search results (for pagination)",
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0,
+      "maximum": 2147483647
     }
   },
   "required": [
