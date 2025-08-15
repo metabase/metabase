@@ -31,6 +31,7 @@ export const TableList = ({
       id: table.id,
       model: "table",
       name: table.display_name,
+      database: { id: table.db_id },
     }));
   }, [tables]);
 

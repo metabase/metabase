@@ -35,6 +35,7 @@ export type TableItem = {
   id: TableId;
   name: string;
   model: "table";
+  database: { id?: DatabaseId };
 };
 
 export type QuestionItem = {
