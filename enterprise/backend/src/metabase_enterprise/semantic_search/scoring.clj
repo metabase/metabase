@@ -1,10 +1,16 @@
 (ns metabase-enterprise.semantic-search.scoring
   (:require
+   [clojure.core.memoize :as memoize]
+   [honey.sql :as sql]
    [honey.sql.helpers :as sql.helpers]
+   [metabase-enterprise.semantic-search.db.datasource :as semantic.db.datasource]
+   [metabase.config.core :as config]
    [metabase.premium-features.core :as premium-features]
    [metabase.search.config :as search.config]
    [metabase.search.scoring :as search.scoring]
-   [toucan2.util :as u]))
+   [metabase.util :as u]
+   [next.jdbc :as jdbc]
+   [next.jdbc.result-set :as jdbc.rs]))
 
 (defn- ->col-expr
   "For a given `col-name` return a :coalesce expression to reference it from the outer hybrid search query.
@@ -13,6 +19,44 @@
   [col-name]
   (let [prefix #(keyword (str %1 (name %2)))]
     [:coalesce (prefix "v." col-name) (prefix "t." col-name)]))
+
+(defn- view-count-percentile-query
+  [index-table p-value]
+  (let [expr [:raw "percentile_cont(" [:lift p-value] ") WITHIN GROUP (ORDER BY view_count)"]]
+    {:select   [:search_index.model [expr :vcp]]
+     :from     [[(keyword index-table) :search_index]]
+     :group-by [:search_index.model]
+     :having   [:is-not expr nil]}))
+
+(defn- view-count-percentiles*
+  [index-table p-value]
+  (into {} (for [{:keys [model vcp]}
+                 ;; Get the db data-source directly rather than passing it in as an argument to this function to
+                 ;; side-step potential issues with using the db as a cache key for the memoized version.
+                 ;; https://github.com/metabase/metabase/pull/62086#discussion_r2272790618
+                 (jdbc/execute! (semantic.db.datasource/ensure-initialized-data-source!)
+                                (-> (view-count-percentile-query
+                                     index-table
+                                     p-value)
+                                    (sql/format {:quoted true}))
+                                {:builder-fn jdbc.rs/as-unqualified-lower-maps})]
+             [(keyword model) vcp])))
+
+(def ^{:private true
+       :arglists '([index-table p-value])}
+  view-count-percentiles
+  (if config/is-prod?
+    (memoize/ttl view-count-percentiles*
+                 :ttl/threshold (u/hours->ms 1))
+    view-count-percentiles*))
+
+(defn- view-count-expr [index-table percentile]
+  (let [views (view-count-percentiles index-table percentile)
+        cases (for [[sm v] views]
+                [[:= (->col-expr :model) [:inline (name sm)]] (max (or v 0) 1)])]
+    (search.scoring/size (->col-expr :view_count) (if (seq cases)
+                                                    (into [:case] cat cases)
+                                                    1))))
 
 (defn- model-rank-exp [{:keys [context]}]
   (let [search-order search.config/models-search-order
@@ -38,29 +82,30 @@
 
 (defn base-scorers
   "The default constituents of the search ranking scores."
-  [{:keys [search-string limit-int] :as search-ctx}]
+  [index-table {:keys [search-string limit-int] :as search-ctx}]
   (if (and limit-int (zero? limit-int))
     {:model [:inline 1]}
     ;; NOTE: we calculate scores even if the weight is zero, so that it's easy to consider how we could affect any
     ;; given set of results. At some point, we should optimize away the irrelevant scores for any given context.
     {:rrf       rrf-rank-exp
-     :pinned    (search.scoring/truthy (->col-expr :pinned))
-     :recency   (search.scoring/inverse-duration [:coalesce
-                                                  (->col-expr :last_viewed_at)
-                                                  (->col-expr :model_updated_at)]
-                                                 [:now]
-                                                 search.config/stale-time-in-days)
-     :dashboard (search.scoring/size (->col-expr :dashboardcard_count) search.config/dashboard-count-ceiling)
-     :model     (model-rank-exp search-ctx)
-     :mine      (search.scoring/equal (->col-expr :creator_id) (:current-user-id search-ctx))
-     :exact     (if search-string
-                  ;; perform the lower casing within the database, in case it behaves differently to our helper
-                  (search.scoring/equal [:lower (->col-expr :name)] [:lower search-string])
-                  [:inline 0])
-     :prefix    (if search-string
-                  ;; in this case, we need to transform the string into a pattern in code, so forced to use helper
-                  (search.scoring/prefix [:lower (->col-expr :name)] (u/lower-case-en search-string))
-                  [:inline 0])}))
+     :view-count (view-count-expr index-table search.config/view-count-scaling-percentile)
+     :pinned     (search.scoring/truthy (->col-expr :pinned))
+     :recency    (search.scoring/inverse-duration [:coalesce
+                                                   (->col-expr :last_viewed_at)
+                                                   (->col-expr :model_updated_at)]
+                                                  [:now]
+                                                  search.config/stale-time-in-days)
+     :dashboard  (search.scoring/size (->col-expr :dashboardcard_count) search.config/dashboard-count-ceiling)
+     :model      (model-rank-exp search-ctx)
+     :mine       (search.scoring/equal (->col-expr :creator_id) (:current-user-id search-ctx))
+     :exact      (if search-string
+                   ;; perform the lower casing within the database, in case it behaves differently to our helper
+                   (search.scoring/equal [:lower (->col-expr :name)] [:lower search-string])
+                   [:inline 0])
+     :prefix     (if search-string
+                   ;; in this case, we need to transform the string into a pattern in code, so forced to use helper
+                   (search.scoring/prefix [:lower (->col-expr :name)] (u/lower-case-en search-string))
+                   [:inline 0])}))
 
 (def ^:private enterprise-scorers
   {:official-collection {:expr (search.scoring/truthy (->col-expr :official_collection))
@@ -79,8 +124,8 @@
 
 (defn semantic-scorers
   "Return the select-item expressions used to calculate the score for semantic search results."
-  [search-ctx]
-  (merge (base-scorers search-ctx)
+  [index-table search-ctx]
+  (merge (base-scorers index-table search-ctx)
          (additional-scorers)))
 
 (defn with-scores
@@ -93,3 +138,8 @@
   "Score stats for each scorer"
   [weights scorers index-row]
   (search.scoring/all-scores weights scorers index-row))
+
+(comment
+  (def embedding-model ((requiring-resolve 'metabase-enterprise.semantic-search.embedding/get-configured-model)))
+  (def index ((requiring-resolve 'metabase-enterprise.semantic-search.index/default-index) embedding-model))
+  (def index-table (:table-name index)))
