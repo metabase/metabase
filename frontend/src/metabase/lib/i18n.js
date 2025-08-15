@@ -71,6 +71,7 @@ export function setLocalization(translationsObject) {
 
   if (ARABIC_LOCALES.includes(language)) {
     preverseLatinNumbersInMomentLocale(language);
+    preserveLatinNumbersInDayjsLocale(language);
   }
 }
 
@@ -184,6 +185,19 @@ if (window.MetabaseSiteLocalization) {
 // set the initial localization to user locale
 if (window.MetabaseUserLocalization) {
   setLocalization(window.MetabaseUserLocalization);
+}
+
+// a copy of moment function
+function preserveLatinNumbersInDayjsLocale(locale) {
+  dayjs.updateLocale(locale, {
+    postformat(string) {
+      return string.replace(/,/g, "،");
+    },
+    meridiem: (hour) => {
+      // https://github.com/iamkun/dayjs/pull/2717#issuecomment-2868626450
+      return hour < 12 ? "ص" : "م";
+    },
+  });
 }
 
 /**
