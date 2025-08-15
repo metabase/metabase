@@ -653,6 +653,7 @@
   [:map
    [:lib/type [:= :metadata/native-query-snippet]]
    [:id       ::lib.schema.id/native-query-snippet]])
+;;; TODO (Cam 8/8/25) -- description, content, archived, collection-id
 
 ;;; TODO (Cam 8/8/25) -- description, content, archived, collection-id
 

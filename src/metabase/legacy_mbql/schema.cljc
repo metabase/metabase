@@ -1320,7 +1320,9 @@
     ;; collection (table) this query should run against. Needed for MongoDB
     [:collection    {:optional true} [:maybe ::lib.schema.common/non-blank-string]]]
    (lib.schema.common/disallowed-keys
-    {:type "An inner query must not include :type, this will cause us to mix it up with an outer query"})])
+    {:type         "An inner query must not include :type, this will cause us to mix it up with an outer query"
+     :source-table ":source-table is only allowed in MBQL inner queries."
+     :fields       ":fields is only allowed in MBQL inner queries."})])
 
 (def NativeQuery
   "Schema for a valid, normalized native [inner] query."

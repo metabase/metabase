@@ -79,11 +79,18 @@
      ;; as permissions for any Cards' parent Collections used in `:card` template tag parameters.
      [:query-permissions/referenced-card-ids {:optional true} [:maybe [:set ::id/card]]]]]
    (common/disallowed-keys
-    {:source-table ":source-table is not allowed in a native query stage."
-     :source-card  ":source-card is not allowed in a native query stage."
-     :query        ":query is not allowed in a native query stage, you probably meant to use :native instead."
-     :filter       "MBQL stage keys like :filter are not allowed in native query stages."
-     :filters      "MBQL stage keys like :filters are not allowed in native query stages."})])
+    {:query        ":query is not allowed in a native query stage, you probably meant to use :native instead."
+     :source-table "MBQL stage keys like :source-table are not allowed in a native query stage."
+     :source-card  "MBQL stage keys like :source-card are not allowed in a native query stage."
+     :fields       "MBQL stage keys like :fields are not allowed in a native query stage."
+     :filter       "MBQL stage keys like :filter are not allowed in a native query stage."
+     :filters      "MBQL stage keys like :filters are not allowed in a native query stage."
+     :breakout     "MBQL stage keys like :breakout are not allowed in a native query stage."
+     :aggregation  "MBQL stage keys like :aggregation are not allowed in a native query stage."
+     :limit        "MBQL stage keys like :limit are not allowed in a native query stage."
+     :order-by     "MBQL stage keys like :order-by are not allowed in a native query stage."
+     :offset       "MBQL stage keys like :offset are not allowed in a native query stage."
+     :page         "MBQL stage keys like :page are not allowed in a native query stage."})])
 
 (mr/def ::breakout
   [:ref ::ref/ref])

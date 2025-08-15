@@ -262,3 +262,164 @@
         (let [tables (table-utils/database-tables db-id)]
           (is (every? #(not= "hidden_table" (:name %)) tables))
           (is (some #(= "visible_table" (:name %)) tables)))))))
+
+(deftest ^:parallel format-escaped-test
+  (are [in out] (= out
+                   (with-out-str (#'table-utils/format-escaped in *out*)))
+    "almallama"      "almallama"
+    "alma llama"     "\"alma llama\""
+    "\"alma\" llama" "\"\"\"alma\"\" llama\""))
+
+(deftest schema-sample-basic-functionality-test
+  (testing "schema-sample with fewer tables than limit"
+    (mt/with-temp [:model/Database {db-id :id} {}
+                   :model/Table {table1-id :id} {:db_id db-id, :name "users", :schema "public", :active true, :visibility_type nil}
+                   :model/Table {table2-id :id} {:db_id db-id, :name "orders", :schema "public", :active true, :visibility_type nil}
+                   :model/Field {} {:table_id table1-id, :name "id", :database_type "INTEGER"}
+                   :model/Field {} {:table_id table1-id, :name "name", :database_type "VARCHAR(255)"}
+                   :model/Field {} {:table_id table2-id, :name "id", :database_type "INTEGER"}
+                   :model/Field {} {:table_id table2-id, :name "total", :database_type "DECIMAL(10,2)"}]
+      (let [query {:database db-id :native {:query "SELECT * FROM users"}}
+            ddl (table-utils/schema-sample query {:all-tables-limit 10})]
+        (testing "returns DDL string"
+          (is (string? ddl)))
+        (testing "includes table definitions"
+          (is (re-find #"CREATE TABLE" ddl))
+          (is (re-find #"users" ddl))
+          (is (re-find #"orders" ddl)))
+        (testing "includes field definitions"
+          (is (re-find #"id INTEGER" ddl))
+          (is (re-find #"name VARCHAR\(255\)" ddl))
+          (is (re-find #"total DECIMAL\(10,2\)" ddl)))
+        (testing "includes schema prefix"
+          (is (re-find #"public\.users" ddl))
+          (is (re-find #"public\.orders" ddl)))))))
+
+(deftest schema-sample-query-based-selection-test
+  (testing "schema-sample with more tables than limit - uses query-based selection"
+    (mt/with-temp [:model/Database {db-id :id} {}
+                   :model/Table {table1-id :id} {:db_id db-id, :name "users", :schema "public", :active true, :visibility_type nil}
+                   :model/Table {table2-id :id} {:db_id db-id, :name "orders", :schema "public", :active true, :visibility_type nil}
+                   :model/Table {table3-id :id} {:db_id db-id, :name "products", :schema "public", :active true, :visibility_type nil}
+                   :model/Table {table4-id :id} {:db_id db-id, :name "customers", :schema "public", :active true, :visibility_type nil}
+                   :model/Field {} {:table_id table1-id, :name "id", :database_type "INTEGER"}
+                   :model/Field {} {:table_id table2-id, :name "id", :database_type "INTEGER"}
+                   :model/Field {} {:table_id table3-id, :name "id", :database_type "INTEGER"}
+                   :model/Field {} {:table_id table4-id, :name "id", :database_type "INTEGER"}]
+      (mt/with-current-user (mt/user->id :crowberto)
+        ;; Mock query analyzer to return only "users" table
+        (with-redefs [query-analyzer/tables-for-native
+                      (fn [_query & _opts]
+                        {:tables [{:table "users" :table-id table1-id :schema "public"}]})]
+          (let [query {:database db-id :native {:query "SELECT * FROM users"}}
+                ;; Set limit to 2, but we have 4 tables, so it should use query-based selection
+                ddl (table-utils/schema-sample query {:all-tables-limit 2})]
+            (testing "returns DDL string"
+              (is (string? ddl)))
+            (testing "includes table from query"
+              (is (re-find #"users" ddl)))
+            (testing "includes field definitions"
+              (is (re-find #"id INTEGER" ddl)))))))))
+
+(deftest schema-sample-default-limit-test
+  (testing "schema-sample with default all-tables-limit"
+    (mt/with-temp [:model/Database {db-id :id} {}
+                   :model/Table {table1-id :id} {:db_id db-id, :name "table1", :schema nil, :active true, :visibility_type nil}
+                   :model/Field {} {:table_id table1-id, :name "col1", :database_type "TEXT"}]
+      (let [query {:database db-id :native {:query "SELECT * FROM table1"}}
+            ddl (table-utils/schema-sample query)] ; No options, uses default limit
+        (testing "returns DDL string"
+          (is (string? ddl)))
+        (testing "includes table without schema"
+          (is (re-find #"CREATE TABLE table1" ddl))
+          ;; Should not have schema prefix when schema is nil
+          (is (not (re-find #"\.table1" ddl))))))))
+
+(deftest schema-sample-special-characters-test
+  (testing "schema-sample handles tables with special characters in names"
+    (mt/with-temp [:model/Database {db-id :id} {}
+                   :model/Table {table1-id :id} {:db_id db-id, :name "user-profiles", :schema "my schema", :active true, :visibility_type nil}
+                   :model/Field {} {:table_id table1-id, :name "user id", :database_type "INTEGER"}]
+      (let [query {:database db-id :native {:query "SELECT * FROM \"user-profiles\""}}
+            ddl (table-utils/schema-sample query)]
+        (testing "escapes table and schema names with special characters"
+          (is (re-find #"\"my schema\"\.\"user-profiles\"" ddl)))
+        (testing "escapes field names with special characters"
+          (is (re-find #"\"user id\"" ddl)))))))
+
+(deftest schema-sample-empty-database-test
+  (testing "schema-sample handles empty database"
+    (mt/with-temp [:model/Database {db-id :id} {}]
+      (let [query {:database db-id :native {:query "SELECT 1"}}
+            ddl (table-utils/schema-sample query)]
+        (testing "returns empty string for no tables"
+          (is (string? ddl))
+          (is (= "" ddl)))))))
+
+(deftest schema-sample-table-visibility-test
+  (testing "schema-sample excludes inactive and hidden tables"
+    (mt/with-temp [:model/Database {db-id :id} {}
+                   :model/Table {table1-id :id} {:db_id db-id, :name "active_table", :active true, :visibility_type nil}
+                   :model/Table {} {:db_id db-id, :name "inactive_table", :active false, :visibility_type nil}
+                   :model/Table {} {:db_id db-id, :name "hidden_table", :active true, :visibility_type "hidden"}
+                   :model/Field {} {:table_id table1-id, :name "id", :database_type "INTEGER"}]
+      (let [query {:database db-id :native {:query "SELECT * FROM active_table"}}
+            ddl (table-utils/schema-sample query)]
+        (testing "includes only active, visible tables"
+          (is (re-find #"active_table" ddl))
+          (is (not (re-find #"inactive_table" ddl)))
+          (is (not (re-find #"hidden_table" ddl))))))))
+
+(deftest schema-sample-empty-tables-test
+  (testing "schema-sample handles tables without fields"
+    (mt/with-temp [:model/Database {db-id :id} {}
+                   :model/Table {} {:db_id db-id, :name "empty_table", :schema "public", :active true, :visibility_type nil}]
+      (let [query {:database db-id :native {:query "SELECT * FROM empty_table"}}
+            ddl (table-utils/schema-sample query)]
+        (testing "creates DDL for table without fields"
+          (is (re-find #"CREATE TABLE public\.empty_table \(\n\);" ddl)))))))
+
+(deftest schema-sample-limit-exceeded-fuzzy-matching-test
+  (testing "schema-sample when limit exceeded, uses fuzzy matching for query tables"
+    (mt/with-temp [:model/Database {db-id :id} {}
+                   :model/Table {table1-id :id} {:db_id db-id, :name "users", :schema "public", :active true, :visibility_type nil}
+                   :model/Table {table2-id :id} {:db_id db-id, :name "user_profiles", :schema "public", :active true, :visibility_type nil}
+                   :model/Table {table3-id :id} {:db_id db-id, :name "products", :schema "public", :active true, :visibility_type nil}
+                   :model/Table {table4-id :id} {:db_id db-id, :name "customers", :schema "public", :active true, :visibility_type nil}
+                   :model/Field {} {:table_id table1-id, :name "id", :database_type "INTEGER"}
+                   :model/Field {} {:table_id table2-id, :name "id", :database_type "INTEGER"}
+                   :model/Field {} {:table_id table3-id, :name "id", :database_type "INTEGER"}
+                   :model/Field {} {:table_id table4-id, :name "id", :database_type "INTEGER"}]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (with-redefs [query-analyzer/tables-for-native
+                      (fn [_query & _opts]
+                        {:tables [{:table "users" :table-id table1-id :schema "public"}
+                                  {:table "products" :table-id table3-id :schema "public"}]})]
+          (let [query {:database db-id :native {:query "SELECT * FROM users JOIN products"}}
+                ddl (table-utils/schema-sample query {:all-tables-limit 1})]
+            (testing "includes tables that match query"
+              (is (re-find #"users" ddl))
+              (is (re-find #"products" ddl))
+              (is (re-find #"customers" ddl)))))))))
+
+(deftest schema-sample-fuzzy-matching-similar-names-test
+  (testing "schema-sample fuzzy matching behavior with similar table names"
+    ;; This test documents the fuzzy matching behavior when limit is exceeded
+    (mt/with-temp [:model/Database {db-id :id} {}
+                   :model/Table {table1-id :id} {:db_id db-id, :name "order", :schema "public", :active true, :visibility_type nil}
+                   :model/Table {table2-id :id} {:db_id db-id, :name "orders", :schema "public", :active true, :visibility_type nil}
+                   :model/Table {table3-id :id} {:db_id db-id, :name "order_items", :schema "public", :active true, :visibility_type nil}
+                   :model/Field {} {:table_id table1-id, :name "id", :database_type "INTEGER"}
+                   :model/Field {} {:table_id table2-id, :name "id", :database_type "INTEGER"}
+                   :model/Field {} {:table_id table3-id, :name "id", :database_type "INTEGER"}]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (with-redefs [query-analyzer/tables-for-native
+                      (fn [_query & _opts]
+                        ;; Return "order" which will fuzzy match multiple tables
+                        {:tables [{:table "order" :schema "public"}]})]
+          (let [query {:database db-id :native {:query "SELECT * FROM order"}}
+                ddl (table-utils/schema-sample query {:all-tables-limit 1})]
+            (testing "fuzzy matches similar table names"
+              ;; "order" will match both "order" and "orders" due to fuzzy matching
+              (is (re-find #"\border\b" ddl))
+              (is (re-find #"\borders\b" ddl)))))))))
