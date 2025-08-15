@@ -4153,11 +4153,6 @@
   resolved "https://registry.yarnpkg.com/@tiptap/extension-list/-/extension-list-3.0.7.tgz#f3402814fa97fac6a862fe87e690fdff7435c2a1"
   integrity sha512-rwu5dXRO0YLyxndMHI17PoxK0x0ZaMZKRZflqOy8fSnXNwd3Tdy8/6a9tsmpgO38kOZEYuvMVaeB7J/+UeBVLg==
 
-"@tiptap/extension-mention@^3.0.7":
-  version "3.0.7"
-  resolved "https://registry.yarnpkg.com/@tiptap/extension-mention/-/extension-mention-3.0.7.tgz#f504718eaef62922d6be85ba32f93fdf771fe4a4"
-  integrity sha512-PHEx6NdmarjvPPvTd8D9AqK1JIaVYTsnQLxJUERakOLzujgUCToZ7FpMQDhPj97YLvF0t3jeyjZOPmFuj5kw4w==
-
 "@tiptap/extension-ordered-list@^3.0.7":
   version "3.0.7"
   resolved "https://registry.yarnpkg.com/@tiptap/extension-ordered-list/-/extension-ordered-list-3.0.7.tgz#8cd570dd7e42953cf0d6f31b166616ae103eb621"
