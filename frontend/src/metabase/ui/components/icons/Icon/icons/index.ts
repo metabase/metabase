@@ -98,6 +98,8 @@ import code_block_component from "./code_block.svg?component";
 import code_block_source from "./code_block.svg?source";
 import combine_component from "./combine.svg?component";
 import combine_source from "./combine.svg?source";
+import company_component from "./company.svg?component";
+import company_source from "./company.svg?source";
 import compare_component from "./compare.svg?component";
 import compare_source from "./compare.svg?source";
 import connections_component from "./connections.svg?component";
@@ -106,6 +108,8 @@ import contract_component from "./contract.svg?component";
 import contract_source from "./contract.svg?source";
 import copy_component from "./copy.svg?component";
 import copy_source from "./copy.svg?source";
+import currency_component from "./currency.svg?component";
+import currency_source from "./currency.svg?source";
 import curve_component from "./curve.svg?component";
 import curve_source from "./curve.svg?source";
 import curved_component from "./curved.svg?component";
@@ -316,6 +320,8 @@ import question_component from "./question.svg?component";
 import question_source from "./question.svg?source";
 import quote_component from "./quote.svg?component";
 import quote_source from "./quote.svg?source";
+import receipt_component from "./receipt.svg?component";
+import receipt_source from "./receipt.svg?source";
 import recents_component from "./recents.svg?component";
 import recents_source from "./recents.svg?source";
 import redo_component from "./redo.svg?component";
@@ -651,6 +657,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
       component: combine_component,
       source: combine_source,
     },
+    company: {
+      component: company_component,
+      source: company_source,
+    },
     connections: {
       component: connections_component,
       source: connections_source,
@@ -662,6 +672,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
     copy: {
       component: copy_component,
       source: copy_source,
+    },
+    currency: {
+      component: currency_component,
+      source: currency_source,
     },
     curved: {
       component: curved_component,
@@ -1071,6 +1085,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
       component: pulse_component,
       source: pulse_source,
     },
+    receipt: {
+      component: receipt_component,
+      source: receipt_source,
+    },
     recents: {
       component: recents_component,
       source: recents_source,
@@ -1444,6 +1462,8 @@ export type IconName =
   | "cloud_filled"
   | "compare"
   | "combine"
+  | "company"
+  | "currency"
   | "connections"
   | "contract"
   | "copy"
@@ -1549,6 +1569,7 @@ export type IconName =
   | "popular"
   | "progress"
   | "pulse"
+  | "receipt"
   | "recents"
   | "revert"
   | "sankey"

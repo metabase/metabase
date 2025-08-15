@@ -150,7 +150,7 @@ function setup(
   return renderWithSDKProviders(
     <CreateDashboardModal onCreate={jest.fn()} {...props} />,
     {
-      sdkProviderProps: {
+      componentProviderProps: {
         authConfig: createMockSdkConfig(),
       },
       storeInitialState: {
