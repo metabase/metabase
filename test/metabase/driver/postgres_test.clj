@@ -215,9 +215,9 @@
           (sync/sync-database! (mt/db) {:scan :schema})
           (is (= [[42]]
                  (mt/rows (qp/process-query
-                           {:database (u/the-id (mt/db))
+                           {:database (mt/id)
                             :type     :query
-                            :query    {:source-table (t2/select-one-pk :model/Table :db_id (:id (mt/db)))}})))))))))
+                            :query    {:source-table (t2/select-one-pk :model/Table :db_id (mt/id))}})))))))))
 
 (mt/defdataset duplicate-names
   [["birds"
@@ -1177,8 +1177,8 @@
                                      :type     :native
                                      :native   {:query "SELECT current_setting('TIMEZONE') AS timezone;"}})))))]
       (testing "check that if we set report-timezone to US/Pacific that the session timezone is in fact US/Pacific"
-        (is  (= "US/Pacific"
-                (get-timezone-with-report-timezone "US/Pacific"))))
+        (is  (= "America/Los_Angeles"
+                (get-timezone-with-report-timezone "America/Los_Angeles"))))
       (testing "check that we can set it to something else: America/Chicago"
         (is (= "America/Chicago"
                (get-timezone-with-report-timezone "America/Chicago"))))

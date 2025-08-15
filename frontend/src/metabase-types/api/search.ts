@@ -21,6 +21,7 @@ const ENABLED_SEARCH_MODELS = [
   "table",
   "action",
   "indexed-entity",
+  "document",
 ] as const;
 
 export const SEARCH_MODELS = [...ENABLED_SEARCH_MODELS, "segment"] as const;
@@ -133,7 +134,7 @@ export type SearchRequest = {
   include_metadata?: boolean | null;
   non_temporal_dim_ids?: string | null;
   has_temporal_dim?: boolean | null;
-  search_engine?: string | null;
+  search_engine?: "appdb" | "in-place" | "semantic" | null;
   display_type?: string[] | null;
 
   // this should be in ListCollectionItemsRequest but legacy code expects them here

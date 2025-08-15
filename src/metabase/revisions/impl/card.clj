@@ -1,11 +1,13 @@
 (ns metabase.revisions.impl.card
   (:require
+   [metabase.queries.core :as queries]
    [metabase.revisions.models.revision :as revision]))
 
 (def ^:private excluded-columns-for-card-revision
   #{:cache_invalidated_at
     :created_at
     :creator_id
+    :document_id
     :entity_id
     :id
     :initially_published_at
@@ -22,8 +24,8 @@
   (let [serialized-card (cond-> serialized-card
                           (contains? serialized-card :dataset) (-> (dissoc :dataset)
                                                                    (assoc :type (if (:dataset serialized-card) :model :question)))
-                          ;; Add the default `:card_schema` of 20, if it's missing.
-                          (not (:card_schema serialized-card)) (assoc :card_schema 20))]
+                          ;; Add the default `:card_schema` if it's missing.
+                          (not (:card_schema serialized-card)) (assoc :card_schema queries/starting-card-schema-version))]
     ((get-method revision/revert-to-revision! :default) model id user-id serialized-card)))
 
 (defn- model?

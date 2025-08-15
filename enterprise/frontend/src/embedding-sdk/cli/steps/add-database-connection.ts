@@ -3,6 +3,7 @@ import ora from "ora";
 
 import type { CliStepMethod } from "embedding-sdk/cli/types/cli";
 import type { Settings } from "metabase-types/api/settings";
+import { isEngineKey } from "metabase-types/guards";
 
 import { CLI_SHOWN_DB_ENGINES, SAMPLE_DB_ID } from "../constants/database";
 import { addDatabaseConnection } from "../utils/add-database-connection";
@@ -37,6 +38,10 @@ export const addDatabaseConnectionStep: CliStepMethod = async (state) => {
           : engineChoices;
       },
     });
+
+    if (!isEngineKey(engineKey)) {
+      return [{ type: "error", message: "Invalid engine key." }, state];
+    }
 
     const engine = settings.engines[engineKey];
     const engineName = engine["driver-name"];

@@ -1,5 +1,4 @@
 import { act } from "@testing-library/react";
-import fetchMock from "fetch-mock";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
@@ -161,7 +160,6 @@ describe("useLicenseTokenMissingBanner", () => {
   };
 
   beforeEach(() => {
-    fetchMock.reset();
     jest.useFakeTimers();
     jest.setSystemTime(NOW);
   });

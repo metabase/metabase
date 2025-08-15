@@ -141,7 +141,7 @@
 
   ### Known Permissions Paths
 
-  See [[path-regex-v1]] for an always-up-to-date list of permissions paths.
+  See [[metabase.permissions.util/path-regex-v1]] for an always-up-to-date list of permissions paths.
 
     /collection/:id/                                ; read-write perms for a Coll and its non-Coll children
     /collection/:id/read/                           ; read-only  perms for a Coll and its non-Coll children

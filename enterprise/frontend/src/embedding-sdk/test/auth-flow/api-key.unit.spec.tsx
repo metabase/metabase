@@ -1,5 +1,5 @@
 import { waitForRequest } from "__support__/utils";
-import { defineMetabaseAuthConfig } from "embedding-sdk/components/public";
+import { defineMetabaseAuthConfig } from "embedding-sdk/sdk-package/lib/public/define-metabase-auth-config";
 
 import { MOCK_API_KEY, MOCK_INSTANCE_URL } from "../mocks/sso";
 
@@ -17,18 +17,21 @@ describe("Auth Flow - API Key", () => {
     });
 
     await waitForRequest(() => getLastUserApiCall());
-    expect(getLastUserApiCall()![1]).toMatchObject({
-      headers: { "X-Api-Key": [MOCK_API_KEY] },
-    });
+    expect(getLastUserApiCall()?.options.headers).toHaveProperty(
+      "x-api-key",
+      MOCK_API_KEY,
+    );
 
     await waitForRequest(() => getLastCardQueryApiCall());
-    expect(getLastCardQueryApiCall()![1]).toMatchObject({
-      headers: { "X-Api-Key": [MOCK_API_KEY] },
-    });
+    expect(getLastCardQueryApiCall()?.options.headers).toHaveProperty(
+      "x-api-key",
+      MOCK_API_KEY,
+    );
 
     await waitForRequest(() => getLastCardQueryApiCall());
-    expect(getLastCardQueryApiCall()![1]).toMatchObject({
-      headers: { "X-Api-Key": [MOCK_API_KEY] },
-    });
+    expect(getLastCardQueryApiCall()?.options.headers).toHaveProperty(
+      "x-api-key",
+      MOCK_API_KEY,
+    );
   });
 });

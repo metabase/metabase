@@ -1,4 +1,5 @@
 import { memo, useState } from "react";
+import { Link } from "react-router";
 import { t } from "ttag";
 
 import {
@@ -13,7 +14,15 @@ import {
 } from "metabase/metadata/components";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
-import { Group, Loader, Stack, Text } from "metabase/ui";
+import {
+  ActionIcon,
+  Group,
+  Icon,
+  Loader,
+  Stack,
+  Text,
+  Tooltip,
+} from "metabase/ui";
 import type { FieldId, Table, TableFieldOrder } from "metabase-types/api";
 
 import type { RouteParams } from "../../types";
@@ -153,8 +162,23 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
           nameIcon="table2"
           nameMaxLength={254}
           namePlaceholder={t`Give this table a name`}
-          onDescriptionChange={handleDescriptionChange}
+          nameRightSection={
+            <Tooltip label={t`Go to this table`} position="top">
+              <ActionIcon
+                component={Link}
+                to={getQueryBuilderUrl(table)}
+                variant="subtle"
+                color="text-light"
+                size="sm"
+                mr="sm"
+                aria-label={t`Go to this table`}
+              >
+                <Icon name="external" size={16} />
+              </ActionIcon>
+            </Tooltip>
+          }
           onNameChange={handleNameChange}
+          onDescriptionChange={handleDescriptionChange}
         />
 
         <Group
@@ -242,5 +266,9 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
     </Stack>
   );
 };
+
+function getQueryBuilderUrl(table: Table) {
+  return `/question#?db=${table.db_id}&table=${table.id}`;
+}
 
 export const TableSection = memo(TableSectionBase);

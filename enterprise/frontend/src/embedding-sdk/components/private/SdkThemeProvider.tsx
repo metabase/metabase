@@ -1,15 +1,17 @@
 import { Global } from "@emotion/react";
-import { useMemo } from "react";
+import { useContext, useId, useMemo } from "react";
 
-import type { MetabaseTheme } from "embedding-sdk";
 import { DEFAULT_FONT } from "embedding-sdk/config";
 import { getEmbeddingThemeOverride } from "embedding-sdk/lib/theme";
+import { EnsureSingleInstance } from "embedding-sdk/sdk-shared/components/EnsureSingleInstance/EnsureSingleInstance";
+import type { MetabaseTheme } from "embedding-sdk/types/ui";
 import { setGlobalEmbeddingColors } from "metabase/embedding-sdk/theme/embedding-color-palette";
 import { useSelector } from "metabase/lib/redux";
 import { getSettings } from "metabase/selectors/settings";
 import { getFont } from "metabase/styled-components/selectors";
 import { getMetabaseSdkCssVariables } from "metabase/styled-components/theme/css-variables";
 import { ThemeProvider, useMantineTheme } from "metabase/ui";
+import { ThemeProviderContext } from "metabase/ui/components/theme/ThemeProvider/context";
 import { getApplicationColors } from "metabase-enterprise/settings/selectors";
 
 interface Props {
@@ -31,11 +33,31 @@ export const SdkThemeProvider = ({ theme, children }: Props) => {
     return getEmbeddingThemeOverride(theme || {}, font);
   }, [appColors, theme, font]);
 
+  const { withCssVariables, withGlobalClasses } =
+    useContext(ThemeProviderContext);
+
+  const ensureSingleInstanceId = useId();
+
   return (
-    <ThemeProvider theme={themeOverride}>
-      <GlobalSdkCssVariables />
-      {children}
-    </ThemeProvider>
+    <EnsureSingleInstance
+      groupId="sdk-theme-provider"
+      instanceId={ensureSingleInstanceId}
+    >
+      {({ isInstanceToRender }) => (
+        <ThemeProviderContext.Provider
+          value={{
+            withCssVariables: withCssVariables ?? isInstanceToRender,
+            withGlobalClasses: withGlobalClasses ?? isInstanceToRender,
+          }}
+        >
+          <ThemeProvider theme={themeOverride}>
+            {isInstanceToRender && <GlobalSdkCssVariables />}
+
+            {children}
+          </ThemeProvider>
+        </ThemeProviderContext.Provider>
+      )}
+    </EnsureSingleInstance>
   );
 };
 

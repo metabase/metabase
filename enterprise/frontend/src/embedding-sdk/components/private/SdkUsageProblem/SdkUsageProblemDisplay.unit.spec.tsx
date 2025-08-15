@@ -60,7 +60,7 @@ const setup = (options: Options) => {
   setupPropertiesEndpoints(settingValues);
 
   return renderWithSDKProviders(<div>hello!</div>, {
-    sdkProviderProps: { authConfig: options.authConfig },
+    componentProviderProps: { authConfig: options.authConfig },
     storeInitialState: state,
   });
 };

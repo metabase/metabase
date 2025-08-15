@@ -248,12 +248,12 @@ describe("DashboardApp", () => {
   it("should pass dashboard_load_id to dashboard and query_metadata endpoints", async () => {
     const { dashboardId } = await setup();
 
-    const dashboardURL = fetchMock.lastUrl(
+    const dashboardURL = fetchMock.callHistory.lastCall(
       `path:/api/dashboard/${dashboardId}`,
-    );
-    const queryMetadataURL = fetchMock.lastUrl(
+    )?.url;
+    const queryMetadataURL = fetchMock.callHistory.lastCall(
       `path:/api/dashboard/${dashboardId}/query_metadata`,
-    );
+    )?.url;
 
     const dashboardSearchParams = new URLSearchParams(
       dashboardURL?.split("?")[1],

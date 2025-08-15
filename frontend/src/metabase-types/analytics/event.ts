@@ -86,7 +86,8 @@ export type MoveToTrashEvent = ValidateEvent<{
     | "collection"
     | "dataset"
     | "indexed-entity"
-    | "snippet";
+    | "snippet"
+    | "document";
 }>;
 
 export type ErrorDiagnosticModalOpenedEvent = ValidateEvent<{
@@ -241,6 +242,16 @@ export type EmbedWizardCodeCopiedEvent = ValidateEvent<{
   event: "embed_wizard_code_copied";
 }>;
 
+export type ConnectionStringParsedSuccessEvent = ValidateEvent<{
+  event: "connection_string_parsed_success";
+  triggered_from: "admin" | "setup" | "embedding_setup";
+}>;
+
+export type ConnectionStringParsedFailedEvent = ValidateEvent<{
+  event: "connection_string_parsed_failed";
+  triggered_from: "admin" | "setup" | "embedding_setup";
+}>;
+
 export type EmbedWizardEvent =
   | EmbedWizardExperienceSelectedEvent
   | EmbedWizardResourceSelectedEvent
@@ -277,4 +288,6 @@ export type SimpleEvent =
   | AddDataModalTabEvent
   | DashboardFilterCreatedEvent
   | DashboardFilterMovedEvent
-  | EmbedWizardEvent;
+  | EmbedWizardEvent
+  | ConnectionStringParsedSuccessEvent
+  | ConnectionStringParsedFailedEvent;

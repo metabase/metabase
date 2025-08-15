@@ -42,13 +42,11 @@ const setup = async ({
     ...databaseDetails,
   });
   setupDatabaseEndpoints(database);
-  fetchMock.get(
-    {
-      url: `path:/api/database/${databaseId}/metadata`,
-      query: { include_hidden: true },
-    },
-    database,
-  );
+  fetchMock.get({
+    url: `path:/api/database/${databaseId}/metadata`,
+    query: { include_hidden: true },
+    response: database,
+  });
   setupUserAttributesEndpoint(userAttributes);
 
   if (hasImpersonation) {

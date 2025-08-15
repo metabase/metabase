@@ -112,10 +112,6 @@
                                   expression-name)]
         opts (->> opts
                   normalize-ref-opts
-                  ;; Only keep fields required for handling binned&datetime expressions (#33528)
-                  ;; Allowing added alias-info through here breaks
-                  ;; [[metabase.query-processor.util.nest-query-test/nest-expressions-ignore-source-queries-test]]
-                  (m/filter-keys #{:base-type :temporal-unit :binning})
                   not-empty)]
     (cond-> expression
       opts (conj opts))))
@@ -409,10 +405,6 @@
                            k ((if (simple-keyword? k)
                                 u/->snake_case_en
                                 u/->kebab-case-en) k)
-                           _ (when (= k :fingerprint)
-                               (when-let [base-type (first (keys (:type v)))]
-                                 (assert (isa? base-type :type/*)
-                                         (str "BAD FINGERPRINT! " (pr-str v)))))
                            v (case k
                                (:base_type
                                 :effective_type
@@ -426,6 +418,12 @@
                                :binning_info (m/update-existing v :binning_strategy keyword)
                                #_else
                                v)]
+                       ;; sanity check
+                       (when (= k :fingerprint)
+                         (when-let [base-type (first (keys (:type v)))]
+                           (assert (isa? base-type :type/*)
+                                   (str "BAD FINGERPRINT! Invalid base-type: " (pr-str base-type) " " (pr-str v)))))
+
                        [k v]))))
         metadata))
 
@@ -437,6 +435,7 @@
       (seq (:template-tags native-query)) (update :template-tags normalize-template-tags))))
 
 (defn- normalize-actions-row [row]
+
   (cond-> row
     (map? row) (update-keys u/qualified-name)))
 
@@ -466,7 +465,7 @@
    ;; TODO -- when does query ever have a top-level `:context` key??
    :context         #(some-> % maybe-normalize-token)
    :source-metadata {::sequence normalize-source-metadata}
-   :viz-settings    maybe-normalize-token
+   :viz-settings    maybe-normalize-token ; TODO (Cam 8/8/25) -- we also have [[metabase.models.interface/normalize-visualization-settings]]
    :create-row      normalize-actions-row
    :update-row      normalize-actions-row
    ;;
@@ -1121,7 +1120,7 @@
    :query        {:source-query remove-empty-clauses-in-source-query
                   :joins        {::sequence remove-empty-clauses-in-join}}
    :parameters   {::sequence remove-empty-clauses-in-parameter}
-   :viz-settings identity
+   :viz-settings identity ; TODO (Cam 8/8/25) -- we also have [[metabase.models.interface/normalize-visualization-settings]]
    :create-row   identity
    :update-row   identity})
 

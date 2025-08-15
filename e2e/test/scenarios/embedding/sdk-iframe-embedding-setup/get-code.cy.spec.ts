@@ -27,6 +27,8 @@ H.describeWithSnowplow(suiteTitle, () => {
     cy.intercept("GET", "/api/dashboard/**").as("dashboard");
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
     cy.intercept("GET", "/api/activity/recents?*").as("recentActivity");
+
+    H.mockEmbedJsToDevServer();
   });
 
   afterEach(() => {

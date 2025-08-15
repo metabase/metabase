@@ -65,4 +65,5 @@
   (ingestion/start-listener!))
 
 (comment
-  (task/job-exists? reindex-job-key))
+  (task/job-exists? reindex-job-key)
+  (task/trigger-now! reindex-job-key))

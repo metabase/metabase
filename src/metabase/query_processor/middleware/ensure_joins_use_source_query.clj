@@ -25,6 +25,6 @@
   [query :- ::lib.schema/query]
   (lib.walk/walk
    query
-   (fn [_query path-type _path stage-or-join]
+   (fn [_query path-type _path join]
      (when (= path-type :lib.walk/join)
-       (assoc-in stage-or-join [:stages (dec (count (:stages stage-or-join))) ::dummy-key] true)))))
+       (assoc-in join [:stages (dec (count (:stages join))) ::dummy-key] true)))))

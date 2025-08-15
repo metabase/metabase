@@ -153,13 +153,11 @@ async function setup({
 
   setupDatabasesEndpoints(databases);
 
-  fetchMock.get(
-    {
-      url: "path:/api/card",
-      query: { f: "using_model", model_id: card.id },
-    },
-    usedBy,
-  );
+  fetchMock.get({
+    url: "path:/api/card",
+    query: { f: "using_model", model_id: card.id },
+    response: usedBy,
+  });
 
   setupCardsEndpoints([card]);
   setupCardQueryMetadataEndpoint(

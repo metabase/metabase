@@ -72,7 +72,6 @@ dataset_query:
         - base-type: type/Text
           join-alias: Content - Dashboard Qualified
       fields: all
-      ident: join_r8r6O1VedjAjSD2MPxJs6@0__Content - Dashboard Qualified
       source-table: AxSackBiyXVRUzM_TyyQY
       strategy: left-join
     limit: 100

@@ -4,18 +4,32 @@
    [metabase-enterprise.metabot-v3.tools.util :as metabot-v3.tools.u]
    [metabase.api.common :as api]
    [metabase.lib.core :as lib]
+   [metabase.sync.core :as sync]
    [metabase.warehouse-schema.models.field-values :as field-values]
    [toucan2.core :as t2]))
 
+(defn- build-field-statistics [fvs fp limit]
+  (merge
+   (when fp
+     {:statistics (-> (or (:global fp) {})
+                      (set/rename-keys {:nil% :percent-null})
+                      (into (vals (:type fp))))})
+   (when-let [fvs (-> fvs :values not-empty)]
+     {:values (into [] (if limit (take limit) identity) fvs)})))
+
+(defn- get-or-create-fingerprint! [{:keys [id fingerprint] :as field}]
+  (or fingerprint
+      (and (pos? (:updated-fingerprints (sync/refingerprint-field! field)))
+           (t2/select-one-fn :fingerprint :model/Field :id id))))
+
 (defn- field-statistics
-  [column limit]
-  (merge (when-let [fp (:fingerprint column)]
-           {:statistics (-> (or (:global fp) {})
-                            (set/rename-keys {:nil% :percent-null})
-                            (into (vals (:type fp))))})
-         (when-let [id (:id column)]
-           (when-let [fvs (-> (field-values/get-latest-full-field-values id) :values not-empty)]
-             {:values (into [] (if limit (take limit) identity) fvs)}))))
+  [{:keys [id fingerprint]} limit]
+  (if id
+    (let [field (t2/select-one :model/Field :id id)
+          fvs (field-values/get-or-create-full-field-values! field)
+          fp (or fingerprint (get-or-create-fingerprint! field))]
+      (build-field-statistics fvs fp limit))
+    (build-field-statistics nil fingerprint limit)))
 
 (defn- table-field-stats
   [table-id agent-field-id limit]

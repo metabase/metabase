@@ -77,9 +77,9 @@
   (let [db-path (concat [group-id db-id] perm-location)
         db-perm (get-in graph db-path)
         schema-perm (get db-perm schema)
-        default-table-perm (if (keyword? db-perm)
-                             db-perm
-                             (when (keyword schema-perm) schema-perm))
+        default-table-perm (cond
+                             (keyword? db-perm)     db-perm
+                             (keyword? schema-perm) schema-perm)
         ;; If perms were set at the database or schema-level before, we might need to add granular values for all tables
         ;; in the database or schema, so they show correctly in the UI.
         tables (when (or (keyword? db-perm) (keyword? schema-perm))

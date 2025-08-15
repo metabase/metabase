@@ -1097,3 +1097,30 @@ describe("issue 56416", () => {
     H.assertQueryBuilderRowCount(1);
   });
 });
+
+describe("issue 55487", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should be able open object details on browser forward navigation (metabase#55487)", () => {
+    H.visitQuestion(ORDERS_QUESTION_ID);
+
+    cy.findByTestId("table-body")
+      .get("[data-index='4']")
+      .within(() => {
+        cy.get("[data-column-id='ID']").click();
+      });
+
+    cy.findByTestId("object-detail").should("be.visible");
+
+    cy.go("back");
+
+    cy.findByTestId("object-detail").should("not.exist");
+
+    cy.go("forward");
+
+    cy.findByTestId("object-detail").should("be.visible");
+  });
+});

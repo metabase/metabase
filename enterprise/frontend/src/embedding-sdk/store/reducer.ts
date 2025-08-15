@@ -1,20 +1,17 @@
 import { createAction, createReducer } from "@reduxjs/toolkit";
 
 import { samlTokenStorage } from "embedding/auth-common";
-import type {
-  MetabaseAuthConfig,
-  MetabaseFetchRequestTokenFn,
-  SdkErrorComponent,
-} from "embedding-sdk";
 import type { SdkState, SdkStoreState } from "embedding-sdk/store/types";
+import type { MetabaseAuthConfig } from "embedding-sdk/types/auth-config";
 import type { SdkEventHandlersConfig } from "embedding-sdk/types/events";
 import type { MetabasePluginsConfig } from "embedding-sdk/types/plugins";
+import type { MetabaseFetchRequestTokenFn } from "embedding-sdk/types/refresh-token";
+import type { SdkErrorComponent } from "embedding-sdk/types/ui";
 import type { SdkUsageProblem } from "embedding-sdk/types/usage-problem";
 import { createAsyncThunk } from "metabase/lib/redux";
 
 import { initAuth, refreshTokenAsync } from "./auth";
 import { getSessionTokenState } from "./selectors";
-
 const SET_METABASE_INSTANCE_VERSION = "sdk/SET_METABASE_INSTANCE_VERSION";
 const SET_METABASE_CLIENT_URL = "sdk/SET_METABASE_CLIENT_URL";
 const SET_LOADER_COMPONENT = "sdk/SET_LOADER_COMPONENT";

@@ -16,6 +16,7 @@
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
    [metabase.query-processor :as qp]
+   [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.limit :as limit]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.store :as qp.store]
@@ -469,10 +470,10 @@
                                      ;; order. Changing the map keys on the inner query can perturb this order; if you
                                      ;; cause this test to fail based on shuffling the order of these joined fields
                                      ;; just edit the expectation to match the new order. Tech debt issue: #39396
-                                     PRODUCTS__via__PRODUCT_ID.CATEGORY AS PRODUCTS__via__PRODUCT_ID__CATEGORY
-                                     PEOPLE__via__USER_ID.SOURCE        AS PEOPLE__via__USER_ID__SOURCE
                                      PRODUCTS__via__PRODUCT_ID.ID       AS PRODUCTS__via__PRODUCT_ID__ID
-                                     PEOPLE__via__USER_ID.ID            AS PEOPLE__via__USER_ID__ID]
+                                     PEOPLE__via__USER_ID.ID            AS PEOPLE__via__USER_ID__ID
+                                     PRODUCTS__via__PRODUCT_ID.CATEGORY AS PRODUCTS__via__PRODUCT_ID__CATEGORY
+                                     PEOPLE__via__USER_ID.SOURCE        AS PEOPLE__via__USER_ID__SOURCE]
                          :from      [ORDERS]
                          :left-join [{:select [PRODUCTS.ID         AS ID
                                                PRODUCTS.EAN        AS EAN
@@ -818,7 +819,7 @@
 
 (deftest ^:parallel expression-with-duplicate-column-name-test
   (testing "Can we use expression with same column name as table (#14267)"
-    (is (= '{:select   [source.CATEGORY_2 AS CATEGORY
+    (is (= '{:select   [source.CATEGORY_2 AS CATEGORY_2
                         COUNT (*)         AS count]
              :from     [{:select [PRODUCTS.CATEGORY            AS CATEGORY
                                   CONCAT (PRODUCTS.CATEGORY ?) AS CATEGORY_2]
@@ -1363,3 +1364,80 @@
              (h2x/unwrap-typed-honeysql-form
               (sql.qp/coerce-integer :sql
                                      (h2x/with-database-type-info value type))))))))
+
+(deftest ^:parallel multiple-counts-test
+  (testing "Count of count grouping works (#15074)"
+    (let [query (lib.tu.macros/mbql-query checkins
+                  {:aggregation  [[:count]]
+                   :breakout     [[:field "count" {:base-type :type/Integer}]]
+                   :source-query {:source-table (meta/id :checkins)
+                                  :aggregation  [[:count]]
+                                  :breakout     [!month.date]}
+                   :limit        2})]
+      (qp.store/with-metadata-provider
+        meta/metadata-provider
+        (is (=? {:query  ["SELECT"
+                          "  \"source\".\"count\" AS \"count\","
+                          "  COUNT(*) AS \"count_2\""
+                          "FROM"
+                          "  ("
+                          "    SELECT"
+                          "      DATE_TRUNC('month', \"PUBLIC\".\"CHECKINS\".\"DATE\") AS \"DATE\","
+                          "      COUNT(*) AS \"count\""
+                          "    FROM"
+                          "      \"PUBLIC\".\"CHECKINS\""
+                          "    GROUP BY"
+                          "      DATE_TRUNC('month', \"PUBLIC\".\"CHECKINS\".\"DATE\")"
+                          "    ORDER BY"
+                          "      DATE_TRUNC('month', \"PUBLIC\".\"CHECKINS\".\"DATE\") ASC"
+                          "  ) AS \"source\""
+                          "GROUP BY"
+                          "  \"source\".\"count\""
+                          "ORDER BY"
+                          "  \"source\".\"count\" ASC"
+                          "LIMIT"
+                          "  2"]
+                 :params nil}
+                (-> (qp.compile/compile query)
+                    (update :query #(str/split-lines (driver/prettify-native-form :h2 %))))))))))
+
+;;; see also [[metabase.query-processor.util.add-alias-info-test/resolve-incorrect-field-ref-for-expression-test]]
+;;; and [[metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions-test/evil-field-ref-for-an-expression-test]]
+(deftest ^:parallel evil-field-ref-for-an-expression-test
+  (testing "If we accidentally use a :field ref for an :expression, the query should still compile correctly"
+    ;; (this is actually mostly checking that `add-alias-info` or someone else rewrites the `:field` ref as an
+    ;; `:expression` ref, by the time the SQL QP sees the query it should be in a shape that will generate correct
+    ;; output.
+    (let [query {:database (meta/id)
+                 :type     :query
+                 :query    {:source-query {:source-table (meta/id :products)
+                                           :expressions  {"my_numberLiteral" [:value 2 {:base_type :type/Integer}]}
+                                           :fields       [[:field (meta/id :products :id) nil]
+                                                          [:expression "my_numberLiteral"]]
+                                           :filter       [:=
+                                                          ;; EVIL REF
+                                                          [:field "my_numberLiteral" {:base-type :type/Integer}]
+                                                          [:value 1 {:base_type :type/Integer}]]
+                                           :limit        20}
+                            :fields       [[:field (meta/id :products :id) nil]]
+                            :limit        20}}]
+      (qp.store/with-metadata-provider meta/metadata-provider
+        (is (= {:params nil
+                :query  ["SELECT"
+                         "  \"source\".\"ID\" AS \"ID\""
+                         "FROM"
+                         "  ("
+                         "    SELECT"
+                         "      \"PUBLIC\".\"PRODUCTS\".\"ID\" AS \"ID\","
+                         "      2 AS \"my_numberLiteral\""
+                         "    FROM"
+                         "      \"PUBLIC\".\"PRODUCTS\""
+                         "    WHERE"
+                         "      2 = 1"
+                         "    LIMIT"
+                         "      20"
+                         "  ) AS \"source\""
+                         "LIMIT"
+                         "  20"]}
+               (-> (qp.compile/compile query)
+                   (update :query #(str/split-lines (driver/prettify-native-form :h2 %))))))))))

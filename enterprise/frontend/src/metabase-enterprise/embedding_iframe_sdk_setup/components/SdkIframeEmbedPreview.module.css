@@ -1,0 +1,4 @@
+.EmbedPreviewIframe > * {
+  /* makes the metabase-* elements full height */
+  height: 100%;
+}

@@ -4,13 +4,14 @@ title: "Metabase config file template"
 
 # Metabase config file template
 
-You can generate the following config file template by changing into the top-level Metabase directory and running:
+You can generate the following docs by changing into the top-level Metabase directory and running:
 
 ```
 clojure -M:doc:ee config-template
 ```
 
 The template lists example `database`, `user`, and `settings` sections for the [config file](./config-file.md).
+
 
 ```yaml
 # A config file template for Metabase.
@@ -26,45 +27,45 @@ The template lists example `database`, `user`, and `settings` sections for the [
 version: 1
 config:
   users:
-    - first_name: First
-      last_name: Person
-      password: metabot1
-      email: first@example.com
-    - first_name: Normal
-      last_name: Person
-      password: metabot1
-      email: normal@example.com
-    - first_name: Admin
-      last_name: Person
-      password: metabot1
-      is_superuser: true
-      email: admin@example.com
+  - first_name: First
+    last_name: Person
+    password: metabot1
+    email: first@example.com
+  - first_name: Normal
+    last_name: Person
+    password: metabot1
+    email: normal@example.com
+  - first_name: Admin
+    last_name: Person
+    password: metabot1
+    is_superuser: true
+    email: admin@example.com
   databases:
-    - name: Sample PostgreSQL
-      engine: postgres
-      details:
-        host: postgres-data
-        port: 5432
-        user: metabase
-        password: metasample123
-        dbname: sample
-    - name: Sample MySQL
-      engine: mysql
-      details:
-        host: mysql-data
-        port: 3306
-        user: metabase
-        password: metasample123
-        dbname: sample
+  - name: Sample PostgreSQL
+    engine: postgres
+    details:
+      host: postgres-data
+      port: 5432
+      user: metabase
+      password: metasample123
+      dbname: sample
+  - name: Sample MySQL
+    engine: mysql
+    details:
+      host: mysql-data
+      port: 3306
+      user: metabase
+      password: metasample123
+      dbname: sample
   api-keys:
-    - name: Admin API key
-      group: admin
-      creator: first@example.com
-      key: mb_firsttestapikey123
-    - name: All Users API key
-      group: all-users
-      creator: first@example.com
-      key: mb_secondtestapikey456
+  - name: Admin API key
+    group: admin
+    creator: first@example.com
+    key: mb_firsttestapikey123
+  - name: All Users API key
+    group: all-users
+    creator: first@example.com
+    key: mb_secondtestapikey456
   settings:
     admin-email: null
     aggregated-query-row-limit: null
@@ -102,6 +103,7 @@ config:
     application-name: Metabase
     attachment-row-limit: null
     attachment-table-row-limit: 20
+    audit-max-retention-days: null
     bcc-enabled: true
     breakout-bin-width: 10.0
     breakout-bins-num: 8
@@ -156,7 +158,9 @@ config:
     health-check-logging-enabled: true
     help-link: metabase
     help-link-custom-destination: https://www.metabase.com/help/premium
+    http-channel-host-strategy: external-only
     humanization-strategy: simple
+    install-analytics-database: true
     jdbc-data-warehouse-max-connection-pool-size: 15
     jwt-attribute-email: email
     jwt-attribute-firstname: first_name
@@ -168,7 +172,7 @@ config:
     jwt-identity-provider-uri: null
     jwt-shared-secret: null
     jwt-user-provisioning-enabled: true
-    landing-page: ""
+    landing-page: ''
     landing-page-illustration: default
     landing-page-illustration-custom: null
     ldap-attribute-email: mail
@@ -190,6 +194,7 @@ config:
     ldap-user-filter: (&(objectClass=inetOrgPerson)(|(uid={login})(mail={login})))
     ldap-user-provisioning-enabled: true
     license-token-missing-banner-dismissal-timestamp: []
+    load-analytics-content: true
     loading-message: doing-science
     login-page-illustration: default
     login-page-illustration-custom: null
@@ -240,6 +245,7 @@ config:
     search-engine: appdb
     search-language: null
     search-typeahead-enabled: true
+    send-email-on-first-login-from-new-device: true
     send-new-sso-user-admin-email: null
     session-cookie-samesite: lax
     session-cookies: null
@@ -247,6 +253,7 @@ config:
     setup-embedding-autoenabled: false
     setup-license-active-at-setup: false
     show-database-syncing-modal: null
+    show-google-sheets-integration: null
     show-homepage-data: true
     show-homepage-xrays: true
     show-metabase-links: true
@@ -264,6 +271,7 @@ config:
     start-of-week: sunday
     subscription-allowed-domains: null
     surveys-enabled: true
+    sync-leaf-fields-limit: 1000
     synchronous-batch-updates: false
     unaggregated-query-row-limit: null
     uploads-settings: null

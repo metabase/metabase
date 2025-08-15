@@ -2,6 +2,7 @@
   (:require
    [clojure.math.combinatorics :as math.combo]
    [clojure.test :refer :all]
+   [metabase.config.core :as config]
    [metabase.models.resolution]
    [metabase.search.config :as search.config]
    [metabase.search.filter :as search.filter]
@@ -52,7 +53,8 @@
            (search.filter/search-context->applicable-models (with-all-models-and-regular-user {:archived? false})))))
 
   (testing "We only search for certain models in the trash"
-    (is (= #{"dashboard" "dataset" "segment" "collection" "action" "metric" "card"}
+    (is (= (cond-> #{"dashboard" "dataset" "segment" "collection" "action" "metric" "card"}
+             config/ee-available? (conj "document"))
            (search.filter/search-context->applicable-models (with-all-models-and-regular-user {:archived? true})))))
 
   (testing "Indexed entities are not visible for sandboxed users"
@@ -104,7 +106,8 @@
             :from   :somewhere
             ;; This :where clause is a set to avoid flakes, since the clause order will be non-deterministic.
             :where  #{:and
-                      [:in :search_index.model #{"dashboard" "table" "segment" "collection" "database" "action" "indexed-entity" "metric" "card"}]
+                      [:in :search_index.model (cond-> #{"dashboard" "table" "segment" "collection" "database" "action" "indexed-entity" "metric" "card"}
+                                                 config/ee-available? (conj "document"))]
                       [:in :search_index.model_id ["1" "2" "3" "4"]]
                       [:in :search_index.model ["card" "dataset" "metric" "dashboard" "action"]]
                       [:= :search_index.archived true]

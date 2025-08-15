@@ -5,9 +5,9 @@
    [java-time.api :as t]
    [metabase.models.visualization-settings :as mb.viz]
    [metabase.query-processor.streaming.common :as streaming.common]
-   [metabase.system.core :as system]
    [metabase.util.date-2 :as u.date]
    [metabase.util.formatting.constants :as constants]
+   [metabase.util.i18n :as i18n]
    [metabase.util.log :as log])
   (:import
    (com.ibm.icu.text RuleBasedNumberFormat)
@@ -18,7 +18,7 @@
 (def ^:dynamic *formatting-locale*
   "Dynamic var to hold the current locale for datetime formatting.
   Defaults to the site locale from system settings."
-  (Locale. (system/site-locale)))
+  (i18n/site-locale))
 
 (defn temporal-string?
   "Returns `true` if the string `s` is parseable as a datetime.
@@ -47,7 +47,7 @@
 (defn- x-of-y
   "Format an integer as x-th of y, for example, 2nd week of year."
   [n]
-  (let [nf (RuleBasedNumberFormat. ^java.util.Locale *formatting-locale* RuleBasedNumberFormat/ORDINAL)]
+  (let [nf (RuleBasedNumberFormat. ^Locale *formatting-locale* RuleBasedNumberFormat/ORDINAL)]
     (.format nf n)))
 
 (defn- hour-of-day
@@ -241,17 +241,14 @@
                      date-format)
           temporal-str)))))
 
-;;; TODO (Cam 6/19/25) -- this is broken, see #59803
 (defn make-temporal-str-formatter
   "Return a formatter which, given a temporal literal string, reformats it by combining time zone, column, and viz
-  setting information to create a final desired output format.
-
-  HAS GLOBAL SIDE EFFECTS!"
+  setting information to create a final desired output format."
   [timezone-id col viz-settings]
   (let [merged-viz-settings (streaming.common/normalize-keys
                              (streaming.common/viz-settings-for-col col viz-settings))]
     (fn [temporal-str]
       (if (str/blank? temporal-str)
         ""
-        (binding [*formatting-locale* (Locale. (system/site-locale))]
+        (binding [*formatting-locale* (i18n/user-locale)]
           (format-timestring timezone-id temporal-str col merged-viz-settings))))))

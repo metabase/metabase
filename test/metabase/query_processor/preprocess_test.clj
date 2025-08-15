@@ -314,9 +314,11 @@
                  {:aggregation [[:count]]
                   :breakout    [[:field %products.created-at {:source-field %product-id, :temporal-unit :month}]
                                 [:field %products.category {:source-field %product-id}]]}))]
+    ;; actually, ok just to not return `:source-alias`, which is used for mysterious FE legacy historical purposes. We
+    ;; can go ahead and return various Lib keys for Lib purposes.
     (doseq [col (qp.preprocess/query->expected-cols query)]
       (testing (pr-str (:name col))
-        (is (empty? (m/filter-vals #(= % "PRODUCTS__via__PRODUCT_ID") col)))))
+        (is (not (contains? col :source-alias)))))
     (testing "result metadata should still contain fk_field_id"
       (is (=? [{:fk_field_id (meta/id :orders :product-id)}
                {:fk_field_id (meta/id :orders :product-id)}
@@ -599,17 +601,20 @@
                                              (meta/id :products :category)
                                              {:source-field (meta/id :orders :product-id)}]]}})]
       (testing "one stage"
-        (is (=? [{:name                     "CATEGORY"
-                  :display_name             "Product → Category"
-                  ;; technically this should probably be `:source/implicitly-joinable` but we reify the join during
-                  ;; preprocessing so it comes from joins now I guess. Probably fine. Note that join alias doesn't come
-                  ;; back in this case because [[metabase.lib.metadata.result-metadata/remove-implicit-join-aliases]]
-                  ;; strips it out. We should probably leave it in, but we were doing it for some sort of reason.
-                  :lib/source               :source/joins
-                  :lib/breakout?            true
-                  :lib/source-column-alias  "CATEGORY"
-                  :lib/desired-column-alias "PRODUCTS__via__PRODUCT_ID__CATEGORY"
-                  :fk_field_id              (meta/id :orders :product-id)}
+        (is (=? [{:name                         "CATEGORY"
+                  :display_name                 "Product → Category"
+                  ;; This should be `:source/implicitly-joinable` because we reify the join during preprocessing, and
+                  ;; join doesn't exist in the original version of the query. Note that join alias doesn't come back in
+                  ;; this case because [[metabase.lib.metadata.result-metadata/remove-implicit-join-aliases]] strips it
+                  ;; out.
+                  :lib/source                   :source/implicitly-joinable
+                  :lib/breakout?                true
+                  :lib/source-column-alias      "CATEGORY"
+                  :lib/desired-column-alias     "PRODUCTS__via__PRODUCT_ID__CATEGORY"
+                  :metabase.lib.join/join-alias (symbol "nil #_\"key is not present.\"")
+                  :lib/original-join-alias      (symbol "nil #_\"key is not present.\"")
+                  :source_alias                 (symbol "nil #_\"key is not present.\"")
+                  :fk_field_id                  (meta/id :orders :product-id)}
                  {:name                     "count"
                   :display_name             "Count"
                   :lib/source               :source/aggregations

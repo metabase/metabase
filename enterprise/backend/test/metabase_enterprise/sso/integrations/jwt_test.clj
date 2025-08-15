@@ -296,16 +296,15 @@
     (with-jwt-default-setup!
       (is
        (= "Token is older than max-age (180)"
-          (:message
-           (client/client :get 401 "/auth/sso" {:request-options {:redirect-strategy :none}}
-                          :return_to default-redirect-uri
-                          :jwt
-                          (jwt/sign
-                           {:email      "test@metabase.com",
-                            :first_name "Test"
-                            :last_name  "User"
-                            :iat        (- (buddy-util/now) (u/minutes->seconds 5))}
-                           default-jwt-secret))))))))
+          (client/client :get 401 "/auth/sso" {:request-options {:redirect-strategy :none}}
+                         :return_to default-redirect-uri
+                         :jwt
+                         (jwt/sign
+                          {:email      "test@metabase.com",
+                           :first_name "Test"
+                           :last_name  "User"
+                           :iat        (- (buddy-util/now) (u/minutes->seconds 5))}
+                          default-jwt-secret)))))))
 
 (defmacro with-users-with-email-deleted {:style/indent 1} [user-email & body]
   `(try
@@ -531,7 +530,45 @@
                                                            :first_name "New"
                                                            :last_name  "User"}
                                                           default-jwt-secret))]
-            (is (saml-test/successful-login? response))))))))
+            (is (saml-test/successful-login? response))))))
+
+    (testing "Existing user login attributes are not changed on subsequent logins"
+      (with-jwt-default-setup!
+        (with-users-with-email-deleted "existinguser@metabase.com"
+          ;; Create user with initial login attributes
+          (let [response (client/client-real-response :get 302 "/auth/sso"
+                                                      {:request-options {:redirect-strategy :none}}
+                                                      :return_to default-redirect-uri
+                                                      :jwt
+                                                      (jwt/sign
+                                                       {:email      "existinguser@metabase.com"
+                                                        :first_name "Existing"
+                                                        :last_name  "User"
+                                                        :department "Engineering"
+                                                        :role       "Developer"}
+                                                       default-jwt-secret))]
+            (is (saml-test/successful-login? response))
+            (testing "initial login attributes are stored"
+              (is (= nil
+                     (t2/select-one-fn :login_attributes :model/User :email "existinguser@metabase.com")))))
+
+          ;; Log in again with different attributes
+          (let [response (client/client-real-response :get 302 "/auth/sso"
+                                                      {:request-options {:redirect-strategy :none}}
+                                                      :return_to default-redirect-uri
+                                                      :jwt
+                                                      (jwt/sign
+                                                       {:email      "existinguser@metabase.com"
+                                                        :first_name "Existing"
+                                                        :last_name  "User"
+                                                        :department "Marketing"
+                                                        :role       "Manager"
+                                                        :location   "Remote"}
+                                                       default-jwt-secret))]
+            (is (saml-test/successful-login? response))
+            (testing "login attributes remain unchanged from initial login"
+              (is (= nil
+                     (t2/select-one-fn :login_attributes :model/User :email "existinguser@metabase.com"))))))))))
 
 (deftest login-update-account-test
   (testing "An existing user will be reactivated upon login"

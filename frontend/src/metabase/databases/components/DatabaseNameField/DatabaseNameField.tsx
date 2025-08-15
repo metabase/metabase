@@ -12,7 +12,7 @@ export interface DatabaseNameFieldProps {
   autoFocus?: boolean;
 }
 
-const DatabaseNameField = ({
+export const DatabaseNameField = ({
   engine,
   autoFocus,
   config,
@@ -39,6 +39,3 @@ const DatabaseNameField = ({
     />
   );
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default DatabaseNameField;

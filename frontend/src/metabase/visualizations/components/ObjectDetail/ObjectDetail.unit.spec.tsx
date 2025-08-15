@@ -113,38 +113,34 @@ function setup({ hideOrdersTable = false }: SetupOpts = {}) {
 }
 
 function setupForeignKeyCountQueryEndpoints() {
-  fetchMock.post(
-    {
-      name: "ordersCountQuery",
-      url: "path:/api/dataset",
-      matchPartialBody: true,
-      body: {
-        query: { "source-table": ORDERS_TABLE.id },
-      },
+  fetchMock.post({
+    name: "ordersCountQuery",
+    url: "path:/api/dataset",
+    matchPartialBody: true,
+    body: {
+      query: { "source-table": ORDERS_TABLE.id },
     },
-    createMockDataset({
+    response: createMockDataset({
       status: "completed",
       data: {
         rows: [[PRODUCTS_RECORD_RELATED_ORDERS_COUNT]],
       },
     }),
-  );
-  fetchMock.post(
-    {
-      name: "reviewsCountQuery",
-      url: "path:/api/dataset",
-      matchPartialBody: true,
-      body: {
-        query: { "source-table": REVIEWS_TABLE.id },
-      },
+  });
+  fetchMock.post({
+    name: "reviewsCountQuery",
+    url: "path:/api/dataset",
+    matchPartialBody: true,
+    body: {
+      query: { "source-table": REVIEWS_TABLE.id },
     },
-    createMockDataset({
+    response: createMockDataset({
       status: "completed",
       data: {
         rows: [[PRODUCTS_RECORD_RELATED_REVIEWS_COUNT]],
       },
     }),
-  );
+  });
 }
 
 function findField(fields: Field[] | undefined, name: string) {

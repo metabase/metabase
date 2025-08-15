@@ -152,7 +152,9 @@ describe("PublicAction", () => {
 
     await waitFor(() => {
       expect(
-        fetchMock.done(`path:/api/public/action/${TEST_PUBLIC_ID}/execute`),
+        fetchMock.callHistory.done(
+          `path:/api/public/action/${TEST_PUBLIC_ID}/execute`,
+        ),
       ).toBe(true);
     });
   });
@@ -205,7 +207,9 @@ describe("PublicAction", () => {
     );
     await waitFor(() =>
       expect(
-        fetchMock.done(`path:/api/public/action/${TEST_PUBLIC_ID}/execute`),
+        fetchMock.callHistory.done(
+          `path:/api/public/action/${TEST_PUBLIC_ID}/execute`,
+        ),
       ).toBe(true),
     );
   });

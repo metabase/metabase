@@ -45,6 +45,7 @@
     :model/DashboardBookmark
     :model/DataPermissions
     :model/DatabaseRouter
+    :model/DocumentBookmark
     :model/CollectionPermissionGraphRevision
     :model/DashboardCardSeries
     :model/LoginHistory

@@ -21,6 +21,7 @@ export interface SetupOpts {
   props?: Partial<EmbedModalContentProps>;
   hasEnterprisePlugins?: boolean;
   tokenFeatures?: TokenFeatures;
+  isHosted?: boolean;
 }
 
 export function setup(
@@ -48,6 +49,7 @@ export function setup(
     } = {},
     hasEnterprisePlugins,
     tokenFeatures,
+    isHosted,
   }: SetupOpts = {
     props: {},
   },
@@ -58,6 +60,7 @@ export function setup(
     "enable-embedding-interactive": enableEmbeddingInteractive,
     "enable-embedding-sdk": enableEmbeddingSdk,
     "embedding-secret-key": "my_super_secret_key",
+    "is-hosted?": isHosted ?? false,
   });
 
   if (hasEnterprisePlugins) {

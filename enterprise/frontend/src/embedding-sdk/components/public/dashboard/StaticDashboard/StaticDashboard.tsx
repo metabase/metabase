@@ -14,13 +14,6 @@ import { SdkDashboard, type SdkDashboardProps } from "../SdkDashboard";
  */
 export type StaticDashboardProps = SdkDashboardProps;
 
-/**
- * A lightweight dashboard component.
- *
- * @function
- * @category Dashboard
- * @param props
- */
 export const StaticDashboard = (props: StaticDashboardProps) => {
   const getClickActionMode: ClickActionModeGetter = ({ question }) =>
     getEmbeddingMode({

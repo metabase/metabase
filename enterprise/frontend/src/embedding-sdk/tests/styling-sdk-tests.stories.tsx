@@ -1,5 +1,5 @@
 import {
-  MetabaseProvider,
+  ComponentProvider,
   StaticQuestion,
 } from "embedding-sdk/components/public";
 import { storybookSdkAuthDefaultConfig } from "embedding-sdk/test/CommonSdkStoryWrapper";
@@ -25,13 +25,13 @@ export const NoStylesError = () => (
       <h1>This is outside of the provider</h1>
     </div>
 
-    <MetabaseProvider authConfig={configThatWillError}>
+    <ComponentProvider authConfig={configThatWillError}>
       <div style={{ border: "1px solid black" }}>
         <h1>This is inside of the provider</h1>
       </div>
 
       <StaticQuestion questionId={(window as any).QUESTION_ID || 1} />
-    </MetabaseProvider>
+    </ComponentProvider>
   </div>
 );
 
@@ -42,24 +42,24 @@ export const NoStylesSuccess = () => (
       <h1>This is outside of the provider</h1>
     </div>
 
-    <MetabaseProvider authConfig={storybookSdkAuthDefaultConfig}>
+    <ComponentProvider authConfig={storybookSdkAuthDefaultConfig}>
       <div style={{ border: "1px solid black" }}>
         <h1>This is inside of the provider</h1>
       </div>
 
       <StaticQuestion questionId={(window as any).QUESTION_ID || 1} />
-    </MetabaseProvider>
+    </ComponentProvider>
   </div>
 );
 
 export const FontFromConfig = () => (
   <div>
-    <MetabaseProvider
+    <ComponentProvider
       authConfig={storybookSdkAuthDefaultConfig}
       theme={{ fontFamily: "Impact" }}
     >
       <StaticQuestion questionId={(window as any).QUESTION_ID || 1} />
-    </MetabaseProvider>
+    </ComponentProvider>
   </div>
 );
 

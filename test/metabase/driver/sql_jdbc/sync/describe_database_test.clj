@@ -244,7 +244,7 @@
                                 [{:field-name "citizen\\id" :base-type :type/Integer :pk? true}
                                  {:field-name "race\\id" :base-type :type/Integer :fk "human\\race"}]
                                 [[1 1]]]]
-        (let [tables            (t2/select :model/Table :db_id (:id (mt/db)))
+        (let [tables            (t2/select :model/Table :db_id (mt/id))
               field-name->field (t2/select-fn->fn :name identity :model/Field :table_id [:in (map :id tables)])]
           (is (= #{"human\\race" "citizen"} (set (map :name tables))))
           (is (= #{"humanraceid" "citizen\\id" "race" "race\\id"}

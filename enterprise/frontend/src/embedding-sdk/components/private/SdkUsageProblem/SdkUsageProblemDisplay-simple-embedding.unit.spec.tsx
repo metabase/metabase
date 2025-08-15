@@ -65,7 +65,7 @@ const setup = (options: Options) => {
   setupPropertiesEndpoints(settingValues);
 
   return renderWithSDKProviders(<div>hello!</div>, {
-    sdkProviderProps: { authConfig: createMockSdkConfig() },
+    componentProviderProps: { authConfig: createMockSdkConfig() },
     storeInitialState: state,
   });
 };

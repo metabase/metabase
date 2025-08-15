@@ -43,7 +43,7 @@ export const setupStrategyEditorForDatabases = ({
   if (hasEnterprisePlugins) {
     setupEnterprisePlugins();
   }
-  setupTokenStatusEndpoint(hasEnterprisePlugins);
+  setupTokenStatusEndpoint({ valid: hasEnterprisePlugins });
 
   const cacheConfigs = [
     createMockCacheConfigWithMultiplierStrategy({ model_id: 1 }),

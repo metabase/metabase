@@ -78,8 +78,9 @@
 (defn- summary-query []
   (mt/mbql-query orders
     {:source-table "card__4"
-     :aggregation [[:sum [:field "TOTAL" {:base-type :type/Float}]]]
-     :breakout [[:field "RATING" {:base-type :type/Float}]]}))
+     :aggregation  [[:sum [:field "TOTAL" {:base-type :type/Float}]]]
+     :breakout     [[:field "RATING" {:base-type :type/Float}]]
+     :limit        1}))
 
 (defn- join-query []
   (mt/mbql-query orders
@@ -98,7 +99,8 @@
                [:field "TAX" {:join-alias "Card"
                               :base-type :type/Float}]
                [:field "VENDOR" {:join-alias "Card"
-                                 :base-type :type/Text}]]}]}))
+                                 :base-type :type/Text}]]}]
+     :limit 1}))
 
 (deftest ^:parallel deleted-columns-before-test
   (qp.store/with-metadata-provider @metadata-provider

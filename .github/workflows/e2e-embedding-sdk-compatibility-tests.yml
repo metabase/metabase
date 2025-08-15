@@ -178,12 +178,8 @@ jobs:
         with:
           name: metabase-ee-${{ github.event.pull_request.head.sha || github.sha }}-uberjar
 
-      - name: Compile CLJS
-        run: yarn build-pure:cljs
-        shell: bash
-
       - name: Build Embedding SDK package
-        run: yarn build-embedding-sdk
+        run: yarn build-embedding-sdk-package
 
       - name: Prepare Embedding SDK artifact
         uses: actions/upload-artifact@v4

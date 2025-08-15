@@ -22,6 +22,7 @@ const {
 
 const ASSETS_PATH = __dirname + "/resources/frontend_client/app/assets";
 const FONTS_PATH = __dirname + "/resources/frontend_client/app/fonts";
+const FRONTEND_BUILD_CONFIGS_PATH = __dirname + "/frontend/build";
 const SRC_PATH = __dirname + "/frontend/src/metabase";
 const LIB_SRC_PATH = __dirname + "/frontend/src/metabase-lib";
 const ENTERPRISE_SRC_PATH =
@@ -38,6 +39,14 @@ const E2E_PATH = __dirname + "/e2e";
 const PORT = process.env.PORT || 8080;
 const isDevMode = IS_DEV_MODE;
 const shouldEnableHotRefresh = WEBPACK_BUNDLE === "hot";
+
+// If you want to test metabase locally with a custom domain, either use
+// `metabase.local` or add your custom domain via the `MB_TEST_CUSTOM_DOMAINS`
+// environment variable so that rspack will allow requests from them.
+const TEST_CUSTOM_DOMAINS =
+  process.env.MB_TEST_CUSTOM_DOMAINS?.split(",")
+    .map((domain) => domain.trim())
+    .filter(Boolean) ?? [];
 
 const BABEL_LOADER = { loader: "babel-loader", options: BABEL_CONFIG };
 
@@ -195,6 +204,7 @@ const config = {
       ".svg",
     ],
     alias: {
+      "build-configs": FRONTEND_BUILD_CONFIGS_PATH,
       assets: ASSETS_PATH,
       fonts: FONTS_PATH,
       metabase: SRC_PATH,
@@ -323,6 +333,7 @@ if (shouldEnableHotRefresh) {
     headers: {
       "Access-Control-Allow-Origin": "*",
     },
+    allowedHosts: ["localhost", "metabase.local", ...TEST_CUSTOM_DOMAINS],
     // tweak stats to make the output in the console more legible
     devMiddleware: {
       stats: { preset: "errors-warnings", timings: true },

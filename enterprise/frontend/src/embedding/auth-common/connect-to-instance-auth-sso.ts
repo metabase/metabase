@@ -29,10 +29,18 @@ export async function connectToInstanceAuthSso(
 
   try {
     const urlResponse = await fetch(ssoUrl, { headers });
+
     if (!urlResponse.ok) {
+      let errorData;
+
+      try {
+        errorData = await urlResponse.json();
+      } catch {}
+
       throw MetabaseError.CANNOT_CONNECT_TO_INSTANCE({
         instanceUrl: url,
         status: urlResponse.status,
+        message: errorData?.message,
       });
     }
     return await urlResponse.json();

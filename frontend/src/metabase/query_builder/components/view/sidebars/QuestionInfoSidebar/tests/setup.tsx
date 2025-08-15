@@ -65,7 +65,7 @@ export const setup = async ({
     setupEnterprisePlugins();
   }
 
-  setupTokenStatusEndpoint(hasEnterprisePlugins);
+  setupTokenStatusEndpoint({ valid: hasEnterprisePlugins });
 
   const TestQuestionInfoSidebar = () => (
     <QuestionInfoSidebar question={question} onSave={onSave} />

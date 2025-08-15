@@ -57,3 +57,23 @@
             :model    "dashboard"
             :model_id (:id dashboard)}
            (most-recent-view (mt/user->id :rasta) (:id dashboard) "dashboard"))))))
+
+(deftest legacy-card-read-test
+  (testing "card-read events with context :question should be recorded"
+    (mt/with-temp [:model/Card card {:creator_id (mt/user->id :rasta)}]
+      (mt/with-test-user :rasta
+        (events/publish-event! :event/card-read {:object-id (:id card)
+                                                 :user-id (mt/user->id :rasta)
+                                                 :context :question})
+        (is (= {:user_id (mt/user->id :rasta)
+                :model "card"
+                :model_id (:id card)}
+               (most-recent-view (mt/user->id :rasta) (:id card) "card"))))))
+
+  (testing "card-read events with other contexts should not be recorded"
+    (mt/with-temp [:model/Card card {:creator_id (mt/user->id :rasta)}]
+      (mt/with-test-user :rasta
+        (events/publish-event! :event/card-read {:object-id (:id card)
+                                                 :user-id (mt/user->id :rasta)
+                                                 :context :dashboard})
+        (is (nil? (most-recent-view (mt/user->id :rasta) (:id card) "card")))))))

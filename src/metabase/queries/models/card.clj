@@ -20,6 +20,7 @@
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
@@ -38,6 +39,7 @@
    [metabase.queries.models.parameter-card :as parameter-card]
    [metabase.queries.models.query :as query]
    [metabase.query-permissions.core :as query-perms]
+   [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util :as qp.util]
    [metabase.search.core :as search]
    [metabase.util :as u]
@@ -59,6 +61,11 @@
 (methodical/defmethod t2.hydrate/model-for-automagic-hydration [#_model :default #_k :card]
   [_original-model _k]
   :model/Card)
+
+(def starting-card-schema-version
+  "The default schema version assigned to all cards that existed before the `:card_schema` column was added in v0.55.
+  This value is used when loading old revision records that predate the schema versioning system."
+  20)
 
 (def ^:private current-schema-version
   "Latest schema version number. This is an increasing integer stored in each card's `:card_schema` column.
@@ -383,7 +390,9 @@
                   {:status-code 400}))
 
         :else
-        (recur (or (t2/select-one-fn :dataset_query :model/Card :id source-card-id)
+        (recur (or (if (qp.store/initialized?)
+                     (:dataset-query (lib.metadata/card (qp.store/metadata-provider) source-card-id))
+                     (t2/select-one-fn :dataset_query :model/Card :id source-card-id))
                    (throw (ex-info (tru "Card {0} does not exist." source-card-id)
                                    {:status-code 404})))
                (conj ids-already-seen source-card-id))))))
@@ -540,6 +549,7 @@
       (check-field-filter-fields-are-from-correct-database card)
       ;; TODO: add a check to see if all id in :parameter_mappings are in :parameters (#40013)
       (assert-valid-type card)
+
       (params/assert-valid-parameters card)
       (params/assert-valid-parameter-mappings card)
       (collection/check-collection-namespace :model/Card (:collection_id card)))))
@@ -932,7 +942,7 @@
                             (not (:dashboard_id input-card-data)))))
    (let [data-keys                          [:dataset_query :description :display :name :visualization_settings
                                              :parameters :parameter_mappings :collection_id :collection_position
-                                             :cache_ttl :type :dashboard_id]
+                                             :cache_ttl :type :dashboard_id :document_id]
          position-info                      {:collection_id (:collection_id input-card-data)
                                              :collection_position (:collection_position input-card-data)}
          card-data                          (-> (select-keys input-card-data data-keys)
@@ -1121,7 +1131,7 @@
                 ;; `collection_id` and `description` can be `nil` (in order to unset them).
                 ;; Other values should only be modified if they're passed in as non-nil
                 (u/select-keys-when card-updates
-                                    :present #{:collection_id :collection_position :description :cache_ttl :archived_directly :dashboard_id}
+                                    :present #{:collection_id :collection_position :description :cache_ttl :archived_directly :dashboard_id :document_id}
                                     :non-nil #{:dataset_query :display :name :visualization_settings :archived
                                                :enable_embedding :type :parameters :parameter_mappings :embedding_params
                                                :result_metadata :collection_preview :verified-result-metadata?}))
@@ -1218,6 +1228,7 @@
     :source_card_id         (serdes/fk :model/Card)
     :collection_id          (serdes/fk :model/Collection)
     :dashboard_id           (serdes/fk :model/Dashboard)
+    :document_id            (serdes/fk :model/Document)
     :creator_id             (serdes/fk :model/User)
     :made_public_by_id      (serdes/fk :model/User)
     :dataset_query          {:export serdes/export-mbql :import serdes/import-mbql}
@@ -1229,7 +1240,7 @@
 (defmethod serdes/dependencies "Card"
   [{:keys [collection_id database_id dataset_query parameters parameter_mappings
            result_metadata table_id source_card_id visualization_settings
-           dashboard_id]}]
+           dashboard_id document_id]}]
   (set
    (concat
     (mapcat serdes/mbql-deps parameter_mappings)
@@ -1239,6 +1250,7 @@
     (when source_card_id #{[{:model "Card" :id source_card_id}]})
     (when collection_id #{[{:model "Collection" :id collection_id}]})
     (when dashboard_id #{[{:model "Dashboard" :id dashboard_id}]})
+    (when document_id #{[{:model "Document" :id document_id}]})
     (result-metadata-deps result_metadata)
     (serdes/mbql-deps dataset_query)
     (serdes/visualization-settings-deps visualization_settings))))
@@ -1330,7 +1342,7 @@
    :bookmark     [:model/CardBookmark [:and
                                        [:= :bookmark.card_id :this.id]
                                        [:= :bookmark.user_id :current_user/id]]]
-   :where        [:= :collection.namespace nil]
+   :where [:and [:= :collection.namespace nil] [:= :this.document_id nil]]
    :joins        {:collection [:model/Collection [:= :collection.id :this.collection_id]]
                   :r          [:model/Revision [:and
                                                 [:= :r.model_id :this.id]

@@ -13,6 +13,7 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.aggregation :as lib.schema.aggregation]
    [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.mbql-clause :as lib.schema.mbql-clause]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.types.isa :as lib.types.isa]
@@ -159,8 +160,11 @@
     :sum       "sum"
     :var       "var"))
 
-(defmethod lib.metadata.calculation/display-name-method ::unary-aggregation
-  [query stage-number [tag _opts arg] style]
+(mu/defmethod lib.metadata.calculation/display-name-method ::unary-aggregation
+  [query
+   stage-number
+   [tag _opts arg] :- [:ref ::lib.schema.mbql-clause/clause]
+   style]
   (let [arg (lib.metadata.calculation/display-name query stage-number arg style)]
     (case tag
       :avg       (i18n/tru "Average of {0}"            arg)
@@ -300,7 +304,7 @@
                               (-> metadata
                                   (u/assoc-default :effective-type (or (:base-type metadata) :type/*))
                                   (assoc :lib/source      :source/aggregations
-                                         :lib/source-uuid (lib.options/uuid  aggregation))))))))))
+                                         :lib/source-uuid (lib.options/uuid aggregation))))))))))
 
 (def ^:private OperatorWithColumns
   [:merge
@@ -332,8 +336,7 @@
 
   ([query :- ::lib.schema/query
     stage-number :- :int]
-   (let [stage (lib.util/query-stage query stage-number)
-         columns (lib.metadata.calculation/visible-columns query stage-number stage)
+   (let [columns (lib.metadata.calculation/visible-columns query stage-number)
          with-columns (fn [{:keys [requires-column? supported-field] :as operator}]
                         (cond
                           (not requires-column?)
@@ -445,9 +448,8 @@
   ([query :- ::lib.schema/query
     stage-number :- :int
     aggregation-position :- [:maybe ::lib.schema.common/int-greater-than-or-equal-to-zero]]
-   (let [stage (lib.util/query-stage query stage-number)
-         agg-cols (aggregations-metadata query stage-number)
-         columns (into (vec (lib.metadata.calculation/visible-columns query stage-number stage))
+   (let [agg-cols (aggregations-metadata query stage-number)
+         columns (into (vec (lib.metadata.calculation/visible-columns query stage-number))
                        (cond->> agg-cols
                          aggregation-position (keep-indexed (fn [i a]
                                                               (when (not= i aggregation-position)

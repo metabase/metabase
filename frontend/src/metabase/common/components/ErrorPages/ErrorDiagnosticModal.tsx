@@ -6,6 +6,7 @@ import ErrorBoundary from "metabase/ErrorBoundary";
 import { useSendBugReportMutation } from "metabase/api/bug-report";
 import { useSetting } from "metabase/common/hooks";
 import { useToggle } from "metabase/common/hooks/use-toggle";
+import { downloadObjectAsJson } from "metabase/lib/download";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { closeDiagnostics } from "metabase/redux/app";
 import { addUndo } from "metabase/redux/undo";
@@ -22,7 +23,7 @@ import {
 } from "./analytics";
 import type { ErrorPayload } from "./types";
 import { useErrorInfo } from "./use-error-info";
-import { downloadObjectAsJson, hasQueryData } from "./utils";
+import { hasQueryData } from "./utils";
 
 interface ErrorDiagnosticModalProps {
   errorInfo?: ErrorPayload | null;

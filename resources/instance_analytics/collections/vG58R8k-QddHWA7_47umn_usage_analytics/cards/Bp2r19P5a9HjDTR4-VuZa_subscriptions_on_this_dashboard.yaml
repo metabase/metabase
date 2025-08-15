@@ -90,7 +90,6 @@ dataset_query:
         - base-type: type/Text
           join-alias: Content - Dashboard Qualified
       fields: none
-      ident: join_Bp2r19P5a9HjDTR4-VuZa@0__Content - Dashboard Qualified
       source-table: AxSackBiyXVRUzM_TyyQY
       strategy: left-join
     - alias: People - Creator
@@ -110,7 +109,6 @@ dataset_query:
         - base-type: type/Integer
           join-alias: People - Creator
       fields: none
-      ident: join_Bp2r19P5a9HjDTR4-VuZa@0__People - Creator
       source-table: 0wVIfjBJWclD0lKeABYYl
       strategy: left-join
     source-table: 5ojUtU9iE-DCggHdFPIll

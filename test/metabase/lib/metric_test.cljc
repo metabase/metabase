@@ -8,8 +8,7 @@
    [metabase.lib.metric :as lib.metric]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
-   [metabase.lib.test-util.metadata-providers.mock :as providers.mock]
-   [metabase.lib.util :as lib.util]))
+   [metabase.lib.test-util.metadata-providers.mock :as providers.mock]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
@@ -199,8 +198,8 @@
                  :aggregation [[:metric {} 1]]}]}
               metric-based-query)))
     (testing "The columns of the query underlying the metric are visible in the metric-based query"
-      (is (= (lib/visible-columns metric-card-query 0 (lib.util/query-stage metric-card-query 0))
-             (lib/visible-columns metric-based-query 0 (lib.util/query-stage metric-based-query 0)))))))
+      (is (= (lib/visible-columns metric-card-query 0)
+             (lib/visible-columns metric-based-query 0))))))
 
 (deftest ^:parallel available-metrics-test
   (let [expected-metric-metadata {:lib/type      :metadata/metric

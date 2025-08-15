@@ -2,6 +2,7 @@ import { userEvent } from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import {
+  findRequests,
   setupPropertiesEndpoints,
   setupSettingsEndpoints,
   setupUpdateSettingEndpoint,
@@ -168,7 +169,7 @@ describe("AdminSettingInput", () => {
     });
 
     await waitFor(() => {
-      const calls = fetchMock.calls();
+      const calls = fetchMock.callHistory.calls();
       expect(calls).toHaveLength(2);
     });
 
@@ -187,8 +188,8 @@ describe("AdminSettingInput", () => {
     const input = await screen.findByRole("switch");
     await userEvent.click(input);
 
-    const [putUrl, body] = await findPut();
-    expect(putUrl).toContain("/api/setting/enable-xrays");
+    const [{ url, body }] = await findRequests("PUT");
+    expect(url).toContain("/api/setting/enable-xrays");
     expect(body).toStrictEqual({ value: false });
   });
 
@@ -208,8 +209,8 @@ describe("AdminSettingInput", () => {
     const inputChanged = await screen.findByRole("textbox");
     expect(inputChanged).toHaveValue("Wigglybase");
 
-    const [putUrl, body] = await findPut();
-    expect(putUrl).toContain("/api/setting/site-name");
+    const [{ url, body }] = await findRequests("PUT");
+    expect(url).toContain("/api/setting/site-name");
     expect(body).toStrictEqual({ value: "Wigglybase" });
   });
 
@@ -228,8 +229,8 @@ describe("AdminSettingInput", () => {
     const inputChanged = await screen.findByRole("spinbutton");
     expect(inputChanged).toHaveValue(33);
 
-    const [putUrl, body] = await findPut();
-    expect(putUrl).toContain("/api/setting/query-caching-min-ttl");
+    const [{ url, body }] = await findRequests("PUT");
+    expect(url).toContain("/api/setting/query-caching-min-ttl");
     expect(body).toStrictEqual({ value: "33" });
   });
 
@@ -249,8 +250,8 @@ describe("AdminSettingInput", () => {
     const option = await screen.findByText("Simple");
     await userEvent.click(option);
 
-    const [putUrl, body] = await findPut();
-    expect(putUrl).toContain("/api/setting/humanization-strategy");
+    const [{ url, body }] = await findRequests("PUT");
+    expect(url).toContain("/api/setting/humanization-strategy");
     expect(body).toStrictEqual({ value: "simple" });
   });
 
@@ -292,8 +293,8 @@ describe("AdminSettingInput", () => {
       const option = await screen.findByText("Simple");
       await userEvent.click(option);
 
-      const [putUrl, body] = await findPut();
-      expect(putUrl).toContain("/api/setting/humanization-strategy");
+      const [{ url, body }] = await findRequests("PUT");
+      expect(url).toContain("/api/setting/humanization-strategy");
       expect(body).toStrictEqual({ value: "simple" });
     });
 
@@ -322,8 +323,8 @@ describe("AdminSettingInput", () => {
       const option = await screen.findByText("False");
       await userEvent.click(option);
 
-      const [putUrl, body] = await findPut();
-      expect(putUrl).toContain(
+      const [{ url, body }] = await findRequests("PUT");
+      expect(url).toContain(
         `/api/setting/${encodeURIComponent("bcc-enabled?")}`,
       );
       expect(body).toStrictEqual({ value: false });
@@ -341,13 +342,13 @@ describe("AdminSettingInput", () => {
     const input = await screen.findByRole("textbox");
     await userEvent.clear(input);
     await userEvent.type(input, "Wigglybase");
-    await fireEvent.blur(input);
+    fireEvent.blur(input);
 
     const inputChanged = await screen.findByRole("textbox");
     expect(inputChanged).toHaveValue("Wigglybase");
 
-    const [putUrl, body] = await findPut();
-    expect(putUrl).toContain("/api/setting/site-name");
+    const [{ url, body }] = await findRequests("PUT");
+    expect(url).toContain("/api/setting/site-name");
     expect(body).toStrictEqual({ value: "Wigglybase" });
   });
 
@@ -366,8 +367,8 @@ describe("AdminSettingInput", () => {
     const inputChanged = await screen.findByLabelText("token");
     expect(inputChanged).toHaveValue("new-secret-stuff");
 
-    const [putUrl, body] = await findPut();
-    expect(putUrl).toContain("/api/setting/premium-embedding-token");
+    const [{ url, body }] = await findRequests("PUT");
+    expect(url).toContain("/api/setting/premium-embedding-token");
     expect(body).toStrictEqual({ value: "new-secret-stuff" });
   });
 
@@ -387,12 +388,9 @@ describe("AdminSettingInput", () => {
     const option = await screen.findByText("Simple");
     await userEvent.click(option);
 
-    const [putUrl, body] = await findPut();
-    expect(putUrl).toContain("/api/setting/humanization-strategy");
+    const [{ url, body }] = await findRequests("PUT");
+    expect(url).toContain("/api/setting/humanization-strategy");
     expect(body).toStrictEqual({ value: "simple" });
-
-    const toast = await screen.findByText("Changes saved");
-    expect(toast).toBeInTheDocument();
   });
 
   it("should show an error toast on save failure", async () => {
@@ -412,8 +410,8 @@ describe("AdminSettingInput", () => {
     const option = await screen.findByText("Simple");
     await userEvent.click(option);
 
-    const [putUrl, body] = await findPut();
-    expect(putUrl).toContain("/api/setting/humanization-strategy");
+    const [{ url, body }] = await findRequests("PUT");
+    expect(url).toContain("/api/setting/humanization-strategy");
     expect(body).toStrictEqual({ value: "simple" });
 
     const toast = await screen.findByText("Error saving humanization-strategy");
@@ -436,13 +434,3 @@ describe("AdminSettingInput", () => {
     expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
   });
 });
-
-async function findPut() {
-  const calls = fetchMock.calls();
-  const [putUrl, putDetails] =
-    calls.find((call) => call[1]?.method === "PUT") ?? [];
-
-  const body = ((await putDetails?.body) as string) ?? "{}";
-
-  return [putUrl, JSON.parse(body)];
-}

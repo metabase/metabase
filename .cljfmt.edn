@@ -152,6 +152,7 @@
   metabase.lib.join/with-join-alias                                                      [[:default]]
   metabase.lib.join/with-join-conditions                                                 [[:default]]
   metabase.lib.test-util.macros/$ids                                                     [[:inner 0]]
+  metabase.lib.test-util.macros/mbql-5-query                                             [[:inner 0]]
   metabase.lib.test-util.macros/mbql-query                                               [[:inner 0]]
   metabase.lib.util.match/match                                                          [[:inner 0]]
   metabase.lib.util.match/match-one                                                      [[:inner 0]]

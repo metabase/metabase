@@ -32,6 +32,7 @@ import {
 import { useUpdateRouterDatabaseMutation } from "metabase-enterprise/api";
 import * as Urls from "metabase-enterprise/urls";
 import type { Database } from "metabase-types/api";
+import { isEngineKey } from "metabase-types/guards";
 
 import { DestinationDatabasesList } from "../DestinationDatabasesList";
 
@@ -49,7 +50,8 @@ export const DatabaseRoutingSection = ({
   const isAdmin = useSelector(getUserIsAdmin);
   const userAttribute = database.router_user_attribute ?? undefined;
   const dbSupportsRouting = database.features?.includes("database-routing");
-  const engine = engines[database.engine ?? ""];
+  const engineKey = isEngineKey(database.engine) ? database.engine : undefined;
+  const engine = engineKey ? engines[engineKey] : undefined;
   const dbRoutingInfo =
     engine?.["extra-info"]?.["db-routing-info"]?.text ??
     // eslint-disable-next-line no-literal-metabase-strings -- This string only shows for admins.

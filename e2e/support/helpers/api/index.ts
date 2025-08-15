@@ -10,6 +10,7 @@ export { createDashboard } from "./createDashboard";
 export type { DashboardDetails } from "./createDashboard";
 export { createDashboardWithQuestions } from "./createDashboardWithQuestions";
 export { createDashboardWithTabs } from "./createDashboardWithTabs";
+export { createDocument } from "./createDocument";
 export { createModerationReview } from "./createModerationReview";
 export { createNativeQuestion } from "./createNativeQuestion";
 export type { NativeQuestionDetails } from "./createNativeQuestion";

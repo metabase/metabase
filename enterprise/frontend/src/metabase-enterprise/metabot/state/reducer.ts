@@ -7,7 +7,7 @@ import type { MetabotHistory } from "metabase-types/api";
 
 import { TOOL_CALL_MESSAGES } from "../constants";
 
-import { sendAgentRequest, sendStreamedAgentRequest } from "./actions";
+import { sendAgentRequest } from "./actions";
 import { createMessageId } from "./utils";
 
 export type MetabotChatMessage = {
@@ -29,7 +29,6 @@ export type MetabotToolCall = {
 };
 
 export interface MetabotState {
-  useStreaming: boolean;
   isProcessing: boolean;
   conversationId: string;
   messages: MetabotChatMessage[];
@@ -41,7 +40,6 @@ export interface MetabotState {
 }
 
 export const getMetabotInitialState = (): MetabotState => ({
-  useStreaming: true,
   isProcessing: false,
   conversationId: uuid(),
   messages: [],
@@ -56,9 +54,6 @@ export const metabot = createSlice({
   name: "metabase-enterprise/metabot",
   initialState: getMetabotInitialState(),
   reducers: {
-    toggleStreaming: (state) => {
-      state.useStreaming = !state.useStreaming;
-    },
     addUserMessage: (
       state,
       action: PayloadAction<Omit<MetabotChatMessage, "role">>,
@@ -67,10 +62,7 @@ export const metabot = createSlice({
 
       state.errorMessages = [];
       state.messages.push({ id, role: "user", message });
-
-      if (state.useStreaming) {
-        state.history.push({ id, role: "user", content: message });
-      }
+      state.history.push({ id, role: "user", content: message });
     },
     addAgentMessage: (
       state,
@@ -136,7 +128,7 @@ export const metabot = createSlice({
       }
 
       const historyIndex = state.history.findLastIndex((h) => id === h.id);
-      if (state.useStreaming && historyIndex > -1) {
+      if (historyIndex > -1) {
         state.history = state.history.slice(0, historyIndex);
       }
     },
@@ -163,21 +155,6 @@ export const metabot = createSlice({
     builder
       .addCase(logout.pending, getMetabotInitialState)
       // streamed response handlers
-      .addCase(sendStreamedAgentRequest.pending, (state) => {
-        state.isProcessing = true;
-        state.errorMessages = [];
-      })
-      .addCase(sendStreamedAgentRequest.fulfilled, (state, action) => {
-        state.history = action.payload?.history?.slice() ?? [];
-        state.state = { ...(action.payload?.state ?? {}) };
-        state.toolCalls = [];
-        state.isProcessing = false;
-      })
-      .addCase(sendStreamedAgentRequest.rejected, (state) => {
-        state.toolCalls = [];
-        state.isProcessing = false;
-      })
-      // non-streamed response handlers
       .addCase(sendAgentRequest.pending, (state) => {
         state.isProcessing = true;
         state.errorMessages = [];
@@ -185,9 +162,11 @@ export const metabot = createSlice({
       .addCase(sendAgentRequest.fulfilled, (state, action) => {
         state.history = action.payload?.history?.slice() ?? [];
         state.state = { ...(action.payload?.state ?? {}) };
+        state.toolCalls = [];
         state.isProcessing = false;
       })
       .addCase(sendAgentRequest.rejected, (state) => {
+        state.toolCalls = [];
         state.isProcessing = false;
       });
   },

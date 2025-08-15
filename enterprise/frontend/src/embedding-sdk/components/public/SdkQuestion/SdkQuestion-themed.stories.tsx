@@ -1,14 +1,15 @@
 import type { ReactNode } from "react";
 
-import {
-  MetabaseProvider,
-  type MetabaseTheme,
-  defineMetabaseTheme,
-} from "embedding-sdk";
 import { storybookSdkAuthDefaultConfig } from "embedding-sdk/test/CommonSdkStoryWrapper";
 import { questionIds } from "embedding-sdk/test/storybook-id-args";
 import { storybookThemes } from "embedding-sdk/test/storybook-themes";
+import {
+  type MetabaseTheme,
+  defineMetabaseTheme,
+} from "metabase/embedding-sdk/theme";
 import { Box } from "metabase/ui";
+
+import { ComponentProvider } from "../ComponentProvider";
 
 import { SdkQuestion } from "./SdkQuestion";
 
@@ -31,11 +32,11 @@ const Wrapper = ({
   children: ReactNode;
   theme: MetabaseTheme;
 }) => (
-  <MetabaseProvider theme={theme} authConfig={storybookSdkAuthDefaultConfig}>
+  <ComponentProvider theme={theme} authConfig={storybookSdkAuthDefaultConfig}>
     <Box p="xl" bg={theme.colors?.background}>
       {children}
     </Box>
-  </MetabaseProvider>
+  </ComponentProvider>
 );
 
 const DefaultTemplate = (theme: MetabaseTheme) => (

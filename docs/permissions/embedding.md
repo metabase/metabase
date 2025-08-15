@@ -70,7 +70,7 @@ To keep A and C from viewing the `Insights` column, you can add [column-level se
    ```
 
 5. Save the SQL question as "Customer Metrics".
-6. [Add row and column security](./row-and-column-security.md#custom-row-and-column-security-use-a-saved-question-to-create-a-custom-view-of-a-table) using the "Metrics-Only Tenants" group and "Customer Metrics" SQL question.
+6. [Add row and column security](./row-and-column-security.md#custom-row-and-column-security-use-a-sql-question-to-create-a-custom-view-of-a-table) using the "Metrics-Only Tenants" group and "Customer Metrics" SQL question.
 
 When, for example, Tenant A logs in, they'll only see the `Tenant_ID` and `Metrics` columns, and only the rows where `Tenant_ID = A`.
 

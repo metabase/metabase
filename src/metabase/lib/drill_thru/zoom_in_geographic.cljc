@@ -88,7 +88,6 @@
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.underlying :as lib.underlying]
-   [metabase.lib.util :as lib.util]
    [metabase.util.malli :as mu]))
 
 (def ^:private ContextWithLatLon
@@ -104,15 +103,14 @@
   [query                      :- ::lib.schema/query
    stage-number               :- :int
    {:keys [row], :as context} :- ::lib.schema.drill-thru/context]
-  (let [stage (lib.util/query-stage query stage-number)
-        ;; First check returned columns in case we breakout by lat/lon so we maintain the binning, othwerwise check visible.
+  (let [;; First check returned columns in case we breakout by lat/lon so we maintain the binning, othwerwise check visible.
         [lat-column lon-column] (some
                                  (fn [columns]
                                    (when-let [lat-column (m/find-first lib.types.isa/latitude? columns)]
                                      (when-let [lon-column (m/find-first lib.types.isa/longitude? columns)]
                                        [lat-column lon-column])))
-                                 [(lib.metadata.calculation/returned-columns query stage-number stage)
-                                  (lib.metadata.calculation/visible-columns query stage-number stage)])]
+                                 [(lib.metadata.calculation/returned-columns query stage-number)
+                                  (lib.metadata.calculation/visible-columns query stage-number)])]
     (when (and lat-column lon-column)
       (letfn [(same-column? [col-x col-y]
                 (if (:id col-x)

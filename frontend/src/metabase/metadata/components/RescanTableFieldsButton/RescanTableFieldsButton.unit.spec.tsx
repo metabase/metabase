@@ -42,7 +42,7 @@ describe("RescanTableFieldsButton", () => {
 
     await userEvent.click(button);
     expect(
-      fetchMock.calls(`path:/api/table/${table.id}/rescan_values`, {
+      fetchMock.callHistory.calls(`path:/api/table/${table.id}/rescan_values`, {
         method: "POST",
       }),
     ).toHaveLength(1);
@@ -64,7 +64,7 @@ describe("RescanTableFieldsButton", () => {
 
     await userEvent.click(button);
     expect(
-      fetchMock.calls(`path:/api/table/${table.id}/rescan_values`, {
+      fetchMock.callHistory.calls(`path:/api/table/${table.id}/rescan_values`, {
         method: "POST",
       }),
     ).toHaveLength(1);
@@ -79,7 +79,7 @@ describe("RescanTableFieldsButton", () => {
     expect(button).toHaveTextContent("Scan triggered!");
     await userEvent.click(button);
     expect(
-      fetchMock.calls(`path:/api/table/${table.id}/rescan_values`, {
+      fetchMock.callHistory.calls(`path:/api/table/${table.id}/rescan_values`, {
         method: "POST",
       }),
     ).toHaveLength(2);
@@ -100,18 +100,16 @@ describe("RescanTableFieldsButton", () => {
   it("should show error message toast", async () => {
     const { table } = setup();
 
-    fetchMock.post(
-      `path:/api/table/${table.id}/rescan_values`,
-      { status: 500 },
-      { overwriteRoutes: true },
-    );
+    fetchMock.modifyRoute(`table-${table.id}-rescan-values`, {
+      response: { status: 500 },
+    });
 
     const button = screen.getByRole("button");
     expect(button).toHaveTextContent("Re-scan table");
 
     await userEvent.click(button);
     expect(
-      fetchMock.calls(`path:/api/table/${table.id}/rescan_values`, {
+      fetchMock.callHistory.calls(`path:/api/table/${table.id}/rescan_values`, {
         method: "POST",
       }),
     ).toHaveLength(1);

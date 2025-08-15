@@ -14,18 +14,25 @@
   The second main path to authentication is an API key. For this, we look at the `X-Api-Key` header. If that matches
   an ApiKey in our database, you'll be authenticated as that ApiKey's associated User."
   (:require
+   [clojure.string :as str]
    [honey.sql.helpers :as sql.helpers]
    [java-time.api :as t]
+   [malli.error :as me]
+   [medley.core :as m]
    [metabase.api-keys.core :as api-key]
+   [metabase.api-keys.schema :as api-keys.schema]
    [metabase.app-db.core :as mdb]
    [metabase.config.core :as config]
    [metabase.core.initialization-status :as init-status]
    [metabase.premium-features.core :as premium-features]
    [metabase.request.core :as request]
+   [metabase.request.schema :as request.schema]
    [metabase.session.core :as session]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.password :as u.password]
    [metabase.util.string :as string]
    [toucan2.core :as t2]
@@ -160,7 +167,7 @@
   [session-key]
   (or (not session-key) (string/valid-uuid? session-key)))
 
-(defn- current-user-info-for-session
+(mu/defn- current-user-info-for-session :- [:maybe ::request.schema/current-user-info]
   "Return User ID and superuser status for Session with `session-key` if it is valid and not expired."
   [session-key anti-csrf-token]
   (when (and session-key (valid-session-key? session-key) (init-status/complete?))
@@ -191,16 +198,29 @@
     (u.password/verify-password passed-api-key "" api-key)
     (do-useless-hash)))
 
-(defn- current-user-info-for-api-key
+(mu/defn- current-user-info-for-api-key :- [:maybe ::request.schema/current-user-info]
   "Return User ID and superuser status for an API Key with `api-key-id"
-  [api-key]
-  (when (and api-key (init-status/complete?))
-    (let [user-data (some-> (t2/query-one (cons (user-data-for-api-key-prefix-query
-                                                 (premium-features/enable-advanced-permissions?))
-                                                [(api-key/prefix api-key)]))
-                            (update :is-group-manager? boolean))]
-      (when (matching-api-key? user-data api-key)
-        (dissoc user-data :api-key)))))
+  [api-key :- [:maybe :string]]
+  (when (and api-key
+             (init-status/complete?))
+    ;; make sure the API key is valid before we entertain the idea of allowing it.
+    (if-let [error (some-> (mr/explain ::api-keys.schema/key.raw api-key)
+                           me/humanize
+                           pr-str)]
+      (do
+        ;; 99% sure the error message is not going to include the API key but just to be extra super safe let's not log
+        ;; it if the error message includes the key itself.
+        (if (str/includes? error api-key)
+          (log/error "Ignoring invalid API Key")
+          (log/errorf "Ignoring invalid API Key: %s" error))
+        nil)
+      (let [user-info (-> (t2/query-one (cons (user-data-for-api-key-prefix-query
+                                               (premium-features/enable-advanced-permissions?))
+                                              [(api-key/prefix api-key)]))
+                          (m/update-existing :is-group-manager? boolean))]
+        (when (matching-api-key? user-info api-key)
+          (-> user-info
+              (dissoc :api-key)))))))
 
 (defn- merge-current-user-info
   [{:keys [metabase-session-key anti-csrf-token], {:strs [x-metabase-locale x-api-key]} :headers, :as request}]

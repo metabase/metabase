@@ -85,7 +85,7 @@ const setup = ({
   );
 
   return renderWithSDKProviders(children, {
-    sdkProviderProps: {
+    componentProviderProps: {
       authConfig: createMockSdkConfig(),
     },
     storeInitialState: state,

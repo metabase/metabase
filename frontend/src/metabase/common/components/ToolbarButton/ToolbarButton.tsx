@@ -8,6 +8,7 @@ export type ToolbarButtonProps = {
   icon?: IconName;
   "aria-label": string;
   tooltipLabel?: TooltipProps["label"];
+  tooltipPosition?: TooltipProps["position"];
   visibleOnSmallScreen?: boolean;
   isActive?: boolean;
   hasBackground?: boolean;
@@ -20,6 +21,7 @@ export const ToolbarButton = forwardRef(function ToolbarButton(
     "aria-label": ariaLabel,
     onClick,
     tooltipLabel,
+    tooltipPosition,
     visibleOnSmallScreen = true,
     isActive = false,
     hasBackground = true,
@@ -66,7 +68,7 @@ export const ToolbarButton = forwardRef(function ToolbarButton(
     return actionButton;
   }
   return (
-    <Tooltip label={tooltipLabel}>
+    <Tooltip label={tooltipLabel} position={tooltipPosition}>
       <Box>{actionButton}</Box>
     </Tooltip>
   );

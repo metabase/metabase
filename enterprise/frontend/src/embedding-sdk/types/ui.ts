@@ -10,9 +10,13 @@ export type {
 export type { MetabaseFontFamily } from "metabase/embedding-sdk/theme/fonts";
 
 export type SdkErrorComponentProps = {
+  type?: "relative" | "fixed";
   message: ReactNode;
+  withCloseButton?: boolean;
+  onClose?: () => void;
 };
 
 export type SdkErrorComponent = ({
+  type,
   message,
 }: SdkErrorComponentProps) => JSX.Element;

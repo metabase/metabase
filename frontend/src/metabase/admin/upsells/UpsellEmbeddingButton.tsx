@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import ExternalLink from "metabase/common/components/ExternalLink";
 
-import S from "./components/Upsells.module.css";
+import S from "./components/UpsellCta.module.css";
 import { useUpsellLink } from "./components/use-upsell-link";
 
 export const UpsellEmbeddingButton = ({

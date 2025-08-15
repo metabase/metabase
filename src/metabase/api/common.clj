@@ -80,6 +80,7 @@
   "Dynamic variables and utility functions/macros for writing API functions."
   (:require
    [metabase.api.open-api :as open-api]
+   [metabase.config.core :as config]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
@@ -421,7 +422,8 @@
    old-position  :- [:maybe ms/PositiveInt]
    new-position  :- [:maybe ms/PositiveInt]]
   (let [update-fn! (fn [plus-or-minus position-update-clause]
-                     (doseq [model '[Card Dashboard Pulse]]
+                     (doseq [model (cond-> '[Card Dashboard Pulse]
+                                     config/ee-available? (conj 'Document))]
                        (t2/update! model {:collection_id       collection-id
                                           :collection_position position-update-clause}
                                    {:collection_position [plus-or-minus :collection_position 1]})))]

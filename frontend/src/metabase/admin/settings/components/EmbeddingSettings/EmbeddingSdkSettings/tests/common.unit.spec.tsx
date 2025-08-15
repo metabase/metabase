@@ -40,7 +40,9 @@ describe("EmbeddingSdkSettings (OSS)", () => {
         });
 
         expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-        await userEvent.click(screen.getAllByRole("switch")[0]);
+        await userEvent.click(
+          screen.getByRole("switch", { name: "SDK for React toggle" }),
+        );
         assertLegaleseModal();
 
         await userEvent.click(screen.getByText("Agree and continue"));
@@ -63,7 +65,9 @@ describe("EmbeddingSdkSettings (OSS)", () => {
         });
 
         expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-        await userEvent.click(screen.getAllByRole("switch")[0]);
+        await userEvent.click(
+          screen.getByRole("switch", { name: "SDK for React toggle" }),
+        );
         assertLegaleseModal();
 
         await userEvent.click(screen.getByText("Decline and go back"));
@@ -83,7 +87,9 @@ describe("EmbeddingSdkSettings (OSS)", () => {
         });
 
         expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-        await userEvent.click(screen.getAllByRole("switch")[0]);
+        await userEvent.click(
+          screen.getByRole("switch", { name: "SDK for React toggle" }),
+        );
         expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
 
         const puts = await findRequests("PUT");

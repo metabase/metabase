@@ -1,9 +1,9 @@
 import type {
   DeleteSuggestedMetabotPromptRequest,
-  MetabotAgentRequest,
-  MetabotAgentResponse,
   MetabotApiEntity,
   MetabotEntity,
+  MetabotGenerateContentRequest,
+  MetabotGenerateContentResponse,
   MetabotId,
   MetabotInfo,
   PaginationRequest,
@@ -17,13 +17,6 @@ import { idTag } from "./tags";
 
 export const metabotApi = EnterpriseApi.injectEndpoints({
   endpoints: (builder) => ({
-    metabotAgent: builder.mutation<MetabotAgentResponse, MetabotAgentRequest>({
-      query: (body) => ({
-        method: "POST",
-        url: "/api/ee/metabot-v3/v2/agent",
-        body,
-      }),
-    }),
     listMetabots: builder.query<{ items: MetabotInfo[] }, void>({
       query: () => ({
         method: "GET",
@@ -120,12 +113,20 @@ export const metabotApi = EnterpriseApi.injectEndpoints({
       invalidatesTags: (_, error, metabot_id) =>
         !error ? [idTag("metabot-prompt-suggestions", metabot_id)] : [],
     }),
+    metabotGenerateContent: builder.query<
+      MetabotGenerateContentResponse,
+      MetabotGenerateContentRequest
+    >({
+      query: (params) => ({
+        method: "POST",
+        url: "/api/ee/metabot-v3/document/generate-content",
+        body: params,
+      }),
+    }),
   }),
 });
 
-export const { metabotAgent } = metabotApi.endpoints;
 export const {
-  useMetabotAgentMutation,
   useListMetabotsQuery,
   useListMetabotsEntitiesQuery,
   useUpdateMetabotEntitiesMutation,
@@ -133,4 +134,5 @@ export const {
   useGetSuggestedMetabotPromptsQuery,
   useDeleteSuggestedMetabotPromptMutation,
   useRegenerateSuggestedMetabotPromptsMutation,
+  useLazyMetabotGenerateContentQuery,
 } = metabotApi;

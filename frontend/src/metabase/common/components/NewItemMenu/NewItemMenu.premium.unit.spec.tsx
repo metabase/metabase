@@ -67,7 +67,6 @@ describe("NewItemMenu (EE with token)", () => {
     });
 
     expect(await screen.findByText("Embed")).toBeInTheDocument();
-    expect(screen.queryAllByText("Beta")).toHaveLength(1);
   });
 
   it("hides the Embed item when user is non-admin", async () => {

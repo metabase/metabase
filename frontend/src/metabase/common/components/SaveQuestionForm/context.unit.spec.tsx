@@ -22,7 +22,6 @@ import { SaveQuestionProvider, useSaveQuestionContext } from "./context";
 
 const TestComponent = () => {
   const { values, saveToDashboard } = useSaveQuestionContext();
-
   return (
     <div>
       {values.collection_id && (

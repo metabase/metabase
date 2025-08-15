@@ -9,6 +9,7 @@
         "./enterprise/frontend/src/*",
         "./enterprise/frontend/test/*"
       ],
+      "build-configs/*": ["./frontend/build/*"],
       "cljs/*": ["./target/cljs_dev/*"]
     },
     "plugins": [

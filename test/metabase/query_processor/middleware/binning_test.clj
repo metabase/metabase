@@ -7,58 +7,77 @@
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.normalize :as lib.normalize]
+   [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
+   [metabase.lib.test-util.macros :as lib.tu.macros]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.binning :as binning]
+   [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.store :as qp.store]
-   [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]))
 
 (deftest ^:parallel filter->field-map-test
   (is (= {}
-         (#'binning/filter->field-map [:and
-                                       [:= [:field 1 nil] 10]
-                                       [:= [:field 2 nil] 10]])))
+         (#'binning/filters->field-map
+          (lib.normalize/normalize
+           ::lib.schema/filters
+           [[:and
+             [:= {} [:field {} 1] 10]
+             [:= {} [:field {} 2] 10]]]))))
 
-  (is (= {1 [[:< [:field 1 nil] 10] [:> [:field 1 nil] 1]]
-          2 [[:> [:field 2 nil] 20] [:< [:field 2 nil] 10]]
-          3 [[:between [:field 3 nil] 5 10]]}
-         (#'binning/filter->field-map [:and
-                                       [:< [:field 1 nil] 10]
-                                       [:> [:field 1 nil] 1]
-                                       [:> [:field 2 nil] 20]
-                                       [:< [:field 2 nil] 10]
-                                       [:between [:field 3 nil] 5 10]]))))
+  (is (=? {1 [[:< {} [:field {} 1] 10] [:> {} [:field {} 1] 1]]
+           2 [[:> {} [:field {} 2] 20] [:< {} [:field {} 2] 10]]
+           3 [[:between {} [:field {} 3] 5 10]]}
+          (#'binning/filters->field-map
+           (lib.normalize/normalize
+            ::lib.schema/filters
+            [[:and
+              [:< {} [:field {} 1] 10]
+              [:> {} [:field {} 1] 1]
+              [:> {} [:field {} 2] 20]
+              [:< {} [:field {} 2] 10]
+              [:between {} [:field {} 3] 5 10]]])))))
 
 (def ^:private test-min-max-fingerprint
   {:type {:type/Number {:min 100 :max 1000}}})
 
 (deftest ^:parallel extract-bounds-test
   (are [field-id->filters expected] (= expected
-                                       (#'binning/extract-bounds 1 test-min-max-fingerprint field-id->filters))
-    {1 [[:> [:field 1 nil] 1] [:< [:field 1 nil] 10]]}
+                                       (#'binning/extract-bounds
+                                        1 test-min-max-fingerprint
+                                        (lib.normalize/normalize
+                                         [:map-of ::lib.schema.id/field ::lib.schema/filters]
+                                         field-id->filters)))
+    {1 [[:> {} [:field {} 1] 1]
+        [:< {} [:field {} 1] 10]]}
     {:min-value 1, :max-value 10}
 
-    {1 [[:between [:field 1 nil] 1 10]]}
+    {1 [[:between {} [:field {} 1] 1 10]]}
     {:min-value 1, :max-value 10}
 
     {}
     {:min-value 100, :max-value 1000}
 
-    {1 [[:> [:field 1 nil] 500]]}
+    {1 [[:> {} [:field {} 1] 500]]}
     {:min-value 500, :max-value 1000}
 
-    {1 [[:< [:field 1 nil] 500]]}
+    {1 [[:< {} [:field {} 1] 500]]}
     {:min-value 100, :max-value 500}
 
-    {1 [[:> [:field 1 nil] 200] [:< [:field 1 nil] 800] [:between [:field 1 nil] 600 700]]}
+    {1 [[:> {} [:field {} 1] 200] [:< {} [:field {} 1] 800] [:between {} [:field {} 1] 600 700]]}
     {:min-value 600, :max-value 700}))
 
 (deftest ^:parallel extract-bounds-field-name-test
   (testing "Should be able to adjust min max based on filters against named field refs. (#26202)"
     (is (= {:min-value 1, :max-value 10}
-           (#'binning/extract-bounds "foo" test-min-max-fingerprint {"foo" [[:> [:field 1 nil] 1] [:< [:field 1 nil] 10]]})))))
+           (#'binning/extract-bounds
+            "foo" test-min-max-fingerprint
+            {"foo" (lib.normalize/normalize
+                    ::lib.schema/filters
+                    [[:> {} [:field {} 1] 1] [:< {} [:field {} 1] 10]])})))))
 
 ;; Try an end-to-end test of the middleware
 (defn- mock-field-metadata-provider []
@@ -78,42 +97,47 @@
                      :base-type      :type/Float
                      :effective-type :type/Float})]}))
 
+(defn- update-binning-strategy [mp query]
+  (-> (lib/query mp query)
+      binning/update-binning-strategy
+      lib/->legacy-MBQL))
+
 (deftest ^:parallel update-binning-strategy-test
-  (qp.store/with-metadata-provider (mock-field-metadata-provider)
-    (is (= {:query    {:source-table (meta/id :checkins)
-                       :breakout     [[:field 1
-                                       {:binning
-                                        {:strategy  :num-bins
-                                         :num-bins  8
-                                         :min-value 0.0
-                                         :max-value 240.0
-                                         :bin-width 30.0}}]]}
-            :type     :query
-            :database (meta/id)}
-           (binning/update-binning-strategy
-            {:query    {:source-table (meta/id :checkins)
-                        :breakout     [[:field 1 {:binning {:strategy :default}}]]}
-             :type     :query
-             :database (meta/id)})))))
+  (is (= {:query    {:source-table (meta/id :checkins)
+                     :breakout     [[:field 1
+                                     {:binning
+                                      {:strategy  :num-bins
+                                       :num-bins  8
+                                       :min-value 0.0
+                                       :max-value 240.0
+                                       :bin-width 30.0}}]]}
+          :type     :query
+          :database (meta/id)}
+         (update-binning-strategy
+          (mock-field-metadata-provider)
+          {:query    {:source-table (meta/id :checkins)
+                      :breakout     [[:field 1 {:binning {:strategy :default}}]]}
+           :type     :query
+           :database (meta/id)}))))
 
 (deftest ^:parallel update-binning-strategy-test-2
-  (qp.store/with-metadata-provider (mock-field-metadata-provider)
-    (testing "should work recursively on nested queries"
-      (is (= {:query    {:source-query
-                         {:source-table (meta/id :checkins)
-                          :breakout     [[:field 1 {:binning {:strategy  :num-bins
-                                                              :num-bins  8
-                                                              :min-value 0.0
-                                                              :max-value 240.0
-                                                              :bin-width 30.0}}]]}}
-              :type     :query
-              :database (meta/id)}
-             (binning/update-binning-strategy
-              {:query    {:source-query
-                          {:source-table (meta/id :checkins)
-                           :breakout     [[:field 1 {:binning {:strategy :default}}]]}}
-               :type     :query
-               :database (meta/id)}))))))
+  (testing "should work recursively on nested queries"
+    (is (= {:query    {:source-query
+                       {:source-table (meta/id :checkins)
+                        :breakout     [[:field 1 {:binning {:strategy  :num-bins
+                                                            :num-bins  8
+                                                            :min-value 0.0
+                                                            :max-value 240.0
+                                                            :bin-width 30.0}}]]}}
+            :type     :query
+            :database (meta/id)}
+           (update-binning-strategy
+            (mock-field-metadata-provider)
+            {:query    {:source-query
+                        {:source-table (meta/id :checkins)
+                         :breakout     [[:field 1 {:binning {:strategy :default}}]]}}
+             :type     :query
+             :database (meta/id)})))))
 
 (deftest ^:parallel binning-nested-questions-test
   (qp.store/with-metadata-provider (lib.tu/metadata-provider-with-cards-for-queries
@@ -129,6 +153,8 @@
                 (mt/run-mbql-query nil)
                 (mt/formatted-rows [int int]))))))
 
+;;; TODO (Cam 7/28/25) -- can we use a mock metadata provider here instead of defining an entire new dataset (and
+;;; loading new data?)
 (mt/defdataset single-row
   [["t" [{:field-name    "lat"
           :base-type     :type/Decimal
@@ -169,39 +195,55 @@
                                                                   :max-value -50.0
                                                                   :num-bins  1
                                                                   :bin-width 10.0}}]]}}
-                  (into {} (binning/update-binning-strategy query))))
+                  (update-binning-strategy (qp.store/metadata-provider) query)))
           (mt/with-native-query-testing-context query
             (is (= [[-30.00M -60.00M 1]]
                    (mt/rows (qp/process-query query))))))))))
 
 (deftest ^:parallel match-named-field-ref-filter
   (testing "fields referencing source expressions can still properly update binning strategies (#26202)"
-    (mt/with-temp [:model/Card card (-> orders
-                                        (mt/mbql-query {:fields [$total [:expression "foo"]]
-                                                        :expressions {"foo" [:+ $total 0]}})
-                                        qp.test-util/card-with-source-metadata-for-query
-                                        (assoc-in [:result_metadata 1 :semantic_type] :type/Quantity))]
-      (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
-            query (lib/query mp (lib.metadata/card mp (:id card)))
-            expr-col (m/find-first #(= (:name %) "foo") (lib/breakoutable-columns query))
-            _ (is (some? expr-col))
-            binning-strategy (m/find-first #(= (:display-name %) "10 bins")
-                                           (lib/available-binning-strategies query expr-col))
-            _ (is (some? binning-strategy))
-            query (-> query
-                      (lib/breakout (lib/with-binning expr-col binning-strategy)))]
-        (qp.store/with-metadata-provider mp
-          (testing "without filter"
-            (is (=? {:query {:breakout [[:field
-                                         "foo"
-                                         {:base-type :type/Float,
-                                          :binning {:strategy :num-bins, :num-bins 10, :min-value -50.0, :max-value 175.0, :bin-width 25.0}}]]}}
-                    (binning/update-binning-strategy (-> (lib.convert/->legacy-MBQL query)
-                                                         (assoc-in [:query :source-metadata] (:result_metadata card)))))))
-          (testing "with filter"
-            (is (=? {:query {:breakout [[:field
-                                         "foo"
-                                         {:base-type :type/Float,
-                                          :binning {:strategy :num-bins, :num-bins 10, :min-value 20.0, :max-value 40.0, :bin-width 2.0}}]]}}
-                    (binning/update-binning-strategy (-> (lib.convert/->legacy-MBQL (lib/filter query (lib/between expr-col 20 40)))
-                                                         (assoc-in [:query :source-metadata] (:result_metadata card))))))))))))
+    (let [card-query       (lib.tu.macros/mbql-query orders
+                             {:fields      [$total [:expression "foo"]]
+                              :expressions {"foo" [:+ $total 0]}})
+          card-cols        (-> (qp.preprocess/query->expected-cols (lib/query meta/metadata-provider card-query))
+                               (update 1 assoc
+                                       :semantic_type :type/Quantity
+                                       ;; apparently the fingerprint in the [[meta/field-metadata]] is stale or
+                                       ;; something. See
+                                       ;; https://metaboat.slack.com/archives/C0645JP1W81/p1753993801175699
+                                       :fingerprint   {:global {:distinct-count 4957, :nil% 0.0}
+                                                       :type   {:type/Number {:min -45.48
+                                                                              :q1  51.15112909560095
+                                                                              :q3  110.89552922878748
+                                                                              :max 159.35
+                                                                              :sd  34.46092341352156
+                                                                              :avg 80.52333155650321}}}))
+          mp               (lib.tu/mock-metadata-provider
+                            meta/metadata-provider
+                            {:cards [{:id              1
+                                      :dataset-query   card-query
+                                      :result-metadata card-cols}]})
+          query            (lib/query mp (lib.metadata/card mp 1))
+          expr-col         (m/find-first #(= (:name %) "foo") (lib/breakoutable-columns query))
+          _                (is (some? expr-col))
+          binning-strategy (m/find-first #(= (:display-name %) "10 bins")
+                                         (lib/available-binning-strategies query expr-col))
+          _                (is (some? binning-strategy))
+          query            (-> query
+                               (lib/breakout (lib/with-binning expr-col binning-strategy)))]
+      (testing "without filter"
+        (is (=? {:query {:breakout [[:field
+                                     "foo"
+                                     {:base-type :type/Float
+                                      :binning   {:strategy :num-bins, :num-bins 10, :min-value -50.0, :max-value 175.0, :bin-width 25.0}}]]}}
+                (update-binning-strategy mp (-> query
+                                                lib.convert/->legacy-MBQL
+                                                (assoc-in [:query :source-metadata] card-cols))))))
+      (testing "with filter"
+        (is (=? {:query {:breakout [[:field
+                                     "foo"
+                                     {:base-type :type/Float
+                                      :binning   {:strategy :num-bins, :num-bins 10, :min-value 20.0, :max-value 40.0, :bin-width 2.0}}]]}}
+                (update-binning-strategy mp (-> (lib/filter query (lib/between expr-col 20 40))
+                                                lib.convert/->legacy-MBQL
+                                                (assoc-in [:query :source-metadata] card-cols)))))))))

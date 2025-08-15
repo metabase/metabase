@@ -30,8 +30,8 @@ describe("api", () => {
 
   it("should PUT with remaining params as body", async () => {
     expect.assertions(1);
-    fetchMock.put("path:/hello/123", async (uri) => {
-      const body = await fetchMock.lastCall(uri).request.json();
+    fetchMock.put("path:/hello/123", async (call) => {
+      const body = await call?.request?.json();
       expect(body).toEqual({ other: "stuff" });
       return 200;
     });
@@ -40,8 +40,8 @@ describe("api", () => {
 
   it("should PUT with a specific params as the body", async () => {
     expect.assertions(1);
-    fetchMock.put("path:/hello/123", async (uri) => {
-      const body = await fetchMock.lastCall(uri).request.json();
+    fetchMock.put("path:/hello/123", async (call) => {
+      const body = await call?.request?.json();
       expect(body).toEqual(["i", "am", "an", "array"]);
       return 200;
     });
@@ -62,9 +62,16 @@ describe("api", () => {
 
   it("GET should retry and succeed if 503 then 200", async () => {
     expect.assertions(1);
-    fetchMock.getOnce({ url: "path:/hello", overwriteRoutes: false }, 503);
     fetchMock.getOnce(
-      { url: "path:/hello", overwriteRoutes: false },
+      {
+        url: "path:/hello",
+      },
+      503,
+    );
+    fetchMock.getOnce(
+      {
+        url: "path:/hello",
+      },
       successResponse,
     );
     const hello = GET("/hello", { retry: true });
@@ -79,10 +86,30 @@ describe("api", () => {
 
   it("GET should fail if after retryCount it still returns 503", async () => {
     expect.assertions(1);
-    fetchMock.getOnce({ url: "path:/hello", overwriteRoutes: false }, 503);
-    fetchMock.getOnce({ url: "path:/hello", overwriteRoutes: false }, 503);
-    fetchMock.getOnce({ url: "path:/hello", overwriteRoutes: false }, 503);
-    fetchMock.getOnce({ url: "path:/hello", overwriteRoutes: false }, 503);
+    fetchMock.getOnce(
+      {
+        url: "path:/hello",
+      },
+      503,
+    );
+    fetchMock.getOnce(
+      {
+        url: "path:/hello",
+      },
+      503,
+    );
+    fetchMock.getOnce(
+      {
+        url: "path:/hello",
+      },
+      503,
+    );
+    fetchMock.getOnce(
+      {
+        url: "path:/hello",
+      },
+      503,
+    );
     const limitedRetryGET = api._makeMethod("GET", RETRY_THREE_TIMES);
     const hello = limitedRetryGET("/hello", { retry: true });
     await expect(hello()).rejects.toEqual(
@@ -91,11 +118,28 @@ describe("api", () => {
   });
 
   it("GET should succeed if the last attempt succeeds", async () => {
-    fetchMock.getOnce({ url: "path:/hello", overwriteRoutes: false }, 503);
-    fetchMock.getOnce({ url: "path:/hello", overwriteRoutes: false }, 503);
-    fetchMock.getOnce({ url: "path:/hello", overwriteRoutes: false }, 503);
     fetchMock.getOnce(
-      { url: "path:/hello", overwriteRoutes: false },
+      {
+        url: "path:/hello",
+      },
+      503,
+    );
+    fetchMock.getOnce(
+      {
+        url: "path:/hello",
+      },
+      503,
+    );
+    fetchMock.getOnce(
+      {
+        url: "path:/hello",
+      },
+      503,
+    );
+    fetchMock.getOnce(
+      {
+        url: "path:/hello",
+      },
       successResponse,
     );
     const limitedRetryGET = api._makeMethod("GET", RETRY_THREE_TIMES);

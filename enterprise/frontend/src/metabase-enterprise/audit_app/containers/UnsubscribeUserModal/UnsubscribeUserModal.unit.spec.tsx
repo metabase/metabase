@@ -1,5 +1,5 @@
 import userEvent from "@testing-library/user-event";
-import type { MockResponse, MockResponseFunction } from "fetch-mock";
+import type { UserRouteConfig } from "fetch-mock";
 
 import {
   findRequests,
@@ -13,7 +13,7 @@ import { UnsubscribeUserModal } from "./UnsubscribeUserModal";
 
 function setup({
   unsubscribeResponse = undefined,
-}: { unsubscribeResponse?: MockResponse | MockResponseFunction } = {}) {
+}: { unsubscribeResponse?: UserRouteConfig } = {}) {
   const user = createMockUser({ id: 1, common_name: "John Doe" });
 
   setupUserEndpoints(user);
@@ -38,8 +38,8 @@ describe("UnsubscribeUserModal", () => {
     await userEvent.click(await screen.findByText("Unsubscribe"));
 
     await waitFor(async () => {
-      const puts = await findRequests("DELETE");
-      expect(puts).toHaveLength(1);
+      const deletes = await findRequests("DELETE");
+      expect(deletes).toHaveLength(1);
     });
     expect(onClose).toHaveBeenCalled();
   });
@@ -51,11 +51,13 @@ describe("UnsubscribeUserModal", () => {
 
     await userEvent.click(await screen.findByText("Unsubscribe"));
 
-    expect(await screen.findByText(error.message)).toBeInTheDocument();
     await waitFor(async () => {
-      const puts = await findRequests("DELETE");
-      expect(puts).toHaveLength(1);
+      const deletes = await findRequests("DELETE");
+      expect(deletes).toHaveLength(1);
     });
+
+    expect(await screen.findByText(error.message)).toBeInTheDocument();
+
     expect(onClose).not.toHaveBeenCalled();
   });
 });
