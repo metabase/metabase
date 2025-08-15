@@ -1,6 +1,8 @@
 /* eslint-env node */
 /* eslint-disable import/no-commonjs */
 /* eslint-disable import/order */
+const fs = require("fs");
+const path = require("path");
 const rspack = require("@rspack/core");
 const ForkTsCheckerWebpackPlugin = require("fork-ts-checker-webpack-plugin");
 
@@ -24,6 +26,17 @@ const {
   getBannerOptions,
 } = require("./frontend/build/shared/rspack/get-banner-options");
 
+const sdkPackageTemplateJson = fs.readFileSync(
+  path.resolve(
+    path.join(
+      __dirname,
+      "enterprise/frontend/src/embedding-sdk/package.template.json",
+    ),
+  ),
+  "utf-8",
+);
+const sdkPackageTemplateJsonContent = JSON.parse(sdkPackageTemplateJson);
+
 const SDK_SRC_PATH = __dirname + "/enterprise/frontend/src/embedding-sdk";
 const BUILD_PATH = __dirname + "/resources/embedding-sdk";
 
@@ -32,6 +45,7 @@ const skipDTS = process.env.SKIP_DTS === "true";
 const isDevMode = IS_DEV_MODE;
 
 const EMBEDDING_SDK_BUNDLE_HOST = process.env.EMBEDDING_SDK_BUNDLE_HOST || "";
+const EMBEDDING_SDK_PACKAGE_VERSION = sdkPackageTemplateJsonContent.version;
 
 const config = {
   context: SDK_SRC_PATH,
@@ -76,6 +90,7 @@ const config = {
   plugins: [
     new rspack.EnvironmentPlugin({
       EMBEDDING_SDK_BUNDLE_HOST,
+      EMBEDDING_SDK_PACKAGE_VERSION,
     }),
     new rspack.optimize.LimitChunkCountPlugin({
       maxChunks: 1,

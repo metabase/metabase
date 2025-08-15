@@ -66,7 +66,7 @@ const getDownloadedResourceType = ({
 
   const isInIframe = isWithinIframe();
 
-  const defaultAccessedVia = process.env.EMBEDDING_SDK_VERSION
+  const defaultAccessedVia = window.EMBEDDING_SDK_PACKAGE_VERSION
     ? "sdk-embed"
     : isInIframe
       ? "interactive-iframe-embed"

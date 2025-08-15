@@ -137,7 +137,7 @@ module.exports = (env) => {
     },
     plugins: [
       new rspack.EnvironmentPlugin({
-        EMBEDDING_SDK_VERSION: null,
+        EMBEDDING_SDK_PACKAGE_VERSION: null,
         IS_EMBEDDING_SDK_BUILD: false,
       }),
       new rspack.NormalModuleReplacementPlugin(
