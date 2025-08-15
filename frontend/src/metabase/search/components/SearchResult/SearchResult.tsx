@@ -90,15 +90,15 @@ export function SearchResult({
       onClick(result);
       return;
     }
-    trackSearchClick(
-      "item",
-      index,
+    trackSearchClick({
+      itemType: "item",
+      position: index,
       context,
-      searchEngine || "unknown",
-      searchRequestId,
-      result.model,
+      searchEngine: searchEngine || "unknown",
+      requestId: searchRequestId,
+      entityModel: result.model,
       searchTerm,
-    );
+    });
     onChangeLocation(result.getUrl());
   };
 

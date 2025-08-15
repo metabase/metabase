@@ -66,15 +66,25 @@ export const trackSearchRequest = (
   dispatchTrackSearchQuery();
 };
 
-export const trackSearchClick = (
-  itemType: "item" | "view_more",
-  position: number,
-  context: SearchRequest["context"],
-  searchEngine: string,
-  requestId: string | null = null,
-  entityModel: string | null = null,
-  searchTerm: string | null = null,
-) => {
+type TrackSearchClickParams = {
+  itemType: "item" | "view_more";
+  position: number;
+  context: SearchRequest["context"];
+  searchEngine: string;
+  requestId?: string | null;
+  entityModel?: string | null;
+  searchTerm?: string | null;
+};
+
+export const trackSearchClick = ({
+  itemType,
+  position,
+  context,
+  searchEngine,
+  requestId = null,
+  entityModel = null,
+  searchTerm = null,
+}: TrackSearchClickParams) => {
   const dispatchTrackSearchClick = async () => {
     trackSchemaEvent("search", {
       event: "search_click",
