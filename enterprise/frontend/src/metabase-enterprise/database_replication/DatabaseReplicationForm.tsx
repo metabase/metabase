@@ -248,7 +248,9 @@ export const DatabaseReplicationForm = ({
                 </Box>
               )}
 
-              {previewResponseLoading && <Loader size="sm" />}
+              {isValidSchemaFilters && previewResponseLoading && (
+                <Loader size="sm" />
+              )}
 
               {noSyncTables.length > 0 && (
                 <Card radius="md" bg="bg-light" p={0}>
@@ -344,8 +346,10 @@ export const DatabaseReplicationForm = ({
               <Flex justify="end">
                 <Group>
                   <FormSubmitButton
-                    disabled={!previewResponse?.canSetReplication}
-                    loading={isValidSchemaFilters && previewResponseLoading}
+                    disabled={
+                      (isValidSchemaFilters && previewResponseLoading) ||
+                      !previewResponse?.canSetReplication
+                    }
                     label={t`Start replication`}
                     variant="filled"
                     mt="xs"
