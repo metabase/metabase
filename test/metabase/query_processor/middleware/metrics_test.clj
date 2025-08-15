@@ -633,7 +633,133 @@
       (is (=?
            {:stages [{:aggregation [[:avg {:display-name "total_price_no_tax_no_discount_metric"} some?]]}]}
            (adjust (-> (lib/query mp (meta/table-metadata :products))
+                       (lib/aggregate (lib.metadata/metric mp (:id source-metric)))))))))
+
+  (testing "Metric with breakout should not show full query description as display-name"
+    (let [[source-metric mp] (mock-metric meta/metadata-provider
+                                          (-> (lib/query meta/metadata-provider (meta/table-metadata :products))
+                                              (lib/aggregate (lib/sum (meta/field-metadata :products :rating)))
+                                              (add-aggregation-options {:name "sum_of_total"}))
+                                          {:name "sum_of_total_metric"})]
+      (is (=?
+           {:stages [{:aggregation [[:sum {:display-name "sum_of_total_metric"} some?]]
+                      :breakout [some?]}]}
+           (adjust (-> (lib/query mp (meta/table-metadata :products))
+                       (lib/aggregate (lib.metadata/metric mp (:id source-metric)))
+                       (lib/breakout (meta/field-metadata :products :created-at)))))))))
+
+(deftest ^:parallel metric-with-filter-display-name-test
+  (testing "Metric with filter should not override display-name with query description"
+    (let [[source-metric mp] (mock-metric meta/metadata-provider
+                                          (-> (lib/query meta/metadata-provider (meta/table-metadata :products))
+                                              (lib/aggregate (lib/sum (meta/field-metadata :products :rating)))
+                                              (lib/filter (lib/> (meta/field-metadata :products :price) 10))
+                                              (add-aggregation-options {:name "sum_of_rating"}))
+                                          {:name "sum_of_rating_metric"})]
+      (is (=?
+           {:stages [{:aggregation [[:sum {:display-name "sum_of_rating_metric"
+                                           :name "sum_of_rating"} some?]]}]}
+           (adjust (-> (lib/query mp (meta/table-metadata :products))
                        (lib/aggregate (lib.metadata/metric mp (:id source-metric))))))))))
+
+(deftest ^:parallel metric-with-breakout-full-query-test
+  (testing "Metric with breakout should not show full query description in results (#58307)"
+    (let [[source-metric mp] (mock-metric meta/metadata-provider
+                                          (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                                              (lib/aggregate (lib/sum (meta/field-metadata :orders :total)))
+                                              (add-aggregation-options {:name "sum_of_total"}))
+                                          {:name "Total Orders"})
+          query (-> (lib/query mp (meta/table-metadata :orders))
+                    (lib/aggregate (lib.metadata/metric mp (:id source-metric)))
+                    (lib/breakout (-> (meta/field-metadata :orders :created-at)
+                                      (lib/with-temporal-bucket :month))))
+          adjusted-query (adjust query)
+          ;; Get the display info that would be used for chart rendering
+          returned-cols (lib/returned-columns adjusted-query -1)
+          ;; When there's a breakout, the aggregation column is after the breakout columns
+          aggregation-column (last returned-cols)
+          stage-description (lib/describe-query adjusted-query)]
+
+      (testing "The aggregation column should have the metric name, not the full query description"
+        (is (= "Total Orders" (:display-name aggregation-column)))
+        (is (not= stage-description (:display-name aggregation-column))))
+
+      (testing "The full query description should include 'Grouped by'"
+        (is (re-find #"Grouped by" stage-description)))
+
+      (testing "The full query description should be something like 'Orders, Total Orders, Grouped by Created At: Month'"
+        (is (re-find #"Orders.*Total Orders.*Grouped by Created At" stage-description)))
+
+      (testing "The aggregation in the adjusted query should have the correct display-name"
+        (is (=? {:stages [{:aggregation [[:sum {:display-name "Total Orders"
+                                                :name "sum_of_total"}
+                                          some?]]
+                           :breakout [some?]}]}
+                adjusted-query))))))
+
+(deftest ^:parallel metric-with-filter-and-breakout-test
+  (testing "Metric with filter and breakout should maintain correct display-name"
+    (let [[source-metric mp] (mock-metric meta/metadata-provider
+                                          (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                                              (lib/aggregate (lib/sum (meta/field-metadata :orders :total)))
+                                              (lib/filter (lib/> (meta/field-metadata :orders :total) 100))
+                                              (add-aggregation-options {:name "sum_of_large_orders"}))
+                                          {:name "Large Orders Total"})
+          query (-> (lib/query mp (meta/table-metadata :orders))
+                    (lib/aggregate (lib.metadata/metric mp (:id source-metric)))
+                    (lib/breakout (-> (meta/field-metadata :orders :created-at)
+                                      (lib/with-temporal-bucket :month))))
+          adjusted-query (adjust query)
+          returned-cols (lib/returned-columns adjusted-query -1)
+          aggregation-column (last returned-cols)]
+
+      (testing "The aggregation column should have the metric name"
+        (is (= "Large Orders Total" (:display-name aggregation-column))))
+
+      (testing "The aggregation should have a case statement due to the filter"
+        (is (=? {:stages [{:aggregation [[:sum {:display-name "Large Orders Total"
+                                                :name "sum_of_large_orders"}
+                                          [:case {} some?]]]
+                           :breakout [some?]}]}
+                adjusted-query))))))
+
+(deftest ^:parallel reproduce-e2e-metric-display-name-bug-test
+  (testing "Reproduce E2E bug: metric with query description as name shows in y-axis (#58307)"
+    ;; The bug occurs when a metric's name is somehow set to the full query description
+    ;; This can happen in certain scenarios where the metric name gets computed from the query
+
+    (let [;; Create a metric where the name is the query description (this is the bug scenario)
+          [source-metric mp] (mock-metric meta/metadata-provider
+                                          (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                                              (lib/aggregate (lib/sum (meta/field-metadata :orders :total)))
+                                              (add-aggregation-options {:name "sum_of_total"}))
+                                          ;; This is the bug - metric name is the full query description
+                                          {:name "Orders, Sum of Total, Grouped by Created At: Month"})
+
+          ;; Use the metric in a query with a breakout
+          query (-> (lib/query mp (meta/table-metadata :orders))
+                    (lib/aggregate (lib.metadata/metric mp (:id source-metric)))
+                    (lib/breakout (-> (meta/field-metadata :orders :created-at)
+                                      (lib/with-temporal-bucket :month))))
+
+          ;; Process through metrics middleware
+          adjusted-query (adjust query)
+
+          ;; Get what would be displayed
+          returned-cols (lib/returned-columns adjusted-query -1)
+          aggregation-column (last returned-cols)
+          y-axis-label (:display-name aggregation-column)]
+
+      (testing "The bug: y-axis shows the full query description"
+        (is (= "Orders, Sum of Total, Grouped by Created At: Month" y-axis-label)
+            "BUG REPRODUCED: Y-axis label is the full query description"))
+
+      (testing "The aggregation has the query description as display-name"
+        (let [agg (first (lib/aggregations adjusted-query))
+              agg-opts (second agg)]
+          (is (= "Orders, Sum of Total, Grouped by Created At: Month"
+                 (:display-name agg-opts))
+              "The display-name was set to the metric's name (which is the bug)"))))))
 
 (deftest ^:parallel metric-with-nested-segments-test
   (let [mp (lib.tu/mock-metadata-provider

@@ -128,7 +128,7 @@
           (lib.util/update-query-stage -1 update-in [:aggregation 0]
                                        #(-> %
                                             (case-wrap-metric-aggregation (filters->condition filters))
-                                            (lib.options/update-options merge aggregation-names)))
+                                            (lib.options/update-options merge (dissoc aggregation-names :display-name))))
           (lib.util/update-query-stage -1 dissoc :filters)))
     metric-query))
 
