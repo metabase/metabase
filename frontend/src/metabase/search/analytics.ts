@@ -13,6 +13,7 @@ type SearchRequestFilter = Pick<
   | "models"
   | "archived"
   | "q"
+  | "offset"
 >;
 
 export const trackSearchRequest = (
@@ -37,6 +38,7 @@ export const trackSearchRequest = (
     page_results: searchResponse.limit,
     search_engine: searchResponse.engine,
     request_id: requestId,
+    offset: searchRequest.offset ?? null,
   });
 };
 
