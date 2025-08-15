@@ -35,6 +35,14 @@ import { createSuggestionRenderer } from "./extensions/suggestionRenderer";
 import { useCardEmbedsTracking, useQuestionSelection } from "./hooks";
 import type { CardEmbedRef } from "./types";
 
+const BUBBLE_MENU_DISALLOWED_NODES: string[] = [
+  CardEmbed.name,
+  MetabotNode.name,
+  SmartLink.name,
+  Image.name,
+  "codeBlock",
+];
+
 const getMetabotPromptSerializer =
   (getState: () => DocumentsStoreState): PromptSerializer =>
   (node) => {
@@ -224,7 +232,10 @@ export const Editor: React.FC<EditorProps> = ({
         }}
       >
         <EditorContent data-testid="document-content" editor={editor} />
-        <EditorBubbleMenu editor={editor} />
+        <EditorBubbleMenu
+          editor={editor}
+          disallowedNodes={BUBBLE_MENU_DISALLOWED_NODES}
+        />
       </Box>
     </Box>
   );

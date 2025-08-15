@@ -15,10 +15,12 @@ import { FormatButton } from "./FormatButton";
 
 interface EditorBubbleMenuProps {
   editor: TiptapEditor;
+  disallowedNodes: string[];
 }
 
 export const EditorBubbleMenu: React.FC<EditorBubbleMenuProps> = ({
   editor,
+  disallowedNodes,
 }) => {
   const forceUpdate = useForceUpdate();
 
@@ -51,13 +53,7 @@ export const EditorBubbleMenu: React.FC<EditorBubbleMenuProps> = ({
           return false;
         }
 
-        // Don't show for code blocks
-        if (editor.isActive("codeBlock")) {
-          return false;
-        }
-
         // Don't show bubble menu for certain node types
-        const disallowedNodes = ["cardEmbed", "metabot", "smartLink", "image"];
 
         // Check if any disallowed node is active
         for (const nodeName of disallowedNodes) {
@@ -69,10 +65,7 @@ export const EditorBubbleMenu: React.FC<EditorBubbleMenuProps> = ({
         // Check if selection contains any disallowed nodes
         let hasDisallowedNode = false;
         state.doc.nodesBetween(from, to, (node) => {
-          if (
-            disallowedNodes.includes(node.type.name) ||
-            node.type.name === "codeBlock"
-          ) {
+          if (disallowedNodes.includes(node.type.name)) {
             hasDisallowedNode = true;
             return false; // Stop traversing
           }
