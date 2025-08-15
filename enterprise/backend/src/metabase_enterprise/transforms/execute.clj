@@ -3,6 +3,7 @@
    [clojure.core.async :as a]
    [metabase-enterprise.transforms.canceling :as canceling]
    [metabase-enterprise.transforms.models.transform-run :as transform-run]
+   [metabase-enterprise.transforms.settings :as transforms.settings]
    [metabase-enterprise.transforms.util :as transforms.util]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
@@ -37,10 +38,11 @@
    (transforms.util/activate-table! database target)))
 
 (defn run-transform!
-  "Run a compiled transform either locally or remotely."
+  "Run a compiled transform"
   [run-id driver transform-details opts]
   ;; local run is responsible for status
   (try
+    (canceling/chan-start-timeout-vthread! run-id (transforms.settings/transform-timeout))
     (binding [qp.pipeline/*canceled-chan* (a/promise-chan)]
       (canceling/chan-start-run! run-id qp.pipeline/*canceled-chan*)
       (driver/run-transform! driver transform-details opts))

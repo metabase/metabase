@@ -1,6 +1,9 @@
 (ns metabase-enterprise.transforms.canceling
   (:require
    [clojure.core.async :as a]
+   [clojurewerkz.quartzite.jobs :as jobs]
+   [clojurewerkz.quartzite.schedule.calendar-interval :as calendar-interval]
+   [clojurewerkz.quartzite.triggers :as triggers]
    [metabase-enterprise.transforms.models.transform-run :as transform-run]
    [metabase-enterprise.transforms.models.transform-run-cancelation :as wr.cancelation]
    [metabase.task.core :as task]
@@ -10,6 +13,8 @@
    (java.util.concurrent Executors ScheduledExecutorService TimeUnit)))
 
 (set! *warn-on-reflection* true)
+
+(def ^:private job-key "metabase-enterprise.transforms.canceling")
 
 (defonce ^:private ^ScheduledExecutorService scheduler
   (Executors/newScheduledThreadPool 1))
@@ -23,7 +28,7 @@
   nil)
 
 (defn chan-end-run!
-  "Deregisters the cancel-chan for run-id"
+  "Deregisters the cancel-chan for run-id and returns the channel"
   [run-id]
   (-> (swap-vals! connections dissoc run-id)
       first ;; old value
@@ -47,6 +52,36 @@
 (defn- cancel-run! [run-id]
   (when (chan-signal-cancel! run-id)
     (transform-run/cancel-run! run-id)))
+
+(defn- cancel-old-transform-runs! [_ctx]
+  (log/trace "Canceling items that haven't been marked canceled.")
+  (try
+    (transform-run/cancel-old-canceling-runs! 2 :minute)
+    (catch Throwable t
+      (log/error t "Error canceling items not marked canceled."))))
+
+(task/defjob  ^{:doc "Cancel items that haven't been canceled in two minutes"
+                org.quartz.DisallowConcurrentExecution true}
+  CancelOldTransformRuns [ctx]
+  (cancel-old-transform-runs! ctx))
+
+(defn- start-job! []
+  (when (not (task/job-exists? job-key))
+    (let [job (jobs/build
+               (jobs/of-type CancelOldTransformRuns)
+               (jobs/with-identity (jobs/key job-key)))
+          trigger (triggers/build
+                   (triggers/with-identity (triggers/key job-key))
+                   (triggers/start-now)
+                   (triggers/with-schedule
+                    (calendar-interval/schedule
+                     (calendar-interval/with-interval-in-minutes 10)
+                     (calendar-interval/with-misfire-handling-instruction-do-nothing))))]
+      (task/schedule-task! job trigger))))
+
+(defmethod task/init! ::CancelOldTransformRuns [_]
+  (log/info "Scheduling cancel transforms task.")
+  (start-job!))
 
 (defmethod task/init! ::CancelRuns [_]
   ;; does not use the Quartz scheduler
