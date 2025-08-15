@@ -3,7 +3,7 @@ import { t } from "ttag";
 import { Box, Flex, Loader, Stack, Text, Title } from "metabase/ui";
 
 export const DatabaseReplicationSettingUp = () => (
-  <Stack align="center" gap="lg" my="6rem">
+  <Stack align="center" gap="lg" my="4.5rem">
     <Box h={96} pos="relative" w={96}>
       <img src="app/assets/img/metabot-cloud-96x96.svg" alt="Metabot Cloud" />
 
@@ -36,7 +36,6 @@ export const DatabaseReplicationSettingUp = () => (
         c="text-secondary"
         fz="md"
         lh={1.43}
-        maw={380}
       >{t`This will take just a minute or so`}</Text>
     </Box>
   </Stack>
