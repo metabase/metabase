@@ -15,7 +15,7 @@ export const createDocument = ({
   document: DocumentContent;
   alias?: string;
 }): Cypress.Chainable<Cypress.Response<Document>> => {
-  cy.log(`Create a collection: ${name}`);
+  cy.log(`Create a document: ${name}`);
 
   return cy
     .request("POST", "/api/ee/document", {
