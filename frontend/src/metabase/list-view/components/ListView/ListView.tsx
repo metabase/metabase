@@ -11,6 +11,7 @@ import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type { Card, DatasetColumn, DatasetData } from "metabase-types/api";
 
 import styles from "./ListView.module.css";
+import { useMount } from "react-use";
 
 // Light background colors for category values
 const CATEGORY_COLORS = [
@@ -52,6 +53,7 @@ export interface ListViewProps {
   entityType?: string;
   card: Card;
   metadata?: Metadata;
+  rowIndex?: number;
 }
 
 export function ListView({
@@ -63,6 +65,7 @@ export function ListView({
   entityType,
   card,
   metadata,
+  rowIndex,
 }: ListViewProps) {
   const { cols, rows } = data;
 
@@ -79,6 +82,13 @@ export function ListView({
     useListColumns(cols);
 
   const openObjectDetail = useObjectDetail(data, card, metadata);
+  useMount(() => {
+    if (rowIndex && rowIndex < rows.length) {
+      window.requestAnimationFrame(() => {
+        virtualizer.scrollToIndex(rowIndex, { align: "center" });
+      });
+    }
+  });
 
   // Get the appropriate icon based on entity type
   const getEntityIcon = (entityType?: string) => {

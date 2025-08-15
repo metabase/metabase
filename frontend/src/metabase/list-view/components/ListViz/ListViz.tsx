@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { withRouter } from "react-router";
 import { t } from "ttag";
 
 import { displayNameForColumn } from "metabase/lib/formatting";
@@ -191,71 +192,74 @@ const vizDefinition = {
   },
 };
 
-export function ListViz({
-  data,
-  settings,
-  onVisualizationClick,
-  card,
-  metadata,
-}: VisualizationProps) {
-  const question = useSelector(getQuestion);
-
-  const { sortedColumnName, sortingDirection } = useMemo(() => {
-    if (!question) {
-      return {};
-    }
-    const query = question.query();
-    const [orderBy] = Lib.orderBys(query, -1);
-    if (orderBy) {
-      const { name, direction } = Lib.displayInfo(query, -1, orderBy);
-      return {
-        sortedColumnName: name,
-        sortingDirection: direction,
-      };
-    }
-    return {};
-  }, [question]);
-
-  // Get the entity type from the question's source table
-  const entityType = useMemo(() => {
-    if (!question) {
-      return undefined;
-    }
-
-    try {
+export const ListViz = withRouter(
+  ({
+    data,
+    settings,
+    onVisualizationClick,
+    card,
+    metadata,
+    ...props
+  }: VisualizationProps) => {
+    const question = useSelector(getQuestion);
+    const { sortedColumnName, sortingDirection } = useMemo(() => {
+      if (!question) {
+        return {};
+      }
       const query = question.query();
-      const sourceTableId = Lib.sourceTableOrCardId(query);
-      const metadata = question.metadata();
-      const table = metadata.table(sourceTableId);
+      const [orderBy] = Lib.orderBys(query, -1);
+      if (orderBy) {
+        const { name, direction } = Lib.displayInfo(query, -1, orderBy);
+        return {
+          sortedColumnName: name,
+          sortingDirection: direction,
+        };
+      }
+      return {};
+    }, [question]);
 
-      // Return the entity type if available, otherwise undefined
-      // Use type assertion since entity_type exists in the database but not in TypeScript types
-      return (table as any)?.entity_type;
-    } catch (error) {
-      // If there's an error getting the entity type, return undefined
-      console.warn("Could not determine entity type:", error);
-      return undefined;
-    }
-  }, [question]);
+    // Get the entity type from the question's source table
+    const entityType = useMemo(() => {
+      if (!question) {
+        return undefined;
+      }
 
-  const handleSort = (column: DatasetColumn) => {
-    onVisualizationClick({ column });
-  };
+      try {
+        const query = question.query();
+        const sourceTableId = Lib.sourceTableOrCardId(query);
+        const metadata = question.metadata();
+        const table = metadata.table(sourceTableId);
 
-  return (
-    <Box w="100%" h="100%" pos="absolute">
-      <ListView
-        data={data}
-        settings={settings}
-        sortedColumnName={sortedColumnName}
-        sortingDirection={sortingDirection}
-        onSortClick={handleSort}
-        entityType={entityType}
-        card={card}
-        metadata={metadata}
-      />
-    </Box>
-  );
-}
+        // Return the entity type if available, otherwise undefined
+        // Use type assertion since entity_type exists in the database but not in TypeScript types
+        return (table as any)?.entity_type;
+      } catch (error) {
+        // If there's an error getting the entity type, return undefined
+        console.warn("Could not determine entity type:", error);
+        return undefined;
+      }
+    }, [question]);
+
+    const handleSort = (column: DatasetColumn) => {
+      onVisualizationClick({ column });
+    };
+
+    return (
+      <Box w="100%" h="100%" pos="absolute">
+        <ListView
+          data={data}
+          settings={settings}
+          sortedColumnName={sortedColumnName}
+          sortingDirection={sortingDirection}
+          onSortClick={handleSort}
+          entityType={entityType}
+          card={card}
+          metadata={metadata}
+          rowIndex={props.location.state?.rowIndex}
+        />
+      </Box>
+    );
+  },
+);
 
 Object.assign(ListViz, vizDefinition);

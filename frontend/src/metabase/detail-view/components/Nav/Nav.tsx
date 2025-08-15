@@ -24,7 +24,10 @@ export const Nav = withRouter(({ rowName, table, ...props }: Props) => {
     return null;
   }
 
-  const url = getExploreTableUrl(table, props.location?.state?.card);
+  const [url, hash] = getExploreTableUrl(
+    table,
+    props.location?.state?.card,
+  ).split("#");
 
   return (
     <Group align="center" gap="sm" miw={0} wrap="nowrap" {...props}>
@@ -50,7 +53,15 @@ export const Nav = withRouter(({ rowName, table, ...props }: Props) => {
 
       <Separator />
 
-      <Breadcrumb href={url}>{table.display_name}</Breadcrumb>
+      <Breadcrumb
+        href={{
+          pathname: url,
+          hash,
+          state: { rowIndex: props?.location?.state?.rowIndex },
+        }}
+      >
+        {table.display_name}
+      </Breadcrumb>
 
       {rowName && (
         <>

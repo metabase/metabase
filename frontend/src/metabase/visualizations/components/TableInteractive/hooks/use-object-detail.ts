@@ -78,7 +78,7 @@ export const useObjectDetail = (
         dispatch(
           push({
             pathname: `/table/${tableId}/detail/${objectId}`,
-            state: { card },
+            state: { card, rowIndex },
           }),
         );
       }
