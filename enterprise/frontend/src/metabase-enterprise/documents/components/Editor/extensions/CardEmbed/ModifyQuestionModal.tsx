@@ -140,7 +140,6 @@ export const ModifyQuestionModal = ({
               reportTimezone={reportTimezone}
               hasVisualizeButton={false}
               updateQuestion={handleUpdateQuestion}
-              runQuestionQuery={async () => {}}
             />
           </Box>
           <Flex mt="lg" justify="flex-end" gap="0.5rem">
