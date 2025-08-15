@@ -9,11 +9,15 @@ export const SearchResultSection = ({
   totalResults,
   searchEngine,
   searchRequestId,
+  page,
+  pageSize,
 }: {
   results: WrappedResult[];
   totalResults: number;
   searchEngine?: string;
   searchRequestId?: string;
+  page?: number;
+  pageSize?: number;
 }) => {
   const resultsLabel = ngettext(
     msgid`${totalResults} result`,
@@ -28,11 +32,12 @@ export const SearchResultSection = ({
           {resultsLabel}
         </Text>
         {results.map((item, index) => {
+          const absolutePosition = (page ?? 0) * (pageSize ?? 1) + index;
           return (
             <SearchResult
               key={`${item.id}__${item.model}`}
               result={item}
-              index={index}
+              index={absolutePosition}
               searchEngine={searchEngine}
               searchRequestId={searchRequestId}
             />
