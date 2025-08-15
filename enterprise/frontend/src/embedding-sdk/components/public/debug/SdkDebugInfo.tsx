@@ -1,4 +1,5 @@
 /* eslint-disable i18next/no-literal-string */
+import cx from "classnames";
 import dayjs from "dayjs";
 import type { HTMLAttributes } from "react";
 
@@ -8,6 +9,8 @@ import {
 } from "embedding-sdk/lib/get-embedding-sdk-package-build-data";
 import { useLazySelector } from "embedding-sdk/sdk-shared/hooks/use-lazy-selector";
 import { getMetabaseInstanceVersion } from "embedding-sdk/store/selectors";
+
+import Styles from "./SdkDebugInfo.module.css";
 
 type BuildTimeData = {
   formattedDate: string;
@@ -112,15 +115,8 @@ export const SdkDebugInfo = (props: HTMLAttributes<HTMLDivElement>) => {
   return (
     <div
       {...props}
-      className={`sdk-debug-info mb-wrapper ${props.className ?? ""}`}
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        fontSize: "12px",
-        textAlign: "left",
-        gap: "10px",
-        ...props.style,
-      }}
+      className={cx("mb-wrapper", Styles.sdkDebugInfo, props.className)}
+      style={props.style}
     >
       <DebugTable titlePrefix="SDK Package" {...sdkPackageInfo} />
       <DebugTable titlePrefix="SDK Bundle" {...sdkBundleInfo} />
