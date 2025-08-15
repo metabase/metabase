@@ -24,7 +24,7 @@
                                                    [:map
                                                     [:name               ms/NonBlankString]
                                                     [:details            ms/Map]]]]]]
-  (database-routing/route-database router_database_id destinations {:check-connection-details? true}))
+  (database-routing/route-database router_database_id destinations {:check-connection-details? check_connection_details}))
 
 (api.macros/defendpoint :put "/router-database/:id"
   "Updates an existing Database with the `user_attribute` to route on. Will either:
