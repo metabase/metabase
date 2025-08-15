@@ -645,10 +645,6 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
       component: company_component,
       source: company_source,
     },
-    currency: {
-      component: currency_component,
-      source: currency_source,
-    },
     connections: {
       component: connections_component,
       source: connections_source,
