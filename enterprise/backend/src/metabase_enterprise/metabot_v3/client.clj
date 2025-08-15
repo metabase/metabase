@@ -91,6 +91,9 @@
 (defn- example-question-generation-endpoint []
   (str (metabot-v3.settings/ai-service-base-url) "/v1/example-question-generation/batch"))
 
+(defn- generate-embeddings-endpoint []
+  (str (metabot-v3.settings/ai-service-base-url) "/v1/embeddings"))
+
 (mu/defn request :- ::metabot-v3.client.schema/ai-service.response
   "Make a V2 request to the AI Service."
   [{:keys [context messages profile-id conversation-id session-id state]}
@@ -369,4 +372,20 @@
       (throw (ex-info (format "Error in generate-example-questions request to AI service: unexpected status: %d %s"
                               (:status response) (:reason-phrase response))
                       {:request (assoc options :body payload)
+                       :response response})))))
+
+(defn generate-embeddings
+  "Generate vector embeddings for a batch of inputs questions for the given models and metrics."
+  [model-name texts]
+  (let [url (generate-embeddings-endpoint)
+        body {:model model-name
+              :input texts
+              :encoding_format "base64"}
+        options (build-request-options body)
+        response (post! url options)]
+    (if (= (:status response) 200)
+      (:body response)
+      (throw (ex-info (format "Error in generate-embeddings request to AI service: unexpected status: %d %s"
+                              (:status response) (:reason-phrase response))
+                      {:request (assoc options :body body)
                        :response response})))))

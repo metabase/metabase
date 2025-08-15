@@ -203,7 +203,7 @@ export const setupSdkDashboard = async ({
       />
     </Box>,
     {
-      sdkProviderProps: {
+      componentProviderProps: {
         ...providerProps,
         authConfig: createMockSdkConfig(),
       },

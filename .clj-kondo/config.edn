@@ -408,6 +408,7 @@
   clojure.test.check.clojure-test/defspec                                               clojure.test/deftest
   clojure.test.check.properties/for-all                                                 clojure.core/let
   clojurewerkz.quartzite.jobs/defjob                                                    clojure.core/defn
+  com.climate.claypoole/with-shutdown!                                                  clojure.core/let
   instaparse.core/defparser                                                             clojure.core/def
   metabase-enterprise.action-v2.test-util/with-test-tables!                             clojure.core/let
   metabase-enterprise.content-translation.routes-test/with-new-secret-key!              clojure.core/fn
@@ -515,6 +516,7 @@
    metabase-enterprise.advanced-permissions.models.permissions.application-permissions-test/with-new-group-and-current-graph hooks.common/with-two-top-level-bindings
    metabase-enterprise.audit-app.pages-test/with-temp-objects                                                                hooks.common/with-one-binding
    metabase-enterprise.cache.config-test/with-temp-persist-models                                                            hooks.common/with-seven-bindings
+   metabase-enterprise.semantic-search.db.connection/with-migrate-tx                                                         hooks.common/let-one-with-optional-value
    metabase-enterprise.serialization.test-util/with-temp-dpc                                                                 hooks.toucan2.tools.with-temp/with-temp
    metabase.api.common.internal-test/with-jetty-server                                                                       hooks.common/with-one-binding
    metabase.api.macros/defendpoint                                                                                           hooks.metabase.api.macros/defendpoint

@@ -805,6 +805,10 @@ export const PLUGIN_SMTP_OVERRIDE: {
   SMTPOverrideConnectionForm: PluginPlaceholder,
 };
 
+export const PLUGIN_SEMANTIC_SEARCH = {
+  SearchSettingsWidget: PluginPlaceholder,
+};
+
 export type TransformsPlugin = {
   getAdminPaths(): AdminPath[];
   getAdminRoutes(): ReactNode;

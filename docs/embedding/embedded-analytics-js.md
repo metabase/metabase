@@ -157,7 +157,7 @@ For example, this will define the font, color, and size for text, color for back
 </script>
 ```
 
-For the full list of theme settings, see [Appearance](../sdk/appearance.md).
+For the full list of theme settings, see [Appearance](./sdk/appearance.md).
 
 ## Authentication
 
@@ -186,7 +186,7 @@ Note that this will not work in some browsers, or in incognito mode. We recommen
 
 To use an API key to test your embeds:
 
-1. Create an [API key](../../people-and-groups/api-keys.md)
+1. Create an [API key](../people-and-groups/api-keys.md)
 2. Add `apiKey: "YOUR_API_KEY"` to `defineMetabaseConfig()`:
 
 ```html
@@ -295,7 +295,7 @@ Renders a dashboard.
 
 **Required parameters:**
 
-- `dashboard-id` - This can be a regular ID or an entity ID. [Using Entity IDs](../installation-and-operation/serialization#entity-ids-work-with-embedding) in your embeds will ensure sure that the IDs are stable when exporting from one Metabase and importing to another Metabase.
+- `dashboard-id` - This can be a regular ID or an entity ID. [Using Entity IDs](../installation-and-operation/serialization.md#entity-ids-work-with-embedding) in your embeds will ensure sure that the IDs are stable when exporting from one Metabase and importing to another Metabase.
 
 **Optional parameters:**
 
@@ -334,7 +334,7 @@ Renders a question (chart).
 
 **Required parameters:**
 
-- `question-id` - This can be a regular ID or an entity ID. [Using Entity IDs](../installation-and-operation/serialization#entity-ids-work-with-embedding) in your embeds will ensure sure that the IDs are stable when exporting from one Metabase and importing to another Metabase.
+- `question-id` - This can be a regular ID or an entity ID. [Using Entity IDs](../installation-and-operation/serialization.md#entity-ids-work-with-embedding) in your embeds will ensure sure that the IDs are stable when exporting from one Metabase and importing to another Metabase.
 
   Use `question-id="new"` to embed the query builder exploration interface.
 

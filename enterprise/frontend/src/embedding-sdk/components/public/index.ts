@@ -7,7 +7,7 @@ export {
   EditableDashboard,
 } from "./dashboard";
 export { InteractiveQuestion } from "./InteractiveQuestion";
-export { MetabaseProvider } from "./MetabaseProvider";
+export { ComponentProvider } from "./ComponentProvider";
 export { StaticQuestion } from "./StaticQuestion";
 
 /**
