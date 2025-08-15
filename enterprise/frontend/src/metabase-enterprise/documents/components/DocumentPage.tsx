@@ -1,4 +1,5 @@
 import type { Editor as TiptapEditor } from "@tiptap/core";
+import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
 import cx from "classnames";
 import dayjs from "dayjs";
 import { useCallback, useEffect, useState } from "react";
@@ -250,7 +251,7 @@ export const DocumentPage = ({
         const cardsToSave: Record<number, Card> = {};
         const processedCardIds = new Set<number>();
 
-        editorInstance.state.doc.descendants((node: any) => {
+        editorInstance.state.doc.descendants((node: ProseMirrorNode) => {
           if (node.type.name === "cardEmbed") {
             const cardId = node.attrs.id;
             if (!processedCardIds.has(cardId)) {
@@ -263,12 +264,12 @@ export const DocumentPage = ({
           }
         });
 
-        const documentAst = editorInstance ? editorInstance.getJSON() : null;
+        const documentAst = editorInstance.getJSON();
         const name =
           documentTitle ||
           t`Untitled document - ${dayjs().local().format("MMMM D, YYYY")}`;
 
-        const newDocumentData: any = {
+        const newDocumentData = {
           name,
           document: documentAst,
           cards: Object.keys(cardsToSave).length > 0 ? cardsToSave : undefined,
