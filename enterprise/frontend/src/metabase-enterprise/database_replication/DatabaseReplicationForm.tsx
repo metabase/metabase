@@ -235,12 +235,11 @@ export const DatabaseReplicationForm = ({
                   <Flex
                     align="flex-start"
                     direction="row"
-                    gap="xs"
                     justify="flex-start"
                     wrap="nowrap"
                     p="md"
                   >
-                    <Box maw="16">
+                    <Box maw="16" mr="sm" mt={1}>
                       <Icon className={CS.ml1} name="info_outline" size={16} />
                     </Box>
                     <Box w="100%">
@@ -259,7 +258,6 @@ export const DatabaseReplicationForm = ({
                         <Flex
                           align="center"
                           direction="row"
-                          gap="xs"
                           justify="flex-start"
                           wrap="nowrap"
                         >
