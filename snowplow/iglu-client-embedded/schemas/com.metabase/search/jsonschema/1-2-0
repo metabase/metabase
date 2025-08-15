@@ -183,6 +183,14 @@
         "null"
       ],
       "maxLength": 1024
+    },
+    "search_term_hash": {
+      "description": "A hash of the search term and instance id",
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 1024
     }
   },
   "required": [

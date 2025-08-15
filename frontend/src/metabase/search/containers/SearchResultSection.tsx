@@ -9,6 +9,7 @@ export const SearchResultSection = ({
   totalResults,
   searchEngine,
   searchRequestId,
+  searchTerm,
   page,
   pageSize,
 }: {
@@ -16,6 +17,7 @@ export const SearchResultSection = ({
   totalResults: number;
   searchEngine?: string;
   searchRequestId?: string;
+  searchTerm?: string;
   page?: number;
   pageSize?: number;
 }) => {
@@ -40,6 +42,7 @@ export const SearchResultSection = ({
               index={absolutePosition}
               searchEngine={searchEngine}
               searchRequestId={searchRequestId}
+              searchTerm={searchTerm}
             />
           );
         })}

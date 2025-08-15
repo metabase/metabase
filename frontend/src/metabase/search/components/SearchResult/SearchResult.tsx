@@ -37,6 +37,7 @@ export function SearchResult({
   context = "search-app",
   searchEngine,
   searchRequestId,
+  searchTerm,
 }: {
   result: WrappedResult;
   compact?: boolean;
@@ -48,6 +49,7 @@ export function SearchResult({
   context?: SearchContext;
   searchEngine?: string;
   searchRequestId?: string;
+  searchTerm?: string;
 }) {
   const { name, model, description, moderated_status }: WrappedResult = result;
 
@@ -95,6 +97,7 @@ export function SearchResult({
       searchEngine || "unknown",
       searchRequestId,
       result.model,
+      searchTerm,
     );
     onChangeLocation(result.getUrl());
   };

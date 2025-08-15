@@ -182,6 +182,7 @@ export const useCommandPalette = ({
                 searchResults?.engine || "unknown",
                 searchRequestId,
                 null,
+                debouncedSearchText,
               );
             },
             priority: Priority.HIGH,
@@ -209,6 +210,7 @@ export const useCommandPalette = ({
                   searchResults?.engine || "unknown",
                   searchRequestId,
                   result.model,
+                  debouncedSearchText,
                 );
               },
               extra: {

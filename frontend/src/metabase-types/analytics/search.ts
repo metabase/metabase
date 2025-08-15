@@ -18,6 +18,7 @@ type SearchEventSchema = {
   request_id?: string | null;
   offset?: number | null;
   entity_model?: string | null;
+  search_term_hash?: string | null;
 };
 
 type ValidateEvent<
@@ -45,6 +46,7 @@ type SearchContext =
 
 export type SearchQueryEvent = ValidateEvent<{
   event: "search_query";
+  search_term_hash: string | null;
   runtime_milliseconds: number;
   context: SearchContext | null;
   total_results: number;
@@ -70,6 +72,7 @@ export type SearchClickEvent = ValidateEvent<{
   search_engine: string | null;
   request_id: string | null;
   entity_model: string | null;
+  search_term_hash: string | null;
 }>;
 
 export type SearchEvent = SearchQueryEvent | SearchClickEvent;

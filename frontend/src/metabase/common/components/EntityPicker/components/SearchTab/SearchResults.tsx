@@ -19,6 +19,7 @@ interface Props<
   searchResults: SearchItem[];
   searchEngine?: string;
   searchRequestId?: string;
+  searchTerm?: string;
   selectedItem: Item | null;
   onItemSelect: (item: Item) => void;
 }
@@ -32,6 +33,7 @@ export const SearchResults = <
   searchResults,
   searchEngine,
   searchRequestId,
+  searchTerm,
   selectedItem,
   onItemSelect,
 }: Props<Id, Model, Item>) => {
@@ -59,6 +61,7 @@ export const SearchResults = <
                     searchEngine || "unknown",
                     searchRequestId,
                     item.model,
+                    searchTerm,
                   );
                   onItemSelect(item as unknown as Item);
                 }}

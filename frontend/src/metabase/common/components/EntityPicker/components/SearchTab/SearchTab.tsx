@@ -24,6 +24,7 @@ interface Props<
   searchResults: SearchItem[];
   searchEngine?: string;
   searchRequestId?: string;
+  searchTerm?: string;
   selectedItem: Item | null;
   onItemSelect: (item: Item) => void;
   onSearchScopeChange: (scope: EntityPickerSearchScope) => void;
@@ -40,6 +41,7 @@ export const SearchTab = <
   searchResults,
   searchEngine,
   searchRequestId,
+  searchTerm,
   selectedItem,
   onItemSelect,
   onSearchScopeChange,
@@ -89,6 +91,7 @@ export const SearchTab = <
             searchResults={searchResults}
             searchEngine={searchEngine}
             searchRequestId={searchRequestId}
+            searchTerm={searchTerm}
             selectedItem={selectedItem}
             onItemSelect={onItemSelect}
           />
