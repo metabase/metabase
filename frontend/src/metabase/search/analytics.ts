@@ -19,6 +19,7 @@ export const trackSearchRequest = (
   searchRequest: SearchRequestFilter,
   searchResponse: SearchResponse,
   duration: number,
+  requestId: string | null = null,
 ) => {
   trackSchemaEvent("search", {
     event: "search_query",
@@ -35,6 +36,7 @@ export const trackSearchRequest = (
     total_results: searchResponse.total,
     page_results: searchResponse.limit,
     search_engine: searchResponse.engine,
+    request_id: requestId,
   });
 };
 
