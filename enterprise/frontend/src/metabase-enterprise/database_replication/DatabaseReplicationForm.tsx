@@ -332,6 +332,7 @@ export const DatabaseReplicationForm = ({
                     loading={previewResponseLoading}
                     label={t`Start replication`}
                     variant="filled"
+                    mt="xs"
                   />
                 </Group>
               </Flex>
