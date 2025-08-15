@@ -81,9 +81,18 @@ export function ContentManager({ settings }: ViewContentProps) {
     ))
     .with({ type: "dashboard", id: P.nonNullable }, ({ id }) => {
       return isReadOnly ? (
-        <InteractiveDashboard dashboardId={id} withDownloads />
+        <InteractiveDashboard
+          dashboardId={id}
+          withDownloads
+          style={{ height: "100%" }}
+          drillThroughQuestionProps={{ isSaveEnabled: false }}
+        />
       ) : (
-        <EditableDashboard withCardTitle dashboardId={id} />
+        <EditableDashboard
+          withCardTitle
+          dashboardId={id}
+          style={{ height: "100%" }}
+        />
       );
     })
     .with(
