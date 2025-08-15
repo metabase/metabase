@@ -72,6 +72,7 @@ export const useCommandPalette = ({
     currentData: searchResults,
     isFetching: isSearchLoading,
     error: searchError,
+    requestId: searchRequestId,
   } = useSearchQuery(
     {
       q: debouncedSearchText,
@@ -196,6 +197,7 @@ export const useCommandPalette = ({
                   index,
                   "command-palette",
                   searchResults?.engine || "unknown",
+                  searchRequestId,
                 );
               },
               extra: {
@@ -229,6 +231,7 @@ export const useCommandPalette = ({
     searchResults,
     locationQuery,
     isSearchTypeaheadEnabled,
+    searchRequestId,
   ]);
 
   useRegisterActions(searchResultActions, [searchResultActions]);

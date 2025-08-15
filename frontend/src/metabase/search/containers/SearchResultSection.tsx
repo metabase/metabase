@@ -8,10 +8,12 @@ export const SearchResultSection = ({
   results,
   totalResults,
   searchEngine,
+  searchRequestId,
 }: {
   results: WrappedResult[];
   totalResults: number;
   searchEngine?: string;
+  searchRequestId?: string;
 }) => {
   const resultsLabel = ngettext(
     msgid`${totalResults} result`,
@@ -32,6 +34,7 @@ export const SearchResultSection = ({
               result={item}
               index={index}
               searchEngine={searchEngine}
+              searchRequestId={searchRequestId}
             />
           );
         })}

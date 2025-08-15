@@ -18,6 +18,7 @@ interface Props<
   folder: Item | undefined;
   searchResults: SearchItem[];
   searchEngine?: string;
+  searchRequestId?: string;
   selectedItem: Item | null;
   onItemSelect: (item: Item) => void;
 }
@@ -30,6 +31,7 @@ export const SearchResults = <
   folder,
   searchResults,
   searchEngine,
+  searchRequestId,
   selectedItem,
   onItemSelect,
 }: Props<Id, Model, Item>) => {
@@ -55,6 +57,7 @@ export const SearchResults = <
                     index,
                     "entity-picker",
                     searchEngine || "unknown",
+                    searchRequestId,
                   );
                   onItemSelect(item as unknown as Item);
                 }}

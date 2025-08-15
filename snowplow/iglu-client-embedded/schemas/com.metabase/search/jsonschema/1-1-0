@@ -158,6 +158,14 @@
         "null"
       ],
       "maxLength": 1024
+    },
+    "request_id": {
+      "description": "The unique request ID for the search request",
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 1024
     }
   },
   "required": [
