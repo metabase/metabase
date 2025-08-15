@@ -108,6 +108,8 @@ function SearchApp({ location }) {
                 results={list}
                 searchEngine={data.engine}
                 searchRequestId={requestId}
+                page={page}
+                pageSize={PAGE_SIZE}
               />
               <Group justify="flex-end" align="center" my="1rem">
                 <PaginationControls
