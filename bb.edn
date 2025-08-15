@@ -112,11 +112,11 @@
    :examples [["./bin/mage nrepl" "Starts the nrepl server"]
               ["./bin/mage nrepl --port 50506" "Starts the nrepl server"]
               ["./bin/mage nrepl -p 50506" "Starts the nrepl server"]]
-   :options  [["-p" "--port PORT" "optionally provide a port to run the nrepl server on"]]
+   :options  [["-p" "--port PORT" "optionally provide a port to run the nrepl server on" :default 1667 :parse-fn Integer/parseInt]]
    :task     (task!
-              (let [{:keys [port] :or {port "1667"}} (:options parsed)]
+              (let [{:keys [port]} (:options parsed)]
                 (spit ".nrepl-port" port)
-                (nrepl.server/start-server! {:port (Integer/parseInt port)})
+                (nrepl.server/start-server! {:port port})
                 (deref (promise))))}
 
   lint-migrations
