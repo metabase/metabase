@@ -66,25 +66,22 @@ jobs:
               const issueData = JSON.parse(process.env.ISSUE_DATA);
               const issueAuthor = issueData.user.login;
               
-              // Check if user is a member of the metabase organization
-              const { data: membership } = await github.rest.orgs.getMembershipForUser({
-                org: 'metabase',
-                username: issueAuthor
+              // Check if user is a public member of the metabase organization
+              const { data: publicMembers } = await github.rest.orgs.listPublicMembers({
+                org: 'metabase'
               });
               
-              if (membership.state === 'active') {
-                console.log(`User ${issueAuthor} is an active member of the Metabase organization. Proceeding with bug fix automation.`);
+              const isPublicMember = publicMembers.some(member => member.login === issueAuthor);
+              
+              if (isPublicMember) {
+                console.log(`User ${issueAuthor} is a public member of the Metabase organization. Proceeding with bug fix automation.`);
                 core.setOutput('is_employee', 'true');
               } else {
-                console.log(`User ${issueAuthor} is not an active member of the Metabase organization. Skipping bug fix automation.`);
+                console.log(`User ${issueAuthor} is not a public member of the Metabase organization. Skipping bug fix automation.`);
                 core.setOutput('is_employee', 'false');
               }
             } catch (error) {
-              if (error.status === 404) {
-                console.log(`User ${issueAuthor} is not a member of the Metabase organization or membership is private. Skipping bug fix automation.`);
-              } else {
-                console.error('Error checking organization membership:', error);
-              }
+              console.error('Error checking public organization membership:', error);
               core.setOutput('is_employee', 'false');
             }
 
