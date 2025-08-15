@@ -8,8 +8,8 @@ import {
 import * as MetabaseError from "embedding-sdk/errors";
 import {
   EMBEDDING_SDK_PACKAGE_UNKNOWN_VERSION,
-  getEmbeddingSdkPackageVersion,
-} from "embedding-sdk/lib/get-embedding-sdk-package-version";
+  getEmbeddingSdkPackageBuildData,
+} from "embedding-sdk/lib/get-embedding-sdk-package-build-data";
 import { getIsLocalhost } from "embedding-sdk/lib/is-localhost";
 import type { SdkStoreState } from "embedding-sdk/store/types";
 import type { MetabaseAuthConfig } from "embedding-sdk/types/auth-config";
@@ -154,7 +154,8 @@ export function getSdkRequestHeaders(hash?: string): Record<string, string> {
     "X-Metabase-Client": "embedding-sdk-react",
     // eslint-disable-next-line no-literal-metabase-strings -- header name
     "X-Metabase-Client-Version":
-      getEmbeddingSdkPackageVersion() ?? EMBEDDING_SDK_PACKAGE_UNKNOWN_VERSION,
+      getEmbeddingSdkPackageBuildData().version ??
+      EMBEDDING_SDK_PACKAGE_UNKNOWN_VERSION,
     // eslint-disable-next-line no-literal-metabase-strings -- header name
     ...(hash && { "X-Metabase-SDK-JWT-Hash": hash }),
   };

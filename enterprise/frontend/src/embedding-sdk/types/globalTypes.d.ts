@@ -11,5 +11,7 @@ interface Window {
 
   METABASE_PROVIDER_PROPS_STORE?: typeof import("embedding-sdk/sdk-shared/lib/ensure-metabase-provider-props-store").MetabaseProviderPropsStore;
 
-  EMBEDDING_SDK_PACKAGE_VERSION?: string;
+  // Build info
+  METABASE_EMBEDDING_SDK_PACKAGE_VERSION?: string;
+  METABASE_EMBEDDING_SDK_PACKAGE_BUILD_INFO?: typeof import("metabase/embedding-sdk/types/build-info").BuildInfo;
 }

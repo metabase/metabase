@@ -2,13 +2,13 @@ import { renderHook } from "@testing-library/react";
 import "embedding-sdk/bundle";
 
 import { useLogVersionInfo } from "embedding-sdk/hooks/private/use-log-version-info";
-import { getEmbeddingSdkPackageVersion } from "embedding-sdk/lib/get-embedding-sdk-package-version";
+import { getEmbeddingSdkPackageBuildData } from "embedding-sdk/lib/get-embedding-sdk-package-build-data";
 import { getMetabaseInstanceVersion } from "embedding-sdk/store/selectors";
 
 jest.mock("embedding-sdk/sdk-shared/hooks/use-lazy-selector", () => ({
   useLazySelector: jest.fn((selector) => selector()),
 }));
-jest.mock("embedding-sdk/lib/get-embedding-sdk-package-version", () => ({
+jest.mock("embedding-sdk/lib/get-embedding-sdk-package-build-data", () => ({
   getEmbeddingSdkPackageVersion: jest.fn(),
 }));
 jest.mock("embedding-sdk/store/selectors", () => ({
@@ -25,7 +25,7 @@ const setup = async ({
   mbVersion: string;
   allowConsoleLog?: boolean;
 }) => {
-  (getEmbeddingSdkPackageVersion as jest.Mock).mockReturnValue(sdkVersion);
+  (getEmbeddingSdkPackageBuildData as jest.Mock).mockReturnValue(sdkVersion);
   (getMetabaseInstanceVersion as jest.Mock).mockReturnValue(mbVersion);
 
   renderHook(() => useLogVersionInfo({ allowConsoleLog }));
@@ -39,7 +39,7 @@ const getWarnMessages = (): string[] =>
 describe("useLogVersionInfo", () => {
   beforeEach(() => {
     consoleWarnSpy = jest.spyOn(console, "warn").mockImplementation(() => {});
-    (getEmbeddingSdkPackageVersion as jest.Mock).mockClear();
+    (getEmbeddingSdkPackageBuildData as jest.Mock).mockClear();
   });
 
   afterEach(() => {

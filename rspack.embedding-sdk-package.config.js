@@ -25,6 +25,9 @@ const {
 const {
   getBannerOptions,
 } = require("./frontend/build/shared/rspack/get-banner-options");
+const {
+  INJECTED_BUILD_INFO_VALUES,
+} = require("./frontend/build/embedding-sdk/constants/injected-build-info-values");
 
 const sdkPackageTemplateJson = fs.readFileSync(
   path.resolve(
@@ -92,6 +95,7 @@ const config = {
       IS_EMBEDDING_SDK: "true",
       EMBEDDING_SDK_BUNDLE_HOST,
       EMBEDDING_SDK_PACKAGE_VERSION,
+      ...INJECTED_BUILD_INFO_VALUES,
     }),
     new rspack.optimize.LimitChunkCountPlugin({
       maxChunks: 1,

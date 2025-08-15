@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { c, t } from "ttag";
 
 import { SdkError } from "embedding-sdk/components/private/PublicComponentWrapper";
-import { getEmbeddingSdkPackageVersion } from "embedding-sdk/lib/get-embedding-sdk-package-version";
+import { getEmbeddingSdkPackageBuildData } from "embedding-sdk/lib/get-embedding-sdk-package-build-data";
 import {
   isInvalidMetabaseVersion,
   isSdkPackageCompatibleWithSdkBundle,
@@ -12,7 +12,7 @@ import { getMetabaseInstanceVersion } from "embedding-sdk/store/selectors";
 import { Anchor } from "metabase/ui";
 
 export function SdkIncompatibilityWithInstanceBanner() {
-  const sdkPackageVersion = getEmbeddingSdkPackageVersion();
+  const { version: sdkPackageVersion } = getEmbeddingSdkPackageBuildData();
   const sdkBundleVersion = useSdkSelector(getMetabaseInstanceVersion);
 
   const isSdkCompatibleWithInstance = useMemo(() => {

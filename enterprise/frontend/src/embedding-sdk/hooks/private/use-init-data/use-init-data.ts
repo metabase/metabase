@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 import { useMount } from "react-use";
 import _ from "underscore";
 
-import { getEmbeddingSdkPackageVersion } from "embedding-sdk/lib/get-embedding-sdk-package-version";
+import { getEmbeddingSdkPackageBuildData } from "embedding-sdk/lib/get-embedding-sdk-package-build-data";
 import { useLazySelector } from "embedding-sdk/sdk-shared/hooks/use-lazy-selector";
 import { initAuth } from "embedding-sdk/store/auth";
 import {
@@ -71,7 +71,7 @@ export const useInitData = ({
 
     dispatch(initAuth(authConfig));
 
-    const sdkPackageVersion = getEmbeddingSdkPackageVersion();
+    const { version: sdkPackageVersion } = getEmbeddingSdkPackageBuildData();
 
     api.requestClient = {
       name: EMBEDDING_SDK_CONFIG.metabaseClientRequestHeader,
