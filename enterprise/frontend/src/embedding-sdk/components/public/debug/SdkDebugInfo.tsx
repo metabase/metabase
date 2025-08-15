@@ -1,12 +1,13 @@
 /* eslint-disable i18next/no-literal-string */
 import dayjs from "dayjs";
+import type { HTMLAttributes } from "react";
 
 import {
   EMBEDDING_SDK_PACKAGE_UNKNOWN_VERSION,
   getEmbeddingSdkPackageVersion,
 } from "embedding-sdk/lib/get-embedding-sdk-package-version";
 
-export const SdkDebugInfo = (props: React.HTMLAttributes<HTMLDivElement>) => {
+export const SdkDebugInfo = (props: HTMLAttributes<HTMLDivElement>) => {
   const shortCommit = process.env.GIT_COMMIT?.slice(0, 7);
 
   const buildDate = process.env.BUILD_TIME

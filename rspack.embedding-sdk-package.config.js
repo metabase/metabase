@@ -89,6 +89,7 @@ const config = {
 
   plugins: [
     new rspack.EnvironmentPlugin({
+      IS_EMBEDDING_SDK: "true",
       EMBEDDING_SDK_BUNDLE_HOST,
       EMBEDDING_SDK_PACKAGE_VERSION,
     }),
