@@ -1033,9 +1033,11 @@
           metabase.search.appdb.scoring
           metabase.search.config
           metabase.search.core
+          metabase.search.engine
           metabase.search.in-place.scoring
           metabase.search.ingestion
           metabase.search.init
+          metabase.search.scoring
           metabase.search.spec}
    :uses #{analytics
            api
@@ -1524,6 +1526,7 @@
            premium-features
            enterprise/advanced-config
            enterprise/scim
+           enterprise/semantic-search
            enterprise/sso}}
 
   enterprise/api
@@ -1691,7 +1694,8 @@
   enterprise/llm
   {:team "Metabot"
    :api  #{metabase-enterprise.llm.api
-           metabase-enterprise.llm.init}
+           metabase-enterprise.llm.init
+           metabase-enterprise.llm.settings}
    :uses #{analytics
            analyze
            api
@@ -1703,6 +1707,7 @@
   enterprise/metabot-v3
   {:team "Metabot"
    :api #{metabase-enterprise.metabot-v3.api
+          metabase-enterprise.metabot-v3.client
           metabase-enterprise.metabot-v3.core
           metabase-enterprise.metabot-v3.init
           metabase-enterprise.metabot-v3.tools.api}
@@ -1789,6 +1794,24 @@
    :api  #{}
    :uses #{premium-features
            search}}
+
+  enterprise/semantic-search
+  {:team "Metabot"
+   :api  #{metabase-enterprise.semantic-search.api
+           metabase-enterprise.semantic-search.core
+           metabase-enterprise.semantic-search.init}
+   :uses #{analytics
+           api
+           connection-pool
+           models
+           permissions
+           premium-features
+           search
+           settings
+           task
+           util
+           enterprise/llm
+           enterprise/metabot-v3}}
 
   enterprise/serialization
   {:team "Workflows"
