@@ -2,6 +2,7 @@
   (:require
    [metabase-enterprise.transforms.canceling]
    [metabase-enterprise.transforms.execute]
+   [metabase-enterprise.transforms.jobs]
    [metabase-enterprise.transforms.models.job-run]
    [metabase-enterprise.transforms.models.transform]
    [metabase-enterprise.transforms.models.transform-job]
