@@ -7,8 +7,11 @@
    [malli.util :as mut]
    [metabase-enterprise.workspaces.models.workspace :as m.workspace]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
+
+(use-fixtures :once (fixtures/initialize :db :test-users))
 
 (deftest ^:parallel workspace-validation-test
   (testing "Workspace validation with updated Malli schema structure"
