@@ -78,21 +78,19 @@ export function EditorBody({
           return !databaseSupportsTransforms(database);
         }
 
-        // Disable questions based on unsuppported databases
         if (
+          // Disable questions based on unsuppported databases
           item.model === "card" ||
           item.model === "dataset" ||
-          item.model === "metric"
+          item.model === "metric" ||
+          // Disable tables based on unsuppported databases
+          item.model === "table"
         ) {
           const database = metadata.database(item.database_id);
           return !databaseSupportsTransforms(database);
         }
 
-        if (item.model === "table") {
-          const database = metadata.database(item.database.id);
-          return !databaseSupportsTransforms(database);
-        }
-
+        // Disable dashboards altogether
         if (item.model === "dashboard") {
           return true;
         }
