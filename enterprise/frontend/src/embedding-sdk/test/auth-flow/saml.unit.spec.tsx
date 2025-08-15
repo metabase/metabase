@@ -4,7 +4,7 @@ import fetchMock from "fetch-mock";
 import { waitForLoaderToBeRemoved } from "__support__/ui";
 import { waitForRequest } from "__support__/utils";
 import {
-  MetabaseProvider,
+  ComponentProvider,
   StaticQuestion,
 } from "embedding-sdk/components/public";
 import { defineMetabaseAuthConfig } from "embedding-sdk/sdk-package/lib/public/define-metabase-auth-config";
@@ -46,9 +46,9 @@ describe("Auth Flow - SAML", () => {
     expect(popup.close).toHaveBeenCalled();
 
     rerender(
-      <MetabaseProvider authConfig={authConfig}>
+      <ComponentProvider authConfig={authConfig}>
         <StaticQuestion questionId={1} />
-      </MetabaseProvider>,
+      </ComponentProvider>,
     );
 
     await waitForLoaderToBeRemoved();

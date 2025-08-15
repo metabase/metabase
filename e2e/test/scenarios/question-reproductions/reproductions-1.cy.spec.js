@@ -1287,14 +1287,15 @@ describe("issue 20809", () => {
   });
 });
 
-// Copied verbatim from #56477:
 describe("issue 34577", { tags: "@mongo" }, () => {
   beforeEach(() => {
     H.restore("mongo-4");
     cy.signInAsAdmin();
 
     cy.request(`/api/database/${WRITABLE_DB_ID}/schema/`).then(({ body }) => {
-      const tableId = body.find(table => table.name === "nested_id_collection").id;
+      const tableId = body.find(
+        (table) => table.name === "nested_id_collection",
+      ).id;
       H.openTable({
         database: WRITABLE_DB_ID,
         table: tableId,

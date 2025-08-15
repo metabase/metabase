@@ -19,6 +19,7 @@
                               :disable-password-login
                               :database-auth-providers
                               :development-mode
+                              :documents
                               :email-allow-list
                               :email-restrict-recipients
                               :embedding
@@ -35,6 +36,7 @@
                               :query-reference-validation
                               :sandboxes
                               :scim
+                              :semantic-search
                               :serialization
                               :session-timeout-config
                               :snippet-collections
@@ -59,6 +61,7 @@
             :disable_password_login         true
             :database_auth_providers        true
             :development_mode               true
+            :documents                      true
             :email_allow_list               true
             :email_restrict_recipients      true
             :embedding                      true
@@ -74,6 +77,7 @@
             :query_reference_validation     true
             :sandboxes                      true
             :scim                           true
+            :semantic_search                true
             :serialization                  true
             :session_timeout_config         true
             :snippet_collections            true

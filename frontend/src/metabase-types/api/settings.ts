@@ -286,6 +286,8 @@ export const tokenFeatures = [
   "development_mode",
   "etl_connections",
   "etl_connections_pg",
+  "documents",
+  "semantic_search",
 ] as const;
 
 export type TokenFeature = (typeof tokenFeatures)[number];
@@ -577,6 +579,8 @@ export type ColorSettings = Record<string, string>;
 export type IllustrationSettingValue = "default" | "none" | "custom";
 export type TimeoutValue = { amount: number; unit: string };
 
+export type SearchEngineSettingValue = "semantic" | "appdb" | "in-place";
+
 export type DatabaseReplicationConnections = Record<
   DatabaseId,
   { connection_id: string }
@@ -598,6 +602,7 @@ export interface EnterpriseSettings extends Settings {
   "ee-openai-api-key"?: string;
   "ee-openai-model"?: string;
   "session-timeout": TimeoutValue | null;
+  "search-engine": SearchEngineSettingValue | null;
   "scim-enabled"?: boolean | null;
   "scim-base-url"?: string;
   "send-new-sso-user-admin-email?"?: boolean;
