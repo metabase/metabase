@@ -328,7 +328,7 @@
 (deftest ^:parallel field-filter-errors-test
   (testing "error conditions for field filter (:dimension) parameters"
     (testing "Should throw an Exception if Field does not exist"
-      (let [query (assoc (mt/native-query "SELECT * FROM table WHERE {{x}}")
+      (let [query (assoc (mt/native-query {:query "SELECT * FROM table WHERE {{x}}"})
                          :template-tags {"x" {:name         "x"
                                               :display-name "X"
                                               :type         :dimension
@@ -505,7 +505,7 @@
 (deftest ^:parallel card-query-errors-test
   (testing "error conditions for :card parameters"
     (testing "should throw an Exception if Card does not exist"
-      (let [query (assoc (mt/native-query "SELECT * FROM table WHERE {{x}}")
+      (let [query (assoc (mt/native-query {:query "SELECT * FROM table WHERE {{x}}"})
                          :template-tags {"x" {:name         "x"
                                               :display-name "X"
                                               :type         :card
@@ -515,7 +515,7 @@
              (query->params-map query)))))))
 
 (defn- query-with-snippet [& {:as snippet-properties}]
-  (assoc (mt/native-query "SELECT * FROM {{expensive-venues}}")
+  (assoc (mt/native-query {:query "SELECT * FROM {{expensive-venues}}"})
          :template-tags {"expensive-venues" (merge
                                              {:type         :snippet
                                               :name         "expensive-venues"
@@ -561,7 +561,7 @@
 
 (deftest ^:parallel invalid-param-test
   (testing "Should throw an Exception if we try to pass with a `:type` we don't understand"
-    (let [query (assoc (mt/native-query "SELECT * FROM table WHERE {{x}}")
+    (let [query (assoc (mt/native-query {:query "SELECT * FROM table WHERE {{x}}"})
                        :template-tags {"x" {:name "x"
                                             :type :writer}})]
       (is (thrown?
