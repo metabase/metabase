@@ -217,6 +217,7 @@ jobs:
       - name: Generate Bug Fix with Claude Code
         uses: anthropics/claude-code-action@beta
         with:
+          mode: agent
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           github_token: ${{ steps.claude-app-token.outputs.token }}
           direct_prompt: ${{ env.BUG_FIX_PROMPT }}
