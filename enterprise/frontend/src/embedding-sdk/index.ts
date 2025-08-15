@@ -18,10 +18,7 @@ export { InteractiveQuestion } from "embedding-sdk/sdk-package/components/public
 export { StaticQuestion } from "embedding-sdk/sdk-package/components/public/StaticQuestion";
 export { MetabaseProvider } from "embedding-sdk/sdk-package/components/public/MetabaseProvider";
 export { MetabotQuestion } from "embedding-sdk/sdk-package/components/public/MetabotQuestion";
-/**
- * @internal
- */
-export { SdkDebugInfo } from "embedding-sdk/sdk-package/components/public/debug/SdkDebugInfo";
+export * from "embedding-sdk/sdk-package/components/public/debug/SdkDebugInfo";
 
 export { useApplicationName } from "embedding-sdk/sdk-package/hooks/public/use-application-name";
 export { useAvailableFonts } from "embedding-sdk/sdk-package/hooks/public/use-available-fonts";
