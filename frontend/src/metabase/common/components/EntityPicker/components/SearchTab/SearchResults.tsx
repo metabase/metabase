@@ -58,6 +58,7 @@ export const SearchResults = <
                     "entity-picker",
                     searchEngine || "unknown",
                     searchRequestId,
+                    item.model,
                   );
                   onItemSelect(item as unknown as Item);
                 }}

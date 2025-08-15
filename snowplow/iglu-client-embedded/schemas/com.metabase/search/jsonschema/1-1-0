@@ -175,6 +175,14 @@
       ],
       "minimum": 0,
       "maximum": 2147483647
+    },
+    "entity_model": {
+      "description": "The model type of the clicked entity",
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 1024
     }
   },
   "required": [
