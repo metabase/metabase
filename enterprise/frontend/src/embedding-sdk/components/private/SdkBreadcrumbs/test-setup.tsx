@@ -196,7 +196,7 @@ export const setup = async () => {
       <BreadcrumbsTestComponent />
     </SdkBreadcrumbsProvider>,
     {
-      sdkProviderProps: {
+      componentProviderProps: {
         authConfig: createMockSdkConfig(),
       },
       storeInitialState: state,
