@@ -96,9 +96,9 @@ export function ListView({
       case "entity/UserTable":
         return "person";
       case "entity/CompanyTable":
-        return "globe";
+        return "company";
       case "entity/TransactionTable":
-        return "index";
+        return "receipt";
       case "entity/SubscriptionTable":
         return "sync";
       case "entity/ProductTable":
