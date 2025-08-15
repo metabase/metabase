@@ -425,7 +425,7 @@
 
 (defn- fallback-metadata [id-or-name]
   (log/warn (u/format-color :red
-                            (str "We tried every trick we could think of and still failed to resolve field a"
+                            (str "We tried every trick we could think of and still failed to resolve a field"
                                  " ref. If the query doesn't work, this is why. Returning fallback metadata for %s")
                             (pr-str id-or-name)))
   (merge
