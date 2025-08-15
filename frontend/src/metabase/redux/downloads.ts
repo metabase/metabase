@@ -2,6 +2,7 @@ import { createSlice } from "@reduxjs/toolkit";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import api, { GET, POST } from "metabase/lib/api";
 import { isWithinIframe, openSaveDialog } from "metabase/lib/dom";
 import { createAsyncThunk } from "metabase/lib/redux";
@@ -66,10 +67,10 @@ const getDownloadedResourceType = ({
 
   const isInIframe = isWithinIframe();
 
-  const defaultAccessedVia = window.EMBEDDING_SDK_PACKAGE_VERSION
-    ? "sdk-embed"
-    : isInIframe
-      ? "interactive-iframe-embed"
+  const defaultAccessedVia = isInIframe
+    ? "interactive-iframe-embed"
+    : isEmbeddingSdk()
+      ? "sdk-embed"
       : "internal";
 
   if (dashcardId != null && token != null) {
