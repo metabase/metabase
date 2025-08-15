@@ -1253,7 +1253,6 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
       component: table2_component,
       source: table2_source,
     },
-<<<<<<< HEAD
     text_bold: {
       component: text_bold_component,
       source: text_bold_source,
@@ -1265,7 +1264,7 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
     text_strike: {
       component: text_strike_component,
       source: text_strike_source,
-=======
+    },
     thumbs_down: {
       component: thumbs_down_component,
       source: thumbs_down_source,
@@ -1273,7 +1272,6 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
     thumbs_up: {
       component: thumbs_up_component,
       source: thumbs_up_source,
->>>>>>> master
     },
     time_history: {
       component: time_history_component,
@@ -1596,14 +1594,11 @@ export type IconName =
   | "tab"
   | "table"
   | "table2"
-<<<<<<< HEAD
   | "text_bold"
   | "text_italic"
   | "text_strike"
-=======
   | "thumbs_down"
   | "thumbs_up"
->>>>>>> master
   | "time_history"
   | "trash"
   | "trash_filled"
