@@ -42,12 +42,11 @@ export function ContentManager({ settings }: ViewContentProps) {
     id: initialCollection,
   });
 
-  // Use the last collection in the breadcrumb as the target for new questions.
+  // Use the last collection in the breadcrumb as the target for saving new questions.
   const targetCollection = useMemo(() => {
-    const fallback = { type: "collection", id: initialCollection };
-
     return (
-      breadcrumbs.findLast((item) => item.type === "collection") ?? fallback
+      breadcrumbs.findLast((item) => item.type === "collection")?.id ??
+      initialCollection
     );
   }, [breadcrumbs, initialCollection]);
 
@@ -66,7 +65,7 @@ export function ContentManager({ settings }: ViewContentProps) {
         withDownloads
         isSaveEnabled={!isReadOnly}
         entityTypes={settings.dataPickerEntityTypes}
-        targetCollection={targetCollection.id}
+        targetCollection={targetCollection}
       />
     ))
     .with({ type: "create-dashboard" }, () => (
@@ -75,9 +74,9 @@ export function ContentManager({ settings }: ViewContentProps) {
           setCurrentView({ type: "dashboard", id: dashboard.id })
         }
         onClose={() =>
-          setCurrentView({ type: "collection", id: targetCollection.id })
+          setCurrentView({ type: "collection", id: targetCollection })
         }
-        initialCollectionId={targetCollection.id}
+        initialCollectionId={targetCollection}
       />
     ))
     .with({ type: "dashboard", id: P.nonNullable }, ({ id }) => {
@@ -95,7 +94,7 @@ export function ContentManager({ settings }: ViewContentProps) {
           height="100%"
           withDownloads
           isSaveEnabled={!isReadOnly}
-          targetCollection={targetCollection.id}
+          targetCollection={targetCollection}
         />
       ),
     )
@@ -118,7 +117,7 @@ export function ContentManager({ settings }: ViewContentProps) {
     .otherwise(() => null);
 
   return (
-    <Stack px="lg" py="xl" maw="60rem" mx="auto">
+    <Stack px="lg" py="xl" maw="60rem" mx="auto" h="100%">
       {/* Fixes the height to avoid layout shift when hiding buttons */}
       <Group justify="space-between" align="center" gap="sm" h="2.5rem">
         <Group>
