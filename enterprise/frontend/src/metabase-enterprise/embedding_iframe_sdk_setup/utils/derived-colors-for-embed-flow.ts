@@ -22,7 +22,7 @@ export function getDerivedDefaultColorsForEmbedFlow(
 ): MetabaseTheme {
   const userColors = theme.colors ?? {};
 
-  const getSourceColor = (colorName: MetabaseColor): string => {
+  const getSourceColor = (colorName: MetabaseColor): string | null => {
     // Chart colors consists of 8 colors, so they can't be derived.
     if (colorName === "charts") {
       throw new Error("chart color must not be used as a source color");
@@ -45,8 +45,16 @@ export function getDerivedDefaultColorsForEmbedFlow(
       }
     }
 
-    // As a last resort, fallback to the default Metabase color object
-    return colors[colorName as ColorName];
+    // Fallback to the default Metabase color object.
+    for (const appColorName of appColorNames) {
+      const defaultColor = colors[appColorName as ColorName];
+
+      if (defaultColor) {
+        return defaultColor;
+      }
+    }
+
+    return null;
   };
 
   const backgroundColor = getSourceColor("background");
@@ -76,6 +84,11 @@ export function getDerivedDefaultColorsForEmbedFlow(
     }
 
     const sourceColor = getSourceColor(operation.source);
+
+    if (sourceColor === null) {
+      continue;
+    }
+
     const derivedColor = applyColorOperation(sourceColor, operation);
 
     derivedColors[colorKey] = derivedColor;
