@@ -238,12 +238,13 @@ export const DatabaseReplicationForm = ({
                     gap="xs"
                     justify="flex-start"
                     wrap="nowrap"
+                    p="md"
                   >
                     <Box maw="16">
                       <Icon className={CS.ml1} name="info_outline" size={16} />
                     </Box>
-                    <Box p="md" w="100%">
-                      <Text c="text-light">
+                    <Box w="100%">
+                      <Text c="text-light" fz="md" lh={1.25}>
                         {t`Tables without primary key or with owner mismatch`}{" "}
                         <b>{t`will not be replicated`}</b>.
                       </Text>
@@ -251,10 +252,9 @@ export const DatabaseReplicationForm = ({
                         variant="subtle"
                         size="xs"
                         onClick={() => setShowNoSyncTables(!showNoSyncTables)}
+                        fz="md"
                         h="auto"
                         p={0}
-                        td="underline"
-                        style={{ alignSelf: "flex-start" }}
                       >
                         <Flex
                           align="center"
