@@ -2,6 +2,7 @@
   "`/api/ee/workspace/` routes"
   (:require
    [clj-yaml.core :as yaml]
+   [clojure.java.io :as io]
    [metabase-enterprise.workspaces.common :as w.common]
    [metabase-enterprise.workspaces.isolation-manager :as isolation-manager]
    [metabase-enterprise.workspaces.models.workspace :as m.workspace]
@@ -153,9 +154,18 @@
    - description (optional): Workspace description"
   [_route-params
    _query-params
-   {plan-yaml :plan}]
-  (let [plan (normalize-plan (yaml/parse-string plan-yaml))]
-    (init-and-run-workspace! plan)))
+   _
+   r]
+  (let [content-type (-> r :content-type)]
+    (when-not (= content-type "application/yaml")
+      (throw (ex-info "Must provide yaml" {:content-type content-type}))))
+  (try
+    (with-open [r (io/reader (:body r))]
+      (let [raw-plan (yaml/parse-stream r)
+            plan (normalize-plan raw-plan)]
+        (init-and-run-workspace! plan)))
+    (catch Exception e
+      (throw e))))
 
 (api.macros/defendpoint :delete "/:workspace-id"
   "Delete a workspace."
