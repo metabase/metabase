@@ -839,7 +839,7 @@
   (let [details-or-error (test-connection-details engine details)
         valid?           (not= (:valid details-or-error) false)]
     (if valid?
-      ;; no error, proceed with creation. If record is inserted successfuly, publish a `:database-create` event.
+      ;; no error, proceed with creation. If record is inserted successfully, publish a `:database-create` event.
       ;; Throw a 500 if nothing is inserted
       (u/prog1 (api/check-500 (first (t2/insert-returning-instances!
                                       :model/Database
@@ -850,9 +850,8 @@
                                         :is_full_sync is_full_sync
                                         :is_on_demand is_on_demand
                                         :cache_ttl    cache_ttl
+                                        :provider_name provider_name
                                         :creator_id   api/*current-user-id*}
-                                       (when provider_name
-                                         {:provider_name provider_name})
                                        (when schedules
                                          (sync.schedules/schedule-map->cron-strings schedules))
                                        (when (some? auto_run_queries)
