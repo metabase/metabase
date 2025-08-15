@@ -4,6 +4,7 @@ import * as Yup from "yup";
 
 import ExternalLink from "metabase/common/components/ExternalLink";
 import { useStoreUrl } from "metabase/common/hooks";
+import CS from "metabase/css/core/index.css";
 import {
   Form,
   FormProvider,
@@ -19,6 +20,7 @@ import {
   Divider,
   Flex,
   Group,
+  Icon,
   List,
   Progress,
   Stack,
@@ -229,48 +231,78 @@ export const DatabaseReplicationForm = ({
               )}
 
               {noSyncTables.length > 0 && (
-                <Card radius="md" bg="bg-light" p="md">
-                  <Stack>
-                    <Text c="text-light">
-                      {t`Tables without primary key or with owner mismatch`}{" "}
-                      <b>{t`will not be replicated`}</b>.
-                    </Text>
-                    <Button
-                      variant="subtle"
-                      size="xs"
-                      onClick={() => setShowNoSyncTables(!showNoSyncTables)}
-                      h="auto"
-                      p={0}
-                      td="underline"
-                      style={{ alignSelf: "flex-start" }}
-                    >
-                      {showNoSyncTables
-                        ? t`Hide tables (${noSyncTables.length})`
-                        : t`Show tables (${noSyncTables.length})`}
-                    </Button>
-                    {showNoSyncTables && (
-                      <List spacing="xs" size="sm">
-                        {noSyncTables.map((table) => (
-                          <List.Item
-                            key={`${table.schema}.${table.name}`}
-                            c="text-medium"
-                            ff="Monaco, 'Lucida Console', monospace"
-                            fz="md"
-                          >
-                            <Box component="span" c="text-dark" fw="500">
-                              {table.schema}
-                            </Box>
-                            <Box component="span" c="text-medium">
-                              .{table.name}
-                            </Box>{" "}
-                            <Box component="span" c="text-light">
-                              {noSyncReason(table)}
-                            </Box>
-                          </List.Item>
-                        ))}
-                      </List>
-                    )}
-                  </Stack>
+                <Card radius="md" bg="bg-light" p={0}>
+                  <Flex
+                    align="center"
+                    direction="row"
+                    gap="xs"
+                    justify="flex-start"
+                    wrap="nowrap"
+                  >
+                    <Box maw="16">
+                      <Icon className={CS.ml1} name="info_outline" size={16} />
+                    </Box>
+                    <Box p="md" w="100%">
+                      <Text c="text-light">
+                        {t`Tables without primary key or with owner mismatch`}{" "}
+                        <b>{t`will not be replicated`}</b>.
+                      </Text>
+                      <Flex
+                        align="center"
+                        direction="row"
+                        gap="xs"
+                        justify="flex-start"
+                        wrap="nowrap"
+                      >
+                        <Button
+                          variant="subtle"
+                          size="xs"
+                          onClick={() => setShowNoSyncTables(!showNoSyncTables)}
+                          h="auto"
+                          p={0}
+                          td="underline"
+                          style={{ alignSelf: "flex-start" }}
+                        >
+                          {showNoSyncTables
+                            ? t`Hide tables (${noSyncTables.length})`
+                            : t`Show tables (${noSyncTables.length})`}
+                        </Button>
+                        <Icon
+                          className={CS.ml1}
+                          name={showNoSyncTables ? "chevronup" : "chevrondown"}
+                          size={12}
+                        />
+                      </Flex>
+                    </Box>
+                  </Flex>
+
+                  {showNoSyncTables && (
+                    <>
+                      <Divider />
+                      <Box mah={180} p="md">
+                        <List spacing="xs" size="sm">
+                          {noSyncTables.map((table) => (
+                            <List.Item
+                              key={`${table.schema}.${table.name}`}
+                              c="text-medium"
+                              ff="Monaco, 'Lucida Console', monospace"
+                              fz="md"
+                            >
+                              <Box component="span" c="text-dark" fw="500">
+                                {table.schema}
+                              </Box>
+                              <Box component="span" c="text-medium">
+                                .{table.name}
+                              </Box>{" "}
+                              <Box component="span" c="text-light">
+                                {noSyncReason(table)}
+                              </Box>
+                            </List.Item>
+                          ))}
+                        </List>
+                      </Box>
+                    </>
+                  )}
                 </Card>
               )}
 
