@@ -9,7 +9,6 @@ const prefixwrap = require("postcss-prefixwrap");
 
 const mainConfig = require("./rspack.main.config");
 const { resolve } = require("path");
-const fs = require("fs");
 const path = require("path");
 
 const postcssConfig = require("./postcss.config.js");
@@ -47,18 +46,6 @@ const TMP_BUILD_PATH = path.resolve(BUILD_PATH, "tmp-embed-js");
 
 const ENTERPRISE_SRC_PATH =
   __dirname + "/enterprise/frontend/src/metabase-enterprise";
-
-const sdkPackageTemplateJson = fs.readFileSync(
-  path.resolve(
-    path.join(
-      __dirname,
-      "enterprise/frontend/src/embedding-sdk/package.template.json",
-    ),
-  ),
-  "utf-8",
-);
-const sdkPackageTemplateJsonContent = JSON.parse(sdkPackageTemplateJson);
-const EMBEDDING_SDK_VERSION = sdkPackageTemplateJsonContent.version;
 
 const shouldAnalyzeBundles = process.env.SHOULD_ANALYZE_BUNDLES === "true";
 
@@ -185,7 +172,6 @@ const config = {
       process: "process/browser.js",
     }),
     new rspack.EnvironmentPlugin({
-      EMBEDDING_SDK_VERSION,
       GIT_BRANCH: require("child_process")
         .execSync("git rev-parse --abbrev-ref HEAD")
         .toString()

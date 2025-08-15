@@ -10,6 +10,7 @@ import type { InteractiveDashboard } from "embedding-sdk/components/public/dashb
 import type { StaticDashboard } from "embedding-sdk/components/public/dashboard/StaticDashboard";
 import type { SdkDebugInfo } from "embedding-sdk/components/public/debug/SdkDebugInfo";
 import type { useInitData } from "embedding-sdk/hooks/private/use-init-data";
+import type { useLogVersionInfo } from "embedding-sdk/hooks/private/use-log-version-info";
 import type { getSdkStore } from "embedding-sdk/store";
 import type { getCollectionNumericIdFromReference } from "embedding-sdk/store/collections";
 import type { getLoginStatus } from "embedding-sdk/store/selectors";
@@ -43,4 +44,5 @@ export type MetabaseEmbeddingSdkBundleExports = {
   getSetting: typeof getSetting;
   getUser: typeof getUser;
   useInitData: typeof useInitData;
+  useLogVersionInfo: typeof useLogVersionInfo;
 };

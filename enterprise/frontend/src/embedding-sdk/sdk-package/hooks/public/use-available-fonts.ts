@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 
-import { useLazySelector } from "embedding-sdk/sdk-package/hooks/private/use-lazy-selector";
+import { useLazySelector } from "embedding-sdk/sdk-shared/hooks/use-lazy-selector";
 import { getWindow } from "embedding-sdk/sdk-shared/lib/get-window";
 
 /**

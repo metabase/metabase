@@ -9,14 +9,17 @@ export const isInvalidMetabaseVersion = (mbVersion: string) => {
   );
 };
 
-export const isSdkVersionCompatibleWithMetabaseVersion = ({
-  mbVersion,
-  sdkVersion,
+export const isSdkPackageCompatibleWithSdkBundle = ({
+  sdkPackageVersion,
+  sdkBundleVersion,
 }: {
-  mbVersion: string;
-  sdkVersion: string;
+  sdkPackageVersion: string;
+  sdkBundleVersion: string;
 }) => {
-  const mbVersionComponents = versionToNumericComponents(mbVersion);
-  const sdkVersionComponents = versionToNumericComponents(sdkVersion);
-  return mbVersionComponents?.[1] === sdkVersionComponents?.[1];
+  const sdkPackageVersionComponents =
+    versionToNumericComponents(sdkPackageVersion);
+  const sdkBundleVersionComponents =
+    versionToNumericComponents(sdkBundleVersion);
+
+  return sdkBundleVersionComponents?.[1] === sdkPackageVersionComponents?.[1];
 };

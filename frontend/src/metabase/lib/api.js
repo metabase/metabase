@@ -40,7 +40,7 @@ export class Api extends EventEmitter {
   onResponseError;
 
   /**
-   * @type {string|{name: string, version: string}}
+   * @type {string|{name: string, version: string | null}}
    */
   requestClient;
 
@@ -87,7 +87,8 @@ export class Api extends EventEmitter {
         // eslint-disable-next-line no-literal-metabase-strings -- Not a user facing string
         headers["X-Metabase-Client"] = self.requestClient.name;
         // eslint-disable-next-line no-literal-metabase-strings -- Not a user facing string
-        headers["X-Metabase-Client-Version"] = self.requestClient.version;
+        headers["X-Metabase-Client-Version"] =
+          self.requestClient.version ?? "unknown";
       } else {
         // eslint-disable-next-line no-literal-metabase-strings -- Not a user facing string
         headers["X-Metabase-Client"] = self.requestClient;
