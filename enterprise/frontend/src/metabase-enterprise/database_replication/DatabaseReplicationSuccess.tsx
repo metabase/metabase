@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { Box, Button, Flex, Loader, Stack, Text, Title } from "metabase/ui";
+import { Box, Button, Stack, Text, Title } from "metabase/ui";
 
 export const DatabaseReplicationSuccess = ({
   onClose,
@@ -11,28 +11,6 @@ export const DatabaseReplicationSuccess = ({
     <Stack align="center" gap="lg" my="6rem">
       <Box h={96} w={96} pos="relative">
         <img src="app/assets/img/metabot-cloud-96x96.svg" alt="Metabot Cloud" />
-
-        <Flex
-          bottom={0}
-          pos="absolute"
-          right={0}
-          align="center"
-          direction="row"
-          gap={0}
-          justify="center"
-          wrap="nowrap"
-          bg="white"
-          fz={0}
-          p="sm"
-          ta="center"
-          style={{
-            borderRadius: "100%",
-            // eslint-disable-next-line no-color-literals
-            boxShadow: `0 0 0 1px rgba(0, 0, 0, 0.05), 0 1px 6px 0 rgba(0, 0, 0, 0.10)`,
-          }}
-        >
-          <Loader size="xs" ml={1} mt={1} />
-        </Flex>
       </Box>
 
       <Box ta="center">
