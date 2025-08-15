@@ -54,15 +54,15 @@ export const SearchResults = <
                 key={item.model + item.id}
                 item={item}
                 onClick={() => {
-                  trackSearchClick(
-                    "item",
-                    index,
-                    "entity-picker",
-                    searchEngine || "unknown",
-                    searchRequestId,
-                    item.model,
+                  trackSearchClick({
+                    itemType: "item",
+                    position: index,
+                    context: "entity-picker",
+                    searchEngine: searchEngine || "unknown",
+                    requestId: searchRequestId,
+                    entityModel: item.model,
                     searchTerm,
-                  );
+                  });
                   onItemSelect(item as unknown as Item);
                 }}
                 isSelected={
