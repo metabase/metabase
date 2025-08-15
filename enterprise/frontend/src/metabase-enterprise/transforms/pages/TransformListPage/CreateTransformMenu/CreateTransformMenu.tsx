@@ -4,11 +4,13 @@ import { t } from "ttag";
 
 import { ForwardRefLink } from "metabase/common/components/Link";
 import {
+  type QuestionPickerItem,
   QuestionPickerModal,
   type QuestionPickerValueItem,
 } from "metabase/common/components/Pickers/QuestionPicker";
 import { useDispatch } from "metabase/lib/redux";
 import { Button, Icon, Menu } from "metabase/ui";
+import { useDoesDatabaseSupportTransforms } from "metabase-enterprise/transforms/hooks/use-does-database-support-transforms";
 
 import {
   getNewTransformFromCardUrl,
@@ -23,6 +25,8 @@ export function CreateTransformMenu() {
   const handlePickerChange = (item: QuestionPickerValueItem) => {
     dispatch(push(getNewTransformFromCardUrl(item.id)));
   };
+
+  const databaseSupportsTransforms = useDoesDatabaseSupportTransforms();
 
   return (
     <>
@@ -62,6 +66,22 @@ export function CreateTransformMenu() {
           models={["card", "dataset"]}
           onChange={handlePickerChange}
           onClose={closePicker}
+          shouldDisableItem={(item: QuestionPickerItem) => {
+            if (
+              // Disable questions based on unsuppported databases
+              item.model === "card" ||
+              item.model === "dataset" ||
+              item.model === "metric"
+            ) {
+              return !databaseSupportsTransforms(item.database_id);
+            }
+
+            if (item.model === "dashboard") {
+              return false;
+            }
+
+            return false;
+          }}
         />
       )}
     </>
