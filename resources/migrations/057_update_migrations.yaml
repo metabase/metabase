@@ -720,7 +720,7 @@ databaseChangeLog:
   - changeSet:
         id: v57.2025-08-14T02:00:00
         author: ranquild
-        comment: Set associations between built-in transform jobs and tags
+        comment: Create associations between built-in transform jobs and tags
         changes:
           - sql: >-
               INSERT INTO transform_job_transform_tag(job_id, tag_id, position)
