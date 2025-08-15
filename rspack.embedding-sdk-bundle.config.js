@@ -38,6 +38,9 @@ const {
   SDK_BUNDLE_PATH,
   SDK_BUNDLE_FILENAME,
 } = require("./frontend/build/embedding-sdk/constants/sdk-bundle");
+const {
+  INJECTED_BUILD_INFO_VALUES,
+} = require("./frontend/build/embedding-sdk/constants/injected-build-info-values");
 
 const SDK_SRC_PATH = __dirname + "/enterprise/frontend/src/embedding-sdk";
 
@@ -172,18 +175,8 @@ const config = {
       process: "process/browser.js",
     }),
     new rspack.EnvironmentPlugin({
-      GIT_BRANCH: require("child_process")
-        .execSync("git rev-parse --abbrev-ref HEAD")
-        .toString()
-        .trim(),
-      GIT_COMMIT: require("child_process")
-        .execSync("git rev-parse HEAD")
-        .toString()
-        .trim(),
       IS_EMBEDDING_SDK: "true",
-    }),
-    new rspack.DefinePlugin({
-      "process.env.BUILD_TIME": JSON.stringify(new Date().toISOString()),
+      ...INJECTED_BUILD_INFO_VALUES,
     }),
     new TypescriptConvertErrorsToWarnings(),
     shouldAnalyzeBundles &&

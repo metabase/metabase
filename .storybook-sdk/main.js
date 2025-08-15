@@ -3,6 +3,9 @@ const MiniCssExtractPlugin = require("mini-css-extract-plugin");
 const appConfig = require("../rspack.embedding-sdk-bundle.config");
 const fs = require("fs");
 const path = require("path");
+const {
+  INJECTED_BUILD_INFO_VALUES,
+} = require("../frontend/build/embedding-sdk/constants/injected-build-info-values");
 
 const {
   isEmbeddingSdkPackageInstalled,
@@ -36,8 +39,9 @@ module.exports = {
         Buffer: ["buffer", "Buffer"],
       }),
       new webpack.EnvironmentPlugin({
-        EMBEDDING_SDK_PACKAGE_VERSION,
         IS_EMBEDDING_SDK: "true",
+        EMBEDDING_SDK_PACKAGE_VERSION,
+        ...INJECTED_BUILD_INFO_VALUES,
       }),
     ],
     module: {

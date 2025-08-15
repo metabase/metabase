@@ -4,7 +4,7 @@ import { initialize, mswLoader } from "msw-storybook-addon";
 import { storybookThemeOptions } from "embedding-sdk/test/storybook-themes";
 
 import { availableLocales } from "./constants";
-import { defineEmbeddingSdkPackageVersion } from "../frontend/src/metabase/embedding-sdk/lib/define-embedding-sdk-package-version";
+import { defineEmbeddingSdkPackageBuildInfo } from "../frontend/src/metabase/embedding-sdk/lib/define-embedding-sdk-package-build-info";
 import { defineGlobalDependencies } from "../frontend/src/metabase/embedding-sdk/lib/define-global-dependencies";
 
 // To run initialization side effects like Mantine styles, dayjs plugins, etc
@@ -12,7 +12,7 @@ import { defineGlobalDependencies } from "../frontend/src/metabase/embedding-sdk
 // This does not break the SDK Bundle loading logic
 import "embedding-sdk/bundle";
 
-defineEmbeddingSdkPackageVersion();
+defineEmbeddingSdkPackageBuildInfo();
 defineGlobalDependencies();
 
 // @ts-expect-error: See metabase/lib/delay
