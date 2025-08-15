@@ -219,7 +219,7 @@ export const DatabaseReplicationForm = ({
               />
 
               {values.schemaSelect !== "all" && (
-                <>
+                <Box>
                   <Text
                     c="text-secondary"
                     fz="sm"
@@ -231,7 +231,7 @@ export const DatabaseReplicationForm = ({
                     minRows={2}
                     onBlur={({ target: { value } }) => setSchemaFilters(value)}
                   />
-                </>
+                </Box>
               )}
 
               {noSyncTables.length > 0 && (
