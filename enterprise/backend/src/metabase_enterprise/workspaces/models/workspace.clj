@@ -278,5 +278,5 @@
 ;;     "2025-08-08T21:03:43.194484Z")
   )
 
-(mu/defn- ->yaml [workspace :- ::workspace]
+(mu/defn- ->yaml [workspace]
   (yaml/generate-string (sort-workspace workspace) :dumper-options {:flow-style :block}))

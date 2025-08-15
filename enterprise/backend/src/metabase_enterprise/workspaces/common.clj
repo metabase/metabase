@@ -5,9 +5,12 @@
    [metabase-enterprise.workspaces.isolation-manager :as isolation-manager]
    [metabase-enterprise.workspaces.models.workspace :as m.workspace]
    [metabase.api-keys.core :as api-keys]
-   [metabase.api-keys.schema :as api-keys.schema]
    [metabase.api.common :as api]
    [metabase.dashboards.models.dashboard :as dashboard]
+   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.query-processor :as qp]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.secret :as u.secret]
@@ -17,9 +20,9 @@
 (set! *warn-on-reflection* true)
 
 (mu/defn create-workspace! #_#_:- [:merge
-                               ::m.workspace/workspace
-                               [:map
-                                [::api-key ::api-keys.schema/key.secret]]]
+                                   ::m.workspace/workspace
+                                   [:map
+                                    [::api-key ::api-keys.schema/key.secret]]]
   "Creates a workspace, and returns it"
   [user-id        :- pos-int?
    workspace-name :- ::m.workspace/workspace.name
@@ -122,7 +125,7 @@
         transform (assoc transform :created_at (str (java.time.Instant/now)))]
     (add-workspace-entity! workspace :transforms transform)
     (add-workspace-entity! workspace :activity_logs {::type ::added-transform
-                                                    :transform transform})))
+                                                     :transform transform})))
 
 (comment)
 
@@ -185,11 +188,11 @@
           (log/info "Deleting isolations for workspace" (:id workspace) "for db id:" id engine)
           (let [deletion-info (isolation-manager/delete-isolation engine details (:slug workspace) isolation-info)]
           ;; remove it from the workspace's "data_warehouses":
-          (t2/update! :model/Workspace (:id workspace)
-                      {:data_warehouses (dissoc data-warehouses (keyword (str id)))})
-          (add-workspace-entity! workspace :activity_logs {::type ::deleted-isolation
-                                                           :isolation deletion-info}))))
-    (log/warn "No data warehouses found to delete isolations for workspace" (:id workspace))))
+            (t2/update! :model/Workspace (:id workspace)
+                        {:data_warehouses (dissoc data-warehouses (keyword (str id)))})
+            (add-workspace-entity! workspace :activity_logs {::type ::deleted-isolation
+                                                             :isolation deletion-info}))))
+      (log/warn "No data warehouses found to delete isolations for workspace" (:id workspace))))
 
 (defn create-xray
   "Create an xray of a model"
@@ -391,24 +394,24 @@
   (let [model-activity (create-models* workspace)]
     ;; todo: assoc some type here?
     (add-workspace-entites! workspace :activity_logs {::type ::create-models
-                                                     :model-activity model-activity})))
+                                                      :model-activity model-activity})))
 
 (defn- create-model* [{:keys [collection_id] :as workspace} transform model-name]
-  (let [card {:name model-name
+  (let [table-id (:id (t2/select-one [:model/Table :id]
+                                     :name (-> transform :target :name)
+                                     :schema (-> transform :target :schema)))
+        mp (lib.metadata.jvm/application-database-metadata-provider (source-database transform))
+        query (lib/query mp (lib.metadata/table mp table-id))
+        card {:name model-name
               :description (format "model: %s" (:description transform))
               :collection_id collection_id
               :card_schema 22 ;;??
               :database_id (source-database transform)
               :creator_id api/*current-user-id*
               :query_type :native
+              :table_id table-id
               :type :model
-              :dataset_query {:database (source-database transform)
-                              :type :native,
-                              :native {:template-tags {},
-                                       ;; this needs to be formatted correctly for different dbs
-                                       :query (format "select * from %s.%s"
-                                                      (-> transform :target :schema)
-                                                      (-> transform :target :name))}}
+              :dataset_query query
               :display :table
               :visualization_settings {}}]
     (try {:status :success
@@ -443,7 +446,7 @@
                                                    :transform-name transform-name})))
         model-activity (create-model* workspace (patch-transform transform schema-name) model-name)]
     (add-workspace-entity! workspace :activity_logs {::type ::create-models
-                                                    :model-activity model-activity})))
+                                                     :model-activity model-activity})))
 
 (defn init-workspace [workspace {:keys [transforms] :as plan-data}]
   (log/info "Initializing workspace" (:id workspace) "with plan data:" plan-data)
