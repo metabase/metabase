@@ -11,9 +11,6 @@ on:
         description: 'Issue number to fix'
         required: true
         type: string
-  push:
-    paths:
-      - '.github/workflows/claude-code-bug-fix.yml'
 
 jobs:
   check-employee-and-issue:
@@ -24,8 +21,7 @@ jobs:
       issues: read
     if: |
       (github.event_name == 'issues' && github.event.label.name == 'claude:fix-issue-ci' && github.event.issue.state == 'open') ||
-      (github.event_name == 'workflow_dispatch') ||
-      (github.event_name == 'push')
+      (github.event_name == 'workflow_dispatch')
     outputs:
       is_employee: ${{ steps.check_employee.outputs.is_employee }}
       issue_number: ${{ steps.get_issue.outputs.issue_number }}
@@ -51,15 +47,6 @@ jobs:
                 issue_number: issueNumber
               });
               issueData = data;
-            } else if (context.eventName === 'push') {
-              // Push trigger - use hardcoded test issue
-              issueNumber = 62194;
-              const { data } = await github.rest.issues.get({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: issueNumber
-              });
-              issueData = data;
             }
             
             core.setOutput('issue_number', issueNumber);
@@ -71,10 +58,12 @@ jobs:
       - name: Check if issue creator is a Metabase employee
         id: check_employee
         uses: actions/github-script@v7
+        env:
+          ISSUE_DATA: ${{ steps.get_issue.outputs.issue_data }}
         with:
           script: |
             try {
-              const issueData = JSON.parse('${{ steps.get_issue.outputs.issue_data }}');
+              const issueData = JSON.parse(process.env.ISSUE_DATA);
               const issueAuthor = issueData.user.login;
               
               // Check if user is a member of the metabase organization
@@ -92,7 +81,7 @@ jobs:
               }
             } catch (error) {
               if (error.status === 404) {
-                console.log(`User ${context.payload.issue.user.login} is not a member of the Metabase organization or membership is private. Skipping bug fix automation.`);
+                console.log(`User ${issueAuthor} is not a member of the Metabase organization or membership is private. Skipping bug fix automation.`);
               } else {
                 console.error('Error checking organization membership:', error);
               }
@@ -124,9 +113,11 @@ jobs:
       - name: Prepare dynamic issue info
         id: prepare_issue_info
         uses: actions/github-script@v7
+        env:
+          ISSUE_DATA: ${{ needs.check-employee-and-issue.outputs.issue_data }}
         with:
           script: |
-            const issueData = JSON.parse('${{ needs.check-employee-and-issue.outputs.issue_data }}');
+            const issueData = JSON.parse(process.env.ISSUE_DATA);
             const issueNumber = '${{ needs.check-employee-and-issue.outputs.issue_number }}';
             
             // Create unique branch name with timestamp
@@ -248,10 +239,12 @@ jobs:
         if: steps.check_changes.outputs.has_changes == 'true'
         id: prepare_reviewers
         uses: actions/github-script@v7
+        env:
+          ISSUE_DATA: ${{ needs.check-employee-and-issue.outputs.issue_data }}
         with:
           script: |
             // Get existing team labels from the issue
-            const issueData = JSON.parse('${{ needs.check-employee-and-issue.outputs.issue_data }}');
+            const issueData = JSON.parse(process.env.ISSUE_DATA);
             const issueLabels = issueData.labels.map(label => label.name);
             const teamLabels = issueLabels.filter(label => label.startsWith('.Team/'));
 
