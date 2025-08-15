@@ -724,7 +724,7 @@ databaseChangeLog:
         changes:
           - sql: >-
               INSERT INTO transform_job_transform_tag(job_id, tag_id, entity_id, position)
-              SELECT job.id, tag.id, job.entity_id, 1 AS position
+              SELECT job.id, tag.id, job.entity_id, 0 AS position
               FROM transform_job AS job
               JOIN transform_tag AS tag ON job.built_in_type = tag.built_in_type
               WHERE job.built_in_type IS NOT NULL AND tag.built_in_type IS NOT NULL;
