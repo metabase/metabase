@@ -11,9 +11,7 @@
    [metabase.util.jvm :as u.jvm]
    [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2])
-  (:import
-   (org.quartz CronExpression)))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -31,11 +29,7 @@
   (log/info "Creating transform job:" name "with schedule:" schedule)
   (api/check-superuser)
   ;; Validate cron expression
-  (api/check-400 (try
-                   (CronExpression/validateExpression schedule)
-                   true
-                   (catch Exception _
-                     false))
+  (api/check-400 (transforms.schedule/validate-cron-expression schedule)
                  (deferred-tru "Invalid cron expression: {0}" schedule))
   ;; Validate tag IDs exist if provided
   (when (seq tag_ids)
