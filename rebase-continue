@@ -1,3 +1,12 @@
 {
-  "continuations": null
+  "continuations": [
+    {
+      "command": [
+        "upstack",
+        "onto",
+        "master"
+      ],
+      "branch": "emb-624-add-top-level-breadcrumb-navigation-for-embed-js"
+    }
+  ]
 }
