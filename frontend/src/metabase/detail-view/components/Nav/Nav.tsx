@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { type RouteComponentProps, withRouter } from "react-router";
 
 import { skipToken, useListDatabaseSchemasQuery } from "metabase/api";
 import { Box, Group, type GroupProps, Icon, Text, rem } from "metabase/ui";
@@ -7,12 +8,12 @@ import type { Table } from "metabase-types/api";
 import { Breadcrumb } from "./Breadcrumb";
 import { getExploreTableUrl } from "./utils";
 
-interface Props extends GroupProps {
+interface Props extends GroupProps, RouteComponentProps<void, void, void> {
   rowName: ReactNode;
   table: Table;
 }
 
-export const Nav = ({ rowName, table, ...props }: Props) => {
+export const Nav = withRouter(({ rowName, table, ...props }: Props) => {
   const { data: schemas, isLoading: isLoadingSchemas } =
     useListDatabaseSchemasQuery(
       table && table.db_id && table.schema ? { id: table.db_id } : skipToken,
@@ -22,6 +23,11 @@ export const Nav = ({ rowName, table, ...props }: Props) => {
   if (!table || !table.db || isLoadingSchemas) {
     return null;
   }
+
+  const [url, hash] = getExploreTableUrl(
+    table,
+    props.location?.state?.card,
+  ).split("#");
 
   return (
     <Group align="center" gap="sm" miw={0} wrap="nowrap" {...props}>
@@ -47,7 +53,13 @@ export const Nav = ({ rowName, table, ...props }: Props) => {
 
       <Separator />
 
-      <Breadcrumb href={getExploreTableUrl(table)}>
+      <Breadcrumb
+        href={{
+          pathname: url,
+          hash,
+          state: { rowIndex: props?.location?.state?.rowIndex },
+        }}
+      >
         {table.display_name}
       </Breadcrumb>
 
@@ -60,7 +72,7 @@ export const Nav = ({ rowName, table, ...props }: Props) => {
       )}
     </Group>
   );
-};
+});
 
 const Separator = () => (
   <Text c="text-secondary" flex="0 0 auto" fw="bold">

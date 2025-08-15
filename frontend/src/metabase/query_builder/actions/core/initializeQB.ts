@@ -371,6 +371,7 @@ async function handleQBInit(
         replaceState: true,
         preserveParameters: hasCard,
         objectId,
+        locationState: location?.state,
       }),
     );
   }
