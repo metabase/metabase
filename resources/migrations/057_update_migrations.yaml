@@ -516,6 +516,16 @@ databaseChangeLog:
             tableName: transform_transform_tag
             columnNames: transform_id, tag_id
             constraintName: unique_transform_tag
+      rollback:
+        - dropForeignKeyConstraint:
+            baseTableName: transform_transform_tag
+            constraintName: fk_transform_transform_tag_transform_id
+        - dropForeignKeyConstraint:
+            baseTableName: transform_transform_tag
+            constraintName: fk_transform_transform_tag_tag_id
+        - dropUniqueConstraint:
+            tableName: transform_transform_tag
+            constraintName: unique_transform_tag
 
   - changeSet:
       id: v57.2025-08-07T10:03:00
@@ -577,6 +587,30 @@ databaseChangeLog:
             tableName: transform_job_transform_tag
             columnNames: job_id, tag_id
             constraintName: unique_job_tag
+      rollback:
+        - dropForeignKeyConstraint:
+            baseTableName: transform_job_transform_tag
+            constraintName: fk_transform_job_transform_tag_job_id
+        - dropForeignKeyConstraint:
+            baseTableName: transform_job_transform_tag
+            constraintName: fk_transform_job_transform_tag_tag_id
+        - dropUniqueConstraint:
+            tableName: transform_job_transform_tag
+            constraintName: unique_job_tag
+        - addForeignKeyConstraint:
+            constraintName: fk_transform_job_transform_tag_tag_id
+            baseTableName: transform_job_transform_tag
+            baseColumnNames: tag_id
+            referencedTableName: transform_tag
+            referencedColumnNames: id
+            onDelete: CASCADE
+        - addForeignKeyConstraint:
+            constraintName: fk_transform_job_transform_tag_job_id
+            baseTableName: transform_job_transform_tag
+            baseColumnNames: job_id
+            referencedTableName: transform_job
+            referencedColumnNames: id
+            onDelete: CASCADE
 
   - changeSet:
       id: v57.2025-08-08T00:00:00
