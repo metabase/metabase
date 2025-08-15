@@ -21,7 +21,6 @@
   :type       :boolean
   :default    false
   :visibility :internal
-  :feature    :transforms
   :doc        false
   :export?    false
   :encryption :no

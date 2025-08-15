@@ -77,5 +77,4 @@
   (log/info "Default transform setup complete"))
 
 (defmethod task/init! ::SeedTransformDefaults [_]
-  (when (premium-features/has-feature? :transforms)
-    (seed-default-tags-and-jobs!)))
+  (seed-default-tags-and-jobs!))
