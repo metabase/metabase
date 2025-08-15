@@ -113,7 +113,7 @@ function CreateTransformForm({
             placeholder={t`This is optional`}
           />
           {schemas.length > 1 && (
-            <FormSelect name="schema" label={t`Schema`} data={schemas} />
+            <FormSelect name="targetSchema" label={t`Schema`} data={schemas} />
           )}
           <FormTextInput
             name="targetName"
