@@ -65,7 +65,7 @@ export function EditorBody({
     onChange(newNativeQuery.question());
   };
 
-  const isDatabaseSupported = (database: Database | null) =>
+  const databaseSupportsTransforms = (database: Database | null) =>
     database && !database.is_sample && hasFeature(database, "transforms/table");
 
   const dataPickerOptions = useMemo(() => {
@@ -75,7 +75,7 @@ export function EditorBody({
         // Disable unsuppported databases
         if (item.model === "database") {
           const database = metadata.database(item.id);
-          return !isDatabaseSupported(database);
+          return !databaseSupportsTransforms(database);
         }
 
         // Disable questions based on unsuppported databases
@@ -85,12 +85,12 @@ export function EditorBody({
           item.model === "metric"
         ) {
           const database = metadata.database(item.database_id);
-          return !isDatabaseSupported(database);
+          return !databaseSupportsTransforms(database);
         }
 
         if (item.model === "table") {
           const database = metadata.database(item.database.id);
-          return !isDatabaseSupported(database);
+          return !databaseSupportsTransforms(database);
         }
 
         if (item.model === "dashboard") {
@@ -123,7 +123,7 @@ export function EditorBody({
       cancelQuery={onCancelQuery}
       setDatasetQuery={handleNativeQueryChange}
       databaseIsDisabled={(database: Database) =>
-        database.is_sample || !hasFeature(database, "transforms/table")
+        !databaseSupportsTransforms(database)
       }
     />
   ) : (
