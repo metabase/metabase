@@ -3,7 +3,6 @@
   Creates default tags and jobs if none exist, ensuring transform functionality is ready to use."
   (:require
    [metabase-enterprise.transforms.settings :as transforms.settings]
-   [metabase.premium-features.core :as premium-features]
    [metabase.task.core :as task]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.log :as log]
