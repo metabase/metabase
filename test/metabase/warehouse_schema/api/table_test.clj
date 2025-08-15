@@ -1,6 +1,7 @@
 (ns ^:mb/driver-tests metabase.warehouse-schema.api.table-test
   "Tests for /api/table endpoints."
   (:require
+   #_[metabase.sync.core :as sync]
    [clojure.set :as set]
    [clojure.test :refer :all]
    [medley.core :as m]
@@ -13,7 +14,6 @@
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
-   [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.http-client :as client]
    [metabase.timeseries-query-processor-test.util :as tqpt]
@@ -1280,12 +1280,12 @@
       (is (= "You don't have permissions to do that."
              (mt/user-http-request :rasta :post 403 (format "table/%d/sync_schema" (u/the-id table))))))))
 
-(defn- deliver-when-tbl [promise-to-deliver expected-tbl]
-  (fn [tbl]
-    (when (= (u/the-id tbl) (u/the-id expected-tbl))
-      (deliver promise-to-deliver true))))
+;; The following are commented out temporarily due to starburst failures
+#_(defn- deliver-when-tbl [promise-to-deliver expected-tbl]
+    (fn [tbl]
+      (when (= (u/the-id tbl) (u/the-id expected-tbl))
+        (deliver promise-to-deliver true))))
 
-;; The following is commented out temporarily due to starburst failures
 #_(deftest trigger-metadata-sync-for-table-test
     (testing "Can we trigger a metadata sync for a table?"
       (let [sync-called? (promise)
