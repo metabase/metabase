@@ -34,18 +34,21 @@ export const trackSearchRequest = (
     runtime_milliseconds: duration,
     total_results: searchResponse.total,
     page_results: searchResponse.limit,
+    search_engine: searchResponse.engine,
   });
 };
 
 export const trackSearchClick = (
-  itemType: "item" | "view_more",
+  itemType: "item",
   position: number,
   context: SearchRequest["context"],
+  searchEngine: string,
 ) => {
   trackSchemaEvent("search", {
     event: "search_click",
     position,
     target_type: itemType,
     context: context ?? null,
+    search_engine: searchEngine,
   });
 };

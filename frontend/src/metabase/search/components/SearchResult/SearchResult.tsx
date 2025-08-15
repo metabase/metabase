@@ -35,6 +35,7 @@ export function SearchResult({
   className,
   index,
   context = "search-app",
+  searchEngine,
 }: {
   result: WrappedResult;
   compact?: boolean;
@@ -44,6 +45,7 @@ export function SearchResult({
   className?: string;
   index: number;
   context?: SearchContext;
+  searchEngine?: string;
 }) {
   const { name, model, description, moderated_status }: WrappedResult = result;
 
@@ -84,7 +86,7 @@ export function SearchResult({
       onClick(result);
       return;
     }
-    trackSearchClick("item", index, context);
+    trackSearchClick("item", index, context, searchEngine || "unknown");
     onChangeLocation(result.getUrl());
   };
 

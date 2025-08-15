@@ -263,6 +263,7 @@ export function EntityPickerModal<
             isLoading={isFetching}
             searchScope={searchScope}
             searchResults={finalSearchResults ?? []}
+            searchEngine={data?.engine}
             selectedItem={selectedItem}
             onItemSelect={onItemSelect}
             onSearchScopeChange={setSearchScope}

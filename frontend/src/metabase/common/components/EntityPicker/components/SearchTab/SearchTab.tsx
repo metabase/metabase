@@ -22,6 +22,7 @@ interface Props<
   isLoading: boolean;
   searchScope: EntityPickerSearchScope;
   searchResults: SearchItem[];
+  searchEngine?: string;
   selectedItem: Item | null;
   onItemSelect: (item: Item) => void;
   onSearchScopeChange: (scope: EntityPickerSearchScope) => void;
@@ -36,6 +37,7 @@ export const SearchTab = <
   isLoading,
   searchScope,
   searchResults,
+  searchEngine,
   selectedItem,
   onItemSelect,
   onSearchScopeChange,
@@ -83,6 +85,7 @@ export const SearchTab = <
           <SearchResults
             folder={folder}
             searchResults={searchResults}
+            searchEngine={searchEngine}
             selectedItem={selectedItem}
             onItemSelect={onItemSelect}
           />

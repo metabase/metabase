@@ -47,6 +47,7 @@ export type SearchResponse<
   models: Model[] | null;
   available_models: SearchModel[];
   table_db_id: DatabaseId | null;
+  engine: string;
 } & PaginationResponse;
 
 export type CollectionEssentials = Pick<
