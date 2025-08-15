@@ -43,7 +43,7 @@ export const trackSearchRequest = (
 };
 
 export const trackSearchClick = (
-  itemType: "item",
+  itemType: "item" | "view_more",
   position: number,
   context: SearchRequest["context"],
   searchEngine: string,

@@ -66,7 +66,7 @@ export type SearchQueryEvent = ValidateEvent<{
 export type SearchClickEvent = ValidateEvent<{
   event: "search_click";
   position: number;
-  target_type: "item";
+  target_type: "item" | "view_more";
   context: SearchContext | null;
   search_engine: string | null;
   request_id: string | null;
