@@ -108,7 +108,12 @@ export const getTableItem = (
   const table = tables?.find((db) => db.id === tableId);
   const name = table?.name ?? "";
 
-  return { model: "table", id: tableId, name };
+  return {
+    model: "table",
+    id: tableId,
+    name,
+    database: { id: table?.db_id },
+  };
 };
 
 export const getSchemaDisplayName = (schemaName: SchemaName | undefined) => {

@@ -89,7 +89,7 @@ export function EditorBody({
         }
 
         if (item.model === "table") {
-          const database = metadata.database(item.database?.id);
+          const database = metadata.database(item.database.id);
           return !isDatabaseSupported(database);
         }
 
