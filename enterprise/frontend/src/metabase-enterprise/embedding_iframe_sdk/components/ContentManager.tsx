@@ -35,7 +35,7 @@ export function ContentManager({ settings }: ViewContentProps) {
 
   const isReadOnly = componentName === "metabase-view-content";
 
-  const { breadcrumbs, currentLocation } = useSdkBreadcrumbs();
+  const { breadcrumbs, currentLocation, reportLocation } = useSdkBreadcrumbs();
 
   const [currentView, setCurrentView] = useState<ContentManagerView>({
     type: "collection",
@@ -121,24 +121,33 @@ export function ContentManager({ settings }: ViewContentProps) {
 
           setCurrentView({ type, id: item.id });
         }}
+        style={{ overflowY: "scroll" }}
       />
     ))
     .otherwise(() => null);
 
   return (
-    <Stack px="lg" py="xl" maw="60rem" mx="auto" h="100%">
+    <Stack px="xl" py="lg" h="100%" style={{ overflowY: "hidden" }}>
       {/* Fixes the height to avoid layout shift when hiding buttons */}
-      <Group justify="space-between" align="center" gap="sm" h="2.5rem">
-        <Group>
+      <Group justify="space-between" align="center" gap="sm">
+        <Group h="2.5rem">
           <SdkBreadcrumbs />
         </Group>
 
         {currentView.type === "collection" && (
-          <Group>
+          <Group gap="sm">
             {(settings.withNewQuestion ?? true) && (
               <Button
                 justify="center"
-                onClick={() => setCurrentView({ type: "exploration" })}
+                onClick={() => {
+                  setCurrentView({ type: "exploration" });
+
+                  reportLocation({
+                    type: "question",
+                    id: "new",
+                    name: "New Exploration",
+                  });
+                }}
               >
                 {t`New Exploration`}
               </Button>
