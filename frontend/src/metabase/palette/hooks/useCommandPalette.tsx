@@ -173,9 +173,6 @@ export const useCommandPalette = ({
             section: "search",
             keywords: debouncedSearchText,
             icon: "link" as IconName,
-            perform: () => {
-              trackSearchClick("view_more", 0, "command-palette");
-            },
             priority: Priority.HIGH,
             extra: {
               href: searchLocation,
@@ -194,7 +191,12 @@ export const useCommandPalette = ({
               keywords: debouncedSearchText,
               priority: Priority.NORMAL - index,
               perform: () => {
-                trackSearchClick("item", index, "command-palette");
+                trackSearchClick(
+                  "item",
+                  index,
+                  "command-palette",
+                  searchResults?.engine || "unknown",
+                );
               },
               extra: {
                 moderatedStatus: result.moderated_status,

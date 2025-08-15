@@ -150,6 +150,14 @@
         "boolean",
         "null"
       ]
+    },
+    "search_engine": {
+      "description": "The search engine used to perform the search",
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 1024
     }
   },
   "required": [

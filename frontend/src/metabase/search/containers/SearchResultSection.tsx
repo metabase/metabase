@@ -7,9 +7,11 @@ import { Paper, Stack, Text } from "metabase/ui";
 export const SearchResultSection = ({
   results,
   totalResults,
+  searchEngine,
 }: {
   results: WrappedResult[];
   totalResults: number;
+  searchEngine?: string;
 }) => {
   const resultsLabel = ngettext(
     msgid`${totalResults} result`,
@@ -29,6 +31,7 @@ export const SearchResultSection = ({
               key={`${item.id}__${item.model}`}
               result={item}
               index={index}
+              searchEngine={searchEngine}
             />
           );
         })}

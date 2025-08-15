@@ -103,7 +103,11 @@ function SearchApp({ location }) {
 
           {!error && !isFetching && list.length > 0 && (
             <Box>
-              <SearchResultSection totalResults={data.total} results={list} />
+              <SearchResultSection
+                totalResults={data.total}
+                results={list}
+                searchEngine={data.engine}
+              />
               <Group justify="flex-end" align="center" my="1rem">
                 <PaginationControls
                   showTotal

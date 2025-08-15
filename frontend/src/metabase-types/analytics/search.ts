@@ -14,6 +14,7 @@ type SearchEventSchema = {
   verified_items?: boolean | null;
   search_native_queries?: boolean | null;
   search_archived?: boolean | null;
+  search_engine?: string | null;
 };
 
 type ValidateEvent<
@@ -54,13 +55,15 @@ export type SearchQueryEvent = ValidateEvent<{
   verified_items: boolean;
   search_native_queries: boolean;
   search_archived: boolean;
+  search_engine: string;
 }>;
 
 export type SearchClickEvent = ValidateEvent<{
   event: "search_click";
   position: number;
-  target_type: "item" | "view_more";
+  target_type: "item";
   context: SearchContext | null;
+  search_engine: string;
 }>;
 
 export type SearchEvent = SearchQueryEvent | SearchClickEvent;
