@@ -67,7 +67,7 @@ export function DatabaseReplicationSection({
         ) : (
           <Button
             onClick={() => setShowDWHReplicationModal(true)}
-          >{t`Replicate to Data Warehouse`}</Button>
+          >{t`Set up replication`}</Button>
         )}
         {showDWHReplicationModal ? (
           <DatabaseReplicationModal

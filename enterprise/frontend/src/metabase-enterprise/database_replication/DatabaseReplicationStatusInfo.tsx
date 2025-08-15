@@ -16,7 +16,11 @@ export const DatabaseReplicationStatusInfo = memo(
   }: DatabaseReplicationStatusInfoProps) {
     const connections = useSetting("database-replication-connections");
     const hasConnection = connections?.[databaseId] != null;
-    const message = hasConnection ? t`Replicating` : t`Not replicating`;
+    const message = hasConnection
+      ? // eslint-disable-next-line no-literal-metabase-strings -- This string only shows for admins.
+        t`Replicating to Metabase Cloud Storage`
+      : // eslint-disable-next-line no-literal-metabase-strings -- This string only shows for admins.
+        t`Not replicating to Metabase Cloud Storage`;
     const color = hasConnection ? "success" : "text-light";
 
     return (
