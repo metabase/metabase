@@ -123,6 +123,17 @@
   [db-id routing-info]
   (delete-router! db-id routing-info))
 
+(defenterprise delete-all-database-routing!
+  "Deletes the Database Router associated with this router database."
+  :feature :database-routing
+  [db-id]
+  (let [db (t2/select-one :model/Database db-id)]
+    (events/publish-event! :event/database-update {:object db
+                                                   :previous-object db
+                                                   :user-id api/*current-user-id*
+                                                   :details {:db_routing :disabled}})
+    (t2/delete! :model/DatabaseRouter {:where [:= :database_id db-id]})))
+
 (defn- user-attribute
   "Which user attribute should we use for this RouterDB?"
   [db-or-id]

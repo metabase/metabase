@@ -50,6 +50,12 @@
   ;; todo: should this throw?
   nil)
 
+(defenterprise delete-all-database-routing!
+  "Delete any and all database routing information, usually because you are deleting the database."
+  metabase-enterprise.database-routing.common
+  [_db-id]
+  nil)
+
 (defenterprise create-or-update-router
   "OSS version, errors"
   metabase-enterprise.database-routing.common
