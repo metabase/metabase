@@ -266,17 +266,17 @@
     (mt/with-premium-features #{:database-routing}
       (binding [tx/*use-routing-details* true]
         (mt/dataset (mt/dataset-definition "db-routing-data"
-                                           [["t"
+                                           [["t_0"
                                              [{:field-name "f", :base-type :type/Text}]
-                                             [["routed-foo"]
-                                              ["routed-bar"]]]])
+                                             [["us-east-2-foo"]
+                                              ["us-east-2-bar"]]]])
           (let [routed (mt/db)]
             (binding [tx/*use-routing-details* false]
               (mt/dataset (mt/dataset-definition "db-routing-data"
-                                                 [["t"
+                                                 [["t_0"
                                                    [{:field-name "f", :base-type :type/Text}]
-                                                   [["original-foo"]
-                                                    ["original-bar"]]]])
+                                                   [["us-east-1-foo"]
+                                                    ["us-east-1-bar"]]]])
                 (let [router (mt/db)]
                   (t2/update! :model/Database (u/the-id routed)
                               {:details (assoc (:details routed)
@@ -295,12 +295,12 @@
                                                             :user_attribute "db_name"}]
                       (met/with-user-attributes! :rasta {"db_name" (:name routed)}
                         (mt/with-current-user (mt/user->id :crowberto)
-                          (is (= [[1 "original-foo"] [2 "original-bar"]]
-                                 (->> (mt/query t)
+                          (is (= [[1 "us-east-1-foo"] [2 "us-east-1-bar"]]
+                                 (->> (mt/query t_0)
                                       (mt/process-query)
                                       (mt/formatted-rows [int str])))))
                         (mt/with-current-user (mt/user->id :rasta)
-                          (is (= [[1 "routed-foo"] [2 "routed-bar"]]
-                                 (->> (mt/query t)
+                          (is (= [[1 "us-east-2-foo"] [2 "us-east-2-bar"]]
+                                 (->> (mt/query t_0)
                                       (mt/process-query)
                                       (mt/formatted-rows [int str])))))))))))))))))
