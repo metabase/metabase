@@ -409,7 +409,7 @@ databaseChangeLog:
             constraintName: idx_document_bookmark_user_document_unique
 
   - changeSet:
-      id: v57.2025-08-02T15:55:38
+      id: v57.2025-08-22T00:00:00
       author: metamben
       comment: Create transform table
       changes:
@@ -472,7 +472,7 @@ databaseChangeLog:
                     nullable: false
 
   - changeSet:
-      id: v57.2025-08-03T00:00:00
+      id: v57.2025-08-22T00:01:00
       author: eric
       comment: Create transform_run table in app database to track transform execution
       changes:
@@ -538,7 +538,7 @@ databaseChangeLog:
                     nullable: true
 
   - changeSet:
-      id: v57.2025-08-04T10:53:00
+      id: v57.2025-08-22T00:02:00
       author: metamben
       comment: Add last run index on transform_run. Mysql needs the foreign keys dropped on rollback.
       changes:
@@ -567,7 +567,7 @@ databaseChangeLog:
             onDelete: CASCADE
 
   - changeSet:
-      id: v57.2025-08-04T10:54:00
+      id: v57.2025-08-22T00:03:00
       author: metamben
       comment: Add unique index to make sure at most one run can be active
       changes:
@@ -577,7 +577,7 @@ databaseChangeLog:
             columnNames: transform_id, is_active
 
   - changeSet:
-      id: v57.2025-08-04T10:55:00
+      id: v57.2025-08-22T00:04:00
       author: metamben
       comment: Add index for querying active runs. Mysql needs the foreign keys dropped on rollback.
       changes:
@@ -605,7 +605,7 @@ databaseChangeLog:
             onDelete: CASCADE
 
   - changeSet:
-      id: v57.2025-08-06T00:00:00
+      id: v57.2025-08-22T00:05:00
       author: eric
       comment: Create transform_run_cancelation table to track cancelation.
       changes:
@@ -633,7 +633,7 @@ databaseChangeLog:
                     nullable: false
 
   - changeSet:
-      id: v57.2025-08-07T10:00:00
+      id: v57.2025-08-22T00:06:00
       author: galdre
       comment: Add transform_tag table for grouping transforms
       changes:
@@ -684,7 +684,7 @@ databaseChangeLog:
                     nullable: true
 
   - changeSet:
-      id: v57.2025-08-07T10:01:00
+      id: v57.2025-08-22T00:07:00
       author: galdre
       comment: Add transform_job table for scheduled execution of tagged transforms
       changes:
@@ -745,7 +745,7 @@ databaseChangeLog:
                     nullable: true
 
   - changeSet:
-      id: v57.2025-08-07T10:02:00
+      id: v57.2025-08-22T00:08:00
       author: galdre
       comment: Add transform_transform_tag join table for transform-tag associations
       changes:
@@ -796,7 +796,7 @@ databaseChangeLog:
                     nullable: false
 
   - changeSet:
-      id: v57.2025-08-07T10:02:01
+      id: v57.2025-08-22T00:09:00
       author: galdre
       comment: Add unique constraints on transform_transform_tag(transform_id, tag_id). Deleting foreign keys needed for mysql.
       changes:
@@ -816,7 +816,7 @@ databaseChangeLog:
             constraintName: unique_transform_tag
 
   - changeSet:
-      id: v57.2025-08-07T10:03:00
+      id: v57.2025-08-22T00:10:00
       author: galdre
       comment: Add transform_job_transform_tag join table for job-tag associations
       changes:
@@ -867,7 +867,7 @@ databaseChangeLog:
                     nullable: false
 
   - changeSet:
-      id: v57.2025-08-07T10:03:01
+      id: v57.2025-08-22T00:11:00
       author: galdre
       comment: Add unique constraint on transform_job_transform_tag(job_id, tag_id). Mysql needs the foreign keys dropped on rollback.
       changes:
@@ -901,7 +901,7 @@ databaseChangeLog:
             onDelete: CASCADE
 
   - changeSet:
-      id: v57.2025-08-08T00:00:00
+      id: v57.2025-08-22T00:12:00
       author: william
       comment: Create transform_job_run table in app database to track transform job execution
       changes:
@@ -977,7 +977,7 @@ databaseChangeLog:
                     nullable: false
 
   - changeSet:
-        id: v57.2025-08-14T00:00:00
+        id: v57.2025-08-22T00:13:00
         author: ranquild
         comment: Create built-in transform tags
         changes:
@@ -991,7 +991,7 @@ databaseChangeLog:
           - sql: DELETE FROM transform_tag WHERE built_in_type IS NOT NULL;
 
   - changeSet:
-        id: v57.2025-08-14T01:00:00
+        id: v57.2025-08-22T00:14:00
         author: ranquild
         comment: Create built-in transform jobs
         changes:
@@ -1005,7 +1005,7 @@ databaseChangeLog:
           - sql: DELETE FROM transform_job WHERE built_in_type IS NOT NULL;
 
   - changeSet:
-        id: v57.2025-08-14T02:00:00
+        id: v57.2025-08-22T00:15:00
         author: ranquild
         comment: Create associations between built-in transform jobs and tags
         changes:
