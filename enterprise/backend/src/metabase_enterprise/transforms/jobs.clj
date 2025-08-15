@@ -66,7 +66,9 @@
             (recur complete transform-id))
 
           in-progress
-          (recur (conj complete in-progress) nil)
+          (do
+            (transforms.job-run/add-run-activity! run-id)
+            (recur (conj complete in-progress) nil))
 
           :else
           (do
