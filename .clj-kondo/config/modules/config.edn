@@ -1796,6 +1796,7 @@
            metabase-enterprise.semantic-search.init}
    :uses #{analytics
            api
+           config
            connection-pool
            models
            permissions

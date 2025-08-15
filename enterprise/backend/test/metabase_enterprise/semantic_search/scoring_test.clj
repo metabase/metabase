@@ -1,9 +1,12 @@
 (ns metabase-enterprise.semantic-search.scoring-test
   (:require
+   [clojure.core.memoize :as memoize]
    [clojure.test :refer :all]
    [metabase-enterprise.semantic-search.index :as semantic.index]
+   [metabase-enterprise.semantic-search.scoring :as semantic.scoring]
    [metabase-enterprise.semantic-search.test-util :as semantic.tu]
    [metabase.search.appdb.scoring-test :refer [with-weights]]
+   [metabase.search.config :as search.config]
    [metabase.test :as mt])
   (:import
    (java.time Instant)
@@ -34,15 +37,20 @@
      (semantic.tu/upsert-index! (map add-doc-defaults ~documents))
      ~@body))
 
+(defn search-results**
+  [search-string raw-ctx]
+  (memoize/memo-clear! #'semantic.scoring/view-count-percentiles)
+  ;; side-step filter-read-permitted for these tests
+  (mt/with-dynamic-fn-redefs [semantic.index/filter-read-permitted identity]
+    (semantic.tu/query-index (merge {:search-string search-string
+                                     :search-engine "semantic"
+                                     :current-user-id (mt/user->id :rasta)}
+                                    raw-ctx))))
+
 (defn search-results*
   [search-string & {:as raw-ctx}]
   (mapv (juxt :model :id :name)
-        ;; side-step permissions for these tests
-        (mt/with-dynamic-fn-redefs [semantic.index/filter-read-permitted identity]
-          (semantic.tu/query-index (merge {:search-string search-string
-                                           :search-engine "semantic"
-                                           :current-user-id (mt/user->id :rasta)}
-                                          raw-ctx)))))
+        (search-results** search-string raw-ctx)))
 
 (defn search-results
   "Like search-results* but with a sanity check that search without weights returns a different result."
@@ -151,6 +159,34 @@
                   ["card" 3 "card old"]
                   ["card" 1 "card ancient"]]
                  (search-results :recency "card"))))))))
+
+(deftest view-count-test
+  (mt/with-premium-features #{:semantic-search}
+    (testing "the more view count the better"
+      (with-index-contents!
+        [{:model "card" :id 1 :name "card well known" :view_count 10}
+         {:model "card" :id 2 :name "card famous"     :view_count 100}
+         {:model "card" :id 3 :name "card popular"    :view_count 50}]
+        (is (= [["card" 2 "card famous"]
+                ["card" 3 "card popular"]
+                ["card" 1 "card well known"]]
+               (search-results :view-count "card")))))))
+
+(deftest view-count-test-2
+  (mt/with-premium-features #{:semantic-search}
+    (testing "don't error on fresh instances with no view count"
+      (with-index-contents!
+        [{:model "card"      :id 1 :name "view card"      :view_count 0}
+         {:model "dashboard" :id 2 :name "view dashboard" :view_count 0}
+         {:model "dataset"   :id 3 :name "view dataset"   :view_count 0}]
+        ;; fix some test flakes where dataset 3 exists and has some sort of recent views
+        (with-weights (assoc (search.config/weights :default)
+                             :user-recency 0
+                             :rrf 0)
+          (is (=? [{:model "dashboard", :id 2, :name "view dashboard"}
+                   {:model "card",      :id 1, :name "view card"}
+                   {:model "dataset",   :id 3, :name "view dataset"}]
+                  (search-results** "view" {}))))))))
 
 (deftest dashboard-count-test
   (mt/with-premium-features #{:semantic-search}

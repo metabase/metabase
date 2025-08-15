@@ -742,7 +742,7 @@
 
             db-timer (u/start-timer)
             weights (search.config/weights (:context search-context))
-            scorers (scoring/semantic-scorers search-context)
+            scorers (scoring/semantic-scorers (:table-name index) search-context)
             query (->> (hybrid-search-query index embedding search-context)
                        (scoring/with-scores search-context scorers))
             xform (comp (map decode-metadata)
