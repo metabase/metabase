@@ -22,14 +22,13 @@ export function buildSearchMenuItems(
   return searchResults.map((result) => {
     const iconData = getIcon({
       model: result.model,
-      // display is optional in SearchResult, pass through when present
-      display: result.display ?? undefined,
+      display: result.display,
     });
     return {
       icon: iconData.name,
       label: result.name,
       id: result.id,
-      model: result.model as SearchModel,
+      model: result.model,
       action: () => onSelect(result),
     };
   });

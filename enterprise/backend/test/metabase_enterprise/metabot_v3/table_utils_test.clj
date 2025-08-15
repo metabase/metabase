@@ -1,11 +1,9 @@
 (ns metabase-enterprise.metabot-v3.table-utils-test
   (:require
-   [clojure.set :as set]
    [clojure.test :refer :all]
    [metabase-enterprise.metabot-v3.query-analyzer :as query-analyzer]
    [metabase-enterprise.metabot-v3.table-utils :as table-utils]
-   [metabase.test :as mt]
-   [toucan2.core :as t2]))
+   [metabase.test :as mt]))
 
 (set! *warn-on-reflection* true)
 

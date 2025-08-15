@@ -1,4 +1,5 @@
-import type { Editor as TiptapEditor } from "@tiptap/core";
+import type { JSONContent, Editor as TiptapEditor } from "@tiptap/core";
+import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
 import cx from "classnames";
 import dayjs from "dayjs";
 import { useCallback, useEffect, useState } from "react";
@@ -50,12 +51,12 @@ import type {
 
 import {
   clearDraftCards,
-  closeSidebar,
   openVizSettingsSidebar,
   resetDocuments,
   setCurrentDocument,
 } from "../documents.slice";
-import { useDocumentState, useRegisterDocumentMetabotContext } from "../hooks";
+import { useDocumentState } from "../hooks/use-document-state";
+import { useRegisterDocumentMetabotContext } from "../hooks/use-register-document-metabot-context";
 import {
   getDraftCards,
   getSelectedEmbedIndex,
@@ -210,25 +211,24 @@ export const DocumentPage = ({
   const isSaving = isCreating || isUpdating;
   const showSaveButton = hasUnsavedChanges() && canWrite && !isSaving;
 
-  const handleContentChanged = useCallback(() => {
-    if (!editorInstance) {
-      return;
-    }
+  const handleChange = useCallback(
+    (content: JSONContent) => {
+      // For new documents, any content means changes
+      if (isNewDocument) {
+        setHasUnsavedEditorChanges(!editorInstance?.isEmpty);
+        return;
+      }
 
-    // Compare current content with original content
-    const currentContent = editorInstance.getJSON();
-    const originalContent = documentContent;
+      // Compare current content with original content
+      const currentContent = content;
+      const originalContent = documentContent;
 
-    // For new documents, any content means changes
-    if (isNewDocument) {
-      setHasUnsavedEditorChanges(!editorInstance.isEmpty);
-      return;
-    }
-
-    // For existing documents, compare with original content
-    const hasChanges = !_.isEqual(currentContent, originalContent);
-    setHasUnsavedEditorChanges(hasChanges);
-  }, [editorInstance, documentContent, isNewDocument]);
+      // For existing documents, compare with original content
+      const hasChanges = !_.isEqual(currentContent, originalContent);
+      setHasUnsavedEditorChanges(hasChanges);
+    },
+    [editorInstance, documentContent, isNewDocument],
+  );
 
   const handleToggleBookmark = useCallback(() => {
     if (!documentId) {
@@ -249,7 +249,7 @@ export const DocumentPage = ({
         const cardsToSave: Record<number, Card> = {};
         const processedCardIds = new Set<number>();
 
-        editorInstance.state.doc.descendants((node: any) => {
+        editorInstance.state.doc.descendants((node: ProseMirrorNode) => {
           if (node.type.name === "cardEmbed") {
             const cardId = node.attrs.id;
             if (!processedCardIds.has(cardId)) {
@@ -262,12 +262,12 @@ export const DocumentPage = ({
           }
         });
 
-        const documentAst = editorInstance ? editorInstance.getJSON() : null;
+        const documentAst = editorInstance.getJSON();
         const name =
           documentTitle ||
           t`Untitled document - ${dayjs().local().format("MMMM D, YYYY")}`;
 
-        const newDocumentData: any = {
+        const newDocumentData = {
           name,
           document: documentAst,
           cards: Object.keys(cardsToSave).length > 0 ? cardsToSave : undefined,
@@ -503,7 +503,7 @@ export const DocumentPage = ({
               onCardEmbedsChange={updateCardEmbeds}
               onQuestionSelect={handleQuestionSelect}
               initialContent={documentContent}
-              onContentChanged={handleContentChanged}
+              onChange={handleChange}
               editable={canWrite}
               isLoading={isDocumentLoading}
             />
@@ -516,7 +516,6 @@ export const DocumentPage = ({
             <Box className={styles.sidebar} data-testid="document-card-sidebar">
               <EmbedQuestionSettingsSidebar
                 cardId={selectedQuestionId}
-                onClose={() => dispatch(closeSidebar())}
                 editorInstance={editorInstance}
               />
             </Box>

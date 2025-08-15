@@ -25,8 +25,8 @@ import {
   updateVisualizationType,
   updateVizSettings,
 } from "../documents.slice";
-import { useCardWithDataset } from "../hooks/useCardWithDataset";
-import { useDraftCardOperations } from "../hooks/useDraftCardOperations";
+import { useCardData } from "../hooks/use-card-data";
+import { useDraftCardOperations } from "../hooks/use-draft-card-operations";
 import { getSelectedEmbedIndex } from "../selectors";
 import { useVisualizationOptions } from "../utils/visualizationUtils";
 
@@ -34,7 +34,6 @@ import S from "./EmbedQuestionSettingsSidebar.module.css";
 
 interface EmbedQuestionSettingsSidebarProps {
   cardId: number;
-  onClose: () => void;
   editorInstance?: Editor;
 }
 
@@ -45,24 +44,19 @@ export const EmbedQuestionSettingsSidebar = ({
   const dispatch = useDispatch();
   const selectedEmbedIndex = useSelector(getSelectedEmbedIndex);
 
-  // Use extracted hook for card and dataset fetching
   const {
-    cardWithDraft,
+    card,
     dataset,
-    isResultsLoading,
+    isLoading,
     series,
     question,
-    isCardLoading,
     draftCard,
-    card,
     regularDataset,
-  } = useCardWithDataset(cardId);
+  } = useCardData({ id: cardId });
 
-  // Use extracted hook for visualization options
   const { sensibleItems, nonsensibleItems, selectedElem } =
-    useVisualizationOptions(dataset, cardWithDraft?.display as CardDisplayType);
+    useVisualizationOptions(dataset, card?.display as CardDisplayType);
 
-  // Use extracted hook for draft card operations
   const { ensureDraftCard } = useDraftCardOperations(
     draftCard,
     card,
@@ -74,7 +68,6 @@ export const EmbedQuestionSettingsSidebar = ({
 
   const handleSettingsChange = (settings: VisualizationSettings) => {
     if (selectedEmbedIndex !== null) {
-      // If no draft exists, create one with the current settings change
       if (!draftCard) {
         const baseCard = card;
         const newSettings = {
@@ -85,10 +78,8 @@ export const EmbedQuestionSettingsSidebar = ({
           { visualization_settings: newSettings },
           true,
         );
-        // Use the returned ID (might be different if this was a duplicate)
         dispatch(updateVizSettings({ cardId: actualCardId, settings }));
       } else {
-        // Draft already exists, just update it
         dispatch(updateVizSettings({ cardId, settings }));
       }
     }
@@ -96,24 +87,20 @@ export const EmbedQuestionSettingsSidebar = ({
 
   const handleVisualizationTypeChange = (display: CardDisplayType) => {
     if (selectedEmbedIndex !== null) {
-      // If no draft exists, create one with the current display change
       if (!draftCard) {
         const actualCardId = ensureDraftCard({ display }, true);
-        // Use the returned ID (might be different if this was a duplicate)
         dispatch(updateVisualizationType({ cardId: actualCardId, display }));
       } else {
-        // Draft already exists, just update it
         dispatch(updateVisualizationType({ cardId, display }));
       }
     }
   };
 
   const handleDone = useCallback(() => {
-    // Simply close the sidebar - draft changes are kept in Redux
     dispatch(closeSidebar());
   }, [dispatch]);
 
-  if (isCardLoading || isResultsLoading || !series) {
+  if (isLoading || !series) {
     return (
       <Stack gap="lg" p="lg" className={S.loadingContainer}>
         <Box className={S.loadingContent}>
@@ -124,11 +111,11 @@ export const EmbedQuestionSettingsSidebar = ({
     );
   }
 
-  if (!cardWithDraft || !series) {
+  if (!card || !series) {
     return (
       <Stack gap="lg" p="lg" className={S.errorContainer}>
         <Box className={S.errorContent}>
-          <Text color="error">{t`Failed to load question`}</Text>
+          <Text c="error">{t`Failed to load question`}</Text>
         </Box>
       </Stack>
     );
@@ -204,7 +191,7 @@ export const EmbedQuestionSettingsSidebar = ({
           question={question}
           series={series}
           onChange={handleSettingsChange}
-          computedSettings={cardWithDraft.visualization_settings || {}}
+          computedSettings={card.visualization_settings ?? {}}
         />
       </Box>
       <Box className={S.footer}>

@@ -13,19 +13,21 @@ import type { Card, Dataset, RawSeries } from "metabase-types/api";
 
 import { getCardWithDraft } from "../selectors";
 
-interface UseCardEmbedDataProps {
+interface UseCardDataProps {
   id: number;
 }
 
-interface UseCardEmbedDataResult {
+interface UseCardDataResult {
   card?: Card;
   dataset?: Dataset;
   isLoading: boolean;
-  rawSeries: RawSeries | null;
+  series: RawSeries | null;
+  question?: Question;
   error?: string | null;
+  draftCard?: Card;
+  regularDataset?: Dataset;
 }
 
-// Helper functions
 function buildAdhocQueryParams(card: Card) {
   return {
     ...card.dataset_query,
@@ -34,7 +36,7 @@ function buildAdhocQueryParams(card: Card) {
   };
 }
 
-function buildRawSeries(card: Card, dataset: Dataset): RawSeries {
+function buildSeries(card: Card, dataset: Dataset): RawSeries {
   return [
     {
       card,
@@ -80,34 +82,26 @@ function selectIsLoadingDataset(
   return isLoadingDraft;
 }
 
-export function useCardEmbedData({
-  id,
-}: UseCardEmbedDataProps): UseCardEmbedDataResult {
+export function useCardData({ id }: UseCardDataProps): UseCardDataResult {
   const isDraft = id < 0;
   const shouldSkipSavedCard = !id || isDraft;
 
-  // Fetch the card if it's a saved card
   const { data: card, isLoading: isLoadingCard } = useGetCardQuery(
     { id },
     { skip: shouldSkipSavedCard },
   );
 
-  // Get card with draft if available
   const cardWithDraft = useSelector((state) =>
     getCardWithDraft(state, id, card),
   );
 
-  // Use the draft card if available, otherwise use the fetched card
   const cardToUse = cardWithDraft ?? card;
 
   const metadata = useSelector(getMetadata);
 
-  // Check if this is a pivot table
   const isPivotTable = cardToUse?.display === "pivot";
 
-  // Calculate pivot options for ad-hoc pivot tables (when metadata is available)
   const pivotOptions = useMemo(() => {
-    // Only calculate for draft pivot tables that need client-side options
     if (!isDraft || !isPivotTable || !cardToUse || !metadata) {
       return null;
     }
@@ -120,24 +114,19 @@ export function useCardEmbedData({
     }
   }, [isDraft, isPivotTable, cardToUse, metadata]);
 
-  // Query conditions
   const shouldSkipRegularQuery = !id || isDraft || !card;
   const canQueryDraftCard = isDraft && cardToUse?.dataset_query;
   const shouldQueryDraftNonPivot = canQueryDraftCard && !isPivotTable;
-  // For pivot tables, we need metadata to calculate options
   const shouldQueryDraftPivot = canQueryDraftCard && isPivotTable && metadata;
 
-  // Use different endpoints for saved vs draft cards
   const { data: regularDataset, isLoading: isLoadingRegularDataset } =
     useGetCardQueryQuery({ cardId: id }, { skip: shouldSkipRegularQuery });
 
-  // For draft cards, use the appropriate endpoint based on display type
   const { data: draftDataset, isLoading: isLoadingDraftDataset } =
     useGetAdhocQueryQuery(
       shouldQueryDraftNonPivot ? buildAdhocQueryParams(cardToUse) : skipToken,
     );
 
-  // For ad-hoc pivot tables, include calculated pivot options
   const { data: draftPivotDataset, isLoading: isLoadingDraftPivotDataset } =
     useGetAdhocPivotQueryQuery(
       shouldQueryDraftPivot
@@ -148,7 +137,6 @@ export function useCardEmbedData({
         : skipToken,
     );
 
-  // Select the appropriate dataset and loading state
   const dataset = selectDataset(
     isDraft,
     isPivotTable,
@@ -167,13 +155,16 @@ export function useCardEmbedData({
 
   const isLoading = isLoadingCard || isLoadingDataset;
 
-  // Build raw series for visualization
   const hasDataForVisualization = cardToUse && dataset?.data;
-  const rawSeries = hasDataForVisualization
-    ? buildRawSeries(cardToUse, dataset)
+  const series = hasDataForVisualization
+    ? buildSeries(cardToUse, dataset)
     : null;
 
-  // Error handling
+  const question = useMemo(
+    () => (cardToUse ? new Question(cardToUse, metadata) : undefined),
+    [cardToUse, metadata],
+  );
+
   const hasTriedToLoad =
     cardToUse !== undefined || isLoadingCard || isLoadingDataset;
   const hasFailedToLoadCard = hasTriedToLoad && !isLoading && id && !cardToUse;
@@ -183,7 +174,10 @@ export function useCardEmbedData({
     card: cardToUse,
     dataset,
     isLoading,
-    rawSeries,
+    series,
+    question,
     error,
+    draftCard: isDraft ? cardToUse : undefined,
+    regularDataset,
   };
 }

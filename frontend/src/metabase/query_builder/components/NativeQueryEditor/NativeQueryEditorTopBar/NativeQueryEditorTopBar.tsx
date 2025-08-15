@@ -40,14 +40,14 @@ interface NativeQueryEditorTopBarProps {
   snippetCollections?: Collection[];
   sidebarFeatures: SidebarFeatures;
 
-  toggleEditor: () => void;
+  toggleEditor?: () => void;
   toggleDataReference?: () => void;
   setIsNativeEditorOpen?: (isOpen: boolean) => void;
   onFormatQuery?: () => void;
   onSetDatabaseId?: (id: DatabaseId) => void;
-  onOpenModal: (modalType: QueryModalType) => void;
+  onOpenModal?: (modalType: QueryModalType) => void;
   onChange: (queryText: string) => void;
-  setParameterValue: (parameterId: ParameterId, value: string) => void;
+  setParameterValue?: (parameterId: ParameterId, value: string) => void;
   focus: () => void;
   setDatasetQuery: (query: NativeQuery) => Promise<Question>;
 }
@@ -131,7 +131,7 @@ const NativeQueryEditorTopBar = (props: NativeQueryEditorTopBarProps) => {
           editorContext={editorContext}
         />
       )}
-      {hasParametersList && (
+      {hasParametersList && setParameterValue && (
         <ResponsiveParametersList
           question={question}
           parameters={parameters}
@@ -162,7 +162,8 @@ const NativeQueryEditorTopBar = (props: NativeQueryEditorTopBarProps) => {
         )}
         {query.hasWritePermission() &&
           !question.isArchived() &&
-          setIsNativeEditorOpen && (
+          setIsNativeEditorOpen &&
+          toggleEditor && (
             <VisibilityToggler
               isOpen={isNativeEditorOpen}
               readOnly={!!readOnly}
