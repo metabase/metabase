@@ -1,4 +1,3 @@
-import type { Editor } from "@tiptap/react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { c, t } from "ttag";
 
@@ -36,7 +35,6 @@ interface NativeQueryModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSave: (result: { card_id: number; name: string }) => void;
-  editor?: Editor;
   initialDataset?: Dataset;
 }
 
@@ -117,7 +115,6 @@ export const NativeQueryModal = ({
   isOpen,
   onClose,
   onSave,
-  editor,
   initialDataset,
 }: NativeQueryModalProps) => {
   const dispatch = useDispatch();
@@ -214,7 +211,7 @@ export const NativeQueryModal = ({
   }, [currentQueryPromise]);
 
   const handleSave = useCallback(() => {
-    if (!modifiedQuestion || !editor) {
+    if (!modifiedQuestion) {
       return;
     }
 
@@ -237,7 +234,7 @@ export const NativeQueryModal = ({
 
     onSave({ card_id: newCardId, name: card.name });
     onClose();
-  }, [modifiedQuestion, editor, card, dispatch, onSave, onClose]);
+  }, [modifiedQuestion, card, dispatch, onSave, onClose]);
 
   const rawSeries = useMemo<RawSeries | null>(() => {
     if (!modifiedQuestion || !datasetToUse || failedDataset) {

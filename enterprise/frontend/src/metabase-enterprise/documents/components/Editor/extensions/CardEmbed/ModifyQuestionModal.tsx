@@ -1,4 +1,3 @@
-import type { Editor } from "@tiptap/react";
 import { useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
@@ -25,7 +24,6 @@ interface ModifyQuestionModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSave: (result: { card_id: number; name: string }) => void;
-  editor?: Editor;
 }
 
 export const ModifyQuestionModal = ({
@@ -33,7 +31,6 @@ export const ModifyQuestionModal = ({
   isOpen,
   onClose,
   onSave,
-  editor,
 }: ModifyQuestionModalProps) => {
   const store = useStore();
   const dispatch = useDispatch();
@@ -92,7 +89,7 @@ export const ModifyQuestionModal = ({
   };
 
   const handleSave = async () => {
-    if (!modifiedQuestion || !editor) {
+    if (!modifiedQuestion) {
       return;
     }
 

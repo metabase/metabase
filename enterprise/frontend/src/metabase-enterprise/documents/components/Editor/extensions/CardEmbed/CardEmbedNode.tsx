@@ -461,7 +461,6 @@ export const CardEmbedComponent = memo(
               card={cardToUse}
               isOpen={isModifyModalOpen}
               onClose={() => setIsModifyModalOpen(false)}
-              editor={editor}
               initialDataset={dataset}
               onSave={(result) => {
                 updateAttributes({
@@ -476,7 +475,6 @@ export const CardEmbedComponent = memo(
               card={cardToUse}
               isOpen={isModifyModalOpen}
               onClose={() => setIsModifyModalOpen(false)}
-              editor={editor}
               onSave={(result) => {
                 updateAttributes({
                   id: result.card_id,
