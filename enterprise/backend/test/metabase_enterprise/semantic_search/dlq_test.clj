@@ -13,7 +13,7 @@
   (:import (java.io Closeable)
            (java.net SocketException)
            (java.sql Timestamp)
-           (java.time Clock Duration Instant InstantSource)
+           (java.time Duration Instant InstantSource)
            (org.postgresql.util PGobject)))
 
 (set! *warn-on-reflection* true)
@@ -211,7 +211,6 @@
         clock-ref        (volatile! (Instant/parse "2025-01-04T00:00:00Z"))
         clock            (reify InstantSource (instant [_] @clock-ref))
         t1               (ts "2025-01-01T10:00:00Z")
-        t2               (ts "2025-01-01T11:00:00Z")
         c1               {:model "card" :id "1" :name "Test" :searchable_text "Content"}
         c2               {:model "card" :id "2" :name "Test" :searchable_text "Content"}
         version          semantic.gate/search-doc->gate-doc
@@ -362,4 +361,4 @@
                 (is (= 1 (count dlq-docs)))
                 (is (= 43 (:retry_count dlq-entry)))
                 (is (= now (:last_attempted_at dlq-entry)))
-                (is (= (.plus now (semantic.dlq/next-delay 43 policy)) (:attempt_at dlq-entry)))))))))))
+                (is (= (.plus now ^Duration (semantic.dlq/next-delay 43 policy)) (:attempt_at dlq-entry)))))))))))

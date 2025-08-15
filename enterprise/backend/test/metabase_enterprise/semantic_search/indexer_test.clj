@@ -357,12 +357,7 @@
   (let [pgvector        semantic.tu/db
         index-metadata  (semantic.tu/unique-index-metadata)
         open-job-thread (fn [& args]
-                          (let [caught-ex (volatile! nil)
-                                f         (bound-fn []
-                                            (try
-                                              (apply semantic.indexer/quartz-job-run! args)
-                                              (catch Throwable t
-                                                (vreset! caught-ex t))))]
+                          (let [caught-ex (volatile! nil)]
                             (semantic.tu/closeable
                              {:caught-ex caught-ex
                               :thread
