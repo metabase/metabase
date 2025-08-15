@@ -42,19 +42,19 @@
                  :ttl/threshold (u/hours->ms 1))
     view-count-percentiles*))
 
-(defn- view-count-expr [index-table ->col-expr percentile]
+(defn- view-count-expr [index-table percentile]
   (let [views (view-count-percentiles index-table percentile)
         cases (for [[sm v] views]
-                [[:= (->col-expr :model) [:inline (name sm)]] (max (or v 0) 1)])]
-    (search.scoring/size (->col-expr :view_count) (if (seq cases)
-                                                    (into [:case] cat cases)
-                                                    1))))
+                [[:= :model [:inline (name sm)]] (max (or v 0) 1)])]
+    (search.scoring/size :view_count (if (seq cases)
+                                       (into [:case] cat cases)
+                                       1))))
 
-(defn- model-rank-exp [->col-expr {:keys [context]}]
+(defn- model-rank-exp [{:keys [context]}]
   (let [search-order search.config/models-search-order
         n (double (count search-order))
         cases (map-indexed (fn [i sm]
-                             [[:= (->col-expr :model) sm]
+                             [[:= :model sm]
                               (or (search.config/scorer-param context :model sm)
                                   [:inline (/ (- n i) n)])])
                            search-order)]
@@ -68,58 +68,55 @@
         semantic-weight 0.49]
     [:+
      [:* [:cast semantic-weight :float]
-      [:coalesce [:/ 1.0 [:+ k [:. :v :semantic_rank]]] 0]]
+      [:coalesce [:/ 1.0 [:+ k :semantic_rank]] 0]]
      [:* [:cast keyword-weight :float]
-      [:coalesce [:/ 1.0 [:+ k [:. :t :keyword_rank]]] 0]]]))
+      [:coalesce [:/ 1.0 [:+ k :keyword_rank]] 0]]]))
 
 (defn base-scorers
   "The default constituents of the search ranking scores."
-  [index-table ->col-expr {:keys [search-string limit-int] :as search-ctx}]
+  [index-table {:keys [search-string limit-int] :as search-ctx}]
   (if (and limit-int (zero? limit-int))
     {:model [:inline 1]}
     ;; NOTE: we calculate scores even if the weight is zero, so that it's easy to consider how we could affect any
     ;; given set of results. At some point, we should optimize away the irrelevant scores for any given context.
     {:rrf       rrf-rank-exp
-     :view-count (view-count-expr index-table ->col-expr search.config/view-count-scaling-percentile)
-     :pinned     (search.scoring/truthy (->col-expr :pinned))
-     :recency    (search.scoring/inverse-duration [:coalesce
-                                                   (->col-expr :last_viewed_at)
-                                                   (->col-expr :model_updated_at)]
+     :view-count (view-count-expr index-table search.config/view-count-scaling-percentile)
+     :pinned     (search.scoring/truthy :pinned)
+     :recency    (search.scoring/inverse-duration [:coalesce :last_viewed_at :model_updated_at]
                                                   [:now]
                                                   search.config/stale-time-in-days)
-     :dashboard  (search.scoring/size (->col-expr :dashboardcard_count) search.config/dashboard-count-ceiling)
-     :model      (model-rank-exp ->col-expr search-ctx)
-     :mine       (search.scoring/equal (->col-expr :creator_id) (:current-user-id search-ctx))
+     :dashboard  (search.scoring/size :dashboardcard_count search.config/dashboard-count-ceiling)
+     :model      (model-rank-exp search-ctx)
+     :mine       (search.scoring/equal :creator_id (:current-user-id search-ctx))
      :exact      (if search-string
                    ;; perform the lower casing within the database, in case it behaves differently to our helper
-                   (search.scoring/equal [:lower (->col-expr :name)] [:lower search-string])
+                   (search.scoring/equal [:lower :name] [:lower search-string])
                    [:inline 0])
      :prefix     (if search-string
                    ;; in this case, we need to transform the string into a pattern in code, so forced to use helper
-                   (search.scoring/prefix [:lower (->col-expr :name)] (u/lower-case-en search-string))
+                   (search.scoring/prefix [:lower :name] (u/lower-case-en search-string))
                    [:inline 0])}))
 
-(defn- enterprise-scorers
-  [->col-expr]
-  {:official-collection {:expr (search.scoring/truthy (->col-expr :official_collection))
+(def ^:private enterprise-scorers
+  {:official-collection {:expr (search.scoring/truthy :official_collection)
                          :pred #(premium-features/has-feature? :official-collections)}
-   :verified            {:expr (search.scoring/truthy (->col-expr :verified))
+   :verified            {:expr (search.scoring/truthy :verified)
                          :pred #(premium-features/has-feature? :content-verification)}})
 
 (defn- additional-scorers
   "Which additional scorers are active?"
-  [->col-expr]
+  []
   (into {}
         (keep (fn [[k {:keys [expr pred]}]]
                 (when (pred)
                   [k expr])))
-        (enterprise-scorers ->col-expr)))
+        enterprise-scorers))
 
 (defn semantic-scorers
   "Return the select-item expressions used to calculate the score for semantic search results."
-  [index-table ->col-expr search-ctx]
-  (merge (base-scorers index-table ->col-expr search-ctx)
-         (additional-scorers ->col-expr)))
+  [index-table search-ctx]
+  (merge (base-scorers index-table search-ctx)
+         (additional-scorers)))
 
 (defn with-scores
   "Add a bunch of SELECT columns for the individual and total scores, and a corresponding ORDER BY."
