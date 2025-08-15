@@ -15,4 +15,3 @@
   :export?    false
   :encryption :no
   :audit      :getter)
-

@@ -13,9 +13,18 @@
    [toucan2.core :as t2])
   (:import
    (java.util TimeZone)
-   (org.quartz CronTrigger TriggerKey)))
+   (org.quartz CronTrigger TriggerKey CronExpression)))
 
 (set! *warn-on-reflection* true)
+
+(defn validate-cron-expression
+  "Returns true if valid, false otherwise."
+  [expr]
+  (try
+    ;; throwing is its only mechanism:
+    (CronExpression/validateExpression expr)
+    true
+    (catch Exception _ false)))
 
 (defn- job-key [job-id] (jobs/key (str "metabase.task.transforms.schedule." job-id)))
 
