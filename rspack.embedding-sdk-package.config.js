@@ -48,7 +48,6 @@ const skipDTS = process.env.SKIP_DTS === "true";
 const isDevMode = IS_DEV_MODE;
 
 const EMBEDDING_SDK_BUNDLE_HOST = process.env.EMBEDDING_SDK_BUNDLE_HOST || "";
-const VERSION = sdkPackageTemplateJsonContent.version;
 
 const config = {
   context: SDK_SRC_PATH,
