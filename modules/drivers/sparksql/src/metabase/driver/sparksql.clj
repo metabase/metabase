@@ -107,7 +107,7 @@
     (str/replace s #"-" "_")))
 
 ;; workaround for SPARK-9686 Spark Thrift server doesn't return correct JDBC metadata
-(defmethod driver/describe-database :sparksql
+(defmethod driver/describe-database* :sparksql
   [driver database]
   {:tables
    (sql-jdbc.execute/do-with-connection-with-options

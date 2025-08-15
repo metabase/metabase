@@ -110,7 +110,7 @@
       {:version (get build-info "version")
        :semantic-version sanitized-version-array})))
 
-(defmethod driver/describe-database :mongo
+(defmethod driver/describe-database* :mongo
   [_ database]
   (mongo.connection/with-mongo-database [^MongoDatabase db database]
     {:tables (set (for [collection (mongo.util/list-collection-names db)

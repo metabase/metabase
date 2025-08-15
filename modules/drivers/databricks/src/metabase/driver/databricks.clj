@@ -120,7 +120,7 @@
                        [:not [:startswith :t.table_catalog [:inline "__databricks"]]]]}
               :dialect (sql.qp/quote-style driver)))
 
-(defmethod driver/describe-database :databricks
+(defmethod driver/describe-database* :databricks
   [driver database]
   (try
     {:tables

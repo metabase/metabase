@@ -53,7 +53,7 @@
   []
   (conj (set
          (filter
-          #(identical? (get-method driver/describe-database :sql-jdbc) (get-method driver/describe-database %))
+          #(identical? (get-method driver/describe-database* :sql-jdbc) (get-method driver/describe-database* %))
           (descendants driver/hierarchy :sql-jdbc)))
         ;; redshift wraps the default implementation, but additionally filters tables according to the database name
         :redshift))
@@ -254,8 +254,8 @@
 
 (deftest resilient-to-conn-close?-test
   (testing "checking sync is resilient to connections being closed during [have-select-privilege?]"
-    (let [jdbc-describe-database #(identical? (get-method driver/describe-database :sql-jdbc)
-                                              (get-method driver/describe-database %))]
+    (let [jdbc-describe-database #(identical? (get-method driver/describe-database* :sql-jdbc)
+                                              (get-method driver/describe-database* %))]
       (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc
                                                  :+fns [jdbc-describe-database]
                                                  :-features [:table-privileges]})
@@ -269,7 +269,7 @@
                             (.close conn))
                           (execute-select-probe-query driver conn query))]
             (let [table-names #(->> % :tables (map :name) set)
-                  all-tables-sans-one (table-names (driver/do-with-resilient-connection driver/*driver* (mt/id) driver/describe-database))]
+                  all-tables-sans-one (table-names (driver/describe-database driver/*driver* (mt/id)))]
               ;; there is at maximum one missing table
               (is (>= 1 (count (set/difference all-tables all-tables-sans-one)))))))))))
 

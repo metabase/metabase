@@ -195,7 +195,7 @@
     (->> (list-datasets (:details database) :logging-schema-exclusions? true)
          (eduction (mapcat (fn [dataset-id] (eduction (map #(table-info dataset-id %)) (query-dataset dataset-id))))))))
 
-(defmethod driver/describe-database :bigquery-cloud-sdk
+(defmethod driver/describe-database* :bigquery-cloud-sdk
   [driver database]
   {:tables (into #{} (describe-database-tables driver database))})
 
