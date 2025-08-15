@@ -73,6 +73,7 @@ describe("documents", () => {
       .click();
 
     cy.location("pathname").should("equal", "/document/1-test-document");
+    H.documentContent().should("contain.text", "This is a paragraph");
 
     H.appBar()
       .findByRole("link", { name: /Our analytics/ })
