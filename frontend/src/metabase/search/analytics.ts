@@ -43,6 +43,7 @@ export const trackSearchClick = (
   position: number,
   context: SearchRequest["context"],
   searchEngine: string,
+  requestId: string | null = null,
 ) => {
   trackSchemaEvent("search", {
     event: "search_click",
@@ -50,5 +51,6 @@ export const trackSearchClick = (
     target_type: itemType,
     context: context ?? null,
     search_engine: searchEngine,
+    request_id: requestId,
   });
 };
