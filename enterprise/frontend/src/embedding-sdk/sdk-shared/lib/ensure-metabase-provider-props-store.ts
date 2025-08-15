@@ -1,4 +1,4 @@
-import type { InternalMetabaseProviderProps } from "embedding-sdk/components/public/MetabaseProvider";
+import type { ComponentProviderProps } from "embedding-sdk/components/public/ComponentProvider";
 import {
   type SdkLoadingError,
   SdkLoadingState,
@@ -10,7 +10,7 @@ type MetabaseProviderPropsToStore = MetabaseProviderPropsStoreExternalProps &
   MetabaseProviderPropsStoreInternalProps;
 
 export type MetabaseProviderPropsStoreExternalProps = Omit<
-  InternalMetabaseProviderProps,
+  ComponentProviderProps,
   "children" | keyof MetabaseProviderPropsStoreInternalProps
 >;
 
@@ -18,7 +18,7 @@ export type MetabaseProviderPropsStoreInternalProps = {
   loadingPromise?: Promise<void> | null;
   loadingState?: SdkLoadingState;
   loadingError?: SdkLoadingError | null;
-  reduxStore?: InternalMetabaseProviderProps["reduxStore"] | null;
+  reduxStore?: ComponentProviderProps["reduxStore"] | null;
   singleInstanceIdsMap?: Record<string, string[]>;
 };
 

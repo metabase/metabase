@@ -142,7 +142,7 @@ const setup = ({
       {withCustomLayout ? <InteractiveQuestionCustomLayout /> : undefined}
     </SdkQuestion>,
     {
-      sdkProviderProps: {
+      componentProviderProps: {
         authConfig: createMockSdkConfig(),
       },
       storeInitialState: state,

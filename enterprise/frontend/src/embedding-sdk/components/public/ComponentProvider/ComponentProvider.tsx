@@ -21,16 +21,16 @@ import { setOptions } from "metabase/redux/embed";
 import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
 import { MetabotProvider } from "metabase-enterprise/metabot/context";
 
-import { SCOPED_CSS_RESET } from "../private/PublicComponentStylesWrapper";
-import { SdkFontsGlobalStyles } from "../private/SdkGlobalFontsStyles";
-import { PortalContainer } from "../private/SdkPortalContainer";
-import { SdkUsageProblemDisplay } from "../private/SdkUsageProblem";
+import { SCOPED_CSS_RESET } from "../../private/PublicComponentStylesWrapper";
+import { SdkFontsGlobalStyles } from "../../private/SdkGlobalFontsStyles";
+import { PortalContainer } from "../../private/SdkPortalContainer";
+import { SdkUsageProblemDisplay } from "../../private/SdkUsageProblem";
 
-export interface InternalMetabaseProviderProps extends MetabaseProviderProps {
+type ComponentProviderInternalProps = ComponentProviderProps & {
   reduxStore: SdkStore;
-}
+};
 
-export const MetabaseProviderInternal = ({
+export const ComponentProviderInternal = ({
   children,
   authConfig,
   pluginsConfig,
@@ -41,12 +41,12 @@ export const MetabaseProviderInternal = ({
   errorComponent,
   loaderComponent,
   allowConsoleLog,
-}: InternalMetabaseProviderProps): JSX.Element => {
+}: ComponentProviderInternalProps): JSX.Element => {
   const { fontFamily } = theme ?? {};
 
-  // The main call of useInitData happens in the root MetabaseProvider
-  // This call in the component-level MetabaseProvider is still needed for:
-  // - Storybook stories, where we don't have the root MetabaseProvider
+  // The main call of useInitData happens in the MetabaseProvider
+  // This call in the ComponentProvider is still needed for:
+  // - Storybook stories, where we don't have the MetabaseProvider
   // - Unit tests
   useInitData({ reduxStore, authConfig, allowConsoleLog });
 
@@ -80,7 +80,7 @@ export const MetabaseProviderInternal = ({
     <EmotionCacheProvider>
       <SdkThemeProvider theme={theme}>
         <EnsureSingleInstance
-          groupId="component-level-providers"
+          groupId="component-providers"
           instanceId={ensureSingleInstanceId}
         >
           {({ isInstanceToRender }) => (
@@ -115,11 +115,14 @@ export const MetabaseProviderInternal = ({
   );
 };
 
-export const MetabaseProvider = memo(function MetabaseProvider({
+export type ComponentProviderProps = MetabaseProviderProps & {
+  reduxStore?: SdkStore;
+};
+
+export const ComponentProvider = memo(function ComponentProvider({
   children,
   ...props
-}: Omit<InternalMetabaseProviderProps, "reduxStore"> &
-  Partial<Pick<InternalMetabaseProviderProps, "reduxStore">>) {
+}: ComponentProviderProps) {
   const reduxStoreRef = useRef<SdkStore | null>(null);
 
   if (!reduxStoreRef.current) {
@@ -129,12 +132,12 @@ export const MetabaseProvider = memo(function MetabaseProvider({
   return (
     <MetabaseReduxProvider store={reduxStoreRef.current!}>
       <MetabotProvider>
-        <MetabaseProviderInternal
+        <ComponentProviderInternal
           {...props}
           reduxStore={reduxStoreRef.current!}
         >
           {children}
-        </MetabaseProviderInternal>
+        </ComponentProviderInternal>
       </MetabotProvider>
     </MetabaseReduxProvider>
   );
