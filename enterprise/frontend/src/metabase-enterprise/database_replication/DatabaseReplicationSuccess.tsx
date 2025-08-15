@@ -1,6 +1,5 @@
 import { t } from "ttag";
 
-import { color } from "metabase/lib/colors";
 import { Box, Button, Flex, Loader, Stack, Text, Title } from "metabase/ui";
 
 export const DatabaseReplicationSuccess = ({
@@ -22,7 +21,7 @@ export const DatabaseReplicationSuccess = ({
           gap={0}
           justify="center"
           wrap="nowrap"
-          bg={color("bg-light")}
+          bg="white"
           fz={0}
           p="xs"
           ta="center"
