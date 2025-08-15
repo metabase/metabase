@@ -128,6 +128,22 @@
                    (p/shell "bin/pre-lint-migrations-file.sh")
                    (lint-migrations-file/-main))}
 
+  claude-env
+  {:doc        "Manage Claude environment configurations"
+   :requires   [[mage.claude-env :as claude-env]]
+   :examples   [["./bin/mage claude-env list" "List available Claude environments"]
+                ["./bin/mage claude-env activate development" "Activate the development environment"]
+                ["./bin/mage claude-env deactivate" "Deactivate the current environment"]
+                ["./bin/mage claude-env status" "Show current environment status"]
+                ["./bin/mage claude-env template" "Create a new environment from template"]
+                ["./bin/mage claude-env --dry-run activate prod" "Preview changes before activating"]]
+   :options    [["-d" "--dry-run" "Preview changes without making them"]
+                ["-v" "--verbose" "Verbose output"]]
+   :arg-schema [:or
+                [:tuple [:enum {:arg/name "cmd" :desc "subcommand to run"} :list :status :deactivate :template]]
+                [:tuple [:enum {:arg/name "cmd" :desc "subcommand to run"} :activate :diff] [:string {:arg/name "env" :desc "environment to setup"}]]]
+   :task       (task! (claude-env/main parsed))}
+
   jar-download
   {:doc        "Download (and optionally run) jar for a metabase version or branch"
    :examples   [["./bin/mage jar-download 50" "Download the latest enterprise version of release 50 to ~/path/to/my/metabase/jars"]

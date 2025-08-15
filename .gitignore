@@ -155,4 +155,5 @@ CLAUDE.local.md
 .eslintcache
 
 /logs
-/.clojure-mcp
+.clojure-mcp/scratch_pad.edn
+/.claude-backups/

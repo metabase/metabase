@@ -1,0 +1,8 @@
+{:allowed-directories ["."
+                       "src"
+                       "test"
+                       "resources"
+                       "dev"
+                       "enterprise"
+                       "frontend"
+                       ".github"]}
