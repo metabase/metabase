@@ -284,15 +284,12 @@ export function ListView({
                             rawValue != null &&
                             rawValue !== "" ? (
                             <Box
+                              className={styles.categoryValue}
                               style={{
-                                padding: "4px 8px",
-                                borderRadius: "100px",
-                                border: "1px solid var(--mb-color-border)",
                                 backgroundColor: getCategoryColor(
                                   rawValue,
                                   col.name,
                                 ),
-                                display: "inline-block",
                               }}
                             >
                               <Text fw="bold" size="sm" c="text-secondary">
@@ -366,7 +363,8 @@ function useListColumns(cols: DatasetColumn[]) {
     return (
       cols.find((col) => Lib.isEntityName(Lib.legacyColumnTypeInfo(col))) ||
       cols.find((col) => Lib.isTitle(Lib.legacyColumnTypeInfo(col))) ||
-      cols.find((col) => Lib.isID(Lib.legacyColumnTypeInfo(col)))
+      cols.find((col) => Lib.isID(Lib.legacyColumnTypeInfo(col))) ||
+      cols[0]
     );
   }, [cols]);
 
