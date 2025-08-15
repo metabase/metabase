@@ -1923,8 +1923,11 @@
    :api #{metabase-enterprise.workspaces.api
           metabase-enterprise.workspaces.common}
    :uses #{api
+           api-keys
            collections
+           dashboards
            util
+           xrays
            enterprise/transforms}}
 
   enterprise/worker

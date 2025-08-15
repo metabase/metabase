@@ -877,6 +877,12 @@
   :test/kondo
   {:exec-args {:only [".clj-kondo/test"]}}
 
+  ;; test workspaces.
+  ;;
+  ;;    clj -X:dev:ee:ee-dev:test:test/workspaces
+  :test/workspaces
+  {:exec-args {:only "enterprise/backend/test/metabase_enterprise/workspaces"}}
+
   ;; DB configs -- start DBs with:
   ;; ./bin/mage start-db postgres oldest
   :db/postgres-oldest

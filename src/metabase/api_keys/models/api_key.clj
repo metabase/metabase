@@ -250,3 +250,21 @@
     {:unmasked-key new-key
      :masked-key   (mask new-key)
      :prefix       new-prefix}))
+
+(mu/defn create-api-key-for-existing-user! :- [:map
+                                               [:id  pos-int?]
+                                               [:key ::api-keys.schema/key.secret]]
+  "Create a new API key for an existing user."
+  [user-id   :- pos-int?
+   key-name  :- string?
+   key-scope :- ::api-keys.schema/scope]
+  (let [api-key (generate-key)
+        prefix  (prefix api-key)
+        id      (t2/insert-returning-pk! :model/ApiKey {:user_id       user-id
+                                                        :creator_id    user-id
+                                                        :updated_by_id user-id
+                                                        :name          key-name
+                                                        :key           (hash-bcrypt api-key)
+                                                        :key_prefix    prefix
+                                                        :scope         key-scope})]
+    {:id id, :key api-key}))

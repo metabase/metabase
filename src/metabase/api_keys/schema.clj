@@ -79,12 +79,11 @@
   [:string {:min 1, :max 254}]) ; min/max are from the app DB being varchar(254)
 
 (mr/def ::scope
-  [:enum :scim])
-
-(mr/def ::timestamp
-  [:or
-   (ms/InstanceOfClass java.time.OffsetDateTime)
-   (ms/InstanceOfClass java.time.ZonedDateTime)])
+  [:enum
+   ;; TODO (Cam 8/14/25) -- we should namespace this scope as well
+   :scim
+   ;; a workspace token is tied to a specific workspace via `workspace.token_id`
+   :api-key.scope/workspace])
 
 (mr/def ::api-key
   "Schema for a `:model/ApiKey`; this is based on the `api_key` table as defined in the application database.
@@ -97,8 +96,8 @@
    [:key                  [:ref ::key.hashed]]
    [:key_prefix           [:ref ::prefix]]
    [:creator_id           pos-int?]
-   [:created_at           {::insert.optional true} [:ref ::timestamp]]
-   [:updated_at           {::insert.optional true} [:ref ::timestamp]]
+   [:created_at           {::insert.optional true} (ms/InstanceOfClass java.time.OffsetDateTime)]
+   [:updated_at           {::insert.optional true} (ms/InstanceOfClass java.time.OffsetDateTime)]
    [:name                 [:ref ::name]]
    [:updated_by_id        pos-int?]
    [:scope                {:optional true} [:maybe [:ref ::scope]]]

@@ -1159,8 +1159,8 @@ databaseChangeLog:
             constraintName: idx_document_bookmark_user_document_unique
 
   - changeSet:
-      id: v57.2025-08-06T13:00:00
-      author: escherize
+      id: v57.2025-08-14T16:00:00
+      author: escherize, camsaul
       comment: Create workspace table
       changes:
         - createTable:
@@ -1250,13 +1250,97 @@ databaseChangeLog:
               - column:
                   name: collection_id
                   type: int
-                  remarks: The collection containing the workspace
+                  remarks: A Workspace always has 1 Collection; a Collection has 0 or 1 Workspaces
                   constraints:
                     nullable: false
+                    unique: true
                     referencedTableName: collection
                     referencedColumnNames: id
                     foreignKeyName: fk_workspace_ref_collection_id
                     deleteCascade: true
+              - column:
+                  name: api_key_id
+                  type: int
+                  remarks: A Workspace always has 1 API Key; an API Key has 0 or 1 Workspaces
+                  constraints:
+                    nullable: false
+                    unique: true
+                    referencedTableName: api_key
+                    referencedColumnNames: id
+                    foreignKeyName: fk_workspace_api_key_id
+                    deleteCascade: true
+              - column:
+                  name: attributes
+                  type: text
+                  remarks: "Like User.login_attributes or SAML token attributes, to power things like Database routing."
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v57.2025-08-14T17:00:00
+      author: camsaul
+      comment: Update api_key.user_id to be ON DELETE CASCADE
+      changes:
+      - dropForeignKeyConstraint:
+          baseTableName: api_key
+          constraintName: fk_api_key_user_id
+
+  - changeSet:
+      id: v57.2025-08-14T17:00:01
+      author: camsaul
+      comment: Update api_key.user_id to be ON DELETE CASCADE
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: api_key
+            baseColumnNames: user_id
+            referencedTableName: core_user
+            referencedColumnNames: id
+            constraintName: fk_api_key_user_Id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v57.2025-08-14T17:00:02
+      author: camsaul
+      comment: Update api_key.creator_id to be ON DELETE CASCADE
+      changes:
+      - dropForeignKeyConstraint:
+          baseTableName: api_key
+          constraintName: fk_api_key_created_by_user_id
+
+  - changeSet:
+      id: v57.2025-08-14T17:00:03
+      author: camsaul
+      comment: Update api_key.creator_id to be ON DELETE CASCADE
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: api_key
+            baseColumnNames: creator_id
+            referencedTableName: core_user
+            referencedColumnNames: id
+            constraintName: fk_api_key_created_by_user_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v57.2025-08-14T17:00:04
+      author: camsaul
+      comment: Update api_key.updated_by_id to be ON DELETE CASCADE
+      changes:
+      - dropForeignKeyConstraint:
+          baseTableName: api_key
+          constraintName: fk_api_key_updated_by_id_user_id
+
+  - changeSet:
+      id: v57.2025-08-14T17:00:05
+      author: camsaul
+      comment: Update api_key.updated_by_id to be ON DELETE CASCADE
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: api_key
+            baseColumnNames: updated_by_id
+            referencedTableName: core_user
+            referencedColumnNames: id
+            constraintName: fk_api_key_updated_by_id_user_id
+            onDelete: CASCADE
 
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<

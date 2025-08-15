@@ -3,41 +3,57 @@
    [metabase-enterprise.transforms.execute :as transforms.execute]
    [metabase-enterprise.workspaces.isolation-manager :as isolation-manager]
    [metabase-enterprise.workspaces.models.workspace :as m.workspace]
+   [metabase.api-keys.core :as api-keys]
+   [metabase.api-keys.schema :as api-keys.schema]
    [metabase.api.common :as api]
-   [metabase.collections.common :as c.common]
    [metabase.dashboards.models.dashboard :as dashboard]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.secret :as u.secret]
    [metabase.xrays.api.automagic-dashboards :as api.automagic-dashboards]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
-(defn create-workspace!
+(mu/defn create-workspace! :- [:merge
+                               ::m.workspace/workspace
+                               [:map
+                                [::api-key ::api-keys.schema/key.secret]]]
   "Creates a workspace, and returns it"
-  [name description]
-  (let [containing-coll (c.common/create-collection!
-                         {:name name
-                          :description description})
+  [user-id        :- pos-int?
+   workspace-name :- ::m.workspace/workspace.name
+   description    :- ::m.workspace/workspace.description]
+  (let [collection-id  (t2/insert-returning-pk! :model/Collection
+                                                {:name        workspace-name
+                                                 :description description})
+        api-key        (api-keys/create-api-key-for-existing-user!
+                        user-id
+                        (str "Key for Workspace " (pr-str workspace-name))
+                        :api-key.scope/workspace)
         ;; TODO: merge + use: create-single-collection-api-key!
-        workspace-data {:name name
-                        :description description
-                        :collection_id (:id containing-coll)
-                        :users []
-                        :plans []
-                        :transforms []
-                        :activity_logs []
-                        :permissions []
-                        :documents []
-                        :data_warehouses {}}]
-    (m.workspace/sort-workspace
-     (t2/insert-returning-instance! :model/Workspace workspace-data))))
+        workspace-data {:name            workspace-name
+                        :description     description
+                        :collection_id   collection-id
+                        :users           []
+                        :plans           []
+                        :transforms      []
+                        :activity_logs   []
+                        :permissions     []
+                        :documents       []
+                        :data_warehouses {}
+                        :api_key_id      (:id api-key)}]
+;;; TODO (Cam 8/14/25) -- this is temporary until we actually figure out the right way to pass this token around.
+    (log/infof "Generated API key for workspace: %s" (u.secret/expose (:key api-key)))
+    (-> (t2/insert-returning-instance! :model/Workspace workspace-data)
+        ;; TODO -- not sure where this should really go.
+        (assoc ::api-key (:key api-key))
+        m.workspace/sort-workspace)))
 
 (defn delete-workspace! [workspace-id]
   ;; TODO: tear down the entire workspace, including its collection
   (t2/delete! :model/Workspace :id workspace-id))
 
-(mu/defn add-workspace-entity
+(mu/defn add-workspace-entity!
   "Adds a workspace entity, such as a plan or transform, to the workspace.
 
    Args:
@@ -96,11 +112,11 @@
                           :target (:target transform)
                           :config (:config transform)
                           :created_at (str (java.time.Instant/now))}]
-    (add-workspace-entity workspace :transforms copied-transform)
-    (add-workspace-entity workspace :activity_logs {::type ::linked-transform
+    (add-workspace-entity! workspace :transforms copied-transform)
+    (add-workspace-entity! workspace :activity_logs {::type ::linked-transform
                                                     :transform copied-transform})))
 
-(defn update-workspace-entity-at-index
+(defn update-workspace-entity-at-index!
   "Updates an entity at a specific index in the workspace's entity collection.
 
    Args:
@@ -128,7 +144,7 @@
   (into (subvec current-items 0 index)
         (subvec current-items (inc index))))
 
-(defn delete-workspace-entity-at-index
+(defn delete-workspace-entity-at-index!
   "Deletes an entity at a specific index in the workspace's entity collection.
 
    Args:
@@ -161,7 +177,7 @@
           ;; remove it from the workspace's "data_warehouses":
           (t2/update! :model/Workspace (:id workspace)
                       {:data_warehouses (dissoc data-warehouses (keyword (str id)))})
-          (add-workspace-entity workspace :activity_logs {::type ::deleted-isolation
+          (add-workspace-entity! workspace :activity_logs {::type ::deleted-isolation
                                                           :isolation deletion-info}))))
     (log/warn "No data warehouses found to delete isolations for workspace" (:id workspace))))
 
@@ -206,7 +222,7 @@
                                                                      (dissoc :results)
                                                                      (assoc :type :isolation-info)))]
       ;; TODO make this smarter at inserting stuff in 1 round trip:
-      (add-workspace-entity workspace :activity_logs isolation-info)
+      (add-workspace-entity! workspace :activity_logs isolation-info)
       (t2/update! :model/Workspace (:id workspace)
                   {:data_warehouses (merge (:data_warehouses workspace) isolation-info-no-results)}))))
 

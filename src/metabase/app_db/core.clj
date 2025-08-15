@@ -60,7 +60,6 @@
 
  [mdb.setup
   can-connect-to-data-source?
-  migrate!
   quote-for-application-db]
 
  [mdb.spec
@@ -162,3 +161,12 @@
   {:style/indent [:defn]}
   [application-db & body]
   `(do-with-application-db ~application-db (^:once fn* [] ~@body)))
+
+;; this just adds a zero-arity for REPL-friendliness.
+(defn migrate!
+  "Migrate the application database. See [[mdb.setup/migrate!]] for more details."
+  ([]
+   (migrate! (data-source) :up))
+
+  ([datasource direction & args]
+   (apply mdb.setup/migrate! datasource direction args)))

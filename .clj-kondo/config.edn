@@ -1,7 +1,7 @@
 ;; -*- comment-column: 100; -*-
 {:config-paths ["macros" "src" "config"]
  :linters
- {;;
+ { ;;
   ;; enabled optional linters (these are disabled by default)
   ;;
 
@@ -49,7 +49,7 @@
   ;; disabled linters
   ;;
 
-  :redundant-ignore {:level :off} ; lots of false positives, see https://github.com/clj-kondo/clj-kondo/issues/2414
+  :redundant-ignore {:level :off}    ; lots of false positives, see https://github.com/clj-kondo/clj-kondo/issues/2414
   :unexpected-recur {:level :off} ; TODO (cam): I think we just need to tell it how to handle MBQL match and we can enable this?
 
   ;;
@@ -187,7 +187,7 @@
   :metabase/disallow-hardcoded-driver-names-in-tests
   ;; don't include `:h2` since that will probably lead to a mountain of tests where we are specifically testing
   ;; middleware or compilation behavior with just H2 since it's the default.
-  {:drivers #{;; core drivers
+  {:drivers #{ ;; core drivers
               #_:h2
               :postgres
               :mysql
@@ -215,7 +215,7 @@
   ;; misc config for built-in linters
   ;;
 
-  :invalid-arity       {:skip-args [metabase.lib.util.match/match]} ; TODO (cam): can we fix these?
+  :invalid-arity       {:skip-args [metabase.lib.util.match/match]}                    ; TODO (cam): can we fix these?
   :refer-all           {:level :warning, :exclude [clojure.test]}
   :unused-referred-var {:exclude {compojure.core [GET DELETE POST PUT]}}
 
@@ -726,7 +726,10 @@
   ;; `metabase-enterprise.sandbox.query-processor*-test`
   ;;
   {:pattern "^metabase(?:((?:-enterprise\\.sandbox)?\\.query-processor)|(?:\\.driver\\.sql(?!server)(?!ite))).*-test$"
-   :name    general-qp-and-driver-test-namespaces}]
+   :name    general-qp-and-driver-test-namespaces}
+
+  {:pattern "^metabase-enterprise\\.workspaces.*$"
+   :name    workspaces-module}]
 
  :config-in-ns
  {test-namespaces
@@ -822,4 +825,11 @@
      metabase.test.util/with-column-remappings {:message "Use metabase.lib.test-util/remap-metadata-provider instead of with-column-remappings in QP tests"}}
 
     :metabase/disallow-hardcoded-driver-names-in-tests
-    {:level :warning}}}}}
+    {:level :warning}}}
+
+  workspaces-module
+  {:linters
+   {:docstring-leading-trailing-whitespace {:level :warning}
+    :used-underscored-binding              {:level :warning}
+    :keyword-binding                       {:level :warning}
+    :shadowed-var                          {:level :warning}}}}}

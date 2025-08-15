@@ -134,29 +134,45 @@
 
 ;; See above: because this query runs on every single API request (with an API Key) it's worth it to optimize it a bit
 ;; and only compile it to SQL once rather than every time
-(def ^:private ^{:arglists '([enable-advanced-permissions?])} user-data-for-api-key-prefix-query
+(def ^:private ^{:arglists '([{:keys [enable-advanced-permissions? enable-workspaces?]}])} user-data-for-api-key-prefix-query
   (memoize
-   (fn [enable-advanced-permissions?]
+   (fn [{:keys [enable-advanced-permissions? enable-workspaces?]}]
      (first
       (t2.pipeline/compile*
-       (cond-> {:select    [[:api_key.user_id :metabase-user-id]
-                            [:api_key.key :api-key]
-                            [:user.is_superuser :is-superuser?]
-                            [:user.locale :user-locale]]
-                :from      :api_key
-                :left-join [[:core_user :user] [:= :api_key.user_id :user.id]]
-                :where     [:and
-                            [:= :user.is_active true]
-                            [:= :api_key.key_prefix [:raw "?"]]]
-                :limit     [:inline 1]}
-         enable-advanced-permissions?
-         (->
-          (sql.helpers/select
-           [:pgm.is_group_manager :is-group-manager?])
-          (sql.helpers/left-join
-           [:permissions_group_membership :pgm] [:and
-                                                 [:= :pgm.user_id :user.id]
-                                                 [:is :pgm.is_group_manager true]]))))))))
+       {:select    (into
+                    [[:api_key.user_id :metabase-user-id]
+                     [:api_key.key :api-key]
+                     [:user.is_superuser :is-superuser?]
+                     [:user.locale :user-locale]]
+                    cat
+                    [(when enable-advanced-permissions?
+                       [[:pgm.is_group_manager :is-group-manager?]])
+                     (when enable-workspaces?
+                       [[:workspace.collection_id "workspace/collection-id"]
+                        [:workspace.attributes    "workspace/attributes"]])])
+        :from      :api_key
+        :left-join (into
+                    [[:core_user :user] [:= :api_key.user_id :user.id]]
+                    cat
+                    [(when enable-advanced-permissions?
+                       [[:permissions_group_membership :pgm] [:and
+                                                              [:= :pgm.user_id :user.id]
+                                                              [:is :pgm.is_group_manager true]]])
+                     (when enable-workspaces?
+                       [:workspace [:and
+                                    [:= :workspace.api_key_id :api_key.id]
+                                    [:= :api_key.scope [:inline "api-key.scope/workspace"]]]])])
+        :where     (into [:and
+                          [:= :user.is_active true]
+                          [:= :api_key.key_prefix [:raw "?"]]]
+                         cat
+                         [;; ignore workspace tokens if they have been orphaned (the associated workspace has been
+                          ;; deleted but the token was accidentally left behind)
+                          (when enable-workspaces?
+                            [[:case
+                              [:= :api_key.scope [:inline "api-key.scope/workspace"]] [:not= :workspace.id nil]
+                              :else                                                   true]])])
+        :limit     [:inline 1]})))))
 
 (defn- valid-session-key?
   "Validates that the given session-key looks like it could be a session id. Returns a 403 if it does not.
@@ -215,14 +231,15 @@
           (log/errorf "Ignoring invalid API Key: %s" error))
         nil)
       (let [user-info (-> (t2/query-one (cons (user-data-for-api-key-prefix-query
-                                               (premium-features/enable-advanced-permissions?))
+                                               {:enable-advanced-permissions? (premium-features/enable-advanced-permissions?)
+                                                :enable-workspaces?           (premium-features/enable-workspaces?)})
                                               [(api-key/prefix api-key)]))
                           (m/update-existing :is-group-manager? boolean))]
         (when (matching-api-key? user-info api-key)
           (-> user-info
               (dissoc :api-key)))))))
 
-(defn- merge-current-user-info
+(mu/defn- merge-current-user-info :- [:maybe ::request.schema/current-user-info]
   [{:keys [metabase-session-key anti-csrf-token], {:strs [x-metabase-locale x-api-key]} :headers, :as request}]
   (merge
    request

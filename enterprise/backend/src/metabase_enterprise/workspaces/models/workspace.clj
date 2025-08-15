@@ -13,10 +13,7 @@
 
   Workspaces are independent of one another by design. A workspace can be deleted without affecting other workspaces.
   And they cannot be used together. This is to ensure that the data in one workspace cannot be accessed by another
-  workspace user.
-
-  "
-  #_{:clj-kondo/ignore [:metabase/modules]}
+  workspace user. "
   (:require
    [babashka.fs :as fs]
    [clj-yaml.core :as yaml]
@@ -27,8 +24,10 @@
    [metabase-enterprise.transforms.ordering :as transforms.ordering]
    [metabase.models.interface :as mi]
    [metabase.query-processor.store :as qp.store]
+   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
+   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -102,24 +101,36 @@
    [:created_at ::created_at]
    [:permission [:enum "read" "write"]]])
 
+(mr/def ::workspace.name
+  [:string {:min 1}])
+
+(mr/def ::workspace.description
+  [:maybe :string])
+
 (mr/def ::workspace
   [:map
-   [:id {:optional true} [:maybe [:int {:min 1}]]]
-   [:slug {:optional true} [:maybe [:string {:min 1}]]]
-   [:collection_id {:optional true} [:maybe [:int {:min 1}]]]
-   [:name [:string {:min 1}]]
-   [:description {:optional true} [:maybe :string]]
-   ;; each plan, transform, and document(<-unsure) is basically a file abstraction
-   [:plans [:sequential ::plan]]
-   ;; This should maybe be another table:
-   [:activity_logs [:sequential ::activity-log]]
-   [:transforms [:sequential ::transform]]
-   [:documents [:sequential ::document]]
-   [:users [:sequential ::user]]
+   [:id              pos-int?]
+   [:name            [:ref ::workspace.name]]
+   [:slug            {:optional true} [:maybe [:string {:min 1}]]]
+   [:description     {:optional true} [:ref ::workspace.description]]
+   [:created_at      [:schema
+                     {:description "The date and time the workspace was created"}
+                     (ms/InstanceOfClass java.time.OffsetDateTime)]]
+   [:updated_at      [:schema
+                     {:description "The date and time the workspace was last updated"}
+                     (ms/InstanceOfClass java.time.OffsetDateTime)]]
+   [:plans           [:sequential
+                      {:description "each plan, transform, and document(<-unsure) is basically a file abstraction"}
+                      ::plan]]
+   [:transforms      [:sequential ::transform]]
+   [:activity_logs   [:sequential ::activity-log]] ; ; This should maybe be another table:
+   [:permissions     [:sequential ::permission]]
+   [:users           [:sequential ::user]]
    [:data_warehouses [:map-of {:description "data warehouse id -> isolation info"} :int :map]]
-   [:permissions [:sequential ::permission]]
-   [:created_at [:any {:description "The date and time the workspace was created"}]]
-   [:updated_at [:any {:description "The date and time the workspace was last updated"}]]])
+   [:documents       [:sequential ::document]]
+   [:collection_id   pos-int?]
+   [:api_key_id      pos-int?]
+   [:attributes      {:optional true} [:maybe [:map-of :string :any]]]])
 
 (def entity-cols
   "Columns that are considered entities in the workspace model. They are stored as json on the workspace table."
@@ -139,6 +150,12 @@
   [workspace]
   (assoc workspace :slug (generate-slug workspace)))
 
+(t2/define-before-delete :model/Workspace
+  [{api-key-id :api_key_id, :as workspace}]
+  (println "api-key-id:" api-key-id) ; NOCOMMIT
+  (u/prog1 workspace
+    (t2/delete! :model/ApiKey :id api-key-id)))
+
 (t2/deftransforms :model/Workspace
   {:plans           mi/transform-json
    :activity_logs   mi/transform-json
@@ -146,7 +163,8 @@
    :documents       mi/transform-json
    :users           mi/transform-json
    :data_warehouses mi/transform-json
-   :permissions     mi/transform-json})
+   :permissions     mi/transform-json
+   :attributes      mi/transform-json})
 
 (doto :model/Workspace
   (derive :metabase/model)

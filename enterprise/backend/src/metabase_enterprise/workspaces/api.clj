@@ -18,7 +18,7 @@
 
 (set! *warn-on-reflection* true)
 
-(mu/defn- add-workspace-entity
+(mu/defn- add-workspace-entity!
   "Adds a workspace entity, such as a plan or transform, to the workspace.
 
    Args:
@@ -28,23 +28,23 @@
   [workspace-id
    entity-key :- ::m.workspace/entity-column
    new-entity]
-  (try (w.common/add-workspace-entity workspace-id entity-key new-entity)
+  (try (w.common/add-workspace-entity! workspace-id entity-key new-entity)
        (catch Exception e
          (case (:error (ex-data e))
            :no-workspace (throw (ex-info "Workspace not found" {:status-code 404
                                                                 :error :no-workspace}))
            (throw e)))))
 
-(defn update-workspace-entity-at-index
+(defn update-workspace-entity-at-index!
   [workspace-id entity-key index update-fn]
-  (try (w.common/update-workspace-entity-at-index workspace-id entity-key index update-fn)
+  (try (w.common/update-workspace-entity-at-index! workspace-id entity-key index update-fn)
        (catch Exception e
          (case (:error (ex-data e))
            :no-workspace [404 "Workspace not found"]
            :no-index [404 (str "No " entity-key " found at index " index " there are only " (:item-count (ex-data e)))]
            (throw e)))))
 
-(defn- delete-workspace-entity-at-index
+(defn- delete-workspace-entity-at-index!
   "Deletes an entity at a specific index in the workspace's entity collection.
 
    Args:
@@ -52,7 +52,7 @@
    - entity-key: The key in the workspace map (:plans, :transforms, etc.)
    - index: The 0-based index of the entity to delete"
   [workspace-id entity-key index]
-  (try (w.common/delete-workspace-entity-at-index workspace-id entity-key index)
+  (try (w.common/delete-workspace-entity-at-index! workspace-id entity-key index)
        (catch Exception e
          (case (:error (ex-data e))
            :no-workspace (#'api/generic-404 "Workspace not found")

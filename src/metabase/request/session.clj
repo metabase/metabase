@@ -31,9 +31,22 @@
   ::none)
 
 (mu/defn- current-user-info->permissions-set :- [:maybe [:set :string]]
-  [{:keys [permissions-set metabase-user-id]} :- ::request.schema/current-user-info]
-  (or permissions-set
-      (some-> metabase-user-id perms/user-permissions-set)))
+  [{:keys                   [permissions-set metabase-user-id]
+    workspace-collection-id :workspace/collection-id} :- ::request.schema/current-user-info]
+  (when-let [perms-set (or permissions-set
+                           (some-> metabase-user-id perms/user-permissions-set))]
+    (println "workspace-collection-id:" workspace-collection-id) ; NOCOMMIT
+    (if workspace-collection-id
+      (into (sorted-set) ; for REPL-friendliness
+            (remove (fn [path]
+                      ;; TODO (Cam 8/14/25) -- we need to further restrict these permissions to just the bare minimum
+                      ;; needed to execute queries against the DB in question. Remove any sort of perms that allow you
+                      ;; to edit anything else
+                      (or (= path "/")
+                          (and (perms/collection-path? path)
+                               (not (perms/collection-path? path workspace-collection-id))))))
+            perms-set)
+      perms-set)))
 
 (mu/defn do-with-current-user
   "Impl for [[with-current-user]]."

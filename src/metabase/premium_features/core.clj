@@ -78,3 +78,8 @@
   table-data-editing?
   token-features
   token-status))
+
+(defn enable-workspaces?
+  "PLACEHOLDER until we have a real feature flag."
+  []
+  true)
