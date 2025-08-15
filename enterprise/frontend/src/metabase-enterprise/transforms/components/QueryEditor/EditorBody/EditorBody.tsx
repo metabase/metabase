@@ -10,6 +10,7 @@ import { Box } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
+import type { RecentItem } from "metabase-types/api";
 
 import { useDoesDatabaseSupportTransforms } from "../../../hooks/use-does-database-support-transforms";
 
@@ -70,7 +71,9 @@ export function EditorBody({
 
   const dataPickerOptions = useMemo(() => {
     return {
-      shouldDisableItem: (item: DataPickerItem | CollectionPickerItem) => {
+      shouldDisableItem: (
+        item: DataPickerItem | CollectionPickerItem | RecentItem,
+      ) => {
         // Disable unsuppported databases
         if (item.model === "database") {
           return !databaseSupportsTransforms(item.id);
@@ -84,7 +87,12 @@ export function EditorBody({
           // Disable tables based on unsuppported databases
           item.model === "table"
         ) {
-          return !databaseSupportsTransforms(item.database_id);
+          if ("database_id" in item) {
+            return !databaseSupportsTransforms(item.database_id);
+          }
+          if ("database" in item) {
+            return !databaseSupportsTransforms(item.database.id);
+          }
         }
 
         // Disable dashboards altogether
