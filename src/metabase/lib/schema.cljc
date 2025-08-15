@@ -93,11 +93,8 @@
    [:sequential {:min 1} [:ref ::ref/ref]]
    [:ref ::lib.schema.util/distinct-mbql-clauses]])
 
-(mr/def ::filterable
-  [:ref ::expression/boolean])
-
 (mr/def ::filters
-  [:sequential {:min 1} ::filterable])
+  [:sequential {:min 1} [:ref ::expression/boolean]])
 
 (defn- bad-ref-clause? [ref-type valid-ids x]
   (and (vector? x)
