@@ -13,6 +13,7 @@
    [metabase.lib.test-util.macros :as lib.tu.macros]
    [metabase.query-processor.middleware.parameters :as parameters]
    [metabase.query-processor.preprocess :as qp.preprocess]
+   [clojure.string :as str]
    [metabase.test :as mt]))
 
 (defn- substitute-params
@@ -401,5 +402,88 @@
                                     {}
                                     [:field {:temporal-unit :default} "DATE"]
                                     [:absolute-datetime {} #t "2014-01-06" :default]]]}]}
-              (-> (qp.preprocess/preprocess query)
+              (-> query
+                  qp.preprocess/preprocess
                   lib/->pMBQL))))))
+
+;; NOCOMMIT -- rework this into a real test
+#_(deftest ^:parallel expression-parameter-test
+  (let [mp    (mt/application-database-metadata-provider 1)
+        query (lib/query
+               mp
+               {:constraints {:max-results 10000, :max-results-bare-rows 2000}
+                :lib/type    :mbql/query,
+                :stages
+                [{:lib/type      :mbql.stage/native
+                  :template-tags {"equal"    {:id           "197c0532-e2f8-24be-8d71-757369d3a75f"
+                                              :name         "equal"
+                                              :display-name "Equal to"
+                                              :type         :dimension
+                                              :dimension    [:field
+                                                             {:lib/uuid       "1b435d67-0cb2-4f4d-bac5-d06b60be4eca"
+                                                              :base-type      :type/Float
+                                                              :effective-type :type/Float}
+                                                             16]
+                                              :widget-type  :number/=
+                                              :default      nil}
+                                  "notEqual" {:id           "827ca517-e493-397f-971c-1a2d2f12d5f1"
+                                              :name         "notEqual"
+                                              :display-name "Not equal to"
+                                              :type         :dimension
+                                              :dimension [:field
+                                                          {:lib/uuid       "c0ff814c-e0df-4e50-9e29-0c61f0bd2b3b"
+                                                           :base-type      :type/Float
+                                                           :effective-type :type/Float}
+                                                          16]
+                                              :widget-type  :number/!=
+                                              :default      nil}
+                                  "between"  {:id           "6a3d9a46-671b-dee3-2971-fc180d27adfd"
+                                              :name         "between"
+                                              :display-name "Between"
+                                              :type         :dimension
+                                              :dimension    [:field
+                                                             {:lib/uuid       "c752de3e-e528-45ee-a8cc-687ce9329019"
+                                                              :base-type      :type/Float
+                                                              :effective-type :type/Float}
+                                                             16]
+                                              :widget-type  :number/between
+                                              :default      nil}
+                                  "gteq"     {:id           "edd13ea2-e244-69f8-db5a-2a7f9722f269"
+                                              :name         "gteq"
+                                              :display-name "Greater than or equal to"
+                                              :type         :dimension
+                                              :dimension    [:field
+                                                             {:lib/uuid       "0dcf2505-b333-41e2-b7d7-afb3f3261646"
+                                                              :base-type      :type/Float
+                                                              :effective-type :type/Float}
+                                                             16]
+                                              :widget-type  :number/>=
+                                              :default      nil}
+                                  "lteq"     {:id           "cce8c724-f0df-6fa1-81dc-58e7a8171caa"
+                                              :name         "lteq"
+                                              :display-name "Less than or equal to"
+                                              :type         :dimension
+                                              :dimension [:field
+                                                          {:lib/uuid       "00b219c7-7898-4cd4-93b7-9b247746aba2"
+                                                           :base-type      :type/Float
+                                                           :effective-type :type/Float}
+                                                          16]
+                                              :widget-type  :number/<=
+                                              :default      nil}}
+                  :native        (str/join \newline ["select PRODUCTS.TITLE, PRODUCTS.RATING from PRODUCTS where true "
+                                                     "[[AND {{equal}}]] "
+                                                     "[[AND {{notEqual}}]] "
+                                                     "[[AND {{between}}]] "
+                                                     "[[AND {{gteq}}]] "
+                                                     "[[AND {{lteq}}]]"
+                                                     ])}]
+                :database    1
+                :parameters  [{:value [3.8], :type :number/=, :id "a57c8ec6", :target [:dimension [:template-tag "equal"] {"stage-number" 0}]}
+                              {:value nil, :type :number/!=, :id "5da85a8c", :target [:dimension [:template-tag "notEqual"] {"stage-number" 0}]}
+                              {:value [nil], :type :number/<=, :id "6b9e7189", :target [:dimension [:template-tag "between"] {"stage-number" 0}]}
+                              {:value nil, :type :number/>=, :id "59eb81d5", :target [:dimension [:template-tag "gteq"] {"stage-number" 0}]}
+                              {:value nil, :type :number/<=, :id "d4e31f13", :target [:dimension [:template-tag "lteq"] {"stage-number" 0}]}]})]
+    (is (=? :wow
+            (-> query
+                qp.preprocess/preprocess
+                lib/->pMBQL)))))

@@ -1629,7 +1629,7 @@
 (defclause variable
   target template-tag)
 
-(def ^:private ParameterTarget
+(mr/def ::parameter.target
   "Schema for the value of `:target` in a [[Parameter]]."
   ;; not 100% sure about this but `field` on its own comes from a Dashboard parameter and when it's wrapped in
   ;; `dimension` it comes from a Field filter template tag parameter (don't quote me on this -- working theory)
@@ -1643,7 +1643,7 @@
   [:merge
    [:ref :metabase.lib.schema.parameter/parameter]
    [:map
-    [:target {:optional true} ParameterTarget]]])
+    [:target {:optional true} [:ref ::parameter.target]]]])
 
 (def Parameter
   "Alias for ::Parameter. Prefer using that directly going forward."
