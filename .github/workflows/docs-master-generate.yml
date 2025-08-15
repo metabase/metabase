@@ -70,7 +70,7 @@ jobs:
           git checkout -b $BRANCH_NAME
           
           git add docs/
-          git commit -m "Auto-update documentation from Monday build" --no-verify
+          git commit -m "Auto-update documentation" --no-verify
           git push -u origin $BRANCH_NAME
           
           echo "branch_name=$BRANCH_NAME" >> $GITHUB_OUTPUT
@@ -81,7 +81,10 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
         run: |
           # Generate a summary of changes
-          CHANGES_SUMMARY=$(git diff --name-only HEAD~1 docs/ | head -10 | sed 's/^/- /')
+          CHANGES_SUMMARY=$(git diff --name-only HEAD~1 docs/ 2>/dev/null | head -10 | sed 's/^/- /' || echo "- No specific files detected")
+          
+          # Count total changes for conditional message
+          TOTAL_CHANGES=$(git diff --name-only HEAD~1 docs/ 2>/dev/null | wc -l || echo "0")
           
           # Retry PR creation up to 3 times
           for i in {1..3}; do
@@ -94,7 +97,7 @@ jobs:
           ## Changes detected
           The following documentation files were updated:
           $CHANGES_SUMMARY
-          $([ $(git diff --name-only HEAD~1 docs/) -gt 10 ] && echo "- ... and more files")
+          $([ "$TOTAL_CHANGES" -gt 10 ] && echo "- ... and more files")
 
           ## Generation commands
           Documentation was generated using:
@@ -108,7 +111,12 @@ jobs:
               echo "PR created successfully on attempt $i"
               break
             else
-              echo "PR creation failed on attempt $i, retrying..."
+              echo "PR creation failed on attempt $i"
+              if [ $i -eq 3 ]; then
+                echo "All retry attempts failed. PR creation unsuccessful."
+                exit 1
+              fi
+              echo "Retrying in 10 seconds..."
               sleep 10
             fi
           done
