@@ -506,6 +506,12 @@ databaseChangeLog:
                   remarks: The relative UI ordering of this tag on the transform
                   constraints:
                     nullable: false
+
+  - changeSet:
+      id: v57.2025-08-07T10:02:01
+      author: galdre
+      comment: Add unique constraints on transform_transform_tag(transform_id, tag_id). Deleting foreign keys needed for mysql.
+      changes:
         - addUniqueConstraint:
             tableName: transform_transform_tag
             columnNames: transform_id, tag_id
@@ -561,6 +567,12 @@ databaseChangeLog:
                   remarks: The ordering position of this tag for the job.
                   constraints:
                     nullable: false
+
+  - changeSet:
+      id: v57.2025-08-07T10:03:01
+      author: galdre
+      comment: Add unique constraint on transform_job_transform_tag(job_id, tag_id). Mysql needs the foreign keys dropped on rollback.
+      changes:
         - addUniqueConstraint:
             tableName: transform_job_transform_tag
             columnNames: job_id, tag_id
