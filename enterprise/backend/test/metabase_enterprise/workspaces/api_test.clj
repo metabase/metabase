@@ -28,12 +28,18 @@
                            :collection_id   2}]
       (is (nil? (me/humanize (mr/explain ::m.workspace/workspace valid-workspace)))))))
 
-(deftest create-workspace-test
+(deftest ^:parallel create-workspace-test
   (testing "Creating a workspace with valid data using mt/with-temp"
     (mt/with-temp [:model/Collection {collection-id :id} {:name "API Workspace Collection"}
-                   :model/Workspace {workspace-id :id :as wksp} {:name "Test Workspace"
-                                                                 :description "A test workspace"
-                                                                 :collection_id collection-id}]
+                   :model/ApiKey     {api-key-id :id}    {:user_id                             (mt/user->id :rasta)
+                                                          :creator_id                          (mt/user->id :rasta)
+                                                          :updated_by_id                       (mt/user->id :rasta)
+                                                          :name                                "Car Key"
+                                                          :metabase.api-keys.core/unhashed-key "mb_123456789"}
+                   :model/Workspace {workspace-id :id :as wksp} {:name          "Test Workspace"
+                                                                 :description   "A test workspace"
+                                                                 :collection_id collection-id
+                                                                 :api_key_id    api-key-id}]
       (is (pos? workspace-id))
       (is (= "Test Workspace"
              (:name (t2/select-one :model/Workspace :id workspace-id))))
@@ -59,7 +65,7 @@
            :activity_logs []}
           overrides)))
 
-(deftest api-get-workspaces-test
+(deftest ^:parallel api-get-workspaces-test
   (testing "GET /api/ee/workspace/ - list workspaces"
     (mt/with-temp [:model/Collection {collection-1-id :id} {:name "API Workspace Collection"}
                    :model/Collection {collection-2-id :id} {:name "API Workspace Collection 2"}
@@ -84,7 +90,7 @@
         (is (some #(= "API Workspace 1" (:name %)) result))
         (is (some #(= "API Workspace 2" (:name %)) result))))))
 
-(deftest api-get-workspace-by-id-test
+(deftest ^:parallel api-get-workspace-by-id-test
   (testing "GET /api/ee/workspace/:workspace-id - get specific workspace"
     (mt/with-temp [:model/Collection {collection-id :id} {:name "Test Workspace Collection"}
                    :model/ApiKey     {api-key-id :id}    {:user_id                             (mt/user->id :rasta)
