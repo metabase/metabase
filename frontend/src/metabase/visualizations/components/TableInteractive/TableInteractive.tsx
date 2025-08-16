@@ -60,6 +60,7 @@ import type {
   QueryClickActionsMode,
   VisualizationProps,
 } from "metabase/visualizations/types";
+import * as Lib from "metabase-lib";
 import type { ClickObject, OrderByDirection } from "metabase-lib/types";
 import type Question from "metabase-lib/v1/Question";
 import { isFK, isID, isPK } from "metabase-lib/v1/types/utils/isa";
@@ -78,6 +79,7 @@ import {
 import { MiniBarCell } from "./cells/MiniBarCell";
 import { useObjectDetail } from "./hooks/use-object-detail";
 import { useResetWidthsOnColumnsChange } from "./hooks/use-reset-widths-on-columns-change";
+import { withRouter } from "react-router";
 
 const getBodyCellVariant = (column: DatasetColumn): BodyCellVariant => {
   const isPill = isPK(column) || isFK(column);
@@ -165,6 +167,9 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     getColumnSortDirection: getServerColumnSortDirection,
     onVisualizationClick,
     onUpdateVisualizationSettings,
+    card,
+    metadata,
+    location,
   }: TableProps,
   ref: Ref<HTMLDivElement>,
 ) {
@@ -206,7 +211,17 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     return getColumnSizing(cols, columnWidths);
   }, [cols, columnWidths]);
 
-  const onOpenObjectDetail = useObjectDetail(data);
+  const metadataProvider = Lib.metadataProvider(
+    card.dataset_query.database,
+    metadata,
+  );
+  const query = Lib.fromLegacyQuery(
+    card.dataset_query.database,
+    metadataProvider,
+    card.dataset_query,
+  );
+
+  const onOpenObjectDetail = useObjectDetail(data, query, location);
 
   const getIsCellClickable = useMemoizedCallback(
     (clicked: ClickObject) => {
@@ -817,6 +832,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
 
 export const TableInteractive = _.compose(
   withMantineTheme,
+  withRouter,
   ExplicitSize({
     refreshMode: "throttle",
   }),

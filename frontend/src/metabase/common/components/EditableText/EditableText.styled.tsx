@@ -64,6 +64,7 @@ export const EditableTextArea = styled.textarea`
   outline: none;
   overflow: hidden;
   background: transparent;
+  margin-top: 0;
 
   &:focus {
     cursor: text;
