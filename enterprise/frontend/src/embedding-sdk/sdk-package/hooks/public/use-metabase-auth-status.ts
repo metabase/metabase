@@ -9,4 +9,5 @@ import { getWindow } from "embedding-sdk/sdk-shared/lib/get-window";
  * @category useMetabaseAuthStatus
  */
 export const useMetabaseAuthStatus = () =>
-  useLazySelector(getWindow()?.MetabaseEmbeddingSDK?.getLoginStatus) ?? null;
+  useLazySelector(getWindow()?.METABASE_EMBEDDING_SDK_BUNDLE?.getLoginStatus) ??
+  null;

@@ -29,7 +29,7 @@ const MetabaseProviderInitDataWrapper = memo(function InitDataWrapper({
   allowConsoleLog,
   reduxStore,
 }: MetabaseProviderInitDataWrapperProps) {
-  const useInitData = getWindow()?.MetabaseEmbeddingSDK?.useInitData;
+  const useInitData = getWindow()?.METABASE_EMBEDDING_SDK_BUNDLE?.useInitData;
 
   if (!reduxStore || !useInitData) {
     throw new Error('Embedding SDK "useInitData" hook is not available');
@@ -62,7 +62,8 @@ const MetabaseProviderInner = memo(function MetabaseProviderInner(
     () =>
       isLoading
         ? null
-        : (existingStore ?? getWindow()?.MetabaseEmbeddingSDK?.getSdkStore()),
+        : (existingStore ??
+          getWindow()?.METABASE_EMBEDDING_SDK_BUNDLE?.getSdkStore()),
     [existingStore, isLoading],
   );
 

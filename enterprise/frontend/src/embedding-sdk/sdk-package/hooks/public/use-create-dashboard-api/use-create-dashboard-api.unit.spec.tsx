@@ -122,7 +122,7 @@ function setup(overrides: SetupProps = {}) {
   renderWithSDKProviders(
     <TestComponent {...mockProps} onDashboardCreate={onDashboardCreateSpy} />,
     {
-      windowMetabaseEmbeddingSDKExports: {
+      metabaseEmbeddingSdkBundleExports: {
         createDashboard,
         getCollectionNumericIdFromReference,
       },

@@ -71,4 +71,4 @@ const sdkBundleExports: MetabaseEmbeddingSdkBundleExports = {
   useInitData: useInitData,
 };
 
-window.MetabaseEmbeddingSDK = sdkBundleExports;
+window.METABASE_EMBEDDING_SDK_BUNDLE = sdkBundleExports;

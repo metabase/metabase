@@ -21,7 +21,7 @@ import { deleteConflictingCljsGlobals } from "metabase/embedding-sdk/test/delete
 
 const sdkBundleCleanup = () => {
   getSdkBundleScriptElement()?.remove();
-  delete window.MetabaseEmbeddingSDK;
+  delete window.METABASE_EMBEDDING_SDK_BUNDLE;
   delete window.METABASE_PROVIDER_PROPS_STORE;
   deleteConflictingCljsGlobals();
 };

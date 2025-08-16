@@ -80,7 +80,7 @@ const ComponentWrapperInner = <TComponentProps,>({
 
   const ComponentProvider = isLoading
     ? null
-    : getWindow()?.MetabaseEmbeddingSDK?.ComponentProvider;
+    : getWindow()?.METABASE_EMBEDDING_SDK_BUNDLE?.ComponentProvider;
   const Component = getComponent();
 
   if (

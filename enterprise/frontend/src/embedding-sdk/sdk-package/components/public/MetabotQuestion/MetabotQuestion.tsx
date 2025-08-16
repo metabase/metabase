@@ -8,5 +8,5 @@ import { getWindow } from "embedding-sdk/sdk-shared/lib/get-window";
  * @category MetabotQuestion
  */
 export const MetabotQuestion = createComponent(
-  () => getWindow()?.MetabaseEmbeddingSDK?.MetabotQuestion,
+  () => getWindow()?.METABASE_EMBEDDING_SDK_BUNDLE?.MetabotQuestion,
 );
