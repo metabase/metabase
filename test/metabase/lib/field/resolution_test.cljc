@@ -1285,3 +1285,27 @@
               (lib.field.resolution/resolve-field-ref
                query -1
                [:field {:base-type :type/Integer, :lib/uuid "00000000-0000-0000-0000-000000000000"} "my_numberLiteral"]))))))
+
+(deftest ^:parallel field-name-ref-in-first-stage-test
+  (testing "Should be able to resolve a field name ref in the first stage of a query"
+    (let [query (lib/query
+                 meta/metadata-provider
+                 {:lib/type :mbql/query
+                  :database (meta/id)
+                  :stages   [{:lib/type     :mbql.stage/mbql
+                              :source-table (meta/id :products)
+                              :fields       [[:field {} (meta/id :products :id)]
+                                             [:field {} (meta/id :products :title)]]
+                              :filters      [[:=
+                                              {}
+                                              [:field {:base-type :type/BigInteger} "ID"]
+                                              [:value {:base-type :type/BigInteger} 144]]]}]})]
+      (is (=? (-> (lib.field.resolution/resolve-field-ref
+                   query
+                   -1
+                   [:field {:base-type :type/BigInteger, :lib/uuid "00000000-0000-0000-0000-000000000000"} (meta/id :products :id)])
+                  (dissoc :lib/original-ref :lib/original-display-name))
+              (lib.field.resolution/resolve-field-ref
+               query
+               -1
+               [:field {:base-type :type/BigInteger, :lib/uuid "00000000-0000-0000-0000-000000000000"} "ID"]))))))

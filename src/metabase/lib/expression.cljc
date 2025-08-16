@@ -542,7 +542,7 @@
   (mr/validator ::lib.schema.aggregation/aggregation))
 
 (def ^:private filter-validator
-  (mr/validator ::lib.schema/filterable))
+  (mr/validator ::lib.schema.expression/boolean))
 
 (defn- expression->name
   [expr]

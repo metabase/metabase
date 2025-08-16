@@ -1441,3 +1441,32 @@
                          "  20"]}
                (-> (qp.compile/compile query)
                    (update :query #(str/split-lines (driver/prettify-native-form :h2 %))))))))))
+
+(deftest ^:parallel field-name-ref-in-parameters-test
+  (testing "Should generate correct SQL if we use a field name ref in parameters"
+    (let [query {:type       :query
+                 :database   (meta/id)
+                 :query      {:source-table (meta/id :products)}
+                 :parameters [{:type   :id
+                               :value  [144]
+                               :id     "92eb69ea"
+                               :target [:dimension [:field "ID" {:base-type :type/BigInteger}]]}]}]
+      (qp.store/with-metadata-provider meta/metadata-provider
+        (is (= {:query  ["SELECT"
+                         "  \"PUBLIC\".\"PRODUCTS\".\"ID\" AS \"ID\","
+                         "  \"PUBLIC\".\"PRODUCTS\".\"EAN\" AS \"EAN\","
+                         "  \"PUBLIC\".\"PRODUCTS\".\"TITLE\" AS \"TITLE\","
+                         "  \"PUBLIC\".\"PRODUCTS\".\"CATEGORY\" AS \"CATEGORY\","
+                         "  \"PUBLIC\".\"PRODUCTS\".\"VENDOR\" AS \"VENDOR\","
+                         "  \"PUBLIC\".\"PRODUCTS\".\"PRICE\" AS \"PRICE\","
+                         "  \"PUBLIC\".\"PRODUCTS\".\"RATING\" AS \"RATING\","
+                         "  \"PUBLIC\".\"PRODUCTS\".\"CREATED_AT\" AS \"CREATED_AT\""
+                         "FROM"
+                         "  \"PUBLIC\".\"PRODUCTS\""
+                         "WHERE"
+                         "  \"PUBLIC\".\"PRODUCTS\".\"ID\" = 144"
+                         "LIMIT"
+                         "  1048575"]
+                :params nil}
+               (-> (qp.compile/compile query)
+                   (update :query #(str/split-lines (driver/prettify-native-form :h2 %))))))))))

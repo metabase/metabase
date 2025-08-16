@@ -162,7 +162,9 @@
                       (str "Not a valid base type: " (pr-str value)))}
     base-type?]])
 
-(defn- normalize-options-map [m]
+(defn normalize-options-map
+  "Basic normalization behavior for an MBQL clause options map."
+  [m]
   (let [m (normalize-map m)]
     (-> m
         ;; add `:lib/uuid` if it's missing

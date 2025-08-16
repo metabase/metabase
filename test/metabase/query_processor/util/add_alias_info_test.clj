@@ -1294,3 +1294,27 @@
                   first
                   :filters
                   first))))))
+
+(deftest ^:parallel field-name-ref-in-first-stage-test
+  (testing "Should add correct alias info if we use a field name ref in the first stage of a query"
+    (let [query (lib/query
+                 meta/metadata-provider
+                 {:type       :query
+                  :database   (meta/id)
+                  :query      {:source-table (meta/id :products)}
+                  :parameters [{:type   :id
+                                :value  [144]
+                                :id     "92eb69ea"
+                                :target [:dimension [:field "ID" {:base-type :type/BigInteger}]]}]})]
+      (is (=? [:=
+               {}
+               [:field
+                {::add/source-alias "ID"
+                 ::add/source-table (meta/id :products)}
+                "ID"]
+               [:value {} 144]]
+              (-> (add-alias-info query)
+                  :stages
+                  first
+                  :filters
+                  first))))))
