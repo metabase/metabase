@@ -14,6 +14,7 @@
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
    [metabase.driver.settings :as driver.settings]
+   [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute.diagnostic :as sql-jdbc.execute.diagnostic]
    [metabase.driver.sql-jdbc.execute.old-impl :as sql-jdbc.execute.old]
@@ -376,7 +377,11 @@
   (when-not (recursive-connection?)
     (log/tracef "Setting default connection options with options %s" (pr-str options))
     (set-best-transaction-level! driver conn)
-    (set-time-zone-if-supported! driver conn session-timezone)
+    (let [additional-options (-> db-or-id-or-spec :details :additional-options)
+          opts-map (sql-jdbc.common/additional-options->map additional-options :url)
+          options-timezone (get opts-map "timezone")
+          session-timezone (or options-timezone session-timezone)]
+      (set-time-zone-if-supported! driver conn session-timezone))
     (let [read-only? (not write?)]
       (try
         ;; Setting the connection to read-only does not prevent writes on some databases, and is meant
