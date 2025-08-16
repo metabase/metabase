@@ -18,8 +18,7 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
-   [metabase.util.performance :as perf])
+   [metabase.util.malli.registry :as mr])
   #?@(:cljs [(:require-macros [metabase.lib.convert :refer [with-aggregation-list]])]))
 
 (def ^:private ^:dynamic *pMBQL-uuid->legacy-index*
@@ -457,7 +456,7 @@
          (dissoc :metabase.lib.query/transformation-added-base-type :base-type)
 
          ;; Removing the namespaces from a few
-         true (perf/update-keys #(get options-preserved-in-legacy % %)))
+         true (update-keys #(get options-preserved-in-legacy % %)))
        (into {} (comp (disqualify)
                       (remove (fn [[k _v]]
                                 (#{:effective-type :ident} k)))))
