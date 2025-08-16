@@ -427,9 +427,9 @@
                        [k v]))))
         metadata))
 
-(defn- normalize-native-query
+(mu/defn- normalize-native-query :- [:maybe :map]
   "For native queries, normalize the top-level keys, and template tags, but nothing else."
-  [native-query]
+  [native-query :- [:maybe :map]]
   (let [native-query (update-keys native-query maybe-normalize-token)]
     (cond-> native-query
       (seq (:template-tags native-query)) (update :template-tags normalize-template-tags))))

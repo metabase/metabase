@@ -848,7 +848,7 @@
                            :database_id   db-id
                            :type          :model
                            :query_type    :native
-                           :dataset_query (mt/native-query {:native "select 1"})
+                           :dataset_query (mt/native-query {:query "select 1"})
                            :creator_id    ann-id}
 
                           {:keys [action-id]}
@@ -886,7 +886,7 @@
                            :database_id   db-id
                            :type          :model
                            :query_type    :native
-                           :dataset_query (mt/native-query {:native "select 1"})
+                           :dataset_query (mt/native-query {:query "select 1"})
                            :creator_id    ann-id}
 
                           {:keys [action-id]}
@@ -924,13 +924,13 @@
                            :database_id   db-id
                            :type          :model
                            :query_type    :native
-                           :dataset_query (mt/native-query {:native "select 1"})
+                           :dataset_query (mt/native-query {:query "select 1"})
                            :creator_id    ann-id}
 
                           {:keys [action-id]}
                           {:name          "My Action"
                            :type          :query
-                           :dataset_query {:type "native", :native {:native "select 1"}, :database db-id}
+                           :dataset_query {:type "native", :native {:query "select 1"}, :database db-id}
                            :database_id   db-id
                            :creator_id    ann-id
                            :model_id      card-id-1}]
@@ -944,8 +944,8 @@
                          :creator_id  "ann@heart.band"
                          :created_at  string?
                          :query       [{:dataset_query {:database "My Database"
-                                                        :type     "native"
-                                                        :native   {:native "select 1"}}}]
+                                                        :type     :native
+                                                        :native   {:query "select 1"}}}]
                          :model_id    card-eid-1}
                         ser))
                 (is (not (contains? ser :id)))

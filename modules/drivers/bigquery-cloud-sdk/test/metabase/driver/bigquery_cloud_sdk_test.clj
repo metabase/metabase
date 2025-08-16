@@ -874,10 +874,10 @@
               "`describe-fields` should see the fields in the table")
           (sync/sync-database! (mt/db) {:scan :schema})
           (testing "We should be able to run queries against the table"
-            (doseq [[col-nm param-v] [[:numeric_col (bigdec numeric-val)]
-                                      [:decimal_col (bigdec decimal-val)]
-                                      [:bignumeric_col (bigdec bignumeric-val)]
-                                      [:bigdecimal_col (bigdec bigdecimal-val)]]]
+            (doseq [[col-nm param-v] {"numeric_col"    (bigdec numeric-val)
+                                      "decimal_col"    (bigdec decimal-val)
+                                      "bignumeric_col" (bigdec bignumeric-val)
+                                      "bigdecimal_col" (bigdec bigdecimal-val)}]
               (testing (format "filtering against %s" col-nm))
               (is (= 1
                      (-> (mt/first-row

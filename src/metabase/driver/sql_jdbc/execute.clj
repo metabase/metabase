@@ -832,8 +832,12 @@
 ;;; |                                                 Actions Stuff                                                  |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defmethod driver/execute-write-query! :sql-jdbc
-  [driver {{sql :query, :keys [params]} :native}]
+(mu/defmethod driver/execute-write-query! :sql-jdbc
+  [driver                                 :- :keyword
+   {{sql :query, :keys [params]} :native} :- [:map
+                                              [:type   [:= :native]]
+                                              [:native [:map
+                                                        [:query :string]]]]]
   {:pre [(string? sql)]}
   (try
     (do-with-connection-with-options

@@ -1237,6 +1237,122 @@
     (is (= legacy-query
            (-> legacy-query lib.convert/->pMBQL lib.convert/->legacy-MBQL)))))
 
+(deftest ^:parallel join-native-source-query->legacy-test
+  (testing "join :source-query should rename :query to :native for native stages"
+    (let [query {:lib/type :mbql/query
+                 :stages   [{:lib/type :mbql.stage/mbql
+                             :joins    [{:lib/type   :mbql/join
+                                         :alias      "c"
+                                         :conditions [[:=
+                                                       {:lib/uuid "43813e7b-ebf7-4278-8ab4-af23be9ffc0d"}
+                                                       [:field
+                                                        {:lib/uuid "b8ad483b-1ff8-4979-bb3e-c006fe5caf46"}
+                                                        61325]
+                                                       [:field
+                                                        {:base-type :type/BigInteger, :join-alias "c", :lib/uuid "3000ef3f-a190-4f47-88df-404150748352"}
+                                                        "ID"]]]
+                                         :stages     [{:lib/type :mbql.stage/native
+                                                       :query    "SELECT * FROM categories WHERE name = ?;"
+                                                       :params   ["BBQ"]}
+                                                      {:lib/type :mbql.stage/mbql}]}]}]}]
+      (is (=? {:type  :query
+               :query {:joins [{:alias        "c"
+                                :condition    [:= [:field 61325 nil] [:field "ID" {:base-type :type/BigInteger, :join-alias "c"}]]
+                                :source-query {:native "SELECT * FROM categories WHERE name = ?;"
+                                               :params ["BBQ"]}}]}}
+              (lib.convert/->legacy-MBQL query))))))
+
+(deftest ^:parallel do-not-do-nasty-stuff-to-parameters-test
+  (let [query {:database 33001
+               :type     :query
+               :query    {:source-query {:source-table 33030
+                                         :expressions  {"date-column"   [:field 33302 nil]
+                                                        "number-column" [:field 33300 nil]}
+                                         :parameters   [{:type   :date/range
+                                                         :value  "2019-09-29~2023-09-29"
+                                                         :target [:dimension [:expression "date-column"]]}
+                                                        {:type   :category
+                                                         :value  1
+                                                         :target [:dimension [:expression "number-column"]]}]}}}]
+    (is (=? {:lib/type :mbql/query
+             :stages   [{:lib/type    :mbql.stage/mbql
+                         :expressions [[:field
+                                        {:lib/uuid            string?
+                                         :lib/expression-name "date-column"}
+                                        pos-int?]
+                                       [:field
+                                        {:lib/uuid            string?
+                                         :lib/expression-name "number-column"}
+                                        pos-int?]]
+                         :parameters  [{:type :date/range, :value "2019-09-29~2023-09-29", :target [:dimension [:expression "date-column"]]}
+                                       {:type :category, :value 1, :target [:dimension [:expression "number-column"]]}]}
+                        {:lib/type :mbql.stage/mbql}]}
+            (lib/->pMBQL query)))
+    (is (=? query
+            (-> query lib/->pMBQL lib/->legacy-MBQL)))))
+
+;;; TODO (Cam 8/8/25) -- mentioned in `->pMBQL` for `:mbql/join` but we don't even actually ever attach `:parameters`
+;;; to a join's top-level IRL, so this not something we ACTUALLY need to support.
+(deftest ^:parallel join-parameters-test
+  (let [query {:database 33001
+               :type     :query
+               :query    {:source-query {:source-table 33040}
+                          :aggregation  [[:count]]
+                          :joins        [{:source-table 33010
+                                          :alias        "c"
+                                          :condition    [:=
+                                                         [:field 33402 nil]
+                                                         [:field 33100 {:join-alias "c"}]]
+                                          :parameters   [{:type   :category
+                                                          :target [:field 33101 nil]
+                                                          :value  "BBQ"}]}]}}]
+    (is (=? {:stages   [{:source-table 33040}
+                        {:joins [{:alias      "c"
+                                  :parameters (symbol "nil #_\"key is not present.\"")
+                                  :conditions [[:=
+                                                {}
+                                                [:field {} 33402]
+                                                [:field {:join-alias "c"} 33100]]]
+                                  :lib/type   :mbql/join
+                                  :stages     [{:lib/type     :mbql.stage/mbql
+                                                :source-table 33010
+                                                :parameters   [{:type   :category
+                                                                :target [:field 33101 nil]
+                                                                :value  "BBQ"}]}]}]}]
+             :database 33001}
+            (lib/->pMBQL query)))
+    (testing "round-trip to legacy should leave join parameters in the :source-query"
+      (is (=? {:database 33001
+               :type     :query
+               :query    {:source-query {:source-table 33040}
+                          :aggregation  [[:count]]
+                          :joins        [{:source-query {:source-table 33010
+                                                         :parameters   [{:type   :category
+                                                                         :target [:field 33101 nil]
+                                                                         :value  "BBQ"}]}
+                                          :alias        "c"
+                                          :condition    [:=
+                                                         [:field 33402 nil]
+                                                         [:field 33100 {:join-alias "c"}]]}]}}
+              (-> query lib/->pMBQL lib/->legacy-MBQL))))))
+
+(deftest ^:parallel join-parameters-test-2
+  (testing "If join has top-level :parameters and its source query has :parameters, splice them together"
+    (let [query {:database 33001
+                 :type     :query
+                 :query    {:aggregation  [[:count]]
+                            :joins        [{:source-query {:source-table 33010
+                                                           :parameters   [{:name "id", :type :category, :target [:field 33100 nil], :value 5}]}
+                                            :alias        "c"
+                                            :condition    [:= [:field 33402 nil] [:field 33100 {:join-alias "c"}]]
+                                            :parameters   [{:type "category", :target [:field 33101 nil], :value "BBQ"}]}]
+                            :source-table 33040}}]
+      (is (=? {:stages [{:joins [{:alias      "c"
+                                  :stages     [{:parameters [{:name "id", :type :category, :target [:field 33100 nil], :value 5}
+                                                             {:type :category, :target [:field 33101 nil], :value "BBQ"}]}]
+                                  :parameters (symbol "nil #_\"key is not present.\"")}]}]}
+              (lib/->pMBQL query))))))
+
 (deftest ^:parallel convert-join-with-filters-test
   (testing "A join whose sole stage has :filters should get converted to a join with a :source-query (QUE-1566)"
     (let [query {:lib/type :mbql/query
@@ -1307,7 +1423,7 @@
                         :source-table 33040}}
             (lib/->legacy-MBQL query)))))
 
-(deftest ^:parallel join-native-source-query->legacy-test
+(deftest ^:parallel join-native-source-query->legacy-test-2
   (testing "join :source-query should rename :query to :native for native stages"
     (let [query {:lib/type :mbql/query
                  :stages   [{:lib/type :mbql.stage/mbql

@@ -177,9 +177,10 @@
 
 (declare id)
 
-(defn native-query
+(mu/defn native-query
   "Like `mbql-query`, but for native queries."
-  [inner-native-query]
+  [inner-native-query :- [:map
+                          [:query some?]]]
   {:database (id)
    :type     :native
    :native   inner-native-query})

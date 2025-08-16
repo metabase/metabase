@@ -510,7 +510,7 @@
           (is (= [[1746]]
                  (mt/rows results))))))))
 
-(deftest model-with-implicit-join-and-external-remapping-test
+(deftest ^:parallel model-with-implicit-join-and-external-remapping-test
   (testing "Should handle models with implicit join on externally remapped field (#57596)"
     (qp.store/with-metadata-provider
       (lib.tu/remap-metadata-provider

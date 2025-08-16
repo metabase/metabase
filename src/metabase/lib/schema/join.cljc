@@ -129,7 +129,8 @@
      :source-table       "join should not have :source-table; use :stages instead"
      :source-query       "join should not have :source-query; use :stages instead"
      :filter             "join should not have top-level :filters; these should belong to one of the join :stages"
-     :filters            "join should not have top-level :filters; these should belong to one of the join :stages"})
+     :filters            "join should not have top-level :filters; these should belong to one of the join :stages"
+     :parameters         "join should not have top-level :parameters; these should belong to one of the join :stages"})
    [:ref ::validate-field-aliases-match-join-alias]])
 
 (mr/def ::joins

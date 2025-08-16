@@ -142,6 +142,13 @@
   [:merge
    [:ref ::common/options]
    [:map
+    {:decode/normalize (fn [m]
+                         (when (map? m)
+                           (-> m
+                               common/normalize-options-map
+                               (cond-> (and (:base-type m)
+                                            (not (:effective-type m)))
+                                 (assoc :effective-type (:base-type m))))))}
     [:effective-type ::common/base-type]
     [:unit {:optional true} [:maybe ::temporal-bucketing/unit]]]])
 

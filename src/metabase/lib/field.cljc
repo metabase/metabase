@@ -280,9 +280,9 @@
         original-temporal-unit ((some-fn ::original-temporal-unit ::temporal-unit) metadata)]
     (if unit
       (-> metadata
-          (assoc ::temporal-unit unit
-                 ::original-effective-type original-effective-type)
-          (m/assoc-some ::original-temporal-unit original-temporal-unit))
+          (assoc ::temporal-unit unit)
+          (m/assoc-some ::original-effective-type original-effective-type
+                        ::original-temporal-unit  original-temporal-unit))
       (cond-> (dissoc metadata ::temporal-unit ::original-effective-type)
         original-effective-type (assoc :effective-type original-effective-type)
         original-temporal-unit  (assoc ::original-temporal-unit original-temporal-unit)))))

@@ -131,7 +131,7 @@
           (let [param (:value v)
                 compiled-clause (-> (assoc param
                                            :target
-                                           [:template-tag
+                                           [:dimension
                                             [:field (field->name (:field v) false)
                                              {:base-type (get-in v [:field :base-type])}]])
                                     params.ops/to-clause
