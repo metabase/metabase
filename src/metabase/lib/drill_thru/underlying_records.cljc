@@ -40,13 +40,16 @@
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.drill-thru :as lib.schema.drill-thru]
+   [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.ref :as lib.schema.ref]
+   [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.underlying :as lib.underlying]
    [metabase.lib.util :as lib.util]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.time :as u.time]))
 
 (mu/defn underlying-records-drill :- [:maybe ::lib.schema.drill-thru/drill-thru.underlying-records]
   "When clicking on a particular broken-out group, offer a look at the details of all the rows that went into this
@@ -116,6 +119,41 @@
    :row-count  row-count
    :table-name table-name})
 
+(mu/defn- filter-clauses-with-possible-bucketing :- [:sequential ::lib.schema.expression/boolean]
+  [original-column :- ::lib.schema.metadata/column
+   filter-column   :- ::lib.schema.metadata/column
+   value           :- :any]
+  (let [temporal-unit (or (::lib.underlying/temporal-unit original-column)
+                          (lib.temporal-bucket/raw-temporal-bucket original-column))]
+    (cond
+      ;; Ignore temporal bucketing if the `value` is NULL; use the `filter-column` directly.
+      (nil? value)
+      [(lib.filter/is-null filter-column)]
+
+      ;; If temporal-unit is given and it's a truncation unit, generate a `:between` clause
+      ;; for the right date(time) range.
+      (lib.schema.temporal-bucketing/datetime-truncation-units temporal-unit)
+      (let [[lo hi]   (u.time/to-range (u.time/coerce-to-timestamp value)
+                                       {:unit temporal-unit})
+            ;; If we're truncating to a date unit, truncate the endpoints to be just dates as well. Otherwise we'll
+            ;; get janky filter chip and widget, like `Created At: Week is May 12, 2024 00:00 - May 18, 2024 23:59`.
+            ;; With the endpoints turned to dates, it's `Created At: Week is May 12-18, 2024`.
+            base-type (if (lib.schema.temporal-bucketing/date-truncation-units temporal-unit)
+                        :type/Date
+                        :type/DateTime)]
+        [(lib.filter/between filter-column
+                             (u.time/format-for-base-type lo base-type)
+                             (u.time/format-for-base-type hi base-type))])
+
+      ;; Otherwise `temporal-unit` is an extraction unit, so compare the extracted (bucketed) column to the input
+      ;; `value` with `:=`; ie. `monthOfYear(column) = 3`.
+      temporal-unit
+      [(lib.filter/= (lib.temporal-bucket/with-temporal-bucket filter-column temporal-unit)
+                     value)]
+
+      ;; Otherwise, this is a generic `:=` clause.
+      :else [(lib.filter/= filter-column value)])))
+
 (mu/defn- drill-filter :- ::lib.schema/query
   [query        :- ::lib.schema/query
    stage-number :- :int
@@ -130,21 +168,7 @@
                                    [(lib.filter/>= unbinned-column min-value)
                                     (lib.filter/< unbinned-column max-value)])
                                  [(lib.filter/is-null unbinned-column)])))
-                           ;; if the column was temporally bucketed in the top level, make sure the `=` filter we
-                           ;; generate still has that bucket. Otherwise the filter will be something like
-                           ;;
-                           ;;    col = March 2023
-                           ;;
-                           ;; instead of
-                           ;;
-                           ;;    month(col) = March 2023
-                           (let [column (if-let [temporal-unit (or (::lib.underlying/temporal-unit column)
-                                                                   (lib.temporal-bucket/temporal-bucket column))]
-                                          (lib.temporal-bucket/with-temporal-bucket filter-column temporal-unit)
-                                          filter-column)]
-                             (if (some? value)
-                               [(lib.filter/= column value)]
-                               [(lib.filter/is-null column)])))]
+                           (filter-clauses-with-possible-bucketing column filter-column value))]
     (reduce
      (fn [query filter-clause]
        (lib.filter/filter query stage-number filter-clause))
