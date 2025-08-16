@@ -60,6 +60,8 @@
 (defn- path-error-data [error-type expanding path]
   (let [last-model (:model (last path))]
     {:path       (mapv (partial into {}) path)
+     :local-id   (when-let [entity (serdes/load-find-local path)]
+                   ((t2/select-pks-fn entity) entity))
      :deps-chain expanding
      :model      last-model
      :table      (some->> last-model (keyword "model") t2/table-name)
