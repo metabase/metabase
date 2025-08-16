@@ -15,7 +15,7 @@ export default {
   decorators: [getHostedBundleStoryDecorator()],
 };
 
-const checkSizePx = 40;
+const checkboardSquareSizePx = 40;
 export const Default = () => (
   <div
     style={{
@@ -26,8 +26,8 @@ export const Default = () => (
         "linear-gradient(135deg, #ccc 26%, transparent 26%)," +
         "linear-gradient(45deg, transparent 75%, #ccc 75%)," +
         "linear-gradient(135deg, transparent 75%, #ccc 75%)",
-      backgroundSize: `${checkSizePx * 2}px ${checkSizePx * 2}px`,
-      backgroundPosition: `0 0, ${checkSizePx}px 0, ${checkSizePx}px -${checkSizePx}px, 0px ${checkSizePx}px`,
+      backgroundSize: `${checkboardSquareSizePx * 2}px ${checkboardSquareSizePx * 2}px`,
+      backgroundPosition: `0 0, ${checkboardSquareSizePx}px 0, ${checkboardSquareSizePx}px -${checkboardSquareSizePx}px, 0px ${checkboardSquareSizePx}px`,
     }}
   >
     <MetabaseProvider authConfig={config}>
