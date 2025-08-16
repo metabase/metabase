@@ -20,6 +20,8 @@ export function EmailSettingsPage() {
   const { data: settingValues, isLoading } = useGetSettingsQuery();
   const isEmailConfigured = settingValues?.["email-configured?"];
   const hasEmailAllowListFeature = useHasTokenFeature("email_allow_list");
+  // eslint-disable-next-line no-console
+  console.log("kick ci");
   const hasEmailRestrictRecipientsFeature = useHasTokenFeature(
     "email_restrict_recipients",
   );
