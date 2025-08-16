@@ -59,6 +59,7 @@ import SegmentFieldListContainer from "metabase/reference/segments/SegmentFieldL
 import SegmentListContainer from "metabase/reference/segments/SegmentListContainer";
 import SegmentQuestionsContainer from "metabase/reference/segments/SegmentQuestionsContainer";
 import SegmentRevisionsContainer from "metabase/reference/segments/SegmentRevisionsContainer";
+import { TableListView } from "metabase/scaffolding";
 import SearchApp from "metabase/search/containers/SearchApp";
 import { EmbeddingSetup } from "metabase/setup/components/EmbeddingSetup/EmbeddingSetup";
 import { Setup } from "metabase/setup/components/Setup";
@@ -72,6 +73,8 @@ import {
   IsNotAuthenticated,
 } from "./route-guards";
 import { createEntityIdRedirect } from "./routes-stable-id-aware";
+import { TableDetailView } from "./scaffolding/TableDetailView/TableDetailView";
+import { TableDetailView as TableDetailView2 } from "./scaffolding/TableDetailView2/TableDetailView";
 import { getSetting } from "./selectors/settings";
 import { getApplicationName } from "./selectors/whitelabel";
 
@@ -314,6 +317,28 @@ export const getRoutes = (store) => {
             <Redirect
               from=":dbId/schema/:schemaName"
               to="databases/:dbId/schema/:schemaName"
+            />
+          </Route>
+
+          <Route path="table">
+            <Route path=":tableId" component={TableListView} />
+            <Route path=":tableId/detail/:rowId" component={TableDetailView} />
+            <Route
+              path=":tableId/detail/:rowId/edit"
+              component={(props) => (
+                <TableDetailView {...props} isEdit={true} />
+              )}
+            />
+          </Route>
+
+          <Route path="table2">
+            <Route path=":tableId" component={TableDetailView2} />
+            <Route path=":tableId/detail/:rowId" component={TableDetailView2} />
+            <Route
+              path=":tableId/detail/:rowId/edit"
+              component={(props) => (
+                <TableDetailView2 {...props} isEdit={true} />
+              )}
             />
           </Route>
 
