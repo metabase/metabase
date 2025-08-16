@@ -11,9 +11,11 @@ import * as React from "react";
 
 import type { HoveredData } from "metabase/visualizations/shared/types/events";
 import type { Margin } from "metabase/visualizations/shared/types/layout";
+import type { TextWidthMeasurer } from "metabase/visualizations/shared/types/measure-text";
 
 import type { SeriesInfo } from "../../types/data";
 import type { BarData, RowChartTheme, SeriesData } from "../RowChart/types";
+import { ellipsifyText } from "../RowChart/utils/layout";
 import { VerticalGoalLine } from "../VerticalGoalLine/VerticalGoalLine";
 
 import { DATA_LABEL_OFFSET } from "./constants";
@@ -46,6 +48,7 @@ export interface RowChartViewProps<TDatum> {
   isStacked?: boolean;
   style?: React.CSSProperties;
   hoveredData?: HoveredData | null;
+  measureTextWidth?: TextWidthMeasurer;
   onHover?: (
     event: React.MouseEvent<Element>,
     bar: BarData<TDatum, SeriesInfo> | null,
@@ -78,6 +81,7 @@ const RowChartView = <TDatum,>({
   isStacked,
   style,
   hoveredData,
+  measureTextWidth,
   onHover,
   onClick,
 }: RowChartViewProps<TDatum>) => {
@@ -89,6 +93,32 @@ const RowChartView = <TDatum,>({
       });
 
   const goalLineX = xScale(goal?.value ?? 0);
+
+  const ellipsifiedYTickFormatter = React.useMemo(() => {
+    if (!measureTextWidth || !width) {
+      return yTickFormatter;
+    }
+
+    // Calculate the maximum allowed width for y-axis labels (50% of chart width)
+    const maxLabelWidth = margin.left - theme.axis.label.size * 2.5;
+
+    return (value: StringLike) => {
+      const originalText = yTickFormatter(value);
+      return ellipsifyText(
+        originalText,
+        maxLabelWidth,
+        theme.axis.ticks,
+        measureTextWidth,
+      );
+    };
+  }, [
+    measureTextWidth,
+    width,
+    margin.left,
+    theme.axis.label.size,
+    theme.axis.ticks,
+    yTickFormatter,
+  ]);
 
   return (
     <svg width={width ?? undefined} height={height ?? undefined} style={style}>
@@ -203,7 +233,7 @@ const RowChartView = <TDatum,>({
             verticalAnchor: "start",
           }}
           labelOffset={margin.left - theme.axis.label.size}
-          tickFormat={yTickFormatter}
+          tickFormat={ellipsifiedYTickFormatter}
           hideAxisLine={!hasYAxis}
           hideTicks
           tickValues={hasYAxis ? undefined : []}

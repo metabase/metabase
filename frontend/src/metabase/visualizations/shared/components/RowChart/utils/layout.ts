@@ -42,15 +42,22 @@ export const getChartMargin = <TDatum>(
   yLabel?: string | null,
   hasXAxis?: boolean,
   hasYAxis?: boolean,
+  chartWidth?: number | null,
 ): Margin => {
-  const yAxisOffset = hasYAxis
+  const maxYAxisLabelWidth = hasYAxis
     ? getMaxWidth(
         seriesData.flatMap((seriesData) =>
           seriesData.bars.map((bar) => yTickFormatter(bar.yValue)),
         ),
         ticksFont,
         measureTextWidth,
-      ) + TICKS_OFFSET
+      )
+    : 0;
+
+  // Limit y-axis labels to 50% of chart width to ensure bars remain visible
+  const maxAllowedYAxisWidth = chartWidth ? chartWidth * 0.5 : Infinity;
+  const yAxisOffset = hasYAxis
+    ? Math.min(maxYAxisLabelWidth, maxAllowedYAxisWidth) + TICKS_OFFSET
     : 0;
 
   const xAxisOffset = hasXAxis ? TICKS_OFFSET + ticksFont.size : 0;
@@ -80,6 +87,63 @@ export const getMaxYValuesCount = (
   const singleValueHeight = isStacked ? minBarWidth : minBarWidth * seriesCount;
 
   return Math.max(Math.floor(viewportHeight / singleValueHeight), 1);
+};
+
+export const ellipsifyText = (
+  text: string,
+  maxWidth: number,
+  ticksFont: ChartFont,
+  measureTextWidth: TextWidthMeasurer,
+): string => {
+  if (maxWidth <= 0) {
+    return text;
+  }
+
+  const textWidth = measureTextWidth(text, {
+    size: `${ticksFont.size}px`,
+    family: "Lato",
+    weight: String(ticksFont.weight ?? 400),
+  });
+
+  if (textWidth <= maxWidth) {
+    return text;
+  }
+
+  const ellipsis = "…";
+  const ellipsisWidth = measureTextWidth(ellipsis, {
+    size: `${ticksFont.size}px`,
+    family: "Lato",
+    weight: String(ticksFont.weight ?? 400),
+  });
+
+  const availableWidth = maxWidth - ellipsisWidth;
+  if (availableWidth <= 0) {
+    return ellipsis;
+  }
+
+  // Binary search to find the longest text that fits
+  let left = 0;
+  let right = text.length;
+  let bestFit = "";
+
+  while (left <= right) {
+    const mid = Math.floor((left + right) / 2);
+    const truncated = text.slice(0, mid);
+    const truncatedWidth = measureTextWidth(truncated, {
+      size: `${ticksFont.size}px`,
+      family: "Lato",
+      weight: String(ticksFont.weight ?? 400),
+    });
+
+    if (truncatedWidth <= availableWidth) {
+      bestFit = truncated;
+      left = mid + 1;
+    } else {
+      right = mid - 1;
+    }
+  }
+
+  return bestFit + ellipsis;
 };
 
 export const getRowChartGoal = (
