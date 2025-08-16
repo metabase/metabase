@@ -29,9 +29,9 @@ const MetabaseProviderInitDataWrapper = memo(function InitDataWrapper({
   allowConsoleLog,
   reduxStore,
 }: MetabaseProviderInitDataWrapperProps) {
-  const useInitData = getWindow()?.MetabaseEmbeddingSDK?.useInitData;
+  const useInitData = getWindow()?.METABASE_EMBEDDING_SDK_BUNDLE?.useInitData;
   const useLogVersionInfo =
-    getWindow()?.MetabaseEmbeddingSDK?.useLogVersionInfo;
+    getWindow()?.METABASE_EMBEDDING_SDK_BUNDLE?.useLogVersionInfo;
 
   useInitData?.({
     reduxStore,
@@ -61,7 +61,8 @@ const MetabaseProviderInner = memo(function MetabaseProviderInner(
     () =>
       isLoading
         ? null
-        : (existingStore ?? getWindow()?.MetabaseEmbeddingSDK?.getSdkStore()),
+        : (existingStore ??
+          getWindow()?.METABASE_EMBEDDING_SDK_BUNDLE?.getSdkStore()),
     [existingStore, isLoading],
   );
 

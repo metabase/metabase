@@ -10,4 +10,4 @@ import type { MetabaseUser } from "embedding-sdk/types/user";
  * @category useCurrentUser
  */
 export const useCurrentUser: () => MetabaseUser | null = () =>
-  useLazySelector(getWindow()?.MetabaseEmbeddingSDK?.getUser) ?? null;
+  useLazySelector(getWindow()?.METABASE_EMBEDDING_SDK_BUNDLE?.getUser) ?? null;
