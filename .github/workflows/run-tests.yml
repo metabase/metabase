@@ -83,6 +83,13 @@ jobs:
     with:
       skip: ${{ needs.files-changed.outputs.backend_all != 'true' && needs.static-viz-files-changed.outputs.static_viz != 'true' }}
 
+  semantic-search-tests:
+    needs: files-changed
+    uses: ./.github/workflows/semantic-search.yml
+    secrets: inherit
+    with:
+      skip: ${{ needs.files-changed.outputs.backend_all != 'true' }}
+
   app-db-tests:
     needs: files-changed
     uses: ./.github/workflows/app-db.yml
@@ -129,4 +136,16 @@ jobs:
       !cancelled() &&
       contains(github.event.pull_request.labels.*.name, 'PR-Env')
     uses: ./.github/workflows/pr-env.yml
+    secrets: inherit
+
+  containerize:
+    needs: [uberjar]
+    if: |
+      !cancelled() &&
+      needs.uberjar.result == 'success' &&
+      (
+        (github.event_name == 'push' && contains(fromJson('["master", "metabot-v3-main", "internal-tools"]'), github.ref_name)) ||
+        (github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'build-docker-uberjar'))
+      )
+    uses: ./.github/workflows/containerize-uberjar.yml
     secrets: inherit

@@ -120,7 +120,7 @@
 (s/def ::content ::not-empty-string)
 
 (s/def :parameter/id   ::not-empty-string)
-(s/def :parameter/type ::base_type)
+(s/def :parameter/type #{:text})
 (s/def ::parameter  (s/keys :req-un [:parameter/id :parameter/type]))
 (s/def ::parameters (s/coll-of ::parameter))
 

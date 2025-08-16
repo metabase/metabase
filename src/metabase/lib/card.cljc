@@ -39,16 +39,6 @@
     (= (:type card-metadata) :metric) (assoc :metric? true)
     (= (lib.util/source-card-id query) (:id card-metadata)) (assoc :is-source-card true)))
 
-(mu/defmethod lib.metadata.calculation/visible-columns-method :metadata/card :- ::lib.metadata.calculation/visible-columns
-  [query                                              :- ::lib.schema/query
-   stage-number                                       :- :int
-   {:keys [fields result-metadata] :as card-metadata} :- ::lib.schema.metadata/card
-   {:keys [include-implicitly-joinable?] :as options} :- [:maybe ::lib.metadata.calculation/visible-columns.options]]
-  (concat
-   (lib.metadata.calculation/returned-columns query stage-number card-metadata options)
-   (when include-implicitly-joinable?
-     (lib.metadata.calculation/implicitly-joinable-columns query stage-number (concat fields result-metadata)))))
-
 (mu/defn fallback-display-name :- ::lib.schema.common/non-blank-string
   "If for some reason the metadata is unavailable. This is better than returning nothing I guess."
   [card-id :- ::lib.schema.id/card]
@@ -225,7 +215,10 @@
                           (source-model-cols metadata-providerable card))]
         (not-empty
          (into []
-               (lib.field.util/add-source-and-desired-aliases-xform metadata-providerable)
+               ;; do not truncate the desired column aliases coming back in card metadata, if the query returns a
+               ;; 'crazy long' column name then we need to use that in the next stage.
+               ;; See [[metabase.lib.card-test/propagate-crazy-long-identifiers-from-card-metadata-test]]
+               (lib.field.util/add-source-and-desired-aliases-xform metadata-providerable (lib.util/non-truncating-unique-name-generator))
                (cond-> result-cols
                  (seq model-cols) (merge-model-metadata model-cols))))))))
 

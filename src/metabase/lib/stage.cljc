@@ -2,10 +2,9 @@
   "Method implementations for a stage of a query."
   (:require
    [clojure.string :as str]
-   [medley.core :as m]
    [metabase.lib.aggregation :as lib.aggregation]
-   [metabase.lib.binning :as lib.binning]
    [metabase.lib.breakout :as lib.breakout]
+   [metabase.lib.equality :as lib.equality]
    [metabase.lib.expression :as lib.expression]
    [metabase.lib.field.util :as lib.field.util]
    [metabase.lib.hierarchy :as lib.hierarchy]
@@ -17,7 +16,6 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
-   [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.util :as u]
@@ -49,7 +47,10 @@
           (not-empty
            (into []
                  (comp (map #(assoc % :lib/source source-type))
-                       (lib.field.util/add-source-and-desired-aliases-xform query))
+                       ;; do not truncate the desired column aliases coming back from a native query, because if a
+                       ;; native query returns a 'crazy long' column name then we need to use that in the next stage.
+                       ;; See [[metabase.lib.stage-test/propagate-crazy-long-native-identifiers-test]]
+                       (lib.field.util/add-source-and-desired-aliases-xform query (lib.util/non-truncating-unique-name-generator)))
                  (:columns metadata))))))))
 
 (mu/defn- breakouts-columns :- [:maybe ::lib.metadata.calculation/visible-columns]
@@ -68,9 +69,7 @@
   (not-empty
    (for [ag (lib.aggregation/aggregations-metadata query stage-number)]
      ;; TODO (Cam 8/1/25) -- why don't we just do this in [[lib.aggregation/aggregations-metadata]] instead of here?
-     (assoc ag
-            :lib/source              :source/aggregations
-            :lib/source-column-alias ((some-fn :lib/source-column-alias :name) ag)))))
+     (assoc ag :lib/source-column-alias ((some-fn :lib/source-column-alias :name) ag)))))
 
 ;;; TODO -- maybe the bulk of this logic should be moved into [[metabase.lib.field]], like we did for breakouts and
 ;;; aggregations above.
@@ -112,15 +111,15 @@
                                                       (lib.util/query-stage query previous-stage-number)
                                                       options)))))
 
-(mu/defn- saved-question-visible-columns :- [:maybe ::lib.metadata.calculation/visible-columns]
+(mu/defn- saved-question-returned-columns :- [:maybe ::lib.metadata.calculation/returned-columns]
   "Metadata associated with a Saved Question, e.g. if we have a `:source-card`"
   [query          :- ::lib.schema/query
    stage-number   :- :int
    card-id        :- [:maybe ::lib.schema.id/card]
-   options        :- ::lib.metadata.calculation/visible-columns.options]
+   options        :- ::lib.metadata.calculation/returned-columns.options]
   (when card-id
     (when-let [card (lib.metadata/card query card-id)]
-      (not-empty (lib.metadata.calculation/visible-columns query stage-number card options)))))
+      (not-empty (lib.metadata.calculation/returned-columns query stage-number card options)))))
 
 ;;; TODO (Cam 8/6/25) -- this should probably live in [[metabase.lib.metric]]
 (mu/defn- metric-visible-columns :- [:maybe ::lib.metadata.calculation/visible-columns]
@@ -133,7 +132,6 @@
     (not-empty (lib.metadata.calculation/visible-columns
                 (assoc metric-query :lib/metadata (:lib/metadata query))
                 -1
-                (lib.util/query-stage metric-query -1)
                 options))))
 
 (mu/defn- expressions-metadata :- [:maybe ::lib.metadata.calculation/visible-columns]
@@ -189,15 +187,15 @@
       ;; 1b: default visible Fields for the source Table
       (when source-table
         (assert (integer? source-table))
-        (let [table-metadata (lib.metadata/table query source-table)]
-          (lib.metadata.calculation/visible-columns query stage-number table-metadata options)))
+        (let [table (lib.metadata/table query source-table)]
+          (lib.metadata.calculation/returned-columns query stage-number table options)))
       ;; 1e. Metadata associated with a Metric
       (when metric-based?
         (metric-visible-columns query stage-number card options))
       ;; 1c. Metadata associated with a saved Question
       (when source-card
-        (when-let [cols (not-empty (saved-question-visible-columns query stage-number source-card
-                                                                   (assoc options :include-implicitly-joinable? false)))]
+        (when-let [cols (not-empty (saved-question-returned-columns query stage-number source-card
+                                                                    (assoc options :include-implicitly-joinable? false)))]
           (into []
                 (comp (map lib.field.util/update-keys-for-col-from-previous-stage)
                       (map (fn [col]
@@ -229,40 +227,23 @@
      (when include-joined?
        (lib.join/all-joins-visible-columns-relative-to-parent-stage query stage-number options)))))
 
-(mu/defmethod lib.metadata.calculation/visible-columns-method ::stage :- ::lib.metadata.calculation/visible-columns
+;;; TODO (Cam 8/7/25) -- we should probably just move all of `visible-columns` to here since this is the only
+;;; implementation, then we could avoid the indirection. A problem for another day tho. See TODO notes
+;;; on [[metabase.lib.metadata.calculation/visible-columns]]
+
+#_{:clj-kondo/ignore [:unused-private-var]} ; this is actually used
+(mu/defn- -visible-columns :- ::lib.metadata.calculation/visible-columns
+  "Implementation of [[metabase.lib.calculation/visible-columns]], which as of 8/7/25 only works on stages. Use that
+   instead of using this function directly, since it includes caching, merges default options, and does other nice
+   things for us."
   [query                                               :- ::lib.schema/query
    stage-number                                        :- :int
-   _stage                                              :- ::lib.schema/stage
    {:keys [include-implicitly-joinable?], :as options} :- ::lib.metadata.calculation/visible-columns.options]
   (let [existing-columns (existing-visible-columns query stage-number options)]
     (into (vec existing-columns)
           ;; add implicitly joinable columns if desired
           (when include-implicitly-joinable?
             (lib.metadata.calculation/implicitly-joinable-columns query stage-number existing-columns)))))
-
-(defn- add-cols-from-join-duplicate?
-  "Whether two columns are considered to be the same for purposes of [[add-cols-from-join]]."
-  [col-1 col-2]
-  ;; columns that don't have the same binning or temporal bucketing are never the same.
-  (and
-   ;; same binning
-   (= (lib.binning/binning col-1)
-      (lib.binning/binning col-2))
-   ;; same bucketing
-   (letfn [(bucket [col]
-             (when-let [bucket (lib.temporal-bucket/raw-temporal-bucket col)]
-               (when-not (= bucket :default)
-                 bucket)))]
-     (= (bucket col-1)
-        (bucket col-2)))
-   ;; compare by something that both columns have, trying ID first falling back to column name
-   (let [k (m/find-first (fn [k]
-                           (and (k col-1)
-                                (k col-2)))
-                         [:id :lib/source-column-alias :name])]
-     (assert k "No key common to both columns")
-     (= (k col-1)
-        (k col-2)))))
 
 (defn- add-cols-from-join
   "The columns from `:fields` may contain columns from `:joins` -- so if the joins specify their own `:fields` we need
@@ -277,7 +258,7 @@
                                field-cols)
         duplicate-col? (fn [join-col]
                          (some (fn [existing-col]
-                                 (add-cols-from-join-duplicate? join-col existing-col))
+                                 (lib.equality/= join-col existing-col))
                                existing-cols))]
     (into (vec field-cols)
           (remove duplicate-col?)

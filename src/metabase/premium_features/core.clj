@@ -51,6 +51,7 @@
   enable-dashboard-subscription-filters?
   enable-database-auth-providers?
   enable-database-routing?
+  enable-documents?
   enable-email-allow-list?
   enable-email-restrict-recipients?
   enable-embedding-sdk-origins?
@@ -62,6 +63,7 @@
   enable-query-reference-validation?
   enable-sandboxes?
   enable-scim?
+  enable-semantic-search?
   enable-serialization?
   enable-session-timeout-config?
   enable-snippet-collections?
@@ -69,6 +71,7 @@
   enable-sso-jwt?
   enable-sso-ldap?
   enable-sso-saml?
+  enable-transforms?
   enable-upload-management?
   enable-whitelabeling?
   has-attached-dwh?

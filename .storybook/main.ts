@@ -8,6 +8,7 @@ const { CSS_CONFIG } = require("../frontend/build/shared/rspack/css-config");
 const mainAppStories = [
   "../frontend/**/*.mdx",
   "../frontend/**/*.stories.@(js|jsx|ts|tsx)",
+  "../enterprise/frontend/**/*.stories.@(js|jsx|ts|tsx)",
 ];
 
 const config: StorybookConfig = {

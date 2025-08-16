@@ -30,8 +30,7 @@ export const SelectEmbedOptionsStep = () => {
     [theme, updateSettings],
   );
 
-  const isDashboardOrInteractiveQuestion =
-    settings.dashboardId || (settings.questionId && settings.drills);
+  const isDashboardOrQuestion = settings.dashboardId || settings.questionId;
 
   return (
     <Stack gap="md">
@@ -48,7 +47,7 @@ export const SelectEmbedOptionsStep = () => {
             />
           )}
 
-          {isDashboardOrInteractiveQuestion && (
+          {isDashboardOrQuestion && (
             <Checkbox
               label={t`Allow downloads`}
               checked={settings.withDownloads}
@@ -77,7 +76,9 @@ export const SelectEmbedOptionsStep = () => {
           </Text>
 
           <Text size="sm" c="text-medium" mb="lg">
-            {t`Set default values and control visibility`}
+            {experience === "dashboard"
+              ? t`Set default values and control visibility`
+              : t`Set default values for parameters`}
           </Text>
 
           <ParameterSettings />

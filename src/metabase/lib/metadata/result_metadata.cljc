@@ -136,16 +136,20 @@
    cols  :- [:sequential ::kebab-cased-map]]
   (mapv (fn [col]
           (let [converted-timezone (when-let [expression-name ((some-fn :lib/expression-name :lib/original-expression-name) col)]
-                                     (when-let [expr (try
-                                                       (lib.expression/resolve-expression query expression-name)
-                                                       (catch #?(:clj Throwable :cljs :default) e
-                                                         (log/error e "Column metadata has invalid :lib/expression-name (this was probably incorrectly propagated from a previous stage) (QUE-1342)")
-                                                         (log/debugf "In query:\n%s" (u/pprint-to-str query))
-                                                         nil))]
-                                       (lib.util.match/match-one expr
-                                         :convert-timezone
-                                         (let [[_convert-timezone _opts _expr source-tz] &match]
-                                           source-tz))))]
+                                     ;; don't look inside expressions that happened inside of joins,
+                                     ;; `lib.expression/resolve-expression` is unfortunately not smart enough to
+                                     ;; figure out how to find them and will just log a noisy error
+                                     (when-not (:lib/original-join-alias col)
+                                       (when-let [expr (try
+                                                         (lib.expression/resolve-expression query expression-name)
+                                                         (catch #?(:clj Throwable :cljs :default) e
+                                                           (log/error e "Column metadata has invalid :lib/expression-name (this was probably incorrectly propagated from a previous stage) (QUE-1342)")
+                                                           (log/debugf "In query:\n%s" (u/pprint-to-str query))
+                                                           nil))]
+                                         (lib.util.match/match-one expr
+                                           :convert-timezone
+                                           (let [[_convert-timezone _opts _expr source-tz] &match]
+                                             source-tz)))))]
             (cond-> col
               converted-timezone (assoc :converted-timezone converted-timezone))))
         cols))

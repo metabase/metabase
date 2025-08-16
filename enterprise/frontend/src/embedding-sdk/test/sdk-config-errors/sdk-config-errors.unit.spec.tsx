@@ -7,10 +7,10 @@ import {
 import { waitForLoaderToBeRemoved } from "__support__/ui";
 import { waitForRequest } from "__support__/utils";
 import {
-  MetabaseProvider,
+  ComponentProvider,
   StaticQuestion,
-  defineMetabaseAuthConfig,
 } from "embedding-sdk/components/public";
+import { defineMetabaseAuthConfig } from "embedding-sdk/sdk-package/lib/public/define-metabase-auth-config";
 import type { MetabaseAuthConfig } from "embedding-sdk/types";
 import { createMockCard } from "metabase-types/api/mocks";
 
@@ -47,9 +47,9 @@ const setup = async (
     .mockImplementation(() => {});
 
   render(
-    <MetabaseProvider authConfig={config}>
+    <ComponentProvider authConfig={config}>
       <StaticQuestion questionId={1} />
-    </MetabaseProvider>,
+    </ComponentProvider>,
   );
 
   await waitForLoaderToBeRemoved();
