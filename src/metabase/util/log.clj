@@ -11,6 +11,7 @@
    [metabase.config.core :as config]
    [metabase.util.format :as u.format]
    [metabase.util.log.capture]
+   [metabase.util.performance :as perf]
    [net.cgrand.macrovich :as macros])
   (:import
    (org.apache.logging.log4j ThreadContext)))
@@ -223,7 +224,7 @@
    ThreadContext will contain: {\"notification_id\" \"1\"} and stack \"Notification 1\""
   [context-map & body]
   (macros/case
-    :clj `(let [ctx-map# (update-keys ~context-map #(str "mb-" (u.format/qualified-name %)))
+    :clj `(let [ctx-map# (perf/update-keys ~context-map #(str "mb-" (u.format/qualified-name %)))
                 ctx-keys# (keys ctx-map#)
                 ;; Store original values before modifying
                 original-values# (into {}

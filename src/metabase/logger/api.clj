@@ -11,7 +11,8 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr])
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.performance :as perf])
   (:import
    (java.util.concurrent ScheduledFuture ScheduledThreadPoolExecutor ThreadFactory TimeUnit)
    (java.util.concurrent.atomic AtomicInteger)))
@@ -204,7 +205,7 @@
                       "something strange")]
       (api/check-400 false {:specific-errors {:log_levels [(str "invalid type, received: " json-type)]}
                             :errors {:_error (tru "Log levels should be an object, {0} received" json-type)}})))
-  (let [log-levels (update-keys log_levels #(cond-> % (instance? clojure.lang.Named %) name))]
+  (let [log-levels (perf/update-keys log_levels #(cond-> % (instance? clojure.lang.Named %) name))]
     (when-let [error (mu/explain ::log-levels log-levels)]
       (api/check-400 false {:specific-errors {:log_levels error}
                             :errors {:_error (tru (str "The format of the provided logging configuration is incorrect."

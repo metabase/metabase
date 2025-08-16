@@ -9,6 +9,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.performance :as perf]
    [methodical.core :as methodical])
   (:import
    (clojure.lang ExceptionInfo)))
@@ -48,7 +49,7 @@
 (defmethod actions/normalize-action-arg-map :data-grid.row/common
   [_action input]
   (-> (assoc input :database (:id (actions/cached-database-via-table-id (:table-id input))))
-      (update :row #(update-keys % u/qualified-name))))
+      (update :row #(perf/update-keys % u/qualified-name))))
 
 (defmethod actions/action-arg-map-schema :data-editing/undo [_action] :map)
 (defmethod actions/action-arg-map-schema :data-editing/redo [_action] :map)

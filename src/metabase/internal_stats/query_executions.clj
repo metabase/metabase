@@ -2,6 +2,7 @@
   (:require
    [java-time.api :as t]
    [metabase.internal-stats.util :as u]
+   [metabase.util.performance :as perf]
    [toucan2.core :as t2]))
 
 (def ^:private query-execution-statistics
@@ -49,4 +50,4 @@
     (-> (t2/select-one query-execution-statistics
                        {:where [:= [:cast :started_at :date] [:cast yesterday-utc :date]]})
         (dissoc :row_count)
-        (update-keys #(keyword (str "query_executions_" (name %)))))))
+        (perf/update-keys #(keyword (str "query_executions_" (name %)))))))

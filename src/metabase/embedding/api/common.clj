@@ -22,6 +22,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.performance :as perf]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -153,7 +154,7 @@
   Also, any param values that are blank strings should be parsed as nil, representing the absence of a value."
   [query-params]
   (-> query-params
-      (update-keys keyword)
+      (perf/update-keys keyword)
       (update-vals (fn [v] (if (= v "") nil v)))))
 
 (mu/defn validate-and-merge-params :- [:map-of :keyword :any]
@@ -211,7 +212,7 @@
   (let [param-slugs                   (map #(keyword (:slug %)) dashboard-or-card-params)
         grouped-param-slugs           {:remove (remove (fn [k] (contains? embedding-params k)) param-slugs)}
         grouped-embedding-param-slugs (-> (group-by #(= (second %) "enabled") embedding-params)
-                                          (update-keys {true :keep false :remove})
+                                          (perf/update-keys {true :keep false :remove})
                                           (update-vals #(into #{} (map first) %)))]
     (merge-with (comp set concat)
                 {:keep #{} :remove #{}}

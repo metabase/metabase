@@ -3,7 +3,8 @@
   (:require
    [java-time.api :as t]
    [metabase.channel.urls :as urls]
-   [metabase.util.date-2 :as u.date])
+   [metabase.util.date-2 :as u.date]
+   [metabase.util.performance :as perf])
   (:import
    (com.github.jknack.handlebars
     Options Handlebars Helper Handlebars$SafeString)))
@@ -51,7 +52,7 @@
                          :is-helper? true})
          ~description#
          (reify Helper (apply [_# context# option#]
-                         (~helper-fn-name context# (.params option#) (update-keys (.hash option#) keyword) option#)))))))
+                         (~helper-fn-name context# (.params option#) (perf/update-keys (.hash option#) keyword) option#)))))))
 
 (defn register-helper
   "Register a helper."
@@ -117,7 +118,7 @@
 
      {{dashboard-url 10}} -> \"http://localhost:3000/dashboard/10\""
   [id [parameters] _kparams _options]
-  (urls/dashboard-url id (map #(update-keys % keyword) parameters)))
+  (urls/dashboard-url id (map #(perf/update-keys % keyword) parameters)))
 
 (def default-helpers
   "A list of default helpers."

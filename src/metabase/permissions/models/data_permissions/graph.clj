@@ -18,6 +18,7 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
+   [metabase.util.performance :as perf]
    [toucan2.core :as t2]))
 
 ;; See also: [[data-perms/Permissions]]
@@ -208,7 +209,7 @@
                            (case table-perm
                              :all  :yes
                              :none :no)))
-            (update-keys (fn [table-id] {:id table-id :db_id db-id :schema schema})))]
+            (perf/update-keys (fn [table-id] {:id table-id :db_id db-id :schema schema})))]
     (data-perms/set-table-permissions! group-id :perms/manage-table-metadata new-table-perms)))
 
 (defn- update-schema-level-metadata-permissions!
@@ -246,7 +247,7 @@
                              :full    :one-million-rows
                              :limited :ten-thousand-rows
                              :none    :no)))
-            (update-keys (fn [table-id] {:id table-id :db_id db-id :schema schema})))]
+            (perf/update-keys (fn [table-id] {:id table-id :db_id db-id :schema schema})))]
     (data-perms/set-table-permissions! group-id :perms/download-results new-table-perms)))
 
 (defn- update-schema-level-download-permissions!
@@ -287,7 +288,7 @@
 
 (defn- update-table-level-create-queries-permissions!
   [group-id db-id schema new-table-perms]
-  (let [new-table-perms (update-keys
+  (let [new-table-perms (perf/update-keys
                          new-table-perms
                          (fn [table-id] {:id table-id :db_id db-id :schema schema}))]
     (data-perms/set-table-permissions! group-id :perms/create-queries new-table-perms)))
@@ -311,7 +312,7 @@
 (defn- update-table-level-view-data-permissions!
   [group-id db-id schema new-table-perms]
   (let [new-table-perms (->
-                         (update-keys
+                         (perf/update-keys
                           new-table-perms
                           (fn [table-id] {:id table-id :db_id db-id :schema schema}))
                          (update-vals (fn [table-perm]

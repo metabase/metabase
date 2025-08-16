@@ -20,6 +20,7 @@
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
+   [metabase.util.performance :as perf]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -156,10 +157,10 @@
   "Formats a map of [:db_name :schema :table_name] -> #{:group_name} into a translatable string like:
   db_name.schema.table_name by group_name_1 and group_name 2."
   [blocked-by-group]
-  (update-keys blocked-by-group (fn [[db-name schema table-name]]
-                                  (if schema
-                                    (str db-name "." schema "." table-name)
-                                    (str db-name "." table-name)))))
+  (perf/update-keys blocked-by-group (fn [[db-name schema table-name]]
+                                       (if schema
+                                         (str db-name "." schema "." table-name)
+                                         (str db-name "." table-name)))))
 
 (defn- check-table-permissions
   "Check table-level permissions for a card's query tables.

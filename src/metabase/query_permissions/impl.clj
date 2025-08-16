@@ -24,6 +24,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.performance :as perf]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -294,7 +295,7 @@
 (defn- card
   [database-id card-id]
   (or (some-> (lib.metadata.protocols/card (qp.store/metadata-provider) card-id)
-              (update-keys u/->snake_case_en)
+              (perf/update-keys u/->snake_case_en)
               (vary-meta assoc :type :model/Card))
       ;; In the case of SQL actions, the query being executed might not act on the same database as that
       ;; used by the model upon which the action is defined. In this case, the underlying model whose

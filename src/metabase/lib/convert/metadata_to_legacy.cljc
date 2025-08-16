@@ -3,7 +3,8 @@
    [medley.core :as m]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
-   [metabase.util.memoize :as u.memo]))
+   [metabase.util.memoize :as u.memo]
+   [metabase.util.performance :as perf]))
 
 (let [f (u.memo/fast-memo
          (fn [k]
@@ -26,6 +27,6 @@
   * Remove `:lib/type`"
   [col :- :map]
   (-> col
-      (update-keys lib-metadata-column-key->legacy-metadata-column-key)
-      (m/update-existing :binning_info update-keys lib-metadata-column-key->legacy-metadata-column-key)
+      (perf/update-keys lib-metadata-column-key->legacy-metadata-column-key)
+      (m/update-existing :binning_info perf/update-keys lib-metadata-column-key->legacy-metadata-column-key)
       (dissoc :lib/type)))

@@ -11,6 +11,7 @@
    [metabase.query-processor :as qp]
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
+   [metabase.util.performance :as perf]
    [metabase.util.queue :as queue]
    [metabase.warehouse-schema.models.field-values :as field-values]
    [toucan2.core :as t2])
@@ -47,7 +48,7 @@
   "Given a row, strip it down to just its primary keys."
   [pk-fields row]
   (->> (map :name pk-fields)
-       (select-keys (update-keys row u/qualified-name))
+       (select-keys (perf/update-keys row u/qualified-name))
        ;; Hack for now, pending discussion of the ideal fix
        ;; https://linear.app/metabase/issue/WRK-281/undo-deletes-a-record-instead-of-reverting-the-edits
        ;; See https://metaboat.slack.com/archives/C0641E4PB9B/p1744978660610899

@@ -8,7 +8,8 @@
    [metabase.util.date-2 :as u.date]
    [metabase.util.formatting.constants :as constants]
    [metabase.util.i18n :as i18n]
-   [metabase.util.log :as log])
+   [metabase.util.log :as log]
+   [metabase.util.performance :as perf])
   (:import
    (com.ibm.icu.text RuleBasedNumberFormat)
    (java.util Locale)))
@@ -65,7 +66,7 @@
                               ;; update the keys so that they will have only the :field-id or :column-name
                               ;; and not have any metadata. Since we don't know the metadata, we can never
                               ;; match a key with metadata, even if we do have the correct name or id
-                              (update-keys #(select-keys % [::mb.viz/field-id ::mb.viz/column-name])))]
+                              (perf/update-keys #(select-keys % [::mb.viz/field-id ::mb.viz/column-name])))]
     (merge (all-cols-settings {::mb.viz/field-id field-id-or-name})
            (or (all-cols-settings {::mb.viz/column-name field-id-or-name})
                (all-cols-settings {::mb.viz/column-name column-name})))))

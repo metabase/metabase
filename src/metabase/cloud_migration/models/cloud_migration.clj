@@ -17,6 +17,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
+   [metabase.util.performance :as perf]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
    [toucan2.pipeline :as t2.pipeline])
@@ -39,18 +40,18 @@
   (->> copy/entities (map t2/table-name) (into #{})))
 
 (def ^:private read-only-mode-exceptions
-  (update-keys {;; Migrations need to update their own state
-                :model/CloudMigration :all :model/Setting :all
-                ;; Users need to login, make queries, and we need need to audit them.
-                :model/User :all :model/Session :all :model/LoginHistory :all
-                :model/UserParameterValue :all
-                :model/AuditLog :all :model/ViewLog :all
-                ;; Cards need to able to update their last used at timestamp, but we don't want to create
-                ;; new cards or update other fields.
-                :model/Card #{:id :last_used_at :updated_at}}
-               ;; These exceptions use table name instead of model name because you can actually bypass the model
-               ;; and write toucan2 functions that interact with table directly.
-               t2/table-name))
+  (perf/update-keys {;; Migrations need to update their own state
+                     :model/CloudMigration :all :model/Setting :all
+                     ;; Users need to login, make queries, and we need need to audit them.
+                     :model/User :all :model/Session :all :model/LoginHistory :all
+                     :model/UserParameterValue :all
+                     :model/AuditLog :all :model/ViewLog :all
+                     ;; Cards need to able to update their last used at timestamp, but we don't want to create
+                     ;; new cards or update other fields.
+                     :model/Card #{:id :last_used_at :updated_at}}
+                    ;; These exceptions use table name instead of model name because you can actually bypass the model
+                    ;; and write toucan2 functions that interact with table directly.
+                    t2/table-name))
 
 (defn- update-exempted?
   [table-name {:keys [changes]}]

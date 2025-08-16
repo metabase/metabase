@@ -15,6 +15,7 @@
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
+   [metabase.util.performance :as perf]
    [nano-id.core :as nano-id]
    [next.jdbc :as jdbc]
    [next.jdbc.result-set :as jdbc.rs]
@@ -199,7 +200,7 @@
   [db-records]
   (let [update-keys (-> db-records first (dissoc :id :model :model_id) keys)
         excluded-kw (fn [column] (keyword (str "excluded." (name column))))]
-    (zipmap update-keys (map excluded-kw update-keys))))
+    (zipmap perf/update-keys (map excluded-kw update-keys))))
 
 (defn- throw-if-max-pg-len
   [resource-name msg]
