@@ -103,7 +103,7 @@
           (.addMethod ~(vary-meta multifn assoc :tag 'clojure.lang.MultiFn)
                       ~dispatch-value-symb
                       f#)))))
-#?(:clj
+#?(:cljs
    (defmacro -defmethod-cljs
      "Impl for [[defmethod]] for ClojureScript."
      [multifn dispatch-value & fn-tail]
