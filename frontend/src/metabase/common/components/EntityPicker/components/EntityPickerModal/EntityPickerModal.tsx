@@ -182,7 +182,7 @@ export function EntityPickerModal<
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(searchQuery);
   useDebounce(() => setDebouncedSearchQuery(searchQuery), 200, [searchQuery]);
 
-  const { data, isFetching } = useSearchQuery(
+  const { data, isFetching, requestId } = useSearchQuery(
     {
       q: debouncedSearchQuery,
       models: searchModels,
@@ -263,6 +263,9 @@ export function EntityPickerModal<
             isLoading={isFetching}
             searchScope={searchScope}
             searchResults={finalSearchResults ?? []}
+            searchEngine={data?.engine}
+            searchRequestId={requestId}
+            searchTerm={searchQuery}
             selectedItem={selectedItem}
             onItemSelect={onItemSelect}
             onSearchScopeChange={setSearchScope}
