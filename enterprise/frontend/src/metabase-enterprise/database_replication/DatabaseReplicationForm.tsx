@@ -223,18 +223,15 @@ export const DatabaseReplicationForm = ({
         onSubmit={onSubmit}
         validationSchema={validationSchema}
       >
-        {({ values, setFieldValue }) => (
+        {({ values }) => (
           <Form>
             <Stack>
               <FormSelect
                 name="schemaSelect"
                 label={t`Select schemas to replicate`}
-                onChange={(value) => {
-                  setSchemaSelect(value as typeof initialValues.schemaSelect);
-                  if (value === "all") {
-                    setFieldValue("schemaFields", "");
-                  }
-                }}
+                onChange={(value) =>
+                  setSchemaSelect(value as typeof initialValues.schemaSelect)
+                }
                 data={[
                   { value: "all", label: t`All` },
                   { value: "include", label: t`Only these…` },
