@@ -200,6 +200,11 @@
         (str/replace (name perm-type) "-" " "))
    {:status-code 402}))
 
+(defn- tables-for-schema
+  "Only get active tables for a schema when changing permissions (#61896)"
+  [db-id schema]
+  (t2/select :model/Table :db_id db-id :schema (not-empty schema) :active true))
+
 (defn- update-table-level-metadata-permissions!
   [group-id db-id schema new-table-perms]
   (let [new-table-perms
@@ -215,7 +220,7 @@
   [group-id db-id schema new-schema-perms]
   (if (map? new-schema-perms)
     (update-table-level-metadata-permissions! group-id db-id schema new-schema-perms)
-    (let [tables (t2/select :model/Table :db_id db-id :schema (not-empty schema))]
+    (let [tables (tables-for-schema db-id schema)]
       (when (seq tables)
         (case new-schema-perms
           :all
@@ -253,7 +258,7 @@
   [group-id db-id schema new-schema-perms]
   (if (map? new-schema-perms)
     (update-table-level-download-permissions! group-id db-id schema new-schema-perms)
-    (let [tables (t2/select :model/Table :db_id db-id :schema (not-empty schema))]
+    (let [tables (tables-for-schema db-id schema)]
       (when (seq tables)
         (case new-schema-perms
           :full
@@ -296,7 +301,7 @@
   [group-id db-id schema new-schema-perms]
   (if (map? new-schema-perms)
     (update-table-level-create-queries-permissions! group-id db-id schema new-schema-perms)
-    (let [tables (t2/select :model/Table :db_id db-id :schema (not-empty schema))]
+    (let [tables (tables-for-schema db-id schema)]
       (when (seq tables)
         (data-perms/set-table-permissions! group-id :perms/create-queries (zipmap tables (repeat new-schema-perms)))))))
 
@@ -328,7 +333,7 @@
   [group-id db-id schema new-schema-perms]
   (if (map? new-schema-perms)
     (update-table-level-view-data-permissions! group-id db-id schema new-schema-perms)
-    (let [tables (t2/select :model/Table :db_id db-id :schema (not-empty schema))]
+    (let [tables (tables-for-schema db-id schema)]
       (when (seq tables)
         (data-perms/set-table-permissions! group-id :perms/view-data (zipmap tables (repeat new-schema-perms)))))))
 
