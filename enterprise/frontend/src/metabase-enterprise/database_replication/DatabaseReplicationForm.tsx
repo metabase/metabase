@@ -174,7 +174,8 @@ export const DatabaseReplicationForm = ({
           <Group justify="space-between">
             <Box ta="left">
               <Text c="text-light">{database.name}</Text>
-              {typeof previewResponse?.totalEstimatedRowCount === "number" ? (
+              {!previewResponseLoading &&
+              typeof previewResponse?.totalEstimatedRowCount === "number" ? (
                 <Text fw="bold">
                   {t`${compactEnglishNumberFormat.format(previewResponse.totalEstimatedRowCount)} rows`}
                 </Text>
@@ -185,7 +186,8 @@ export const DatabaseReplicationForm = ({
             {previewResponseLoading && <Loader />}
             <Box ta="right">
               <Text c="text-light">{t`Available Cloud Storage`}</Text>
-              {typeof previewResponse?.freeQuota === "number" ? (
+              {!previewResponseLoading &&
+              typeof previewResponse?.freeQuota === "number" ? (
                 <Text fw="bold" w="100%">
                   {t`${compactEnglishNumberFormat.format(previewResponse.freeQuota)} rows`}
                 </Text>
@@ -195,7 +197,8 @@ export const DatabaseReplicationForm = ({
             </Box>
           </Group>
 
-          {typeof storageUtilizationPercent === "number" ? (
+          {!previewResponseLoading &&
+          typeof storageUtilizationPercent === "number" ? (
             <Progress
               value={storageUtilizationPercent}
               color={
