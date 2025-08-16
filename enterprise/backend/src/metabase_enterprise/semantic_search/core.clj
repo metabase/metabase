@@ -1,6 +1,7 @@
 (ns metabase-enterprise.semantic-search.core
   "Enterprise implementations of semantic search core functions using defenterprise."
   (:require
+   [java-time.api :as t]
    [medley.core :as m]
    [metabase-enterprise.semantic-search.db.datasource :as semantic.db.datasource]
    [metabase-enterprise.semantic-search.env :as semantic.env]
@@ -92,27 +93,29 @@
 ;; we're currently not returning stats from `init!` and `reindex!` as the async nature means
 ;; we'd report skewed values for the `metabase-search` metrics.
 
-;; TODO: add reindexing/table-swapping logic when index is detected as stale
 (defenterprise init!
   "Initialize the semantic search table and populate it with initial data."
   :feature :semantic-search
-  [searchable-documents _opts]
+  [searchable-documents opts]
   (let [pgvector        (semantic.env/get-pgvector-datasource!)
         index-metadata  (semantic.env/get-index-metadata)
         embedding-model (semantic.env/get-configured-embedding-model)]
-    (semantic.pgvector-api/init-semantic-search! pgvector index-metadata embedding-model)
-    (semantic.pgvector-api/gate-updates! pgvector index-metadata searchable-documents)
+    (let [index (semantic.pgvector-api/init-semantic-search! pgvector index-metadata embedding-model opts)]
+      (if (< 3 (t/time-between (t/instant (:index-created-at index)) (t/instant) :days))
+        (do
+          (log/debug "Forcing early reindex because existing index is old")
+          (search.engine/reindex! :search.engine/semantic {}))
+        (semantic.pgvector-api/gate-updates! pgvector index-metadata searchable-documents)))
     nil))
 
 (defenterprise reindex!
   "Reindex the semantic search index."
   :feature :semantic-search
-  [searchable-documents _opts]
+  [searchable-documents opts]
   (let [pgvector        (semantic.env/get-pgvector-datasource!)
         index-metadata (semantic.env/get-index-metadata)
         embedding-model (semantic.env/get-configured-embedding-model)]
-    ;; todo force a new index
-    (semantic.pgvector-api/init-semantic-search! pgvector index-metadata embedding-model)
+    (semantic.pgvector-api/initialize-index! pgvector index-metadata embedding-model opts)
     (semantic.pgvector-api/gate-updates! pgvector index-metadata searchable-documents)
     nil))
 
