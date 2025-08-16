@@ -367,7 +367,7 @@ describe("scenarios > metrics > editing", () => {
       saveMetric();
       verifyLineAreaBarChart({
         xAxis: "Created At: Month",
-        yAxis: "Sum of Total",
+        yAxis: "Orders, Sum of Total",
       });
     });
   });
