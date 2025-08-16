@@ -18,6 +18,7 @@ import {
 } from "embedding-sdk/components/private/PublicComponentWrapper";
 import { SdkAdHocQuestion } from "embedding-sdk/components/private/SdkAdHocQuestion";
 import { SdkQuestion } from "embedding-sdk/components/public/SdkQuestion/SdkQuestion";
+import { useSdkBreadcrumbs } from "embedding-sdk/hooks/private/use-sdk-breadcrumb";
 import {
   type SdkDashboardDisplayProps,
   useSdkDashboardParams,
@@ -152,6 +153,8 @@ const SdkDashboardInner = ({
   });
 
   const { isLocaleLoading } = useLocale();
+  const { isBreadcrumbEnabled, reportLocation } = useSdkBreadcrumbs();
+
   const { displayOptions } = useSdkDashboardParams({
     dashboardId,
     withDownloads,
@@ -194,6 +197,23 @@ const SdkDashboardInner = ({
       )?.id,
     [dashboard?.dashcards, newDashboardQuestionId],
   );
+
+  useEffect(() => {
+    if (dashboard && isBreadcrumbEnabled && finalRenderMode === "dashboard") {
+      reportLocation({
+        type: "dashboard",
+        id: dashboard.id,
+        name: dashboard.name,
+        onNavigate: onNavigateBackToDashboard,
+      });
+    }
+  }, [
+    dashboard,
+    isBreadcrumbEnabled,
+    reportLocation,
+    finalRenderMode,
+    onNavigateBackToDashboard,
+  ]);
 
   const errorPage = useSdkSelector(getErrorPage);
   const dispatch = useSdkDispatch();
