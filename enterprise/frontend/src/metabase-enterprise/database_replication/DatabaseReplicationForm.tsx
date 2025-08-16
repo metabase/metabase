@@ -24,6 +24,7 @@ import {
   List,
   Loader,
   Progress,
+  Skeleton,
   Stack,
   Text,
   UnstyledButton,
@@ -143,6 +144,14 @@ export const DatabaseReplicationForm = ({
     );
   }, [preview, database.id, debouncedSchemaFilters, schemaSelect]);
 
+  const storageUtilizationPercent =
+    typeof previewResponse?.totalEstimatedRowCount === "number" &&
+    typeof previewResponse?.freeQuota === "number" &&
+    previewResponse.freeQuota > 0
+      ? (previewResponse.totalEstimatedRowCount / previewResponse.freeQuota) *
+        100
+      : undefined;
+
   const noSyncTables: { name: string; schema: string }[] = [];
   unionInPlace(noSyncTables, previewResponse?.tablesWithoutPk);
   unionInPlace(noSyncTables, previewResponse?.tablesWithoutOwnerMatch);
@@ -165,36 +174,39 @@ export const DatabaseReplicationForm = ({
           <Group justify="space-between">
             <Box ta="left">
               <Text c="text-light">{database.name}</Text>
-              <Text fw="bold">
-                {typeof previewResponse?.totalEstimatedRowCount === "number"
-                  ? t`${compactEnglishNumberFormat.format(previewResponse.totalEstimatedRowCount)} rows`
-                  : "…"}
-              </Text>
+              {typeof previewResponse?.totalEstimatedRowCount === "number" ? (
+                <Text fw="bold">
+                  {t`${compactEnglishNumberFormat.format(previewResponse.totalEstimatedRowCount)} rows`}
+                </Text>
+              ) : (
+                <Skeleton height="1.5em" width="10em" />
+              )}
             </Box>
+            {previewResponseLoading && <Loader />}
             <Box ta="right">
               <Text c="text-light">{t`Available Cloud Storage`}</Text>
-              <Text fw="bold" w="100%">
-                {typeof previewResponse?.freeQuota === "number"
-                  ? t`${compactEnglishNumberFormat.format(previewResponse.freeQuota)} rows`
-                  : "…"}
-              </Text>
+              {typeof previewResponse?.freeQuota === "number" ? (
+                <Text fw="bold" w="100%">
+                  {t`${compactEnglishNumberFormat.format(previewResponse.freeQuota)} rows`}
+                </Text>
+              ) : (
+                <Skeleton height="1.5em" width="10em" />
+              )}
             </Box>
           </Group>
 
-          <Progress
-            value={
-              typeof previewResponse?.totalEstimatedRowCount === "number" &&
-              typeof previewResponse?.freeQuota === "number" &&
-              previewResponse.freeQuota > 0
-                ? (previewResponse.totalEstimatedRowCount /
-                    previewResponse.freeQuota) *
-                  100
-                : 0
-            }
-            color={
-              previewResponse?.canSetReplication ? colors.success : colors.error
-            }
-          />
+          {typeof storageUtilizationPercent === "number" ? (
+            <Progress
+              value={storageUtilizationPercent}
+              color={
+                previewResponse?.canSetReplication
+                  ? colors.success
+                  : colors.error
+              }
+            />
+          ) : (
+            <Skeleton height="1em" width="100%" />
+          )}
 
           {previewResponse && !previewResponse.canSetReplication && (
             <>
@@ -341,10 +353,6 @@ export const DatabaseReplicationForm = ({
 
               <Flex justify="end">
                 <Group align="center" gap="sm">
-                  {isValidSchemaFilters && previewResponseLoading && (
-                    <Loader size="sm" />
-                  )}
-
                   <FormSubmitButton
                     disabled={
                       (isValidSchemaFilters && previewResponseLoading) ||
