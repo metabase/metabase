@@ -17,6 +17,7 @@
   []
   (let [custom-reports     (audit/default-custom-reports-collection)
         question-overview  (audit/memoized-select-audit-entity :model/Dashboard ee-audit/default-question-overview-entity-id)
+        model-overview     (audit/memoized-select-audit-entity :model/Dashboard ee-audit/default-model-overview-entity-id)
         dashboard-overview (audit/memoized-select-audit-entity :model/Dashboard ee-audit/default-dashboard-overview-entity-id)]
     (merge
      {}
@@ -24,6 +25,7 @@
        {(:slug custom-reports) (:id custom-reports)})
      (when (mi/can-read? (audit/default-audit-collection))
        {(u/slugify (:name question-overview)) (:id question-overview)
+        (u/slugify (:name model-overview)) (:id model-overview)
         (u/slugify (:name dashboard-overview)) (:id dashboard-overview)}))))
 
 (api.macros/defendpoint :delete "/:id/subscriptions"
