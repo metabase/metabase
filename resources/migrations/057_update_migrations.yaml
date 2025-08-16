@@ -1023,7 +1023,7 @@ databaseChangeLog:
                 tag_id IN (SELECT id FROM transform_tag WHERE built_in_type IS NOT NULL);
 
   - changeSet:
-      id: v57.2025-08-13T00:00:00
+      id: v57.2025-08-24T00:00:00
       author: devurandom
       comment: Add object owner information to metabase_table
       preConditions:
