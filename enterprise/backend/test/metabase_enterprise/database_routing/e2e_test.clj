@@ -5,12 +5,14 @@
    [metabase-enterprise.test :as met]
    [metabase.app-db.core :as mdb]
    [metabase.driver :as driver]
+   [metabase.driver.clickhouse :as clickhouse]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.query-processor :as qp]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.data :as data]
+   [metabase.test.data.clickhouse :as clickhouse.tx]
    [metabase.test.data.interface :as tx]
    [metabase.test.data.one-off-dbs :as one-off-dbs]
    [metabase.util :as u]
@@ -249,14 +251,15 @@
                     (wire-routing {:parent router :children [routed]})
                     (mt/with-temp [:model/DatabaseRouter _ {:database_id    (u/the-id router)
                                                             :user_attribute "db_name"}]
-                      (met/with-user-attributes! :rasta {"db_name" (:name routed)}
-                        (mt/with-current-user (mt/user->id :crowberto)
-                          (is (= [[1 "original-foo"] [2 "original-bar"]]
-                                 (->> (mt/query t)
-                                      (mt/process-query)
-                                      (mt/formatted-rows [int str])))))
-                        (mt/with-current-user (mt/user->id :rasta)
-                          (is (= [[1 "routed-foo"] [2 "routed-bar"]]
-                                 (->> (mt/query t)
-                                      (mt/process-query)
-                                      (mt/formatted-rows [int str])))))))))))))))))
+                      (with-redefs [clickhouse/connection-details->spec* clickhouse.tx/connection-details->spec*]
+                        (met/with-user-attributes! :rasta {"db_name" (:name routed)}
+                          (mt/with-current-user (mt/user->id :crowberto)
+                            (is (= [[1 "original-foo"] [2 "original-bar"]]
+                                   (->> (mt/query t)
+                                        (mt/process-query)
+                                        (mt/formatted-rows [int str])))))
+                          (mt/with-current-user (mt/user->id :rasta)
+                            (is (= [[1 "routed-foo"] [2 "routed-bar"]]
+                                   (->> (mt/query t)
+                                        (mt/process-query)
+                                        (mt/formatted-rows [int str]))))))))))))))))))
