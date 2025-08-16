@@ -1,0 +1,94 @@
+name: Driver Tests - Legacy Versions
+
+on:
+  schedule:
+    # Run daily at 2 AM UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+    inputs:
+      drivers:
+        description: 'Specific drivers to test (comma-separated)'
+        required: false
+        default: 'all'
+
+concurrency:
+  group: ${{ github.workflow }}-legacy
+  cancel-in-progress: true
+
+jobs:
+  # Legacy versions: older database versions tested weekly
+  postgres-12:
+    uses: ./.github/workflows/driver-postgres.yml
+    secrets: inherit
+    with:
+      version: '12'
+
+  mysql-8:
+    uses: ./.github/workflows/driver-mysql.yml
+    secrets: inherit
+    with:
+      variant: mysql-8
+
+  mariadb-10-2:
+    uses: ./.github/workflows/driver-mysql.yml
+    secrets: inherit
+    with:
+      variant: mariadb-10.2
+
+  mariadb-latest:
+    uses: ./.github/workflows/driver-mysql.yml
+    secrets: inherit
+    with:
+      variant: mariadb-latest
+
+  oracle-18-4:
+    uses: ./.github/workflows/driver-oracle.yml
+    secrets: inherit
+    with:
+      version: '18.4'
+
+  mongo-6:
+    uses: ./.github/workflows/driver-mongo.yml
+    secrets: inherit
+    with:
+      version: '6.0'
+
+  legacy-results:
+    needs:
+      - postgres-12
+      - mysql-8
+      - mariadb-10-2
+      - mariadb-latest
+      - oracle-18-4
+      - mongo-6
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    name: legacy-results
+    if: always() && !cancelled()
+    steps:
+      - name: Check legacy versions status
+        uses: actions/github-script@v7
+        env:
+          needs: ${{ toJson(needs) }}
+        with:
+          script: | #js
+            const needs = JSON.parse(process.env.needs);
+            const jobs = Object.entries(needs).map(([jobName, jobValues]) => ({
+              name: jobName,
+              result: jobValues.result
+            }));
+
+            console.log("📊 Legacy Driver Test Results:");
+            jobs.forEach((job) => {
+              const status = job.result === 'success' ? '✅' : '❌';
+              console.log(`${status} ${job.name} - ${job.result}`);
+            });
+
+            const failedCount = jobs.filter(job => job.result !== 'success').length;
+            if (failedCount > 0) {
+              console.log(`\n⚠️  ${failedCount} legacy driver tests failed`);
+              process.exit(1);
+            } else {
+              console.log("\n🎉 All legacy driver tests passed!");
+              process.exit(0);
+            }
