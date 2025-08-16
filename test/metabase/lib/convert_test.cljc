@@ -1465,3 +1465,55 @@
                  :lib/metadata meta/metadata-provider}]
       (is (=? {:native {:projections [:count]}}
               (lib.convert/->legacy-MBQL query))))))
+
+(deftest ^:parallel breakout-temporal-unit-test-preserved-test
+  (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                  (lib/aggregate (lib/count))
+                  (lib/breakout (lib/with-temporal-bucket (meta/field-metadata :orders :created-at) :year)))]
+    (testing ":effective-type of breakout by Year is :type/Integer"
+      (is (=? [[:field {:effective-type :type/Integer} (meta/id :orders :created-at)]]
+              (lib/breakouts query)))
+
+      (is (=? [{:lib/type :metadata/column
+                :effective-type :type/Integer
+                :metabase.lib.field/temporal-unit :year}
+               {:lib/type :metadata/column
+                :name "count"}]
+              (lib/returned-columns query)))
+
+      (is (=? [{:lib/type :metadata/column
+                :effective-type :type/Integer
+                :inherited-temporal-unit :year}
+               {:lib/type :metadata/column
+                :name "count"}]
+              (-> query
+                  lib/append-stage
+                  lib/returned-columns)))
+
+      (testing "even on a round trip through legacy"
+        (let [round-trip (fn [q]
+                           (->> q
+                                lib.convert/->legacy-MBQL
+                                lib.convert/->pMBQL
+                                (lib/query q)))]
+          (is (=? [[:field {:effective-type :type/Integer} (meta/id :orders :created-at)]]
+                  (-> query
+                      round-trip
+                      lib/breakouts)))
+          (is (=? [{:lib/type :metadata/column
+                    :effective-type :type/Integer
+                    :metabase.lib.field/temporal-unit :year}
+                   {:lib/type :metadata/column
+                    :name "count"}]
+                  (-> query
+                      round-trip
+                      lib/returned-columns)))
+          (is (=? [{:lib/type :metadata/column
+                    :effective-type :type/Integer
+                    :inherited-temporal-unit :year}
+                   {:lib/type :metadata/column
+                    :name "count"}]
+                  (-> query
+                      lib/append-stage
+                      round-trip
+                      lib/returned-columns))))))))

@@ -14,7 +14,7 @@
    :week-of-year
    :month-of-year
    :quarter-of-year
-   :year
+   #_:year
    :year-of-era])
 
 (def date-extraction-units
