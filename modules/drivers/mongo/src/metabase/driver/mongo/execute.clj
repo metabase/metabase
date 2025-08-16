@@ -79,7 +79,7 @@
                                [:row [:maybe [:sequential :string]]]
                                [:unescaped [:maybe [:sequential :string]]]]
   "Return column names we can expect in each `:row` of the results, and the `:unescaped` versions we should return in
-  thr query result metadata."
+  the query result metadata."
   [{:keys [mbql? projections]} :- :map
    query
    first-row-col-names]
@@ -91,6 +91,7 @@
                           (get project-stage "$project"))
           col-names (merge-col-names projected first-row-col-names)]
       {:row col-names, :unescaped col-names})
+    ;; MBQL query with projections - use projections directly
     (do
       ;; ...but, on the other hand, if columns come back that we weren't expecting, our code is broken.
       ;; Check to make sure that didn't happen.
@@ -178,9 +179,9 @@
       (driver-api/reducible-rows row-thunk (driver-api/canceled-chan)))))
 
 (defn- reduce-results [native-query query ^MongoCursor cursor respond]
-  (let [first-row (when (.hasNext cursor)
-                    (.next cursor))
-        {row-col-names :row
+  (let [first-row                        (when (.hasNext cursor)
+                                           (.next cursor))
+        {row-col-names       :row
          unescaped-col-names :unescaped} (result-col-names native-query query (row-keys first-row))]
     (log/tracef "Renaming columns in results %s -> %s" (pr-str row-col-names) (pr-str unescaped-col-names))
     (respond (result-metadata unescaped-col-names)
@@ -192,10 +193,10 @@
   "Process and run a native MongoDB query. This function expects initialized [[mongo.connection/*mongo-client*]]."
   [{{query :query collection-name :collection :as native-query} :native} respond]
   {:pre [(string? collection-name) (fn? respond)]}
-  (let [query  (cond-> query
-                 (string? query) mongo.qp/parse-query-string)
-        database (driver-api/database (driver-api/metadata-provider))
-        db-name (mongo.db/db-name database)
+  (let [query           (cond-> query
+                          (string? query) mongo.qp/parse-query-string)
+        database        (driver-api/database (driver-api/metadata-provider))
+        db-name         (mongo.db/db-name database)
         client-database (mongo.util/database mongo.connection/*mongo-client* db-name)]
     (with-open [session ^ClientSession (mongo.util/start-session! mongo.connection/*mongo-client*)]
       (a/go
@@ -211,6 +212,6 @@
                                                (throw (ex-info (tru "Error executing query: {0}" (ex-message e))
                                                                {:driver :mongo
                                                                 :native native-query
-                                                                :type   driver-api/qp.error-type.invalid-query}
+                                                                :type driver-api/qp.error-type.invalid-query}
                                                                e))))]
           (reduce-results native-query query cursor respond))))))
