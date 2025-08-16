@@ -33,6 +33,7 @@
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.performance :as perf]
    [ring.util.codec :as codec]
    [throttle.core :as throttle]
    [toucan2.core :as t2])
@@ -379,7 +380,7 @@
           ;; you're by definition allowed to run it without a perms check anyway
           (request/as-admin
             ;; Undo middleware string->keyword coercion
-            (actions/execute-dashcard! dashboard-id dashcard-id (update-keys parameters name))))))))
+            (actions/execute-dashcard! dashboard-id dashcard-id (perf/update-keys parameters name))))))))
 
 (defn- iframe
   "Return an `<iframe>` HTML fragment to embed a public page."
@@ -569,7 +570,7 @@
                                      :type      (:type action)
                                      :action_id (:id action)})
             ;; Undo middleware string->keyword coercion
-            (actions/execute-action! action (update-keys parameters name))))))))
+            (actions/execute-action! action (perf/update-keys parameters name))))))))
 
 ;;; ----------------------------------------------------- Map Tiles --------------------------------------------------
 

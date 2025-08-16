@@ -69,6 +69,7 @@
    [metabase.util.date-2 :as u.date]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
+   [metabase.util.performance :as perf]
    [metabase.util.string :as u.str]
    [toucan2.core :as t2]
    [toucan2.model :as t2.model]
@@ -1501,7 +1502,7 @@
   [settings]
   (when settings
     (-> settings
-        (update-keys #(-> % json/decode export-visualizations json/encode))
+        (perf/update-keys #(-> % json/decode export-visualizations json/encode))
         (update-vals export-viz-click-behavior))))
 
 (defn- export-card-dimension-ref
@@ -1584,7 +1585,7 @@
 (defn- import-column-settings [settings]
   (when settings
     (-> settings
-        (update-keys #(-> % name json/decode import-visualizations json/encode))
+        (perf/update-keys #(-> % name json/decode import-visualizations json/encode))
         (update-vals import-viz-click-behavior))))
 
 (defn- import-card-dimension-ref

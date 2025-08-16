@@ -2,7 +2,8 @@
   (:require
    [metabase-enterprise.metabot-v3.util :as metabot-v3.u]
    [metabase.util :as u]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.performance :as perf]))
 
 (mr/def ::role
   [:enum
@@ -13,11 +14,11 @@
 (mr/def ::message
   [:and
    [:map
-    {:decode/api-response #(update-keys % metabot-v3.u/safe->kebab-case-en)}
+    {:decode/api-response #(perf/update-keys % metabot-v3.u/safe->kebab-case-en)}
     [:role                         ::role]
     [:content     {:optional true} [:maybe :string]]
     [:navigate-to {:optional true} [:maybe :string]]]
-   [:map {:encode/api-request #(update-keys % metabot-v3.u/safe->snake_case_en)}]])
+   [:map {:encode/api-request #(perf/update-keys % metabot-v3.u/safe->snake_case_en)}]])
 
 (mr/def ::messages
   [:sequential ::message])

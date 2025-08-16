@@ -37,6 +37,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.performance :as perf]
    [ring.util.codec :as codec]
    [steffan-westcott.clj-otel.api.trace.span :as span]
    [toucan2.core :as t2]))
@@ -268,7 +269,7 @@
 
 (defn- cols->kebab-case
   [cols]
-  (map #(update-keys % u/->kebab-case-en) cols))
+  (map #(perf/update-keys % u/->kebab-case-en) cols))
 
 (mu/defn- source-cols
   [card

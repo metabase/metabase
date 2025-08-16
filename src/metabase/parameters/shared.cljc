@@ -13,6 +13,7 @@
    [metabase.lib.core :as lib]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
+   [metabase.util.performance :as perf]
    [metabase.util.time :as time])
   (:import
    #?@(:clj
@@ -309,7 +310,7 @@
   [parameter]
   (-> (mbql.normalize/normalize-fragment [:parameters] [parameter])
       first
-      (update-keys keyword)))
+      (perf/update-keys keyword)))
 
 (defn ^:export substitute-tags
   "Given the context of a text dashboard card, replace all template tags in the text with their corresponding values,

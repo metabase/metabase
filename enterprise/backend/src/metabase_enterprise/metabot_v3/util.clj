@@ -1,7 +1,8 @@
 (ns metabase-enterprise.metabot-v3.util
   (:require
    [clojure.walk :as walk]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [metabase.util.performance :as perf]))
 
 (defn- safe-case-updater
   [f]
@@ -19,5 +20,5 @@
   "Recursively convert map keys in `form` with `f`."
   [form f]
   (walk/walk #(cond-> % (coll? %) (recursive-update-keys f))
-             #(cond-> % (map? %) (update-keys f))
+             #(cond-> % (map? %) (perf/update-keys f))
              form))

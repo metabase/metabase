@@ -9,6 +9,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
+   [metabase.util.performance :as perf]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
    [toucan2.tools.hydrate :as t2.hydrate]))
@@ -45,7 +46,7 @@
   {:in  mi/json-in
    :out (comp (fn [viz-settings]
                 ;; the keys of :fields should be strings, not keywords
-                (m/update-existing viz-settings :fields update-keys name))
+                (m/update-existing viz-settings :fields perf/update-keys name))
               mi/json-out-with-keywordization)})
 
 (t2/deftransforms :model/Action

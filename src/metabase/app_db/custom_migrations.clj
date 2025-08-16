@@ -34,6 +34,7 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
+   [metabase.util.performance :as perf]
    [toucan2.core :as t2]
    [toucan2.execute :as t2.execute])
   (:import
@@ -235,7 +236,7 @@
                                                            ["field" y {:source-field x}])
                                             ref ref)]
                        k k))]
-    (m/update-existing viz-settings "column_settings" update-keys
+    (m/update-existing viz-settings "column_settings" perf/update-keys
                        (fn [k]
                          (-> k
                              json/decode
@@ -1464,7 +1465,7 @@
   "Updates `:column_settings` keys. Unmatched keys are retained."
   [viz-settings result-metadata old-key-fn new-key-fn]
   (let [key->column (m/index-by old-key-fn result-metadata)]
-    (m/update-existing viz-settings "column_settings" update-keys
+    (m/update-existing viz-settings "column_settings" perf/update-keys
                        (fn [key]
                          (if-let [column (get key->column key)]
                            (or (new-key-fn column) key)

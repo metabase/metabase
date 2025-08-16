@@ -21,7 +21,8 @@
    [metabase.util.i18n :refer [deferred-trs trs tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms])
+   [metabase.util.malli.schema :as ms]
+   [metabase.util.performance :as perf])
   (:import
    (java.net URL)
    (java.text DecimalFormat DecimalFormatSymbols)))
@@ -101,7 +102,7 @@
                          ::mb.viz/column-settings
                          ;; field-ref keys can come in with additional stuff like :meta-data or unit maps,
                          ;; so we select only those keys we CAN use to match with by using select-keys
-                         (update-keys #(select-keys % [::mb.viz/column-name ::mb.viz/field-id])))]
+                         (perf/update-keys #(select-keys % [::mb.viz/column-name ::mb.viz/field-id])))]
     (name (or (when-let [[_ id] (:field_ref col)]
                 (get-in col-settings [{::mb.viz/field-id id} ::mb.viz/column-title]))
               (get-in col-settings [{::mb.viz/column-name (:name col)} ::mb.viz/column-title])

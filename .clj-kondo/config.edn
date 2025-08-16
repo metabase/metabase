@@ -269,6 +269,7 @@
    clojure.core/pr                                    {:message "Use metabase.util.log instead of clojure.core/pr"}
    clojure.core/tap>                                  {:message "Don't use tap> is source code"}
    clojure.core/time                                  {:message "Don't use time in source code"}
+   clojure.string/update-keys                         {:message "Use metabase.util.performance/update-keys instead of clojure.core/update-keys."}
    clojure.test.check/quick-check                     {:message "You probably meant to use clojure.test.check.clojure-test/defspec instead -- quick check will run the tests when it is evaluated rather than when we run the test suite."}
    clojure.java.jdbc/get-connection                   {:message "Use sql-jdbc.execute/do-with-connection-with-options (for drivers) or t2/with-connection (for the app DB) instead of jdbc/get-connection"}
    clojure.java.jdbc/with-db-connection               {:message "Use sql-jdbc.execute/do-with-connection-with-options (for drivers) or t2/with-connection (for the app DB) instead of jdbc/with-db-connection"}

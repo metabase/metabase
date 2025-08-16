@@ -20,6 +20,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.performance :as perf]
    [ring.util.response :as response]))
 
 (set! *warn-on-reflection* true)
@@ -106,7 +107,7 @@
       (throw (ex-info (str "Unknown rankers: " (str/join ", " (map name (sort unknown-rankers))))
                       {:status-code 400})))
     (search.settings/experimental-search-weight-overrides!
-     (merge-with merge (search.settings/experimental-search-weight-overrides) {context (update-keys overrides u/qualified-name)}))))
+     (merge-with merge (search.settings/experimental-search-weight-overrides) {context (perf/update-keys overrides u/qualified-name)}))))
 
 (api.macros/defendpoint :get "/weights"
   "Return the current weights being used to rank the search results"

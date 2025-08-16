@@ -34,6 +34,7 @@
    [metabase.util.malli.describe :as umd]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.performance :as perf]
    [ring.middleware.multipart-params]
    [ring.util.codec]))
 
@@ -563,11 +564,11 @@
    params-type :- [:enum :route :query]]
   (case params-type
     :route (:route-params request)
-    :query (some-> (:query-params request) (update-keys keyword))))
+    :query (some-> (:query-params request) (perf/update-keys keyword))))
 
 (mu/defn- request-body
   [request :- :map]
-  (or (some-> (not-empty (:form-params request)) (update-keys keyword))
+  (or (some-> (not-empty (:form-params request)) (perf/update-keys keyword))
       (when-let [body (:body request)]
         (when-not (instance? org.eclipse.jetty.ee9.nested.HttpInput body)
           body))))

@@ -4,6 +4,7 @@
    [metabase.actions.core :as actions]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
+   [metabase.util.performance :as perf]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -187,7 +188,7 @@
     ;; Do a single perform-nested-action! call
     (doseq [[[table-id category] sub-batch] (u/group-by (juxt :table_id categorize) batch)
             :let [rows   (batch->rows undo? sub-batch)
-                  inputs (map #(array-map :table-id table-id :row (update-keys % u/qualified-name)) rows)]]
+                  inputs (map #(array-map :table-id table-id :row (perf/update-keys % u/qualified-name)) rows)]]
       (case (if undo? (invert category) category)
         :create (try (actions/perform-nested-action! :table.row/create context inputs)
                      (catch Exception e

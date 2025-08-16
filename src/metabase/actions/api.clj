@@ -17,6 +17,7 @@
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.performance :as perf]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -234,4 +235,4 @@
                              :source    :model_detail
                              :type      type
                              :action_id id})
-    (actions.execution/execute-action! action (update-keys parameters name))))
+    (actions.execution/execute-action! action (perf/update-keys parameters name))))

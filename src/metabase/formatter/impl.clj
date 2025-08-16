@@ -15,6 +15,7 @@
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.performance :as perf]
    [metabase.util.ui-logic :as ui-logic]
    [potemkin :as p]
    [potemkin.types :as p.types])
@@ -105,9 +106,9 @@
 
 (defn- qualify-keys
   [m]
-  (update-keys m (fn [k] (keyword
-                          "metabase.models.visualization-settings"
-                          (name k)))))
+  (perf/update-keys m (fn [k] (keyword
+                               "metabase.models.visualization-settings"
+                               (name k)))))
 
 ;; TODO: use `metabase.query-processor.streaming.common/viz-settings-for-col` here, it's
 ;; doing the same thing (unifying global settings, column settings, and viz-settings for the column.
@@ -126,7 +127,7 @@
         ref-type             (first field-ref)
         col-id-or-name       (or col-id (second field-ref))
         column-settings      (-> (get viz-settings ::mb.viz/column-settings)
-                                 (update-keys #(select-keys % [::mb.viz/field-id ::mb.viz/column-name])))
+                                 (perf/update-keys #(select-keys % [::mb.viz/field-id ::mb.viz/column-name])))
         column-settings      (merge
                               global-type-settings
                               (when (= :field ref-type)

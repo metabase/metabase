@@ -20,7 +20,8 @@
    [metabase.util.humanization :as u.humanization]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.performance :as perf]))
 
 (defmethod lib.metadata.calculation/display-name-method :metadata/card
   [_query _stage-number card-metadata _style]
@@ -69,7 +70,7 @@
    card-id               :- [:maybe ::lib.schema.id/card]
    field-metadata        :- [:maybe ::lib.schema.metadata/column]]
   (let [source-metadata-col (-> source-metadata-col
-                                (update-keys u/->kebab-case-en))
+                                (perf/update-keys u/->kebab-case-en))
         ;; use the (possibly user-specified) display name as the "original display name" going forward ONLY IF THE
         ;; CARD THIS CAME FROM WAS A MODEL! BUT DON'T USE IT IF IT ALREADY CONTAINS A `→`!!!
         source-metadata-col (cond-> source-metadata-col

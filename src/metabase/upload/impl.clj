@@ -32,6 +32,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.performance :as perf]
    [metabase.warehouse-schema.models.table :as table]
    [toucan2.core :as t2])
   (:import
@@ -428,7 +429,7 @@
 
 (defn- set-display-names!
   [table-id field->display-name]
-  (let [field->display-name (update-keys field->display-name (comp u/lower-case-en name))
+  (let [field->display-name (perf/update-keys field->display-name (comp u/lower-case-en name))
         case-statement      (into [:case]
                                   (mapcat identity)
                                   (for [[n display-name] field->display-name]
