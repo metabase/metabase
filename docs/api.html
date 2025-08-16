@@ -1741,6 +1741,37 @@ redirect_from:
         "description" : "value must be an array of valid results column metadata maps.",
         "optional" : true
       },
+      "metabase.api-keys.schema..key.masked" : {
+        "description" : "Masked string like 'mb_1234**********'.",
+        "allOf" : [ {
+          "$ref" : "#/components/schemas/metabase.api-keys.schema..key.raw"
+        }, {
+          "type" : "string",
+          "pattern" : "^mb_.*{4}\\*+$"
+        } ]
+      },
+      "metabase.api-keys.schema..key.raw" : {
+        "description" : "Unhashed string of the form 'mb_<base-64-bytes>'.",
+        "type" : "string",
+        "minLength" : 12,
+        "maxLength" : 254
+      },
+      "metabase.api-keys.schema.id" : {
+        "description" : "value must be an integer greater than zero.",
+        "type" : "integer",
+        "minimum" : 1
+      },
+      "metabase.api-keys.schema.name" : {
+        "type" : "string",
+        "minLength" : 1,
+        "maxLength" : 254
+      },
+      "metabase.api-keys.schema.prefix" : {
+        "description" : "Prefix string of an API Key, suitable for passing around unmasked. This must be unique.",
+        "type" : "string",
+        "minLength" : 7,
+        "maxLength" : 7
+      },
       "metabase.cache.api..cache-strategy.base" : {
         "type" : "object",
         "properties" : {
@@ -2320,56 +2351,60 @@ redirect_from:
       },
       "metabase.legacy-mbql.schema.Join" : {
         "description" : "Perform the equivalent of a SQL `JOIN` with another Table or nested `:source-query`. JOINs are either explicitly\n  specified in the incoming query, or implicitly generated when one uses a `:field` clause with `:source-field`.\n\n  In the top-level query, you can reference Fields from the joined table or nested query by including `:source-field`\n  in the `:field` options (known as implicit joins); for explicit joins, you *must* specify `:join-alias` yourself; in\n  the `:field` options, e.g.\n\n    ;; for joins against other Tables/MBQL source queries\n    [:field 1 {:join-alias \"my_join_alias\"}]\n\n    ;; for joins against native queries\n    [:field \"my_field\" {:base-type :field/Integer, :join-alias \"my_join_alias\"}]",
-        "type" : "object",
-        "properties" : {
-          "alias" : {
-            "description" : "The name used to alias the joined table or query. This is usually generated automatically and generally looks\n  like `table__via__field`. You can specify this yourself if you need to reference a joined field with a `:join-alias`\n  in the options.\n\n  Driver implementations: This is guaranteed to be present after pre-processing.",
-            "$ref" : "#/components/schemas/metabase.lib.schema.join.alias"
-          },
-          "condition" : {
-            "description" : "The condition on which to JOIN. Can be anything that is a valid `:filter` clause. For automatically-generated\n  JOINs this is usually something like\n\n    [:= <source-table-fk-field> [:field <dest-table-pk-field> {:join-alias <join-table-alias>}]]",
-            "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.Filter"
-          },
-          "fields" : {
-            "description" : "The Fields from this join to include in parent-level results. This can be either `:none`, `:all`, or a sequence\n  of `:field` clauses.\n\n  * `:none`: no Fields from the joined table or nested query are included (unless indirectly included by breakouts or\n     other clauses). This is the default, and what is used for automatically-generated joins.\n\n  * `:all`: will include all of the Field from the joined table or query\n\n  * a sequence of Field clauses: include only the Fields specified. Valid clauses are the same as the top-level\n    `:fields` clause. This should be non-empty and all elements should be distinct. The normalizer will automatically\n    remove duplicate fields for you, and replace empty clauses with `:none`.\n\n  Driver implementations: you can ignore this clause. Relevant fields will be added to top-level `:fields` clause with\n  appropriate aliases.",
-            "anyOf" : [ {
-              "type" : "string",
-              "enum" : [ "all", "none" ]
-            }, {
-              "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.Fields"
-            } ]
-          },
-          "fk-field-id" : {
-            "$ref" : "#/components/schemas/metabase.lib.schema.id.field",
-            "description" : "Mostly used only internally. When a join is implicitly generated via a `:field` clause with\n  `:source-field`, the ID of the foreign key field in the source Table will be recorded here. This information is used\n  to add `fk_field_id` information to the `:cols` in the query results, and also for drill-thru. When generating\n  explicit joins by hand you can usually omit this information, altho it doesn't hurt to include it if you know it.\n\n  Don't set this information yourself. It will have no effect."
-          },
-          "source-metadata" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.legacy-column-metadata"
+        "allOf" : [ {
+          "type" : "object",
+          "properties" : {
+            "alias" : {
+              "description" : "The name used to alias the joined table or query. This is usually generated automatically and generally looks\n  like `table__via__field`. You can specify this yourself if you need to reference a joined field with a `:join-alias`\n  in the options.\n\n  Driver implementations: This is guaranteed to be present after pre-processing.",
+              "$ref" : "#/components/schemas/metabase.lib.schema.join.alias"
             },
-            "description" : "Metadata about the source query being used, if pulled in from a Card via the\n  `:source-table \"card__id\"` syntax. added automatically by the `resolve-card-id-source-tables` middleware."
-          },
-          "source-query" : {
-            "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.SourceQuery"
-          },
-          "source-table" : {
-            "description" : "*What* to JOIN. Self-joins can be done by using the same `:source-table` as in the query where\n  this is specified. YOU MUST SUPPLY EITHER `:source-table` OR `:source-query`, BUT NOT BOTH!",
-            "anyOf" : [ {
-              "$ref" : "#/components/schemas/metabase.lib.schema.id.table"
-            }, {
-              "description" : "`card__<id>` string Table ID",
+            "condition" : {
+              "description" : "The condition on which to JOIN. Can be anything that is a valid `:filter` clause. For automatically-generated\n  JOINs this is usually something like\n\n    [:= <source-table-fk-field> [:field <dest-table-pk-field> {:join-alias <join-table-alias>}]]",
+              "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.Filter"
+            },
+            "fields" : {
+              "description" : "The Fields from this join to include in parent-level results. This can be either `:none`, `:all`, or a sequence\n  of `:field` clauses.\n\n  * `:none`: no Fields from the joined table or nested query are included (unless indirectly included by breakouts or\n     other clauses). This is the default, and what is used for automatically-generated joins.\n\n  * `:all`: will include all of the Field from the joined table or query\n\n  * a sequence of Field clauses: include only the Fields specified. Valid clauses are the same as the top-level\n    `:fields` clause. This should be non-empty and all elements should be distinct. The normalizer will automatically\n    remove duplicate fields for you, and replace empty clauses with `:none`.\n\n  Driver implementations: you can ignore this clause. Relevant fields will be added to top-level `:fields` clause with\n  appropriate aliases.",
+              "anyOf" : [ {
+                "type" : "string",
+                "enum" : [ "all", "none" ]
+              }, {
+                "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.Fields"
+              } ]
+            },
+            "fk-field-id" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.id.field",
+              "description" : "Mostly used only internally. When a join is implicitly generated via a `:field` clause with\n  `:source-field`, the ID of the foreign key field in the source Table will be recorded here. This information is used\n  to add `fk_field_id` information to the `:cols` in the query results, and also for drill-thru. When generating\n  explicit joins by hand you can usually omit this information, altho it doesn't hurt to include it if you know it.\n\n  Don't set this information yourself. It will have no effect."
+            },
+            "source-metadata" : {
+              "type" : "array",
+              "items" : {
+                "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.legacy-column-metadata"
+              },
+              "description" : "Metadata about the source query being used, if pulled in from a Card via the\n  `:source-table \"card__id\"` syntax. added automatically by the `resolve-card-id-source-tables` middleware."
+            },
+            "source-query" : {
+              "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.SourceQuery"
+            },
+            "source-table" : {
+              "description" : "*What* to JOIN. Self-joins can be done by using the same `:source-table` as in the query where\n  this is specified. YOU MUST SUPPLY EITHER `:source-table` OR `:source-query`, BUT NOT BOTH!",
+              "anyOf" : [ {
+                "$ref" : "#/components/schemas/metabase.lib.schema.id.table"
+              }, {
+                "description" : "`card__<id>` string Table ID",
+                "type" : "string",
+                "pattern" : "^card__[1-9]\\d*$"
+              } ]
+            },
+            "strategy" : {
+              "description" : "Defaults to `:left-join`; used for all automatically-generated JOINs\n\n  Driver implementations: this is guaranteed to be present after pre-processing.",
               "type" : "string",
-              "pattern" : "^card__[1-9]\\d*$"
-            } ]
+              "enum" : [ "full-join", "right-join", "left-join", "inner-join" ]
+            }
           },
-          "strategy" : {
-            "description" : "Defaults to `:left-join`; used for all automatically-generated JOINs\n\n  Driver implementations: this is guaranteed to be present after pre-processing.",
-            "type" : "string",
-            "enum" : [ "full-join", "right-join", "left-join", "inner-join" ]
-          }
-        },
-        "required" : [ "condition" ]
+          "required" : [ "condition" ]
+        }, {
+          "allOf" : [ ]
+        } ]
       },
       "metabase.legacy-mbql.schema.Joins" : {
         "description" : "Schema for a valid sequence of `Join`s. Must be a non-empty sequence, and `:alias`, if specified, must be unique.",
@@ -2737,6 +2772,8 @@ redirect_from:
           "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.check-keys-for-query-type"
         }, {
           "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.check-query-does-not-have-source-metadata"
+        }, {
+          "allOf" : [ ]
         } ]
       },
       "metabase.legacy-mbql.schema.Reference" : {
@@ -3885,10 +3922,20 @@ redirect_from:
               "default" : "metadata/column",
               "const" : "metadata/column"
             },
+            "settings" : {
+              "type" : "object",
+              "additionalProperties" : { }
+            },
             "fingerprint" : {
               "$ref" : "#/components/schemas/metabase.lib.schema.metadata.fingerprint.fingerprint"
             },
             "display-name" : {
+              "type" : "string"
+            },
+            "lib/source-uuid" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.common.uuid"
+            },
+            "lib/ref-name" : {
               "type" : "string"
             },
             "id" : {
@@ -3926,6 +3973,12 @@ redirect_from:
             },
             "metabase.lib.field/binning" : {
               "$ref" : "#/components/schemas/metabase.lib.schema.binning.binning"
+            },
+            "nfc-path" : {
+              "type" : "array",
+              "items" : {
+                "type" : "string"
+              }
             },
             "lib/model-display-name" : {
               "type" : "string"
@@ -4143,10 +4196,20 @@ redirect_from:
                 "default" : "metadata/column",
                 "const" : "metadata/column"
               },
+              "settings" : {
+                "type" : "object",
+                "additionalProperties" : { }
+              },
               "fingerprint" : {
                 "$ref" : "#/components/schemas/metabase.lib.schema.metadata.fingerprint.fingerprint"
               },
               "display-name" : {
+                "type" : "string"
+              },
+              "lib/source-uuid" : {
+                "$ref" : "#/components/schemas/metabase.lib.schema.common.uuid"
+              },
+              "lib/ref-name" : {
                 "type" : "string"
               },
               "id" : {
@@ -4184,6 +4247,12 @@ redirect_from:
               },
               "metabase.lib.field/binning" : {
                 "$ref" : "#/components/schemas/metabase.lib.schema.binning.binning"
+              },
+              "nfc-path" : {
+                "type" : "array",
+                "items" : {
+                  "type" : "string"
+                }
               },
               "lib/model-display-name" : {
                 "type" : "string"
@@ -4338,7 +4407,7 @@ redirect_from:
       },
       "metabase.lib.schema.parameter.type" : {
         "type" : "string",
-        "enum" : [ "category", "date", "string/!=", "number/=", "string/ends-with", "location/state", "boolean/=", "number/between", "date/all-options", "number", "number/>=", "location/country", "temporal-unit", "string/=", "string/does-not-contain", "date/range", "string/starts-with", "string/contains", "date/single", "location/city", "id", "date/relative", "location/zip_code", "date/month-year", "date/quarter-year", "number/!=", "boolean", "text", "number/<=" ]
+        "enum" : [ "number", "text", "date", "boolean", "date/single", "id", "category", "location/city", "location/state", "location/zip_code", "location/country", "date/range", "date/month-year", "date/quarter-year", "date/relative", "date/all-options", "temporal-unit", "number/!=", "number/<=", "number/=", "number/>=", "number/between", "string/!=", "string/=", "string/contains", "string/does-not-contain", "string/ends-with", "string/starts-with", "boolean/=" ]
       },
       "metabase.lib.schema.parameter.variable" : {
         "type" : "array",
@@ -4350,7 +4419,7 @@ redirect_from:
       },
       "metabase.lib.schema.parameter.widget-type" : {
         "type" : "string",
-        "enum" : [ "none", "category", "date", "string/!=", "number/=", "string/ends-with", "location/state", "boolean/=", "number/between", "date/all-options", "number", "number/>=", "location/country", "temporal-unit", "string/=", "string/does-not-contain", "date/range", "string/starts-with", "string/contains", "date/single", "location/city", "id", "date/relative", "location/zip_code", "date/month-year", "date/quarter-year", "number/!=", "boolean", "text", "number/<=" ]
+        "enum" : [ "none", "number", "text", "date", "boolean", "date/single", "id", "category", "location/city", "location/state", "location/zip_code", "location/country", "date/range", "date/month-year", "date/quarter-year", "date/relative", "date/all-options", "temporal-unit", "number/!=", "number/<=", "number/=", "number/>=", "number/between", "string/!=", "string/=", "string/contains", "string/does-not-contain", "string/ends-with", "string/starts-with", "boolean/=" ]
       },
       "metabase.lib.schema.template-tag..raw-value.type" : {
         "type" : "string",
@@ -5897,9 +5966,7 @@ redirect_from:
                 "type" : "object",
                 "properties" : {
                   "group_id" : {
-                    "description" : "value must be an integer greater than zero.",
-                    "type" : "integer",
-                    "minimum" : 1
+                    "$ref" : "#/components/schemas/metabase.api-keys.schema.id"
                   },
                   "name" : {
                     "type" : "string",
@@ -5987,8 +6054,7 @@ redirect_from:
                     "minimum" : 1
                   },
                   "name" : {
-                    "type" : "string",
-                    "minLength" : 1
+                    "$ref" : "#/components/schemas/metabase.api-keys.schema.name"
                   }
                 }
               }
@@ -6005,10 +6071,8 @@ redirect_from:
           "name" : "id",
           "required" : true,
           "schema" : {
-            "type" : "integer",
-            "minimum" : 1
-          },
-          "description" : "value must be an integer greater than zero."
+            "$ref" : "#/components/schemas/metabase.api-keys.schema.id"
+          }
         } ],
         "responses" : {
           "2XX" : {
@@ -6033,14 +6097,34 @@ redirect_from:
           "name" : "id",
           "required" : true,
           "schema" : {
-            "type" : "integer",
-            "minimum" : 1
-          },
-          "description" : "value must be an integer greater than zero."
+            "$ref" : "#/components/schemas/metabase.api-keys.schema.id"
+          }
         } ],
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "description" : "map where {:id -> <value must be an integer greater than zero.>, :unmasked_key -> <Unhashed string of the form 'mb_<base-64-bytes>'.>, :masked_key -> <Masked string like 'mb_1234**********'.>, :prefix -> <Prefix string of an API Key, suitable for passing around unmasked. This must be unique.>}",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "id" : {
+                      "$ref" : "#/components/schemas/metabase.api-keys.schema.id"
+                    },
+                    "masked_key" : {
+                      "$ref" : "#/components/schemas/metabase.api-keys.schema..key.masked"
+                    },
+                    "prefix" : {
+                      "$ref" : "#/components/schemas/metabase.api-keys.schema.prefix"
+                    },
+                    "unmasked_key" : {
+                      "$ref" : "#/components/schemas/metabase.api-keys.schema..key.raw"
+                    }
+                  },
+                  "required" : [ "id", "unmasked_key", "masked_key", "prefix" ]
+                }
+              }
+            }
           },
           "4XX" : {
             "description" : "Client error response"
@@ -14452,6 +14536,25 @@ redirect_from:
           }
         },
         "tags" : [ "/api/ee/scim/v2" ]
+      }
+    },
+    "/api/ee/semantic-search/status" : {
+      "get" : {
+        "summary" : "GET /api/ee/semantic-search/status",
+        "description" : "Fetch the indexing status of the currently active semantic search index table.\n\n  Returns a map with keys:\n   :indexed_count <number of indexed items>\n   :total_est     <estimated total number of items to index>\n\n  If no index is active, returns an empty map.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/semantic-search" ]
       }
     },
     "/api/ee/serialization/export" : {
