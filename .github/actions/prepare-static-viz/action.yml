@@ -1,0 +1,29 @@
+name: Prepare Static Viz Bundle
+description: Builds static-viz bundle with caching
+
+runs:
+  using: "composite"
+  steps:
+    - name: Get static-viz bundle cache
+      uses: actions/cache@v4
+      id: cache
+      with:
+        path: resources/frontend_client/app/dist
+        key: static-viz-bundle-${{ github.sha }}
+
+    - name: Prepare front-end environment
+      if: steps.cache.outputs.cache-hit != 'true'
+      uses: ./.github/actions/prepare-frontend
+
+    - name: Prepare back-end environment
+      if: steps.cache.outputs.cache-hit != 'true'
+      uses: ./.github/actions/prepare-backend
+      with:
+        m2-cache-key: "static-viz"
+
+    - name: Build static-viz frontend
+      if: steps.cache.outputs.cache-hit != 'true'
+      run: yarn build-static-viz
+      shell: bash
+      env:
+        MB_EDITION: ee
