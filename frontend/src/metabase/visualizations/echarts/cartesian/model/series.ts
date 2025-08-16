@@ -162,53 +162,56 @@ export const getCardSeriesModels = (
 
   // Charts without breakout have one series per selected metric column.
   if (!hasBreakout) {
-    return columns.metrics.map((metric) => {
-      const vizSettingsKey = getSeriesVizSettingsKey(
-        metric.column,
-        hasMultipleCards,
-        isFirstCard,
-        columns.metrics.length,
-        null,
-        card.name,
-      );
-      const legacySeriesSettingsObjectKey =
-        createLegacySeriesObjectKey(vizSettingsKey);
-
-      const customName = settings[SERIES_SETTING_KEY]?.[vizSettingsKey]?.title;
-      const tooltipName = customName ?? metric.column.display_name;
-      const name =
-        customName ??
-        getDefaultSeriesName(
-          metric.column.display_name,
+    return columns.metrics
+      .filter((m) => !!m.column)
+      .map((metric) => {
+        const vizSettingsKey = getSeriesVizSettingsKey(
+          metric.column,
           hasMultipleCards,
+          isFirstCard,
           columns.metrics.length,
-          false,
+          null,
           card.name,
         );
+        const legacySeriesSettingsObjectKey =
+          createLegacySeriesObjectKey(vizSettingsKey);
 
-      const color = getHexColor(
-        settings?.[SERIES_COLORS_SETTING_KEY]?.[vizSettingsKey],
-      );
+        const customName =
+          settings[SERIES_SETTING_KEY]?.[vizSettingsKey]?.title;
+        const tooltipName = customName ?? metric.column.display_name;
+        const name =
+          customName ??
+          getDefaultSeriesName(
+            metric.column.display_name,
+            hasMultipleCards,
+            columns.metrics.length,
+            false,
+            card.name,
+          );
 
-      const dataKey = getDatasetKey(metric.column, cardId);
+        const color = getHexColor(
+          settings?.[SERIES_COLORS_SETTING_KEY]?.[vizSettingsKey],
+        );
 
-      return {
-        name,
-        tooltipName,
-        color,
-        visible: !hiddenSeries.includes(dataKey),
-        cardId,
-        column: metric.column,
-        columnIndex: metric.index,
-        dataKey,
-        vizSettingsKey,
-        legacySeriesSettingsObjectKey,
-        bubbleSizeDataKey:
-          hasBubbleSize && columns.bubbleSize != null
-            ? getDatasetKey(columns.bubbleSize.column, cardId)
-            : undefined,
-      };
-    });
+        const dataKey = getDatasetKey(metric.column, cardId);
+
+        return {
+          name,
+          tooltipName,
+          color,
+          visible: !hiddenSeries.includes(dataKey),
+          cardId,
+          column: metric.column,
+          columnIndex: metric.index,
+          dataKey,
+          vizSettingsKey,
+          legacySeriesSettingsObjectKey,
+          bubbleSizeDataKey:
+            hasBubbleSize && columns.bubbleSize != null
+              ? getDatasetKey(columns.bubbleSize.column, cardId)
+              : undefined,
+        };
+      });
   }
 
   // Charts with breakout have one series per a unique breakout value. They can have only one metric in such cases.
