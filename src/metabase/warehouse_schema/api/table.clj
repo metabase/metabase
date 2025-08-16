@@ -8,12 +8,12 @@
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
+   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.query-processor :as qp]
-   [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.request.core :as request]
    [metabase.sync.core :as sync]
@@ -70,27 +70,26 @@
   (let [table (t2/select-one :model/Table :id table-id)
         db-id (:db_id table)]
     (api/read-check table)
-    (qp.store/with-metadata-provider db-id
-      (let [mp       (qp.store/metadata-provider)
-            query    (-> (lib/query mp (lib.metadata/table mp table-id))
-                         (update-in [:middleware :js-int-to-string?] (fnil identity true))
-                         qp/userland-query-with-default-constraints
-                         (update :info merge {:executed-by api/*current-user-id*
-                                              :context     :table-grid
-                                              :card-id     nil}))]
-        (events/publish-event! :event/table-read {:object  table
-                                                  :user-id api/*current-user-id*})
-        (span/with-span!
-          {:name "query-table-async"}
-          (qp.streaming/streaming-response [rff :api]
-            (qp/process-query query
-             ;; For now, doing this transformation here makes it easy to iterate on our payload shape.
-             ;; In the future, we might want to implement a new export-type, say `:api/table`, instead.
-             ;; Then we can avoid building non-relevant fields, only to throw them away again.
-                              (qp.streaming/transforming-query-response
-                               rff
-                               (fn [response]
-                                 (dissoc response :json_query :context :cached :average_execution_time))))))))))
+    (let [mp    (lib.metadata.jvm/application-database-metadata-provider db-id)
+          query (-> (lib/query mp (lib.metadata/table mp table-id))
+                    (update-in [:middleware :js-int-to-string?] (fnil identity true))
+                    qp/userland-query-with-default-constraints
+                    (update :info merge {:executed-by api/*current-user-id*
+                                         :context     :table-grid
+                                         :card-id     nil}))]
+      (events/publish-event! :event/table-read {:object  table
+                                                :user-id api/*current-user-id*})
+      (span/with-span! {:name "query-table-async"}
+        (qp.streaming/streaming-response [rff :api]
+          (qp/process-query
+           query
+           ;; For now, doing this transformation here makes it easy to iterate on our payload shape. In
+           ;; the future, we might want to implement a new export-type, say `:api/table`, instead. Then
+           ;; we can avoid building non-relevant fields, only to throw them away again.
+           (qp.streaming/transforming-query-response
+            rff
+            (fn [response]
+              (dissoc response :json_query :context :cached :average_execution_time)))))))))
 
 (mu/defn ^:private update-table!*
   "Takes an existing table and the changes, updates in the database and optionally calls `table/update-field-positions!`

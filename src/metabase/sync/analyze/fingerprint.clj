@@ -8,8 +8,8 @@
    [metabase.app-db.core :as app-db]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
+   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.schema.metadata.fingerprint :as lib.schema.metadata.fingerprint]
-   [metabase.query-processor.store :as qp.store]
    [metabase.sync.interface :as i]
    [metabase.sync.util :as sync-util]
    [metabase.util :as u]
@@ -217,7 +217,7 @@
   ([database        :- i/DatabaseInstance
     log-progress-fn :- LogProgressFn
     continue?       :- [:=> [:cat ::FingerprintStats] :any]]
-   (qp.store/with-metadata-provider (u/the-id database)
+   (lib.metadata.jvm/with-metadata-provider-cache
      (let [tables (if *refingerprint?*
                     (sync-util/refingerprint-reducible-sync-tables database)
                     (sync-util/reducible-sync-tables database))]

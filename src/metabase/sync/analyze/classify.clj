@@ -19,10 +19,11 @@
   (:require
    [clojure.data :as data]
    [metabase.analyze.core :as analyze]
+   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata.fingerprint :as lib.schema.metadata.fingerprint]
    [metabase.models.interface :as mi]
-   [metabase.query-processor.store :as qp.store]
    [metabase.sync.analyze.fingerprint :as sync.fingerprint]
    [metabase.sync.interface :as i]
    [metabase.sync.util :as sync-util]
@@ -70,26 +71,24 @@
 (mu/defn- classify!
   "Run various classifiers on `field` and its `fingerprint`, and save any detected changes.
    Returns updated `field`"
-  ([field :- i/FieldInstance opts]
-   (classify! field opts
-              (or (:fingerprint field)
-                  (when (qp.store/initialized?)
-                    (:fingerprint (lib.metadata/field (qp.store/metadata-provider) (u/the-id field))))
-                  (t2/select-one-fn :fingerprint :model/Field :id (u/the-id field)))))
-
-  ([field       :- i/FieldInstance
-    {:keys [exists-name]}
-    fingerprint :- [:maybe ::lib.schema.metadata.fingerprint/fingerprint]]
-   (sync-util/with-error-handling (format "Error classifying %s" (sync-util/name-for-logging field))
-     (let [classified (analyze/run-classifiers field fingerprint)
-           would-be-name? (= (:semantic_type classified) :type/Name)
-           ;; if it would be name and table already has a name field, don't classify as name (SEM-414)
-           updated-field (if (and would-be-name? exists-name)
-                           (assoc classified :semantic_type (:semantic_type field))
-                           classified)]
-       (when-not (= field updated-field)
-         (save-model-updates! field updated-field))
-       updated-field))))
+  [database-id :- ::lib.schema.id/database
+   field       :- i/FieldInstance
+   {:keys [exists-name], :as _opts}]
+  (let [fingerprint (or (:fingerprint field)
+                        (if lib.metadata.jvm/*metadata-provider-cache*
+                          (:fingerprint (lib.metadata/field (lib.metadata.jvm/application-database-metadata-provider database-id)
+                                                            (u/the-id field)))
+                          (t2/select-one-fn :fingerprint :model/Field :id (u/the-id field))))]
+    (sync-util/with-error-handling (format "Error classifying %s" (sync-util/name-for-logging field))
+      (let [classified (analyze/run-classifiers field fingerprint)
+            would-be-name? (= (:semantic_type classified) :type/Name)
+            ;; if it would be name and table already has a name field, don't classify as name (SEM-414)
+            updated-field (if (and would-be-name? exists-name)
+                            (assoc classified :semantic_type (:semantic_type field))
+                            classified)]
+        (when-not (= field updated-field)
+          (save-model-updates! field updated-field))
+        updated-field))))
 
 ;;; +------------------------------------------------------------------------------------------------------------------+
 ;;; |                                        CLASSIFYING ALL FIELDS IN A TABLE                                         |
@@ -118,7 +117,7 @@
                                           :semantic_type :type/Name)
             {:keys [fields-failed]}
             (reduce (fn [state field]
-                      (let [result (classify! field state)]
+                      (let [result (classify! (:database_id table) field state)]
                         (cond-> state
                           (instance? Exception result)
                           (update :fields-failed inc)

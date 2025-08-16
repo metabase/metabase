@@ -12,7 +12,6 @@
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.middleware.permissions :as qp.perms]
-   [metabase.query-processor.store :as qp.store]
    [metabase.settings.core :as setting]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n :refer [tru]]
@@ -220,22 +219,26 @@
   [db-id]
   (assert db-id "Id cannot be nil")
   (cached-value [:databases db-id]
-                #(qp.store/with-metadata-provider db-id
-                   (lib.metadata/database (qp.store/metadata-provider)))))
+                ;; the MP should hopefully already be cached because we're
+                ;; using [[lib.metadata.jvm/with-metadata-provider-cache]] elsewhere
+                #(lib.metadata/database (lib.metadata.jvm/application-database-metadata-provider db-id))))
 
 (defn cached-table
   "Uses cache to prevent redundant look-ups with an action call chain."
   [db-id table-id]
   (assert db-id "Id cannot be nil")
   (cached-value [:tables table-id]
-                #(qp.store/with-metadata-provider db-id
-                   (lib.metadata/table (qp.store/metadata-provider) table-id))))
+                #(lib.metadata/table (lib.metadata.jvm/application-database-metadata-provider db-id) table-id)))
 
 (defn cached-database-via-table-id
   "Uses cache to prevent redundant look-ups with an action call chain."
   [table-id]
   (assert table-id "Id cannot be nil")
-  (cached-database (:db_id (cached-value [:table-by-db-ids table-id] #(t2/select-one [:model/Table :db_id] table-id)))))
+  (let [db-id (cached-value [:table-by-db-ids table-id]
+                            ;; TODO (Cam 8/15/25) -- would be nice to use the cached metadata providers for this this
+                            ;; instead of Toucan
+                            #(t2/select-one-fn :db_id [:model/Table :db_id] table-id))]
+    (cached-database db-id)))
 
 (defn- log-before-after
   [level context before after]

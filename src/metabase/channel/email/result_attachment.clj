@@ -3,8 +3,8 @@
    [clojure.java.io :as io]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
+   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.query-processor.streaming.common :as streaming.common]
    [metabase.query-processor.streaming.interface :as qp.si]
@@ -38,7 +38,7 @@
   ;; get timezone information when writing results
   (log/debugf "Streaming results to %s with %d rows" export-format (:row_count results))
   (driver/with-driver (driver.u/database->driver database-id)
-    (qp.store/with-metadata-provider database-id
+    (lib.metadata.jvm/with-metadata-provider-cache
       (let [w                           (qp.si/streaming-results-writer export-format os)
             cols                        (-> results :data :cols)
             viz-settings                (-> results :data :viz-settings)

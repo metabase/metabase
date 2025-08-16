@@ -1,12 +1,12 @@
 (ns metabase-enterprise.audit-app.permissions
   (:require
    [metabase.audit-app.core :as audit]
+   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.query-permissions.core :as query-perms]
-   [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [toucan2.core :as t2]))
@@ -48,10 +48,10 @@
     (when native?
       (throw (ex-info (tru "Native queries are not allowed on the audit database")
                       outer-query)))
-    (qp.store/with-metadata-provider database-id
+    (let [mp (lib.metadata.jvm/application-database-metadata-provider database-id)]
       (doseq [table-id table-ids]
         (when-not (audit-db-view-names
-                   (u/lower-case-en (:name (lib.metadata/table (qp.store/metadata-provider) table-id))))
+                   (u/lower-case-en (:name (lib.metadata/table mp table-id))))
           (throw (ex-info (tru "Audit queries are only allowed on audit views")
                           outer-query)))))))
 

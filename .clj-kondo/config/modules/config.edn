@@ -1198,6 +1198,7 @@
            driver
            events
            lib
+           lib-be
            models
            query-processor
            settings
@@ -1461,6 +1462,7 @@
            api
            driver
            lib
+           lib-be
            models
            query-processor
            util
@@ -1550,6 +1552,7 @@
            classloader
            driver
            lib
+           lib-be
            models
            permissions
            plugins
