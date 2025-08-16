@@ -1,6 +1,6 @@
 import "./cypress";
-import { renameConflictingCljsGlobals } from "metabase/embedding-sdk/test/rename-conflicting-cljs-globals";
+import { deleteConflictingCljsGlobals } from "metabase/embedding-sdk/test/delete-conflicting-cljs-globals";
 
 beforeEach(() => {
-  renameConflictingCljsGlobals();
+  deleteConflictingCljsGlobals();
 });

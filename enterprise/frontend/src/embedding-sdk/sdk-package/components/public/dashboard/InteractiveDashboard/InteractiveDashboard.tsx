@@ -9,5 +9,5 @@ import { getWindow } from "embedding-sdk/sdk-shared/lib/get-window";
  * @param props
  */
 export const InteractiveDashboard = createComponent(
-  () => getWindow()?.MetabaseEmbeddingSDK?.InteractiveDashboard,
+  () => getWindow()?.METABASE_EMBEDDING_SDK_BUNDLE?.InteractiveDashboard,
 );

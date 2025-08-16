@@ -32,6 +32,9 @@ import {
 } from "./components/public/dashboard";
 import { SdkDebugInfo } from "./components/public/debug/SdkDebugInfo";
 
+// Init data hook
+import { useInitData } from "./hooks/private/use-init-data";
+
 // Exports needed for public Hooks that use sdk redux store
 import { createDashboard } from "metabase/api/dashboard";
 import { getApplicationName } from "metabase/selectors/whitelabel";
@@ -40,7 +43,6 @@ import { getSdkStore } from "./store/index";
 import { getLoginStatus } from "embedding-sdk/store/selectors";
 import { getSetting } from "metabase/selectors/settings";
 import { getUser } from "metabase/selectors/user";
-import { useInitData } from "./hooks/private/use-init-data";
 
 /**
  * IMPORTANT!
@@ -69,4 +71,4 @@ const sdkBundleExports: MetabaseEmbeddingSdkBundleExports = {
   useInitData: useInitData,
 };
 
-window.MetabaseEmbeddingSDK = sdkBundleExports;
+window.METABASE_EMBEDDING_SDK_BUNDLE = sdkBundleExports;

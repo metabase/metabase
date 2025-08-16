@@ -8,5 +8,5 @@ import { getWindow } from "embedding-sdk/sdk-shared/lib/get-window";
  * @category CollectionBrowser
  */
 export const CollectionBrowser = createComponent(
-  () => getWindow()?.MetabaseEmbeddingSDK?.CollectionBrowser,
+  () => getWindow()?.METABASE_EMBEDDING_SDK_BUNDLE?.CollectionBrowser,
 );

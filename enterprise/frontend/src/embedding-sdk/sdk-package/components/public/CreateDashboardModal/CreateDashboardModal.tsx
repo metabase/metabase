@@ -8,5 +8,5 @@ import { getWindow } from "embedding-sdk/sdk-shared/lib/get-window";
  * @category CreateDashboardModal
  */
 export const CreateDashboardModal = createComponent(
-  () => getWindow()?.MetabaseEmbeddingSDK?.CreateDashboardModal,
+  () => getWindow()?.METABASE_EMBEDDING_SDK_BUNDLE?.CreateDashboardModal,
 );

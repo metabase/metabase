@@ -3,10 +3,8 @@ import fetchMock from "fetch-mock";
 
 import { renderWithProviders, waitForLoaderToBeRemoved } from "__support__/ui";
 import { waitForRequest } from "__support__/utils";
-import {
-  ComponentProvider,
-  StaticQuestion,
-} from "embedding-sdk/components/public";
+import { ComponentProvider } from "embedding-sdk/components/public/ComponentProvider";
+import { StaticQuestion } from "embedding-sdk/components/public/StaticQuestion";
 import { defineMetabaseAuthConfig } from "embedding-sdk/sdk-package/lib/public/define-metabase-auth-config";
 import type { MetabaseProviderProps } from "embedding-sdk/types/metabase-provider";
 

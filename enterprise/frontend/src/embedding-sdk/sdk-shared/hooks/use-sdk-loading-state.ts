@@ -6,7 +6,9 @@ import {
 
 export function useSdkLoadingState() {
   const {
-    props: { loadingState, loadingError },
+    state: {
+      internalProps: { loadingState, loadingError },
+    },
   } = useMetabaseProviderPropsStore();
 
   const isError = loadingError === SdkLoadingError.Error;

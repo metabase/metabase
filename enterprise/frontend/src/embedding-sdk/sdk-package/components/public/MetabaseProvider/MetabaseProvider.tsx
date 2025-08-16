@@ -1,15 +1,15 @@
-import { memo, useId, useMemo } from "react";
+import { memo, useEffect, useId, useMemo } from "react";
 // eslint-disable-next-line no-external-references-for-sdk-package-code
 import useDeepCompareEffect from "react-use/lib/useDeepCompareEffect";
 
 import { ClientSideOnlyWrapper } from "embedding-sdk/sdk-package/components/private/ClientSideOnlyWrapper/ClientSideOnlyWrapper";
-import { useInitializeMetabaseProviderPropsStore } from "embedding-sdk/sdk-package/hooks/private/use-initialize-metabase-provider-props-store";
 import { useLoadSdkBundle } from "embedding-sdk/sdk-package/hooks/private/use-load-sdk-bundle";
 import { EnsureSingleInstance } from "embedding-sdk/sdk-shared/components/EnsureSingleInstance/EnsureSingleInstance";
 import { useMetabaseProviderPropsStore } from "embedding-sdk/sdk-shared/hooks/use-metabase-provider-props-store";
 import { useSdkLoadingState } from "embedding-sdk/sdk-shared/hooks/use-sdk-loading-state";
 import { ensureMetabaseProviderPropsStore } from "embedding-sdk/sdk-shared/lib/ensure-metabase-provider-props-store";
 import { getWindow } from "embedding-sdk/sdk-shared/lib/get-window";
+import { SdkLoadingState } from "embedding-sdk/sdk-shared/types/sdk-loading";
 import type { SdkStore } from "embedding-sdk/store/types";
 import type { MetabaseProviderProps } from "embedding-sdk/types/metabase-provider";
 
@@ -29,7 +29,7 @@ const MetabaseProviderInitDataWrapper = memo(function InitDataWrapper({
   allowConsoleLog,
   reduxStore,
 }: MetabaseProviderInitDataWrapperProps) {
-  const useInitData = getWindow()?.MetabaseEmbeddingSDK?.useInitData;
+  const useInitData = getWindow()?.METABASE_EMBEDDING_SDK_BUNDLE?.useInitData;
 
   if (!reduxStore || !useInitData) {
     throw new Error('Embedding SDK "useInitData" hook is not available');
@@ -52,7 +52,9 @@ const MetabaseProviderInner = memo(function MetabaseProviderInner(
   const { isLoading } = useSdkLoadingState();
 
   const {
-    props: { reduxStore: existingStore },
+    state: {
+      internalProps: { loadingState, reduxStore: existingStore },
+    },
   } = useMetabaseProviderPropsStore();
 
   // Return existing store or create a new one
@@ -60,19 +62,42 @@ const MetabaseProviderInner = memo(function MetabaseProviderInner(
     () =>
       isLoading
         ? null
-        : (existingStore ?? getWindow()?.MetabaseEmbeddingSDK?.getSdkStore()),
+        : (existingStore ??
+          getWindow()?.METABASE_EMBEDDING_SDK_BUNDLE?.getSdkStore()),
     [existingStore, isLoading],
   );
 
-  const { initialized: metabaseProviderPropsStoreInitialized } =
-    useInitializeMetabaseProviderPropsStore(props, reduxStore);
-
   useDeepCompareEffect(
-    function updateMetabaseProviderProps() {
+    function setMetabaseProviderProps() {
       ensureMetabaseProviderPropsStore().setProps(props);
     },
     [props],
   );
+
+  useEffect(function cleanupMetabaseProviderPropsStore() {
+    return () => {
+      ensureMetabaseProviderPropsStore().cleanup();
+    };
+  }, []);
+
+  useEffect(
+    function initializeReduxStore() {
+      if (
+        reduxStore &&
+        !!loadingState &&
+        loadingState !== SdkLoadingState.Initialized
+      ) {
+        ensureMetabaseProviderPropsStore().updateInternalProps({
+          reduxStore,
+          loadingState: SdkLoadingState.Initialized,
+        });
+      }
+    },
+    [reduxStore, loadingState],
+  );
+
+  const metabaseProviderPropsStoreInitialized =
+    loadingState === SdkLoadingState.Initialized;
 
   if (!metabaseProviderPropsStoreInitialized || !reduxStore) {
     return null;

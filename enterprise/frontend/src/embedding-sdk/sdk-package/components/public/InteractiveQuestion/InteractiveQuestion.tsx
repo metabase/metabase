@@ -3,93 +3,118 @@ import { createComponent } from "embedding-sdk/sdk-package/components/private/Co
 import { getWindow } from "embedding-sdk/sdk-shared/lib/get-window";
 
 const _InteractiveQuestion = createComponent(
-  () => getWindow()?.MetabaseEmbeddingSDK?.InteractiveQuestion,
+  () => getWindow()?.METABASE_EMBEDDING_SDK_BUNDLE?.InteractiveQuestion,
 );
 
 const subComponents: InteractiveQuestionComponents = {
   BackButton: createComponent(
-    () => getWindow()?.MetabaseEmbeddingSDK?.InteractiveQuestion?.BackButton,
+    () =>
+      getWindow()?.METABASE_EMBEDDING_SDK_BUNDLE?.InteractiveQuestion
+        ?.BackButton,
   ),
   Filter: createComponent(
-    () => getWindow()?.MetabaseEmbeddingSDK?.InteractiveQuestion?.Filter,
+    () =>
+      getWindow()?.METABASE_EMBEDDING_SDK_BUNDLE?.InteractiveQuestion?.Filter,
   ),
   FilterDropdown: createComponent(
     () =>
-      getWindow()?.MetabaseEmbeddingSDK?.InteractiveQuestion?.FilterDropdown,
+      getWindow()?.METABASE_EMBEDDING_SDK_BUNDLE?.InteractiveQuestion
+        ?.FilterDropdown,
   ),
   ResetButton: createComponent(
-    () => getWindow()?.MetabaseEmbeddingSDK?.InteractiveQuestion?.ResetButton,
+    () =>
+      getWindow()?.METABASE_EMBEDDING_SDK_BUNDLE?.InteractiveQuestion
+        ?.ResetButton,
   ),
   Title: createComponent(
-    () => getWindow()?.MetabaseEmbeddingSDK?.InteractiveQuestion?.Title,
+    () =>
+      getWindow()?.METABASE_EMBEDDING_SDK_BUNDLE?.InteractiveQuestion?.Title,
   ),
   Summarize: createComponent(
-    () => getWindow()?.MetabaseEmbeddingSDK?.InteractiveQuestion?.Summarize,
+    () =>
+      getWindow()?.METABASE_EMBEDDING_SDK_BUNDLE?.InteractiveQuestion
+        ?.Summarize,
   ),
   SummarizeDropdown: createComponent(
     () =>
-      getWindow()?.MetabaseEmbeddingSDK?.InteractiveQuestion?.SummarizeDropdown,
+      getWindow()?.METABASE_EMBEDDING_SDK_BUNDLE?.InteractiveQuestion
+        ?.SummarizeDropdown,
   ),
   Notebook: createComponent(
-    () => getWindow()?.MetabaseEmbeddingSDK?.InteractiveQuestion?.Editor,
+    () =>
+      getWindow()?.METABASE_EMBEDDING_SDK_BUNDLE?.InteractiveQuestion?.Editor,
   ),
   Editor: createComponent(
-    () => getWindow()?.MetabaseEmbeddingSDK?.InteractiveQuestion?.Editor,
+    () =>
+      getWindow()?.METABASE_EMBEDDING_SDK_BUNDLE?.InteractiveQuestion?.Editor,
   ),
   NotebookButton: createComponent(
-    () => getWindow()?.MetabaseEmbeddingSDK?.InteractiveQuestion?.EditorButton,
+    () =>
+      getWindow()?.METABASE_EMBEDDING_SDK_BUNDLE?.InteractiveQuestion
+        ?.EditorButton,
   ),
   EditorButton: createComponent(
-    () => getWindow()?.MetabaseEmbeddingSDK?.InteractiveQuestion?.EditorButton,
+    () =>
+      getWindow()?.METABASE_EMBEDDING_SDK_BUNDLE?.InteractiveQuestion
+        ?.EditorButton,
   ),
   QuestionVisualization: createComponent(
     () =>
-      getWindow()?.MetabaseEmbeddingSDK?.InteractiveQuestion
+      getWindow()?.METABASE_EMBEDDING_SDK_BUNDLE?.InteractiveQuestion
         ?.QuestionVisualization,
   ),
   SaveQuestionForm: createComponent(
     () =>
-      getWindow()?.MetabaseEmbeddingSDK?.InteractiveQuestion?.SaveQuestionForm,
+      getWindow()?.METABASE_EMBEDDING_SDK_BUNDLE?.InteractiveQuestion
+        ?.SaveQuestionForm,
   ),
   SaveButton: createComponent(
-    () => getWindow()?.MetabaseEmbeddingSDK?.InteractiveQuestion?.SaveButton,
+    () =>
+      getWindow()?.METABASE_EMBEDDING_SDK_BUNDLE?.InteractiveQuestion
+        ?.SaveButton,
   ),
   ChartTypeSelector: createComponent(
     () =>
-      getWindow()?.MetabaseEmbeddingSDK?.InteractiveQuestion?.ChartTypeSelector,
+      getWindow()?.METABASE_EMBEDDING_SDK_BUNDLE?.InteractiveQuestion
+        ?.ChartTypeSelector,
   ),
   QuestionSettings: createComponent(
     () =>
-      getWindow()?.MetabaseEmbeddingSDK?.InteractiveQuestion?.QuestionSettings,
+      getWindow()?.METABASE_EMBEDDING_SDK_BUNDLE?.InteractiveQuestion
+        ?.QuestionSettings,
   ),
   QuestionSettingsDropdown: createComponent(
     () =>
-      getWindow()?.MetabaseEmbeddingSDK?.InteractiveQuestion
+      getWindow()?.METABASE_EMBEDDING_SDK_BUNDLE?.InteractiveQuestion
         ?.QuestionSettingsDropdown,
   ),
   BreakoutDropdown: createComponent(
     () =>
-      getWindow()?.MetabaseEmbeddingSDK?.InteractiveQuestion?.BreakoutDropdown,
+      getWindow()?.METABASE_EMBEDDING_SDK_BUNDLE?.InteractiveQuestion
+        ?.BreakoutDropdown,
   ),
   Breakout: createComponent(
-    () => getWindow()?.MetabaseEmbeddingSDK?.InteractiveQuestion?.Breakout,
+    () =>
+      getWindow()?.METABASE_EMBEDDING_SDK_BUNDLE?.InteractiveQuestion?.Breakout,
   ),
   ChartTypeDropdown: createComponent(
     () =>
-      getWindow()?.MetabaseEmbeddingSDK?.InteractiveQuestion?.ChartTypeDropdown,
+      getWindow()?.METABASE_EMBEDDING_SDK_BUNDLE?.InteractiveQuestion
+        ?.ChartTypeDropdown,
   ),
   DownloadWidget: createComponent(
     () =>
-      getWindow()?.MetabaseEmbeddingSDK?.InteractiveQuestion?.DownloadWidget,
+      getWindow()?.METABASE_EMBEDDING_SDK_BUNDLE?.InteractiveQuestion
+        ?.DownloadWidget,
   ),
   DownloadWidgetDropdown: createComponent(
     () =>
-      getWindow()?.MetabaseEmbeddingSDK?.InteractiveQuestion
+      getWindow()?.METABASE_EMBEDDING_SDK_BUNDLE?.InteractiveQuestion
         ?.DownloadWidgetDropdown,
   ),
   VisualizationButton: createComponent(
     () =>
-      getWindow()?.MetabaseEmbeddingSDK?.InteractiveQuestion
+      getWindow()?.METABASE_EMBEDDING_SDK_BUNDLE?.InteractiveQuestion
         ?.VisualizationButton,
   ),
 };

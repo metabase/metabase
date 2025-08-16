@@ -4,8 +4,8 @@ export enum SdkLoadingError {
 }
 
 export enum SdkLoadingState {
-  Initial = 0,
-  Loading = 1,
-  Loaded = 2,
-  Initialized = 3,
+  Initial = "Initial",
+  Loading = "Loading",
+  Loaded = "Loaded",
+  Initialized = "Initialized",
 }
