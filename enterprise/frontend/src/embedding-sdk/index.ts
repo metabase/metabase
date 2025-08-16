@@ -1,9 +1,11 @@
 import { EMBEDDING_SDK_CONFIG } from "metabase/embedding-sdk/config";
+import { defineEmbeddingSdkPackageBuildInfo } from "metabase/embedding-sdk/lib/define-embedding-sdk-package-build-info";
 import { defineGlobalDependencies } from "metabase/embedding-sdk/lib/define-global-dependencies";
 
-// Enable SDK mode as we are in the SDK NPM package.
+// Enable SDK mode as we are in the SDK package
 EMBEDDING_SDK_CONFIG.isEmbeddingSdk = true;
 
+defineEmbeddingSdkPackageBuildInfo();
 defineGlobalDependencies();
 
 export { CollectionBrowser } from "embedding-sdk/sdk-package/components/public/CollectionBrowser";
@@ -16,6 +18,7 @@ export { InteractiveQuestion } from "embedding-sdk/sdk-package/components/public
 export { StaticQuestion } from "embedding-sdk/sdk-package/components/public/StaticQuestion";
 export { MetabaseProvider } from "embedding-sdk/sdk-package/components/public/MetabaseProvider";
 export { MetabotQuestion } from "embedding-sdk/sdk-package/components/public/MetabotQuestion";
+export * from "embedding-sdk/sdk-package/components/public/debug/SdkDebugInfo";
 
 export { useApplicationName } from "embedding-sdk/sdk-package/hooks/public/use-application-name";
 export { useAvailableFonts } from "embedding-sdk/sdk-package/hooks/public/use-available-fonts";
