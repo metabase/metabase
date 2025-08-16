@@ -1,6 +1,7 @@
 import { isa as cljs_isa } from "cljs/metabase.types.core";
 import { isVirtualCardId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import {
+  BINARY,
   BOOLEAN,
   COORDINATE,
   FOREIGN_KEY,
@@ -103,6 +104,7 @@ export const isDate = isFieldType.bind(null, TEMPORAL);
 export const isNumeric = isFieldType.bind(null, NUMBER);
 export const isInteger = isFieldType.bind(null, INTEGER);
 export const isBoolean = isFieldType.bind(null, BOOLEAN);
+export const isBinary = isFieldType.bind(null, BINARY);
 export const isString = isFieldType.bind(null, STRING);
 export const isStringLike = isFieldType.bind(null, STRING_LIKE);
 export const isSummable = isFieldType.bind(null, SUMMABLE);

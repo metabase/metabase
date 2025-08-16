@@ -8,7 +8,8 @@
    [clojure.java.io :as io])
   (:import
    (com.fasterxml.jackson.core JsonGenerator)
-   (java.io InputStream Reader)))
+   (java.io InputStream Reader)
+   (java.util Base64)))
 
 (set! *warn-on-reflection* true)
 
@@ -86,3 +87,28 @@
   "Decode a value from a JSON from a string, InputStream, or Reader, keywordizing map keys."
   [source]
   (decode source true))
+
+;;; Binary data encoding support
+
+(defn bytes->base64
+  "Convert byte array to base64 string for JSON encoding."
+  [^bytes byte-array]
+  (when byte-array
+    (.encodeToString (Base64/getEncoder) byte-array)))
+
+(defn base64->bytes
+  "Convert base64 string back to byte array for filtering/querying."
+  [^String base64-str]
+  (when base64-str
+    (.decode (Base64/getDecoder) base64-str)))
+
+(defn bytes->hex
+  "Convert byte array to hexadecimal string representation."
+  [^bytes byte-array]
+  (when byte-array
+    (str "0x" (apply str (map #(format "%02x" %) byte-array)))))
+
+;; Register encoder for byte arrays to be serialized as base64 strings
+(add-encoder (Class/forName "[B") ; byte array class
+             (fn [byte-array ^JsonGenerator jg]
+               (.writeString jg (bytes->base64 byte-array))))

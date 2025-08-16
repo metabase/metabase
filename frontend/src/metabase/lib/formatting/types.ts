@@ -39,4 +39,6 @@ export interface OptionsType extends TimeOnlyOptions {
   type?: string;
   view_as?: string | null;
   weekday_enabled?: boolean;
+  binary_format?: "base64" | "hex";
+  binary_truncate?: number;
 }
