@@ -165,6 +165,8 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     getColumnSortDirection: getServerColumnSortDirection,
     onVisualizationClick,
     onUpdateVisualizationSettings,
+    card,
+    metadata,
   }: TableProps,
   ref: Ref<HTMLDivElement>,
 ) {
@@ -206,7 +208,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     return getColumnSizing(cols, columnWidths);
   }, [cols, columnWidths]);
 
-  const onOpenObjectDetail = useObjectDetail(data);
+  const onOpenObjectDetail = useObjectDetail(data, card, metadata);
 
   const getIsCellClickable = useMemoizedCallback(
     (clicked: ClickObject) => {

@@ -1,7 +1,10 @@
 import { t } from "ttag";
 
+import { DETAIL_VIEW_PADDING_LEFT } from "metabase/detail-view";
+import { Nav as DetailViewNav } from "metabase/detail-view/components";
 import { PLUGIN_METABOT } from "metabase/plugins";
 import type { CollectionId } from "metabase-types/api";
+import type { DetailViewState } from "metabase-types/store";
 
 import CollectionBreadcrumbs from "../../containers/CollectionBreadcrumbs";
 import QuestionLineage from "../../containers/QuestionLineage";
@@ -21,6 +24,7 @@ import { AppBarToggle } from "./AppBarToggle";
 
 export interface AppBarLargeProps {
   collectionId?: CollectionId;
+  detailView: DetailViewState;
   isNavBarOpen?: boolean;
   isNavBarEnabled?: boolean;
   isMetabotVisible?: boolean;
@@ -36,6 +40,7 @@ export interface AppBarLargeProps {
 }
 
 const AppBarLarge = ({
+  detailView,
   collectionId,
   isNavBarOpen,
   isNavBarEnabled,
@@ -71,6 +76,12 @@ const AppBarLarge = ({
             <QuestionLineage />
           ) : isCollectionPathVisible ? (
             <CollectionBreadcrumbs />
+          ) : detailView ? (
+            <DetailViewNav
+              ml={DETAIL_VIEW_PADDING_LEFT - 125}
+              rowName={detailView.rowName}
+              table={detailView.table}
+            />
           ) : null}
         </AppBarInfoContainer>
       </AppBarLeftContainer>

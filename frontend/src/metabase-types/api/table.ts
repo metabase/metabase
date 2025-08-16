@@ -26,6 +26,7 @@ export type Table = {
   name: string;
   display_name: string;
   description: string | null;
+  entity_type?: string | null;
 
   db_id: DatabaseId;
   db?: Database;

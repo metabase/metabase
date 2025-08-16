@@ -1,0 +1,11 @@
+.avatarFrame {
+  background-color: #fafafb;
+  border: 1px solid #d8dadd;
+  border-radius: 50%;
+  overflow: hidden;
+}
+
+.text {
+  overflow-wrap: break-word;
+  word-break: break-word;
+}

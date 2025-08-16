@@ -1,5 +1,5 @@
 import type {
-  Field,
+  ForeignKey,
   GetTableQueryMetadataRequest,
   GetTableRequest,
   Table,
@@ -45,7 +45,7 @@ export const tableApi = Api.injectEndpoints({
       }),
       providesTags: (table) => (table ? provideTableTags(table) : []),
     }),
-    listTableForeignKeys: builder.query<Field[], TableId>({
+    listTableForeignKeys: builder.query<ForeignKey[], TableId>({
       query: (id) => ({
         method: "GET",
         url: `/api/table/${id}/fks`,
@@ -128,6 +128,7 @@ export const {
   useListTablesQuery,
   useGetTableQuery,
   useGetTableQueryMetadataQuery,
+  useListTableForeignKeysQuery,
   useLazyListTableForeignKeysQuery,
   useUpdateTableMutation,
   useUpdateTableListMutation,
