@@ -87,6 +87,48 @@ jobs:
       name: Flaky
       tags: "@flaky"
 
+  collect-timings:
+    name: Collect E2E Timings
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    needs: e2e-tests
+    if: always() && !cancelled()
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            .github
+            e2e/support
+          sparse-checkout-cone-mode: false
+
+      - name: Install cypress-split for merging
+        run: npm install cypress-split@^1.24.20
+
+      - name: Download all timing artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: timing-data-*
+          path: timing-files
+          merge-multiple: false
+        continue-on-error: true
+
+      - name: Merge split timings
+        id: merge
+        run: |
+          npx cypress-split-merge \
+            --parent-folder timing-files \
+            --split-file timings.json \
+            --output e2e/support/timings.json
+        continue-on-error: true
+
+      - name: Upload merged timing files
+        uses: actions/upload-artifact@v4
+        with:
+          name: merged-e2e-timings-${{ github.run_id }}
+          path: e2e/support/timings.json
+          retention-days: 30
+        continue-on-error: true
+
   e2e-tests-result:
     needs:
       - e2e-tests

@@ -117,13 +117,11 @@ jobs:
         run: node e2e/runner/run_cypress_ci.js snapshot
 
       - name: Run auto-split Cypress tests on ${{ inputs.name }}
-        if: ${{ !inputs.specs }}
         env:
           SPLIT: ${{ inputs.total_chunks }}
           SPLIT_INDEX: ${{ inputs.split_index }}
           SPLIT_FILE: "./e2e/support/timings.json"
-          SPLIT_OUTPUT_FILE: "newTimes.json"
-          SPLIT_TIME_THRESHOLD: 5.0
+          SPLIT_TIME_THRESHOLD: 1
           # do not write cypress-split summary to github
           SPLIT_SUMMARY: false
           SPEC_PATH: ${{ env.specs || inputs.specs }}
@@ -176,6 +174,15 @@ jobs:
         with:
           name: failed-tests-${{ inputs.name }}-${{ inputs.edition }}
           path: ./cypress/test-results
+
+      - name: Upload Timing Data
+        uses: actions/upload-artifact@v4
+        if: always()
+        continue-on-error: true
+        with:
+          name: timing-data-${{ inputs.name }}-${{ inputs.split_index }}
+          path: ./e2e/support/timings.json
+          retention-days: 7
 
       - name: Publish Summary
         if: failure()
