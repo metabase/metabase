@@ -4,6 +4,7 @@ module.exports = {
     "DataGrid",
     "static-viz",
     "viz",
+    "Patterns/Upsells",
     "^visualizations/shared",
     "^app/embed",
     "^design system",

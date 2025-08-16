@@ -40,6 +40,11 @@ export const UpsellUsageAnalytics = (
       illustrationSrc={usageAnalyticsIllustrationSource}
       lh="1.5rem"
       onClick={triggerUpsellFlow}
+      buttonStyle={{
+        marginInlineStart: "2rem",
+        width: "10rem",
+        maxWidth: "100%",
+      }}
       {...props}
     >
       <Text lh="1.5rem" style={{ paddingInlineStart: "2rem" }}>
