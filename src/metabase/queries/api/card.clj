@@ -200,7 +200,8 @@
                     :can_delete
                     :can_manage_db
                     [:collection :is_personal]
-                    [:moderation_reviews :moderator_details])
+                    [:moderation_reviews :moderator_details]
+                    :param_fields)
         (update :dashboard #(some-> % (select-keys [:name :id :moderation_status])))
         (cond->
          (card/model? card) (t2/hydrate :persisted
