@@ -7,7 +7,9 @@ import type { DatabaseId } from "metabase-types/api";
 export function useDoesDatabaseSupportTransforms(): (
   databaseId?: DatabaseId,
 ) => boolean {
-  const { data: databases, isLoading } = useListDatabasesQuery();
+  const { data: databases, isLoading } = useListDatabasesQuery({
+    include_analytics: true,
+  });
 
   return useCallback(
     (databaseId?: DatabaseId) => {
@@ -19,7 +21,11 @@ export function useDoesDatabaseSupportTransforms(): (
         return true;
       }
 
-      return !database.is_sample && hasFeature(database, "transforms/table");
+      return (
+        !database.is_sample &&
+        !database.is_audit &&
+        hasFeature(database, "transforms/table")
+      );
     },
     [databases, isLoading],
   );
