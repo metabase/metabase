@@ -199,11 +199,16 @@
      :source/aggregations
      :source/native)              ::none))
 
-(defn- add-source-to-field-ref [query path field-ref col]
+(defn- add-source-to-field-ref [query path field-ref col & [context]]
   (lib/update-options
    field-ref #(-> %
                   (assoc ::source-table (source-table query path col)
-                         ::source-alias (escaped-source-alias query path (:metabase.lib.join/join-alias col) (:lib/source-column-alias col)))
+                         ::source-alias (if (and (= :inside-expression (:context context))
+                                                (= (:lib/source col) :source/previous-stage))
+                                          ;; When inside an expression and referencing a column from previous stage,
+                                          ;; use the original column name, not its desired alias
+                                          (:lib/source-column-alias col)
+                                          (escaped-source-alias query path (:metabase.lib.join/join-alias col) (:lib/source-column-alias col))))
                   (m/assoc-some ::nfc-path (not-empty (:nfc-path col))))))
 
 (defn- fix-field-ref-if-it-should-actually-be-an-expression-ref
@@ -225,8 +230,10 @@
     &match
 
     :field
-    (let [col (resolve-field-ref query path &match)]
-      (-> (add-source-to-field-ref query path &match col)
+    (let [col (resolve-field-ref query path &match)
+          inside-expression? (some #{:expressions} &parents)
+          context (when inside-expression? {:context :inside-expression})]
+      (-> (add-source-to-field-ref query path &match col context)
           (fix-field-ref-if-it-should-actually-be-an-expression-ref col)
           ;; record the column we resolved it to, so we can use this when we add desired aliases in the next pass.
           (lib/update-options assoc ::resolved col)))
