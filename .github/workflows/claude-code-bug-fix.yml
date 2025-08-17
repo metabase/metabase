@@ -128,10 +128,18 @@ jobs:
             const issueData = JSON.parse(process.env.ISSUE_DATA);
             const issueNumber = '${{ needs.check-employee-and-issue.outputs.issue_number }}';
 
-            // Create unique branch name with timestamp
-            const timestamp = new Date().toISOString().replace(/[-:]/g, '').replace(/\..+/, '').replace('T', '-');
-            const branchName = `bug-fix/issue-${issueNumber}-${timestamp}`;
-            core.exportVariable('BRANCH_NAME', branchName);
+            // Convert issue title to kebab case
+            const issueTitle = issueData.title || 'untitled';
+            const kebabTitle = issueTitle
+              .toLowerCase()
+              .replace(/[^a-z0-9]+/g, '-')
+              .replace(/^-+|-+$/g, '')
+              .replace(/-+/g, '-')
+              .substring(0, 50); // Limit length
+
+            // Create base branch name
+            const baseBranchName = `bug-fix/issue-${issueNumber}-${kebabTitle}`;
+            core.exportVariable('BASE_BRANCH_NAME', baseBranchName);
 
             // Export issue info for the prompt
             core.exportVariable('ISSUE_NUMBER', issueNumber);
@@ -139,6 +147,35 @@ jobs:
             core.exportVariable('ISSUE_AUTHOR', issueData.user.login);
             core.exportVariable('ISSUE_CREATED', issueData.created_at);
             core.exportVariable('ISSUE_BODY', issueData.body || 'No description provided');
+
+      - name: Determine unique branch name
+        run: |
+          # Check for existing branches with the same base name
+          BASE_NAME="${{ env.BASE_BRANCH_NAME }}"
+          
+          # Use git to efficiently filter branches by pattern
+          EXISTING_BRANCHES=$(git branch -r --list "origin/${BASE_NAME}*" 2>/dev/null || true)
+          
+          if [ -z "$EXISTING_BRANCHES" ]; then
+            # No existing branches, use base name
+            FINAL_BRANCH_NAME="$BASE_NAME"
+            echo "Using branch name: $FINAL_BRANCH_NAME"
+          else
+            # Find the next available number
+            COUNTER=1
+            while true; do
+              CANDIDATE_NAME="${BASE_NAME}-${COUNTER}"
+              if ! git branch -r --list "origin/${CANDIDATE_NAME}" | grep -q .; then
+                FINAL_BRANCH_NAME="$CANDIDATE_NAME"
+                echo "Using branch name: $FINAL_BRANCH_NAME (duplicate detected)"
+                break
+              fi
+              COUNTER=$((COUNTER + 1))
+            done
+          fi
+          
+          # Export the final branch name
+          echo "BRANCH_NAME=$FINAL_BRANCH_NAME" >> $GITHUB_ENV
 
       - name: Prepare bug fix prompt
         id: prepare_prompt
