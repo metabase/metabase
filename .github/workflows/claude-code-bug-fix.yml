@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
     inputs:
       issue_number:
-        description: 'Issue number to fix'
+        description: "Issue number to fix"
         required: true
         type: string
 
@@ -40,7 +40,7 @@ jobs:
         with:
           script: |
             let issueNumber, issueData;
-            
+
             if (context.eventName === 'issues') {
               // Original issue label event
               issueNumber = context.payload.issue.number;
@@ -55,10 +55,10 @@ jobs:
               });
               issueData = data;
             }
-            
+
             core.setOutput('issue_number', issueNumber);
             core.setOutput('issue_data', JSON.stringify(issueData));
-            
+
             console.log(`Issue #${issueNumber}: ${issueData.title}`);
             console.log(`Issue author: ${issueData.user.login}`);
 
@@ -72,7 +72,7 @@ jobs:
           script: |
             const issueData = JSON.parse(process.env.ISSUE_DATA);
             const issueAuthor = issueData.user.login;
-            
+
             try {
               // Check if user is a member of the metabase organization (including private members)
               const { data: membership } = await github.rest.orgs.getMembershipForUser({
@@ -127,12 +127,12 @@ jobs:
           script: |
             const issueData = JSON.parse(process.env.ISSUE_DATA);
             const issueNumber = '${{ needs.check-employee-and-issue.outputs.issue_number }}';
-            
+
             // Create unique branch name with timestamp
             const timestamp = new Date().toISOString().replace(/[-:]/g, '').replace(/\..+/, '').replace('T', '-');
             const branchName = `bug-fix/issue-${issueNumber}-${timestamp}`;
             core.exportVariable('BRANCH_NAME', branchName);
-            
+
             // Export issue info for the prompt
             core.exportVariable('ISSUE_NUMBER', issueNumber);
             core.exportVariable('ISSUE_TITLE', issueData.title);
@@ -171,41 +171,28 @@ jobs:
           - Write failing tests first, then fix them
           - Work in small, testable increments
           - Don't commit changes - leave that for the workflow
-          - Focus only on fixing the reported bug, don't make unrelated changes
-          
+          - IMPORTANT: Focus only on fixing the reported bug, don't make unrelated changes
+
+          ## Scratchpad Directory
+          A `.claude-scratchpad/` directory has been created for your temporary files:
+          - Use this directory for ALL temporary verification files. However, prefer using production test files rather than adhoc ones.
+          - Only modify actual production code in the main repository directories
+          - The scratchpad will be cleaned up automatically - nothing from it will be committed
+
           ## If You Cannot Fix The Bug
           If you determine that you cannot create a definitive fix, create a file called `FAILED_FIX_ANALYSIS.md` with:
-          1. **Root Cause Analysis** - What you discovered about the issue
-          2. **Why No Fix** - Specific reason why you couldn't implement a fix
-          3. **Tool Limitations** - If you needed additional tools/access that weren't available
-          4. **Recommendations** - What a human developer should investigate or try
-          5. **Next Steps** - Suggested approaches for resolving the issue
-          
-          Example reasons you might not be able to fix:
-          - Requires more context/clarification from the reporter
-          - Involves complex architectural decisions
-          - Needs access to external systems/APIs
-          - Requires understanding of business logic not evident in code
-          - Issue is unclear or seems to be a configuration problem
-          - Missing tool access (e.g., database queries, external API calls, deployment tools)
-          
-          **Important**: If you were blocked by tool limitations, be specific about what additional tools or access you would need:
-          - Database access to run queries or migrations
-          - External API access to test integrations
-          - Docker/container tools for environment issues
-          - Package management tools (npm, pip, etc.)
-          - Build/deployment tools
-          - Network tools for connectivity issues
-
-          ## Repository Context
-          This is the Metabase codebase - a business intelligence application with:
-          - Frontend: TypeScript/React in `frontend/` directory
-          - Backend: Clojure in `src/` directory  
-          - Tests: Various test files with `.unit.spec.js`, `.spec.js`, or `_test.clj` patterns
+          1. **Why No Fix** - Specific reason why you couldn't implement a fix
+          2. **Tool Limitations** - If you needed additional tools/access that weren't available
 
           Start by understanding the bug and then systematically work toward a solution.
           PROMPT_END
           EOF
+
+      - name: Create scratchpad directory for Claude
+        run: |
+          # Create a scratchpad directory for Claude to use for temporary files
+          mkdir -p .claude-scratchpad
+          echo "Scratchpad directory created for Claude's temporary verification files"
 
       - name: Generate GitHub App Token for Claude
         uses: actions/create-github-app-token@v1
@@ -225,6 +212,12 @@ jobs:
           allowed_tools: "Bash(yarn test-unit*),Bash(yarn lint-eslint-pure),Bash(./bin/mage*),Bash(clojure*),Bash(find*),Bash(ls*),Bash(grep*),Write,Read,Glob,Grep,Edit,MultiEdit"
           disallowed_tools: "Bash(git commit*),Bash(git push*),Bash(gh*)"
 
+      - name: Clean up scratchpad directory
+        run: |
+          # Remove the scratchpad directory so its contents don't get committed
+          rm -rf .claude-scratchpad/
+          echo "Scratchpad directory cleaned up"
+
       - name: Check for changes and analysis
         id: check_changes
         run: |
@@ -241,7 +234,7 @@ jobs:
             echo "has_analysis=false" >> $GITHUB_OUTPUT
             echo "No analysis file found"
           fi
-          
+
           # Now check for actual code changes (excluding analysis file)
           if [ -n "$(git status --porcelain)" ]; then
             echo "has_changes=true" >> $GITHUB_OUTPUT
@@ -323,9 +316,9 @@ jobs:
 
             Co-Authored-By: Claude <noreply@anthropic.com>
           labels: |
-            Type:Bug
             ${{ steps.prepare_reviewers.outputs.team_labels }}
             automated-fix
+            ci skip
           reviewers: ${{ steps.prepare_reviewers.outputs.reviewers }}
 
       # TEMPORARILY DISABLED FOR TESTING - uncomment when ready for production
@@ -339,11 +332,11 @@ jobs:
       #         repo: context.repo.repo,
       #         issue_number: '${{ env.ISSUE_NUMBER }}',
       #         body: `🤖 **Automated Fix Created**
-      #         
+      #
       #         I've analyzed this bug report and created a potential fix. Please review the automatically generated PR that should appear shortly.
-      #         
+      #
       #         If the automated fix doesn't fully address the issue, feel free to provide additional details or close the generated PR.
-      #         
+      #
       #         ---
       #         🤖 Generated with [Claude Code](https://claude.ai/code)`
       #       });
@@ -355,7 +348,7 @@ jobs:
       #   with:
       #     script: |
       #       let analysisContent = '';
-      #       
+      #
       #       // Check if Claude provided a detailed analysis
       #       if ('${{ steps.check_changes.outputs.has_analysis }}' === 'true') {
       #         try {
@@ -366,7 +359,7 @@ jobs:
       #           console.log('Could not decode analysis content:', error);
       #         }
       #       }
-      #       
+      #
       #       let commentBody = `🤖 **Automated Fix Analysis**
       #
       #       I analyzed this bug report but wasn't able to generate a code fix automatically.`;
@@ -383,7 +376,7 @@ jobs:
       #       This could be because:
       #
       #       - The issue requires more context or clarification
-      #       - The fix is complex and requires human judgment  
+      #       - The fix is complex and requires human judgment
       #       - The issue is not a straightforward code bug
       #       - I couldn't locate the relevant code to modify
       #
@@ -408,7 +401,7 @@ jobs:
         with:
           script: |
             console.log('🤖 No code changes were made by Claude.');
-            
+
             // Check if Claude provided a detailed analysis
             if ('${{ steps.check_changes.outputs.has_analysis }}' === 'true') {
               try {
