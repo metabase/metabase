@@ -59,16 +59,16 @@
       (do
         (log/info (u/format-color :blue "API key with name %s already exists, skipping" (pr-str name)))
         existing-api-key)
-      (let [group-id (case group
-                       "admin" (u/the-id (perms/admin-group))
-                       "all-users" (u/the-id (perms/all-users-group)))
+      (let [group-id     (case group
+                           "admin"     (u/the-id (perms/admin-group))
+                           "all-users" (u/the-id (perms/all-users-group)))
             unhashed-key (u.secret/secret key)
-            _ (when-not (and (<= 11 (count key) 254)
-                             (re-matches #"mb_[A-Za-z0-9+/=]+" key))
-                (throw (ex-info (format "Invalid API key format. Key must be between 11-254 characters and start with 'mb_'.")
-                                {:name name})))
-            prefix (api-key/prefix (u.secret/expose unhashed-key))
-            creator (get-admin-user-by-email creator)]
+            _            (when-not (and (<= 11 (count key) 254)
+                                        (re-matches #"mb_[A-Za-z0-9+/=]+" key))
+                           (throw (ex-info (format "Invalid API key format. Key must be between 11-254 characters and start with 'mb_'.")
+                                           {:name name})))
+            prefix       (api-key/prefix (u.secret/expose unhashed-key))
+            creator      (get-admin-user-by-email creator)]
 
         ;; Check if there's an existing API key with the same prefix
         (when (t2/exists? :model/ApiKey :key_prefix prefix)
@@ -78,22 +78,22 @@
         (log/info (u/format-color :green "Creating new API key %s" (pr-str name)))
         ;; Create a user for the API key
         (let [email (format "api-key-user-%s@api-key.invalid" (random-uuid))
-              user (first
-                    (t2/insert-returning-instances! :model/User
-                                                    {:email      email
-                                                     :first_name name
-                                                     :last_name  ""
-                                                     :type       :api-key
-                                                     :password   (str (random-uuid))}))]
+              user  (first
+                     (t2/insert-returning-instances! :model/User
+                                                     {:email      email
+                                                      :first_name name
+                                                      :last_name  ""
+                                                      :type       :api-key
+                                                      :password   (str (random-uuid))}))]
           ;; Set permissions groups for the user
           (user/set-permissions-groups! user [(perms/all-users-group) {:id group-id}])
           ;; Create the API key
           (t2/insert-returning-instance! :model/ApiKey
-                                         {:user_id      (u/the-id user)
-                                          :name         name
-                                          :unhashed_key unhashed-key
-                                          :creator_id   (u/the-id creator)
-                                          :updated_by_id (u/the-id creator)}))))))
+                                         {:user_id               (u/the-id user)
+                                          :name                  name
+                                          ::api-key/unhashed-key unhashed-key
+                                          :creator_id            (u/the-id creator)
+                                          :updated_by_id         (u/the-id creator)}))))))
 
 (defmethod advanced-config.file.i/initialize-section! :api-keys
   [_section-name api-keys]

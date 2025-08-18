@@ -56,6 +56,7 @@
   com.h2database/h2                         ^:antq/exclude                      ; https://metaboat.slack.com/archives/CKZEMT1MJ/p1727191010259979
                                             {:mvn/version "2.1.214"}            ; embedded SQL database
   com.ibm.icu/icu4j                         {:mvn/version "77.1"}               ; Used to transliterate Unicode characters into Latin characters
+  com.knuddels/jtokkit                      {:mvn/version "1.1.0"}              ; Java tokenizer library for OpenAI models, used for token counting in semantic search
   com.mchange/c3p0                          {:mvn/version "0.10.1"}             ; DB connection pool
   com.snowplowanalytics/snowplow-java-tracker ^:antq/exclude                    ; 2+ depend on apache httpclient 5.x, but saml and clj-http depend on 4.x
   {:mvn/version "1.0.1"}              ; Snowplow analytics
@@ -249,7 +250,6 @@
     {:mvn/version "0.4.0"}                     ; Enables easy memory measurement
     com.gfredericks/test.chuck   {:mvn/version "0.2.15"}                    ; generating strings from regexes (useful with malli)
     criterium/criterium          {:mvn/version "0.4.6"}                     ; benchmarking library
-    dev.weavejester/hashp        {:mvn/version "0.4.0"}                     ; debugging/spying utility
     djblue/portal                {:mvn/version "0.60.2"}                    ; ui for inspecting values
     io.github.camsaul/humane-are {:mvn/version "1.0.2"}                     ; cleaner test output
     io.github.metabase/hawk      {:sha "1fe839cfa48549e21b89c6418c747895eda7e7bc"} ; test runner
@@ -630,7 +630,8 @@
                                    "src/metabase/util/currency\\.cljc$"
                                    "test/metabase/channel/render/png_test.clj"
                                    "#.+#$"
-                                   "\\.transit\\.json$"]}}
+                                   "\\.transit\\.json$"
+                                   "enterprise/frontend/src/metabase-enterprise/documents/components/Editor/data/data\\.json$"]}}
 
   ;; clojure -X:dev:ee:ee-dev:test:cloverage
   :cloverage
@@ -830,16 +831,18 @@
 
   ;; run tests against MLv2. Very fast since this is almost all ^:parallel
   :test/lib
-  {:exec-args {:only ["test/metabase/lib" "test/metabase/lib_be"]}}
+  {:exec-args {:only ["test/metabase/lib"
+                      "test/metabase/lib_be"]}}
 
   ;; test the Query Processor
   ;;
   ;;    clj -X:dev:ee:ee-dev:test:test/qp
   :test/qp
-  {:exec-args {:only ["test/metabase/driver"
-                      "test/metabase/query_processor"
+  {:exec-args {:only ["test/metabase/query_processor"
                       "test/metabase/query_processor_test"
+                      metabase.driver.sql.query-processor-test
                       metabase-enterprise.advanced-permissions.models.permissions.block-permissions-test
+                      metabase-enterprise.advanced-permissions.query-processor.middleware.permissions-test
                       metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions-test]}}
 
   ;; test the notification system
@@ -852,14 +855,14 @@
   ;;
   ;;    clj -X:dev:ee:ee-dev:test:test/mbql
   :test/mbql
-  {:exec-args {:only ["test/mbql"
-                      "test/metabase/lib"
+  {:exec-args {:only ["test/metabase/lib"
                       "test/metabase/lib_be"
                       "test/metabase/legacy_mbql"
-                      "test/metabase/driver"
                       "test/metabase/query_processor"
                       "test/metabase/query_processor_test"
+                      metabase.driver.sql.query-processor-test
                       metabase-enterprise.advanced-permissions.models.permissions.block-permissions-test
+                      metabase-enterprise.advanced-permissions.query-processor.middleware.permissions-test
                       metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions-test]}}
 
   ;; test search-related stuff.

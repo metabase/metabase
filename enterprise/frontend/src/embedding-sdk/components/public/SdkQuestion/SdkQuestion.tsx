@@ -41,7 +41,7 @@ import type { SdkQuestionIdProps } from "./types";
  */
 export type BaseSdkQuestionProps = SdkQuestionIdProps & {
   /**
-   * The children of the MetabaseProvider component.s
+   * The children of the component
    */
   children?: ReactNode;
   plugins?: SdkQuestionProviderProps["componentPlugins"];

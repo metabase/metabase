@@ -4,6 +4,7 @@
    [malli.core :as mc]
    [malli.transform :as mtx]
    [medley.core :as m]
+   [metabase-enterprise.metabot-v3.client :as metabot-v3.client]
    [metabase-enterprise.metabot-v3.tools.api :as metabot-v3.tools.api]
    [metabase-enterprise.metabot-v3.tools.create-dashboard-subscription :as metabot-v3.tools.create-dashboard-subscription]
    [metabase-enterprise.metabot-v3.tools.filters :as metabot-v3.tools.filters]
@@ -36,7 +37,7 @@
   ([] (ai-session-token :rasta (str (random-uuid))))
   ([metabot-id] (ai-session-token :rasta metabot-id))
   ([user metabot-id]
-   (-> user mt/user->id (#'metabot-v3.tools.api/get-ai-service-token metabot-id))))
+   (-> user mt/user->id (#'metabot-v3.client/get-ai-service-token metabot-id))))
 
 (deftest create-dashboard-subscription-test
   (mt/with-premium-features #{:metabot-v3}

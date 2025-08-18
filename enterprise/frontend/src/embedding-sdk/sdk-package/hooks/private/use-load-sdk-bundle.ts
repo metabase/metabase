@@ -55,7 +55,7 @@ export function useLoadSdkBundle(metabaseInstanceUrl: string) {
     // The SDK bundle script was loaded before
     if (window.MetabaseEmbeddingSDK) {
       // After the SDK bundle script was loaded, the MetabaseProviderProps store may be cleaned up.
-      // It happens when the root MetabaseProvider component is unmounted and remounted later.
+      // It happens when the MetabaseProvider component is unmounted and remounted later.
       // In this case we don't need to load the SDK bundle again, but we have to set the proper `Loaded` state.
       if (loadingState === SdkLoadingState.Initial) {
         metabaseProviderPropsStore.updateInternalProps({
