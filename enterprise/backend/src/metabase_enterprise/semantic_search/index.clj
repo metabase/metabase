@@ -546,6 +546,16 @@
       (update base-query :where #(into [:and] [% filters]))
       base-query)))
 
+(defn- hybrid-select
+  "For a given `col-name` return a :coalesce expression to reference it from the outer hybrid search query.
+
+   (hybrid-coalesce :model_id) -> [:coalesce :v.model_id :t.model_id]"
+  ([col-name-and-alias]
+   (hybrid-select col-name-and-alias "v." "t."))
+  ([[col-name col-alias] vector-prefix text-prefix]
+   (let [prefix #(keyword (str %1 (name %2)))]
+     [[:coalesce (prefix vector-prefix col-name) (prefix text-prefix col-name)] col-alias])))
+
 (defn- hybrid-search-query
   "Build a hybrid search query using vector + keyword based searches and reranking with RRF"
   [index embedding search-context]
@@ -553,18 +563,26 @@
         keyword-results (keyword-search-query index search-context)
         full-query {:with [[:vector_results semantic-results]
                            [:text_results keyword-results]]
-                    :select [[[:coalesce :v.id :t.id] :id]
-                             [[:coalesce :v.model_id :t.model_id] :model_id]
-                             [[:coalesce :v.model :t.model] :model]
-                             [[:coalesce :v.content :t.content] :content]
-                             [[:coalesce :v.verified :t.verified] :verified]
-                             [[:coalesce :v.metadata :t.metadata] :metadata]
-                             [[:coalesce :v.semantic_rank -1] :semantic_rank]
-                             [[:coalesce :t.keyword_rank -1] :keyword_rank]]
+                    :select (into
+                             (mapv hybrid-select common-search-columns)
+                             [[:v.semantic_rank :semantic_rank]
+                              [:t.keyword_rank :keyword_rank]])
                     :from [[:vector_results :v]]
                     :full-join [[:text_results :t] [:= :v.id :t.id]]
                     :limit (semantic-settings/semantic-search-results-limit)}]
     full-query))
+
+(defn- scored-search-query
+  "Build a hybrid search query with additional `scorers`"
+  [index embedding search-context scorers]
+  ;; The purpose of this query is just to project the coalesced hybrid columns with standard names so the scorers know
+  ;; what to call them (e.g. :model rather than [:coalesced :v.model :t.model]).
+  (let [hybrid-query (hybrid-search-query index embedding search-context)
+        full-query {:with [[:hybrid_results hybrid-query]]
+                    :select [:id :model_id :model :content :verified :metadata :semantic_rank :keyword_rank]
+                    :from [:hybrid_results]
+                    :limit (semantic-settings/semantic-search-results-limit)}]
+    (scoring/with-scores search-context scorers full-query)))
 
 (defn- legacy-input-with-score
   "Fetches the legacy_input field from a result's metadata and attaches a score based on the
@@ -743,8 +761,7 @@
             db-timer (u/start-timer)
             weights (search.config/weights (:context search-context))
             scorers (scoring/semantic-scorers (:table-name index) search-context)
-            query (->> (hybrid-search-query index embedding search-context)
-                       (scoring/with-scores search-context scorers))
+            query (scored-search-query index embedding search-context scorers)
             xform (comp (map decode-metadata)
                         (map (partial legacy-input-with-score weights (keys scorers))))
             reducible (jdbc/plan db (sql-format-quoted query) {:builder-fn jdbc.rs/as-unqualified-lower-maps})
@@ -787,6 +804,7 @@
   (def index (default-index embedding-model))
   (def search-ctx {:search-string "pasta"})
   (def embed (embedding/get-embedding embedding-model (:search-string search-ctx)))
+  (def scorers (scoring/semantic-scorers (:table-name index) search-ctx))
 
   (keyword-search-query index search-ctx)
   (sql-format-quoted (keyword-search-query index search-ctx))
@@ -799,6 +817,10 @@
   (hybrid-search-query index embed search-ctx)
   (sql-format-quoted (hybrid-search-query index embed search-ctx))
   (jdbc/execute! db (sql-format-quoted (hybrid-search-query index embed search-ctx)))
+
+  (scored-search-query index embed search-ctx scorers)
+  (sql-format-quoted (scored-search-query index embed search-ctx scorers))
+  (jdbc/execute! db (sql-format-quoted (scored-search-query index embed search-ctx scorers)))
 
   (query-index db index search-ctx))
 
@@ -866,16 +888,19 @@
   (def search-context {:search-string search-string})
 
   (def embedding (embedding/get-embedding (:embedding-model index) search-string))
+  (def scorers (scoring/semantic-scorers (:table-name index) search-context))
 
   ;; Format queries for execution
   (def semantic-sql (sql-format-quoted (semantic-search-query index embedding search-context)))
   (def keyword-sql (sql-format-quoted (keyword-search-query index search-context)))
   (def hybrid-sql (sql-format-quoted (hybrid-search-query index embedding search-context)))
+  (def scored-sql (sql-format-quoted (scored-search-query index embedding search-context scorers)))
 
   ;; do in repl ->
   #_(explain-analyze-query db semantic-sql)
   #_(explain-analyze-query db keyword-sql)
   #_(explain-analyze-query db hybrid-sql)
+  #_(explain-analyze-query db scored-sql)
 
   (def existing-sql (sql-format-quoted (existing-embedding-query index ["Some Text"])))
   #_(explain-analyze-query db existing-sql)
