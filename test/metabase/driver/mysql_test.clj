@@ -661,17 +661,17 @@
           (mt/with-db database
             (sync/sync-database! database)
             (mt/with-actions-enabled
-             (testing "when creating with invalid email"
-               (is (= {:errors      {}
-                       :message     "Some of your values violate the constraint: email_format_check"
-                       :status-code 400
-                       :type        actions.error/violate-check-constraint}
-                      (sql-jdbc.actions-test/perform-action-ex-data
-                       :model.row/create (mt/$ids {:create-row {"email" "invalid-email"
-                                                                "age"   25}
-                                                   :database   (:id database)
-                                                   :query      {:source-table $$test_users}
-                                                   :type       :query}))))))))))))
+              (testing "when creating with invalid email"
+                (is (= {:errors      {}
+                        :message     "Some of your values violate the constraint: email_format_check"
+                        :status-code 400
+                        :type        actions.error/violate-check-constraint}
+                       (sql-jdbc.actions-test/perform-action-ex-data
+                        :model.row/create (mt/$ids {:create-row {"email" "invalid-email"
+                                                                 "age"   25}
+                                                    :database   (:id database)
+                                                    :query      {:source-table $$test_users}
+                                                    :type       :query}))))))))))))
 
 ;; this contains specical test cases for mysql
 ;; for generic tests, check [[metabase.driver.sql-jdbc.actions-test/action-error-handling-test]]
@@ -717,7 +717,7 @@
                                                     :database   (:id database)
                                                     :query      {:source-table $$mytable
                                                                  :filter       [:= $mytable.id 2]}
-                                                    :type       :query})))))))))))
+                                                    :type       :query}))))))))))))
 
 (deftest ^:parallel parse-grant-test
   (testing "`parse-grant` should work correctly"
