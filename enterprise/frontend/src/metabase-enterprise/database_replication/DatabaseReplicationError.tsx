@@ -15,7 +15,7 @@ export const DatabaseReplicationError = ({
   const showMetabaseLinks = useSelector(getShowMetabaseLinks);
 
   return (
-    <Stack align="center" gap="xl">
+    <Stack gap="xl">
       <Text c="text-secondary" fz="md" lh={1.43}>
         {error ?? "Unknown error"}
       </Text>

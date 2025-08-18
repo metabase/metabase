@@ -112,7 +112,8 @@ export const DatabaseReplicationModal = ({
             ? t`Couldn't replicate database`
             : t`Set up database replication`
       }
-      mah={isErrorStep ? 640 : "80%"}
+      mah="80%"
+      maw={isErrorStep ? 640 : undefined}
     >
       {setupStep === "form" ? (
         <DatabaseReplicationForm
