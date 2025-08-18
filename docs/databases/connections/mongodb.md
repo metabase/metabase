@@ -132,6 +132,8 @@ If you're not seeing all of the fields show up for a collection in Metabase, one
 
 ## Database routing
 
+With database routing, an admin can build a question once using one database, and the question will run its query against a different database with the same schema depending on who is viewing the question.
+
 See [Database routing](../../permissions/database-routing.md).
 
 ## Danger zone

@@ -97,7 +97,7 @@ export const setup = ({
   if (hasEnterprisePlugins) {
     setupEnterprisePlugins();
   }
-  setupTokenStatusEndpoint(true);
+  setupTokenStatusEndpoint({ valid: true });
 
   setupDatabaseListEndpoint(databases);
 

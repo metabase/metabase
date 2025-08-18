@@ -3,7 +3,7 @@
 
 const path = require("path");
 
-const [config] = require("./rspack.config");
+const config = require("./rspack.main.config");
 
 module.exports = {
   mode: "production",

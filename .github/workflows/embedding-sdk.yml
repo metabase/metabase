@@ -43,7 +43,7 @@ jobs:
         with:
           m2-cache-key: "cljs"
       - name: Build Embedding SDK package
-        run: yarn build-embedding-sdk
+        run: yarn build-embedding-sdk-package
       - name: Prepare Embedding SDK artifact
         uses: actions/upload-artifact@v4
         with:

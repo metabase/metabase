@@ -50,14 +50,7 @@
       "name": "Admin Webapp",
       "label": ".Team/AdminWebapp",
       "members": [
-        "npfitz",
-        "johnswanson",
-        "iethree",
-        "nvoxland",
-        "edpaget",
-        "deniskaber",
-        "alxnddr",
-        "bpander"
+        "eliotmetabase"
       ]
     },
     {
@@ -86,7 +79,11 @@
     {
       "name": "Product Growth",
       "label": ".Team/ProductGrowth",
-      "members": ["nemanjaglumac", "chodorowicz"]
+      "members": [
+        "nemanjaglumac",
+        "chodorowicz",
+        "andsalves"
+      ]
     },
     {
       "name": "Cloud",
@@ -100,6 +97,21 @@
       "label": ".Team/DashViz",
       "members": [
         "eliotmetabase"
+      ]
+    },
+    {
+      "name": "UX West",
+      "label": ".Team/UXWest",
+      "members": [
+        "eliotmetabase",
+        "npfitz",
+        "johnswanson",
+        "iethree",
+        "nvoxland",
+        "edpaget",
+        "deniskaber",
+        "alxnddr",
+        "bpander"
       ]
     }
   ]

@@ -11,6 +11,7 @@ const SDK_CLI_PATH = path.join(
 );
 
 const METABASE_SRC_PATH = path.join(__dirname, "/frontend/src/metabase");
+const TYPES_SRC_PATH = path.join(__dirname, "/frontend/src/metabase-types");
 
 const BABEL_CONFIG = {
   cacheDirectory: process.env.BABEL_DISABLE_CACHE ? false : ".babel_cache",
@@ -31,6 +32,7 @@ const config = {
     extensions: [".ts", ".js"],
     alias: {
       metabase: METABASE_SRC_PATH,
+      "metabase-types": TYPES_SRC_PATH,
       "embedding-sdk": SDK_SRC_PATH,
     },
   },

@@ -1,14 +1,10 @@
-import {
-  InteractiveQuestion,
-  MetabaseProvider,
-  defineMetabaseTheme,
-} from "embedding-sdk";
 import { storybookSdkAuthDefaultConfig } from "embedding-sdk/test/CommonSdkStoryWrapper";
 import {
   dashboardIdArgType,
   dashboardIds,
 } from "embedding-sdk/test/storybook-id-args";
 import { storybookThemes } from "embedding-sdk/test/storybook-themes";
+import { defineMetabaseTheme } from "metabase/embedding-sdk/theme";
 import {
   ActionIcon,
   Box,
@@ -19,6 +15,9 @@ import {
   Stack,
   Title,
 } from "metabase/ui";
+
+import { ComponentProvider } from "../ComponentProvider";
+import { SdkQuestion } from "../SdkQuestion";
 
 import { SdkDashboard, type SdkDashboardProps } from "./SdkDashboard";
 
@@ -152,9 +151,9 @@ export default {
 export const Default = {
   render(args: SdkDashboardProps) {
     return (
-      <MetabaseProvider authConfig={storybookSdkAuthDefaultConfig}>
+      <ComponentProvider authConfig={storybookSdkAuthDefaultConfig}>
         <SdkDashboard {...args} />
-      </MetabaseProvider>
+      </ComponentProvider>
     );
   },
 
@@ -171,9 +170,9 @@ export const Default = {
 export const WithCustomQuestionLayout = {
   render(args: SdkDashboardProps) {
     return (
-      <MetabaseProvider authConfig={storybookSdkAuthDefaultConfig}>
+      <ComponentProvider authConfig={storybookSdkAuthDefaultConfig}>
         <SdkDashboard {...args} />
-      </MetabaseProvider>
+      </ComponentProvider>
     );
   },
 
@@ -181,8 +180,8 @@ export const WithCustomQuestionLayout = {
     dashboardId: DASHBOARD_ID,
     renderDrillThroughQuestion: () => (
       <Stack>
-        <InteractiveQuestion.Title />
-        <InteractiveQuestion.QuestionVisualization />
+        <SdkQuestion.Title />
+        <SdkQuestion.QuestionVisualization />
         <div>This is a custom question layout.</div>
       </Stack>
     ),
@@ -196,12 +195,12 @@ export const WithCustomGridColor = {
     });
 
     return (
-      <MetabaseProvider
+      <ComponentProvider
         authConfig={storybookSdkAuthDefaultConfig}
         theme={theme}
       >
         <SdkDashboard {...args} />
-      </MetabaseProvider>
+      </ComponentProvider>
     );
   },
 
@@ -216,12 +215,12 @@ export const WithCustomGridColor = {
 export const WithDarkTheme = {
   render(args: SdkDashboardProps) {
     return (
-      <MetabaseProvider
+      <ComponentProvider
         authConfig={storybookSdkAuthDefaultConfig}
         theme={darkTheme}
       >
         <SdkDashboard {...args} />
-      </MetabaseProvider>
+      </ComponentProvider>
     );
   },
 
@@ -236,9 +235,9 @@ export const WithDarkTheme = {
 export const MinimalConfiguration = {
   render(args: SdkDashboardProps) {
     return (
-      <MetabaseProvider authConfig={storybookSdkAuthDefaultConfig}>
+      <ComponentProvider authConfig={storybookSdkAuthDefaultConfig}>
         <SdkDashboard {...args} />
-      </MetabaseProvider>
+      </ComponentProvider>
     );
   },
 
@@ -255,9 +254,9 @@ export const MinimalConfiguration = {
 export const WithDownloadsEnabled = {
   render(args: SdkDashboardProps) {
     return (
-      <MetabaseProvider authConfig={storybookSdkAuthDefaultConfig}>
+      <ComponentProvider authConfig={storybookSdkAuthDefaultConfig}>
         <SdkDashboard {...args} />
-      </MetabaseProvider>
+      </ComponentProvider>
     );
   },
 
@@ -272,9 +271,9 @@ export const WithDownloadsEnabled = {
 export const WithCustomStyling = {
   render(args: SdkDashboardProps) {
     return (
-      <MetabaseProvider authConfig={storybookSdkAuthDefaultConfig}>
+      <ComponentProvider authConfig={storybookSdkAuthDefaultConfig}>
         <SdkDashboard {...args} />
-      </MetabaseProvider>
+      </ComponentProvider>
     );
   },
 
@@ -297,9 +296,9 @@ export const WithCustomStyling = {
 export const WithInitialParameters = {
   render(args: SdkDashboardProps) {
     return (
-      <MetabaseProvider authConfig={storybookSdkAuthDefaultConfig}>
+      <ComponentProvider authConfig={storybookSdkAuthDefaultConfig}>
         <SdkDashboard {...args} />
-      </MetabaseProvider>
+      </ComponentProvider>
     );
   },
 
@@ -320,7 +319,7 @@ export const WithInitialParameters = {
 export const ExperimentalLayout = {
   render(args: SdkDashboardProps) {
     return (
-      <MetabaseProvider authConfig={storybookSdkAuthDefaultConfig}>
+      <ComponentProvider authConfig={storybookSdkAuthDefaultConfig}>
         <Paper
           display="flex"
           p="xl"
@@ -360,7 +359,7 @@ export const ExperimentalLayout = {
             </Flex>
           </SdkDashboard>
         </Paper>
-      </MetabaseProvider>
+      </ComponentProvider>
     );
   },
 

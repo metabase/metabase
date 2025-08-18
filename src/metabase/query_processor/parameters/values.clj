@@ -18,7 +18,6 @@
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
-   [metabase.lib.util :as lib.util]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.limit :as limit]
@@ -443,7 +442,7 @@
 
   ([query        :- ::lib.schema/query
     stage-number :- :int]
-   (let [{tags :template-tags, params :parameters} (lib.util/query-stage query stage-number)]
+   (let [{tags :template-tags, params :parameters} (lib/query-stage query stage-number)]
      (log/tracef "Building params map out of tags\n%s\nand params\n%s\n" (u/pprint-to-str tags) (u/pprint-to-str params))
      (try
        (into {} (for [[k tag] tags

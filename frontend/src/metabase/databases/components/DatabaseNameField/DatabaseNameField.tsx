@@ -1,7 +1,8 @@
 import { t } from "ttag";
 
-import FormInput from "metabase/common/components/FormInput";
+import { FormTextInput } from "metabase/forms";
 import { PLUGIN_DB_ROUTING } from "metabase/plugins";
+import { Icon, Tooltip } from "metabase/ui";
 import type { Engine } from "metabase-types/api";
 
 import type { DatabaseFormConfig } from "../DatabaseForm";
@@ -12,7 +13,7 @@ export interface DatabaseNameFieldProps {
   autoFocus?: boolean;
 }
 
-const DatabaseNameField = ({
+export const DatabaseNameField = ({
   engine,
   autoFocus,
   config,
@@ -24,21 +25,22 @@ const DatabaseNameField = ({
     : {};
 
   return (
-    <FormInput
+    <FormTextInput
       name="name"
-      title={t`Display name`}
+      label={t`Display name`}
       placeholder={t`Our ${name}`}
       {...PLUGIN_DB_ROUTING.getDatabaseNameFieldProps(
         config.name?.isSlug || false,
       )}
-      rightIcon="info"
-      // eslint-disable-next-line no-literal-metabase-strings -- Admin settings
-      rightIconTooltip={t`Choose what this data will be called in Metabase.`}
+      rightSection={
+        // eslint-disable-next-line no-literal-metabase-strings -- Admin settings
+        <Tooltip label={t`Choose what this data will be called in Metabase.`}>
+          <Icon name="info" />
+        </Tooltip>
+      }
+      mb="md"
       {...autoFocusProps}
       {...props}
     />
   );
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default DatabaseNameField;
