@@ -84,7 +84,7 @@ export function ListView({
   return (
     <Stack
       className={styles.listViewContainer}
-      style={{ "--grid-columns": rightColumns.length }}
+      style={{ "--grid-columns": Math.max(rightColumns.length, 1) }}
     >
       <Stack className={styles.listContainer}>
         <div className={styles.listHeader}>
@@ -218,7 +218,11 @@ export function ListView({
 
                       return (
                         <div key={colIndex}>
-                          <ColumnValue column={col} value={value} rawValue={rawValue} />
+                          <ColumnValue
+                            column={col}
+                            value={value}
+                            rawValue={rawValue}
+                          />
                         </div>
                       );
                     })}
