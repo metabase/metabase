@@ -10,6 +10,7 @@ import type { InteractiveDashboard } from "embedding-sdk/components/public/dashb
 import type { StaticDashboard } from "embedding-sdk/components/public/dashboard/StaticDashboard";
 import type { SdkDebugInfo } from "embedding-sdk/components/public/debug/SdkDebugInfo";
 import type { useInitData } from "embedding-sdk/hooks/private/use-init-data";
+import type { useLogVersionInfo } from "embedding-sdk/hooks/private/use-log-version-info";
 import type { getSdkStore } from "embedding-sdk/store";
 import type { getCollectionNumericIdFromReference } from "embedding-sdk/store/collections";
 import type { getLoginStatus } from "embedding-sdk/store/selectors";
@@ -24,6 +25,7 @@ import type { getApplicationName } from "metabase/selectors/whitelabel";
  * and should be done via the deprecation of the field first.
  */
 export type MetabaseEmbeddingSdkBundleExports = {
+  // Public Components
   CollectionBrowser: typeof CollectionBrowser;
   CreateDashboardModal: typeof CreateDashboardModal;
   CreateQuestion: typeof CreateQuestion;
@@ -35,6 +37,8 @@ export type MetabaseEmbeddingSdkBundleExports = {
   SdkDebugInfo: typeof SdkDebugInfo;
   StaticDashboard: typeof StaticDashboard;
   StaticQuestion: typeof StaticQuestion;
+
+  // Exports needed for public Hooks that use sdk redux store
   createDashboard: typeof createDashboard;
   getApplicationName: typeof getApplicationName;
   getCollectionNumericIdFromReference: typeof getCollectionNumericIdFromReference;
@@ -42,5 +46,8 @@ export type MetabaseEmbeddingSdkBundleExports = {
   getSdkStore: typeof getSdkStore;
   getSetting: typeof getSetting;
   getUser: typeof getUser;
+
+  // Internal Hooks
   useInitData: typeof useInitData;
+  useLogVersionInfo: typeof useLogVersionInfo;
 };
