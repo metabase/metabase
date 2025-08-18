@@ -86,7 +86,7 @@ const SdkIframeEmbedView = ({
   return match(settings)
     .with(
       {
-        componentName: "metabase-manage-content",
+        componentName: "metabase-browser",
       },
       (settings) => (
         <SdkBreadcrumbsProvider>

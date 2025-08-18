@@ -487,19 +487,16 @@ const MetabaseQuestionElement = createCustomElement("metabase-question", [
   "entity-types",
 ]);
 
-const MetabaseManageContentElement = createCustomElement(
-  "metabase-manage-content",
-  [
-    "initial-collection",
-    "collection-visible-columns",
-    "collection-page-size",
-    "collection-entity-types",
-    "data-picker-entity-types",
-    "with-new-question",
-    "with-new-dashboard",
-    "read-only",
-  ],
-);
+const MetabaseManageContentElement = createCustomElement("metabase-browser", [
+  "initial-collection",
+  "collection-visible-columns",
+  "collection-page-size",
+  "collection-entity-types",
+  "data-picker-entity-types",
+  "with-new-question",
+  "with-new-dashboard",
+  "read-only",
+]);
 
 // Expose the old API that's still used in the tests, we'll probably remove this api unless customers prefer it
 if (typeof window !== "undefined") {

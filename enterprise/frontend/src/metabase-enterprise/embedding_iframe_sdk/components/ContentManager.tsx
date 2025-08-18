@@ -20,7 +20,7 @@ import type { SdkIframeEmbedSettings } from "../types/embed";
 
 interface ContentManagerProps {
   settings: SdkIframeEmbedSettings & {
-    componentName: "metabase-manage-content";
+    componentName: "metabase-browser";
   };
 }
 

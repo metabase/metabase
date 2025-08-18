@@ -88,7 +88,7 @@ export interface ExplorationEmbedOptions {
 }
 
 export interface ManageContentEmbedOptions {
-  componentName: "metabase-manage-content";
+  componentName: "metabase-browser";
 
   /** Which collection to start from? */
   initialCollection: CollectionId;

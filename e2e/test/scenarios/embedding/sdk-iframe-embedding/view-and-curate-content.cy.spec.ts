@@ -14,9 +14,9 @@ describe("scenarios > embedding > sdk iframe embedding > view and curate content
     H.prepareSdkIframeEmbedTest({ withTokenFeatures: true });
   });
 
-  describe("<metabase-manage-content> (read-only mode)", () => {
+  describe("<metabase-browser> (read-only mode)", () => {
     it("should show a collection browser with collection items", () => {
-      setupEmbed('<metabase-manage-content initial-collection="root" />');
+      setupEmbed('<metabase-browser initial-collection="root" />');
 
       H.getSimpleEmbedIframeContent()
         .should("contain", "Name")
@@ -26,7 +26,7 @@ describe("scenarios > embedding > sdk iframe embedding > view and curate content
     });
 
     it("should navigate to question when clicking on a question item", () => {
-      setupEmbed('<metabase-manage-content initial-collection="root" />');
+      setupEmbed('<metabase-browser initial-collection="root" />');
 
       H.getSimpleEmbedIframeContent()
         .findByText("Orders")
@@ -40,7 +40,7 @@ describe("scenarios > embedding > sdk iframe embedding > view and curate content
     });
 
     it("should show New Exploration button and open data picker when clicked", () => {
-      setupEmbed('<metabase-manage-content initial-collection="root" />');
+      setupEmbed('<metabase-browser initial-collection="root" />');
 
       H.getSimpleEmbedIframeContent()
         .findByText("New Exploration")
@@ -54,7 +54,7 @@ describe("scenarios > embedding > sdk iframe embedding > view and curate content
 
     it("should pass through collection-visible-columns parameter", () => {
       setupEmbed(`
-        <metabase-manage-content
+        <metabase-browser
           initial-collection="root"
           collection-visible-columns='["type", "name"]'
         />
@@ -68,7 +68,7 @@ describe("scenarios > embedding > sdk iframe embedding > view and curate content
 
     it("should pass through collection-page-size parameter", () => {
       setupEmbed(`
-        <metabase-manage-content
+        <metabase-browser
           initial-collection="root"
           collection-page-size="5"
         />
@@ -82,7 +82,7 @@ describe("scenarios > embedding > sdk iframe embedding > view and curate content
 
     it("should hide New Exploration button when with-new-question is false", () => {
       setupEmbed(`
-        <metabase-manage-content
+        <metabase-browser
           initial-collection="root"
           with-new-question="false"
         />
@@ -94,10 +94,10 @@ describe("scenarios > embedding > sdk iframe embedding > view and curate content
     });
   });
 
-  describe("<metabase-manage-content> (curate mode)", () => {
+  describe("<metabase-browser> (read-write mode)", () => {
     it("should show New Dashboard button and open modal when clicked", () => {
       setupEmbed(
-        '<metabase-manage-content initial-collection="root" read-only="false" />',
+        '<metabase-browser initial-collection="root" read-only="false" />',
       );
 
       H.getSimpleEmbedIframeContent()
@@ -113,7 +113,7 @@ describe("scenarios > embedding > sdk iframe embedding > view and curate content
 
     it("should show New Exploration button and open data picker when clicked", () => {
       setupEmbed(
-        '<metabase-manage-content initial-collection="root" read-only="false" />',
+        '<metabase-browser initial-collection="root" read-only="false" />',
       );
 
       H.getSimpleEmbedIframeContent()
@@ -129,7 +129,7 @@ describe("scenarios > embedding > sdk iframe embedding > view and curate content
 
     it("should show Save button and save modal without entity picker when creating a new question", () => {
       setupEmbed(
-        '<metabase-manage-content initial-collection="root" read-only="false" />',
+        '<metabase-browser initial-collection="root" read-only="false" />',
       );
 
       H.getSimpleEmbedIframeContent().findByText("New Exploration").click();
@@ -154,7 +154,7 @@ describe("scenarios > embedding > sdk iframe embedding > view and curate content
 
     it("should hide New Dashboard button when with-new-dashboard is false", () => {
       setupEmbed(`
-        <metabase-manage-content
+        <metabase-browser
           initial-collection="root"
           read-only="false"
           with-new-dashboard="false"
@@ -168,7 +168,7 @@ describe("scenarios > embedding > sdk iframe embedding > view and curate content
 
     it("should hide New Exploration button when with-new-question is false", () => {
       setupEmbed(`
-        <metabase-manage-content
+        <metabase-browser
           initial-collection="root"
           read-only="false"
           with-new-question="false"
@@ -182,7 +182,7 @@ describe("scenarios > embedding > sdk iframe embedding > view and curate content
 
     it("should pass through data-picker-entity-types parameter", () => {
       setupEmbed(`
-        <metabase-manage-content
+        <metabase-browser
           initial-collection="root"
           read-only="false"
           data-picker-entity-types='["table"]'
@@ -204,7 +204,7 @@ describe("scenarios > embedding > sdk iframe embedding > view and curate content
 
   describe("breadcrumb navigation", () => {
     it("should show breadcrumbs when navigating between content", () => {
-      setupEmbed('<metabase-manage-content initial-collection="root" />');
+      setupEmbed('<metabase-browser initial-collection="root" />');
 
       cy.log("should show initial breadcrumb");
       H.getSimpleEmbedIframeContent()
