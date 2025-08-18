@@ -148,6 +148,15 @@
         (not param)
         stage
 
+        ;; ignore `:template-tag` parameters... these may be lying around if we had a source card that was native and
+        ;; then replaced it with an MBQL source card.
+        (lib.util.match/match-one target :template-tag &match)
+        (do
+          (log/warnf "Ignoring :template-tag parameter %s because this is an MBQL stage (path = %s)"
+                     (pr-str target)
+                     (pr-str stage-path))
+          (recur stage more-params))
+
         (not target)
         (do
           (log/infof "Ignoring parameter %s because it has no target" (pr-str param))
