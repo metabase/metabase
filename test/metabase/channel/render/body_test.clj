@@ -1071,7 +1071,7 @@
                 (let [doc    (render.tu/render-card-as-hickory! card-id)
                       svg    (html doc)]
                   (testing "Renders with custom whitelabel color"
-                    (is (str/includes? svg "#0005FF")))))))))))
+                    (is (str/includes? svg "#0005FF"))))))))))))
 
 (deftest order-data-handles-duplicated-table-columns-test
   (testing "order-data function handles duplicated table columns correctly"
