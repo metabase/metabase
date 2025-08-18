@@ -35,8 +35,14 @@
      :clj (cond
             (int? x) x
             (integer? x) (long x)
-            (decimal? x) (.longValueExact ^BigDecimal x)
-            :else x)))
+            (decimal? x) (try (.longValueExact ^BigDecimal x)
+                              ;; catch this error since java.lang.ArithmeticException doesn't make sense
+                              (catch java.lang.ArithmeticException e
+                                (throw (ex-info "Non-Integer cannot be used as pivot-grouping column"
+                                                {:data x}
+                                                e))))
+            :else (throw (ex-info "Non-Integer cannot be used as pivot-grouping column"
+                                  {:data x})))))
 
 (defn- pivot-group-column?
   "Is the given column the pivot-grouping column?"

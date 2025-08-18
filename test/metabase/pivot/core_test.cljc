@@ -528,7 +528,7 @@
              result)))))
 
 #?(:clj
-   (deftest ensure-is-int-test
+   (deftest ^:parallel ensure-is-int-test
      (testing "ensure-is-int properly converts different numeric types for bitwise operations"
        (testing "Should handle regular integers"
          (is (= 5 (#'pivot/ensure-is-int 5)))
@@ -556,10 +556,16 @@
                 (#'pivot/ensure-is-int (BigDecimal. (str Integer/MAX_VALUE)))))
 
          ;; Test with zero as BigDecimal
-         (is (= 0 (#'pivot/ensure-is-int BigDecimal/ZERO)))))))
+         (is (= 0 (#'pivot/ensure-is-int BigDecimal/ZERO))))
+       (testing "Should throw if it has decimal places"
+         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Non-Integer cannot be used as pivot-grouping column"
+                               (#'pivot/ensure-is-int (BigDecimal. "42.11")))))
+       (testing "Should throw if not convertible"
+         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Non-Integer cannot be used as pivot-grouping column"
+                               (#'pivot/ensure-is-int "1232")))))))
 
 #?(:clj
-   (deftest bigdecimal-bitwise-operations-integration-test
+   (deftest ^:parallel bigdecimal-bitwise-operations-integration-test
      (testing "Full integration test showing BigDecimal pivot-grouping values work through the bitwise pipeline"
        (testing "Bitwise operations work correctly after ensure-is-int conversion"
          (let [pivot-group-bigdecimal (BigDecimal. "5") ; binary: 101
