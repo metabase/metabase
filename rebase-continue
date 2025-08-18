@@ -1,11 +1,3 @@
 {
-  "continuations": [
-    {
-      "command": [
-        "branch",
-        "restack"
-      ],
-      "branch": "emb-605-add-view-content-and-curate-content-templates-for-new-iframe"
-    }
-  ]
+  "continuations": null
 }
