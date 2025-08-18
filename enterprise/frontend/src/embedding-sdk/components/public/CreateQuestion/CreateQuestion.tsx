@@ -1,7 +1,7 @@
 import {
   InteractiveQuestion,
   type InteractiveQuestionProps,
-} from "embedding-sdk";
+} from "../InteractiveQuestion";
 
 /**
  * @interface
@@ -13,11 +13,6 @@ export type CreateQuestionProps = Omit<
   "questionId" | "children"
 >;
 
-/**
- * @function
- * @category CreateQuestion
- * @deprecated Use `<InteractiveQuestion questionId="new" />` instead.
- * */
 export const CreateQuestion = (props: CreateQuestionProps = {}) => (
   <InteractiveQuestion {...props} questionId="new" />
 );

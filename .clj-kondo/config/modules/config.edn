@@ -71,18 +71,21 @@
            util}}
 
   activity-feed
-  {:team "Admin Webapp"
-   :api  #{metabase.activity-feed.api metabase.activity-feed.init}
+  {:team "UX West"
+   :api  #{metabase.activity-feed.api
+           metabase.activity-feed.core
+           metabase.activity-feed.init}
    :uses #{api
            app-db
            collections
            config
            events
            models
+           premium-features
            util}}
 
   analytics
-  {:team "Admin Webapp"
+  {:team "UX West"
    :api  #{metabase.analytics.api
            metabase.analytics.core
            metabase.analytics.init
@@ -123,17 +126,17 @@
   ;; TODO -- consolidate these into a `.core` API namespace.
   api
   {:team "DevEx"
-   :api #{metabase.api.common
-          metabase.api.common.internal
-          metabase.api.docs
-          metabase.api.init
-          metabase.api.macros
-          metabase.api.open-api
-          metabase.api.response
-          metabase.api.routes.common
-          metabase.api.settings
-          metabase.api.util
-          metabase.api.util.handlers}
+   :api  #{metabase.api.common
+           metabase.api.common.internal
+           metabase.api.docs
+           metabase.api.init
+           metabase.api.macros
+           metabase.api.open-api
+           metabase.api.response
+           metabase.api.routes.common
+           metabase.api.settings
+           metabase.api.util
+           metabase.api.util.handlers}
    :uses #{config
            events
            models
@@ -141,9 +144,10 @@
            util}}
 
   api-keys
-  {:team "Admin Webapp"
+  {:team "UX West"
    :api  #{metabase.api-keys.api
-           metabase.api-keys.core}
+           metabase.api-keys.core
+           metabase.api-keys.schema}
    :uses #{api
            app-db
            events
@@ -153,12 +157,12 @@
            util}}
 
   api-routes
-  {:team "Admin Webapp"
+  {:team "UX West"
    :api  #{metabase.api-routes.core}
    :uses :any}
 
   app-db
-  {:team "Admin Webapp"
+  {:team "UX West"
    :api  #{metabase.app-db.cluster-lock ; TODO FIXME
            metabase.app-db.core
            metabase.app-db.init
@@ -171,13 +175,13 @@
            util}}
 
   appearance
-  {:team "Admin Webapp"
+  {:team "UX West"
    :api  #{metabase.appearance.core
            metabase.appearance.init}
    :uses #{settings util}}
 
   audit-app
-  {:team "Admin Webapp"
+  {:team "UX West"
    :api  #{metabase.audit-app.core
            metabase.audit-app.init}
    :uses #{api
@@ -191,12 +195,12 @@
            util}}
 
   auth-provider
-  {:team "Admin Webapp"
+  {:team "UX West"
    :api  #{metabase.auth-provider.core}
    :uses #{premium-features}}
 
   batch-processing
-  {:team "Admin Webapp"
+  {:team "UX West"
    :api  #{metabase.batch-processing.core
            metabase.batch-processing.init}
    :uses #{app-db
@@ -204,15 +208,17 @@
            util}}
 
   bookmarks
-  {:team "Admin Webapp"
+  {:team "UX West"
    :api  #{metabase.bookmarks.api}
    :uses #{api
            app-db
+           config
+           premium-features
            queries
            util}}
 
   bug-reporting
-  {:team "Admin Webapp"
+  {:team "UX West"
    :api  #{metabase.bug-reporting.api
            metabase.bug-reporting.init}
    :uses #{analytics
@@ -226,7 +232,7 @@
            util}}
 
   cache
-  {:team "Admin Webapp"
+  {:team "UX West"
    :api  #{metabase.cache.api
            metabase.cache.core
            metabase.cache.init}
@@ -285,7 +291,7 @@
    :uses #{util}}
 
   cloud-migration
-  {:team "Admin Webapp"
+  {:team "UX West"
    :api  #{metabase.cloud-migration.api
            metabase.cloud-migration.core
            metabase.cloud-migration.init}
@@ -300,7 +306,7 @@
            util}}
 
   cmd
-  {:team "Admin Webapp"
+  {:team "UX West"
    :api  #{metabase.cmd.copy
            metabase.cmd.core
            metabase.cmd.dump-to-h2}
@@ -318,7 +324,7 @@
            util}}
 
   collections
-  {:team "Admin Webapp"
+  {:team "UX West"
    :api  #{metabase.collections.api
            metabase.collections.models.collection
            metabase.collections.models.collection.root}
@@ -352,12 +358,12 @@
 
   ;; this is not actually a real module, but comes from one of our libraries.
   connection-pool
-  {:team "Admin Webapp"
+  {:team "UX West"
    :api  #{metabase.connection-pool}
    :uses #{}}
 
   content-translation
-  {:team "Admin Webapp"
+  {:team "UX West"
    :api  #{metabase.content-translation.api
            metabase.content-translation.models}
    :uses #{api
@@ -365,7 +371,7 @@
            util}}
 
   content-verification
-  {:team "Admin Webapp"
+  {:team "UX West"
    :api  #{metabase.content-verification.core
            metabase.content-verification.init}
    :uses #{app-db
@@ -373,12 +379,12 @@
            util}}
 
   core
-  {:team "Admin Webapp"
+  {:team "UX West"
    :api  #{metabase.core.initialization-status}
    :uses :any}
 
   dashboards
-  {:team "DashViz"
+  {:team "UX West"
    :api  #{metabase.dashboards.api
            metabase.dashboards.autoplace
            metabase.dashboards.constants
@@ -416,43 +422,43 @@
            xrays}}
 
   database-routing
-  {:team "Admin Webapp"
+  {:team "UX West"
    :api  #{metabase.database-routing.core}
    :uses #{premium-features}}
 
   driver
   {:team "Drivers"
-   :api #{metabase.driver
-          metabase.driver.common
-          metabase.driver.common.parameters
-          metabase.driver.common.parameters.dates
-          metabase.driver.common.parameters.operators
-          metabase.driver.common.parameters.parse
-          metabase.driver.common.parameters.values
-          metabase.driver.ddl.interface
-          metabase.driver.h2
-          metabase.driver.impl
-          metabase.driver.init
-          metabase.driver.mysql
-          metabase.driver.postgres
-          metabase.driver.settings
-          metabase.driver.sql
-          metabase.driver.sql-jdbc.connection
-          metabase.driver.sql-jdbc.execute
-          metabase.driver.sql-jdbc.execute.diagnostic
-          metabase.driver.sql-jdbc.sync
-          metabase.driver.sql.query-processor
-          metabase.driver.sql.query-processor.deprecated
-          metabase.driver.sql.util
-          metabase.driver.sync
-          metabase.driver.util}
+   :api  #{metabase.driver
+           metabase.driver.common
+           metabase.driver.common.parameters
+           metabase.driver.common.parameters.dates
+           metabase.driver.common.parameters.operators
+           metabase.driver.common.parameters.parse
+           metabase.driver.common.parameters.values
+           metabase.driver.ddl.interface
+           metabase.driver.h2
+           metabase.driver.impl
+           metabase.driver.init
+           metabase.driver.mysql
+           metabase.driver.postgres
+           metabase.driver.settings
+           metabase.driver.sql
+           metabase.driver.sql-jdbc.connection
+           metabase.driver.sql-jdbc.execute
+           metabase.driver.sql-jdbc.execute.diagnostic
+           metabase.driver.sql-jdbc.sync
+           metabase.driver.sql.query-processor
+           metabase.driver.sql.query-processor.deprecated
+           metabase.driver.sql.util
+           metabase.driver.sync
+           metabase.driver.util}
    :uses #{driver-api
            util}}
 
   driver-api
   {:team "Drivers"
-   :api #{metabase.driver-api.core
-          metabase.driver-api.init}
+   :api  #{metabase.driver-api.core
+           metabase.driver-api.init}
    :uses #{actions
            api
            app-db
@@ -480,7 +486,7 @@
            warehouses}}
 
   eid-translation
-  {:team "Admin Webapp"
+  {:team "UX West"
    :api  #{metabase.eid-translation.api
            metabase.eid-translation.core
            metabase.eid-translation.init}
@@ -520,7 +526,7 @@
            util}}
 
   formatter
-  {:team "DashViz"
+  {:team "UX West"
    :api  #{metabase.formatter.core}
    :uses #{appearance
            models
@@ -530,7 +536,7 @@
            util}}
 
   geojson
-  {:team "Admin Webapp"
+  {:team "UX West"
    :api  #{metabase.geojson.api
            metabase.geojson.init}
    :uses #{api
@@ -539,7 +545,7 @@
            util}}
 
   indexed-entities
-  {:team "Admin Webapp"
+  {:team "UX West"
    :api  #{metabase.indexed-entities.api
            metabase.indexed-entities.init}
    :uses #{analytics
@@ -555,18 +561,18 @@
            util}}
 
   internal-stats
-  {:team "Admin Webapp"
-   :api #{metabase.internal-stats.core}
+  {:team "UX West"
+   :api  #{metabase.internal-stats.core}
    :uses #{app-db
            models}}
 
   legacy-mbql
   {:team "Querying"
-   :api #{metabase.legacy-mbql.normalize
-          metabase.legacy-mbql.predicates
-          metabase.legacy-mbql.schema
-          metabase.legacy-mbql.schema.helpers
-          metabase.legacy-mbql.util}
+   :api  #{metabase.legacy-mbql.normalize
+           metabase.legacy-mbql.predicates
+           metabase.legacy-mbql.schema
+           metabase.legacy-mbql.schema.helpers
+           metabase.legacy-mbql.util}
    :uses #{lib
            models
            types
@@ -574,49 +580,50 @@
 
   lib
   {:team "Querying"
-   :api #{metabase.lib.binning
-          metabase.lib.binning.util
-          metabase.lib.card
-          metabase.lib.core
-          metabase.lib.equality
-          metabase.lib.field
-          metabase.lib.field.resolution
-          metabase.lib.filter
-          metabase.lib.init
-          metabase.lib.join.util
-          metabase.lib.metadata
-          metabase.lib.metadata.cached-provider
-          metabase.lib.metadata.invocation-tracker
-          metabase.lib.metadata.protocols
-          metabase.lib.metadata.result-metadata
-          metabase.lib.normalize
-          metabase.lib.options
-          metabase.lib.parse
-          metabase.lib.query
-          metabase.lib.schema
-          metabase.lib.schema.actions
-          metabase.lib.schema.binning
-          metabase.lib.schema.common
-          metabase.lib.schema.expression
-          metabase.lib.schema.expression.temporal
-          metabase.lib.schema.expression.window
-          metabase.lib.schema.id
-          metabase.lib.schema.info
-          metabase.lib.schema.join
-          metabase.lib.schema.literal
-          metabase.lib.schema.metadata
-          metabase.lib.schema.metadata.fingerprint
-          metabase.lib.schema.order-by
-          metabase.lib.schema.parameter
-          metabase.lib.schema.ref
-          metabase.lib.schema.template-tag
-          metabase.lib.schema.temporal-bucketing
-          metabase.lib.schema.util
-          metabase.lib.temporal-bucket
-          metabase.lib.types.isa
-          metabase.lib.util
-          metabase.lib.util.match
-          metabase.lib.walk}
+   :api  #{metabase.lib.binning
+           metabase.lib.binning.util
+           metabase.lib.card
+           metabase.lib.core
+           metabase.lib.equality
+           metabase.lib.field
+           metabase.lib.field.resolution
+           metabase.lib.filter
+           metabase.lib.init
+           metabase.lib.join.util
+           metabase.lib.metadata
+           metabase.lib.metadata.cached-provider
+           metabase.lib.metadata.invocation-tracker
+           metabase.lib.metadata.protocols
+           metabase.lib.metadata.result-metadata
+           metabase.lib.normalize
+           metabase.lib.options
+           metabase.lib.parse
+           metabase.lib.query
+           metabase.lib.schema
+           metabase.lib.schema.actions
+           metabase.lib.schema.binning
+           metabase.lib.schema.common
+           metabase.lib.schema.expression
+           metabase.lib.schema.expression.temporal
+           metabase.lib.schema.expression.window
+           metabase.lib.schema.id
+           metabase.lib.schema.info
+           metabase.lib.schema.join
+           metabase.lib.schema.literal
+           metabase.lib.schema.mbql-clause
+           metabase.lib.schema.metadata
+           metabase.lib.schema.metadata.fingerprint
+           metabase.lib.schema.order-by
+           metabase.lib.schema.parameter
+           metabase.lib.schema.ref
+           metabase.lib.schema.template-tag
+           metabase.lib.schema.temporal-bucketing
+           metabase.lib.schema.util
+           metabase.lib.temporal-bucket
+           metabase.lib.types.isa
+           metabase.lib.util
+           metabase.lib.util.match
+           metabase.lib.walk}
    :uses #{config
            legacy-mbql
            types
@@ -624,9 +631,9 @@
 
   lib-be
   {:team "Querying"
-   :api #{metabase.lib-be.core
-          metabase.lib-be.init
-          metabase.lib-be.metadata.jvm}
+   :api  #{metabase.lib-be.core
+           metabase.lib-be.init
+           metabase.lib-be.metadata.jvm}
    :uses #{lib
            models
            settings
@@ -645,10 +652,10 @@
            util}}
 
   login-history
-  {:team "Admin Webapp"
-   :api #{metabase.login-history.api
-          metabase.login-history.core
-          metabase.login-history.init}
+  {:team "UX West"
+   :api  #{metabase.login-history.api
+           metabase.login-history.core
+           metabase.login-history.init}
    :uses #{analytics
            api
            channel
@@ -658,9 +665,9 @@
 
   model-persistence
   {:team "Querying"
-   :api #{metabase.model-persistence.api
-          metabase.model-persistence.core
-          metabase.model-persistence.init}
+   :api  #{metabase.model-persistence.api
+           metabase.model-persistence.core
+           metabase.model-persistence.init}
    :uses #{api
            app-db
            driver
@@ -680,14 +687,14 @@
 
   models
   {:team "DevEx"
-   :api #{metabase.models.dispatch
-          metabase.models.humanization
-          metabase.models.init
-          metabase.models.interface
-          metabase.models.resolution
-          metabase.models.serialization
-          metabase.models.util.spec-update
-          metabase.models.visualization-settings}
+   :api  #{metabase.models.dispatch
+           metabase.models.humanization
+           metabase.models.init
+           metabase.models.interface
+           metabase.models.resolution
+           metabase.models.serialization
+           metabase.models.util.spec-update
+           metabase.models.visualization-settings}
    :uses #{api
            app-db
            classloader
@@ -764,7 +771,7 @@
            warehouses}}
 
   permissions
-  {:team "Admin Webapp"
+  {:team "UX West"
    :api  #{metabase.permissions.api
            metabase.permissions.core
            metabase.permissions.init}
@@ -782,8 +789,8 @@
            enterprise/advanced-permissions}}
 
   pivot
-  {:team "DashViz"
-   :api #{metabase.pivot.core}
+  {:team "UX West"
+   :api  #{metabase.pivot.core}
    :uses #{models
            util}}
 
@@ -796,7 +803,7 @@
            util}}
 
   premium-features
-  {:team "Admin Webapp"
+  {:team "UX West"
    :api  #{metabase.premium-features.api
            metabase.premium-features.core
            metabase.premium-features.init}
@@ -809,7 +816,7 @@
            util}}
 
   product-feedback
-  {:team "Admin Webapp"
+  {:team "UX West"
    :api  #{metabase.product-feedback.api
            metabase.product-feedback.init}
    :uses #{analytics
@@ -824,7 +831,7 @@
            util}}
 
   public-sharing
-  {:team "Admin Webapp"
+  {:team "UX West"
    :api  #{metabase.public-sharing.api
            metabase.public-sharing.core
            metabase.public-sharing.init
@@ -876,7 +883,7 @@
            metabase.queries.core
            metabase.queries.init
            metabase.queries.models.query ; TODO FIXME
-           metabase.queries.schema}      ; TODO FIXME
+           metabase.queries.schema} ; TODO FIXME
    :uses #{analytics
            analyze
            api
@@ -910,7 +917,7 @@
            warehouse-schema}}
 
   query-permissions
-  {:team "Admin Webapp"
+  {:team "UX West"
    :api  #{metabase.query-permissions.core}
    :uses #{api
            legacy-mbql
@@ -923,41 +930,41 @@
 
   query-processor
   {:team "Querying"
-   :api #{metabase.query-processor
-          metabase.query-processor.api
-          metabase.query-processor.card
-          metabase.query-processor.compile
-          metabase.query-processor.dashboard
-          metabase.query-processor.debug
-          metabase.query-processor.error-type
-          metabase.query-processor.init
-          metabase.query-processor.interface
-          metabase.query-processor.metadata
-          metabase.query-processor.middleware.annotate
-          metabase.query-processor.middleware.cache-backend.db
-          metabase.query-processor.middleware.constraints
-          metabase.query-processor.middleware.fetch-source-query-legacy
-          metabase.query-processor.middleware.limit
-          metabase.query-processor.middleware.permissions
-          metabase.query-processor.middleware.wrap-value-literals
-          metabase.query-processor.pipeline
-          metabase.query-processor.pivot
-          metabase.query-processor.preprocess
-          metabase.query-processor.reducible
-          metabase.query-processor.schema
-          metabase.query-processor.setup
-          metabase.query-processor.store
-          metabase.query-processor.streaming
-          metabase.query-processor.streaming.common
-          metabase.query-processor.streaming.interface
-          metabase.query-processor.timezone
-          metabase.query-processor.util
-          metabase.query-processor.util.add-alias-info
-          metabase.query-processor.util.nest-query
-          metabase.query-processor.util.persisted-cache
-          metabase.query-processor.util.relative-datetime
-          metabase.query-processor.util.transformations.nest-breakouts
-          metabase.query-processor.writeback}
+   :api  #{metabase.query-processor
+           metabase.query-processor.api
+           metabase.query-processor.card
+           metabase.query-processor.compile
+           metabase.query-processor.dashboard
+           metabase.query-processor.debug
+           metabase.query-processor.error-type
+           metabase.query-processor.init
+           metabase.query-processor.interface
+           metabase.query-processor.metadata
+           metabase.query-processor.middleware.annotate
+           metabase.query-processor.middleware.cache-backend.db
+           metabase.query-processor.middleware.constraints
+           metabase.query-processor.middleware.fetch-source-query-legacy
+           metabase.query-processor.middleware.limit
+           metabase.query-processor.middleware.permissions
+           metabase.query-processor.middleware.wrap-value-literals
+           metabase.query-processor.pipeline
+           metabase.query-processor.pivot
+           metabase.query-processor.preprocess
+           metabase.query-processor.reducible
+           metabase.query-processor.schema
+           metabase.query-processor.setup
+           metabase.query-processor.store
+           metabase.query-processor.streaming
+           metabase.query-processor.streaming.common
+           metabase.query-processor.streaming.interface
+           metabase.query-processor.timezone
+           metabase.query-processor.util
+           metabase.query-processor.util.add-alias-info
+           metabase.query-processor.util.nest-query
+           metabase.query-processor.util.persisted-cache
+           metabase.query-processor.util.relative-datetime
+           metabase.query-processor.util.transformations.nest-breakouts
+           metabase.query-processor.writeback}
    :uses #{analytics
            analyze
            api
@@ -990,19 +997,20 @@
            util}}
 
   request
-  {:team "Admin Webapp"
+  {:team "UX West"
    :api  #{metabase.request.core
-           metabase.request.init}
+           metabase.request.init
+           metabase.request.schema}
    :uses #{api
            config
-           permissions                  ; FIXME
+           permissions ; FIXME
            session
            settings
            users
            util}}
 
   revisions
-  {:team "Admin Webapp"
+  {:team "UX West"
    :api  #{metabase.revisions.api
            metabase.revisions.core
            metabase.revisions.init}
@@ -1011,11 +1019,12 @@
            dashboards
            events
            models
+           queries
            query-permissions
            util}}
 
   sample-data
-  {:team "Admin Webapp"
+  {:team "UX West"
    :api  #{metabase.sample-data.core
            metabase.sample-data.init}
    :uses #{plugins
@@ -1024,15 +1033,17 @@
            util}}
 
   search
-  {:team "Admin Webapp"
-   :api #{metabase.search.api
-          metabase.search.appdb.scoring
-          metabase.search.config
-          metabase.search.core
-          metabase.search.in-place.scoring
-          metabase.search.ingestion
-          metabase.search.init
-          metabase.search.spec}
+  {:team "UX West"
+   :api  #{metabase.search.api
+           metabase.search.appdb.scoring
+           metabase.search.config
+           metabase.search.core
+           metabase.search.engine
+           metabase.search.in-place.scoring
+           metabase.search.ingestion
+           metabase.search.init
+           metabase.search.scoring
+           metabase.search.spec}
    :uses #{analytics
            api
            app-db
@@ -1073,11 +1084,11 @@
            xrays}}
 
   server
-  {:team "Admin Webapp"
-   :api #{metabase.server.core
-          metabase.server.init
-          metabase.server.middleware.session
-          metabase.server.streaming-response} ; TODO -- too many API namespaces
+  {:team "UX West"
+   :api  #{metabase.server.core
+           metabase.server.init
+           metabase.server.middleware.session
+           metabase.server.streaming-response} ; TODO -- too many API namespaces
    :uses #{analytics
            api
            api-keys
@@ -1097,12 +1108,12 @@
            enterprise/sso}}
 
   session
-  {:team "Admin Webapp"
+  {:team "UX West"
    :api  #{metabase.session.api
            metabase.session.core
            metabase.session.init
            metabase.session.models.session ; TODO -- shouldn't be exposed as an API namespace
-           metabase.session.settings}      ; TODO -- shouldn't be exposed as an API namespace
+           metabase.session.settings} ; TODO -- shouldn't be exposed as an API namespace
    :uses #{api
            app-db
            channel
@@ -1134,7 +1145,7 @@
            enterprise/advanced-permissions}}
 
   setup
-  {:team "Admin Webapp"
+  {:team "UX West"
    :api  #{metabase.setup.api
            metabase.setup.core
            metabase.setup.init}
@@ -1154,7 +1165,7 @@
            util}}
 
   sso
-  {:team "Admin Webapp"
+  {:team "UX West"
    :api  #{metabase.sso.api
            metabase.sso.core
            metabase.sso.init}
@@ -1173,12 +1184,12 @@
 
   sync
   {:team "Querying"
-   :api #{metabase.sync.api
-          metabase.sync.core
-          metabase.sync.init
-          metabase.sync.schedules
-          metabase.sync.task.sync-databases
-          metabase.sync.util}
+   :api  #{metabase.sync.api
+           metabase.sync.core
+           metabase.sync.init
+           metabase.sync.schedules
+           metabase.sync.task.sync-databases
+           metabase.sync.util}
    :uses #{analyze
            api
            app-db
@@ -1197,21 +1208,21 @@
            warehouses}}
 
   system
-  {:team "Admin Webapp"
+  {:team "UX West"
    :api  #{metabase.system.core
            metabase.system.init}
    :uses #{appearance settings util}}
 
   task
-  {:team "Admin Webapp"
-   :api #{metabase.task.bootstrap
-          metabase.task.core}
+  {:team "UX West"
+   :api  #{metabase.task.bootstrap
+           metabase.task.core}
    :uses #{app-db
            classloader
            util}}
 
   task-history
-  {:team "Admin Webapp"
+  {:team "UX West"
    :api  #{metabase.task-history.api
            metabase.task-history.core
            metabase.task-history.init}
@@ -1237,7 +1248,7 @@
            util}}
 
   tiles
-  {:team "DashViz"
+  {:team "UX West"
    :api  #{metabase.tiles.api
            metabase.tiles.init}
    :uses #{api
@@ -1247,7 +1258,7 @@
            util}}
 
   timeline
-  {:team "Admin Webapp"
+  {:team "UX West"
    :api  #{metabase.timeline.api
            metabase.timeline.core}
    :uses #{analytics
@@ -1285,7 +1296,7 @@
            warehouse-schema}}
 
   user-key-value
-  {:team "Admin Webapp"
+  {:team "UX West"
    :api  #{metabase.user-key-value.api
            metabase.user-key-value.init}
    :uses #{api
@@ -1294,7 +1305,7 @@
            util}}
 
   users
-  {:team "Admin Webapp"
+  {:team "UX West"
    :api  #{metabase.users.api
            metabase.users.init
            metabase.users.models.user
@@ -1328,7 +1339,7 @@
            system}}
 
   version
-  {:team "Admin Webapp"
+  {:team "UX West"
    :api  #{metabase.version.core
            metabase.version.init}
    :uses #{config
@@ -1338,7 +1349,7 @@
            util}}
 
   view-log
-  {:team "Admin Webapp"
+  {:team "UX West"
    :api  #{metabase.view-log.core
            metabase.view-log.init}
    :uses #{analytics
@@ -1353,7 +1364,7 @@
            util}}
 
   warehouse-schema
-  {:team "Admin Webapp"
+  {:team "UX West"
    :api  #{metabase.warehouse-schema.api
            metabase.warehouse-schema.field
            metabase.warehouse-schema.metadata-from-qp
@@ -1388,7 +1399,7 @@
            xrays}}
 
   warehouses
-  {:team "Admin Webapp"
+  {:team "UX West"
    :api  #{metabase.warehouses.api
            metabase.warehouses.core
            metabase.warehouses.init
@@ -1456,7 +1467,7 @@
            warehouse-schema}}
 
   enterprise/advanced-config
-  {:team "Admin Webapp"
+  {:team "UX West"
    :api  #{metabase-enterprise.advanced-config.api.logs
            metabase-enterprise.advanced-config.file
            metabase-enterprise.advanced-config.init
@@ -1474,7 +1485,7 @@
            util}}
 
   enterprise/advanced-permissions
-  {:team "Admin Webapp"
+  {:team "UX West"
    :api  #{metabase-enterprise.advanced-permissions.api.routes
            metabase-enterprise.advanced-permissions.common
            metabase-enterprise.advanced-permissions.models.permissions.group-manager}
@@ -1505,7 +1516,7 @@
            enterprise/metabot-v3}}
 
   enterprise/ai-sql-generation
-  {:team  "Metabot"
+  {:team "Metabot"
    :api  #{metabase-enterprise.ai-sql-generation.api}
    :uses #{api
            driver
@@ -1514,22 +1525,23 @@
            enterprise/metabot-v3}}
 
   enterprise/analytics
-  {:team "Admin Webapp"
+  {:team "UX West"
    :api  #{}
    :uses #{driver
            premium-features
            enterprise/advanced-config
            enterprise/scim
+           enterprise/semantic-search
            enterprise/sso}}
 
   enterprise/api
-  {:team "Admin Webapp"
+  {:team "UX West"
    :api  #{metabase-enterprise.api.routes
            metabase-enterprise.api.routes.common}
    :uses :any}
 
   enterprise/audit-app
-  {:team "Admin Webapp"
+  {:team "UX West"
    :api  #{metabase-enterprise.audit-app.api.routes
            metabase-enterprise.audit-app.init}
    :uses #{api
@@ -1551,19 +1563,19 @@
            enterprise/serialization}}
 
   enterprise/auth-provider
-  {:team "Admin Webapp"
+  {:team "UX West"
    :api  #{}
    :uses #{premium-features
            util}}
 
   enterprise/billing
-  {:team "Admin Webapp"
+  {:team "UX West"
    :api  #{metabase-enterprise.billing.api.routes}
    :uses #{api
            premium-features util}}
 
   enterprise/cache
-  {:team "Admin Webapp"
+  {:team "UX West"
    :api  #{metabase-enterprise.cache.init}
    :uses #{cache
            premium-features
@@ -1572,7 +1584,7 @@
            util}}
 
   enterprise/content-translation
-  {:team "Admin Webapp"
+  {:team "UX West"
    :api  #{metabase-enterprise.content-translation.dictionary
            metabase-enterprise.content-translation.routes}
    :uses #{api
@@ -1583,7 +1595,7 @@
            enterprise/api}}
 
   enterprise/content-verification
-  {:team "Admin Webapp"
+  {:team "UX West"
    :api  #{metabase-enterprise.content-verification.api.routes}
    :uses #{api
            content-verification
@@ -1620,7 +1632,7 @@
            enterprise/harbormaster}}
 
   enterprise/database-routing
-  {:team "Admin Webapp"
+  {:team "UX West"
    :api  #{metabase-enterprise.database-routing.api}
    :uses #{api
            config
@@ -1636,8 +1648,30 @@
            warehouse-schema
            warehouses}}
 
+  enterprise/documents
+  {:team "UX West"
+   :api  #{metabase-enterprise.documents.api
+           metabase-enterprise.documents.core
+           metabase-enterprise.documents.init}
+   :uses #{activity-feed
+           api
+           app-db
+           batch-processing
+           collections
+           events
+           models
+           permissions
+           premium-features
+           queries
+           query-permissions
+           revisions
+           search
+           users
+           util
+           view-log}}
+
   enterprise/email
-  {:team "Admin Webapp"
+  {:team "UX West"
    :api  #{metabase-enterprise.email.api}
    :uses #{api
            channel
@@ -1647,7 +1681,7 @@
            util}}
 
   enterprise/gsheets
-  {:team  "Cloud"
+  {:team "Cloud"
    :api  #{metabase-enterprise.gsheets.api
            metabase-enterprise.gsheets.init}
    :uses #{analytics
@@ -1679,7 +1713,7 @@
            enterprise/sandbox}}
 
   enterprise/internal-stats
-  {:team "Admin Webapp"
+  {:team "UX West"
    :api  #{}
    :uses #{premium-features
            settings}}
@@ -1687,7 +1721,8 @@
   enterprise/llm
   {:team "Metabot"
    :api  #{metabase-enterprise.llm.api
-           metabase-enterprise.llm.init}
+           metabase-enterprise.llm.init
+           metabase-enterprise.llm.settings}
    :uses #{analytics
            analyze
            api
@@ -1698,10 +1733,11 @@
 
   enterprise/metabot-v3
   {:team "Metabot"
-   :api #{metabase-enterprise.metabot-v3.api
-          metabase-enterprise.metabot-v3.core
-          metabase-enterprise.metabot-v3.init
-          metabase-enterprise.metabot-v3.tools.api}
+   :api  #{metabase-enterprise.metabot-v3.api
+           metabase-enterprise.metabot-v3.client
+           metabase-enterprise.metabot-v3.core
+           metabase-enterprise.metabot-v3.init
+           metabase-enterprise.metabot-v3.tools.api}
    :uses #{api
            app-db
            collections
@@ -1718,14 +1754,17 @@
            request
            server
            settings
+           sync
            system
            users
            util
-           warehouse-schema}}
+           warehouse-schema
+           warehouses
+           enterprise/documents}}
 
   enterprise/permission-debug
-  {:team "Admin Webapp"
-   :api #{metabase-enterprise.permission-debug.api}
+  {:team "UX West"
+   :api  #{metabase-enterprise.permission-debug.api}
    :uses #{api
            lib
            models
@@ -1734,15 +1773,15 @@
            util}}
 
   enterprise/premium-features
-  {:team "Admin Webapp"
+  {:team "UX West"
    :api  #{}
    :uses #{premium-features
            util}}
 
   enterprise/sandbox
-  {:team "Admin Webapp"
-   :api #{metabase-enterprise.sandbox.api.routes
-          metabase-enterprise.sandbox.api.util}
+  {:team "UX West"
+   :api  #{metabase-enterprise.sandbox.api.routes
+           metabase-enterprise.sandbox.api.util}
    :uses #{api
            app-db
            audit-app
@@ -1763,7 +1802,7 @@
            enterprise/api}}
 
   enterprise/scim
-  {:team "Admin Webapp"
+  {:team "UX West"
    :api  #{metabase-enterprise.scim.core
            metabase-enterprise.scim.init
            metabase-enterprise.scim.routes}
@@ -1780,16 +1819,35 @@
            enterprise/serialization}}
 
   enterprise/search
-  {:team "Admin Webapp"
+  {:team "UX West"
    :api  #{}
    :uses #{premium-features
            search}}
 
+  enterprise/semantic-search
+  {:team "Metabot"
+   :api  #{metabase-enterprise.semantic-search.api
+           metabase-enterprise.semantic-search.core
+           metabase-enterprise.semantic-search.init}
+   :uses #{analytics
+           api
+           config
+           connection-pool
+           models
+           permissions
+           premium-features
+           search
+           settings
+           task
+           util
+           enterprise/llm
+           enterprise/metabot-v3}}
+
   enterprise/serialization
   {:team "Workflows"
-   :api #{metabase-enterprise.serialization.api
-          metabase-enterprise.serialization.cmd
-          metabase-enterprise.serialization.v2.backfill-ids}
+   :api  #{metabase-enterprise.serialization.api
+           metabase-enterprise.serialization.cmd
+           metabase-enterprise.serialization.v2.backfill-ids}
    :uses #{analytics
            api
            app-db
@@ -1818,10 +1876,10 @@
            util}}
 
   enterprise/sso
-  {:team "Admin Webapp"
-   :api #{metabase-enterprise.sso.api.routes
-          metabase-enterprise.sso.init
-          metabase-enterprise.sso.settings}
+  {:team "UX West"
+   :api  #{metabase-enterprise.sso.api.routes
+           metabase-enterprise.sso.init
+           metabase-enterprise.sso.settings}
    :uses #{api
            appearance
            channel
@@ -1839,7 +1897,7 @@
            enterprise/scim}}
 
   enterprise/stale
-  {:team "Admin Webapp"
+  {:team "UX West"
    :api  #{metabase-enterprise.stale.api
            metabase-enterprise.stale.init}
    :uses #{analytics
@@ -1852,8 +1910,31 @@
            settings
            util}}
 
+  enterprise/transforms
+  {:team "Querying"
+   :api  #{metabase-enterprise.transforms.api
+           metabase-enterprise.transforms.core
+           metabase-enterprise.transforms.init}
+   :uses #{api
+           app-db
+           config
+           driver
+           events
+           lib
+           lib-be
+           models
+           permissions
+           premium-features
+           query-processor
+           request
+           settings
+           sync
+           task
+           task-history
+           util}}
+
   enterprise/upload-management
-  {:team "Admin Webapp"
+  {:team "UX West"
    :api  #{metabase-enterprise.upload-management.api}
    :uses #{api
            models
@@ -1871,6 +1952,7 @@
   {:ignored-namespace-patterns
    #{"-test$"                               ; anything ending in `-test`
      "test[-.]util"                         ; anything that contains `test.util` or `test-util`
+     "test[-.]dataset"                      ; anything that contains `test.dataset` or `test-dataset`
      "test\\.impl"                          ; anything that contains `test.impl`
      "test-setup"                           ; anything that contains `test-setup`
      "^metabase(?:-enterprise)?\\.test"}}}} ; anything starting with `metabase.test` or `metabase-enterprise.test`

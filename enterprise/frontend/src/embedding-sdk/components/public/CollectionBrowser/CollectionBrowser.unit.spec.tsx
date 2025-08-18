@@ -51,7 +51,7 @@ describe("CollectionBrowser", () => {
     const state = setupSdkState();
 
     renderWithSDKProviders(<CollectionBrowser collectionId="root" />, {
-      sdkProviderProps: {
+      componentProviderProps: {
         authConfig: createMockSdkConfig(),
       },
       storeInitialState: state,
@@ -120,7 +120,7 @@ async function setup({
   renderWithSDKProviders(
     <CollectionBrowserInner collectionId="root" {...props} />,
     {
-      sdkProviderProps: {
+      componentProviderProps: {
         authConfig: createMockSdkConfig(),
       },
       storeInitialState: state,
@@ -131,7 +131,9 @@ async function setup({
 
   await waitFor(() => {
     expect(
-      fetchMock.calls(`path:/api/collection/${ROOT_TEST_COLLECTION.id}/items`),
+      fetchMock.callHistory.calls(
+        `path:/api/collection/${ROOT_TEST_COLLECTION.id}/items`,
+      ),
     ).toHaveLength(1);
   });
 }

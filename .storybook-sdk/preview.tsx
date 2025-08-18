@@ -1,12 +1,20 @@
 import { GlobalTypes } from "@storybook/types";
 import { initialize, mswLoader } from "msw-storybook-addon";
 
+import { storybookThemeOptions } from "embedding-sdk/test/storybook-themes";
+
+import { availableLocales } from "./constants";
+import { defineGlobalDependencies } from "../frontend/src/metabase/embedding-sdk/lib/define-global-dependencies";
+
+// To run initialization side effects like Mantine styles, dayjs plugins, etc
+// Also to properly watch and recompile when the SDK code is updated
+// This does not break the SDK Bundle loading logic
+import "embedding-sdk/bundle";
+defineGlobalDependencies();
+
 // @ts-expect-error: See metabase/lib/delay
 // This will skip the skippable delays in stories
 window.METABASE_REMOVE_DELAYS = true;
-
-import { storybookThemeOptions } from "embedding-sdk/test/storybook-themes";
-import { availableLocales } from "./constants";
 
 const parameters = {
   actions: { argTypesRegex: "^on[A-Z].*" },
@@ -18,7 +26,7 @@ const parameters = {
   },
 };
 
-const decorators = []; // No decorators for Embedding SDK stories, as we want to simulate real use cases
+const decorators = [];
 
 const globalTypes: GlobalTypes = {
   sdkTheme: {

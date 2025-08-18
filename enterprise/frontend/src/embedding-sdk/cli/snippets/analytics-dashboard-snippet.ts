@@ -1,16 +1,13 @@
+import { SDK_PACKAGE_NAME } from "../constants/config";
 import type { DashboardInfo } from "../types/dashboard";
-import { getSdkPackageName } from "../utils/snippets-helpers";
 
 interface Options {
   dashboards: DashboardInfo[];
   userSwitcherEnabled: boolean;
-  isNextJs: boolean;
 }
 
 export const getAnalyticsDashboardSnippet = (options: Options) => {
-  const { dashboards, userSwitcherEnabled, isNextJs } = options;
-
-  const sdkPackageName = getSdkPackageName({ isNextJs });
+  const { dashboards, userSwitcherEnabled } = options;
 
   let imports = `import { ThemeSwitcher } from './theme-switcher'`;
 
@@ -20,7 +17,7 @@ export const getAnalyticsDashboardSnippet = (options: Options) => {
 
   return `
 import { useState, useContext, useReducer } from 'react'
-import { InteractiveDashboard, InteractiveQuestion } from '${sdkPackageName}'
+import { InteractiveDashboard, InteractiveQuestion } from '${SDK_PACKAGE_NAME}'
 import { AnalyticsContext } from "./analytics-provider"
 
 ${imports}
