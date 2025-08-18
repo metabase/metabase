@@ -35,7 +35,7 @@
   [_ttype value]
   (cond
     (number? value) nil
-    (string? value) (when-not (can-parse? Double/parseDouble value)
+    (string? value) (when-not (can-parse? #(Double/parseDouble String %) value)
                       "Must be a number")
     :else "Must be a number"))
 
@@ -43,7 +43,7 @@
   [_ttype value]
   (cond
     (integer? value) nil
-    (string? value) (when-not (can-parse? Long/parseLong value)
+    (string? value) (when-not (can-parse? #(Long/parseLong %) value)
                       "Must be an integer")
     :else "Must be an integer"))
 
