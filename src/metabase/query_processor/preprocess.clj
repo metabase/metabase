@@ -154,7 +154,7 @@
    (ensure-pmbql #'qp.add-remaps/add-remapped-columns)
    #'qp.resolve-fields/resolve-fields ; this middleware actually works with either MBQL 5 or legacy
    (ensure-pmbql #'binning/update-binning-strategy)
-   (ensure-legacy #'desugar/desugar)
+   (ensure-pmbql #'desugar/desugar)
    (ensure-legacy #'qp.add-default-temporal-unit/add-default-temporal-unit)
    (ensure-pmbql #'qp.add-implicit-joins/add-implicit-joins)
    (ensure-legacy #'resolve-joins/resolve-joins)

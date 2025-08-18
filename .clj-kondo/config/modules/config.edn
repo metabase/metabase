@@ -588,6 +588,8 @@
            metabase.lib.field
            metabase.lib.field.resolution
            metabase.lib.filter
+           metabase.lib.filter.desugar
+           metabase.lib.filter.desugar.jvm
            metabase.lib.init
            metabase.lib.join.util
            metabase.lib.metadata

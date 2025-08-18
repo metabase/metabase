@@ -1,6 +1,7 @@
 (ns metabase.legacy-mbql.util-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:level :off}}}}
   (:require
-   #?@(:clj  (^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.test :as mt])
+   #?@(:clj  ([metabase.test.util.i18n])
        :cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.string :as str]
    [clojure.test :as t]
@@ -586,7 +587,7 @@
 
 (t/deftest ^:parallel desugar-temporal-extract-test
   (t/testing "desugaring :get-year, :get-month, etc"
-    (doseq [[[op mode] unit] mbql.u/temporal-extract-ops->unit]
+    (doseq [[[op mode] unit] @#'mbql.u/temporal-extract-ops->unit]
       (t/is (= [:temporal-extract [:field 1 nil] unit]
                (mbql.u/desugar-temporal-extract [op [:field 1 nil] mode])))
 
@@ -1039,7 +1040,7 @@
   (t/is (= [:=
             [:expression "Date" {:temporal-unit :quarter}]
             [:relative-datetime 0 :quarter]]
-           (mbql.u/desugar-time-interval [:time-interval [:expression "Date"] :current :quarter]))))
+           (#'mbql.u/desugar-time-interval [:time-interval [:expression "Date"] :current :quarter]))))
 
 (t/deftest ^:parallel desugar-month-quarter-day-name-test
   (t/is (= [:case [[[:= [:field 1 nil] 1]  "Jan"]
@@ -1077,7 +1078,7 @@
 
 #?(:clj
    (t/deftest ^:synchronized desugar-month-quarter-day-name-i18n-test
-     (mt/with-user-locale "es"
+     (metabase.test.util.i18n/with-user-locale "es"
        ;; JVM versions 17 and older for some languages (including Spanish) use eg. "oct.", while in JVMs 18+ they
        ;; use "oct". I wish I were joking, but I'm not. These tests were passing on 21 and failing on 17 and 11
        ;; before I made them flexible about the dot.

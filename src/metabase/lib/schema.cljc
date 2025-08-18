@@ -122,7 +122,11 @@
              stage stage))
 
 (defn- expression-ref-errors-for-stage [stage]
-  (let [expression-names (into #{} (map (comp :lib/expression-name second)) (:expressions stage))
+  (let [stage (dissoc stage :parameters) ; don't validate [:dimension [:expression ...]] refs since they might not be moved to the correct place yet.
+        expression-names (when-let [expressions (:expressions stage)]
+                           (when (and (sequential? expressions)
+                                      (every? sequential? expressions))
+                             (into #{} (map (comp :lib/expression-name second)) expressions)))
         pred #(bad-ref-clause? :expression expression-names %)
         form (-> (stage-with-joins-and-namespaced-keys-removed stage)
                  ;; also ignore expression refs inside `:parameters` since they still use legacy syntax these days.

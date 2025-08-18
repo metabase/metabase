@@ -46,7 +46,7 @@
   [clause]
   (and (vector? clause)
        (keyword? (first clause))
-       (let [opts (get clause 1)]
+       (let [opts (second clause)]
          (and (map? opts)
               (contains? opts :lib/uuid)))))
 
@@ -54,7 +54,9 @@
   "Returns true if this is a clause."
   [clause clause-type]
   (and (clause? clause)
-       (= (first clause) clause-type)))
+       (if (set? clause-type)
+         (clause-type (first clause))
+         (= (first clause) clause-type))))
 
 (defn field-clause?
   "Returns true if this is a field clause."
