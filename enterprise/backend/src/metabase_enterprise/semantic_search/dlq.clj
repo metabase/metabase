@@ -57,10 +57,16 @@
 (defn create-dlq-table-if-not-exists!
   "Creates the DLQ table for the specified index if it doesn't already exist."
   [pgvector index-metadata index-id]
-  (let [ddl {:create-table [(dlq-table-name-kw index-metadata index-id) :if-not-exists]
-             :with-columns dlq-table-schema}
-        sql (sql/format ddl :quoted true)]
-    (jdbc/execute-one! pgvector sql)
+  (let [dlq-table (dlq-table-name-kw index-metadata index-id)]
+    ;; create table
+    (let [ddl {:create-table [dlq-table :if-not-exists]
+               :with-columns dlq-table-schema}
+          sql (sql/format ddl :quoted true)]
+      (jdbc/execute-one! pgvector sql))
+    ;; create attempt_at index
+    (let [ddl {:create-index [[(keyword (str (name dlq-table) "_attempt_at_idx")) :if-not-exists] [dlq-table :attempt_at]]}
+          sql (sql/format ddl :quoted true)]
+      (jdbc/execute-one! pgvector sql))
     nil))
 
 (defn drop-dlq-table-if-exists!
