@@ -13,13 +13,14 @@ import { t } from "ttag";
 import { DND_IGNORE_CLASS_NAME } from "metabase/common/components/dnd";
 import CS from "metabase/css/core/index.css";
 import { useSelector, useStore } from "metabase/lib/redux";
+import { PLUGIN_METABOT } from "metabase/plugins";
 import { getSetting } from "metabase/selectors/settings";
 import { Box, Loader } from "metabase/ui";
 import { getMentionsCache } from "metabase-enterprise/documents/selectors";
 import type { DocumentsStoreState } from "metabase-enterprise/documents/types";
 import { getMentionsCacheKey } from "metabase-enterprise/documents/utils/mentionsUtils";
 
-import styles from "./Editor.module.css";
+import S from "./Editor.module.css";
 import { EditorBubbleMenu } from "./EditorBubbleMenu";
 import { CardEmbed } from "./extensions/CardEmbed/CardEmbedNode";
 import { CommandExtension } from "./extensions/Command/CommandExtension";
@@ -99,7 +100,7 @@ export const Editor: React.FC<EditorProps> = ({
       Image.configure({
         inline: false,
         HTMLAttributes: {
-          class: styles.img,
+          class: S.img,
         },
       }),
       SmartLink.configure({
@@ -117,10 +118,6 @@ export const Editor: React.FC<EditorProps> = ({
         placeholder: t`Start writing, press "/" to open command palette, or "@" to insert a link...`,
       }),
       CardEmbed,
-      MetabotNode.configure({
-        serializePrompt: getMetabotPromptSerializer(getState),
-      }),
-      DisableMetabotSidebar,
       MentionExtension.configure({
         suggestion: {
           allow: ({ state }) => !isMetabotBlock(state),
@@ -133,12 +130,20 @@ export const Editor: React.FC<EditorProps> = ({
           render: createSuggestionRenderer(CommandSuggestion),
         },
       }),
-      MetabotMentionExtension.configure({
-        suggestion: {
-          allow: ({ state }) => isMetabotBlock(state),
-          render: createSuggestionRenderer(MetabotMentionSuggestion),
-        },
-      }),
+      ...(PLUGIN_METABOT.isEnabled()
+        ? [
+            MetabotNode.configure({
+              serializePrompt: getMetabotPromptSerializer(getState),
+            }),
+            DisableMetabotSidebar,
+            MetabotMentionExtension.configure({
+              suggestion: {
+                allow: ({ state }) => isMetabotBlock(state),
+                render: createSuggestionRenderer(MetabotMentionSuggestion),
+              },
+            }),
+          ]
+        : []),
     ],
     [siteUrl, getState],
   );
@@ -192,21 +197,21 @@ export const Editor: React.FC<EditorProps> = ({
 
   if (isLoading) {
     return (
-      <Box className={cx(styles.editor, DND_IGNORE_CLASS_NAME)}>
+      <Box className={cx(S.editor, DND_IGNORE_CLASS_NAME)}>
         <Loader />
       </Box>
     );
   }
 
   return (
-    <Box className={cx(styles.editor, DND_IGNORE_CLASS_NAME)}>
+    <Box className={cx(S.editor, DND_IGNORE_CLASS_NAME)}>
       <Box
-        className={styles.editorContent}
+        className={S.editorContent}
         onClick={(e) => {
           // Focus editor when clicking on empty space
           const target = e.target as HTMLElement;
           if (
-            target.classList.contains(styles.editorContent) ||
+            target.classList.contains(S.editorContent) ||
             target.classList.contains("ProseMirror")
           ) {
             const clickY = e.clientY;
