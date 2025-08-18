@@ -13,7 +13,6 @@ import { t } from "ttag";
 import { DND_IGNORE_CLASS_NAME } from "metabase/common/components/dnd";
 import CS from "metabase/css/core/index.css";
 import { useSelector, useStore } from "metabase/lib/redux";
-import { PLUGIN_METABOT } from "metabase/plugins";
 import { getSetting } from "metabase/selectors/settings";
 import { Box, Loader } from "metabase/ui";
 import { getMentionsCache } from "metabase-enterprise/documents/selectors";
@@ -130,20 +129,16 @@ export const Editor: React.FC<EditorProps> = ({
           render: createSuggestionRenderer(CommandSuggestion),
         },
       }),
-      ...(PLUGIN_METABOT.isEnabled()
-        ? [
-            MetabotNode.configure({
-              serializePrompt: getMetabotPromptSerializer(getState),
-            }),
-            DisableMetabotSidebar,
-            MetabotMentionExtension.configure({
-              suggestion: {
-                allow: ({ state }) => isMetabotBlock(state),
-                render: createSuggestionRenderer(MetabotMentionSuggestion),
-              },
-            }),
-          ]
-        : []),
+      MetabotNode.configure({
+        serializePrompt: getMetabotPromptSerializer(getState),
+      }),
+      DisableMetabotSidebar,
+      MetabotMentionExtension.configure({
+        suggestion: {
+          allow: ({ state }) => isMetabotBlock(state),
+          render: createSuggestionRenderer(MetabotMentionSuggestion),
+        },
+      }),
     ],
     [siteUrl, getState],
   );
