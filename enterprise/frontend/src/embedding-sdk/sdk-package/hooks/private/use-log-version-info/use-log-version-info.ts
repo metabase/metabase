@@ -1,9 +1,9 @@
 import { useEffect } from "react";
 
-import { getEmbeddingSdkPackageBuildData } from "embedding-sdk/lib/get-embedding-sdk-package-build-data";
-import { isSdkPackageCompatibleWithSdkBundle } from "embedding-sdk/lib/version-utils";
+import { getSdkBundleVersion } from "embedding-sdk/sdk-package/store/selectors";
 import { useLazySelector } from "embedding-sdk/sdk-shared/hooks/use-lazy-selector";
-import { getMetabaseInstanceVersion } from "embedding-sdk/store/selectors";
+import { getEmbeddingSdkPackageBuildData } from "embedding-sdk/sdk-shared/lib/get-embedding-sdk-package-build-data";
+import { isSdkPackageCompatibleWithSdkBundle } from "embedding-sdk/sdk-shared/lib/is-sdk-package-compatible-with-sdk-bundle";
 
 type Options = {
   allowConsoleLog?: boolean;
@@ -11,7 +11,7 @@ type Options = {
 
 export const useLogVersionInfo = ({ allowConsoleLog = true }: Options) => {
   const sdkPackageVersion = getEmbeddingSdkPackageBuildData()?.version;
-  const sdkBundleVersion = useLazySelector(getMetabaseInstanceVersion);
+  const sdkBundleVersion = useLazySelector(getSdkBundleVersion);
 
   useEffect(() => {
     if (!sdkPackageVersion || !sdkBundleVersion) {

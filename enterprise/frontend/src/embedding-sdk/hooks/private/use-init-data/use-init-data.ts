@@ -2,8 +2,8 @@ import { useEffect, useRef } from "react";
 import { useMount } from "react-use";
 import _ from "underscore";
 
-import { getEmbeddingSdkPackageBuildData } from "embedding-sdk/lib/get-embedding-sdk-package-build-data";
 import { useLazySelector } from "embedding-sdk/sdk-shared/hooks/use-lazy-selector";
+import { getEmbeddingSdkPackageBuildData } from "embedding-sdk/sdk-shared/lib/get-embedding-sdk-package-build-data";
 import { initAuth } from "embedding-sdk/store/auth";
 import {
   setFetchRefreshTokenFn,

@@ -2,11 +2,9 @@ import { useMemo } from "react";
 import { c, t } from "ttag";
 
 import { SdkError } from "embedding-sdk/components/private/PublicComponentWrapper";
-import { getEmbeddingSdkPackageBuildData } from "embedding-sdk/lib/get-embedding-sdk-package-build-data";
-import {
-  isInvalidMetabaseVersion,
-  isSdkPackageCompatibleWithSdkBundle,
-} from "embedding-sdk/lib/version-utils";
+import { getEmbeddingSdkPackageBuildData } from "embedding-sdk/sdk-shared/lib/get-embedding-sdk-package-build-data";
+import { isInvalidMetabaseVersion } from "embedding-sdk/sdk-shared/lib/is-invalid-metabase-version";
+import { isSdkPackageCompatibleWithSdkBundle } from "embedding-sdk/sdk-shared/lib/is-sdk-package-compatible-with-sdk-bundle";
 import { useSdkSelector } from "embedding-sdk/store";
 import { getMetabaseInstanceVersion } from "embedding-sdk/store/selectors";
 import { Anchor } from "metabase/ui";
