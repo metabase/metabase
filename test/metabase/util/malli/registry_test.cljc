@@ -37,10 +37,13 @@
           "Calling validate with a previously cached schema does not miss cache")
       (is (= 3
              (with-returning-cache-miss-count
+               ;; one
                (mr/validate [:and {:id unique-id} [:re #"\d{1}"] :string] "1234")
                (mr/validate [:and {:id unique-id} [:re #"\d{1}"] :string] "1234")
+               ;; two
                (mr/validate [:and {:id unique-id} [:re #"\d{2}"] :string] "1234")
                (mr/validate [:and {:id unique-id} [:re #"\d{2}"] :string] "1234")
+               ;; three
                (mr/validate [:and {:id unique-id} [:re #"\d{3}"] :string] "1234")
                (mr/validate [:and {:id unique-id} [:re #"\d{3}"] :string] "1234")))
           "Calling validate multiple times with the 'same' schema does not miss cache"))))
