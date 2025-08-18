@@ -92,18 +92,27 @@ export const DatabaseReplicationModal = ({
   );
 
   const isProgressStep = setupStep === "setting-up" || setupStep === "success";
+  const isErrorStep = setupStep === "error";
+
+  const canCloseModal = !isProgressStep && !isErrorStep;
 
   return (
     <Modal
       opened={isProgressStep || opened}
       onClose={onClose}
-      closeOnClickOutside={!isProgressStep}
-      closeOnEscape={!isProgressStep}
-      withCloseButton={!isProgressStep}
-      size="30rem"
+      closeOnClickOutside={!canCloseModal}
+      closeOnEscape={!canCloseModal}
+      withCloseButton={!canCloseModal}
+      size={isErrorStep ? "80%" : "30rem"}
       padding="2.5rem"
-      title={isProgressStep ? undefined : t`Set up database replication`}
-      mah="80%"
+      title={
+        isProgressStep
+          ? undefined
+          : isErrorStep
+            ? t`Couldn't replicate database`
+            : t`Set up database replication`
+      }
+      mah={isErrorStep ? 640 : "80%"}
     >
       {setupStep === "form" ? (
         <DatabaseReplicationForm
