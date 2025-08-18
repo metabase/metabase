@@ -16,6 +16,7 @@ import {
 } from "metabase-lib/v1/parameters/utils/click-behavior";
 import { rangeForValue } from "metabase-lib/v1/queries/utils/range-for-value";
 import {
+  isBinary,
   isBoolean,
   isCoordinate,
   isDate,
@@ -25,6 +26,7 @@ import {
   isURL,
 } from "metabase-lib/v1/types/utils/isa";
 
+import { formatBinary } from "./binary";
 import { formatDateTimeWithUnit, formatRange } from "./date";
 import { formatEmail } from "./email";
 import { formatCoordinate } from "./geography";
@@ -180,6 +182,8 @@ export function formatValueRaw(
     return formatUrl(value as string, options);
   } else if (isEmail(column)) {
     return formatEmail(value as string, options);
+  } else if (isBinary(column)) {
+    return formatBinary(value, options);
   } else if (isTime(column)) {
     return formatTime(value as Moment, column.unit, options);
   } else if (column && column.unit != null) {
