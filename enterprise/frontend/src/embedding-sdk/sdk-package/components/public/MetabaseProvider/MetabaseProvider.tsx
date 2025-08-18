@@ -15,7 +15,7 @@ import type { MetabaseProviderProps } from "embedding-sdk/types/metabase-provide
 
 type MetabaseProviderInitDataWrapperProps = Pick<
   MetabaseProviderProps,
-  "authConfig" | "allowConsoleLog"
+  "authConfig"
 > & {
   reduxStore: SdkStore;
 };
@@ -26,7 +26,6 @@ type MetabaseProviderInitDataWrapperProps = Pick<
  */
 const MetabaseProviderInitDataWrapper = memo(function InitDataWrapper({
   authConfig,
-  allowConsoleLog,
   reduxStore,
 }: MetabaseProviderInitDataWrapperProps) {
   const useInitData = getWindow()?.METABASE_EMBEDDING_SDK_BUNDLE?.useInitData;
@@ -38,7 +37,7 @@ const MetabaseProviderInitDataWrapper = memo(function InitDataWrapper({
     authConfig,
   });
 
-  useLogVersionInfo?.({ allowConsoleLog });
+  useLogVersionInfo?.();
 
   return null;
 });
@@ -105,7 +104,6 @@ const MetabaseProviderInner = memo(function MetabaseProviderInner(
   return (
     <MetabaseProviderInitDataWrapper
       authConfig={props.authConfig}
-      allowConsoleLog={props.allowConsoleLog}
       reduxStore={reduxStore}
     />
   );

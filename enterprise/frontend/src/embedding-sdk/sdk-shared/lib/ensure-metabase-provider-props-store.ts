@@ -53,6 +53,11 @@ const getInitialState = (): MetabaseProviderPropsStoreState => ({
   props: null,
 });
 
+const getDefaultProps =
+  (): Partial<MetabaseProviderPropsStoreExternalProps> => ({
+    allowConsoleLog: true,
+  });
+
 export function ensureMetabaseProviderPropsStore(): MetabaseProviderPropsStore {
   const win = getWindow();
 
@@ -77,7 +82,10 @@ export function ensureMetabaseProviderPropsStore(): MetabaseProviderPropsStore {
     initialize(initialProps) {
       state = {
         ...state,
-        props: initialProps,
+        props: {
+          ...getDefaultProps(),
+          ...initialProps,
+        },
       } as MetabaseProviderPropsStoreState;
     },
     updateInternalProps(internalProps) {
@@ -94,7 +102,10 @@ export function ensureMetabaseProviderPropsStore(): MetabaseProviderPropsStore {
     setProps(props) {
       state = {
         ...state,
-        props,
+        props: {
+          ...getDefaultProps(),
+          ...props,
+        },
       } as MetabaseProviderPropsStoreState;
 
       listeners.forEach((callback) => callback());
